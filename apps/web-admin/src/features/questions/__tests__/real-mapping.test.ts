@@ -48,7 +48,7 @@ describe("đổi phản hồi API câu hỏi sang kiểu của web", () => {
     expect(detail.subjectCode).toBe("MATH");
     expect(detail.commonMistakes).toBe("<p>a</p><p>b</p>");
     expect(detail.body).toMatchObject({ type: "QUESTION_SET", childIds: ["c1"] });
-    expect(detail.children[0]).toMatchObject({ id: "c1", subjectCode: "PHYSICS", body: { type: "SINGLE_CHOICE", shuffleOptions: false } });
+    expect(detail.children[0]).toMatchObject({ id: "c1", subjectCode: "PHYSICS", body: { type: "SINGLE_CHOICE" } });
   });
 
   it("điều kiện Sẵn sàng: nhóm theo điều kiện, vị trí tính từ 1 và câu con", () => {
@@ -175,6 +175,8 @@ describe("tóm tắt câu trên danh sách (F-06)", () => {
   it("chỗ trống [[id]] thành ___ và công thức \\(…\\), \\[…\\] thành ƒ(x) thay vì mã LaTeX thô", () => {
     expect(plainQuestionPreview("Điền [[new-b-1]] vào chỗ trống.")).toBe("Điền ___ vào chỗ trống.");
     expect(plainQuestionPreview("Tính \\(x^2\\) và \\[\\int_0^1 x\\] của hàm.")).toBe("Tính ƒ(x) và ƒ(x) của hàm.");
+    // Tóm tắt bị cắt giữa công thức: không để lộ LaTeX dở.
+    expect(plainQuestionPreview("Cho hàm \\(f(x)=\\frac{1")).toBe("Cho hàm ƒ(x)");
     // Công thức lồng nhau đóng bằng cặp trong cùng; dấu đóng không có dấu mở (không cân) giữ nguyên.
     expect(plainQuestionPreview("ngoặc \\) lẻ")).toBe("ngoặc \\) lẻ");
     expect(fromApiSummary({ ...summary, contentPreview: "Điền [[b1]] \\(\\frac{1}{2}\\)." }).contentPreview).toBe(

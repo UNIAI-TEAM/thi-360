@@ -35,7 +35,7 @@ class QuestionImportParserTests {
     @ParameterizedTest
     @EnumSource(QuestionType.class)
     void templateContainsEachType(QuestionType type) throws Exception {
-        ImportSheet sheet = new XlsxImportSheetReader().read("template.xlsx", QuestionImportTemplate.create(), ImportLimits.DEFAULT);
+        ImportSheet sheet = new XlsxImportSheetReader().read("template.xlsx", QuestionImportTemplate.create("Questions"), ImportLimits.DEFAULT);
         ImportParseResult result = QuestionImportParser.parse(sheet,
             ImportColumnMapper.suggestMapping(sheet.columns(), DICTIONARY), CATALOG, List.of(), DICTIONARY);
         assertFalse(result.hasErrors(), () -> result.rows().stream().flatMap(r -> r.issues().stream()).toList().toString());

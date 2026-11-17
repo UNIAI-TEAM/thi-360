@@ -664,9 +664,9 @@ public final class QuestionImportParser {
                 }
             }
             return new QuestionBody.MultipleChoiceBody(
-                QuestionType.MULTIPLE_CHOICE, options, null, rule);
+                QuestionType.MULTIPLE_CHOICE, options, rule);
         }
-        return new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, options, null);
+        return new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, options);
     }
 
     private static QuestionBody parseShortAnswer(RowParse row, Raw raw) {
@@ -1001,7 +1001,7 @@ public final class QuestionImportParser {
                 pairPoints.isEmpty() ? null : pairPoints.get(leftPositions.get(entry.getKey()))));
         }
         return new QuestionBody.MatchingBody(
-            QuestionType.MATCHING, leftSides, rightSides, pairs, reuseRight, null, null);
+            QuestionType.MATCHING, leftSides, rightSides, pairs, reuseRight);
     }
 
     private static QuestionBody parseEssay(RowParse row, Raw raw) {

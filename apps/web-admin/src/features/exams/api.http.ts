@@ -122,6 +122,20 @@ export async function updateExamStructure(id: string, request: UpdateExamStructu
  * mang bài đó (nơi gọi chuyển sang bài, không POST lại).
  */
 export async function createExam(request: CreateExamRequest): Promise<ExamDetail> {
+  const created = request.existing ?? (await postExam(request));
+  if (!request.parts) return created;
+  try {
+    const { combinations } = await getContentReference();
+    return await updateExamStructure(created.id, {
+      expectedRevision: created.revision,
+      parts: partsFromInput(request.parts, combinations, request.subjectCode ?? null),
+    });
+  } catch (failure) {
+    throw new ExamStructureSaveError(created, failure);
+  }
+}
+
+async function postExam(request: CreateExamRequest): Promise<ExamDetail> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams", {
     params: { header: { "Idempotency-Key": idempotencyKey() } },
@@ -139,17 +153,7 @@ export async function createExam(request: CreateExamRequest): Promise<ExamDetail
     },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
-  const created = mapExamDetail(data);
-  if (!request.parts) return created;
-  try {
-    const { combinations } = await getContentReference();
-    return await updateExamStructure(created.id, {
-      expectedRevision: created.revision,
-      parts: partsFromInput(request.parts, combinations, request.subjectCode ?? null),
-    });
-  } catch (failure) {
-    throw new ExamStructureSaveError(created, failure);
-  }
+  return mapExamDetail(data);
 }
 
 export async function updateExamInfo(id: string, request: UpdateExamInfoRequest): Promise<ExamDetail> {

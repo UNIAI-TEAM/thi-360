@@ -1,9 +1,11 @@
 package vn.unicom.thi360.exam.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties("groupOrder")
 public record ExamSection(
         String id,
         String subjectCode,
@@ -11,7 +13,6 @@ public record ExamSection(
         KnowledgeScope knowledgeScope,
         AnswerQuotas answerQuotas,
         BlockMatrix matrix,
-        GroupOrder groupOrder,
         ChoiceGroup choiceGroup,
         List<QuestionBlock> blocks) {
     public ExamSection {

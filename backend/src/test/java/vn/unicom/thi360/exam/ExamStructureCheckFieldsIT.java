@@ -49,8 +49,8 @@ class ExamStructureCheckFieldsIT extends AbstractIntegrationTest {
         String code = "CHECK-" + tag.toString().substring(0, 8);
         jdbc.update("INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, "
                         + "name_vi, display_order, status, is_system, depth, path) "
-                        + "VALUES (?, ?, ?, ?, 1, 'Check tag', 0, 1, false, 1, ?)",
-                tag, TAG_GROUP, code, code.toLowerCase(Locale.ROOT), "/" + tag + "/");
+                        + "VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(value), 0) + 1 FROM catalog.catalog_item WHERE group_id = ?), 'Check tag', 0, 1, false, 1, ?)",
+                tag, TAG_GROUP, code, code.toLowerCase(Locale.ROOT), TAG_GROUP, "/" + tag + "/");
 
         JsonNode old = mapper.readTree(mockMvc.perform(get(URL).with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());

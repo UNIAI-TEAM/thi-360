@@ -2172,7 +2172,7 @@
       "selectedTitle": "Selected ({count, number})",
       "primary": "Primary knowledge",
       "primaryBadge": "Primary",
-      "primaryHint": "A primary knowledge item is required before a question can be Ready.",
+      "primaryHint": "A primary knowledge item is recommended; without one it is only a warning and the question can still become Ready.",
       "noneSelected": "No knowledge selected.",
       "empty": "No knowledge matches the filters.",
       "loadError": "Could not load the knowledge tree.",
@@ -2496,8 +2496,7 @@
         "add": "Add option",
         "added": "Added option {letter}.",
         "removed": "Deleted option {letter}.",
-        "moved": "Moved option {letter} to position {position}.",
-        "shuffle": "Shuffle options during the exam"
+        "moved": "Moved option {letter} to position {position}."
       },
       "statements": {
         "hint": "Mark every statement True or False. At least 2 statements.",
@@ -2566,9 +2565,7 @@
         "emptyOption": "(empty)",
         "optionsLegend": "Options",
         "reuseRight": "A choice can be used for several items",
-        "reuseRightHint": "Off: each choice can be assigned to at most one left item.",
-        "shuffleLeft": "Shuffle the left column during the exam",
-        "shuffleRight": "Shuffle the right column during the exam"
+        "reuseRightHint": "Off: each choice can be assigned to at most one left item."
       },
       "set": {
         "hint": "Each sub-question is a full question with its own type, classified like the set. At least 2 sub-questions.",
@@ -3257,7 +3254,7 @@
         "grade": "Grade number (10, 11, 12) or grade name.",
         "difficulty": "Recognition, Comprehension, Application or High application.",
         "taskType": "Name or code of a task type in the catalog.",
-        "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty, it must be added before moving to Ready.",
+        "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty the row can still be imported; add knowledge later (missing knowledge is only a warning and does not block Ready).",
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
         "setCode": "A Question set row and its child questions share the same set code."
       },
@@ -3298,7 +3295,7 @@
       "requiredHeading": "Required fields",
       "requiredMapped": "mapped",
       "requiredMissing": "not mapped",
-      "knowledgeWarning": "<b>Knowledge (MAPID)</b> is not mapped — imported questions will be Draft and need knowledge added before moving to Ready.",
+      "knowledgeWarning": "<b>Knowledge (MAPID)</b> is not mapped — imported questions will be Draft and lack knowledge; adding it is recommended, but it is only a warning and does not block moving to Ready.",
       "duplicateLegend": "When a question was imported before",
       "duplicateHint": "Detected by a source code that matches a question already in the bank.",
       "policy": {
@@ -3489,7 +3486,7 @@
       },
       "KNOWLEDGE_MISSING": {
         "message": "No knowledge (MAPID)",
-        "fix": "Add knowledge before moving the question to Ready."
+        "fix": "Adding knowledge is recommended; without it there is only a warning and Ready is not blocked."
       },
       "TAG_UNKNOWN": {
         "message": "Tag “{value}” is not in the catalog and will be skipped",
@@ -3605,7 +3602,7 @@
       "errorsValue": "{count, plural, one {# row} other {# rows}}",
       "errorsDetail": "Listed in the error file with row and column",
       "nextHeading": "Next steps",
-      "missingKnowledge": "{count, plural, one {# question lacks} other {# questions lack}} primary knowledge, which must be added before moving to Ready.",
+      "missingKnowledge": "{count, plural, one {# question lacks} other {# questions lack}} primary knowledge; adding it is recommended (only a warning, Ready is not blocked).",
       "viewDrafts": "View Draft questions",
       "notForExam": "Imported questions are not used to generate exams until they are Ready.",
       "viewImported": "View imported questions",
@@ -3821,7 +3818,7 @@
         "allocated": "Allocated",
         "allocatedValue": "{allocated, number}, {missing, number} missing",
         "issues": "Issues to fix",
-        "questionsPrinted": "{count, plural, one {# question} other {# questions}} taken ({printed, number} printed)",
+        "questionsPrinted": "{count, plural, one {# question} other {# questions}} to answer ({printed, number} on the paper)",
         "sharedMinutes": "{count, number} min, shared",
         "pointsOfScale": "{points} / {scale} points"
       },
@@ -3992,9 +3989,9 @@
           "addType": "Add an answer type",
           "percentMismatch": "The percentages add up to {total, number}%; they must equal 100%.",
           "countMismatch": "The targets add up to {total, plural, one {# question} other {# questions}}; the subject has {count, number}.",
-          "openMatches": "Groups with no set answer type ({count, number} questions) exactly cover the missing targets.",
+          "openSplit": "Single-question groups ({count, number} questions) split by the subject targets: {split}.",
           "undeclared": "No target declared",
-          "openDiff": "Groups with no set answer type have {count, number} questions, {missing, number} off from the missing targets."
+          "openDiff": "Single-question groups have {count, number} questions, {missing, number} off from the missing targets."
         },
         "matrix": {
           "title": "Grade and difficulty",
@@ -4143,7 +4140,7 @@
         "issues": "Issues to fix",
         "issuesValue": "{count, plural, one {# issue} other {# issues}}",
         "none": "None",
-        "questionsPrinted": "{count, plural, one {# question} other {# questions}} taken ({printed, number} printed)",
+        "questionsPrinted": "{count, plural, one {# question} other {# questions}} to answer ({printed, number} on the paper)",
         "pointsOfScale": "{points} / {scale} points"
       },
       "path": {
@@ -4260,8 +4257,8 @@
         "MATRIX_NEGATIVE": "Block {block} has a negative quota.",
         "PERCENT_TOTAL_INVALID": "Block {block}: the percentages {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} COMPETENCY {by competency} other {of the matrix}} add up to {available, number}%; they must add up to 100%.",
         "SET_SIZE_MISMATCH": "Block {block}: sets × questions per set is {available, number}; the block needs {required, number} questions.",
-        "CELL_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
-        "DIMENSION_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "DIMENSION_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
         "MATRIX_INFEASIBLE": "Block {block}: each dimension has enough source questions, but no selection of {required, number} questions meets grade and difficulty together.",
         "SET_SHORTAGE": "Block {block} requires {required, number} sets; only {available, number} valid sets are available.",
         "OVERLAP_UNCONFIRMED": "Block {block}: {available, number} questions are shared between knowledge groups; no solution was found within the processing limit ({seconds, number} seconds, sample). This does not mean the bank lacks questions.",
@@ -4286,6 +4283,14 @@
         "SHARED_PART_DURATION": "{part}: the exam uses a shared timer, so a part must not set its own duration.",
         "ANSWER_QUOTA_DUPLICATE": "Subject {subject}: the {answerType} answer type appears twice in the answer-type quotas.",
         "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
+      },
+      "issueNoCount": {
+        "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
+        "DIMENSION_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
+        "COMPETENCY_SHORTAGE": "Block {block}: there are not enough {competency} source questions for the quota.",
+        "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: there are not enough {answerType} source questions for the quota.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the subject quota.",
+        "REMAINDER_GROUP_INVALID": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed the subject's question count."
       }
     },
     "versions": {
@@ -4320,7 +4325,6 @@
           "BLOCK_REMOVED": "Block removed",
           "BLOCK_CHANGED": "Block changed",
           "MATRIX_CHANGED": "Matrix changed",
-          "ORDER_RULE_CHANGED": "Shuffle rule changed",
           "ORDER_CHANGED": "Order changed",
           "QUESTIONS_REPLACED": "Questions replaced"
         },
@@ -4348,7 +4352,6 @@
             "chooseSubjects": "Subjects to choose",
             "description": "Description",
             "durationMinutes": "Duration",
-            "groupOrder": "Group order",
             "instructions": "Instructions",
             "knowledgeScope": "Knowledge scope",
             "matrix": "Matrix",
@@ -4367,7 +4370,6 @@
             "requiredPointsPerQuestion": "Points per question",
             "setCount": "Number of sets",
             "setSize": "Questions per set",
-            "shuffle": "Shuffle rule",
             "subjectCode": "Subject",
             "tagCodes": "Tags",
             "taskTypeCode": "Task type",
@@ -4410,13 +4412,13 @@
         "previewTooltip": "Generate a preview paper from this version"
       },
       "discontinue": {
-        "action": "Discontinue",
-        "title": "Discontinue {code}?",
+        "action": "Stop selling",
+        "title": "Stop selling exam {code}?",
         "description": "The exam is no longer sold to new buyers. Learners who bought it can still take it on the serving version; attempts in progress and existing results stay unchanged.",
-        "confirm": "Discontinue",
+        "confirm": "Stop selling",
         "cancel": "Cancel",
-        "done": "{code} is discontinued.",
-        "error": "Could not discontinue the exam. Try again.",
+        "done": "Exam {code} is no longer sold.",
+        "error": "Could not stop selling the exam. Try again.",
         "conflict": "The exam is no longer serving or has changed. Reload the page and try again."
       },
       "detail": {
@@ -4427,8 +4429,9 @@
         "note": "Note",
         "partMeta": "{count, plural, one {# question} other {# questions}}{hasMinutes, select, yes { · {minutes, plural, one {# minute} other {# minutes}}} other {}}{hasPoints, select, yes { · {points, plural, one {# point} other {# points}}} other {}}",
         "section": "{subject} · {count, plural, one {# question} other {# questions}}",
-        "block": "{name} · {type} · {count, plural, one {# question} other {# questions}} · {mode, select, COMBINED {combined matrix} other {separate matrix}}{manual, select, yes { · manual grading} other {}}",
-        "common": "Common"
+        "block": "{name}{hasType, select, yes { · {type}} other {}} · {count, plural, one {# question} other {# questions}} · {mode, select, COMBINED {combined matrix} other {separate matrix}}{manual, select, yes { · manual grading} other {}}",
+        "common": "Common",
+        "subjectChoice": "Subject pick"
       }
     },
     "editor": {
@@ -4594,7 +4597,6 @@
         "name": {
           "NO_DUPLICATES": "No repeated question or version of the same question",
           "SETS_INTACT": "Question sets taken whole, sub-questions consecutive",
-          "FIXED_BLOCK_ORDER": "English block order kept fixed",
           "TOTAL_POINTS": "Total score {value, number}"
         },
         "status": {
@@ -4724,7 +4726,7 @@
       "templatePart": "{kind} · By part {scope}",
       "cover": {
         "label": "Cover image",
-        "hint": "16:9 · PNG, JPG or WebP up to 5 MB · shown in listings and on the intro page. Sample data: the image is not uploaded.",
+        "hint": "16:9 · PNG, JPG or WebP up to 5 MB · shown in listings and on the intro page. The image is a preview only and is not saved with the exam yet.",
         "removeAria": "Remove image {name}",
         "size": "{size, number} KB",
         "invalidType": "Choose a PNG, JPG or WebP image.",
@@ -4849,7 +4851,8 @@
         "codeTaken": "This exam code is already used. Enter another code.",
         "generic": "Could not create the exam. Try again later.",
         "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again.",
-        "structureNotSaved": "Exam {code} was created with the template structure, but the structure you edited could not be saved. Redo your edits in the Structure and matrix tab."
+        "structureNotSaved": "Exam {code} was created with the template structure, but the structure you edited could not be saved. Fix the structure on this page and select “Create exam and set up question blocks” to save it again (only the structure is saved again; edit general information in the exam's General tab).",
+        "openCreated": "Open exam {code} to edit it in the Structure tab"
       },
       "validation": {
         "nameRequired": "Enter the exam name.",

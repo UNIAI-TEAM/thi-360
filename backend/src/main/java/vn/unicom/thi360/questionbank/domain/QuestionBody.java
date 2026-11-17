@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -34,10 +35,10 @@ public sealed interface QuestionBody {
     QuestionType type();
 
     /** Trắc nghiệm một đáp án: 2-10 phương án không trống, đúng 1 phương án đúng khi Sẵn sàng. */
+    @JsonIgnoreProperties("shuffleOptions")
     record SingleChoiceBody(
         QuestionType type,
-        List<ChoiceOption> options,
-        Boolean shuffleOptions) implements QuestionBody {
+        List<ChoiceOption> options) implements QuestionBody {
 
         public SingleChoiceBody {
             type = QuestionType.SINGLE_CHOICE;
@@ -46,10 +47,10 @@ public sealed interface QuestionBody {
     }
 
     /** Trắc nghiệm nhiều đáp án: 2-10 phương án, ít nhất 2 phương án đúng (PBI-03 mục 10). */
+    @JsonIgnoreProperties("shuffleOptions")
     record MultipleChoiceBody(
         QuestionType type,
         List<ChoiceOption> options,
-        Boolean shuffleOptions,
         MultipleChoiceRule scoringRule) implements QuestionBody {
 
         public MultipleChoiceBody {
@@ -130,14 +131,13 @@ public sealed interface QuestionBody {
      * một lựa chọn dùng nhiều lần. Sẵn sàng: mọi mục trái có cặp, cặp trỏ tới lựa chọn có thật,
      * {@code reuseRight = false} thì mỗi lựa chọn dùng tối đa một lần, tổng điểm cặp = điểm câu.
      */
+    @JsonIgnoreProperties({"shuffleLeft", "shuffleRight"})
     record MatchingBody(
         QuestionType type,
         List<MatchingSide> left,
         List<MatchingSide> right,
         List<MatchingPair> pairs,
-        Boolean reuseRight,
-        Boolean shuffleLeft,
-        Boolean shuffleRight) implements QuestionBody {
+        Boolean reuseRight) implements QuestionBody {
 
         public MatchingBody {
             type = QuestionType.MATCHING;

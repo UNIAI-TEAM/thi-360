@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -58,6 +59,13 @@ public class AdminOriginFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain)
             throws ServletException, IOException {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CurrentUser)) {
+            // Let authorization return 401 for anonymous admin writes.
+            filterChain.doFilter(request, response);
+            return;
+        }
         String originHeader = request.getHeader(HttpHeaders.ORIGIN);
         if (!StringUtils.hasText(originHeader)) {
             if (request.getAttribute(SIMULATED_PRINCIPAL_ATTR) != null) {

@@ -310,11 +310,11 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[*].code", org.hamcrest.Matchers.hasItems("SINGLE", "CLUSTER")))
                 .andExpect(jsonPath("$[*].code", org.hamcrest.Matchers.hasItems("SYNONYM", "ANTONYM",
                         "DIALOGUE_COMPLETION", "READING_COMPREHENSION", "WORD_USAGE_ERROR",
-                        "PASSAGE_READING")));
+                        "PASSAGE_READING", "SENTENCE_COMPLETION")));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "SUBJECT_COMBINATION").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(16)))
+                .andExpect(jsonPath("$", hasSize(17)))
                 .andExpect(jsonPath("$[0].description").value(org.hamcrest.Matchers.startsWith("[MẪU]")));
 
         // KNOWLEDGE: 0D1 has 14 leaves; filtering by TOAN & G10 returns all 26 leaves (14 + 6 + 6)

@@ -153,7 +153,6 @@ function wireTemplateBlock(block: ExamTemplateBlock): WireBlock {
     childAnswerType: block.childAnswerType ?? undefined,
     templateGroupCode: block.templateGroupCode ?? undefined,
     answerTypeLocked: block.answerTypeLocked,
-    shuffle: block.shuffle,
     expectedScoring: block.expectedScoring,
   } as WireBlock;
 }
@@ -166,7 +165,6 @@ function wireTemplateSection(section: ExamTemplateSection): WireSection {
     knowledgeScope: wireScope(section.knowledgeScope ?? null),
     answerQuotas: section.answerQuotas ?? undefined,
     matrix: wireMatrix(section.matrix ?? null),
-    groupOrder: section.groupOrder ?? undefined,
     choiceGroup: section.choiceGroup ?? undefined,
     blocks: (section.blocks ?? []).map(wireTemplateBlock),
   } as WireSection;

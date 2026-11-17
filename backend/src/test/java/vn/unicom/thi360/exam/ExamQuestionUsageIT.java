@@ -222,7 +222,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         UUID k2 = UUID.randomUUID();
         UUID tag = UUID.randomUUID();
         String tagCode = "USAGE_" + tag.toString().replace("-", "");
-        jdbc.update("insert into catalog.catalog_item(id,group_id,code,code_normalized,value,name_vi,display_order,status,is_system,depth,path) values (?, '00000000-0000-7000-8100-000000000008',?,?,1,'Usage tag',0,1,false,1,?)",
+        jdbc.update("insert into catalog.catalog_item(id,group_id,code,code_normalized,value,name_vi,display_order,status,is_system,depth,path) values (?, '00000000-0000-7000-8100-000000000008',?,?,(select coalesce(max(value), 0) + 1 from catalog.catalog_item where group_id = '00000000-0000-7000-8100-000000000008'),'Usage tag',0,1,false,1,?)",
                 tag, tagCode, tagCode.toLowerCase(), "/" + tag + "/");
         UUID task = catalog.findActiveItem("TASK_TYPE", "CLUSTER").orElseThrow().id();
         jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,task_type_item_id) values (?,?,'QUESTION_SET','READY',?,1,?)",

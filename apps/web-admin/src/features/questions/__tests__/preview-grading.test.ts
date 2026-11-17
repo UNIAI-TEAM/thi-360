@@ -42,14 +42,14 @@ const options = [
 
 describe("cham thu: quy tac cham theo spec muc 8", () => {
   it("Mot dap an: dung P, sai 0, bo trong la blank", () => {
-    const q = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!], shuffleOptions: false }, 0.75);
+    const q = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!] }, 0.75);
     expect(gradePreview(q, { type: "SINGLE_CHOICE", selected: "a" })).toMatchObject({ state: "correct", earned: 0.75 });
     expect(gradePreview(q, { type: "SINGLE_CHOICE", selected: "c" })).toMatchObject({ state: "wrong", earned: 0 });
     expect(gradePreview(q, emptyAnswer(q))).toMatchObject({ state: "blank", earned: 0, max: 0.75 });
   });
 
   it("Nhieu dap an ALL_OR_NOTHING: thieu hoac thua deu 0", () => {
-    const q = question({ type: "MULTIPLE_CHOICE", options, shuffleOptions: false, scoringRule: "ALL_OR_NOTHING" }, 1);
+    const q = question({ type: "MULTIPLE_CHOICE", options, scoringRule: "ALL_OR_NOTHING" }, 1);
     const pick = (selected: string[]) => gradePreview(q, { type: "MULTIPLE_CHOICE", selected });
     expect(pick(["a", "b"])).toMatchObject({ state: "correct", earned: 1 });
     expect(pick(["a"])).toMatchObject({ state: "wrong", earned: 0 });
@@ -57,7 +57,7 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
   });
 
   it("Nhieu dap an PARTIAL: chon sai bat ky thi 0, con lai theo ty le dap an dung", () => {
-    const q = question({ type: "MULTIPLE_CHOICE", options, shuffleOptions: false, scoringRule: "PARTIAL" }, 1);
+    const q = question({ type: "MULTIPLE_CHOICE", options, scoringRule: "PARTIAL" }, 1);
     const pick = (selected: string[]) => gradePreview(q, { type: "MULTIPLE_CHOICE", selected });
     expect(pick(["a"])).toMatchObject({ state: "partial", earned: 0.5 });
     expect(pick(["a", "c"])).toMatchObject({ state: "wrong", earned: 0 });
@@ -153,8 +153,6 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
           { leftId: "l3", rightId: "r2", points: 1 },
         ],
         reuseRight: true,
-        shuffleLeft: false,
-        shuffleRight: false,
       },
       2,
     );
@@ -166,7 +164,7 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
   });
 
   it("Bo cau hoi: tong diem cac cau con, moi cau con cham theo dang cua no; cau con Tu luan cham tay", () => {
-    const single = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!], shuffleOptions: false }, 1);
+    const single = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!] }, 1);
     const essay = question(
       { type: "ESSAY", gradingGuide: "Guide", rubric: [], sampleAnswer: "Mẫu", wordLimit: null },
       3,
@@ -193,7 +191,7 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
     expect(filled).toMatchObject({ state: "manual", earned: 0, max: 1.5, hasManualPart: true });
 
     // Cau con tu cham bo trong, cau Tu luan da dien: van la cho cham, khong phai sai.
-    const single = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!], shuffleOptions: false }, 1);
+    const single = question({ type: "SINGLE_CHOICE", options: [options[0]!, options[2]!] }, 1);
     const mixed = question({ type: "QUESTION_SET", passage: "", childIds: [single.id, essay.id] }, 2.5, [single, essay]);
     const essayOnly = gradePreview(mixed, {
       type: "QUESTION_SET",

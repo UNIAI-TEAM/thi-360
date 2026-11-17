@@ -35,6 +35,14 @@ describe("allocateSubjectCounts (B10, D25)", () => {
     expect(allocateSubjectCounts(["SOCIAL", "SOCIAL", "SOCIAL"], COUNTS)).toEqual(expected);
   });
 
+  it("ba môn đều chưa đặt nhóm (null): một nhóm chung như máy chủ, ba cách chia (R3-1)", () => {
+    expect(allocateSubjectCounts([null, null, null], COUNTS)).toEqual([
+      [16, 17, 17],
+      [17, 16, 17],
+      [17, 17, 16],
+    ]);
+  });
+
   it("không chia được thì trả rỗng: thiếu nhóm, sai số môn, hai nhóm bằng nhau, số câu không khớp countsByPick", () => {
     expect(allocateSubjectCounts(["NATURAL", null, "SOCIAL"], COUNTS)).toEqual([]);
     expect(allocateSubjectCounts(["NATURAL", "SOCIAL"], COUNTS)).toEqual([]);

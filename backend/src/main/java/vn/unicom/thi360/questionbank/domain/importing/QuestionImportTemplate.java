@@ -19,7 +19,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 public final class QuestionImportTemplate {
     private QuestionImportTemplate() {}
 
-    public static byte[] create() {
+    public static byte[] create(String sheetName) {
         List<String> headers = List.of("sourceCode", "type", "content", "points", "options", "matchRight",
             "correctAnswer", "scoring", "inputHint", "gradingGuide", "rubric", "solution", "commonMistakes",
             "subject", "grade", "difficulty", "taskType", "knowledge", "tags", "setCode");
@@ -52,7 +52,7 @@ public final class QuestionImportTemplate {
                 "gradingGuide", "Nêu rõ luận điểm.", "rubric", "Mở bài: 0,25\nThân bài: 0,5\nKết bài: 0,25",
                 "subject", "VAN", "grade", "G12", "difficulty", "TH"));
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Sheet sheet = workbook.createSheet("Câu hỏi");
+            Sheet sheet = workbook.createSheet(sheetName);
             Row header = sheet.createRow(0);
             for (int c = 0; c < headers.size(); c++) {
                 header.createCell(c).setCellValue(headers.get(c));

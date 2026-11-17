@@ -28,6 +28,7 @@ import vn.unicom.thi360.questionbank.application.QuestionImportValidationService
 import vn.unicom.thi360.questionbank.domain.importing.ImportFileException;
 import vn.unicom.thi360.questionbank.domain.importing.QuestionImportTemplate;
 import vn.unicom.thi360.shared.security.RequirePermission;
+import vn.unicom.thi360.shared.web.AppMessages;
 
 @Tag(name = "Question imports", description = "Nhập câu hỏi từ Excel hoặc CSV")
 @RestController
@@ -37,14 +38,16 @@ public class QuestionImportController {
     private final QuestionImportValidationService validationService;
     private final QuestionImportCommitService commitService;
     private final QuestionImportHistoryService historyService;
+    private final AppMessages messages;
 
     public QuestionImportController(QuestionImportUploadService uploadService,
             QuestionImportValidationService validationService, QuestionImportCommitService commitService,
-            QuestionImportHistoryService historyService) {
+            QuestionImportHistoryService historyService, AppMessages messages) {
         this.uploadService = uploadService;
         this.validationService = validationService;
         this.commitService = commitService;
         this.historyService = historyService;
+        this.messages = messages;
     }
 
     @GetMapping(value = "/template", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -57,7 +60,7 @@ public class QuestionImportController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"question-import-template.xlsx\"")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(QuestionImportTemplate.create());
+                .body(QuestionImportTemplate.create(messages.get("import.question.sheetName")));
     }
 
     @PostMapping(value = "/uploads", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -150,8 +150,6 @@ export interface QuestionBlock {
   templateGroupCode: string | null;
   /** Mẫu đã điền sẵn dạng trả lời và khóa: màn không cho đổi. */
   answerTypeLocked: boolean;
-  /** Đảo câu trong nhóm: do mẫu quy định, không sửa trên màn (D24). Bỏ trống coi như `SHUFFLE`. */
-  shuffle?: BlockShuffleRule;
   /**
    * Quy tắc chấm khối mong đợi, lấy từ mẫu của kỳ thi. Quy tắc thật nằm trên từng câu; kiểm tra cấu hình báo câu có quy
    * tắc khác khối. Bỏ trống: không so.
@@ -192,8 +190,6 @@ export interface ExamSection {
   answerQuotas: AnswerQuotas | null;
   /** Chỉ tiêu khối lớp, độ khó của môn (tính trên mọi nhóm); `null`: không kiểm soát. */
   matrix: BlockMatrix | null;
-  /** Thứ tự nhóm do mẫu quy định (D24): `SHUFFLE` đảo cả nhóm, câu cùng nhóm vẫn liền nhau. */
-  groupOrder: "FIXED" | "SHUFFLE";
   /** Nhóm của môn trong `SUBJECT_CHOICE` (B10); `null` ngoài `SUBJECT_CHOICE`. */
   choiceGroup: ChoiceGroup | null;
   blocks: QuestionBlock[];
@@ -375,7 +371,6 @@ export interface ExamTemplateSection {
   knowledgeScope?: KnowledgeScope | null;
   answerQuotas?: AnswerQuotas | null;
   matrix?: BlockMatrix | null;
-  groupOrder?: ExamSection["groupOrder"];
   choiceGroup?: ChoiceGroup | null;
 }
 
@@ -407,7 +402,6 @@ export interface ExamTemplateBlock {
   answerTypeLocked?: boolean;
   knowledgeScope?: KnowledgeScope | null;
   matrix?: BlockMatrix | null;
-  shuffle?: BlockShuffleRule;
 }
 
 /**
@@ -431,10 +425,12 @@ export interface CreateExamRequest {
   maxScore?: number | null;
   /** Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi. Bỏ trống thì nạp nguyên mẫu mới nhất. */
   parts?: CreateExamPartInput[];
+  /**
+   * Bài đã tạo ở lần gửi trước mà bước lưu cấu trúc lỗi (`ExamStructureSaveError`): gửi lại chỉ lưu cấu trúc lên bài này,
+   * không POST lại (sẽ trùng mã), nên các chỉnh sửa cấu trúc trên trang không mất (N2-4).
+   */
+  existing?: ExamDetail;
 }
-
-/** Quy tắc đảo câu của khối: đảo thứ tự câu trong khối hoặc giữ thứ tự. */
-export type BlockShuffleRule = "SHUFFLE" | "KEEP_ORDER";
 
 /**
  * Sửa Thông tin chung. Đổi kỳ thi, phạm vi, phần hoặc môn thì cấu trúc được nạp lại theo mẫu (giao diện hỏi xác nhận

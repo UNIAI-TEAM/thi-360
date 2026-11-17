@@ -142,6 +142,33 @@ class QuestionImportUploadIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void anonymousUploadsDoNotConsumeSharedIpQuota() throws Exception {
+        String client = "203.0.113.113";
+        String key = RateLimitFilter.UPLOAD_KEY_PREFIX + client;
+        redisTemplate.delete(key);
+        try {
+            int limit = securityProperties.rateLimit().uploadPerIpLimit();
+            for (int i = 0; i <= limit; i++) {
+                mockMvc.perform(multipart(URL)
+                                .file(new MockMultipartFile("file", "test.csv", "text/csv", new byte[] {1}))
+                                .with(req -> { req.setRemoteAddr("127.0.0.1"); return req; })
+                                .header(ClientIpResolver.X_FORWARDED_FOR, client))
+                        .andExpect(status().isUnauthorized());
+            }
+            assertThat(redisTemplate.hasKey(key)).isFalse();
+            mockMvc.perform(multipart(URL)
+                            .file(new MockMultipartFile("file", "test.csv", "text/csv",
+                                    "type,content\nSHORT_ANSWER,q\n".getBytes(StandardCharsets.UTF_8)))
+                            .with(req -> { req.setRemoteAddr("127.0.0.1"); return req; })
+                            .header(ClientIpResolver.X_FORWARDED_FOR, client)
+                            .with(asUser(Permissions.QUESTION_MODIFY)))
+                    .andExpect(status().isOk());
+        } finally {
+            redisTemplate.delete(key);
+        }
+    }
+
+    @Test
     void uploadRateLimitReturns429AndIsolatesClients() throws Exception {
         // Chính sách upload theo IP của shared RateLimitFilter cũng áp cho endpoint này
         // (R1-8): vượt hạn mức -> 429 + Retry-After; client khác giữ nguyên quota.

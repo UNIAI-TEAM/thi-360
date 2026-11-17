@@ -386,7 +386,7 @@ export interface PreviewPart {
   blocks: PreviewBlock[];
 }
 
-export type PreviewCheckCode = "NO_DUPLICATES" | "SETS_INTACT" | "FIXED_BLOCK_ORDER" | "TOTAL_POINTS";
+export type PreviewCheckCode = "NO_DUPLICATES" | "SETS_INTACT" | "TOTAL_POINTS";
 
 export interface PreviewCheck {
   code: PreviewCheckCode;
@@ -464,7 +464,6 @@ export type ExamChangeKind =
   | "BLOCK_REMOVED"
   | "BLOCK_CHANGED"
   | "MATRIX_CHANGED"
-  | "ORDER_RULE_CHANGED"
   | "ORDER_CHANGED"
   | "QUESTIONS_REPLACED";
 

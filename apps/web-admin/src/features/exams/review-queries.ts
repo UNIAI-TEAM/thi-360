@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { EXAMS_QUERY_KEYS } from "./api";
@@ -85,6 +85,22 @@ export interface UseDeepCheckOptions {
 }
 
 /**
+ * Lần chạy kiểm tra kỹ đang theo dõi của từng bài (G5): đổi tab của bài thi là đổi trang, hook gỡ rồi dựng lại, nhưng lần
+ * chạy vẫn tiếp tục ở máy chủ. Nhớ `runId` ngoài component (theo `QueryClient`) để quay lại thì hỏi tiếp (đang chạy: hiện lại chỉ báo; đã xong:
+ * ghi kết quả mới). Chỉ giữ trong phiên trình duyệt này; tải lại trang thì kết quả đã lưu của máy chủ là nguồn.
+ */
+const trackedRunsByClient = new WeakMap<QueryClient, Map<string, string>>();
+
+function trackedRunsOf(client: QueryClient): Map<string, string> {
+  let runs = trackedRunsByClient.get(client);
+  if (!runs) {
+    runs = new Map();
+    trackedRunsByClient.set(client, runs);
+  }
+  return runs;
+}
+
+/**
  * Kiểm tra kỹ (spec 5.4): chạy nền tới 120 giây, proxy web cắt ở 60 giây nên `startDeepCheck` trả `runId` ngay, rồi
  * hỏi `getCheckRun` mỗi 2 giây tới khi xong. Hỏi dừng khi màn rời đi (gỡ khỏi cây hoặc `active = false`). Xong thì kết
  * quả ghi thẳng vào bộ đệm kiểm tra, thay kết quả đang hiện.
@@ -95,7 +111,13 @@ export function useDeepCheck(
 ): DeepCheck {
   const queryClient = useQueryClient();
   const invalidate = useInvalidateExam(examId, { includeCheck: false });
-  const [runId, setRunId] = useState<string | null>(null);
+  const trackedRuns = trackedRunsOf(queryClient);
+  const [runId, setTrackedRun] = useState<string | null>(() => trackedRuns.get(examId) ?? null);
+  const setRunId = (next: string | null) => {
+    if (next === null) trackedRuns.delete(examId);
+    else trackedRuns.set(examId, next);
+    setTrackedRun(next);
+  };
   const starter = useMutation({
     mutationFn: () => deps.startDeepCheck(examId),
     onSuccess: (started) => setRunId(started.runId),
@@ -127,6 +149,11 @@ export function useDeepCheck(
   useEffect(() => {
     if (finished) finish(finished);
   }, [finished]);
+  // Lần chạy đã có kết cục (xong, lỗi, hết hạn): quay lại tab không phải theo dõi lại.
+  const settled = run.data?.state === "DONE" || run.data?.state === "FAILED" || run.isError;
+  useEffect(() => {
+    if (settled) trackedRuns.delete(examId);
+  }, [settled, examId, trackedRuns]);
 
   const { mutate, reset } = starter;
   const phase: DeepCheckPhase =

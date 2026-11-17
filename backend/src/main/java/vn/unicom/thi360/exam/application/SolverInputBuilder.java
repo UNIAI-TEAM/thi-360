@@ -123,7 +123,7 @@ public class SolverInputBuilder {
                     }
                     int count = option.blocks().stream().mapToInt(SolverInputBuilder::fixedBlockCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
-                            null, null, null, null, null, option.blocks());
+                            null, null, null, null, option.blocks());
                     optionSections.addAll(sections(List.of(synthetic), false, filters, knowledge,
                             knowledgeById, descendants, subjects));
                 }

@@ -49,7 +49,6 @@ const CHANGE_ICON: Record<ExamChangeKind, typeof Plus> = {
   BLOCK_REMOVED: CircleOff,
   BLOCK_CHANGED: Pencil,
   MATRIX_CHANGED: Pencil,
-  ORDER_RULE_CHANGED: ArrowLeftRight,
   ORDER_CHANGED: ArrowLeftRight,
   QUESTIONS_REPLACED: Replace,
 };

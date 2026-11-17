@@ -309,7 +309,6 @@ export interface CreateSectionValues {
   knowledgeScope?: ExamTemplateSection["knowledgeScope"];
   answerQuotas?: ExamTemplateSection["answerQuotas"];
   matrix?: ExamTemplateSection["matrix"];
-  groupOrder?: ExamTemplateSection["groupOrder"];
 }
 
 /** Phương án chọn môn của mẫu (HSA Khoa học) giữ nguyên từ mẫu; chưa có ô soạn ở trang Tạo bài thi (FE-3c). */
@@ -419,7 +418,6 @@ export function createExamSchema(
         knowledgeScope: z.custom<CreateSectionValues["knowledgeScope"]>().optional(),
         answerQuotas: z.custom<CreateSectionValues["answerQuotas"]>().optional(),
         matrix: z.custom<CreateSectionValues["matrix"]>().optional(),
-        groupOrder: z.enum(["FIXED", "SHUFFLE"]).optional(),
       }),
     ),
     branches: z.array(

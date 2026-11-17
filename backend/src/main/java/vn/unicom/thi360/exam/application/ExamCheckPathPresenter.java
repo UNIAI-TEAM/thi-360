@@ -55,7 +55,7 @@ final class ExamCheckPathPresenter {
                 if (!option.blocks().isEmpty()) {
                     int count = option.blocks().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
-                            null, null, null, null, null, option.blocks());
+                            null, null, null, null, option.blocks());
                     sections.put(synthetic.id(), new SectionInfo(part, option.id(), synthetic));
                 }
             }
@@ -104,6 +104,7 @@ final class ExamCheckPathPresenter {
             if (selection != null && status != SolveStatus.VALID) {
                 ObjectNode issue = solverIssues.failure(selection.reason(), selection.subjectCode(),
                         selection.groupId(), selection.failingQuota(), tuple);
+                diagnoseShortage(issue, tuple.stream().flatMap(pick -> pick.resolvedSections().stream()).toList());
                 selectionIssues.add(issue);
                 add(allIssues, issue);
             } else if (selection == null) {
@@ -124,8 +125,10 @@ final class ExamCheckPathPresenter {
                     : selectionUnconfirmed || status == SolveStatus.UNCONFIRMED ? "UNCONFIRMED" : "VALID");
         }
         if (result.status() != SolveStatus.VALID && result.reason() != null && tuples.isEmpty()) {
-            add(allIssues, solverIssues.failure(result.reason(), result.subjectCode(), result.groupId(),
-                    result.failingQuota(), List.of()));
+            ObjectNode issue = solverIssues.failure(result.reason(), result.subjectCode(), result.groupId(),
+                    result.failingQuota(), List.of());
+            diagnoseShortage(issue, path.sections());
+            add(allIssues, issue);
         }
 
         Map<String, SectionOnPath> shown = new LinkedHashMap<>();
@@ -186,6 +189,50 @@ final class ExamCheckPathPresenter {
         out.put("result", error || result.status() == SolveStatus.INVALID ? "INVALID"
                 : uncertain || result.status() == SolveStatus.UNCONFIRMED ? "UNCONFIRMED" : "VALID");
         return out;
+    }
+
+    /** Add only shortages directly demonstrated by a complete source projection. */
+    private void diagnoseShortage(ObjectNode issue, List<SectionOnPath> sectionsOnPath) {
+        if (!"CELL_SHORTAGE".equals(issue.path("code").asText())) return;
+        String blockId = issue.path("blockId").asText(null);
+        for (SectionOnPath section : sectionsOnPath) {
+            SectionInfo info = sections.get(section.sectionId());
+            if (info == null) continue;
+            int fixed = section.groups().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
+            for (GroupQuota group : section.groups()) {
+                if (!Objects.equals(blockId, group.groupId())) continue;
+                QuestionBlock block = info.section.blocks().stream()
+                        .filter(candidate -> Objects.equals(blockId, candidate.id())).findFirst().orElse(null);
+                if (block == null) return;
+                ExamCheckSources.Pool pool = sources.pool(group);
+                if (!pool.complete()) return;
+                int target = group.kind() == GroupQuota.GroupKind.SET ? fixedCount(group)
+                        : group.questionCount() == null
+                        ? Math.max(0, (section.questionCount() == null ? 0 : section.questionCount()) - fixed)
+                        : group.questionCount();
+                ObjectNode requirements = requirement(block.matrix(), target);
+                if (requirements != null) {
+                    List<CountingUnit> units = sources.union(List.of(group));
+                    for (var cell : requirements.path("cells")) {
+                        String grade = cell.path("gradeCode").asText();
+                        String difficulty = cell.path("difficultyCode").asText();
+                        int required = cell.path("required").asInt();
+                        long available = units.stream().filter(unit -> grade.equals(unit.gradeCode())
+                                && difficulty.equals(unit.difficultyCode())).count();
+                        if (available < required) {
+                            issue.put("gradeCode", grade); issue.put("difficultyCode", difficulty);
+                            issue.put("required", required); issue.put("available", available);
+                            issues.key(issue);
+                            return;
+                        }
+                    }
+                }
+                if (group.kind() == GroupQuota.GroupKind.SINGLE && pool.units() < target) {
+                    issue.put("required", target); issue.put("available", pool.units());
+                }
+                return;
+            }
+        }
     }
 
     private ObjectNode block(SectionInfo info, QuestionBlock block, GroupQuota group, int required,

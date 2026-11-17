@@ -42,6 +42,9 @@ final class ExamCheckSolverIssues {
         } else if (quota != null && "ANSWER".equals(quota.kind())) {
             code = "ANSWER_TYPE_SHORTAGE";
             group = "SOURCE";
+        } else if (quota != null && "CELL".equals(quota.kind())) {
+            code = "CELL_SHORTAGE";
+            group = "SOURCE";
         } else if (quota != null || reason == SolveReason.SUBJECT_QUOTA_INFEASIBLE
                 || reason == SolveReason.NO_JOINT_SOLUTION) {
             code = "SUBJECT_QUOTA_INFEASIBLE";

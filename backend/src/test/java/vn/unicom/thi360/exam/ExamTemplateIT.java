@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +57,21 @@ class ExamTemplateIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[?(@.code=='HSA_FULL')].structure.parts[*].options[?(@.kind=='SUBJECT_CHOICE')].sections[*].subjectCode", Matchers.hasItems("LY", "HOA", "SINH", "SU", "DIA")))
                 .andExpect(jsonPath("$[?(@.code=='HSA_FULL')].structure.parts[*].options[?(@.kind=='COMBINATION')]").isEmpty());
     }
+    @Test
+    void templateDurationIsExposedOnlyForSharedTiming() throws Exception {
+        var templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "HSA"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var hsa = java.util.stream.StreamSupport.stream(templates.spliterator(), false)
+                .filter(template -> "HSA_FULL".equals(template.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(hsa.path("durationMinutes").isNull()).as("per-part duration is not shared").isTrue();
+        mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "BCA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.code=='BCA_FULL')].durationMinutes", Matchers.hasItem(180)));
+    }
+
 
     @Test
     void templatesRequireExamView() throws Exception {
@@ -86,11 +102,37 @@ class ExamTemplateIT extends AbstractIntegrationTest {
         assertThat(groups).containsExactlyInAnyOrderEntriesOf(java.util.Map.of(
                 "LY", "NATURAL", "HOA", "NATURAL", "SINH", "NATURAL",
                 "SU", "SOCIAL", "DIA", "SOCIAL"));
-        var literature = hsa.at("/structure/parts/1/sections/0/blocks/1");
+        var literature = java.util.stream.StreamSupport.stream(
+                        hsa.at("/structure/parts/1/sections/0/blocks").spliterator(), false)
+                .filter(block -> "HSA_VN_PASSAGE".equals(block.path("templateGroupCode").asText()))
+                .findFirst().orElseThrow();
         assertThat(literature.path("setCount").asInt()).isEqualTo(5);
         assertThat(literature.path("setSize").asInt()).isEqualTo(5);
-        var english = hsa.at("/structure/parts/2/options/1/sections/0/blocks/3");
+        var english = java.util.stream.StreamSupport.stream(
+                        hsa.at("/structure/parts/2/options/1/sections/0/blocks").spliterator(), false)
+                .filter(block -> "HSA_EN_READING".equals(block.path("templateGroupCode").asText()))
+                .findFirst().orElseThrow();
         assertThat(english.path("setCount").asInt()).isEqualTo(3);
         assertThat(english.path("setSize").asInt()).isEqualTo(5);
     }
+    @Test
+    void hsaMathSetGroupsDeclareSingleChoiceChildren() {
+        // BA 2026-11-17 (spec 12): chùm Toán HSA chỉ chứa câu Một đáp án; mẫu phải
+        // khai childAnswerType để màn ma trận chia sẵn chỉ tiêu 35/15.
+        for (String code : List.of("HSA_FULL", "HSA_PART_MATH")) {
+            String json = jdbc.queryForObject(
+                    "SELECT structure::text FROM exam.exam_template WHERE code = ?",
+                    String.class, code);
+            var doc = new ExamStructureCodec(mapper).read(json);
+            var blocks = doc.parts().stream()
+                    .flatMap(part -> part.sections().stream())
+                    .flatMap(section -> section.blocks().stream())
+                    .filter(block -> "HSA_MATH_CONTEXT".equals(block.templateGroupCode()))
+                    .toList();
+            assertThat(blocks).as("%s Math set groups", code).hasSize(1);
+            assertThat(blocks.getFirst().childAnswerType())
+                    .isEqualTo(vn.unicom.thi360.questionbank.spi.QuestionType.SINGLE_CHOICE);
+        }
+    }
+
 }

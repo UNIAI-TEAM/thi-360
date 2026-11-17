@@ -135,7 +135,6 @@ describe("thời lượng chung và theo phần", () => {
         knowledgeScope: null,
         answerQuotas: null,
         matrix: null,
-        groupOrder: "SHUFFLE",
         choiceGroup: null,
         blocks: [],
       },

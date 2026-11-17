@@ -96,7 +96,6 @@ export const FIXED_PART = {
       id: "sec-1",
       subjectCode: "MATH",
       questionCount: 10,
-      groupOrder: "FIXED",
       blocks: [
         { id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 10, requiredPointsPerQuestion: 1 },
       ],

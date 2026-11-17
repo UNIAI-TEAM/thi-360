@@ -4180,10 +4180,6 @@
             "enum" : [ "NATURAL", "SOCIAL" ],
             "type" : "string"
           },
-          "groupOrder" : {
-            "enum" : [ "FIXED", "SHUFFLE" ],
-            "type" : "string"
-          },
           "id" : {
             "type" : "string"
           },
@@ -5084,12 +5080,6 @@
               },
               "type" : "array"
             },
-            "shuffleLeft" : {
-              "type" : "boolean"
-            },
-            "shuffleRight" : {
-              "type" : "boolean"
-            },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
@@ -5221,9 +5211,6 @@
             "scoringRule" : {
               "enum" : [ "ALL_OR_NOTHING", "PARTIAL" ],
               "type" : "string"
-            },
-            "shuffleOptions" : {
-              "type" : "boolean"
             },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
@@ -5910,10 +5897,6 @@
           "setSize" : {
             "format" : "int32",
             "type" : "integer"
-          },
-          "shuffle" : {
-            "enum" : [ "SHUFFLE", "KEEP_ORDER" ],
-            "type" : "string"
           },
           "tagCodes" : {
             "items" : {
@@ -6882,9 +6865,6 @@
               },
               "type" : "array"
             },
-            "shuffleOptions" : {
-              "type" : "boolean"
-            },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
@@ -7451,7 +7431,7 @@
             "type" : "integer"
           },
           "parts" : {
-            "description" : "Cấu trúc mới; server giữ giá trị của trường thuộc mẫu (shuffle, answerTypeLocked, groupOrder, templateGroupCode)",
+            "description" : "Cấu trúc mới; server giữ giá trị của trường thuộc mẫu (answerTypeLocked, templateGroupCode)",
             "items" : {
               "$ref" : "#/components/schemas/ExamPart"
             },

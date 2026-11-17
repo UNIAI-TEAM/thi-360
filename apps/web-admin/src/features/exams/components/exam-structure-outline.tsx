@@ -174,7 +174,7 @@ function OutlineButton({
       aria-current={current ? "true" : undefined}
       onClick={onClick}
       className={cn(
-        "relative flex w-full items-start justify-between gap-2 rounded-md px-3 py-2 text-left transition-colors duration-150 motion-reduce:transition-none",
+        "relative flex w-full flex-wrap items-start justify-between gap-x-2 gap-y-0.5 rounded-md px-3 py-2 text-left transition-colors duration-150 motion-reduce:transition-none",
         current
           ? "bg-primary-50 before:absolute before:inset-y-1 before:left-0 before:border-l-3 before:border-primary-text"
           : "hover:bg-subtle",
@@ -182,7 +182,7 @@ function OutlineButton({
         focusRingInset,
       )}
     >
-      <span className={cn("min-w-0 wrap-break-word", strong ? "font-semibold text-text" : "text-text", current && "text-primary-text")}>
+      <span className={cn("min-w-[6rem] flex-1 wrap-break-word", strong ? "font-semibold text-text" : "text-text", current && "text-primary-text")}>
         {children}
       </span>
       <span className="flex shrink-0 items-center gap-1 text-caption whitespace-nowrap text-text-muted tabular-nums">

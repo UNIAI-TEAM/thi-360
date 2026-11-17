@@ -46,5 +46,7 @@ export function plainQuestionPreview(preview: string): string {
     out += char;
     i += 1;
   }
+  // Máy chủ cắt tóm tắt ở 200 ký tự: công thức bị cắt giữa chừng (chưa đóng) cũng thành dấu chỗ, không để lộ LaTeX dở.
+  if (depth.length > 0) out = `${out.slice(0, depth[0])}${FORMULA_PLACEHOLDER}`;
   return out.replace(/ {2,}/g, " ").trim();
 }

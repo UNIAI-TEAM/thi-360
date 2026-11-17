@@ -205,6 +205,35 @@ class ExamApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void invalidCheckStatusIsRejected() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/exams").param("checkStatus", "BOGUS")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("checkStatus"));
+        mockMvc.perform(get("/api/v1/admin/exams").param("checkStatus", "unchecked")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void durationIsExposedOnlyForSharedTiming() throws Exception {
+        jdbc.update("UPDATE exam.exam SET timing='PER_PART', duration_minutes=195 WHERE id=?", EXAM_ID);
+        entityManager.clear();
+        mockMvc.perform(get(EXAM).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.durationMinutes").isEmpty());
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].durationMinutes").isEmpty());
+        jdbc.update("UPDATE exam.exam SET timing='SHARED', duration_minutes=180 WHERE id=?", EXAM_ID);
+        entityManager.clear();
+        mockMvc.perform(get(EXAM).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.durationMinutes").value(180));
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].durationMinutes").value(180));
+    }
+
+    @Test
     void listReturnsDetailFieldsAndFiltersServerSide() throws Exception {
         // Bản tóm tắt mang đủ trường của chi tiết (FE-2:2).
         String page = mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")

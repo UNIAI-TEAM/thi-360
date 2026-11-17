@@ -82,6 +82,7 @@ class QuestionSeedIT extends AbstractIntegrationTest {
         for (Map<String, Object> row : rows) {
             String code = (String) row.get("code");
             JsonNode json = mapper.readTree((String) row.get("snapshot"));
+            assertThat(json.findValues("shuffleOptions")).as(code).isEmpty();
             QuestionSnapshot snapshot = mapper.treeToValue(json, QuestionSnapshot.class);
             QuestionBody body = snapshot.body();
             assertThat(body).as(code).isNotNull();

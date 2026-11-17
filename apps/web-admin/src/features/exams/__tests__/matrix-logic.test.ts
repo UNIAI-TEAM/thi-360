@@ -224,7 +224,6 @@ describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
     knowledgeScope,
     answerQuotas: null,
     matrix: null,
-    groupOrder: "SHUFFLE",
     choiceGroup: null,
     blocks: [],
   });

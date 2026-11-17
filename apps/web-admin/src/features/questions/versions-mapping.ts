@@ -73,7 +73,7 @@ function snapshotChild(
     createdAt: "",
     updatedAt: "",
     content: child.content ?? "",
-    body: child.body ? fromWireBody(child.body) : { type: child.type, options: [], shuffleOptions: false },
+    body: child.body ? fromWireBody(child.body) : { type: child.type, options: [] },
     solution: child.solution ?? null,
     commonMistakes: null,
     attachmentIds: [],
@@ -104,7 +104,7 @@ export function fromApiSnapshot(snapshot: ApiSnapshot, status: QuestionStatus, l
     content: snapshot.content ?? "",
     body: wire
       ? fromWireBody(wire, children.map((child) => child.id))
-      : { type: "SINGLE_CHOICE", options: [], shuffleOptions: false },
+      : { type: "SINGLE_CHOICE", options: [] },
     solution: snapshot.solution ?? null,
     commonMistakes: joinCommonMistakes(snapshot.commonMistakes ?? []),
     attachmentIds: snapshot.attachmentIds ?? [],

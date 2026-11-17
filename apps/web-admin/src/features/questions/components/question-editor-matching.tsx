@@ -31,7 +31,7 @@ import {
 /**
  * Các cặp của câu Ghép đôi (UniNote PBI-03 mục 10): cột trái (mục cần ghép) và cột phải (lựa chọn, được nhiều hơn cột
  * trái), mỗi mục trái chọn một lựa chọn đúng và có điểm của cặp. "Dùng lại lựa chọn" quyết định một lựa chọn gắn được
- * cho nhiều mục hay một lần; đảo cột chỉ đổi cách hiện, chấm theo mã mục. Tổng điểm các cặp bằng điểm của câu.
+ * cho nhiều mục hay một lần; chấm theo mã mục. Tổng điểm các cặp bằng điểm của câu.
  */
 export function MatchingEditor({ prefix }: { prefix: BodyPath }) {
   const t = useTranslations("questions.editor.matching");
@@ -160,8 +160,6 @@ export function MatchingEditor({ prefix }: { prefix: BodyPath }) {
         <legend className="px-1 text-label font-semibold text-text">{t("optionsLegend")}</legend>
         <div className="flex flex-col">
           <ToggleOption prefix={prefix} name="reuseRight" label={t("reuseRight")} hint={t("reuseRightHint")} />
-          <ToggleOption prefix={prefix} name="shuffleLeft" label={t("shuffleLeft")} />
-          <ToggleOption prefix={prefix} name="shuffleRight" label={t("shuffleRight")} />
         </div>
       </fieldset>
     </div>
@@ -175,7 +173,7 @@ function ToggleOption({
   hint,
 }: {
   prefix: BodyPath;
-  name: "reuseRight" | "shuffleLeft" | "shuffleRight";
+  name: "reuseRight";
   label: string;
   hint?: string;
 }) {

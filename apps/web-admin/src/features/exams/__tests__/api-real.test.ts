@@ -172,4 +172,21 @@ describe("ngừng bán từ danh sách (nhánh thật)", () => {
     expect(post!.body).toEqual({ expectedRevision: 9 });
     expect(post!.headers.get("Idempotency-Key")).toMatch(/^[0-9a-f-]{36}$/);
   });
+
+  it("bài thời gian theo phần: thời lượng trả về là tổng các phần, không lấy số đã lưu của mẫu (F-4)", async () => {
+    const part = (id: string, durationMinutes: number) => ({ ...FIXED_PART, id, durationMinutes });
+    server.on("POST", `${EXAM_PATH}/discontinue`, {
+      status: 200,
+      body: examDetailWire({
+        status: "DISCONTINUED",
+        timing: "PER_PART",
+        durationMinutes: 195,
+        parts: [part("part-1", 100), part("part-2", 100)],
+      }),
+    });
+
+    const exam = await discontinueExam(EXAM_ID, 9);
+
+    expect(exam.durationMinutes).toBe(200);
+  });
 });

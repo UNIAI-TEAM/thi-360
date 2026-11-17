@@ -49,11 +49,11 @@ class QuestionApiIT extends AbstractIntegrationTest {
     // ---------------------------------------------------------------- quyền & tồn tại
 
     @Test
-    void anonymousReadIsUnauthorizedAndWriteWithoutOriginIsForbidden() throws Exception {
+    void anonymousReadAndWriteWithoutOriginAreUnauthorized() throws Exception {
         mockMvc.perform(get(BASE)).andExpect(status().isUnauthorized());
         mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                         .content(QuestionTestSupport.createSingleChoiceRequest()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -144,6 +144,49 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void legacyShuffleOptionsAreAcceptedButNotReturned() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.path("body")).put("shuffleOptions", false);
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.shuffleOptions").doesNotExist())
+                .andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.body.shuffleOptions").doesNotExist());
+    }
+    @Test
+    void legacyMatchingShuffleFlagsAreAcceptedButNotReturned() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        request.put("type", "MATCHING");
+        request.set("body", objectMapper.readTree("""
+                {"type":"MATCHING","left":[{"id":"l1","content":"Left"}],
+                 "right":[{"id":"r1","content":"Right"}],
+                 "pairs":[{"leftId":"l1","rightId":"r1","points":1}],
+                 "reuseRight":false,"shuffleLeft":true,"shuffleRight":true}
+                """));
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.shuffleLeft").doesNotExist())
+                .andExpect(jsonPath("$.body.shuffleRight").doesNotExist())
+                .andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.shuffleLeft").doesNotExist())
+                .andExpect(jsonPath("$.body.shuffleRight").doesNotExist());
+    }
+
+
+    @Test
     void createQuestionSetPersistsChildrenAsRows() throws Exception {
         MvcResult result = mockMvc.perform(post(BASE)
                         .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
@@ -207,6 +250,32 @@ class QuestionApiIT extends AbstractIntegrationTest {
         mockMvc.perform(get(BASE + "/{id}", parentA).with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.children", hasSize(2)));
+    }
+
+    @Test
+    void resavingSetWithItsOwnChildIdsPreservesChildren() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode saved = read(created);
+        UUID parent = UUID.fromString(saved.at("/summary/id").asText());
+        UUID first = UUID.fromString(saved.at("/body/children/0/id").asText());
+        UUID second = UUID.fromString(saved.at("/body/children/1/id").asText());
+        request.set("body", saved.path("body"));
+        request.put("expectedRevision", currentRevision(parent));
+        mockMvc.perform(put(BASE + "/{id}", parent).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.body.children[0].id").value(first.toString()))
+                .andExpect(jsonPath("$.question.body.children[1].id").value(second.toString()));
+        var childIds = jdbcTemplate.queryForList(
+                "SELECT id FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL ORDER BY position",
+                UUID.class, parent);
+        org.assertj.core.api.Assertions.assertThat(childIds).containsExactly(first, second);
     }
 
     @Test
@@ -325,12 +394,15 @@ class QuestionApiIT extends AbstractIntegrationTest {
     void auditCapturesWorkingMetadataAndFingerprintWithoutHtml() throws Exception {
         UUID tag1 = UUID.randomUUID();
         UUID tag2 = UUID.randomUUID();
+        int nextTagValue = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(MAX(value), 0) + 1 FROM catalog.catalog_item WHERE group_id = ?",
+                Integer.class, QuestionTestSupport.QUESTION_TAG_GROUP_ID);
         for (var entry : java.util.Map.of(tag1, "AUDIT-A", tag2, "AUDIT-B").entrySet()) {
             jdbcTemplate.update("INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value,"
                     + " name_vi, name_en, display_order, status, is_system, depth, path)"
                     + " VALUES (?, ?, ?, ?, ?, 'Audit', 'Audit', 0, 1, false, 1, ?)",
                     entry.getKey(), QuestionTestSupport.QUESTION_TAG_GROUP_ID, entry.getValue(),
-                    entry.getValue().toLowerCase(java.util.Locale.ROOT), entry.getKey().equals(tag1) ? 1 : 2,
+                    entry.getValue().toLowerCase(java.util.Locale.ROOT), nextTagValue++,
                     "/" + entry.getKey() + "/");
         }
         var request = (com.fasterxml.jackson.databind.node.ObjectNode)

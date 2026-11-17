@@ -572,8 +572,9 @@ function ExamStatusChip({ exam }: { exam: ExamSummary }) {
 function ExamCheckCell({ exam }: { exam: ExamSummary }) {
   const t = useTranslations("exams");
   const { status, issueCount } = exam.check;
+  // G3: cột Kiểm tra nằm sát cột Thao tác (ghim): đặt bề rộng tối thiểu để chip và ghi chú không bị cột ghim che.
   return (
-    <div className="flex flex-col items-start gap-0.5">
+    <div className="flex min-w-44 flex-col items-start gap-0.5 pr-2">
       <StatusChip tone={EXAM_CHECK_TONE[status]}>
         {status === "INVALID" ? t("checkStatus.issues", { count: issueCount }) : t(`checkStatus.${status}`)}
       </StatusChip>

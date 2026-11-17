@@ -23,7 +23,7 @@ SELECT md5('thi360-seed-math-' || grade.code || '-' || level.code || '-' || kind
        kind.type, subject.id, grade.id, level.id, NULL, 1,
        '<p>Math example ' || n || '</p>',
        CASE WHEN kind.type = 'SINGLE_CHOICE' THEN
-           jsonb_build_object('type', kind.type, 'shuffleOptions', false, 'options',
+           jsonb_build_object('type', kind.type, 'options',
                jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                  jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false)))
        ELSE jsonb_build_object('type', kind.type, 'answers', jsonb_build_array('1'), 'inputHint', '') END,
@@ -53,7 +53,7 @@ WITH sets AS (
 ), children AS (
     SELECT s.*, c.pos, c.child_id, c.type,
            CASE WHEN c.type = 'SINGLE_CHOICE' THEN
-               jsonb_build_object('type', c.type, 'shuffleOptions', false, 'options',
+               jsonb_build_object('type', c.type, 'options',
                    jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                      jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false)))
            ELSE jsonb_build_object('type', c.type, 'answers', jsonb_build_array('1'), 'inputHint', '') END AS body
@@ -69,13 +69,48 @@ WITH sets AS (
            NULL::uuid AS parent_id, NULL::integer AS position
     FROM sets s JOIN children c ON c.id = s.id
     GROUP BY s.id, s.n, s.subject_id, s.grade_id, s.level_id
+), hsa_sets AS (
+    SELECT n, md5('thi360-seed-hsa-math-set-' || n)::uuid AS id,
+           md5('thi360-seed-hsa-math-set-' || n || '-a')::uuid AS first_id,
+           md5('thi360-seed-hsa-math-set-' || n || '-b')::uuid AS second_id,
+           subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
+    FROM generate_series(1, 120) n
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'TOAN'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003'
+        AND grade.code = (ARRAY['G10', 'G11', 'G12'])[1 + (n - 1) / 40]
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004'
+        AND level.code = (ARRAY['NB', 'TH', 'VD', 'VDC'])[1 + ((n - 1) / 10) % 4]
+), hsa_children AS (
+    SELECT s.*, c.pos, c.child_id,
+           'SINGLE_CHOICE'::text AS type,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
+    FROM hsa_sets s
+    CROSS JOIN LATERAL (VALUES (0, s.first_id), (1, s.second_id)) c(pos, child_id)
+), hsa_parent_rows AS (
+    SELECT s.id, 'SEED-HSA-MATH-SET-' || lpad(s.n::text, 3, '0') AS code, 'QUESTION_SET' AS type,
+           s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id, 2::numeric AS points,
+           '<p>HSA Math set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>HSA Math context</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', c.type, 'content', '<p>HSA Math child</p>',
+                   'body', c.body, 'points', 1, 'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM hsa_sets s JOIN hsa_children c ON c.id = s.id
+    GROUP BY s.id, s.n, s.subject_id, s.grade_id, s.level_id
 )
 INSERT INTO seed_question_rows
 SELECT * FROM parent_rows
 UNION ALL
 SELECT child_id, 'SEED-MATH-SET-' || lpad(n::text, 3, '0') || '-' || pos, type,
        subject_id, grade_id, level_id, NULL, 1, '<p>Math child</p>', body, id, pos
-FROM children;
+FROM children
+UNION ALL
+SELECT * FROM hsa_parent_rows
+UNION ALL
+SELECT child_id, 'SEED-HSA-MATH-SET-' || lpad(n::text, 3, '0') || '-' || pos, type,
+       subject_id, grade_id, level_id, NULL, 1, '<p>HSA Math child</p>', body, id, pos
+FROM hsa_children;
 
 -- Science and BCA practice: each grade/level cell has independent examples.
 INSERT INTO seed_question_rows
@@ -84,7 +119,7 @@ SELECT md5('thi360-seed-' || subject.code || '-' || grade.code || '-' || level.c
        'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL,
        CASE WHEN subject.code = 'ANH' THEN 0.75 ELSE 1 END,
        '<p>Practice example ' || n || '</p>',
-       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
            jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                              jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
        NULL, NULL
@@ -104,7 +139,7 @@ SELECT md5('thi360-seed-task-' || task.code || '-' || grade.code || '-' || level
        'SEED-TASK-' || task.code || '-' || grade.code || '-' || level.code || '-' || n,
        'SINGLE_CHOICE', subject.id, grade.id, level.id, task_item.id, 1,
        '<p>Language example ' || n || '</p>',
-       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
            jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                              jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
        NULL, NULL
@@ -158,7 +193,7 @@ WITH sets AS (
       AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC')
 ), children AS (
     SELECT s.*, n AS pos, md5(s.id::text || '-' || n)::uuid AS child_id,
-           jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
                jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                  jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
     FROM sets s CROSS JOIN generate_series(0, 1) n
@@ -189,7 +224,7 @@ SELECT md5('thi360-seed-extra-' || kind.type || '-' || n)::uuid,
        CASE WHEN kind.type IN ('CLOZE', 'MATCHING') THEN 2 ELSE 1 END,
        '<p>Extra example ' || n || '</p>',
        CASE kind.type
-           WHEN 'MULTIPLE_CHOICE' THEN jsonb_build_object('type', kind.type, 'shuffleOptions', false, 'scoringRule', 'ALL_OR_NOTHING',
+           WHEN 'MULTIPLE_CHOICE' THEN jsonb_build_object('type', kind.type, 'scoringRule', 'ALL_OR_NOTHING',
                'options', jsonb_build_array(
                    jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                    jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', true),
@@ -197,7 +232,7 @@ SELECT md5('thi360-seed-extra-' || kind.type || '-' || n)::uuid,
            WHEN 'CLOZE' THEN jsonb_build_object('type', kind.type, 'passage', '<p>Text [[x]] [[y]]</p>',
                'blanks', jsonb_build_array(jsonb_build_object('id', 'x', 'answers', jsonb_build_array('one'), 'points', 1),
                                            jsonb_build_object('id', 'y', 'answers', jsonb_build_array('two'), 'points', 1)))
-           ELSE jsonb_build_object('type', kind.type, 'reuseRight', false, 'shuffleLeft', false, 'shuffleRight', false,
+           ELSE jsonb_build_object('type', kind.type, 'reuseRight', false,
                'left', jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>Left one</p>'),
                                          jsonb_build_object('id', 'b', 'content', '<p>Left two</p>')),
                'right', jsonb_build_array(jsonb_build_object('id', 'c', 'content', '<p>Right one</p>'),
@@ -224,8 +259,11 @@ WITH prepared AS (
                WHEN 'MATCHING' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Left one Left two Right one Right two'
                WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
                WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
-               WHEN 'QUESTION_SET' THEN CASE WHEN code LIKE 'SEED-READING-%'
-                   THEN 'Reading set Reading context Reading child One Two Reading child One Two'
+               WHEN 'QUESTION_SET' THEN CASE
+                   WHEN code LIKE 'SEED-READING-%'
+                       THEN 'Reading set Reading context Reading child One Two Reading child One Two'
+                   WHEN code LIKE 'SEED-HSA-MATH-SET-%'
+                       THEN 'HSA Math set HSA Math context HSA Math child One Two HSA Math child One Two'
                    ELSE 'Math set Math context Math child One Two Math child 1' END
            END AS plain
     FROM seed_question_rows s WHERE parent_id IS NULL

@@ -32,8 +32,22 @@ type ApiUpdateResponse = Schemas["UpdateQuestionResponse"];
 type ApiKnowledgeNode = Schemas["KnowledgeNode"];
 type ApiExamKind = Schemas["ExamKindOption"];
 
-/** Nguồn dữ liệu mẫu dạng web (đọc JSON thuần). */
-export const fixtureQuestions = questionsFixture as { questions: QuestionDetail[] };
+/**
+ * Câu mẫu của lane Chấm bài còn cờ đảo cũ; bỏ chúng khi nạp vì lượt thi luôn tự đảo.
+ */
+function withoutShuffleFlag<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withoutShuffleFlag) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, entry]) =>
+        ["shuffleOptions", "shuffleLeft", "shuffleRight"].includes(key) ? [] : [[key, withoutShuffleFlag(entry)]],
+      ),
+    ) as T;
+  }
+  return value;
+}
+
+export const fixtureQuestions = withoutShuffleFlag(questionsFixture) as unknown as { questions: QuestionDetail[] };
 
 export function fixtureQuestion(id: string): QuestionDetail {
   const question = fixtureQuestions.questions.find((entry) => entry.id === id);

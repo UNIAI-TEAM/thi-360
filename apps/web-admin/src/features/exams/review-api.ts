@@ -4,6 +4,7 @@ import { QUESTION_TYPES, type QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
+import { mapExamDetail } from "./api-mapping";
 import type {
   BlockCheck,
   BlockCheckResult,
@@ -354,7 +355,6 @@ type ApiBlock = Schema["QuestionBlock"];
 type ApiMatrix = Schema["BlockMatrix"];
 type ApiKnowledgeScope = Schema["KnowledgeScope"];
 type ApiAnswerQuotas = Schema["AnswerQuotas"];
-type ApiExamDetail = Schema["ExamDetailResponse"];
 type ApiCheckSummary = Schema["ExamCheckSummary"];
 
 const ISSUE_CODES: Record<string, true> = Object.fromEntries(CHECK_ISSUE_CODES.map((code) => [code, true]));
@@ -375,7 +375,6 @@ const CHANGE_KINDS: Record<string, true> = {
   BLOCK_REMOVED: true,
   BLOCK_CHANGED: true,
   MATRIX_CHANGED: true,
-  ORDER_RULE_CHANGED: true,
   ORDER_CHANGED: true,
   QUESTIONS_REPLACED: true,
 };
@@ -387,7 +386,6 @@ const INVALID_REASONS: Record<string, true> = {
 const PREVIEW_CHECK_CODES: Record<string, true> = {
   NO_DUPLICATES: true,
   SETS_INTACT: true,
-  FIXED_BLOCK_ORDER: true,
   TOTAL_POINTS: true,
 };
 const VERSION_STATES: Record<string, true> = { WORKING: true, SERVING: true, RETIRED: true };
@@ -894,7 +892,6 @@ function mapBlock(block: ApiBlock): QuestionBlock {
     childAnswerType: questionTypeOf(block.childAnswerType),
     templateGroupCode: block.templateGroupCode ?? null,
     answerTypeLocked: block.answerTypeLocked ?? false,
-    ...(block.shuffle !== undefined ? { shuffle: block.shuffle } : {}),
     ...(block.expectedScoring !== undefined
       ? {
           expectedScoring: {
@@ -921,7 +918,6 @@ function mapSection(section: ApiSection): ExamSection {
     knowledgeScope: mapKnowledgeScope(section.knowledgeScope),
     answerQuotas: mapAnswerQuotas(section.answerQuotas),
     matrix: mapMatrix(section.matrix),
-    groupOrder: section.groupOrder === "SHUFFLE" ? "SHUFFLE" : "FIXED",
     choiceGroup:
       section.choiceGroup === "NATURAL" || section.choiceGroup === "SOCIAL"
         ? (section.choiceGroup as ChoiceGroup)
@@ -973,60 +969,5 @@ function mapPart(part: ApiPart): ExamPart {
     mode: part.options !== undefined && part.options.length > 0 ? "CHOICE" : "FIXED",
     sections: (part.sections ?? []).map(mapSection),
     options: (part.options ?? []).map(mapOption),
-  };
-}
-
-/** Chi tiết bài thi do `discontinue` trả về (`ExamDetailResponse` → `ExamDetail`). */
-export function mapExamDetail(detail: ApiExamDetail): ExamDetail {
-  const parts = (detail.parts ?? []).map(mapPart);
-  const durationMinutes =
-    detail.durationMinutes ??
-    (detail.timing === "SHARED" ? 0 : parts.reduce((total, part) => total + (part.durationMinutes ?? 0), 0));
-  return {
-    id: detail.id,
-    code: detail.code,
-    name: detail.name,
-    kind: detail.kind,
-    scope: detail.scope === "PART" || detail.scope === "SUBJECT" ? detail.scope : "FULL",
-    status:
-      detail.status === "PUBLISHED" || detail.status === "DISCONTINUED" ? detail.status : "DRAFT",
-    revision: detail.revision,
-    servingVersion: detail.servingVersion ?? null,
-    hasUnpublishedChanges: detail.hasUnpublishedChanges,
-    totalQuestions: detail.questionCount,
-    durationMinutes,
-    englishOption: detail.hasEnglishOption,
-    combinationCount: detail.combinationCount,
-    partCode: detail.partCode ?? null,
-    subjectCode: detail.subjectCode ?? null,
-    timing: detail.timing === "SHARED" ? "SHARED" : "PER_PART",
-    maxScore: detail.maxScore ?? null,
-    referenceMax: detail.referenceMax ?? null,
-    practiceScoring: detail.practiceScoring === "LINEAR" ? "LINEAR" : "RAW",
-    hasEssay: detail.hasEssay,
-    check: mapCheckSummary(detail.check),
-    attemptCount: detail.attemptCount,
-    updatedAt: detail.updatedAt,
-    updatedBy: detail.updatedBy ? mapPerson(detail.updatedBy) : { id: "", name: "" },
-    description: detail.description ?? null,
-    instructions: detail.instructions ?? null,
-    templateCode: detail.templateCode ?? null,
-    structureYear: detail.structureYear ?? null,
-    matrixYear: detail.matrixYear ?? null,
-    yearsConfirmed: detail.yearsConfirmed,
-    parts,
-    versions: (detail.versions ?? []).map(
-      (version): ExamVersion => ({
-        version: version.version ?? null,
-        state:
-          version.state !== undefined && VERSION_STATES[version.state]
-            ? (version.state as ExamVersion["state"])
-            : "RETIRED",
-        publishedAt: version.publishedAt ?? null,
-        publishedBy: version.publishedBy ? mapPerson(version.publishedBy) : null,
-        attemptCount: version.attemptCount ?? 0,
-        note: version.note ?? null,
-      }),
-    ),
   };
 }

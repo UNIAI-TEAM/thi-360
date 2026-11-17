@@ -47,7 +47,7 @@ class QuestionSearchNormalizerTests {
         // "toan" khớp nội dung "Toán", "dao dong" khớp "dao động" (nghiệm thu BE-2a).
         QuestionBody body = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
             new ChoiceOption("a1", "<p>dao động điều hòa</p>", true),
-            new ChoiceOption("a2", "<p>chuyển động tròn</p>", false)), true);
+            new ChoiceOption("a2", "<p>chuyển động tròn</p>", false)));
         String search = QuestionSearchNormalizer.searchText("CH-0001", "<p>Hàm số Toán học</p>", body);
         assertTrue(search.contains("toan"));
         assertTrue(search.contains("dao dong"));

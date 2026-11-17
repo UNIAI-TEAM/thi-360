@@ -12,7 +12,7 @@ import {
   updateExamInfo,
   updateExamStructure,
 } from "../api";
-import { ExamsApiError } from "../review-api";
+import { ExamStructureSaveError, ExamsApiError } from "../review-api";
 import type { AvailableQuestionsQuery, CreateExamRequest } from "../types";
 import { ExamsBackend } from "./fake-exams-backend";
 
@@ -130,6 +130,31 @@ describe("tạo bài thi", () => {
     // POST tạo xong thì PUT cấu trúc chặn: bài Nháp vẫn còn (ExamStructureSaveError bọc ExamsApiError 422).
     await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-011", parts: [{ ...choice, combinations: [] }] }), 422, "EXAM_STRUCTURE_INVALID");
     await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-012", parts: [] }), 422, "EXAM_STRUCTURE_INVALID");
+  });
+
+  it("N2-4: lưu cấu trúc lỗi sau khi tạo thì gửi lại với bài đã tạo chỉ lưu cấu trúc, không POST lại", async () => {
+    const choice = {
+      name: "Khoa học",
+      questionCount: 50,
+      durationMinutes: 60,
+      mode: "CHOICE" as const,
+      subjectCode: null,
+      englishOption: false,
+      combinations: [{ code: "KH-1", subjectCounts: [17, 17, 17] }],
+    };
+    const request = { ...NEW_EXAM, code: "HSA-F-013", parts: [{ ...choice, combinations: [] }] };
+    const failure = await createExam(request).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(ExamStructureSaveError);
+    const created = (failure as ExamStructureSaveError).exam;
+
+    // POST lại cùng mã sẽ trùng (409); gửi kèm bài đã tạo thì chỉ PUT cấu trúc đã sửa.
+    await rejectsWith(createExam({ ...request, parts: [choice] }), 409, "EXAM_CODE_TAKEN");
+    const exam = await createExam({ ...request, parts: [choice], existing: created });
+    expect(exam.id).toBe(created.id);
+    expect(exam.parts[0]!.options).toMatchObject([{ kind: "COMBINATION", code: "KH-1" }]);
   });
 
   it("chặn mã trùng và phạm vi không hợp lệ", async () => {

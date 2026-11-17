@@ -125,11 +125,9 @@ class ExamStructureIT extends AbstractIntegrationTest {
         var parts = before.path("parts").deepCopy();
         var section = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0);
         var block = (com.fasterxml.jackson.databind.node.ObjectNode) section.path("blocks").get(0);
-        JsonNode originalGroupOrder = section.path("groupOrder").deepCopy();
-        JsonNode originalShuffle = block.path("shuffle").deepCopy();
         JsonNode originalLocked = block.path("answerTypeLocked").deepCopy();
         JsonNode originalGroup = block.path("templateGroupCode").deepCopy();
-        section.put("groupOrder", "SHUFFLE".equals(originalGroupOrder.asText()) ? "FIXED" : "SHUFFLE");
+        section.put("groupOrder", "SHUFFLE");
         block.put("shuffle", "SHUFFLE");
         block.put("answerTypeLocked", !originalLocked.asBoolean());
         block.put("templateGroupCode", "FORGED");
@@ -159,8 +157,8 @@ class ExamStructureIT extends AbstractIntegrationTest {
                         : a.equals(b) ? 0 : 1, expectedMatrix)).isTrue();
         assertThat(savedSection.path("knowledgeScope").path("nodeIds")).isEqualTo(expectedScope.path("nodeIds"));
         assertThat(savedSection.path("knowledgeScope").path("match")).isEqualTo(expectedScope.path("match"));
-        assertThat(savedSection.path("groupOrder")).isEqualTo(originalGroupOrder);
-        assertThat(savedBlock.path("shuffle")).isEqualTo(originalShuffle);
+        assertThat(savedSection.path("groupOrder").isMissingNode()).isTrue();
+        assertThat(savedBlock.path("shuffle").isMissingNode()).isTrue();
         assertThat(savedBlock.path("answerTypeLocked")).isEqualTo(originalLocked);
         assertThat(savedBlock.path("templateGroupCode")).isEqualTo(originalGroup);
         assertThat(savedBlock.path("knowledgeScope").isMissingNode()).isTrue();
@@ -424,7 +422,7 @@ class ExamStructureIT extends AbstractIntegrationTest {
         assertThat(savedMath.get(1).path("answerTypeLocked").asBoolean()).isFalse();
 
         JsonNode savedVan = saved.path("parts").get(1).path("sections").get(0);
-        assertThat(savedVan.path("groupOrder").asText()).isEqualTo("SHUFFLE");
+        assertThat(savedVan.path("groupOrder").isMissingNode()).isTrue();
         JsonNode savedVanBlocks = savedVan.path("blocks");
         // Seed b974d1c0 thêm khối HSA_VN_PASSAGE_SINGLE vào Văn: sau khi dời WORD_USAGE
         // xuống cuối, thứ tự là PASSAGE -> PASSAGE_SINGLE -> WORD_USAGE; mỗi nút giữ lại
@@ -451,7 +449,7 @@ class ExamStructureIT extends AbstractIntegrationTest {
                 "HSA_DIA_REMAINDER", "HSA_LY_REMAINDER"};
         for (int i = 0; i < 5; i++) {
             assertThat(savedScience.get(i).path("subjectCode").asText()).isEqualTo(subjects[i]);
-            assertThat(savedScience.get(i).path("groupOrder").asText()).isEqualTo("FIXED");
+            assertThat(savedScience.get(i).path("groupOrder").isMissingNode()).isTrue();
             assertThat(savedScience.get(i).path("blocks").get(0).path("templateGroupCode").asText())
                     .isEqualTo(groups[i]);
         }

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import type { CatalogOption, ExamKindOption } from "@/features/content/types";
+import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { RichTextEditor } from "@/components/rich-text";
 import {
   createExamInfoSchema,
@@ -88,10 +89,18 @@ export function useScopeOptions(scopes: readonly ExamScope[]): ChoiceCardOption<
   return all.filter((option) => scopes.includes(option.value));
 }
 
-/** Phần của bài Theo phần: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi). */
+/**
+ * Phần của bài Theo phần: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi). Mã phần không thuộc bốn mã trên (dữ liệu
+ * thật dùng mã môn của danh mục như `TOAN`, `VAN`) thì hiện tên môn theo ngôn ngữ đang chọn; không có trong danh mục
+ * mới hiện chính mã.
+ */
 export function usePartNames() {
   const t = useTranslations("exams.create.partName");
-  const partName = useCallback((code: string) => (isPartCode(code) ? t(code) : code), [t]);
+  const subjects = useReferenceLookup(useContentReference().data);
+  const partName = useCallback(
+    (code: string) => (isPartCode(code) ? t(code) : subjects.subject(code)),
+    [t, subjects],
+  );
   const options: ChoiceCardOption<PartCode>[] = PART_CODES.map((code) => ({ value: code, label: t(code) }));
   return { options, partName };
 }

@@ -2172,7 +2172,7 @@
       "selectedTitle": "Đã chọn ({count, number})",
       "primary": "Kiến thức chính",
       "primaryBadge": "Chính",
-      "primaryHint": "Cần có kiến thức chính để chuyển câu hỏi sang Sẵn sàng.",
+      "primaryHint": "Nên chọn kiến thức chính; thiếu thì chỉ có cảnh báo, câu hỏi vẫn chuyển sang Sẵn sàng được.",
       "noneSelected": "Chưa chọn kiến thức nào.",
       "empty": "Không có kiến thức khớp bộ lọc.",
       "loadError": "Không tải được cây kiến thức.",
@@ -2496,8 +2496,7 @@
         "add": "Thêm phương án",
         "added": "Đã thêm phương án {letter}.",
         "removed": "Đã xóa phương án {letter}.",
-        "moved": "Đã chuyển phương án {letter} tới vị trí {position}.",
-        "shuffle": "Trộn thứ tự phương án khi thi"
+        "moved": "Đã chuyển phương án {letter} tới vị trí {position}."
       },
       "statements": {
         "hint": "Mỗi ý phải được đánh dấu Đúng hoặc Sai. Cần ít nhất 2 ý.",
@@ -2566,9 +2565,7 @@
         "emptyOption": "(chưa nhập)",
         "optionsLegend": "Tùy chọn",
         "reuseRight": "Một lựa chọn dùng được cho nhiều mục",
-        "reuseRightHint": "Tắt: mỗi lựa chọn chỉ gắn cho tối đa một mục trái.",
-        "shuffleLeft": "Đảo thứ tự cột trái khi thi",
-        "shuffleRight": "Đảo thứ tự cột phải khi thi"
+        "reuseRightHint": "Tắt: mỗi lựa chọn chỉ gắn cho tối đa một mục trái."
       },
       "set": {
         "hint": "Mỗi câu con là một câu đầy đủ với dạng riêng, phân loại theo câu chùm. Cần ít nhất 2 câu con.",
@@ -3257,7 +3254,7 @@
         "grade": "Số lớp (10, 11, 12) hoặc tên khối.",
         "difficulty": "Nhận biết, Thông hiểu, Vận dụng hoặc Vận dụng cao.",
         "taskType": "Tên hoặc mã dạng bài trong danh mục.",
-        "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống thì phải bổ sung trước khi chuyển Sẵn sàng.",
+        "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống vẫn nhập được; nên bổ sung sau (thiếu kiến thức chỉ là cảnh báo, không chặn Sẵn sàng).",
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
         "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm."
       },
@@ -3298,7 +3295,7 @@
       "requiredHeading": "Trường bắt buộc",
       "requiredMapped": "đã ánh xạ",
       "requiredMissing": "chưa ánh xạ",
-      "knowledgeWarning": "<b>Kiến thức (MAPID)</b> chưa ánh xạ — câu nhập vào sẽ ở trạng thái Nháp và phải bổ sung kiến thức trước khi chuyển Sẵn sàng.",
+      "knowledgeWarning": "<b>Kiến thức (MAPID)</b> chưa ánh xạ — câu nhập vào ở trạng thái Nháp và thiếu kiến thức; nên bổ sung, nhưng đây chỉ là cảnh báo, không chặn chuyển Sẵn sàng.",
       "duplicateLegend": "Khi gặp câu đã nhập trước đó",
       "duplicateHint": "Nhận ra bằng cột Mã nguồn trùng với câu đã có trong ngân hàng.",
       "policy": {
@@ -3489,7 +3486,7 @@
       },
       "KNOWLEDGE_MISSING": {
         "message": "Chưa có kiến thức (MAPID)",
-        "fix": "Bổ sung kiến thức trước khi chuyển Sẵn sàng."
+        "fix": "Nên bổ sung kiến thức; thiếu thì chỉ có cảnh báo, không chặn Sẵn sàng."
       },
       "TAG_UNKNOWN": {
         "message": "Nhãn “{value}” không có trong danh mục, sẽ bỏ qua",
@@ -3605,7 +3602,7 @@
       "errorsValue": "{count, number} dòng",
       "errorsDetail": "Có trong file lỗi, kèm vị trí dòng và cột",
       "nextHeading": "Việc cần làm tiếp",
-      "missingKnowledge": "{count, number} câu thiếu kiến thức chính phải bổ sung trước khi chuyển Sẵn sàng.",
+      "missingKnowledge": "{count, number} câu thiếu kiến thức chính; nên bổ sung (chỉ là cảnh báo, không chặn chuyển Sẵn sàng).",
       "viewDrafts": "Xem các câu Nháp",
       "notForExam": "Câu nhập vào chưa được dùng để sinh đề cho tới khi ở trạng thái Sẵn sàng.",
       "viewImported": "Xem các câu vừa nhập",
@@ -3821,7 +3818,7 @@
         "allocated": "Đã phân bổ",
         "allocatedValue": "{allocated, number}, còn thiếu {missing, number}",
         "issues": "Lỗi cần xử lý",
-        "questionsPrinted": "{count, number} câu làm ({printed, number} câu in trên đề)",
+        "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
         "sharedMinutes": "{count, number} phút, chung cả bài",
         "pointsOfScale": "{points} / {scale} điểm"
       },
@@ -3992,9 +3989,9 @@
           "addType": "Thêm dạng trả lời",
           "percentMismatch": "Tổng tỷ lệ là {total, number}%, phải bằng 100%.",
           "countMismatch": "Tổng chỉ tiêu là {total, number} câu, môn có {count, number} câu.",
-          "openMatches": "Nhóm chưa xác định dạng ({count, number} câu) vừa đủ phủ phần chỉ tiêu còn thiếu.",
+          "openSplit": "Nhóm câu đơn ({count, number} câu) chia theo chỉ tiêu của môn: {split}.",
           "undeclared": "Chưa khai chỉ tiêu",
-          "openDiff": "Nhóm chưa xác định dạng có {count, number} câu; chênh {missing, number} câu so với phần chỉ tiêu còn thiếu."
+          "openDiff": "Nhóm câu đơn có {count, number} câu; chênh {missing, number} câu so với phần chỉ tiêu còn thiếu."
         },
         "matrix": {
           "title": "Khối lớp và độ khó",
@@ -4143,7 +4140,7 @@
         "issues": "Lỗi cần xử lý",
         "issuesValue": "{count, number} vấn đề",
         "none": "Không có",
-        "questionsPrinted": "{count, number} câu làm ({printed, number} câu in trên đề)",
+        "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
         "pointsOfScale": "{points} / {scale} điểm"
       },
       "path": {
@@ -4260,8 +4257,8 @@
         "MATRIX_NEGATIVE": "Khối {block} có chỉ tiêu âm.",
         "PERCENT_TOTAL_INVALID": "Khối {block}: tổng tỷ lệ {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} COMPETENCY {theo năng lực} other {của ma trận}} là {available, number}%, phải bằng 100%.",
         "SET_SIZE_MISMATCH": "Khối {block}: số bộ × số câu mỗi bộ là {available, number}, khối cần {required, number} câu.",
-        "CELL_SHORTAGE": "Khối {block} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
-        "DIMENSION_SHORTAGE": "Khối {block} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
+        "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
+        "DIMENSION_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
         "MATRIX_INFEASIBLE": "Khối {block}: đủ nguồn từng chiều nhưng chưa có cách chọn {required, number} câu thỏa đồng thời khối lớp và độ khó.",
         "SET_SHORTAGE": "Khối {block} yêu cầu {required, number} bộ, nguồn hiện chỉ có {available, number} bộ hợp lệ.",
         "OVERLAP_UNCONFIRMED": "Khối {block}: {available, number} câu dùng chung giữa các nhóm kiến thức; chưa tìm được phương án trong giới hạn xử lý ({seconds, number} giây, mẫu). Không kết luận là ngân hàng thiếu câu.",
@@ -4286,6 +4283,14 @@
         "SHARED_PART_DURATION": "{part}: bài thi tính thời gian chung nên phần thi không đặt thời lượng riêng.",
         "ANSWER_QUOTA_DUPLICATE": "Môn {subject}: dạng {answerType} bị khai hai lần trong chỉ tiêu dạng trả lời.",
         "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
+      },
+      "issueNoCount": {
+        "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
+        "DIMENSION_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
+        "COMPETENCY_SHORTAGE": "Khối {block}: nguồn câu hỏi năng lực {competency} chưa đủ cho chỉ tiêu.",
+        "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: nguồn câu hỏi dạng {answerType} chưa đủ cho chỉ tiêu.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu cấp môn.",
+        "REMAINDER_GROUP_INVALID": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}} có số câu thay đổi: cần đúng một nhóm câu đơn lấy phần còn lại, và tổng các nhóm cố định không vượt số câu của môn."
       }
     },
     "versions": {
@@ -4320,7 +4325,6 @@
           "BLOCK_REMOVED": "Bỏ khối",
           "BLOCK_CHANGED": "Sửa khối",
           "MATRIX_CHANGED": "Sửa ma trận",
-          "ORDER_RULE_CHANGED": "Đổi quy tắc đảo",
           "ORDER_CHANGED": "Đổi thứ tự",
           "QUESTIONS_REPLACED": "Thay câu hỏi"
         },
@@ -4348,7 +4352,6 @@
             "chooseSubjects": "Số môn được chọn",
             "description": "Mô tả",
             "durationMinutes": "Thời lượng",
-            "groupOrder": "Thứ tự nhóm",
             "instructions": "Hướng dẫn làm bài",
             "knowledgeScope": "Phạm vi kiến thức",
             "matrix": "Ma trận",
@@ -4360,14 +4363,13 @@
             "participation": "Quy tắc tham gia",
             "practiceScoring": "Cách chấm luyện tập",
             "questionCount": "Số câu",
-            "questionCountOnPaper": "Số câu in trên đề",
+            "questionCountOnPaper": "Số câu trên đề",
             "questionCountRequired": "Số câu phải làm",
             "questionType": "Dạng trả lời",
             "referenceMax": "Thang tham chiếu",
             "requiredPointsPerQuestion": "Điểm mỗi câu",
             "setCount": "Số bộ",
             "setSize": "Số câu mỗi bộ",
-            "shuffle": "Quy tắc đảo câu",
             "subjectCode": "Môn",
             "tagCodes": "Nhãn",
             "taskTypeCode": "Dạng bài",
@@ -4411,11 +4413,11 @@
       },
       "discontinue": {
         "action": "Ngừng bán",
-        "title": "Ngừng bán {code}?",
+        "title": "Ngừng bán bài thi {code}?",
         "description": "Bài thi không còn mở bán cho lượt mua mới. Học viên đã mua vẫn làm được theo phiên bản đang phục vụ; lượt đang làm và kết quả cũ giữ nguyên.",
         "confirm": "Ngừng bán",
         "cancel": "Hủy",
-        "done": "Đã ngừng bán {code}.",
+        "done": "Đã ngừng bán bài thi {code}.",
         "error": "Không ngừng bán được bài thi. Thử lại.",
         "conflict": "Bài thi không còn ở trạng thái Đang phục vụ hoặc đã thay đổi. Tải lại trang rồi thử lại."
       },
@@ -4427,8 +4429,9 @@
         "note": "Ghi chú",
         "partMeta": "{count, number} câu{hasMinutes, select, yes { · {minutes, number} phút} other {}}{hasPoints, select, yes { · {points, number} điểm} other {}}",
         "section": "{subject} · {count, number} câu",
-        "block": "{name} · {type} · {count, number} câu · {mode, select, COMBINED {ma trận kết hợp} other {ma trận riêng}}{manual, select, yes { · chấm tay} other {}}",
-        "common": "Phần chung"
+        "block": "{name}{hasType, select, yes { · {type}} other {}} · {count, number} câu · {mode, select, COMBINED {ma trận kết hợp} other {ma trận riêng}}{manual, select, yes { · chấm tay} other {}}",
+        "common": "Phần chung",
+        "subjectChoice": "Chọn môn"
       }
     },
     "editor": {
@@ -4594,7 +4597,6 @@
         "name": {
           "NO_DUPLICATES": "Không lặp câu hoặc phiên bản của cùng câu",
           "SETS_INTACT": "Bộ câu hỏi lấy nguyên bộ, câu con liền nhau",
-          "FIXED_BLOCK_ORDER": "Thứ tự khối Tiếng Anh giữ cố định",
           "TOTAL_POINTS": "Tổng điểm {value, number}"
         },
         "status": {
@@ -4724,7 +4726,7 @@
       "templatePart": "{kind} · Theo phần {scope}",
       "cover": {
         "label": "Ảnh giới thiệu",
-        "hint": "Tỉ lệ 16:9 · PNG, JPG hoặc WebP, tối đa 5 MB · hiện ở danh sách và trang giới thiệu. Dữ liệu mẫu: ảnh chưa được tải lên.",
+        "hint": "Tỉ lệ 16:9 · PNG, JPG hoặc WebP, tối đa 5 MB · hiện ở danh sách và trang giới thiệu. Ảnh chỉ để xem trước, chưa được lưu cùng bài thi.",
         "removeAria": "Bỏ ảnh {name}",
         "size": "{size, number} KB",
         "invalidType": "Chọn tệp ảnh PNG, JPG hoặc WebP.",
@@ -4849,7 +4851,8 @@
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
         "generic": "Không tạo được bài thi. Thử lại sau.",
         "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại.",
-        "structureNotSaved": "Đã tạo bài thi {code} với cấu trúc của mẫu, nhưng chưa lưu được cấu trúc bạn đã sửa. Sửa lại ở tab Cấu trúc và ma trận."
+        "structureNotSaved": "Đã tạo bài thi {code} với cấu trúc của mẫu, nhưng chưa lưu được cấu trúc bạn đã sửa. Sửa lại cấu trúc ở trang này rồi bấm “Tạo bài thi và soạn khối câu hỏi” để lưu lại (chỉ cấu trúc được lưu lại; thông tin chung sửa ở tab Thông tin chung của bài).",
+        "openCreated": "Mở bài {code} để sửa ở tab Cấu trúc"
       },
       "validation": {
         "nameRequired": "Nhập tên bài thi.",

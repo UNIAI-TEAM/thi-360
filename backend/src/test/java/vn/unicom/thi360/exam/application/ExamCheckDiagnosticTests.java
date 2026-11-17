@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import vn.unicom.thi360.exam.domain.BlockExpectedScoring;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.MatrixUnit;
+import vn.unicom.thi360.exam.domain.solver.QuotaRef;
 import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.exam.domain.solver.SolveReason;
 import vn.unicom.thi360.exam.domain.solver.SubjectPick;
@@ -55,6 +56,21 @@ class ExamCheckDiagnosticTests {
         assertThat(issue.path("subjectCount").asInt()).isEqualTo(17);
         assertThat(issue.path("blockId").asText()).isEqualTo("b");
         assertThat(issue.path("blockName").asText()).isEqualTo("Mechanics");
+    }
+
+    @Test
+    void cellQuotaFailureReportsCellShortage() {
+        ObjectMapper mapper = new ObjectMapper();
+        var issues = new ExamCheckSolverIssues(new ExamCheckIssues(mapper),
+                new ExamStructureDocument(List.of()), 30);
+        var cell = new QuotaRef("MATH", "math", "CELL", "G12/VDC");
+        var issue = issues.failure(SolveReason.SUBJECT_QUOTA_INFEASIBLE, "MATH", "block", cell, List.of());
+        assertThat(issue.path("code").asText()).isEqualTo("CELL_SHORTAGE");
+        assertThat(issue.path("gradeCode").asText()).isEqualTo("G12");
+        assertThat(issue.path("difficultyCode").asText()).isEqualTo("VDC");
+        var grade = new QuotaRef("MATH", "math", "GRADE", "G12");
+        assertThat(issues.failure(SolveReason.SUBJECT_QUOTA_INFEASIBLE, "MATH", "block", grade, List.of())
+                .path("code").asText()).isEqualTo("SUBJECT_QUOTA_INFEASIBLE");
     }
 
     private static Unit unit(QuestionType type, ScoringDetails scoring) {
