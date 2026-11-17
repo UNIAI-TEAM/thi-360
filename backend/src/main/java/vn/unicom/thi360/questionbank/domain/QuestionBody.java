@@ -94,14 +94,21 @@ public sealed interface QuestionBody {
      * Bộ câu hỏi (câu chùm): {@code passage} là ngữ liệu chung, {@code children} là các câu con
      * đầy đủ phần thân. Sẵn sàng khi có ít nhất 2 câu con đạt điều kiện của dạng mình; dạng câu
      * con theo spec D19 (không cho chùm hay Điền khuyết làm câu con).
+     *
+     * <p>{@code blankNumberStart} (spec 3.4 của đặc tả trình soạn, UNI-2638): số bắt đầu đánh cho
+     * các chỗ trống {@code span.blank} trong ngữ liệu, 1–200, mặc định 1 — chỗ trống thứ n hiển
+     * thị {@code blankNumberStart + n − 1}. {@code null} (câu cũ, nhập từ tệp) đọc ra 1; kiểm
+     * khoảng ở {@link QuestionBodyValidator}.
      */
     record QuestionSetBody(
         QuestionType type,
         String passage,
+        Integer blankNumberStart,
         List<ChildQuestion> children) implements QuestionBody {
 
         public QuestionSetBody {
             type = QuestionType.QUESTION_SET;
+            blankNumberStart = blankNumberStart == null ? Integer.valueOf(1) : blankNumberStart;
             children = children == null ? List.of() : List.copyOf(children);
         }
     }

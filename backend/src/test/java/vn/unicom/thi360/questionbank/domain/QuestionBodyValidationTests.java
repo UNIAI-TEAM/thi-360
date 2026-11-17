@@ -67,6 +67,7 @@ class QuestionBodyValidationTests {
     static QuestionBody questionSetBody() {
         return new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>Đọc đoạn sau và trả lời.</p>",
+            null,
             List.of(
                 new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>Câu con 1</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
                 new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu con 2</p>", shortAnswerBody(), null, new BigDecimal("2"), null, null, List.of(), null)));
@@ -269,13 +270,13 @@ class QuestionBodyValidationTests {
     void clozeAndSetCannotBeChildren() {
         // D19: không cho Bộ câu hỏi hay Điền khuyết làm câu con.
         QuestionBody setWithCloze = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.CLOZE, "<p>c</p>", clozeBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(QuestionBodyValidator.validateSave(
             input(QuestionType.QUESTION_SET, setWithCloze), null)).contains("QUESTION_CHILD_TYPE_NOT_ALLOWED"));
 
         QuestionBody nestedSet = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.QUESTION_SET, "<p>c</p>", questionSetBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(QuestionBodyValidator.validateSave(
             input(QuestionType.QUESTION_SET, nestedSet), null)).contains("QUESTION_CHILD_TYPE_NOT_ALLOWED"));
@@ -393,14 +394,14 @@ class QuestionBodyValidationTests {
     @Test
     void questionSetNeedsTwoReadyChildren() {
         QuestionBody oneChild = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(readyErrors(input(QuestionType.QUESTION_SET, oneChild)))
             .contains("SET_WITHOUT_CHILDREN"));
 
         // Câu con chưa đạt điều kiện của dạng mình thì bộ không Sẵn sàng được.
         QuestionBody childNotReady = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
             new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>c2</p>",
                 new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of(), null), null, null, null, null, List.of(), null)));

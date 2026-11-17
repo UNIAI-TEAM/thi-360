@@ -562,7 +562,7 @@ public final class QuestionImportParser {
         if (type == null || type == QuestionType.QUESTION_SET) {
             return type == null ? null
                 : new QuestionBody.QuestionSetBody(
-                    QuestionType.QUESTION_SET, row.content, List.of());
+                    QuestionType.QUESTION_SET, row.content, null, List.of());
         }
         return switch (type) {
             case SINGLE_CHOICE -> parseChoice(row, raw, false);

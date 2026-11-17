@@ -291,7 +291,8 @@ public class QuestionService {
                         child.solution(), child.points(), child.gradeItemId(), child.levelItemId(),
                         child.knowledgeItemIds(), children.get(i)));
             }
-            snapshotBody = new QuestionBody.QuestionSetBody(setBody.type(), setBody.passage(), withIds);
+            snapshotBody = new QuestionBody.QuestionSetBody(
+                    setBody.type(), setBody.passage(), setBody.blankNumberStart(), withIds);
         }
 
         QuestionSnapshot snapshot = new QuestionSnapshot(
@@ -577,8 +578,8 @@ public class QuestionService {
                     snapshot.taskTypeItemId(), snapshot.competencyItemId(), snapshot.points(),
                     snapshot.knowledge(), snapshot.tagItemIds(), snapshot.content(),
                     snapshot.solution(), snapshot.commonMistakes(), snapshot.attachmentIds(),
-                    new QuestionBody.QuestionSetBody(
-                            QuestionType.QUESTION_SET, setBody.passage(), copyChildren), null);
+                    new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
+                            setBody.passage(), setBody.blankNumberStart(), copyChildren), null);
         }
 
         questionRepository.save(copy);
@@ -1027,6 +1028,7 @@ public class QuestionService {
             case QuestionBody.QuestionSetBody b -> new QuestionBody.QuestionSetBody(
                     b.type(),
                     cleanField(b.passage(), path + ".passage", errors),
+                    b.blankNumberStart(),
                     sanitizeChildren(b.children(), path + ".children", errors));
             case QuestionBody.TrueFalseBody b -> new QuestionBody.TrueFalseBody(
                     b.type(),
