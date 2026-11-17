@@ -39,6 +39,7 @@ class TrimPolicyTest {
         SubjectChoice choice = new SubjectChoice("science", sections, 3, List.of(17, 17, 16));
         PaperSolver solver = new PaperSolver();
         CandidateSource source = group -> pools.get(group.groupId());
+        Set<String> trimmedSubjects = new java.util.HashSet<>();
         for (long seed = 0; seed < 200; seed++) {
             PathResult result = solver.solvePick(choice, List.of("PHY", "CHEM", "BIO"), seed,
                     source, Set.of("PHY-q0"));
@@ -48,6 +49,8 @@ class TrimPolicyTest {
             assertThat(result.droppedQuestion()).isEqualTo(repeated.droppedQuestion()).isNotNull();
             assertThat(result.droppedQuestion().questionId()).doesNotContain("-fill", "-set");
             assertThat(result.witness()).filteredOn(w -> w.resolvedCount() == 16).hasSize(1);
+            trimmedSubjects.add(result.witness().stream().filter(w -> w.resolvedCount() == 16)
+                    .findFirst().orElseThrow().subjectCode());
             for (SubjectWitness witness : result.witness()) {
                 List<QuestionPick> picks = witness.groups().stream().flatMap(g -> g.picks().stream()).toList();
                 assertThat(picks).extracting(QuestionPick::questionId)
@@ -56,5 +59,6 @@ class TrimPolicyTest {
                 assertThat(picks).hasSize(witness.resolvedCount() - 2);
             }
         }
+        assertThat(trimmedSubjects).containsExactlyInAnyOrder("PHY", "CHEM", "BIO");
     }
 }

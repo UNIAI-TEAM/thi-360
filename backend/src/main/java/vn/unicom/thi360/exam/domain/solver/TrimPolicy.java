@@ -47,9 +47,7 @@ public final class TrimPolicy {
                 CountingUnit unit = candidate.units().getFirst();
                 if (preserveFill && "SHORT_ANSWER".equals(unit.answerType())) continue;
                 eligible.add(pick);
-                boolean topic = quota.mapidGroups().stream().anyMatch(q -> q.quota() > 0
-                        && unit.mapidIds().stream().anyMatch(q.nodeIds()::contains));
-                if (!topic) preferred.add(pick);
+                if (!contributesRequiredTopic(quota, unit)) preferred.add(pick);
             }
         }
         List<QuestionPick> choices = preferred.isEmpty() ? eligible : preferred;
@@ -62,5 +60,11 @@ public final class TrimPolicy {
         }
         return new Result(new SubjectWitness(witness.subjectCode(), witness.resolvedCount() - 1,
                 trimmed), dropped);
+    }
+
+    /** UNI-2649 BE-4b extends this check with assigned required topic quotas. */
+    private static boolean contributesRequiredTopic(GroupQuota group, CountingUnit unit) {
+        return group.mapidGroups().stream().anyMatch(q -> q.quota() > 0
+                && unit.mapidIds().stream().anyMatch(q.nodeIds()::contains));
     }
 }

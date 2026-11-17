@@ -381,6 +381,12 @@ final class OracleSupport {
         return out;
     }
 
+    /** Check each selected subject at the full count before the paper allocation is trimmed. */
+    static List<List<Integer>> solveAllocationsOf(SubjectChoice choice, List<SectionOnPath> picked) {
+        int full = choice.countsByPick().stream().mapToInt(Integer::intValue).max().orElseThrow();
+        return List.of(java.util.Collections.nCopies(picked.size(), full));
+    }
+
     /**
      * Mọi cách chọn {@code choose} môn của phương án, theo thứ tự tổ hợp ổn định (từ điển trên
      * chỉ số theo thứ tự cấu trúc), mỗi cách chọn sinh một {@link SubjectPick} trên mỗi phân
@@ -400,7 +406,7 @@ final class OracleSupport {
             for (int i : idx) {
                 picked.add(sections.get(i));
             }
-            for (List<Integer> counts : allocationsOf(choice, picked)) {
+            for (List<Integer> counts : solveAllocationsOf(choice, picked)) {
                 out.add(new SubjectPick(choice.optionId(), picked, counts));
             }
             int p = k - 1;

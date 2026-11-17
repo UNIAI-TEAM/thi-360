@@ -253,7 +253,7 @@ public final class WitnessValidator {
             }
             for (SubjectPick pick : path.picks().get(i)) {
                 boolean allowed = false;
-                for (List<Integer> counts : OracleSupport.allocationsOf(choice,
+                for (List<Integer> counts : OracleSupport.solveAllocationsOf(choice,
                         pick.sections())) {
                     if (counts.equals(pick.counts())) {
                         allowed = true;
