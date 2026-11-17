@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank.domain;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,6 +60,13 @@ public final class QuestionBodyValidator {
     private static final BigDecimal SCORE_TOLERANCE = new BigDecimal("0.0005");
 
     private static final Pattern BLANK_MARKER = Pattern.compile("\\[\\[([^\\[\\]]+)\\]\\]");
+    private static final Pattern OPTION_REFERENCE = Pattern.compile(
+        "\\b(?:[a-j]\\s*(?:,\\s*[a-j]\\s*)*(?:va|hoac|and|or)\\s+[a-j]"
+        + "|(?:ca|both|phuong an|dap an|cau|option)\\s+[a-j]"
+        + "|tat ca\\s+(?:(?:cac\\s+)?(?:phuong an|dap an)\\s+tren|deu\\s+(?:dung|sai))"
+        + "|ca\\s+(?:hai|ba)|khong co\\s+(?:phuong an|dap an)\\s+nao"
+        + "|(?:dap an|phuong an)\\s+khac|cac\\s+(?:phuong an|dap an)\\s+tren"
+        + "|(?:all|none|both)\\s+of\\s+the\\s+above|neither)\\b");
 
     /** Mã của phân loại tối thiểu khi Sẵn sàng (spec 4.3: nội dung, môn, khối lớp, độ khó). */
     public record ClassificationRequirement(boolean subjectPresent, boolean gradePresent, boolean levelPresent) {}
@@ -338,6 +347,9 @@ public final class QuestionBodyValidator {
                     errors.add(QuestionFieldError.of("TOO_FEW_OPTIONS", "body.options"));
                 }
                 for (int i = 0; i < b.options().size(); i++) {
+                    if (b.shuffleOptions() && refersToOtherOptions(b.options().get(i).content())) {
+                        warnings.add(QuestionFieldError.of("OPTION_REFERS_TO_OTHERS", "body.options[" + i + "].content"));
+                    }
                     if (isBlankHtml(b.options().get(i).content())) {
                         errors.add(QuestionFieldError.of("OPTION_EMPTY", "body.options[" + i + "].content"));
                     }
@@ -354,6 +366,9 @@ public final class QuestionBodyValidator {
                     errors.add(QuestionFieldError.of("TOO_FEW_OPTIONS", "body.options"));
                 }
                 for (int i = 0; i < b.options().size(); i++) {
+                    if (b.shuffleOptions() && refersToOtherOptions(b.options().get(i).content())) {
+                        warnings.add(QuestionFieldError.of("OPTION_REFERS_TO_OTHERS", "body.options[" + i + "].content"));
+                    }
                     if (isBlankHtml(b.options().get(i).content())) {
                         errors.add(QuestionFieldError.of("OPTION_EMPTY", "body.options[" + i + "].content"));
                     }
@@ -640,6 +655,12 @@ public final class QuestionBodyValidator {
                 warnings.add(QuestionFieldError.of("IMAGE_ALT_MISSING", path));
             }
         }
+    }
+
+    private static boolean refersToOtherOptions(String html) {
+        String text = QuestionHtmlSanitizer.textOf(html).toLowerCase(Locale.ROOT).replace('đ', 'd');
+        text = Normalizer.normalize(text, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return OPTION_REFERENCE.matcher(text).find();
     }
 
     /** Câu con đạt điều kiện Sẵn sàng của dạng mình (spec 4.3); phân loại kế thừa của bộ. */
