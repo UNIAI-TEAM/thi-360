@@ -450,23 +450,35 @@ public class QuestionHtmlSanitizer {
      */
     private boolean checkFigure(Element el, List<Violation> violations, boolean allowImages) {
         String cls = el.attr("class").trim();
+        boolean invalidAttributes = false;
         if (!FIGURE_CLASSES.contains(cls)) {
-            return drop(el, violations, "figure", "class", true);
-        }
-        if (!"image".equals(cls) && (el.hasAttr("data-width") || el.hasAttr("data-zoom"))) {
-            return drop(el, violations, "figure",
-                    el.hasAttr("data-width") ? "data-width" : "data-zoom", true);
-        }
-        if ("image".equals(cls)) {
-            if (!allowImages) {
-                return drop(el, violations, "figure", null, true);
-            }
+            violations.add(Violation.attribute("figure", "class", null));
+            invalidAttributes = true;
+        } else if ("image".equals(cls)) {
             if (el.attr("data-width").isBlank()) {
-                return drop(el, violations, "figure", "data-width", true);
+                violations.add(Violation.attribute("figure", "data-width", null));
+                invalidAttributes = true;
             }
             if (el.attr("data-zoom").isBlank()) {
-                return drop(el, violations, "figure", "data-zoom", true);
+                violations.add(Violation.attribute("figure", "data-zoom", null));
+                invalidAttributes = true;
             }
+        } else {
+            if (el.hasAttr("data-width")) {
+                violations.add(Violation.attribute("figure", "data-width", null));
+                invalidAttributes = true;
+            }
+            if (el.hasAttr("data-zoom")) {
+                violations.add(Violation.attribute("figure", "data-zoom", null));
+                invalidAttributes = true;
+            }
+        }
+        if (invalidAttributes) {
+            el.remove();
+            return true;
+        }
+        if ("image".equals(cls) && !allowImages) {
+            return drop(el, violations, "figure", null, true);
         }
         if (!isTopLevel(el)) {
             return drop(el, violations, "figure", null, true);
@@ -521,16 +533,25 @@ public class QuestionHtmlSanitizer {
      * nhiều {@code p}, rồi tùy chọn {@code footer} và {@code p.figure-source}.
      */
     private boolean checkQuote(Element el, List<Violation> violations) {
+        boolean invalidAttributes = false;
         if (!"quote".equals(el.attr("class").trim())) {
-            return drop(el, violations, "blockquote", "class", true);
+            violations.add(Violation.attribute("blockquote", "class", null));
+            invalidAttributes = true;
         }
         String kind = el.attr("data-kind");
         if (kind.isBlank()) {
-            return drop(el, violations, "blockquote", "data-kind", true);
+            violations.add(Violation.attribute("blockquote", "data-kind", null));
+            invalidAttributes = true;
         }
         String lineNumbers = el.attr("data-line-numbers");
-        if (lineNumbers.isBlank() || (!"0".equals(lineNumbers) && !"poem".equals(kind))) {
-            return drop(el, violations, "blockquote", "data-line-numbers", true);
+        if (lineNumbers.isBlank()
+                || (!kind.isBlank() && !"0".equals(lineNumbers) && !"poem".equals(kind))) {
+            violations.add(Violation.attribute("blockquote", "data-line-numbers", null));
+            invalidAttributes = true;
+        }
+        if (invalidAttributes) {
+            el.remove();
+            return true;
         }
         if (!isTopLevel(el)) {
             return drop(el, violations, "blockquote", null, true);
