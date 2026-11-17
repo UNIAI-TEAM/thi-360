@@ -5363,6 +5363,103 @@
       "insert": "Insert",
       "stub": {
         "body": "Work in progress"
+      },
+      "word": {
+        "description": "Formulas are converted to LaTeX. Review the marked spots before putting the content into the form.",
+        "fields": {
+          "all": "Content",
+          "option": "Option {label}",
+          "options": "Options",
+          "solution": "Solution",
+          "stem": "Question text"
+        },
+        "footer": {
+          "acceptAll": "Accept all auto-fixes",
+          "apply": "Put into the form",
+          "blocked": "{count, plural, one {# formula still needs retyping: retype or remove it before putting the content into the form.} other {# formulas still need retyping: retype or remove them before putting the content into the form.}}",
+          "cancel": "Cancel",
+          "note": "Items not handled yet stay marked after the content is put into the form."
+        },
+        "images": {
+          "context": "After the text: “{text}”",
+          "description": "Pictures in the pasted content only point to files on the source computer, so the browser cannot read them. Insert them again with the Figure box after putting the content into the form.",
+          "item": "Picture {index}",
+          "title": "Pictures not brought in"
+        },
+        "live": {
+          "accepted": "Auto-fix accepted",
+          "acceptedAll": "{count, plural, one {Accepted # auto-fix} other {Accepted # auto-fixes}}",
+          "applied": "Content from Word put into the form",
+          "edited": "Manual edit saved",
+          "removed": "Formula removed",
+          "typed": "Formula retyped"
+        },
+        "mark": "Auto-fixed from Word, waiting for confirmation",
+        "overwrite": {
+          "cancel": "Keep current content",
+          "confirm": "Overwrite",
+          "description": "These fields already have content and will be replaced with the content from Word: {fields}.",
+          "title": "Overwrite the current content?"
+        },
+        "paste": {
+          "hint": "Click this box, then press Ctrl+V to paste the content copied from Word.",
+          "label": "Area for pasting Word content",
+          "notWord": "The pasted content is not from Word, so formulas cannot be converted. Paste it straight into the editing field."
+        },
+        "preview": {
+          "empty": "No content.",
+          "formulaImage": "formula picture",
+          "formulaRemoved": "formula removed",
+          "split": "Split by the labels A., B., C., D. and “Solution”",
+          "splitNoMatch": "No label A., B., C., D. or “Solution” found: all the content goes into the question text.",
+          "title": "Pasted content"
+        },
+        "review": {
+          "accept": "Accept",
+          "after": "Fixed to",
+          "before": "After conversion from Word",
+          "cancelEdit": "Cancel",
+          "edit": "Edit by hand",
+          "editLabel": "LaTeX code of this spot",
+          "empty": "Nothing to review.",
+          "emptyFiltered": "Everything is handled.",
+          "fixes": {
+            "chemistry": "Chemical formula wrapped in brackets.",
+            "degree": "Degree sign written as a character.",
+            "functionName": "Function name split into single letters.",
+            "orSystem": "“Or” system turned into a fraction."
+          },
+          "onlyPending": "Show unhandled items only",
+          "remove": "Remove",
+          "removeCancel": "Keep",
+          "removeConfirm": "Remove",
+          "removeDescription": "This spot will be deleted from the content put into the form.",
+          "removeTitle": "Remove this formula?",
+          "retype": "Retype formula",
+          "retypeCause": {
+            "image": "The formula is a picture, so its content cannot be read.",
+            "malformed": "The formula content could not be read.",
+            "unsupported": "The formula uses a Word element that is not supported yet ({element}), so it cannot be converted."
+          },
+          "retypeContext": "After the text: “{text}”",
+          "save": "Save",
+          "status": {
+            "accepted": "Accepted",
+            "edited": "Edited",
+            "fixed": "Auto-fixed",
+            "removed": "Removed",
+            "retype": "Needs retyping",
+            "typed": "Retyped"
+          },
+          "title": "To review",
+          "where": "Item {index}: {field}"
+        },
+        "summary": {
+          "converted": "{count, plural, one {# formula converted correctly} other {# formulas converted correctly}}",
+          "note": "Fixed automatically: function names split into letters, “or” systems turned into fractions, chemical formulas wrapped in brackets, degree signs. Not fixed automatically: formulas that are pictures.",
+          "pending": "{count, plural, one {# formula auto-fixed, waiting for confirmation} other {# formulas auto-fixed, waiting for confirmation}}",
+          "retype": "{count, plural, one {# formula needs retyping} other {# formulas need retyping}}"
+        }
       }
     },
     "insertLoadError": "Couldn't load the insert dialog. Check your connection and try again.",

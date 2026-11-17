@@ -6,7 +6,8 @@
 import { FORMULA_ATTRIBUTE, RETYPE_ATTRIBUTE, trimBlock } from "./parse";
 import { OPTION_LABELS, type OptionLabel, type SplitFields } from "./types";
 
-const SOLUTION_HEADER = /^\s*(?:lời giải|hướng dẫn giải)\b\s*[:.]?\s*/i;
+// "lời giải" | "hướng dẫn giải" (mã nguồn không chứa chữ có dấu: viết bằng \u).
+const SOLUTION_HEADER = /^\s*(?:l\u1eddi gi\u1ea3i|h\u01b0\u1edbng d\u1eabn gi\u1ea3i)(?![\p{L}])\s*[:.]?\s*/iu;
 const OPTION_START = /^\s*([A-D])\s*[.)]\s*/;
 
 interface Segment {

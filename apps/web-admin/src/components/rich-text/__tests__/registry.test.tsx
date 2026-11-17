@@ -52,7 +52,11 @@ describe("insert registry", () => {
     const ids = INSERT_REGISTRY.map((entry) => entry.id).sort();
     for (const messages of [en, viMessages]) {
       expect(Object.keys(messages.richText.insert).sort()).toEqual(ids);
-      expect(Object.keys(messages.richText.insertDialog).sort()).toEqual(["cancel", "close", "insert", "stub"]);
+      // Khóa chung (nút, hộp tạm) cộng một khối `richText.insertDialog.<id>` cho mỗi mục đã có hộp thật (wave 2).
+      const shared = ["cancel", "close", "insert", "stub"];
+      const own = Object.keys(messages.richText.insertDialog).filter((key) => !shared.includes(key));
+      expect(Object.keys(messages.richText.insertDialog)).toEqual(expect.arrayContaining(shared));
+      expect(own.every((key) => ids.includes(key))).toBe(true);
     }
   });
 

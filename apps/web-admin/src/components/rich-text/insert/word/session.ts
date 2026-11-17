@@ -142,7 +142,7 @@ export function resolverOf(review: WordReview): FormulaResolver {
 }
 
 /** Tách nội dung thành các ô (hoặc giữ nguyên một ô khi `split` tắt). */
-export function splitReview(review: WordReview, split: boolean): SplitFields {
+export function splitReview(review: Pick<WordReview, "html">, split: boolean): SplitFields {
   const blocks = topLevelBlocks(review.html);
   return split ? splitByLabels(blocks) : keepWhole(blocks);
 }
