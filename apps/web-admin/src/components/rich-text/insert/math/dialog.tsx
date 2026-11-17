@@ -102,9 +102,9 @@ export default function MathInsertDialog({ editor, open, onOpenChange, editing }
       <div className="flex flex-col gap-5 lg:flex-row">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-[3]">
           <Tabs value={tab} onValueChange={(value) => setTab(value as PaletteTabId)}>
-            <TabsList aria-label={t("tabsLabel")}>
+            <TabsList aria-label={t("tabsLabel")} className="flex-wrap overflow-visible">
               {PALETTE_TABS.map((paletteTab) => (
-                <TabsTrigger key={paletteTab.id} value={paletteTab.id}>
+                <TabsTrigger key={paletteTab.id} value={paletteTab.id} className="h-[34px] px-3 text-caption">
                   {t(`tabs.${paletteTab.id}`)}
                 </TabsTrigger>
               ))}
