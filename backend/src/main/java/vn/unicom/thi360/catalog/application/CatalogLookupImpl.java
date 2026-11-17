@@ -208,7 +208,6 @@ public class CatalogLookupImpl implements CatalogLookup {
                     combination.branch(),
                     combination.versionNo(),
                     combination.subjects().stream()
-                            .filter(s -> s.status() == CatalogStatus.ACTIVE)
                             .sorted(java.util.Comparator.comparingInt(CombinationSubjectResponse::position))
                             .map(s -> new CatalogCombinationSubjectView(
                                     s.subjectItemId(), s.code(), s.nameVi(), s.nameEn()))

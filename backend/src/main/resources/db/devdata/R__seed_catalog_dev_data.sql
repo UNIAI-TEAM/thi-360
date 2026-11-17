@@ -213,11 +213,8 @@ VALUES
     ('00000000-0000-7000-8500-000000000714', '00000000-0000-7000-8400-000000000714', 1, '00000000-0000-7000-8400-000000000103', 'SCIENCE', '[MẪU] Tổ hợp CA2', true),
     ('00000000-0000-7000-8500-000000000715', '00000000-0000-7000-8400-000000000715', 1, '00000000-0000-7000-8400-000000000103', 'SCIENCE', '[MẪU] Tổ hợp CA3', true),
     ('00000000-0000-7000-8500-000000000716', '00000000-0000-7000-8400-000000000716', 1, '00000000-0000-7000-8400-000000000103', 'SCIENCE', '[MẪU] Tổ hợp CA4', true)
-ON CONFLICT (item_id, version_no) DO UPDATE SET
-    exam_item_id = EXCLUDED.exam_item_id,
-    branch = EXCLUDED.branch,
-    source_note = EXCLUDED.source_note,
-    is_current = EXCLUDED.is_current;
+ON CONFLICT (item_id, version_no) DO UPDATE SET branch = EXCLUDED.branch
+WHERE catalog.combination_version.is_current AND catalog.combination_version.branch IS NULL;
 
 INSERT INTO catalog.combination_subject (combination_version_id, subject_item_id, position)
 VALUES
@@ -234,7 +231,7 @@ VALUES
     ('00000000-0000-7000-8500-000000000714', '00000000-0000-7000-8200-000000000205', 0),
     ('00000000-0000-7000-8500-000000000715', '00000000-0000-7000-8200-000000000206', 0),
     ('00000000-0000-7000-8500-000000000716', '00000000-0000-7000-8200-000000000208', 0)
-ON CONFLICT (combination_version_id, subject_item_id) DO UPDATE SET position = EXCLUDED.position;
+ON CONFLICT (combination_version_id, subject_item_id) DO NOTHING;
 
 -- 14. COMPETENCY: 5 năng lực V-ACT (cây một cấp, nhóm hệ thống tạo bởi migration)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)

@@ -174,6 +174,66 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void branchAndOrderUpdatesPreserveHistoryAndAdvanceCatalogRevision() throws Exception {
+        MvcResult createdResponse = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", COMBINATION_GROUP_ID)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "code", "BRANCH_" + suffix(),
+                                "nameVi", "Tổ hợp",
+                                "examItemId", SAMPLE_QDA_ID,
+                                "branch", "SCIENCE",
+                                "subjectItemIds", List.of(SAMPLE_TOAN_ID, SAMPLE_ANH_ID)))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode created = objectMapper.readTree(createdResponse.getResponse().getContentAsString());
+        UUID itemId = UUID.fromString(created.get("id").asText());
+        UUID v1Id = UUID.fromString(created.path("combination").path("id").asText());
+        createdItemIds.add(itemId);
+
+        String forbiddenPatch = "{\"version\":" + created.get("version").asLong() + ",\"branch\":\"ENGLISH\"}";
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(forbiddenPatch))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+                        .with(asUser(Permissions.CATALOG_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(forbiddenPatch))
+                .andExpect(status().isForbidden());
+
+        long revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM catalog.catalog_revision WHERE id = 1", Long.class);
+        MvcResult reordered = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "version", created.get("version").asLong(),
+                                "subjectItemIds", List.of(SAMPLE_ANH_ID, SAMPLE_TOAN_ID)))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.combination.versionNo").value(2))
+                .andExpect(jsonPath("$.combination.branch").value("SCIENCE"))
+                .andExpect(jsonPath("$.combination.subjects[0].code").value("ANH"))
+                .andReturn();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT revision FROM catalog.catalog_revision WHERE id = 1", Long.class)).isGreaterThan(revision);
+        mockMvc.perform(get("/api/v1/admin/catalog/combination-versions/{id}", v1Id)
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branch").value("SCIENCE"))
+                .andExpect(jsonPath("$.subjects[0].code").value("TOAN"));
+
+        long version = objectMapper.readTree(reordered.getResponse().getContentAsString()).get("version").asLong();
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":" + version + ",\"branch\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.combination.versionNo").value(3))
+                .andExpect(jsonPath("$.combination.branch").doesNotExist());
+    }
+
+    @Test
     void createCombination_appearsInOptionsAndGetItem() throws Exception {
         String code = "HSA_COMBO_" + suffix();
         MvcResult createRes = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", COMBINATION_GROUP_ID)
@@ -694,6 +754,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                         null,
                         null,
                         currentVersion,
+                        null,
                         SAMPLE_HSA_ID,
                         List.of(SAMPLE_VAN_ID),
                         "Sẽ rollback"));

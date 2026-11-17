@@ -316,7 +316,9 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "SUBJECT_COMBINATION").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(17)))
+                .andExpect(jsonPath("$[*].code",
+                        containsInAnyOrder("QD01", "QD02", "QD03", "QD04", "QD05",
+                                "CA1", "CA2", "CA3", "CA4")))
                 .andExpect(jsonPath("$[0].description").value(org.hamcrest.Matchers.startsWith("[MẪU]")));
 
         // KNOWLEDGE: 0D1 has 14 leaves; filtering by TOAN & G10 returns all 26 leaves (14 + 6 + 6)

@@ -3025,6 +3025,11 @@ export interface components {
         /** @description Phiên bản cấu hình của mã tổ hợp môn */
         CombinationVersionResponse: {
             /**
+             * @description Nhánh của mã tổ hợp
+             * @enum {string}
+             */
+            branch?: "SCIENCE" | "ENGLISH";
+            /**
              * Format: date-time
              * @description Thời điểm tạo phiên bản
              */
@@ -3148,6 +3153,11 @@ export interface components {
         };
         /** @description Yêu cầu tạo giá trị danh mục mới */
         CreateCatalogItemRequest: {
+            /**
+             * @description Nhánh của mã tổ hợp (SCIENCE, ENGLISH; để trống nếu không áp dụng)
+             * @enum {string}
+             */
+            branch?: "SCIENCE" | "ENGLISH";
             /**
              * @description Mã giá trị duy nhất trong nhóm
              * @example TOAN
@@ -5540,6 +5550,11 @@ export interface components {
         };
         /** @description Yêu cầu cập nhật giá trị danh mục */
         UpdateCatalogItemRequest: {
+            /**
+             * @description Nhánh mới của mã tổ hợp (SCIENCE, ENGLISH; null để bỏ nhánh)
+             * @enum {string|null}
+             */
+            branch?: "SCIENCE" | "ENGLISH" | null;
             /** @description Mã giá trị mới */
             code?: string;
             /** @description Mô tả mới */

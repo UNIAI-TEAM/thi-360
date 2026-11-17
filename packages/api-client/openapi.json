@@ -1868,6 +1868,11 @@
       "CombinationVersionResponse" : {
         "description" : "Phiên bản cấu hình của mã tổ hợp môn",
         "properties" : {
+          "branch" : {
+            "description" : "Nhánh của mã tổ hợp",
+            "enum" : [ "SCIENCE", "ENGLISH" ],
+            "type" : "string"
+          },
           "createdAt" : {
             "description" : "Thời điểm tạo phiên bản",
             "format" : "date-time",
@@ -2111,6 +2116,11 @@
       "CreateCatalogItemRequest" : {
         "description" : "Yêu cầu tạo giá trị danh mục mới",
         "properties" : {
+          "branch" : {
+            "description" : "Nhánh của mã tổ hợp (SCIENCE, ENGLISH; để trống nếu không áp dụng)",
+            "enum" : [ "SCIENCE", "ENGLISH" ],
+            "type" : "string"
+          },
           "code" : {
             "description" : "Mã giá trị duy nhất trong nhóm",
             "example" : "TOAN",
@@ -7155,6 +7165,11 @@
       "UpdateCatalogItemRequest" : {
         "description" : "Yêu cầu cập nhật giá trị danh mục",
         "properties" : {
+          "branch" : {
+            "description" : "Nhánh mới của mã tổ hợp (SCIENCE, ENGLISH; null để bỏ nhánh)",
+            "enum" : [ "SCIENCE", "ENGLISH", null ],
+            "type" : [ "string", "null" ]
+          },
           "code" : {
             "description" : "Mã giá trị mới",
             "maxLength" : 100,

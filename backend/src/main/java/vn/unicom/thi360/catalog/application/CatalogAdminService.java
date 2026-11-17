@@ -2039,7 +2039,7 @@ public class CatalogAdminService {
             CatalogGroup group,
             CatalogItem item,
             UUID requestedExamId,
-            CombinationBranch requestedBranch,
+            UpdateCatalogItemRequest.BranchUpdate requestedBranch,
             List<UUID> requestedSubjectIds,
             String requestedSourceNote) {
         CombinationVersion current = combinationVersionRepository.findByItemIdAndCurrentTrue(item.getId())
@@ -2059,10 +2059,10 @@ public class CatalogAdminService {
                     new FieldError("examItemId", "REQUIRED", messages.get("validation.catalog.combination.examRequired"))));
         }
         boolean examChanged = current == null || !targetExamId.equals(current.getExamItemId());
-        CombinationBranch targetBranch = requestedBranch;
-        boolean branchChanged = current == null
-                ? requestedBranch != null
-                : !Objects.equals(targetBranch, current.getBranch());
+        CombinationBranch targetBranch = requestedBranch != null
+                ? requestedBranch.value()
+                : current == null ? null : current.getBranch();
+        boolean branchChanged = current != null && !Objects.equals(targetBranch, current.getBranch());
 
         List<UUID> targetSubjectIds;
         boolean subjectsChanged;
@@ -2093,9 +2093,13 @@ public class CatalogAdminService {
                 : (current != null ? current.getSourceNote() : null);
         boolean sourceNoteChanged = current != null && !Objects.equals(targetSourceNote, current.getSourceNote());
 
+        boolean orderChanged = subjectsChanged
+                && currentSubjectIds.size() == targetSubjectIds.size()
+                && new HashSet<>(currentSubjectIds).equals(new HashSet<>(targetSubjectIds));
         boolean createNewVersion = current != null
-                && (subjectsChanged || examChanged || branchChanged)
-                && isCombinationVersionReferenced(item.getId(), current.getId());
+                && (branchChanged || orderChanged
+                        || ((subjectsChanged || examChanged)
+                                && isCombinationVersionReferenced(item.getId(), current.getId())));
 
         boolean changed = current == null || subjectsChanged || examChanged || branchChanged || sourceNoteChanged;
         return new CombinationUpdatePlan(
