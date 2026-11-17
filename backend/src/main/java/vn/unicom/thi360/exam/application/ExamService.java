@@ -761,11 +761,6 @@ public class ExamService {
                     messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
         }
         assertTemplateMatches(exam, template);
-        boolean modeChanged = !Objects.equals(exam.getBuildMode(), template.getBuildMode());
-        if (modeChanged && !Boolean.TRUE.equals(request.confirmReplace())) {
-            throw new ConflictException(ExamErrorCodes.REPLACE_CONFIRM,
-                    messages.get(ExamErrorCodes.REPLACE_CONFIRM));
-        }
         if (request.overviewPolicy() != null
                 && !Set.of("USE_TEMPLATE", "KEEP_EDITED").contains(request.overviewPolicy())) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
