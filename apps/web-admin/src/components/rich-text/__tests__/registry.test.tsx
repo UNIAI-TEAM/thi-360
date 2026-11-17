@@ -80,6 +80,14 @@ describe("insert registry", () => {
     expect(math.openForSelection(fake("\\ce{H2O}"))).toBeNull();
     expect(chemistry.openForSelection(fake("\\ce{H2O}"))).toBe(true);
   });
+
+  it("node entries return null (not false) for a non-matching node", () => {
+    const other = Object.assign(Object.create(PMNode.prototype), { type: { name: "paragraph" }, attrs: {} }) as PMNode;
+    for (const id of ["table", "image", "quote", "blank", "cross"]) {
+      const entry = INSERT_REGISTRY.find((item) => item.id === id)!;
+      expect(entry.openForSelection(other)).toBeNull();
+    }
+  });
 });
 
 describe("selection panel and openForSelection (test-only entry)", () => {
