@@ -85,7 +85,7 @@ public class ExamTemplateService {
                 t.getStructureYear(),
                 t.getMatrixYear(),
                 t.getTiming(),
-                t.getDurationMinutes(),
+                "SHARED".equals(t.getTiming()) ? t.getDurationMinutes() : null,
                 t.getMaxScore(),
                 t.getExpertNote(),
                 t.isActive(),

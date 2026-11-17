@@ -57,6 +57,21 @@ class ExamTemplateIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[?(@.code=='HSA_FULL')].structure.parts[*].options[?(@.kind=='SUBJECT_CHOICE')].sections[*].subjectCode", Matchers.hasItems("LY", "HOA", "SINH", "SU", "DIA")))
                 .andExpect(jsonPath("$[?(@.code=='HSA_FULL')].structure.parts[*].options[?(@.kind=='COMBINATION')]").isEmpty());
     }
+    @Test
+    void templateDurationIsExposedOnlyForSharedTiming() throws Exception {
+        var templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "HSA"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var hsa = java.util.stream.StreamSupport.stream(templates.spliterator(), false)
+                .filter(template -> "HSA_FULL".equals(template.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(hsa.path("durationMinutes").isNull()).as("per-part duration is not shared").isTrue();
+        mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "BCA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.code=='BCA_FULL')].durationMinutes", Matchers.hasItem(180)));
+    }
+
 
     @Test
     void templatesRequireExamView() throws Exception {
