@@ -27,8 +27,8 @@ class ExamTemplateIT extends AbstractIntegrationTest {
                 "SELECT structure::text FROM exam.exam_template WHERE code = 'HSA_PART_SCIENCE'",
                 String.class);
         var structure = ExamStructureOps.assignMissingIds(new ExamStructureCodec(mapper).read(json));
-        // Ten science triples plus the English option; 12 scoring cases do not change path count.
-        assertThat(ExamStructureValidator.countPaths(structure)).isEqualTo(11);
+        // 2B §10: English has its own part, leaving ten science triples here.
+        assertThat(ExamStructureValidator.countPaths(structure)).isEqualTo(10);
         var science = structure.parts().getFirst().options().getFirst();
         assertThat(science.sections()).hasSize(5);
         assertThat(science.chooseSubjects()).isEqualTo(3);

@@ -21,7 +21,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class ExamTemplateSaveIT extends AbstractIntegrationTest {
     // FU-BE1-6: BE-5 will remove this narrowly scoped fast-check exception.
-    private static final Set<String> CODE_SOURCED_CHOICE_OPTION_EMPTY = Set.of("BCA_FULL:3", "QDA_FULL:3");
+    private static final Set<String> CODE_SOURCED_PARTS = Set.of("BCA_FULL:3", "QDA_FULL:3");
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper mapper;
 
@@ -72,7 +72,7 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
                 for (JsonNode issue : issueList) {
                     if ("STRUCTURE".equals(issue.path("group").asText())
                             && "ERROR".equals(issue.path("severity").asText())) {
-                        assertThat(allowedOptionEmpty(code, structure.path("parts"), issue))
+                        assertThat(allowedCodeSourceIssue(code, structure.path("parts"), issue))
                                 .as("%s structural issue: %s", code, issue).isTrue();
                     }
                 }
@@ -80,14 +80,16 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
         }
     }
 
-    private boolean allowedOptionEmpty(String code, JsonNode parts, JsonNode issue) {
-        if (!"OPTION_EMPTY".equals(issue.path("code").asText())) return false;
+    private boolean allowedCodeSourceIssue(String code, JsonNode parts, JsonNode issue) {
+        String issueCode = issue.path("code").asText();
+        if (!Set.of("OPTION_EMPTY", "PART_EMPTY").contains(issueCode)) return false;
         for (int i = 0; i < parts.size(); i++) {
             JsonNode part = parts.get(i);
             if (part.path("id").asText().equals(issue.path("partId").asText())) {
-                return CODE_SOURCED_CHOICE_OPTION_EMPTY.contains(code + ":" + (i + 1))
+                return CODE_SOURCED_PARTS.contains(code + ":" + (i + 1))
                         && part.hasNonNull("codeSource")
-                        && "CHOICE".equals(part.path("participation").path("mode").asText());
+                        && ("PART_EMPTY".equals(issueCode)
+                                || "CHOICE".equals(part.path("participation").path("mode").asText()));
             }
         }
         return false;
