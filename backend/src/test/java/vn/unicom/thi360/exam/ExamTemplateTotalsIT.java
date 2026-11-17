@@ -188,6 +188,24 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void subjectChoiceResolvesRemainderForEachPickCount() throws Exception {
+        JsonNode option = mapper.readTree("""
+                {"kind":"SUBJECT_CHOICE","chooseSubjects":2,"countsByPick":[2,1],"sections":[
+                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.5},
+                             {"questionType":"SINGLE_CHOICE","questionCount":null,"requiredPointsPerQuestion":1.5}]},
+                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.5},
+                             {"questionType":"SINGLE_CHOICE","questionCount":null,"requiredPointsPerQuestion":1.5}]},
+                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.5},
+                             {"questionType":"SINGLE_CHOICE","questionCount":null,"requiredPointsPerQuestion":1.5}]}
+                ]}
+                """);
+        assertThat(optionTotals(option)).hasSize(6).allSatisfy(path -> {
+            assertThat(path.questions()).isEqualTo(3);
+            assertThat(path.points()).isEqualByComparingTo("2.5");
+        });
+    }
+
+    @Test
     void informaticsTotalsApplyToEachBranch() throws Exception {
         assertInformaticsBranches("SPT_INFORMATICS_2025", 22, "7", 1);
         assertInformaticsBranches("THPTQG_INFORMATICS_2025", 28, "10", 2);
@@ -318,21 +336,47 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
         for (int i = 0; i < sections.size(); i++) {
             if (used[i]) continue;
             JsonNode section = sections.get(i);
-            Totals configured = totals(section);
             int selected = counts.get(position).asInt();
-            assertThat(selected).isBetween(0, configured.questions());
-            BigDecimal points = configured.points();
-            if (points != null && selected != configured.questions()) {
-                List<JsonNode> blocks = new ArrayList<>();
-                collectBlocks(section, blocks);
-                Set<BigDecimal> rates = new HashSet<>();
+            List<JsonNode> blocks = new ArrayList<>();
+            collectBlocks(section, blocks);
+            List<JsonNode> remainder = blocks.stream()
+                    .filter(block -> !block.path("omitted").asBoolean()
+                            && !block.hasNonNull("questionCount")
+                            && !(block.hasNonNull("setCount") && block.hasNonNull("setSize")))
+                    .toList();
+            assertThat(remainder).as("at most one subject-choice remainder").hasSizeLessThanOrEqualTo(1);
+            BigDecimal points;
+            if (!remainder.isEmpty()) {
+                int fixed = 0;
+                points = BigDecimal.ZERO;
                 for (JsonNode block : blocks) {
-                    if (!block.path("omitted").asBoolean() && block.hasNonNull("requiredPointsPerQuestion")) {
-                        rates.add(block.path("requiredPointsPerQuestion").decimalValue().stripTrailingZeros());
-                    }
+                    if (block.path("omitted").asBoolean() || block == remainder.getFirst()) continue;
+                    int count = block.hasNonNull("questionCount") ? block.path("questionCount").asInt()
+                            : block.path("setCount").asInt() * block.path("setSize").asInt();
+                    fixed += count;
+                    if (!block.hasNonNull("requiredPointsPerQuestion")) points = null;
+                    else if (points != null) points = points.add(
+                            block.path("requiredPointsPerQuestion").decimalValue().multiply(BigDecimal.valueOf(count)));
                 }
-                assertThat(rates).as("subject-choice reduction requires a uniform point value").hasSize(1);
-                points = rates.iterator().next().multiply(BigDecimal.valueOf(selected));
+                assertThat(selected).as("subject-choice count covers fixed blocks").isGreaterThanOrEqualTo(fixed);
+                JsonNode block = remainder.getFirst();
+                if (!block.hasNonNull("requiredPointsPerQuestion")) points = null;
+                else if (points != null) points = points.add(block.path("requiredPointsPerQuestion").decimalValue()
+                        .multiply(BigDecimal.valueOf(selected - fixed)));
+            } else {
+                Totals configured = totals(section);
+                assertThat(selected).isBetween(0, configured.questions());
+                points = configured.points();
+                if (points != null && selected != configured.questions()) {
+                    Set<BigDecimal> rates = new HashSet<>();
+                    for (JsonNode block : blocks) {
+                        if (!block.path("omitted").asBoolean() && block.hasNonNull("requiredPointsPerQuestion")) {
+                            rates.add(block.path("requiredPointsPerQuestion").decimalValue().stripTrailingZeros());
+                        }
+                    }
+                    assertThat(rates).as("subject-choice reduction requires a uniform point value").hasSize(1);
+                    points = rates.iterator().next().multiply(BigDecimal.valueOf(selected));
+                }
             }
             used[i] = true;
             chooseSubjects(sections, counts, used, position + 1, add(current, new Totals(selected, points)), result);
