@@ -782,6 +782,9 @@ public class ExamService {
         }
         if (previous != null && structure != null) {
             ExamStructureDocument baseline = codec().read(previous.getStructure());
+            if ("REVIEW".equals(previous.getBuildMode())) {
+                baseline = reviewSubject(baseline, subjectCodeOf(exam.getSubjectItemId()));
+            }
             if (subjectPart) {
                 baseline = selectSubjectPart(baseline, exam.getPartCode());
             }

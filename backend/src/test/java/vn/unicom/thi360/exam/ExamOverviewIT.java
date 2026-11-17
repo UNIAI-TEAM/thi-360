@@ -323,6 +323,44 @@ class ExamOverviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void clearingOnlyDurationRequiresPolicyAndCanBeRestored() throws Exception {
+        jdbc.update("UPDATE exam.exam_template SET structure=jsonb_set(structure, "
+                + "'{parts,0,durationMinutes}', '30'::jsonb) WHERE code='HSA_FULL'");
+        String code = "HSA-T-" + UUID.randomUUID().toString().substring(0, 8);
+        var exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"HSA\",\"scope\":\"FULL\",\"code\":\"" + code + "\",\"name\":\"Duration\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String url = "/api/v1/admin/exams/" + exam.path("id").asText();
+        var structure = mapper.readTree(mockMvc.perform(get(url + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) structure.path("parts").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0)).putNull("durationMinutes");
+        var request = mapper.createObjectNode().put("expectedRevision", structure.path("revision").asLong());
+        request.set("parts", parts);
+        var saved = mapper.readTree(mockMvc.perform(put(url + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String load = "{\"templateCode\":\"HSA_FULL\",\"confirmReplace\":true,\"expectedRevision\":"
+                + saved.path("revision").asLong();
+        mockMvc.perform(post(url + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(load + "}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_OVERVIEW_CONFIRM"));
+        var kept = mapper.readTree(mockMvc.perform(post(url + "/structure/template")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content(load + ",\"overviewPolicy\":\"KEEP_EDITED\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].durationMinutes").doesNotExist())
+                .andReturn().getResponse().getContentAsString());
+        mockMvc.perform(post(url + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"HSA_FULL\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":"
+                                + kept.path("revision").asLong() + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].durationMinutes").value(30));
+    }
+
+    @Test
     void duplicatedAndPreBackfillIdsKeepEditedOverview() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         jdbc.update("UPDATE exam.exam_template SET structure=jsonb_set(structure, '{parts,0,order}', '1'::jsonb) WHERE code='HSA_FULL'");
@@ -343,6 +381,8 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                     '{parts,0,id}', '"backfilled-part"'::jsonb),
                     '{parts,0,sections,0,id}', '"backfilled-section"'::jsonb) WHERE code='HSA_FULL'
                 """);
+        entityManager.flush();
+        entityManager.clear();
         for (var exam : List.of(created, duplicate)) {
             String url = "/api/v1/admin/exams/" + exam.path("id").asText();
             var detail = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
@@ -362,6 +402,7 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                             .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
                             .content(load + ",\"overviewPolicy\":\"KEEP_EDITED\"}"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].questionCount").value(40))
+                    .andExpect(jsonPath("$.parts[0].id").value("backfilled-part"))
                     .andExpect(jsonPath("$.parts[0].durationMinutes").value(42))
                     .andExpect(jsonPath("$.parts[0].maxPoints").value(8))
                     .andReturn().getResponse().getContentAsString());
@@ -401,12 +442,31 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").value(templateCode))
                 .andExpect(jsonPath("$.parts[0].sections[0].questionCount").value(25));
         String review = create.replace("QDA-S-", "QDA-R-").replace("}", ",\"buildMode\":\"REVIEW\"}");
-        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+        var reviewExam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(review))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.buildMode").value("REVIEW"))
                 .andExpect(jsonPath("$.templateCode").value("QDA_REVIEW"))
-                .andExpect(jsonPath("$.parts[0].sections[0].subjectCode").value("HOA"));
+                .andExpect(jsonPath("$.parts[0].sections[0].subjectCode").value("HOA"))
+                .andReturn().getResponse().getContentAsString());
+        var part = reviewExam.path("parts").get(0);
+        String reviewUrl = "/api/v1/admin/exams/" + reviewExam.path("id").asText();
+        var edit = Map.of("expectedRevision", reviewExam.path("revision").asLong(), "overview",
+                List.of(Map.of("partId", part.path("id").asText(),
+                        "sectionId", part.path("sections").get(0).path("id").asText(), "questionCount", 7)));
+        var edited = mapper.readTree(mockMvc.perform(put(reviewUrl + "/overview")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(edit)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String reload = "{\"templateCode\":\"QDA_REVIEW\",\"confirmReplace\":true,\"expectedRevision\":"
+                + edited.path("revision").asLong();
+        mockMvc.perform(post(reviewUrl + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(reload + "}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_OVERVIEW_CONFIRM"));
+        mockMvc.perform(post(reviewUrl + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reload + ",\"overviewPolicy\":\"KEEP_EDITED\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].sections[0].questionCount").value(7));
     }
 
     @Test
