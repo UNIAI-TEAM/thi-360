@@ -207,6 +207,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         JsonNode matchingResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/{id}", matchingId)
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode childResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/{id}", childId)
+                        .with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         JsonNode templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
@@ -217,6 +220,17 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertNoLegacyKeysInApi(setResponse);
+        assertNoLegacyKeysInApi(childResponse);
+        // Concrete paths must carry the field: findValues below is vacuous when absent entirely.
+        JsonNode standaloneBody = childResponse.path("body");
+        assertThat(standaloneBody.path("type").asText()).isEqualTo("SINGLE_CHOICE");
+        assertThat(standaloneBody.get("shuffleOptions")).as("storage without shuffleOptions reads as true").isNotNull();
+        assertThat(standaloneBody.path("shuffleOptions").isBoolean() && standaloneBody.path("shuffleOptions").asBoolean())
+                .as("standalone child body shuffleOptions").isTrue();
+        JsonNode embeddedBody = setResponse.path("body").path("children").get(0).path("body");
+        assertThat(embeddedBody.get("shuffleOptions")).as("embedded child body must expose shuffleOptions").isNotNull();
+        assertThat(embeddedBody.path("shuffleOptions").isBoolean() && embeddedBody.path("shuffleOptions").asBoolean())
+                .as("set child body shuffleOptions").isTrue();
         assertNoLegacyKeysInApi(matchingResponse);
         assertNoLegacyKeysInApi(structureResponse);
         assertNoLegacyKeysInApi(versionResponse);
