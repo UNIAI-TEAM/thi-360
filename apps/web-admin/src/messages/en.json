@@ -2487,6 +2487,13 @@
         "legendMultiple": "Options, choose the correct answers",
         "hintSingle": "Select the circle of the correct option. At least 2 options.",
         "hintMultiple": "Tick every correct option. At least 2 options and 1 correct answer.",
+        "keepOrder": {
+          "hint": "Turn on when an option refers to another option, such as “Both A and B”.",
+          "keepOrderOn": "Keep option order turned on.",
+          "label": "Keep option order",
+          "refersWarning": "This option refers to other options. Consider turning on “Keep option order” so the options are not shuffled.",
+          "turnOn": "Keep order"
+        },
         "correctCount": "{count, plural, one {# correct answer} other {# correct answers}} selected",
         "correctLabel": "Option {letter} is correct",
         "contentLabel": "Option {letter} text",
@@ -2855,6 +2862,7 @@
         "UNDERLINE_LABEL_DUPLICATE": "Two underlined phrases use the same label.",
         "UNDERLINE_LABEL_MISPLACED": "Labelled underlines are only allowed in the stem of a single-answer multiple-choice question.",
         "IMAGE_ALT_MISSING": "An image has no alt text (a warning, does not block Ready).",
+        "OPTION_REFERS_TO_OTHERS": "Option {position, number} refers to other options. Consider turning on “Keep option order” so the options are not shuffled.",
         "READINESS_OTHER": "A check was not met ({value})."
       },
       "childIssue": "Sub-question {child, number}: {issue}",

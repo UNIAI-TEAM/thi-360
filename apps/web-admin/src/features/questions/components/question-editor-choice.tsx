@@ -4,7 +4,7 @@ import { Button, Checkbox, cn } from "@thi360/ui";
 import { Lock, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { questionHtmlText } from "@/components/rich-text";
 import { choiceHtmlOfPhrase, phraseTextByLabel } from "@/components/rich-text/insert/underline-label/labels";
 import { MULTIPLE_CHOICE_RULES } from "@/features/content/types";
@@ -190,8 +190,40 @@ export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; mu
           )}
         </div>
       </fieldset>
+      <KeepOptionOrderField prefix={prefix} />
       {multiple && <ScoringRuleField prefix={prefix} />}
     </>
+  );
+}
+
+/**
+ * Ô "Giữ thứ tự phương án" (spec 2026-11-17 mục 2): chọn nghĩa là `shuffleOptions = false`, mặc định không chọn.
+ * Câu con Một đáp án / Nhiều đáp án của câu chùm dùng chung (đường dẫn theo `prefix`).
+ */
+function KeepOptionOrderField({ prefix }: { prefix: BodyPath }) {
+  const t = useTranslations("questions.editor.choice.keepOrder");
+  const { control } = useFormContext<QuestionEditorValues>();
+  const id = useId();
+  return (
+    <Controller
+      control={control}
+      name={`${prefix}.keepOptionOrder`}
+      render={({ field }) => (
+        <div className="flex flex-col">
+          <label className="flex min-h-10 items-center gap-2.5 text-body text-text">
+            <Checkbox
+              checked={field.value}
+              aria-describedby={`${id}-hint`}
+              onCheckedChange={(checked) => field.onChange(checked === true)}
+            />
+            {t("label")}
+          </label>
+          <p id={`${id}-hint`} className="ps-7 text-caption text-text-muted">
+            {t("hint")}
+          </p>
+        </div>
+      )}
+    />
   );
 }
 

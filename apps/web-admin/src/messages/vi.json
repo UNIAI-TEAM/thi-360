@@ -2487,6 +2487,13 @@
         "legendMultiple": "Phương án, chọn các đáp án đúng",
         "hintSingle": "Chọn ô tròn ở phương án đúng. Cần ít nhất 2 phương án.",
         "hintMultiple": "Tích ô vuông ở mọi phương án đúng. Cần ít nhất 2 phương án và 1 đáp án đúng.",
+        "keepOrder": {
+          "hint": "Bật khi phương án nhắc tới phương án khác, ví dụ “Cả A và B”.",
+          "keepOrderOn": "Đã bật giữ thứ tự phương án.",
+          "label": "Giữ thứ tự phương án",
+          "refersWarning": "Phương án nhắc tới phương án khác. Nên bật “Giữ thứ tự phương án” để thứ tự không bị đảo.",
+          "turnOn": "Bật giữ thứ tự"
+        },
         "correctCount": "Đã chọn {count, number} đáp án đúng",
         "correctLabel": "Phương án {letter} là đáp án đúng",
         "contentLabel": "Nội dung phương án {letter}",
@@ -2855,6 +2862,7 @@
         "UNDERLINE_LABEL_DUPLICATE": "Hai cụm gạch chân dùng cùng một nhãn.",
         "UNDERLINE_LABEL_MISPLACED": "Gạch chân đánh nhãn chỉ dùng ở đề bài câu Trắc nghiệm 1 đáp án.",
         "IMAGE_ALT_MISSING": "Có hình chưa có mô tả thay thế (cảnh báo, không chặn Sẵn sàng).",
+        "OPTION_REFERS_TO_OTHERS": "Phương án {position, number} nhắc tới phương án khác. Nên bật “Giữ thứ tự phương án” để thứ tự không bị đảo.",
         "READINESS_OTHER": "Chưa đạt điều kiện kiểm tra ({value})."
       },
       "childIssue": "Câu con {child, number}: {issue}",

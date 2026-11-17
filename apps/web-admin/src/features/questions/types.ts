@@ -109,7 +109,8 @@ export function clozeMarker(blankId: string): string {
 /**
  * Phần riêng theo dạng câu (spec 4.3, 9.2).
  *
- * - Một đáp án, Nhiều đáp án: `options`; Nhiều đáp án thêm `scoringRule`. Phương án luôn được đảo khi sinh đề, không có cờ.
+ * - Một đáp án, Nhiều đáp án: `options`; Nhiều đáp án thêm `scoringRule`. `shuffleOptions` là cờ giữ thứ tự phương án
+ *   (spec 2026-11-17): `false` giữ thứ tự khi sinh đề, thiếu hoặc `true` đảo như cũ.
  * - Trả lời ngắn: `answers` (đáp án chuẩn đứng đầu, tối đa 20), `inputHint` hướng dẫn nhập cho học viên.
  * - Điền khuyết: `passage` có các dấu `[[id]]`, `blanks` mỗi ô một điểm.
  * - Đúng/Sai: `scoringMethod`; `PER_STATEMENT` dùng `statements[].points`, `COUNT_TABLE` dùng `scoreTable` (độ dài bằng
@@ -119,8 +120,19 @@ export function clozeMarker(blankId: string): string {
  * - Bộ câu hỏi: ngữ liệu chung, `blankNumberStart` (số bắt đầu đánh chỗ trống, 1–200, mặc định 1; spec UNI-2638 mục 3.4) và id câu con; không nhận Bộ câu hỏi hay Điền khuyết làm câu con (D19).
  */
 export type QuestionBody =
-  | { type: "SINGLE_CHOICE"; options: ChoiceOption[] }
-  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; scoringRule: MultipleChoiceRule }
+  | {
+      type: "SINGLE_CHOICE";
+      options: ChoiceOption[];
+      /** `false`: giữ thứ tự phương án như soạn khi sinh đề; thiếu hoặc `true`: đảo (spec 2026-11-17 mục 1). */
+      shuffleOptions?: boolean;
+    }
+  | {
+      type: "MULTIPLE_CHOICE";
+      options: ChoiceOption[];
+      scoringRule: MultipleChoiceRule;
+      /** `false`: giữ thứ tự phương án như soạn khi sinh đề; thiếu hoặc `true`: đảo (spec 2026-11-17 mục 1). */
+      shuffleOptions?: boolean;
+    }
   | { type: "SHORT_ANSWER"; answers: string[]; inputHint: string | null }
   | { type: "CLOZE"; passage: string; blanks: ClozeBlank[] }
   | { type: "QUESTION_SET"; passage: string; blankNumberStart: number; childIds: string[] }
