@@ -3896,6 +3896,7 @@ export interface components {
             gradeCode?: string;
             group?: string;
             key?: string;
+            location?: components["schemas"]["ExamIssueLocation"];
             optionId?: string;
             partId?: string;
             partName?: string;
@@ -3985,6 +3986,8 @@ export interface components {
         };
         ExamPreviewQuestion: {
             answer?: string;
+            /** @description Topic quota IDs assigned to this question */
+            assignedTopicQuotaIds?: string[] | null;
             body?: components["schemas"]["JsonNode"];
             code?: string;
             content?: string;

@@ -88,7 +88,9 @@ public class ExamPreviewController {
                                   @Schema(types = {"array", "null"}, description = "Option IDs in the author's original order")
                                   List<String> originalOptionOrder,
                                   @Schema(types = {"integer", "null"}, description = "Original solver-selected question position")
-                                  Integer originalNumber) {
+                                  Integer originalNumber,
+                                  @Schema(types = {"array", "null"}, description = "Topic quota IDs assigned to this question")
+                                  List<String> assignedTopicQuotaIds) {
     }
 
     /** Một mục trên đề: câu đơn ({@code kind=QUESTION}) hoặc nguyên bộ ({@code kind=SET}). */
@@ -178,7 +180,7 @@ public class ExamPreviewController {
                                String difficultyCode, String dimension, String competencyCode,
                                String answerType, Integer subjectCount, Integer required,
                                Integer available, Integer timeLimitSeconds,
-                               List<String> questionCodes) {
+                               List<String> questionCodes, ExamCheckApiModels.Location location) {
     }
 
     @Schema(name = "ExamPreviewCompliance")

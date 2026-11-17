@@ -320,7 +320,7 @@ public class ExamPreviewService {
             return new PreviewQuestion(number - 1, id, code, version, unit.answerType().name(), false,
                     text(snapshot, "content"), unit.gradeCode(), unit.difficultyCode(), ref, points,
                     options(body), answer(body), text(snapshot, "solution"), rubric(body), body.isMissingNode() ? null : body,
-                    null, null, null);
+                    null, null, null, null);
         }
 
         private static BigDecimal points(QuestionSourcePort.Unit unit) {

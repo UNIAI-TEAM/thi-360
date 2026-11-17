@@ -3854,6 +3854,9 @@
           "key" : {
             "type" : "string"
           },
+          "location" : {
+            "$ref" : "#/components/schemas/ExamIssueLocation"
+          },
           "optionId" : {
             "type" : "string"
           },
@@ -4103,6 +4106,13 @@
         "properties" : {
           "answer" : {
             "type" : "string"
+          },
+          "assignedTopicQuotaIds" : {
+            "description" : "Topic quota IDs assigned to this question",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
           },
           "body" : {
             "$ref" : "#/components/schemas/JsonNode"
