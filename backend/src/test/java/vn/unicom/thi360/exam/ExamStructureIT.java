@@ -111,6 +111,28 @@ class ExamStructureIT extends AbstractIntegrationTest {
         assertThat(after.path("combinationCount").asLong()).isEqualTo(expected);
     }
 
+    @Test
+    void codeSourceBranchFiltersCombinationsPerPart() throws Exception {
+        UUID id = jdbc.queryForObject("select id from exam.exam where template_code = 'QDA_FULL' limit 1", UUID.class);
+        String url = "/api/v1/admin/exams/" + id;
+        JsonNode before = mapper.readTree(mockMvc.perform(get(url + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(before.path("combinations")).anyMatch(c -> "QD05".equals(c.path("code").asText()));
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) before.path("parts").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) parts.get(2).path("codeSource")).put("branch", "SCIENCE");
+        var request = mapper.createObjectNode().put("expectedRevision", before.path("revision").asLong());
+        request.set("parts", parts);
+        request.set("examQuotas", before.path("examQuotas"));
+        mockMvc.perform(put(url + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        JsonNode after = mapper.readTree(mockMvc.perform(get(url + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after.path("combinations")).isNotEmpty()
+                .noneMatch(c -> "QD05".equals(c.path("code").asText()))
+                .allMatch(c -> "QDA".equals(c.path("examCode").asText()));
+    }
+
 
     @Test
     void examQuotasPersistAcrossSaveAndRead() throws Exception {
