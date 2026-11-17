@@ -599,7 +599,7 @@ CROSS JOIN generate_series(1, 6) n
 JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
 JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
 WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
-  AND subject.code IN ('TOAN', 'LY', 'HOA', 'SINH', 'DIA');
+  AND subject.code IN ('TOAN', 'LY', 'HOA', 'SINH', 'DIA', 'TECH_INDUSTRY', 'TECH_AGRICULTURE');
 
 INSERT INTO seed_question_rows
 SELECT md5('thi360-2b-science-short-' || subject.code || '-' || grade.code || '-' || level.code || '-' || n)::uuid,
