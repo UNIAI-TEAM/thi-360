@@ -19,12 +19,12 @@ final class ExamOverview {
     private ExamOverview() { }
 
     record Change(ExamOverviewRequest.Row row, boolean countChanged, boolean durationChanged,
-                  boolean pointsChanged) { }
+                  boolean pointsChanged, Integer provenanceOrder) { }
 
     static ExamStructureDocument apply(ExamStructureDocument document, List<ExamOverviewRequest.Row> rows) {
         return applyChanges(document, rows.stream().map(row -> row == null ? null
                 : new Change(row, row.questionCount() != null, row.durationMinutes() != null,
-                        row.maxPoints() != null)).toList(), true);
+                        row.maxPoints() != null, null)).toList(), true);
     }
 
     static ExamStructureDocument applyChanges(ExamStructureDocument document, List<Change> changes) {
@@ -92,12 +92,20 @@ final class ExamOverview {
     }
 
     static List<Change> changes(ExamStructureDocument current, ExamStructureDocument baseline) {
-        Map<Integer, ExamPart> original = new HashMap<>();
-        baseline.parts().forEach(part -> original.put(part.order(), part));
         List<Change> changes = new ArrayList<>();
         for (ExamPart part : current.parts()) {
-            ExamPart before = original.get(part.order());
-            if (before == null) continue;
+            List<ExamPart> matches = baseline.parts().stream()
+                    .filter(old -> part.id() != null && part.id().equals(old.id())).toList();
+            if (matches.isEmpty() && part.order() != null) {
+                matches = baseline.parts().stream()
+                        .filter(old -> part.order().equals(old.order())).toList();
+            }
+            ExamPart before = matches.size() == 1 ? matches.getFirst() : null;
+            if (before == null || before.order() == null) {
+                changes.add(new Change(new ExamOverviewRequest.Row(part.id(), null, null, null,
+                        part.questionCount(), part.durationMinutes(), part.maxPoints()), true, true, true, null));
+                continue;
+            }
             boolean count = !java.util.Objects.equals(part.questionCount(), before.questionCount());
             boolean duration = !java.util.Objects.equals(part.durationMinutes(), before.durationMinutes());
             boolean points = part.maxPoints() == null || before.maxPoints() == null
@@ -105,37 +113,40 @@ final class ExamOverview {
                     : part.maxPoints().compareTo(before.maxPoints()) != 0;
             if (count || duration || points) {
                 changes.add(new Change(new ExamOverviewRequest.Row(part.id(), null, null, null,
-                        part.questionCount(), part.durationMinutes(), part.maxPoints()), count, duration, points));
+                        part.questionCount(), part.durationMinutes(), part.maxPoints()), count, duration, points,
+                        before.order()));
             }
-            Map<String, ExamSection> sections = new HashMap<>();
-            before.sections().forEach(s -> sections.put(s.subjectCode(), s));
-            before.subjectPool().forEach(s -> sections.put(s.subjectCode(), s));
-            before.options().forEach(o -> o.sections().forEach(s -> sections.put(s.subjectCode(), s)));
+            List<ExamSection> sections = new ArrayList<>(before.sections());
+            sections.addAll(before.subjectPool());
+            before.options().forEach(o -> sections.addAll(o.sections()));
             List<ExamSection> actual = new ArrayList<>(part.sections());
             actual.addAll(part.subjectPool());
             part.options().forEach(o -> actual.addAll(o.sections()));
             for (ExamSection section : actual) {
-                ExamSection old = sections.get(section.subjectCode());
-                if (old != null && !java.util.Objects.equals(section.questionCount(), old.questionCount())) {
+                List<ExamSection> matching = sections.stream()
+                        .filter(old -> section.id() != null && section.id().equals(old.id())).toList();
+                if (matching.isEmpty() && section.subjectCode() != null) {
+                    matching = sections.stream()
+                            .filter(old -> section.subjectCode().equals(old.subjectCode())).toList();
+                }
+                ExamSection old = matching.size() == 1 ? matching.getFirst() : null;
+                if (old == null || !java.util.Objects.equals(section.questionCount(), old.questionCount())) {
                     changes.add(new Change(new ExamOverviewRequest.Row(part.id(), section.id(), null,
-                            section.subjectCode(), section.questionCount(), null, null), true, false, false));
+                            old == null ? section.subjectCode() : old.subjectCode(), section.questionCount(), null, null),
+                            true, false, false, before.order()));
                 }
             }
         }
         return changes;
     }
 
-    static List<Change> presentIn(ExamStructureDocument source,
-            ExamStructureDocument destination, List<Change> changes) {
-        Map<String, ExamPart> originals = new HashMap<>();
-        source.parts().forEach(part -> originals.put(part.id(), part));
+    static List<Change> presentIn(ExamStructureDocument destination, List<Change> changes) {
         List<Change> result = new ArrayList<>();
         for (var change : changes) {
             var row = change.row();
-            ExamPart original = originals.get(row.partId());
-            if (original == null) continue;
+            if (change.provenanceOrder() == null) throw invalid();
             List<ExamPart> matches = destination.parts().stream()
-                    .filter(part -> original.order() != null && java.util.Objects.equals(part.order(), original.order()))
+                    .filter(part -> java.util.Objects.equals(part.order(), change.provenanceOrder()))
                     .toList();
             if (matches.size() != 1) continue;
             ExamPart part = matches.getFirst();
@@ -153,7 +164,7 @@ final class ExamOverview {
             }
             result.add(new Change(new ExamOverviewRequest.Row(part.id(), sectionId, null, row.subjectCode(),
                     row.questionCount(), row.durationMinutes(), row.maxPoints()),
-                    change.countChanged(), change.durationChanged(), change.pointsChanged()));
+                    change.countChanged(), change.durationChanged(), change.pointsChanged(), change.provenanceOrder()));
         }
         return result;
     }

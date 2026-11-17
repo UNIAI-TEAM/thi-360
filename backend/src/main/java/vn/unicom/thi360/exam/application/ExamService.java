@@ -799,7 +799,7 @@ public class ExamService {
                                         objectMapper.valueToTree(ExamOverview.rows(doc)).toString())));
             }
             if ("KEEP_EDITED".equals(request.overviewPolicy())) {
-                doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(current, doc, changes));
+                doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(doc, changes));
             }
         }
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
