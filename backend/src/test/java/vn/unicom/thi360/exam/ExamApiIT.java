@@ -216,7 +216,42 @@ class ExamApiIT extends AbstractIntegrationTest {
         assertThat(item.path("partCode").isNull()).isTrue();
         assertThat(item.path("subjectCode").isNull()).isTrue();
         assertThat(item.path("referenceMax").isNull()).isTrue();
-        assertThat(item.path("revision").asLong()).isPositive();
+        long persistedRevision = jdbc.queryForObject(
+                "SELECT revision FROM exam.exam WHERE id = ?", Long.class, EXAM_ID);
+        assertThat(item.path("revision").asLong())
+                .as("list trả đúng revision đã lưu (0 là giá trị hợp lệ của seed mới)")
+                .isEqualTo(persistedRevision);
+
+        // Truyền revision qua list trên một bài tạo riêng: tạo -> PATCH -> revision tăng đúng.
+        String isoCode = "ISO-REV-" + UUID.randomUUID().toString().substring(0, 8);
+        String created = mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"ISO\",\"code\":\""
+                                + isoCode + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID isoId = UUID.fromString(mapper.readTree(created).path("id").asText());
+        long isoRev = jdbc.queryForObject(
+                "SELECT revision FROM exam.exam WHERE id = ?", Long.class, isoId);
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", isoCode)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].code").value(isoCode))
+                .andExpect(jsonPath("$.items[0].revision").value((int) isoRev));
+        mockMvc.perform(patch(EXAM.replace(EXAM_ID.toString(), isoId.toString()))
+                        .with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"ISO renamed\",\"expectedRevision\":" + isoRev + "}"))
+                .andExpect(status().isOk());
+        long isoRevAfter = jdbc.queryForObject(
+                "SELECT revision FROM exam.exam WHERE id = ?", Long.class, isoId);
+        assertThat(isoRevAfter).isGreaterThan(isoRev);
+        mockMvc.perform(get("/api/v1/admin/exams").param("q", isoCode)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].revision").value((int) isoRevAfter));
 
         // hasUnpublishedChanges lọc ở máy chủ: bài dev đang true nên false rỗng.
         mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
