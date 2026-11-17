@@ -28,7 +28,8 @@ public class QuestionImportDraftMapper {
                     itemId(catalog.grades(), child.gradeCode()), itemId(catalog.difficulties(), child.difficultyCode()),
                     child.knowledge().isEmpty() ? null : child.knowledge().stream().map(ref -> ref.nodeId()).toList(),
                     null)).toList();
-            body = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET, draft.content(), children);
+            body = new QuestionBody.QuestionSetBody(
+                    QuestionType.QUESTION_SET, draft.content(), null, children);
         }
         SaveQuestionRequest request = new SaveQuestionRequest(draft.type(), draft.subjectCode(), draft.gradeCode(),
                 draft.difficultyCode(), draft.taskTypeCode(), null, draft.points(), knowledge, draft.tagCodes(),

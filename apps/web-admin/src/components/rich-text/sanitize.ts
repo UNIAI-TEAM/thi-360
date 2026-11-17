@@ -1,43 +1,30 @@
 /**
- * Lọc HTML phía trình duyệt, mirror `QuestionHtmlSanitizer` của backend (spec 4.2, UNI-2617).
+ * Lọc HTML phía trình duyệt, mirror `QuestionHtmlSanitizer` của backend (spec 3.2–3.3, UNI-2640).
  * Backend lọc lại khi lưu và trả 422 `QUESTION_CONTENT_UNSAFE` khi có vi phạm; lớp này giữ cho
  * HTML trình soạn sinh ra và HTML dán vào đã nằm trong danh sách cho phép ngay từ đầu.
+ *
+ * Hai lượt kiểm giống backend: danh sách phẳng (`attributeAllowed`) rồi lượt theo phần tử
+ * (`checkElementStructure` trong `html-contract.ts`). Phần tử đã bị báo không báo tiếp con;
+ * `figure`/`blockquote` vi phạm bị bỏ cả khối; `span.blank` và các thẻ sai vị trí/cấu trúc
+ * bị bỏ cả phần tử; còn lại chỉ bỏ thuộc tính vi phạm.
  *
  * Khác backend: không tra được tài nguyên qua `QuestionAssetResolver` nên `img` chỉ được kiểm
  * `data-asset-id` là UUID hợp lệ; `src` phải rỗng hoặc là đường nội bộ (`/…`, không `//…`),
  * đúng như `attributeAllowed`/`isSafeInternalSrc` của backend.
  */
 
-const ALLOWED_TAGS = new Set([
-  "p",
-  "br",
-  "strong",
-  "em",
-  "u",
-  "s",
-  "sub",
-  "sup",
-  "ul",
-  "ol",
-  "li",
-  "table",
-  "thead",
-  "tbody",
-  "tr",
-  "th",
-  "td",
-  "span",
-  "img",
-]);
+import {
+  ALLOWED_TAGS,
+  attributeAllowed,
+  attributeViolation,
+  checkElementStructure,
+  closedAttributeViolations,
+  DROP_SUBTREE_TAGS,
+  tagViolation,
+  UUID_PATTERN,
+} from "./html-contract";
 
 const ALLOWED_TAGS_NO_IMG = new Set([...ALLOWED_TAGS].filter((tag) => tag !== "img"));
-
-const MATH_CLASSES = new Set(["math-inline", "math-block"]);
-
-/** jsoup Cleaner bỏ nội dung chữ/data của các thẻ bị loại này; giữ cho DOMParser gần tương đương. */
-const DROP_SUBTREE_TAGS = new Set(["script", "style", "template", "iframe", "object", "embed"]);
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface SanitizeViolation {
   tag: string;
@@ -50,34 +37,6 @@ export interface SanitizeResult {
   html: string;
   /** Các thẻ/thuộc tính bị bỏ, tương đương `Result.violations` của backend. */
   violations: SanitizeViolation[];
-}
-
-/** `attributeAllowed` của backend: `on*`/`style` cấm trên mọi thẻ, còn lại theo bảng của spec 4.2. */
-function attributeAllowed(tag: string, name: string, value: string): boolean {
-  if (name.startsWith("on") || name === "style") return false;
-  switch (tag) {
-    case "img":
-      if (name === "src") {
-        const trimmed = value.trim();
-        return trimmed === "" || (trimmed.startsWith("/") && !trimmed.startsWith("//"));
-      }
-      return name === "alt" || name === "width" || name === "height" || name === "data-asset-id";
-    case "span":
-      return name === "class" && MATH_CLASSES.has(value.trim());
-    case "td":
-    case "th":
-      return name === "colspan" || name === "rowspan";
-    default:
-      return false;
-  }
-}
-
-function tagViolation(tag: string): SanitizeViolation {
-  return { tag, attribute: null, value: null };
-}
-
-function attributeViolation(tag: string, name: string, value: string): SanitizeViolation {
-  return { tag, attribute: name, value };
 }
 
 /**
@@ -109,22 +68,62 @@ function visit(element: Node, allowedTags: Set<string>, allowImages: boolean, vi
       continue;
     }
 
-    for (const attribute of [...el.attributes]) {
-      const name = attribute.name.toLowerCase();
-      if (!attributeAllowed(tag, name, attribute.value)) {
-        violations.push(attributeViolation(tag, name, attribute.value));
-        el.removeAttribute(attribute.name);
+    // figure/blockquote: gom mọi thuộc tính sai/thiếu rồi bỏ cả khối, không kiểm con.
+    if (tag === "figure" || tag === "blockquote") {
+      const closed = closedAttributeViolations(el, tag);
+      if (closed.length > 0) {
+        violations.push(...closed);
+        el.remove();
+        continue;
       }
     }
+
+    // Lượt phẳng: thuộc tính ngoài danh sách hoặc sai giá trị bị loại; phần tử có vi phạm
+    // không bị kiểm tiếp ở lượt cấu trúc, và `span.blank` bị bỏ cả khối (figure/blockquote đã xử lý ở trên).
+    let reported = false;
+    for (const attribute of [...el.attributes]) {
+      const name = attribute.name.toLowerCase();
+      if (attributeAllowed(tag, name, attribute.value)) continue;
+      violations.push(attributeViolation(tag, name, attribute.value));
+      if (el.matches("span.blank")) {
+        el.remove();
+        break;
+      }
+      el.removeAttribute(attribute.name);
+      reported = true;
+    }
+    if (el.parentNode === null) continue;
 
     if (tag === "img" && allowImages) {
       const rawId = (el.getAttribute("data-asset-id") ?? "").trim();
       if (!UUID_PATTERN.test(rawId)) {
         violations.push(attributeViolation("img", "data-asset-id", rawId));
+        reported = true;
       }
     }
 
+    // Con được lọc trước, rồi mới kiểm cấu trúc của cha (figure.image thiếu img do con bị bỏ).
     visit(el, allowedTags, allowImages, violations);
+    if (reported) continue;
+
+    // Vi phạm thuộc tính theo ngữ cảnh (figure.cross mang data-width, span thiếu data-blank…):
+    // bỏ thuộc tính — hoặc bỏ cả khối với figure/blockquote/span.blank.
+    const attrViolation = checkElementStructure(el, element.nodeType !== Node.ELEMENT_NODE, "attr");
+    if (attrViolation) {
+      violations.push(attrViolation);
+      if (el.matches("span.blank")) {
+        el.remove();
+        continue;
+      }
+      if (attrViolation.attribute) el.removeAttribute(attrViolation.attribute);
+      continue;
+    }
+
+    const structureViolation = checkElementStructure(el, element.nodeType !== Node.ELEMENT_NODE, "structure");
+    if (structureViolation) {
+      violations.push(structureViolation);
+      el.remove();
+    }
   }
 }
 

@@ -4,7 +4,7 @@ import { Toaster, notify } from "@thi360/ui";
 import { describe, expect, it, vi } from "vitest";
 import { fail, fakeApi, ok } from "@/test/fake-api";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { renderEn } from "./editor-test-kit";
+import { pasteImageFile, renderEn } from "./editor-test-kit";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/questions/q-0001/edit",
@@ -55,9 +55,10 @@ describe("trình soạn câu hỏi: tệp đính kèm bị máy chủ từ chố
         <Toaster containerAriaLabel="Notifications" closeButtonAriaLabel="Close" />
       </>,
     );
-    await screen.findByRole("textbox", { name: /^Question text/ });
-    const imageInput = document.querySelector<HTMLInputElement>('input[type="file"]:not([aria-label="Choose attachments"])');
-    await user.upload(imageInput!, new File([new Uint8Array([137, 80, 78, 71])], "hinh.png", { type: "image/png" }));
+    pasteImageFile(
+      await screen.findByRole("textbox", { name: /^Question text/ }),
+      new File([new Uint8Array([137, 80, 78, 71])], "hinh.png", { type: "image/png" }),
+    );
     expect(await screen.findByText("The image is larger than 5 MB.")).toBeInTheDocument();
     act(() => {
       notify.info("Unrelated notice");

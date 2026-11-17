@@ -109,21 +109,33 @@ export function clozeMarker(blankId: string): string {
 /**
  * Phần riêng theo dạng câu (spec 4.3, 9.2).
  *
- * - Một đáp án, Nhiều đáp án: `options`; Nhiều đáp án thêm `scoringRule`. Phương án luôn được đảo khi sinh đề, không có cờ.
+ * - Một đáp án, Nhiều đáp án: `options`; Nhiều đáp án thêm `scoringRule`. `shuffleOptions` là cờ giữ thứ tự phương án
+ *   (spec 2026-11-17): `false` giữ thứ tự khi sinh đề, thiếu hoặc `true` đảo như cũ.
  * - Trả lời ngắn: `answers` (đáp án chuẩn đứng đầu, tối đa 20), `inputHint` hướng dẫn nhập cho học viên.
  * - Điền khuyết: `passage` có các dấu `[[id]]`, `blanks` mỗi ô một điểm.
  * - Đúng/Sai: `scoringMethod`; `PER_STATEMENT` dùng `statements[].points`, `COUNT_TABLE` dùng `scoreTable` (độ dài bằng
  *   số ý, không giảm, phần tử cuối bằng điểm của câu; THPTQG 4 ý: 0,1 / 0,25 / 0,5 / 1).
  * - Ghép đôi: hai cột `left`, `right` (nhiều lựa chọn hơn mục cũng được), `pairs` nối mục trái với một lựa chọn phải.
  * - Tự luận: `gradingGuide` bắt buộc khi Sẵn sàng, `rubric` tùy chọn, `wordLimit` để trống hoặc lớn hơn 0.
- * - Bộ câu hỏi: ngữ liệu chung và id câu con; không nhận Bộ câu hỏi hay Điền khuyết làm câu con (D19).
+ * - Bộ câu hỏi: ngữ liệu chung, `blankNumberStart` (số bắt đầu đánh chỗ trống, 1–200, mặc định 1; spec UNI-2638 mục 3.4) và id câu con; không nhận Bộ câu hỏi hay Điền khuyết làm câu con (D19).
  */
 export type QuestionBody =
-  | { type: "SINGLE_CHOICE"; options: ChoiceOption[] }
-  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; scoringRule: MultipleChoiceRule }
+  | {
+      type: "SINGLE_CHOICE";
+      options: ChoiceOption[];
+      /** `false`: giữ thứ tự phương án như soạn khi sinh đề; thiếu hoặc `true`: đảo (spec 2026-11-17 mục 1). */
+      shuffleOptions?: boolean;
+    }
+  | {
+      type: "MULTIPLE_CHOICE";
+      options: ChoiceOption[];
+      scoringRule: MultipleChoiceRule;
+      /** `false`: giữ thứ tự phương án như soạn khi sinh đề; thiếu hoặc `true`: đảo (spec 2026-11-17 mục 1). */
+      shuffleOptions?: boolean;
+    }
   | { type: "SHORT_ANSWER"; answers: string[]; inputHint: string | null }
   | { type: "CLOZE"; passage: string; blanks: ClozeBlank[] }
-  | { type: "QUESTION_SET"; passage: string; childIds: string[] }
+  | { type: "QUESTION_SET"; passage: string; blankNumberStart: number; childIds: string[] }
   | { type: "TRUE_FALSE"; statements: TrueFalseStatement[]; scoringMethod: TrueFalseMethod; scoreTable: number[] }
   | {
       type: "MATCHING";
@@ -141,6 +153,11 @@ export type QuestionBody =
       sampleAnswer: string | null;
       wordLimit: number | null;
     };
+
+/** Số bắt đầu đánh chỗ trống để truyền cho `RichTextView` khi dựng ngữ liệu; dạng khác câu chùm không có chỗ trống (1). */
+export function blankNumberStartOf(body: QuestionBody): number {
+  return body.type === "QUESTION_SET" ? body.blankNumberStart : 1;
+}
 
 export interface QuestionDetail extends QuestionSummary {
   /** Đề bài. Mockup lưu chữ thuần; trình soạn HTML là việc của FE-4. */

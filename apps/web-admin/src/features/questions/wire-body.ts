@@ -35,11 +35,12 @@ export interface WireChild {
 }
 
 export type WireBody =
-  | { type: "SINGLE_CHOICE"; options?: WireChoice[] | null }
+  | { type: "SINGLE_CHOICE"; options?: WireChoice[] | null; shuffleOptions?: boolean | null }
   | {
       type: "MULTIPLE_CHOICE";
       options?: WireChoice[] | null;
       scoringRule?: MultipleChoiceRule | null;
+      shuffleOptions?: boolean | null;
     }
   | { type: "SHORT_ANSWER"; answers?: string[] | null; inputHint?: string | null }
   | {
@@ -47,7 +48,7 @@ export type WireBody =
       passage?: string | null;
       blanks?: { id?: string | null; answers?: string[] | null; points?: number | null }[] | null;
     }
-  | { type: "QUESTION_SET"; passage?: string | null; children?: WireChild[] | null }
+  | { type: "QUESTION_SET"; passage?: string | null; blankNumberStart?: number | null; children?: WireChild[] | null }
   | {
       type: "TRUE_FALSE";
       statements?:
@@ -91,12 +92,17 @@ const side = (item: WireSide) => ({ id: item.id ?? "", content: item.content ?? 
 export function fromWireBody(wire: WireBody, childIds: readonly string[] = []): QuestionBody {
   switch (wire.type) {
     case "SINGLE_CHOICE":
-      return { type: "SINGLE_CHOICE", options: (wire.options ?? []).map(choice) };
+      return {
+        type: "SINGLE_CHOICE",
+        options: (wire.options ?? []).map(choice),
+        ...(wire.shuffleOptions === false ? { shuffleOptions: false } : {}),
+      };
     case "MULTIPLE_CHOICE":
       return {
         type: "MULTIPLE_CHOICE",
         options: (wire.options ?? []).map(choice),
         scoringRule: wire.scoringRule ?? "ALL_OR_NOTHING",
+        ...(wire.shuffleOptions === false ? { shuffleOptions: false } : {}),
       };
     case "SHORT_ANSWER":
       return { type: "SHORT_ANSWER", answers: wire.answers ?? [], inputHint: wire.inputHint ?? null };
@@ -114,6 +120,7 @@ export function fromWireBody(wire: WireBody, childIds: readonly string[] = []): 
       return {
         type: "QUESTION_SET",
         passage: wire.passage ?? "",
+        blankNumberStart: wire.blankNumberStart ?? 1,
         childIds: childIds.length > 0 ? [...childIds] : (wire.children ?? []).flatMap((child) => (child.id ? [child.id] : [])),
       };
     case "TRUE_FALSE":
@@ -182,7 +189,12 @@ export function toWireBody(
   ids: ChildClassificationIds,
 ): WireBody {
   if (body.type === "QUESTION_SET") {
-    return { type: "QUESTION_SET", passage: body.passage, children: children.map((child) => toWireChild(child, ids)) };
+    return {
+      type: "QUESTION_SET",
+      passage: body.passage,
+      blankNumberStart: body.blankNumberStart,
+      children: children.map((child) => toWireChild(child, ids)),
+    };
   }
   return body;
 }

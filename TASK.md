@@ -94,6 +94,22 @@ Issue cha: **UNI-2606** · Thi 360 · Đợt 2 · Backend PBI-03 + PBI-04 và n�
 
 Sóng: 1 BE-1 · FE-3a → 2 BE-2a · BE-4 · BE-5a · FE-3b · FE-3c → 3 BE-2b · BE-3 · BE-5b · FE-4 → 4 BE-6 · FE-1 → 5 FE-2 → 6 QA. `integration/dot-2` vào `develop` qua PR #63 (`8986f0f`) ngày 2026-11-17; việc tồn UNI-2634 làm thẳng trên `develop`.
 
+### Trình soạn nội dung đầy đủ (UNI-2638)
+
+Issue cha: **UNI-2638**. Đặc tả `docs/specs/2026-11-17-trinh-soan-noi-dung.md`, plan `docs/plans/2026-11-17-trinh-soan-noi-dung.md`, đặc tả bổ sung `docs/specs/2026-11-17-giu-thu-tu-phuong-an.md`. Nhánh tích hợp `integration/editor`.
+
+| Task | Issue | Việc | Điểm | Trạng thái |
+|---|---|---|---|---|
+| ED-0a | UNI-2639 | Backend: bộ lọc HTML, luật cấu trúc, quy tắc Sẵn sàng, `blankNumberStart` | 12 | in_review (merge PR #69) |
+| ED-0b | UNI-2640 | Web nền: node TipTap, `RichTextView`, thanh công cụ, registry | 18 | in_review (merge PR #68) |
+| ED-1 | UNI-2641 | Menu `/`, `$…$`, khung công thức đang chọn, hộp công thức toán (mathlive) | 18 | in_review (merge PR #73) |
+| ED-2 | UNI-2642 | Hóa học, Ký hiệu, Sơ đồ lai | 10 | in_review (merge PR #76) |
+| ED-3 | UNI-2643 | Bảng số liệu, Hình, Đoạn trích | 12 | in_review (merge PR #74) |
+| ED-4 | UNI-2644 | Gạch chân đánh nhãn, chỗ trống đánh số | 12 | in_review (merge PR #75) |
+| ED-5 | UNI-2645 | Dán từ Word (OMML sang LaTeX, bốn bộ tự sửa) | 12 | in_review (merge PR #72) |
+| QA | UNI-2646 | E2E 7 luồng, kích thước gói, việc để lại | 6 | in_review (merge PR #77) |
+| Cờ thứ tự | UNI-2648 | Cờ "Giữ thứ tự phương án", cảnh báo `OPTION_REFERS_TO_OTHERS`, cột nhập | — | in_review (merge PR #79) |
+
 ### Thương mại và lượt thi (PBI-05 đến PBI-13)
 
 | Issue | Việc | Trạng thái |
@@ -104,7 +120,7 @@ Sóng: 1 BE-1 · FE-3a → 2 BE-2a · BE-4 · BE-5a · FE-3b · FE-3c → 3 BE-2
 
 | Issue | Việc | Trạng thái |
 |---|---|---|
-| UNI-2647 | Đặc tả `docs/specs/2026-11-17-pbi04-dot-2b.md`, bảng yêu cầu `docs/specs/2026-11-17-pbi04-dot-2b-yeu-cau.md`, plan `docs/plans/2026-11-17-pbi04-dot-2b.md` (17 task, 100 điểm). Đã qua 4 lượt review của Fable; M.Trường chốt K6 đến K15 và duyệt 2026-11-17; PR #70 đã merge. Chưa cook; chờ bản vẽ G2 | in_progress |
+| UNI-2647 | Đặc tả `docs/specs/2026-11-17-pbi04-dot-2b.md`, bảng yêu cầu `docs/specs/2026-11-17-pbi04-dot-2b-yeu-cau.md`, plan `docs/plans/2026-11-17-pbi04-dot-2b.md` (17 task, 100 điểm). Đã qua 4 lượt review của Fable; M.Trường chốt K6 đến K15 và duyệt 2026-11-17; PR #70 đã merge. Bản vẽ G2: PR #78 (`docs/design/dot-2b/`). Cook ở một đợt chạy riêng sau khi trình soạn vào `develop` | in_progress |
 
 ### Thứ tự làm
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { RichTextEditor, type RichTextEditorHandle } from "@/components/rich-text";
+import { RichTextEditor, type FieldContext, type RichTextEditorHandle } from "@/components/rich-text";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { Controller, useFormContext, type Path } from "react-hook-form";
@@ -12,7 +12,7 @@ import { useRichEditorRegistry } from "./question-editor-shared";
 const EDITABLE = '[contenteditable="true"]';
 
 /** TipTap dựng vùng soạn sau lần render đầu: chưa có thì chờ nó xuất hiện (tối đa 1 giây) rồi mới focus. */
-function focusEditable(root: HTMLElement) {
+export function focusEditable(root: HTMLElement) {
   const ready = root.querySelector<HTMLElement>(EDITABLE);
   if (ready) {
     ready.focus();
@@ -36,20 +36,29 @@ export function RichTextField({
   name,
   id,
   placeholder,
+  fieldContext,
+  blankNumberStart,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledby,
   "aria-describedby": ariaDescribedby,
   "aria-invalid": ariaInvalid,
   "aria-required": ariaRequired,
+  onRichPaste,
 }: {
   name: Path<QuestionEditorValues>;
   id?: string;
   placeholder?: string;
+  /** Ngữ cảnh của ô (đề bài trắc nghiệm 1 đáp án, ngữ liệu câu chùm…): lọc mục Chèn (spec 4.1). */
+  fieldContext?: FieldContext;
+  /** Ngữ liệu câu chùm: số bắt đầu đánh chỗ trống (spec 3.4). */
+  blankNumberStart?: number;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
   "aria-required"?: boolean;
+  /** Chuyển thẳng cho `RichTextEditor.onRichPaste`: thấy `clipboardData` gốc trước bộ lọc; trả `true` thì bỏ dán mặc định. */
+  onRichPaste?: (clipboardData: DataTransfer | null) => boolean;
 }) {
   const { control } = useFormContext<QuestionEditorValues>();
   const registry = useRichEditorRegistry();
@@ -76,10 +85,13 @@ export function RichTextField({
         <div ref={(node) => field.ref(node && { focus: () => focusEditable(node) })}>
           <RichTextEditor
             handleRef={registerHandle}
+            fieldContext={fieldContext}
+            blankNumberStart={blankNumberStart}
             id={id}
             value={typeof field.value === "string" ? field.value : ""}
             onChange={field.onChange}
             onImageUploadError={onImageUploadError}
+            onRichPaste={onRichPaste}
             placeholder={placeholder}
             invalid={ariaInvalid === true}
             aria-label={ariaLabel}

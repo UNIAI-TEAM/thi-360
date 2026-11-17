@@ -7,6 +7,7 @@ import {
   type ReadinessIssueCode,
   type ReadinessRule,
 } from "./readiness";
+import type { QuestionDetail } from "./types";
 
 type ApiReadiness = components["schemas"]["QuestionReadiness"];
 type ApiFieldError = components["schemas"]["QuestionFieldError"];
@@ -58,6 +59,14 @@ const PLACEMENTS: Record<string, Placement> = {
   QUESTION_BODY_TYPE_MISMATCH: place("BODY_TYPE_MISMATCH", "STRUCTURE", "structure"),
   QUESTION_CHILD_TYPE_NOT_ALLOWED: place("NESTED_SET", "STRUCTURE", "structure"),
   PRIMARY_KNOWLEDGE_MISSING: place("PRIMARY_KNOWLEDGE_MISSING", "CONTENT", "knowledge"),
+  // Spec UNI-2638 mục 6: bốn mã chặn nằm ở nội dung HTML (sửa ở ô nội dung); IMAGE_ALT_MISSING là cảnh báo.
+  BLANK_CHILD_MISMATCH: place("BLANK_CHILD_MISMATCH", "STRUCTURE", "content"),
+  BLANK_OUTSIDE_SET_PASSAGE: place("BLANK_OUTSIDE_SET_PASSAGE", "STRUCTURE", "content"),
+  UNDERLINE_LABEL_DUPLICATE: place("UNDERLINE_LABEL_DUPLICATE", "STRUCTURE", "content"),
+  UNDERLINE_LABEL_MISPLACED: place("UNDERLINE_LABEL_MISPLACED", "STRUCTURE", "content"),
+  IMAGE_ALT_MISSING: place("IMAGE_ALT_MISSING", "CONTENT", "content"),
+  // Cảnh báo phương án nhắc tới phương án khác (spec 2026-11-17 mục 3): không chặn, hiện dưới phương án đó ở trình soạn.
+  OPTION_REFERS_TO_OTHERS: place("OPTION_REFERS_TO_OTHERS", "CONTENT", "content"),
 };
 
 const FALLBACK = place("READINESS_OTHER", "STRUCTURE", "structure");
@@ -110,4 +119,22 @@ export function fromApiReadiness(readiness: ApiReadiness): QuestionReadiness {
     rules,
     warnings: readiness.warnings.map((warning) => toIssue(warning).issue),
   };
+}
+
+/**
+ * Cảnh báo `OPTION_REFERS_TO_OTHERS` đi kèm `position` của phương án lúc máy chủ kiểm tra; đổi chỗ hay xóa dòng trong
+ * trình soạn làm `position` trỏ sai phương án. Khớp sẵn `position` -> `id` phương án trên câu đang mở (câu đơn theo
+ * `body`, câu con theo `child` tính từ 1) để cảnh báo theo id, không theo vị trí.
+ */
+export function resolveOptionWarnings(
+  warnings: readonly ReadinessIssue[],
+  question: Pick<QuestionDetail, "body" | "children">,
+): ReadinessIssue[] {
+  return warnings.map((warning) => {
+    if (warning.code !== "OPTION_REFERS_TO_OTHERS" || warning.position === undefined) return warning;
+    const body = warning.child === undefined ? question.body : question.children[warning.child - 1]?.body;
+    const options = body && (body.type === "SINGLE_CHOICE" || body.type === "MULTIPLE_CHOICE") ? body.options : undefined;
+    const resolvedOptionId = options?.[warning.position - 1]?.id;
+    return { ...warning, ...(resolvedOptionId !== undefined ? { resolvedOptionId } : {}) };
+  });
 }

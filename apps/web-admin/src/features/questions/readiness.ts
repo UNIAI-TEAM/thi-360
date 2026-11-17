@@ -102,10 +102,18 @@ export type ReadinessIssueCode =
   | "POINTS_INVALID"
   | "MATH_UNBALANCED"
   | "CATALOG_VALUE_UNKNOWN"
+  // Chỗ trống đánh số và gạch chân đánh nhãn (spec UNI-2638 mục 6)
+  | "BLANK_CHILD_MISMATCH"
+  | "BLANK_OUTSIDE_SET_PASSAGE"
+  | "UNDERLINE_LABEL_DUPLICATE"
+  | "UNDERLINE_LABEL_MISPLACED"
   /** Mã máy chủ chưa có chữ riêng: hiện kèm mã gốc ở `value`. */
   | "READINESS_OTHER"
   // Cảnh báo (D20)
-  | "PRIMARY_KNOWLEDGE_MISSING";
+  | "PRIMARY_KNOWLEDGE_MISSING"
+  | "IMAGE_ALT_MISSING"
+  // Cảnh báo phương án nhắc tới phương án khác (spec 2026-11-17 mục 3)
+  | "OPTION_REFERS_TO_OTHERS";
 
 export interface ReadinessIssue {
   code: ReadinessIssueCode;
@@ -114,6 +122,8 @@ export interface ReadinessIssue {
   child?: number;
   /** Vị trí trong câu (phương án, ô trống, ô thả), tính từ 1. */
   position?: number;
+  /** Id phương án đã khớp khi mở trình soạn: `position` trôi khi đổi chỗ/xóa dòng, `id` thì không. */
+  resolvedOptionId?: string;
   /** Giá trị gây lỗi: mã danh mục, MAPID, tên tệp. */
   value?: string;
 }

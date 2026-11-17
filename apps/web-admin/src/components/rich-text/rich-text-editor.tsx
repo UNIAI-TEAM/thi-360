@@ -1,35 +1,24 @@
 "use client";
 
 import { uploadQuestionAsset } from "@/features/questions/api";
-import { Button, cn, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, IconButton, Input } from "@thi360/ui";
+import { cn, notify } from "@thi360/ui";
+import type { Mark as PMMark, Node as PMNode } from "@tiptap/pm/model";
 import { NodeSelection, Selection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { Image } from "@tiptap/extension-image";
-import { Subscript } from "@tiptap/extension-subscript";
-import { Superscript } from "@tiptap/extension-superscript";
-import { TableKit } from "@tiptap/extension-table";
-import { Placeholder } from "@tiptap/extensions";
 import katex from "katex";
+import { deferUntilMhchem } from "./math-render";
 import "katex/dist/katex.min.css";
-import {
-  Bold,
-  ImagePlus,
-  Italic,
-  List,
-  ListOrdered,
-  Sigma,
-  Strikethrough,
-  Subscript as SubscriptIcon,
-  Superscript as SuperscriptIcon,
-  Table,
-  Underline,
-} from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type AriaAttributes, type Ref } from "react";
-import { HtmlSanitize, MathBlock, MathCommands, MathInline } from "./extensions";
+import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type AriaAttributes, type Ref } from "react";
+import { createRichTextExtensions } from "./extensions";
+import { MathInputRule } from "./extensions/math-input-rule";
+import { SlashMenu } from "./extensions/slash-menu";
+import { stripTrailingEmptyParagraph } from "./html-contract";
+import { INSERT_REGISTRY, registryEditorPlugins, slashMenuEntries, toolbarInsertEntries, type FieldContext, type InsertDialogModule, type InsertEntry } from "./insert/registry";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "./sanitize";
+import { RichTextToolbar } from "./toolbar/toolbar";
 import "./rich-text.css";
 
 /** Tay cầm điều khiển trình soạn từ ngoài, qua `handleRef`. */
@@ -41,12 +30,21 @@ export interface RichTextEditorHandle {
 }
 
 export interface RichTextEditorProps extends AriaAttributes {
-  /** HTML nội dung (đã lọc theo spec 4.2 khi lưu); component giữ đồng bộ hai chiều. */
+  /** HTML nội dung (đã lọc theo spec 3.x khi lưu); component giữ đồng bộ hai chiều. */
   value: string;
   /** Gọi với HTML đã lọc ở mọi thay đổi — luôn an toàn đưa thẳng lên request lưu. */
   onChange: (html: string) => void;
   /** `false` ẩn nút ảnh và chặn dán/thả ảnh — cho trường chỉ chữ như hướng dẫn làm bài (spec 5.2). */
   allowImages?: boolean;
+  /** Ngữ cảnh của trường đang soạn (spec 4.1): quyết định mục Chèn nào hiện trên thanh công cụ. */
+  fieldContext?: FieldContext;
+  /** Số bắt đầu đánh chỗ trống của ngữ liệu câu chùm (spec 3.4): chỗ trống n hiện `blankNumberStart + n − 1`; mặc định 1. Đổi số chỉ dựng lại hiển thị, không đổi HTML. */
+  blankNumberStart?: number;
+  /**
+   * Gọi khi dán, trước mọi xử lý của ProseMirror (kể cả bước lọc HTML `transformPastedHTML`), với `clipboardData` gốc
+   * chưa lọc (spec 4.10, ED-5 dùng để bắt nội dung Word). Trả `true` thì trình soạn chặn dán mặc định: không lọc, không chèn gì.
+   */
+  onRichPaste?: (clipboardData: DataTransfer | null) => boolean;
   id?: string;
   disabled?: boolean;
   placeholder?: string;
@@ -59,16 +57,41 @@ export interface RichTextEditorProps extends AriaAttributes {
   handleRef?: Ref<RichTextEditorHandle>;
 }
 
-
-const MATH_NODE_NAMES = new Set(["mathInline", "mathBlock"]);
-
 function renderLatex(latex: string, displayMode: boolean, target: HTMLElement) {
+  if (deferUntilMhchem(latex, target, () => renderLatex(latex, displayMode, target))) return;
   try {
     katex.render(latex, target, { displayMode, throwOnError: true });
   } catch {
     // LaTeX chưa hoàn chỉnh trong lúc gõ: hiện mã nguồn thay vì lỗi đỏ của KaTeX.
     target.textContent = displayMode ? `\\[${latex}\\]` : `\\(${latex}\\)`;
   }
+}
+
+const SANITIZE_CACHE_SIZE = 16;
+const sanitizeCache = new Map<string, string>();
+
+/**
+ * `sanitizeQuestionHtml(...).html` nhớ theo (HTML, allowImages): một lần gõ phím đi qua `onUpdate`, effect đồng bộ và
+ * `normalizedContent` với cùng chuỗi, nên chỉ lọc (parse DOM) một lần cho mỗi chuỗi thay vì 2–3 lần. Giữ ít mục, bỏ mục cũ nhất.
+ */
+function sanitizedHtml(html: string, allowImages: boolean): string {
+  const key = `${allowImages ? 1 : 0}${html}`;
+  const cached = sanitizeCache.get(key);
+  if (cached !== undefined) return cached;
+  const result = sanitizeQuestionHtml(html, { allowImages }).html;
+  if (sanitizeCache.size >= SANITIZE_CACHE_SIZE) sanitizeCache.delete(sanitizeCache.keys().next().value as string);
+  sanitizeCache.set(key, result);
+  return result;
+}
+
+/**
+ * Dạng chuẩn của nội dung để phát ra và để so với `value`: lọc theo danh sách cho phép rồi bỏ đúng một `<p></p>` rỗng ở
+ * cuối (TrailingNode của TipTap thêm sau khối atom cuối, hoặc người dùng vừa nhấn Enter). Dùng chung cho `onChange` và
+ * cho phần so sánh đồng bộ `value`, để hai bên luôn nhìn cùng một chuỗi: nếu không, bỏ đoạn rỗng ở một bên làm `value`
+ * lệch HTML của trình soạn và `setContent` dựng lại nội dung giữa lúc người dùng gõ (mất con trỏ).
+ */
+function normalizedContent(html: string, allowImages: boolean): string {
+  return stripTrailingEmptyParagraph(sanitizedHtml(html, allowImages));
 }
 
 /** Mảnh tệp ảnh của một sự kiện dán/thả. */
@@ -82,16 +105,61 @@ function imageFilesOf(transfer: DataTransfer | null): File[] {
   return [...transfer.files].filter((file) => file.type.startsWith("image/"));
 }
 
+/** Một node hoặc mark trong vùng chọn khớp `openForSelection` của mục registry nào. */
+interface SelectionMatch {
+  entry: InsertEntry;
+  target: PMNode | PMMark;
+  /** Dữ liệu khởi tạo cho hộp khi mở lại (`openForSelection` trả `true` thì `null`). */
+  editing: unknown;
+}
+
+/** Node/mark khớp đầu tiên trong `INSERT_REGISTRY` cho vùng chọn hiện tại; `null` khi không có. */
+function matchSelection(editor: Editor | null): SelectionMatch | null {
+  if (!editor) return null;
+  const { selection } = editor.state;
+  if (selection instanceof NodeSelection) {
+    const node = selection.node;
+    for (const entry of INSERT_REGISTRY) {
+      const opened = entry.openForSelection(node);
+      if (opened !== null && opened !== undefined) {
+        return { entry, target: node, editing: opened === true ? null : opened };
+      }
+    }
+    return null;
+  }
+  const marks: PMMark[] = selection.empty
+    ? [...selection.$from.marks()]
+    : (() => {
+        const found: PMMark[] = [];
+        editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
+          for (const mark of node.marks) found.push(mark);
+        });
+        return found;
+      })();
+  for (const mark of marks) {
+    for (const entry of INSERT_REGISTRY) {
+      const opened = entry.openForSelection(mark);
+      if (opened !== null && opened !== undefined) {
+        return { entry, target: mark, editing: opened === true ? null : opened };
+      }
+    }
+  }
+  return null;
+}
+
 /**
- * Trình soạn nội dung HTML của câu hỏi/bài thi (TipTap + KaTeX, spec 4.2/9, UNI-2617): định dạng
- * chữ, danh sách, bảng, công thức `\( … \)`/`\[ … \]` dưới dạng chip KaTeX, ảnh tải lên qua
- * `uploadQuestionAsset`. HTML dán vào và HTML trả về qua `onChange` đều đã qua bộ lọc mirror
- * `QuestionHtmlSanitizer` của backend — thẻ/thuộc tính ngoài danh sách bị loại.
+ * Trình soạn nội dung HTML của câu hỏi/bài thi (TipTap + KaTeX, spec UNI-2638): định dạng chữ,
+ * danh sách, các khối chèn qua registry (công thức, hóa học, ký hiệu, bảng, hình, đoạn trích,
+ * gạch chân đánh nhãn, chỗ trống, sơ đồ lai) và ảnh. HTML dán vào và HTML trả về qua `onChange`
+ * đều đã qua bộ lọc mirror `QuestionHtmlSanitizer` của backend.
  */
 export function RichTextEditor({
   value,
   onChange,
   allowImages = true,
+  fieldContext = "default",
+  blankNumberStart = 1,
+  onRichPaste,
   id,
   disabled = false,
   placeholder,
@@ -102,27 +170,52 @@ export function RichTextEditor({
   ...ariaProps
 }: RichTextEditorProps) {
   const t = useTranslations("richText");
-  const [formulaOpen, setFormulaOpen] = useState(false);
-  const [formulaLatex, setFormulaLatex] = useState("");
-  const [formulaDisplay, setFormulaDisplay] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dialogState, setDialogState] = useState<{ entry: InsertEntry; editing: unknown } | null>(null);
+  const [dialogModule, setDialogModule] = useState<InsertDialogModule | null>(null);
 
-  const mathWarning = typeof document !== "undefined" && hasUnbalancedMath(value ?? "");
+  // Ô soạn render lại theo mỗi phím gõ (qua `value`): chỉ quét công thức khi `value` đổi.
+  const mathWarning = useMemo(() => typeof document !== "undefined" && hasUnbalancedMath(value ?? ""), [value]);
 
   // Refs cho các handler mà TipTap chụp lúc tạo editor (extensions chỉ dựng một lần).
   const onChangeRef = useRef(onChange);
   const allowImagesRef = useRef(allowImages);
   const uploadErrorRef = useRef(onImageUploadError);
+  const onRichPasteRef = useRef(onRichPaste);
+  // `handleDoubleClick` của TipTap chụp lúc tạo editor: đi qua ref để luôn gọi bản `openEntry` mới nhất.
+  const openEntryRef = useRef<(entry: InsertEntry, editing: unknown) => void>(() => {});
+  // Menu `/` được dựng một lần cùng editor: mục (theo fieldContext), cách mở hộp và hàm dịch đi qua ref để luôn mới nhất.
+  const slashEntriesRef = useRef<InsertEntry[]>([]);
+  const slashSelectRef = useRef<(entry: InsertEntry) => void>(() => {});
+  const translateRef = useRef<(key: string) => string>((key) => key);
   // Chưa từng focus thì vùng soạn chưa có con trỏ do người dùng đặt: `insertText` chèn ở cuối thay vì đầu tài liệu.
   const hasFocusedRef = useRef(false);
   // HTML đã phát qua onChange: lọc lặp phát hiện (vòng đồng bộ, khởi tạo rỗng → "<p></p>").
   const lastEmittedRef = useRef<string | null>(null);
+  // Lần bấm mở hộp mới nhất: các lần tải bất đồng bộ về muộn hơn không được ghi đè hộp của lần bấm sau.
+  const loadTokenRef = useRef(0);
+  // Rời trang/hủy trình soạn trước khi tải xong: bỏ kết quả về muộn, không mở hộp và không báo lỗi.
+  useEffect(() => {
+    return () => {
+      loadTokenRef.current += 1;
+    };
+  }, []);
   useEffect(() => {
     onChangeRef.current = onChange;
     allowImagesRef.current = allowImages;
     uploadErrorRef.current = onImageUploadError;
+    onRichPasteRef.current = onRichPaste;
+    openEntryRef.current = openEntry;
+    slashEntriesRef.current = slashMenuEntries(fieldContext).filter((entry) => entry.id !== "image" || allowImages);
+    slashSelectRef.current = onToolbarEntry;
+    translateRef.current = (key) => t(key as never);
   });
+
+  const insertEntries = useMemo(
+    () => toolbarInsertEntries(fieldContext).filter((entry) => entry.id !== "image" || allowImages),
+    [fieldContext, allowImages],
+  );
+  // `editorPlugins` của các mục registry (ví dụ decoration của ED-5) — một bản cho editor này.
+  const editorPlugins = useMemo(() => registryEditorPlugins(), []);
 
   const attributes: Record<string, string> = Object.fromEntries(
     [
@@ -135,45 +228,47 @@ export function RichTextEditor({
       .map(([key, val]) => [key, String(val)]),
   );
 
+  function openEntry(entry: InsertEntry, editing: unknown) {
+    const token = ++loadTokenRef.current;
+    entry.load().then(
+      (module) => {
+        // Bấm nhanh hai nút Chèn: chỉ lần bấm sau cùng được mở, kết quả tải cũ hơn bị bỏ.
+        if (token !== loadTokenRef.current) return;
+        setDialogModule(module);
+        setDialogState({ entry, editing });
+      },
+      () => {
+        if (token === loadTokenRef.current) notify.error(t("insertLoadError"));
+      },
+    );
+  }
+
   const editor = useEditor(
     {
       immediatelyRender: false,
       extensions: [
-        StarterKit.configure({
-          // Schema chỉ gồm các thẻ của allowlist spec 4.2.
-          blockquote: false,
-          code: false,
-          codeBlock: false,
-          heading: false,
-          horizontalRule: false,
-          link: false,
+        ...createRichTextExtensions({ allowImages, placeholder, renderLatex, blankNumberStart }),
+        SlashMenu.configure({
+          getEntries: () => slashEntriesRef.current,
+          onSelect: (entry) => slashSelectRef.current(entry),
+          translate: (key) => translateRef.current(key),
         }),
-        Placeholder.configure({ placeholder: () => placeholder ?? "" }),
-        Subscript,
-        Superscript,
-        TableKit.configure({ table: { resizable: false } }),
-        Image.extend({
-          addAttributes() {
-            return {
-              ...this.parent?.(),
-              dataAssetId: {
-                default: null,
-                parseHTML: (element: HTMLElement) => element.getAttribute("data-asset-id"),
-                renderHTML: (attributes: Record<string, unknown>) =>
-                  attributes.dataAssetId ? { "data-asset-id": attributes.dataAssetId as string } : {},
-              },
-            };
-          },
-        }).configure({ allowBase64: false }),
-        MathInline.configure({ renderLatex }),
-        MathBlock.configure({ renderLatex }),
-        MathCommands,
-        HtmlSanitize.configure({ allowImages }),
+        MathInputRule,
+        ...editorPlugins,
       ],
-      content: typeof document === "undefined" ? "" : sanitizeQuestionHtml(value ?? "", { allowImages }).html,
+      content: typeof document === "undefined" ? "" : sanitizedHtml(value ?? "", allowImages),
       editable: !disabled,
       editorProps: {
         attributes,
+        // Chạy ở tầng sự kiện DOM: `handlePaste` của ProseMirror đến sau `transformPastedHTML` (bước lọc), quá muộn cho hợp đồng này.
+        handleDOMEvents: {
+          paste: (_view: EditorView, event: ClipboardEvent) => {
+            // ED-5 bắt nội dung Word trước bộ lọc (bộ lọc bỏ chú thích chứa OMML): true → bỏ dán mặc định.
+            if (!onRichPasteRef.current?.(event.clipboardData ?? null)) return false;
+            event.preventDefault();
+            return true;
+          },
+        },
         handlePaste: (view: EditorView, event: ClipboardEvent) => {
           // Word/Docs đưa kèm ảnh chụp của chính đoạn văn: có `text/html` thì để TipTap dán HTML, chỉ dán tệp ảnh thuần mới tải lên.
           if (event.clipboardData?.getData("text/html")) return false;
@@ -191,35 +286,71 @@ export function RichTextEditor({
           void insertImageFiles(view, files);
           return true;
         },
+        // Nhấp đúp một node có mục registry thì mở lại hộp của mục đó (spec 4.1).
+        handleDoubleClick: (view: EditorView, pos: number) => {
+          const node = view.state.doc.nodeAt(pos);
+          if (!node) return false;
+          for (const entry of INSERT_REGISTRY) {
+            const opened = entry.openForSelection(node);
+            if (opened !== null && opened !== undefined) {
+              openEntryRef.current(entry, opened === true ? null : opened);
+              return true;
+            }
+          }
+          return false;
+        },
       },
       onFocus: () => {
         hasFocusedRef.current = true;
       },
       onUpdate: ({ editor: current }) => {
-        let html = sanitizeQuestionHtml(current.getHTML(), {
-          allowImages: allowImagesRef.current,
-        }).html;
-        // Tài liệu rỗng của TipTap tuần tự hóa thành "<p></p>": đưa về "" cho hợp đồng nội dung.
-        if (html === "<p></p>") html = "";
+        const html = normalizedContent(current.getHTML(), allowImagesRef.current);
         if (html === lastEmittedRef.current) return;
         lastEmittedRef.current = html;
         onChangeRef.current(html);
       },
     },
     // placeholder của extension chỉ đọc lúc tạo; allowImages đổi schema lọc dán — dựng lại editor.
-    [allowImages, placeholder],
+    [allowImages, placeholder, blankNumberStart],
   );
 
-  // Đồng bộ giá trị điều khiển: chỉ setContent khi `value` ngoài lệch HTML hiện có.
+  // Node/mark đang chọn khớp mục registry nào — cho khung "đang chọn" và `aria-pressed` của nút Chèn.
+  // Selector trả bản nhẹ (id + vị trí + khóa attrs); bản đầy đủ so ở `selection` dưới.
+  const selectionDescriptor = useEditorState({
+    editor,
+    selector: (ctx) => {
+      if (!ctx.editor) return null;
+      const match = matchSelection(ctx.editor);
+      if (!match) return null;
+      const { selection } = ctx.editor.state;
+      return {
+        id: match.entry.id,
+        pos: selection.from,
+        key: JSON.stringify(match.target.attrs ?? {}),
+      };
+    },
+    equalityFn: (a, b) => (a && b ? a.id === b.id && a.pos === b.pos && a.key === b.key : a === b),
+  });
+
+  const selection = useMemo<SelectionMatch | null>(() => {
+    if (!editor || !selectionDescriptor) return null;
+    return matchSelection(editor);
+  }, [editor, selectionDescriptor]);
+
+  // Đồng bộ giá trị điều khiển: chỉ setContent khi `value` ngoài lệch nội dung hiện có. `value` là chuỗi mà chính trình soạn đã
+  // phát (đã bỏ một đoạn rỗng cuối) hoặc dữ liệu ngoài, nên khớp nếu bằng HTML thô của trình soạn hoặc bằng bản đã bỏ đoạn
+  // rỗng cuối của nó; không bỏ thêm lần nữa ở phía `value`, nếu không hai đoạn rỗng do người dùng tạo bị coi là lệch.
+  // `lastEmittedRef` luôn là giá trị `onChange` sẽ phát cho nội dung hiện có: focus lần đầu làm TrailingNode thêm đoạn rỗng
+  // mà không đổi nội dung thì không được phát `onChange`.
   useEffect(() => {
     if (!editor) return;
-    const normalize = (html: string) => (html === "<p></p>" ? "" : html);
-    const incoming = normalize(sanitizeQuestionHtml(value ?? "", { allowImages }).html);
-    const current = normalize(sanitizeQuestionHtml(editor.getHTML(), { allowImages }).html);
-    if (incoming !== current) {
+    const fromValue = sanitizedHtml(value ?? "", allowImages);
+    const incoming = fromValue === "<p></p>" ? "" : fromValue;
+    const raw = sanitizedHtml(editor.getHTML(), allowImages);
+    if (incoming !== (raw === "<p></p>" ? "" : raw) && incoming !== stripTrailingEmptyParagraph(raw)) {
       editor.commands.setContent(incoming, { emitUpdate: false });
-      lastEmittedRef.current = incoming;
     }
+    lastEmittedRef.current = normalizedContent(editor.getHTML(), allowImages);
   }, [editor, value, allowImages]);
 
   useEffect(() => {
@@ -255,61 +386,11 @@ export function RichTextEditor({
     }
   }
 
-  async function insertImageFile(file: File) {
-    if (!editor) return;
-    setImageUploading(true);
-    try {
-      const asset = await uploadQuestionAsset(file, "IMAGE");
-      editor
-        .chain()
-        .focus()
-        .insertContent({
-          type: "image",
-          attrs: { src: asset.url, alt: asset.fileName, dataAssetId: asset.id },
-        })
-        .run();
-    } catch (error) {
-      onImageUploadError?.(error);
-    } finally {
-      setImageUploading(false);
-    }
+  // Nút Hình mở hộp `insert/image` như mọi mục; đang chọn một hình thì mở lại hộp để sửa hình đó.
+  function onToolbarEntry(entry: InsertEntry) {
+    const reopening = selection?.entry.id === entry.id;
+    openEntry(entry, reopening ? selection.editing : null);
   }
-
-  function openFormulaDialog() {
-    if (!editor) return;
-    const { selection } = editor.state;
-    if (selection instanceof NodeSelection && MATH_NODE_NAMES.has(selection.node.type.name)) {
-      setFormulaLatex(typeof selection.node.attrs.latex === "string" ? selection.node.attrs.latex : "");
-      setFormulaDisplay(selection.node.type.name === "mathBlock");
-    } else {
-      setFormulaLatex("");
-      setFormulaDisplay(false);
-    }
-    setFormulaOpen(true);
-  }
-
-  function applyFormula() {
-    if (!editor) return;
-    editor.chain().focus().setMath({ latex: formulaLatex, display: formulaDisplay }).run();
-    setFormulaOpen(false);
-  }
-
-  const toolbar = useEditorState({
-    editor,
-    selector: (ctx) =>
-      ctx.editor
-        ? {
-            bold: ctx.editor.isActive("bold"),
-            italic: ctx.editor.isActive("italic"),
-            underline: ctx.editor.isActive("underline"),
-            strike: ctx.editor.isActive("strike"),
-            subscript: ctx.editor.isActive("subscript"),
-            superscript: ctx.editor.isActive("superscript"),
-            bulletList: ctx.editor.isActive("bulletList"),
-            orderedList: ctx.editor.isActive("orderedList"),
-          }
-        : null,
-  });
 
   useImperativeHandle(
     handleRef,
@@ -335,12 +416,13 @@ export function RichTextEditor({
     [editor],
   );
 
-  const chain = () => editor?.chain().focus();
+  const DialogComponent = dialogModule?.default;
+  const SelectionPanel = selection?.entry.selectionPanel;
 
   return (
     <div
       className={cn(
-        "rich-text-editor rounded-md border bg-surface transition-colors duration-150 motion-reduce:transition-none",
+        "rich-text-editor min-w-0 max-w-full rounded-md border bg-surface transition-colors duration-150 motion-reduce:transition-none",
         "focus-within:border-primary-text focus-within:ring-3 focus-within:ring-primary-text/15",
         invalid && "border-danger focus-within:ring-danger/15",
         !invalid && "border-border hover:border-border-strong",
@@ -348,112 +430,22 @@ export function RichTextEditor({
         className,
       )}
     >
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-1.5 py-1" role="toolbar" aria-label={t("toolbar.label")}>
-        <IconButton
-          size="md"
-          icon={<Bold />}
-          aria-label={t("toolbar.bold")}
-          aria-pressed={toolbar?.bold ?? false}
-          aria-disabled={disabled || !editor?.can().toggleBold()}
-          onClick={() => chain()?.toggleBold().run()}
+      <RichTextToolbar
+        editor={editor}
+        disabled={disabled}
+        insertEntries={insertEntries}
+        selectedEntryId={selection?.entry.id ?? null}
+        onOpenEntry={onToolbarEntry}
+      />
+
+      {/* Khung "đang chọn" của mục registry khớp node/mark hiện tại (spec 4.1). */}
+      {editor && SelectionPanel && selection && (
+        <SelectionPanel
+          editor={editor}
+          target={selection.target}
+          openDialog={() => openEntry(selection.entry, selection.editing)}
         />
-        <IconButton
-          size="md"
-          icon={<Italic />}
-          aria-label={t("toolbar.italic")}
-          aria-pressed={toolbar?.italic ?? false}
-          aria-disabled={disabled || !editor?.can().toggleItalic()}
-          onClick={() => chain()?.toggleItalic().run()}
-        />
-        <IconButton
-          size="md"
-          icon={<Underline />}
-          aria-label={t("toolbar.underline")}
-          aria-pressed={toolbar?.underline ?? false}
-          aria-disabled={disabled || !editor?.can().toggleUnderline()}
-          onClick={() => chain()?.toggleUnderline().run()}
-        />
-        <IconButton
-          size="md"
-          icon={<Strikethrough />}
-          aria-label={t("toolbar.strike")}
-          aria-pressed={toolbar?.strike ?? false}
-          aria-disabled={disabled || !editor?.can().toggleStrike()}
-          onClick={() => chain()?.toggleStrike().run()}
-        />
-        <IconButton
-          size="md"
-          icon={<SubscriptIcon />}
-          aria-label={t("toolbar.subscript")}
-          aria-pressed={toolbar?.subscript ?? false}
-          aria-disabled={disabled || !editor?.can().toggleSubscript()}
-          onClick={() => chain()?.toggleSubscript().run()}
-        />
-        <IconButton
-          size="md"
-          icon={<SuperscriptIcon />}
-          aria-label={t("toolbar.superscript")}
-          aria-pressed={toolbar?.superscript ?? false}
-          aria-disabled={disabled || !editor?.can().toggleSuperscript()}
-          onClick={() => chain()?.toggleSuperscript().run()}
-        />
-        <span aria-hidden="true" className="mx-1 h-6 w-px bg-border" />
-        <IconButton
-          size="md"
-          icon={<List />}
-          aria-label={t("toolbar.bulletList")}
-          aria-pressed={toolbar?.bulletList ?? false}
-          aria-disabled={disabled || !editor?.can().toggleBulletList()}
-          onClick={() => chain()?.toggleBulletList().run()}
-        />
-        <IconButton
-          size="md"
-          icon={<ListOrdered />}
-          aria-label={t("toolbar.orderedList")}
-          aria-pressed={toolbar?.orderedList ?? false}
-          aria-disabled={disabled || !editor?.can().toggleOrderedList()}
-          onClick={() => chain()?.toggleOrderedList().run()}
-        />
-        <IconButton
-          size="md"
-          icon={<Table />}
-          aria-label={t("toolbar.table")}
-          aria-disabled={disabled || !editor?.can().insertTable()}
-          onClick={() => chain()?.insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run()}
-        />
-        <span aria-hidden="true" className="mx-1 h-6 w-px bg-border" />
-        <IconButton
-          size="md"
-          icon={<Sigma />}
-          aria-label={t("toolbar.formula")}
-          aria-disabled={disabled}
-          onClick={openFormulaDialog}
-        />
-        {allowImages && (
-          <>
-            <IconButton
-              size="md"
-              icon={<ImagePlus />}
-              aria-label={imageUploading ? t("toolbar.imageUploading") : t("toolbar.image")}
-              aria-disabled={disabled || imageUploading}
-              onClick={() => fileInputRef.current?.click()}
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="sr-only"
-              tabIndex={-1}
-              aria-hidden="true"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) void insertImageFile(file);
-              }}
-            />
-          </>
-        )}
-      </div>
+      )}
 
       <EditorContent editor={editor} />
 
@@ -463,62 +455,21 @@ export function RichTextEditor({
         </p>
       )}
 
-      <Dialog open={formulaOpen} onOpenChange={setFormulaOpen}>
-        <DialogContent closeLabel={t("formula.close")}>
-          <DialogHeader>
-            <DialogTitle>{t("formula.title")}</DialogTitle>
-            <DialogDescription>{t("formula.description")}</DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              // Dialog dựng trong portal: submit React vẫn nổi bọt lên biểu mẫu của trang chứa trình soạn.
-              event.stopPropagation();
-              applyFormula();
-            }}
-          >
-            <label className="mb-4 block">
-              <span className="mb-1.5 block text-field-label text-text">{t("formula.latexLabel")}</span>
-              <Input
-                value={formulaLatex}
-                onChange={(event) => setFormulaLatex(event.target.value)}
-                placeholder={t("formula.latexPlaceholder")}
-                autoFocus
-                dir="ltr"
-              />
-            </label>
-            <fieldset className="mb-2 flex gap-4">
-              <legend className="sr-only">{t("formula.displayLabel")}</legend>
-              <label className="flex items-center gap-2 text-body text-text">
-                <input
-                  type="radio"
-                  name="formula-display"
-                  checked={!formulaDisplay}
-                  onChange={() => setFormulaDisplay(false)}
-                />
-                {t("formula.inline")}
-              </label>
-              <label className="flex items-center gap-2 text-body text-text">
-                <input
-                  type="radio"
-                  name="formula-display"
-                  checked={formulaDisplay}
-                  onChange={() => setFormulaDisplay(true)}
-                />
-                {t("formula.block")}
-              </label>
-            </fieldset>
-            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setFormulaOpen(false)}>
-                {t("formula.cancel")}
-              </Button>
-              <Button type="submit" disabled={!formulaLatex.trim()}>
-                {t("formula.insert")}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {editor && dialogState && DialogComponent && (
+        <DialogComponent
+          editor={editor}
+          open={true}
+          onOpenChange={(open: boolean) => {
+            if (!open) {
+              // Đóng hộp: lần tải đang chờ (nếu có) không được mở lại hộp sau đó.
+              loadTokenRef.current += 1;
+              setDialogState(null);
+              setDialogModule(null);
+            }
+          }}
+          editing={dialogState.editing}
+        />
+      )}
     </div>
   );
 }

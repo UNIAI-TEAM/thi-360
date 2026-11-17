@@ -207,6 +207,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         JsonNode matchingResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/{id}", matchingId)
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode childResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/{id}", childId)
+                        .with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         JsonNode templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
@@ -216,10 +219,21 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         JsonNode versionResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/versions/1", examId)
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        assertNoLegacyKeys(setResponse);
-        assertNoLegacyKeys(matchingResponse);
-        assertNoLegacyKeys(structureResponse);
-        assertNoLegacyKeys(versionResponse);
+        assertNoLegacyKeysInApi(setResponse);
+        assertNoLegacyKeysInApi(childResponse);
+        // Concrete paths must carry the field: findValues below is vacuous when absent entirely.
+        JsonNode standaloneBody = childResponse.path("body");
+        assertThat(standaloneBody.path("type").asText()).isEqualTo("SINGLE_CHOICE");
+        assertThat(standaloneBody.get("shuffleOptions")).as("storage without shuffleOptions reads as true").isNotNull();
+        assertThat(standaloneBody.path("shuffleOptions").isBoolean() && standaloneBody.path("shuffleOptions").asBoolean())
+                .as("standalone child body shuffleOptions").isTrue();
+        JsonNode embeddedBody = setResponse.path("body").path("children").get(0).path("body");
+        assertThat(embeddedBody.get("shuffleOptions")).as("embedded child body must expose shuffleOptions").isNotNull();
+        assertThat(embeddedBody.path("shuffleOptions").isBoolean() && embeddedBody.path("shuffleOptions").asBoolean())
+                .as("set child body shuffleOptions").isTrue();
+        assertNoLegacyKeysInApi(matchingResponse);
+        assertNoLegacyKeysInApi(structureResponse);
+        assertNoLegacyKeysInApi(versionResponse);
         JsonNode templateResponse = null;
         for (JsonNode candidate : templates) {
             if ("LEGACY_REPAIR_TEMPLATE".equals(candidate.path("code").asText())) {
@@ -228,7 +242,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             }
         }
         assertThat(templateResponse).isNotNull();
-        assertNoLegacyKeys(templateResponse);
+        assertNoLegacyKeysInApi(templateResponse);
 
         runRepairMigration();
 
@@ -525,6 +539,17 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         for (String key : List.of("shuffleOptions", "shuffleLeft", "shuffleRight",
                 "groupOrder", "shuffle", "blockShuffleRule")) {
             assertThat(json.findValues(key)).as(key).isEmpty();
+        }
+    }
+
+    private static void assertNoLegacyKeysInApi(JsonNode json) {
+        for (String key : List.of("shuffleLeft", "shuffleRight",
+                "groupOrder", "shuffle", "blockShuffleRule")) {
+            assertThat(json.findValues(key)).as(key).isEmpty();
+        }
+        for (JsonNode value : json.findValues("shuffleOptions")) {
+            assertThat(value.isBoolean() && value.asBoolean())
+                    .as("shuffleOptions absent in storage reads as true").isTrue();
         }
     }
 

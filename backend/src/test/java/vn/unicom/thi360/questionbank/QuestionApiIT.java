@@ -144,7 +144,7 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void legacyShuffleOptionsAreAcceptedButNotReturned() throws Exception {
+    void shuffleOptionsArePersistedAndReturned() throws Exception {
         var request = (com.fasterxml.jackson.databind.node.ObjectNode)
                 objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
         ((com.fasterxml.jackson.databind.node.ObjectNode) request.path("body")).put("shuffleOptions", false);
@@ -153,11 +153,25 @@ class QuestionApiIT extends AbstractIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.body.shuffleOptions").doesNotExist())
+                .andExpect(jsonPath("$.body.shuffleOptions").value(false))
                 .andReturn();
         UUID id = UUID.fromString(read(created).at("/summary/id").asText());
         mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.body.shuffleOptions").doesNotExist());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.body.shuffleOptions").value(false));
+        mockMvc.perform(post(BASE + "/{id}/duplicate", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.body.shuffleOptions").value(false));
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+        request.put("expectedRevision", currentRevision(id));
+        request.put("content", "<p>Updated question</p>");
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.displayedVersionNo").value(2))
+                .andExpect(jsonPath("$.question.body.shuffleOptions").value(false));
     }
     @Test
     void legacyMatchingShuffleFlagsAreAcceptedButNotReturned() throws Exception {
@@ -560,6 +574,62 @@ class QuestionApiIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.affectedBlocks", hasSize(0)))
                 .andExpect(jsonPath("$.usedIn", hasSize(0)));
+    }
+
+    @Test
+    void questionSetBlankNumberStartSurvivesCreateVersionAndCopy() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).put("blankNumberStart", 31);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.at("/body/children/0/body"))
+                .put("shuffleOptions", false);
+        MvcResult created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.blankNumberStart").value(31))
+                .andExpect(jsonPath("$.body.children[0].body.shuffleOptions").value(false)).andReturn();
+        JsonNode saved = read(created);
+        UUID id = UUID.fromString(saved.at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.body.blankNumberStart").value(31));
+        mockMvc.perform(post(BASE + "/{id}/duplicate", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.body.blankNumberStart").value(31))
+                .andExpect(jsonPath("$.body.children[0].body.shuffleOptions").value(false));
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+        request.set("body", saved.path("body").deepCopy());
+        request.put("expectedRevision", currentRevision(id));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body"))
+                .put("passage", "<p>Đoạn đọc đã sửa.</p>");
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.displayedVersionNo").value(2))
+                .andExpect(jsonPath("$.question.body.blankNumberStart").value(31))
+                .andExpect(jsonPath("$.question.body.children[0].body.shuffleOptions").value(false));
+    }
+
+    @Test
+    void legacyQuestionSetDefaultsBlankNumberStartAndRejectsInvalidValues() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.body.blankNumberStart").value(1));
+        for (int invalid : new int[] {0, 201}) {
+            ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).put("blankNumberStart", invalid);
+            mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("body.blankNumberStart"))
+                    .andExpect(jsonPath("$.fieldErrors[0].code").value("QUESTION_BLANK_NUMBER_START_INVALID"));
+        }
     }
 
     // ---------------------------------------------------------------- trợ giúp

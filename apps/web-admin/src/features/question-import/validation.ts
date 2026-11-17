@@ -239,6 +239,7 @@ function emptyDraft(): ImportQuestionDraft {
     matching: null,
     commonMistakes: null,
     taskTypeCode: null,
+    keepOptionOrder: false,
     points: null,
     inputHint: null,
     gradingGuide: null,

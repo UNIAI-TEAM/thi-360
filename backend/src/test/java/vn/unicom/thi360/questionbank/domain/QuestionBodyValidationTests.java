@@ -67,6 +67,7 @@ class QuestionBodyValidationTests {
     static QuestionBody questionSetBody() {
         return new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>Đọc đoạn sau và trả lời.</p>",
+            null,
             List.of(
                 new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>Câu con 1</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
                 new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu con 2</p>", shortAnswerBody(), null, new BigDecimal("2"), null, null, List.of(), null)));
@@ -269,13 +270,13 @@ class QuestionBodyValidationTests {
     void clozeAndSetCannotBeChildren() {
         // D19: không cho Bộ câu hỏi hay Điền khuyết làm câu con.
         QuestionBody setWithCloze = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.CLOZE, "<p>c</p>", clozeBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(QuestionBodyValidator.validateSave(
             input(QuestionType.QUESTION_SET, setWithCloze), null)).contains("QUESTION_CHILD_TYPE_NOT_ALLOWED"));
 
         QuestionBody nestedSet = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.QUESTION_SET, "<p>c</p>", questionSetBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(QuestionBodyValidator.validateSave(
             input(QuestionType.QUESTION_SET, nestedSet), null)).contains("QUESTION_CHILD_TYPE_NOT_ALLOWED"));
@@ -393,14 +394,14 @@ class QuestionBodyValidationTests {
     @Test
     void questionSetNeedsTwoReadyChildren() {
         QuestionBody oneChild = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, null, List.of(), null)));
         assertTrue(codes(readyErrors(input(QuestionType.QUESTION_SET, oneChild)))
             .contains("SET_WITHOUT_CHILDREN"));
 
         // Câu con chưa đạt điều kiện của dạng mình thì bộ không Sẵn sàng được.
         QuestionBody childNotReady = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
-            "<p>p</p>", List.of(
+            "<p>p</p>", null, List.of(
             new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
             new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>c2</p>",
                 new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of(), null), null, null, null, null, List.of(), null)));
@@ -626,5 +627,39 @@ class QuestionBodyValidationTests {
         List<QuestionFieldError> errors = readyErrors(input(QuestionType.SINGLE_CHOICE, body));
         assertEquals("body.options[1].content",
             errors.stream().filter(e -> e.code().equals("OPTION_EMPTY")).findFirst().orElseThrow().path());
+    }
+
+    // ------------------------------------------------------------- blankNumberStart (spec 3.4)
+
+    private static QuestionBody questionSetBody(Integer blankNumberStart) {
+        return new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
+            "<p>Đọc đoạn sau.</p>", blankNumberStart, List.of(
+                new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>Câu con 1</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
+                new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu con 2</p>", shortAnswerBody(), null, null, null, null, List.of(), null)));
+    }
+
+    @Test
+    void blankNumberStartDefaultsToOneForLegacyBodies() {
+        QuestionBody body = questionSetBody(null);
+        assertEquals(Integer.valueOf(1),
+            ((QuestionBody.QuestionSetBody) body).blankNumberStart());
+        assertTrue(QuestionBodyValidator.validateSave(
+            input(QuestionType.QUESTION_SET, body), null).isEmpty());
+    }
+
+    @Test
+    void blankNumberStartOutOfRangeRejected() {
+        for (Integer value : new Integer[] {0, -1, 201, 500}) {
+            List<QuestionFieldError> errors = QuestionBodyValidator.validateSave(
+                input(QuestionType.QUESTION_SET, questionSetBody(value)), null);
+            assertTrue(errors.stream().anyMatch(e ->
+                e.code().equals("QUESTION_BLANK_NUMBER_START_INVALID")
+                    && e.path().equals("body.blankNumberStart")),
+                () -> "value " + value + " → " + errors);
+        }
+        assertTrue(QuestionBodyValidator.validateSave(
+            input(QuestionType.QUESTION_SET, questionSetBody(1)), null).isEmpty());
+        assertTrue(QuestionBodyValidator.validateSave(
+            input(QuestionType.QUESTION_SET, questionSetBody(200)), null).isEmpty());
     }
 }

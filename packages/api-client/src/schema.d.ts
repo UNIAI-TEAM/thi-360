@@ -4509,6 +4509,7 @@ export interface components {
             options?: components["schemas"]["ChoiceOption"][];
             /** @enum {string} */
             scoringRule?: "ALL_OR_NOTHING" | "PARTIAL";
+            shuffleOptions?: boolean;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
@@ -5076,6 +5077,8 @@ export interface components {
         QuestionSetBody: {
             type: "QuestionSetBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
+            /** Format: int32 */
+            blankNumberStart?: number;
             children?: components["schemas"]["ChildQuestion"][];
             passage?: string;
             /** @enum {string} */
@@ -5401,6 +5404,7 @@ export interface components {
             type: "SingleChoiceBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
             options?: components["schemas"]["ChoiceOption"][];
+            shuffleOptions?: boolean;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });

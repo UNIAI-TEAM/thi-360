@@ -43,6 +43,28 @@ class QuestionImportParserTests {
     }
 
     @Test
+    void keepOptionOrderValuesAndIgnoredTypes() throws Exception {
+        for (String value : List.of("Có", "x", "Yes", "TRUE", "1", "Không", "No", "FALSE", "0", "")) {
+            var result = parse(List.of(
+                List.of("type", "content", "subject", "grade", "difficulty", "options", "correctAnswer", "Giữ thứ tự phương án"),
+                List.of("SINGLE_CHOICE", "Question", "MATH", "GRADE_11", "RECOGNITION", "A. one\nB. two", "A", value)));
+            assertFalse(result.hasErrors(), value);
+            boolean keep = List.of("Có", "x", "Yes", "TRUE", "1").contains(value);
+            assertEquals(!keep, ((QuestionBody.SingleChoiceBody) result.rows().getFirst().draft().body()).shuffleOptions(), value);
+        }
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "options", "correctAnswer", "keepOptionOrder"),
+            List.of("MULTIPLE_CHOICE", "Question", "MATH", "GRADE_11", "RECOGNITION", "A. one\nB. two", "A,B", "yes"),
+            List.of("SINGLE_CHOICE", "Question", "MATH", "GRADE_11", "RECOGNITION", "A. one\nB. two", "A", "bad"),
+            List.of("SHORT_ANSWER", "Question", "MATH", "GRADE_11", "RECOGNITION", "", "1", "bad")));
+        assertEquals(false, ((QuestionBody.MultipleChoiceBody) result.rows().get(0).draft().body()).shuffleOptions());
+        assertTrue(result.rows().get(1).issues().stream().anyMatch(i -> i.blocking()
+            && i.field() == ImportField.KEEP_OPTION_ORDER && i.column().equals("keepOptionOrder")));
+        assertTrue(result.rows().get(2).issues().stream().anyMatch(i -> !i.blocking()
+            && i.code() == ImportIssueCode.KEEP_OPTION_ORDER_IGNORED));
+    }
+
+    @Test
     void decimalComma() throws Exception {
         var result = parse(List.of(
             List.of("type", "content", "subject", "grade", "difficulty", "points", "correctAnswer"),

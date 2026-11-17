@@ -50,6 +50,7 @@ class QuestionUnitsTests {
     void questionSetUnitsAreChildren() {
         QuestionBody set = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>p</p>",
+            null,
             List.of(
                 new QuestionBody.ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>c1</p>",
                     QuestionBodyValidationTests.singleChoiceBody(), null, null, null, null, List.of(), CHILD1),
@@ -71,6 +72,7 @@ class QuestionUnitsTests {
         // Câu con mới trong request (chưa lưu, chưa có id) vẫn đếm được.
         QuestionBody set = new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
             "<p>p</p>",
+            null,
             List.of(new QuestionBody.ChildQuestion(QuestionType.ESSAY, "<p>c</p>",
                 QuestionBodyValidationTests.essayBody(), null, null, null, null, List.of(), null)));
         List<QuestionUnit> units = QuestionUnits.units(QID, null, set);

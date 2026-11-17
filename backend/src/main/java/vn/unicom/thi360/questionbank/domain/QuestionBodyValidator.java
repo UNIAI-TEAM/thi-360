@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank.domain;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.ArrayList;
@@ -9,9 +10,14 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
@@ -54,6 +60,13 @@ public final class QuestionBodyValidator {
     private static final BigDecimal SCORE_TOLERANCE = new BigDecimal("0.0005");
 
     private static final Pattern BLANK_MARKER = Pattern.compile("\\[\\[([^\\[\\]]+)\\]\\]");
+    private static final Pattern OPTION_REFERENCE = Pattern.compile(
+        "\\b(?:[a-j]\\s*(?:,\\s*[a-j]\\s*)*(?:va|hoac|and|or)\\s+[a-j]"
+        + "|(?:ca|both|phuong an|dap an|cau|option)\\s+[a-j]"
+        + "|tat ca\\s+(?:(?:cac\\s+)?(?:phuong an|dap an)\\s+tren|deu\\s+(?:dung|sai))"
+        + "|ca\\s+(?:hai|ba)|khong co\\s+(?:phuong an|dap an)\\s+nao"
+        + "|(?:dap an|phuong an)\\s+khac|cac\\s+(?:phuong an|dap an)\\s+tren"
+        + "|(?:all|none|both)\\s+of\\s+the\\s+above|neither)\\b");
 
     /** Mã của phân loại tối thiểu khi Sẵn sàng (spec 4.3: nội dung, môn, khối lớp, độ khó). */
     public record ClassificationRequirement(boolean subjectPresent, boolean gradePresent, boolean levelPresent) {}
@@ -123,8 +136,9 @@ public final class QuestionBodyValidator {
         if (input == null || input.type() == null || input.body() == null) {
             return new ReadinessResult(errors, List.of());
         }
+        List<QuestionFieldError> warnings = new ArrayList<>();
         if (errors.stream().noneMatch(e -> e.path().equals("body.type"))) {
-            validateBodyReady(input, errors);
+            validateBodyReady(input, errors, warnings);
         }
         if (isBlankHtml(input.content()) && !contentCarrierIsBody(input.body())) {
             errors.add(QuestionFieldError.of("CONTENT_EMPTY", "content"));
@@ -138,7 +152,6 @@ public final class QuestionBodyValidator {
         if (classification == null || !classification.levelPresent()) {
             errors.add(QuestionFieldError.of("DIFFICULTY_MISSING", "levelItemId"));
         }
-        List<QuestionFieldError> warnings = new ArrayList<>();
         if (!hasPrimaryKnowledge) {
             warnings.add(QuestionFieldError.of("PRIMARY_KNOWLEDGE_MISSING", "knowledge"));
         }
@@ -185,6 +198,11 @@ public final class QuestionBodyValidator {
                 validateClozeMarkers(b.passage(), blankIds, prefix, errors);
             }
             case QuestionBody.QuestionSetBody b -> {
+                // Spec 3.4 (UNI-2638): số bắt đầu đánh chỗ trống 1–200, mặc định 1 (constructor
+                // đã đọc null ra 1). Ngoài khoảng → QUESTION_BLANK_NUMBER_START_INVALID.
+                if (b.blankNumberStart() != null && (b.blankNumberStart() < 1 || b.blankNumberStart() > 200)) {
+                    errors.add(QuestionFieldError.of("QUESTION_BLANK_NUMBER_START_INVALID", prefix + ".blankNumberStart"));
+                }
                 if (b.children().size() > MAX_CHILDREN) {
                     errors.add(QuestionFieldError.of("QUESTION_CHILDREN_TOO_MANY", prefix + ".children"));
                 }
@@ -320,7 +338,8 @@ public final class QuestionBodyValidator {
 
     // ---------------------------------------------------------------- mức Sẵn sàng
 
-    private static void validateBodyReady(QuestionInput input, List<QuestionFieldError> errors) {
+    private static void validateBodyReady(QuestionInput input, List<QuestionFieldError> errors,
+            List<QuestionFieldError> warnings) {
         BigDecimal points = input.points() == null ? BigDecimal.ONE : input.points();
         switch (input.body()) {
             case QuestionBody.SingleChoiceBody b -> {
@@ -328,6 +347,9 @@ public final class QuestionBodyValidator {
                     errors.add(QuestionFieldError.of("TOO_FEW_OPTIONS", "body.options"));
                 }
                 for (int i = 0; i < b.options().size(); i++) {
+                    if (b.shuffleOptions() && refersToOtherOptions(b.options().get(i).content())) {
+                        warnings.add(QuestionFieldError.of("OPTION_REFERS_TO_OTHERS", "body.options[" + i + "].content"));
+                    }
                     if (isBlankHtml(b.options().get(i).content())) {
                         errors.add(QuestionFieldError.of("OPTION_EMPTY", "body.options[" + i + "].content"));
                     }
@@ -344,6 +366,9 @@ public final class QuestionBodyValidator {
                     errors.add(QuestionFieldError.of("TOO_FEW_OPTIONS", "body.options"));
                 }
                 for (int i = 0; i < b.options().size(); i++) {
+                    if (b.shuffleOptions() && refersToOtherOptions(b.options().get(i).content())) {
+                        warnings.add(QuestionFieldError.of("OPTION_REFERS_TO_OTHERS", "body.options[" + i + "].content"));
+                    }
                     if (isBlankHtml(b.options().get(i).content())) {
                         errors.add(QuestionFieldError.of("OPTION_EMPTY", "body.options[" + i + "].content"));
                     }
@@ -392,7 +417,7 @@ public final class QuestionBodyValidator {
                     errors.add(QuestionFieldError.of("SET_WITHOUT_CHILDREN", "body.children"));
                 }
                 for (int i = 0; i < b.children().size(); i++) {
-                    validateChildReady(b.children().get(i), "body.children[" + i + "]", errors);
+                    validateChildReady(b.children().get(i), "body.children[" + i + "]", errors, warnings);
                 }
             }
             case QuestionBody.TrueFalseBody b -> {
@@ -504,50 +529,143 @@ public final class QuestionBodyValidator {
                 }
             }
         }
-        checkMathPairs(input.content(), "content", errors);
-        checkMathPairs(input.solution(), "solution", errors);
+        // Trường được nhận nhãn gạch chân: chỉ đề bài (content) của câu Trắc nghiệm 1 đáp án
+        // (spec 3.3). Trường nhận chỗ trống: chỉ ngữ liệu câu chùm (spec 6).
+        // Câu chùm: trình soạn web gửi content = body.passage (cùng một HTML, hợp đồng từ #60).
+        // Khi hai trường trùng nhau thì chỉ kiểm ở body.passage (luật chỗ trống của ngữ liệu),
+        // để chỗ trống hợp lệ không bị báo BLANK_OUTSIDE_SET_PASSAGE ở content.
+        boolean contentIsSetPassage = input.body() instanceof QuestionBody.QuestionSetBody set
+                && input.content() != null && set.passage() != null
+                && input.content().strip().equals(set.passage().strip());
+        if (!contentIsSetPassage) {
+            checkHtml(input.content(), "content",
+                    input.type() == QuestionType.SINGLE_CHOICE ? FieldKind.STEM : FieldKind.PLAIN,
+                    errors, warnings);
+        }
+        checkHtml(input.solution(), "solution", FieldKind.PLAIN, errors, warnings);
         for (int i = 0; i < input.commonMistakes().size(); i++) {
-            checkMathPairs(input.commonMistakes().get(i), "commonMistakes[" + i + "]", errors);
+            checkHtml(input.commonMistakes().get(i), "commonMistakes[" + i + "]",
+                    FieldKind.PLAIN, errors, warnings);
         }
         switch (input.body()) {
             case QuestionBody.SingleChoiceBody b -> {
                 for (int i = 0; i < b.options().size(); i++) {
-                    checkMathPairs(b.options().get(i).content(), "body.options[" + i + "].content", errors);
+                    checkHtml(b.options().get(i).content(), "body.options[" + i + "].content",
+                            FieldKind.PLAIN, errors, warnings);
                 }
             }
             case QuestionBody.MultipleChoiceBody b -> {
                 for (int i = 0; i < b.options().size(); i++) {
-                    checkMathPairs(b.options().get(i).content(), "body.options[" + i + "].content", errors);
+                    checkHtml(b.options().get(i).content(), "body.options[" + i + "].content",
+                            FieldKind.PLAIN, errors, warnings);
                 }
             }
             case QuestionBody.TrueFalseBody b -> {
                 for (int i = 0; i < b.statements().size(); i++) {
-                    checkMathPairs(b.statements().get(i).content(), "body.statements[" + i + "].content", errors);
+                    checkHtml(b.statements().get(i).content(), "body.statements[" + i + "].content",
+                            FieldKind.PLAIN, errors, warnings);
                 }
             }
             case QuestionBody.MatchingBody b -> {
                 for (int i = 0; i < b.left().size(); i++) {
-                    checkMathPairs(b.left().get(i).content(), "body.left[" + i + "].content", errors);
+                    checkHtml(b.left().get(i).content(), "body.left[" + i + "].content",
+                            FieldKind.PLAIN, errors, warnings);
                 }
                 for (int i = 0; i < b.right().size(); i++) {
-                    checkMathPairs(b.right().get(i).content(), "body.right[" + i + "].content", errors);
+                    checkHtml(b.right().get(i).content(), "body.right[" + i + "].content",
+                            FieldKind.PLAIN, errors, warnings);
                 }
             }
             case QuestionBody.EssayBody b -> {
-                checkMathPairs(b.gradingGuide(), "body.gradingGuide", errors);
-                checkMathPairs(b.sampleAnswer(), "body.sampleAnswer", errors);
+                checkHtml(b.gradingGuide(), "body.gradingGuide", FieldKind.PLAIN, errors, warnings);
+                checkHtml(b.sampleAnswer(), "body.sampleAnswer", FieldKind.PLAIN, errors, warnings);
                 for (int i = 0; i < b.rubric().size(); i++) {
-                    checkMathPairs(b.rubric().get(i).description(), "body.rubric[" + i + "].description", errors);
+                    checkHtml(b.rubric().get(i).description(), "body.rubric[" + i + "].description",
+                            FieldKind.PLAIN, errors, warnings);
                 }
             }
-            case QuestionBody.ClozeBody b -> checkMathPairs(b.passage(), "body.passage", errors);
-            case QuestionBody.QuestionSetBody b -> checkMathPairs(b.passage(), "body.passage", errors);
+            case QuestionBody.ClozeBody b ->
+                checkHtml(b.passage(), "body.passage", FieldKind.PLAIN, errors, warnings);
+            case QuestionBody.QuestionSetBody b ->
+                checkHtml(b.passage(), "body.passage",
+                        FieldKind.setPassage(b.children().size()), errors, warnings);
             case QuestionBody.ShortAnswerBody b -> { }
         }
     }
 
+    /**
+     * Vai trò của một trường HTML trong luật theo ngữ cảnh (spec 3.3, 6):
+     * {@code STEM} đề bài câu Trắc nghiệm 1 đáp án (nơi duy nhất cho {@code u[data-label]});
+     * {@code SET_PASSAGE} ngữ liệu câu chùm (nơi duy nhất cho {@code span.blank}, so số với
+     * số câu con); {@code PLAIN} mọi trường khác.
+     */
+    private record FieldKind(boolean labelAllowed, boolean blanksAllowed, int childCount) {
+        static final FieldKind PLAIN = new FieldKind(false, false, 0);
+        static final FieldKind STEM = new FieldKind(true, false, 0);
+        static FieldKind setPassage(int childCount) {
+            return new FieldKind(false, true, childCount);
+        }
+    }
+
+    /** Kiểm một trường HTML: cặp dấu công thức + luật theo ngữ cảnh của spec 6. */
+    private static void checkHtml(String html, String path, FieldKind kind,
+            List<QuestionFieldError> errors, List<QuestionFieldError> warnings) {
+        checkMathPairs(html, path, errors);
+        checkRichContent(html, path, kind, errors, warnings);
+    }
+
+    /**
+     * Luật theo ngữ cảnh của spec 6 trên HTML đã lọc: {@code span.blank} chỉ ở ngữ liệu câu
+     * chùm và mỗi số chỗ trống trỏ đúng một câu con; {@code u[data-label]} chỉ ở đề bài
+     * Trắc nghiệm 1 đáp án và không trùng nhãn; {@code img} thiếu {@code alt} là cảnh báo.
+     */
+    private static void checkRichContent(String html, String path, FieldKind kind,
+            List<QuestionFieldError> errors, List<QuestionFieldError> warnings) {
+        if (html == null || html.isEmpty()) {
+            return;
+        }
+        Document doc = Jsoup.parseBodyFragment(html);
+        Set<Integer> blankNumbers = new HashSet<>();
+        for (Element blank : doc.select("span.blank")) {
+            if (!kind.blanksAllowed()) {
+                errors.add(QuestionFieldError.of("BLANK_OUTSIDE_SET_PASSAGE", path));
+                continue;
+            }
+            int number;
+            try {
+                number = Integer.parseInt(blank.attr("data-blank").trim());
+            } catch (NumberFormatException e) {
+                number = -1;
+            }
+            if (number < 1 || number > kind.childCount() || !blankNumbers.add(number)) {
+                errors.add(QuestionFieldError.of("BLANK_CHILD_MISMATCH", path));
+            }
+        }
+        Set<String> labels = new HashSet<>();
+        for (Element u : doc.select("u[data-label]")) {
+            if (!kind.labelAllowed()) {
+                errors.add(QuestionFieldError.of("UNDERLINE_LABEL_MISPLACED", path));
+            }
+            if (!labels.add(u.attr("data-label").trim())) {
+                errors.add(QuestionFieldError.of("UNDERLINE_LABEL_DUPLICATE", path));
+            }
+        }
+        for (Element img : doc.select("img")) {
+            if (img.attr("alt").isBlank()) {
+                warnings.add(QuestionFieldError.of("IMAGE_ALT_MISSING", path));
+            }
+        }
+    }
+
+    private static boolean refersToOtherOptions(String html) {
+        String text = QuestionHtmlSanitizer.textOf(html).toLowerCase(Locale.ROOT).replace('đ', 'd');
+        text = Normalizer.normalize(text, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return OPTION_REFERENCE.matcher(text).find();
+    }
+
     /** Câu con đạt điều kiện Sẵn sàng của dạng mình (spec 4.3); phân loại kế thừa của bộ. */
-    private static void validateChildReady(QuestionBody.ChildQuestion child, String path, List<QuestionFieldError> errors) {
+    private static void validateChildReady(QuestionBody.ChildQuestion child, String path,
+            List<QuestionFieldError> errors, List<QuestionFieldError> warnings) {
         if (child.type() == null || child.body() == null || child.body().type() != child.type()) {
             // Lỗi cấu trúc đã báo ở mức lưu; không lặp.
             return;
@@ -559,12 +677,17 @@ public final class QuestionBodyValidator {
             child.type(), child.body(), child.points() != null ? child.points() : BigDecimal.ONE,
             child.content(), null, List.of(), List.of());
         List<QuestionFieldError> childErrors = new ArrayList<>();
-        validateBodyReady(childInput, childErrors);
+        List<QuestionFieldError> childWarnings = new ArrayList<>();
+        validateBodyReady(childInput, childErrors, childWarnings);
         for (QuestionFieldError error : childErrors) {
             // Đường dẫn con nằm trong body của câu con: children[i].body.xxx.
             errors.add(new QuestionFieldError(error.code(), path + "." + error.path(), error.message()));
         }
+        for (QuestionFieldError warning : childWarnings) {
+            warnings.add(new QuestionFieldError(warning.code(), path + "." + warning.path(), warning.message()));
+        }
     }
+
 
     /**
      * Với CLOZE/QUESTION_SET ngữ liệu nằm trong {@code body.passage}, không phải {@code content}:
