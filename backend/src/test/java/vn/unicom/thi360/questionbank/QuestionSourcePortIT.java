@@ -295,6 +295,36 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void answerFormatFiltersExcludeOtherAndMissingFormats() {
+        UUID subject = UUID.randomUUID();
+        UUID integer = question(subject, "READY", 1, 1);
+        UUID decimal = question(subject, "READY", 1, 1);
+        UUID unset = question(subject, "READY", 1, 1);
+        for (UUID id : List.of(integer, decimal, unset)) {
+            jdbc.update("update questionbank.question set type='SHORT_ANSWER' where id=?", id);
+        }
+        jdbc.update("update questionbank.question_version set snapshot=?::jsonb where question_id=?",
+                "{\"body\":{\"answerFormat\":\"INTEGER\"}}", integer);
+        jdbc.update("update questionbank.question_version set snapshot=?::jsonb where question_id=?",
+                "{\"body\":{\"answerFormat\":\"DECIMAL\"}}", decimal);
+        var one = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
+                List.of(AnswerFormat.INTEGER), null);
+        var two = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
+                List.of(AnswerFormat.INTEGER, AnswerFormat.DECIMAL), null);
+        assertThat(source.findCandidates(one, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(integer);
+        assertThat(source.matching(one, List.of(integer, decimal, unset))).containsExactly(integer);
+        assertThat(source.count(one).total()).isEqualTo(1);
+        assertThat(source.findCandidates(two, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactlyInAnyOrder(integer, decimal);
+        assertThat(source.matching(two, List.of(integer, decimal, unset))).containsExactlyInAnyOrder(integer, decimal);
+        assertThat(source.count(two).total()).isEqualTo(2);
+        assertThat(source.countUnion(List.of(one, two)).total()).isEqualTo(2);
+    }
+
+    @Test
     void tagsUseOneOfSemantics() {
         UUID subject = UUID.randomUUID();
         UUID tagOne = UUID.randomUUID();
