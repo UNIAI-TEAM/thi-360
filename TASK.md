@@ -89,7 +89,7 @@ Issue cha: **UNI-2606** · Thi 360 · Đợt 2 · Backend PBI-03 + PBI-04 và n�
 | BE-6 | UNI-2618 | Phiên bản, công bố, ngừng bán, nơi đang dùng | BE-5b | 7 | in_review (merge PR #59) |
 | FE-1 | UNI-2619 | Nối API ngân hàng câu hỏi, nhập tệp; chuyển test sang giả lập client | FE-4, BE-2a, BE-2b, BE-3 | 5 | in_review (merge PR #60) |
 | FE-2 | UNI-2620 | Nối API bài thi; chuyển test sang giả lập client | FE-3c, FE-4, BE-4, BE-5b, BE-6 | 6 | in_review (merge PR #61) |
-| QA | UNI-2621 | E2E, xóa mock PBI-03/04, kiểm thử bảo mật, tài liệu | tất cả | 3 | todo |
+| QA | UNI-2621 | E2E, xóa mock PBI-03/04, kiểm thử bảo mật, tài liệu | tất cả | 3 | in_progress |
 
 Sóng: 1 BE-1 · FE-3a → 2 BE-2a · BE-4 · BE-5a · FE-3b · FE-3c → 3 BE-2b · BE-3 · BE-5b · FE-4 → 4 BE-6 · FE-1 → 5 FE-2 → 6 QA.
 
