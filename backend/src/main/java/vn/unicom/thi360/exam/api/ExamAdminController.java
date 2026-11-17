@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import vn.unicom.thi360.exam.application.ExamCheckUnitSummary;
 import vn.unicom.thi360.exam.application.ExamKindService;
 import vn.unicom.thi360.exam.application.ExamService;
 import vn.unicom.thi360.exam.application.ExamTemplateService;
@@ -137,7 +138,7 @@ public class ExamAdminController {
     @RequirePermission(Permissions.EXAM_VIEW)
     @Operation(summary = "Tổng hợp cấu trúc bài thi")
     public ExamStructureSummaryResponse structureSummary(@PathVariable UUID id) {
-        throw new NotImplementedException();
+        return ExamCheckUnitSummary.summarize(exams.getExamStructure(id));
     }
 
     @PutMapping("/exams/{id}/overview")

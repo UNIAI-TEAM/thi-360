@@ -23,12 +23,12 @@ class ExamContractStubIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
 
     @Test
-    void summaryRequiresViewAndReportsNotImplemented() throws Exception {
+    void summaryRequiresViewAndReturnsNotFoundForMissingExam() throws Exception {
         String url = "/api/v1/admin/exams/" + ID + "/structure/summary";
         mockMvc.perform(get(url)).andExpect(status().isUnauthorized());
         mockMvc.perform(get(url).with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isForbidden());
         mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
-                .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("NOT_IMPLEMENTED"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
