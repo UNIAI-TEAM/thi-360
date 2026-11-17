@@ -138,6 +138,10 @@ Sub-issue theo plan A5 (17 task, 100 điểm):
 | BE-6 | UNI-2658 | 5 | 2 | | | | |
 | BE-7 | UNI-2659 | 6 | 2 | | | | |
 
+Đã merge vào `integration/dot-2b` (issue chuyển `in_review`, chờ người duyệt):
+
+- BE-3 UNI-2652, PR #81 (`fef09eb7`), 2026-11-18.
+
 ### Thứ tự làm
 
 ```
