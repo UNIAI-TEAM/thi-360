@@ -45,6 +45,7 @@ public record ImportDictionary(
             Map.entry(ImportField.POINTS, List.of("Điểm", "Points")),
             Map.entry(ImportField.OPTIONS, List.of("Lựa chọn", "Options")),
             Map.entry(ImportField.MATCH_RIGHT, List.of("Lựa chọn phải", "Right choices")),
+            Map.entry(ImportField.SCORING, List.of("Cách chấm", "Scoring")),
             Map.entry(ImportField.INPUT_HINT, List.of("Hướng dẫn nhập", "Input hint")),
             Map.entry(ImportField.ANSWER_FORMAT, List.of("Định dạng đáp án", "Định dạng trả lời", "Answer format")),
             Map.entry(ImportField.GRADING_GUIDE, List.of("Hướng dẫn chấm", "Grading guide")),

@@ -174,6 +174,55 @@ class QuestionApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.question.body.shuffleOptions").value(false));
     }
     @Test
+    void shortAnswerFormatRoundTripsInVersionsAndIsOptionalForReadiness() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        request.put("type", "SHORT_ANSWER");
+        request.set("body", objectMapper.readTree("""
+                {"type":"SHORT_ANSWER","answers":["42"],"inputHint":"Number","answerFormat":"INTEGER"}
+                """));
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.answerFormat").value("INTEGER"))
+                .andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}/versions", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.versions[0].snapshot.body.answerFormat").value("INTEGER"));
+        request.put("expectedRevision", currentRevision(id));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.path("body")).remove("answerFormat");
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void setChildAnswerFormatRoundTrips() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        var childBody = (com.fasterxml.jackson.databind.node.ObjectNode) request.at("/body/children/1/body");
+        childBody.put("answerFormat", "DECIMAL");
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.children[1].body.answerFormat").value("DECIMAL"))
+                .andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}/versions", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.versions[0].snapshot.body.children[1].body.answerFormat").value("DECIMAL"));
+    }
+
+    @Test
     void legacyMatchingShuffleFlagsAreAcceptedButNotReturned() throws Exception {
         var request = (com.fasterxml.jackson.databind.node.ObjectNode)
                 objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
