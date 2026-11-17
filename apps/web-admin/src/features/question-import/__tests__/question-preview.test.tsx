@@ -153,4 +153,22 @@ describe("QuestionPreview with HTML cells", () => {
     // Đề bài và mục bên trái là HTML: mỗi ô một `<br>` thành ngắt dòng.
     expect(container.querySelectorAll("br")).toHaveLength(2);
   });
+
+  it("shows the keep-option-order value for single and multiple choice rows and hides it for other types", async () => {
+    const single = row(2, { draft: draft({ type: "SINGLE_CHOICE", content: HTML_CELL, keepOptionOrder: true }) });
+    const { unmount } = renderPreview(single);
+    expect(await screen.findByText("Giữ thứ tự phương án:")).toBeInTheDocument();
+    expect(screen.getByText("Có")).toBeInTheDocument();
+    unmount();
+
+    const multiple = row(3, { draft: draft({ type: "MULTIPLE_CHOICE", content: HTML_CELL }) });
+    const second = renderPreview(multiple);
+    expect(await screen.findByText("Giữ thứ tự phương án:")).toBeInTheDocument();
+    expect(screen.getByText("Không")).toBeInTheDocument();
+    second.unmount();
+
+    renderPreview(row(4, { draft: draft({ type: "ESSAY", content: HTML_CELL }) }));
+    await screen.findByRole("heading", { level: 2 });
+    expect(screen.queryByText("Giữ thứ tự phương án:")).toBeNull();
+  });
 });

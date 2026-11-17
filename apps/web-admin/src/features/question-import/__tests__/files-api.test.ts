@@ -186,6 +186,31 @@ describe("API nhập câu hỏi (nhánh thật, client giả)", () => {
     expect(validation.rows[1]).toMatchObject({ status: "ERROR", sourceCode: null, issues: [{ code: "REQUIRED", severity: "error" }] });
   });
 
+  it("kiểm tra: cột Giữ thứ tự phương án đọc từ body.shuffleOptions; mã KEEP_OPTION_ORDER_IGNORED được giữ nguyên, không rơi về mã dự phòng", async () => {
+    fakeApi.post(
+      `${BASE}/uploads/{id}/validate`,
+      ok({
+        uploadId: "upl-1",
+        summary: { total: 3, valid: 3, error: 0, duplicate: 0, validSets: 0, validSetChildren: 0 },
+        rows: [
+          { rowNumber: 2, status: "VALID", issues: [], draft: { type: "SINGLE_CHOICE", body: { type: "SINGLE_CHOICE", shuffleOptions: false } } },
+          { rowNumber: 3, status: "VALID", issues: [], draft: { type: "MULTIPLE_CHOICE", body: { type: "MULTIPLE_CHOICE" } } },
+          {
+            rowNumber: 4,
+            status: "VALID",
+            issues: [{ code: "KEEP_OPTION_ORDER_IGNORED", severity: "warning", field: "keepOptionOrder", column: "Giữ thứ tự phương án", value: "x" }],
+            draft: { type: "ESSAY", body: { type: "ESSAY", shuffleOptions: false } },
+          },
+        ],
+      }),
+    );
+    const validation = await validateImport({ uploadId: "upl-1", mapping });
+    expect(validation.rows.map((row) => row.draft.keepOptionOrder)).toEqual([true, false, false]);
+    expect(validation.rows[2]!.issues).toEqual([
+      { code: "KEEP_OPTION_ORDER_IGNORED", severity: "warning", field: "keepOptionOrder", column: "Giữ thứ tự phương án", value: "x" },
+    ]);
+  });
+
   it("nhập: gửi Idempotency-Key, đổi lịch sử sang kiểu của web", async () => {
     fakeApi.post(`${BASE}/uploads/{id}/commit`, ok(history(), { status: 201 }));
     const result = await commitImport(commitParams);
