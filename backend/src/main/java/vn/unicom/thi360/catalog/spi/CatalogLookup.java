@@ -40,6 +40,11 @@ public interface CatalogLookup {
      */
     List<CatalogCombinationView> listCurrentCombinations(String groupCode);
 
+    /**
+     * Các mã tổ hợp đang hoạt động của một kỳ thi, giữ nhánh và thứ tự môn.
+     */
+    List<CatalogCombinationView> listCombinations(UUID examItemId);
+
     Optional<CatalogItemView> findActiveItem(String groupCode, String itemCode);
 
     Optional<CatalogItemView> findItem(UUID id);

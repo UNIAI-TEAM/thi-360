@@ -13,14 +13,30 @@ UPDATE catalog.catalog_group SET last_value = GREATEST(last_value, 8) WHERE id =
 
 -- Hồ sơ bảy kỳ thi; seed dev/test vì EXAM có thể trống trên môi trường thật.
 INSERT INTO exam.exam_kind_profile (exam_item_id, scopes, template_by, timing, max_score, reference_max, practice_scoring, tf_scoring, mc_rule, revision) VALUES
-  ('00000000-0000-7000-8200-000000000101','{FULL,PART}','KIND','PER_PART',150,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8200-000000000102','{FULL,PART}','KIND','PER_PART',150,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8400-000000000103','{FULL}','KIND','SHARED',100,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  ('00000000-0000-7000-8200-000000000101','{FULL,PART,SUBJECT}','KIND','PER_PART',150,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  ('00000000-0000-7000-8200-000000000102','{FULL,PART,SUBJECT}','KIND','PER_PART',150,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  ('00000000-0000-7000-8400-000000000103','{FULL,PART,SUBJECT}','KIND','SHARED',100,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000104','{FULL}','KIND','SHARED',NULL,1200,'LINEAR',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8400-000000000105','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8400-000000000106','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  ('00000000-0000-7000-8400-000000000105','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  ('00000000-0000-7000-8400-000000000106','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000107','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0)
 ON CONFLICT (exam_item_id) DO NOTHING;
+
+-- Đợt 2B 5.1: phạm vi theo kỳ thi; sửa cả hồ sơ đã seed trước đây.
+UPDATE exam.exam_kind_profile SET scopes = CASE exam_item_id
+  WHEN '00000000-0000-7000-8200-000000000101' THEN '{FULL,PART,SUBJECT}'
+  WHEN '00000000-0000-7000-8200-000000000102' THEN '{FULL,PART,SUBJECT}'
+  WHEN '00000000-0000-7000-8400-000000000103' THEN '{FULL,PART,SUBJECT}'
+  WHEN '00000000-0000-7000-8400-000000000104' THEN '{FULL}'
+  WHEN '00000000-0000-7000-8400-000000000105' THEN '{SUBJECT,PART}'
+  WHEN '00000000-0000-7000-8400-000000000106' THEN '{SUBJECT,PART}'
+  WHEN '00000000-0000-7000-8400-000000000107' THEN '{SUBJECT}'
+END::text[]
+WHERE exam_item_id IN (
+  '00000000-0000-7000-8200-000000000101','00000000-0000-7000-8200-000000000102',
+  '00000000-0000-7000-8400-000000000103','00000000-0000-7000-8400-000000000104',
+  '00000000-0000-7000-8400-000000000105','00000000-0000-7000-8400-000000000106',
+  '00000000-0000-7000-8400-000000000107');
 
 -- One HSA draft loaded from HSA_FULL. Counts are dev test data, not the HSA standard.
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions, kind_item_id, scope, timing, duration_minutes, max_score, practice_scoring, status, check_status, question_count, has_essay, has_english_option, combination_count, has_unpublished_changes, revision) VALUES

@@ -99,6 +99,10 @@
       "UNKNOWN_ACTION": "Other action"
     },
     "behaviorWarning": "Adding a value does not automatically create its corresponding processing logic.",
+    "branches": {
+      "ENGLISH": "English",
+      "SCIENCE": "Science"
+    },
     "cancel": "Cancel",
     "cardValueMeta": "Value: {value}",
     "close": "Close",
@@ -116,6 +120,9 @@
     "combinationDialog": {
       "addSubjectLabel": "Add subject",
       "addSubjectPlaceholder": "Select an active subject…",
+      "branchHint": "Used to filter codes by the Science or English part of an exam.",
+      "branchLabel": "Branch",
+      "branchNone": "No branch",
       "codeConventionHint": "Unique within the catalog, e.g. QDA_QD01 (combinations are scoped by exam).",
       "createTitle": "Add combination",
       "currentVersionMeta": "Group: {groupName} ({groupCode}) · Current version: {version}",
@@ -123,10 +130,9 @@
       "editTitle": "Edit combination",
       "examLabel": "Exam",
       "examPlaceholder": "Select an active exam…",
-      "inPlaceVersionHint": "This combination is not yet referenced; changing the exam, subjects, or subject order will update version {version} in place.",
       "moveSubjectDownLabel": "Move {name} down",
       "moveSubjectUpLabel": "Move {name} up",
-      "newVersionNotice": "This combination is currently in use. Changing the exam, subjects, or subject order will create version {nextVersion}; published exams and historical results continue using version {currentVersion}.",
+      "newVersionNotice": "Changing the branch, exam, subject list or subject order always creates a new version. Published exams and historical results keep version {currentVersion}; this save creates version {nextVersion}.",
       "noActiveExams": "No active exams available.",
       "noActiveSubjects": "No more active subjects available to add.",
       "optionsLoadError": "Could not load options. Please try again.",
@@ -169,6 +175,7 @@
       "auditPermissionDenied": "You have not been granted access to the audit log, so change history is unavailable.",
       "auditReasonLabel": "Reason: {reason}",
       "auditTab": "Change history",
+      "branchLabel": "Branch",
       "combinationSectionTitle": "Current combination configuration",
       "createdAtLabel": "Created at",
       "currentVersionBadge": "Current",

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CatalogStatus } from "./api";
+import type { CatalogStatus, CombinationBranch } from "./api";
 import { CATALOG_CODE_REGEX } from "./utils";
 
 export interface CatalogValidationMessages {
@@ -140,6 +140,8 @@ export interface CombinationFormValues extends ItemFormValues {
   examItemId: string;
   subjectItemIds: string[];
   sourceNote: string;
+  /** "NONE" khi không thuộc nhánh nào. */
+  branch: "NONE" | CombinationBranch;
 }
 
 export function createCombinationFormSchema(
@@ -167,6 +169,7 @@ export function createCombinationFormSchema(
       subjectItemIds: z.array(z.string()).min(1, messages.subjectsRequired),
       sourceNote: z.string(),
       description: z.string(),
+      branch: z.enum(["NONE", "SCIENCE", "ENGLISH"]),
       reason: z.string(),
     })
     .superRefine((values, ctx) => {

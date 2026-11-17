@@ -37,6 +37,24 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired DataSource dataSource;
+    private static final Map<String, String> OLD_PROFILE_SCOPES = Map.of(
+            "HSA", "FULL,PART",
+            "QDA", "FULL,PART",
+            "BCA", "FULL,PART",
+            "VACT", "FULL",
+            "SPT", "SUBJECT",
+            "SP2E", "SUBJECT",
+            "THPTQG", "SUBJECT");
+
+    private static final Map<String, String> EXPECTED_PROFILE_SCOPES = Map.of(
+            "HSA", "FULL,PART,SUBJECT",
+            "QDA", "FULL,PART,SUBJECT",
+            "BCA", "FULL,PART,SUBJECT",
+            "VACT", "FULL",
+            "SPT", "SUBJECT,PART",
+            "SP2E", "SUBJECT,PART",
+            "THPTQG", "SUBJECT");
+
     @Test
     void seededHsaMathContextHasKnownChildAnswerType() throws Exception {
         String json = jdbc.queryForObject("""
@@ -556,6 +574,76 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 .isEqualTo(exams);
         assertThat(jdbc.queryForList("SELECT subject_item_id, revision FROM questionbank.question_source_revision ORDER BY subject_item_id"))
                 .isEqualTo(revisions);
+    }
+
+    @Test
+    void examKindProfilesSeedScopesPerSpec2B() {
+        assertThat(examKindScopes()).containsExactlyInAnyOrderEntriesOf(EXPECTED_PROFILE_SCOPES);
+    }
+
+    @Test
+    void rerunningExamDevSeedRepairsExistingProfileScopesWithoutChangingOtherFields() {
+        jdbc.update("""
+                UPDATE exam.exam_kind_profile SET scopes = CASE exam_item_id
+                    WHEN '00000000-0000-7000-8200-000000000101' THEN '{FULL,PART}'
+                    WHEN '00000000-0000-7000-8200-000000000102' THEN '{FULL,PART}'
+                    WHEN '00000000-0000-7000-8400-000000000103' THEN '{FULL,PART}'
+                    WHEN '00000000-0000-7000-8400-000000000104' THEN '{FULL}'
+                    WHEN '00000000-0000-7000-8400-000000000105' THEN '{SUBJECT}'
+                    WHEN '00000000-0000-7000-8400-000000000106' THEN '{SUBJECT}'
+                    WHEN '00000000-0000-7000-8400-000000000107' THEN '{SUBJECT}'
+                END::text[]
+                WHERE exam_item_id IN (
+                    '00000000-0000-7000-8200-000000000101',
+                    '00000000-0000-7000-8200-000000000102',
+                    '00000000-0000-7000-8400-000000000103',
+                    '00000000-0000-7000-8400-000000000104',
+                    '00000000-0000-7000-8400-000000000105',
+                    '00000000-0000-7000-8400-000000000106',
+                    '00000000-0000-7000-8400-000000000107')
+                """);
+        assertThat(examKindScopes()).containsExactlyInAnyOrderEntriesOf(OLD_PROFILE_SCOPES);
+        List<Map<String, Object>> before = profileRowsWithoutScopes();
+
+        ScriptUtils.executeSqlScript(DataSourceUtils.getConnection(dataSource),
+                new ClassPathResource("db/devdata/R__seed_exam_dev_data.sql"));
+
+        assertThat(examKindScopes()).containsExactlyInAnyOrderEntriesOf(EXPECTED_PROFILE_SCOPES);
+        assertThat(profileRowsWithoutScopes()).containsExactlyElementsOf(before);
+    }
+
+    private Map<String, String> examKindScopes() {
+        return jdbc.query(
+                "SELECT i.code, array_to_string(p.scopes, ',') FROM exam.exam_kind_profile p"
+                        + " JOIN catalog.catalog_item i ON i.id = p.exam_item_id",
+                rs -> {
+                    Map<String, String> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.put(rs.getString(1), rs.getString(2));
+                    }
+                    return result;
+                });
+    }
+
+    private List<Map<String, Object>> profileRowsWithoutScopes() {
+        return jdbc.queryForList("SELECT * FROM exam.exam_kind_profile ORDER BY exam_item_id").stream()
+                .map(row -> {
+                    Map<String, Object> withoutScopes = new LinkedHashMap<>(row);
+                    withoutScopes.remove("scopes");
+                    return withoutScopes;
+                })
+                .toList();
+    }
+
+    @Test
+    void examSeedsContainNoAssumedCombinationCodes() {
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM catalog.catalog_item WHERE code_normalized ~ '^(qda_qd0|kh-)'",
+                Integer.class)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM catalog.catalog_item i JOIN catalog.combination_version v ON v.item_id = i.id"
+                        + " WHERE i.code_normalized ~ '^(qda_qd0|kh-)'",
+                Integer.class)).isZero();
     }
 
     private void runRepairMigration() {
