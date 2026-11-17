@@ -306,28 +306,24 @@ function ContentSection({ formId, type, onWordPaste }: { formId: string; type: Q
   return (
     <EditorSection title={t(`contentTitle.${key}`)} titleId={titleId} required>
       <div className="flex flex-col gap-1.5">
-        {/* Dán nội dung Word vào ô đề bài: bắt `clipboardData` gốc ở pha bắt, trước ProseMirror và bước lọc HTML (spec 4.10). */}
-        <div
-          onPasteCapture={(event) => {
-            const html = event.clipboardData.getData("text/html");
-            if (!isWordHtml(html)) return;
-            event.preventDefault();
-            event.stopPropagation();
+        <RichTextField
+          id={`${formId}-content`}
+          aria-labelledby={titleId}
+          aria-required
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${formId}-content-error` : `${formId}-content-hint`}
+          name="content"
+          fieldContext={
+            type === "QUESTION_SET" ? "set-passage" : type === "SINGLE_CHOICE" ? "stem-single-choice" : "default"
+          }
+          // Nội dung Word vào ô đề bài: `onRichPaste` chạy trước bộ lọc HTML, nên OMML còn nguyên (spec 4.10).
+          onRichPaste={(clipboardData) => {
+            const html = clipboardData?.getData("text/html") ?? "";
+            if (!isWordHtml(html)) return false;
             onWordPaste(html);
+            return true;
           }}
-        >
-          <RichTextField
-            id={`${formId}-content`}
-            aria-labelledby={titleId}
-            aria-required
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${formId}-content-error` : `${formId}-content-hint`}
-            name="content"
-            fieldContext={
-              type === "QUESTION_SET" ? "set-passage" : type === "SINGLE_CHOICE" ? "stem-single-choice" : "default"
-            }
-          />
-        </div>
+        />
         {!error && (
           <p id={`${formId}-content-hint`} className="text-caption text-text-muted">
             {t(`contentHint.${hintKey}`)}
