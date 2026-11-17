@@ -23,7 +23,7 @@ SELECT md5('thi360-seed-math-' || grade.code || '-' || level.code || '-' || kind
        kind.type, subject.id, grade.id, level.id, NULL, 1,
        '<p>Math example ' || n || '</p>',
        CASE WHEN kind.type = 'SINGLE_CHOICE' THEN
-           jsonb_build_object('type', kind.type, 'shuffleOptions', false, 'options',
+           jsonb_build_object('type', kind.type, 'options',
                jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                  jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false)))
        ELSE jsonb_build_object('type', kind.type, 'answers', jsonb_build_array('1'), 'inputHint', '') END,
@@ -53,7 +53,7 @@ WITH sets AS (
 ), children AS (
     SELECT s.*, c.pos, c.child_id, c.type,
            CASE WHEN c.type = 'SINGLE_CHOICE' THEN
-               jsonb_build_object('type', c.type, 'shuffleOptions', false, 'options',
+               jsonb_build_object('type', c.type, 'options',
                    jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                      jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false)))
            ELSE jsonb_build_object('type', c.type, 'answers', jsonb_build_array('1'), 'inputHint', '') END AS body
@@ -84,7 +84,7 @@ SELECT md5('thi360-seed-' || subject.code || '-' || grade.code || '-' || level.c
        'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL,
        CASE WHEN subject.code = 'ANH' THEN 0.75 ELSE 1 END,
        '<p>Practice example ' || n || '</p>',
-       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
            jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                              jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
        NULL, NULL
@@ -104,7 +104,7 @@ SELECT md5('thi360-seed-task-' || task.code || '-' || grade.code || '-' || level
        'SEED-TASK-' || task.code || '-' || grade.code || '-' || level.code || '-' || n,
        'SINGLE_CHOICE', subject.id, grade.id, level.id, task_item.id, 1,
        '<p>Language example ' || n || '</p>',
-       jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
            jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                              jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
        NULL, NULL
@@ -158,7 +158,7 @@ WITH sets AS (
       AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC')
 ), children AS (
     SELECT s.*, n AS pos, md5(s.id::text || '-' || n)::uuid AS child_id,
-           jsonb_build_object('type', 'SINGLE_CHOICE', 'shuffleOptions', false, 'options',
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
                jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                  jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
     FROM sets s CROSS JOIN generate_series(0, 1) n
@@ -189,7 +189,7 @@ SELECT md5('thi360-seed-extra-' || kind.type || '-' || n)::uuid,
        CASE WHEN kind.type IN ('CLOZE', 'MATCHING') THEN 2 ELSE 1 END,
        '<p>Extra example ' || n || '</p>',
        CASE kind.type
-           WHEN 'MULTIPLE_CHOICE' THEN jsonb_build_object('type', kind.type, 'shuffleOptions', false, 'scoringRule', 'ALL_OR_NOTHING',
+           WHEN 'MULTIPLE_CHOICE' THEN jsonb_build_object('type', kind.type, 'scoringRule', 'ALL_OR_NOTHING',
                'options', jsonb_build_array(
                    jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                    jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', true),

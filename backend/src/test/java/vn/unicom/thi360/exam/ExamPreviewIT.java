@@ -97,6 +97,18 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GENERATED"))
                 .andReturn().getResponse().getContentAsString());
     }
+    @Test
+    void previewOfSeededChoiceDoesNotExposeShuffleOptions() throws Exception {
+        UUID examId = exam(part("TOAN", "[{\"id\":\"g\",\"name\":\"Group\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]", "null"));
+        JsonNode paper = preview(examId, "{\"pathId\":\"default\",\"seed\":123}").path("paper");
+        JsonNode question = paper.path("parts").get(0).path("blocks").get(0).path("items").get(0).path("question");
+        String code = jdbc.queryForObject("select code from questionbank.question where id = ?",
+                String.class, UUID.fromString(question.path("questionId").asText()));
+        assertThat(code).startsWith("SEED-");
+        assertThat(question.path("body").path("options")).isNotEmpty();
+        assertThat(question.findValues("shuffleOptions")).isEmpty();
+    }
+
 
     @Test
     void draftEditNotServed() throws Exception {
