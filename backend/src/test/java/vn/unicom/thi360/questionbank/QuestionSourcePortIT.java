@@ -324,6 +324,73 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         assertThat(source.countUnion(List.of(one, two)).total()).isEqualTo(2);
     }
 
+    private UUID setWithChildren(UUID subject, String type, String firstBody, String secondBody, UUID firstNode, UUID secondNode) {
+        UUID set = question(subject, "READY", 1, 1);
+        jdbc.update("update questionbank.question set type='QUESTION_SET' where id=?", set);
+        for (int position = 0; position < 2; position++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) "
+                    + "values (?,?,?,'READY',?,?,1)", child, "C-" + child, type, set, position);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,?::jsonb)",
+                    child, position == 0 ? firstBody : secondBody);
+            UUID node = position == 0 ? firstNode : secondNode;
+            if (node != null) jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, node);
+        }
+        return set;
+    }
+
+    @Test
+    void setChildrenShapeFormatAndInclusivePositionsControlEligibility() {
+        UUID subject = UUID.randomUUID();
+        UUID nodeA = UUID.randomUUID();
+        UUID nodeB = UUID.randomUUID();
+        String fourSix = "{\"body\":{\"left\":[{},{},{},{}],\"right\":[{},{},{},{},{},{}]}}";
+        String threeFive = "{\"body\":{\"left\":[{},{},{}],\"right\":[{},{},{},{},{}]}}";
+        UUID shapeMatch = setWithChildren(subject, "MATCHING", fourSix, fourSix, nodeA, nodeB);
+        UUID shapeWrong = setWithChildren(subject, "MATCHING", fourSix, threeFive, nodeB, nodeA);
+        var shape = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null,
+                new QuestionSourcePort.ItemShape(null, 4, 6), null, null);
+        assertThat(source.findCandidates(shape, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(shapeMatch);
+        assertThat(source.matching(shape, List.of(shapeMatch, shapeWrong))).containsExactly(shapeMatch);
+        assertThat(source.count(shape).total()).isEqualTo(2);
+
+        String integer = "{\"body\":{\"answerFormat\":\"INTEGER\"}}";
+        String decimal = "{\"body\":{\"answerFormat\":\"DECIMAL\"}}";
+        String unset = "{\"body\":{}}";
+        UUID formatMatch = setWithChildren(subject, "SHORT_ANSWER", integer, integer, nodeA, nodeB);
+        UUID formatWrong = setWithChildren(subject, "SHORT_ANSWER", integer, decimal, nodeA, nodeA);
+        UUID formatMissing = setWithChildren(subject, "SHORT_ANSWER", integer, unset, nodeB, nodeB);
+        var format = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, List.of(AnswerFormat.INTEGER), null);
+        assertThat(source.findCandidates(format, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(formatMatch);
+        assertThat(source.matching(format, List.of(formatMatch, formatWrong, formatMissing))).containsExactly(formatMatch);
+        assertThat(source.count(format).total()).isEqualTo(2);
+
+        var both = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, List.of(AnswerFormat.INTEGER),
+                List.of(new QuestionSourcePort.ChildCondition(1, 1, List.of(nodeA)),
+                        new QuestionSourcePort.ChildCondition(2, 2, List.of(nodeB))));
+        var range = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null,
+                List.of(new QuestionSourcePort.ChildCondition(1, 2, List.of(nodeA))));
+        var missing = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null,
+                List.of(new QuestionSourcePort.ChildCondition(1, 3, List.of(nodeA, nodeB))));
+        assertThat(source.findCandidates(both, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(formatMatch);
+        assertThat(source.count(both).total()).isEqualTo(2);
+        assertThat(source.findCandidates(range, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(formatWrong);
+        assertThat(source.matching(range, List.of(shapeMatch, shapeWrong, formatMatch, formatWrong, formatMissing)))
+                .containsExactly(formatWrong);
+        assertThat(source.countUnion(List.of(both, range)).total()).isEqualTo(4);
+        assertThat(source.findCandidates(missing, 10)).isEmpty();
+        assertThat(source.count(missing).total()).isZero();
+    }
+
     @Test
     void tagsUseOneOfSemantics() {
         UUID subject = UUID.randomUUID();
