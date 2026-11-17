@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { emptyChild, type EditorChild } from "../editor-form";
 import { apiReadiness } from "./api-fixtures";
-import { fakeQuestions, renderEn, seedQuestion, storedQuestion } from "./editor-test-kit";
+import { fakeQuestions, renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -174,5 +174,37 @@ describe("cảnh báo phương án nhắc tới phương án khác", () => {
     await screen.findByRole("textbox", { name: "Option B text" });
     await waitFor(() => expect(keepCheckbox()).toBeChecked());
     expect(screen.queryByText(WARNING)).toBeNull();
+  });
+
+  it("đổi chỗ phương án: cảnh báo đi theo phương án đó, không theo vị trí", async () => {
+    const user = userEvent.setup();
+    const id = await seedSingle();
+    fakeQuestions.server().setReadiness(id, apiReadiness(true, [], [warning("body.options[2].content")]));
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+
+    const optionC = await screen.findByRole("textbox", { name: "Option C text" });
+    expect(await within(optionC.closest("li")!).findByText(WARNING)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Move option C up" }));
+    const moved = await screen.findByRole("textbox", { name: "Option B text" });
+    expect(rich(moved).text).toBe("P3");
+    expect(within(moved.closest("li")!).getByText(WARNING)).toBeInTheDocument();
+    expect(within(screen.getByRole("textbox", { name: "Option C text" }).closest("li")!).queryByText(WARNING)).toBeNull();
+  });
+
+  it("xóa phương án phía trên: cảnh báo vẫn ở đúng phương án gây cảnh báo", async () => {
+    const user = userEvent.setup();
+    const id = await seedSingle();
+    fakeQuestions.server().setReadiness(id, apiReadiness(true, [], [warning("body.options[2].content")]));
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+
+    const optionC = await screen.findByRole("textbox", { name: "Option C text" });
+    expect(await within(optionC.closest("li")!).findByText(WARNING)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Delete option A" }));
+    const optionB = await screen.findByRole("textbox", { name: "Option B text" });
+    expect(rich(optionB).text).toBe("P3");
+    expect(within(optionB.closest("li")!).getByText(WARNING)).toBeInTheDocument();
+    expect(within(screen.getByRole("textbox", { name: "Option C text" }).closest("li")!).queryByText(WARNING)).toBeNull();
   });
 });

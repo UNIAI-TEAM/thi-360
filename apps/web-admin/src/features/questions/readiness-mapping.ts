@@ -7,6 +7,7 @@ import {
   type ReadinessIssueCode,
   type ReadinessRule,
 } from "./readiness";
+import type { QuestionDetail } from "./types";
 
 type ApiReadiness = components["schemas"]["QuestionReadiness"];
 type ApiFieldError = components["schemas"]["QuestionFieldError"];
@@ -118,4 +119,22 @@ export function fromApiReadiness(readiness: ApiReadiness): QuestionReadiness {
     rules,
     warnings: readiness.warnings.map((warning) => toIssue(warning).issue),
   };
+}
+
+/**
+ * Cảnh báo `OPTION_REFERS_TO_OTHERS` đi kèm `position` của phương án lúc máy chủ kiểm tra; đổi chỗ hay xóa dòng trong
+ * trình soạn làm `position` trỏ sai phương án. Khớp sẵn `position` -> `id` phương án trên câu đang mở (câu đơn theo
+ * `body`, câu con theo `child` tính từ 1) để cảnh báo theo id, không theo vị trí.
+ */
+export function resolveOptionWarnings(
+  warnings: readonly ReadinessIssue[],
+  question: Pick<QuestionDetail, "body" | "children">,
+): ReadinessIssue[] {
+  return warnings.map((warning) => {
+    if (warning.code !== "OPTION_REFERS_TO_OTHERS" || warning.position === undefined) return warning;
+    const body = warning.child === undefined ? question.body : question.children[warning.child - 1]?.body;
+    const options = body && (body.type === "SINGLE_CHOICE" || body.type === "MULTIPLE_CHOICE") ? body.options : undefined;
+    const resolvedOptionId = options?.[warning.position - 1]?.id;
+    return { ...warning, ...(resolvedOptionId !== undefined ? { resolvedOptionId } : {}) };
+  });
 }

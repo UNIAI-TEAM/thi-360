@@ -64,10 +64,12 @@ export function EditorWarningsProvider({
   return <ReadinessWarningsContext.Provider value={warnings}>{children}</ReadinessWarningsContext.Provider>;
 }
 
-/** Cảnh báo của máy chủ theo `code`, `position` (phương án, tính từ 1) và `child` (câu con của chùm, tính từ 1). */
-export function useEditorWarnings(code: string, position: number, child?: number): readonly ReadinessIssue[] {
+/** Cảnh báo của máy chủ theo `code`, `optionId` (id phương án đã khớp lúc mở) và `child` (câu con của chùm, tính từ 1). */
+export function useEditorWarnings(code: string, optionId: string, child?: number): readonly ReadinessIssue[] {
   const warnings = useContext(ReadinessWarningsContext);
-  return warnings.filter((warning) => warning.code === code && warning.position === position && warning.child === child);
+  return warnings.filter(
+    (warning) => warning.code === code && warning.resolvedOptionId === optionId && warning.child === child,
+  );
 }
 
 /** Lỗi đã dịch của một trường (kể cả lỗi cấp mảng mà resolver đặt ở `.root`). */

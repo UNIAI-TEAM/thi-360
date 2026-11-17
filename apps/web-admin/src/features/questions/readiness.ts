@@ -122,6 +122,8 @@ export interface ReadinessIssue {
   child?: number;
   /** Vị trí trong câu (phương án, ô trống, ô thả), tính từ 1. */
   position?: number;
+  /** Id phương án đã khớp khi mở trình soạn: `position` trôi khi đổi chỗ/xóa dòng, `id` thì không. */
+  resolvedOptionId?: string;
   /** Giá trị gây lỗi: mã danh mục, MAPID, tên tệp. */
   value?: string;
 }

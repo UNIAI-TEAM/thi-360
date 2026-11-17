@@ -10,7 +10,7 @@ import { ClipboardPaste, Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { lazy, Suspense, useEffect, useId, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useState, type FormEvent } from "react";
 import { FormProvider, useForm, useFormContext, useWatch, type Path } from "react-hook-form";
 import type { ContentReference, QuestionType } from "@/features/content/types";
 import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
@@ -25,6 +25,7 @@ import {
   type QuestionEditorValues,
 } from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
+import { resolveOptionWarnings } from "../readiness-mapping";
 import { useQuestionReadiness } from "../queries";
 import { useUiLocale } from "../use-ui-locale";
 import { questionEditorSchema } from "../editor-schema";
@@ -119,7 +120,11 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
 
   // Cảnh báo Sẵn sàng (ví dụ phương án tự tham chiếu) của câu đang sửa; câu tạo mới chưa có.
   const readiness = useQuestionReadiness(question?.id ?? null);
-  const readinessWarnings = readiness.data?.warnings ?? [];
+  // `position` của cảnh báo trỏ sai khi đổi chỗ/xóa phương án trước khi lưu: khớp sang id phương án ngay lúc tải.
+  const readinessWarnings = useMemo(
+    () => (question ? resolveOptionWarnings(readiness.data?.warnings ?? [], question) : []),
+    [readiness.data?.warnings, question],
+  );
 
   const createMutation = useCreateQuestion();
   const updateMutation = useUpdateQuestion(question?.id ?? "");
