@@ -55,7 +55,7 @@ import {
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
 import { ExamStructureSaveError } from "../review-api";
-import type { ExamTemplate } from "../types";
+import type { ExamDetail, ExamTemplate } from "../types";
 import { CreateExamCover, type CoverImage } from "./create-exam-cover";
 import {
   GenerateCodeButton,
@@ -227,6 +227,8 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const [cover, setCover] = useState<CoverImage | null>(null);
   const [pendingScope, setPendingScope] = useState<PendingScope | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Bài đã tạo mà lưu cấu trúc lỗi: gửi lại chỉ lưu cấu trúc, không POST lại (N2-4).
+  const [partiallyCreated, setPartiallyCreated] = useState<ExamDetail | null>(null);
   const [liveMessage, setLiveMessage] = useState("");
   const guard = useUnsavedChangesGuard((formState.isDirty || cover !== null) && !createExam.isSuccess);
 
@@ -469,6 +471,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     // Cấu trúc chưa sửa so với mẫu thì không gửi: máy chủ nạp mẫu, giữ nguyên các trường của mẫu.
     const request = toCreateExamRequest(submitted);
     if (!partsEdited(submitted.parts, baseline)) delete request.parts;
+    if (partiallyCreated) request.existing = partiallyCreated;
     createExam.mutate(request, {
       onSuccess: (exam) => {
         const message = t("success", { code: exam.code });
@@ -478,11 +481,12 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
       },
       onError: (error) => {
         if (error instanceof ExamStructureSaveError) {
-          // Bài đã được tạo: không POST lại (trùng mã). Chuyển sang bài để sửa lại cấu trúc ở tab Cấu trúc.
+          // Bài đã được tạo: không POST lại (trùng mã). Ở lại trang để sửa cấu trúc rồi gửi lại, không mất các chỉnh sửa.
           const message = t("errors.structureNotSaved", { code: error.exam.code });
+          setPartiallyCreated(error.exam);
+          setSubmitError(message);
           notify.error(message);
           setLiveMessage(message);
-          router.push(examTabHref(error.exam.id, "structure"));
           return;
         }
         const status = getErrorStatus(error);
@@ -752,6 +756,14 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
           {submitError && (
             <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-body text-danger">
               {submitError}
+              {partiallyCreated && (
+                <>
+                  {" "}
+                  <Link href={examTabHref(partiallyCreated.id, "structure")} className="font-semibold underline">
+                    {t("errors.openCreated", { code: partiallyCreated.code })}
+                  </Link>
+                </>
+              )}
             </p>
           )}
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

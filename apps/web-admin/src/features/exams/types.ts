@@ -431,6 +431,11 @@ export interface CreateExamRequest {
   maxScore?: number | null;
   /** Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi. Bỏ trống thì nạp nguyên mẫu mới nhất. */
   parts?: CreateExamPartInput[];
+  /**
+   * Bài đã tạo ở lần gửi trước mà bước lưu cấu trúc lỗi (`ExamStructureSaveError`): gửi lại chỉ lưu cấu trúc lên bài này,
+   * không POST lại (sẽ trùng mã), nên các chỉnh sửa cấu trúc trên trang không mất (N2-4).
+   */
+  existing?: ExamDetail;
 }
 
 /** Quy tắc đảo câu của khối: đảo thứ tự câu trong khối hoặc giữ thứ tự. */

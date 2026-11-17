@@ -53,12 +53,18 @@ beforeEach(() => {
 });
 
 describe("trang Tạo bài thi, nhánh thật", () => {
-  it("POST 201 rồi PUT cấu trúc 422: chuyển sang tab Cấu trúc của bài đã tạo kèm thông báo, chỉ POST một lần", async () => {
+  it("POST 201 rồi PUT cấu trúc 422: ở lại trang kèm thông báo; gửi lại chỉ PUT cấu trúc đã sửa, không POST lần hai (N2-4)", async () => {
+    let puts = 0;
     const server = new FakeServer()
       .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [TEMPLATE] })
       .on("GET", `${EXAMS_PATH}/suggested-code`, { status: 200, body: { code: "HSA-F-001" } })
       .on("POST", EXAMS_PATH, { status: 201, body: examDetailWire({ revision: 1 }) })
-      .on("PUT", STRUCTURE_PATH, { status: 422, body: { code: "EXAM_STRUCTURE_INVALID", fieldErrors: [] } })
+      .on("PUT", STRUCTURE_PATH, () => {
+        puts += 1;
+        return puts === 1
+          ? { status: 422, body: { code: "EXAM_STRUCTURE_INVALID", fieldErrors: [] } }
+          : { status: 200, body: examDetailWire({ revision: 2 }) };
+      })
       .install();
     const user = userEvent.setup();
     renderWithProviders(<CreateExamPage />);
@@ -76,10 +82,19 @@ describe("trang Tạo bài thi, nhánh thật", () => {
     await user.type(duration, "45");
     await user.click(screen.getAllByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" })[0]!);
 
+    expect(await screen.findAllByText(/Đã tạo bài thi HSA-F-001 với cấu trúc của mẫu/)).not.toHaveLength(0);
+    // Ở lại trang với các chỉnh sửa còn nguyên, kèm đường dẫn mở bài đã tạo.
+    expect(routerMock.push).not.toHaveBeenCalled();
+    expect(duration).toHaveValue("45");
+    expect(screen.getByRole("link", { name: "Mở bài HSA-F-001 để sửa ở tab Cấu trúc" })).toHaveAttribute(
+      "href",
+      `/exams/${EXAM_ID}/structure`,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" })[0]!);
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
     expect(server.calls("POST", EXAMS_PATH)).toHaveLength(1);
-    expect(server.calls("PUT", STRUCTURE_PATH)).toHaveLength(1);
-    expect(await screen.findByText(/Đã tạo bài thi HSA-F-001 với cấu trúc của mẫu/)).toBeInTheDocument();
+    expect(server.calls("PUT", STRUCTURE_PATH)).toHaveLength(2);
   });
 });
 
