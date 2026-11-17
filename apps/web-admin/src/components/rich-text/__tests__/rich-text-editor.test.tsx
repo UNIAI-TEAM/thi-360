@@ -10,6 +10,7 @@ import { RichTextEditor } from "../rich-text-editor";
 import { RichTextView } from "../view/rich-text-view";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
 
+vi.mock("mathlive", () => import("./mathlive-mock").then((module) => module.mathliveModule));
 vi.mock("@/features/questions/api", async (importOriginal) => {
   const actual = await importOriginal<typeof QuestionsApi>();
   // Lớp mẫu đã gỡ: trả tài nguyên giả theo hợp đồng `uploadQuestionAsset` (QA UNI-2621).
@@ -102,12 +103,12 @@ describe("RichTextEditor", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent("Bold");
   });
 
-  it("inserts a block formula when Block is chosen", async () => {
+  it("inserts a block formula when Own line is chosen", async () => {
     const user = userEvent.setup();
     const { onChange } = renderEditor();
 
     await user.click(screen.getByRole("button", { name: "Math formula" }));
-    await user.click(await screen.findByRole("radio", { name: "Block" }));
+    await user.click(await screen.findByRole("button", { name: "Own line" }));
     fireEvent.change(await screen.findByLabelText("LaTeX code"), { target: { value: "\\sum_{i=1}^n i" } });
     await user.click(screen.getByRole("button", { name: "Insert formula" }));
 
