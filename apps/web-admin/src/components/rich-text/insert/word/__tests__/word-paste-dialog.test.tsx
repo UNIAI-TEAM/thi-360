@@ -257,5 +257,7 @@ describe("WordPasteDialog: other findings and the paste area", () => {
     paste(CHOICE);
     expect(screen.getByText("3 formulas need retyping")).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Area for pasting Word content" })).not.toBeInTheDocument();
+    // Focus không rơi về khung hộp khi vùng dán biến mất: nó nằm trên tiêu đề danh sách xem lại.
+    expect(screen.getByRole("heading", { name: "To review" })).toHaveFocus();
   });
 });

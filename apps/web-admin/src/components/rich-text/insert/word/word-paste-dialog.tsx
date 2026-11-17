@@ -2,7 +2,7 @@
 
 import { Button, Checkbox, ConfirmDialog, DialogFooter, LiveStatus, StatusChip, focusRing, cn } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import { useId, useMemo, useState, type ClipboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
 import { isWordHtml, parseWordHtml } from "./parse";
 import { RetypeMathDialog } from "./retype-math-dialog";
@@ -93,6 +93,12 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
   const [retypingId, setRetypingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [liveMessage, setLiveMessage] = useState("");
+  // Vùng dán biến mất khi dán xong: đưa focus tới tiêu đề danh sách xem lại thay vì để rơi về khung hộp (vòng focus quanh cả hộp).
+  const [focusReview, setFocusReview] = useState(false);
+  const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusReview) reviewHeadingRef.current?.focus();
+  }, [focusReview]);
   const splitId = useId();
   const onlyPendingId = useId();
   const noteId = useId();
@@ -110,7 +116,16 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
   };
 
   const body = (() => {
-    if (!review || !fields) return <PasteZone onHtml={(html) => setReview(startReview(parseWordHtml(html)))} />;
+    if (!review || !fields) {
+      return (
+        <PasteZone
+          onHtml={(html) => {
+            setReview(startReview(parseWordHtml(html)));
+            setFocusReview(true);
+          }}
+        />
+      );
+    }
     const summary = summarize(review);
     const splitActive = split && fields.found;
     const removing = removingId ? review.items.find((item) => item.id === removingId) : undefined;
@@ -166,7 +181,13 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
 
           <section aria-label={t("review.title")} className="flex min-w-0 flex-col gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="m-0 text-field-label font-medium text-text-secondary">{t("review.title")}</h3>
+              <h3
+                ref={reviewHeadingRef}
+                tabIndex={-1}
+                className="m-0 text-field-label font-medium text-text-secondary outline-hidden"
+              >
+                {t("review.title")}
+              </h3>
               <label htmlFor={onlyPendingId} className="flex min-h-8 items-center gap-2 text-field-label text-text-secondary">
                 <Checkbox id={onlyPendingId} checked={onlyPending} onCheckedChange={(checked) => setOnlyPending(checked === true)} />
                 {t("review.onlyPending")}
