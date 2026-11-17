@@ -55,7 +55,7 @@ public class AvailableQuestionCountController {
     @Schema(name = "AvailableQuestionsQuery", description = "Bộ lọc nguồn câu hỏi của một nhóm")
     public record Query(@NotBlank String subjectCode, QuestionType questionType,
                         List<QuestionType> answerTypes, QuestionType childAnswerType,
-                        @Valid KnowledgeScope knowledgeScope, String taskTypeCode, List<String> tagCodes,
+                        @Valid KnowledgeScope knowledgeScope, List<String> tagCodes,
                         List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
                         ItemShape itemShape, List<@NotNull AnswerFormat> answerFormats,
                         List<@NotNull @Valid ChildCondition> childConditions) {}

@@ -122,7 +122,7 @@ export function toWireExam(exam: ExamDetail): WireDetail {
 
 function wireScope(scope: QuestionBlock["knowledgeScope"] | undefined): WireBlock["knowledgeScope"] | undefined {
   if (!scope) return undefined;
-  return { nodeIds: scope.nodeIds, match: scope.match, competencyCodes: scope.competencyCodes };
+  return { nodeIds: scope.nodeIds, competencyCodes: scope.competencyCodes };
 }
 
 function wireMatrix(matrix: QuestionBlock["matrix"]): WireBlock["matrix"] | undefined {
@@ -147,9 +147,8 @@ function wireTemplateBlock(block: ExamTemplateBlock): WireBlock {
     setSize: block.setSize ?? undefined,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion ?? undefined,
     knowledgeScope:
-      wireScope(block.knowledgeScope) ?? (block.competencyCode ? { nodeIds: [], match: "ANY", competencyCodes: [block.competencyCode] } : undefined),
+      wireScope(block.knowledgeScope) ?? (block.competencyCode ? { nodeIds: [], competencyCodes: [block.competencyCode] } : undefined),
     matrix: wireMatrix(block.matrix ?? null),
-    taskTypeCode: block.taskTypeCode ?? undefined,
     childAnswerType: block.childAnswerType ?? undefined,
     templateGroupCode: block.templateGroupCode ?? undefined,
     answerTypeLocked: block.answerTypeLocked,
@@ -235,6 +234,8 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
 export function toWireTemplate(template: ExamTemplate): WireTemplate {
   return {
     active: true,
+    buildMode: "STANDARD",
+    isDefault: true,
     code: template.code,
     kindCode: template.kind,
     scope: template.scope,

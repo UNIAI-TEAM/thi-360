@@ -74,7 +74,7 @@ class GroupPercentRemainderTest {
         for (int i = 0; i < count; i++) {
             CountingUnit unit = new CountingUnit(null, "SINGLE_CHOICE", first ? "G1" : "G2",
                     first ? "NB" : "TH", List.of(), List.of(first ? "P" : "Q"), BigDecimal.ONE);
-            candidates.add(new PathCandidate(subject + "-" + label + "-" + i, 1, null, null, null,
+            candidates.add(new PathCandidate(subject + "-" + label + "-" + i, 1, null, null,
                     List.of(unit)));
         }
         return candidates;

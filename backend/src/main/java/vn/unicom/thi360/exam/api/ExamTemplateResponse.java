@@ -16,6 +16,14 @@ public record ExamTemplateResponse(
         String partCode,
         @Schema(description = "Mã môn khi mẫu theo môn")
         String subjectCode,
+        @Schema(description = "Nhãn phiên bản cấu trúc")
+        String label,
+        @Schema(description = "Tóm tắt phiên bản cấu trúc")
+        String summary,
+        @Schema(description = "STANDARD | REVIEW", requiredMode = Schema.RequiredMode.REQUIRED)
+        String buildMode,
+        @Schema(description = "Phiên bản mặc định", requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean isDefault,
         @Schema(description = "Năm cấu trúc")
         Integer structureYear,
         @Schema(description = "Năm ma trận")

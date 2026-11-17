@@ -14,8 +14,17 @@ public record ExamSection(
         AnswerQuotas answerQuotas,
         BlockMatrix matrix,
         ChoiceGroup choiceGroup,
-        List<QuestionBlock> blocks) {
+        List<QuestionBlock> blocks,
+        List<TopicQuota> topicQuotas) {
     public ExamSection {
         blocks = blocks == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(blocks));
+        topicQuotas = topicQuotas == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(topicQuotas));
+    }
+
+    public ExamSection(String id, String subjectCode, Integer questionCount,
+            KnowledgeScope knowledgeScope, AnswerQuotas answerQuotas, BlockMatrix matrix,
+            ChoiceGroup choiceGroup, List<QuestionBlock> blocks) {
+        this(id, subjectCode, questionCount, knowledgeScope, answerQuotas, matrix, choiceGroup,
+                blocks, List.of());
     }
 }

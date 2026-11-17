@@ -422,9 +422,6 @@
               "type" : "string"
             },
             "type" : "array"
-          },
-          "taskTypeCode" : {
-            "type" : "string"
           }
         },
         "required" : [ "subjectCode" ],
@@ -496,6 +493,10 @@
       },
       "BlockMatrix" : {
         "properties" : {
+          "basis" : {
+            "enum" : [ "QUESTION", "PROMPT", "POINTS" ],
+            "type" : "string"
+          },
           "byCompetency" : {
             "items" : {
               "$ref" : "#/components/schemas/MatrixDimensionValue"
@@ -520,6 +521,14 @@
             },
             "type" : "array"
           },
+          "difficultyEnforcement" : {
+            "enum" : [ "REQUIRED", "REFERENCE" ],
+            "type" : "string"
+          },
+          "gradeEnforcement" : {
+            "enum" : [ "REQUIRED", "REFERENCE" ],
+            "type" : "string"
+          },
           "mode" : {
             "enum" : [ "COMBINED", "SEPARATE" ],
             "type" : "string"
@@ -527,6 +536,24 @@
           "unit" : {
             "enum" : [ "COUNT", "PERCENT" ],
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "BlockSlot" : {
+        "properties" : {
+          "index" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "knowledgeScope" : {
+            "$ref" : "#/components/schemas/KnowledgeScope"
+          },
+          "tagCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -550,6 +577,24 @@
           }
         },
         "required" : [ "code", "message", "source" ],
+        "type" : "object"
+      },
+      "Bucket" : {
+        "properties" : {
+          "codes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "percent" : {
+            "type" : "number"
+          }
+        },
         "type" : "object"
       },
       "BulkAuthzItemResponse" : {
@@ -1589,6 +1634,26 @@
         "required" : [ "newPassword", "oldPassword" ],
         "type" : "object"
       },
+      "ChildCondition" : {
+        "properties" : {
+          "from" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "nodeIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "to" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "ChildQuestion" : {
         "properties" : {
           "body" : {
@@ -1865,6 +1930,17 @@
           },
           "type" : "object"
         } ]
+      },
+      "CodeSource" : {
+        "properties" : {
+          "branch" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
       },
       "CombinationOption" : {
         "description" : "Mã tổ hợp môn gắn với một kỳ thi",
@@ -2287,6 +2363,11 @@
       "CreateExamRequest" : {
         "description" : "Tạo bài thi Nháp theo phạm vi (spec 5.2, 9.2)",
         "properties" : {
+          "buildMode" : {
+            "description" : "STANDARD | REVIEW",
+            "enum" : [ "STANDARD", "REVIEW" ],
+            "type" : "string"
+          },
           "code" : {
             "description" : "Mã bài thi (duy nhất, không phân biệt hoa thường)",
             "maxLength" : 30,
@@ -2325,6 +2406,13 @@
             "maxLength" : 200,
             "minLength" : 0,
             "type" : "string"
+          },
+          "overview" : {
+            "description" : "Cấu trúc tổng quan",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamOverviewRow"
+            },
+            "type" : "array"
           },
           "partCode" : {
             "description" : "Mã phần; bắt buộc khi scope = PART",
@@ -2883,6 +2971,12 @@
       },
       "ExamCheckIssue" : {
         "properties" : {
+          "affectedCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "answerType" : {
             "type" : "string"
           },
@@ -2915,6 +3009,9 @@
           },
           "key" : {
             "type" : "string"
+          },
+          "location" : {
+            "$ref" : "#/components/schemas/ExamIssueLocation"
           },
           "optionId" : {
             "type" : "string"
@@ -3012,6 +3109,21 @@
         },
         "type" : "object"
       },
+      "ExamCheckRequest" : {
+        "properties" : {
+          "partId" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "enum" : [ "EXAM", "PART", "SECTION" ],
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ExamCheckRequirement" : {
         "properties" : {
           "byCompetency" : {
@@ -3087,6 +3199,12 @@
           "printedQuestions" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "sectionStates" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamSectionState"
+            },
+            "type" : [ "array", "null" ]
           },
           "stale" : {
             "type" : "boolean"
@@ -3385,6 +3503,31 @@
         "required" : [ "expectedRevision" ],
         "type" : "object"
       },
+      "ExamIssueLocation" : {
+        "properties" : {
+          "blockId" : {
+            "type" : "string"
+          },
+          "childPosition" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "pathId" : {
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "slotIndex" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "ExamKindOption" : {
         "description" : "Một kỳ thi trong danh mục EXAM kèm hồ sơ (spec 6)",
         "properties" : {
@@ -3444,8 +3587,56 @@
         "required" : [ "code", "itemId", "name", "practiceScoring", "profileSet", "scopes", "templateBy", "timing" ],
         "type" : "object"
       },
+      "ExamOverviewRequest" : {
+        "description" : "Cập nhật tổng quan bài thi",
+        "properties" : {
+          "expectedRevision" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "overview" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamOverviewRow"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "expectedRevision", "overview" ],
+        "type" : "object"
+      },
+      "ExamOverviewRow" : {
+        "properties" : {
+          "durationMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ExamPart" : {
         "properties" : {
+          "codeSource" : {
+            "$ref" : "#/components/schemas/CodeSource"
+          },
           "durationMinutes" : {
             "format" : "int32",
             "type" : "integer"
@@ -3489,6 +3680,12 @@
               "$ref" : "#/components/schemas/ExamSection"
             },
             "type" : "array"
+          },
+          "subjectPool" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamSection"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -3522,7 +3719,7 @@
             "type" : "string"
           },
           "kind" : {
-            "enum" : [ "SUBJECT", "COMBINATION", "BRANCH", "SUBJECT_CHOICE" ],
+            "enum" : [ "SUBJECT", "BRANCH", "SUBJECT_CHOICE" ],
             "type" : "string"
           },
           "name" : {
@@ -3660,6 +3857,32 @@
         },
         "type" : "object"
       },
+      "ExamPreviewCompliance" : {
+        "properties" : {
+          "actual" : {
+            "type" : "number"
+          },
+          "basis" : {
+            "type" : "string"
+          },
+          "criterion" : {
+            "type" : "string"
+          },
+          "enforcement" : {
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "required" : {
+            "type" : "number"
+          },
+          "scope" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ExamPreviewIssue" : {
         "properties" : {
           "answerType" : {
@@ -3695,6 +3918,9 @@
           },
           "key" : {
             "type" : "string"
+          },
+          "location" : {
+            "$ref" : "#/components/schemas/ExamIssueLocation"
           },
           "optionId" : {
             "type" : "string"
@@ -3748,6 +3974,11 @@
           },
           "kind" : {
             "type" : "string"
+          },
+          "originalOrder" : {
+            "description" : "Original solver-selected item position",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
           },
           "passage" : {
             "type" : "string"
@@ -3941,6 +4172,13 @@
           "answer" : {
             "type" : "string"
           },
+          "assignedTopicQuotaIds" : {
+            "description" : "Topic quota IDs assigned to this question",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
           "body" : {
             "$ref" : "#/components/schemas/JsonNode"
           },
@@ -3963,11 +4201,30 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "optionOrder" : {
+            "description" : "Displayed option IDs in order; PaperOrdering never shuffles when shuffleOptions=false",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
           "options" : {
             "items" : {
               "$ref" : "#/components/schemas/ExamPreviewOption"
             },
             "type" : "array"
+          },
+          "originalNumber" : {
+            "description" : "Original solver-selected question position",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "originalOptionOrder" : {
+            "description" : "Option IDs in the author's original order",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
           },
           "points" : {
             "type" : "number"
@@ -3999,25 +4256,41 @@
       },
       "ExamPreviewRequest" : {
         "properties" : {
-          "pathId" : {
+          "basePreviewId" : {
+            "format" : "uuid",
             "type" : "string"
+          },
+          "pathId" : {
+            "deprecated" : true,
+            "description" : "Legacy path selection; use target when BE-8 is available",
+            "type" : "string"
+          },
+          "regeneratePartIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "seed" : {
             "format" : "int64",
             "type" : "integer"
           },
           "subjectCodes" : {
+            "deprecated" : true,
+            "description" : "Legacy subject selection; use target.subjectCodes",
             "items" : {
               "type" : "string"
             },
             "type" : "array"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/ExamPreviewTarget"
           },
           "version" : {
             "format" : "int32",
             "type" : "integer"
           }
         },
-        "required" : [ "pathId", "seed" ],
         "type" : "object"
       },
       "ExamPreviewRequirementCell" : {
@@ -4049,6 +4322,18 @@
       },
       "ExamPreviewResult" : {
         "properties" : {
+          "compliance" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewCompliance"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "droppedQuestions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewQuestion"
+            },
+            "type" : [ "array", "null" ]
+          },
           "examId" : {
             "format" : "uuid",
             "type" : "string"
@@ -4068,6 +4353,10 @@
           },
           "path" : {
             "$ref" : "#/components/schemas/ExamPreviewPathRef"
+          },
+          "previewId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
           },
           "reason" : {
             "type" : "string"
@@ -4174,6 +4463,32 @@
         },
         "type" : "object"
       },
+      "ExamPreviewTarget" : {
+        "properties" : {
+          "kind" : {
+            "enum" : [ "SECTION", "PATH", "EXAM" ],
+            "type" : "string"
+          },
+          "pathId" : {
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "sectionQuestionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subjectCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "kind" ],
+        "type" : "object"
+      },
       "ExamPublishKeptPath" : {
         "properties" : {
           "pathId" : {
@@ -4230,6 +4545,47 @@
         },
         "type" : "object"
       },
+      "ExamQuota" : {
+        "properties" : {
+          "basis" : {
+            "enum" : [ "QUESTION", "PROMPT", "POINTS" ],
+            "type" : "string"
+          },
+          "buckets" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Bucket"
+            },
+            "type" : "array"
+          },
+          "dimension" : {
+            "enum" : [ "GRADE", "DIFFICULTY" ],
+            "type" : "string"
+          },
+          "enforcement" : {
+            "enum" : [ "REQUIRED", "REFERENCE" ],
+            "type" : "string"
+          },
+          "excludeSubjectCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "ExamSection" : {
         "properties" : {
           "answerQuotas" : {
@@ -4260,6 +4616,30 @@
           },
           "subjectCode" : {
             "type" : "string"
+          },
+          "topicQuotas" : {
+            "items" : {
+              "$ref" : "#/components/schemas/TopicQuota"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamSectionState" : {
+        "properties" : {
+          "partId" : {
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "INCOMPLETE", "CHECKED", "NEEDS_CHECK" ],
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -4267,9 +4647,21 @@
       "ExamStructureResponse" : {
         "description" : "Cấu trúc bản làm việc của bài thi (GET/PUT /exams/{id}/structure)",
         "properties" : {
+          "combinations" : {
+            "items" : {
+              "$ref" : "#/components/schemas/StructureCombination"
+            },
+            "type" : "array"
+          },
           "examId" : {
             "format" : "uuid",
             "type" : "string"
+          },
+          "examQuotas" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamQuota"
+            },
+            "type" : "array"
           },
           "parts" : {
             "items" : {
@@ -4281,9 +4673,80 @@
             "description" : "Revision của bài thi — gửi lại trong expectedRevision khi PUT",
             "format" : "int64",
             "type" : "integer"
+          },
+          "sectionStates" : {
+            "description" : "Section check states, populated by the checking implementation",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamSectionState"
+            },
+            "type" : [ "array", "null" ]
           }
         },
         "required" : [ "examId", "parts", "revision" ],
+        "type" : "object"
+      },
+      "ExamStructureSummaryResponse" : {
+        "description" : "Tổng hợp cấu trúc theo phần, môn và nhóm",
+        "properties" : {
+          "parts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamStructureSummaryRow"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamStructureSummaryRow" : {
+        "properties" : {
+          "allocated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "blockId" : {
+            "type" : "string"
+          },
+          "childCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "commandCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "difference" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "essayCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "objectiveCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "setCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "target" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
         "type" : "object"
       },
       "ExamSummaryResponse" : {
@@ -4397,6 +4860,10 @@
             "description" : "Có đang hoạt động",
             "type" : "boolean"
           },
+          "buildMode" : {
+            "description" : "STANDARD | REVIEW",
+            "type" : "string"
+          },
           "code" : {
             "type" : "string"
           },
@@ -4409,8 +4876,16 @@
             "description" : "Ghi chú của chuyên gia khi dựng mẫu",
             "type" : "string"
           },
+          "isDefault" : {
+            "description" : "Phiên bản mặc định",
+            "type" : "boolean"
+          },
           "kindCode" : {
             "description" : "Mã kỳ thi áp dụng",
+            "type" : "string"
+          },
+          "label" : {
+            "description" : "Nhãn phiên bản cấu trúc",
             "type" : "string"
           },
           "matrixYear" : {
@@ -4443,12 +4918,16 @@
             "description" : "Mã môn khi mẫu theo môn",
             "type" : "string"
           },
+          "summary" : {
+            "description" : "Tóm tắt phiên bản cấu trúc",
+            "type" : "string"
+          },
           "timing" : {
             "description" : "PER_PART | SHARED",
             "type" : "string"
           }
         },
-        "required" : [ "active", "code", "kindCode", "scope", "structure", "timing" ],
+        "required" : [ "active", "buildMode", "code", "isDefault", "kindCode", "scope", "structure", "timing" ],
         "type" : "object"
       },
       "ExamVersionChange" : {
@@ -4949,6 +5428,23 @@
         },
         "type" : "object"
       },
+      "ItemShape" : {
+        "properties" : {
+          "leftItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "rightItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "statements" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "JsonNode" : {
         "type" : "object"
       },
@@ -5023,13 +5519,6 @@
             },
             "type" : "array"
           },
-          "includeDescendants" : {
-            "type" : "boolean"
-          },
-          "match" : {
-            "enum" : [ "ANY", "ALL" ],
-            "type" : "string"
-          },
           "nodeIds" : {
             "items" : {
               "format" : "uuid",
@@ -5073,6 +5562,11 @@
             "description" : "Revision đang xem; lệch → 412 EXAM_REVISION_CONFLICT",
             "format" : "int64",
             "type" : "integer"
+          },
+          "overviewPolicy" : {
+            "description" : "Cách xử lý tổng quan đã sửa",
+            "enum" : [ "USE_TEMPLATE", "KEEP_EDITED" ],
+            "type" : "string"
           },
           "templateCode" : {
             "description" : "Mã nguyên mẫu; phải khớp kỳ thi + phạm vi (+ phần/môn) của bài",
@@ -5904,6 +6398,19 @@
         "required" : [ "status", "time" ],
         "type" : "object"
       },
+      "PositionRange" : {
+        "properties" : {
+          "from" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "to" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "QuestionAssetUploadResponse" : {
         "properties" : {
           "fileName" : {
@@ -5925,6 +6432,12 @@
       },
       "QuestionBlock" : {
         "properties" : {
+          "answerFormats" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "answerTypeLocked" : {
             "type" : "boolean"
           },
@@ -5932,11 +6445,20 @@
             "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
             "type" : "string"
           },
+          "childConditions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ChildCondition"
+            },
+            "type" : "array"
+          },
           "expectedScoring" : {
             "$ref" : "#/components/schemas/BlockExpectedScoring"
           },
           "id" : {
             "type" : "string"
+          },
+          "itemShape" : {
+            "$ref" : "#/components/schemas/ItemShape"
           },
           "knowledgeScope" : {
             "$ref" : "#/components/schemas/KnowledgeScope"
@@ -5946,6 +6468,12 @@
           },
           "name" : {
             "type" : "string"
+          },
+          "omitted" : {
+            "type" : "boolean"
+          },
+          "positionRange" : {
+            "$ref" : "#/components/schemas/PositionRange"
           },
           "questionCount" : {
             "format" : "int32",
@@ -5966,17 +6494,32 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "shuffleEditable" : {
+            "type" : "boolean"
+          },
+          "shuffleUnits" : {
+            "type" : "boolean"
+          },
+          "slots" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BlockSlot"
+            },
+            "type" : "array"
+          },
           "tagCodes" : {
             "items" : {
               "type" : "string"
             },
             "type" : "array"
           },
-          "taskTypeCode" : {
-            "type" : "string"
-          },
           "templateGroupCode" : {
             "type" : "string"
+          },
+          "topicQuotas" : {
+            "items" : {
+              "$ref" : "#/components/schemas/TopicQuota"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -6983,6 +7526,39 @@
         },
         "type" : "object"
       },
+      "StructureCombination" : {
+        "description" : "Mã tổ hợp đang hiệu lực từ Global List",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "examCode" : {
+            "type" : "string"
+          },
+          "missingSubjects" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "nameVi" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "StudentLearningResponse" : {
         "description" : "Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối)",
         "properties" : {
@@ -7043,6 +7619,54 @@
           }
         },
         "required" : [ "code" ],
+        "type" : "object"
+      },
+      "TopicQuota" : {
+        "properties" : {
+          "basis" : {
+            "enum" : [ "QUESTION", "PROMPT", "POINTS" ],
+            "type" : "string"
+          },
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "difficultyCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "enforcement" : {
+            "enum" : [ "REQUIRED", "REFERENCE" ],
+            "type" : "string"
+          },
+          "gradeCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "groupIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nodeIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
         "type" : "object"
       },
       "TransferClassMemberRequest" : {
@@ -7504,6 +8128,12 @@
       "UpdateExamStructureRequest" : {
         "description" : "Thay toàn bộ cấu trúc bản làm việc (PUT /exams/{id}/structure, spec 9.2)",
         "properties" : {
+          "examQuotas" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamQuota"
+            },
+            "type" : "array"
+          },
           "expectedRevision" : {
             "description" : "Revision đang xem; lệch → 412 EXAM_REVISION_CONFLICT",
             "format" : "int64",
@@ -8614,6 +9244,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -8752,6 +9392,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -8960,6 +9610,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -9108,6 +9768,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -9247,6 +9917,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -9384,6 +10064,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -9569,6 +10259,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -9705,6 +10405,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -9844,6 +10554,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -9979,6 +10699,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -10125,6 +10855,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -10316,6 +11056,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -10462,6 +11212,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -10600,6 +11360,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -10755,6 +11525,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -10908,6 +11688,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -11059,6 +11849,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -11200,6 +12000,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -11338,6 +12148,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -11485,6 +12305,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -11669,6 +12499,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -11806,6 +12646,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -11945,6 +12795,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -12080,6 +12940,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -12226,6 +13096,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -12375,6 +13255,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -12513,6 +13403,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -12658,6 +13558,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -12795,6 +13705,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -12936,6 +13856,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -13107,6 +14037,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -13243,6 +14183,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -13383,6 +14333,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -13518,6 +14478,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -13664,6 +14634,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -13834,6 +14814,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -13979,6 +14969,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -14126,6 +15126,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -14283,6 +15293,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -14431,6 +15451,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -14560,6 +15590,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -14692,6 +15732,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -14841,6 +15891,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -14987,6 +16047,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -15204,6 +16274,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -15349,6 +16429,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -15488,6 +16578,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -15626,6 +16726,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -15785,6 +16895,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -15923,6 +17043,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -15956,6 +17086,15 @@
             "type" : "boolean"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExamCheckRequest"
+              }
+            }
+          }
+        },
         "responses" : {
           "200" : {
             "content" : {
@@ -16076,6 +17215,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -16222,6 +17371,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -16378,6 +17537,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -16532,6 +17701,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -16668,6 +17847,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -16814,6 +18003,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -16950,6 +18149,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -17096,6 +18305,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -17252,6 +18471,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -17264,6 +18493,164 @@
           }
         },
         "summary" : "Nhân bản bài thi",
+        "tags" : [ "Exam" ]
+      }
+    },
+    "/api/v1/admin/exams/{id}/overview" : {
+      "put" : {
+        "operationId" : "updateOverview",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExamOverviewRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật tổng quan bài thi",
         "tags" : [ "Exam" ]
       }
     },
@@ -17399,6 +18786,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -17537,6 +18934,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -17684,6 +19091,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -17699,9 +19116,9 @@
         "tags" : [ "Exam" ]
       }
     },
-    "/api/v1/admin/exams/{id}/structure/template" : {
-      "post" : {
-        "operationId" : "loadTemplate",
+    "/api/v1/admin/exams/{id}/structure/summary" : {
+      "get" : {
+        "operationId" : "structureSummary",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -17711,22 +19128,12 @@
             "type" : "string"
           }
         } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/LoadExamTemplateRequest"
-              }
-            }
-          },
-          "required" : true
-        },
         "responses" : {
           "200" : {
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ExamDetailResponse"
+                  "$ref" : "#/components/schemas/ExamStructureSummaryResponse"
                 }
               }
             },
@@ -17831,6 +19238,174 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tổng hợp cấu trúc bài thi",
+        "tags" : [ "Exam" ]
+      }
+    },
+    "/api/v1/admin/exams/{id}/structure/template" : {
+      "post" : {
+        "operationId" : "loadTemplate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoadExamTemplateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "EXAM_STRUCTURE_REPLACE_CONFIRM or EXAM_OVERVIEW_CONFIRM"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -17988,6 +19563,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -18117,6 +19702,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -18255,6 +19850,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -18402,6 +20007,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -18541,6 +20156,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -18671,6 +20296,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -18808,6 +20443,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -18979,6 +20624,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -19137,6 +20792,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -19324,6 +20989,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -19495,6 +21170,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -19651,6 +21336,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -19790,6 +21485,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -19923,6 +21628,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -20052,6 +21767,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -20197,6 +21922,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -20353,6 +22088,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -20500,6 +22245,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -20764,6 +22519,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -20909,6 +22674,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -21040,6 +22815,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -21188,6 +22973,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -21334,6 +23129,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -21566,6 +23371,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -21712,6 +23527,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -21847,6 +23672,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -21995,6 +23830,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -22140,6 +23985,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -22277,6 +24132,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -22426,6 +24291,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -22574,6 +24449,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -22711,6 +24596,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -22850,6 +24745,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -22987,6 +24892,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -23143,6 +25058,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -23320,6 +25245,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -23457,6 +25392,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -23587,6 +25532,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -23723,6 +25678,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -23869,6 +25834,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -24017,6 +25992,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -24231,6 +26216,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -24367,6 +26362,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -24516,6 +26521,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -24655,6 +26670,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -24792,6 +26817,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -24932,6 +26967,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -25067,6 +27112,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -25214,6 +27269,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -25352,6 +27417,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -25489,6 +27564,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -25638,6 +27723,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -25775,6 +27870,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -25914,6 +28019,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -26051,6 +28166,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -26190,6 +28315,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -26327,6 +28462,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -26474,6 +28619,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -26611,6 +28766,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -26760,6 +28925,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -26897,6 +29072,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -27043,6 +29228,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -27216,6 +29411,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -27347,6 +29552,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -27487,6 +29702,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -27623,6 +29848,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -27761,6 +29996,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -27898,6 +30143,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -28038,6 +30293,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -28197,6 +30462,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {
@@ -28365,6 +30640,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -28494,6 +30779,16 @@
             },
             "description" : "Internal Server Error"
           },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
           "502" : {
             "content" : {
               "*/*" : {
@@ -28622,6 +30917,16 @@
               }
             },
             "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
           },
           "502" : {
             "content" : {

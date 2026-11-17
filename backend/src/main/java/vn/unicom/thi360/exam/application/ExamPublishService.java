@@ -155,8 +155,8 @@ public class ExamPublishService {
             return ps;
         });
         if (inserted != 1) throw new IllegalStateException("Exam structure missing");
-        jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, task_type_item_id, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id) "
-                + "SELECT gen_random_uuid(), exam_id, ?, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, task_type_item_id, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL", version, examId);
+        jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id) "
+                + "SELECT gen_random_uuid(), exam_id, ?, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL", version, examId);
         Set<String> published = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT DISTINCT unnest(old.serving_path_ids) FROM exam.exam_version old "
                 + "JOIN exam.exam_version current ON current.exam_id = old.exam_id AND current.version_no = ? "

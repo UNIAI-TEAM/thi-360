@@ -125,7 +125,6 @@ export function newBlock(name: string): QuestionBlock {
     knowledgeScope: null,
     tagCodes: [],
     matrix: emptyMatrix(),
-    taskTypeCode: null,
     childAnswerType: null,
     templateGroupCode: null,
     answerTypeLocked: false,

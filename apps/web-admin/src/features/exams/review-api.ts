@@ -853,7 +853,6 @@ function mapKnowledgeScope(scope: ApiKnowledgeScope | undefined): ExamSection["k
   if (!scope) return null;
   return {
     nodeIds: scope.nodeIds ?? [],
-    match: scope.match === "ALL" ? "ALL" : "ANY",
     ...(scope.competencyCodes !== undefined ? { competencyCodes: scope.competencyCodes } : {}),
   };
 }
@@ -888,7 +887,6 @@ function mapBlock(block: ApiBlock): QuestionBlock {
     knowledgeScope: mapKnowledgeScope(block.knowledgeScope),
     tagCodes: block.tagCodes ?? [],
     matrix: mapMatrix(block.matrix),
-    taskTypeCode: block.taskTypeCode ?? null,
     childAnswerType: questionTypeOf(block.childAnswerType),
     templateGroupCode: block.templateGroupCode ?? null,
     answerTypeLocked: block.answerTypeLocked ?? false,

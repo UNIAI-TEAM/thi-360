@@ -1,6 +1,9 @@
 package vn.unicom.thi360.exam.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -24,8 +27,10 @@ import vn.unicom.thi360.exam.application.ExamService;
 import vn.unicom.thi360.exam.application.ExamTemplateService;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.PageQuery;
+import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.security.RequirePermission;
+import vn.unicom.thi360.shared.api.NotImplementedException;
 
 @Tag(name = "Exam", description = "Bài thi, cấu trúc và mẫu")
 @RestController
@@ -107,6 +112,10 @@ public class ExamAdminController {
     @Operation(summary = "Tạo bài thi nháp")
     public ExamDetailResponse create(@RequestHeader(value = "Idempotency-Key", required = false) String key,
             @Valid @RequestBody CreateExamRequest request) {
+        if (request.overview() != null || (request.buildMode() != null
+                && !"STANDARD".equals(request.buildMode()))) {
+            throw new NotImplementedException();
+        }
         return exams.createExam(key, request);
     }
 
@@ -124,6 +133,21 @@ public class ExamAdminController {
         return exams.getExamStructure(id);
     }
 
+    @GetMapping("/exams/{id}/structure/summary")
+    @RequirePermission(Permissions.EXAM_VIEW)
+    @Operation(summary = "Tổng hợp cấu trúc bài thi")
+    public ExamStructureSummaryResponse structureSummary(@PathVariable UUID id) {
+        throw new NotImplementedException();
+    }
+
+    @PutMapping("/exams/{id}/overview")
+    @RequirePermission(Permissions.EXAM_MODIFY)
+    @Operation(summary = "Cập nhật tổng quan bài thi")
+    public ExamDetailResponse updateOverview(@PathVariable UUID id,
+            @Valid @RequestBody ExamOverviewRequest request) {
+        throw new NotImplementedException();
+    }
+
     @PutMapping("/exams/{id}/structure")
     @RequirePermission(Permissions.EXAM_MODIFY)
     @Operation(summary = "Lưu cấu trúc bản làm việc")
@@ -136,8 +160,13 @@ public class ExamAdminController {
     @PostMapping("/exams/{id}/structure/template")
     @RequirePermission(Permissions.EXAM_MODIFY)
     @Operation(summary = "Nạp mẫu cấu trúc")
+    @ApiResponse(responseCode = "409", description = "EXAM_STRUCTURE_REPLACE_CONFIRM or EXAM_OVERVIEW_CONFIRM",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     public ExamDetailResponse loadTemplate(@PathVariable UUID id,
             @Valid @RequestBody LoadExamTemplateRequest request) {
+        if (request.overviewPolicy() != null) {
+            throw new NotImplementedException();
+        }
         exams.loadTemplate(id, request);
         return exams.getExamDetail(id);
     }

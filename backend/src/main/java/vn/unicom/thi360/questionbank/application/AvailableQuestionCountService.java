@@ -61,7 +61,7 @@ public class AvailableQuestionCountService {
                 : new QuestionSourcePort.ItemShape(query.itemShape().statements(),
                         query.itemShape().leftItems(), query.itemShape().rightItems());
         return new QuestionSourcePort.Filter(subjectId, groups, match, query.answerTypes(), query.questionType(),
-                query.taskTypeCode(), query.childAnswerType(), query.tagCodes(), competencies,
+                null, query.childAnswerType(), query.tagCodes(), competencies,
                 query.requiredPointsPerQuestion(), itemShape, query.answerFormats(), childConditions);
     }
 

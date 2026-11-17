@@ -312,7 +312,7 @@ class SubjectMatrixCasesTest {
             units.add(new CountingUnit(setId + "-sa" + i, "SHORT_ANSWER", "G10", "NB",
                     List.of(), List.of(), BigDecimal.ONE));
         }
-        return new PathCandidate(setId, 1, setId, null, null, units);
+        return new PathCandidate(setId, 1, setId, null, units);
     }
 
     private static String pickKeyOf(SubjectPick pick) {

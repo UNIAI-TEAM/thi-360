@@ -49,7 +49,7 @@ class PaperSolverSpecCasesTest {
         SectionOnPath section = section("S", 2, List.of(g));
         PathCandidate q1 = unit("q1", "G10", "NB"); // ô đúng, không P
         PathCandidate q2 = unit("q2", "G11", "TH"); // ô đúng, không P
-        PathCandidate q3 = new PathCandidate("q3", 1, null, null, null,
+        PathCandidate q3 = new PathCandidate("q3", 1, null, null,
                 List.of(new CountingUnit(null, "SINGLE_CHOICE", "G10", "TH", List.of(),
                         List.of("P"), BigDecimal.ONE))); // có P nhưng ô lệch
         PathResult result = solver.solvePath(path(List.of(section)),
@@ -57,7 +57,7 @@ class PaperSolverSpecCasesTest {
         assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
 
         // ca đối chứng khả thi: thêm một câu (G11,TH) có P → lấy q1 + q4
-        PathCandidate q4 = new PathCandidate("q4", 1, null, null, null,
+        PathCandidate q4 = new PathCandidate("q4", 1, null, null,
                 List.of(new CountingUnit(null, "SINGLE_CHOICE", "G11", "TH", List.of(),
                         List.of("P"), BigDecimal.ONE)));
         PathResult feasible = solver.solvePath(path(List.of(section)),
@@ -117,7 +117,7 @@ class PaperSolverSpecCasesTest {
         GroupQuota setGroup = GroupQuota.set("gs", 1, 2, null);
         GroupQuota singleGroup = GroupQuota.single("g2", 1);
         SectionOnPath section = section("S", 3, List.of(setGroup, singleGroup));
-        PathCandidate set = new PathCandidate("set1", 1, "set1", null, null,
+        PathCandidate set = new PathCandidate("set1", 1, "set1", null,
                 List.of(child("c1"), child("c2")));
         PathCandidate standaloneC1 = single("c1");
         PathResult result = solver.solvePath(path(List.of(section)),
@@ -246,7 +246,7 @@ class PaperSolverSpecCasesTest {
         GroupQuota gb = new GroupQuota("gB", GroupQuota.GroupKind.SINGLE, 1, "Q", null, null,
                 null, null, List.of(), List.of(), null, null);
         SectionOnPath section = section("S", 2, List.of(ga, gb));
-        PathCandidate bridge = new PathCandidate("U", 1, null, null, null, List.of(
+        PathCandidate bridge = new PathCandidate("U", 1, null, null, List.of(
                 new CountingUnit(null, "U", "G10", "NB", List.of(), List.of(),
                         BigDecimal.ONE),
                 new CountingUnit("q", "Q", "G10", "NB", List.of(), List.of(),
@@ -475,7 +475,7 @@ class PaperSolverSpecCasesTest {
     }
 
     private static PathCandidate scored(String id, String rule, BigDecimal points) {
-        return new PathCandidate(id, 1, null, null, rule,
+        return new PathCandidate(id, 1, null, rule,
                 List.of(new CountingUnit(null, "SINGLE_CHOICE", "G10", "NB", List.of(),
                         List.of(), points)));
     }
@@ -487,7 +487,7 @@ class PaperSolverSpecCasesTest {
                         List.of(), BigDecimal.ONE),
                 new CountingUnit(id + "-c2", "SINGLE_CHOICE", grade, difficulty, List.of(),
                         List.of(), BigDecimal.ONE));
-        return new PathCandidate(id, 1, id, null, null, units);
+        return new PathCandidate(id, 1, id, null, units);
     }
 
     /** Đồng hồ chỉ hết hạn khi kiểm tra trong pha được chọn, không phụ thuộc thời gian nguồn. */
@@ -542,7 +542,7 @@ class PaperSolverSpecCasesTest {
             units.add(new CountingUnit(setId + "-c" + i, "SINGLE_CHOICE", "G10", diff,
                     List.of(), List.of(), BigDecimal.ONE));
         }
-        return new PathCandidate(setId, 1, setId, null, null, units);
+        return new PathCandidate(setId, 1, setId, null, units);
     }
 
     private static PathCandidate cloze(String id, int blanks) {
@@ -551,6 +551,6 @@ class PaperSolverSpecCasesTest {
             units.add(new CountingUnit(null, "CLOZE", "G10", "NB", List.of(), List.of(),
                     BigDecimal.ONE));
         }
-        return new PathCandidate(id, 1, id, null, null, units);
+        return new PathCandidate(id, 1, id, null, units);
     }
 }

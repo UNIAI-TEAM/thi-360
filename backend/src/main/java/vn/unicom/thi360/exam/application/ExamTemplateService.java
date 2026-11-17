@@ -58,6 +58,7 @@ public class ExamTemplateService {
         } else {
             candidates = templateRepository.findByKindCodeAndScopeAndActiveTrue(kindCode, scope);
         }
+        candidates = candidates.stream().filter(t -> "STANDARD".equals(t.getBuildMode())).toList();
         if (candidates.isEmpty()) {
             return null;
         }
@@ -71,7 +72,8 @@ public class ExamTemplateService {
                 return sameYear.stream().max(byYear.thenComparing(ExamTemplate::getCode)).orElseThrow();
             }
         }
-        return candidates.stream().max(byYear.thenComparing(ExamTemplate::getCode)).orElseThrow();
+        return candidates.stream().max(Comparator.comparing(ExamTemplate::isDefaultTemplate)
+                .thenComparing(byYear).thenComparing(ExamTemplate::getCode)).orElseThrow();
     }
 
     ExamTemplateResponse toResponse(ExamTemplate t) {
@@ -82,6 +84,10 @@ public class ExamTemplateService {
                 t.getScope(),
                 t.getPartCode(),
                 t.getSubjectCode(),
+                t.getLabel(),
+                t.getSummary(),
+                t.getBuildMode(),
+                t.isDefaultTemplate(),
                 t.getStructureYear(),
                 t.getMatrixYear(),
                 t.getTiming(),
