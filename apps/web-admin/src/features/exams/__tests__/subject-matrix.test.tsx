@@ -74,6 +74,16 @@ describe("số đã phân bổ và còn thiếu của môn", () => {
     ]);
     // Nhóm câu đơn mở (40 câu) vừa đủ phủ phần chỉ tiêu còn thiếu 25 + 15.
     expect(after).toMatchObject({ openAllocated: 40, openMissing: 0 });
+    // Chia sẵn từ đầu: nhóm câu đơn lấy 25 Một đáp án + 15 Trả lời ngắn (không còn là "chưa xác định dạng").
+    expect(after.openSplit).toEqual([
+      { key: "SINGLE_CHOICE", count: 25 },
+      { key: "SHORT_ANSWER", count: 15 },
+    ]);
+    // Chưa đặt dạng câu con: cả 50 câu là phần mở, chia sẵn 35 + 15 theo chỉ tiêu môn.
+    expect(before.openSplit).toEqual([
+      { key: "SINGLE_CHOICE", count: 35 },
+      { key: "SHORT_ANSWER", count: 15 },
+    ]);
   });
 
   it("quy chỉ tiêu theo tỷ lệ ra số câu bằng phần dư lớn nhất; môn Khoa học có hai trường hợp 16 và 17 câu", () => {
@@ -117,6 +127,10 @@ describe("màn môn (Toán HSA)", () => {
     expect(singles.getByText("Theo chỉ tiêu của môn")).toBeInTheDocument();
     const sets = tableRow(groups, "Chùm ngữ cảnh");
     expect(sets.getByText("2 chùm × 5 câu con = 10 câu")).toBeInTheDocument();
+
+    // Chia dạng hiện từ đầu, không còn câu "chưa xác định dạng".
+    expect(screen.getByText("Nhóm câu đơn (50 câu) chia theo chỉ tiêu của môn: 35 Một đáp án + 15 Trả lời ngắn.")).toBeInTheDocument();
+    expect(screen.queryByText(/chưa xác định dạng/)).not.toBeInTheDocument();
 
     // Chùm giới hạn câu con là Một đáp án: 10 câu con trừ vào chỉ tiêu Một đáp án (còn thiếu 35 → 25).
     await user.click(sets.getByRole("button", { name: "Mở nhóm Chùm ngữ cảnh" }));

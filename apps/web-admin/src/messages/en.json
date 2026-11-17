@@ -3992,9 +3992,9 @@
           "addType": "Add an answer type",
           "percentMismatch": "The percentages add up to {total, number}%; they must equal 100%.",
           "countMismatch": "The targets add up to {total, plural, one {# question} other {# questions}}; the subject has {count, number}.",
-          "openMatches": "Groups with no set answer type ({count, number} questions) exactly cover the missing targets.",
+          "openSplit": "Single-question groups ({count, number} questions) split by the subject targets: {split}.",
           "undeclared": "No target declared",
-          "openDiff": "Groups with no set answer type have {count, number} questions, {missing, number} off from the missing targets."
+          "openDiff": "Single-question groups have {count, number} questions, {missing, number} off from the missing targets."
         },
         "matrix": {
           "title": "Grade and difficulty",

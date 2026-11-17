@@ -3992,9 +3992,9 @@
           "addType": "Thêm dạng trả lời",
           "percentMismatch": "Tổng tỷ lệ là {total, number}%, phải bằng 100%.",
           "countMismatch": "Tổng chỉ tiêu là {total, number} câu, môn có {count, number} câu.",
-          "openMatches": "Nhóm chưa xác định dạng ({count, number} câu) vừa đủ phủ phần chỉ tiêu còn thiếu.",
+          "openSplit": "Nhóm câu đơn ({count, number} câu) chia theo chỉ tiêu của môn: {split}.",
           "undeclared": "Chưa khai chỉ tiêu",
-          "openDiff": "Nhóm chưa xác định dạng có {count, number} câu; chênh {missing, number} câu so với phần chỉ tiêu còn thiếu."
+          "openDiff": "Nhóm câu đơn có {count, number} câu; chênh {missing, number} câu so với phần chỉ tiêu còn thiếu."
         },
         "matrix": {
           "title": "Khối lớp và độ khó",

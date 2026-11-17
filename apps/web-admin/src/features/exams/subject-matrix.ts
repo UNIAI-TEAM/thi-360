@@ -65,6 +65,11 @@ export interface SubjectAllocation {
   openAllocated: number;
   /** Phần chỉ tiêu dạng trả lời còn thiếu mà nhóm mở chưa phủ hết; `null` khi môn không khai chỉ tiêu này. */
   openMissing: number | null;
+  /**
+   * Cách nhóm chưa xác định dạng chia theo dạng trả lời khi vừa đủ phủ phần chỉ tiêu còn thiếu (Toán HSA: 26 Một đáp án
+   * + 15 Trả lời ngắn sau khi chùm trừ 9 vào chỉ tiêu 35); rỗng khi không có nhóm mở hoặc phần còn thiếu chưa khớp.
+   */
+  openSplit: Array<{ key: string; count: number }>;
   /** Theo khối lớp và độ khó của môn, đã phân bổ ở chỉ tiêu riêng của nhóm; `null` khi môn không khai. */
   grades: QuotaRow[] | null;
   difficulties: QuotaRow[] | null;
@@ -101,6 +106,7 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
 
   let answerTypes: QuotaRow[] | null = null;
   let openMissing: number | null = null;
+  let openSplit: Array<{ key: string; count: number }> = [];
   const quotas = section.answerQuotas;
   if (quotas && count !== null) {
     const resolved = resolveQuotaCounts(
@@ -116,6 +122,9 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
       return { key, quota, allocated: used, missing: quota - used };
     });
     openMissing = sum(answerTypes.map((row) => Math.max(0, row.missing))) - openAllocated;
+    if (openAllocated > 0 && openMissing === 0) {
+      openSplit = answerTypes.filter((row) => row.missing > 0).map((row) => ({ key: row.key, count: row.missing }));
+    }
   }
 
   const dimension = (codes: readonly string[], pick: "byGrade" | "byDifficulty"): QuotaRow[] | null => {
@@ -141,6 +150,7 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
     answerTypes,
     openAllocated,
     openMissing,
+    openSplit,
     grades: dimension(axes.grades, "byGrade"),
     difficulties: dimension(axes.difficulties, "byDifficulty"),
   };

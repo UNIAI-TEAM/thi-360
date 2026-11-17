@@ -276,7 +276,10 @@ export function ExamStructureSubjectPanel({
               {allocation.openAllocated > 0 && allocation.openMissing !== null && (
                 <p className="text-caption text-text-muted">
                   {allocation.openMissing === 0
-                    ? t("answerTypes.openMatches", { count: allocation.openAllocated })
+                    ? t("answerTypes.openSplit", {
+                        count: allocation.openAllocated,
+                        split: allocation.openSplit.map((row) => `${row.count} ${typeLabel(row.key as QuestionType)}`).join(" + "),
+                      })
                     : t("answerTypes.openDiff", { count: allocation.openAllocated, missing: allocation.openMissing })}
                 </p>
               )}
