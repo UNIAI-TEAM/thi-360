@@ -211,19 +211,19 @@ export function overviewDiff(rows: readonly OverviewRow[]): ExamOverviewRow[] {
   return diff;
 }
 
-export type OverviewIssueCode = "countInvalid" | "durationInvalid" | "pointsInvalid" | "pointsMismatch";
+export type OverviewIssueCode = "countInvalid" | "durationInvalid" | "pointsInvalid";
 
 export interface OverviewIssue {
   rowKey: string;
-  field: "questionCount" | "durationMinutes" | "maxPoints" | "total";
+  field: "questionCount" | "durationMinutes" | "maxPoints";
   code: OverviewIssueCode;
 }
 
 /**
  * Kiểm tra ô nhập: số phải là số nguyên dương (điểm cho phép thập phân 0,25); để trống hợp lệ — mẫu/máy chủ quyết.
- * `expectedTotal`: tổng điểm phần bắt buộc khớp thang điểm của bài khi mọi phần đều có điểm (BCA).
+ * Không ràng buộc tổng điểm các phần với thang điểm của mẫu: dòng sửa được, tổng của bài là tổng các dòng (2B 5.2).
  */
-export function validateOverview(rows: readonly OverviewRow[], expectedTotal: number | null): OverviewIssue[] {
+export function validateOverview(rows: readonly OverviewRow[]): OverviewIssue[] {
   const issues: OverviewIssue[] = [];
   const integer = (text: string) => {
     const value = numberOrNull(text);
@@ -235,13 +235,6 @@ export function validateOverview(rows: readonly OverviewRow[], expectedTotal: nu
     const points = numberOrNull(row.maxPoints);
     if (row.maxPoints.trim() !== "" && (points === null || points <= 0)) {
       issues.push({ rowKey: row.key, field: "maxPoints", code: "pointsInvalid" });
-    }
-  }
-  if (expectedTotal !== null) {
-    const partRows = rows.filter((row) => row.kind === "part" && row.maxPoints.trim() !== "");
-    if (partRows.length > 0 && partRows.length === rows.filter((row) => row.kind === "part").length) {
-      const total = Math.round(partRows.reduce((acc, row) => acc + (numberOrNull(row.maxPoints) ?? 0), 0) * 100) / 100;
-      if (total !== expectedTotal) issues.push({ rowKey: "", field: "total", code: "pointsMismatch" });
     }
   }
   return issues;

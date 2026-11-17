@@ -6,9 +6,14 @@ import { CreateExamPage } from "../components/create-exam-page";
 import { ExamsBackend } from "./fake-exams-backend";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+const referenceMock = vi.hoisted(() => ({ error: null as Error | null }));
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
-  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  const { getContentReferenceFixture } = await import("@/test/fixtures/content-reference");
+  const getContentReference = async () => {
+    if (referenceMock.error) throw referenceMock.error;
+    return getContentReferenceFixture();
+  };
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
@@ -24,6 +29,7 @@ let backend: ExamsBackend;
 beforeEach(() => {
   window.history.replaceState(null, "", "/exams/new");
   routerMock.push.mockReset();
+  referenceMock.error = null;
   backend = new ExamsBackend();
   backend.install();
 });
@@ -205,15 +211,52 @@ describe("trang Tạo bài thi, bước 1: đổi lựa chọn nạp lại bản
 });
 
 describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
-  it("lỗi tải mẫu: báo lỗi và thử lại được", async () => {
+  it("lỗi tải mẫu: báo ngay trong khối tổng quan, biểu mẫu vẫn dùng được, thử lại nạp bảng", async () => {
     const failing = new ExamsBackend();
     failing.server.on("GET", TEMPLATES_PATH, { status: 500, body: { code: "BOOM" } }, { status: 200, body: [] });
     failing.install();
     const user = userEvent.setup();
     renderWithProviders(<CreateExamPage />);
-    expect(await screen.findByText("Không tải được mẫu cấu trúc")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Thử lại" }));
-    await waitFor(() => expect(screen.queryByText("Không tải được mẫu cấu trúc")).toBeNull());
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText("Không tải được bảng tổng quan.")).toBeInTheDocument();
+    expect(screen.queryByText("Không tải được mẫu cấu trúc")).toBeNull();
+    // Bài vẫn tạo được: nhập tên và số câu trên dòng trống.
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA không mẫu");
+    expect(countInputs()).toHaveLength(1);
+
+    await user.click(within(alert).getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => expect(screen.queryByText("Không tải được bảng tổng quan.")).toBeNull());
+    expect(await screen.findByText(/Không có mẫu mặc định cho lựa chọn này/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue("HSA không mẫu");
+  }, 20_000);
+
+  it("lỗi tải dữ liệu kỳ thi: cả trang báo lỗi dữ liệu tham chiếu, không nhắc mẫu cấu trúc", async () => {
+    referenceMock.error = new Error("boom");
+    renderWithProviders(<CreateExamPage />);
+    expect(await screen.findByText("Không tải được dữ liệu kỳ thi")).toBeInTheDocument();
+    expect(screen.queryByText(/mẫu cấu trúc/)).toBeNull();
+    expect(screen.queryByRole("form", { name: "Tạo bài thi" })).toBeNull();
+  });
+
+  it("403: nêu quyền EXAM.MODIFY cần có", async () => {
+    const denied = new ExamsBackend();
+    denied.server.on("GET", TEMPLATES_PATH, { status: 403, body: { code: "FORBIDDEN" } });
+    denied.install();
+    renderWithProviders(<CreateExamPage />);
+    expect(await screen.findByText("Thiếu quyền tạo bài")).toBeInTheDocument();
+    expect(screen.getByText(/Bạn cần quyền EXAM\.MODIFY để tạo bài thi/)).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Tạo bài thi" })).toBeNull();
+  });
+
+  it("mẫu còn đang tải: biểu mẫu hiện sẵn, khối tổng quan hiện khung chờ và không cho tạo", async () => {
+    const slow = new ExamsBackend();
+    slow.server.on("GET", TEMPLATES_PATH, () => new Promise(() => {}));
+    slow.install();
+    renderWithProviders(<CreateExamPage />);
+    expect(await screen.findByRole("form", { name: "Tạo bài thi" })).toBeInTheDocument();
+    expect(screen.getByText("Đang tải bảng tổng quan")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(submitButton()).toBeDisabled();
   });
 
   it("đang tải hiện khung chờ có aria-busy", () => {

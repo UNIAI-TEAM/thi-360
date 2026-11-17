@@ -30,8 +30,6 @@ export interface ExamOverviewTableProps {
   sharedDuration?: OverviewNumberField;
   /** Ô điểm tối đa của bài khi bảng không có cột Điểm (không có mẫu chia điểm theo phần). */
   maxScore?: OverviewNumberField;
-  /** Ghi chú tổng hợp (ví dụ cảnh báo tổng điểm lệch thang). */
-  footerNote?: string;
 }
 
 const NUMERIC = { inputMode: "numeric" as const };
@@ -117,7 +115,6 @@ export function ExamOverviewTable({
   subjectName,
   sharedDuration,
   maxScore,
-  footerNote,
 }: ExamOverviewTableProps) {
   const t = useTranslations("exams.create.overview");
   const totals = overviewTotals(rows, timing, sharedDuration?.value ?? "");
@@ -210,7 +207,6 @@ export function ExamOverviewTable({
         <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} />
       )}
       {maxScore && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} />}
-      {footerNote && <p className="border-t border-border px-3 py-2 text-caption text-warning">{footerNote}</p>}
     </div>
   );
 }

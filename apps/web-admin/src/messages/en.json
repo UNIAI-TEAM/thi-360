@@ -4735,9 +4735,11 @@
       "cancel": "Cancel",
       "submit": "Create exam and set up question blocks",
       "success": "Exam {code} created.",
-      "loadErrorTitle": "Could not load the structure templates",
-      "loadErrorDescription": "Check your connection and try again.",
+      "loadErrorTitle": "Could not load exam kind data",
+      "loadErrorDescription": "The exam kind and subject catalog could not be loaded. Check your connection and try again.",
       "retry": "Try again",
+      "forbiddenTitle": "Missing permission to create exams",
+      "forbiddenDescription": "You need the {permission} permission to create an exam. Contact the system administrator.",
       "sections": {
         "info": "General information",
         "structure": "Initial structure",
@@ -5050,6 +5052,11 @@
         "versionAtStep2": "Structure version is chosen in step 2",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
         "regionLabel": "Exam structure overview table",
+        "loading": "Loading the overview table",
+        "loadError": {
+          "title": "Could not load the overview table.",
+          "description": "You can still create the exam: its structure holds only the parts in the table, with no groups yet."
+        },
         "col": {
           "part": "Part or subject",
           "count": "Questions",
@@ -5073,8 +5080,7 @@
         "errors": {
           "countInvalid": "The question count must be a positive integer.",
           "durationInvalid": "The duration must be a positive whole number of minutes.",
-          "pointsInvalid": "Points must be greater than 0.",
-          "pointsMismatch": "The part points do not add up to the exam maximum score."
+          "pointsInvalid": "Points must be greater than 0."
         }
       }
     },

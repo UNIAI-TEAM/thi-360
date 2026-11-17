@@ -4735,9 +4735,11 @@
       "cancel": "Hủy",
       "submit": "Tạo bài thi và soạn khối câu hỏi",
       "success": "Đã tạo bài thi {code}.",
-      "loadErrorTitle": "Không tải được mẫu cấu trúc",
-      "loadErrorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "loadErrorTitle": "Không tải được dữ liệu kỳ thi",
+      "loadErrorDescription": "Danh mục kỳ thi và môn chưa tải được. Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại",
+      "forbiddenTitle": "Thiếu quyền tạo bài",
+      "forbiddenDescription": "Bạn cần quyền {permission} để tạo bài thi. Hãy liên hệ quản trị viên hệ thống.",
       "sections": {
         "info": "Thông tin chung",
         "structure": "Cấu trúc khởi tạo",
@@ -5050,6 +5052,11 @@
         "versionAtStep2": "Phiên bản cấu trúc chọn ở bước 2",
         "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
         "regionLabel": "Bảng cấu trúc tổng quan của bài thi",
+        "loading": "Đang tải bảng tổng quan",
+        "loadError": {
+          "title": "Không tải được bảng tổng quan.",
+          "description": "Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm."
+        },
         "col": {
           "part": "Phần hoặc môn",
           "count": "Số câu",
@@ -5073,8 +5080,7 @@
         "errors": {
           "countInvalid": "Số câu phải là số nguyên dương.",
           "durationInvalid": "Thời lượng phải là số phút nguyên dương.",
-          "pointsInvalid": "Điểm phải lớn hơn 0.",
-          "pointsMismatch": "Tổng điểm các phần khác điểm tối đa của bài."
+          "pointsInvalid": "Điểm phải lớn hơn 0."
         }
       }
     },

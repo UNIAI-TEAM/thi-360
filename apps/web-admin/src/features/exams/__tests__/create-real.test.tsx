@@ -188,7 +188,7 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
     expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ durationMinutes: 90 });
   }, 20_000);
 
-  it("BCA: thời lượng chung, cột Điểm 25/60/15, phần nhiều môn có dòng môn thụt vào; tổng điểm lệch thì chặn tạo", async () => {
+  it("BCA: thời lượng chung, cột Điểm 25/60/15, phần nhiều môn có dòng môn thụt vào; sửa điểm thì thang của bài là tổng các phần", async () => {
     const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
     const user = await renderPage();
     await user.click(screen.getByRole("radio", { name: /^BCA/ }));
@@ -205,15 +205,11 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
     const points = screen.getByRole("textbox", { name: /^Điểm của Tự luận Văn/ });
     await user.clear(points);
     await user.type(points, "30");
-    expect((await screen.findAllByText("Tổng điểm các phần khác điểm tối đa của bài.")).length).toBeGreaterThan(0);
-    await user.click(submit());
-    expect(server.calls("POST", EXAMS_PATH)).toHaveLength(0);
-
-    await user.clear(points);
-    await user.type(points, "25");
+    expect(screen.queryByText("Tổng điểm các phần khác điểm tối đa của bài.")).toBeNull();
     await user.click(submit());
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ kind: "BCA", durationMinutes: 180, maxScore: 100 });
+    // Dòng sửa được, tổng của bài là tổng các phần: 30 + 60 + 15.
+    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ kind: "BCA", durationMinutes: 180, maxScore: 105 });
   }, 30_000);
 
   it("kỳ thi một phạm vi (V-ACT): không hiện nhóm chọn phạm vi", async () => {
@@ -231,6 +227,23 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
     expect(await screen.findByText(/Không có mẫu mặc định cho lựa chọn này/)).toBeInTheDocument();
     expect(screen.getAllByRole("textbox", { name: /^Số câu của/ })).toHaveLength(1);
   });
+
+  it("ô thời lượng chung giữ đúng chữ đã gõ: xóa thì trống (không hiện 0), chữ không phải số báo lỗi", async () => {
+    createServer().install();
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    const shared = await screen.findByRole("textbox", { name: /^Thời lượng chung/ });
+    expect(shared).toHaveValue("");
+    await user.type(shared, "90");
+    expect(shared).toHaveValue("90");
+    await user.clear(shared);
+    expect(shared).toHaveValue("");
+    await user.type(shared, "abc");
+    expect(shared).toHaveValue("abc");
+    await user.type(name(), "SPT chữ");
+    await user.click(submit());
+    await waitFor(() => expect(shared).toHaveAccessibleDescription("Thời lượng chung phải là số phút nguyên dương."));
+  }, 20_000);
 });
 
 describe("trang Tạo bài thi, nhánh thật: lỗi khi tạo", () => {

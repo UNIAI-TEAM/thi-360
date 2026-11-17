@@ -15,11 +15,11 @@ import {
   Skeleton,
   Textarea,
 } from "@thi360/ui";
-import { ChevronLeft, RefreshCw, TriangleAlert } from "lucide-react";
+import { ChevronLeft, Lock, RefreshCw, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { RichTextEditor } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
@@ -59,6 +59,8 @@ import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-u
 import { ExamOverviewTable } from "./exam-overview-table";
 
 const EXAMS_HREF = "/exams";
+/** Quyền tạo bài (cổng ở `app/(shell)/exams/new/layout.tsx`); chỉ để nêu trong thông báo khi máy chủ trả 403. */
+const CREATE_PERMISSION = "EXAM.MODIFY";
 
 /**
  * Trang Tạo bài thi, bước 1 (`/exams/new`, 2B mục 5, 15.1; TaoBaiThi2B): Thông tin bài thi, Phạm vi (kỳ thi, phạm vi,
@@ -70,9 +72,21 @@ export function CreateExamPage() {
   const t = useTranslations("exams.create");
   const templatesQuery = useExamTemplates();
   const referenceQuery = useContentReference();
+  const forbidden = [templatesQuery, referenceQuery].some((query) => query.isError && getErrorStatus(query.error) === 403);
 
   let body: ReactNode;
-  if (templatesQuery.isError || referenceQuery.isError) {
+  if (forbidden) {
+    body = (
+      <Card padding="md">
+        <EmptyState
+          icon={<Lock />}
+          headingLevel={2}
+          title={t("forbiddenTitle")}
+          description={t("forbiddenDescription", { permission: CREATE_PERMISSION })}
+        />
+      </Card>
+    );
+  } else if (referenceQuery.isError) {
     body = (
       <Card padding="md">
         <EmptyState
@@ -81,20 +95,14 @@ export function CreateExamPage() {
           title={t("loadErrorTitle")}
           description={t("loadErrorDescription")}
           action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                void templatesQuery.refetch();
-                void referenceQuery.refetch();
-              }}
-            >
+            <Button variant="secondary" onClick={() => void referenceQuery.refetch()}>
               {t("retry")}
             </Button>
           }
         />
       </Card>
     );
-  } else if (!templatesQuery.data || !referenceQuery.data) {
+  } else if (!referenceQuery.data) {
     body = (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton className="h-72" />
@@ -108,7 +116,20 @@ export function CreateExamPage() {
       </Card>
     );
   } else {
-    body = <CreateExamForm templates={templatesQuery.data} reference={referenceQuery.data} />;
+    // Đang thử lại sau lỗi thì coi như đang tải: khối tổng quan hiện khung chờ thay vì lỗi cũ.
+    const templatesStatus: TemplatesStatus = templatesQuery.data
+      ? "ready"
+      : templatesQuery.isError && !templatesQuery.isFetching
+        ? "error"
+        : "loading";
+    body = (
+      <CreateExamForm
+        templates={templatesQuery.data ?? NO_TEMPLATES}
+        templatesStatus={templatesStatus}
+        onRetryTemplates={() => void templatesQuery.refetch()}
+        reference={referenceQuery.data}
+      />
+    );
   }
 
   return (
@@ -138,9 +159,26 @@ interface LoadedScope {
 }
 
 type OverviewField = "questionCount" | "durationMinutes" | "maxPoints";
-const parseNumber = (text: string): number => (text.trim() === "" ? 0 : Number(text));
+/** Mẫu cấu trúc: `loading` và `error` chỉ che khối tổng quan, biểu mẫu vẫn dùng được (TaoBaiThi2B, trạng thái khác). */
+type TemplatesStatus = "loading" | "error" | "ready";
+const NO_TEMPLATES: readonly ExamTemplate[] = [];
+/** Chữ không phải số hợp lệ thành 0 để schema báo "phải lớn hơn 0"; ô vẫn hiện đúng chữ người dùng đã gõ. */
+const parseNumber = (text: string): number => {
+  const value = Number(text.trim());
+  return text.trim() === "" || !Number.isFinite(value) ? 0 : value;
+};
+const formatShared = (value: number): string => (value ? String(value) : "");
+const formatScore = (value: number | null): string => (value == null ? "" : String(value));
 
-function CreateExamForm({ templates, reference }: { templates: readonly ExamTemplate[]; reference: ContentReference }) {
+interface CreateExamFormProps {
+  /** Mẫu cấu trúc; rỗng khi chưa tải được (`templatesStatus` khác `ready`). */
+  templates: readonly ExamTemplate[];
+  templatesStatus: TemplatesStatus;
+  onRetryTemplates: () => void;
+  reference: ContentReference;
+}
+
+function CreateExamForm({ templates, templatesStatus, onRetryTemplates, reference }: CreateExamFormProps) {
   const t = useTranslations("exams.create");
   const tStep = useTranslations("exams.create.step1");
   const tOverview = useTranslations("exams.create.overview");
@@ -195,6 +233,9 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const [liveMessage, setLiveMessage] = useState("");
 
   const initialDefaults = scopeDefaults(initial.template, kindOptionFor(kinds, initial.selection.kind), initial.selection.scope);
+  // Chữ người dùng gõ ở hai ô số dưới bảng; giá trị số của biểu mẫu chỉ là bản đã phân tích để kiểm tra (R1-08).
+  const [sharedText, setSharedText] = useState(() => formatShared(initialDefaults.sharedDuration));
+  const [maxScoreText, setMaxScoreText] = useState(() => formatScore(initialDefaults.maxScore));
   const form = useForm<ExamInfoFormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
@@ -267,12 +308,15 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     (!showPoints && values.maxScore !== defaults.maxScore);
   const guard = useUnsavedChangesGuard((formState.isDirty || tableEdited) && !createExam.isSuccess);
 
-  const applyScope = (next: ScopeSelection) => {
+  /** Nạp lại lựa chọn mới; `markDirty = false` khi nạp vì mẫu vừa tải về (người dùng chưa sửa gì). */
+  const applyScope = (next: ScopeSelection, markDirty = true) => {
     const loaded = loadScope(next);
     const nextDefaults = scopeDefaults(loaded.template, kindOptionFor(kinds, next.kind), next.scope);
-    const dirty = { shouldDirty: true } as const;
+    const dirty = markDirty ? ({ shouldDirty: true } as const) : {};
     setSelection(next);
     setRows(loaded.rows);
+    setSharedText(formatShared(nextDefaults.sharedDuration));
+    setMaxScoreText(formatScore(nextDefaults.maxScore));
     setValue("kind", next.kind, dirty);
     setValue("scope", next.scope, dirty);
     setValue("partCode", next.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
@@ -300,20 +344,32 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     if (pendingSelection) pendingRef.current?.focus();
   }, [pendingSelection]);
 
+  // Mẫu về sau khi màn đã dựng (tải chậm, hoặc "Thử lại" ở khối tổng quan thành công): nạp bảng theo mẫu mặc định của
+  // lựa chọn hiện tại; bảng đã sửa thì hỏi trước như mọi lần nạp lại.
+  const templatesApplied = useRef(templatesStatus === "ready");
+  const reloadForTemplates = useEffectEvent(() => {
+    const next = resolveScope(templates, kinds, reference.subjects, selection, {});
+    if (tableEdited) setPendingSelection(next);
+    else applyScope(next, false);
+  });
+  useEffect(() => {
+    if (templatesStatus !== "ready" || templatesApplied.current) return;
+    templatesApplied.current = true;
+    reloadForTemplates();
+  }, [templatesStatus]);
+
   // ------------------------------------------------------------ bảng tổng quan
 
-  const overviewIssues = useMemo(() => validateOverview(rows, showPoints ? values.maxScore : null), [rows, showPoints, values.maxScore]);
+  const overviewIssues = useMemo(() => validateOverview(rows), [rows]);
   const issueText = (issue: OverviewIssue) => tOverview(`errors.${issue.code}`);
   const cellIssues = useMemo(() => {
     const map = new Map<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>();
     for (const issue of overviewIssues) {
-      if (issue.field === "total") continue;
       map.set(issue.rowKey, { ...map.get(issue.rowKey), [issue.field]: tOverview(`errors.${issue.code}`) });
     }
     return map;
   }, [overviewIssues, tOverview]);
-  const totalMismatch = overviewIssues.some((issue) => issue.code === "pointsMismatch");
-  const totals = overviewTotals(rows, values.timing, String(values.sharedDuration || ""));
+  const totals = overviewTotals(rows, values.timing, sharedText);
 
   const onCellChange = (key: string, field: OverviewField, text: string) => {
     // Sửa một ô chỉ đổi bảng: không nạp lại mẫu, không đụng tên, mã, mô tả (R-09).
@@ -329,7 +385,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const rowIssueItems: CreateExamIssue[] = overviewIssues.map((issue) => {
     const row = rows.find((item) => item.key === issue.rowKey);
     return {
-      path: issue.rowKey ? `${issue.rowKey}.${issue.field}` : "overviewTotal",
+      path: `${issue.rowKey}.${issue.field}`,
       field: row ? `${row.kind === "section" ? subjectName(row.subjectCode) : row.label}` : tOverview("total"),
       message: issueText(issue),
     };
@@ -341,8 +397,8 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
     if (overviewIssues.length > 0) {
-      const first = overviewIssues[0];
-      focusField(first?.rowKey ? `${first.rowKey}.${first.field}` : "overviewTotal");
+      const first = overviewIssues[0]!;
+      focusField(`${first.rowKey}.${first.field}`);
       return;
     }
     const request = toCreateExamRequest({
@@ -353,7 +409,8 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
       instructions: submitted.instructions,
       timing: submitted.timing,
       sharedDuration: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
-      maxScore: showPoints ? totals.maxPoints : submitted.maxScore,
+      // Bảng có cột Điểm: thang của bài là tổng điểm các phần (dòng bỏ qua không tính), không còn bắt khớp với mẫu.
+      maxScore: showPoints ? (totals.maxPoints ?? submitted.maxScore) : submitted.maxScore,
       // Chỉ dòng khác mẫu đi theo yêu cầu; bảng giữ nguyên thì không gửi `overview`.
       overview: overviewDiff(rows),
     });
@@ -378,7 +435,13 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   });
 
   const submitButton = (
-    <Button type="submit" form={formId} loading={createExam.isPending} className="w-full sm:w-auto @4xl:w-full">
+    <Button
+      type="submit"
+      form={formId}
+      loading={createExam.isPending}
+      disabled={templatesStatus === "loading"}
+      className="w-full sm:w-auto @4xl:w-full"
+    >
       {t("submit")}
     </Button>
   );
@@ -511,44 +574,69 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
             step={3}
             title={tOverview("title")}
             description={
-              templateName(template)
-                ? tOverview("description", { template: templateName(template) ?? "" })
-                : tOverview("descriptionNoTemplate")
+              templatesStatus === "loading"
+                ? undefined
+                : templateName(template)
+                  ? tOverview("description", { template: templateName(template) ?? "" })
+                  : tOverview("descriptionNoTemplate")
             }
           >
             <TemplateNotes template={template} name={templateName(template) ?? undefined} />
             <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
-            {!template && <p className="text-body text-text-secondary">{tOverview("noTemplate")}</p>}
-            <ExamOverviewTable
-              rows={rows}
-              timing={values.timing}
-              showPoints={showPoints}
-              onCellChange={onCellChange}
-              issues={cellIssues}
-              subjectName={subjectName}
-              sharedDuration={{
-                value: values.sharedDuration ? String(values.sharedDuration) : "",
-                error: formState.errors.sharedDuration?.message,
-                onChange: (text) => setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted }),
-              }}
-              maxScore={
-                showPoints
-                  ? undefined
-                  : {
-                      value: values.maxScore == null ? "" : String(values.maxScore),
-                      error: formState.errors.maxScore?.message,
-                      onChange: (text) =>
-                        setValue("maxScore", text.trim() === "" ? null : Number(text), {
-                          shouldDirty: true,
-                          shouldValidate: formState.isSubmitted,
-                        }),
-                    }
-              }
-              footerNote={totalMismatch ? tOverview("errors.pointsMismatch") : undefined}
-            />
-            <p data-field="overviewTotal" className="sr-only">
-              {tOverview("total")}
-            </p>
+            {templatesStatus === "error" && (
+              <div
+                role="alert"
+                className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="text-body text-text-secondary">
+                  <strong className="font-semibold text-danger">{tOverview("loadError.title")}</strong> {tOverview("loadError.description")}
+                </p>
+                <Button type="button" variant="secondary" size="sm" onClick={onRetryTemplates}>
+                  {t("retry")}
+                </Button>
+              </div>
+            )}
+            {templatesStatus === "ready" && !template && <p className="text-body text-text-secondary">{tOverview("noTemplate")}</p>}
+            {templatesStatus === "loading" ? (
+              <div aria-busy="true" className="flex flex-col gap-2">
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-10 w-1/2" />
+                <span className="sr-only">{tOverview("loading")}</span>
+              </div>
+            ) : (
+              <ExamOverviewTable
+                rows={rows}
+                timing={values.timing}
+                showPoints={showPoints}
+                onCellChange={onCellChange}
+                issues={cellIssues}
+                subjectName={subjectName}
+                sharedDuration={{
+                  value: sharedText,
+                  error: formState.errors.sharedDuration?.message,
+                  onChange: (text) => {
+                    setSharedText(text);
+                    setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
+                  },
+                }}
+                maxScore={
+                  showPoints
+                    ? undefined
+                    : {
+                        value: maxScoreText,
+                        error: formState.errors.maxScore?.message,
+                        onChange: (text) => {
+                          setMaxScoreText(text);
+                          setValue("maxScore", text.trim() === "" ? null : parseNumber(text), {
+                            shouldDirty: true,
+                            shouldValidate: formState.isSubmitted,
+                          });
+                        },
+                      }
+                }
+              />
+            )}
           </FormSection>
 
           {submitError && (
