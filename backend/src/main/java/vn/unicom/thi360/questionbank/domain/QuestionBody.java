@@ -35,27 +35,37 @@ public sealed interface QuestionBody {
     QuestionType type();
 
     /** Trắc nghiệm một đáp án: 2-10 phương án không trống, đúng 1 phương án đúng khi Sẵn sàng. */
-    @JsonIgnoreProperties("shuffleOptions")
     record SingleChoiceBody(
         QuestionType type,
-        List<ChoiceOption> options) implements QuestionBody {
+        List<ChoiceOption> options,
+        Boolean shuffleOptions) implements QuestionBody {
 
         public SingleChoiceBody {
             type = QuestionType.SINGLE_CHOICE;
             options = options == null ? List.of() : List.copyOf(options);
+            shuffleOptions = shuffleOptions == null ? Boolean.TRUE : shuffleOptions;
+        }
+
+        public SingleChoiceBody(QuestionType type, List<ChoiceOption> options) {
+            this(type, options, true);
         }
     }
 
     /** Trắc nghiệm nhiều đáp án: 2-10 phương án, ít nhất 2 phương án đúng (PBI-03 mục 10). */
-    @JsonIgnoreProperties("shuffleOptions")
     record MultipleChoiceBody(
         QuestionType type,
         List<ChoiceOption> options,
-        MultipleChoiceRule scoringRule) implements QuestionBody {
+        MultipleChoiceRule scoringRule,
+        Boolean shuffleOptions) implements QuestionBody {
 
         public MultipleChoiceBody {
             type = QuestionType.MULTIPLE_CHOICE;
             options = options == null ? List.of() : List.copyOf(options);
+            shuffleOptions = shuffleOptions == null ? Boolean.TRUE : shuffleOptions;
+        }
+
+        public MultipleChoiceBody(QuestionType type, List<ChoiceOption> options, MultipleChoiceRule scoringRule) {
+            this(type, options, scoringRule, true);
         }
     }
 

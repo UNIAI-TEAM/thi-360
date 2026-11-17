@@ -112,7 +112,7 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString());
     }
     @Test
-    void previewOfSeededChoiceDoesNotExposeShuffleOptions() throws Exception {
+    void previewOfSeededChoiceExposesShuffleOptions() throws Exception {
         UUID seededQuestion = seededPreviewQuestion();
         String blocks = """
                 [{"id":"g","name":"Group","questionType":"SINGLE_CHOICE","questionCount":1,
@@ -126,7 +126,7 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         assertThat(UUID.fromString(question.path("questionId").asText())).isEqualTo(seededQuestion);
         assertThat(code).isEqualTo(SEEDED_PREVIEW_CODE);
         assertThat(question.path("body").path("options")).isNotEmpty();
-        assertThat(question.findValues("shuffleOptions")).isEmpty();
+        assertThat(question.path("body").path("shuffleOptions").asBoolean()).isTrue();
     }
     @Test
     void previewOmitsLegacyMatchingShuffleFlagsFromStoredSnapshot() throws Exception {

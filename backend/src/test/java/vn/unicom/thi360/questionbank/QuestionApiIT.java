@@ -144,7 +144,7 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void legacyShuffleOptionsAreAcceptedButNotReturned() throws Exception {
+    void shuffleOptionsArePersistedAndReturned() throws Exception {
         var request = (com.fasterxml.jackson.databind.node.ObjectNode)
                 objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
         ((com.fasterxml.jackson.databind.node.ObjectNode) request.path("body")).put("shuffleOptions", false);
@@ -153,11 +153,11 @@ class QuestionApiIT extends AbstractIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.body.shuffleOptions").doesNotExist())
+                .andExpect(jsonPath("$.body.shuffleOptions").value(false))
                 .andReturn();
         UUID id = UUID.fromString(read(created).at("/summary/id").asText());
         mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.body.shuffleOptions").doesNotExist());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.body.shuffleOptions").value(false));
     }
     @Test
     void legacyMatchingShuffleFlagsAreAcceptedButNotReturned() throws Exception {
