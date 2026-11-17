@@ -135,6 +135,23 @@ describe("hộp Gạch chân đánh nhãn", () => {
     expect(emitted()).toBe(FIXTURE.replace("<u>Plain underline</u>", '<u data-label="C">Plain underline</u>'));
   });
 
+  it("con trỏ trong cụm đã gạch: nút Chèn bật và khung Cụm đang chọn hiện; Đổi nhãn mở hộp, Bỏ gạch chân gỡ nhãn", async () => {
+    const { emitted } = renderEditor(FIXTURE);
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
+
+    select("has been", true);
+    expect(await screen.findByRole("button", { name: "Labeled underline", pressed: true })).toBeInTheDocument();
+    const panel = await screen.findByRole("group", { name: "Selected phrase: label A" });
+    const user = userEvent.setup();
+    await user.click(within(panel).getByRole("button", { name: "Change label" }));
+    expect(await screen.findByRole("dialog", { name: "Labeled underline" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await user.click(within(await screen.findByRole("group", { name: "Selected phrase: label A" })).getByRole("button", { name: "Remove underline" }));
+    expect(emitted()).toBe(FIXTURE.replace('<u data-label="A">has been</u>', "has been"));
+  });
+
   it("chưa bôi đen thì Gạch chân bị tắt và có hướng dẫn", async () => {
     renderEditor(PLAIN);
     await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
