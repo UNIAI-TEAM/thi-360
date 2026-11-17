@@ -30,7 +30,7 @@ function add(code,subject,parts,questions,points,duration,{old=false,note=note20
   });
   source.push(template);
 }
-const math=[part('Phần I · Lựa chọn','TOAN',[b('Một đáp án','SINGLE_CHOICE',20,.25),b('Nhiều đáp án','MULTIPLE_CHOICE',5,.25)],6.25),part('Phần II · Dữ liệu tổng hợp','TOAN',[b('Dữ liệu tổng hợp',null,5,.25,{tagCodes:['TOAN_DU_LIEU_TONG_HOP']})],1.25),part('Phần III · Trả lời ngắn','TOAN',[b('Trả lời ngắn','SHORT_ANSWER',10,.25)],2.5)];
+const math=[part('Phần I · Lựa chọn','TOAN',[b('Một đáp án','SINGLE_CHOICE',20,.25),b('Nhiều đáp án','MULTIPLE_CHOICE',5,.25)],6.25),part('Phần II · Dữ liệu tổng hợp','TOAN',[b('Dữ liệu tổng hợp','SINGLE_CHOICE',5,.25,{tagCodes:['TOAN_DU_LIEU_TONG_HOP']})],1.25),part('Phần III · Trả lời ngắn','TOAN',[b('Trả lời ngắn','SHORT_ANSWER',10,.25)],2.5)];
 add('SP2E_MATH_2026','TOAN',math,40,10,90,{existing:true});
 const literature2026=[part('Phần I · Đọc hiểu','VAN',[b('Đọc hiểu','SINGLE_CHOICE',20,.25)],5),part('Phần II · Viết đoạn','VAN',[b('Viết đoạn','ESSAY',1,null,{omitted:true})],0),part('Phần III · Viết bài','VAN',[b('Viết bài','ESSAY',1,null,{omitted:true})],0)];
 add('SP2E_VAN_2026','VAN',literature2026,20,5,90,{existing:true,isDefault:false,note:'Chờ chuyên gia xác nhận cấu trúc và điểm Đọc hiểu 2026.'});
