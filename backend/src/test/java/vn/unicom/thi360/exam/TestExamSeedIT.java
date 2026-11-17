@@ -216,10 +216,10 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         JsonNode versionResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/versions/1", examId)
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        assertNoLegacyKeys(setResponse);
-        assertNoLegacyKeys(matchingResponse);
-        assertNoLegacyKeys(structureResponse);
-        assertNoLegacyKeys(versionResponse);
+        assertNoLegacyKeysInApi(setResponse);
+        assertNoLegacyKeysInApi(matchingResponse);
+        assertNoLegacyKeysInApi(structureResponse);
+        assertNoLegacyKeysInApi(versionResponse);
         JsonNode templateResponse = null;
         for (JsonNode candidate : templates) {
             if ("LEGACY_REPAIR_TEMPLATE".equals(candidate.path("code").asText())) {
@@ -228,7 +228,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             }
         }
         assertThat(templateResponse).isNotNull();
-        assertNoLegacyKeys(templateResponse);
+        assertNoLegacyKeysInApi(templateResponse);
 
         runRepairMigration();
 
@@ -525,6 +525,17 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         for (String key : List.of("shuffleOptions", "shuffleLeft", "shuffleRight",
                 "groupOrder", "shuffle", "blockShuffleRule")) {
             assertThat(json.findValues(key)).as(key).isEmpty();
+        }
+    }
+
+    private static void assertNoLegacyKeysInApi(JsonNode json) {
+        for (String key : List.of("shuffleLeft", "shuffleRight",
+                "groupOrder", "shuffle", "blockShuffleRule")) {
+            assertThat(json.findValues(key)).as(key).isEmpty();
+        }
+        for (JsonNode value : json.findValues("shuffleOptions")) {
+            assertThat(value.isBoolean() && value.asBoolean())
+                    .as("shuffleOptions absent in storage reads as true").isTrue();
         }
     }
 
