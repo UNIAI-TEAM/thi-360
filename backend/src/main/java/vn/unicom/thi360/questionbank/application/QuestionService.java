@@ -790,6 +790,11 @@ public class QuestionService {
             kept.add(childId);
             Question row = existing.get(childId);
             if (row == null) {
+                if (child.id() != null && questionRepository.findById(childId).isPresent()) {
+                    // Id do client cấp đã thuộc câu khác (kể cả đã xóa mềm) → 422 như prepareChildIds.
+                    throw new BusinessRuleException(ERR_BODY_INVALID, null,
+                            List.of(new FieldError("body.children", ERR_TYPE_IMMUTABLE, null)));
+                }
                 row = Question.create(
                         childId, nextChildCode(parent, usedCodes), child.type(),
                         parent.getId(), i, now, actorId);

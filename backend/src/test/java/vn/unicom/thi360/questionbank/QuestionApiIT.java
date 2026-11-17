@@ -169,6 +169,47 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void createSetReusingChildIdsOfAnotherSetRejected422() throws Exception {
+        // F-2 (VISUAL-1): id câu con do client cấp nhưng đã thuộc bộ khác → 422, không 500.
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", "k-set-a-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(QuestionTestSupport.createQuestionSetRequest()))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode setA = read(created);
+        UUID parentA = UUID.fromString(setA.at("/summary/id").asText());
+        UUID childA0 = UUID.fromString(setA.at("/body/children/0/id").asText());
+        UUID childA1 = UUID.fromString(setA.at("/body/children/1/id").asText());
+
+        var requestB = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) requestB.at("/body/children/0"))
+                .put("id", childA0.toString());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) requestB.at("/body/children/1"))
+                .put("id", childA1.toString());
+        mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", "k-set-b-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestB)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("QUESTION_BODY_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("body.children"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("QUESTION_TYPE_IMMUTABLE"));
+
+        // Bộ A không đổi: vẫn 2 câu con sống và cùng id, không câu nào bị chiếm.
+        var childIds = jdbcTemplate.queryForList(
+                "SELECT id FROM questionbank.question WHERE parent_id = ? AND deleted_at IS NULL"
+                        + " ORDER BY position", UUID.class, parentA);
+        org.assertj.core.api.Assertions.assertThat(childIds).containsExactly(childA0, childA1);
+        mockMvc.perform(get(BASE + "/{id}", parentA).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.children", hasSize(2)));
+    }
+
+    @Test
     void unsafeContentRejected422() throws Exception {
         String body = """
                 {"type":"SINGLE_CHOICE",
