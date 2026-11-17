@@ -491,6 +491,7 @@ public class ExamService {
         }
         if (template == null) {
             ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+            validateStructureReferences(doc);
         }
 
         String timing = template != null && template.getTiming() != null

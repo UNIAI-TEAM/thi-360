@@ -196,6 +196,30 @@ class ExamOverviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void noTemplateCreateRejectsUnknownOverviewSubjectBeforeSaving() throws Exception {
+        jdbc.update("UPDATE exam.exam_template SET active=false WHERE kind_code='SPT' "
+                + "AND scope='SUBJECT' AND subject_code='TOAN'");
+        String code = "SPT-N-" + UUID.randomUUID().toString().substring(0, 8);
+        String body = "{\"kind\":\"SPT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                + "\"code\":\"" + code + "\",\"name\":\"No template\","
+                + "\"overview\":[{\"partId\":\"part\",\"sectionId\":\"section\","
+                + "\"subjectCode\":\"NONEXISTENT\",\"questionCount\":10}]}";
+        Long before = jdbc.queryForObject("SELECT count(*) FROM shared.outbox_event "
+                + "WHERE topic='audit' AND payload->>'action'='EXAM.CREATE'", Long.class);
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam WHERE code=?", Long.class, code)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM shared.outbox_event "
+                + "WHERE topic='audit' AND payload->>'action'='EXAM.CREATE'", Long.class)).isEqualTo(before);
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body.replace("NONEXISTENT", "TOAN")))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void clearedDraftOverviewValuesRemainEditedOnTemplateReload() throws Exception {
         jdbc.update("""
                 UPDATE exam.exam_template SET structure=jsonb_set(jsonb_set(
