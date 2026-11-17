@@ -5311,12 +5311,10 @@
         "label": "Blank",
         "description": "Numbered blank linked to a child of the set"
       },
-      "cancel": "Cancel",
       "chemistry": {
         "label": "Chemistry formula",
         "description": "Subscripts, charges, reaction arrows, conditions, states"
       },
-      "close": "Close",
       "cross": {
         "label": "Punnett square",
         "description": "P, G, F₁ for genetics"
@@ -5325,7 +5323,6 @@
         "label": "Image",
         "description": "Charts, maps, diagrams, figures; with caption and source"
       },
-      "insert": "Insert",
       "math": {
         "label": "Math formula",
         "description": "Fractions, roots, limits, integrals, systems, vectors",
@@ -5343,9 +5340,6 @@
         "label": "Quote",
         "description": "Poems, prose, historical sources; keeps line breaks"
       },
-      "stub": {
-        "body": "Work in progress"
-      },
       "symbols": {
         "label": "Symbols and units",
         "description": "Greek letters, units, biology symbols, IPA"
@@ -5361,6 +5355,14 @@
       "word": {
         "label": "Paste from Word",
         "description": "Bring stem, options and explanation from a Word document"
+      }
+    },
+    "insertDialog": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "insert": "Insert",
+      "stub": {
+        "body": "Work in progress"
       }
     },
     "insertLoadError": "Couldn't load the insert dialog. Check your connection and try again.",

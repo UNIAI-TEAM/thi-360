@@ -17,7 +17,7 @@ export interface StubDialogProps {
  * chèn: chỉ Đóng/Hủy.
  */
 export function StubDialog({ open, onOpenChange, title, description }: StubDialogProps) {
-  const t = useTranslations("richText.insert.stub");
+  const t = useTranslations("richText.insertDialog.stub");
   return (
     <InsertDialogShell open={open} onOpenChange={onOpenChange} title={title} description={description} hideFooter>
       <p className="text-body text-text-muted">{t("body")}</p>

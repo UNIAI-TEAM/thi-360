@@ -12,7 +12,7 @@ export interface InsertDialogShellProps {
   description?: string;
   /** Gọi khi bấm nút chính (mặc định nhãn "Chèn"); form submit trong hộp cũng gọi nó. */
   onSubmit?: (event?: FormEvent) => void;
-  /** Nhãn nút chính — mặc định `richText.insert.insert` ("Chèn"). */
+  /** Nhãn nút chính — mặc định `richText.insertDialog.insert` ("Chèn"). */
   submitLabel?: string;
   /** `true` khóa nút chính (ví dụ thiếu trường bắt buộc, LaTeX lỗi). */
   submitDisabled?: boolean;
@@ -41,7 +41,7 @@ export function InsertDialogShell({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        closeLabel={t("insert.close")}
+        closeLabel={t("insertDialog.close")}
         size="xl"
         className="sm:max-w-[1000px] max-sm:top-0 max-sm:left-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-screen max-sm:rounded-none"
       >
@@ -61,10 +61,10 @@ export function InsertDialogShell({
           {!hideFooter && (
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-                {t("insert.cancel")}
+                {t("insertDialog.cancel")}
               </Button>
               <Button type="submit" disabled={submitDisabled || !onSubmit}>
-                {submitLabel ?? t("insert.insert")}
+                {submitLabel ?? t("insertDialog.insert")}
               </Button>
             </DialogFooter>
           )}

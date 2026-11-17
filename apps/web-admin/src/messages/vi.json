@@ -5311,12 +5311,10 @@
         "label": "Chỗ trống",
         "description": "Ô trống gắn với câu con của câu chùm"
       },
-      "cancel": "Hủy",
       "chemistry": {
         "label": "Công thức hóa học",
         "description": "Chỉ số, điện tích, mũi tên phản ứng, điều kiện, trạng thái"
       },
-      "close": "Đóng",
       "cross": {
         "label": "Sơ đồ lai",
         "description": "P, G, F₁ cho bài di truyền"
@@ -5325,7 +5323,6 @@
         "label": "Hình",
         "description": "Biểu đồ, bản đồ, sơ đồ, hình vẽ; có chú thích và nguồn"
       },
-      "insert": "Chèn",
       "math": {
         "label": "Công thức toán",
         "description": "Phân số, căn, giới hạn, tích phân, hệ phương trình, vectơ",
@@ -5343,9 +5340,6 @@
         "label": "Đoạn trích",
         "description": "Thơ, văn xuôi, tư liệu lịch sử; giữ nguyên ngắt dòng"
       },
-      "stub": {
-        "body": "Đang làm"
-      },
       "symbols": {
         "label": "Ký hiệu và đơn vị",
         "description": "Chữ Hy Lạp, đơn vị đo, ký hiệu sinh học, phiên âm IPA"
@@ -5361,6 +5355,14 @@
       "word": {
         "label": "Dán từ Word",
         "description": "Đưa đề, phương án và lời giải từ tài liệu Word"
+      }
+    },
+    "insertDialog": {
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "insert": "Chèn",
+      "stub": {
+        "body": "Đang làm"
       }
     },
     "insertLoadError": "Không tải được hộp chèn. Kiểm tra kết nối rồi thử lại.",

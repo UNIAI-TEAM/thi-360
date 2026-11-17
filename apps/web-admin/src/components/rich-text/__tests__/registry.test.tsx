@@ -5,6 +5,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
+import viMessages from "@/messages/vi.json";
 import type * as QuestionsApi from "@/features/questions/api";
 import { renderWithProviders } from "@/test/render";
 import { MATH_INLINE_NODE } from "../extensions";
@@ -44,6 +45,14 @@ describe("insert registry", () => {
       const block = (richText.insert as Record<string, Record<string, unknown>>)[id];
       expect(block?.[leaf]).toBeTruthy();
       expect(block?.[descriptionLeaf]).toBeTruthy();
+    }
+  });
+
+  it("keeps richText.insert for entry blocks only (shared dialog keys live in richText.insertDialog)", () => {
+    const ids = INSERT_REGISTRY.map((entry) => entry.id).sort();
+    for (const messages of [en, viMessages]) {
+      expect(Object.keys(messages.richText.insert).sort()).toEqual(ids);
+      expect(Object.keys(messages.richText.insertDialog).sort()).toEqual(["cancel", "close", "insert", "stub"]);
     }
   });
 
