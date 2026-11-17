@@ -63,6 +63,23 @@ function renderLatex(latex: string, displayMode: boolean, target: HTMLElement) {
   }
 }
 
+const SANITIZE_CACHE_SIZE = 16;
+const sanitizeCache = new Map<string, string>();
+
+/**
+ * `sanitizeQuestionHtml(...).html` nhớ theo (HTML, allowImages): một lần gõ phím đi qua `onUpdate`, effect đồng bộ và
+ * `normalizedContent` với cùng chuỗi, nên chỉ lọc (parse DOM) một lần cho mỗi chuỗi thay vì 2–3 lần. Giữ ít mục, bỏ mục cũ nhất.
+ */
+function sanitizedHtml(html: string, allowImages: boolean): string {
+  const key = `${allowImages ? 1 : 0}${html}`;
+  const cached = sanitizeCache.get(key);
+  if (cached !== undefined) return cached;
+  const result = sanitizeQuestionHtml(html, { allowImages }).html;
+  if (sanitizeCache.size >= SANITIZE_CACHE_SIZE) sanitizeCache.delete(sanitizeCache.keys().next().value as string);
+  sanitizeCache.set(key, result);
+  return result;
+}
+
 /**
  * Dạng chuẩn của nội dung để phát ra và để so với `value`: lọc theo danh sách cho phép rồi bỏ đúng một `<p></p>` rỗng ở
  * cuối (TrailingNode của TipTap thêm sau khối atom cuối, hoặc người dùng vừa nhấn Enter). Dùng chung cho `onChange` và
@@ -70,7 +87,7 @@ function renderLatex(latex: string, displayMode: boolean, target: HTMLElement) {
  * lệch HTML của trình soạn và `setContent` dựng lại nội dung giữa lúc người dùng gõ (mất con trỏ).
  */
 function normalizedContent(html: string, allowImages: boolean): string {
-  return stripTrailingEmptyParagraph(sanitizeQuestionHtml(html, { allowImages }).html);
+  return stripTrailingEmptyParagraph(sanitizedHtml(html, allowImages));
 }
 
 /** Mảnh tệp ảnh của một sự kiện dán/thả. */
@@ -153,7 +170,8 @@ export function RichTextEditor({
   const [imageUploading, setImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const mathWarning = typeof document !== "undefined" && hasUnbalancedMath(value ?? "");
+  // Ô soạn render lại theo mỗi phím gõ (qua `value`): chỉ quét công thức khi `value` đổi.
+  const mathWarning = useMemo(() => typeof document !== "undefined" && hasUnbalancedMath(value ?? ""), [value]);
 
   // Refs cho các handler mà TipTap chụp lúc tạo editor (extensions chỉ dựng một lần).
   const onChangeRef = useRef(onChange);
@@ -218,7 +236,7 @@ export function RichTextEditor({
         MathInputRule,
         ...editorPlugins,
       ],
-      content: typeof document === "undefined" ? "" : sanitizeQuestionHtml(value ?? "", { allowImages }).html,
+      content: typeof document === "undefined" ? "" : sanitizedHtml(value ?? "", allowImages),
       editable: !disabled,
       editorProps: {
         attributes,
@@ -306,9 +324,9 @@ export function RichTextEditor({
   // mà không đổi nội dung thì không được phát `onChange`.
   useEffect(() => {
     if (!editor) return;
-    const fromValue = sanitizeQuestionHtml(value ?? "", { allowImages }).html;
+    const fromValue = sanitizedHtml(value ?? "", allowImages);
     const incoming = fromValue === "<p></p>" ? "" : fromValue;
-    const raw = sanitizeQuestionHtml(editor.getHTML(), { allowImages }).html;
+    const raw = sanitizedHtml(editor.getHTML(), allowImages);
     if (incoming !== (raw === "<p></p>" ? "" : raw) && incoming !== stripTrailingEmptyParagraph(raw)) {
       editor.commands.setContent(incoming, { emitUpdate: false });
     }
