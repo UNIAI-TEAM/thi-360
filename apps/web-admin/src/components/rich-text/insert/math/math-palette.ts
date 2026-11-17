@@ -155,6 +155,22 @@ export const PALETTE_LATEX: Readonly<Record<string, string>> = {
   capitalOmega: "\\Omega",
 };
 
+/**
+ * Mẫu gọn để vẽ mặt nút khi mẫu đầy đủ quá to so với ô 56px (giới hạn, tích phân, tổng, tích): giới hạn xếp dưới
+ * chữ `lim`/`∑` như bản vẽ, bỏ phần `dx` thừa. Mục không có ở đây vẽ bằng chính `PALETTE_LATEX`. Chỉ để xem, không
+ * chèn vào ô soạn.
+ */
+export const PALETTE_GLYPH_LATEX: Readonly<Record<string, string>> = {
+  limit: "\\displaystyle\\lim_{\\placeholder{}\\to\\placeholder{}}\\placeholder{}",
+  limitInfinity: "\\displaystyle\\lim_{x\\to+\\infty}\\placeholder{}",
+  limitRight: "\\displaystyle\\lim_{x\\to\\placeholder{}^{+}}\\placeholder{}",
+  limitLeft: "\\displaystyle\\lim_{x\\to\\placeholder{}^{-}}\\placeholder{}",
+  definiteIntegral: "\\int_{a}^{b}\\placeholder{}",
+  doubleIntegral: "\\iint\\placeholder{}",
+  sum: "\\displaystyle\\sum_{k=1}^{n}",
+  product: "\\displaystyle\\prod_{k=1}^{n}",
+};
+
 export const PALETTE_TABS: readonly PaletteTab[] = [
   {
     id: "common",
