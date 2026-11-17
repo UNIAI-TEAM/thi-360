@@ -30,7 +30,15 @@ public record PathResult(
         List<SubjectWitness> witness,
         List<SubjectPick> failingSelections,
         QuotaRef failingQuota,
-        List<SelectionResult> selections) {
+        List<SelectionResult> selections,
+        QuestionPick droppedQuestion) {
+
+    public PathResult(SolvePath path, SolveStatus status, SolveReason reason, String subjectCode,
+            String groupId, List<SubjectWitness> witness, List<SubjectPick> failingSelections,
+            QuotaRef failingQuota, List<SelectionResult> selections) {
+        this(path, status, reason, subjectCode, groupId, witness, failingSelections, failingQuota,
+                selections, null);
+    }
 
     public PathResult(SolvePath path, SolveStatus status, SolveReason reason, String subjectCode,
             String groupId, List<SubjectWitness> witness, List<SubjectPick> failingSelections,
