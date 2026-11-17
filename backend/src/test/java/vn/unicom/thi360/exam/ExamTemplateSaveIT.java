@@ -81,6 +81,22 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
 
     private boolean allowedCodeSourceIssue(String code, JsonNode parts, JsonNode issue) {
         String issueCode = issue.path("code").asText();
+        if ("PATH_TOTAL_MISMATCH".equals(issueCode)) {
+            if (!issue.path("partId").isNull() || !issue.path("required").isIntegralNumber()
+                    || !issue.path("available").isIntegralNumber()) return false;
+            long missing = 0;
+            boolean listed = false;
+            for (int i = 0; i < parts.size(); i++) {
+                if (CODE_SOURCED_PARTS.contains(code + ":" + (i + 1))) {
+                    JsonNode part = parts.get(i);
+                    if (!part.hasNonNull("codeSource") || !part.path("questionCount").isIntegralNumber()) return false;
+                    missing += part.path("questionCount").asLong();
+                    listed = true;
+                }
+            }
+            return listed && missing > 0
+                    && issue.path("required").asLong() - issue.path("available").asLong() == missing;
+        }
         if (!Set.of("OPTION_EMPTY", "PART_EMPTY", "PART_TOTAL_MISMATCH").contains(issueCode)) return false;
         for (int i = 0; i < parts.size(); i++) {
             JsonNode part = parts.get(i);
