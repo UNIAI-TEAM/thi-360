@@ -609,7 +609,7 @@ class QuestionApiIT extends AbstractIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
                     .andExpect(status().isUnprocessableEntity())
                     .andExpect(jsonPath("$.fieldErrors[0].field").value("body.blankNumberStart"))
-                    .andExpect(jsonPath("$.fieldErrors[0].code").value("QUESTION_WORD_LIMIT_INVALID"));
+                    .andExpect(jsonPath("$.fieldErrors[0].code").value("QUESTION_BLANK_NUMBER_START_INVALID"));
         }
     }
 

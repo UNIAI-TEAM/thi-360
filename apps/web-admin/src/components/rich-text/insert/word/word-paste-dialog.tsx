@@ -5,7 +5,8 @@ import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
-import { isWordHtml, parseWordHtml } from "./parse";
+import { isWordHtml } from "./detect";
+import { parseWordHtml } from "./parse";
 import { RetypeMathDialog } from "./retype-math-dialog";
 import {
   acceptAllFixes,

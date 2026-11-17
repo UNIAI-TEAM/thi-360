@@ -653,7 +653,7 @@ class QuestionBodyValidationTests {
             List<QuestionFieldError> errors = QuestionBodyValidator.validateSave(
                 input(QuestionType.QUESTION_SET, questionSetBody(value)), null);
             assertTrue(errors.stream().anyMatch(e ->
-                e.code().equals("QUESTION_WORD_LIMIT_INVALID")
+                e.code().equals("QUESTION_BLANK_NUMBER_START_INVALID")
                     && e.path().equals("body.blankNumberStart")),
                 () -> "value " + value + " → " + errors);
         }

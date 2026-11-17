@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeQuestionHtml } from "../../../sanitize";
 import { materializeBlocks, normalizeEditorHtml, topLevelBlocks, type FormulaResolver } from "../materialize";
-import { isWordHtml, parseWordHtml } from "../parse";
+import { isWordHtml } from "../detect";
+import { parseWordHtml } from "../parse";
 import { keepWhole, splitByLabels } from "../split";
 import type { ParsedWord } from "../types";
 import { wordFixture } from "./fixtures";

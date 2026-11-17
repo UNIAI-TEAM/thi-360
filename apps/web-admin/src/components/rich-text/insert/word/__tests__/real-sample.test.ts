@@ -1,7 +1,8 @@
 import katex from "katex";
 import "katex/contrib/mhchem";
 import { describe, expect, it } from "vitest";
-import { isWordHtml, parseWordHtml } from "../parse";
+import { isWordHtml } from "../detect";
+import { parseWordHtml } from "../parse";
 import { acceptAllFixes, buildFields, startReview, summarize, type ReviewFormula } from "../session";
 import { wordFixture } from "./fixtures";
 

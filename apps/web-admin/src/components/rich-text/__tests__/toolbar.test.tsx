@@ -6,7 +6,7 @@ import en from "@/messages/en.json";
 import type * as QuestionsApi from "@/features/questions/api";
 import { renderWithProviders } from "@/test/render";
 import { INSERT_REGISTRY } from "../insert/registry";
-import { StubDialog } from "../insert/shared/stub-dialog";
+import { InsertDialogShell } from "../insert/shared/insert-dialog-shell";
 import { RichTextEditor } from "../rich-text-editor";
 
 vi.mock("@/features/questions/api", async (importOriginal) => {
@@ -106,7 +106,7 @@ describe("RichTextEditor toolbar", () => {
     }
     expect(labels).not.toContain("Blank");
     expect(labels).not.toContain("Labeled underline");
-    expect(labels).not.toContain("Punnett square");
+    expect(labels).not.toContain("Genetic cross diagram");
     expect(labels).not.toContain("Paste from Word");
   });
 
@@ -131,12 +131,16 @@ describe("RichTextEditor toolbar", () => {
     expect(labels).toContain("Math formula");
   });
 
-  it("opens the interim stub dialog for a registry entry without a real dialog", async () => {
+  it("opens the lazily loaded dialog of a registry entry", async () => {
     const user = userEvent.setup();
     // Mục `symbols` đã có hộp thật (ED-2): giả lập mục chưa có hộp bằng cách trả hộp tạm từ `load`.
     const symbols = INSERT_REGISTRY.find((entry) => entry.id === "symbols")!;
     const spy = vi.spyOn(symbols, "load").mockResolvedValue({
-      default: ({ open, onOpenChange }) => <StubDialog open={open} onOpenChange={onOpenChange} title="Symbols and units" />,
+      default: ({ open, onOpenChange }) => (
+        <InsertDialogShell open={open} onOpenChange={onOpenChange} title="Symbols and units" hideFooter>
+          <p>Work in progress</p>
+        </InsertDialogShell>
+      ),
     });
     try {
       renderEditor();

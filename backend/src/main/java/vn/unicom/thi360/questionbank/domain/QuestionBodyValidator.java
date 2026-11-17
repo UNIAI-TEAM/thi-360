@@ -199,9 +199,9 @@ public final class QuestionBodyValidator {
             }
             case QuestionBody.QuestionSetBody b -> {
                 // Spec 3.4 (UNI-2638): số bắt đầu đánh chỗ trống 1–200, mặc định 1 (constructor
-                // đã đọc null ra 1). Ngoài khoảng → mã trường số sẵn có của body.
+                // đã đọc null ra 1). Ngoài khoảng → QUESTION_BLANK_NUMBER_START_INVALID.
                 if (b.blankNumberStart() != null && (b.blankNumberStart() < 1 || b.blankNumberStart() > 200)) {
-                    errors.add(QuestionFieldError.of("QUESTION_WORD_LIMIT_INVALID", prefix + ".blankNumberStart"));
+                    errors.add(QuestionFieldError.of("QUESTION_BLANK_NUMBER_START_INVALID", prefix + ".blankNumberStart"));
                 }
                 if (b.children().size() > MAX_CHILDREN) {
                     errors.add(QuestionFieldError.of("QUESTION_CHILDREN_TOO_MANY", prefix + ".children"));

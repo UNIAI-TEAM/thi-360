@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { RichTextView } from "../view/rich-text-view";
 
@@ -22,13 +22,13 @@ const byName = (name: string) => {
 };
 
 describe("RichTextView renders every fixture block", () => {
-  it("renders inline and display formulas with KaTeX, including mhchem", () => {
+  it("renders inline and display formulas with KaTeX, including mhchem", async () => {
     const { container } = render(<RichTextView html={byName("math-inline-and-block").html} />);
     expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
     expect(container.querySelector(".katex-display")).toBeTruthy();
 
     const chemistry = render(<RichTextView html={byName("chemistry-mhchem").html} />);
-    expect(chemistry.container.querySelectorAll(".katex")).toHaveLength(2);
+    await waitFor(() => expect(chemistry.container.querySelectorAll(".katex")).toHaveLength(2));
     // \ce dựng thành công (không phải khung cảnh báo).
     expect(chemistry.container.querySelector(".math-error")).toBeNull();
   });

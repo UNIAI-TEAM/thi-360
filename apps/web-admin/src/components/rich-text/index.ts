@@ -16,5 +16,4 @@ export {
 } from "./insert/registry";
 export { InsertDialogShell, type InsertDialogShellProps } from "./insert/shared/insert-dialog-shell";
 export { SymbolGrid, type SymbolGridItem, type SymbolGridProps } from "./insert/shared/symbol-grid";
-export { StubDialog, type StubDialogProps } from "./insert/shared/stub-dialog";
 export { loadRecent, pushRecent } from "./insert/shared/recent-store";
