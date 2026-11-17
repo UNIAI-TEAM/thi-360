@@ -26,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator;
+import vn.unicom.thi360.exam.application.SolverInputBuilder;
+import vn.unicom.thi360.exam.domain.ExamStructureCodec;
+import vn.unicom.thi360.exam.domain.solver.SolvePart;
 import vn.unicom.thi360.questionbank.domain.QuestionInput;
 import vn.unicom.thi360.questionbank.domain.QuestionSearchNormalizer;
 import vn.unicom.thi360.questionbank.domain.QuestionSnapshot;
@@ -37,6 +40,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired DataSource dataSource;
+    @Autowired SolverInputBuilder solverInputBuilder;
     private static final Map<String, String> OLD_PROFILE_SCOPES = Map.of(
             "HSA", "FULL,PART",
             "QDA", "FULL,PART",
@@ -292,6 +296,20 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 .isEqualTo(examRevisions);
     }
 
+
+    @Test
+    void seededCodeSourcePartsProduceSolverPaths() {
+        for (var entry : Map.of("TEST-QDA-01", 5, "TEST-BCA-01", 4).entrySet()) {
+            var row = jdbc.queryForMap("""
+                    select e.kind_item_id, s.parts::text as document from exam.exam e
+                    join exam.exam_structure s on s.exam_id = e.id where e.code = ?
+                    """, entry.getKey());
+            var document = new ExamStructureCodec(mapper).read((String) row.get("document"));
+            var input = solverInputBuilder.build((UUID) row.get("kind_item_id"), document);
+            var choice = (SolvePart.Choice) input.parts().get(2);
+            assertThat(choice.options()).as(entry.getKey()).hasSize(entry.getValue());
+        }
+    }
 
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
