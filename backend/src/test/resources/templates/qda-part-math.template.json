@@ -1,0 +1,51 @@
+{
+  "code": "QDA_PART_MATH",
+  "kindCode": "QDA",
+  "scope": "PART",
+  "partCode": "TOAN",
+  "subjectCode": null,
+  "structureYear": 2026,
+  "matrixYear": 2026,
+  "timing": "PER_PART",
+  "durationMinutes": 80,
+  "maxScore": 50,
+  "expertNote": null,
+  "label": "QDA – Phần Toán học và xử lí số liệu",
+  "summary": "50 câu trong 80 phút: 35 câu trắc nghiệm và 15 câu trả lời ngắn.",
+  "buildMode": "STANDARD",
+  "isDefault": true,
+  "existing": false,
+  "expected": { "questions": 50, "maxPoints": 50 },
+  "structure": {
+    "parts": [{
+      "order": 1,
+      "name": "Toán học và xử lí số liệu",
+      "durationMinutes": 80,
+      "questionCount": 50,
+      "questionCountOnPaper": 50,
+      "questionCountRequired": 50,
+      "participation": { "mode": "ALL" },
+      "maxPoints": 50,
+      "sections": [{
+        "subjectCode": "TOAN",
+        "questionCount": 50,
+        "answerQuotas": { "unit": "COUNT", "items": [
+          { "answerType": "SINGLE_CHOICE", "value": 35 },
+          { "answerType": "SHORT_ANSWER", "value": 15 }
+        ] },
+        "matrix": {
+          "mode": "SEPARATE", "unit": "COUNT", "basis": "QUESTION",
+          "gradeEnforcement": "REQUIRED", "difficultyEnforcement": "REQUIRED",
+          "byGrade": [{ "code": "G10", "value": 5 }, { "code": "G11", "value": 15 }, { "code": "G12", "value": 30 }],
+          "byDifficulty": []
+        },
+        "blocks": [
+          { "name": "Trắc nghiệm độc lập", "questionType": "SINGLE_CHOICE", "questionCount": 32, "requiredPointsPerQuestion": 1 },
+          { "name": "Chùm trắc nghiệm", "questionType": "QUESTION_SET", "questionCount": 3, "setCount": 1, "setSize": 3, "childAnswerType": "SINGLE_CHOICE", "requiredPointsPerQuestion": 1 },
+          { "name": "Trả lời ngắn", "questionType": "SHORT_ANSWER", "questionCount": 15, "answerFormats": ["INTEGER", "DECIMAL", "FRACTION"], "requiredPointsPerQuestion": 1 }
+        ]
+      }],
+      "options": []
+    }]
+  }
+}
