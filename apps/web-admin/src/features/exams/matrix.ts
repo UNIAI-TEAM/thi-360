@@ -1,3 +1,4 @@
+import { allocateSubjectCounts } from "./subject-choice";
 import type {
   BlockMatrix,
   ExamPart,
@@ -473,6 +474,45 @@ export function groupCounts(section: ExamSection, count: number): number[] {
   return section.blocks.map((block) => block.questionCount ?? remainder);
 }
 
+/**
+ * Số câu từng môn của một phương án `SUBJECT_CHOICE`, ánh xạ theo chỉ số môn trong `option.sections`. Môn đặt sẵn
+ * `questionCount` dùng số đó; môn để `null` (HSA, D25) nhận số câu của cách chia hợp lệ đầu tiên trên các tổ hợp
+ * `chooseSubjects` môn — cùng quy tắc B10 của máy chủ (`ChoiceGroupAllocator`). Không có cách chia hợp lệ (cấu hình
+ * sai) thì môn `null` tính 0 để tiêu đề vẫn lộ phần thiếu.
+ */
+function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
+  const counts = new Map<number, number>();
+  const need = option.sections.some((section) => section.questionCount === null);
+  if (!option.countsByPick || !need) return counts;
+  const choose = option.chooseSubjects ?? option.countsByPick.length;
+  const total = option.sections.length;
+  // Duyệt các tổ hợp `choose` môn theo thứ tự cấu trúc; lấy cách chia hợp lệ đầu tiên.
+  const pick: number[] = [];
+  const visit = (start: number): boolean => {
+    if (pick.length === choose) {
+      const allocations = allocateSubjectCounts(
+        pick.map((index) => option.sections[index]!.choiceGroup),
+        option.countsByPick!,
+      );
+      if (allocations.length === 0) return false;
+      // Môn để `null` mà không được chọn tính 0 câu: học viên chọn một cách chia, không làm cả năm môn.
+      option.sections.forEach((section, index) => {
+        if (section.questionCount !== null) return;
+        counts.set(index, allocations[0]![pick.indexOf(index)] ?? 0);
+      });
+      return true;
+    }
+    for (let index = start; index <= total - (choose - pick.length); index++) {
+      pick.push(index);
+      if (visit(index + 1)) return true;
+      pick.pop();
+    }
+    return false;
+  };
+  visit(0);
+  return counts;
+}
+
 function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
   return sections.flatMap((section) => section.blocks);
 }
@@ -621,12 +661,18 @@ export function structureTotals(parts: readonly ExamPart[], options: StructureTo
       return sum(blocks.map(countOf));
     });
     allocated += counts.length ? Math.min(...counts) : 0;
-    const first = groups[0]?.group.sections ?? [];
-    // G1: nhóm "lấy phần còn lại" nhận phần chênh của môn (cùng cách chia với kiểm tra), không tính 0 điểm.
+    const first = groups[0];
+    // G1: nhóm "lấy phần còn lại" nhận phần chênh của môn (cùng cách chia với kiểm tra), không tính 0 điểm; môn của
+    // `SUBJECT_CHOICE` không đặt số câu trên môn nên lấy số câu chia theo `countsByPick` (quy tắc B10 của máy chủ).
+    const option = part.options.find((item) => item.id === first?.group.optionId);
+    const subjectCounts = option?.kind === "SUBJECT_CHOICE" ? subjectChoiceCounts(option) : null;
     totalPoints += sum(
-      first.flatMap((section) => {
-        const perGroup = section.questionCount === null ? section.blocks.map(countOf) : groupCounts(section, section.questionCount);
-        return section.blocks.map((block, index) => perGroup[index]! * blockPointsEach(block));
+      (first?.group.sections ?? []).flatMap((section, index) => {
+        const count = section.questionCount ?? subjectCounts?.get(index - part.sections.length) ?? null;
+        // Môn không được chọn (`count` 0) không đóng góp câu nào, kể cả nhóm đặt sẵn số câu.
+        const perGroup =
+          count === null ? section.blocks.map(countOf) : count === 0 ? section.blocks.map(() => 0) : groupCounts(section, count);
+        return section.blocks.map((block, blockIndex) => perGroup[blockIndex]! * blockPointsEach(block));
       }),
     );
   }
