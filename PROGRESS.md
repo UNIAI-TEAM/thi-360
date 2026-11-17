@@ -134,7 +134,7 @@
     - Fable lượt 3, 3b áp quyết định vào đặc tả; tôi sửa hai plan; lượt 4 rà khớp, không còn Chặn (`.thi360-dev/review-2b-r3.md`, `r3b`, `r4`). Plan 2B vẫn 17 task, 100 điểm; đợt 3 36 task, 103 điểm.
     - **Hỏi BA:** danh sách và tên nhãn dạng câu; câu thật phải gắn nhãn; các câu còn lại ở 2B mục 18.
     - **M.Trường duyệt đặc tả và plan 2B, đợt 3 ngày 2026-11-17 (G1).** PR #70 (2B) đã merge vào `develop`; PR của UNI-2622 mở cùng ngày.
-    - **Bản vẽ (2026-11-17, nhánh `docs/UNI-2647-ban-ve-2b`, chưa commit):**
+    - **Bản vẽ (2026-11-17, PR #78, nhánh `docs/UNI-2647-ban-ve-2b`):**
       - canvas trang 17–19: 14 màn 2B, xuất ra `docs/design/dot-2b/` kèm README;
       - trang 12: sửa `ChuanBiLamBai`, `ChonPhan3`, `NopBaiXacNhan` theo 2B;
       - trang 20: 7 màn bộ đề và làm thử, xuất ra `docs/design/dot-3/`;
