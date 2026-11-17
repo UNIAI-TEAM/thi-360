@@ -1,6 +1,6 @@
 import type { components } from "@thi360/api-client";
 import { describe, expect, it } from "vitest";
-import { mapExamTemplate, mapPart, toApiParts } from "../api-mapping";
+import { mapExamDetail, mapExamTemplate, mapPart, toApiParts } from "../api-mapping";
 
 type Template = components["schemas"]["ExamTemplateResponse"];
 
@@ -60,6 +60,39 @@ describe("mapExamTemplate", () => {
     const option = mapped.parts[0]!.options![0]!;
     expect(option.subjectChoice).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16] });
     expect(option.subjectChoice?.sections[0]).toMatchObject({ subjectCode: "LY", questionCount: null, choiceGroup: "NATURAL" });
+  });
+});
+
+describe("mapExamDetail thời lượng (F-4)", () => {
+  const detail = (timing: string, durationMinutes: number) =>
+    ({
+      id: "ex-1",
+      code: "E1",
+      name: "E1",
+      kind: "HSA",
+      scope: "FULL",
+      status: "DRAFT",
+      revision: 1,
+      hasUnpublishedChanges: false,
+      questionCount: 2,
+      hasEnglishOption: false,
+      combinationCount: 0,
+      timing,
+      durationMinutes,
+      check: { status: "UNCHECKED", issueCount: 0 },
+      versions: [],
+      parts: [
+        { id: "p1", name: "P1", questionCount: 1, durationMinutes: 100, participation: { mode: "ALL" }, sections: [] },
+        { id: "p2", name: "P2", questionCount: 1, durationMinutes: 100, participation: { mode: "ALL" }, sections: [] },
+      ],
+    }) as unknown as Parameters<typeof mapExamDetail>[0];
+
+  it("thời gian theo phần: tổng các phần, bỏ số đã lưu của mẫu", () => {
+    expect(mapExamDetail(detail("PER_PART", 195)).durationMinutes).toBe(200);
+  });
+
+  it("thời lượng chung: giữ số của bài", () => {
+    expect(mapExamDetail(detail("SHARED", 180)).durationMinutes).toBe(180);
   });
 });
 

@@ -248,7 +248,9 @@ export function mapExamDetail(response: Schemas["ExamDetailResponse"]): ExamDeta
     servingVersion: nullable(response.servingVersion),
     hasUnpublishedChanges: response.hasUnpublishedChanges,
     totalQuestions: response.questionCount,
-    durationMinutes: response.durationMinutes ?? sumDurations(parts),
+    // F-4: thời lượng chung chỉ có nghĩa khi `timing = SHARED`; thời gian theo phần thì tổng các phần (khớp xem trước và
+    // kiểm tra cấu hình), không lấy `durationMinutes` lưu trên bài (có thể là số của mẫu).
+    durationMinutes: response.timing === "SHARED" ? (response.durationMinutes ?? sumDurations(parts)) : sumDurations(parts),
     englishOption: response.hasEnglishOption,
     combinationCount: response.combinationCount,
     partCode: nullable(response.partCode),

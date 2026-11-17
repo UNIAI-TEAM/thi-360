@@ -10,19 +10,23 @@ import type { ChoiceGroup } from "./types";
  * môn (HSA: 3). Lần sinh đề chọn một cách theo hạt giống (`pickAllocation`); kiểm tra cấu hình không biết trước môn nào
  * nên chứng minh mọi cách.
  *
- * Trả `[]` khi không chia được: sai số môn so với `countsByPick`, có môn thiếu nhóm, hai nhóm bằng nhau, hoặc số câu chia
- * ra không trùng `countsByPick`.
+ * Môn chưa đặt nhóm (`null`) cả tổ hợp được coi là một nhóm chung như `ChoiceGroupAllocator` của máy chủ (R3-1): chia như
+ * ba môn cùng nhóm. Lẫn môn `null` với môn có nhóm thì không chia được.
+ *
+ * Trả `[]` khi không chia được: sai số môn so với `countsByPick`, lẫn môn thiếu nhóm với môn có nhóm, hai nhóm bằng nhau,
+ * hoặc số câu chia ra không trùng `countsByPick`.
  */
 export function allocateSubjectCounts(
   groups: readonly (ChoiceGroup | null)[],
   countsByPick: readonly number[],
 ): number[][] {
   const picked = groups.length;
-  if (picked === 0 || countsByPick.length !== picked || groups.some((group) => group === null)) return [];
+  const ungrouped = groups.filter((group) => group === null).length;
+  if (picked === 0 || countsByPick.length !== picked || (ungrouped > 0 && ungrouped < picked)) return [];
   const high = Math.max(...countsByPick);
   const low = Math.min(...countsByPick);
   const natural = groups.filter((group) => group === "NATURAL").length;
-  const social = picked - natural;
+  const social = picked - ungrouped - natural;
 
   const allocations: number[][] =
     natural === 0 || social === 0
