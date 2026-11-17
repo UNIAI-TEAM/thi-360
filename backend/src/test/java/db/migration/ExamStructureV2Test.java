@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +21,21 @@ import org.junit.jupiter.api.Test;
  */
 class ExamStructureV2Test {
     private static final ObjectMapper JSON = new ObjectMapper();
+
+    @Test
+    void preservesLegacyMatrixEnforcementForSectionsAndBlocks() throws Exception {
+        JsonNode input = JSON.readTree("""
+                [{"sections":[{"matrix":{"enforcement":"REFERENCE"},
+                  "blocks":[{"matrix":{"enforcement":"REFERENCE"}}]}]}]
+                """);
+        JsonNode result = V202611172353__ExamStructureV2.convert(input, "HSA");
+        JsonNode section = result.get(0).path("sections").get(0);
+        for (JsonNode matrix : List.of(section.path("matrix"), section.path("blocks").get(0).path("matrix"))) {
+            assertEquals("REFERENCE", matrix.path("gradeEnforcement").asText());
+            assertEquals("REFERENCE", matrix.path("difficultyEnforcement").asText());
+            assertTrue(!matrix.has("enforcement"));
+        }
+    }
 
     @Test
     void convertsRealDevDataStructuresToExpectedV2() throws Exception {

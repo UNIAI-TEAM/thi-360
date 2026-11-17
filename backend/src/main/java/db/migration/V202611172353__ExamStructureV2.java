@@ -332,12 +332,14 @@ public class V202611172353__ExamStructureV2 extends BaseJavaMigration {
     }
 
     private static void addMatrixDefaults(ObjectNode matrix) {
-        if (!matrix.has("gradeEnforcement")) {
-            matrix.put("gradeEnforcement", "REQUIRED");
+        String enforcement = matrix.path("enforcement").asText("REQUIRED");
+        if (!matrix.hasNonNull("gradeEnforcement")) {
+            matrix.put("gradeEnforcement", enforcement);
         }
-        if (!matrix.has("difficultyEnforcement")) {
-            matrix.put("difficultyEnforcement", "REQUIRED");
+        if (!matrix.hasNonNull("difficultyEnforcement")) {
+            matrix.put("difficultyEnforcement", enforcement);
         }
+        matrix.remove("enforcement");
         if (!matrix.has("basis")) {
             matrix.put("basis", "QUESTION");
         }
