@@ -74,7 +74,7 @@ WITH sets AS (
            md5('thi360-seed-hsa-math-set-' || n || '-a')::uuid AS first_id,
            md5('thi360-seed-hsa-math-set-' || n || '-b')::uuid AS second_id,
            subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
-    FROM generate_series(1, 5) n
+    FROM generate_series(1, 6) n
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'TOAN'
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G10'
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'NB'
