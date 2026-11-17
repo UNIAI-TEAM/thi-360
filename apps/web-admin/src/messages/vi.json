@@ -130,7 +130,6 @@
       "editTitle": "Sửa mã tổ hợp",
       "examLabel": "Kỳ thi",
       "examPlaceholder": "Chọn kỳ thi đang hoạt động…",
-      "inPlaceVersionHint": "Sửa kỳ thi hoặc danh sách môn cập nhật trực tiếp phiên bản {version} vì tổ hợp chưa được tham chiếu.",
       "moveSubjectDownLabel": "Di chuyển {name} xuống",
       "moveSubjectUpLabel": "Di chuyển {name} lên",
       "newVersionNotice": "Đổi nhánh hoặc thứ tự môn luôn tạo phiên bản mới; đổi kỳ thi hoặc danh sách môn cũng tạo phiên bản mới khi mã đang được dùng. Đề đã công bố và kết quả cũ tiếp tục dùng phiên bản {currentVersion}; lần lưu này tạo phiên bản {nextVersion}.",

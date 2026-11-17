@@ -130,7 +130,6 @@
       "editTitle": "Edit combination",
       "examLabel": "Exam",
       "examPlaceholder": "Select an active exam…",
-      "inPlaceVersionHint": "Changing the exam or the subject list updates version {version} in place because this combination is not referenced yet.",
       "moveSubjectDownLabel": "Move {name} down",
       "moveSubjectUpLabel": "Move {name} up",
       "newVersionNotice": "Changing the branch or the subject order always creates a new version; changing the exam or subject list also creates one when the code is in use. Published exams and historical results keep version {currentVersion}; this save creates version {nextVersion}.",
