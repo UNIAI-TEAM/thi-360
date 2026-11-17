@@ -118,6 +118,22 @@ describe("câu chùm: Đánh số từ và bảng Chỗ trống và câu con", (
     expect(rowsOf()).toHaveLength(2);
   });
 
+  it("HTML ngữ liệu đã lưu không đúng dạng chuẩn: bảng đọc được chỗ trống; đổi thứ tự và xóa câu con vẫn đánh lại số", async () => {
+    const user = userEvent.setup();
+    const id = await seedQuestion("QUESTION_SET", (values) => {
+      values.content = `<p>w1 <span data-blank="1" class="blank"></span> w2 <span class="blank" data-blank = "2" ></span> w3 ${blank(3)} end</p>`;
+      values.children = [choiceChild("Câu 1", 0), choiceChild("Câu 2", 1), choiceChild("Câu 3", 2)];
+    });
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    await screen.findByRole("table", { name: "Blanks and sub-questions" });
+    expect(rowsOf()).toHaveLength(3);
+
+    await user.click(screen.getByRole("button", { name: "Move sub-question 1 down" }));
+    await waitFor(() => expect(passageHtml()).toBe(`<p>w1 ${blank(2)} w2 ${blank(1)} w3 ${blank(3)} end</p>`));
+    await user.click(screen.getByRole("button", { name: "Delete sub-question 2" }));
+    await waitFor(() => expect(passageHtml()).toBe(`<p>w1 w2 ${blank(1)} w3 ${blank(2)} end</p>`));
+  });
+
   it("thêm câu con không tự thêm chỗ trống; xóa chỗ trống không đổi câu con", async () => {
     const user = userEvent.setup();
     const id = await seedSet("1");

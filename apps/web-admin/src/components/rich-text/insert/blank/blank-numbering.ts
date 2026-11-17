@@ -2,15 +2,45 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { BLANK_NODE } from "../../extensions/names";
 
 /**
- * Chỗ trống đánh số `<span class="blank" data-blank="n"></span>` (spec 3.2): `data-blank` = n trỏ tới câu con thứ n
- * theo thứ tự hiện tại (3.5). Dạng chuẩn của bảng mẫu là chuỗi dưới đây nên đổi số bằng thay chuỗi, không dựng lại DOM:
- * mọi byte còn lại của HTML giữ nguyên.
+ * Chỗ trống đánh số `span.blank[data-blank="n"]` (spec 3.2): `data-blank` = n trỏ tới câu con thứ n theo thứ tự hiện
+ * tại (3.5). HTML đã lưu không nhất thiết đúng từng byte dạng chuẩn của bảng mẫu (thứ tự thuộc tính, khoảng trắng, nháy
+ * đơn, lớp phụ) nên thẻ được đọc theo thuộc tính chứ không so chuỗi; chỉ thẻ chỗ trống bị đổi số mới được ghi lại đúng
+ * dạng chuẩn `<span class="blank" data-blank="n"></span>`, mọi byte còn lại của HTML giữ nguyên.
  */
-const BLANK_SPAN = /<span class="blank" data-blank="(\d+)"><\/span>/g;
+const SPAN_ELEMENT = /<span\b((?:[^>"']|"[^"]*"|'[^']*')*)>[^<]*<\/span>/gi;
+const ATTRIBUTE = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+
+const blankSpan = (number: number) => `<span class="blank" data-blank="${number}"></span>`;
+
+/** Số `data-blank` của thẻ `<span …>` có lớp `blank` và `data-blank` là số nguyên dương; không phải chỗ trống thì `null`. */
+function blankNumberOfAttributes(attributes: string): number | null {
+  let isBlank = false;
+  let number: number | null = null;
+  for (const [, name, quoted, single, bare] of attributes.matchAll(ATTRIBUTE)) {
+    const value = quoted ?? single ?? bare ?? "";
+    const key = name!.toLowerCase();
+    if (key === "class") isBlank = value.split(/\s+/).includes("blank");
+    else if (key === "data-blank" && /^\s*\d+\s*$/.test(value)) number = Number(value);
+  }
+  return isBlank ? number : null;
+}
+
+/** Thay từng chỗ trống bằng `replace(số, thẻ gốc)`; thẻ khác giữ nguyên. */
+function mapBlanks(html: string, replace: (number: number, span: string) => string): string {
+  return html.replace(SPAN_ELEMENT, (span, attributes: string) => {
+    const number = blankNumberOfAttributes(attributes);
+    return number === null ? span : replace(number, span);
+  });
+}
 
 /** Số `data-blank` của các chỗ trống trong HTML, theo thứ tự xuất hiện. */
 export function blankNumbersOfHtml(html: string): number[] {
-  return Array.from(html.matchAll(BLANK_SPAN), (match) => Number(match[1]));
+  const numbers: number[] = [];
+  mapBlanks(html, (number, span) => {
+    numbers.push(number);
+    return span;
+  });
+  return numbers;
 }
 
 /** Số `data-blank` của các chỗ trống trong tài liệu của trình soạn, bỏ node ở `exceptPos`. */
@@ -37,13 +67,13 @@ export function firstChildWithoutBlank(childCount: number, usedNumbers: readonly
  * con bị dịch chỗ được đánh lại (spec 3.5).
  */
 export function renumberBlanksAfterMove(html: string, from: number, to: number): string {
-  return html.replace(BLANK_SPAN, (span, value: string) => {
-    const position = Number(value) - 1;
+  return mapBlanks(html, (number, span) => {
+    const position = number - 1;
     let next = position;
     if (position === from) next = to;
     else if (from < to && position > from && position <= to) next = position - 1;
     else if (from > to && position >= to && position < from) next = position + 1;
-    return next === position ? span : `<span class="blank" data-blank="${next + 1}"></span>`;
+    return next === position ? span : blankSpan(next + 1);
   });
 }
 
@@ -52,9 +82,8 @@ export function renumberBlanksAfterMove(html: string, from: number, to: number):
  * xóa; chữ quanh nó giữ nguyên.
  */
 export function renumberBlanksAfterRemove(html: string, removed: number): string {
-  return html.replace(BLANK_SPAN, (span, value: string) => {
-    const number = Number(value);
+  return mapBlanks(html, (number, span) => {
     if (number === removed + 1) return "";
-    return number > removed + 1 ? `<span class="blank" data-blank="${number - 1}"></span>` : span;
+    return number > removed + 1 ? blankSpan(number - 1) : span;
   });
 }
