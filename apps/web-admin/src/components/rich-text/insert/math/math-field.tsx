@@ -90,12 +90,13 @@ export function MathField({ initialLatex, ariaLabel, onLatexChange, onStatusChan
         Element.fontsDirectory = MATHLIVE_FONTS_DIRECTORY;
         Element.soundsDirectory = null;
         field = new Element();
-        // Bảng nút của hộp thay bàn phím ảo; trình đơn tiếng Anh của mathlive không dùng.
+        // Bảng nút của hộp thay bàn phím ảo; trình đơn tiếng Anh của mathlive không dùng (`menuItems` chỉ đặt được
+        // sau khi ô đã gắn vào trang: trước đó mathlive báo "Mathfield not mounted").
         field.mathVirtualKeyboardPolicy = "manual";
-        field.menuItems = [];
         field.setAttribute("aria-label", labelRef.current);
         field.addEventListener("input", onInput);
         host.append(field);
+        field.menuItems = [];
         fieldRef.current = field;
         writingRef.current = true;
         try {

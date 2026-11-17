@@ -30,12 +30,22 @@ export class MockMathfield extends HTMLElement {
   }
 
   mathVirtualKeyboardPolicy = "auto";
-  menuItems: unknown[] = [{ id: "default" }];
+  private menu: unknown[] = [{ id: "default" }];
   private content = "";
 
   constructor() {
     super();
     MockMathfield.instances.push(this);
+  }
+
+  get menuItems(): unknown[] {
+    return this.menu;
+  }
+
+  /** Như mathlive thật: `menuItems` chỉ đặt được khi ô đã gắn vào trang. */
+  set menuItems(items: unknown[]) {
+    if (!this.isConnected) throw new Error("Mathfield not mounted");
+    this.menu = items;
   }
 
   get value(): string {
