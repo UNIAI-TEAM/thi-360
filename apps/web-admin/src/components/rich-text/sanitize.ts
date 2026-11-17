@@ -18,6 +18,7 @@ import {
   attributeAllowed,
   attributeViolation,
   checkElementStructure,
+  closedAttributeViolations,
   DROP_SUBTREE_TAGS,
   tagViolation,
   UUID_PATTERN,
@@ -36,11 +37,6 @@ export interface SanitizeResult {
   html: string;
   /** Các thẻ/thuộc tính bị bỏ, tương đương `Result.violations` của backend. */
   violations: SanitizeViolation[];
-}
-
-/** `figure`/`blockquote`/`span.blank` vi phạm thì bỏ cả phần tử, không giữ vỏ hay thuộc tính đã sửa. */
-function removesWholeElement(el: Element, tag: string): boolean {
-  return tag === "figure" || tag === "blockquote" || el.matches("span.blank");
 }
 
 /**
@@ -72,14 +68,24 @@ function visit(element: Node, allowedTags: Set<string>, allowImages: boolean, vi
       continue;
     }
 
+    // figure/blockquote: gom mọi thuộc tính sai/thiếu rồi bỏ cả khối, không kiểm con.
+    if (tag === "figure" || tag === "blockquote") {
+      const closed = closedAttributeViolations(el, tag);
+      if (closed.length > 0) {
+        violations.push(...closed);
+        el.remove();
+        continue;
+      }
+    }
+
     // Lượt phẳng: thuộc tính ngoài danh sách hoặc sai giá trị bị loại; phần tử có vi phạm
-    // không bị kiểm tiếp ở lượt cấu trúc, và `figure`/`blockquote`/`span.blank` bị bỏ cả khối.
+    // không bị kiểm tiếp ở lượt cấu trúc, và `span.blank` bị bỏ cả khối (figure/blockquote đã xử lý ở trên).
     let reported = false;
     for (const attribute of [...el.attributes]) {
       const name = attribute.name.toLowerCase();
       if (attributeAllowed(tag, name, attribute.value)) continue;
       violations.push(attributeViolation(tag, name, attribute.value));
-      if (removesWholeElement(el, tag)) {
+      if (el.matches("span.blank")) {
         el.remove();
         break;
       }
@@ -105,7 +111,7 @@ function visit(element: Node, allowedTags: Set<string>, allowImages: boolean, vi
     const attrViolation = checkElementStructure(el, element.nodeType !== Node.ELEMENT_NODE, "attr");
     if (attrViolation) {
       violations.push(attrViolation);
-      if (removesWholeElement(el, tag)) {
+      if (el.matches("span.blank")) {
         el.remove();
         continue;
       }

@@ -104,6 +104,52 @@ export function attributeViolation(tag: string, name: string, value: string): Sa
   return { tag, attribute: name, value };
 }
 
+/**
+ * Vi phạm thuộc tính của `figure`/`blockquote` — mirror `checkFigure`/`checkQuote` của backend:
+ * gom mọi thuộc tính sai VÀ thuộc tính bắt buộc còn thiếu (hoặc không hợp ngữ cảnh) của phần tử,
+ * mỗi cặp (thẻ, thuộc tính) một lần. Khác rỗng thì phần tử bị bỏ cả khối, không kiểm con.
+ */
+export function closedAttributeViolations(el: Element, tag: "figure" | "blockquote"): SanitizeViolation[] {
+  const violations: SanitizeViolation[] = [];
+  const seen = new Set<string>();
+  const report = (name: string, value: string | null) => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    violations.push({ tag, attribute: name, value });
+  };
+  const blank = (name: string) => (el.getAttribute(name) ?? "").trim() === "";
+
+  for (const attribute of el.attributes) {
+    const name = attribute.name.toLowerCase();
+    if (!attributeAllowed(tag, name, attribute.value)) report(name, attribute.value);
+  }
+
+  if (tag === "figure") {
+    const figureClass = (el.getAttribute("class") ?? "").trim();
+    if (!FIGURE_CLASSES.has(figureClass)) {
+      report("class", el.getAttribute("class"));
+    } else if (figureClass === "image") {
+      // `data-width`/`data-zoom` bắt buộc và chỉ có ở figure.image.
+      if (blank("data-width")) report("data-width", null);
+      if (blank("data-zoom")) report("data-zoom", null);
+    } else {
+      if (el.hasAttribute("data-width")) report("data-width", el.getAttribute("data-width"));
+      if (el.hasAttribute("data-zoom")) report("data-zoom", el.getAttribute("data-zoom"));
+    }
+    return violations;
+  }
+
+  if ((el.getAttribute("class") ?? "").trim() !== "quote") report("class", el.getAttribute("class"));
+  const kind = (el.getAttribute("data-kind") ?? "").trim();
+  if (kind === "") report("data-kind", null);
+  const lineNumbers = (el.getAttribute("data-line-numbers") ?? "").trim();
+  // `data-line-numbers` bắt buộc; khác "0" chỉ khi poem.
+  if (lineNumbers === "" || (kind !== "" && lineNumbers !== "0" && kind !== "poem")) {
+    report("data-line-numbers", el.getAttribute("data-line-numbers"));
+  }
+  return violations;
+}
+
 function isElement(node: Node | null | undefined, tag?: string): node is Element {
   return node?.nodeType === Node.ELEMENT_NODE && (tag === undefined || (node as Element).tagName.toLowerCase() === tag);
 }
@@ -129,10 +175,7 @@ export function checkElementStructure(
   switch (tag) {
     case "figure": {
       const figureClass = (el.getAttribute("class") ?? "").trim();
-      // `data-width`/`data-zoom` chỉ thuộc figure.image (sai giá trị đã bị lượt phẳng loại).
-      if (figureClass !== "image" && (el.hasAttribute("data-width") || el.hasAttribute("data-zoom"))) {
-        return attr?.(el.hasAttribute("data-width") ? "data-width" : "data-zoom") ?? null;
-      }
+      // Thuộc tính của figure đã kiểm bởi `closedAttributeViolations` trước khi vào đây.
       // Chỉ đứng ở cấp đầu của nội dung — không trong td, li, figure, blockquote.
       if (!parentIsRoot) return structural?.() ?? null;
       const children = elementChildren(el);
@@ -168,9 +211,7 @@ export function checkElementStructure(
       }
     }
     case "blockquote": {
-      if ((el.getAttribute("data-kind") ?? "") !== "poem" && el.getAttribute("data-line-numbers") !== "0") {
-        return attr?.("data-line-numbers") ?? null;
-      }
+      // Thuộc tính của blockquote đã kiểm bởi `closedAttributeViolations` trước khi vào đây.
       if (!parentIsRoot) return structural?.() ?? null;
       const children = elementChildren(el);
       const paragraphs = children.filter((child) => child.tagName.toLowerCase() === "p");
