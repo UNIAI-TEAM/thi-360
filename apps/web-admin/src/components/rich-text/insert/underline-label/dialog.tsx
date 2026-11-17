@@ -60,7 +60,11 @@ export default function UnderlineLabelInsertDialog({ editor, open, onOpenChange 
             {t("phrase")}
           </span>
           {hasRange ? (
-            <p aria-labelledby={`${groupId}-phrase`} className="rounded-md border border-border bg-subtle px-3 py-2 text-body text-text">
+            <p
+              role="group"
+              aria-labelledby={`${groupId}-phrase`}
+              className="rounded-md border border-border bg-subtle px-3 py-2 text-body text-text"
+            >
               <u>{target.text}</u>
             </p>
           ) : (

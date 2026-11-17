@@ -95,6 +95,14 @@ describe("hộp Gạch chân đánh nhãn", () => {
     expect(emitted()).toBe(FIXTURE);
   });
 
+  it("cụm đang chọn là nhóm có tên, đọc được bằng trình đọc màn hình", async () => {
+    renderEditor(PLAIN);
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
+    select("has been");
+    const { dialog } = await openDialog();
+    expect(within(dialog.getByRole("group", { name: "Selected phrase" })).getByText("has been")).toBeInTheDocument();
+  });
+
   it("mở lại cụm đã gạch: khôi phục nhãn, đổi nhãn", async () => {
     const { emitted } = renderEditor(FIXTURE);
     await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
