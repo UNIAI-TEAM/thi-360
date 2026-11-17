@@ -756,6 +756,10 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
                     messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
         }
+        if ("REVIEW".equals(template.getBuildMode()) && !"SUBJECT".equals(exam.getScope())) {
+            throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
+                    messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
+        }
         assertTemplateMatches(exam, template);
         boolean modeChanged = !Objects.equals(exam.getBuildMode(), template.getBuildMode());
         if (modeChanged && !Boolean.TRUE.equals(request.confirmReplace())) {

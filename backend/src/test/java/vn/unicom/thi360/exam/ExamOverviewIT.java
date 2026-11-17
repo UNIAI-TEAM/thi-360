@@ -83,6 +83,27 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.parts[0].id").value("part-two"))
                 .andExpect(jsonPath("$.parts[0].sections[0].blocks[0].id").value("block-two"))
                 .andReturn().getResponse().getContentAsString());
+        var firstPart = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body.replace("P2", "P1").replace(partExamCode, "SPT-I-" + suffix)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String firstUrl = "/api/v1/admin/exams/" + firstPart.path("id").asText();
+        var beforeLoad = mapper.readTree(mockMvc.perform(get(firstUrl + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String load = "{\"templateCode\":\"SPT_REVIEW\",\"confirmReplace\":true,"
+                + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + firstPart.path("revision").asLong() + "}";
+        mockMvc.perform(post(firstUrl + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(load))
+                .andExpect(status().isUnprocessableEntity());
+        var afterLoad = mapper.readTree(mockMvc.perform(get(firstUrl + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(afterLoad).isEqualTo(beforeLoad);
+        mockMvc.perform(post(firstUrl + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(load.replace("SPT_REVIEW", "SPT_DIA_2025")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].id").value("part-one"));
         String url = "/api/v1/admin/exams/" + created.path("id").asText();
         String revision = created.path("revision").asText();
         String linear = "{\"expectedRevision\":" + revision + ",\"practiceScoring\":\"LINEAR\"}";
@@ -104,6 +125,16 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(subjectBody))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        var reviewSubject = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(subjectBody.replace("SPT-S-", "SPT-R-")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        mockMvc.perform(post("/api/v1/admin/exams/" + reviewSubject.path("id").asText() + "/structure/template")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"SPT_REVIEW\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":"
+                                + reviewSubject.path("revision").asLong() + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].sections[0].subjectCode").value("DIA"));
         String change = "{\"scope\":\"PART\",\"partCode\":\"P2\",\"expectedRevision\":"
                 + subject.path("revision").asLong() + "}";
         mockMvc.perform(patch("/api/v1/admin/exams/" + subject.path("id").asText())
