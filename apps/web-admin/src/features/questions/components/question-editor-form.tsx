@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isEmptyContent, planWordFill, type FillWrite } from "@/components/rich-text/insert/word/fill-form";
 import { clearWordPending, markWordPending } from "@/components/rich-text/insert/word/pending-marks";
-import { isWordHtml } from "@/components/rich-text/insert/word/parse";
+import { isWordHtml } from "@/components/rich-text/insert/word/detect";
 import type { WordPasteResult } from "@/components/rich-text/insert/word/word-paste-dialog";
 import { Button, ConfirmDialog, LiveStatus, notify, PageHeader } from "@thi360/ui";
 import { ClipboardPaste, Info } from "lucide-react";
