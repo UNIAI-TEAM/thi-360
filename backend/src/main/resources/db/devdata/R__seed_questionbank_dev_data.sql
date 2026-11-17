@@ -69,13 +69,46 @@ WITH sets AS (
            NULL::uuid AS parent_id, NULL::integer AS position
     FROM sets s JOIN children c ON c.id = s.id
     GROUP BY s.id, s.n, s.subject_id, s.grade_id, s.level_id
+), hsa_sets AS (
+    SELECT n, md5('thi360-seed-hsa-math-set-' || n)::uuid AS id,
+           md5('thi360-seed-hsa-math-set-' || n || '-a')::uuid AS first_id,
+           md5('thi360-seed-hsa-math-set-' || n || '-b')::uuid AS second_id,
+           subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
+    FROM generate_series(1, 5) n
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'TOAN'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G10'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'NB'
+), hsa_children AS (
+    SELECT s.*, c.pos, c.child_id,
+           'SINGLE_CHOICE'::text AS type,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
+    FROM hsa_sets s
+    CROSS JOIN LATERAL (VALUES (0, s.first_id), (1, s.second_id)) c(pos, child_id)
+), hsa_parent_rows AS (
+    SELECT s.id, 'SEED-HSA-MATH-SET-' || lpad(s.n::text, 3, '0') AS code, 'QUESTION_SET' AS type,
+           s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id, 2::numeric AS points,
+           '<p>HSA Math set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>HSA Math context</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', c.type, 'content', '<p>HSA Math child</p>',
+                   'body', c.body, 'points', 1, 'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM hsa_sets s JOIN hsa_children c ON c.id = s.id
+    GROUP BY s.id, s.n, s.subject_id, s.grade_id, s.level_id
 )
 INSERT INTO seed_question_rows
 SELECT * FROM parent_rows
 UNION ALL
 SELECT child_id, 'SEED-MATH-SET-' || lpad(n::text, 3, '0') || '-' || pos, type,
        subject_id, grade_id, level_id, NULL, 1, '<p>Math child</p>', body, id, pos
-FROM children;
+FROM children
+UNION ALL
+SELECT * FROM hsa_parent_rows
+UNION ALL
+SELECT child_id, 'SEED-HSA-MATH-SET-' || lpad(n::text, 3, '0') || '-' || pos, type,
+       subject_id, grade_id, level_id, NULL, 1, '<p>HSA Math child</p>', body, id, pos
+FROM hsa_children;
 
 -- Science and BCA practice: each grade/level cell has independent examples.
 INSERT INTO seed_question_rows
