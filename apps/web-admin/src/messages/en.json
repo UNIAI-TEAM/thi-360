@@ -2500,7 +2500,9 @@
         "autoLabel": "Options taken from the underlined phrases",
         "fromPhrase": "from underlined phrase",
         "autoMissing": "No underlined phrase for option {letters}.",
-        "autoExtra": "Underlined phrase {labels} has no option."
+        "autoExtra": "Underlined phrase {labels} has no option.",
+        "autoMoveLocked": "Options follow their underlined phrases. Turn off the automatic options to reorder.",
+        "autoRemoveLocked": "Options follow their underlined phrases. Turn off the automatic options to delete this one."
       },
       "statements": {
         "hint": "Mark every statement True or False. At least 2 statements.",

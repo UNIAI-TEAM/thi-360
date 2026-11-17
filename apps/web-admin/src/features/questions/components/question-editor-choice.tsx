@@ -66,6 +66,31 @@ function useAutoChoices(prefix: BodyPath, multiple: boolean) {
 }
 
 /**
+ * Phương án lấy theo vị trí (A, B, C…) nên đổi chỗ hoặc xóa phương án đang theo cụm sẽ đẩy chữ cụm sang hàng khác và đổi
+ * đáp án đúng mà không ai thấy: khóa nút (kèm lý do) thay vì làm im lặng. Đổi chỗ bị khóa khi cả hai phương án đều theo cụm;
+ * xóa bị khóa khi phương án đó hoặc một phương án sau nó theo cụm (các hàng sau sẽ dồn lên).
+ */
+function autoLocks(
+  index: number,
+  count: number,
+  phraseByLabel: ReadonlyMap<string, string>,
+  moveReason: string,
+  removeReason: string,
+): { up?: string; down?: string; remove?: string } {
+  const bound = (at: number) => phraseByLabel.has(optionLetter(at));
+  const locks: { up?: string; down?: string; remove?: string } = {};
+  if (bound(index) && index > 0 && bound(index - 1)) locks.up = moveReason;
+  if (bound(index) && index < count - 1 && bound(index + 1)) locks.down = moveReason;
+  for (let at = index; at < count; at += 1) {
+    if (bound(at)) {
+      locks.remove = removeReason;
+      break;
+    }
+  }
+  return locks;
+}
+
+/**
  * Phương án của Trắc nghiệm 1 đáp án (ô tròn, đúng một đáp án) và nhiều đáp án (ô vuông, ít nhất một),
  * canvas `CauHoi1DapAnForm`, `CauHoiNhieuDapAnForm`. Đổi thứ tự bằng nút lên/xuống thay cho tay kéo của bản vẽ.
  * Nhiều đáp án có thêm cách chấm: đúng hết mới có điểm (mặc định) hoặc chấm từng phần (UNI-2599 mục 2.3).
@@ -118,11 +143,10 @@ export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; mu
               multiple={multiple}
               correct={options[index]?.correct ?? false}
               lockedText={auto ? phraseByLabel.get(optionLetter(index)) : undefined}
+              locked={auto ? autoLocks(index, fields.length, phraseByLabel, t("autoMoveLocked"), t("autoRemoveLocked")) : undefined}
               groupName={groupId}
               onChooseSingle={() => chooseSingle(index)}
               onMove={(from, to) => {
-                // Phương án lấy theo vị trí (A, B, C…): đổi chỗ hai phương án đang theo cụm sẽ đổi đáp án đúng mà không ai thấy.
-                if (auto && phraseByLabel.has(optionLetter(from)) && phraseByLabel.has(optionLetter(to))) return;
                 move(from, to);
                 announce(t("moved", { letter: optionLetter(from), position: to + 1 }));
               }}
@@ -216,6 +240,7 @@ function OptionRow({
   multiple,
   correct,
   lockedText,
+  locked,
   groupName,
   onChooseSingle,
   onMove,
@@ -228,6 +253,8 @@ function OptionRow({
   correct: boolean;
   /** Phương án đang lấy chữ từ cụm gạch chân: hiện chữ cụm, không soạn tay. */
   lockedText?: string;
+  /** Lý do khóa từng nút lên/xuống/xóa khi phương án đang lấy theo cụm gạch chân. */
+  locked?: { up?: string; down?: string; remove?: string };
   groupName: string;
   onChooseSingle: () => void;
   onMove: (from: number, to: number) => void;
@@ -287,7 +314,7 @@ function OptionRow({
             />
           )}
         </div>
-        <RowActions index={index} count={count} name={t("rowName", { letter })} onMove={onMove} onRemove={onRemove} />
+        <RowActions index={index} count={count} name={t("rowName", { letter })} locked={locked} onMove={onMove} onRemove={onRemove} />
       </div>
       {correct && <span className="ps-7 text-caption font-medium text-primary-text">{t("correctBadge")}</span>}
       <FieldErrorText id={`${inputId}-error`} message={error} />

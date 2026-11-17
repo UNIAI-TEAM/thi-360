@@ -133,4 +133,28 @@ describe("phương án tự lấy theo cụm gạch chân (Trắc nghiệm 1 đ�
     if (body.type !== "SINGLE_CHOICE") throw new Error("not single choice");
     expect(body.options.map((option) => option.content)).toEqual(["<p>has been</p>", "<p>to</p>", "<p>&amp;</p>", "<p>sometimes</p>"]);
   });
+
+  it("đang tự lấy: không xóa/đổi chỗ phương án theo cụm (nút khóa kèm lý do), đáp án đúng giữ nguyên", async () => {
+    const user = userEvent.setup();
+    renderEn(<QuestionEditorView mode="create" type="SINGLE_CHOICE" />);
+    const field = await stemField();
+    field.set(stem(["A", "has been"], ["B", "to"]));
+    await waitFor(() => expect(autoCheckbox()).toBeChecked());
+    await user.click(screen.getByRole("radio", { name: "Option B is correct" }));
+
+    // Xóa A sẽ dồn B lên hàng A và đổi đáp án đúng sang cụm khác.
+    const removeA = screen.getByRole("button", { name: "Delete option A" });
+    expect(removeA).toHaveAttribute("aria-disabled", "true");
+    await user.click(removeA);
+    expect(screen.getByRole("radio", { name: "Option B is correct" })).toBeChecked();
+    expect(within(screen.getByRole("group", { name: "Option B text" })).getByText("to")).toBeInTheDocument();
+
+    // Đổi chỗ A/B cũng bị khóa; C, D chưa có cụm nên vẫn xóa được.
+    expect(screen.getByRole("button", { name: "Move option A down" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Move option B up" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Delete option D" })).not.toHaveAttribute("aria-disabled");
+    await user.click(screen.getByRole("button", { name: "Delete option D" }));
+    expect(screen.queryByRole("radio", { name: "Option D is correct" })).toBeNull();
+    expect(screen.getByRole("radio", { name: "Option B is correct" })).toBeChecked();
+  });
 });
