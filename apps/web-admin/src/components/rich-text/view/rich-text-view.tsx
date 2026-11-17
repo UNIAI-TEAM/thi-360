@@ -35,8 +35,10 @@ function renderBlanks(container: HTMLElement, blankNumberStart: number) {
  */
 function renderQuoteLineNumbers(container: HTMLElement) {
   for (const quote of [...container.querySelectorAll<HTMLElement>('blockquote.quote[data-line-numbers="5"]')]) {
+    // Dựng một lần: effect chạy lại (StrictMode, đổi `blankNumberStart`) trên DOM đã dựng không được bọc dòng lần nữa.
+    if (quote.querySelector(".quote-line")) continue;
     let lineNumber = 0;
-    for (const paragraph of [...quote.querySelectorAll<HTMLElement>("p")]) {
+    for (const paragraph of [...quote.querySelectorAll<HTMLElement>(":scope > p:not(.figure-source)")]) {
       // Dòng thuộc về khổ hiện tại, tách tại mỗi <br>.
       const lines: Node[][] = [[]];
       for (const child of [...paragraph.childNodes]) {
