@@ -41,5 +41,6 @@ source.push({code:'VACT_FULL',kindCode:'VACT',scope:'FULL',partCode:null,subject
 const math=legacyStructure('SP2E_MATH_2025');
 const blocks=math.parts[0].sections[0].blocks;
 math.parts=blocks.map((block,i)=>({name:['Phần I · Trắc nghiệm','Phần II · Đúng/Sai','Phần III · Trả lời ngắn'][i],questionCount:block.questionCount,questionCountOnPaper:block.questionCount,questionCountRequired:block.questionCount,participation:{mode:'ALL'},maxPoints:[3,4,3][i],sections:[{subjectCode:'TOAN',questionCount:block.questionCount,blocks:[block]}],options:[]}));
+math.parts[0].durationMinutes=90;
 source.push({code:'SP2E_MATH_2025',kindCode:'SP2E',scope:'SUBJECT',partCode:null,subjectCode:'TOAN',structureYear:2025,matrixYear:2025,timing:'PER_PART',durationMinutes:90,maxScore:10,expertNote:'Cấu trúc 12–4–6 và điểm là giả định, chờ chuyên gia xác nhận.',label:'SP2E – Toán – Cấu trúc giả định 2025',summary:'22 câu trong 90 phút: trắc nghiệm, đúng/sai và trả lời ngắn.',buildMode:'STANDARD',isDefault:false,existing:true,expected:{questions:22,maxPoints:10},structure:math});
 export default source;
