@@ -188,15 +188,37 @@ public class ExamService {
                 + " LEFT JOIN catalog.catalog_item s ON s.id = e.subject_item_id";
         if (checkStatus != null && !checkStatus.isBlank()) {
             String wanted = checkStatus.trim().toUpperCase(Locale.ROOT);
-            List<UUID> candidates = jdbcTemplate.queryForList(
-                    "SELECT e.id" + joins + where, UUID.class, params.toArray());
-            Map<UUID, String> statuses = checkValidity.statuses(candidates);
-            candidates = candidates.stream()
-                    .filter(id -> wanted.equals(statuses.get(id))).toList();
-            where.append(" AND ").append(candidates.isEmpty() ? "1=0"
-                    : "e.id IN (" + String.join(",",
-                            java.util.Collections.nCopies(candidates.size(), "?")) + ")");
-            params.addAll(candidates);
+            // Trạng thái hiệu lực làm vị từ DB (spec 5.4, B5): cùng phép so như
+            // ExamCheckValidity.assess — hash cấu trúc, snapshot cấu hình, revision profile,
+            // revision danh mục và từng source revision đã lưu. Count và trang đều dùng
+            // predicate này nên trang nhỏ không vật liệu hóa danh sách id trong Java.
+            joins += " LEFT JOIN exam.exam_structure es ON es.exam_id = e.id"
+                    + " LEFT JOIN exam.exam_kind_profile kp ON kp.exam_item_id = e.kind_item_id"
+                    + " LEFT JOIN exam.exam_check_run cr ON cr.exam_id = e.id";
+            where.append(" AND (CASE WHEN cr.id IS NULL"
+                    + " THEN CASE WHEN e.check_status = 'UNCHECKED' THEN 'UNCHECKED'"
+                    + " ELSE 'NEEDS_RECHECK' END"
+                    + " WHEN es.structure_hash IS NULL"
+                    + " OR es.structure_hash IS DISTINCT FROM cr.structure_hash"
+                    + " THEN 'NEEDS_RECHECK'"
+                    + " WHEN NOT (cr.config_snapshot = jsonb_build_object("
+                    + "'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code,"
+                    + " 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code,"
+                    + " 'structureYear', e.structure_year, 'matrixYear', e.matrix_year,"
+                    + " 'yearsConfirmed', e.years_confirmed, 'timing', e.timing,"
+                    + " 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score,"
+                    + " 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring))"
+                    + " OR cr.profile_revision IS DISTINCT FROM kp.revision"
+                    + " OR cr.catalog_revision IS DISTINCT FROM ?"
+                    + " THEN 'NEEDS_RECHECK'"
+                    + " WHEN EXISTS (SELECT 1 FROM jsonb_each_text(cr.source_revisions) sr"
+                    + " LEFT JOIN questionbank.question_source_revision qs"
+                    + " ON qs.subject_item_id = sr.key::uuid"
+                    + " WHERE sr.value::bigint IS DISTINCT FROM COALESCE(qs.revision, 0))"
+                    + " THEN 'NEEDS_RECHECK'"
+                    + " ELSE cr.result->>'status' END) = ?");
+            params.add(catalogLookup.revision());
+            params.add(wanted);
         }
 
         String base = joins + where;

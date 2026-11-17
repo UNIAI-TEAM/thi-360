@@ -8,9 +8,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -300,5 +302,92 @@ class ExamApiIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/exams").param("q", "HSA-F-DEV-001")
                         .param("checkStatus", "VALID").with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
+    void listCheckStatusFilterPagesAcrossMixedStatuses() throws Exception {
+        // R1-2/R1-5: lọc checkStatus bằng vị từ DB — tổng chính xác qua nhiều trang,
+        // trang sắp xếp và không chồng lấn. 3 UNCHECKED + 3 NEEDS_RECHECK + 1 VALID.
+        String prefix = "PGMIX-" + UUID.randomUUID().toString().substring(0, 8);
+        List<String> uncheckedCodes = new ArrayList<>();
+        List<String> recheckCodes = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            uncheckedCodes.add(createExam(prefix + "-U" + i));
+            recheckCodes.add(createExam(prefix + "-R" + i));
+        }
+        UUID validId = UUID.fromString(
+                mapper.readTree(createExamBody(prefix + "-V0")).path("id").asText());
+
+        // 3 bài có check_status khác UNCHECKED mà chưa từng check -> NEEDS_RECHECK.
+        jdbc.update("UPDATE exam.exam SET check_status = 'VALID'"
+                        + " WHERE code_normalized LIKE ?",
+                (prefix + "-r%").toLowerCase(java.util.Locale.ROOT));
+
+        // 1 bài VALID: run đã lưu khớp mọi đầu vào hiện tại (hash cấu trúc, snapshot
+        // cấu hình, revision profile và danh mục; không source nào nên source_revisions rỗng).
+        Exam validExam = exams.findById(validId).orElseThrow();
+        String validHash = "pgmix-" + prefix;
+        jdbc.update("UPDATE exam.exam_structure SET structure_hash = ? WHERE exam_id = ?",
+                validHash, validId);
+        Long profileRevision = profiles.findById(validExam.getKindItemId())
+                .orElseThrow().getRevision();
+        assertThat(results.save(new ExamCheckResultStore.Input(validId, validExam.getRevision(),
+                validHash, mapper.valueToTree(ExamCheckFingerprint.Config.from(validExam)),
+                profileRevision, catalog.revision(), "fingerprint",
+                mapper.createObjectNode()), "VALID", 0, Instant.now(), 1,
+                mapper.createObjectNode().put("status", "VALID"),
+                mapper.createObjectNode())).isTrue();
+
+        String q = prefix.toLowerCase(java.util.Locale.ROOT);
+        assertStatusPage(q, "UNCHECKED", 2, 0, 3, uncheckedCodes);
+        assertStatusPage(q, "UNCHECKED", 2, 1, 1, uncheckedCodes);
+        assertStatusPage(q, "NEEDS_RECHECK", 2, 0, 3, recheckCodes);
+        assertStatusPage(q, "NEEDS_RECHECK", 2, 1, 1, recheckCodes);
+        assertStatusPage(q, "VALID", 20, 0, 1, null);
+        assertStatusPage(q, "INVALID", 20, 0, 0, null);
+    }
+
+    private String createExam(String code) throws Exception {
+        createExamBody(code);
+        return code;
+    }
+
+    private String createExamBody(String code) throws Exception {
+        return mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"" + code
+                                + "\",\"code\":\"" + code + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private void assertStatusPage(String q, String checkStatus, int size, int page,
+            int expectedCount, List<String> expectedUniverse) throws Exception {
+        String body = mockMvc.perform(get("/api/v1/admin/exams")
+                        .param("q", q).param("checkStatus", checkStatus)
+                        .param("size", String.valueOf(size)).param("page", String.valueOf(page))
+                        .param("sort", "code,asc").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = mapper.readTree(body);
+        assertThat(root.path("items").size())
+                .as("page %d của %s", page, checkStatus).isEqualTo(expectedCount);
+        List<String> codes = new ArrayList<>();
+        List<String> statuses = new ArrayList<>();
+        root.path("items").forEach(item -> {
+            codes.add(item.path("code").asText());
+            statuses.add(item.path("check").path("status").asText());
+        });
+        assertThat(statuses).allMatch(checkStatus::equals);
+        assertThat(codes).isSorted();
+        if (expectedUniverse != null) {
+            assertThat(codes).allMatch(expectedUniverse::contains);
+            assertThat(root.path("totalItems").asInt()).isEqualTo(expectedUniverse.size());
+        } else {
+            assertThat(root.path("totalItems").asInt()).isEqualTo(expectedCount);
+        }
+        assertThat(root.path("page").asInt()).isEqualTo(page);
     }
 }
