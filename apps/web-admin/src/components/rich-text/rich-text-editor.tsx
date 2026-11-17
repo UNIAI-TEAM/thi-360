@@ -38,8 +38,8 @@ export interface RichTextEditorProps extends AriaAttributes {
   /** Ngữ cảnh của trường đang soạn (spec 4.1): quyết định mục Chèn nào hiện trên thanh công cụ. */
   fieldContext?: FieldContext;
   /**
-   * Gọi trước bước lọc HTML khi dán, với `clipboardData` gốc (spec 4.10, ED-5 dùng để bắt nội dung
-   * Word). Trả `true` thì trình soạn bỏ qua dán mặc định.
+   * Gọi khi dán, trước mọi xử lý của ProseMirror (kể cả bước lọc HTML `transformPastedHTML`), với `clipboardData` gốc
+   * chưa lọc (spec 4.10, ED-5 dùng để bắt nội dung Word). Trả `true` thì trình soạn chặn dán mặc định: không lọc, không chèn gì.
    */
   onRichPaste?: (clipboardData: DataTransfer | null) => boolean;
   id?: string;
@@ -212,9 +212,16 @@ export function RichTextEditor({
       editable: !disabled,
       editorProps: {
         attributes,
+        // Chạy ở tầng sự kiện DOM: `handlePaste` của ProseMirror đến sau `transformPastedHTML` (bước lọc), quá muộn cho hợp đồng này.
+        handleDOMEvents: {
+          paste: (_view: EditorView, event: ClipboardEvent) => {
+            // ED-5 bắt nội dung Word trước bộ lọc (bộ lọc bỏ chú thích chứa OMML): true → bỏ dán mặc định.
+            if (!onRichPasteRef.current?.(event.clipboardData ?? null)) return false;
+            event.preventDefault();
+            return true;
+          },
+        },
         handlePaste: (view: EditorView, event: ClipboardEvent) => {
-          // ED-5 bắt nội dung Word trước bộ lọc (bộ lọc bỏ chú thích chứa OMML): trả true → bỏ qua dán mặc định.
-          if (onRichPasteRef.current?.(event.clipboardData ?? null)) return true;
           // Word/Docs đưa kèm ảnh chụp của chính đoạn văn: có `text/html` thì để TipTap dán HTML, chỉ dán tệp ảnh thuần mới tải lên.
           if (event.clipboardData?.getData("text/html")) return false;
           const files = imageFilesOf(event.clipboardData);
