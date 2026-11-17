@@ -54,8 +54,9 @@ import {
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
 import type { ExamTemplate } from "../types";
-import { GenerateCodeButton, TemplateNotes, useExamInfoSchema, useKindLabel, usePartNames } from "./create-exam-fields";
+import { GenerateCodeButton, KindSelect, TemplateNotes, useExamInfoSchema, useKindLabel, usePartNames } from "./create-exam-fields";
 import { CreateExamScopeFields } from "./create-exam-scope-fields";
+import { CreateExamStepper } from "./create-exam-stepper";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { ExamOverviewTable } from "./exam-overview-table";
@@ -148,6 +149,7 @@ export function CreateExamPage() {
           {t("backToList")}
         </Link>
         <PageHeader title={t("title")} description={t("description")} />
+        <CreateExamStepper />
       </div>
       {body}
     </div>
@@ -450,62 +452,65 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       form={formId}
       loading={createExam.isPending}
       disabled={templatesStatus === "loading"}
-      className="w-full sm:w-auto @4xl:w-full"
+      className="w-full sm:w-auto"
     >
       {t("submit")}
     </Button>
   );
   const cancelButton = (
-    <Button asChild variant="secondary" className="w-full sm:w-auto @4xl:w-full">
+    <Button asChild variant="secondary" className="w-full sm:w-auto">
       <Link href={EXAMS_HREF}>{t("cancel")}</Link>
     </Button>
   );
 
   return (
-    <div className="@container">
-      <div className="grid grid-cols-1 gap-5 @4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:items-start">
-        <form
-          id={formId}
-          noValidate
-          aria-label={t("formAriaLabel")}
-          onSubmit={(event) => void onSubmit(event)}
-          className="flex min-w-0 flex-col gap-5"
-        >
-          <FormSection step={1} title={t("sections.info")}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_3fr]">
-              <div data-field="code">
-                <FormField label={t("code")} required hint={t("codeHint")} error={formState.errors.code?.message}>
-                  {(controlProps) => (
-                    <div className="flex gap-2">
-                      <Input
-                        {...controlProps}
-                        {...register("code")}
-                        autoComplete="off"
-                        autoCapitalize="characters"
-                        spellCheck={false}
-                        maxLength={EXAM_CODE_MAX}
-                        className="min-w-0 flex-1"
-                      />
-                      <GenerateCodeButton onClick={() => void generateCode()} loading={suggestion.isFetching} />
-                    </div>
-                  )}
-                </FormField>
-              </div>
-              <div data-field="name">
-                <FormField label={t("name")} required error={formState.errors.name?.message}>
-                  {(controlProps) => (
+    <div className="flex min-w-0 flex-col gap-5">
+      <form
+        id={formId}
+        noValidate
+        aria-label={t("formAriaLabel")}
+        onSubmit={(event) => void onSubmit(event)}
+        className="flex min-w-0 flex-col gap-5"
+      >
+        <FormSection step={1} title={t("sections.info")}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[3fr_2fr]">
+            <div data-field="name">
+              <FormField label={t("name")} required error={formState.errors.name?.message}>
+                {(controlProps) => (
+                  <Input
+                    {...controlProps}
+                    {...register("name")}
+                    autoComplete="off"
+                    maxLength={EXAM_NAME_MAX}
+                    placeholder={t("namePlaceholder")}
+                  />
+                )}
+              </FormField>
+            </div>
+            <div data-field="kind">
+              <KindSelect kinds={kinds} value={selection.kind} onChange={(kind) => requestScope({ kind })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_3fr]">
+            <div data-field="code">
+              <FormField label={t("code")} required hint={t("codeHint")} error={formState.errors.code?.message}>
+                {(controlProps) => (
+                  <div className="flex gap-2">
                     <Input
                       {...controlProps}
-                      {...register("name")}
+                      {...register("code")}
                       autoComplete="off"
-                      maxLength={EXAM_NAME_MAX}
-                      placeholder={t("namePlaceholder")}
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      maxLength={EXAM_CODE_MAX}
+                      className="min-w-0 flex-1"
                     />
-                  )}
-                </FormField>
-              </div>
+                    <GenerateCodeButton onClick={() => void generateCode()} loading={suggestion.isFetching} />
+                  </div>
+                )}
+              </FormField>
             </div>
-
             <div data-field="description">
               <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
                 {(controlProps) => (
@@ -519,166 +524,160 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 )}
               </FormField>
             </div>
+          </div>
 
-            <div data-field="instructions">
-              <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={formState.errors.instructions?.message}>
-                {(controlProps) => (
-                  <Controller
-                    control={control}
-                    name="instructions"
-                    render={({ field }) => (
-                      <RichTextEditor
-                        {...controlProps}
-                        value={field.value}
-                        onChange={field.onChange}
-                        aria-label={t("instructionsLabel")}
-                        allowImages={false}
-                        fieldContext="instructions"
-                        invalid={Boolean(formState.errors.instructions)}
-                        placeholder={t("instructionsPlaceholder")}
-                      />
-                    )}
-                  />
-                )}
-              </FormField>
-            </div>
-          </FormSection>
+          <div data-field="instructions">
+            <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={formState.errors.instructions?.message}>
+              {(controlProps) => (
+                <Controller
+                  control={control}
+                  name="instructions"
+                  render={({ field }) => (
+                    <RichTextEditor
+                      {...controlProps}
+                      value={field.value}
+                      onChange={field.onChange}
+                      aria-label={t("instructionsLabel")}
+                      allowImages={false}
+                      fieldContext="instructions"
+                      invalid={Boolean(formState.errors.instructions)}
+                      placeholder={t("instructionsPlaceholder")}
+                    />
+                  )}
+                />
+              )}
+            </FormField>
+          </div>
+        </FormSection>
 
-          <FormSection step={2} title={tStep("sections.scope")} description={tStep("sections.scopeDescription", { kind: kindLabel(selection.kind) })}>
-            <CreateExamScopeFields
-              kinds={kinds}
-              subjects={reference.subjects}
-              templates={templates}
-              selection={selection}
-              errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
-              onChange={requestScope}
-            />
+        <FormSection step={2} title={tStep("sections.scope")} description={tStep("sections.scopeDescription", { kind: kindLabel(selection.kind) })}>
+          <CreateExamScopeFields
+            kinds={kinds}
+            subjects={reference.subjects}
+            templates={templates}
+            selection={selection}
+            errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
+            onChange={requestScope}
+          />
 
-            {pendingSelection && (
-              <div
-                ref={pendingRef}
-                tabIndex={-1}
-                role="alert"
-                className={cn("flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning-bg p-4", focusRing)}
-              >
-                <div className="flex items-start gap-2.5">
-                  <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-                  <div className="flex flex-col gap-1">
-                    <p className="font-semibold text-text">{tStep("replace.title", { name: selectionLabel(pendingSelection) })}</p>
-                    <p className="text-body text-text-secondary">{tStep("replace.description")}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setPendingSelection(null)}>
-                    {tStep("replace.cancel")}
-                  </Button>
-                  <Button type="button" size="sm" onClick={() => applyScope(pendingSelection)}>
-                    {tStep("replace.confirm")}
-                  </Button>
+          {pendingSelection && (
+            <div
+              ref={pendingRef}
+              tabIndex={-1}
+              role="alert"
+              className={cn("flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning-bg p-4", focusRing)}
+            >
+              <div className="flex items-start gap-2.5">
+                <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+                <div className="flex flex-col gap-1">
+                  <p className="font-semibold text-text">{tStep("replace.title", { name: selectionLabel(pendingSelection) })}</p>
+                  <p className="text-body text-text-secondary">{tStep("replace.description")}</p>
                 </div>
               </div>
-            )}
-          </FormSection>
-
-          <FormSection
-            step={3}
-            title={tOverview("title")}
-            description={
-              templatesStatus === "loading"
-                ? undefined
-                : templateName(template)
-                  ? tOverview("description", { template: templateName(template) ?? "" })
-                  : tOverview("descriptionNoTemplate")
-            }
-          >
-            <TemplateNotes template={template} name={templateName(template) ?? undefined} />
-            <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
-            {templatesStatus === "error" && (
-              <div
-                role="alert"
-                className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <p className="text-body text-text-secondary">
-                  <strong className="font-semibold text-danger">{tOverview("loadError.title")}</strong> {tOverview("loadError.description")}
-                </p>
-                <Button type="button" variant="secondary" size="sm" onClick={onRetryTemplates}>
-                  {t("retry")}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setPendingSelection(null)}>
+                  {tStep("replace.cancel")}
+                </Button>
+                <Button type="button" size="sm" onClick={() => applyScope(pendingSelection)}>
+                  {tStep("replace.confirm")}
                 </Button>
               </div>
-            )}
-            {templatesStatus === "ready" && !template && <p className="text-body text-text-secondary">{tOverview("noTemplate")}</p>}
-            {templatesStatus === "loading" ? (
-              <div aria-busy="true" className="flex flex-col gap-2">
-                <Skeleton className="h-10" />
-                <Skeleton className="h-10 w-3/4" />
-                <Skeleton className="h-10 w-1/2" />
-                <span className="sr-only">{tOverview("loading")}</span>
-              </div>
-            ) : (
-              <ExamOverviewTable
-                rows={rows}
-                timing={values.timing}
-                showPoints={showPoints}
-                onCellChange={onCellChange}
-                issues={cellIssues}
-                subjectName={subjectName}
-                sharedDuration={{
-                  value: sharedText,
-                  error: formState.errors.sharedDuration?.message,
-                  onChange: (text) => {
-                    setSharedText(text);
-                    setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
-                  },
-                }}
-                maxScore={
-                  showPoints
-                    ? undefined
-                    : {
-                        value: maxScoreText,
-                        error: formState.errors.maxScore?.message,
-                        onChange: (text) => {
-                          setMaxScoreText(text);
-                          setValue("maxScore", text.trim() === "" ? null : parseNumber(text), {
-                            shouldDirty: true,
-                            shouldValidate: formState.isSubmitted,
-                          });
-                        },
-                      }
-                }
-              />
-            )}
-          </FormSection>
-
-          {submitError && (
-            <p role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-danger">
-              {submitError}
-            </p>
+            </div>
           )}
+        </FormSection>
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end @4xl:hidden">
-            {cancelButton}
-            {submitButton}
-          </div>
-        </form>
-
-        <CreateExamSummaryPanel
-          data={{
-            kindLabel: kindLabel(selection.kind),
-            scopeLabel: selectionLabel(selection),
-            totalQuestions: totals.questions,
-            totalMinutes: totals.durationMinutes,
-            totalPoints: showPoints ? totals.maxPoints : values.maxScore,
-            templateName: templateName(template),
-          }}
-          timing={values.timing}
-          issues={issues}
-          actions={
-            <>
-              {submitButton}
-              {cancelButton}
-            </>
+        <FormSection
+          step={3}
+          title={tOverview("title")}
+          description={
+            templatesStatus === "loading"
+              ? undefined
+              : templateName(template)
+                ? tOverview("description", { template: templateName(template) ?? "" })
+                : tOverview("descriptionNoTemplate")
           }
-        />
+        >
+          <TemplateNotes template={template} name={templateName(template) ?? undefined} />
+          <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
+          {templatesStatus === "error" && (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="text-body text-text-secondary">
+                <strong className="font-semibold text-danger">{tOverview("loadError.title")}</strong> {tOverview("loadError.description")}
+              </p>
+              <Button type="button" variant="secondary" size="sm" onClick={onRetryTemplates}>
+                {t("retry")}
+              </Button>
+            </div>
+          )}
+          {templatesStatus === "ready" && !template && <p className="text-body text-text-secondary">{tOverview("noTemplate")}</p>}
+          {templatesStatus === "loading" ? (
+            <div aria-busy="true" className="flex flex-col gap-2">
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10 w-3/4" />
+              <Skeleton className="h-10 w-1/2" />
+              <span className="sr-only">{tOverview("loading")}</span>
+            </div>
+          ) : (
+            <ExamOverviewTable
+              rows={rows}
+              timing={values.timing}
+              showPoints={showPoints}
+              onCellChange={onCellChange}
+              issues={cellIssues}
+              subjectName={subjectName}
+              sharedDuration={{
+                value: sharedText,
+                error: formState.errors.sharedDuration?.message,
+                onChange: (text) => {
+                  setSharedText(text);
+                  setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
+                },
+              }}
+              maxScore={
+                showPoints
+                  ? undefined
+                  : {
+                      value: maxScoreText,
+                      error: formState.errors.maxScore?.message,
+                      onChange: (text) => {
+                        setMaxScoreText(text);
+                        setValue("maxScore", text.trim() === "" ? null : parseNumber(text), {
+                          shouldDirty: true,
+                          shouldValidate: formState.isSubmitted,
+                        });
+                      },
+                    }
+              }
+            />
+          )}
+        </FormSection>
+      </form>
+
+      <CreateExamSummaryPanel
+        data={{
+          kindLabel: kindLabel(selection.kind),
+          scopeLabel: selectionLabel(selection),
+          totalQuestions: totals.questions,
+          totalMinutes: totals.durationMinutes,
+          totalPoints: showPoints ? totals.maxPoints : values.maxScore,
+          templateName: templateName(template),
+        }}
+        timing={values.timing}
+        issues={issues}
+      />
+
+      {submitError && (
+        <p role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-danger">
+          {submitError}
+        </p>
+      )}
+
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        {cancelButton}
+        {submitButton}
       </div>
 
       <UnsavedChangesDialog guard={guard} />

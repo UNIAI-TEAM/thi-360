@@ -4733,7 +4733,7 @@
       "backToList": "Exam list",
       "formAriaLabel": "Create exam",
       "cancel": "Cancel",
-      "submit": "Create exam and set up question blocks",
+      "submit": "Save and continue",
       "success": "Exam {code} created.",
       "loadErrorTitle": "Could not load exam kind data",
       "loadErrorDescription": "The exam kind and subject catalog could not be loaded. Check your connection and try again.",
@@ -4779,7 +4779,6 @@
       "instructionsLabel": "Exam instructions",
       "instructionsPlaceholder": "For example: how to choose a combination, rules about time",
       "instructionsHint": "Learners read this before they start. It can stay empty in a draft; images are not supported yet.",
-      "templatePart": "{kind} · By part {scope}",
       "cover": {
         "label": "Cover image",
         "hint": "16:9 · PNG, JPG or WebP up to 5 MB · shown in listings and on the intro page. The image is a preview only and is not saved with the exam yet.",
@@ -4913,9 +4912,7 @@
       "errors": {
         "codeTaken": "This exam code is already used. Enter another code.",
         "generic": "Could not create the exam. Try again later.",
-        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again.",
-        "structureNotSaved": "Exam {code} was created with the template structure, but the structure you edited could not be saved. Fix the structure on this page and select “Create exam and set up question blocks” to save it again (only the structure is saved again; edit general information in the exam's General tab).",
-        "openCreated": "Open exam {code} to edit it in the Structure tab"
+        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again."
       },
       "validation": {
         "nameRequired": "Enter the exam name.",
@@ -5041,6 +5038,11 @@
           "confirm": "Switch and reload",
           "cancel": "Keep the old choice"
         }
+      },
+      "steps": {
+        "ariaLabel": "Create exam steps",
+        "step1": "General information",
+        "step2": "Structure and matrix"
       },
       "overview": {
         "title": "Overview structure",

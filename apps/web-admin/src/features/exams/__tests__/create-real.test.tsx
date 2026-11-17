@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
@@ -17,7 +17,14 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => ({
 
 const EXAMS_PATH = "/api/v1/admin/exams";
 const TEMPLATES_PATH = "/api/v1/admin/exam-templates";
-const SUBMIT = "Tạo bài thi và soạn khối câu hỏi";
+const SUBMIT = "Lưu và tiếp tục";
+
+/** Kỳ thi chọn bằng ô chọn (không còn thẻ radio): mở danh sách rồi chọn mục có mã trong ngoặc. */
+async function pickKind(user: UserEvent, code: string) {
+  await user.click(screen.getByRole("combobox", { name: /^Kỳ thi/ }));
+  await user.click(await screen.findByRole("option", { name: new RegExp(`\\(${code}\\)$`) }));
+}
+const kindSelect = () => screen.getByRole("combobox", { name: /^Kỳ thi/ });
 
 type Wire = Record<string, unknown>;
 
@@ -118,7 +125,7 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
   it("Văn SP2E: nạp mẫu isDefault (đề minh họa cũ) thay vì mẫu năm mới hơn", async () => {
     createServer().install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^SP2E/ }));
+    await pickKind(user, "SP2E");
     await user.click(screen.getByRole("combobox", { name: /^Môn/ }));
     await user.click(await screen.findByRole("option", { name: "Ngữ văn" }));
     expect(await screen.findByText("Văn đề minh họa cũ")).toBeInTheDocument();
@@ -128,7 +135,7 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
   it("SP2E Theo phần: chọn môn rồi phần của mẫu Theo môn mặc định; gửi môn và mã P<thứ tự>, không gửi build_mode", async () => {
     const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^SP2E/ }));
+    await pickKind(user, "SP2E");
     await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
     expect(screen.queryByRole("radio", { name: /Tự thiết lập bài ôn/ })).toBeNull();
     expect(screen.getByText("Chọn môn trước, rồi chọn phần của môn đó")).toBeInTheDocument();
@@ -160,7 +167,7 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
       .on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() })
       .install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    await pickKind(user, "SPT");
     await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
     const group = await screen.findByRole("group", { name: /^Phần thi/ });
     expect(within(group).getAllByRole("radio").map((radio) => radio.closest("label")?.textContent)).toEqual([
@@ -187,7 +194,7 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
   it("bài ôn có mẫu <KỲ>_REVIEW: nạp mẫu bài ôn, gửi build_mode REVIEW", async () => {
     const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    await pickKind(user, "SPT");
     expect(await screen.findByRole("radio", { name: /Dùng cấu trúc môn SPT/ })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: /Tự thiết lập bài ôn/ }));
     expect(await screen.findByText("Bài ôn")).toBeInTheDocument();
@@ -208,9 +215,9 @@ describe("trang Tạo bài thi, nhánh thật: đổi lựa chọn sau khi sửa
 
   // [nhãn, ô chọn đổi]: cả hai đi qua `requestScope`, bảng đã sửa thì hỏi trước khi nạp lại.
   it.each([
-    ["kỳ thi", () => screen.getByRole("radio", { name: /^QDA/ })],
-    ["phần", () => screen.getByRole("radio", { name: "Văn" })],
-  ])("đổi %s sau khi sửa bảng: hỏi xác nhận, Giữ lựa chọn cũ không mất số đã sửa", async (_label, target) => {
+    ["kỳ thi", (user: UserEvent) => pickKind(user, "QDA")],
+    ["phần", (user: UserEvent) => user.click(screen.getByRole("radio", { name: "Văn" }))],
+  ])("đổi %s sau khi sửa bảng: hỏi xác nhận, Giữ lựa chọn cũ không mất số đã sửa", async (_label, change) => {
     createServer([...ALL_TEMPLATES, HSA_PART_MATH, HSA_PART_LIT]).install();
     const user = await renderPage();
     await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
@@ -218,11 +225,11 @@ describe("trang Tạo bài thi, nhánh thật: đổi lựa chọn sau khi sửa
     const count = screen.getByRole("textbox", { name: /^Số câu của/ });
     await user.clear(count);
     await user.type(count, "7");
-    await user.click(target());
+    await change(user);
     const dialog = await screen.findByRole("alert");
     expect(within(dialog).getByText(/Đổi sang/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Giữ lựa chọn cũ" }));
-    expect(screen.getByRole("radio", { name: /^HSA/ })).toBeChecked();
+    expect(kindSelect()).toHaveTextContent(/\(HSA\)/);
     expect(screen.getByRole("radio", { name: "Toán" })).toBeChecked();
     expect(screen.getByRole("textbox", { name: /^Số câu của/ })).toHaveValue("7");
   }, 20_000);
@@ -232,13 +239,13 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
   it("SPT Toán: nhóm Tự luận tạm bỏ qua hiện mờ, không có ô nhập, không tính vào tổng; thời lượng chung phải nhập", async () => {
     const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    await pickKind(user, "SPT");
     const omitted = (await screen.findByText("Tự luận")).closest("tr")!;
     expect(within(omitted).getByText("tạm bỏ qua")).toBeInTheDocument();
     expect(within(omitted).queryByRole("textbox")).toBeNull();
     expect(omitted.className).not.toContain("opacity");
     expect(screen.getAllByRole("textbox", { name: /^Số câu của/ })).toHaveLength(1);
-    expect(within(screen.getByRole("complementary", { name: "Tóm tắt" })).getByText("Tổng số câu").parentElement).toHaveTextContent("22");
+    expect(within(screen.getByRole("region", { name: "Tóm tắt" })).getByText("Tổng số câu").parentElement).toHaveTextContent("22");
 
     // Mẫu V1 chưa ghi thời lượng: một đồng hồ chung, quản trị viên nhập.
     await user.type(name(), "SPT Toán V1");
@@ -257,7 +264,7 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
   it("BCA: thời lượng chung, cột Điểm 25/60/15, phần nhiều môn có dòng môn thụt vào; sửa điểm thì thang của bài là tổng các phần", async () => {
     const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^BCA/ }));
+    await pickKind(user, "BCA");
     await screen.findByText("Trắc nghiệm bắt buộc");
     expect(screen.queryByRole("columnheader", { name: /Thời lượng \(phút\)/ })).toBeNull();
     expect(screen.getByRole("columnheader", { name: "Điểm" })).toBeInTheDocument();
@@ -281,7 +288,7 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
   it("kỳ thi một phạm vi (V-ACT): không hiện nhóm chọn phạm vi", async () => {
     createServer().install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^V-ACT/ }));
+    await pickKind(user, "V-ACT");
     expect(screen.queryByRole("group", { name: /Phạm vi bài thi/ })).toBeNull();
     expect(screen.getByText("Kỳ thi này chỉ có phạm vi này")).toBeInTheDocument();
   });
@@ -297,7 +304,7 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
   it("ô thời lượng chung giữ đúng chữ đã gõ: xóa thì trống (không hiện 0), chữ không phải số báo lỗi", async () => {
     createServer().install();
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    await pickKind(user, "SPT");
     const shared = await screen.findByRole("textbox", { name: /^Thời lượng chung/ });
     expect(shared).toHaveValue("");
     await user.type(shared, "90");

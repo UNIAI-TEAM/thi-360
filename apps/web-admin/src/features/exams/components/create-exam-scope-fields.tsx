@@ -12,7 +12,7 @@ import {
   templateCountBySubject,
 } from "../create-exam-schema";
 import type { ExamBuildMode, ExamTemplate } from "../types";
-import { ChoiceCardGroup, KindField, ScopeField, useKindLabel, usePartNames } from "./create-exam-fields";
+import { ChoiceCardGroup, ScopeField, useKindLabel, usePartNames } from "./create-exam-fields";
 
 /**
  * Kỳ thi, phạm vi, môn, phần và cách dựng bài của bước 1 (2B 15.1, H4, K8):
@@ -44,7 +44,6 @@ export function CreateExamScopeFields({
   const partNames = usePartNames();
   const subjectFirst = selection.scope === "PART" && partNeedsSubject(kinds, selection.kind);
   const showSubject = selection.scope === "SUBJECT" || subjectFirst;
-  // SP2E, SPT: phần là các phần của mẫu Theo môn mặc định, nhãn lấy từ tên phần của mẫu.
   const partOptions = subjectFirst
     ? subjectPartOptions(templates, selection.kind, selection.subjectCode).map((option) => ({ value: option.code, label: option.name }))
     : selection.scope === "PART"
@@ -67,9 +66,6 @@ export function CreateExamScopeFields({
 
   return (
     <div className="flex flex-col gap-4">
-      <div data-field="kind">
-        <KindField kinds={kinds} value={selection.kind} disabled={disabled} onChange={(kind) => onChange({ kind })} />
-      </div>
       <ScopeField
         kinds={kinds}
         kind={selection.kind}

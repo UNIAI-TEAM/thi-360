@@ -3,7 +3,7 @@
 import { Card, cn, focusRing } from "@thi360/ui";
 import { CircleCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, type ReactNode } from "react";
+import { useId } from "react";
 import type { ExamTiming } from "../types";
 
 export interface CreateExamIssue {
@@ -35,20 +35,18 @@ export interface CreateExamSummaryData {
 }
 
 /**
- * Tóm tắt luôn hiển thị của bước 1 (TaoBaiThi2B): kỳ thi, phạm vi, tổng số câu, thời lượng (ghi "chung" khi dùng một
- * đồng hồ), điểm tối đa, mẫu mặc định và các mục cần xử lý, mỗi mục đưa tới ô nhập tương ứng. Màn rộng dính bên phải;
- * màn hẹp nằm dưới biểu mẫu.
+ * Tóm tắt của bước 1 (TaoBaiThi2B): kỳ thi, phạm vi, tổng số câu, thời lượng (ghi "chung" khi dùng một đồng hồ),
+ * điểm tối đa, mẫu mặc định và các mục cần xử lý, mỗi mục đưa tới ô nhập tương ứng. Nằm ngay dưới bảng tổng quan,
+ * trước nút Hủy / Lưu và tiếp tục.
  */
 export function CreateExamSummaryPanel({
   data,
   timing,
   issues,
-  actions,
 }: {
   data: CreateExamSummaryData;
   timing: ExamTiming;
   issues: readonly CreateExamIssue[];
-  actions: ReactNode;
 }) {
   const t = useTranslations("exams.create.summary");
   const headingId = useId();
@@ -56,7 +54,7 @@ export function CreateExamSummaryPanel({
   const number = (value: number | null) => (value === null ? "—" : String(value));
 
   return (
-    <aside aria-labelledby={headingId} className="@4xl:sticky @4xl:top-4">
+    <section aria-labelledby={headingId}>
       <Card padding="md" className="flex flex-col gap-4">
         <h2 id={headingId} className="text-title font-semibold text-text">
           {t("title")}
@@ -112,10 +110,9 @@ export function CreateExamSummaryPanel({
           )}
         </section>
 
-        <div className="flex flex-col gap-2 border-t border-border pt-3">{actions}</div>
         <p className="text-caption text-text-muted">{t("draftNote")}</p>
       </Card>
-    </aside>
+    </section>
   );
 }
 
