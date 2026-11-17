@@ -191,7 +191,8 @@ public final class ExamStructureValidator {
         validateMatrix(block.matrix(), "blocks.matrix");
         validateTopicQuotas(block.topicQuotas(), "blocks.topicQuotas", maxTopicQuotas);
         if (!block.slots().isEmpty()) {
-            if (block.setCount() == null) {
+            if (block.setCount() == null || (block.questionType() != QuestionType.QUESTION_SET
+                    && block.questionType() != QuestionType.CLOZE)) {
                 invalid("blocks.slots.index", "slots require a question set");
             }
             for (BlockSlot slot : block.slots()) {
@@ -204,9 +205,7 @@ public final class ExamStructureValidator {
                 }
             }
         }
-        if (Boolean.TRUE.equals(block.omitted())
-                && block.questionType() != QuestionType.ESSAY
-                && block.childAnswerType() != QuestionType.ESSAY) {
+        if (Boolean.TRUE.equals(block.omitted()) && block.questionType() != QuestionType.ESSAY) {
             invalid("blocks.omitted", "only ESSAY blocks may be omitted");
         }
     }

@@ -47,6 +47,29 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
     @Autowired EntityManager entityManager;
 
     @Test
+    void subjectPoolBlocksAreReportedAsQuestionUsages() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID question = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,1,1)",
+                question, "POOL-" + question, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", question);
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Pool exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)",
+                exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","name":"Part","codeSource":{"source":"GLOBAL_LIST"},
+                  "subjectPool":[{"id":"s","subjectCode":"TEST","blocks":[
+                    {"id":"pool-block","questionType":"SINGLE_CHOICE"}]}]}]}
+                """;
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null, code -> null);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
+        assertThat(provider.examUsagesOf(question)).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
+                .contains("pool-block");
+    }
+
+    @Test
     void inheritedScopeAndSubjectChoiceAreReportedByBothEndpoints() throws Exception {
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         CatalogItemView leaf = knowledge.stream().filter(item -> knowledge.stream().anyMatch(parent ->
