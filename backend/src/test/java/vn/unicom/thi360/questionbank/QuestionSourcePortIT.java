@@ -117,6 +117,22 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void childRangesAreBoundedAtBothCountEndpointsAndSpi() throws Exception {
+        for (int[] range : List.of(new int[]{0, 1}, new int[]{2, 1}, new int[]{1, 21}, new int[]{1, Integer.MAX_VALUE})) {
+            assertThatThrownBy(() -> new QuestionSourcePort.ChildCondition(range[0], range[1], List.of()))
+                    .isInstanceOf(IllegalArgumentException.class);
+            String query = "{\"subjectCode\":\"TOAN\",\"questionType\":\"QUESTION_SET\","
+                    + "\"childConditions\":[{\"from\":" + range[0] + ",\"to\":" + range[1] + "}]}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").exists());
+            }
+        }
+    }
+
+    @Test
     void candidatesExposeServingScoringForStandaloneAndSetChildren() {
         UUID subject = UUID.randomUUID();
         UUID root = question(subject, "READY", 1, 2);

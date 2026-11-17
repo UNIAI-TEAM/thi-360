@@ -10,6 +10,8 @@ import java.util.UUID;
 
 /** Serving question source for exam checks, preview and publication. */
 public interface QuestionSourcePort {
+    int MAX_SET_CHILDREN = 20;
+
     /** Each inner knowledge group contains one selected node and its active descendants. */
     record Filter(
             UUID subjectId,
@@ -44,6 +46,9 @@ public interface QuestionSourcePort {
     record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}
     record ChildCondition(int from, int to, List<UUID> nodeIds) {
         public ChildCondition {
+            if (from < 1 || to < from || to > MAX_SET_CHILDREN) {
+                throw new IllegalArgumentException("Child positions must be an ordered range within 1.." + MAX_SET_CHILDREN);
+            }
             nodeIds = nodeIds == null ? List.of() : List.copyOf(nodeIds);
         }
     }

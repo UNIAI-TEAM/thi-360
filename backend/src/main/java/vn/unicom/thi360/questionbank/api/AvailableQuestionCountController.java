@@ -4,6 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -37,7 +40,14 @@ public class AvailableQuestionCountController {
     public record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}
 
     @Schema(name = "AvailableQuestionsChildCondition")
-    public record ChildCondition(int from, int to, List<UUID> nodeIds) {}
+    public record ChildCondition(@Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int from,
+                                 @Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int to,
+                                 List<UUID> nodeIds) {
+        @AssertTrue
+        public boolean isOrdered() {
+            return from <= to;
+        }
+    }
 
     @Schema(name = "AvailableQuestionsQuery", description = "Bộ lọc nguồn câu hỏi của một nhóm")
     public record Query(@NotBlank String subjectCode, QuestionType questionType,
@@ -45,7 +55,7 @@ public class AvailableQuestionCountController {
                         KnowledgeScope knowledgeScope, String taskTypeCode, List<String> tagCodes,
                         List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
                         ItemShape itemShape, List<AnswerFormat> answerFormats,
-                        List<ChildCondition> childConditions) {}
+                        List<@Valid ChildCondition> childConditions) {}
 
     @Schema(name = "AvailableQuestionsSubjectQuery", description = "Các nhóm nguồn của một môn")
     public record SubjectQuery(@NotBlank String subjectCode, @NotNull List<@Valid Query> groups) {}
