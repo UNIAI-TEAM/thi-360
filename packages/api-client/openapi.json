@@ -297,6 +297,8 @@
         "properties" : {
           "from" : {
             "format" : "int32",
+            "maximum" : 20,
+            "minimum" : 1,
             "type" : "integer"
           },
           "nodeIds" : {
@@ -308,6 +310,8 @@
           },
           "to" : {
             "format" : "int32",
+            "maximum" : 20,
+            "minimum" : 1,
             "type" : "integer"
           }
         },

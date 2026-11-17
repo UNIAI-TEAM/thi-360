@@ -1,5 +1,6 @@
 package vn.unicom.thi360.questionbank.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,6 +45,8 @@ public class AvailableQuestionCountController {
                                  @Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int to,
                                  List<@NotNull UUID> nodeIds) {
         @AssertTrue
+        @JsonIgnore
+        @Schema(hidden = true)
         public boolean isOrdered() {
             return from <= to;
         }
