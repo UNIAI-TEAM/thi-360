@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { MockAccessGate } from "@/features/session/mock-access";
+import { PermissionGate } from "@/features/session/permission-gate";
 
 export default function GradingLayout({ children }: { children: ReactNode }) {
   return (
-    <MockAccessGate permission="GRADING.VIEW" flag="grading">
+    <PermissionGate permission="GRADING.VIEW" flag="grading">
       {children}
-    </MockAccessGate>
+    </PermissionGate>
   );
 }

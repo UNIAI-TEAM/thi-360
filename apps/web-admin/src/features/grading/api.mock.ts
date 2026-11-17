@@ -1,6 +1,7 @@
 import { questionStore } from "./mock/question-store";
 import type { QuestionDetail } from "@/features/questions/types";
-import { MockApiError, mockRequest, paginate, type MockPage } from "@/lib/mock/content-mock";
+import type { ApiPage } from "@/lib/api/page";
+import { MockApiError, mockRequest, paginate } from "@/lib/mock/content-mock";
 import { DEFAULT_GRADING_SORT } from "./keys";
 import {
   attemptStore,
@@ -31,7 +32,7 @@ import {
  * `@thi360/api-client`, giữ nguyên chữ ký; hook trong `queries.ts` và giao diện không đổi.
  */
 
-export type PageResponseGradingAttempt = MockPage<GradingAttemptSummary>;
+export type PageResponseGradingAttempt = ApiPage<GradingAttemptSummary>;
 
 // ---------------------------------------------------------------- Đề và tiêu chí của câu tự luận
 

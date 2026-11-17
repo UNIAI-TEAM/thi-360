@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { MockAccessGate } from "@/features/session/mock-access";
+import { PermissionGate } from "@/features/session/permission-gate";
 
 export default function ExamsLayout({ children }: { children: ReactNode }) {
-  return <MockAccessGate permission="EXAM.VIEW">{children}</MockAccessGate>;
+  return <PermissionGate permission="EXAM.VIEW">{children}</PermissionGate>;
 }

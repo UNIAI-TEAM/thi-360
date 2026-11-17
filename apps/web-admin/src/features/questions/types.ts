@@ -6,7 +6,7 @@ import type {
   QuestionType,
   TrueFalseMethod,
 } from "@/features/content/types";
-import type { MockPage } from "@/lib/mock/content-mock";
+import type { ApiPage } from "@/lib/api/page";
 import type { ReadinessIssue } from "./readiness";
 
 /**
@@ -57,7 +57,7 @@ export interface QuestionListItem extends QuestionSummary {
   readinessHint?: ReadinessIssue | null;
 }
 
-export type PageResponseQuestionSummary = MockPage<QuestionListItem>;
+export type PageResponseQuestionSummary = ApiPage<QuestionListItem>;
 
 export interface ChoiceOption {
   id: string;

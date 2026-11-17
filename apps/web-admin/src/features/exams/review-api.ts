@@ -69,7 +69,7 @@ export { EXAM_REVIEW_QUERY_KEYS } from "./review-keys";
 
 /* ---------- Lỗi ---------- */
 
-/** Lỗi của nhánh API thật: cùng hình dạng `MockApiError` ({status, code, fieldErrors}) để màn hình xử lý chung. */
+/** Lỗi của nhánh API thật: mang {status, code, fieldErrors} để màn hình xử lý chung. */
 export class ExamsApiError extends ApiStatusError {
   readonly code?: string;
   readonly fieldErrors: readonly FieldError[];

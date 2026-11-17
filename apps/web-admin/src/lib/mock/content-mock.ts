@@ -1,3 +1,4 @@
+import type { ApiPage } from "@/lib/api/page";
 import { ApiStatusError } from "@/lib/api/query-client";
 
 /**
@@ -89,16 +90,8 @@ export function createMockStore<T extends { id: string }>(seed: readonly T[]) {
   };
 }
 
-export interface MockPage<T> {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-}
-
 /** Cắt trang giống `PageResponse` của backend (trang tính từ 0). */
-export function paginate<T>(items: readonly T[], page = 0, size = 20): MockPage<T> {
+export function paginate<T>(items: readonly T[], page = 0, size = 20): ApiPage<T> {
   const totalElements = items.length;
   const totalPages = Math.max(1, Math.ceil(totalElements / size));
   const safePage = Math.min(Math.max(page, 0), totalPages - 1);

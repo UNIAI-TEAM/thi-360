@@ -29,7 +29,7 @@ import type {
 
 /**
  * Nhánh API thật của Bài thi (`/api/v1/admin/exams/**`, `/exam-templates`). Lỗi nghiệp vụ ném `ExamsApiError`
- * ({status, code, fieldErrors}) như `MockApiError`: 409 `EXAM_CODE_TAKEN`, `EXAM_SCOPE_LOCKED`,
+ * ({status, code, fieldErrors}): 409 `EXAM_CODE_TAKEN`, `EXAM_SCOPE_LOCKED`,
  * `EXAM_STRUCTURE_REPLACE_CONFIRM`; 412 `EXAM_REVISION_CONFLICT`; 422 `EXAM_STRUCTURE_INVALID`... Kiểm tra, xem trước,
  * phiên bản và công bố nằm ở `review-api.ts`.
  */

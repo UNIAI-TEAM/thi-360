@@ -4,7 +4,7 @@ import { ApiStatusError } from "@/lib/api/query-client";
 /**
  * Lỗi của API ngân hàng câu hỏi và dữ liệu tham chiếu: mã HTTP, mã nghiệp vụ của `ApiError.code` (ví dụ
  * `QUESTION_REVISION_CONFLICT`) và lỗi theo trường (422). Màn hình đọc qua `apiErrorCode`, `apiFieldErrors` để dùng
- * chung với lỗi của dữ liệu mẫu (`MockApiError` cũng có `code`).
+ * chung với các lớp lỗi API khác (`ExamsApiError`, lỗi nhập câu hỏi) cũng mang `code`.
  */
 export class ContentApiError extends ApiStatusError {
   readonly code?: string;
@@ -32,7 +32,7 @@ export function toContentApiError(status: number, error: unknown): ContentApiErr
   return new ContentApiError(status);
 }
 
-/** Mã nghiệp vụ của lỗi API hoặc lỗi dữ liệu mẫu; `undefined` khi lỗi không mang mã. */
+/** Mã nghiệp vụ của lỗi API; `undefined` khi lỗi không mang mã. */
 export function apiErrorCode(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
   return typeof error.code === "string" && error.code !== "" ? error.code : undefined;

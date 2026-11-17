@@ -12,7 +12,7 @@ import type { ListQuestionsQuery } from "../types";
 
 /**
  * Bộ lọc của Ngân hàng câu hỏi, giữ trên URL để chia sẻ và tải lại trang vẫn đúng (DESIGN.md mục 5.13: tên và giá
- * trị query bằng tiếng Anh). Tham số khác (ví dụ `mockState`) được giữ nguyên.
+ * trị query bằng tiếng Anh). Tham số khác (ví dụ `tab`) được giữ nguyên.
  */
 
 export type SolutionFilter = "has" | "none";

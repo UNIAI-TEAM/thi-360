@@ -33,9 +33,9 @@ describe("bo loc Ngan hang cau hoi tren URL", () => {
   it("ghi URL chi gom gia tri khac mac dinh va giu tham so khac", () => {
     const query = serializeQuestionFilters(
       { ...DEFAULT_QUESTION_FILTERS, status: "READY", knowledge: ["a", "b"], page: 2 },
-      "?mockState=empty&status=DRAFT",
+      "?tab=notes&status=DRAFT",
     );
-    expect(new URLSearchParams(query).toString()).toBe("mockState=empty&status=READY&knowledge=a%2Cb&page=2");
+    expect(new URLSearchParams(query).toString()).toBe("tab=notes&status=READY&knowledge=a%2Cb&page=2");
     expect(serializeQuestionFilters(DEFAULT_QUESTION_FILTERS)).toBe("");
   });
 

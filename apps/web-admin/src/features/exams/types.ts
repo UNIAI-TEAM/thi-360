@@ -7,7 +7,7 @@ import type {
   QuestionType,
   TrueFalseMethod,
 } from "@/features/content/types";
-import type { MockPage } from "@/lib/mock/content-mock";
+import type { ApiPage } from "@/lib/api/page";
 
 export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
@@ -306,7 +306,7 @@ export interface ListExamsQuery {
 }
 
 /** Trang danh sách bài thi. */
-export type ExamListPage = MockPage<ExamSummary>;
+export type ExamListPage = ApiPage<ExamSummary>;
 
 /**
  * Mẫu cấu trúc nạp sẵn khi tạo bài thi. Kỳ thi `templateBy = KIND` có một mẫu FULL (và mẫu bài lẻ); kỳ thi
