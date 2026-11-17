@@ -44,6 +44,13 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         assertThat(after.path("parts").get(0).path("sections").get(0).path("blocks")).isEqualTo(blocks);
         mockMvc.perform(put(url + "/overview").with(asUser(Permissions.EXAM_MODIFY))
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isPreconditionFailed());
+        String second = mapper.writeValueAsString(Map.of("expectedRevision", after.path("revision").asLong(),
+                "overview", List.of(Map.of("partId", part.path("id").asText(), "questionCount", 50))));
+        var restored = mapper.readTree(mockMvc.perform(put(url + "/overview").with(asUser(Permissions.EXAM_MODIFY))
+                .contentType(MediaType.APPLICATION_JSON).content(second))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(restored.path("parts").get(0).path("questionCount").asInt()).isEqualTo(50);
+        assertThat(restored.path("parts").get(0).path("sections").get(0).path("blocks")).isEqualTo(blocks);
     }
 
     @Test
@@ -60,10 +67,12 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                    "blocks":[{"id":"block-two","name":"II","questionCount":4}]}]}
                 ]}
                 """);
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String partExamCode = "SPT-P-" + suffix;
         String body = """
                 {"kind":"SPT","scope":"PART","partCode":"P2","subjectCode":"DIA",
-                 "code":"SPT-P-DIA-TEST","name":"Part test"}
-                """;
+                 "code":"%s","name":"Part test"}
+                """.formatted(partExamCode);
         var created = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
                         .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(body))
@@ -85,10 +94,10 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body.replace("P2", "P9").replace("SPT-P-DIA-TEST", "SPT-P-DIA-MISSING")))
+                        .content(body.replace("P2", "P9").replace(partExamCode, "SPT-M-" + suffix)))
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("EXAM_PART_NOT_FOUND"));
         String subjectBody = body.replace("\"scope\":\"PART\",\"partCode\":\"P2\"",
-                        "\"scope\":\"SUBJECT\"").replace("SPT-P-DIA-TEST", "SPT-S-DIA-TEST");
+                        "\"scope\":\"SUBJECT\"").replace(partExamCode, "SPT-S-" + suffix);
         var subject = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
                         .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(subjectBody))
@@ -104,6 +113,8 @@ class ExamOverviewIT extends AbstractIntegrationTest {
 
     @Test
     void templateVersionRequiresConfirmationAndKeepsEditedCounts() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String templateCode = "HSA_VER_" + suffix;
         jdbc.update("""
                 UPDATE exam.exam_template SET structure = jsonb_set(
                   jsonb_set(structure, '{parts,0,id}', '"old-part"'::jsonb),
@@ -113,14 +124,14 @@ class ExamOverviewIT extends AbstractIntegrationTest {
         jdbc.update("""
                 INSERT INTO exam.exam_template
                   (code, kind_code, scope, timing, duration_minutes, max_score, structure, active, build_mode, is_default)
-                SELECT 'TEST_HSA_VERSION', kind_code, scope, timing, duration_minutes, max_score,
+                SELECT ?, kind_code, scope, timing, duration_minutes, max_score,
                   jsonb_set(structure, '{parts,0,id}', '"new-part"'::jsonb), true, build_mode, false
                 FROM exam.exam_template WHERE code = 'HSA_FULL'
-                """);
+                """, templateCode);
         String create = """
-                {"kind":"HSA","scope":"FULL","code":"HSA-VERSION-TEST","name":"Version test",
+                {"kind":"HSA","scope":"FULL","code":"HSA-V-%s","name":"Version test",
                  "overview":[{"partId":"old-part","questionCount":40}]}
-                """;
+                """.formatted(suffix);
         var created = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
                         .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(create))
@@ -128,7 +139,7 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString());
         String url = "/api/v1/admin/exams/" + created.path("id").asText() + "/structure/template";
         String revision = created.path("revision").asText();
-        String load = "{\"templateCode\":\"TEST_HSA_VERSION\",\"expectedRevision\":" + revision + "}";
+        String load = "{\"templateCode\":\"" + templateCode + "\",\"expectedRevision\":" + revision + "}";
         mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(load))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(load))
@@ -144,7 +155,7 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].id").value("new-part"))
                 .andExpect(jsonPath("$.parts[0].questionCount").value(40))
                 .andReturn().getResponse().getContentAsString());
-        String useTemplate = "{\"templateCode\":\"TEST_HSA_VERSION\",\"confirmReplace\":true,"
+        String useTemplate = "{\"templateCode\":\"" + templateCode + "\",\"confirmReplace\":true,"
                 + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + kept.path("revision").asLong() + "}";
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content(useTemplate))
