@@ -99,9 +99,13 @@ export function cellErrors(model: CrossModel): Partial<Record<CellId, CellError>
   return errors;
 }
 
-/** Ký hiệu chữ của một chỉ số `_x`/`^x`: số liền nhau hoặc một chữ cái, hoặc nhóm `{…}` không lồng. */
+/**
+ * Ký hiệu chữ của một chỉ số `_x`/`^x`: số liền nhau hoặc một chữ cái, hoặc nhóm `{…}`. Trong nhóm, `{`, `}` và `\`
+ * của chính chữ viết thành `\{`, `\}`, `\\` để nhóm không đóng sớm.
+ */
 const SHORT_SCRIPT = /^(\d+|[A-Za-z])/;
-const BRACE_SCRIPT = /^\{([^{}]+)\}/;
+const BRACE_SCRIPT = /^\{((?:\\.|[^{}\\])+)\}/;
+const BRACE_ESCAPE = /\\([{}\\])/g;
 
 export type CellSegment = { kind: "text" | "sub" | "sup"; value: string };
 
@@ -114,11 +118,13 @@ export function cellSegments(text: string): CellSegment[] {
     const char = text[index]!;
     if (char === "_" || char === "^") {
       const rest = text.slice(index + 1);
-      const match = BRACE_SCRIPT.exec(rest) ?? SHORT_SCRIPT.exec(rest);
+      const brace = BRACE_SCRIPT.exec(rest);
+      const match = brace ?? SHORT_SCRIPT.exec(rest);
       if (match) {
         if (plain) segments.push({ kind: "text", value: plain });
         plain = "";
-        segments.push({ kind: char === "_" ? "sub" : "sup", value: match[1]! });
+        const value = brace ? match[1]!.replace(BRACE_ESCAPE, "$1") : match[1]!;
+        segments.push({ kind: char === "_" ? "sub" : "sup", value });
         index += 1 + match[0].length;
         continue;
       }
@@ -220,7 +226,7 @@ function nodesToText(nodes: ChildNode[]): string {
     const next = nodes[position + 1]?.textContent ?? "";
     // Dạng gọn `_1` chỉ dùng khi đọc lại cho đúng: số kế tiếp không được dính vào chỉ số, nên có chữ số theo sau thì dùng `{}`.
     const short = /^[A-Za-z]$/.test(content) || (/^\d+$/.test(content) && !/^\d/.test(next));
-    text += short ? `${mark}${content}` : `${mark}{${content}}`;
+    text += short ? `${mark}${content}` : `${mark}{${content.replace(/[{}\\]/g, "\\$&")}}`;
   });
   return text;
 }

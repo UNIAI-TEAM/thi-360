@@ -49,6 +49,18 @@ describe("cross diagram model", () => {
     expect(back.filial[0]).toEqual(model.filial[0]);
   });
 
+  it("round-trips sub/sup text that contains braces or backslashes", () => {
+    for (const cell of ["a<sup>x}y</sup>b", "a<sub>{k\\</sub>"]) {
+      const wrapped = `<table><tbody><tr><th scope="row">P</th><td>${cell}</td></tr></tbody></table>`;
+      expect(crossToHtml(htmlToCross(wrapped))).toBe(wrapped);
+    }
+    expect(cellSegments("X^{a\\}b}c")).toEqual([
+      { kind: "text", value: "X" },
+      { kind: "sup", value: "a}b" },
+      { kind: "text", value: "c" },
+    ]);
+  });
+
   it("writes a phenotype ratio into the same generation row and reads it back", () => {
     const model = emptyCrossModel();
     model.genotypeA = "Aa";
