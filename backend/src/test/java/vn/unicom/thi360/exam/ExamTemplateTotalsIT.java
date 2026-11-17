@@ -56,6 +56,10 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
                 var single = mapper.createArrayNode().add(part);
                 for (Totals path : pathTotals(single, (String) row.get("kind_code"))) {
                     if (path.questions() == 0) continue;
+                    if (part.hasNonNull("questionCount")) {
+                        assertThat(path.questions()).as("%s part declared count", code)
+                                .isEqualTo(part.path("questionCount").asInt());
+                    }
                     if (part.hasNonNull("questionCountRequired")) {
                         assertThat(path.questions()).as("%s part required count", code)
                                 .isEqualTo(part.path("questionCountRequired").asInt());
