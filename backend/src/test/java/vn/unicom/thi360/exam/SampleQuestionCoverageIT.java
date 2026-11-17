@@ -210,29 +210,110 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 .isEqualTo(revisions);
     }
 
+    @Test
+    void checkerRejectsEmptyRemaindersAndInheritedFilters() throws Exception {
+        List<String> failures = new ArrayList<>();
+        int[] checked = {0};
+        JsonNode choice = mapper.readTree("""
+                {"kind":"SUBJECT_CHOICE","countsByPick":[17,17,16],"sections":[{
+                  "subjectCode":"LY","blocks":[
+                    {"name":"fixed","questionType":"SINGLE_CHOICE","questionCount":6},
+                    {"name":"remainder","questionType":"SINGLE_CHOICE","questionCount":null,
+                     "requiredPointsPerQuestion":987}]}]}
+                """);
+        inspect(choice, null, "choice", failures, checked);
+        assertThat(failures).anyMatch(s -> s.contains("remainder") && s.contains("11 units"));
+        failures.clear();
+        JsonNode ordinary = mapper.readTree("""
+                {"subjectCode":"LY","questionCount":17,"blocks":[
+                  {"name":"fixed","questionType":"SINGLE_CHOICE","questionCount":6},
+                  {"name":"remainder","questionType":"SINGLE_CHOICE","questionCount":null}]}
+                """);
+        inspect(ordinary, null, "ordinary", failures, checked);
+        assertThat(failures).isEmpty();
+        JsonNode scoped = mapper.readTree("""
+                {"subjectCode":"LY","questionCount":1,
+                 "knowledgeScope":{"nodeIds":["00000000-0000-0000-0000-000000000001"]},
+                 "blocks":[{"name":"scoped","questionType":"SINGLE_CHOICE","questionCount":1}]}
+                """);
+        inspect(scoped, null, "scoped", failures, checked);
+        assertThat(failures).anyMatch(s -> s.contains("scoped") && s.contains("0 units"));
+        failures.clear();
+        JsonNode quota = mapper.readTree("""
+                {"subjectCode":"LY","questionCount":1,
+                 "answerQuotas":{"items":[{"answerType":"ESSAY","value":1}]},
+                 "blocks":[{"name":"quota","questionType":null,"questionCount":1,
+                            "requiredPointsPerQuestion":0.25}]}
+                """);
+        inspect(quota, null, "quota", failures, checked);
+        assertThat(failures).anyMatch(s -> s.contains("quota") && s.contains("0 units"));
+        failures.clear();
+        JsonNode slot = mapper.readTree("""
+                {"subjectCode":"LY","questionCount":3,
+                 "knowledgeScope":{"nodeIds":["00000000-0000-0000-0000-000000000001"]},
+                 "blocks":[{"name":"slot","questionType":"QUESTION_SET","setCount":1,"setSize":3,
+                            "slots":[{}]}]}
+                """);
+        inspect(slot, null, "slot", failures, checked);
+        assertThat(failures).anyMatch(s -> s.contains("slots lack distinct"));
+    }
+
     private void inspect(JsonNode node, String subject, String template, List<String> failures, int[] checked) {
+        inspect(node, subject, null, template, failures, checked);
+    }
+
+    private void inspect(JsonNode node, String subject, Integer choiceCount, String template,
+                         List<String> failures, int[] checked) {
         if (node.isArray()) {
-            node.forEach(child -> inspect(child, subject, template, failures, checked));
+            node.forEach(child -> inspect(child, subject, choiceCount, template, failures, checked));
         } else if (node.isObject()) {
             String currentSubject = text(node, "subjectCode", subject);
+            Integer currentChoiceCount = choiceCount;
+            if ("SUBJECT_CHOICE".equals(text(node, "kind", null))) {
+                currentChoiceCount = null;
+                for (JsonNode count : node.path("countsByPick")) {
+                    currentChoiceCount = currentChoiceCount == null ? count.asInt()
+                            : Math.max(currentChoiceCount, count.asInt());
+                }
+            }
             JsonNode blocks = node.path("blocks");
             if (blocks.isArray()) {
+                int fixed = 0;
                 for (JsonNode block : blocks) {
-                    if (!block.path("omitted").asBoolean(false)) {
-                        checked[0]++;
-                        checkBlock(template, currentSubject, block, failures);
+                    if (block.path("omitted").asBoolean(false)) continue;
+                    String type = text(block, "questionType", null);
+                    boolean set = "QUESTION_SET".equals(type) || "CLOZE".equals(type);
+                    if (set) fixed += block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
+                    else if (block.hasNonNull("questionCount")) fixed += block.path("questionCount").asInt();
+                }
+                Integer count = currentChoiceCount != null ? currentChoiceCount : integer(node, "questionCount");
+                for (JsonNode block : blocks) {
+                    if (block.path("omitted").asBoolean(false)) continue;
+                    checked[0]++;
+                    String type = text(block, "questionType", null);
+                    boolean set = "QUESTION_SET".equals(type) || "CLOZE".equals(type);
+                    Integer units = set ? block.path("setCount").asInt(0) * block.path("setSize").asInt(0)
+                            : integer(block, "questionCount");
+                    if (units == null && count == null) {
+                        failures.add(template + " / " + currentSubject + ": unresolved remainder");
+                    } else {
+                        int needed = units == null ? count - fixed : units;
+                        if (needed < 0) failures.add(template + " / " + currentSubject + ": negative remainder");
+                        else checkBlock(template, currentSubject, node, block, needed, failures);
                     }
                 }
             }
+            final Integer inheritedChoiceCount = currentChoiceCount;
             node.fields().forEachRemaining(field -> {
                 if (!field.getKey().equals("blocks")) {
-                    inspect(field.getValue(), currentSubject, template, failures, checked);
+                    inspect(field.getValue(), currentSubject, inheritedChoiceCount, template, failures, checked);
                 }
             });
         }
     }
 
-    private void checkBlock(String template, String subject, JsonNode block, List<String> failures) {
+    private void checkBlock(String template, String subject, JsonNode section, JsonNode block,
+                            int neededUnits, List<String> failures) {
         String label = template + " / " + subject + " / " + text(block, "name", "unnamed");
         if (subject == null) {
             failures.add(label + ": missing subject");
@@ -246,13 +327,13 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
             failures.add(label + ": subject not found");
             return;
         }
-        QuestionSourcePort.Filter filter = filter(subjectIds.get(0), block, strings(block.path("tagCodes")),
-                block.path("knowledgeScope"));
+        JsonNode scope = block.path("knowledgeScope").isObject()
+                ? block.path("knowledgeScope") : section.path("knowledgeScope");
+        QuestionSourcePort.Filter filter = filter(subjectIds.get(0), section, block, strings(block.path("tagCodes")), scope);
         List<Candidate> candidates = source.findCandidates(filter, 100_000);
         int setSize = block.path("setSize").asInt(0);
         if (setSize > 0) candidates = candidates.stream().filter(c -> c.units().size() == setSize).toList();
         int neededSets = block.path("setCount").asInt(0);
-        int neededUnits = block.path("questionCount").asInt(0);
         long units = candidates.stream().mapToLong(c -> c.units().size()).sum();
         if (candidates.size() < neededSets || units < neededUnits) {
             failures.add(label + ": need " + neededSets + " sets / " + neededUnits + " units, found "
@@ -265,8 +346,8 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
             for (JsonNode slot : block.path("slots")) {
                 Set<UUID> matching = new HashSet<>();
                 JsonNode slotScope = slot.path("knowledgeScope");
-                source.findCandidates(filter(subjectIds.get(0), block, strings(slot.path("tagCodes")),
-                                slotScope.isObject() ? slotScope : block.path("knowledgeScope")), 100_000)
+                source.findCandidates(filter(subjectIds.get(0), section, block, strings(slot.path("tagCodes")),
+                                slotScope.isObject() ? slotScope : scope), 100_000)
                         .stream().filter(c -> eligible.contains(c.questionId()))
                         .forEach(c -> matching.add(c.questionId()));
                 slots.add(matching);
@@ -275,7 +356,8 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         }
     }
 
-    private QuestionSourcePort.Filter filter(UUID subject, JsonNode block, List<String> tags, JsonNode scope) {
+    private QuestionSourcePort.Filter filter(UUID subject, JsonNode section, JsonNode block,
+                                             List<String> tags, JsonNode scope) {
         JsonNode shape = block.path("itemShape");
         QuestionSourcePort.ItemShape itemShape = shape.isObject()
                 ? new QuestionSourcePort.ItemShape(integer(shape, "statements"), integer(shape, "leftItems"),
@@ -295,7 +377,15 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         String childType = text(block, "childAnswerType", null);
         BigDecimal points = block.hasNonNull("requiredPointsPerQuestion")
                 ? block.get("requiredPointsPerQuestion").decimalValue() : null;
-        return new QuestionSourcePort.Filter(subject, knowledge, QuestionSourcePort.Match.ANY, List.of(),
+        List<QuestionType> answerTypes = new ArrayList<>();
+        if (type == null) {
+            for (JsonNode quota : section.path("answerQuotas").path("items")) {
+                if (quota.hasNonNull("answerType")) answerTypes.add(QuestionType.valueOf(quota.get("answerType").asText()));
+            }
+        }
+        QuestionSourcePort.Match match = "ALL".equals(text(scope, "match", null))
+                ? QuestionSourcePort.Match.ALL : QuestionSourcePort.Match.ANY;
+        return new QuestionSourcePort.Filter(subject, knowledge, match, answerTypes,
                 type == null ? null : QuestionType.valueOf(type), text(block, "taskTypeCode", null),
                 childType == null ? null : QuestionType.valueOf(childType), tags,
                 strings(scope.path("competencyCodes")), points, itemShape, formats, children);
