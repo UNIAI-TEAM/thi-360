@@ -1,4 +1,4 @@
-import { act, waitFor } from "@testing-library/react";
+import { act, fireEvent, waitFor } from "@testing-library/react";
 import { expect, vi } from "vitest";
 import type { Editor } from "@tiptap/react";
 import type { ReactElement } from "react";
@@ -86,4 +86,19 @@ export function rich(element: HTMLElement) {
       await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
     },
   };
+}
+
+/**
+ * Dán một tệp ảnh thuần (không có `text/html`) vào vùng soạn: đường dán/thả ảnh của trình soạn tải ảnh lên thẳng, không
+ * qua hộp Hình (hộp chỉ mở từ nút Hình của thanh công cụ).
+ */
+export function pasteImageFile(target: HTMLElement, file: File) {
+  fireEvent.paste(target, {
+    clipboardData: {
+      getData: () => "",
+      types: ["Files"],
+      files: [file],
+      items: [{ kind: "file", type: file.type, getAsFile: () => file }],
+    },
+  });
 }

@@ -5360,6 +5360,31 @@
     "insertDialog": {
       "cancel": "Cancel",
       "close": "Close",
+      "image": {
+        "altHint": "Screen readers read this description aloud. Do not put answers here.",
+        "altLabel": "Alternative text",
+        "captionLabel": "Caption below the image",
+        "chooseImage": "Choose image",
+        "description": "Charts, maps, diagrams, drawings, structural formulas.",
+        "fileInputLabel": "Choose image file",
+        "noImage": "No image yet",
+        "previewLabel": "Preview",
+        "removeImage": "Remove image",
+        "replaceImage": "Replace image",
+        "sourceLabel": "Source",
+        "submit": "Insert image",
+        "submitEdit": "Update image",
+        "supported": "Accepts PNG, JPG, WebP.",
+        "title": "Image",
+        "uploading": "Uploading…",
+        "width": {
+          "full": "Full width",
+          "medium": "Medium",
+          "small": "Small"
+        },
+        "widthLabel": "Width",
+        "zoomLabel": "Let candidates enlarge the image during the exam"
+      },
       "insert": "Insert",
       "quote": {
         "authorLabel": "Author",

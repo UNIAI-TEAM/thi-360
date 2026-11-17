@@ -5360,6 +5360,31 @@
     "insertDialog": {
       "cancel": "Hủy",
       "close": "Đóng",
+      "image": {
+        "altHint": "Trình đọc màn hình đọc mô tả này. Không ghi đáp án vào đây.",
+        "altLabel": "Mô tả thay thế",
+        "captionLabel": "Chú thích dưới hình",
+        "chooseImage": "Chọn ảnh",
+        "description": "Biểu đồ, bản đồ, lược đồ, sơ đồ, hình vẽ, công thức cấu tạo.",
+        "fileInputLabel": "Chọn tệp ảnh",
+        "noImage": "Chưa có ảnh",
+        "previewLabel": "Xem trước",
+        "removeImage": "Xóa ảnh",
+        "replaceImage": "Thay ảnh",
+        "sourceLabel": "Nguồn",
+        "submit": "Chèn hình",
+        "submitEdit": "Cập nhật hình",
+        "supported": "Nhận PNG, JPG, WebP.",
+        "title": "Hình",
+        "uploading": "Đang tải lên…",
+        "width": {
+          "full": "Rộng hết khung",
+          "medium": "Vừa",
+          "small": "Nhỏ"
+        },
+        "widthLabel": "Độ rộng",
+        "zoomLabel": "Cho phép học viên phóng to hình khi thi"
+      },
       "insert": "Chèn",
       "quote": {
         "authorLabel": "Tác giả",

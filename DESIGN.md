@@ -400,7 +400,7 @@ Tên bảng, đơn vị, nguồn, lưới ô sửa trực tiếp, dán từ Exce
 
 #### 5.15.5 Hộp Hình
 
-Tải ảnh, mô tả thay thế bắt buộc, chú thích, nguồn, độ rộng, cho phóng to; không có ở ô `allowImages={false}` (bản vẽ `SoanThaoHinh`).
+Hộp hai cột (bản vẽ `SoanThaoHinh`): trái là Xem trước (ảnh theo độ rộng đã chọn, chú thích) cùng nút Chọn ảnh / Thay ảnh và Xóa ảnh, dòng "Nhận PNG, JPG, WebP." và lỗi tải lên (413, 422, 429...) ngay dưới; phải là Mô tả thay thế (bắt buộc, có dấu `*` và câu hướng dẫn cho trình đọc màn hình), Chú thích dưới hình, Nguồn, Độ rộng (`Tabs` kiểu `segmented`: Nhỏ / Vừa / Rộng hết khung) và ô "Cho phép học viên phóng to hình khi thi" (`Checkbox`). Nút Chèn hình tắt khi chưa có ảnh, đang tải lên hoặc mô tả trống; mở lại một hình đang chọn thì nút là Cập nhật hình. Ảnh tải qua `POST /question-assets` (nút Hình trên thanh công cụ không còn tải thẳng); lưu thành `figure.image` với `data-width` và `data-zoom`, dòng nguồn `p.figure-source` bắt đầu bằng "Nguồn: ". Không có ở ô `allowImages={false}`; dán hoặc thả tệp ảnh vào vùng soạn vẫn tải thẳng.
 
 #### 5.15.6 Hộp Đoạn trích
 
