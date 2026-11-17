@@ -224,7 +224,8 @@
       "maxScore": 150,
       "scopes": [
         "FULL",
-        "PART"
+        "PART",
+        "SUBJECT"
       ],
       "referenceMax": null,
       "practiceScoring": "RAW",
@@ -246,7 +247,8 @@
       "maxScore": 150,
       "scopes": [
         "FULL",
-        "PART"
+        "PART",
+        "SUBJECT"
       ],
       "referenceMax": null,
       "practiceScoring": "RAW",
@@ -268,6 +270,7 @@
       "maxScore": 100,
       "scopes": [
         "FULL",
+        "PART",
         "SUBJECT"
       ],
       "referenceMax": null,
@@ -289,7 +292,7 @@
       "timing": "SHARED",
       "maxScore": 1200,
       "scopes": [
-        "SUBJECT"
+        "FULL"
       ],
       "referenceMax": 1200,
       "practiceScoring": "LINEAR",
