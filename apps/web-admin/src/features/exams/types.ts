@@ -378,6 +378,10 @@ export interface ExamTemplatePart {
  * QDA, BCA, V-ACT, SPT, SP2E, THPTQG giữ cấu trúc cũ, môn không có chỉ tiêu (D26).
  */
 export interface ExamTemplateSection {
+  /** Id ổn định của môn trong mẫu khi BE gán (đối chiếu `overview`); `null`: so khớp theo `subjectCode`. */
+  sectionId?: string | null;
+  /** Nhóm tạm bỏ qua của mẫu (SPT Toán: Tự luận, 2B 3.3): hiện mờ ở bảng tổng quan, không tính vào tổng. */
+  omittedBlocks?: Array<{ name: string; questionCount: number | null }>;
   subjectCode: string;
   /** `null` trong `SUBJECT_CHOICE`. */
   questionCount: number | null;
@@ -435,11 +439,17 @@ export interface CreateExamRequest {
    * (mẫu rút gọn). Chỉ gửi khi `scope = SUBJECT`.
    */
   buildMode?: ExamBuildMode | null;
+  description: string | null;
   /** Hướng dẫn làm bài; được để trống khi lưu nháp. */
   instructions?: string | null;
   /** Thời lượng chung khi `timing = SHARED`. */
   durationMinutes?: number | null;
   maxScore?: number | null;
+  /**
+   * Dòng "Bảng tổng quan" khác mẫu mặc định (2B 15.1): máy chủ nạp mẫu mặc định rồi ghi đè số câu, thời lượng, điểm theo
+   * các dòng này. Bỏ trống: giữ nguyên số của mẫu.
+   */
+  overview?: ExamOverviewRow[];
   /** Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi. Bỏ trống thì nạp nguyên mẫu mới nhất. */
   parts?: CreateExamPartInput[];
   /**

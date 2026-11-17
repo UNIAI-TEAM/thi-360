@@ -5,7 +5,9 @@ import { splitEvenly, sum } from "./matrix";
 import type {
   CreateExamPartInput,
   CreateExamRequest,
+  ExamBuildMode,
   ExamKind,
+  ExamOverviewRow,
   ExamScope as ApiExamScope,
   ExamTemplate,
   ExamTemplateBlock,
@@ -59,14 +61,22 @@ export function kindOptionFor(kinds: readonly ExamKindOption[], kind: ExamKind):
 export interface ScopeSelection {
   kind: ExamKind;
   scope: ApiExamScope;
-  /** Phần của bài Theo phần (`PART_CODES`); phạm vi khác để trống. */
+  /** Phần của bài Theo phần (`partCode` của mẫu); phạm vi khác để trống. */
   partCode: string;
-  /** Môn của bài Theo môn; phạm vi khác để trống. */
+  /** Môn của bài Theo môn hoặc môn chọn trước phần (SP2E, SPT Theo phần); phạm vi khác để trống. */
   subjectCode: string;
+  /** Kiểu xây bài Theo môn (2B 15.1): `STANDARD` cấu trúc môn, `REVIEW` bài ôn rút gọn. Bỏ trống: `STANDARD`. */
+  buildMode?: ExamBuildMode;
 }
 
 export function sameSelection(a: ScopeSelection, b: ScopeSelection): boolean {
-  return a.kind === b.kind && a.scope === b.scope && a.partCode === b.partCode && a.subjectCode === b.subjectCode;
+  return (
+    a.kind === b.kind &&
+    a.scope === b.scope &&
+    a.partCode === b.partCode &&
+    a.subjectCode === b.subjectCode &&
+    (a.buildMode ?? "STANDARD") === (b.buildMode ?? "STANDARD")
+  );
 }
 
 /** Mẫu đầu tiên của kỳ thi và phạm vi (mẫu bài lẻ không ghi phần dùng để lấy số câu, thời lượng mặc định). */
@@ -75,43 +85,53 @@ export function templateFor(templates: readonly ExamTemplate[], kind: ExamKind, 
 }
 
 /**
- * Các mẫu (phiên bản năm) khớp kỳ thi, phạm vi, phần hoặc môn của bài, năm cấu trúc mới nhất trước. Cùng quy tắc với
- * máy chủ: Theo phần khớp mã phần của mẫu, Theo môn khớp môn của mẫu.
+ * Các mẫu (phiên bản năm) khớp kỳ thi, phạm vi, phần hoặc môn và `buildMode` của bài (2B K8). Theo phần của kỳ thi
+ * `templateBy = SUBJECT` (SPT, SP2E) còn khớp môn đã chọn; `buildMode` chỉ lọc khi phạm vi Theo môn. Mẫu không ghi
+ * `buildMode` coi như `STANDARD`. Năm cấu trúc mới nhất trước.
  */
 export function matchingTemplates(templates: readonly ExamTemplate[], selection: ScopeSelection): ExamTemplate[] {
+  const buildMode = selection.scope === "SUBJECT" ? (selection.buildMode ?? "STANDARD") : null;
   return templates
     .filter(
       (template) =>
         template.kind === selection.kind &&
         template.scope === selection.scope &&
         (selection.scope !== "PART" || template.partCode === selection.partCode) &&
-        (selection.scope !== "SUBJECT" || template.subjectCode === selection.subjectCode),
+        (selection.scope !== "SUBJECT" || template.subjectCode === selection.subjectCode) &&
+        (selection.scope !== "PART" || !selection.subjectCode || template.subjectCode === selection.subjectCode) &&
+        (buildMode === null || (template.buildMode ?? "STANDARD") === buildMode),
     )
     .sort((a, b) => (b.structureYear ?? 0) - (a.structureYear ?? 0));
 }
 
-/** Mẫu mới nhất khớp phạm vi: bước 1 không chọn mẫu hay năm, hệ thống nạp mẫu này (spec 5.2). */
+/** Mẫu mặc định khớp phạm vi (K8): mẫu `isDefault` (Văn SP2E mặc định là đề minh họa cũ, K15); không có cờ thì mẫu năm mới nhất. */
 export function latestTemplate(templates: readonly ExamTemplate[], selection: ScopeSelection): ExamTemplate | undefined {
-  return matchingTemplates(templates, selection)[0];
+  const matches = matchingTemplates(templates, selection);
+  return matches.find((template) => template.isDefault) ?? matches[0];
 }
 
-/** Số mẫu theo từng môn của kỳ thi (để ô chọn môn nêu môn nào có mẫu). */
-export function templateCountBySubject(templates: readonly ExamTemplate[], kind: ExamKind): Map<string, number> {
+/** Số mẫu theo từng môn của kỳ thi (để ô chọn môn nêu môn nào có mẫu); `scope` mặc định `SUBJECT`, dùng `PART` khi chọn môn trước phần. */
+export function templateCountBySubject(
+  templates: readonly ExamTemplate[],
+  kind: ExamKind,
+  scope: ApiExamScope = "SUBJECT",
+): Map<string, number> {
   const counts = new Map<string, number>();
   for (const template of templates) {
-    if (template.kind !== kind || template.scope !== "SUBJECT" || !template.subjectCode) continue;
+    if (template.kind !== kind || template.scope !== scope || !template.subjectCode) continue;
     counts.set(template.subjectCode, (counts.get(template.subjectCode) ?? 0) + 1);
   }
   return counts;
 }
 
-/** Môn mặc định khi chọn Theo môn: môn đầu tiên của danh mục có mẫu; không có thì để trống. */
+/** Môn mặc định khi chọn Theo môn (hoặc môn trước phần): môn đầu tiên của danh mục có mẫu; không có thì để trống. */
 export function defaultSubjectFor(
   templates: readonly ExamTemplate[],
   subjects: readonly CatalogOption[],
   kind: ExamKind,
+  scope: ApiExamScope = "SUBJECT",
 ): string {
-  const counts = templateCountBySubject(templates, kind);
+  const counts = templateCountBySubject(templates, kind, scope);
   return subjects.find((subject) => counts.has(subject.code))?.code ?? "";
 }
 
@@ -127,8 +147,35 @@ export function yearsDiffer(template: Pick<ExamTemplate, "structureYear" | "matr
 }
 
 /**
+ * Các phần chọn được của bài Theo phần: mã phần của các mẫu Theo phần của kỳ thi (BCA: Tự luận Văn, Trắc nghiệm bắt
+ * buộc, tự chọn; SP2E, SPT: các phần của môn đã chọn). Kỳ thi `templateBy = KIND` chưa có mẫu Theo phần nào (HSA, QDA
+ * trước khi nạp mẫu) dùng bốn phần chuẩn (`PART_CODES`).
+ */
+export function partCodesForKind(
+  templates: readonly ExamTemplate[],
+  kinds: readonly ExamKindOption[],
+  kind: ExamKind,
+  subjectCode = "",
+): string[] {
+  const bySubject = kindOptionFor(kinds, kind)?.templateBy === "SUBJECT";
+  const codes: string[] = [];
+  for (const template of templates) {
+    if (template.kind !== kind || template.scope !== "PART" || !template.partCode) continue;
+    if (bySubject && subjectCode && template.subjectCode && template.subjectCode !== subjectCode) continue;
+    if (!codes.includes(template.partCode)) codes.push(template.partCode);
+  }
+  return codes.length === 0 && !bySubject ? [...PART_CODES] : codes;
+}
+
+/** Kỳ thi `templateBy = SUBJECT` chọn môn trước phần (SP2E, SPT Theo phần); `subjectCode` bắt buộc khi `scope = PART`. */
+export function partNeedsSubject(kinds: readonly ExamKindOption[], kind: ExamKind): boolean {
+  return kindOptionFor(kinds, kind)?.templateBy === "SUBJECT";
+}
+
+/**
  * Phạm vi mới sau một thay đổi: phạm vi không có trong kỳ thi thì về phạm vi đầu tiên; Theo phần giữ phần đang chọn
- * (mặc định Toán); Theo môn giữ môn nếu kỳ thi mới có mẫu cho môn đó, không thì lấy môn đầu tiên có mẫu.
+ * (mặc định phần đầu tiên có mẫu); Theo môn giữ môn nếu kỳ thi mới có mẫu cho môn đó, không thì lấy môn đầu tiên có
+ * mẫu. `buildMode` chỉ giữ khi phạm vi Theo môn.
  */
 export function resolveScope(
   templates: readonly ExamTemplate[],
@@ -140,15 +187,26 @@ export function resolveScope(
   const kind = change.kind ?? current.kind;
   const scopes = scopesForKind(kinds, kind);
   const requested = change.scope ?? current.scope;
-  const scope = scopes.includes(requested) ? requested : (scopes[0] ?? "FULL");
-  const partCode = scope === "PART" ? (change.partCode ?? (current.partCode || PART_CODES[0])) : "";
+  // Kỳ thi không cho `requested`: về Toàn bài, không có thì Theo môn (SP2E, SPT, THPTQG), không có thì phạm vi đầu.
+  const fallback = scopes.includes("FULL") ? "FULL" : scopes.includes("SUBJECT") ? "SUBJECT" : (scopes[0] ?? "FULL");
+  const scope = scopes.includes(requested) ? requested : fallback;
+  const needsSubject = scope !== "FULL" && partNeedsSubject(kinds, kind);
   let subjectCode = "";
-  if (scope === "SUBJECT") {
+  if (scope === "SUBJECT" || needsSubject) {
+    const countScope = scope === "PART" ? "PART" : "SUBJECT";
     subjectCode = change.subjectCode ?? current.subjectCode;
-    const keep = subjectCode && (change.subjectCode !== undefined || templateCountBySubject(templates, kind).has(subjectCode));
-    if (!keep) subjectCode = defaultSubjectFor(templates, subjects, kind);
+    const keep =
+      subjectCode && (change.subjectCode !== undefined || templateCountBySubject(templates, kind, countScope).has(subjectCode));
+    if (!keep) subjectCode = defaultSubjectFor(templates, subjects, kind, countScope);
   }
-  return { kind, scope, partCode, subjectCode };
+  let partCode = "";
+  if (scope === "PART") {
+    const codes = partCodesForKind(templates, kinds, kind, subjectCode);
+    const wanted = change.partCode ?? current.partCode;
+    partCode = codes.includes(wanted) ? wanted : (codes[0] ?? wanted ?? "");
+  }
+  const buildMode = scope === "SUBJECT" ? (change.buildMode ?? current.buildMode ?? "STANDARD") : undefined;
+  return { kind, scope, partCode, subjectCode, buildMode };
 }
 
 /** Thời lượng và thang điểm nạp theo mẫu; không có mẫu thì theo kỳ thi. */
@@ -778,24 +836,41 @@ export function partInputsFromValues(
 }
 
 /**
- * Yêu cầu tạo bài (bước 1, PBI-04 mục 4). Mẫu và xác nhận năm không đi theo yêu cầu: máy chủ nạp mẫu mới nhất khớp
- * phạm vi; phiên bản năm khác chọn ở bước Cấu trúc bằng `applyExamTemplate`.
+ * Yêu cầu tạo bài (bước 1, 2B 15.1). Mẫu và xác nhận năm không đi theo yêu cầu: máy chủ nạp mẫu `isDefault` khớp kỳ
+ * thi, phạm vi, phần hoặc môn và `buildMode`, rồi áp dụng chỉnh sửa của "Bảng tổng quan" (`overview`). Cấu trúc bài
+ * không đi theo yêu cầu nữa (K8).
  */
-export function toCreateExamRequest(values: CreateExamFormValues): CreateExamRequest {
-  const shared = values.timing === "SHARED";
+export interface Step1RequestInput {
+  name: string;
+  code: string;
+  selection: ScopeSelection;
+  description: string;
+  instructions: string;
+  timing: ExamTiming;
+  /** Thời lượng chung khi `timing = SHARED`; bỏ qua khi `PER_PART` (thời lượng theo phần nằm trong `overview`). */
+  sharedDuration: number | null;
+  maxScore: number | null;
+  /** Chỉ dòng khác mẫu; rỗng: không gửi trường. */
+  overview: ExamOverviewRow[];
+}
+
+export function toCreateExamRequest(input: Step1RequestInput): CreateExamRequest {
+  const { selection } = input;
   return {
-    name: values.name.trim(),
-    code: values.code.trim().toUpperCase(),
-    kind: values.kind,
-    scope: values.scope,
-    partCode: values.scope === "PART" ? values.partCode : null,
-    subjectCode: values.scope === "SUBJECT" ? values.subjectCode : null,
-    durationMinutes: shared ? values.sharedDuration : null,
-    maxScore: values.maxScore,
-    description: values.description.trim() || null,
+    name: input.name.trim(),
+    code: input.code.trim().toUpperCase(),
+    kind: selection.kind,
+    scope: selection.scope,
+    partCode: selection.scope === "PART" ? selection.partCode : null,
+    // Môn đi kèm khi Theo môn và khi Theo phần của kỳ thi chọn môn trước (SP2E, SPT); phạm vi khác để trống.
+    subjectCode: selection.subjectCode || null,
+    buildMode: selection.scope === "SUBJECT" ? (selection.buildMode ?? "STANDARD") : null,
+    durationMinutes: input.timing === "SHARED" ? input.sharedDuration : null,
+    maxScore: input.maxScore,
+    description: input.description.trim() || null,
     // Hướng dẫn là HTML: trình soạn rỗng cho `<p></p>`, nên coi là trống khi không còn chữ nào.
-    instructions: questionHtmlText(values.instructions).trim() ? values.instructions.trim() : null,
-    parts: partInputsFromValues(values.parts, values),
+    instructions: questionHtmlText(input.instructions).trim() ? input.instructions.trim() : null,
+    overview: input.overview,
   };
 }
 

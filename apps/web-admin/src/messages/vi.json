@@ -4871,7 +4871,11 @@
         "pointsValue": "{count, number} điểm",
         "maxScoreUnset": "Đặt lúc thiết lập",
         "partPoints": "Các phần: {count, number} điểm",
-        "pathsBranches": "{count, number} nhánh"
+        "pathsBranches": "{count, number} nhánh",
+        "kind": "Kỳ thi",
+        "scope": "Phạm vi",
+        "template": "Mẫu mặc định",
+        "noTemplate": "Không có"
       },
       "fields": {
         "name": "Tên bài thi",
@@ -4891,7 +4895,10 @@
         "maxScore": "Thang điểm",
         "partPoints": "Phần {order} · điểm",
         "partSections": "Phần {order} · số câu từng môn",
-        "branch": "Nhánh {name}"
+        "branch": "Nhánh {name}",
+        "partCode": "Phần thi",
+        "kind": "Kỳ thi",
+        "scope": "Phạm vi bài thi"
       },
       "replace": {
         "title": "Nạp lại mẫu {name}?",
@@ -5002,6 +5009,72 @@
         "title": "Khối gợi ý từ mẫu ({count, number} câu, sửa ở Cấu trúc và ma trận)",
         "item": "{name}: {count, number} câu",
         "essay": "chấm tay"
+      },
+      "step1": {
+        "sections": {
+          "scope": "Phạm vi bài thi",
+          "scopeDescription": "Các lựa chọn lấy theo hồ sơ kỳ thi {kind}."
+        },
+        "noKindsTitle": "Chưa có kỳ thi nào",
+        "noKindsDescription": "Danh mục kỳ thi đang trống. Thêm kỳ thi ở mục Danh mục rồi quay lại.",
+        "subject": "Môn",
+        "subjectHint": "{count, number} môn có mẫu cấu trúc; môn chưa có mẫu thì bảng tổng quan để trống",
+        "subjectBeforePartHint": "Chọn môn trước, rồi chọn phần của môn đó",
+        "subjectPlaceholder": "Chọn môn",
+        "noTemplate": "{subject} chưa có mẫu cấu trúc. Bảng tổng quan để trống: nhập số câu, thời lượng và điểm.",
+        "part": "Phần thi",
+        "partHint": "Bài Theo phần chỉ gồm phần được chọn",
+        "noPart": "Môn này chưa có phần nào để chọn.",
+        "buildModeLegend": "Cách dựng bài",
+        "buildModeStandard": "Dùng cấu trúc môn {kind}",
+        "buildModeStandardHint": "Nạp cấu trúc đầy đủ của môn theo mẫu mặc định.",
+        "buildModeReview": "Tự thiết lập bài ôn",
+        "buildModeReviewHint": "Một phần, một môn: nhập số câu, thời lượng và thang điểm.",
+        "labelFull": "{kind} · Toàn bài",
+        "labelPart": "{kind} · Phần {scope}",
+        "labelSubject": "{kind} · Môn {subject}",
+        "labelReview": "Bài ôn {kind} · {subject}",
+        "noSubject": "chưa chọn môn",
+        "loaded": "Đã nạp bảng tổng quan: {name}.",
+        "replace": {
+          "title": "Đổi sang “{name}”?",
+          "description": "Bảng tổng quan nạp lại theo mẫu mặc định của lựa chọn mới. Số câu, thời lượng, điểm bạn đã sửa trong bảng sẽ mất.",
+          "confirm": "Đổi và nạp lại",
+          "cancel": "Giữ lựa chọn cũ"
+        }
+      },
+      "overview": {
+        "title": "Cấu trúc tổng quan",
+        "description": "Số lấy từ mẫu mặc định “{template}”, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
+        "descriptionNoTemplate": "Chưa có mẫu mặc định: nhập số câu, thời lượng và điểm của các phần ngay trên dòng.",
+        "versionAtStep2": "Phiên bản cấu trúc chọn ở bước 2",
+        "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
+        "col": {
+          "part": "Phần hoặc môn",
+          "count": "Số câu",
+          "duration": "Thời lượng (phút)",
+          "points": "Điểm"
+        },
+        "cell": {
+          "questionCount": "Số câu của {name}",
+          "durationMinutes": "Thời lượng của {name}",
+          "maxPoints": "Điểm của {name}"
+        },
+        "choiceNote": "(học viên chọn một lựa chọn)",
+        "omittedLabel": "tạm bỏ qua",
+        "notCounted": "không tính",
+        "sumOfSubjects": "tổng các môn",
+        "total": "Tổng của bài",
+        "sharedDuration": "Thời lượng chung",
+        "minutes": "phút",
+        "maxScore": "Điểm tối đa",
+        "points": "điểm",
+        "errors": {
+          "countInvalid": "Số câu phải là số nguyên dương.",
+          "durationInvalid": "Thời lượng phải là số phút nguyên dương.",
+          "pointsInvalid": "Điểm phải lớn hơn 0.",
+          "pointsMismatch": "Tổng điểm các phần khác điểm tối đa của bài."
+        }
       }
     },
     "matrix": {

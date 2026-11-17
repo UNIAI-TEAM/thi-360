@@ -312,6 +312,7 @@ function templateBlock(block: QuestionBlock): ExamTemplateBlock {
 
 function templateSection(section: ExamSection): ExamTemplateSection {
   return {
+    sectionId: section.id || null,
     subjectCode: section.subjectCode,
     questionCount: section.questionCount,
     blocks: section.blocks.map(templateBlock),
@@ -350,10 +351,15 @@ function templateOption(option: ExamPartOption): TemplateOption {
   };
 }
 
-function templatePart(part: ExamPart, index: number): ExamTemplatePart {
-  const withIds = part as ExamPart & { partId?: string | null };
+function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined): ExamTemplatePart {
+  const sections = part.sections.map((section, sectionIndex) => {
+    const omittedBlocks = (raw?.sections?.[sectionIndex]?.blocks ?? [])
+      .filter((block) => block.omitted)
+      .map((block) => ({ name: block.name ?? "", questionCount: nullable(block.questionCount) }));
+    return { ...templateSection(section), ...(omittedBlocks.length ? { omittedBlocks } : {}) };
+  });
   return {
-    partId: withIds.partId ?? part.id ?? null,
+    partId: part.id || null,
     order: part.order ?? index + 1,
     name: part.name,
     questionCount: part.questionCount,
@@ -362,7 +368,7 @@ function templatePart(part: ExamPart, index: number): ExamTemplatePart {
     subjectCode: null,
     points: part.maxPoints ?? null,
     maxPoints: part.maxPoints ?? null,
-    ...(part.sections.length ? { sections: part.sections.map(templateSection) } : {}),
+    ...(sections.length ? { sections } : {}),
     ...(part.mode === "CHOICE" ? { options: part.options.map(templateOption) } : {}),
   };
 }
@@ -387,6 +393,6 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     label: nullable(response.label),
     summary: nullable(response.summary),
     expertNote: nullable(response.expertNote),
-    parts: mapParts(document.parts).map(templatePart),
+    parts: mapParts(document.parts).map((part, index) => templatePart(part, index, document.parts?.[index])),
   };
 }
