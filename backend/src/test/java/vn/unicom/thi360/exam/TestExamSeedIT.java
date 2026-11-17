@@ -128,6 +128,52 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void seededShortagesReportCountsAndAffectedSelections() throws Exception {
+        JsonNode cellResult = check("TEST-ERR-11");
+        JsonNode cell = cellResult.path("groups").findValues("issues").stream()
+                .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(cell.path("gradeCode").asText()).isEqualTo("G12");
+        assertThat(cell.path("difficultyCode").asText()).isEqualTo("VDC");
+        assertThat(cell.path("required").asInt(-1)).isEqualTo(12);
+        assertThat(cell.path("available").asInt(-1)).isEqualTo(4);
+
+        JsonNode result = check("TEST-ERR-07");
+        JsonNode shortage = result.path("groups").findValues("issues").stream()
+                .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(shortage.path("subjectCode").asText()).isEqualTo("DIA");
+        assertThat(shortage.path("subjectCount").asInt(-1)).isEqualTo(17);
+        assertThat(shortage.path("required").asInt(-1)).isEqualTo(11);
+        assertThat(shortage.path("available").asInt(-1)).isEqualTo(10);
+        Set<Set<String>> failed = new java.util.HashSet<>();
+        int failedCount = 0;
+        for (JsonNode path : result.path("paths")) {
+            for (JsonNode selection : path.path("selections")) {
+                if (!"INVALID".equals(selection.path("result").asText())) continue;
+                failedCount++;
+                JsonNode selectionIssue = selection.path("issues").get(0);
+                assertThat(selectionIssue.path("required").asInt(-1)).isEqualTo(11);
+                assertThat(selectionIssue.path("available").asInt(-1)).isEqualTo(10);
+                Set<String> subjects = new java.util.HashSet<>();
+                for (JsonNode subject : selection.path("subjectCodes")) subjects.add(subject.asText());
+                failed.add(subjects);
+                int geography = -1;
+                for (int i = 0; i < selection.path("subjectCodes").size(); i++) {
+                    if ("DIA".equals(selection.path("subjectCodes").get(i).asText())) geography = i;
+                }
+                assertThat(geography).isGreaterThanOrEqualTo(0);
+                assertThat(selection.path("counts").get(geography).asInt()).isEqualTo(17);
+            }
+        }
+        assertThat(failedCount).isEqualTo(3);
+        assertThat(failed).containsExactlyInAnyOrder(
+                Set.of("LY", "SU", "DIA"), Set.of("HOA", "SU", "DIA"), Set.of("SINH", "SU", "DIA"));
+    }
+
+    @Test
     void readyPoolsMeetAssumedMinimums() {
         record Pool(String subject, String type, String points, int minimum) {}
         List<Pool> pools = List.of(
