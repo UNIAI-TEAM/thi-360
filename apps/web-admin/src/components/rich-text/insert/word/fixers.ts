@@ -102,9 +102,12 @@ function fixFunctionNames(latex: string): string {
   );
 }
 
-/** `°` (và `º`, `˚`) → `^{\circ}`. */
+/**
+ * Ký hiệu độ → `^{\circ}`: ký tự `°`/`º`/`˚`, hoặc số mũ chữ "o" sau một số (`30^o`, gõ tay trong Word).
+ * `x^0` và `x^o` sau biến không đổi: có thể là lũy thừa thật.
+ */
 function fixDegree(latex: string): string {
-  return latex.replace(/[°º˚]/g, "^{\\circ}");
+  return latex.replace(/[°º˚]/g, "^{\\circ}").replace(/(\d+|\{\d+\})\^(?:o|\{o\})(?![A-Za-z0-9])/g, "$1^{\\circ}");
 }
 
 const RELATION = /=|\\neq|\\leq|\\geq|<|>/;

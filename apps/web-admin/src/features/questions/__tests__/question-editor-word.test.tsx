@@ -145,6 +145,24 @@ describe("Dán từ Word trong biểu mẫu soạn câu (spec 4.10)", () => {
   });
 });
 
+describe("mẫu clipboard thật của Word 365", () => {
+  it("opens with nothing to retype, fills the form at once and leaves the five auto-fixes marked", async () => {
+    renderEn(<QuestionEditorView mode="create" type="SINGLE_CHOICE" />);
+    await screen.findByRole("textbox", { name: /^Question text/ });
+    pasteInto(stemField(), wordFixture("word365-sample.html"));
+    const dialog = await wordDialog();
+    expect(within(dialog).getByText("8 formulas converted correctly")).toBeInTheDocument();
+    expect(within(dialog).getByText("5 formulas auto-fixed, waiting for confirmation")).toBeInTheDocument();
+    expect(within(dialog).getByText("0 formulas need retyping")).toBeInTheDocument();
+    fireEvent.click(putIntoForm());
+    await waitFor(() => expect(rich(optionField("D")).html).toBe("<p>4</p>"));
+    expect(rich(optionField("A")).html).toBe("<p>1</p>");
+    expect(rich(solutionField()).text).toBe("Áp dụng công thức nghiệm, ta được x = 1.");
+    expect(rich(stemField()).html).toContain('<span class="math-block">\\[x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}\\]</span>');
+    await waitFor(() => expect(stemField().querySelectorAll('[data-word-pending="true"]').length).toBe(5));
+  });
+});
+
 describe("chỗ tự sửa chưa xác nhận sau khi đưa vào biểu mẫu", () => {
   it("stays marked with a ProseMirror decoration that never reaches the HTML", async () => {
     await openSingleChoiceWithWord();

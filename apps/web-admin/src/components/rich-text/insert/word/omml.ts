@@ -47,8 +47,20 @@ function isMath(node: Element): boolean {
   return node.prefix === "m";
 }
 
+/**
+ * Con phần tử toán (`m:`) của `parent`. Clipboard của Word chen thẻ HTML (`<i>`, `<span>`) vào giữa các phần tử OMML:
+ * những thẻ không phải `m:` là trong suốt, lấy phần tử `m:` bên trong chúng.
+ */
 function mathChildren(parent: Element, localName?: string): Element[] {
-  return [...parent.children].filter((child) => isMath(child) && (localName === undefined || child.localName === localName));
+  const found: Element[] = [];
+  const visit = (element: Element) => {
+    for (const child of element.children) {
+      if (!isMath(child)) visit(child);
+      else if (localName === undefined || child.localName === localName) found.push(child);
+    }
+  };
+  visit(parent);
+  return found;
 }
 
 function firstChild(parent: Element, localName: string): Element | undefined {
@@ -240,7 +252,7 @@ const MATRIX_ENVIRONMENTS: Readonly<Record<string, string>> = {
 function plainText(element: Element): string | null {
   let text = "";
   for (const child of mathChildren(element)) {
-    if (child.localName === "r") text += mathChildren(child, "t").map((t) => t.textContent ?? "").join("");
+    if (child.localName === "r") text += runText(child);
     else if (child.localName.endsWith("Pr")) continue;
     else return null;
   }
@@ -261,10 +273,24 @@ function convArgument(parent: Element, localName: string): string {
   return child ? convChildren(child).trim() : "";
 }
 
+/** Chữ của một `m:r`: `m:t` (OMML chuẩn) hoặc chữ nằm thẳng trong `m:r` (cách Word ghi vào clipboard HTML). */
+function runText(run: Element): string {
+  const parts: string[] = [];
+  const visit = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.nodeValue ?? "");
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as Element;
+      if (isMath(element) && element.localName.endsWith("Pr")) return;
+      if (!isMath(element) || element.localName === "t") for (const child of element.childNodes) visit(child);
+    }
+  };
+  for (const child of run.childNodes) visit(child);
+  return parts.join("");
+}
+
 function convRun(run: Element): string {
-  const text = mathChildren(run, "t")
-    .map((t) => t.textContent ?? "")
-    .join("");
+  const text = runText(run);
   if (text === "") return "";
   const properties = firstChild(run, "rPr");
   const normal = properties ? flagValue(run, "rPr", "nor") : false;
@@ -428,6 +454,8 @@ function wrapXml(omml: string): string {
  * @throws UnsupportedOmmlError phần tử ngoài tập con; MalformedOmmlError khi XML hỏng.
  */
 export function ommlToLatex(omml: string): OmmlResult {
+  // Clipboard là dữ liệu không tin cậy: OMML thật của Word không có khai báo DTD/thực thể (tránh nổ thực thể khi đọc XML).
+  if (/<!(?:DOCTYPE|ENTITY)/i.test(omml)) throw new MalformedOmmlError("OMML must not declare a DTD or entities");
   const xml = new DOMParser().parseFromString(wrapXml(omml), "application/xml");
   if (xml.getElementsByTagName("parsererror").length > 0) throw new MalformedOmmlError("OMML is not well-formed XML");
   const root = xml.documentElement;

@@ -29,5 +29,5 @@ export function FormulaChip({ latex, className }: FormulaChipProps) {
       target.textContent = latex;
     }
   }, [latex]);
-  return <span ref={ref} data-latex={latex} className={cn("inline-block max-w-full overflow-x-auto align-middle", className)} />;
+  return <span ref={ref} data-latex={latex} className={cn("inline-block max-w-full align-middle", className)} />;
 }

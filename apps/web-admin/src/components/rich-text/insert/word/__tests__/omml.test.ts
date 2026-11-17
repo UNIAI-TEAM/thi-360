@@ -148,5 +148,7 @@ describe("ommlToLatex: outside the subset", () => {
     expect(() => ommlToLatex(math(`<m:acc><m:accPr><m:chr m:val="☃"/></m:accPr><m:e>${run("x")}</m:e></m:acc>`))).toThrow(UnsupportedOmmlError);
     expect(() => ommlToLatex(math(`<m:nary><m:naryPr><m:chr m:val="☃"/></m:naryPr><m:e>${run("x")}</m:e></m:nary>`))).toThrow(UnsupportedOmmlError);
     expect(() => ommlToLatex("<m:oMath><m:f><m:num>")).toThrow(MalformedOmmlError);
+    // Clipboard là dữ liệu không tin cậy: khai báo thực thể bị từ chối thay vì để trình duyệt khai triển.
+    expect(() => ommlToLatex('<!DOCTYPE m [<!ENTITY a "aaaa">]><m:oMath><m:r><m:t>&a;</m:t></m:r></m:oMath>')).toThrow(MalformedOmmlError);
   });
 });

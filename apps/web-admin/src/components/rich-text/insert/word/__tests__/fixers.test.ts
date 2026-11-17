@@ -65,8 +65,16 @@ describe("autoFix: ký hiệu độ", () => {
     ["A=30°", "A=30^{\\circ}"],
     ["25°C", "25^{\\circ}C"],
     ["\\widehat{AIB}=90º", "\\widehat{AIB}=90^{\\circ}"],
+    ["{30}^o", "{30}^{\\circ}"],
+    ["45^{o}+x", "45^{\\circ}+x"],
   ])("%s → %s", (raw, fixed) => {
     expect(autoFix(raw)).toEqual({ latex: fixed, kinds: ["degree"] });
+  });
+});
+
+describe("autoFix: số mũ o không phải độ", () => {
+  it("leaves a power of a variable alone", () => {
+    for (const latex of ["x^o", "a^0", "2x^o", "10^{ob}"]) expect(autoFix(latex).kinds).toEqual([]);
   });
 });
 

@@ -1,7 +1,8 @@
 # Mẫu clipboard Word (UNI-2645, ED-5)
 
-**Các tệp `synthetic-*.html` là mẫu tổng hợp, không phải clipboard thật.** Chưa có mẫu Word 365 chụp từ máy người dùng
-(đã hỏi Advisor). Chúng được dựng theo cấu trúc clipboard HTML của Word 365 trên Windows (Generator `Microsoft Word 15`):
+**`word365-sample.html` là clipboard THẬT** (Word 365 / Generator `Microsoft Word 15`, Windows, chụp 2026-11-17; `word365-sample.txt` là chữ thuần Word đưa kèm). 13 công thức OMML gồm phân số, căn, mũ/chỉ số, ngoặc, tổng, tích phân, giới hạn, ma trận, hệ, dấu trên và bốn lỗi tự sửa. Khác biệt so với OMML chuẩn mà bộ đọc phải chịu: trong chú thích `msEquation` Word chen thẻ HTML (`<i>`, `<span>`) giữa các phần tử `m:` và ghi chữ thẳng trong `m:r` (không có `m:t`). Mẫu thật không có ảnh công thức; các trường hợp ảnh MathType, OMML ngoài tập con, ảnh thường vẫn dùng mẫu tổng hợp.
+
+**Các tệp `synthetic-*.html` là mẫu tổng hợp, không phải clipboard thật.** Chúng được dựng theo cấu trúc clipboard HTML của Word 365 trên Windows (Generator `Microsoft Word 15`):
 
 - vỏ `<html xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml">`,
   `<meta name=Generator content="Microsoft Word 15">`, `<!--StartFragment-->` … `<!--EndFragment-->`;
@@ -13,6 +14,7 @@
 
 | Tệp | Nội dung |
 |---|---|
+| `word365-sample.html` | Clipboard thật (xem trên): đề có 13 công thức, phương án A–D, "Lời giải" |
 | `synthetic-word365-choice.html` | Câu Trắc nghiệm 1 đáp án theo bản vẽ `SoanThaoDanTuWord`: đề bài có 2 công thức, phương án A–D (A và D là hệ "hoặc" bị đổi thành phân số, B và C đúng), "Lời giải" có 1 công thức đúng, 1 công thức tên hàm bị tách chữ (`s`,`i`,`n`) và 3 ảnh công thức MathType |
 | `synthetic-word365-extras.html` | Ký hiệu độ (`30°`), công thức hóa học bọc ngoặc `(H₂SO₄)`, OMML ngoài tập con (`m:sPre`), hệ phương trình `m:eqArr`, chữ đậm/nghiêng/chỉ số/gạch chân, danh sách chấm, bảng, ảnh thường |
 
