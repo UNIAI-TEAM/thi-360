@@ -34,7 +34,7 @@ class ExamBlockRefIT extends AbstractIntegrationTest {
         var parts = before.path("parts");
         ObjectNode section = (ObjectNode) parts.get(0).path("sections").get(0);
         String blockId = section.path("blocks").get(0).path("id").asText();
-        section.set("knowledgeScope", mapper.readTree("{\"nodeIds\":[\"" + NODE + "\"],\"match\":\"ANY\"}"));
+        section.set("knowledgeScope", mapper.readTree("{\"nodeIds\":[\"" + NODE + "\"]}"));
         ObjectNode request = mapper.createObjectNode();
         request.set("parts", parts);
         request.put("expectedRevision", before.path("revision").asLong());
@@ -59,7 +59,7 @@ class ExamBlockRefIT extends AbstractIntegrationTest {
         var parts = before.path("parts");
         ObjectNode section = (ObjectNode) parts.get(0).path("sections").get(0);
         String blockId = section.path("blocks").get(0).path("id").asText();
-        section.set("knowledgeScope", mapper.readTree("{\"nodeIds\":[\"" + first + "\"],\"match\":\"ANY\"}"));
+        section.set("knowledgeScope", mapper.readTree("{\"nodeIds\":[\"" + first + "\"]}"));
         ObjectNode request = mapper.createObjectNode();
         request.set("parts", parts);
         request.put("expectedRevision", before.path("revision").asLong());
@@ -73,7 +73,7 @@ class ExamBlockRefIT extends AbstractIntegrationTest {
         assertThat(firstScope.matches(Set.of(UUID.fromString(firstLeaf)))).isTrue();
         assertThat(firstScope.matches(Set.of(UUID.fromString(secondLesson)))).isFalse();
         section.set("knowledgeScope", mapper.readTree("{\"nodeIds\":[\"" + second + "\",\"" + firstLeaf
-                + "\"],\"match\":\"ALL\"}"));
+                + "\"]}"));
         request.put("expectedRevision", saved.path("revision").asLong());
         mockMvc.perform(put(URL).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
@@ -85,8 +85,8 @@ class ExamBlockRefIT extends AbstractIntegrationTest {
         var secondScope = knowledgeScopes.findDraftScopes(UUID.fromString(ID)).stream()
                 .filter(scope -> scope.blockId().equals(blockId)).findFirst().orElseThrow();
         assertThat(secondScope.matches(Set.of(UUID.fromString(secondLesson), UUID.fromString(firstLeaf)))).isTrue();
-        assertThat(secondScope.matches(Set.of(UUID.fromString(secondLesson)))).isFalse();
-        assertThat(secondScope.matches(Set.of(UUID.fromString(firstLeaf)))).isFalse();
+        assertThat(secondScope.matches(Set.of(UUID.fromString(secondLesson)))).isTrue();
+        assertThat(secondScope.matches(Set.of(UUID.fromString(firstLeaf)))).isTrue();
     }
 
     @Test
@@ -102,7 +102,7 @@ class ExamBlockRefIT extends AbstractIntegrationTest {
         ObjectNode section = (ObjectNode) parts.get(0).path("sections").get(0);
         String blockId = section.path("blocks").get(0).path("id").asText();
         section.set("knowledgeScope", mapper.readTree(
-                "{\"nodeIds\":[\"" + rootA + "\",\"" + rootB + "\"],\"match\":\"ANY\"}"));
+                "{\"nodeIds\":[\"" + rootA + "\",\"" + rootB + "\"]}"));
         ObjectNode request = mapper.createObjectNode();
         request.set("parts", parts);
         request.put("expectedRevision", before.path("revision").asLong());
