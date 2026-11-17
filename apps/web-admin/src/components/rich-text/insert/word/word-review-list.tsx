@@ -5,6 +5,7 @@ import { ArrowRight, Check, Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { FormulaChip } from "./formula-chip";
+import { NumberBadge, type NumberBadgeTone } from "./number-badge";
 import { fieldOf, type ReviewFormula, type ReviewItem, type ReviewRetype, type WordReview } from "./session";
 import type { SplitFields } from "./types";
 
@@ -30,6 +31,17 @@ export function isReviewable(item: ReviewItem): boolean {
 /** Mục chưa xử lý: chỗ tự sửa chờ xác nhận, chỗ cần gõ lại chưa gõ/bỏ. */
 export function isOpen(item: ReviewItem): boolean {
   return item.kind === "retype" ? item.resolution === null : item.status === "pending";
+}
+
+/** Số thứ tự cố định của mỗi chỗ cần xem lại (theo thứ tự trong nội dung), không đổi khi lọc "Chỉ hiện mục chưa xử lý". */
+export function reviewNumbers(review: WordReview): ReadonlyMap<string, number> {
+  return new Map(review.items.filter(isReviewable).map((item, index) => [item.id, index + 1]));
+}
+
+/** Màu số: cam cho chỗ tự sửa chờ xác nhận, đỏ cho chỗ cần gõ lại chưa xử lý, trung tính khi đã xử lý. */
+export function badgeTone(item: ReviewItem): NumberBadgeTone {
+  if (!isOpen(item)) return "neutral";
+  return item.kind === "retype" ? "danger" : "warning";
 }
 
 function statusOf(item: ReviewItem): { tone: StatusTone; key: string } {
@@ -58,18 +70,17 @@ export function WordReviewList({ review, fields, splitActive, onlyPending, onAcc
     if (ref.field === "option") return t("fields.option", { label: ref.label });
     return ref.field === "solution" ? t("fields.solution") : t("fields.stem");
   };
+  const numbers = reviewNumbers(review);
 
   return (
     <ol className="m-0 flex list-none flex-col gap-3 p-0">
-      {rows.map((item, index) => {
+      {rows.map((item) => {
         const status = statusOf(item);
         return (
           <li key={item.id} className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-subtle text-caption font-semibold text-text-secondary">
-                  {index + 1}
-                </span>
+                <NumberBadge number={numbers.get(item.id) ?? 0} tone={badgeTone(item)} />
                 <strong className="text-body font-semibold text-text">{locationOf(item.id)}</strong>
               </div>
               <StatusChip tone={status.tone}>{t(`review.status.${status.key}`)}</StatusChip>

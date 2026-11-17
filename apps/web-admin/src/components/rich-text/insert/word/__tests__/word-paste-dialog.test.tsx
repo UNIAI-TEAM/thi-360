@@ -79,6 +79,21 @@ describe("WordPasteDialog: summary bar and review list (design SoanThaoDanTuWord
     expect(preview.querySelectorAll('[data-pending="true"]')).toHaveLength(3);
   });
 
+  it("links each marked spot in the preview with its review card by the same number, which survives the filter", () => {
+    renderDialog();
+    const preview = screen.getByRole("region", { name: "Pasted content" });
+    const cardNumbers = reviewRows().map((row) => row.querySelector("[data-number]")?.getAttribute("data-number"));
+    expect(cardNumbers).toEqual(["1", "2", "3", "4", "5", "6"]);
+    const previewNumbers = [...preview.querySelectorAll("[data-number]")].map((badge) => badge.getAttribute("data-number"));
+    // Mọi chỗ trong xem trước (3 chỗ tự sửa, 3 ảnh công thức) có số trùng với một thẻ.
+    expect(previewNumbers).toHaveLength(6);
+    expect(previewNumbers.every((number) => cardNumbers.includes(number))).toBe(true);
+    // Sau khi Chấp nhận chỗ số 1 thẻ số 2 vẫn mang số 2 và dấu số 1 biến khỏi xem trước.
+    fireEvent.click(within(reviewRows()[0]!).getByRole("button", { name: "Accept" }));
+    expect(reviewRows()[0]!.querySelector("[data-number]")).toHaveAttribute("data-number", "2");
+    expect([...preview.querySelectorAll("[data-number]")].map((badge) => badge.getAttribute("data-number"))).not.toContain("1");
+  });
+
   it("shows the old and the fixed formula and says what was fixed", () => {
     renderDialog();
     const row = reviewRows()[0]!;

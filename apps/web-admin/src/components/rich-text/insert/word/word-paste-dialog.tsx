@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Checkbox, ConfirmDialog, DialogFooter, LiveStatus, StatusChip, focusRing, cn } from "@thi360/ui";
+import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
@@ -22,7 +23,7 @@ import {
   type WordReview,
 } from "./session";
 import { WordBlocks } from "./word-preview";
-import { WordReviewList } from "./word-review-list";
+import { WordReviewList, reviewNumbers } from "./word-review-list";
 
 /** Kết quả "Đưa vào biểu mẫu": HTML hợp đồng của từng ô và các chỗ tự sửa còn chờ xác nhận. */
 export interface WordPasteResult {
@@ -110,6 +111,8 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
     return (id: string) => byId.get(id);
   }, [review]);
 
+  const numbers = useMemo(() => (review ? reviewNumbers(review) : new Map<string, number>()), [review]);
+
   const update = (change: (current: WordReview) => WordReview, announcement: string) => {
     setReview((current) => (current ? change(current) : current));
     setLiveMessage(announcement);
@@ -134,7 +137,10 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-2">
-            <StatusChip tone="success">{t("summary.converted", { count: summary.converted })}</StatusChip>
+            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-success-bg px-2.5 text-caption font-medium whitespace-nowrap text-success">
+              <Check size={14} strokeWidth={2.6} aria-hidden className="shrink-0" />
+              {t("summary.converted", { count: summary.converted })}
+            </span>
             <StatusChip tone="warning">{t("summary.pending", { count: summary.pending })}</StatusChip>
             <StatusChip tone="danger">{t("summary.retype", { count: summary.retype })}</StatusChip>
           </div>
@@ -155,7 +161,7 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
             {split && !fields.found && <p className="m-0 text-caption text-text-muted">{t("preview.splitNoMatch")}</p>}
             <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface p-3 lg:max-h-[48dvh] lg:overflow-y-auto">
               <PreviewSection label={splitActive ? t("fields.stem") : null}>
-                <WordBlocks blocks={fields.stem} itemOf={itemOf} />
+                <WordBlocks blocks={fields.stem} itemOf={itemOf} numbers={numbers} />
               </PreviewSection>
               {splitActive && fields.options.length > 0 && (
                 <PreviewSection label={t("fields.options")}>
@@ -164,7 +170,7 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
                       <div key={option.label} className="flex gap-2">
                         <strong className="shrink-0">{option.label}.</strong>
                         <div className="min-w-0">
-                          <WordBlocks blocks={option.blocks} itemOf={itemOf} />
+                          <WordBlocks blocks={option.blocks} itemOf={itemOf} numbers={numbers} />
                         </div>
                       </div>
                     ))}
@@ -173,7 +179,7 @@ export function WordPasteDialog({ open, onOpenChange, initialHtml, splitAvailabl
               )}
               {splitActive && fields.solution.length > 0 && (
                 <PreviewSection label={t("fields.solution")}>
-                  <WordBlocks blocks={fields.solution} itemOf={itemOf} />
+                  <WordBlocks blocks={fields.solution} itemOf={itemOf} numbers={numbers} />
                 </PreviewSection>
               )}
             </div>
