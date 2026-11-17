@@ -9,6 +9,14 @@ const scienceMatrix = {
   BCA: {LY:[[2,3,10],[3,4,7,1]], HOA:[[3,3,9],[1,7,6,1]], SINH:[[2,3,10],[4,5,4,2]], DIA:[[2,1,12],[2,10,3,0]]}
 };
 const vals = (codes, values) => values.map((value, i) => ({code:codes[i], value}));
+// Integer percentages use largest remainders so each dimension sums to 100.
+const percentOf17 = values => {
+  const result=values.map(value=>Math.floor(value*100/17));
+  const order=values.map((value,i)=>({i,remainder:value*100%17})).sort((a,b)=>b.remainder-a.remainder||a.i-b.i);
+  const remaining=100-result.reduce((a,b)=>a+b,0);
+  for(let i=0;i<remaining;i++) result[order[i].i]++;
+  return result;
+};
 // templateGroupCode: reuse the seeded HSA_* groups where a group still exists;
 // new codes follow <KIND>_<SUBJECT>_<GROUP>. HSA keeps the seeded subject
 // aliases (MATH/VN/EN) and the *_REMAINDER / *_CLUSTER science groups.
@@ -70,13 +78,16 @@ function english(kind) {
   const blocks=englishBands[kind].map(([name,n,tag,cluster])=> cluster ? set(name,1,n,{tagCodes:[tag]}) : block(name,'SINGLE_CHOICE',n,{tagCodes:Array.isArray(tag)?tag:[tag]}));
   return section('ANH',50,blocks, kind==='HSA' ? {matrix:matrix([],[],'REFERENCE','REFERENCE')} : {});
 }
-function science(kind, code) {
+function science(kind, code, varies=false) {
   const [grades, levels]=scienceMatrix[kind][code];
   const n=kind==='HSA'?17:kind==='QDA'?25:15;
   const hasShort=kind!=='BCA' && ['LY','HOA','SINH'].includes(code);
-  const blocks=[block('Trắc nghiệm độc lập','SINGLE_CHOICE',n-3-(hasShort?1:0)),set('Chùm',1,3)];
+  const blocks=[block('Trắc nghiệm độc lập','SINGLE_CHOICE',varies?null:n-3-(hasShort?1:0)),set('Chùm',1,3)];
   if (hasShort) blocks.push(block('Trả lời ngắn','SHORT_ANSWER',1));
-  return section(code,n,blocks,{matrix:matrix(grades,levels,'REQUIRED',kind==='BCA'?'REFERENCE':'REQUIRED'), ...(kind==='HSA'?{choiceGroup:['LY','HOA','SINH'].includes(code)?'NATURAL':'SOCIAL'}:{})});
+  const scienceMatrixValue=varies
+    ? matrix(percentOf17(grades),percentOf17(levels),'REQUIRED','REQUIRED','PERCENT')
+    : matrix(grades,levels,'REQUIRED',kind==='BCA'?'REFERENCE':'REQUIRED');
+  return section(code,n,blocks,{matrix:scienceMatrixValue, ...(kind==='HSA'?{choiceGroup:['LY','HOA','SINH'].includes(code)?'NATURAL':'SOCIAL'}:{})});
 }
 const answerQuotas={unit:'COUNT',items:[{answerType:'SINGLE_CHOICE',value:35},{answerType:'SHORT_ANSWER',value:15}]};
 const hsaMath=section('TOAN',50,[block('Trắc nghiệm độc lập','SINGLE_CHOICE',32),block('Trả lời ngắn','SHORT_ANSWER',15),set('Chùm cuối',1,3)],{answerQuotas,matrix:matrix([3,20,27],[2,21,20,7])});
@@ -87,7 +98,7 @@ const bcaMath=section('TOAN',35,[block('Trắc nghiệm độc lập','SINGLE_CH
 const bcaHistory=section('SU',10,[block('Trắc nghiệm độc lập','SINGLE_CHOICE',7),set('Tư liệu lịch sử',1,3,{tagCodes:['SU_TU_LIEU_LICH_SU']})],{matrix:matrix([1,2,7],[1,6,3,0],'REQUIRED','REFERENCE')});
 const bcaEnglish=section('ANH',20,[block('Phát âm','SINGLE_CHOICE',1,{tagCodes:['ANH_PHAT_AM'],requiredPointsPerQuestion:.75}),block('Trọng âm','SINGLE_CHOICE',1,{tagCodes:['ANH_TRONG_AM'],requiredPointsPerQuestion:.75}),block('Từ vựng và ngữ pháp','SINGLE_CHOICE',8,{tagCodes:['ANH_TU_VUNG_NGU_PHAP'],requiredPointsPerQuestion:.75}),set('Đọc điền',1,5,{tagCodes:['ANH_DOC_DIEN'],requiredPointsPerQuestion:.75}),set('Đọc hiểu',1,5,{tagCodes:['ANH_DOC_HIEU'],requiredPointsPerQuestion:.75})],{matrix:matrix([],[3,9,8,0],'REQUIRED','REFERENCE')});
 const bcaEssay=section('VAN',1,[block('Nghị luận xã hội từ 500 chữ','ESSAY',1,{requiredPointsPerQuestion:25,tagCodes:['VAN_NGHI_LUAN_XA_HOI']})]);
-const scienceOption={kind:'SUBJECT_CHOICE',code:'SCIENCE',name:'Khoa học',chooseSubjects:3,countsByPick:[17,17,16],sections:scientific.map(s=>science('HSA',s))};
+const scienceOption={kind:'SUBJECT_CHOICE',code:'SCIENCE',name:'Khoa học',chooseSubjects:3,countsByPick:[17,17,16],sections:scientific.map(s=>science('HSA',s,true))};
 const hsaChoice=part('Khoa học hoặc Tiếng Anh',50,60,[],{participation:{mode:'CHOICE',choose:1},options:[scienceOption,{kind:'SUBJECT',code:'ANH',name:'Tiếng Anh',sections:[english('HSA')]}]});
 const qdaChoice=part('Khoa học hoặc Tiếng Anh',50,60,[],{codeSource:{source:'GLOBAL_LIST',branch:null},subjectPool:[...scientific.map(s=>science('QDA',s)),english('QDA')]});
 const bcaChoice=part('Trắc nghiệm tự chọn',15,null,[],{codeSource:{source:'GLOBAL_LIST',branch:null},subjectPool:['LY','HOA','SINH','DIA'].map(s=>science('BCA',s))});
@@ -101,14 +112,15 @@ function add(code,kind,scope,partCode,subjectCode,parts,questions,points,duratio
 }
 const mathPart=(kind)=>part('Toán học và xử lí số liệu',50,kind==='HSA'?75:80,[kind==='HSA'?hsaMath:qdaMath]);
 const litPart=(kind)=>part('Ngôn ngữ – Văn học',50,kind==='HSA'?60:55,[literature(kind)]);
+const hsaScienceNote='Ma trận khoa học R-36 quy từ số câu trên 17 sang phần trăm nguyên; làm tròn và số câu thực tế 16 có thể khác số gốc. Chờ chuyên gia xác nhận.';
 for (const kind of ['HSA','QDA']) {
   const choice=kind==='HSA'?hsaChoice:qdaChoice;
-  add(`${kind}_FULL`,kind,'FULL',null,null,[mathPart(kind),litPart(kind),choice],150,150,195,{existing:true,note:kind==='HSA'?'Chờ chuyên gia xác nhận':null,quotas:kind==='HSA'?[gradeQuota]:[]});
+  add(`${kind}_FULL`,kind,'FULL',null,null,[mathPart(kind),litPart(kind),choice],150,150,195,{existing:true,note:kind==='HSA'?hsaScienceNote:null,quotas:kind==='HSA'?[gradeQuota]:[]});
   if(kind==='HSA') add('HSA_PART_MATH',kind,'PART','TOAN',null,[mathPart(kind)],50,50,75,{existing:true});
   add(`${kind}_PART_LITERATURE`,kind,'PART','VAN',null,[litPart(kind)],50,50,kind==='HSA'?60:55,{existing:kind==='HSA'});
   const sci=kind==='HSA' ? part('Khoa học',50,60,[],{participation:{mode:'CHOICE',choose:1},options:[scienceOption]}) : part('Khoa học',50,60,[],{codeSource:{source:'GLOBAL_LIST',branch:'SCIENCE'},subjectPool:scientific.map(s=>science(kind,s))});
   const eng=kind==='HSA' ? part('Tiếng Anh',50,60,[english(kind)]) : part('Tiếng Anh',50,60,[],{codeSource:{source:'GLOBAL_LIST',branch:'ENGLISH'},subjectPool:[english(kind)]});
-  add(`${kind}_PART_SCIENCE`,kind,'PART','SCIENCE',null,[sci],50,50,60,{existing:kind==='HSA'});
+  add(`${kind}_PART_SCIENCE`,kind,'PART','SCIENCE',null,[sci],50,50,60,{existing:kind==='HSA',note:kind==='HSA'?hsaScienceNote:null});
   add(`${kind}_PART_ENGLISH`,kind,'PART','ANH',null,[eng],50,50,60,{note:kind==='HSA'?'Chờ chuyên gia xác nhận':null,quotas:kind==='HSA'?[gradeQuota]:[]});
   for(const s of ['TOAN','VAN','ANH',...scientific]) {
     const sec=s==='TOAN'?(kind==='HSA'?hsaMath:qdaMath):s==='VAN'?literature(kind):s==='ANH'?english(kind):science(kind,s);
