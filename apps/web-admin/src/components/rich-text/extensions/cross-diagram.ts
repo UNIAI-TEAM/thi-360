@@ -1,5 +1,5 @@
 import { Node } from "@tiptap/core";
-import { innerHtmlAttribute, renderAtomDom } from "./atom-block";
+import { fillAtomView, innerHtmlAttribute, renderAtomDom } from "./atom-block";
 import { TOP_LEVEL_GROUP } from "./names";
 import { CROSS_DIAGRAM_NODE } from "./names";
 
@@ -29,7 +29,7 @@ export const CrossDiagram = Node.create<Record<string, never>>({
     return ({ node }) => {
       const dom = document.createElement("figure");
       dom.className = "cross rich-text-atom";
-      dom.innerHTML = String(node.attrs.html ?? "");
+      fillAtomView(dom, String(node.attrs.html ?? ""));
       return { dom };
     };
   },

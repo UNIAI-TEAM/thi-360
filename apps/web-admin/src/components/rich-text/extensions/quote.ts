@@ -1,5 +1,5 @@
 import { Node } from "@tiptap/core";
-import { innerHtmlAttribute, renderAtomDom } from "./atom-block";
+import { fillAtomView, innerHtmlAttribute, renderAtomDom } from "./atom-block";
 import { TOP_LEVEL_GROUP } from "./names";
 import { QUOTE_NODE } from "./names";
 
@@ -50,7 +50,7 @@ export const Quote = Node.create<Record<string, never>>({
       dom.className = "quote rich-text-atom";
       if (node.attrs.kind) dom.setAttribute("data-kind", String(node.attrs.kind));
       if (node.attrs.lineNumbers) dom.setAttribute("data-line-numbers", String(node.attrs.lineNumbers));
-      dom.innerHTML = String(node.attrs.html ?? "");
+      fillAtomView(dom, String(node.attrs.html ?? ""));
       return { dom };
     };
   },

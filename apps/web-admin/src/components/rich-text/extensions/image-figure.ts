@@ -1,5 +1,5 @@
 import { Node } from "@tiptap/core";
-import { innerHtmlAttribute, renderAtomDom } from "./atom-block";
+import { fillAtomView, innerHtmlAttribute, renderAtomDom } from "./atom-block";
 import { TOP_LEVEL_GROUP } from "./names";
 import { IMAGE_FIGURE_NODE } from "./names";
 
@@ -49,7 +49,7 @@ export const ImageFigure = Node.create<Record<string, never>>({
       dom.className = "image rich-text-atom";
       if (node.attrs.width) dom.setAttribute("data-width", String(node.attrs.width));
       if (node.attrs.zoom) dom.setAttribute("data-zoom", String(node.attrs.zoom));
-      dom.innerHTML = String(node.attrs.html ?? "");
+      fillAtomView(dom, String(node.attrs.html ?? ""));
       return { dom };
     };
   },
