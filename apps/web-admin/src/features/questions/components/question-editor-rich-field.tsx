@@ -12,7 +12,7 @@ import { useRichEditorRegistry } from "./question-editor-shared";
 const EDITABLE = '[contenteditable="true"]';
 
 /** TipTap dựng vùng soạn sau lần render đầu: chưa có thì chờ nó xuất hiện (tối đa 1 giây) rồi mới focus. */
-function focusEditable(root: HTMLElement) {
+export function focusEditable(root: HTMLElement) {
   const ready = root.querySelector<HTMLElement>(EDITABLE);
   if (ready) {
     ready.focus();

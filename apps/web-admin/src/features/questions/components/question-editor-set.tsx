@@ -10,7 +10,7 @@ import type { ContentReference } from "@/features/content/types";
 import { emptyChild, isBlankNumberStart, questionSetPoints, type EditorChild, type QuestionEditorValues } from "../editor-form";
 import { useUiLocale } from "../use-ui-locale";
 import { CHILD_QUESTION_TYPES, type ChildQuestionType } from "../editor-types";
-import { RichTextField } from "./question-editor-rich-field";
+import { focusEditable, RichTextField } from "./question-editor-rich-field";
 import { QuestionBodyEditor } from "./question-editor-body";
 import { ChildClassification } from "./question-editor-child-classification";
 import { FieldErrorText, GroupError, optionLetter, RowActions, statementLetter, useAnnounce, useEditorError } from "./question-editor-shared";
@@ -50,7 +50,11 @@ export function QuestionSetEditor({ reference }: { reference: ContentReference }
   const openChild = (index: number) => {
     const key = fields[index]?.key;
     if (key) setExpanded((current) => new Set(current).add(key));
-    window.setTimeout(() => document.getElementById(`${groupId}-child-${index}`)?.scrollIntoView?.({ block: "nearest" }), 0);
+    const card = document.getElementById(`${groupId}-child-${index}`);
+    if (!card) return;
+    card.scrollIntoView?.({ block: "nearest" });
+    // Nút bảng không còn là nơi người dùng cần đứng: đưa focus tới ô đầu tiên của câu con (chờ ô dựng xong khi vừa mở).
+    focusEditable(card);
   };
 
   const toggle = (key: string) =>

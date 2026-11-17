@@ -134,6 +134,18 @@ describe("câu chùm: Đánh số từ và bảng Chỗ trống và câu con", (
     await waitFor(() => expect(passageHtml()).toBe(`<p>w1 w2 ${blank(1)} w3 ${blank(2)} end</p>`));
   });
 
+  it("nút sửa câu con trong bảng mở câu con và chuyển focus vào ô đầu tiên của nó", async () => {
+    const user = userEvent.setup();
+    const id = await seedSet("1");
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    await screen.findByRole("table", { name: "Blanks and sub-questions" });
+
+    await user.click(within(table()).getByRole("button", { name: "Edit sub-question 2" }));
+    const card = screen.getByRole("heading", { name: "Question 2" }).closest("li");
+    await waitFor(() => expect(card).toContainElement(document.activeElement as HTMLElement));
+    expect(document.activeElement).toHaveAttribute("contenteditable", "true");
+  });
+
   it("thêm câu con không tự thêm chỗ trống; xóa chỗ trống không đổi câu con", async () => {
     const user = userEvent.setup();
     const id = await seedSet("1");
