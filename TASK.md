@@ -142,6 +142,7 @@ Sub-issue theo plan A5 (17 task, 100 điểm):
 
 - BE-3 UNI-2652, PR #81 (`fef09eb7`), 2026-11-18.
 - BE-1 UNI-2650, PR #82 (`829c51fa`), 2026-11-18.
+- BE-2 UNI-2651, PR #83 (`ce3a53e9`), 2026-11-18.
 
 ### Thứ tự làm
 

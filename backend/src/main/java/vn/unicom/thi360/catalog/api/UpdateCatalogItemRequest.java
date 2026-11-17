@@ -1,11 +1,17 @@
 package vn.unicom.thi360.catalog.api;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Schema(description = "Yêu cầu cập nhật giá trị danh mục")
@@ -35,6 +41,10 @@ public record UpdateCatalogItemRequest(
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "{validation.version.notNull}")
         Long version,
+        @Schema(description = "Nhánh mới của mã tổ hợp (SCIENCE, ENGLISH; null để bỏ nhánh)",
+                implementation = String.class, allowableValues = {"SCIENCE", "ENGLISH"}, types = {"string", "null"})
+        @JsonDeserialize(using = BranchUpdate.Deserializer.class)
+        BranchUpdate branch,
         @Schema(description = "ID giá trị kỳ thi mới (chỉ cho nhóm COMBINATION)")
         UUID examItemId,
         @Schema(description = "Danh sách ID môn học mới theo thứ tự (chỉ cho nhóm COMBINATION)")
@@ -53,6 +63,25 @@ public record UpdateCatalogItemRequest(
             List<UUID> refItemIds,
             String reason,
             Long version) {
-        this(code, nameVi, nameEn, description, displayOrder, status, refItemIds, reason, version, null, null, null);
+        this(code, nameVi, nameEn, description, displayOrder, status, refItemIds, reason, version, null, null, null, null);
+    }
+
+    public record BranchUpdate(CombinationBranch value) {
+        public static class Deserializer extends JsonDeserializer<BranchUpdate> {
+            @Override
+            public BranchUpdate deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+                return new BranchUpdate(context.readValue(parser, CombinationBranch.class));
+            }
+
+            @Override
+            public BranchUpdate getNullValue(DeserializationContext context) {
+                return new BranchUpdate(null);
+            }
+
+            @Override
+            public BranchUpdate getAbsentValue(DeserializationContext context) {
+                return null;
+            }
+        }
     }
 }
