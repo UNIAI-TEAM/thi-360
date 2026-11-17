@@ -61,6 +61,7 @@ const RENDERED_FORM_PATHS: readonly RegExp[] = [
   /^(content|solution|commonMistakes|points|subjectCode|gradeCode|difficultyCode|knowledge|children)$/,
   /^children\.\d+\.(content|solution|points|knowledge)$/,
   /^(children\.\d+\.)?body\.(options|statements|blanks|left|rubric|sampleAnswer|gradingGuide|wordLimit)$/,
+  /^body\.blankNumberStart$/,
   /^(children\.\d+\.)?body\.options\.\d+\.content$/,
   /^(children\.\d+\.)?body\.statements\.\d+\.(content|answer|points)$/,
   /^(children\.\d+\.)?body\.scoreTable\.\d+$/,
@@ -79,7 +80,7 @@ const BODY_SECTIONS: Record<string, readonly string[]> = {
   CLOZE: ["blanks"],
   MATCHING: ["left"],
   ESSAY: ["rubric", "sampleAnswer", "gradingGuide", "wordLimit"],
-  QUESTION_SET: [],
+  QUESTION_SET: ["blankNumberStart"],
 };
 
 /**
