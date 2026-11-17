@@ -318,6 +318,18 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     await user.click((await screen.findAllByRole("button", { name: /^Thêm nhóm/ }))[0]!);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("xóa nhóm đang mở khi bản nháp bẩn: thao tác của người dùng nên không hỏi, mở phần chứa nhóm", async () => {
+    const user = userEvent.setup();
+    openStructure(QDA, "?block=blk-39");
+    await user.type(await screen.findByRole("textbox", { name: "Tên nhóm" }), " x");
+    expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Xóa nhóm Trắc nghiệm x" }));
+    const confirm = await screen.findByRole("dialog", { name: /Xóa nhóm Trắc nghiệm x\?/ });
+    await user.click(within(confirm).getByRole("button", { name: "Xóa nhóm" }));
+    await waitFor(() => expect(window.location.search).toBe("?part=part-42"));
+    expect(screen.queryByRole("dialog", { name: dialogName })).not.toBeInTheDocument();
+  });
 });
 
 describe("Khung bước 2: nút kiểm tra", () => {
@@ -370,5 +382,20 @@ describe("Khung bước 2: nút kiểm tra", () => {
     await waitFor(() => expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(1));
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1);
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
+  });
+  it("PUT lưu trước chưa xong thì các nút kiểm tra khóa: click đúp chỉ gửi một PUT", async () => {
+    const user = userEvent.setup();
+    backend.server.hold("PUT", api(QDA, "structure"));
+    openStructure(QDA, "?part=part-42");
+    await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
+    const checkAll = await screen.findByRole("button", { name: "Kiểm tra toàn bài" });
+    await user.click(checkAll);
+    // PUT đầu đã ghi nhận nhưng phản hồi còn treo; click tiếp không được phát thêm PUT (cùng expectedRevision sẽ 412).
+    await waitFor(() => expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1));
+    await user.click(checkAll);
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1);
+    backend.server.release("PUT", api(QDA, "structure"));
+    await waitFor(() => expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(1));
   });
 });

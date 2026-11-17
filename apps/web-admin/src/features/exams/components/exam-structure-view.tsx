@@ -416,11 +416,11 @@ function StructureEditor({
             <Button asChild variant="secondary">
               <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
             </Button>
-            <Button type="button" variant="secondary" loading={check.isPending} onClick={() => runCheck({ scope: "EXAM" })}>
+            <Button type="button" variant="secondary" loading={check.isPending || save.isPending} onClick={() => runCheck({ scope: "EXAM" })}>
               <ClipboardCheck />
               <span>{t("check.all")}</span>
             </Button>
-            <Button type="button" variant={dirty ? "secondary" : "primary"} loading={check.isPending} onClick={continueToReview}>
+            <Button type="button" variant={dirty ? "secondary" : "primary"} loading={check.isPending || save.isPending} onClick={continueToReview}>
               <span>{t("check.continue")}</span>
               <ArrowRight />
             </Button>
@@ -476,7 +476,7 @@ function StructureEditor({
         <div className="flex min-w-0 flex-col gap-4">
           {checkRequest && (
             <div className="flex justify-end">
-              <Button type="button" variant="secondary" size="sm" loading={check.isPending} onClick={() => runCheck(checkRequest)}>
+              <Button type="button" variant="secondary" size="sm" loading={check.isPending || save.isPending} onClick={() => runCheck(checkRequest)}>
                 <ClipboardCheck />
                 <span>{checkRequest.scope === "SECTION" ? t("check.section") : t("check.part")}</span>
               </Button>
@@ -532,7 +532,7 @@ function StructureEditor({
               onRemove={() => {
                 const name = blockContext.block.name;
                 setDraft((parts) => removeBlock(parts, blockContext.block.id));
-                select({ kind: "part", partId: blockContext.part.id });
+                selectNow({ kind: "part", partId: blockContext.part.id });
                 announce(t("blockRemoved", { name }));
               }}
             />
