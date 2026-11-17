@@ -10,6 +10,9 @@ import { wordFixture } from "./fixtures";
 // Mỗi hộp dựng KaTeX và một hộp công thức thật: dựng chậm trong jsdom.
 vi.setConfig({ testTimeout: 20_000 });
 
+// Hộp công thức tải `mathlive` khi mở; jsdom không chạy được thư viện thật nên dùng bản giả (plan B4).
+vi.mock("mathlive", () => import("../../../__tests__/mathlive-mock").then((module) => module.mathliveModule));
+
 // Hộp công thức nạp lười: nạp trước để lần chạy nguội không vượt hạn 1 giây mặc định của `findByRole`.
 beforeAll(async () => {
   await INSERT_REGISTRY.find((entry) => entry.id === "math")!.load();
@@ -34,13 +37,13 @@ function renderDialog({ html = CHOICE, splitAvailable = true }: { html?: string 
 const reviewRows = () => [...(screen.getByRole("region", { name: "To review" }).querySelector("ol")?.children ?? [])] as HTMLElement[];
 const applyButton = () => screen.getByRole("button", { name: "Put into the form" });
 
-/** Mở hộp công thức toán của registry, gõ LaTeX rồi chèn (bản tạm của ED-0b có ô LaTeX và nút "Insert formula"). */
+/** Mở hộp công thức toán của registry, gõ LaTeX rồi chèn (hộp mathlive của ED-1: tên hộp "Math formula", ô mã "LaTeX code", nút "Insert formula"). */
 async function retypeWith(row: HTMLElement, latex: string) {
   fireEvent.click(within(row).getByRole("button", { name: "Retype formula" }));
-  const dialog = await screen.findByRole("dialog", { name: "Insert formula" }, { timeout: 10_000 });
-  fireEvent.change(within(dialog).getByLabelText("LaTeX code"), { target: { value: latex } });
+  const dialog = await screen.findByRole("dialog", { name: "Math formula" }, { timeout: 10_000 });
+  fireEvent.change(within(dialog).getByRole("textbox", { name: "LaTeX code" }), { target: { value: latex } });
   fireEvent.click(within(dialog).getByRole("button", { name: "Insert formula" }));
-  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Insert formula" })).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Math formula" })).not.toBeInTheDocument());
 }
 
 /** "Bỏ" công thức cần gõ lại đầu tiên còn hiện, qua hộp xác nhận. */
@@ -174,9 +177,9 @@ describe("WordPasteDialog: công thức cần gõ lại chặn \"Đưa vào bi�
   it("a cancelled formula box changes nothing", async () => {
     renderDialog();
     fireEvent.click(within(reviewRows()[3]!).getByRole("button", { name: "Retype formula" }));
-    const dialog = await screen.findByRole("dialog", { name: "Insert formula" }, { timeout: 10_000 });
+    const dialog = await screen.findByRole("dialog", { name: "Math formula" }, { timeout: 10_000 });
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Insert formula" })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Math formula" })).not.toBeInTheDocument());
     expect(screen.getByText("3 formulas need retyping")).toBeInTheDocument();
   });
 });
