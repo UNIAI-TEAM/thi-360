@@ -121,7 +121,8 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
     @Transactional
     void taggedSamplesAreQueryableWhenCatalogCodesExist() {
         List<String> codes = List.of("ANH_PHAT_AM", "ANH_TRONG_AM", "ANH_DONG_NGHIA", "ANH_TRAI_NGHIA",
-                "VAN_THO", "ANH_WORD_FORMATION", "DIA_CAU_KY_NANG", "TOAN_DU_LIEU_TONG_HOP");
+                "VAN_THO", "ANH_WORD_FORMATION", "DIA_CAU_KY_NANG", "TOAN_DU_LIEU_TONG_HOP",
+                "VAN_KHOA_HOC", "VAN_THONG_TIN");
         for (String code : codes) {
             jdbc.update("""
                     insert into catalog.catalog_item
@@ -155,6 +156,22 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         var poetry = new QuestionSourcePort.Filter(literature, List.of(), QuestionSourcePort.Match.ANY, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of("VAN_THO"), List.of(), null, null, List.of(), List.of());
         assertThat(source.findCandidates(poetry, 100).stream().filter(c -> c.units().size() == 5)).hasSizeGreaterThanOrEqualTo(3);
+        Set<String> sptPassages = new HashSet<>();
+        for (String tag : List.of("VAN_KHOA_HOC", "VAN_THONG_TIN")) {
+            var spt = new QuestionSourcePort.Filter(literature, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+                    QuestionType.QUESTION_SET, null, QuestionType.SINGLE_CHOICE, List.of(tag), List.of(),
+                    new BigDecimal("0.3"), null, List.of(), List.of());
+            var candidates = source.findCandidates(spt, 100);
+            assertThat(candidates).hasSizeGreaterThanOrEqualTo(3);
+            for (Candidate candidate : candidates) {
+                String passage = jdbc.queryForObject("""
+                        select v.snapshot #>> '{body,passage}' from questionbank.question q
+                        join questionbank.question_version v on v.question_id=q.id and v.version_no=q.current_version_no
+                        where q.id = ?
+                        """, String.class, candidate.questionId());
+                assertThat(sptPassages.add(passage)).as(candidate.code()).isTrue();
+            }
+        }
         UUID geography = jdbc.queryForObject("""
                 select id from catalog.catalog_item
                 where group_id = '00000000-0000-7000-8100-000000000002' and code = 'DIA'

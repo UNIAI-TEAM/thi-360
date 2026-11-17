@@ -317,7 +317,7 @@ WITH sets AS (
                           '<p>A village library opens each evening so families can read together.</p>',
                           '<p>A river path changes as people plant trees along its banks.</p>',
                           '<p>A student records the stories of craftspeople in the local market.</p>'])[s.n]
-               ELSE '<p>Reading context ' || s.n || '</p>' END, 'children',
+               ELSE '<p>Reading context ' || s.purpose || ' ' || s.points || ' ' || s.n || '</p>' END, 'children',
                jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
                    'content', '<p>Reading child</p>', 'body', c.body, 'points', s.points,
                    'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
