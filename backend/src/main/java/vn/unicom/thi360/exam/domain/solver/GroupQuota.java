@@ -54,7 +54,17 @@ public record GroupQuota(
         List<CompetencyQuota> competencies,
         List<MapidGroupQuota> mapidGroups,
         BigDecimal requiredPointsPerUnit,
-        String expectedScoringRule) {
+        String expectedScoringRule,
+        SlotParentQuota slotParent) {
+
+    /** A group without shared slot-parent quotas. */
+    public GroupQuota(String groupId, GroupKind kind, Integer questionCount, String answerType,
+            Integer setCount, Integer setSize, String childAnswerType, MatrixQuota matrix,
+            List<CompetencyQuota> competencies, List<MapidGroupQuota> mapidGroups,
+            BigDecimal requiredPointsPerUnit, String expectedScoringRule) {
+        this(groupId, kind, questionCount, answerType, setCount, setSize, childAnswerType, matrix,
+                competencies, mapidGroups, requiredPointsPerUnit, expectedScoringRule, null);
+    }
 
     /** Loại nhóm lấy câu (spec 5.2): nhóm câu đơn hay nhóm câu chùm. */
     public enum GroupKind {
