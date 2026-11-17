@@ -33,6 +33,19 @@ class QuestionImportTemplateIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void templateSheetNameFollowsRequestLocale() throws Exception {
+        for (var expected : java.util.Map.of("en", "Questions", "vi", "Câu hỏi").entrySet()) {
+            byte[] bytes = mockMvc.perform(get("/api/v1/admin/question-imports/template")
+                            .header("Accept-Language", expected.getKey())
+                            .with(asUser(Permissions.QUESTION_MODIFY)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+            try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+                assertThat(workbook.getSheetAt(0).getSheetName()).isEqualTo(expected.getValue());
+            }
+        }
+    }
+
+    @Test
     void examplesPerTypeValidateAndIncludeBcaPoint() throws Exception {
         byte[] bytes = mockMvc.perform(get("/api/v1/admin/question-imports/template")
                         .with(asUser(Permissions.QUESTION_MODIFY))).andExpect(status().isOk())

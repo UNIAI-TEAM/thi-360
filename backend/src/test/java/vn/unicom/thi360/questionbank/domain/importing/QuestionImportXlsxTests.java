@@ -16,7 +16,7 @@ class QuestionImportXlsxTests {
 
     @Test
     void macroEntryRejected() throws Exception {
-        byte[] file = rewrite(QuestionImportTemplate.create(), false, true);
+        byte[] file = rewrite(QuestionImportTemplate.create("Questions"), false, true);
         assertEquals(ImportIssueCode.IMPORT_MACRO_NOT_ALLOWED,
             assertThrows(ImportFileException.class, () -> reader.read("a.xlsx", file, ImportLimits.DEFAULT)).code());
         assertEquals(ImportIssueCode.IMPORT_MACRO_NOT_ALLOWED,
@@ -25,14 +25,14 @@ class QuestionImportXlsxTests {
 
     @Test
     void zipBombRejected() throws Exception {
-        byte[] file = rewrite(QuestionImportTemplate.create(), true, false);
+        byte[] file = rewrite(QuestionImportTemplate.create("Questions"), true, false);
         assertEquals(ImportIssueCode.IMPORT_INVALID_FILE,
             assertThrows(ImportFileException.class, () -> reader.read("a.xlsx", file, ImportLimits.DEFAULT)).code());
     }
 
     @Test
     void workbookRespectsLimits() {
-        byte[] file = QuestionImportTemplate.create();
+        byte[] file = QuestionImportTemplate.create("Questions");
         assertEquals(ImportIssueCode.IMPORT_FILE_TOO_LARGE,
             assertThrows(ImportFileException.class, () -> reader.read("a.xlsx", file, new ImportLimits(5, 2000))).code());
         assertEquals(ImportIssueCode.IMPORT_ROW_LIMIT_EXCEEDED,
