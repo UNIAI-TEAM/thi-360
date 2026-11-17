@@ -95,9 +95,26 @@ class SolverInputBuilderTest {
         var catalog = mock(CatalogLookup.class);
         var source = mock(QuestionSourcePort.class);
         UUID kind = UUID.randomUUID();
-        List<ExamSection> pool = java.util.stream.IntStream.range(0, 6)
-                .mapToObj(i -> new ExamSection("s" + i, "S" + i, 0, null, null, null, null, List.of()))
-                .toList();
+        List<ExamSection> pool = new java.util.ArrayList<>();
+        var candidates = new java.util.HashMap<UUID, QuestionSourcePort.Candidate>();
+        for (int i = 0; i < 6; i++) {
+            UUID subjectId = UUID.randomUUID();
+            UUID questionId = UUID.randomUUID();
+            var subject = mock(CatalogItemView.class);
+            when(subject.id()).thenReturn(subjectId);
+            when(catalog.findActiveItem("SUBJECT", "S" + i)).thenReturn(Optional.of(subject));
+            var unit = new QuestionSourcePort.Unit(questionId, null, QuestionType.SINGLE_CHOICE,
+                    null, null, List.of(), List.of(), BigDecimal.ONE);
+            candidates.put(subjectId, new QuestionSourcePort.Candidate(questionId, 1, null, List.of(unit), null, null));
+            var block = new QuestionBlock("b" + i, "B", QuestionType.SINGLE_CHOICE, 1, null, null,
+                    null, null, null, null, false, null, List.of(), null,
+                    true, false, List.of(), List.of(), null, List.of(), false, List.of(), null);
+            pool.add(new ExamSection("s" + i, "S" + i, 1, null, null, null, null, List.of(block)));
+        }
+        when(source.findCandidates(any(), eq(20001))).thenAnswer(call -> {
+            QuestionSourcePort.Filter filter = call.getArgument(0);
+            return List.of(candidates.get(filter.subjectId()));
+        });
         int[][] members = {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {5}};
         var combinations = new java.util.ArrayList<vn.unicom.thi360.catalog.spi.CatalogCombinationView>();
         for (int i = 0; i < members.length; i++) {
@@ -117,6 +134,7 @@ class SolverInputBuilderTest {
         assertThat(second.optionId()).isEqualTo("p3:QD02");
         assertThat(second.sections()).extracting(SectionOnPath::subjectCode).containsExactly("S1", "S2");
         var outcome = new PaperSolver().solveAll(input.parts(), input.candidates(), SolveMode.check());
+        assertThat(outcome.status()).isEqualTo(SolveStatus.VALID);
         assertThat(outcome.results()).hasSize(5);
         assertThat(outcome.stats().subproblemsSolved()).isEqualTo(6);
     }
