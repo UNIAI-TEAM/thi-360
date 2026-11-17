@@ -177,6 +177,22 @@ describe("symbols dialog: search", () => {
     expect(screen.queryByRole("button", { name: names.greekAlpha })).toBeNull();
   });
 
+  it("finds symbols by an accented Vietnamese query while the UI is English", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor());
+    const box = screen.getByRole("searchbox", { name: t.searchLabel });
+
+    await user.type(box, "góc");
+    expect(screen.getByRole("button", { name: names.angle })).toBeTruthy();
+    expect(screen.getByRole("button", { name: names.perpendicular })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: names.greekAlpha })).toBeNull();
+
+    await user.clear(box);
+    await user.type(box, "Đơn vị mét trên giây");
+    expect(screen.getByRole("button", { name: names.unitMetrePerSecond })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: names.unitOhm })).toBeNull();
+  });
+
   it("matches English names and the character itself, and says so when nothing matches", async () => {
     const user = userEvent.setup();
     renderDialog(createEditor());
