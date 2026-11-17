@@ -157,4 +157,12 @@ describe("RichTextEditor toolbar", () => {
     // Trả true → trình soạn bỏ qua dán mặc định, không có nội dung nào vào.
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("lets every button group wrap so a narrow viewport does not widen the page", () => {
+    renderEditor();
+    const groups = [...document.querySelectorAll<HTMLElement>('[role="toolbar"] [role="group"]')];
+    expect(groups.length).toBeGreaterThanOrEqual(3);
+    for (const group of groups) expect(group.classList.contains("flex-wrap")).toBe(true);
+    expect(document.querySelector('[role="toolbar"]')!.classList.contains("flex-wrap")).toBe(true);
+  });
 });

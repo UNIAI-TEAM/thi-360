@@ -424,7 +424,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "rich-text-editor rounded-md border bg-surface transition-colors duration-150 motion-reduce:transition-none",
+        "rich-text-editor min-w-0 max-w-full rounded-md border bg-surface transition-colors duration-150 motion-reduce:transition-none",
         "focus-within:border-primary-text focus-within:ring-3 focus-within:ring-primary-text/15",
         invalid && "border-danger focus-within:ring-danger/15",
         !invalid && "border-border hover:border-border-strong",

@@ -224,7 +224,7 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       onKeyDown={onKeyDown}
     >
       {groups.map((group, groupIndex) => (
-        <div key={groupIndex} role="group" aria-label={group.label ?? t("toolbar.groupHistory")} className="flex items-center gap-0.5">
+        <div key={groupIndex} role="group" aria-label={group.label ?? t("toolbar.groupHistory")} className="flex min-w-0 max-w-full flex-wrap items-center gap-0.5">
           {group.label && <span className="mx-1 text-caption font-medium text-text-muted">{group.label}</span>}
           {items.slice(group.start, group.end).map((item) => {
             if (item === "separator") return <Separator key={`sep-${groupIndex}`} />;
