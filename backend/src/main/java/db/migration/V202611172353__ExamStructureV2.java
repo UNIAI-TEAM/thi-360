@@ -279,6 +279,11 @@ public class V202611172353__ExamStructureV2 extends BaseJavaMigration {
             ObjectNode block = (ObjectNode) node;
             if (isRemainder(block)) {
                 remainder.add(block);
+            } else if (("QUESTION_SET".equals(block.path("questionType").asText())
+                    || "CLOZE".equals(block.path("questionType").asText()))
+                    && block.hasNonNull("setCount") && block.hasNonNull("setSize")) {
+                assigned += Math.max(0, block.path("setCount").asInt())
+                        * Math.max(0, block.path("setSize").asInt());
             } else if (block.hasNonNull("questionCount")) {
                 assigned += Math.max(0, block.path("questionCount").asInt());
             }

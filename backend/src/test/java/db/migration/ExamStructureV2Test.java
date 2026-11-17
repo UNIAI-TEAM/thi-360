@@ -38,6 +38,24 @@ class ExamStructureV2Test {
     }
 
     @Test
+    void subtractsFixedSetChildrenFromSubjectChoiceRemainder() throws Exception {
+        for (String type : List.of("QUESTION_SET", "CLOZE")) {
+            JsonNode input = JSON.readTree("""
+                    [{"options":[{"kind":"SUBJECT_CHOICE","sections":[{"blocks":[
+                      {"questionType":"%s","setCount":2,"setSize":3,"questionCount":null},
+                      {"questionType":"SINGLE_CHOICE","templateGroupCode":"SCIENCE_REMAINDER"}
+                    ]}]}]}]
+                    """.formatted(type));
+            JsonNode result = V202611172353__ExamStructureV2.convert(input, "HSA");
+            JsonNode blocks = result.get(0).path("options").get(0).path("sections").get(0).path("blocks");
+            int fixedCount = blocks.get(0).path("setCount").asInt() * blocks.get(0).path("setSize").asInt();
+            assertEquals(11, blocks.get(1).path("questionCount").asInt(), type);
+            assertEquals(17, fixedCount + blocks.get(1).path("questionCount").asInt(), type);
+            assertEquals(result, V202611172353__ExamStructureV2.convert(result, "HSA"), type);
+        }
+    }
+
+    @Test
     void convertsRealDevDataStructuresToExpectedV2() throws Exception {
         JsonNode input = read("/migration/exam-structure-v1.json");
         JsonNode expected = read("/migration/exam-structure-v2.json");
