@@ -112,10 +112,6 @@ public class ExamAdminController {
     @Operation(summary = "Tạo bài thi nháp")
     public ExamDetailResponse create(@RequestHeader(value = "Idempotency-Key", required = false) String key,
             @Valid @RequestBody CreateExamRequest request) {
-        if (request.overview() != null || (request.buildMode() != null
-                && !"STANDARD".equals(request.buildMode()))) {
-            throw new NotImplementedException();
-        }
         return exams.createExam(key, request);
     }
 
@@ -145,7 +141,7 @@ public class ExamAdminController {
     @Operation(summary = "Cập nhật tổng quan bài thi")
     public ExamDetailResponse updateOverview(@PathVariable UUID id,
             @Valid @RequestBody ExamOverviewRequest request) {
-        throw new NotImplementedException();
+        return exams.updateOverview(id, request);
     }
 
     @PutMapping("/exams/{id}/structure")
@@ -164,9 +160,6 @@ public class ExamAdminController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public ExamDetailResponse loadTemplate(@PathVariable UUID id,
             @Valid @RequestBody LoadExamTemplateRequest request) {
-        if (request.overviewPolicy() != null) {
-            throw new NotImplementedException();
-        }
         exams.loadTemplate(id, request);
         return exams.getExamDetail(id);
     }
