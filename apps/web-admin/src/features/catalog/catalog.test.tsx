@@ -1860,6 +1860,7 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
       await userEvent.click(await screen.findByRole("button", { name: "Sửa QĐ01" }));
       const dialog = await screen.findByRole("dialog");
       await userEvent.click(within(dialog).getByRole("button", { name: "Bỏ môn Ngữ văn (VAN)" }));
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
       await userEvent.click(within(dialog).getByRole("combobox", { name: /Thêm môn/ }));
       await userEvent.click(await screen.findByRole("option", { name: "ANH — Tiếng Anh" }));
 
