@@ -49,7 +49,7 @@ public final class ExamCheckRules {
                 if (!option.blocks().isEmpty()) {
                     int count = option.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
-                            null, null, null, null, null, option.blocks());
+                            null, null, null, null, option.blocks());
                     sections.put(synthetic.id(), new SectionContext(part, option.id(), synthetic));
                 }
             }

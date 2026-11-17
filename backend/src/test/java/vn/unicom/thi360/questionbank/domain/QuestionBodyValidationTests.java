@@ -40,7 +40,7 @@ class QuestionBodyValidationTests {
             new ChoiceOption("a1", "<p>A</p>", true),
             new ChoiceOption("a2", "<p>B</p>", false),
             new ChoiceOption("a3", "<p>C</p>", false),
-            new ChoiceOption("a4", "<p>D</p>", false)), true);
+            new ChoiceOption("a4", "<p>D</p>", false)));
     }
 
     static QuestionBody multipleChoiceBody() {
@@ -48,7 +48,7 @@ class QuestionBodyValidationTests {
             new ChoiceOption("a1", "<p>A</p>", true),
             new ChoiceOption("a2", "<p>B</p>", true),
             new ChoiceOption("a3", "<p>C</p>", false)),
-            true, QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING);
+            QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING);
     }
 
     static QuestionBody shortAnswerBody() {
@@ -143,7 +143,7 @@ class QuestionBodyValidationTests {
     @Test
     void draftWithoutOptionsSaves() {
         QuestionInput draft = new QuestionInput(QuestionType.SINGLE_CHOICE,
-            new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(), true),
+            new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of()),
             BigDecimal.ONE, "<p>Câu đang soạn</p>", null, List.of(), List.of());
         assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
     }
@@ -191,7 +191,7 @@ class QuestionBodyValidationTests {
     void duplicateOptionIdsRejectedAtSave() {
         QuestionBody body = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
             new ChoiceOption("a1", "<p>A</p>", true),
-            new ChoiceOption("a1", "<p>B</p>", false)), true);
+            new ChoiceOption("a1", "<p>B</p>", false)));
         List<QuestionFieldError> errors =
             QuestionBodyValidator.validateSave(input(QuestionType.SINGLE_CHOICE, body), null);
         assertTrue(codes(errors).contains("QUESTION_DUPLICATE_ID"));
@@ -219,7 +219,7 @@ class QuestionBodyValidationTests {
         QuestionBody tooManyOptions = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE,
             java.util.stream.IntStream.range(0, 11)
                 .mapToObj(i -> new ChoiceOption("a" + i, "<p>" + i + "</p>", i == 0))
-                .toList(), true);
+                .toList());
         assertTrue(codes(QuestionBodyValidator.validateSave(
             input(QuestionType.SINGLE_CHOICE, tooManyOptions), null)).contains("QUESTION_OPTIONS_TOO_MANY"));
 
@@ -347,11 +347,11 @@ class QuestionBodyValidationTests {
     @Test
     void singleChoiceNeedsExactlyOneCorrect() {
         QuestionBody none = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
-            new ChoiceOption("a1", "<p>A</p>", false), new ChoiceOption("a2", "<p>B</p>", false)), true);
+            new ChoiceOption("a1", "<p>A</p>", false), new ChoiceOption("a2", "<p>B</p>", false)));
         assertTrue(codes(readyErrors(input(QuestionType.SINGLE_CHOICE, none))).contains("NO_CORRECT_OPTION"));
 
         QuestionBody many = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
-            new ChoiceOption("a1", "<p>A</p>", true), new ChoiceOption("a2", "<p>B</p>", true)), true);
+            new ChoiceOption("a1", "<p>A</p>", true), new ChoiceOption("a2", "<p>B</p>", true)));
         assertTrue(codes(readyErrors(input(QuestionType.SINGLE_CHOICE, many)))
             .contains("SINGLE_CHOICE_MANY_CORRECT"));
     }
@@ -360,7 +360,7 @@ class QuestionBodyValidationTests {
     void multipleChoiceNeedsTwoCorrect() {
         QuestionBody one = new QuestionBody.MultipleChoiceBody(QuestionType.MULTIPLE_CHOICE, List.of(
             new ChoiceOption("a1", "<p>A</p>", true), new ChoiceOption("a2", "<p>B</p>", false)),
-            true, QuestionBody.MultipleChoiceRule.PARTIAL);
+            QuestionBody.MultipleChoiceRule.PARTIAL);
         assertTrue(codes(readyErrors(input(QuestionType.MULTIPLE_CHOICE, one)))
             .contains("TOO_FEW_CORRECT_OPTIONS"));
     }
@@ -386,7 +386,7 @@ class QuestionBodyValidationTests {
     @Test
     void emptyOptionFailsReady() {
         QuestionBody body = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
-            new ChoiceOption("a1", "<p>A</p>", true), new ChoiceOption("a2", "<p>  </p>", false)), true);
+            new ChoiceOption("a1", "<p>A</p>", true), new ChoiceOption("a2", "<p>  </p>", false)));
         assertTrue(codes(readyErrors(input(QuestionType.SINGLE_CHOICE, body))).contains("OPTION_EMPTY"));
     }
 
@@ -548,7 +548,7 @@ class QuestionBodyValidationTests {
     void mathIsCheckedInAllHtmlFieldsAndDelimiterOrder() {
         String bad = "<p>\\( x \\[ y \\) z \\]</p>";
         QuestionBody choice = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE,
-            List.of(new ChoiceOption("a", bad, true), new ChoiceOption("b", "B", false)), false);
+            List.of(new ChoiceOption("a", bad, true), new ChoiceOption("b", "B", false)));
         QuestionInput question = new QuestionInput(QuestionType.SINGLE_CHOICE, choice, BigDecimal.ONE,
             "<p>\\(x\\) and \\[y\\]</p>", bad, List.of(bad), List.of());
         assertTrue(QuestionBodyValidator.validateSave(question, null).isEmpty());
@@ -572,7 +572,7 @@ class QuestionBodyValidationTests {
             List.of(new ChoiceOption("a1", bad, true),
                 new ChoiceOption("a2", "<p>\\(y\\)</p>", true),
                 new ChoiceOption("a3", "<p>C</p>", false)),
-            true, QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING);
+            QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING);
         QuestionInput multipleInput = input(QuestionType.MULTIPLE_CHOICE, multiple);
         assertTrue(QuestionBodyValidator.validateSave(multipleInput, null).isEmpty());
         var multipleErrors = readyErrors(multipleInput);
@@ -622,7 +622,7 @@ class QuestionBodyValidationTests {
     @Test
     void errorPathsPointAtFailingField() {
         QuestionBody body = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
-            new ChoiceOption("a1", "<p>A</p>", true), new ChoiceOption("a2", "", false)), true);
+            new ChoiceOption("a1", "<p>A</p>", true), new ChoiceOption("a2", "", false)));
         List<QuestionFieldError> errors = readyErrors(input(QuestionType.SINGLE_CHOICE, body));
         assertEquals("body.options[1].content",
             errors.stream().filter(e -> e.code().equals("OPTION_EMPTY")).findFirst().orElseThrow().path());

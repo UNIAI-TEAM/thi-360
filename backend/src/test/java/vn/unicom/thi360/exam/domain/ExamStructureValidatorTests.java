@@ -32,9 +32,9 @@ class ExamStructureValidatorTests {
     void includeDescendantsIsRejected() {
         KnowledgeScope removedField = new KnowledgeScope(List.of(UUID.randomUUID()), KnowledgeMatch.ANY, true, List.of());
         QuestionBlock block = new QuestionBlock("block", "single", QuestionType.SINGLE_CHOICE, 1,
-                null, null, removedField, null, null, null, null, false, null, null, List.of(), null);
+                null, null, removedField, null, null, null, null, false, null, List.of(), null);
         ExamSection section = new ExamSection("section", "MATH", 1, null, null, null,
-                GroupOrder.FIXED, null, List.of(block));
+                null, List.of(block));
         ExamPart part = fixedPart("part", List.of(section));
 
         assertThatThrownBy(() -> ExamStructureValidator.validate(new ExamStructureDocument(List.of(part))))
@@ -77,8 +77,8 @@ class ExamStructureValidatorTests {
     @Test
     void draftMayOmitQuestionCountsButIdsMustBeUnique() {
         ExamSection section = new ExamSection("section", "MATH", null, null, null, null,
-                GroupOrder.FIXED, null, List.of(new QuestionBlock("block", "single", null, null, null, null,
-                null, null, null, null, null, false, null, null, List.of(), null)));
+                null, List.of(new QuestionBlock("block", "single", null, null, null, null,
+                null, null, null, null, null, false, null, List.of(), null)));
         ExamPart part = fixedPart("part", List.of(section));
         ExamStructureValidator.validate(new ExamStructureDocument(List.of(part)));
 
@@ -94,8 +94,8 @@ class ExamStructureValidatorTests {
         KnowledgeScope scope = new KnowledgeScope(List.of(UUID.randomUUID()), KnowledgeMatch.ALL, null, List.of("VACT-TOAN"));
         ExamSection section = new ExamSection("section", "MATH", 50, scope,
                 new AnswerQuotas(MatrixUnit.COUNT, List.of(new AnswerQuota(QuestionType.SINGLE_CHOICE, java.math.BigDecimal.valueOf(35)))),
-                null, GroupOrder.FIXED, null, List.of(new QuestionBlock("block", "single", null, null, null, null,
-                null, null, "SINGLE", null, "HSA_MATH_SINGLE", false, java.math.BigDecimal.ONE, null, List.of(), null)));
+                null, null, List.of(new QuestionBlock("block", "single", null, null, null, null,
+                null, null, "SINGLE", null, "HSA_MATH_SINGLE", false, java.math.BigDecimal.ONE, List.of(), null)));
         ExamPart part = fixedPart("part", List.of(section));
         ExamStructureDocument original = new ExamStructureDocument(List.of(part));
         ExamStructureCodec codec = new ExamStructureCodec(MAPPER);
@@ -109,14 +109,14 @@ class ExamStructureValidatorTests {
     @Test
     void b10ScienceChoiceGroupsAndSetCountsRoundTrip() {
         ExamSection physics = new ExamSection("physics", "LY", 17, null, null, null,
-                GroupOrder.FIXED, ChoiceGroup.NATURAL, List.of());
+                ChoiceGroup.NATURAL, List.of());
         ExamSection history = new ExamSection("history", "SU", 16, null, null, null,
-                GroupOrder.FIXED, ChoiceGroup.SOCIAL, List.of());
+                ChoiceGroup.SOCIAL, List.of());
         QuestionBlock literatureSet = new QuestionBlock("lit-set", "Đọc ngữ liệu",
                 QuestionType.QUESTION_SET, null, 5, 5, null, null, null, null, null,
-                false, null, null, List.of(), null);
+                false, null, List.of(), null);
         ExamSection literature = new ExamSection("literature", "VAN", null, null, null, null,
-                GroupOrder.SHUFFLE, null, List.of(literatureSet));
+                null, List.of(literatureSet));
         ExamStructureDocument document = new ExamStructureDocument(List.of(
                 fixedPart("part", List.of(physics, history, literature))));
 
@@ -137,8 +137,8 @@ class ExamStructureValidatorTests {
         AnswerQuotas fractionalAnswer = new AnswerQuotas(MatrixUnit.COUNT,
                 List.of(new AnswerQuota(QuestionType.SINGLE_CHOICE, new BigDecimal("1.5"))));
         for (ExamSection section : List.of(
-                new ExamSection("s1", "MATH", 1, null, null, fractionalMatrix, null, null, List.of()),
-                new ExamSection("s2", "MATH", 1, null, fractionalAnswer, null, null, null, List.of()))) {
+                new ExamSection("s1", "MATH", 1, null, null, fractionalMatrix, null, List.of()),
+                new ExamSection("s2", "MATH", 1, null, fractionalAnswer, null, null, List.of()))) {
             assertThatThrownBy(() -> ExamStructureValidator.validate(
                     new ExamStructureDocument(List.of(fixedPart("p", List.of(section))))))
                     .isInstanceOf(BusinessRuleException.class)
@@ -157,7 +157,7 @@ class ExamStructureValidatorTests {
         List<ExamSection> result = new ArrayList<>();
         for (int i = 0; i < codes.length; i++) {
             result.add(new ExamSection("section-" + codes[i], codes[i], null, null, null, null,
-                    GroupOrder.FIXED, null, List.of()));
+                    null, List.of()));
         }
         return result;
     }

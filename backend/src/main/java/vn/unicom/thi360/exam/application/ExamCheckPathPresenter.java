@@ -55,7 +55,7 @@ final class ExamCheckPathPresenter {
                 if (!option.blocks().isEmpty()) {
                     int count = option.blocks().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
-                            null, null, null, null, null, option.blocks());
+                            null, null, null, null, option.blocks());
                     sections.put(synthetic.id(), new SectionInfo(part, option.id(), synthetic));
                 }
             }

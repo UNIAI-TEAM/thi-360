@@ -144,6 +144,23 @@ class QuestionApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void legacyShuffleOptionsAreAcceptedButNotReturned() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.path("body")).put("shuffleOptions", false);
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.shuffleOptions").doesNotExist())
+                .andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.body.shuffleOptions").doesNotExist());
+    }
+
+    @Test
     void createQuestionSetPersistsChildrenAsRows() throws Exception {
         MvcResult result = mockMvc.perform(post(BASE)
                         .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))

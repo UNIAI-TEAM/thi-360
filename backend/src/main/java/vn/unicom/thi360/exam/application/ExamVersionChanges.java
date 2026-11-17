@@ -73,8 +73,7 @@ public final class ExamVersionChanges {
             for (int i = common; i < after.size(); i++) compare(null, after.get(i), path + "/" + i, blockId, out);
             return;
         }
-        String kind = path.contains("matrix") || path.contains("answerQuotas") ? "MATRIX_CHANGED"
-                : path.contains("groupOrder") || path.contains("shuffle") ? "ORDER_RULE_CHANGED" : "BLOCK_CHANGED";
+        String kind = path.contains("matrix") || path.contains("answerQuotas") ? "MATRIX_CHANGED" : "BLOCK_CHANGED";
         out.add(new ExamVersionChange(path, kind, path, text(before), text(after), blockId, null));
     }
 

@@ -664,9 +664,9 @@ public final class QuestionImportParser {
                 }
             }
             return new QuestionBody.MultipleChoiceBody(
-                QuestionType.MULTIPLE_CHOICE, options, null, rule);
+                QuestionType.MULTIPLE_CHOICE, options, rule);
         }
-        return new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, options, null);
+        return new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, options);
     }
 
     private static QuestionBody parseShortAnswer(RowParse row, Raw raw) {

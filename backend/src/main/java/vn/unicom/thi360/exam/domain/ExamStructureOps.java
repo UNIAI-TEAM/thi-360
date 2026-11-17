@@ -8,8 +8,8 @@ import java.util.UUID;
 
 /**
  * Thao tác thuần trên {@link ExamStructureDocument}: gán/sinh lại id và khôi phục các trường
- * "thuộc mẫu" khi PUT cấu trúc (spec 5.2: {@code shuffle}, {@code groupOrder},
- * {@code answerTypeLocked}, {@code templateGroupCode} giữ giá trị của mẫu/bản hiện tại).
+ * thuộc mẫu ({@code answerTypeLocked}, {@code templateGroupCode}) khi PUT cấu trúc.
+ * Khi PBI-10 sinh đề, câu chùm được đảo như một khối và các câu con giữ nguyên thứ tự.
  */
 public final class ExamStructureOps {
 
@@ -66,7 +66,7 @@ public final class ExamStructureOps {
             blocks.add(mapBlock(b, regenerate));
         }
         return new ExamSection(id(s.id(), regenerate), s.subjectCode(), s.questionCount(),
-                s.knowledgeScope(), s.answerQuotas(), s.matrix(), s.groupOrder(), s.choiceGroup(),
+                s.knowledgeScope(), s.answerQuotas(), s.matrix(), s.choiceGroup(),
                 blocks);
     }
 
@@ -95,7 +95,7 @@ public final class ExamStructureOps {
         return new QuestionBlock(id(b.id(), regenerate), b.name(), b.questionType(),
                 b.questionCount(), b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(),
                 b.taskTypeCode(), b.childAnswerType(), b.templateGroupCode(), b.answerTypeLocked(),
-                b.requiredPointsPerQuestion(), b.shuffle(), b.tagCodes(), b.expectedScoring());
+                b.requiredPointsPerQuestion(), b.tagCodes(), b.expectedScoring());
     }
 
     /**
@@ -107,9 +107,8 @@ public final class ExamStructureOps {
     public static ExamStructureDocument restoreTemplateOwned(ExamStructureDocument incoming,
             ExamStructureDocument stored, ExamStructureDocument templateDoc) {
         boolean templateOwned = templateDoc != null;
-        Map<String, ExamSection> storedSections = new HashMap<>();
         Map<String, QuestionBlock> storedBlocks = new HashMap<>();
-        index(stored, storedSections, storedBlocks);
+        index(stored, storedBlocks);
 
         List<ExamPart> parts = new ArrayList<>();
         for (ExamPart part : incoming.parts()) {
@@ -120,7 +119,7 @@ public final class ExamStructureOps {
             List<ExamSection> sections = new ArrayList<>();
             for (ExamSection s : part.sections()) {
                 sections.add(s == null ? null
-                        : restoreSection(s, storedSections, storedBlocks, templateOwned));
+                        : restoreSection(s, storedBlocks, templateOwned));
             }
             List<ExamPartOption> options = new ArrayList<>();
             for (ExamPartOption o : part.options()) {
@@ -131,7 +130,7 @@ public final class ExamStructureOps {
                 List<ExamSection> oSections = new ArrayList<>();
                 for (ExamSection s : o.sections()) {
                     oSections.add(s == null ? null
-                            : restoreSection(s, storedSections, storedBlocks, templateOwned));
+                            : restoreSection(s, storedBlocks, templateOwned));
                 }
                 List<QuestionBlock> oBlocks = new ArrayList<>();
                 for (QuestionBlock b : o.blocks()) {
@@ -147,8 +146,7 @@ public final class ExamStructureOps {
         return new ExamStructureDocument(parts);
     }
 
-    private static void index(ExamStructureDocument doc, Map<String, ExamSection> sections,
-            Map<String, QuestionBlock> blocks) {
+    private static void index(ExamStructureDocument doc, Map<String, QuestionBlock> blocks) {
         if (doc == null) {
             return;
         }
@@ -160,7 +158,6 @@ public final class ExamStructureOps {
                 if (s == null) {
                     continue;
                 }
-                sections.putIfAbsent(s.id(), s);
                 s.blocks().forEach(b -> {
                     if (b != null) {
                         blocks.putIfAbsent(b.id(), b);
@@ -175,7 +172,6 @@ public final class ExamStructureOps {
                     if (s == null) {
                         continue;
                     }
-                    sections.putIfAbsent(s.id(), s);
                     s.blocks().forEach(b -> {
                         if (b != null) {
                             blocks.putIfAbsent(b.id(), b);
@@ -191,17 +187,14 @@ public final class ExamStructureOps {
         }
     }
 
-    private static ExamSection restoreSection(ExamSection s, Map<String, ExamSection> storedSections,
+    private static ExamSection restoreSection(ExamSection s,
             Map<String, QuestionBlock> storedBlocks, boolean templateOwned) {
-        ExamSection stored = s.id() == null ? null : storedSections.get(s.id());
-        GroupOrder groupOrder = stored != null ? stored.groupOrder()
-                : templateOwned ? null : s.groupOrder();
         List<QuestionBlock> blocks = new ArrayList<>();
         for (QuestionBlock b : s.blocks()) {
             blocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateOwned));
         }
         return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
-                s.answerQuotas(), s.matrix(), groupOrder, s.choiceGroup(), blocks);
+                s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks);
     }
 
     private static QuestionBlock restoreBlock(QuestionBlock b, Map<String, QuestionBlock> storedBlocks,
@@ -217,6 +210,6 @@ public final class ExamStructureOps {
                 b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(), b.taskTypeCode(),
                 b.childAnswerType(), stored == null ? null : stored.templateGroupCode(),
                 stored != null && Boolean.TRUE.equals(stored.answerTypeLocked()), b.requiredPointsPerQuestion(),
-                stored == null ? null : stored.shuffle(), b.tagCodes(), b.expectedScoring());
+                b.tagCodes(), b.expectedScoring());
     }
 }

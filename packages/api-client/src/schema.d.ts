@@ -3970,8 +3970,6 @@ export interface components {
             blocks?: components["schemas"]["QuestionBlock"][];
             /** @enum {string} */
             choiceGroup?: "NATURAL" | "SOCIAL";
-            /** @enum {string} */
-            groupOrder?: "FIXED" | "SHUFFLE";
             id?: string;
             knowledgeScope?: components["schemas"]["KnowledgeScope"];
             matrix?: components["schemas"]["BlockMatrix"];
@@ -4513,7 +4511,6 @@ export interface components {
             options?: components["schemas"]["ChoiceOption"][];
             /** @enum {string} */
             scoringRule?: "ALL_OR_NOTHING" | "PARTIAL";
-            shuffleOptions?: boolean;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
@@ -4995,8 +4992,6 @@ export interface components {
             setCount?: number;
             /** Format: int32 */
             setSize?: number;
-            /** @enum {string} */
-            shuffle?: "SHUFFLE" | "KEEP_ORDER";
             tagCodes?: string[];
             taskTypeCode?: string;
             templateGroupCode?: string;
@@ -5408,7 +5403,6 @@ export interface components {
             type: "SingleChoiceBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
             options?: components["schemas"]["ChoiceOption"][];
-            shuffleOptions?: boolean;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
@@ -5696,7 +5690,7 @@ export interface components {
              * @description Revision đang xem; lệch → 412 EXAM_REVISION_CONFLICT
              */
             expectedRevision: number;
-            /** @description Cấu trúc mới; server giữ giá trị của trường thuộc mẫu (shuffle, answerTypeLocked, groupOrder, templateGroupCode) */
+            /** @description Cấu trúc mới; server giữ giá trị của trường thuộc mẫu (answerTypeLocked, templateGroupCode) */
             parts: components["schemas"]["ExamPart"][];
         };
         /** @description Lệnh sửa câu hỏi; expectedRevision là khóa lạc quan (D13) */

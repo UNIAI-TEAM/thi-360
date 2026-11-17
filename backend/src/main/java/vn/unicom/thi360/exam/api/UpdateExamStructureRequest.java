@@ -8,7 +8,7 @@ import vn.unicom.thi360.exam.domain.ExamPart;
 @Schema(description = "Thay toàn bộ cấu trúc bản làm việc (PUT /exams/{id}/structure, spec 9.2)")
 public record UpdateExamStructureRequest(
         @Schema(description = "Cấu trúc mới; server giữ giá trị của trường thuộc mẫu "
-                + "(shuffle, answerTypeLocked, groupOrder, templateGroupCode)",
+                + "(answerTypeLocked, templateGroupCode)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull
         List<ExamPart> parts,

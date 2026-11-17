@@ -1008,10 +1008,9 @@ public class QuestionService {
         }
         return switch (body) {
             case QuestionBody.SingleChoiceBody b -> new QuestionBody.SingleChoiceBody(
-                    b.type(), sanitizeOptions(b.options(), path + ".options", errors), b.shuffleOptions());
+                    b.type(), sanitizeOptions(b.options(), path + ".options", errors));
             case QuestionBody.MultipleChoiceBody b -> new QuestionBody.MultipleChoiceBody(
-                    b.type(), sanitizeOptions(b.options(), path + ".options", errors),
-                    b.shuffleOptions(), b.scoringRule());
+                    b.type(), sanitizeOptions(b.options(), path + ".options", errors), b.scoringRule());
             case QuestionBody.ShortAnswerBody b -> new QuestionBody.ShortAnswerBody(
                     b.type(), b.answers(), cleanField(b.inputHint(), path + ".inputHint", errors));
             case QuestionBody.ClozeBody b -> new QuestionBody.ClozeBody(

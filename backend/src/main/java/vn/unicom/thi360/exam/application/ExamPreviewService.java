@@ -208,7 +208,7 @@ public class ExamPreviewService {
                         SectionOnPath synthetic = sections.get(option.id() + ":blocks");
                         if (synthetic != null) {
                             ExamSection section = new ExamSection(synthetic.sectionId(), synthetic.subjectCode(),
-                                    synthetic.questionCount(), null, null, null, null, null, option.blocks());
+                                    synthetic.questionCount(), null, null, null, null, option.blocks());
                             appendSection(section, option.id(), blocks);
                         }
                     }
@@ -219,12 +219,10 @@ public class ExamPreviewService {
             }
             boolean shared = "SHARED".equals(exam.timing());
             int minutes = shared && exam.durationMinutes() != null ? exam.durationMinutes() : partMinutes;
-            boolean hasEnglish = subjects.stream().anyMatch(s -> "ANH".equals(s.subjectCode()));
             String pointsStatus = !"RAW".equals(exam.practiceScoring()) || exam.maxScore() == null
                     ? "NOT_APPLICABLE" : totalPoints.compareTo(exam.maxScore()) == 0 ? "PASS" : "FAIL";
             List<PreviewCheck> checks = List.of(new PreviewCheck("NO_DUPLICATES", "PASS", BigDecimal.ZERO),
                     new PreviewCheck("SETS_INTACT", hasSet ? "PASS" : "NOT_APPLICABLE", null),
-                    new PreviewCheck("FIXED_BLOCK_ORDER", hasEnglish ? "PASS" : "NOT_APPLICABLE", null),
                     new PreviewCheck("TOTAL_POINTS", pointsStatus, totalPoints));
             List<KnowledgeStat> stats = knowledgeStats.values().stream()
                     .sorted(Comparator.comparingInt(KnowledgeStat::count).reversed()

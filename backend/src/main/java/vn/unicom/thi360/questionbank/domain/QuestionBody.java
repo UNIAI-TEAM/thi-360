@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -34,10 +35,10 @@ public sealed interface QuestionBody {
     QuestionType type();
 
     /** Trắc nghiệm một đáp án: 2-10 phương án không trống, đúng 1 phương án đúng khi Sẵn sàng. */
+    @JsonIgnoreProperties("shuffleOptions")
     record SingleChoiceBody(
         QuestionType type,
-        List<ChoiceOption> options,
-        Boolean shuffleOptions) implements QuestionBody {
+        List<ChoiceOption> options) implements QuestionBody {
 
         public SingleChoiceBody {
             type = QuestionType.SINGLE_CHOICE;
@@ -46,10 +47,10 @@ public sealed interface QuestionBody {
     }
 
     /** Trắc nghiệm nhiều đáp án: 2-10 phương án, ít nhất 2 phương án đúng (PBI-03 mục 10). */
+    @JsonIgnoreProperties("shuffleOptions")
     record MultipleChoiceBody(
         QuestionType type,
         List<ChoiceOption> options,
-        Boolean shuffleOptions,
         MultipleChoiceRule scoringRule) implements QuestionBody {
 
         public MultipleChoiceBody {

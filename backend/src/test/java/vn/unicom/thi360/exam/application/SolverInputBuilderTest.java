@@ -45,9 +45,9 @@ class SolverInputBuilderTest {
                 List.of(new MatrixCell("G10", "NB", BigDecimal.valueOf(100))),
                 List.of(), List.of(), List.of(new MatrixDimensionValue("C1", BigDecimal.valueOf(100))));
         var block = new QuestionBlock("set", "Set", QuestionType.QUESTION_SET, 2, 1, 2,
-                null, matrix, null, null, null, false, BigDecimal.ONE, null, List.of("TAG"),
+                null, matrix, null, null, null, false, BigDecimal.ONE, List.of("TAG"),
                 new BlockExpectedScoring(null, null, "ALL_OR_NOTHING"));
-        var section = new ExamSection("math", "TOAN", 2, scope, null, null, null, null, List.of(block));
+        var section = new ExamSection("math", "TOAN", 2, scope, null, null, null, List.of(block));
         var part = new ExamPart("p", 1, "Part", 20, 2, 2, 2,
                 new PartParticipation(ParticipationMode.ALL, null), null, List.of(section), List.of());
         var builder = new SolverInputBuilder(catalog, source, new SolverLimits(200, 7, Duration.ofSeconds(30), 8));
@@ -73,8 +73,8 @@ class SolverInputBuilderTest {
         var source = mock(QuestionSourcePort.class);
         when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
         when(catalog.findActiveItem(eq("SUBJECT"), any())).thenReturn(Optional.empty());
-        var a = new ExamSection("a", "LY", null, null, null, null, null, ChoiceGroup.NATURAL, List.of());
-        var b = new ExamSection("b", "HOA", null, null, null, null, null, ChoiceGroup.NATURAL, List.of());
+        var a = new ExamSection("a", "LY", null, null, null, null, ChoiceGroup.NATURAL, List.of());
+        var b = new ExamSection("b", "HOA", null, null, null, null, ChoiceGroup.NATURAL, List.of());
         var choice = new ExamPartOption("science", OptionKind.SUBJECT_CHOICE, "SCIENCE", "Science",
                 1, List.of(1), List.of(a, b), List.of(), true);
         var branch = new ExamPartOption("branch", OptionKind.BRANCH, "BRANCH", "Branch",
