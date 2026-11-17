@@ -71,6 +71,12 @@ describe("sanitizeQuestionHtml với các mẫu vi phạm", () => {
       expect(html).toBe("<p>a    b</p>");
     });
 
+    it("drops a numbered blank that has text and reports only the span tag", () => {
+      const { html, violations } = sanitizeQuestionHtml('<p><span class="blank" data-blank="1">text</span></p>');
+      expect(html).toBe("<p></p>");
+      expect(violations).toEqual([{ tag: "span", attribute: null, value: null }]);
+    });
+
     it("drops the u data-label attribute with a bad value, keeping plain underline", () => {
       const { html } = sanitizeQuestionHtml('<p><u data-label="Z">x</u> <u data-label="A">y</u></p>');
       expect(html).toBe("<p><u>x</u> <u data-label=\"A\">y</u></p>");
