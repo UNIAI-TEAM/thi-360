@@ -60,6 +60,9 @@ final class MaxFlow {
         List<Prep.Requirement> reqs = ctx.reqs();
         for (int g = 0; g < ctx.groups().size(); g++) {
             Prep.ResolvedGroup rg = ctx.groups().get(g);
+            if (rg.group().slotParent() != null) {
+                return false;
+            }
             if (rg.group().kind() != GroupQuota.GroupKind.SINGLE) {
                 return false;
             }

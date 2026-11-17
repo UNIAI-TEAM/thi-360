@@ -12,11 +12,10 @@ import java.util.UUID;
 public interface QuestionSourcePort {
     int MAX_SET_CHILDREN = 20;
 
-    /** Each inner knowledge group contains one selected node and its active descendants. */
+    /** Each knowledge subtree contains a selected node and its descendants; additional groups are ANDed. */
     record Filter(
             UUID subjectId,
             List<List<UUID>> knowledgeGroups,
-            Match knowledgeMatch,
             List<QuestionType> answerTypes,
             QuestionType questionType,
             String taskTypeCode,
@@ -26,20 +25,17 @@ public interface QuestionSourcePort {
             BigDecimal requiredPointsPerQuestion,
             ItemShape itemShape,
             List<AnswerFormat> answerFormats,
-            List<ChildCondition> childConditions) {
-        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, Match knowledgeMatch,
-                      List<QuestionType> answerTypes, QuestionType questionType, String taskTypeCode,
-                      QuestionType childAnswerType, List<String> tagCodes, List<String> competencyCodes,
-                      BigDecimal requiredPointsPerQuestion) {
-            this(subjectId, knowledgeGroups, knowledgeMatch, answerTypes, questionType, taskTypeCode,
-                    childAnswerType, tagCodes, competencyCodes, requiredPointsPerQuestion, null, null, null);
-        }
-        /**
-         * @deprecated removed after UNI-2650 merges; knowledge scopes now use one-of semantics.
-         */
-        @Deprecated(forRemoval = true)
-        public Match knowledgeMatch() {
-            return knowledgeMatch;
+            List<ChildCondition> childConditions,
+            List<List<String>> additionalTagGroups,
+            List<List<List<UUID>>> additionalKnowledgeGroups,
+            List<List<String>> additionalCompetencyGroups) {
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, List.of(), List.of(), List.of());
         }
     }
 
@@ -53,7 +49,6 @@ public interface QuestionSourcePort {
         }
     }
 
-    enum Match { ANY, ALL }
 
     record CellCount(String gradeCode, String difficultyCode, long value) {}
     record AnswerTypeCount(QuestionType answerType, long value) {}

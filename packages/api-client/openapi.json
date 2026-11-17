@@ -355,9 +355,6 @@
             },
             "type" : "array"
           },
-          "match" : {
-            "type" : "string"
-          },
           "nodeIds" : {
             "items" : {
               "format" : "uuid",

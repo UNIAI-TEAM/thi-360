@@ -256,20 +256,20 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, k2);
         jdbc.update("insert into questionbank.question_tag(question_id,tag_item_id) values (?,?)", root, tag);
         var good = new QuestionSourcePort.Filter(subject, List.of(List.of(UUID.randomUUID(), k1), List.of(k2)),
-                QuestionSourcePort.Match.ALL, List.of(), QuestionType.QUESTION_SET, "CLUSTER",
-                QuestionType.SHORT_ANSWER, List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
-        var wrongPoints = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(), QuestionType.QUESTION_SET, "CLUSTER",
+                QuestionType.SHORT_ANSWER, List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongPoints = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.TEN);
-        var wrongSubject = new QuestionSourcePort.Filter(UUID.randomUUID(), good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(tagCode), List.of(), java.math.BigDecimal.TEN, null, null, null);
+        var wrongSubject = new QuestionSourcePort.Filter(UUID.randomUUID(), good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
-        var wrongTag = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongTag = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of("MISSING"), List.of(), java.math.BigDecimal.ONE);
-        var wrongTask = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of("MISSING"), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongTask = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "SINGLE", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
         for (var filter : List.of(good, wrongPoints, wrongSubject, wrongTag, wrongTask)) {
             var candidates = source.findCandidates(filter, 100);
             var expected = new java.util.HashSet<UUID>();

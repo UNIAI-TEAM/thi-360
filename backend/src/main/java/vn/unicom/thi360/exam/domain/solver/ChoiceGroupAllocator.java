@@ -8,6 +8,20 @@ import java.util.List;
 public final class ChoiceGroupAllocator implements SubjectCountAllocator {
     @Override
     public List<int[]> allocations(SubjectChoice choice, List<SectionOnPath> picked) {
+        // Validation solves each subject at the largest configured count once.
+        select(choice, picked, 0);
+        int[] counts = new int[picked.size()];
+        Arrays.fill(counts, choice.countsByPick().stream().mapToInt(Integer::intValue).max().orElseThrow());
+        return List.of(counts);
+    }
+
+    @Override
+    public int[] select(SubjectChoice choice, List<SectionOnPath> picked, long seed) {
+        List<int[]> allocations = paperAllocations(choice, picked);
+        return allocations.get(new java.util.Random(seed).nextInt(allocations.size()));
+    }
+
+    private List<int[]> paperAllocations(SubjectChoice choice, List<SectionOnPath> picked) {
         long nulls = picked.stream().filter(s -> s.choiceGroup() == null).count();
         if (nulls > 0 && nulls < picked.size()) {
             throw new IllegalArgumentException("choiceGroup must not mix null and non-null");

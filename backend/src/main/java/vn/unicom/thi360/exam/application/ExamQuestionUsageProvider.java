@@ -175,13 +175,13 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                     return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                             .map(CatalogItemView::id).toList();
                 })).toList();
-        QuestionSourcePort.Match match = QuestionSourcePort.Match.ANY;
         List<QuestionType> answers = block.questionType() == null && section != null && section.answerQuotas() != null
                 ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(Objects::nonNull).toList()
                 : List.of();
-        var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, match, answers,
+        var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, answers,
                 block.questionType(), null, block.childAnswerType(), block.tagCodes(),
-                scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion());
+                scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
+                null, null, null);
         boolean included = matches.computeIfAbsent(filter,
                 key -> source.matching(key, List.of(questionId)).contains(questionId));
         if (included) {

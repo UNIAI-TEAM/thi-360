@@ -20,6 +20,7 @@ import java.util.List;
  *                          {@link SubjectChoice}; chỉ khác rỗng khi INVALID do cách chọn lỗi
  * @param failingQuota      chỉ tiêu cấp môn thiếu nguồn, hoặc null khi không xác định được
  * @param selections        kết quả riêng cho từng tổ hợp chọn môn đã được giải
+ * @param droppedQuestion   câu đơn đã bỏ khi sinh đề, hoặc null nếu không cắt
  */
 public record PathResult(
         SolvePath path,
@@ -30,7 +31,15 @@ public record PathResult(
         List<SubjectWitness> witness,
         List<SubjectPick> failingSelections,
         QuotaRef failingQuota,
-        List<SelectionResult> selections) {
+        List<SelectionResult> selections,
+        QuestionPick droppedQuestion) {
+
+    public PathResult(SolvePath path, SolveStatus status, SolveReason reason, String subjectCode,
+            String groupId, List<SubjectWitness> witness, List<SubjectPick> failingSelections,
+            QuotaRef failingQuota, List<SelectionResult> selections) {
+        this(path, status, reason, subjectCode, groupId, witness, failingSelections, failingQuota,
+                selections, null);
+    }
 
     public PathResult(SolvePath path, SolveStatus status, SolveReason reason, String subjectCode,
             String groupId, List<SubjectWitness> witness, List<SubjectPick> failingSelections,
@@ -47,7 +56,7 @@ public record PathResult(
 
     PathResult withSelections(List<SelectionResult> values) {
         return new PathResult(path, status, reason, subjectCode, groupId, witness, failingSelections,
-                failingQuota, values);
+                failingQuota, values, droppedQuestion);
     }
 
     static PathResult valid(SolvePath path, List<SubjectWitness> witness) {

@@ -89,6 +89,12 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
       if (issue.code === "BLOCKS_TOTAL") {
         return t("blocksTotal", { section: sectionText, actual: issue.actual, expected: issue.expected });
       }
+      if (issue.code === "SUBJECT_COUNT_EXCEEDS_ALLOCATION") {
+        return t("subjectCountExceeds", { section: sectionText, declared: issue.declared, allocated: issue.allocated });
+      }
+      if (issue.code === "SUBJECT_TRIM_IMPOSSIBLE") {
+        return t("subjectTrimImpossible", { section: sectionText, allocated: issue.allocated });
+      }
       const block = section?.blocks.find((item) => item.id === issue.blockId);
       return t("block.prefix", { section: sectionText, block: block?.name ?? "", detail: blockDetail(issue.issue) });
     },
