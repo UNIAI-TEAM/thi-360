@@ -29,7 +29,8 @@ public enum ImportField {
     INPUT_HINT("inputHint"),
     GRADING_GUIDE("gradingGuide"),
     COMMON_MISTAKES("commonMistakes"),
-    TASK_TYPE("taskType");
+    TASK_TYPE("taskType"),
+    KEEP_OPTION_ORDER("keepOptionOrder");
 
     private final String code;
 

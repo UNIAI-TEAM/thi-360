@@ -54,7 +54,8 @@ public final class QuestionImportParser {
         ImportIssueCode.SET_NO_CHILDREN,
         ImportIssueCode.KNOWLEDGE_MISSING,
         ImportIssueCode.CHILD_FIELD_IGNORED,
-        ImportIssueCode.CHILD_SOURCE_CODE_IGNORED);
+        ImportIssueCode.CHILD_SOURCE_CODE_IGNORED,
+        ImportIssueCode.KEEP_OPTION_ORDER_IGNORED);
 
     private static final Pattern ASSIGNMENT_LINE = Pattern.compile("^([A-Za-z]\\w{0,15})\\s*=\\s*(.*)$");
 
@@ -328,6 +329,11 @@ public final class QuestionImportParser {
         if (raw.get(ImportField.CONTENT).isBlank()) {
             row.add(ImportIssueCode.REQUIRED, ImportField.CONTENT, null, null, type);
         }
+        if (type != null && type != QuestionType.SINGLE_CHOICE && type != QuestionType.MULTIPLE_CHOICE
+                && !raw.get(ImportField.KEEP_OPTION_ORDER).isBlank()) {
+            row.add(ImportIssueCode.KEEP_OPTION_ORDER_IGNORED, ImportField.KEEP_OPTION_ORDER,
+                raw.get(ImportField.KEEP_OPTION_ORDER), null, type);
+        }
 
         // Mã nguồn của câu con bị bỏ qua kèm cảnh báo (quyết định 8.8).
         if (isChild && !raw.get(ImportField.SOURCE_CODE).isBlank()) {
@@ -596,6 +602,15 @@ public final class QuestionImportParser {
     }
 
     private static QuestionBody parseChoice(RowParse row, Raw raw, boolean multiple) {
+        String keepValue = raw.get(ImportField.KEEP_OPTION_ORDER).trim().toLowerCase(Locale.ROOT);
+        boolean keepOrder = switch (keepValue) {
+            case "có", "x", "yes", "true", "1" -> true;
+            case "", "không", "no", "false", "0" -> false;
+            default -> {
+                row.add(ImportIssueCode.CELL_SYNTAX, ImportField.KEEP_OPTION_ORDER, keepValue, null, row.type);
+                yield false;
+            }
+        };
         boolean[] mixed = {false};
         List<ImportCellSyntax.LabeledItem> items = optionItems(row, raw, mixed);
         if (mixed[0]) {
@@ -664,9 +679,9 @@ public final class QuestionImportParser {
                 }
             }
             return new QuestionBody.MultipleChoiceBody(
-                QuestionType.MULTIPLE_CHOICE, options, rule);
+                QuestionType.MULTIPLE_CHOICE, options, rule, !keepOrder);
         }
-        return new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, options);
+        return new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, options, !keepOrder);
     }
 
     private static QuestionBody parseShortAnswer(RowParse row, Raw raw) {

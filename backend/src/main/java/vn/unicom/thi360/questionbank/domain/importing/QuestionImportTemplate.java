@@ -22,7 +22,7 @@ public final class QuestionImportTemplate {
     public static byte[] create(String sheetName) {
         List<String> headers = List.of("sourceCode", "type", "content", "points", "options", "matchRight",
             "correctAnswer", "scoring", "inputHint", "gradingGuide", "rubric", "solution", "commonMistakes",
-            "subject", "grade", "difficulty", "taskType", "knowledge", "tags", "setCode");
+            "subject", "grade", "difficulty", "taskType", "knowledge", "tags", "setCode", "keepOptionOrder");
         List<Map<String, String>> examples = List.of(
             Map.of("sourceCode", "EX-1", "type", "SINGLE_CHOICE", "content", "Choose the correct word.",
                 "points", "0,75", "options", "A. hello\nB. goodbye", "correctAnswer", "A",
