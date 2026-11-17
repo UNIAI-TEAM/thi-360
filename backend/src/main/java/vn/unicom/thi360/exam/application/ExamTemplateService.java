@@ -41,6 +41,13 @@ public class ExamTemplateService {
                 .orElse(null);
     }
 
+    /** Read recorded provenance even after a template is retired. */
+    @Transactional(readOnly = true)
+    ExamTemplate findProvenance(String templateCode) {
+        if (templateCode == null || templateCode.isBlank()) return null;
+        return templateRepository.findById(templateCode.trim()).orElse(null);
+    }
+
     /** Select only the configured default; review templates are shared by subjects. */
     @Transactional(readOnly = true)
     public ExamTemplate findDefault(String kindCode, String scope, String partCode,

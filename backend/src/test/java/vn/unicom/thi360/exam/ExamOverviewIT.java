@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -26,6 +27,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class ExamOverviewIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private EntityManager entityManager;
 
     @Test
     void updatesByIdWithoutReplacingBlocksAndRejectsStaleRevision() throws Exception {
@@ -162,6 +164,9 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                                 "overview", List.of(Map.of("partId", partId,
                                         "sectionId", sectionId, "questionCount", 30))))))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        entityManager.flush();
+        jdbc.update("UPDATE exam.exam_template SET active=false WHERE code='HSA_FULL'");
+        entityManager.clear();
         String revision = edited.path("revision").asText();
         String load = "{\"templateCode\":\"" + templateCode + "\",\"expectedRevision\":" + revision + "}";
         mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(load))

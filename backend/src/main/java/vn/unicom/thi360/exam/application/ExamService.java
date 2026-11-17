@@ -775,7 +775,11 @@ public class ExamService {
         if ("REVIEW".equals(template.getBuildMode())) {
             doc = reviewSubject(doc, subjectCodeOf(exam.getSubjectItemId()));
         }
-        ExamTemplate previous = templateService.findActive(exam.getTemplateCode());
+        ExamTemplate previous = templateService.findProvenance(exam.getTemplateCode());
+        if (exam.getTemplateCode() != null && previous == null) {
+            throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
+                    messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
+        }
         if (previous != null && structure != null) {
             ExamStructureDocument baseline = codec().read(previous.getStructure());
             if (subjectPart) {
