@@ -175,6 +175,8 @@ describe("tóm tắt câu trên danh sách (F-06)", () => {
   it("chỗ trống [[id]] thành ___ và công thức \\(…\\), \\[…\\] thành ƒ(x) thay vì mã LaTeX thô", () => {
     expect(plainQuestionPreview("Điền [[new-b-1]] vào chỗ trống.")).toBe("Điền ___ vào chỗ trống.");
     expect(plainQuestionPreview("Tính \\(x^2\\) và \\[\\int_0^1 x\\] của hàm.")).toBe("Tính ƒ(x) và ƒ(x) của hàm.");
+    // Tóm tắt bị cắt giữa công thức: không để lộ LaTeX dở.
+    expect(plainQuestionPreview("Cho hàm \\(f(x)=\\frac{1")).toBe("Cho hàm ƒ(x)");
     // Công thức lồng nhau đóng bằng cặp trong cùng; dấu đóng không có dấu mở (không cân) giữ nguyên.
     expect(plainQuestionPreview("ngoặc \\) lẻ")).toBe("ngoặc \\) lẻ");
     expect(fromApiSummary({ ...summary, contentPreview: "Điền [[b1]] \\(\\frac{1}{2}\\)." }).contentPreview).toBe(
