@@ -133,6 +133,30 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void countEndpointsRejectNullFilterMembersButAllowOptionalLists() throws Exception {
+        for (String filters : List.of("\"childConditions\":[null]", "\"answerFormats\":[null]",
+                "\"childConditions\":[{\"from\":1,\"to\":1,\"nodeIds\":[null]}]",
+                "\"knowledgeScope\":{\"nodeIds\":[null]}")) {
+            String query = "{\"subjectCode\":\"TOAN\"," + filters + "}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").exists());
+            }
+        }
+        for (String filters : List.of("", ",\"childConditions\":[],\"answerFormats\":[]")) {
+            String query = "{\"subjectCode\":\"TOAN\"" + filters + "}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isOk());
+            }
+        }
+    }
+
+    @Test
     void candidatesExposeServingScoringForStandaloneAndSetChildren() {
         UUID subject = UUID.randomUUID();
         UUID root = question(subject, "READY", 1, 2);

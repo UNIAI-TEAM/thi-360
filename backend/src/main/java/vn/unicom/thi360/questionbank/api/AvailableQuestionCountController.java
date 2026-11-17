@@ -34,7 +34,7 @@ public class AvailableQuestionCountController {
     }
 
     @Schema(name = "AvailableQuestionsKnowledgeScope", description = "Phạm vi kiến thức có hiệu lực của nhóm")
-    public record KnowledgeScope(List<UUID> nodeIds, String match, List<String> competencyCodes) {}
+    public record KnowledgeScope(List<@NotNull UUID> nodeIds, String match, List<String> competencyCodes) {}
 
     @Schema(name = "AvailableQuestionsItemShape")
     public record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}
@@ -42,7 +42,7 @@ public class AvailableQuestionCountController {
     @Schema(name = "AvailableQuestionsChildCondition")
     public record ChildCondition(@Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int from,
                                  @Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int to,
-                                 List<UUID> nodeIds) {
+                                 List<@NotNull UUID> nodeIds) {
         @AssertTrue
         public boolean isOrdered() {
             return from <= to;
@@ -52,10 +52,10 @@ public class AvailableQuestionCountController {
     @Schema(name = "AvailableQuestionsQuery", description = "Bộ lọc nguồn câu hỏi của một nhóm")
     public record Query(@NotBlank String subjectCode, QuestionType questionType,
                         List<QuestionType> answerTypes, QuestionType childAnswerType,
-                        KnowledgeScope knowledgeScope, String taskTypeCode, List<String> tagCodes,
+                        @Valid KnowledgeScope knowledgeScope, String taskTypeCode, List<String> tagCodes,
                         List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
-                        ItemShape itemShape, List<AnswerFormat> answerFormats,
-                        List<@Valid ChildCondition> childConditions) {}
+                        ItemShape itemShape, List<@NotNull AnswerFormat> answerFormats,
+                        List<@NotNull @Valid ChildCondition> childConditions) {}
 
     @Schema(name = "AvailableQuestionsSubjectQuery", description = "Các nhóm nguồn của một môn")
     public record SubjectQuery(@NotBlank String subjectCode, @NotNull List<@Valid Query> groups) {}
