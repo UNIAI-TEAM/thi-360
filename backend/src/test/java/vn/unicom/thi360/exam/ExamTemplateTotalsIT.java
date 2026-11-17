@@ -159,8 +159,10 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             } else if ("VACT_FULL".equals(code)) {
                 assertThat(row.get("duration_minutes")).isEqualTo(150);
                 assertThat((BigDecimal) row.get("max_score")).isEqualByComparingTo("1200");
-            } else if ("SP2E".equals(kind) && !"SP2E_VAN_OLD".equals(code)) {
-                assertThat((BigDecimal) row.get("max_score")).as("%s scale", code).isEqualByComparingTo("10");
+            } else if ("SP2E".equals(kind)) {
+                String scale = "SP2E_VAN_OLD".equals(code) ? "6"
+                        : "SP2E_VAN_2026".equals(code) ? "5" : "10";
+                assertThat((BigDecimal) row.get("max_score")).as("%s scale", code).isEqualByComparingTo(scale);
             }
         }
     }
