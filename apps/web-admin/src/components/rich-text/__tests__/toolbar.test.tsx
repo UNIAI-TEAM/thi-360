@@ -62,7 +62,7 @@ describe("RichTextEditor toolbar", () => {
     // Mũi tên quấn quanh hai đầu; nút nhận focus cập nhật điểm dừng Tab.
     await user.keyboard("{ArrowLeft}");
     expect(document.activeElement).toBe(buttons[buttons.length - 1]);
-    expect(buttons[buttons.length - 1].tabIndex).toBe(0);
+    expect(buttons.at(-1)?.tabIndex).toBe(0);
   });
 
   it("undo/redo buttons reflect history state and work", async () => {

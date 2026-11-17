@@ -39,11 +39,11 @@ describe("insert registry", () => {
     expect(new Set(ids).size).toBe(ids.length);
     const richText = en.richText as Record<string, unknown>;
     for (const entry of INSERT_REGISTRY) {
-      const [, id, leaf] = entry.labelKey.split(".");
-      const [, , descriptionLeaf] = entry.descriptionKey.split(".");
+      const [, id = "", leaf = ""] = entry.labelKey.split(".");
+      const [, , descriptionLeaf = ""] = entry.descriptionKey.split(".");
       const block = (richText.insert as Record<string, Record<string, unknown>>)[id];
-      expect(block[leaf]).toBeTruthy();
-      expect(block[descriptionLeaf]).toBeTruthy();
+      expect(block?.[leaf]).toBeTruthy();
+      expect(block?.[descriptionLeaf]).toBeTruthy();
     }
   });
 
