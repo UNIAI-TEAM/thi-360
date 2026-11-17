@@ -1,9 +1,9 @@
 -- UNI-2658: template row identifiers survive copying into an exam and subsequent edits.
 -- Preserve existing identifiers; generate each missing identifier only once.
-CREATE FUNCTION pg_temp.exam_section_ids(sections jsonb) RETURNS jsonb
+CREATE OR REPLACE FUNCTION pg_temp.exam_section_ids(sections jsonb) RETURNS jsonb
 LANGUAGE sql VOLATILE AS $$
     SELECT COALESCE(jsonb_agg(
-        CASE WHEN section->>'id' IS NULL OR section->>'id' = ''
+        CASE WHEN section->>'id' IS NULL
              THEN jsonb_set(section, '{id}', to_jsonb(gen_random_uuid()::text), true)
              ELSE section END ORDER BY position), '[]'::jsonb)
     FROM jsonb_array_elements(COALESCE(sections, '[]'::jsonb)) WITH ORDINALITY AS s(section, position)
@@ -24,7 +24,7 @@ BEGIN
         IF jsonb_typeof(parts) IS DISTINCT FROM 'array' THEN CONTINUE; END IF;
         FOR part_index IN 0..jsonb_array_length(parts) - 1 LOOP
             part := parts->part_index;
-            IF part->>'id' IS NULL OR part->>'id' = '' THEN
+            IF part->>'id' IS NULL THEN
                 part := jsonb_set(part, '{id}', to_jsonb(gen_random_uuid()::text), true);
             END IF;
             IF jsonb_typeof(part->'sections') = 'array' THEN

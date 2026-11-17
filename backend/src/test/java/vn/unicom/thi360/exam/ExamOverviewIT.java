@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
@@ -182,5 +184,28 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.buildMode").value("REVIEW"))
                 .andExpect(jsonPath("$.templateCode").value("QDA_REVIEW"))
                 .andExpect(jsonPath("$.parts[0].sections[0].subjectCode").value("HOA"));
+    }
+
+    @Test
+    void rowIdBackfillIsIdempotentAndPreservesExistingValues() throws Exception {
+        String code = "IDS_" + UUID.randomUUID().toString().substring(0, 8);
+        jdbc.update("""
+                INSERT INTO exam.exam_template
+                  (code,kind_code,scope,timing,structure,active,build_mode,is_default)
+                VALUES (?, 'HSA', 'FULL', 'PER_PART',
+                  '{"parts":[{"id":null,"sections":[{"id":null},{"id":""}]}]}'::jsonb,
+                  true, 'STANDARD', false)
+                """, code);
+        String sql = Files.readString(Path.of("src/main/resources/db/migration/exam/"
+                + "V202611180455__exam_template_row_ids.sql"));
+        jdbc.execute(sql);
+        String first = jdbc.queryForObject("SELECT structure::text FROM exam.exam_template WHERE code=?", String.class, code);
+        var structure = mapper.readTree(first);
+        UUID.fromString(structure.path("parts").get(0).path("id").asText());
+        UUID.fromString(structure.path("parts").get(0).path("sections").get(0).path("id").asText());
+        assertThat(structure.path("parts").get(0).path("sections").get(1).path("id").asText()).isEmpty();
+        jdbc.execute(sql);
+        assertThat(jdbc.queryForObject("SELECT structure::text FROM exam.exam_template WHERE code=?", String.class, code))
+                .isEqualTo(first);
     }
 }
