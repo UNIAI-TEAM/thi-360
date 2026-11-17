@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageKind;
@@ -121,7 +122,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         UUID root = question(subject, "READY", 1, 2);
         jdbc.update("UPDATE questionbank.question SET type = 'TRUE_FALSE' WHERE id = ?", root);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
-                "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.1,0.25,0.5,1]}}", root);
+                "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.1,0.25,0.5,1],"
+                        + "\"statements\":[{\"id\":\"s1\"},{\"id\":\"s2\"},{\"id\":\"s3\"},{\"id\":\"s4\"}]}}", root);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 2",
                 "{\"body\":{\"scoringMethod\":\"PER_STATEMENT\",\"scoreTable\":[9,9,9,9]}}", root);
         var trueFalse = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
@@ -134,7 +136,10 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                     new BigDecimal("0.1"), new BigDecimal("0.25"), new BigDecimal("0.5"), BigDecimal.ONE);
             assertThat(candidate.multipleChoiceRule()).isNull();
             assertThat(candidate.units().getFirst().scoring().trueFalseMethod()).isEqualTo("COUNT_TABLE");
+            assertThat(candidate.units().getFirst().statementCount()).isEqualTo(4);
+            assertThat(candidate.units().getFirst().commandCount()).isEqualTo(4);
         });
+        assertThat(source.count(trueFalse).commandCount()).isEqualTo(4);
 
         UUID multiple = question(subject, "READY", 1, 2);
         jdbc.update("UPDATE questionbank.question SET type = 'MULTIPLE_CHOICE' WHERE id = ?", multiple);
@@ -213,6 +218,73 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         assertThat(source.count(clozeFilter).total()).isEqualTo(2);
         assertThat(source.findCandidates(clozeFilter, 1)).singleElement().satisfies(c ->
                 assertThat(c.units()).extracting(QuestionSourcePort.Unit::reference).containsExactly("a", "b"));
+    }
+
+    @Test
+    void shapeAndAnswerFormatFiltersExposeCommandMetadata() {
+        UUID subject = UUID.randomUUID();
+        UUID matching = question(subject, "READY", 1, 1);
+        jdbc.update("UPDATE questionbank.question SET type = 'MATCHING' WHERE id = ?", matching);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"left\":[{},{},{},{}],\"right\":[{},{},{},{},{},{}]}}", matching);
+        UUID wrongShape = question(subject, "READY", 1, 1);
+        jdbc.update("UPDATE questionbank.question SET type = 'MATCHING' WHERE id = ?", wrongShape);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"left\":[{},{},{}],\"right\":[{},{},{},{},{}]}}", wrongShape);
+        var shapeFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.MATCHING, null, null, List.of(), List.of(), null,
+                new QuestionSourcePort.ItemShape(null, 4, 6), null, null);
+        assertThat(source.findCandidates(shapeFilter, 10)).singleElement().satisfies(candidate -> {
+            assertThat(candidate.questionId()).isEqualTo(matching);
+            assertThat(candidate.units()).singleElement().satisfies(unit -> {
+                assertThat(unit.leftCount()).isEqualTo(4);
+                assertThat(unit.rightCount()).isEqualTo(6);
+                assertThat(unit.commandCount()).isEqualTo(4);
+            });
+        });
+
+        UUID integerAnswer = question(subject, "READY", 1, 1);
+        jdbc.update("UPDATE questionbank.question SET type = 'SHORT_ANSWER' WHERE id = ?", integerAnswer);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"answers\":[\"1\"],\"answerFormat\":\"INTEGER\"}}", integerAnswer);
+        var answerFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
+                List.of(AnswerFormat.INTEGER), null);
+        assertThat(source.findCandidates(answerFilter, 10)).singleElement()
+                .satisfies(candidate -> assertThat(candidate.questionId()).isEqualTo(integerAnswer));
+    }
+
+    @Test
+    void tagsUseOneOfSemantics() {
+        UUID subject = UUID.randomUUID();
+        UUID tagOne = UUID.randomUUID();
+        UUID tagTwo = UUID.randomUUID();
+        int nextValue = jdbc.queryForObject(
+                "select coalesce(max(value), 0) + 1 from catalog.catalog_item where group_id = ?",
+                Integer.class, QuestionTestSupport.QUESTION_TAG_GROUP_ID);
+        jdbc.update("""
+                insert into catalog.catalog_item(id, group_id, code, code_normalized, value,
+                    name_vi, name_en, display_order, status, is_system, depth, path)
+                values (?, ?, ?, ?, ?, ?, ?, 0, 1, false, 1, ?)
+                """, tagOne, QuestionTestSupport.QUESTION_TAG_GROUP_ID, "ONE-OF-A", "one-of-a",
+                nextValue, "One of A", "One of A", "/" + tagOne + "/");
+        jdbc.update("""
+                insert into catalog.catalog_item(id, group_id, code, code_normalized, value,
+                    name_vi, name_en, display_order, status, is_system, depth, path)
+                values (?, ?, ?, ?, ?, ?, ?, 1, 1, false, 1, ?)
+                """, tagTwo, QuestionTestSupport.QUESTION_TAG_GROUP_ID, "ONE-OF-B", "one-of-b",
+                nextValue + 1, "One of B", "One of B", "/" + tagTwo + "/");
+        UUID first = question(subject, "READY", 1, 1);
+        UUID second = question(subject, "READY", 1, 1);
+        UUID none = question(subject, "READY", 1, 1);
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", first, tagOne);
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", second, tagTwo);
+        var filter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+                QuestionType.SINGLE_CHOICE, null, null, List.of("ONE-OF-A", "ONE-OF-B"), List.of(), null);
+        assertThat(source.count(filter).total()).isEqualTo(2);
+        assertThat(source.findCandidates(filter, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactlyInAnyOrder(first, second);
+        assertThat(source.matching(filter, List.of(first, second, none))).containsExactlyInAnyOrder(first, second);
     }
 
     @Test
