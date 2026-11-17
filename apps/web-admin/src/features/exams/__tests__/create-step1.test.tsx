@@ -1,7 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
 import { ExamsBackend } from "./fake-exams-backend";
@@ -15,6 +14,10 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
+
+const EXAMS_PATH = "/api/v1/admin/exams";
+const TEMPLATES_PATH = "/api/v1/admin/exam-templates";
+const SUBMIT = "Tạo bài thi và soạn khối câu hỏi";
 
 let backend: ExamsBackend;
 
@@ -33,131 +36,180 @@ async function renderPage() {
   return user;
 }
 
-function summary() {
-  return screen.getByRole("complementary", { name: "Tóm tắt" });
-}
+const summary = () => screen.getByRole("complementary", { name: "Tóm tắt" });
+/** Giá trị của một mục trong khối Tóm tắt (nhãn `dt`, giá trị `dd` cùng một khung). */
+const summaryValue = (label: string) => within(summary()).getByText(label).parentElement?.querySelector("dd")?.firstElementChild?.textContent;
+const scopeGroup = () => screen.queryByRole("group", { name: /Phạm vi bài thi/ });
+const countInputs = () => screen.getAllByRole("textbox", { name: /^Số câu của/ });
+const submitButton = () => screen.getAllByRole("button", { name: SUBMIT })[0]!;
 
-describe("trang Tạo bài thi", () => {
-  it("nạp mẫu HSA FULL: 3 phần, 150 câu, 195 phút, 2 đường lựa chọn (Tiếng Anh, Khoa học chọn 3 môn)", async () => {
+describe("trang Tạo bài thi, bước 1: phạm vi theo hồ sơ kỳ thi", () => {
+  // Bảng 5.1 của đặc tả: chỉ hiện phạm vi hồ sơ cho phép; kỳ thi một phạm vi thì không có nhóm chọn.
+  const CASES: Array<[kind: RegExp, scopes: string[], only: string | null]> = [
+    [/^HSA/, ["Toàn bài", "Theo phần", "Theo môn"], null],
+    [/^QDA/, ["Toàn bài", "Theo phần", "Theo môn"], null],
+    [/^BCA/, ["Toàn bài", "Theo phần", "Theo môn"], null],
+    [/^SP2E/, ["Theo phần", "Theo môn"], null],
+    [/^SPT/, ["Theo phần", "Theo môn"], null],
+    [/^V-ACT/, [], "Toàn bài"],
+    [/^THPTQG/, [], "Theo môn"],
+  ];
+
+  it.each(CASES)("kỳ thi %s: phạm vi chọn được khớp hồ sơ", async (kind, scopes, only) => {
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: kind }));
+    if (scopes.length === 0) {
+      expect(scopeGroup()).toBeNull();
+      expect(screen.getByText("Kỳ thi này chỉ có phạm vi này")).toBeInTheDocument();
+      expect(screen.getByText(only!)).toBeInTheDocument();
+      return;
+    }
+    const group = scopeGroup()!;
+    const names = within(group)
+      .getAllByRole("radio")
+      .map((radio) => scopes.find((scope) => radio.closest("label")?.textContent?.startsWith(scope)) ?? "?");
+    expect(names).toEqual(scopes);
+  }, 20_000);
+
+  it("hai thẻ build_mode chỉ hiện khi Theo môn; bài ôn gửi buildMode REVIEW", async () => {
+    const user = await renderPage();
+    expect(screen.queryByRole("radio", { name: /Tự thiết lập bài ôn/ })).toBeNull();
+    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    expect(screen.getByRole("radio", { name: /Dùng cấu trúc môn SPT/ })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: /Tự thiết lập bài ôn/ }));
+    // Mẫu bài ôn chưa có trong dữ liệu mẫu: bảng một dòng trống, nhập số câu và thời lượng.
+    await user.type(await screen.findByRole("textbox", { name: /^Số câu của/ }), "10");
+    await user.type(screen.getByRole("textbox", { name: /^Thời lượng của/ }), "15");
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "SPT bài ôn Toán");
+    await user.click(submitButton());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    expect(backend.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({
+      kind: "SPT",
+      scope: "SUBJECT",
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      overview: [{ questionCount: 10, durationMinutes: 15 }],
+    });
+  }, 20_000);
+});
+
+describe("trang Tạo bài thi, bước 1: bảng tổng quan", () => {
+  it("nạp mẫu mặc định HSA FULL: 3 phần, 150 câu, 195 phút; không có ô chọn phiên bản", async () => {
     await renderPage();
     expect(screen.getByRole("heading", { level: 1, name: "Tạo bài thi" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Danh sách bài thi" })).toHaveAttribute("href", "/exams");
-    const aside = summary();
-    expect(within(aside).getByText("150 câu")).toBeInTheDocument();
-    expect(within(aside).getByText("195 phút")).toBeInTheDocument();
-    expect(within(aside).getByText("Tiếng Anh")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Phần tự chọn · Phần 3" })).toBeInTheDocument();
-    // Phần 3 chỉ hiện dòng "50 / 50 câu" cho từng tổ hợp; phương án Khoa học chọn môn chưa có ô soạn ở đây (FE-3c).
-    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(2);
-    expect(screen.getByRole("checkbox", { name: "Cho chọn Tiếng Anh (50 câu)" })).toBeChecked();
+    expect(countInputs()).toHaveLength(3);
+    expect(summaryValue("Tổng số câu")).toBe("150");
+    expect(summaryValue("Tổng thời gian")).toContain("195 phút");
+    expect(screen.getByText("Phiên bản cấu trúc chọn ở bước 2")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /phiên bản/i })).toBeNull();
   });
 
-  it("tổ hợp 51/50 báo thừa 1 câu, chặn tạo; sửa đúng thì tạo và mở Cấu trúc", async () => {
-    // HSA không còn tổ hợp KH-n (một phương án Khoa học chọn môn); tổ hợp hai môn của QDA vẫn soạn ở trang này.
+  it("đổi số câu trên dòng không nạp lại mẫu và cộng lại tổng (R-09)", async () => {
     const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /QDA/ }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("QDA-F-003"));
-    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "QDA FULL · Đề thử");
-    const lastBiology = screen.getAllByRole("textbox", { name: "2. Địa lí" }).at(-1)!;
-    await user.clear(lastBiology);
-    await user.type(lastBiology, "26");
-    expect(await screen.findByText("51 / 50 câu · thừa 1 câu")).toBeInTheDocument();
-    const aside = summary();
-    expect(within(aside).getByText("Tổng số câu các môn là 51, phải bằng 50 câu của phần.")).toBeInTheDocument();
+    const loads = backend.calls("GET", TEMPLATES_PATH).length;
+    const first = countInputs()[0]!;
+    await user.clear(first);
+    await user.type(first, "45");
+    expect(first).toHaveValue("45");
+    expect(summaryValue("Tổng số câu")).toBe("145");
+    expect(backend.calls("GET", TEMPLATES_PATH)).toHaveLength(loads);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 
-    await user.click(within(aside).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
+  it("số câu không hợp lệ báo ngay ở ô và chặn tạo", async () => {
+    const user = await renderPage();
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA thử");
+    await user.clear(countInputs()[0]!);
+    await user.type(countInputs()[0]!, "0");
+    expect((await screen.findAllByText("Số câu phải là số nguyên dương.")).length).toBeGreaterThan(0);
+    await user.click(submitButton());
+    expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
     expect(routerMock.push).not.toHaveBeenCalled();
+  });
 
-    await user.clear(lastBiology);
-    await user.type(lastBiology, "25");
-    await waitFor(() => expect(within(aside).getByText("Không còn mục cần xử lý")).toBeInTheDocument());
-    await user.click(within(aside).getByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" }));
+  it("không sửa bảng thì không gửi overview; sửa thì chỉ gửi dòng khác mẫu rồi mở bước 2", async () => {
+    const user = await renderPage();
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA FULL thử");
+    await user.click(submitButton());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledTimes(1));
+    const plain = backend.calls("POST", EXAMS_PATH)[0]!.body as Record<string, unknown>;
+    expect(plain).toMatchObject({ kind: "HSA", scope: "FULL", name: "HSA FULL thử" });
+    expect(plain).not.toHaveProperty("overview");
+    expect(plain).not.toHaveProperty("parts");
+    expect(routerMock.push).toHaveBeenCalledWith(expect.stringMatching(/^\/exams\/[^/]+\/structure$/));
+  }, 20_000);
+
+  it("gửi overview chỉ gồm dòng đã sửa", async () => {
+    const user = await renderPage();
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "HSA FULL sửa số");
+    await user.clear(countInputs()[1]!);
+    await user.type(countInputs()[1]!, "40");
+    await user.click(submitButton());
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    const created = backend.app(backend.wireByCode("QDA-F-003")!.id);
-    expect(created).toMatchObject({ name: "QDA FULL · Đề thử", status: "DRAFT", totalQuestions: 150, combinationCount: 4 });
-    expect(routerMock.push).toHaveBeenCalledWith(`/exams/${created.id}/structure`);
+    const body = backend.calls("POST", EXAMS_PATH)[0]!.body as { overview: Array<Record<string, unknown>> };
+    expect(body.overview).toHaveLength(1);
+    expect(body.overview[0]).toMatchObject({ questionCount: 40 });
   }, 20_000);
+});
 
-  it("đổi kỳ thi sau khi đã sửa cấu trúc thì hỏi tại chỗ; nạp lại mẫu QDA", async () => {
+describe("trang Tạo bài thi, bước 1: đổi lựa chọn nạp lại bảng", () => {
+  it("chưa sửa bảng thì đổi phạm vi nạp ngay, không hỏi", async () => {
     const user = await renderPage();
-    const firstCount = screen.getAllByRole("textbox", { name: /^Số câu/ })[0]!;
-    await user.clear(firstCount);
-    await user.type(firstCount, "40");
-    await user.click(screen.getByRole("radio", { name: /QDA/ }));
-    const prompt = await screen.findByRole("alert", { name: "" });
-    expect(within(prompt).getByText("Nạp lại mẫu QDA · Toàn bài?")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /HSA/ })).toBeChecked();
-
-    await user.click(within(prompt).getByRole("button", { name: "Nạp lại mẫu" }));
-    expect(screen.getByRole("radio", { name: /QDA/ })).toBeChecked();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("QDA-F-003"));
-    // Hai phần cố định mang môn trong `sections` (hình dạng của máy chủ) cũng hiện dòng "50 / 50 câu", cộng bốn tổ hợp ở phần 3.
-    expect(screen.getAllByText("50 / 50 câu")).toHaveLength(6);
-    expect(screen.getAllByRole("textbox", { name: "1. Vật lí" })[0]).toHaveValue("25");
-    expect(within(summary()).getByText("195 phút")).toBeInTheDocument();
-  }, 20_000);
-
-  it("Theo phần: chọn phần, mã có đoạn phần; không còn ô Hình thức", async () => {
-    const user = await renderPage();
-    expect(screen.queryByText("Hình thức")).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Toàn bài/ })).toBeChecked();
-    expect(screen.queryByRole("radio", { name: /Theo môn/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: /Theo phần/ }));
-    expect(screen.getByRole("radio", { name: "Toán" })).toBeChecked();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-P-TOAN-001"));
-    await user.click(screen.getByRole("radio", { name: "Khoa học" }));
-    expect(screen.getByRole("heading", { name: "Phần tự chọn · Phần 1" })).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox", { name: /Cho chọn Tiếng Anh/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("radio", { name: /^Theo phần/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Toán" })).toBeInTheDocument();
   });
 
-  it("ảnh giới thiệu dùng nút của bộ giao diện, không lộ chữ tiếng Anh của trình duyệt", async () => {
-    await renderPage();
-    expect(screen.getByText("Chọn ảnh")).toBeInTheDocument();
-    expect(screen.getByText("Chưa chọn ảnh")).toBeInTheDocument();
-    expect(screen.getByLabelText("Chọn ảnh")).toHaveAttribute("type", "file");
+  it("đã sửa bảng thì hỏi: Giữ lựa chọn cũ giữ nguyên số đã sửa, Đổi và nạp lại thay bằng mẫu mới", async () => {
+    const user = await renderPage();
+    const first = countInputs()[0]!;
+    await user.clear(first);
+    await user.type(first, "45");
+
+    await user.click(screen.getByRole("radio", { name: /^QDA/ }));
+    const dialog = await screen.findByRole("alert");
+    expect(within(dialog).getByText(/Đổi sang/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Giữ lựa chọn cũ" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("radio", { name: /^HSA/ })).toBeChecked();
+    expect(countInputs()[0]).toHaveValue("45");
+
+    await user.click(screen.getByRole("radio", { name: /^QDA/ }));
+    await user.click(within(await screen.findByRole("alert")).getByRole("button", { name: "Đổi và nạp lại" }));
+    await waitFor(() => expect(screen.getByRole("radio", { name: /^QDA/ })).toBeChecked());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(countInputs()[0]).toHaveValue("50");
+  }, 20_000);
+
+  it("đổi môn hoặc build_mode sau khi sửa bảng cũng hỏi xác nhận", async () => {
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    const count = await screen.findByRole("textbox", { name: /^Số câu của/ });
+    await user.clear(count);
+    await user.type(count, "30");
+    await user.click(screen.getByRole("radio", { name: /Tự thiết lập bài ôn/ }));
+    const dialog = await screen.findByRole("alert");
+    expect(within(dialog).getByText(/Đổi sang/)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Dùng cấu trúc môn SPT/ })).toBeChecked();
+  }, 20_000);
+});
+
+describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
+  it("lỗi tải mẫu: báo lỗi và thử lại được", async () => {
+    const failing = new ExamsBackend();
+    failing.server.on("GET", TEMPLATES_PATH, { status: 500, body: { code: "BOOM" } }, { status: 200, body: [] });
+    failing.install();
+    const user = userEvent.setup();
+    renderWithProviders(<CreateExamPage />);
+    expect(await screen.findByText("Không tải được mẫu cấu trúc")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => expect(screen.queryByText("Không tải được mẫu cấu trúc")).toBeNull());
   });
 
-  it("BCA: thời lượng chung 180 phút, chia điểm theo phần 25/60/15, tổ hợp CA1–CA4", async () => {
-    const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /BCA/ }));
-    expect(await screen.findByRole("textbox", { name: /Thời lượng chung/ })).toHaveValue("180");
-    expect(screen.getByRole("switch", { name: /Chia điểm theo phần/ })).toBeChecked();
-    expect(screen.getByText("Tổng điểm các phần: 100 / 100 điểm")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("BCA-F-002"));
-    expect(screen.queryByRole("radio", { name: /Bài lẻ/ })).not.toBeInTheDocument();
-    const aside = summary();
-    expect(within(aside).getByText("4 tổ hợp")).toBeInTheDocument();
-    expect(within(aside).getByText("100 điểm")).toBeInTheDocument();
-  }, 20_000);
-
-  it("SP2E: chỉ Theo môn; nạp mẫu mới nhất, không chọn năm ở bước 1; năm khác ma trận thì xác nhận sau khi tạo", async () => {
-    const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /SP2E/ }));
-    expect(await screen.findByRole("combobox", { name: /Môn của bài thi/ })).toHaveTextContent("Toán");
-    expect(screen.queryByRole("radio", { name: /Toàn bài|Theo phần|Theo môn/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Kỳ thi này chỉ có phạm vi này")).toBeInTheDocument();
-    // Không còn ô chọn mẫu theo năm; chỉ ghi chú mẫu mới nhất.
-    expect(screen.queryByRole("radio", { name: /^Cấu trúc 20/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/Hệ thống nạp mẫu mới nhất: SP2E Toán 2026/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Cấu trúc 2026 dùng ma trận 2025/).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("checkbox", { name: /Chuyên gia đã xác nhận/ })).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("SP2E-S-TOAN-001"));
-    expect(within(summary()).getByText("90 phút")).toBeInTheDocument();
-  }, 20_000);
-
-  it("en: câu nạp mẫu dùng tên đã dịch, không lẫn đơn vị tiếng Việt của tên mẫu", async () => {
-    renderWithProviders(<CreateExamPage />, { locale: "en", messages: en });
-    const note = await screen.findByText(/The system loads the latest template/);
-    expect(note).toHaveTextContent("The system loads the latest template: HSA · Whole exam.");
-    expect(note.textContent).not.toMatch(/phần|câu|phút/);
+  it("đang tải hiện khung chờ có aria-busy", () => {
+    renderWithProviders(<CreateExamPage />);
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
-
-  it("THPTQG: môn chưa có mẫu thì dựng một phần trống của môn", async () => {
-    const user = await renderPage();
-    await user.click(screen.getByRole("radio", { name: /THPTQG/ }));
-    await user.click(await screen.findByRole("combobox", { name: /Môn của bài thi/ }));
-    await user.click(await screen.findByRole("option", { name: "Tiếng Việt" }));
-    expect(await screen.findByText(/Tiếng Việt chưa có mẫu cấu trúc/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("THPTQG-S-TV-001"));
-  }, 20_000);
 });

@@ -100,7 +100,7 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
   it("từ chối phạm vi sai: thiếu phần hoặc môn, phạm vi kỳ thi không cho, thang điểm không hợp lệ", async () => {
     await rejectsWith(createExam(request({ kind: "THPTQG", scope: "SUBJECT" })), 422, "EXAM_PART_OR_SUBJECT_REQUIRED");
     await rejectsWith(createExam(request({ kind: "HSA", scope: "PART" })), 422, "EXAM_PART_OR_SUBJECT_REQUIRED");
-    await rejectsWith(createExam(request({ kind: "BCA", scope: "PART", partCode: "MATH" })), 422, "EXAM_SCOPE_NOT_ALLOWED");
+    await rejectsWith(createExam(request({ kind: "VACT", scope: "PART", partCode: "MATH" })), 422, "EXAM_SCOPE_NOT_ALLOWED");
     await rejectsWith(createExam(request({ kind: "THPTQG", scope: "FULL" })), 422, "EXAM_SCOPE_NOT_ALLOWED");
     await rejectsWith(createExam(request({ maxScore: 0 })), 422, "EXAM_MAX_SCORE_INVALID");
   });
