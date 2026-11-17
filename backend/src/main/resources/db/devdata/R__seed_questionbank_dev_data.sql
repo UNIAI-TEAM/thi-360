@@ -27,7 +27,37 @@ INSERT INTO seed_2b_tags (purpose, code) VALUES
     ('literature_argument', 'VAN_NGHI_LUAN'),
     ('literature_children', 'VAN_THIEU_NHI'),
     ('literature_story', 'VAN_TRUYEN'),
-    ('literature_science', 'VAN_KHOA_HOC');
+    ('literature_science', 'VAN_KHOA_HOC'),
+    ('literature_odd_word', 'VAN_TU_KHAC_NHOM'),
+    ('literature_word_error', 'VAN_TU_SAI'),
+    ('literature_word_pair', 'VAN_CAP_TU_DIEN'),
+    ('literature_single_passage', 'VAN_NGU_LIEU_MOT_CAU'),
+    ('english_completion', 'ANH_HOAN_THANH_CAU'),
+    ('english_synonym', 'ANH_DONG_NGHIA'),
+    ('english_antonym', 'ANH_TRAI_NGHIA'),
+    ('english_rewrite', 'ANH_VIET_LAI_CAU'),
+    ('english_combine', 'ANH_KET_HOP_CAU'),
+    ('english_dialogue', 'ANH_HOI_THOAI'),
+    ('english_dialogue_order', 'ANH_SAP_XEP_HOI_THOAI'),
+    ('english_cloze', 'ANH_DOC_DIEN'),
+    ('english_reading_one', 'ANH_DOC_HIEU_1'),
+    ('english_reading_two', 'ANH_DOC_HIEU_2'),
+    ('english_logic', 'ANH_TU_DUY_LOGIC'),
+    ('english_notice', 'ANH_THONG_BAO'),
+    ('english_inference', 'ANH_SUY_LUAN'),
+    ('english_sentence_cloze', 'ANH_DOC_DIEN_CAU'),
+    ('english_word_cloze', 'ANH_DIEN_TU'),
+    ('english_phrase_cloze', 'ANH_DIEN_CUM_CAU'),
+    ('english_communication', 'ANH_GIAO_TIEP'),
+    ('english_paragraph_order', 'ANH_SAP_XEP_DOAN'),
+    ('english_pronunciation', 'ANH_PHAT_AM'),
+    ('english_stress', 'ANH_TRONG_AM'),
+    ('english_vocabulary', 'ANH_TU_VUNG_NGU_PHAP'),
+    ('english_reading', 'ANH_DOC_HIEU'),
+    ('english_word_formation', 'ANH_WORD_FORMATION'),
+    ('math_synthesis', 'TOAN_DU_LIEU_TONG_HOP'),
+    ('history_source', 'SU_TU_LIEU_LICH_SU'),
+    ('geography_skill', 'DIA_CAU_KY_NANG');
 
 CREATE TEMP TABLE seed_2b_question_tags (
     question_id uuid NOT NULL,
@@ -238,11 +268,11 @@ FROM children;
 -- Five-child sets support HSA/QDA slots; independent copies avoid reusing a
 -- passage across slots. SPT uses the science and information types at 0.3.
 WITH sets AS (
-    SELECT tag.id AS tag_id, spec.purpose, spec.points, n,
+    SELECT spec.purpose, spec.points, n, 5 AS child_count,
            md5('thi360-2b-literature-' || spec.purpose || '-' || spec.points || '-' || n)::uuid AS id,
            subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
     FROM seed_2b_tags spec_tag
-    JOIN (SELECT purpose, 1::numeric AS points FROM seed_2b_tags
+    JOIN (SELECT purpose, 1::numeric AS points FROM seed_2b_tags WHERE starts_with(purpose, 'literature_')
           UNION ALL VALUES ('literature_science', 0.3::numeric), ('literature_information', 0.3::numeric))
          spec ON spec.purpose = spec_tag.purpose
     JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
@@ -251,23 +281,30 @@ WITH sets AS (
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
     CROSS JOIN generate_series(1, 3) n
+    UNION ALL
+    SELECT 'literature_sp2e', 0.2::numeric, n, n + 5,
+           md5('thi360-2b-literature-sp2e-' || n)::uuid, subject.id, grade.id, level.id
+    FROM generate_series(1, 4) n
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'VAN'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
 ), children AS (
     SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
            jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
                jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                  jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
-    FROM sets s CROSS JOIN generate_series(0, 4) pos
+    FROM sets s CROSS JOIN LATERAL generate_series(0, s.child_count - 1) pos
 ), parents AS (
     SELECT s.id, 'SEED-2B-LITERATURE-' || s.purpose || '-' || s.points || '-' || s.n AS code,
            'QUESTION_SET' AS type, s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id,
-           s.points * 5 AS points, '<p>Reading set</p>' AS content,
-           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Reading context</p>', 'children',
+           s.points * s.child_count AS points, '<p>Reading set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Reading context ' || s.n || '</p>', 'children',
                jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
                    'content', '<p>Reading child</p>', 'body', c.body, 'points', s.points,
                    'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
            NULL::uuid AS parent_id, NULL::integer AS position
     FROM sets s JOIN children c ON c.id = s.id
-    GROUP BY s.id, s.purpose, s.points, s.n, s.subject_id, s.grade_id, s.level_id
+    GROUP BY s.id, s.purpose, s.points, s.n, s.child_count, s.subject_id, s.grade_id, s.level_id
 )
 INSERT INTO seed_question_rows
 SELECT * FROM parents
@@ -283,6 +320,74 @@ FROM seed_question_rows q
 JOIN seed_2b_tags t ON starts_with(q.code, 'SEED-2B-LITERATURE-' || t.purpose || '-')
 JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
     AND tag.code = t.code;
+
+-- Tag-filtered stand-alone items for each named question-form group.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-2b-tagged-' || t.purpose || '-' || p.points || '-' || n)::uuid,
+       'SEED-2B-TAGGED-' || t.purpose || '-' || p.points || '-' || n,
+       'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL, p.points,
+       '<p>Language example ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+           jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                             jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
+       NULL, NULL
+FROM seed_2b_tags t
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002'
+    AND subject.code = CASE WHEN starts_with(t.purpose, 'english_') THEN 'ANH' ELSE 'VAN' END
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+CROSS JOIN (VALUES (1::numeric), (0.75::numeric), (0.25::numeric), (0.2::numeric)) p(points)
+CROSS JOIN generate_series(1, 15) n
+WHERE starts_with(t.purpose, 'english_')
+   OR t.purpose IN ('literature_odd_word', 'literature_word_error', 'literature_word_pair', 'literature_single_passage');
+
+-- Reading and cloze groups select whole passages with the required child count.
+WITH sets AS (
+    SELECT t.purpose, p.points, sz.child_count, n, subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id,
+           md5('thi360-2b-english-set-' || t.purpose || '-' || p.points || '-' || sz.child_count || '-' || n)::uuid AS id
+    FROM seed_2b_tags t
+    JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'ANH'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+    CROSS JOIN (VALUES (1::numeric), (0.75::numeric), (0.25::numeric), (0.2::numeric)) p(points)
+    CROSS JOIN (VALUES (5), (6), (8)) sz(child_count)
+    CROSS JOIN generate_series(1, 2) n
+    WHERE starts_with(t.purpose, 'english_')
+), children AS (
+    SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
+    FROM sets s CROSS JOIN LATERAL generate_series(0, s.child_count - 1) pos
+), parents AS (
+    SELECT s.id, 'SEED-2B-ENGLISH-SET-' || s.purpose || '-' || s.points || '-' || s.child_count || '-' || s.n AS code,
+           'QUESTION_SET' AS type, s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id,
+           s.points * s.child_count AS points, '<p>Reading set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Reading context ' || s.n || '</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
+                   'content', '<p>Reading child</p>', 'body', c.body, 'points', s.points,
+                   'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM sets s JOIN children c ON c.id = s.id
+    GROUP BY s.id, s.purpose, s.points, s.child_count, s.n, s.subject_id, s.grade_id, s.level_id
+)
+INSERT INTO seed_question_rows
+SELECT * FROM parents
+UNION ALL
+SELECT child_id, 'SEED-2B-ENGLISH-SET-' || purpose || '-' || points || '-' || child_count || '-' || n || '-' || pos,
+       'SINGLE_CHOICE', subject_id, grade_id, level_id, NULL, points,
+       '<p>Reading child</p>', body, id, pos
+FROM children;
+
+INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
+SELECT q.id, tag.id
+FROM seed_question_rows q
+JOIN seed_2b_tags t ON starts_with(q.code, 'SEED-2B-TAGGED-' || t.purpose || '-')
+    OR starts_with(q.code, 'SEED-2B-ENGLISH-SET-' || t.purpose || '-')
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
+ON CONFLICT DO NOTHING;
 
 -- Remaining formats and lifecycle examples, including a draft and a retired
 -- question for each format. READY rows use the same validation as real content.
@@ -329,8 +434,9 @@ WITH prepared AS (
                WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
                WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
                WHEN 'QUESTION_SET' THEN CASE
-                   WHEN code LIKE 'SEED-2B-LITERATURE-%'
-                       THEN 'Reading set Reading context' || repeat(' Reading child One Two', 5)
+                   WHEN code LIKE 'SEED-2B-LITERATURE-%' OR code LIKE 'SEED-2B-ENGLISH-SET-%'
+                       THEN 'Reading set ' || regexp_replace(body->>'passage', '<[^>]+>', '', 'g')
+                           || repeat(' Reading child One Two', jsonb_array_length(body->'children'))
                    WHEN code LIKE 'SEED-READING-%'
                        THEN 'Reading set Reading context Reading child One Two Reading child One Two'
                    WHEN code LIKE 'SEED-HSA-MATH-SET-%'
