@@ -134,7 +134,7 @@ class ExamStructureIT extends AbstractIntegrationTest {
         ((com.fasterxml.jackson.databind.node.ObjectNode) section.path("answerQuotas").path("items").get(0))
                 .put("value", 1);
         section.set("knowledgeScope", mapper.readTree(
-                "{\"nodeIds\":[\"00000000-0000-7000-8200-000000001201\"],\"match\":\"ALL\"}"));
+                "{\"nodeIds\":[\"00000000-0000-7000-8200-000000001201\"]}"));
         JsonNode expectedQuotas = section.path("answerQuotas").deepCopy();
         JsonNode expectedMatrix = section.path("matrix").deepCopy();
         JsonNode expectedScope = section.path("knowledgeScope").deepCopy();
@@ -156,7 +156,7 @@ class ExamStructureIT extends AbstractIntegrationTest {
                         ? a.decimalValue().compareTo(b.decimalValue())
                         : a.equals(b) ? 0 : 1, expectedMatrix)).isTrue();
         assertThat(savedSection.path("knowledgeScope").path("nodeIds")).isEqualTo(expectedScope.path("nodeIds"));
-        assertThat(savedSection.path("knowledgeScope").path("match")).isEqualTo(expectedScope.path("match"));
+        assertThat(savedSection.path("knowledgeScope").path("match").isMissingNode()).isTrue();
         assertThat(savedSection.path("groupOrder").isMissingNode()).isTrue();
         assertThat(savedBlock.path("shuffle").isMissingNode()).isTrue();
         assertThat(savedBlock.path("answerTypeLocked")).isEqualTo(originalLocked);
@@ -169,7 +169,7 @@ class ExamStructureIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         JsonNode root = mapper.readTree(before);
         ((com.fasterxml.jackson.databind.node.ObjectNode) root.path("parts").get(0).path("sections").get(0))
-                .set("knowledgeScope", mapper.readTree("{\"nodeIds\":[],\"match\":\"ANY\",\"includeDescendants\":true}"));
+                .set("knowledgeScope", mapper.readTree("{\"nodeIds\":[],\"includeDescendants\":true}"));
         var request = mapper.createObjectNode();
         request.set("parts", root.path("parts"));
         request.put("expectedRevision", root.path("revision").asLong());
@@ -201,11 +201,11 @@ class ExamStructureIT extends AbstractIntegrationTest {
                 case 6 -> matrix.putArray("byDifficulty").addNull();
                 case 7 -> matrix.putArray("byCompetency").addNull();
                 case 8 -> section.put("subjectCode", "MISSING_SUBJECT");
-                case 9 -> block.put("taskTypeCode", "MISSING_TASK");
+                case 9 -> section.set("knowledgeScope", mapper.readTree("{\"nodeIds\":[],\"match\":\"ANY\"}"));
                 case 10 -> section.set("knowledgeScope", mapper.readTree(
-                        "{\"nodeIds\":[\"00000000-0000-7000-8200-999999999999\"],\"match\":\"ANY\"}"));
+                        "{\"nodeIds\":[\"00000000-0000-7000-8200-999999999999\"]}"));
                 case 11 -> section.set("knowledgeScope", mapper.readTree(
-                        "{\"nodeIds\":[],\"match\":\"ANY\",\"competencyCodes\":[\"MISSING_COMPETENCY\"]}"));
+                        "{\"nodeIds\":[],\"competencyCodes\":[\"MISSING_COMPETENCY\"]}"));
                 case 12 -> {
                     var option = (com.fasterxml.jackson.databind.node.ObjectNode)
                             parts.get(2).path("options").get(0);

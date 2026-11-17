@@ -43,15 +43,4 @@ public record QuestionBlock(
         topicQuotas = topicQuotas == null ? List.of() : List.copyOf(topicQuotas);
     }
 
-    /** Compatibility constructor for the pre-v2 shape; taskTypeCode is deliberately discarded. */
-    public QuestionBlock(String id, String name, QuestionType questionType, Integer questionCount,
-            Integer setCount, Integer setSize, KnowledgeScope knowledgeScope, BlockMatrix matrix,
-            String taskTypeCode, QuestionType childAnswerType, String templateGroupCode,
-            Boolean answerTypeLocked, BigDecimal requiredPointsPerQuestion, List<String> tagCodes,
-            BlockExpectedScoring expectedScoring) {
-        this(id, name, questionType, questionCount, setCount, setSize, knowledgeScope, matrix,
-                childAnswerType, templateGroupCode, answerTypeLocked, requiredPointsPerQuestion,
-                tagCodes, expectedScoring, true, false, List.of(), List.of(), null, List.of(),
-                false, List.of(), null);
-    }
 }

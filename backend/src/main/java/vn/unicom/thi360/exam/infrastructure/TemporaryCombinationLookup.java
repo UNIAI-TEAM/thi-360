@@ -24,7 +24,7 @@ public class TemporaryCombinationLookup implements CombinationLookup {
     }
 
     private static StructureCombination toStructureCombination(CatalogCombinationView value) {
-        return new StructureCombination(value.itemCode(), value.itemNameVi(), value.itemNameEn(),
-                value.examItemCode(), value.subjectCodes());
+        return new StructureCombination(null, value.itemCode(), value.itemNameVi(), value.itemNameEn(),
+                value.examItemCode(), value.subjectCodes(), List.of());
     }
 }

@@ -33,7 +33,8 @@ class ExamStructureValidatorTests {
         KnowledgeScope removedField = new KnowledgeScope(List.of(UUID.randomUUID()), List.of());
         removedField.captureLegacyField("includeDescendants", MAPPER.getNodeFactory().booleanNode(true));
         QuestionBlock block = new QuestionBlock("block", "single", QuestionType.SINGLE_CHOICE, 1,
-                null, null, removedField, null, null, null, null, false, null, List.of(), null);
+                null, null, removedField, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(), null, List.of(), false, List.of(), null);
         ExamSection section = new ExamSection("section", "MATH", 1, null, null, null,
                 null, List.of(block));
         ExamPart part = fixedPart("part", List.of(section));
@@ -79,7 +80,8 @@ class ExamStructureValidatorTests {
     void draftMayOmitQuestionCountsButIdsMustBeUnique() {
         ExamSection section = new ExamSection("section", "MATH", null, null, null, null,
                 null, List.of(new QuestionBlock("block", "single", null, null, null, null,
-                null, null, null, null, null, false, null, List.of(), null)));
+                null, null, null, null, false, null, List.of(), null, true, false,
+                List.of(), List.of(), null, List.of(), false, List.of(), null)));
         ExamPart part = fixedPart("part", List.of(section));
         ExamStructureValidator.validate(new ExamStructureDocument(List.of(part)));
 
@@ -96,7 +98,8 @@ class ExamStructureValidatorTests {
         ExamSection section = new ExamSection("section", "MATH", 50, scope,
                 new AnswerQuotas(MatrixUnit.COUNT, List.of(new AnswerQuota(QuestionType.SINGLE_CHOICE, java.math.BigDecimal.valueOf(35)))),
                 null, null, List.of(new QuestionBlock("block", "single", null, null, null, null,
-                null, null, "SINGLE", null, "HSA_MATH_SINGLE", false, java.math.BigDecimal.ONE, List.of(), null)));
+                null, null, null, "HSA_MATH_SINGLE", false, java.math.BigDecimal.ONE, List.of(), null,
+                true, false, List.of(), List.of(), null, List.of(), false, List.of(), null)));
         ExamPart part = fixedPart("part", List.of(section));
         ExamStructureDocument original = new ExamStructureDocument(List.of(part));
         ExamStructureCodec codec = new ExamStructureCodec(MAPPER);
@@ -114,8 +117,9 @@ class ExamStructureValidatorTests {
         ExamSection history = new ExamSection("history", "SU", 16, null, null, null,
                 ChoiceGroup.SOCIAL, List.of());
         QuestionBlock literatureSet = new QuestionBlock("lit-set", "Đọc ngữ liệu",
-                QuestionType.QUESTION_SET, null, 5, 5, null, null, null, null, null,
-                false, null, List.of(), null);
+                QuestionType.QUESTION_SET, null, 5, 5, null, null, null, null,
+                false, null, List.of(), null, true, false, List.of(), List.of(), null,
+                List.of(), false, List.of(), null);
         ExamSection literature = new ExamSection("literature", "VAN", null, null, null, null,
                 null, List.of(literatureSet));
         ExamStructureDocument document = new ExamStructureDocument(List.of(

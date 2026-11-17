@@ -45,8 +45,9 @@ class SolverInputBuilderTest {
                 List.of(new MatrixCell("G10", "NB", BigDecimal.valueOf(100))),
                 List.of(), List.of(), List.of(new MatrixDimensionValue("C1", BigDecimal.valueOf(100))));
         var block = new QuestionBlock("set", "Set", QuestionType.QUESTION_SET, 2, 1, 2,
-                null, matrix, null, null, null, false, BigDecimal.ONE, List.of("TAG"),
-                new BlockExpectedScoring(null, null, "ALL_OR_NOTHING"));
+                null, matrix, null, null, false, BigDecimal.ONE, List.of("TAG"),
+                new BlockExpectedScoring(null, null, "ALL_OR_NOTHING"), true, false, List.of(),
+                List.of(), null, List.of(), false, List.of(), null);
         var section = new ExamSection("math", "TOAN", 2, scope, null, null, null, List.of(block));
         var part = new ExamPart("p", 1, "Part", 20, 2, 2, 2,
                 new PartParticipation(ParticipationMode.ALL, null), null, List.of(section), List.of());

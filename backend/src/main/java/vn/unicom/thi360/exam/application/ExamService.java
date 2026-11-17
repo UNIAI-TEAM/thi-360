@@ -33,6 +33,7 @@ import vn.unicom.thi360.exam.api.ExamVersionResponse;
 import vn.unicom.thi360.exam.api.LoadExamTemplateRequest;
 import vn.unicom.thi360.exam.api.PersonRef;
 import vn.unicom.thi360.exam.api.SuggestExamCodeResponse;
+import vn.unicom.thi360.exam.api.StructureCombination;
 import vn.unicom.thi360.exam.api.UpdateExamInfoRequest;
 import vn.unicom.thi360.exam.api.UpdateExamStructureRequest;
 import vn.unicom.thi360.exam.application.ExamBlockRefProjector.CodeResolver;
@@ -367,8 +368,24 @@ public class ExamService {
 
     private ExamStructureResponse structureResponse(UUID examId, ExamStructureDocument doc, long revision) {
         ExamStructureDocument presented = ExamStructurePresentation.withPositionRanges(doc);
-        return new ExamStructureResponse(examId, presented.parts(), revision, presented.examQuotas(),
-                combinationLookup.listCurrent());
+        String kindCode = catalogLookup.findItem(requireExam(examId).getKindItemId())
+                .map(CatalogItemView::code).orElse(null);
+        List<StructureCombination> current = combinationLookup.listCurrent().stream()
+                .filter(value -> Objects.equals(value.examCode(), kindCode)).toList();
+        List<StructureCombination> combinations = new ArrayList<>();
+        for (ExamPart part : doc.parts()) {
+            if (part.codeSource() == null) {
+                continue;
+            }
+            Set<String> subjects = new java.util.HashSet<>();
+            part.subjectPool().forEach(section -> subjects.add(section.subjectCode()));
+            for (StructureCombination value : current) {
+                combinations.add(new StructureCombination(part.id(), value.code(), value.nameVi(), value.nameEn(),
+                        value.examCode(), value.subjectCodes(),
+                        value.subjectCodes().stream().filter(code -> !subjects.contains(code)).toList()));
+            }
+        }
+        return new ExamStructureResponse(examId, presented.parts(), revision, presented.examQuotas(), combinations);
     }
 
     /** Mã gợi ý <KIND>-<F|P|S>-[PHẦN|MÔN-]<seq:03d>: số tiếp theo chưa dùng trong cùng tiền tố. */

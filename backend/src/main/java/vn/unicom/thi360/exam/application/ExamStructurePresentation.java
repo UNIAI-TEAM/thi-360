@@ -29,9 +29,9 @@ final class ExamStructurePresentation {
         Counter counter = new Counter();
         List<ExamSection> sections = part.sections().stream().map(section -> withPositionRanges(section, counter)).toList();
         List<ExamSection> subjectPool = part.subjectPool().stream()
-                .map(section -> withPositionRanges(section, counter)).toList();
+                .map(section -> withPositionRanges(section, new Counter(counter.next))).toList();
         List<ExamPartOption> options = part.options().stream()
-                .map(option -> withPositionRanges(option, counter)).toList();
+                .map(option -> withPositionRanges(option, new Counter(counter.next))).toList();
         return new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
                 part.questionCountOnPaper(), part.questionCountRequired(), part.participation(), part.maxPoints(),
                 sections, options, subjectPool, part.codeSource());
@@ -75,7 +75,15 @@ final class ExamStructurePresentation {
     }
 
     private static final class Counter {
-        private int next = 1;
+        private int next;
+
+        Counter() {
+            this(1);
+        }
+
+        Counter(int next) {
+            this.next = next;
+        }
 
         PositionRange take(int count) {
             int from = next;
