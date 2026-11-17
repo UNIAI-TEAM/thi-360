@@ -637,21 +637,34 @@ public class ExamService {
                 }
                 ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
                 ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
-                ExamTemplate template = pickTemplate(null, kindItem.code(), choice.scope(),
-                        choice.partCode(), choice.subjectCode(), structureYear);
+                String mode = "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD";
+                boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
+                ExamTemplate template = subjectPart
+                        ? templateService.findDefault(kindItem.code(), "SUBJECT", null, choice.subjectCode(), mode)
+                        : templateService.findDefault(kindItem.code(), choice.scope(), choice.partCode(),
+                                choice.subjectCode(), mode);
+                if (subjectPart && template == null) {
+                    throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                            messages.get(ExamErrorCodes.PART_NOT_FOUND));
+                }
                 ExamStructureDocument doc = template != null
                         ? ExamStructureOps.assignMissingIds(codec().read(template.getStructure()))
                         : new ExamStructureDocument(List.of());
+                if (template != null && "REVIEW".equals(mode)) doc = reviewSubject(doc, choice.subjectCode());
+                if (subjectPart) doc = selectSubjectPart(doc, choice.partCode());
                 ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
                 Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                        : subjectPart ? doc.parts().getFirst().durationMinutes()
                         : template != null && template.getDurationMinutes() != null
                                 ? template.getDurationMinutes() : null;
-                BigDecimal maxScore = template != null && template.getMaxScore() != null
-                        ? template.getMaxScore() : profile.getMaxScore();
+                BigDecimal maxScore = subjectPart ? doc.parts().getFirst().maxPoints()
+                        : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
-                exam.applyScoringProfile(profile.getReferenceMax(), profile.getPracticeScoring());
+                exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+                        subjectPart ? "RAW" : profile.getPracticeScoring());
+                exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
                         template != null ? template.getStructureYear() : structureYear,
@@ -1150,20 +1163,6 @@ public class ExamService {
         return new ScopeChoice(scope, part, subject, subjectItemId);
     }
 
-    private ExamTemplate pickTemplate(String templateCode, String kindCode, String scope,
-            String partCode, String subjectCode, Integer structureYear) {
-        if (templateCode != null && !templateCode.isBlank()) {
-            ExamTemplate t = templateService.findActive(templateCode);
-            if (t == null || !kindCode.equals(t.getKindCode()) || !scope.equals(t.getScope())
-                    || ("PART".equals(scope) && !Objects.equals(partCode, t.getPartCode()))
-                    || (t.getSubjectCode() != null && !Objects.equals(subjectCode, t.getSubjectCode()))) {
-                throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
-                        messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
-            }
-            return t;
-        }
-        return templateService.findBestMatch(kindCode, scope, partCode, subjectCode, structureYear);
-    }
 
     private void assertTemplateMatches(Exam exam, ExamTemplate template) {
         String kindCode = catalogLookup.findItem(exam.getKindItemId())

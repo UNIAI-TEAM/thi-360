@@ -85,6 +85,19 @@ class ExamOverviewIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body.replace("P2", "P9").replace("SPT-P-DIA-TEST", "SPT-P-DIA-MISSING")))
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("EXAM_PART_NOT_FOUND"));
+        String subjectBody = body.replace("\"scope\":\"PART\",\"partCode\":\"P2\"",
+                        "\"scope\":\"SUBJECT\"").replace("SPT-P-DIA-TEST", "SPT-S-DIA-TEST");
+        var subject = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(subjectBody))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String change = "{\"scope\":\"PART\",\"partCode\":\"P2\",\"expectedRevision\":"
+                + subject.path("revision").asLong() + "}";
+        mockMvc.perform(patch("/api/v1/admin/exams/" + subject.path("id").asText())
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON).content(change))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.maxScore").value(4))
+                .andExpect(jsonPath("$.parts[0].id").value("part-two"))
+                .andExpect(jsonPath("$.practiceScoring").value("RAW"));
     }
 
     @Test
