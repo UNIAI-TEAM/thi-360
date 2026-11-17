@@ -254,6 +254,13 @@ export interface ExamPart {
   mode: "FIXED" | "CHOICE";
   sections: ExamSection[];
   options: ExamPartOption[];
+  /**
+   * Phần theo mã (QDA, BCA): các môn của phần đổi theo mã bài thi (QD01 → Khoa học + Ngoại ngữ), nên môn nằm trong
+   * `subjectPool` chứ không trong `sections`/`options` (R-24, spec 3.4). `null`: phần bình thường, không dùng mã.
+   */
+  subjectPool?: ExamSection[] | null;
+  /** Nguồn mã của phần (`GLOBAL_LIST`: danh sách toàn cục theo lý thuyết–địa hướng); `null`: không theo mã. */
+  codeSource?: "GLOBAL_LIST" | null;
 }
 
 export type ExamVersionState = "WORKING" | "SERVING" | "RETIRED";
@@ -320,6 +327,14 @@ export interface ExamTemplate {
   /** Thời lượng chung khi `timing = SHARED`, hoặc tổng thời lượng để hiển thị; `null` khi tài liệu chưa ghi. */
   durationMinutes: number | null;
   maxScore: number | null;
+  /** Nhãn phiên bản cấu trúc của máy chủ (D24: hiện trong ô chọn phiên bản); `null` khi mẫu cũ chưa ghi. */
+  label?: string | null;
+  /** Tóm tắt phiên bản cấu trúc của máy chủ; `null` khi mẫu cũ chưa ghi. */
+  summary?: string | null;
+  /** Phiên bản mặc định của kỳ thi/phạm vi (D24). */
+  isDefault?: boolean;
+  /** Cách dựng mẫu (`STANDARD` | `REVIEW`); `null` khi máy chủ chưa ghi. */
+  buildMode?: string | null;
   /** Điều cần chuyên gia xác nhận trước khi bán (ví dụ HSA chia 17–17–16), hiện cạnh mẫu; `null` khi không có. */
   expertNote?: string | null;
   parts: ExamTemplatePart[];
@@ -453,14 +468,92 @@ export interface ApplyExamTemplateRequest {
   templateCode: string;
   /** Cấu trúc đã sửa thì phải `true`, nếu không 409 `EXAM_STRUCTURE_REPLACE_CONFIRM`. */
   confirmReplace: boolean;
+  /**
+   * Tổng quan đã sửa khác mẫu hiện hành mà thiếu chính sách thì 409 `EXAM_OVERVIEW_CONFIRM`; `KEEP_EDITED` giữ số đã
+   * sửa của phần và môn còn tồn tại, `USE_TEMPLATE` lấy số của mẫu mới (K8, spec 5.2).
+   */
+  overviewPolicy?: StructureOverviewPolicy | null;
   expectedRevision: number;
 }
+
+/** Chính sách tổng quan khi đổi phiên bản cấu trúc (K8, spec 5.2). */
+export type StructureOverviewPolicy = "KEEP_EDITED" | "USE_TEMPLATE";
 
 /** Bản làm việc của cấu trúc và ma trận (`GET/PUT /exams/{id}/structure`). */
 export interface ExamStructure {
   examId: string;
   revision: number;
   parts: ExamPart[];
+  /** Mã bài thi của các phần theo mã (R-24); rỗng hoặc bỏ trống với bài không theo mã. */
+  combinations?: StructureCombination[];
+  /**
+   * Trạng thái kiểm tra theo môn (H2, R-08); `null` hoặc bỏ trống khi BE-5 chưa triển khai — vùng danh sách không
+   * hiện trạng thái nhưng vẫn dùng được.
+   */
+  sectionStates?: ExamSectionState[] | null;
+}
+
+/** Trạng thái kiểm tra của một môn trong bản làm việc (BE-5, spec 7.1–7.3). */
+export interface ExamSectionState {
+  partId: string | null;
+  sectionId: string | null;
+  subjectCode: string | null;
+  /** `CHECKED`: đã kiểm tra đạt; `NEEDS_CHECK`: đã kiểm tra nhưng môn đã đổi, cần kiểm tra lại; `INCOMPLETE`: chưa hoàn tất. */
+  state: "INCOMPLETE" | "CHECKED" | "NEEDS_CHECK";
+}
+
+/** Mã bài thi của một phần theo mã (QDA, BCA): mã, nhãn và các môn mã đó trỏ tới; chỉ đọc ở bước Cấu trúc (R-24). */
+export interface StructureCombination {
+  code: string;
+  /** Mã bài thi đầy đủ (`QD01`); `null` khi mã là mã tổ hợp nguồn. */
+  examCode: string | null;
+  partId: string | null;
+  subjectCodes: string[];
+  /** Môn mã đòi mà cấu trúc chưa có; rỗng khi đủ môn. */
+  missingSubjects: string[];
+  nameVi: string | null;
+  nameEn: string | null;
+}
+
+/**
+ * Một dòng của `GET /exams/{id}/structure/summary` (BE-5): chỉ tiêu của phần/môn (`target`) so với số câu đã phân bổ
+ * (`allocated`, `difference`), kèm số câu theo dạng và khóa để bấm vào dòng chuyển tới đúng phần/môn/nhóm (spec 15.2, R-04).
+ */
+export interface ExamStructureSummaryRow {
+  name: string | null;
+  partId: string | null;
+  sectionId: string | null;
+  blockId: string | null;
+  target: number | null;
+  allocated: number | null;
+  difference: number | null;
+  essayCount: number | null;
+  objectiveCount: number | null;
+  setCount: number | null;
+  commandCount: number | null;
+  childCount: number | null;
+  maxPoints: number | null;
+}
+
+/** Tổng hợp cấu trúc cho vùng (d) của bước 2 (spec 15.2, R-04). */
+export interface ExamStructureSummary {
+  rows: ExamStructureSummaryRow[];
+}
+
+/** Một dòng tổng quan gửi lên `PUT /exams/{id}/overview` (K8): khóa phần/môn và ba số sửa được. */
+export interface ExamOverviewRow {
+  partId?: string | null;
+  sectionId?: string | null;
+  partCode?: string | null;
+  subjectCode?: string | null;
+  questionCount?: number | null;
+  durationMinutes?: number | null;
+  maxPoints?: number | null;
+}
+
+export interface UpdateExamOverviewRequest {
+  rows: ExamOverviewRow[];
+  expectedRevision: number;
 }
 
 export interface UpdateExamStructureRequest {

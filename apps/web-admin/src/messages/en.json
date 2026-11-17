@@ -3887,22 +3887,25 @@
         "leave": "Leave page",
         "stay": "Stay"
       },
-      "outline": {
-        "title": "Structure",
-        "summary": "{parts, plural, one {# part} other {# parts}} · {count, plural, one {# question} other {# questions}}",
-        "partMeta": "{count, number} q{hasMinutes, select, yes { · {minutes, number} min} other {}}",
-        "sectionOf": "Subject {subject}",
-        "sectionCountVaries": "count depends on the choice",
-        "pickSubjects": "Learners choose {count, number} subjects",
+      "list": {
         "blockCount": "{count, plural, one {# question} other {# questions}}",
-        "sets": "({sets, number} sets × {size, number})",
-        "addBlock": "Add a group to {subject}",
-        "noBlocks": "No question groups yet.",
-        "noOptions": "No paths yet.",
-        "untitledBlock": "Untitled group",
-        "hasIssue": "has issues",
+        "codesReadonly": "Exam codes (read-only)",
         "common": "Common",
-        "expertPending": "awaiting expert confirmation"
+        "expertPending": "awaiting expert confirmation",
+        "hasIssue": "has issues",
+        "missingSubjects": "missing {subjects}",
+        "noOptions": "No paths yet.",
+        "partMeta": "{count, number} q{hasMinutes, select, yes { · {minutes, number} min} other {}}",
+        "pickSubjects": "Learners choose {count, number} subjects",
+        "sectionCountVaries": "count depends on the choice",
+        "sectionOf": "Subject {subject}",
+        "state": {
+          "CHECKED": "Checked",
+          "INCOMPLETE": "Incomplete",
+          "NEEDS_CHECK": "Needs recheck"
+        },
+        "summary": "{parts, plural, one {# part} other {# parts}} · {count, plural, one {# question} other {# questions}}",
+        "title": "Structure"
       },
       "part": {
         "fixedHint": "Every learner takes the same subjects in this part.",

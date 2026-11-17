@@ -3887,22 +3887,25 @@
         "leave": "Rời trang",
         "stay": "Ở lại"
       },
-      "outline": {
-        "title": "Cấu trúc",
-        "summary": "{parts, number} phần · {count, number} câu",
-        "partMeta": "{count, number} câu{hasMinutes, select, yes { · {minutes, number} phút} other {}}",
-        "sectionOf": "Môn {subject}",
-        "sectionCountVaries": "số câu theo lựa chọn",
-        "pickSubjects": "Học viên chọn {count, number} môn",
+      "list": {
         "blockCount": "{count, number} câu",
-        "sets": "({sets, number} chùm × {size, number})",
-        "addBlock": "Thêm nhóm vào {subject}",
-        "noBlocks": "Chưa có nhóm lấy câu.",
-        "noOptions": "Chưa có nhánh nào.",
-        "untitledBlock": "Nhóm chưa đặt tên",
-        "hasIssue": "có lỗi cần xử lý",
+        "codesReadonly": "Mã bài thi (chỉ đọc)",
         "common": "Phần chung",
-        "expertPending": "chờ chuyên gia xác nhận"
+        "expertPending": "chờ chuyên gia xác nhận",
+        "hasIssue": "có lỗi cần xử lý",
+        "missingSubjects": "thiếu môn {subjects}",
+        "noOptions": "Chưa có nhánh nào.",
+        "partMeta": "{count, number} câu{hasMinutes, select, yes { · {minutes, number} phút} other {}}",
+        "pickSubjects": "Học viên chọn {count, number} môn",
+        "sectionCountVaries": "số câu theo lựa chọn",
+        "sectionOf": "Môn {subject}",
+        "state": {
+          "CHECKED": "Đã kiểm tra",
+          "INCOMPLETE": "Chưa hoàn tất",
+          "NEEDS_CHECK": "Cần kiểm tra lại"
+        },
+        "summary": "{parts, number} phần · {count, number} câu",
+        "title": "Cấu trúc"
       },
       "part": {
         "fixedHint": "Mọi học viên làm cùng các môn của phần này.",

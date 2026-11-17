@@ -16,10 +16,12 @@ export const listExams = (query: ListExamsQuery, signal?: AbortSignal): Promise<
 export const getExam = http.getExam;
 export const listExamTemplates = http.listExamTemplates;
 export const getExamStructure = http.getExamStructure;
+export const getExamStructureSummary = http.getExamStructureSummary;
 export const suggestExamCode = http.suggestExamCode;
 export const createExam = http.createExam;
 export const updateExamInfo = http.updateExamInfo;
 export const updateExamStructure = http.updateExamStructure;
+export const updateExamOverview = http.updateExamOverview;
 export const applyExamTemplate = http.applyExamTemplate;
 export const duplicateExam = http.duplicateExam;
 /**
@@ -36,10 +38,12 @@ export interface ExamsApiDeps {
   getExam: typeof getExam;
   listExamTemplates: typeof listExamTemplates;
   getExamStructure: typeof getExamStructure;
+  getExamStructureSummary: typeof getExamStructureSummary;
   suggestExamCode: typeof suggestExamCode;
   createExam: typeof createExam;
   updateExamInfo: typeof updateExamInfo;
   updateExamStructure: typeof updateExamStructure;
+  updateExamOverview: typeof updateExamOverview;
   applyExamTemplate: typeof applyExamTemplate;
   duplicateExam: typeof duplicateExam;
   discontinueExam: typeof discontinueExam;
@@ -52,10 +56,12 @@ export const defaultExamsApiDeps: ExamsApiDeps = {
   getExam,
   listExamTemplates,
   getExamStructure,
+  getExamStructureSummary,
   suggestExamCode,
   createExam,
   updateExamInfo,
   updateExamStructure,
+  updateExamOverview,
   applyExamTemplate,
   duplicateExam,
   discontinueExam,

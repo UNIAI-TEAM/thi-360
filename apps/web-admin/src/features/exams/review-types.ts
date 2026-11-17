@@ -1,6 +1,6 @@
 import type { PersonRef, QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
-import type { ExamCheckStatus, ExamPart, ExamVersion, MatrixMode } from "./types";
+import type { ExamCheckStatus, ExamPart, ExamSectionState, ExamVersion, MatrixMode } from "./types";
 
 /**
  * Kiểu của Kiểm tra cấu hình, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11), dữ liệu mẫu.
@@ -167,6 +167,8 @@ export interface CheckIssue {
   timeLimitSeconds: number | null;
   /** Mã câu nguồn liên quan (quy tắc chấm khác khối, thiếu tiêu chí chấm); `null` khi không áp dụng. */
   questionCodes: string[] | null;
+  /** Các mã bài thi bị lỗi ảnh hưởng (phần theo mã, R-24); `null` khi lỗi không gắn mã. */
+  affectedCodes?: string[] | null;
 }
 
 /** Số câu cần của một ô (ma trận kết hợp) sau khi quy đổi tỷ lệ. */
@@ -281,6 +283,9 @@ export interface ExamCheckResult extends ExamCheckOutcome {
   stale: boolean;
   /** Kết quả đã lưu hết hiệu lực vì sao; `null` khi còn hiệu lực. */
   invalidReason: CheckInvalidReason | null;
+
+  /** Trạng thái từng môn sau lần kiểm tra (H2); `null` khi BE-5 chưa triển khai — màn không hiện trạng thái. */
+  sectionStates?: ExamSectionState[] | null;
 }
 
 /**
@@ -509,6 +514,13 @@ export interface ExamVersionDetail {
 
 export interface RunExamCheckRequest {
   examId: string;
+  /**
+   * Phạm vi kiểm tra (spec 7.1): `EXAM` cả bài (mặc định, gồm đơn vị theo mã), `SECTION` một môn (`sectionId`), `PART`
+   * một phần (`partId`, bỏ qua đơn vị theo mã của phần).
+   */
+  scope?: "EXAM" | "SECTION" | "PART";
+  sectionId?: string;
+  partId?: string;
 }
 
 export interface GeneratePreviewRequest {

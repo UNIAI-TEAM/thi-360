@@ -18,12 +18,15 @@ import type {
   DuplicateExamRequest,
   ExamDetail,
   ExamListPage,
+  ExamSectionState,
   ExamStructure,
+  ExamStructureSummary,
   ExamTemplate,
   ListExamsQuery,
   SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
+  UpdateExamOverviewRequest,
   UpdateExamStructureRequest,
 } from "./types";
 
@@ -86,7 +89,83 @@ export async function getExamStructure(id: string): Promise<ExamStructure> {
     params: { path: { id } },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
-  return { examId: data.examId, revision: data.revision, parts: mapParts(data.parts) };
+  return {
+    examId: data.examId,
+    revision: data.revision,
+    parts: mapParts(data.parts),
+    combinations: (data.combinations ?? []).map((item) => ({
+      code: item.code ?? "",
+      examCode: item.examCode ?? null,
+      partId: item.partId ?? null,
+      subjectCodes: item.subjectCodes ?? [],
+      missingSubjects: item.missingSubjects ?? [],
+      nameVi: item.nameVi ?? null,
+      nameEn: item.nameEn ?? null,
+    })),
+    sectionStates: (data.sectionStates ?? []).map((item) => ({
+      partId: item.partId ?? null,
+      sectionId: item.sectionId ?? null,
+      subjectCode: item.subjectCode ?? null,
+      state:
+        item.state === "CHECKED" || item.state === "NEEDS_CHECK"
+          ? (item.state as ExamSectionState["state"])
+          : "INCOMPLETE",
+    })),
+  };
+}
+
+/**
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2). BE-5 chưa triển khai: trả `null` để màn ẩn bảng tổng hợp thay vì báo lỗi.
+ */
+export async function getExamStructureSummary(id: string): Promise<ExamStructureSummary | null> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}/structure/summary", {
+    params: { path: { id } },
+  });
+  if (response.status === 501) return null;
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return {
+    rows: (data.parts ?? []).map((row) => ({
+      name: row.name ?? null,
+      partId: row.partId ?? null,
+      sectionId: row.sectionId ?? null,
+      blockId: row.blockId ?? null,
+      target: row.target ?? null,
+      allocated: row.allocated ?? null,
+      difference: row.difference ?? null,
+      essayCount: row.essayCount ?? null,
+      objectiveCount: row.objectiveCount ?? null,
+      setCount: row.setCount ?? null,
+      commandCount: row.commandCount ?? null,
+      childCount: row.childCount ?? null,
+      maxPoints: row.maxPoints ?? null,
+    })),
+  };
+}
+
+/**
+ * Lưu tổng quan từ hộp thoại "Sửa thông tin tổng quan" (PUT `/exams/{id}/overview`). BE-5 chưa triển khai: nút vẫn
+ * hiện nhưng lưu trả lỗi máy chủ.
+ */
+export async function updateExamOverview(id: string, request: UpdateExamOverviewRequest): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.PUT("/api/v1/admin/exams/{id}/overview", {
+    params: { path: { id } },
+    body: {
+      expectedRevision: request.expectedRevision,
+      overview: request.rows.map((row) => ({
+        partId: row.partId ?? undefined,
+        sectionId: row.sectionId ?? undefined,
+        partCode: row.partCode ?? undefined,
+        subjectCode: row.subjectCode ?? undefined,
+        questionCount: row.questionCount ?? undefined,
+        durationMinutes: row.durationMinutes ?? undefined,
+        maxPoints: row.maxPoints ?? undefined,
+      })),
+    },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
 }
 
 export async function suggestExamCode(query: SuggestExamCodeQuery): Promise<string> {
@@ -188,6 +267,7 @@ export async function applyExamTemplate(id: string, request: ApplyExamTemplateRe
     body: {
       templateCode: request.templateCode,
       confirmReplace: request.confirmReplace,
+      overviewPolicy: request.overviewPolicy ?? undefined,
       expectedRevision: request.expectedRevision,
     },
   });

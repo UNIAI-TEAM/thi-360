@@ -11,7 +11,7 @@ import { getErrorStatus } from "@/lib/api/query-client";
 import { yearsNeedConfirmation } from "../check";
 import { examTabHref } from "../editor-tabs";
 import { combinationsForKind } from "../create-exam-schema";
-import { type MatrixAxes, structureTotals, validateStructure } from "../matrix";
+import type { MatrixAxes } from "../matrix";
 import { useExam, useExamStructure, useExamTemplates, useUpdateExamStructure } from "../queries";
 import type { ExamDetail, ExamPart, ExamSection, ExamStructure, ExamTemplate } from "../types";
 import { BlockEditor } from "./block-editor";
@@ -23,6 +23,8 @@ import {
   defaultSelection,
   ENGLISH_CODE,
   findBlock,
+  type DraftLocation,
+  draftTotals,
   findSection,
   moveBlock,
   newBlock,
@@ -39,9 +41,10 @@ import {
   updateBlock,
   updatePart,
   updateSection,
+  validateDraft,
 } from "./exam-structure-draft";
 import { issueTarget, optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
-import { ExamStructureOutline } from "./exam-structure-outline";
+import { ExamStructureList } from "./exam-structure-list";
 import { ExamStructurePartPanel } from "./exam-structure-part-panel";
 import { ExamStructureSubjectPanel } from "./exam-structure-subject-panel";
 import { StructureVersionPicker } from "./structure-version-picker";
@@ -216,9 +219,9 @@ function StructureEditor({
     [lookup, reference],
   );
   const shared = exam.timing === "SHARED";
-  const issues = useMemo(() => validateStructure(draft, axes, { timing: exam.timing }), [draft, axes, exam.timing]);
+  const issues = useMemo(() => validateDraft(draft, axes, { timing: exam.timing }), [draft, axes, exam.timing]);
   const totals = useMemo(
-    () => structureTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null }),
+    () => draftTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null }),
     [draft, shared, exam.durationMinutes],
   );
   const issueText = useStructureIssueText(draft, names);
@@ -235,9 +238,9 @@ function StructureEditor({
 
   const announce = (message: string) => setLiveMessage(message);
 
-  const handleAddBlock = (partId: string, optionId: string | null, section: ExamSection) => {
+  const handleAddBlock = (location: DraftLocation, section: ExamSection) => {
     const block = newBlock(t("newBlockName", { subject: lookup.subject(section.subjectCode) }));
-    setDraft((parts) => addBlock(parts, { partId, optionId, sectionId: section.id }, block));
+    setDraft((parts) => addBlock(parts, location, block));
     select({ kind: "block", blockId: block.id });
     announce(t("blockAdded", { name: block.name }));
   };
@@ -265,7 +268,8 @@ function StructureEditor({
 
   const blockContext = current?.kind === "block" ? findBlock(draft, current.blockId) : null;
   const sectionContext = current?.kind === "section" ? findSection(draft, current.sectionId) : null;
-  const selectedPart = current?.kind === "part" ? draft.find((part) => part.id === current.partId) : null;
+  const selectedPart =
+    current?.kind === "part" || current?.kind === "option" ? draft.find((part) => part.id === current.partId) : null;
 
   return (
     <div className="@container flex flex-col gap-4">
@@ -379,13 +383,14 @@ function StructureEditor({
       </Card>
 
       <div className="grid grid-cols-1 items-start gap-4 @5xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <ExamStructureOutline
+        <ExamStructureList
           parts={draft}
+          combinations={structure.combinations ?? []}
+          sectionStates={structure.sectionStates ?? null}
           selection={current}
           issues={issues}
           names={names}
           onSelect={select}
-          onAddBlock={handleAddBlock}
         />
         <div className="min-w-0">
           {sectionContext ? (
@@ -398,7 +403,7 @@ function StructureEditor({
               reference={reference}
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
-              onAddBlock={() => handleAddBlock(sectionContext.part.id, sectionContext.location.optionId, sectionContext.section)}
+              onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
             />
           ) : blockContext ? (
             <BlockEditor
@@ -472,7 +477,7 @@ function StructureEditor({
               onSectionCount={(optionId, sectionId, questionCount) =>
                 setDraft((parts) => setSectionCount(parts, { partId: selectedPart.id, optionId, sectionId }, questionCount))
               }
-              onAddBlock={(optionId, section) => handleAddBlock(selectedPart.id, optionId, section)}
+              onAddBlock={(optionId, section) => handleAddBlock({ partId: selectedPart.id, optionId, sectionId: section.id }, section)}
               onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
               onAttachCombination={(combination) => {
                 setDraft((parts) => attachCombination(parts, selectedPart.id, combination));

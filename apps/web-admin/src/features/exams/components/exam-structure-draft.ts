@@ -1,5 +1,18 @@
 import type { CombinationOption } from "@/features/content/types";
-import { emptyMatrix, type SectionLocation, sectionGroups, splitEvenly } from "../matrix";
+import {
+  emptyMatrix,
+  type MatrixAxes,
+  type SectionLocation,
+  sectionGroups as storedSectionGroups,
+  splitEvenly,
+  type StructureIssue,
+  type StructureTotals,
+  type StructureTotalsOptions,
+  structureTotals,
+  sum,
+  type ValidateStructureOptions,
+  validateStructure,
+} from "../matrix";
 import type { ExamPart, ExamPartOption, ExamSection, QuestionBlock } from "../types";
 
 /**
@@ -15,17 +28,30 @@ export function draftId(prefix: string): string {
 
 export const ENGLISH_CODE = "ENGLISH";
 
-/** Đang sửa gì: một phần (thông tin phần, lựa chọn), một môn (chỉ tiêu cấp môn và các nhóm) hoặc một nhóm lấy câu. */
+/** Đang sửa gì: một phần (thông tin phần, lựa chọn), một phương án chọn môn (tổng quan Khoa học), một môn (chỉ tiêu cấp môn và các nhóm) hoặc một nhóm lấy câu. */
 export type StructureSelection =
   | { kind: "part"; partId: string }
+  | { kind: "option"; partId: string; optionId: string }
   | { kind: "section"; sectionId: string }
   | { kind: "block"; blockId: string };
+
+/** Vị trí môn trong bản nháp; `pool`: môn nằm trong `subjectPool` của phần theo mã (R-24), không phải `sections`. */
+export type DraftLocation = SectionLocation & { pool?: boolean };
+
+/**
+ * Nhóm môn theo vị trí lưu như `sectionGroups` của `matrix.ts`, thêm nhóm `subjectPool` của phần theo mã (`pool: true`).
+ * Phần theo mã không có `sections` hay lựa chọn: các môn nằm trong `subjectPool`.
+ */
+export function sectionGroups(part: ExamPart): Array<{ optionId: string | null; sections: ExamSection[]; pool?: boolean }> {
+  if (part.codeSource) return [{ optionId: null, sections: part.subjectPool ?? [], pool: true }];
+  return storedSectionGroups(part);
+}
 
 export interface SectionContext {
   part: ExamPart;
   option: ExamPartOption | null;
   section: ExamSection;
-  location: SectionLocation;
+  location: DraftLocation;
 }
 
 export function findSection(parts: readonly ExamPart[], sectionId: string): SectionContext | null {
@@ -37,7 +63,7 @@ export function findSection(parts: readonly ExamPart[], sectionId: string): Sect
           part,
           option: part.options.find((option) => option.id === group.optionId) ?? null,
           section,
-          location: { partId: part.id, optionId: group.optionId, sectionId },
+          location: { partId: part.id, optionId: group.optionId, sectionId, pool: group.pool },
         };
       }
     }
@@ -50,7 +76,7 @@ export interface BlockContext {
   option: ExamPartOption | null;
   section: ExamSection;
   block: QuestionBlock;
-  location: SectionLocation;
+  location: DraftLocation;
   /** Vị trí của khối trong môn, tính từ 1. */
   position: number;
 }
@@ -66,7 +92,7 @@ export function findBlock(parts: readonly ExamPart[], blockId: string): BlockCon
             option: part.options.find((option) => option.id === group.optionId) ?? null,
             section,
             block: section.blocks[index]!,
-            location: { partId: part.id, optionId: group.optionId, sectionId: section.id },
+            location: { partId: part.id, optionId: group.optionId, sectionId: section.id, pool: group.pool },
             position: index + 1,
           };
         }
@@ -82,20 +108,22 @@ export function updatePart(parts: readonly ExamPart[], partId: string, update: (
 
 export function updateSection(
   parts: readonly ExamPart[],
-  location: SectionLocation,
+  location: DraftLocation,
   update: (section: ExamSection) => ExamSection,
 ): ExamPart[] {
   const mapSections = (sections: ExamSection[]) =>
     sections.map((section) => (section.id === location.sectionId ? update(section) : section));
   return updatePart(parts, location.partId, (part) =>
-    location.optionId === null
-      ? { ...part, sections: mapSections(part.sections) }
-      : {
-          ...part,
-          options: part.options.map((option) =>
-            option.id === location.optionId ? { ...option, sections: mapSections(option.sections) } : option,
-          ),
-        },
+    location.pool
+      ? { ...part, subjectPool: (part.subjectPool ?? []).map((s) => (s.id === location.sectionId ? update(s) : s)) }
+      : location.optionId === null
+        ? { ...part, sections: mapSections(part.sections) }
+        : {
+            ...part,
+            options: part.options.map((option) =>
+              option.id === location.optionId ? { ...option, sections: mapSections(option.sections) } : option,
+            ),
+          },
   );
 }
 
@@ -131,7 +159,7 @@ export function newBlock(name: string): QuestionBlock {
   };
 }
 
-export function addBlock(parts: readonly ExamPart[], location: SectionLocation, block: QuestionBlock): ExamPart[] {
+export function addBlock(parts: readonly ExamPart[], location: DraftLocation, block: QuestionBlock): ExamPart[] {
   return updateSection(parts, location, (section) => ({ ...section, blocks: [...section.blocks, block] }));
 }
 
@@ -269,20 +297,36 @@ export function firstBlockId(part: ExamPart): string | null {
 
 export function selectionExists(parts: readonly ExamPart[], selection: StructureSelection): boolean {
   if (selection.kind === "part") return parts.some((part) => part.id === selection.partId);
+  if (selection.kind === "option")
+    return parts.some(
+      (part) => part.id === selection.partId && part.options.some((option) => option.id === selection.optionId),
+    );
   if (selection.kind === "section") return findSection(parts, selection.sectionId) !== null;
   return findBlock(parts, selection.blockId) !== null;
 }
 
-/** Mặc định mở môn đầu tiên của phần cố định có môn (soạn theo môn, B9); không có thì mở phần đầu tiên. */
+/**
+ * Mục mở mặc định (bản vẽ `BaiThiBuoc2`): bài một môn → môn đó; bài FULL (nhiều môn, không chọn) → môn của phần đầu
+ * tiên; phần đầu tiên theo mã → môn đầu của `subjectPool`; phần đầu tiên chỉ có phương án chọn môn (HSA Khoa học) →
+ * phương án đó (tổng quan chọn môn). Không khớp → phần đầu tiên.
+ */
 export function defaultSelection(parts: readonly ExamPart[]): StructureSelection | null {
-  for (const part of parts) {
-    if (part.mode === "FIXED" && part.sections[0]) return { kind: "section", sectionId: part.sections[0].id };
+  const first = parts[0];
+  if (!first) return null;
+  const all = first.codeSource ? (first.subjectPool ?? []) : first.sections;
+  if (all.length === 1) return { kind: "section", sectionId: all[0]!.id };
+  if (first.codeSource) {
+    return all.length ? { kind: "section", sectionId: all[0]!.id } : { kind: "part", partId: first.id };
   }
-  return parts[0] ? { kind: "part", partId: parts[0].id } : null;
+  const science = first.options.find((option) => option.kind === "SUBJECT_CHOICE");
+  if (science && first.options.length === 1 && first.sections.length === 0) {
+    return { kind: "option", partId: first.id, optionId: science.id };
+  }
+  return all.length ? { kind: "section", sectionId: all[0]!.id } : { kind: "part", partId: first.id };
 }
 
 /** Đổi số câu một môn. Môn của lựa chọn đã được chuyên gia xác nhận thì số câu mới phải xác nhận lại. */
-export function setSectionCount(parts: readonly ExamPart[], location: SectionLocation, questionCount: number): ExamPart[] {
+export function setSectionCount(parts: readonly ExamPart[], location: DraftLocation, questionCount: number): ExamPart[] {
   const updated = updateSection(parts, location, (section) => ({ ...section, questionCount }));
   if (location.optionId === null) return updated;
   return updatePart(updated, location.partId, (part) => ({
@@ -291,6 +335,48 @@ export function setSectionCount(parts: readonly ExamPart[], location: SectionLoc
       option.id === location.optionId && option.expertConfirmed === true ? { ...option, expertConfirmed: false } : option,
     ),
   }));
+}
+
+/**
+ * Kiểm tra cấu trúc trên máy như `validateStructure`, nhưng với phần theo mã (QDA, BCA): các môn nằm trong
+ * `subjectPool`; mỗi mã chỉ lấy một phần số câu của phần nên không so tổng môn với số câu của phần (R-24, lỗi này do
+ * kiểm tra cấu hình báo theo từng mã).
+ */
+export function validateDraft(
+  parts: readonly ExamPart[],
+  axes: MatrixAxes,
+  options: ValidateStructureOptions = {},
+): StructureIssue[] {
+  const plain = validateStructure(
+    parts.filter((part) => !part.codeSource),
+    axes,
+    options,
+  );
+  const coded = parts
+    .filter((part) => part.codeSource)
+    .map((part): ExamPart => ({ ...part, mode: "FIXED", sections: part.subjectPool ?? [], options: [] }));
+  const codedIssues = validateStructure(coded, axes, options).filter(
+    (issue) => issue.code !== "SECTIONS_TOTAL" && issue.code !== "PART_POINTS",
+  );
+  return [...plain, ...codedIssues];
+}
+
+/** Tổng bài từ bản nháp; phần theo mã tính số câu và thời lượng của phần, phân bổ từng mã do máy chủ tính (`structure/summary`). */
+export function draftTotals(parts: readonly ExamPart[], options: StructureTotalsOptions = {}): StructureTotals {
+  const plain = structureTotals(
+    parts.filter((part) => !part.codeSource),
+    options,
+  );
+  const coded = parts.filter((part) => part.codeSource);
+  const codedQuestions = sum(coded.map((part) => part.questionCount));
+  return {
+    ...plain,
+    partCount: parts.length,
+    totalQuestions: plain.totalQuestions + codedQuestions,
+    printedQuestions: plain.printedQuestions + sum(coded.map((part) => Math.max(part.questionCountOnPaper, part.questionCount))),
+    totalMinutes: options.sharedDuration ?? plain.totalMinutes + sum(coded.map((part) => part.durationMinutes ?? 0)),
+    allocated: plain.allocated + codedQuestions,
+  };
 }
 
 /** Chuyên gia xác nhận số câu từng môn của một lựa chọn (bỏ cờ "Chờ chuyên gia xác nhận"). */

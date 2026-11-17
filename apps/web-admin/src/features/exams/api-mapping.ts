@@ -378,6 +378,10 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     timing: response.timing as ExamTiming,
     durationMinutes: nullable(response.durationMinutes),
     maxScore: nullable(response.maxScore),
+    label: nullable(response.label),
+    summary: nullable(response.summary),
+    isDefault: response.isDefault,
+    buildMode: nullable(response.buildMode),
     expertNote: nullable(response.expertNote),
     parts: mapParts(document.parts).map(templatePart),
   };

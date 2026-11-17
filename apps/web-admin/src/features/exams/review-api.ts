@@ -57,6 +57,7 @@ import type {
   ExamPart,
   ExamPartOption,
   ExamSection,
+  ExamSectionState,
   ExamVersion,
   QuestionBlock,
 } from "./types";
@@ -142,10 +143,15 @@ async function getExamCheckReal({ examId }: { examId: string }): Promise<ExamChe
   return data == null ? null : mapCheckResult(data);
 }
 
-async function runExamCheckReal({ examId }: RunExamCheckRequest): Promise<ExamCheckResult> {
+async function runExamCheckReal({ examId, scope, partId, sectionId }: RunExamCheckRequest): Promise<ExamCheckResult> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/{examId}/check", {
     params: { path: { examId } },
+    body: {
+      scope: scope ?? undefined,
+      partId: partId ?? undefined,
+      sectionId: sectionId ?? undefined,
+    },
   });
   if (!response.ok || data === undefined || !isCheckResult(data)) throw toExamsApiError(response.status, error);
   return mapCheckResult(data);
@@ -425,11 +431,11 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
         ? (issue.severity as CheckIssueSeverity)
         : "ERROR",
     group: issue.group !== undefined && GROUPS[issue.group] ? (issue.group as CheckGroup) : "INFO",
-    partId: issue.partId ?? null,
+    partId: issue.partId ?? issue.location?.partId ?? null,
     partName: issue.partName ?? null,
-    sectionId: issue.sectionId ?? null,
+    sectionId: issue.sectionId ?? issue.location?.sectionId ?? null,
     subjectCode: issue.subjectCode ?? null,
-    blockId: issue.blockId ?? null,
+    blockId: issue.blockId ?? issue.location?.blockId ?? null,
     blockName: issue.blockName ?? null,
     optionId: issue.optionId ?? null,
     gradeCode: issue.gradeCode ?? null,
@@ -445,6 +451,7 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     available: issue.available ?? null,
     timeLimitSeconds: issue.timeLimitSeconds ?? null,
     questionCodes: issue.questionCodes ?? null,
+    affectedCodes: issue.affectedCodes ?? null,
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
@@ -582,6 +589,15 @@ function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
     totalPoints: result.totalPoints ?? 0,
     printedQuestions: result.printedQuestions ?? 0,
     maxScore: result.maxScore ?? null,
+    sectionStates: (result.sectionStates ?? []).map((item) => ({
+      partId: item.partId ?? null,
+      sectionId: item.sectionId ?? null,
+      subjectCode: item.subjectCode ?? null,
+      state:
+        item.state === "CHECKED" || item.state === "NEEDS_CHECK"
+          ? (item.state as ExamSectionState["state"])
+          : "INCOMPLETE",
+    })),
   };
 }
 
