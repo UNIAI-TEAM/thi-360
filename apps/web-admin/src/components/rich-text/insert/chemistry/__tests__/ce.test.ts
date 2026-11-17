@@ -28,4 +28,10 @@ describe("ce helpers", () => {
     expect(parseCeLatex("x^2")).toBeNull();
     expect(parseCeLatex("\\ce{A ->[x] B}")?.top).toBe("x");
   });
+
+  it("refuses latex that only starts with \\ce{ and ends with }, instead of cutting it wrongly", () => {
+    expect(parseCeLatex("\\ce{A}\\text{ note}")).toBeNull();
+    expect(parseCeLatex("\\ce{A} + \\ce{B}")).toBeNull();
+    expect(parseCeLatex("\\ce{^{14}_{6}C}")).toEqual({ source: "^{14}_{6}C", top: "", bottom: "" });
+  });
 });

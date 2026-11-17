@@ -73,15 +73,30 @@ export function isCeLatex(latex: string): boolean {
   return latex.startsWith("\\ce{") || latex.startsWith("\\ce ");
 }
 
+/** Vị trí `}` đóng nhóm mở tại `open` (`text[open] === "{"`), bỏ qua ký tự sau `\`; `-1` nếu nhóm không đóng. */
+function closingBrace(text: string, open: number): number {
+  let depth = 0;
+  for (let index = open; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === "\\") index += 1;
+    else if (char === "{") depth += 1;
+    else if (char === "}" && --depth === 0) return index;
+  }
+  return -1;
+}
+
 /**
- * Tách công thức hóa học đã lưu về ba ô của hộp (spec 4.3, mở lại). Chỉ nhận `\ce{…}` (ngoặc đóng cuối chuỗi) hoặc
- * `\ce …`; LaTeX khác trả `null`.
+ * Tách công thức hóa học đã lưu về ba ô của hộp (spec 4.3, mở lại). Chỉ nhận đúng một `\ce{…}` mà ngoặc đóng khớp với
+ * ngoặc mở nằm ở cuối chuỗi (`\ce{A}\text{…}`, `\ce{A} + \ce{B}` không phải), hoặc `\ce …`; LaTeX khác trả `null` để hộp
+ * không đọc sai rồi ghi đè công thức.
  */
 export function parseCeLatex(latex: string): CeParts | null {
   const text = latex.trim();
   let body: string;
-  if (text.startsWith("\\ce{") && text.endsWith("}")) body = text.slice(4, -1);
-  else if (text.startsWith("\\ce ")) body = text.slice(4);
+  if (text.startsWith("\\ce{")) {
+    if (closingBrace(text, 3) !== text.length - 1) return null;
+    body = text.slice(4, -1);
+  } else if (text.startsWith("\\ce ")) body = text.slice(4);
   else return null;
   return splitArrowConditions(body.trim());
 }

@@ -287,6 +287,21 @@ describe("chemistry dialog: reopen", () => {
     renderDialog(editor);
     expect(screen.getByRole("button", { name: t.block })).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("does not open a formula it cannot read back as an edit, and keeps it when inserting", async () => {
+    const user = userEvent.setup();
+    const editor = createEditor('<p><span class="math-inline">\\(\\ce{A}\\text{ note}\\)</span></p>');
+    selectFirstMath(editor);
+    renderDialog(editor);
+
+    expect((screen.getByLabelText(t.quickLabel) as HTMLInputElement).value).toBe("");
+    await fill(user, t.quickLabel, "H2O");
+    await user.click(insertButton());
+
+    const html = emitted(editor);
+    expect(html).toContain("\\(\\ce{A}\\text{ note}\\)");
+    expect(html).toContain("\\(\\ce{H2O}\\)");
+  });
 });
 
 describe("chemistry dialog: recent", () => {
