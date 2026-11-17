@@ -51,6 +51,17 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         assertThat(section.path("answerQuotas").path("items").get(1).path("value").asInt()).isEqualTo(15);
     }
 
+    @Test
+    void seededExamStructuresContainNoLegacyOrderingFields() throws Exception {
+        List<String> structures = jdbc.queryForList("SELECT parts::text FROM exam.exam_structure", String.class);
+        assertThat(structures).isNotEmpty();
+        for (String structure : structures) {
+            JsonNode parts = mapper.readTree(structure);
+            assertThat(parts.findValues("groupOrder")).isEmpty();
+            assertThat(parts.findValues("shuffle")).isEmpty();
+        }
+    }
+
 
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
