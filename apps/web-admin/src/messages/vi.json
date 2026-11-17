@@ -132,7 +132,7 @@
       "examPlaceholder": "Chọn kỳ thi đang hoạt động…",
       "moveSubjectDownLabel": "Di chuyển {name} xuống",
       "moveSubjectUpLabel": "Di chuyển {name} lên",
-      "newVersionNotice": "Đổi nhánh hoặc thứ tự môn luôn tạo phiên bản mới; đổi kỳ thi hoặc danh sách môn cũng tạo phiên bản mới khi mã đang được dùng. Đề đã công bố và kết quả cũ tiếp tục dùng phiên bản {currentVersion}; lần lưu này tạo phiên bản {nextVersion}.",
+      "newVersionNotice": "Đổi nhánh, kỳ thi, danh sách hoặc thứ tự môn luôn tạo phiên bản mới. Đề đã công bố và kết quả cũ tiếp tục dùng phiên bản {currentVersion}; lần lưu này tạo phiên bản {nextVersion}.",
       "noActiveExams": "Chưa có kỳ thi nào đang hoạt động.",
       "noActiveSubjects": "Chưa còn môn nào đang hoạt động để thêm.",
       "optionsLoadError": "Không tải được danh sách lựa chọn. Hãy thử lại.",

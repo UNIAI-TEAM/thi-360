@@ -132,7 +132,7 @@
       "examPlaceholder": "Select an active exam…",
       "moveSubjectDownLabel": "Move {name} down",
       "moveSubjectUpLabel": "Move {name} up",
-      "newVersionNotice": "Changing the branch or the subject order always creates a new version; changing the exam or subject list also creates one when the code is in use. Published exams and historical results keep version {currentVersion}; this save creates version {nextVersion}.",
+      "newVersionNotice": "Changing the branch, exam, subject list or subject order always creates a new version. Published exams and historical results keep version {currentVersion}; this save creates version {nextVersion}.",
       "noActiveExams": "No active exams available.",
       "noActiveSubjects": "No more active subjects available to add.",
       "optionsLoadError": "Could not load options. Please try again.",
