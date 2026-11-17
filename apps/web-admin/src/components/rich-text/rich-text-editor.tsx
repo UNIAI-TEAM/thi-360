@@ -15,7 +15,7 @@ import { createRichTextExtensions } from "./extensions";
 import { MathInputRule } from "./extensions/math-input-rule";
 import { SlashMenu } from "./extensions/slash-menu";
 import { stripTrailingEmptyParagraph } from "./html-contract";
-import { INSERT_REGISTRY, registryEditorPlugins, toolbarInsertEntries, type FieldContext, type InsertDialogModule, type InsertEntry } from "./insert/registry";
+import { INSERT_REGISTRY, registryEditorPlugins, slashMenuEntries, toolbarInsertEntries, type FieldContext, type InsertDialogModule, type InsertEntry } from "./insert/registry";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "./sanitize";
 import { RichTextToolbar } from "./toolbar/toolbar";
 import "./rich-text.css";
@@ -178,6 +178,10 @@ export function RichTextEditor({
   const onRichPasteRef = useRef(onRichPaste);
   // `handleDoubleClick` của TipTap chụp lúc tạo editor: đi qua ref để luôn gọi bản `openEntry` mới nhất.
   const openEntryRef = useRef<(entry: InsertEntry, editing: unknown) => void>(() => {});
+  // Menu `/` được dựng một lần cùng editor: mục (theo fieldContext), cách mở hộp và hàm dịch đi qua ref để luôn mới nhất.
+  const slashEntriesRef = useRef<InsertEntry[]>([]);
+  const slashSelectRef = useRef<(entry: InsertEntry) => void>(() => {});
+  const translateRef = useRef<(key: string) => string>((key) => key);
   // Chưa từng focus thì vùng soạn chưa có con trỏ do người dùng đặt: `insertText` chèn ở cuối thay vì đầu tài liệu.
   const hasFocusedRef = useRef(false);
   // HTML đã phát qua onChange: lọc lặp phát hiện (vòng đồng bộ, khởi tạo rỗng → "<p></p>").
@@ -196,6 +200,9 @@ export function RichTextEditor({
     uploadErrorRef.current = onImageUploadError;
     onRichPasteRef.current = onRichPaste;
     openEntryRef.current = openEntry;
+    slashEntriesRef.current = slashMenuEntries(fieldContext).filter((entry) => entry.id !== "image" || allowImages);
+    slashSelectRef.current = onToolbarEntry;
+    translateRef.current = (key) => t(key as never);
   });
 
   const insertEntries = useMemo(
@@ -236,7 +243,11 @@ export function RichTextEditor({
       immediatelyRender: false,
       extensions: [
         ...createRichTextExtensions({ allowImages, placeholder, renderLatex }),
-        SlashMenu,
+        SlashMenu.configure({
+          getEntries: () => slashEntriesRef.current,
+          onSelect: (entry) => slashSelectRef.current(entry),
+          translate: (key) => translateRef.current(key),
+        }),
         MathInputRule,
         ...editorPlugins,
       ],
