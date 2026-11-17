@@ -7,6 +7,7 @@ import {
   fillClassification,
   fixtureSample,
   generateExamPreview,
+  word365FormulaCount,
   word365Html,
   insertButton,
   SOURCE_LABEL,
@@ -146,7 +147,9 @@ test("ED-QA flow 3: Dia question with a data table and an image", async ({ page,
   await imageDialog.getByLabel("Alternative text").fill("Pig numbers 2015 - 2021");
   await imageDialog.getByLabel("Caption below the image").fill("Pigs and pork output");
   await imageDialog.getByLabel("Source", { exact: true }).fill("GSO");
-  await imageDialog.getByLabel("Medium").check({ force: true });
+  // Nút radio ẩn thị giác (sr-only), người dùng bấm nhãn; kiểm tra radio đã được chọn.
+  await imageDialog.locator("label").filter({ hasText: "Medium" }).click();
+  await expect(imageDialog.getByRole("radio", { name: "Medium" })).toBeChecked();
   await imageDialog.getByRole("button", { name: "Insert image" }).click();
   await expect(imageDialog).toBeHidden();
   await expect(richEditor(page, 0).locator("figure.image img")).toBeVisible();
@@ -351,6 +354,10 @@ test("ED-QA flow 6: QUESTION_SET reading passage with 5 numbered blanks", async 
   const blanks = [...passage.matchAll(/<span class="blank" data-blank="(\d+)"><\/span>/g)].map((match) => match[1]);
   expect(blanks).toEqual(["1", "2", "3", "4", "5"]);
   expect(passage).toContain('<p>The word was <span class="blank" data-blank="1"></span> by Paul');
+  // Dạng đã lưu khớp mẫu `set-passage-blanks` (số chỗ trống và số thứ tự khác nhau nên bỏ qua; đoạn cuối của mẫu là chữ
+  // sau chỗ trống cuối, luồng này kết thúc ngay sau chỗ trống nên bỏ phần đó khi so).
+  const blankShape = (html: string) => shape(html).replace(/data-blank="\d+"/g, 'data-blank="N"');
+  expect(blankShape(passage)).toContain(blankShape(fixtureSample("set-passage-blanks")).replace(/T<\/p>$/, ""));
 
   await markReady(page);
   const main = await openQuestionPreview(page, saved.id);
@@ -415,7 +422,7 @@ test("ED-QA flow 7: question pasted from Word (real Office 365 clipboard sample)
   await markReady(page);
   const main = await openQuestionPreview(page, saved.id);
   await expect(main.locator(".katex").first()).toBeVisible();
-  expect(await main.locator(".math-inline .katex, .math-block .katex").count()).toBeGreaterThanOrEqual(13);
+  expect(await main.locator(".math-inline .katex, .math-block .katex").count()).toBeGreaterThanOrEqual(word365FormulaCount());
   await expect(main.locator('annotation[encoding="application/x-tex"]').filter({ hasText: "\\ce{H2SO4}" })).toHaveCount(1);
 
   const paper = await generateExamPreview(page, admin, {

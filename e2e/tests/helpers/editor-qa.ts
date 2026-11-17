@@ -46,6 +46,11 @@ export function fixtureSample(name: string): string {
   return sample.html;
 }
 
+/** Số công thức OMML của mẫu Word 365 (mỗi `<m:oMath>` thành một công thức KaTeX khi xem trước). */
+export function word365FormulaCount(): number {
+  return word365Html().match(/<m:oMath[ >]/g)?.length ?? 0;
+}
+
 export function word365Html(): string {
   return readFileSync(
     resolve(REPO_ROOT, "apps/web-admin/src/components/rich-text/insert/word/__fixtures__/word365-sample.html"),
@@ -257,7 +262,9 @@ export async function markReady(page: Page): Promise<void> {
 export async function openQuestionPreview(page: Page, id: string): Promise<Locator> {
   await page.goto(`${ADMIN_URL}/questions/${id}/preview`);
   const main = page.getByRole("main");
-  await expect(main.getByRole("button", { name: "Grade" }).or(main.getByText("Preview").first())).toBeVisible();
+  // Nút "Try grading" và khung xem trước chỉ dựng sau khi câu đã tải (trước đó là khung chờ), nên đây là mốc nội dung đã có.
+  await expect(main.getByRole("button", { name: "Try grading" })).toBeVisible();
+  await expect(main.getByRole("group", { name: "Preview in a desktop browser" })).toBeVisible();
   return main;
 }
 
