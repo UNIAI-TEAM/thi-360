@@ -23,6 +23,10 @@ export const SUBJECT_ITEM_ID: Record<string, string> = {
 };
 export const GRADE_G12_ITEM_ID = "00000000-0000-7000-8200-000000000303";
 
+/** Chữ mở đầu dòng đơn vị và dòng nguồn trong HTML lưu: nội dung lưu cố định tiếng Việt, không theo ngôn ngữ giao diện. */
+export const UNIT_LABEL = "\u0110\u01a1n v\u1ecb: ";
+export const SOURCE_LABEL = "Ngu\u1ed3n: ";
+
 /** Phần nhãn sạch (ASCII) để đặt tên duy nhất theo từng lần chạy. */
 export const RUN_ID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -93,6 +97,7 @@ export interface KnowledgeTree {
   /** Tên nút kiến thức (cấp ba) cần chọn trong hộp chọn kiến thức. */
   leafName: string;
   leafCode: string;
+  leafId: string;
 }
 
 /**
@@ -106,8 +111,8 @@ export async function createKnowledgeTree(admin: AdminApi, subjectCode: string, 
   const root = await createNode(admin, null, `${base}-C`, `QA chapter ${tag} ${RUN_ID}`, [subjectId, GRADE_G12_ITEM_ID]);
   const lesson = await createNode(admin, root, `${base}-L`, `QA lesson ${tag} ${RUN_ID}`, []);
   const leafName = `QA knowledge ${tag} ${RUN_ID}`;
-  await createNode(admin, lesson, `${base}-K`, leafName, []);
-  return { leafName, leafCode: `${base}-K` };
+  const leafId = await createNode(admin, lesson, `${base}-K`, leafName, []);
+  return { leafName, leafCode: `${base}-K`, leafId };
 }
 
 /** PNG 8x8 hợp lệ, một màu: ảnh tải lên qua hộp Hình thật. */
@@ -254,4 +259,107 @@ export async function openQuestionPreview(page: Page, id: string): Promise<Locat
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: "Grade" }).or(main.getByText("Preview").first())).toBeVisible();
   return main;
+}
+
+/* ---------- Bài thi xem trước ---------- */
+
+export interface ExamBlockSpec {
+  subjectCode: string;
+  questionType: string;
+  /** Tổng điểm của các câu trong khối: thang điểm của bài thi phải khớp để đề sinh được. */
+  points: number;
+  leafId: string;
+  /** Chùm: số bộ và số câu mỗi bộ. */
+  setCount?: number;
+  setSize?: number;
+}
+
+/**
+ * Tạo bài thi Nháp bằng API, thay cấu trúc bằng một phần một khối lọc theo kiến thức riêng của luồng (nên đề sinh ra
+ * chỉ có câu của luồng), mở trang Đề xem trước và bấm Sinh đề. Trả vùng đề đã sinh.
+ */
+export async function generateExamPreview(page: Page, admin: AdminApi, block: ExamBlockSpec): Promise<Locator> {
+  const created = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams`, {
+    headers: { ...admin.headers, "Idempotency-Key": crypto.randomUUID() },
+    data: {
+      kind: "HSA",
+      scope: "FULL",
+      code: `QA${RUN_ID}${Math.random().toString(36).slice(2, 6)}`.toUpperCase().slice(0, 30),
+      name: `QA exam ${RUN_ID}`,
+      durationMinutes: 60,
+      maxScore: block.points,
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const exam = (await created.json()) as { id: string; revision: number };
+  const count = block.setCount ? block.setCount : 1;
+  const parts = [
+    {
+      id: "part",
+      order: 1,
+      name: "Part",
+      questionCount: block.setCount && block.setSize ? block.setCount * block.setSize : 1,
+      durationMinutes: 10,
+      participation: { mode: "ALL" },
+      sections: [
+        {
+          id: "section",
+          subjectCode: block.subjectCode,
+          questionCount: block.setCount && block.setSize ? block.setCount * block.setSize : 1,
+          blocks: [
+            {
+              id: "block",
+              name: "Block",
+              questionType: block.questionType,
+              ...(block.setCount && block.setSize
+                ? { questionCount: count * block.setSize, setCount: count, setSize: block.setSize }
+                : { questionCount: 1 }),
+              requiredPointsPerQuestion: block.points / (block.setCount && block.setSize ? block.setCount * block.setSize : 1),
+              knowledgeScope: { nodeIds: [block.leafId], match: "ANY" },
+            },
+          ],
+        },
+      ],
+      options: [],
+    },
+  ];
+  const put = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${exam.id}/structure`, {
+    headers: admin.headers,
+    data: { parts, expectedRevision: exam.revision },
+  });
+  expect(put.status(), await put.text()).toBe(200);
+
+  await page.goto(`${ADMIN_URL}/exams/${exam.id}/review?tab=preview`);
+  const [response] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith(`/exams/${exam.id}/preview`) && r.request().method() === "POST"),
+    page.getByRole("button", { name: "Generate preview paper" }).click(),
+  ]);
+  expect(response.status()).toBe(200);
+  const result = (await response.json()) as { status: string; reason?: string; issues?: unknown };
+  expect(result.status, JSON.stringify(result)).toBe("GENERATED");
+  const paper = page.getByRole("tabpanel", { name: "Generated paper" });
+  await expect(paper).toBeVisible();
+  return paper;
+}
+
+/* ---------- Hình dạng HTML theo bảng mẫu ---------- */
+
+/**
+ * Bỏ chữ và giá trị riêng của lần chạy (src, alt, id ảnh) để so cấu trúc thẻ, lớp và thuộc tính với mẫu chuẩn
+ * (`docs/specs/fixtures/rich-text-samples.json`): hai chuỗi cùng hình dạng thì cùng "dạng mẫu".
+ */
+export function shape(html: string): string {
+  return html
+    .replace(/(src|alt|data-asset-id)="[^"]*"/g, '$1=""')
+    .replace(/>([^<]+)</g, ">T<")
+    .replace(/^([^<]+)</, "T<")
+    .replace(/>([^<]+)$/, ">T");
+}
+
+/** Chọn `length` ký tự bắt đầu từ ký tự thứ `start` của đoạn đầu trong ô soạn, bằng bàn phím. */
+export async function selectText(page: Page, editorIndex: number, start: number, length: number): Promise<void> {
+  await editable(page, editorIndex).click();
+  await page.keyboard.press("Control+Home");
+  for (let i = 0; i < start; i++) await page.keyboard.press("ArrowRight");
+  for (let i = 0; i < length; i++) await page.keyboard.press("Shift+ArrowRight");
 }
