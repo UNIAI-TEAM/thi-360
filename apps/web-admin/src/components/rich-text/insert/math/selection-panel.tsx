@@ -5,6 +5,7 @@ import { Node as PMNode, type NodeType } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import { Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { MATH_BLOCK_NODE, MATH_INLINE_NODE } from "../../extensions";
 import type { SelectionPanelProps } from "../registry";
 import { DisplayToggle } from "./display-toggle";
@@ -28,15 +29,21 @@ function findMathPos(doc: PMNode, type: NodeType, latex: string, near: number): 
  */
 export default function MathSelectionPanel({ editor, target, openDialog }: SelectionPanelProps) {
   const t = useTranslations("richText.insert.math.panel");
+  // Bản nháp của ô nhập khi người dùng xóa trắng: node giữ công thức hợp lệ gần nhất, ô vẫn sửa được.
+  const [draft, setDraft] = useState<string | null>(null);
   const node = target instanceof PMNode ? target : null;
   if (!node) return null;
   const latex = typeof node.attrs.latex === "string" ? node.attrs.latex : "";
   const display = node.type.name === MATH_BLOCK_NODE;
-  const invalid = checkLatex(latex, display).status === "error";
+  const shown = draft ?? latex;
+  const invalid = checkLatex(shown, display).status === "error";
 
   // Ô nhập đọc thẳng `latex` của node đang chọn: sửa là cập nhật thuộc tính node và giữ nguyên vùng chọn node đó,
   // nếu không khung biến mất giữa lúc đang gõ.
+  // Công thức trống không bao giờ được ghi vào node (sẽ lưu thành `\(\)` rỗng): chỉ giữ ở bản nháp, blur thì khôi phục.
   function applyLatex(next: string) {
+    setDraft(next);
+    if (!next.trim()) return;
     const { selection } = editor.state;
     if (!(selection instanceof NodeSelection)) return;
     const pos = selection.from;
@@ -83,8 +90,9 @@ export default function MathSelectionPanel({ editor, target, openDialog }: Selec
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <span className="text-label font-semibold text-text">{t("title")}</span>
         <Input
-          value={latex}
+          value={shown}
           onChange={(event) => applyLatex(event.target.value)}
+          onBlur={() => setDraft(null)}
           aria-label={t("latexLabel")}
           aria-invalid={invalid}
           dir="ltr"

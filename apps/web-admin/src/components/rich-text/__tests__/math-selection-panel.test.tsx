@@ -75,6 +75,26 @@ describe("selected-formula panel", () => {
     expect(tiptap().state.selection).toBeInstanceOf(NodeSelection);
   });
 
+  it.each([
+    ["inline", '<p>a <span class="math-inline">\\(x^2\\)</span> b</p>', '<span class="math-inline">\\(x^2\\)</span>'],
+    ["block", '<p>a</p><span class="math-block">\\[x^2\\]</span>', '<span class="math-block">\\[x^2\\]</span>'],
+  ])("never persists a blank %s formula: clearing the box and blurring restores the last valid LaTeX", async (_kind, html, expected) => {
+    const user = userEvent.setup();
+    const onChange = renderEditor(html);
+    selectFormula(tiptap());
+    const input = within(await panel()).getByRole("textbox", { name: "LaTeX of the selected formula" });
+
+    await user.clear(input);
+    expect(input).toHaveValue("");
+    await user.click(document.body);
+
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "LaTeX of the selected formula" })).toHaveValue("x^2"));
+    const blank = />\\\(\s*\\\)<|>\\\[\s*\\\]</;
+    expect(tiptap().getHTML()).toContain(expected);
+    expect(tiptap().getHTML()).not.toMatch(blank);
+    for (const [value] of onChange.mock.calls) expect(value).not.toMatch(blank);
+  });
+
   it("marks the LaTeX box invalid when the formula cannot be rendered", async () => {
     renderEditor('<p><span class="math-inline">\\(x\\)</span></p>');
     selectFormula(tiptap());
