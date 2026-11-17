@@ -346,6 +346,26 @@ describe("math dialog (mathlive mocked)", () => {
     expect(preview.querySelector(".katex")).toBeTruthy();
   });
 
+  it("puts a new formula between the prose around the caret in the preview, up to 80 characters each side", async () => {
+    const before = `Compute ${"a".repeat(90)} and then`;
+    const after = ` find ${"b".repeat(90)} done`;
+    const user = userEvent.setup();
+    renderEditor({ value: `<p>${before}${after}</p>` });
+    // Con trỏ nằm trong đoạn chữ (không chọn công thức nào): đầu đoạn là vị trí 1.
+    act(() => {
+      tiptap().commands.setTextSelection(1 + before.length);
+    });
+    await openDialog(user);
+    fireEvent.change(latexBox(), { target: { value: "x^2" } });
+
+    const preview = screen.getByTestId("math-preview");
+    const [beforeText, formula, afterText] = Array.from(preview.children);
+    expect(beforeText?.textContent).toBe(before.slice(-80));
+    expect(formula?.querySelector(".katex")).toBeTruthy();
+    expect(afterText?.textContent).toBe(after.slice(0, 80));
+    expect(preview.children).toHaveLength(3);
+  });
+
   it("shows the preview inline or on its own line following the display choice", async () => {
     const user = userEvent.setup();
     renderEditor();
