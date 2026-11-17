@@ -516,9 +516,17 @@ public final class QuestionBodyValidator {
         }
         // Trường được nhận nhãn gạch chân: chỉ đề bài (content) của câu Trắc nghiệm 1 đáp án
         // (spec 3.3). Trường nhận chỗ trống: chỉ ngữ liệu câu chùm (spec 6).
-        checkHtml(input.content(), "content",
-                input.type() == QuestionType.SINGLE_CHOICE ? FieldKind.STEM : FieldKind.PLAIN,
-                errors, warnings);
+        // Câu chùm: trình soạn web gửi content = body.passage (cùng một HTML, hợp đồng từ #60).
+        // Khi hai trường trùng nhau thì chỉ kiểm ở body.passage (luật chỗ trống của ngữ liệu),
+        // để chỗ trống hợp lệ không bị báo BLANK_OUTSIDE_SET_PASSAGE ở content.
+        boolean contentIsSetPassage = input.body() instanceof QuestionBody.QuestionSetBody set
+                && input.content() != null && set.passage() != null
+                && input.content().strip().equals(set.passage().strip());
+        if (!contentIsSetPassage) {
+            checkHtml(input.content(), "content",
+                    input.type() == QuestionType.SINGLE_CHOICE ? FieldKind.STEM : FieldKind.PLAIN,
+                    errors, warnings);
+        }
         checkHtml(input.solution(), "solution", FieldKind.PLAIN, errors, warnings);
         for (int i = 0; i < input.commonMistakes().size(); i++) {
             checkHtml(input.commonMistakes().get(i), "commonMistakes[" + i + "]",
