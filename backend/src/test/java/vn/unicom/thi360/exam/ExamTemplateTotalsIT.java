@@ -39,6 +39,7 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
         var rows = jdbc.queryForList("""
                 select code, kind_code, scope, part_code, subject_code, build_mode, is_default,
                        timing, duration_minutes, structure::text as document from exam.exam_template
+                where build_mode = 'STANDARD'
                 """);
         assertThat(rows).extracting(row -> row.get("code")).containsExactlyInAnyOrderElementsOf(expectedCodes);
         for (var row : rows) {
@@ -51,6 +52,20 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             assertThat(row.get("build_mode")).as(code).isEqualTo(fixture.path("buildMode").asText());
             assertThat(row.get("is_default")).as(code).isEqualTo(fixture.path("isDefault").asBoolean());
             JsonNode parts = mapper.readTree((String) row.get("document")).path("parts");
+            for (JsonNode part : parts) {
+                var single = mapper.createArrayNode().add(part);
+                for (Totals path : pathTotals(single, (String) row.get("kind_code"))) {
+                    if (path.questions() == 0) continue;
+                    if (part.hasNonNull("questionCountRequired")) {
+                        assertThat(path.questions()).as("%s part required count", code)
+                                .isEqualTo(part.path("questionCountRequired").asInt());
+                    }
+                    if (part.hasNonNull("maxPoints") && path.points() != null) {
+                        assertThat(path.points()).as("%s part points", code)
+                                .isEqualByComparingTo(part.path("maxPoints").decimalValue());
+                    }
+                }
+            }
             Integer minutes = null;
             for (JsonNode part : parts) {
                 if (part.hasNonNull("durationMinutes")) {
@@ -77,6 +92,75 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             assertThat(duration).as("%s duration", code).isEqualTo(expectedDuration);
         }
     }
+    @Test
+    void hsaScienceChoicesUseFixedSeventeenQuestionMatrices() throws Exception {
+        Map<String, List<Integer>> grades = Map.of(
+                "LY", List.of(5, 6, 6), "HOA", List.of(2, 8, 7), "SINH", List.of(3, 5, 9),
+                "SU", List.of(2, 5, 10), "DIA", List.of(2, 4, 11));
+        Map<String, List<Integer>> difficulties = Map.of(
+                "LY", List.of(3, 1, 13), "HOA", List.of(4, 5, 8), "SINH", List.of(7, 7, 3),
+                "SU", List.of(7, 8, 2), "DIA", List.of(5, 9, 3));
+        Set<String> templates = new HashSet<>();
+        for (var row : jdbc.queryForList("select code, structure::text as document from exam.exam_template where kind_code = 'HSA' and build_mode = 'STANDARD'")) {
+            String code = (String) row.get("code");
+            for (JsonNode part : mapper.readTree((String) row.get("document")).path("parts")) {
+                for (JsonNode option : part.path("options")) {
+                    if (!"SUBJECT_CHOICE".equals(option.path("kind").asText())
+                            || !List.of(17, 17, 16).equals(mapper.convertValue(option.path("countsByPick"),
+                                    new com.fasterxml.jackson.core.type.TypeReference<List<Integer>>() { }))) continue;
+                    templates.add(code);
+                    Set<String> subjects = new HashSet<>();
+                    for (JsonNode section : option.path("sections")) {
+                        String subject = section.path("subjectCode").asText();
+                        assertThat(subjects.add(subject)).as("%s duplicate subject", code).isTrue();
+                        assertThat(grades).containsKey(subject);
+                        assertThat(section.path("questionCount").asInt()).as("%s %s", code, subject).isEqualTo(17);
+                        List<Integer> counts = new ArrayList<>();
+                        for (JsonNode block : section.path("blocks")) counts.add(block.path("questionCount").asInt(-1));
+                        assertThat(counts).as("%s %s group counts", code, subject).containsExactlyElementsOf(
+                                Set.of("SU", "DIA").contains(subject) ? List.of(14, 3) : List.of(13, 3, 1));
+                        JsonNode matrix = section.path("matrix");
+                        assertThat(matrix.path("unit").asText()).isEqualTo("COUNT");
+                        assertMatrix(matrix.path("byGrade"), List.of("G10", "G11", "G12"), grades.get(subject));
+                        assertMatrix(matrix.path("byDifficulty"), List.of("NB", "TH", "VD"), difficulties.get(subject));
+                    }
+                    assertThat(subjects).containsExactlyInAnyOrderElementsOf(grades.keySet());
+                }
+            }
+        }
+        assertThat(templates).containsExactlyInAnyOrder("HSA_FULL", "HSA_PART_SCIENCE");
+    }
+
+    private void assertMatrix(JsonNode values, List<String> codes, List<Integer> counts) {
+        assertThat(values.size()).isEqualTo(codes.size());
+        for (int i = 0; i < codes.size(); i++) {
+            assertThat(values.get(i).path("code").asText()).isEqualTo(codes.get(i));
+            assertThat(values.get(i).path("value").asInt()).isEqualTo(counts.get(i));
+        }
+    }
+
+    @Test
+    void preservedAndRequirementScalesAndClocksAreIndependentOfFixtures() {
+        for (var row : jdbc.queryForList("""
+                select code, kind_code, max_score, duration_minutes
+                from exam.exam_template where build_mode = 'STANDARD'
+                """)) {
+            String code = (String) row.get("code");
+            String kind = (String) row.get("kind_code");
+            if ("THPTQG".equals(kind)) {
+                int duration = code.equals("THPTQG_MATH_2025") ? 90
+                        : code.equals("THPTQG_LITERATURE_2025") ? 120 : 50;
+                assertThat(row.get("duration_minutes")).as("%s clock", code).isEqualTo(duration);
+                assertThat((BigDecimal) row.get("max_score")).as("%s scale", code).isEqualByComparingTo("10");
+            } else if ("VACT_FULL".equals(code)) {
+                assertThat(row.get("duration_minutes")).isEqualTo(150);
+                assertThat((BigDecimal) row.get("max_score")).isEqualByComparingTo("1200");
+            } else if ("SP2E".equals(kind) && !"SP2E_VAN_OLD".equals(code)) {
+                assertThat((BigDecimal) row.get("max_score")).as("%s scale", code).isEqualByComparingTo("10");
+            }
+        }
+    }
+
 
     @Test
     void qdaMathPartMatchesRequirementTableIndependently() throws Exception {
@@ -188,20 +272,17 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void subjectChoiceResolvesRemainderForEachPickCount() throws Exception {
+    void subjectChoiceTrimsOneSingleQuestion() throws Exception {
         JsonNode option = mapper.readTree("""
                 {"kind":"SUBJECT_CHOICE","chooseSubjects":2,"countsByPick":[2,1],"sections":[
-                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.5},
-                             {"questionType":"SINGLE_CHOICE","questionCount":null,"requiredPointsPerQuestion":1.5}]},
-                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.5},
-                             {"questionType":"SINGLE_CHOICE","questionCount":null,"requiredPointsPerQuestion":1.5}]},
-                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.5},
-                             {"questionType":"SINGLE_CHOICE","questionCount":null,"requiredPointsPerQuestion":1.5}]}
+                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":2,"requiredPointsPerQuestion":1}]},
+                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":2,"requiredPointsPerQuestion":1}]},
+                  {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":2,"requiredPointsPerQuestion":1}]}
                 ]}
                 """);
         assertThat(optionTotals(option)).hasSize(6).allSatisfy(path -> {
             assertThat(path.questions()).isEqualTo(3);
-            assertThat(path.points()).isEqualByComparingTo("2.5");
+            assertThat(path.points()).isEqualByComparingTo("3");
         });
     }
 
@@ -339,44 +420,18 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             int selected = counts.get(position).asInt();
             List<JsonNode> blocks = new ArrayList<>();
             collectBlocks(section, blocks);
-            List<JsonNode> remainder = blocks.stream()
-                    .filter(block -> !block.path("omitted").asBoolean()
-                            && !block.hasNonNull("questionCount")
-                            && !(block.hasNonNull("setCount") && block.hasNonNull("setSize")))
-                    .toList();
-            assertThat(remainder).as("at most one subject-choice remainder").hasSizeLessThanOrEqualTo(1);
-            BigDecimal points;
-            if (!remainder.isEmpty()) {
-                int fixed = 0;
-                points = BigDecimal.ZERO;
+            Totals configured = totals(section);
+            assertThat(selected).isBetween(0, configured.questions());
+            BigDecimal points = configured.points();
+            if (points != null && selected != configured.questions()) {
+                Set<BigDecimal> rates = new HashSet<>();
                 for (JsonNode block : blocks) {
-                    if (block.path("omitted").asBoolean() || block == remainder.getFirst()) continue;
-                    int count = block.hasNonNull("questionCount") ? block.path("questionCount").asInt()
-                            : block.path("setCount").asInt() * block.path("setSize").asInt();
-                    fixed += count;
-                    if (!block.hasNonNull("requiredPointsPerQuestion")) points = null;
-                    else if (points != null) points = points.add(
-                            block.path("requiredPointsPerQuestion").decimalValue().multiply(BigDecimal.valueOf(count)));
-                }
-                assertThat(selected).as("subject-choice count covers fixed blocks").isGreaterThanOrEqualTo(fixed);
-                JsonNode block = remainder.getFirst();
-                if (!block.hasNonNull("requiredPointsPerQuestion")) points = null;
-                else if (points != null) points = points.add(block.path("requiredPointsPerQuestion").decimalValue()
-                        .multiply(BigDecimal.valueOf(selected - fixed)));
-            } else {
-                Totals configured = totals(section);
-                assertThat(selected).isBetween(0, configured.questions());
-                points = configured.points();
-                if (points != null && selected != configured.questions()) {
-                    Set<BigDecimal> rates = new HashSet<>();
-                    for (JsonNode block : blocks) {
-                        if (!block.path("omitted").asBoolean() && block.hasNonNull("requiredPointsPerQuestion")) {
-                            rates.add(block.path("requiredPointsPerQuestion").decimalValue().stripTrailingZeros());
-                        }
+                    if (!block.path("omitted").asBoolean() && block.hasNonNull("requiredPointsPerQuestion")) {
+                        rates.add(block.path("requiredPointsPerQuestion").decimalValue().stripTrailingZeros());
                     }
-                    assertThat(rates).as("subject-choice reduction requires a uniform point value").hasSize(1);
-                    points = rates.iterator().next().multiply(BigDecimal.valueOf(selected));
                 }
+                assertThat(rates).as("subject-choice reduction requires a uniform point value").hasSize(1);
+                points = rates.iterator().next().multiply(BigDecimal.valueOf(selected));
             }
             used[i] = true;
             chooseSubjects(sections, counts, used, position + 1, add(current, new Totals(selected, points)), result);
@@ -411,6 +466,10 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             assertThat(block.hasNonNull("questionCount")
                     || (block.hasNonNull("setCount") && block.hasNonNull("setSize")))
                     .as("count for %s", block).isTrue();
+            if (block.hasNonNull("questionCount") && block.hasNonNull("setCount") && block.hasNonNull("setSize")) {
+                assertThat(block.path("questionCount").asInt()).as("set cardinality for %s", block)
+                        .isEqualTo(block.path("setCount").asInt() * block.path("setSize").asInt());
+            }
             int count = block.hasNonNull("questionCount") ? block.path("questionCount").asInt()
                     : block.path("setCount").asInt() * block.path("setSize").asInt();
             questions += count;
