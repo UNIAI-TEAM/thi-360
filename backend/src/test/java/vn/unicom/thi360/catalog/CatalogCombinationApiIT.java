@@ -590,7 +590,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void editCombination_usesPerVersionUsageSignal_keepsUnreferencedV2InPlace_andBlocksItemDelete() throws Exception {
+    void editCombination_versionsUnreferencedCurrentAndBlocksItemDeleteForHistoricalUsage() throws Exception {
         String code = "COMBO_PER_VER_" + suffix();
         MvcResult createRes = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", COMBINATION_GROUP_ID)
                         .with(asUser(Permissions.CATALOG_MODIFY))
@@ -628,8 +628,8 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
         UUID v2Id = UUID.fromString(v2Json.get("combination").get("id").asText());
         ver = v2Json.get("version").asLong();
 
-        // Still only v1 is referenced (current v2 is unreferenced) -> editing v2 keeps v2 in place!
-        MvcResult v2InPlaceRes = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+        // Even though only v1 is referenced, another structural edit creates v3.
+        MvcResult v3Res = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
@@ -637,11 +637,10 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                                 "sourceNote", "Bản 2 sửa tại chỗ",
                                 "version", ver))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.combination.id").value(v2Id.toString()))
-                .andExpect(jsonPath("$.combination.versionNo").value(2))
+                .andExpect(jsonPath("$.combination.versionNo").value(3))
                 .andExpect(jsonPath("$.combination.subjects[1].code").value("ANH"))
                 .andReturn();
-        ver = objectMapper.readTree(v2InPlaceRes.getResponse().getContentAsString()).get("version").asLong();
+        ver = objectMapper.readTree(v3Res.getResponse().getContentAsString()).get("version").asLong();
 
         // Historical v1 remains intact
         mockMvc.perform(get("/api/v1/admin/catalog/combination-versions/{versionId}", v1Id)
@@ -650,6 +649,10 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.versionNo").value(1))
                 .andExpect(jsonPath("$.isCurrent").value(false))
                 .andExpect(jsonPath("$.subjects[1].code").value("VAN"));
+        mockMvc.perform(get("/api/v1/admin/catalog/combination-versions/{versionId}", v2Id)
+                        .with(asUser(Permissions.CATALOG_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subjects[1].code").value("LY"));
 
         // Deleting the item is still blocked by item-wide usage of v1
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/admin/catalog/items/{id}", itemId)
@@ -658,7 +661,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CATALOG_ITEM_IN_USE"));
 
-        // Now reference current v2 -> editing v2 creates v3
+        // Further structural edits create another version regardless of references.
         fakeUsageRegistry.setReferencedVersions(itemId, Set.of(v1Id, v2Id));
         mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
@@ -668,12 +671,12 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                                 "sourceNote", "Bản 3",
                                 "version", ver))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.combination.versionNo").value(3))
+                .andExpect(jsonPath("$.combination.versionNo").value(4))
                 .andExpect(jsonPath("$.combination.isCurrent").value(true));
     }
 
     @Test
-    void inPlaceCombinationEdit_recordsOrderedBeforeAfterAuditSnapshot_andRollbackLeavesNothing() throws Exception {
+    void structuralCombinationEdit_recordsOrderedBeforeAfterAuditSnapshot_andRollbackLeavesNothing() throws Exception {
         while (outboxRelay.relayBatch() > 0) {
             // drain backlog
         }
@@ -696,7 +699,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
         long ver = created.get("version").asLong();
         createdItemIds.add(itemId);
 
-        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+        MvcResult updated = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
@@ -705,8 +708,9 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                                 "sourceNote", "Ghi chú sửa tại chỗ",
                                 "version", ver))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.combination.id").value(v1Id.toString()))
-                .andExpect(jsonPath("$.combination.versionNo").value(1));
+                .andExpect(jsonPath("$.combination.versionNo").value(2))
+                .andReturn();
+        String v2Id = objectMapper.readTree(updated.getResponse().getContentAsString()).path("combination").path("id").asText();
 
         while (outboxRelay.relayBatch() > 0) {
             // relay new events
@@ -726,8 +730,8 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                 .containsEntry("sourceNote", "Ghi chú ban đầu")
                 .containsEntry("subjectItemIds", List.of(SAMPLE_TOAN_ID.toString(), SAMPLE_VAN_ID.toString()));
         assertThat(updatedEvent.after())
-                .containsEntry("versionId", v1Id.toString())
-                .containsEntry("versionNo", 1)
+                .containsEntry("versionId", v2Id)
+                .containsEntry("versionNo", 2)
                 .containsEntry("examItemId", SAMPLE_QDA_ID.toString())
                 .containsEntry("sourceNote", "Ghi chú sửa tại chỗ")
                 .containsEntry("subjectItemIds", List.of(
