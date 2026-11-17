@@ -14,7 +14,7 @@ import {
   type MatrixAxes,
 } from "../matrix";
 import { effectiveScope } from "../subject-matrix";
-import type { BlockMatrix, ExamSection, QuestionBlock } from "../types";
+import type { BlockMatrix, ExamPart, ExamSection, QuestionBlock } from "../types";
 import { EXAMS_FIXTURE } from "./exam-fixture";
 
 const AXES: MatrixAxes = {
@@ -232,6 +232,79 @@ describe("HSA 17 − 1 (H3)", () => {
       blocks: [block({}, { questionCount: 10 }), block({}, { questionCount: null })],
     };
     expect(groupCounts(section, 16)).toEqual([10, 6]);
+  });
+
+  /** Số câu mỗi môn khai và nhóm câu đơn của môn (một khối câu đơn, hoặc một khối chùm). */
+  const declare = (science: ExamPart["options"][number], count: number, kind: "singles" | "set" = "singles") => {
+    for (const section of science.sections) {
+      section.questionCount = count;
+      section.blocks =
+        kind === "singles"
+          ? [block({}, { id: `${section.id}-singles`, questionCount: count })]
+          : [block({}, { id: `${section.id}-set`, questionType: "QUESTION_SET", questionCount: count, setCount: count, setSize: 1 })];
+    }
+  };
+  const subjectIssues = (parts: Parameters<typeof validateStructure>[0]) =>
+    validateStructure(parts, AXES).filter(
+      (issue) => issue.code === "SUBJECT_COUNT_EXCEEDS_ALLOCATION" || issue.code === "SUBJECT_TRIM_IMPOSSIBLE",
+    );
+
+  it("cách chia 17, 17, 17: không bỏ câu nào, môn nào cũng 17 câu và không có lỗi", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 17);
+    science.countsByPick = [17, 17, 17];
+    const full = structureTotals(exam.parts).totalPoints;
+    science.countsByPick = [17, 17, 16];
+    // Chỉ môn nhận 16 mất một câu so với cách chia 17, 17, 17.
+    expect(full - structureTotals(exam.parts).totalPoints).toBe(1);
+    science.countsByPick = [17, 17, 17];
+    expect(subjectIssues(exam.parts)).toEqual([]);
+  });
+
+  it("môn khai ít hơn cách chia (15 < 16): lấy số khai, không báo lỗi", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 17);
+    science.countsByPick = [17, 17, 16];
+    const base = structureTotals(exam.parts).totalPoints;
+    declare(science, 15);
+    // Môn nhận 16 → 15 (−1), hai môn nhận 17 → 15 (−2 mỗi môn).
+    const picked = science.chooseSubjects ?? science.countsByPick.length;
+    expect(base - structureTotals(exam.parts).totalPoints).toBe(1 + 2 * (picked - 1));
+    expect(subjectIssues(exam.parts)).toEqual([]);
+  });
+
+  it("không có cách chia hợp lệ: lùi về số câu khai báo (mọi môn 17), tiêu đề lộ phần thiếu", () => {
+    const { exam, part, science } = hsaChoicePart();
+    declare(science, 17);
+    science.countsByPick = [17, 17, 17];
+    const base = structureTotals(exam.parts).totalPoints;
+    // Số cách chia không khớp số môn được chọn: bảng rỗng, mỗi môn (kể cả môn không được chọn) tính 17 câu.
+    science.countsByPick = [];
+    const picked = science.chooseSubjects ?? 3;
+    expect(structureTotals(exam.parts).totalPoints - base).toBe(17 * (science.sections.length - picked));
+    expect(validateStructure(exam.parts, AXES)).toContainEqual(
+      expect.objectContaining({ code: "SECTIONS_TOTAL", partId: part.id, optionId: science.id, actual: 0 }),
+    );
+  });
+
+  it("khai nhiều hơn cách chia quá một câu (18 so với 16): báo lỗi thay vì cắt im lặng", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 18);
+    science.countsByPick = [17, 17, 16];
+    // Chỉ môn nhận 16 lệch hai câu; môn nhận 17 lệch một câu nên bỏ được.
+    const issues = subjectIssues(exam.parts);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ code: "SUBJECT_COUNT_EXCEEDS_ALLOCATION", declared: 18, allocated: 16 });
+  });
+
+  it("môn toàn chùm cần bỏ một câu: báo SUBJECT_TRIM_IMPOSSIBLE, chùm không bị tách", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 17, "set");
+    science.countsByPick = [17, 17, 16];
+    const issues = subjectIssues(exam.parts);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ code: "SUBJECT_TRIM_IMPOSSIBLE", declared: 17, allocated: 16 });
+    expect(groupCounts(science.sections[0]!, 16)).toEqual([17]);
   });
 });
 

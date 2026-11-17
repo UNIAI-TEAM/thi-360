@@ -438,6 +438,8 @@ export type StructureIssue =
   | { code: "SECTIONS_TOTAL"; partId: string; optionId: string | null; expected: number; actual: number }
   | { code: "PART_POINTS"; partId: string; optionId: string | null; expected: number; actual: number }
   | { code: "BLOCKS_TOTAL"; location: SectionLocation; expected: number; actual: number }
+  | { code: "SUBJECT_COUNT_EXCEEDS_ALLOCATION"; location: SectionLocation; declared: number; allocated: number }
+  | { code: "SUBJECT_TRIM_IMPOSSIBLE"; location: SectionLocation; declared: number; allocated: number }
   | { code: "BLOCK"; location: SectionLocation; blockId: string; issue: BlockIssue };
 
 /**
@@ -465,12 +467,16 @@ export function countOf(item: { questionCount: number | null }): number {
 }
 
 /**
- * Số câu từng nhóm khi môn nhận `count` câu: nhóm câu đơn `questionCount = null` ("lấy phần còn lại", dữ liệu trước
- * H3) nhận phần chênh giữa số câu của môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được (báo
- * `REMAINDER_GROUP_INVALID`). Tổng nhóm cố định vượt `count` (môn `SUBJECT_CHOICE` khai 17 nhưng nhận 16, H3) thì bỏ
- * câu từ cuối, chỉ ở nhóm câu đơn (chùm giữ nguyên như `TrimPolicy` của máy chủ).
+ * Số câu từng nhóm khi môn nhận `count` câu và phần câu thừa chưa bỏ được (`excess` > 0 nghĩa là không có câu đơn nào
+ * để bỏ): nhóm câu đơn `questionCount = null` ("lấy phần còn lại", dữ liệu trước H3) nhận phần chênh giữa số câu của
+ * môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được (báo `REMAINDER_GROUP_INVALID`). Tổng nhóm cố
+ * định vượt `count` (môn `SUBJECT_CHOICE` khai 17 nhưng nhận 16, H3) thì bỏ câu từ cuối, chỉ ở nhóm câu đơn; chùm giữ
+ * nguyên, cùng nguyên tắc với `TrimPolicy` của máy chủ.
+ *
+ * Chỉ là ước lượng cho bản xem trước: máy chủ chọn câu bị bỏ bằng hạt giống trong mọi nhóm câu đơn (ưu tiên câu không
+ * góp vào chỉ tiêu bắt buộc), nên nhóm nào mất câu — và điểm theo nhóm — trên đề thật có thể khác. Tổng số câu thì đúng.
  */
-export function groupCounts(section: ExamSection, count: number): number[] {
+function trimGroupCounts(section: ExamSection, count: number): { counts: number[]; excess: number } {
   const remainderGroups = section.blocks.filter((block) => block.questionCount === null);
   const remainder = remainderGroups.length === 1 ? Math.max(0, count - sum(section.blocks.map(countOf))) : 0;
   const counts = section.blocks.map((block) => block.questionCount ?? remainder);
@@ -482,37 +488,34 @@ export function groupCounts(section: ExamSection, count: number): number[] {
     counts[index] = counts[index]! - drop;
     excess -= drop;
   }
-  return counts;
+  return { counts, excess };
+}
+
+/** Số câu từng nhóm khi môn nhận `count` câu (xem `trimGroupCounts`; phần thừa không bỏ được do `validateStructure` báo). */
+export function groupCounts(section: ExamSection, count: number): number[] {
+  return trimGroupCounts(section, count).counts;
 }
 
 /**
- * Số câu học viên làm của từng môn trong phương án `SUBJECT_CHOICE`, ánh xạ theo chỉ số môn trong `option.sections`;
- * môn không được chọn nhận 0. Quy tắc HSA 17 − 1 (H3): mỗi môn khai `questionCount` là số câu cần giải (17), còn số
- * câu lên đề do cách chia `countsByPick` quyết — môn nhận cách chia nhỏ hơn lên đề ít hơn (17 → 16, máy chủ giải 17
- * rồi `TrimPolicy` bỏ một câu). Số câu trên đề của môn là `min(questionCount, cách chia)`; dữ liệu cũ để `null`
- * (trước H3) vẫn nhận trọn cách chia.
- *
- * Duyệt các tổ hợp `chooseSubjects` môn theo thứ tự cấu trúc và lấy cách chia hợp lệ đầu tiên — cùng quy tắc B10 của
- * máy chủ (`ChoiceGroupAllocator`). Không có cách chia hợp lệ (cấu hình sai) trả bảng rỗng để tiêu đề lộ phần thiếu.
+ * Cách chia số câu `countsByPick` cho các môn được chọn của phương án `SUBJECT_CHOICE`, ánh xạ theo chỉ số môn trong
+ * `option.sections`; môn không được chọn không có mục. Duyệt các tổ hợp `chooseSubjects` môn theo thứ tự cấu trúc và lấy
+ * cách chia hợp lệ đầu tiên — cùng quy tắc B10 của máy chủ (`ChoiceGroupAllocator`). Không có cách chia hợp lệ (cấu
+ * hình sai) trả bảng rỗng.
  */
-function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
-  const counts = new Map<number, number>();
-  if (!option.countsByPick) return counts;
+function subjectChoiceAllocations(option: ExamPart["options"][number]): Map<number, number> {
+  const allocations = new Map<number, number>();
+  if (!option.countsByPick) return allocations;
   const choose = option.chooseSubjects ?? option.countsByPick.length;
   const total = option.sections.length;
   const pick: number[] = [];
   const visit = (start: number): boolean => {
     if (pick.length === choose) {
-      const allocations = allocateSubjectCounts(
+      const found = allocateSubjectCounts(
         pick.map((index) => option.sections[index]!.choiceGroup),
         option.countsByPick!,
       );
-      if (allocations.length === 0) return false;
-      // Môn không được chọn tính 0 câu: học viên chọn một cách chia, không làm cả năm môn.
-      option.sections.forEach((section, index) => {
-        const allocated = allocations[0]![pick.indexOf(index)];
-        counts.set(index, allocated === undefined ? 0 : Math.min(section.questionCount ?? allocated, allocated));
-      });
+      if (found.length === 0) return false;
+      pick.forEach((sectionIndex, position) => allocations.set(sectionIndex, found[0]![position]!));
       return true;
     }
     for (let index = start; index <= total - (choose - pick.length); index++) {
@@ -523,6 +526,28 @@ function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, n
     return false;
   };
   visit(0);
+  return allocations;
+}
+
+/**
+ * Số câu học viên làm của từng môn trong phương án `SUBJECT_CHOICE`, ánh xạ theo chỉ số môn trong `option.sections`;
+ * môn không được chọn nhận 0. Quy tắc HSA 17 − 1 (H3): mỗi môn khai `questionCount` là số câu cần giải (17), còn số
+ * câu lên đề do cách chia `countsByPick` quyết — môn nhận cách chia nhỏ hơn lên đề ít hơn (17 → 16, máy chủ giải 17
+ * rồi `TrimPolicy` bỏ một câu). Số câu trên đề của môn là `min(questionCount, cách chia)`; dữ liệu cũ để `null`
+ * (trước H3) vẫn nhận trọn cách chia. Khai nhiều hơn cách chia quá một câu, hoặc không bỏ được câu đơn nào, là cấu hình
+ * máy chủ từ chối; `validateStructure` báo, còn đây vẫn cắt về cách chia để bản xem trước có số.
+ *
+ * Không có cách chia hợp lệ (cấu hình sai) trả bảng rỗng: người gọi lùi về số câu khai báo để tiêu đề lộ phần thiếu.
+ */
+function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
+  const allocations = subjectChoiceAllocations(option);
+  const counts = new Map<number, number>();
+  if (allocations.size === 0) return counts;
+  // Môn không được chọn tính 0 câu: học viên chọn một cách chia, không làm cả năm môn.
+  option.sections.forEach((section, index) => {
+    const allocated = allocations.get(index);
+    counts.set(index, allocated === undefined ? 0 : Math.min(section.questionCount ?? allocated, allocated));
+  });
   return counts;
 }
 
@@ -621,6 +646,21 @@ export function validateStructure(
           const blocksTotal = sum(section.blocks.map(countOf));
           if (blocksTotal !== section.questionCount) {
             issues.push({ code: "BLOCKS_TOTAL", location, expected: section.questionCount, actual: blocksTotal });
+          }
+        }
+        const subjectChoice = part.options.find((item) => item.id === group.optionId);
+        if (subjectChoice?.kind === "SUBJECT_CHOICE") {
+          const allocated = subjectChoiceAllocations(subjectChoice).get(subjectChoice.sections.indexOf(section));
+          const declared = section.questionCount;
+          // Chỉ môn được chọn có cách chia; môn không được chọn hoặc dữ liệu cũ `null` không có gì để đối chiếu.
+          if (allocated !== undefined && declared !== null && declared > allocated) {
+            if (declared - allocated > 1) {
+              // Máy chủ chỉ bỏ được đúng một câu (`PaperSolver`: "requires exactly one count below the maximum by one").
+              issues.push({ code: "SUBJECT_COUNT_EXCEEDS_ALLOCATION", location, declared, allocated });
+            } else if (trimGroupCounts(section, allocated).excess > 0) {
+              // Không còn câu đơn để bỏ (cả môn là chùm, hoặc nhóm câu đơn rỗng): máy chủ trả `NO_JOINT_SOLUTION`.
+              issues.push({ code: "SUBJECT_TRIM_IMPOSSIBLE", location, declared, allocated });
+            }
           }
         }
         for (const block of section.blocks) {
