@@ -2,7 +2,7 @@ import katex from "katex";
 import { describe, expect, it } from "vitest";
 import en from "@/messages/en.json";
 import vi from "@/messages/vi.json";
-import { PALETTE_LATEX, PALETTE_TABS, PLACEHOLDER, paletteGlyphLatex } from "../insert/math/math-palette";
+import { PALETTE_GLYPH_LATEX, PALETTE_LATEX, PALETTE_TABS, PLACEHOLDER, paletteGlyphLatex } from "../insert/math/math-palette";
 
 function keyPaths(value: unknown, prefix = ""): string[] {
   if (typeof value !== "object" || value === null) return [prefix];
@@ -43,6 +43,13 @@ describe("math palette data", () => {
 
   it("renders every template with KaTeX once its placeholders become squares", () => {
     for (const [id, latex] of Object.entries(PALETTE_LATEX)) {
+      expect(() => katex.renderToString(paletteGlyphLatex(latex), { throwOnError: true, strict: "ignore" }), id).not.toThrow();
+    }
+  });
+
+  it("renders every compact glyph with KaTeX for a template that exists", () => {
+    for (const [id, latex] of Object.entries(PALETTE_GLYPH_LATEX)) {
+      expect(PALETTE_LATEX[id], id).toBeTruthy();
       expect(() => katex.renderToString(paletteGlyphLatex(latex), { throwOnError: true, strict: "ignore" }), id).not.toThrow();
     }
   });
