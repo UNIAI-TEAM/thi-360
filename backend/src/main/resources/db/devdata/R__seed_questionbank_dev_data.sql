@@ -15,6 +15,26 @@ CREATE TEMP TABLE seed_question_rows (
     position integer
 ) ON COMMIT DROP;
 
+-- Provisional BE-2 codes: keep all classifications here for reconciliation.
+CREATE TEMP TABLE seed_2b_tags (purpose text PRIMARY KEY, code text NOT NULL) ON COMMIT DROP;
+INSERT INTO seed_2b_tags (purpose, code) VALUES
+    ('literature_social', 'VAN_NGHI_LUAN_XA_HOI'),
+    ('literature_information', 'VAN_THONG_TIN'),
+    ('literature_scientific_political', 'VAN_KHOA_HOC_CHINH_LUAN'),
+    ('literature_poetry', 'VAN_THO'),
+    ('literature_prose', 'VAN_VAN_XUOI'),
+    ('literature_information_argument', 'VAN_THONG_TIN_NGHI_LUAN'),
+    ('literature_argument', 'VAN_NGHI_LUAN'),
+    ('literature_children', 'VAN_THIEU_NHI'),
+    ('literature_story', 'VAN_TRUYEN'),
+    ('literature_science', 'VAN_KHOA_HOC');
+
+CREATE TEMP TABLE seed_2b_question_tags (
+    question_id uuid NOT NULL,
+    tag_item_id uuid NOT NULL,
+    PRIMARY KEY (question_id, tag_item_id)
+) ON COMMIT DROP;
+
 -- HSA Mathematics: each grade x level x answer-type cell has 12 independent
 -- questions, giving ample headroom for the 35/15 answer and 3/20/27 grade quotas.
 INSERT INTO seed_question_rows
@@ -215,6 +235,55 @@ SELECT child_id, code || '-' || pos, 'SINGLE_CHOICE', subject_id, grade_id, leve
        task_type_id, 1, '<p>Reading child</p>', body, id, pos
 FROM children;
 
+-- Five-child sets support HSA/QDA slots; independent copies avoid reusing a
+-- passage across slots. SPT uses the science and information types at 0.3.
+WITH sets AS (
+    SELECT tag.id AS tag_id, spec.purpose, spec.points, n,
+           md5('thi360-2b-literature-' || spec.purpose || '-' || spec.points || '-' || n)::uuid AS id,
+           subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
+    FROM seed_2b_tags spec_tag
+    JOIN (SELECT purpose, 1::numeric AS points FROM seed_2b_tags
+          UNION ALL VALUES ('literature_science', 0.3::numeric), ('literature_information', 0.3::numeric))
+         spec ON spec.purpose = spec_tag.purpose
+    JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+        AND tag.code = spec_tag.code
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'VAN'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+    CROSS JOIN generate_series(1, 3) n
+), children AS (
+    SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
+    FROM sets s CROSS JOIN generate_series(0, 4) pos
+), parents AS (
+    SELECT s.id, 'SEED-2B-LITERATURE-' || s.purpose || '-' || s.points || '-' || s.n AS code,
+           'QUESTION_SET' AS type, s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id,
+           s.points * 5 AS points, '<p>Reading set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Reading context</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
+                   'content', '<p>Reading child</p>', 'body', c.body, 'points', s.points,
+                   'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM sets s JOIN children c ON c.id = s.id
+    GROUP BY s.id, s.purpose, s.points, s.n, s.subject_id, s.grade_id, s.level_id
+)
+INSERT INTO seed_question_rows
+SELECT * FROM parents
+UNION ALL
+SELECT child_id, 'SEED-2B-LITERATURE-' || purpose || '-' || points || '-' || n || '-' || pos,
+       'SINGLE_CHOICE', subject_id, grade_id, level_id, NULL, points,
+       '<p>Reading child</p>', body, id, pos
+FROM children;
+
+INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
+SELECT q.id, tag.id
+FROM seed_question_rows q
+JOIN seed_2b_tags t ON starts_with(q.code, 'SEED-2B-LITERATURE-' || t.purpose || '-')
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+    AND tag.code = t.code;
+
 -- Remaining formats and lifecycle examples, including a draft and a retired
 -- question for each format. READY rows use the same validation as real content.
 INSERT INTO seed_question_rows
@@ -260,6 +329,8 @@ WITH prepared AS (
                WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
                WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
                WHEN 'QUESTION_SET' THEN CASE
+                   WHEN code LIKE 'SEED-2B-LITERATURE-%'
+                       THEN 'Reading set Reading context' || repeat(' Reading child One Two', 5)
                    WHEN code LIKE 'SEED-READING-%'
                        THEN 'Reading set Reading context Reading child One Two Reading child One Two'
                    WHEN code LIKE 'SEED-HSA-MATH-SET-%'
@@ -299,9 +370,15 @@ INSERT INTO questionbank.question_version (question_id, version_no, snapshot, re
 SELECT s.id, 1, jsonb_build_object(
     'subjectItemId', s.subject_id, 'gradeItemId', s.grade_id, 'levelItemId', s.level_id,
     'taskTypeItemId', s.task_type_id, 'competencyItemId', NULL, 'points', s.points,
-    'knowledge', '[]'::jsonb, 'tagItemIds', '[]'::jsonb, 'content', s.content,
+    'knowledge', '[]'::jsonb, 'tagItemIds', COALESCE(
+        (SELECT jsonb_agg(t.tag_item_id ORDER BY t.tag_item_id)
+         FROM seed_2b_question_tags t WHERE t.question_id = s.id), '[]'::jsonb), 'content', s.content,
     'solution', NULL, 'commonMistakes', '[]'::jsonb, 'attachmentIds', '[]'::jsonb, 'body', s.body),
     CASE WHEN q.status = 'DRAFT' THEN NULL ELSE now() END
 FROM seed_question_rows s
 JOIN questionbank.question q ON q.id = s.id
+ON CONFLICT DO NOTHING;
+
+INSERT INTO questionbank.question_tag (question_id, tag_item_id)
+SELECT question_id, tag_item_id FROM seed_2b_question_tags
 ON CONFLICT DO NOTHING;
