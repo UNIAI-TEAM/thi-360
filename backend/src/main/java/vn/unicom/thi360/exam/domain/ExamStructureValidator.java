@@ -66,6 +66,12 @@ public final class ExamStructureValidator {
         nonNegative(part.questionCount(), "parts.questionCount");
         nonNegative(part.questionCountOnPaper(), "parts.questionCountOnPaper");
         nonNegative(part.questionCountRequired(), "parts.questionCountRequired");
+        if (part.codeSource() != null
+                && (!"GLOBAL_LIST".equals(part.codeSource().source())
+                || part.codeSource().branch() != null
+                && !Set.of("SCIENCE", "ENGLISH").contains(part.codeSource().branch()))) {
+            invalid("parts.codeSource", "unsupported code source or branch");
+        }
         if (part.codeSource() != null && !part.options().isEmpty()) {
             invalid("parts.options", "a code-source part must not have options");
         }
@@ -87,6 +93,9 @@ public final class ExamStructureValidator {
             invalid("parts.maxPoints", "max points must be positive");
         }
         int blockCount = 0;
+        for (ExamSection section : part.subjectPool()) {
+            blockCount += section.blocks().size();
+        }
         for (ExamSection section : part.sections()) {
             validateSection(section, ids, maxTopicQuotas);
             blockCount += section == null ? 0 : section.blocks().size();
@@ -190,6 +199,18 @@ public final class ExamStructureValidator {
         validateScope(block.knowledgeScope(), "blocks.knowledgeScope");
         validateMatrix(block.matrix(), "blocks.matrix");
         validateTopicQuotas(block.topicQuotas(), "blocks.topicQuotas", maxTopicQuotas);
+        if (block.itemShape() != null) {
+            nonNegative(block.itemShape().statements(), "blocks.itemShape.statements");
+            nonNegative(block.itemShape().leftItems(), "blocks.itemShape.leftItems");
+            nonNegative(block.itemShape().rightItems(), "blocks.itemShape.rightItems");
+        }
+        for (ChildCondition condition : block.childConditions()) {
+            if (condition == null || condition.from() != null && condition.from() < 1
+                    || condition.to() != null && condition.to() < 1
+                    || condition.from() != null && condition.to() != null && condition.from() > condition.to()) {
+                invalid("blocks.childConditions", "child positions must form a positive range");
+            }
+        }
         if (!block.slots().isEmpty()) {
             if (block.setCount() == null || (block.questionType() != QuestionType.QUESTION_SET
                     && block.questionType() != QuestionType.CLOZE)) {
