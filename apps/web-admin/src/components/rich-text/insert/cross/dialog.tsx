@@ -4,8 +4,10 @@ import { Button, Input, Select } from "@thi360/ui";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Fragment, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { CROSS_DIAGRAM_NODE } from "../../extensions";
 import type { InsertDialogProps } from "../registry";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
+import { selectedAtom, upsertAtom } from "../shared/upsert-atom";
 import {
   cellErrors,
   cellSegments,
@@ -20,7 +22,6 @@ import {
   type RowLabel,
   type Sex,
 } from "./cross-model";
-import { selectedCross, upsertCross } from "./upsert-cross";
 
 const SEX_OPTION_SIGNS: Record<Exclude<Sex, "none">, string> = { male: "♂", female: "♀" };
 
@@ -43,8 +44,10 @@ function RowLabelView({ label }: { label: RowLabel }) {
  */
 export default function CrossInsertDialog({ editor, open, onOpenChange }: InsertDialogProps) {
   const t = useTranslations("richText.insertDialog.cross");
-  const existing = useMemo(() => selectedCross(editor), [editor]);
-  const [model, setModel] = useState<CrossModel>(() => (existing ? htmlToCross(existing.html) : emptyCrossModel()));
+  const existing = useMemo(() => selectedAtom(editor, CROSS_DIAGRAM_NODE), [editor]);
+  const [model, setModel] = useState<CrossModel>(() =>
+    existing ? htmlToCross(typeof existing.node.attrs.html === "string" ? existing.node.attrs.html : "") : emptyCrossModel(),
+  );
   const gridRef = useRef<HTMLDivElement>(null);
   const lastCell = useRef<CellId>("genotypeA");
   const pendingCaret = useRef<{ cell: CellId; caret: number } | null>(null);
@@ -87,7 +90,7 @@ export default function CrossInsertDialog({ editor, open, onOpenChange }: Insert
 
   function submit() {
     if (!html || errorCells.length > 0) return;
-    upsertCross(editor, html, existing);
+    upsertAtom(editor, CROSS_DIAGRAM_NODE, { html }, existing);
     onOpenChange(false);
   }
 

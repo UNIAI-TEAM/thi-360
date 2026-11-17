@@ -8,12 +8,12 @@ import katex from "katex";
 import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import "../../math-render";
+import { DisplayToggle } from "../math/display-toggle";
 import type { InsertDialogProps } from "../registry";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
 import { loadRecent, pushRecent } from "../shared/recent-store";
 import { SymbolGrid } from "../shared/symbol-grid";
 import { ceLatex, composeCe, splitArrowConditions } from "./ce";
-import { DisplayToggle } from "./display-toggle";
 import { FormulaSpan } from "./formula-span";
 import { insertChemistry, readChemistryTarget } from "./insert-formulas";
 
