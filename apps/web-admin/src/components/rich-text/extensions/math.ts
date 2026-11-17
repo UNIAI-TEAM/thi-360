@@ -2,7 +2,7 @@ import { Extension, Node } from "@tiptap/core";
 import type { CommandProps } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { KatexOptions } from "katex";
-import { sanitizeQuestionHtml } from "./sanitize";
+import { MATH_BLOCK_NODE, MATH_INLINE_NODE } from "./names";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -44,7 +44,7 @@ function stripDelimiters(text: string, display: boolean): string {
 
 /** Công thức cùng dòng `<span class="math-inline">\( … \)</span>` — atom, sửa qua hộp thoại. */
 export const MathInline = Node.create<MathNodeOptions>({
-  name: "mathInline",
+  name: MATH_INLINE_NODE,
   group: "inline",
   inline: true,
   atom: true,
@@ -84,7 +84,7 @@ export const MathInline = Node.create<MathNodeOptions>({
 
 /** Công thức khối `<span class="math-block">\[ … \]</span>` — spec chỉ cho `span`, không `div`. */
 export const MathBlock = Node.create<MathNodeOptions>({
-  name: "mathBlock",
+  name: MATH_BLOCK_NODE,
   group: "block",
   atom: true,
   selectable: true,
@@ -121,7 +121,7 @@ export const MathBlock = Node.create<MathNodeOptions>({
   },
 });
 
-const MATH_NODE_NAMES = new Set(["mathInline", "mathBlock"]);
+export const MATH_NODE_NAMES = new Set([MATH_INLINE_NODE, MATH_BLOCK_NODE]);
 
 /**
  * Lệnh `setMath` dùng chung cho hai node; thay công thức đang chọn hoặc chèn mới tại con trỏ. Đang chọn một nút khác
@@ -137,7 +137,7 @@ export const MathCommands = Extension.create({
         ({ commands, state }: CommandProps) => {
           const trimmed = latex.trim();
           if (!trimmed) return false;
-          const content = { type: display ? "mathBlock" : "mathInline", attrs: { latex: trimmed } };
+          const content = { type: display ? MATH_BLOCK_NODE : MATH_INLINE_NODE, attrs: { latex: trimmed } };
           const { selection } = state;
           if (selection instanceof NodeSelection && !MATH_NODE_NAMES.has(selection.node.type.name)) {
             return commands.insertContentAt(selection.to, content);
@@ -145,21 +145,5 @@ export const MathCommands = Extension.create({
           return commands.insertContent(content);
         },
     };
-  },
-});
-
-/**
- * Lọc HTML dán/thả vào soạn theo đúng danh sách cho phép của backend trước khi ProseMirror parse.
- * `transformPastedHTML` của TipTap cũng chạy cho HTML được thả (drop) — một điểm lọc duy nhất.
- */
-export const HtmlSanitize = Extension.create<{ allowImages: boolean }>({
-  name: "htmlSanitize",
-
-  addOptions() {
-    return { allowImages: true };
-  },
-
-  transformPastedHTML(html: string) {
-    return sanitizeQuestionHtml(html, { allowImages: this.options.allowImages }).html;
   },
 });

@@ -290,6 +290,9 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${formId}-content-error` : `${formId}-content-hint`}
           name="content"
+          fieldContext={
+            type === "QUESTION_SET" ? "set-passage" : type === "SINGLE_CHOICE" ? "stem-single-choice" : "default"
+          }
         />
         {!error && (
           <p id={`${formId}-content-hint`} className="text-caption text-text-muted">

@@ -369,14 +369,54 @@ Quy ước thêm ở FE-3b (giao diện ngân hàng câu hỏi theo UniNote 2026
 
 ### 5.15 Editor and preview (rich text)
 
-Trình soạn và khung xem nội dung HTML (UNI-2617): `RichTextEditor` và `RichTextView` ở `components/rich-text`, dùng cho Hướng dẫn làm bài của bài thi, nội dung, phương án và lời giải của câu hỏi.
+Trình soạn và khung xem nội dung HTML (UNI-2617, mở rộng ở UNI-2638): `RichTextEditor` và `RichTextView` ở `components/rich-text`, dùng cho Hướng dẫn làm bài của bài thi, nội dung, phương án, ngữ liệu và lời giải của câu hỏi. Đặc tả: `docs/specs/2026-11-17-trinh-soan-noi-dung.md`; bản vẽ: `docs/design/dot-2/SoanThao*.dc.html`.
 
-- **Thanh công cụ** nằm trên khung soạn (`role="toolbar"`, tên "Định dạng nội dung"), hàng nút icon lucide 16px kèm `aria-label`: Đậm, Nghiêng, Gạch chân, Gạch ngang, Chỉ số dưới, Chỉ số trên, Danh sách chấm, Danh sách số, Chèn bảng, Chèn công thức, Chèn ảnh. Chỉ có đúng các định dạng mà bộ lọc HTML của máy chủ cho phép; không thêm nút ngoài danh sách đó.
 - **Khung soạn** dùng token của ô nhập (mục 5.2): viền `border`, focus `primary-text`; có lỗi thì viền `danger` và `aria-invalid`, kèm dòng lỗi của `FormField`. Nhãn đi qua `aria-label` của vùng soạn vì `label for` không gắn được vào vùng `contenteditable`. Chiều cao tối thiểu 7rem, tối đa 28rem rồi cuộn trong khung.
-- **Công thức:** nút "Chèn công thức" mở hộp thoại nhập mã LaTeX, chọn "Cùng dòng" hoặc "Khối"; công thức nằm trong nội dung là **chip** đã dựng bằng KaTeX, viền `primary`, bấm chọn rồi mở lại để sửa. Lưu thành `span.math-inline` hoặc `span.math-block`.
+- **Thanh công cụ** nằm trên khung soạn (`role="toolbar"`, tên "Định dạng nội dung"), nút icon lucide 18px kèm `aria-label` và tooltip (`IconButton`). Thứ tự: **Hoàn tác, Làm lại**; nhóm **Văn bản** (Đậm, Nghiêng, Gạch chân, Gạch ngang, Chỉ số dưới, Chỉ số trên, Danh sách chấm, Danh sách số); nhóm **Chèn** lấy từ registry `insert/registry.ts` rồi lọc theo `fieldContext` (Công thức, Hóa học, Ký hiệu, Bảng, Hình, Đoạn trích; thêm Gạch chân đánh nhãn ở đề bài câu Trắc nghiệm 1 đáp án, Chỗ trống ở ngữ liệu câu chùm). Sơ đồ lai chỉ có trong menu `/`; "Dán từ Word" là nút của form soạn câu, không phải của thanh công cụ. Nút không dùng được (không có gì để hoàn tác, định dạng bị schema chặn) mang `aria-disabled` nhưng vẫn focus được. Khi khung hẹp (đo ở 390px) các nhóm nút xuống dòng trong thanh (không cuộn ngang, trang không tràn ngang).
+- **Phím trên thanh công cụ** (roving tabindex): cả thanh là **một điểm dừng Tab**; mũi tên trái/phải đi giữa các nút và quấn quanh hai đầu, Home/End về nút đầu/cuối, Tab rời thanh vào vùng soạn. Nút định dạng và nút Chèn là nút bật/tắt nên có `aria-pressed` (đang bật là `true`); Hoàn tác và Làm lại là nút hành động, không có `aria-pressed`; nút Chèn bật khi node hoặc mark đang chọn thuộc mục đó (bấm lúc này mở lại hộp để sửa, không chèn mới).
+- **Khối atom trong vùng soạn** (bảng số liệu, sơ đồ lai, hình có chú thích, đoạn trích): công thức bên trong (`span.math-inline`, `span.math-block`, `\ce{…}`) được dựng bằng KaTeX + mhchem như ở `RichTextView` (cùng `math-render.ts`), công thức lỗi hiện mã nguồn trong khung `math-error`. Chỉ DOM của node view đổi; thuộc tính `html` và HTML phát ra giữ nguyên chữ LaTeX gốc.
+- **`fieldContext`:** prop của `RichTextEditor` (`stem-single-choice`, `set-passage`, `instructions`, `default`) quyết định mục Chèn nào hiện; nơi gọi truyền theo ô (đề bài Trắc nghiệm 1 đáp án, ngữ liệu câu chùm, Hướng dẫn làm bài của bài thi). `allowImages={false}` luôn bỏ mục Hình.
+- **Menu `/`:** gõ `/` ở đầu dòng hoặc sau khoảng trắng mở danh sách các mục của registry (cùng bộ lọc `fieldContext`, thêm Sơ đồ lai) có ô lọc; mỗi mục có tên và một dòng mô tả. Esc đóng, Enter chọn, mũi tên di chuyển. Gõ `$…$` ra công thức cùng dòng, `$$…$$` ra công thức khối, `\$` giữ ký tự `$`.
+- **Khung "đang chọn":** chọn một node hoặc mark có mục trong registry thì hiện một dải ngay dưới thanh công cụ (nền `subtle`, viền dưới `border`) do mục đó khai báo (`selectionPanel`); công thức có ô mã LaTeX sửa trực tiếp, Trong dòng/Dòng riêng, Sửa, Xóa công thức. Nhấp đúp node, bấm nút cùng loại trên thanh công cụ hoặc nút Sửa trong khung đều mở lại hộp của mục (`openForSelection`).
+- **Hộp chèn** dùng chung `InsertDialogShell` (`Dialog` của kit, tiêu đề, mô tả, Hủy/Chèn; rộng 980–1020px ở màn rộng, toàn màn dưới 640px) và `SymbolGrid` (nút 40×40, `aria-label` có ở cả hai ngôn ngữ). "Dùng gần đây" lưu theo từng người ở `localStorage`, mọi lỗi lưu trữ bị bỏ qua. Mục chưa có hộp thật hiện hộp tạm "Đang làm". Mỗi hộp một tiểu mục dưới đây; lane làm hộp nào thì chỉ sửa tiểu mục của hộp đó.
 - **Cảnh báo công thức:** công thức có dấu mở hoặc đóng không khớp hiện dòng chữ màu `warning` ("Công thức có dấu mở hoặc đóng không khớp", `role="alert"`) ngay dưới khung soạn; chỉ cảnh báo, không chặn nhập hay lưu.
-- **Nút ảnh:** chỉ hiện khi `allowImages` bật (mặc định). `allowImages={false}` (Hướng dẫn làm bài của bài thi, spec 5.2) ẩn nút Chèn ảnh, chặn dán và thả ảnh; khung xem với `allowImages={false}` bỏ mọi `img`.
 - **Khung xem:** nơi chỉ đọc HTML (xem trước đề, chi tiết câu hỏi) dùng `RichTextView`, không bao giờ `dangerouslySetInnerHTML` trực tiếp; view lọc lại theo cùng danh sách cho phép rồi dựng công thức bằng KaTeX sau khi trang đã gắn vào trình duyệt. Xem trước đề của bài thi hiển thị đoạn dẫn của chùm, nội dung câu, phương án và lời giải bằng `RichTextView`; tiêu chí chấm, đáp án ngắn và các nhãn là chữ thuần nên giữ thẻ văn bản.
+
+#### 5.15.1 Hộp Công thức toán
+
+Ô soạn trực quan đồng bộ hai chiều với ô mã LaTeX, bảng nút theo tab, nhãn Hợp lệ/Lỗi cú pháp, xem trước trong câu, dùng gần đây (bản vẽ `SoanThaoCongThucToan`). Bản tạm hiện tại chỉ có ô LaTeX và chọn Cùng dòng/Khối. Lưu thành `span.math-inline` hoặc `span.math-block`.
+
+#### 5.15.2 Hộp Công thức hóa học
+
+Ô "Gõ nhanh" theo cú pháp mhchem, nút mũi tên/trạng thái/điện tích, trên và dưới mũi tên, "Ghi sau phương trình", xem trước (bản vẽ `SoanThaoHoaHoc`).
+
+#### 5.15.3 Hộp Ký hiệu và đơn vị
+
+Lưới `SymbolGrid` theo nhóm, ô tìm theo tên vi/en, hộp không đóng sau mỗi lần bấm (bản vẽ `SoanThaoKyHieu`).
+
+#### 5.15.4 Hộp Bảng số liệu
+
+Tên bảng, đơn vị, nguồn, lưới ô sửa trực tiếp, dán từ Excel, gộp ô, tối đa 30×15 (bản vẽ `SoanThaoBang`).
+
+#### 5.15.5 Hộp Hình
+
+Tải ảnh, mô tả thay thế bắt buộc, chú thích, nguồn, độ rộng, cho phóng to; không có ở ô `allowImages={false}` (bản vẽ `SoanThaoHinh`).
+
+#### 5.15.6 Hộp Đoạn trích
+
+Kiểu Thơ/Văn xuôi/Tư liệu, nội dung, tác giả, tác phẩm, ghi chú nguồn, giữ ngắt dòng, đánh số dòng (bản vẽ `SoanThaoDoanTrich`).
+
+#### 5.15.7 Gạch chân đánh nhãn và Chỗ trống
+
+Nhãn tự lấy chữ kế tiếp; khung "Cụm đang chọn" có Đổi nhãn, Bỏ gạch chân; chỗ trống gắn với câu con (bản vẽ `SoanThaoTiengAnh`).
+
+#### 5.15.8 Hộp Sơ đồ lai
+
+Lưới thế hệ P, G, F₁…, Thêm thế hệ (bản vẽ `SoanThaoSinhHoc`).
+
+#### 5.15.9 Dán từ Word
+
+Hộp riêng mở từ nút của form soạn câu hoặc khi dán nội dung Word vào ô đề bài; `onRichPaste` nhận `clipboardData` trước bước lọc HTML (bản vẽ `SoanThaoDanTuWord`).
 
 ## 6. Icon và hình ảnh
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { RichTextEditor, type RichTextEditorHandle } from "@/components/rich-text";
+import { RichTextEditor, type FieldContext, type RichTextEditorHandle } from "@/components/rich-text";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { Controller, useFormContext, type Path } from "react-hook-form";
@@ -36,6 +36,7 @@ export function RichTextField({
   name,
   id,
   placeholder,
+  fieldContext,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledby,
   "aria-describedby": ariaDescribedby,
@@ -45,6 +46,8 @@ export function RichTextField({
   name: Path<QuestionEditorValues>;
   id?: string;
   placeholder?: string;
+  /** Ngữ cảnh của ô (đề bài trắc nghiệm 1 đáp án, ngữ liệu câu chùm…): lọc mục Chèn (spec 4.1). */
+  fieldContext?: FieldContext;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   "aria-describedby"?: string;
@@ -76,6 +79,7 @@ export function RichTextField({
         <div ref={(node) => field.ref(node && { focus: () => focusEditable(node) })}>
           <RichTextEditor
             handleRef={registerHandle}
+            fieldContext={fieldContext}
             id={id}
             value={typeof field.value === "string" ? field.value : ""}
             onChange={field.onChange}

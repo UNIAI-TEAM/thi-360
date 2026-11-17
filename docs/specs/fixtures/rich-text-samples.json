@@ -229,6 +229,13 @@
       "allowImages": true,
       "html": "<p style=\"color:red\" onclick=\"x()\">a</p><script>x()</script>",
       "violations": [{ "tag": "p", "attribute": "style" }, { "tag": "p", "attribute": "onclick" }, { "tag": "script" }]
+    },
+    {
+      "name": "bad-blank-with-text",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p><span class=\"blank\" data-blank=\"1\">text</span></p>",
+      "violations": [{ "tag": "span" }]
     }
   ]
 }

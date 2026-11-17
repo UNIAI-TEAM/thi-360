@@ -7,7 +7,7 @@ import { renderWithProviders } from "@/test/render";
 import type * as QuestionsApi from "@/features/questions/api";
 import { uploadQuestionAsset } from "@/features/questions/api";
 import { RichTextEditor } from "../rich-text-editor";
-import { RichTextView } from "../rich-text-view";
+import { RichTextView } from "../view/rich-text-view";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
 
 vi.mock("@/features/questions/api", async (importOriginal) => {
@@ -60,8 +60,8 @@ describe("RichTextEditor", () => {
     const user = userEvent.setup();
     const { onChange } = renderEditor();
 
-    await user.click(screen.getByRole("button", { name: "Insert formula" }));
-    await user.type(screen.getByLabelText("LaTeX code"), "x^2");
+    await user.click(screen.getByRole("button", { name: "Math formula" }));
+    await user.type(await screen.findByLabelText("LaTeX code"), "x^2");
     await user.click(screen.getByRole("button", { name: "Insert formula" }));
 
     await waitFor(() => {
@@ -83,8 +83,8 @@ describe("RichTextEditor", () => {
       { locale: "en", messages: en },
     );
 
-    await user.click(screen.getByRole("button", { name: "Insert formula" }));
-    await user.type(screen.getByLabelText("LaTeX code"), "x^2");
+    await user.click(screen.getByRole("button", { name: "Math formula" }));
+    await user.type(await screen.findByLabelText("LaTeX code"), "x^2");
     await user.click(screen.getByRole("button", { name: "Insert formula" }));
 
     await waitFor(() => {
@@ -106,9 +106,9 @@ describe("RichTextEditor", () => {
     const user = userEvent.setup();
     const { onChange } = renderEditor();
 
-    await user.click(screen.getByRole("button", { name: "Insert formula" }));
-    await user.click(screen.getByRole("radio", { name: "Block" }));
-    fireEvent.change(screen.getByLabelText("LaTeX code"), { target: { value: "\\sum_{i=1}^n i" } });
+    await user.click(screen.getByRole("button", { name: "Math formula" }));
+    await user.click(await screen.findByRole("radio", { name: "Block" }));
+    fireEvent.change(await screen.findByLabelText("LaTeX code"), { target: { value: "\\sum_{i=1}^n i" } });
     await user.click(screen.getByRole("button", { name: "Insert formula" }));
 
     await waitFor(() => {
@@ -155,7 +155,7 @@ describe("RichTextEditor", () => {
   it("blocks image paste and shows no image button when allowImages=false", async () => {
     const { onChange } = renderEditor({ allowImages: false });
 
-    expect(screen.queryByRole("button", { name: "Insert image" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Image" })).toBeNull();
 
     editable()!.focus();
     pasteHtml(
