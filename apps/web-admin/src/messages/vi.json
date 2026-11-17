@@ -5306,21 +5306,79 @@
       "latexPlaceholder": "x^2 + y^2 = z^2",
       "title": "Chèn công thức"
     },
+    "insert": {
+      "blank": {
+        "label": "Chỗ trống",
+        "description": "Ô trống gắn với câu con của câu chùm"
+      },
+      "cancel": "Hủy",
+      "chemistry": {
+        "label": "Công thức hóa học",
+        "description": "Chỉ số, điện tích, mũi tên phản ứng, điều kiện, trạng thái"
+      },
+      "close": "Đóng",
+      "cross": {
+        "label": "Sơ đồ lai",
+        "description": "P, G, F₁ cho bài di truyền"
+      },
+      "image": {
+        "label": "Hình",
+        "description": "Biểu đồ, bản đồ, sơ đồ, hình vẽ; có chú thích và nguồn"
+      },
+      "insert": "Chèn",
+      "math": {
+        "label": "Công thức toán",
+        "description": "Phân số, căn, giới hạn, tích phân, hệ phương trình, vectơ",
+        "panel": {
+          "title": "Công thức đang chọn",
+          "latexLabel": "Mã LaTeX của công thức đang chọn",
+          "displayLabel": "Kiểu hiển thị",
+          "inline": "Trong dòng",
+          "block": "Dòng riêng",
+          "edit": "Sửa",
+          "delete": "Xóa công thức"
+        }
+      },
+      "quote": {
+        "label": "Đoạn trích",
+        "description": "Thơ, văn xuôi, tư liệu lịch sử; giữ nguyên ngắt dòng"
+      },
+      "stub": {
+        "body": "Đang làm"
+      },
+      "symbols": {
+        "label": "Ký hiệu và đơn vị",
+        "description": "Chữ Hy Lạp, đơn vị đo, ký hiệu sinh học, phiên âm IPA"
+      },
+      "table": {
+        "label": "Bảng số liệu",
+        "description": "Dán từ Excel; có tên bảng, đơn vị và nguồn"
+      },
+      "underline-label": {
+        "label": "Gạch chân đánh nhãn",
+        "description": "Câu tìm lỗi sai, từ cần xét phát âm hoặc trọng âm"
+      },
+      "word": {
+        "label": "Dán từ Word",
+        "description": "Đưa đề, phương án và lời giải từ tài liệu Word"
+      }
+    },
     "mathUnbalanced": "Công thức có dấu mở hoặc đóng không khớp",
     "toolbar": {
       "bold": "Đậm",
       "bulletList": "Danh sách chấm",
-      "formula": "Chèn công thức",
-      "image": "Chèn ảnh",
-      "imageUploading": "Đang tải ảnh lên",
+      "groupHistory": "Hoàn tác",
+      "groupInsert": "Chèn",
+      "groupText": "Văn bản",
       "italic": "Nghiêng",
       "label": "Định dạng nội dung",
       "orderedList": "Danh sách số",
+      "redo": "Làm lại",
       "strike": "Gạch ngang",
       "subscript": "Chỉ số dưới",
       "superscript": "Chỉ số trên",
-      "table": "Chèn bảng",
-      "underline": "Gạch chân"
+      "underline": "Gạch chân",
+      "undo": "Hoàn tác"
     }
   }
 }
