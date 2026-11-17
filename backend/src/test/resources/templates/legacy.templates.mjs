@@ -1,4 +1,6 @@
 // Preserve the existing V-ACT and THPTQG figures while assigning stable IDs and labels.
+import {assignGroups} from './groups.mjs';
+
 import {readFileSync} from 'node:fs';
 const seed=readFileSync(new URL('../../../main/resources/db/migration/exam/V202611161801__seed_exam_templates.sql',import.meta.url),'utf8').split('\n');
 const updates=readFileSync(new URL('../../../main/resources/db/migration/exam/V202611171200__assumed_templates_fill.sql',import.meta.url),'utf8').split('\n');
@@ -43,4 +45,14 @@ const blocks=math.parts[0].sections[0].blocks;
 math.parts=blocks.map((block,i)=>({name:['Phần I · Trắc nghiệm','Phần II · Đúng/Sai','Phần III · Trả lời ngắn'][i],questionCount:block.questionCount,questionCountOnPaper:block.questionCount,questionCountRequired:block.questionCount,participation:{mode:'ALL'},maxPoints:[3,4,3][i],sections:[{subjectCode:'TOAN',questionCount:block.questionCount,blocks:[block]}],options:[]}));
 math.parts[0].durationMinutes=90;
 source.push({code:'SP2E_MATH_2025',kindCode:'SP2E',scope:'SUBJECT',partCode:null,subjectCode:'TOAN',structureYear:2025,matrixYear:2025,timing:'PER_PART',durationMinutes:90,maxScore:10,expertNote:'Cấu trúc 12–4–6 và điểm là giả định, chờ chuyên gia xác nhận.',label:'SP2E – Toán – Cấu trúc giả định 2025',summary:'22 câu trong 90 phút: trắc nghiệm, đúng/sai và trả lời ngắn.',buildMode:'STANDARD',isDefault:false,existing:true,expected:{questions:22,maxPoints:10},structure:math});
+// Blocks preserved from the earlier seeds had templateGroupCode null; every
+// block now gets a stable <KIND>_<SUBJECT>_<GROUP> code.
+const legacyGroup={'Trắc nghiệm chọn một':'SINGLE','Trắc nghiệm':'SINGLE','Đúng/Sai':'TF','Đúng/Sai chung':'TF_COMMON','Đúng/Sai Khoa học máy tính':'TF_CS','Đúng/Sai Tin học ứng dụng':'TF_ICT','Trả lời ngắn':'SHORT','Đọc hiểu':'READING','Viết đoạn văn (khoảng 200 chữ)':'PARA','Viết bài văn (khoảng 600 chữ)':'ESSAY','Tiếng Việt':'VN','Tiếng Anh':'EN','Toán học':'MATH','Logic, phân tích số liệu':'LOGIC','Suy luận khoa học':'SCIENCE'};
+for (const template of source) {
+  assignGroups(template, ({block,subjectCode}) => {
+    const suffix=legacyGroup[block.name];
+    if(!suffix) return null;
+    return template.kindCode==='VACT'?`VACT_${suffix}`:`${template.kindCode}_${subjectCode}_${suffix}`;
+  });
+}
 export default source;

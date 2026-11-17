@@ -40,9 +40,9 @@
           "byDifficulty": []
         },
         "blocks": [
-          { "name": "Trắc nghiệm độc lập", "questionType": "SINGLE_CHOICE", "questionCount": 32, "requiredPointsPerQuestion": 1 },
-          { "name": "Chùm trắc nghiệm", "questionType": "QUESTION_SET", "questionCount": 3, "setCount": 1, "setSize": 3, "childAnswerType": "SINGLE_CHOICE", "requiredPointsPerQuestion": 1 },
-          { "name": "Trả lời ngắn", "questionType": "SHORT_ANSWER", "questionCount": 15, "answerFormats": ["INTEGER", "DECIMAL", "FRACTION"], "requiredPointsPerQuestion": 1 }
+          { "name": "Trắc nghiệm độc lập", "questionType": "SINGLE_CHOICE", "questionCount": 32, "templateGroupCode": "QDA_TOAN_SINGLE", "requiredPointsPerQuestion": 1 },
+          { "name": "Chùm trắc nghiệm", "questionType": "QUESTION_SET", "questionCount": 3, "setCount": 1, "setSize": 3, "childAnswerType": "SINGLE_CHOICE", "templateGroupCode": "QDA_TOAN_CONTEXT", "requiredPointsPerQuestion": 1 },
+          { "name": "Trả lời ngắn", "questionType": "SHORT_ANSWER", "questionCount": 15, "answerFormats": ["INTEGER", "DECIMAL", "FRACTION"], "templateGroupCode": "QDA_TOAN_SINGLE", "requiredPointsPerQuestion": 1 }
         ]
       }],
       "options": []

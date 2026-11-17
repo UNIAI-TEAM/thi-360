@@ -1,4 +1,6 @@
 // SPT V1, requirement table §2.5. Essay groups remain visible but omitted.
+import {assignGroups} from './groups.mjs';
+
 const names={TOAN:'Toán',VAN:'Ngữ văn',ANH:'Tiếng Anh',LY:'Vật lí',HOA:'Hóa học',SINH:'Sinh học',SU:'Lịch sử',DIA:'Địa lí',INFORMATICS:'Tin học',ECON_LAW:'Giáo dục kinh tế và pháp luật',TECH_INDUSTRY:'Công nghệ công nghiệp',TECH_AGRICULTURE:'Công nghệ nông nghiệp'};
 const numbers={TOAN:[16,2,4,3,7],LY:[12,3,4,2,7],HOA:[20,2,4,1,8],SINH:[12,3,4,3,7],SU:[20,2,0,3,7],DIA:[12,3,4,1,7],ECON_LAW:[16,3,0,2,7],TECH_INDUSTRY:[16,2,4,2,7],TECH_AGRICULTURE:[16,2,4,2,7]};
 const source=[];
@@ -12,9 +14,21 @@ const part=(name,code,blocks,maxPoints,extra={})=>{
   return {name,questionCount,questionCountOnPaper:questionCount,questionCountRequired:questionCount,maxPoints,participation:{mode:'ALL'},sections:[s],options:[],...extra};
 };
 const reference={mode:'SEPARATE',unit:'COUNT',basis:'QUESTION',gradeEnforcement:'REFERENCE',difficultyEnforcement:'REFERENCE',byGrade:[],byDifficulty:[]};
+const sptGroup={
+  VAN:{'Hai văn bản':'READING','Nghị luận xã hội':'ESSAY','Nghị luận văn học':'ESSAY_LIT'},
+  ANH:{'Câu đơn':'SINGLE','Đọc điền':'CLOZE','Sắp xếp hội thoại':'DIALOGUE','Đọc hiểu':'READING','Word Formation':'WORD_FORM','Tự luận – tạm bỏ qua':'ESSAY'},
+  INFORMATICS:{'Một đáp án':'SINGLE','Đúng/Sai':'TF','Tự luận – tạm bỏ qua':'ESSAY'},
+  '*':{'Một đáp án':'SINGLE','Đúng/Sai':'TF','Trả lời ngắn':'SHORT','Tự luận – tạm bỏ qua':'ESSAY'}
+};
+
 function add(code,subject,parts,questions,points) {
   if(['ANH','SU','DIA','ECON_LAW'].includes(subject)) for(const p of parts) for(const s of p.sections??[]) s.matrix=reference;
-  source.push({code,kindCode:'SPT',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:2025,matrixYear:2025,timing:'PER_PART',durationMinutes:null,maxScore:points,expertNote:null,label:subject==='VAN'?'SPT – Ngữ văn – Đọc hiểu':`SPT – ${names[subject]} – V1 theo đề tham khảo 075`,summary:`${questions} câu, thang ${points} điểm; phần tự luận tạm bỏ qua.`,buildMode:'STANDARD',isDefault:true,existing:true,expected:{questions,maxPoints:points},structure:{parts,examQuotas:[]}});
+  const template={code,kindCode:'SPT',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:2025,matrixYear:2025,timing:'PER_PART',durationMinutes:null,maxScore:points,expertNote:null,label:subject==='VAN'?'SPT – Ngữ văn – Đọc hiểu':`SPT – ${names[subject]} – V1 theo đề tham khảo 075`,summary:`${questions} câu, thang ${points} điểm; phần tự luận tạm bỏ qua.`,buildMode:'STANDARD',isDefault:true,existing:true,expected:{questions,maxPoints:points},structure:{parts,examQuotas:[]}};
+  assignGroups(template, ({block,subjectCode:s,optionCode}) => {
+    const suffix=(sptGroup[s]??sptGroup['*'])[block.name];
+    return suffix?`SPT_${s}_${suffix}${optionCode?`_${optionCode}`:''}`:null;
+  });
+  source.push(template);
 }
 for(const [s,[mc,t,f,e,points]] of Object.entries(numbers)) {
   const parts=[part('Phần I · Trắc nghiệm',s,[b('Một đáp án','SINGLE_CHOICE',mc,.25)],mc*.25),part('Phần II · Đúng/Sai',s,[tf(t)],t)];

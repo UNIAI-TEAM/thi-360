@@ -1,4 +1,6 @@
 // Requirement table §2.1–2.3. Counts represent the questions a candidate takes.
+import {assignGroups} from './groups.mjs';
+
 const subjectNames = {TOAN:'Toán', VAN:'Ngữ văn', ANH:'Tiếng Anh', LY:'Vật lí', HOA:'Hóa học', SINH:'Sinh học', SU:'Lịch sử', DIA:'Địa lí'};
 const scientific = ['LY','HOA','SINH','SU','DIA'];
 const scienceMatrix = {
@@ -7,6 +9,39 @@ const scienceMatrix = {
   BCA: {LY:[[2,3,10],[3,4,7,1]], HOA:[[3,3,9],[1,7,6,1]], SINH:[[2,3,10],[4,5,4,2]], DIA:[[2,1,12],[2,10,3,0]]}
 };
 const vals = (codes, values) => values.map((value, i) => ({code:codes[i], value}));
+// templateGroupCode: reuse the seeded HSA_* groups where a group still exists;
+// new codes follow <KIND>_<SUBJECT>_<GROUP>. HSA keeps the seeded subject
+// aliases (MATH/VN/EN) and the *_REMAINDER / *_CLUSTER science groups.
+const hsaSubject={TOAN:'MATH',VAN:'VN',ANH:'EN'};
+const groupSuffix={
+  HSA:{
+    TOAN:{'Trắc nghiệm độc lập':'SINGLE','Trả lời ngắn':'SINGLE','Chùm cuối':'CONTEXT'},
+    VAN:{'Từ khác nhóm nghĩa':'ODD_WORD','Từ sai':'WORD_USAGE','Cặp từ điền chỗ trống':'WORD_PAIR','Một ngữ liệu một câu':'PASSAGE_SINGLE','Đọc hiểu':'PASSAGE'},
+    ANH:{'Hoàn thành câu':'SENTENCE','Đồng nghĩa':'SYNONYM','Trái nghĩa':'ANTONYM','Viết lại câu':'REWRITE','Kết hợp câu':'COMBINE','Hội thoại':'DIALOGUE','Sắp xếp hội thoại':'DIALOGUE_ORDER','Đọc điền':'CLOZE','Đọc hiểu 1':'READING','Đọc hiểu 2':'READING_2','Tư duy logic':'LOGIC'},
+    '*':{'Trắc nghiệm độc lập':'REMAINDER','Trả lời ngắn':'REMAINDER','Chùm':'CLUSTER'}
+  },
+  QDA:{
+    TOAN:{'Trắc nghiệm độc lập':'SINGLE','Trả lời ngắn':'SINGLE','Chùm trắc nghiệm':'CONTEXT'},
+    VAN:{'Từ khác nhóm nghĩa':'ODD_WORD','Từ sai':'WORD_USAGE','Cặp từ điền chỗ trống':'WORD_PAIR','Một ngữ liệu một câu':'PASSAGE_SINGLE','Đọc hiểu':'PASSAGE'},
+    ANH:{'Hoàn thành câu':'SENTENCE','Đồng nghĩa hoặc trái nghĩa':'SYN_ANT','Hội thoại':'DIALOGUE','Thông báo':'NOTICE','Viết lại câu':'REWRITE','Kết hợp câu':'COMBINE','Đọc điền':'CLOZE','Đọc hiểu 1':'READING','Đọc hiểu 2':'READING_2','Suy luận':'INFERENCE'},
+    '*':{'Trắc nghiệm độc lập':'REMAINDER','Trả lời ngắn':'REMAINDER','Chùm':'CLUSTER'}
+  },
+  BCA:{
+    TOAN:{'Trắc nghiệm độc lập':'REMAINDER','Trả lời ngắn':'SHORT','Chùm trắc nghiệm':'CLUSTER'},
+    VAN:{'Nghị luận xã hội từ 500 chữ':'ESSAY'},
+    SU:{'Trắc nghiệm độc lập':'REMAINDER','Tư liệu lịch sử':'CLUSTER'},
+    ANH:{'Phát âm':'PRON','Trọng âm':'STRESS','Từ vựng và ngữ pháp':'GRAMMAR','Đọc điền':'CLOZE','Đọc hiểu':'READING'},
+    '*':{'Trắc nghiệm độc lập':'REMAINDER','Chùm':'CLUSTER'}
+  }
+};
+function templateGroup(template, block, subjectCode) {
+  const table=groupSuffix[template.kindCode]??{};
+  const suffix=(table[subjectCode]??{})[block.name]??table['*']?.[block.name];
+  if(!suffix) return null;
+  const subject=template.kindCode==='HSA'?(hsaSubject[subjectCode]??subjectCode):subjectCode;
+  return `${template.kindCode}_${subject}_${suffix}`;
+}
+
 const matrix = (grades, levels, gradeEnforcement='REQUIRED', difficultyEnforcement='REQUIRED', unit='COUNT') => ({
   mode:'SEPARATE', unit, basis:'QUESTION', gradeEnforcement, difficultyEnforcement,
   byGrade:vals(['G10','G11','G12'], grades), byDifficulty:vals(['NB','TH','VD','VDC'], levels)
@@ -60,7 +95,9 @@ const sources=[];
 function add(code,kind,scope,partCode,subjectCode,parts,questions,points,duration,extra={}) {
   const title=scope==='FULL'?'Đầy đủ':scope==='SUBJECT'?subjectNames[subjectCode]:parts[0].name;
   const note=extra.note??null;
-  sources.push({code,kindCode:kind,scope,partCode,subjectCode,structureYear:2026,matrixYear:2026,timing:kind==='BCA'?'SHARED':'PER_PART',durationMinutes:duration,maxScore:points,expertNote:note,label:`${kind} – ${title}`,summary:`${questions} câu, thang ${points} điểm${duration ? `, ${duration} phút` : ''}.`,buildMode:'STANDARD',isDefault:true,existing:extra.existing??false,expected:{questions,maxPoints:points},structure:{parts,examQuotas:extra.quotas??[]}});
+  const template={code,kindCode:kind,scope,partCode,subjectCode,structureYear:2026,matrixYear:2026,timing:kind==='BCA'?'SHARED':'PER_PART',durationMinutes:duration,maxScore:points,expertNote:note,label:`${kind} – ${title}`,summary:`${questions} câu, thang ${points} điểm${duration ? `, ${duration} phút` : ''}.`,buildMode:'STANDARD',isDefault:true,existing:extra.existing??false,expected:{questions,maxPoints:points},structure:{parts,examQuotas:extra.quotas??[]}};
+  assignGroups(template, ({block,subjectCode}) => templateGroup(template, block, subjectCode));
+  sources.push(template);
 }
 const mathPart=(kind)=>part('Toán học và xử lí số liệu',50,kind==='HSA'?75:80,[kind==='HSA'?hsaMath:qdaMath]);
 const litPart=(kind)=>part('Ngôn ngữ – Văn học',50,kind==='HSA'?60:55,[literature(kind)]);
@@ -78,6 +115,7 @@ for (const kind of ['HSA','QDA']) {
     const n=sec.questionCount;
     add(`${kind}_SUBJECT_${s}`,kind,'SUBJECT',null,s,[part(subjectNames[s],n,null,[sec])],n,n,null,{note:kind==='HSA'&&s==='ANH'?'Chờ chuyên gia xác nhận':null,quotas:kind==='HSA'&&s==='ANH'?[gradeQuota]:[]});
   }
+
 }
 const bcaParts=[part('Tự luận Ngữ văn',1,null,[bcaEssay],{maxPoints:25}),part('Trắc nghiệm bắt buộc',65,null,[bcaMath,bcaHistory,bcaEnglish],{maxPoints:60}),bcaChoice];
 add('BCA_FULL','BCA','FULL',null,null,bcaParts,81,100,180,{existing:true,quotas:bcaQuotas});

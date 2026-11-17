@@ -1,4 +1,6 @@
 // SP2E: 2026 structure and the older illustration, requirement table §2.4.
+import {assignGroups} from './groups.mjs';
+
 const names={TOAN:'Toán',VAN:'Ngữ văn',LY:'Vật lí',HOA:'Hóa học',SINH:'Sinh học',SU:'Lịch sử',DIA:'Địa lí',ANH:'Tiếng Anh',ECON_LAW:'Giáo dục kinh tế và pháp luật'};
 const source=[];
 const b=(name,questionType,questionCount,points,extra={})=>({name,questionType,questionCount,requiredPointsPerQuestion:points,...extra});
@@ -12,9 +14,21 @@ const quota=(s)=>({id:`${s.toLowerCase()}-difficulty-reference`,name:'Tỷ trọ
 const referenceMatrix={mode:'SEPARATE',unit:'COUNT',basis:'QUESTION',gradeEnforcement:'REFERENCE',difficultyEnforcement:'REFERENCE',byGrade:[],byDifficulty:[]};
 const note2026='Điểm từng dạng là số tạm; chờ chuyên gia xác nhận.';
 const oldNote={LY:'Chờ chuyên gia xác nhận. Phân bố tham khảo theo 50 lệnh hỏi: lớp 10/11/12 = 0/10/40; NB/TH/VD/VDC = 15/15/14/6.',HOA:'Chờ chuyên gia xác nhận. Phân bố tham khảo theo 50 lệnh hỏi: lớp 10/11/12/tổng hợp = 4/5/19/22; NB/TH/VD = 25/16/9.',SINH:'Chờ chuyên gia xác nhận. Phân bố tham khảo theo 20 câu: lớp 10/11/12 = 2/4/14; NB/TH/VD = 4/9/7.',SU:'Chờ chuyên gia xác nhận.'};
+const sp2eGroup={
+  VAN:{'Đọc hiểu':'READING','Viết đoạn':'PARAGRAPH','Viết bài':'ESSAY','Văn bản 1':'TEXT_1','Văn bản 2':'TEXT_2','Văn bản 3':'TEXT_3','Văn bản 4':'TEXT_4'},
+  ANH:{'Đọc điền câu':'GAP_SENT','Đồng nghĩa':'SYN','Kết hợp câu':'COMB','Điền từ':'CLOZE_WORD','Điền cụm hoặc câu':'CLOZE_PHRASE','Giao tiếp':'DIALOGUE','Sắp xếp':'ORDER','Đọc hiểu 1':'READ_1','Đọc hiểu 2':'READ_2'},
+  ECON_LAW:{'Trắc nghiệm độc lập':'SINGLE','Chùm tình huống':'CASE_SET','Đúng/Sai':'TF'},
+  '*':{'Một đáp án':'SINGLE','Đúng/Sai':'TF','Trả lời ngắn':'SHORT','Ghép đôi':'MATCH','Trắc nghiệm độc lập':'SINGLE','Chùm tình huống':'CASE_SET','Lựa chọn một đáp án':'SINGLE','Lựa chọn nhiều đáp án':'MULTI','Dữ liệu tổng hợp':'DATA_SET','Nhiều đáp án':'MULTI'}
+};
+
 function add(code,subject,parts,questions,points,duration,{old=false,note=note2026,existing=false,isDefault=true,rawPoints=points}={}) {
   if(['ANH','SU','DIA','ECON_LAW'].includes(subject)) for(const p of parts) for(const s of p.sections??[]) s.matrix=referenceMatrix;
-  source.push({code,kindCode:'SP2E',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:old?2025:2026,matrixYear:old?2025:2026,timing:'SHARED',durationMinutes:duration,maxScore:points,expertNote:note,label:old&&subject==='VAN'?'SP2E – Ngữ văn – Đọc hiểu':`SP2E – ${names[subject]} – ${old?'Đề minh họa cũ':'Cấu trúc 2026 theo đề án'}`,summary:`${questions} câu, thang ${points} điểm${duration?`, ${duration} phút`:''}.`,buildMode:'STANDARD',isDefault,existing,expected:{questions,maxPoints:rawPoints},structure:{parts,examQuotas:[quota(subject)]}});
+  const template={code,kindCode:'SP2E',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:old?2025:2026,matrixYear:old?2025:2026,timing:'SHARED',durationMinutes:duration,maxScore:points,expertNote:note,label:old&&subject==='VAN'?'SP2E – Ngữ văn – Đọc hiểu':`SP2E – ${names[subject]} – ${old?'Đề minh họa cũ':'Cấu trúc 2026 theo đề án'}`,summary:`${questions} câu, thang ${points} điểm${duration?`, ${duration} phút`:''}.`,buildMode:'STANDARD',isDefault,existing,expected:{questions,maxPoints:rawPoints},structure:{parts,examQuotas:[quota(subject)]}};
+  assignGroups(template, ({block,subjectCode:s}) => {
+    const suffix=(sp2eGroup[s]??sp2eGroup['*'])[block.name];
+    return suffix?`SP2E_${s}_${suffix}${old?'_OLD':''}`:null;
+  });
+  source.push(template);
 }
 const math=[part('Phần I · Lựa chọn','TOAN',[b('Một đáp án','SINGLE_CHOICE',20,.25),b('Nhiều đáp án','MULTIPLE_CHOICE',5,.25)],6.25),part('Phần II · Dữ liệu tổng hợp','TOAN',[b('Dữ liệu tổng hợp',null,5,.25,{tagCodes:['TOAN_DU_LIEU_TONG_HOP']})],1.25),part('Phần III · Trả lời ngắn','TOAN',[b('Trả lời ngắn','SHORT_ANSWER',10,.25)],2.5)];
 add('SP2E_MATH_2026','TOAN',math,40,10,90,{existing:true});
