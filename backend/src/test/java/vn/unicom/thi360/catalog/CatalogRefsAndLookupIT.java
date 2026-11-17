@@ -36,6 +36,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.application.CatalogCacheService;
+import vn.unicom.thi360.catalog.domain.CombinationBranch;
+import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
@@ -640,6 +642,47 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
         return new RefFixture(
                 subjGroupId, treeGroupId, subjCode, gradeCode, treeCode, toanId, lyId, g10Id, g11Id, g12Id,
                 undeclaredItemId, ch1Id, ch2Id, ch3Id, l1Id, k1Id, k2Id, k3Id);
+    }
+
+    @Test
+    void listCombinations_filtersByExamAndPreservesBranchAndSubjectOrder() {
+        UUID qdaId = UUID.fromString("00000000-0000-7000-8200-000000000102");
+
+        List<CatalogCombinationView> combinations = catalogLookup.listCombinations(qdaId);
+
+        assertThat(combinations)
+                .extracting(CatalogCombinationView::itemCode)
+                .containsExactly("QD01", "QD02", "QD03", "QD04", "QD05");
+        assertThat(combinations.get(0).branch()).isEqualTo(CombinationBranch.SCIENCE);
+        assertThat(combinations.get(0).subjects())
+                .extracting(subject -> subject.code())
+                .containsExactly("LY", "HOA");
+        assertThat(combinations.get(0).subjects().get(0).nameVi()).isEqualTo("Vật lí");
+        assertThat(combinations.get(4).branch()).isEqualTo(CombinationBranch.ENGLISH);
+        assertThat(combinations.get(4).subjects())
+                .extracting(subject -> subject.code())
+                .containsExactly("ANH");
+    }
+
+    @Test
+    void sampleCatalog_hasRequiredTagsAndNoRetiredCombinations() {
+        List<String> tagCodes = catalogLookup.listActiveGroupItems("QUESTION_TAG").stream()
+                .map(CatalogItemView::code)
+                .toList();
+        assertThat(tagCodes).contains(
+                "VAN_NGHI_LUAN_XA_HOI", "VAN_THONG_TIN_NGHI_LUAN", "VAN_NGHI_LUAN",
+                "VAN_THO", "VAN_THIEU_NHI", "VAN_TRUYEN", "VAN_KHOA_HOC",
+                "VAN_TU_KHAC_NHOM", "VAN_TU_SAI", "VAN_CAP_TU_DIEN", "VAN_NGU_LIEU_MOT_CAU",
+                "ANH_HOAN_THANH_CAU", "ANH_DONG_NGHIA", "ANH_TRAI_NGHIA", "ANH_VIET_LAI_CAU",
+                "ANH_KET_HOP_CAU", "ANH_HOI_THOAI", "ANH_SAP_XEP_HOI_THOAI", "ANH_DOC_DIEN",
+                "ANH_DOC_HIEU_1", "ANH_DOC_HIEU_2", "ANH_TU_DUY_LOGIC", "ANH_THONG_BAO",
+                "ANH_SUY_LUAN", "ANH_DIEN_TU", "ANH_DIEN_CUM_CAU", "ANH_PHAT_AM", "ANH_TRONG_AM",
+                "ANH_TU_VUNG_NGU_PHAP", "ANH_WORD_FORMATION", "TOAN_DU_LIEU_TONG_HOP",
+                "SU_TU_LIEU_LICH_SU", "DIA_CAU_KY_NANG");
+        assertThat(catalogLookup.listActiveGroupItems("SUBJECT_COMBINATION"))
+                .extracting(CatalogItemView::code)
+                .doesNotContain("QDA_QD01", "QDA_QD02", "QDA_QD03", "QDA_QD04", "QDA_QD05",
+                        "KH-1", "KH-2", "KH-3");
     }
 
     private record RefFixture(

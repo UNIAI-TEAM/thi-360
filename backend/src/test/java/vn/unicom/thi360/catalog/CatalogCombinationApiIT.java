@@ -184,11 +184,12 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                                 "nameVi", "Tổ hợp thử nghiệm",
                                 "nameEn", "Test Combination",
                                 "examItemId", SAMPLE_HSA_ID,
+                                "branch", "SCIENCE",
                                 "subjectItemIds", List.of(SAMPLE_TOAN_ID, SAMPLE_LY_ID, SAMPLE_ANH_ID),
                                 "sourceNote", "Quy chế 2026"))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.code").value(code))
                 .andExpect(jsonPath("$.combination.versionNo").value(1))
+                .andExpect(jsonPath("$.combination.branch").value("SCIENCE"))
                 .andExpect(jsonPath("$.combination.isCurrent").value(true))
                 .andExpect(jsonPath("$.combination.examItemId").value(SAMPLE_HSA_ID.toString()))
                 .andExpect(jsonPath("$.combination.examCode").value("HSA"))
@@ -211,6 +212,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/catalog/items/{id}", itemId).with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.combination.versionNo").value(1))
+                .andExpect(jsonPath("$.combination.branch").value("SCIENCE"))
                 .andExpect(jsonPath("$.combination.subjects[1].code").value("LY"));
     }
 
