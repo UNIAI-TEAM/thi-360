@@ -4,11 +4,10 @@ import { Card, cn, focusRing } from "@thi360/ui";
 import { CircleCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, type ReactNode } from "react";
-import type { CreateExamSummary } from "../create-exam-schema";
 import type { ExamTiming } from "../types";
 
 export interface CreateExamIssue {
-  /** Đường dẫn trường (`parts.2.combinations.0.subjectCounts`), khớp `data-field` của ô nhập. */
+  /** Đường dẫn trường, khớp `data-field` của ô nhập (`kind`, `sharedDuration`, `p:1.questionCount`). */
   path: string;
   field: string;
   message: string;
@@ -25,30 +24,36 @@ export function focusField(path: string): void {
   if (target instanceof HTMLElement) target.focus({ preventScroll: true });
 }
 
+export interface CreateExamSummaryData {
+  kindLabel: string;
+  scopeLabel: string;
+  totalQuestions: number | null;
+  totalMinutes: number | null;
+  totalPoints: number | null;
+  /** Tên mẫu mặc định đã nạp; `null` khi không có mẫu (bài ôn chưa có mẫu, môn chưa có mẫu). */
+  templateName: string | null;
+}
+
 /**
- * Tóm tắt luôn hiển thị (bản vẽ TaoBaiThi; UniNote PBI-04 mục 3): tổng số câu, tổng thời gian (ghi "chung" khi bài
- * dùng thời lượng chung), số phần, số đường lựa chọn, thang điểm và các mục cần xử lý, mỗi mục đưa tới ô nhập tương
- * ứng. Màn rộng dính bên phải; màn hẹp nằm dưới biểu mẫu.
+ * Tóm tắt luôn hiển thị của bước 1 (TaoBaiThi2B): kỳ thi, phạm vi, tổng số câu, thời lượng (ghi "chung" khi dùng một
+ * đồng hồ), điểm tối đa, mẫu mặc định và các mục cần xử lý, mỗi mục đưa tới ô nhập tương ứng. Màn rộng dính bên phải;
+ * màn hẹp nằm dưới biểu mẫu.
  */
 export function CreateExamSummaryPanel({
-  summary,
+  data,
   timing,
-  maxScore,
-  pathText,
   issues,
   actions,
 }: {
-  summary: CreateExamSummary;
+  data: CreateExamSummaryData;
   timing: ExamTiming;
-  maxScore: number | null;
-  pathText: string;
   issues: readonly CreateExamIssue[];
   actions: ReactNode;
 }) {
   const t = useTranslations("exams.create.summary");
-  const tParts = useTranslations("exams.create.parts");
   const headingId = useId();
   const issuesHeadingId = useId();
+  const number = (value: number | null) => (value === null ? "—" : String(value));
 
   return (
     <aside aria-labelledby={headingId} className="@4xl:sticky @4xl:top-4">
@@ -57,25 +62,16 @@ export function CreateExamSummaryPanel({
           {t("title")}
         </h2>
         <dl className="grid grid-cols-2 gap-3 text-body">
-          <SummaryItem label={t("totalQuestions")} value={tParts("questionsValue", { count: summary.totalQuestions })} />
+          <SummaryItem label={t("kind")} value={data.kindLabel} />
+          <SummaryItem label={t("scope")} value={data.scopeLabel} />
+          <SummaryItem label={t("totalQuestions")} value={number(data.totalQuestions)} />
           <SummaryItem
             label={t("totalMinutes")}
-            value={t("minutesValue", { count: summary.totalMinutes })}
+            value={data.totalMinutes === null ? "—" : t("minutesValue", { count: data.totalMinutes })}
             detail={timing === "SHARED" ? t("sharedTiming") : undefined}
           />
-          <SummaryItem label={t("partCount")} value={String(summary.partCount)} />
-          <SummaryItem label={t("pathCount")} value={String(summary.pathCount)} detail={pathText} />
-          <SummaryItem
-            label={t("maxScore")}
-            value={maxScore === null ? "—" : t("pointsValue", { count: maxScore })}
-            detail={
-              maxScore === null
-                ? t("maxScoreUnset")
-                : summary.totalPoints !== null
-                  ? t("partPoints", { count: summary.totalPoints })
-                  : undefined
-            }
-          />
+          <SummaryItem label={t("maxScore")} value={number(data.totalPoints)} />
+          <SummaryItem label={t("template")} value={data.templateName ?? t("noTemplate")} small />
         </dl>
 
         <section aria-labelledby={issuesHeadingId} className="flex flex-col gap-2 border-t border-border pt-3">
@@ -123,12 +119,12 @@ export function CreateExamSummaryPanel({
   );
 }
 
-function SummaryItem({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function SummaryItem({ label, value, detail, small }: { label: string; value: string; detail?: string; small?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <dt className="text-caption text-text-muted">{label}</dt>
       <dd className="m-0 flex flex-col">
-        <span className="text-h3 font-bold text-text tabular-nums">{value}</span>
+        <span className={cn("font-bold text-text tabular-nums", small ? "text-body" : "text-h3")}>{value}</span>
         {detail && <span className="text-caption text-text-muted">{detail}</span>}
       </dd>
     </div>
