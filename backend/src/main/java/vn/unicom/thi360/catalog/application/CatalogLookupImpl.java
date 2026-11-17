@@ -22,13 +22,13 @@ import vn.unicom.thi360.catalog.domain.CatalogItem;
 import vn.unicom.thi360.catalog.domain.CatalogNormalizer;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRepository;
 import vn.unicom.thi360.catalog.infrastructure.CatalogItemRepository;
+import vn.unicom.thi360.catalog.spi.CatalogCombinationSubjectView;
 import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogGroupKind;
 import vn.unicom.thi360.catalog.spi.CatalogItemRefView;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
-
 @Service
 public class CatalogLookupImpl implements CatalogLookup {
 
@@ -201,17 +201,30 @@ public class CatalogLookupImpl implements CatalogLookup {
                     item.code(),
                     item.nameVi(),
                     item.nameEn(),
+                    combination.examItemId(),
                     combination.examCode(),
                     combination.examNameVi(),
                     combination.examNameEn(),
+                    combination.branch(),
                     combination.versionNo(),
                     combination.subjects().stream()
                             .filter(s -> s.status() == CatalogStatus.ACTIVE)
                             .sorted(java.util.Comparator.comparingInt(CombinationSubjectResponse::position))
-                            .map(CombinationSubjectResponse::code)
+                            .map(s -> new CatalogCombinationSubjectView(
+                                    s.subjectItemId(), s.code(), s.nameVi(), s.nameEn()))
                             .toList()));
         }
         return result;
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<CatalogCombinationView> listCombinations(UUID examItemId) {
+        if (examItemId == null) {
+            return List.of();
+        }
+        return listCurrentCombinations("SUBJECT_COMBINATION").stream()
+                .filter(combo -> examItemId.equals(combo.examItemId()))
+                .toList();
     }
 
     private static CatalogItemRefView toRefView(CatalogItemRefResponse ref) {

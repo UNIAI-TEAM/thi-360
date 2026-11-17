@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import vn.unicom.thi360.catalog.domain.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Schema(description = "Phiên bản cấu hình của mã tổ hợp môn")
@@ -22,6 +23,8 @@ public record CombinationVersionResponse(
         int versionNo,
         @Schema(description = "ID giá trị kỳ thi", requiredMode = Schema.RequiredMode.REQUIRED)
         UUID examItemId,
+        @Schema(description = "Nhánh của mã tổ hợp")
+        CombinationBranch branch,
         @Schema(description = "Mã kỳ thi", requiredMode = Schema.RequiredMode.REQUIRED)
         String examCode,
         @Schema(description = "Tên tiếng Việt kỳ thi", requiredMode = Schema.RequiredMode.REQUIRED)

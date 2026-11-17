@@ -47,6 +47,7 @@ import vn.unicom.thi360.catalog.domain.CatalogItem;
 import vn.unicom.thi360.catalog.domain.CatalogItemRef;
 import vn.unicom.thi360.catalog.domain.CatalogItemRefId;
 import vn.unicom.thi360.catalog.domain.CatalogNormalizer;
+import vn.unicom.thi360.catalog.domain.CombinationBranch;
 import vn.unicom.thi360.catalog.domain.CombinationSubject;
 import vn.unicom.thi360.catalog.domain.CombinationVersion;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRefRepository;
@@ -620,7 +621,8 @@ public class CatalogAdminService {
         if (group.getKind() == CatalogGroupKind.COMBINATION) {
             combinationSubjectIds = validateCombinationForCreate(
                     request.examItemId(), request.subjectItemIds());
-        } else if (request.examItemId() != null
+        } else if (request.branch() != null
+                || request.examItemId() != null
                 || (request.subjectItemIds() != null && !request.subjectItemIds().isEmpty())
                 || CatalogNormalizer.trimToNull(request.sourceNote()) != null) {
             throw new ValidationException(List.of(new FieldError(
@@ -668,6 +670,7 @@ public class CatalogAdminService {
                     item.getId(),
                     1,
                     request.examItemId(),
+                    request.branch(),
                     combinationSubjectIds,
                     request.sourceNote(),
                     actor.id(),
@@ -785,6 +788,7 @@ public class CatalogAdminService {
                     group,
                     item,
                     request.examItemId(),
+                    request.branch(),
                     request.subjectItemIds(),
                     request.sourceNote());
             if (plan.createNewVersion()) {
@@ -794,6 +798,7 @@ public class CatalogAdminService {
                         itemId,
                         plan.currentVersion().getVersionNo() + 1,
                         plan.targetExamItemId(),
+                        plan.targetBranch(),
                         plan.targetSubjectIds(),
                         plan.targetSourceNote(),
                         actor.id(),
@@ -806,12 +811,14 @@ public class CatalogAdminService {
                             itemId,
                             1,
                             plan.targetExamItemId(),
+                            plan.targetBranch(),
                             plan.targetSubjectIds(),
                             plan.targetSourceNote(),
                             actor.id(),
                             now);
                 } else {
-                    plan.currentVersion().replaceInPlace(plan.targetExamItemId(), plan.targetSourceNote());
+                    plan.currentVersion().replaceInPlace(
+                            plan.targetExamItemId(), plan.targetBranch(), plan.targetSourceNote());
                     combinationVersionRepository.saveAndFlush(plan.currentVersion());
                     if (plan.subjectsChanged()) {
                         combinationSubjectRepository.deleteAllByIdCombinationVersionId(plan.currentVersion().getId());
@@ -820,7 +827,8 @@ public class CatalogAdminService {
                     }
                 }
             }
-        } else if (request.examItemId() != null
+        } else if (request.branch() != null
+                || request.examItemId() != null
                 || request.subjectItemIds() != null
                 || request.sourceNote() != null) {
             throw new ValidationException(List.of(new FieldError(
@@ -851,17 +859,21 @@ public class CatalogAdminService {
                 itemAuditState(item, response.ownRefs(), response.combination()),
                 trimmedReason);
         if (combinationVersionCreated && newCombinationVersion != null) {
+            Map<String, Object> versionAudit = new LinkedHashMap<>();
+            versionAudit.put("itemId", item.getId().toString());
+            versionAudit.put("versionNo", newCombinationVersion.getVersionNo());
+            versionAudit.put("examItemId", newCombinationVersion.getExamItemId().toString());
+            versionAudit.put(
+                    "branch",
+                    newCombinationVersion.getBranch() == null ? null : newCombinationVersion.getBranch().name());
+            versionAudit.put("subjectItemIds", newCombinationSubjects.stream().map(UUID::toString).toList());
             recordAudit(
                     "COMBINATION_VERSION_CREATED",
                     "COMBINATION_VERSION",
                     newCombinationVersion.getId(),
                     item.getCode() + ":v" + newCombinationVersion.getVersionNo(),
                     null,
-                    Map.of(
-                            "itemId", item.getId().toString(),
-                            "versionNo", newCombinationVersion.getVersionNo(),
-                            "examItemId", newCombinationVersion.getExamItemId().toString(),
-                            "subjectItemIds", newCombinationSubjects.stream().map(UUID::toString).toList()),
+                    versionAudit,
                     trimmedReason);
         }
         return response;
@@ -1756,6 +1768,7 @@ public class CatalogAdminService {
             state.put("versionId", combination.id().toString());
             state.put("versionNo", combination.versionNo());
             state.put("examItemId", combination.examItemId().toString());
+            state.put("branch", combination.branch() == null ? null : combination.branch().name());
             state.put("examCode", combination.examCode());
             state.put("subjectItemIds", combination.subjects().stream()
                     .map(s -> s.subjectItemId().toString())
@@ -2026,6 +2039,7 @@ public class CatalogAdminService {
             CatalogGroup group,
             CatalogItem item,
             UUID requestedExamId,
+            CombinationBranch requestedBranch,
             List<UUID> requestedSubjectIds,
             String requestedSourceNote) {
         CombinationVersion current = combinationVersionRepository.findByItemIdAndCurrentTrue(item.getId())
@@ -2045,6 +2059,10 @@ public class CatalogAdminService {
                     new FieldError("examItemId", "REQUIRED", messages.get("validation.catalog.combination.examRequired"))));
         }
         boolean examChanged = current == null || !targetExamId.equals(current.getExamItemId());
+        CombinationBranch targetBranch = requestedBranch;
+        boolean branchChanged = current == null
+                ? requestedBranch != null
+                : !Objects.equals(targetBranch, current.getBranch());
 
         List<UUID> targetSubjectIds;
         boolean subjectsChanged;
@@ -2076,13 +2094,14 @@ public class CatalogAdminService {
         boolean sourceNoteChanged = current != null && !Objects.equals(targetSourceNote, current.getSourceNote());
 
         boolean createNewVersion = current != null
-                && (subjectsChanged || examChanged)
+                && (subjectsChanged || examChanged || branchChanged)
                 && isCombinationVersionReferenced(item.getId(), current.getId());
 
-        boolean changed = current == null || subjectsChanged || examChanged || sourceNoteChanged;
+        boolean changed = current == null || subjectsChanged || examChanged || branchChanged || sourceNoteChanged;
         return new CombinationUpdatePlan(
                 current,
                 targetExamId,
+                targetBranch,
                 targetSubjectIds,
                 targetSourceNote,
                 subjectsChanged,
@@ -2157,6 +2176,7 @@ public class CatalogAdminService {
             UUID itemId,
             int versionNo,
             UUID examItemId,
+            CombinationBranch branch,
             List<UUID> subjectIds,
             String sourceNote,
             UUID actorId,
@@ -2166,6 +2186,7 @@ public class CatalogAdminService {
                 itemId,
                 versionNo,
                 examItemId,
+                branch,
                 sourceNote,
                 true,
                 actorId,
@@ -2196,6 +2217,7 @@ public class CatalogAdminService {
     private record CombinationUpdatePlan(
             CombinationVersion currentVersion,
             UUID targetExamItemId,
+            CombinationBranch targetBranch,
             List<UUID> targetSubjectIds,
             String targetSourceNote,
             boolean subjectsChanged,

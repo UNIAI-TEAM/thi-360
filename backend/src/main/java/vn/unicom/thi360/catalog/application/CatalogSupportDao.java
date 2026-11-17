@@ -19,6 +19,7 @@ import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
 import vn.unicom.thi360.catalog.api.CombinationSubjectResponse;
 import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
+import vn.unicom.thi360.catalog.domain.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Component
@@ -336,6 +337,7 @@ public class CatalogSupportDao {
                        ci.name_en AS item_name_en,
                        cv.version_no,
                        cv.exam_item_id,
+                       cv.branch,
                        ex.code AS exam_code,
                        ex.name_vi AS exam_name_vi,
                        ex.name_en AS exam_name_en,
@@ -360,6 +362,7 @@ public class CatalogSupportDao {
                         rs.getString("item_name_en"),
                         rs.getInt("version_no"),
                         rs.getObject("exam_item_id", UUID.class),
+                        parseBranch(rs.getString("branch")),
                         rs.getString("exam_code"),
                         rs.getString("exam_name_vi"),
                         rs.getString("exam_name_en"),
@@ -391,6 +394,7 @@ public class CatalogSupportDao {
                        ci.name_en AS item_name_en,
                        cv.version_no,
                        cv.exam_item_id,
+                       cv.branch,
                        ex.code AS exam_code,
                        ex.name_vi AS exam_name_vi,
                        ex.name_en AS exam_name_en,
@@ -415,6 +419,7 @@ public class CatalogSupportDao {
                         rs.getString("item_name_en"),
                         rs.getInt("version_no"),
                         rs.getObject("exam_item_id", UUID.class),
+                        parseBranch(rs.getString("branch")),
                         rs.getString("exam_code"),
                         rs.getString("exam_name_vi"),
                         rs.getString("exam_name_en"),
@@ -444,6 +449,7 @@ public class CatalogSupportDao {
                        ci.name_en AS item_name_en,
                        cv.version_no,
                        cv.exam_item_id,
+                       cv.branch,
                        ex.code AS exam_code,
                        ex.name_vi AS exam_name_vi,
                        ex.name_en AS exam_name_en,
@@ -467,6 +473,7 @@ public class CatalogSupportDao {
                         rs.getString("item_name_en"),
                         rs.getInt("version_no"),
                         rs.getObject("exam_item_id", UUID.class),
+                        parseBranch(rs.getString("branch")),
                         rs.getString("exam_code"),
                         rs.getString("exam_name_vi"),
                         rs.getString("exam_name_en"),
@@ -533,6 +540,7 @@ public class CatalogSupportDao {
                 h.itemNameEn(),
                 h.versionNo(),
                 h.examItemId(),
+                h.branch(),
                 h.examCode(),
                 h.examNameVi(),
                 h.examNameEn(),
@@ -542,6 +550,10 @@ public class CatalogSupportDao {
                 h.isCurrent(),
                 h.createdBy(),
                 h.createdAt());
+    }
+
+    private static CombinationBranch parseBranch(String value) {
+        return value == null ? null : CombinationBranch.valueOf(value);
     }
 
     private static Instant toInstant(Timestamp ts) {
@@ -556,6 +568,7 @@ public class CatalogSupportDao {
             String itemNameEn,
             int versionNo,
             UUID examItemId,
+            CombinationBranch branch,
             String examCode,
             String examNameVi,
             String examNameEn,

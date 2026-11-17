@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
+import vn.unicom.thi360.catalog.domain.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Schema(description = "Yêu cầu cập nhật giá trị danh mục")
@@ -35,6 +36,8 @@ public record UpdateCatalogItemRequest(
         @Schema(description = "Phiên bản khóa lạc quan", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "{validation.version.notNull}")
         Long version,
+        @Schema(description = "Nhánh mới của mã tổ hợp (SCIENCE, ENGLISH; null để bỏ nhánh)")
+        CombinationBranch branch,
         @Schema(description = "ID giá trị kỳ thi mới (chỉ cho nhóm COMBINATION)")
         UUID examItemId,
         @Schema(description = "Danh sách ID môn học mới theo thứ tự (chỉ cho nhóm COMBINATION)")
@@ -53,6 +56,34 @@ public record UpdateCatalogItemRequest(
             List<UUID> refItemIds,
             String reason,
             Long version) {
-        this(code, nameVi, nameEn, description, displayOrder, status, refItemIds, reason, version, null, null, null);
+        this(code, nameVi, nameEn, description, displayOrder, status, refItemIds, reason, version, null, null, null, null);
+    }
+    public UpdateCatalogItemRequest(
+            String code,
+            String nameVi,
+            String nameEn,
+            String description,
+            Integer displayOrder,
+            CatalogStatus status,
+            List<UUID> refItemIds,
+            String reason,
+            Long version,
+            UUID examItemId,
+            List<UUID> subjectItemIds,
+            String sourceNote) {
+        this(
+                code,
+                nameVi,
+                nameEn,
+                description,
+                displayOrder,
+                status,
+                refItemIds,
+                reason,
+                version,
+                null,
+                examItemId,
+                subjectItemIds,
+                sourceNote);
     }
 }
