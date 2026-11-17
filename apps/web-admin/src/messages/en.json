@@ -5688,7 +5688,7 @@
         "contentLabel": "Content",
         "description": "For literature, history and any question that quotes a text.",
         "keepBreaks": "Keep line breaks",
-        "kindLabel": "Excerpt type",
+        "kindLabel": "Quote type",
         "kindPoem": "Poem",
         "kindProse": "Prose",
         "kindSource": "Source text",
@@ -5699,7 +5699,7 @@
         "sourceLabel": "Source note",
         "sourcePlaceholder": "Publisher, year, page",
         "submit": "Insert excerpt",
-        "title": "Excerpt",
+        "title": "Quote",
         "update": "Update excerpt",
         "workLabel": "Work"
       },
