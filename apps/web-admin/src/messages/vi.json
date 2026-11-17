@@ -5421,6 +5421,32 @@
         "update": "Cập nhật công thức"
       },
       "close": "Đóng",
+      "cross": {
+        "addGeneration": "Thêm thế hệ",
+        "description": "Dùng cho bài di truyền trong Sinh học.",
+        "fields": {
+          "filialGenotype": "Tỉ lệ kiểu gen F{n}",
+          "filialPhenotype": "Tỉ lệ kiểu hình F{n}",
+          "gametesA": "Giao tử bên thứ nhất",
+          "gametesB": "Giao tử bên thứ hai",
+          "genotypeA": "Kiểu gen bên thứ nhất",
+          "genotypeB": "Kiểu gen bên thứ hai",
+          "sexA": "Giới tính bên thứ nhất",
+          "sexB": "Giới tính bên thứ hai"
+        },
+        "insert": "Chèn sơ đồ lai",
+        "phenotypePlaceholder": "Tỉ lệ kiểu hình (không bắt buộc)",
+        "previewEmpty": "Chưa có nội dung",
+        "previewLabel": "Xem trước",
+        "removeGeneration": "Xóa thế hệ F{n}",
+        "scriptHint": "Gõ _ cho chỉ số dưới và ^ cho chỉ số trên: F_1, X^A. Nhiều ký tự thì đặt trong ngoặc nhọn.",
+        "sexNone": "Không ghi",
+        "subscript": "Chỉ số dưới",
+        "superscript": "Chỉ số trên",
+        "symbolsNote": "Ký hiệu ♂, ♀, F₁, F₂ và alen trên nhiễm sắc thể giới tính có trong Ký hiệu.",
+        "title": "Sơ đồ lai",
+        "update": "Cập nhật sơ đồ lai"
+      },
       "insert": "Chèn",
       "stub": {
         "body": "Đang làm"

@@ -412,7 +412,7 @@ Nhãn tự lấy chữ kế tiếp; khung "Cụm đang chọn" có Đổi nhãn,
 
 #### 5.15.8 Hộp Sơ đồ lai
 
-Lưới thế hệ P, G, F₁…, Thêm thế hệ (bản vẽ `SoanThaoSinhHoc`).
+Lưới thế hệ, mỗi hàng một thế hệ: P (chọn ♂/♀/Không ghi và kiểu gen cho từng bên, dấu × giữa hai bên), G (giao tử hai bên), F₁ (tỉ lệ kiểu gen và tỉ lệ kiểu hình tùy chọn); "Thêm thế hệ" thêm F₂, F₃…, từ F₂ trở đi có nút xóa thế hệ. Chữ trong ô là chữ thường; `_` và `^` tạo chỉ số dưới/trên (`F_1`, `X^A`, nhiều ký tự thì `_{12}`), hai nút Chỉ số dưới/Chỉ số trên chèn `_`/`^` tại con trỏ ô đang gõ. Xem trước hiện từng hàng dạng "P: …". Lưu thành `figure.cross` đúng mẫu `cross-diagram`: hai bên của P cách nhau ` × `, hai bên của G và tỉ lệ kiểu gen/kiểu hình của một thế hệ cách nhau ` ; ` trong cùng một ô; hàng P và G chỉ có khi có chữ, thế hệ con tính đến thế hệ cuối có chữ. Mở lại (chọn sơ đồ trong nội dung, node `crossDiagram`): hộp tự đọc node đang chọn, đọc ngược các hàng P, G, F<n> về lưới, nút chính đổi thành "Cập nhật sơ đồ lai" và sửa đúng node đó; hàng có nhãn khác P/G/F<n> bị bỏ và thẻ lạ trong ô chỉ giữ chữ. Chèn mới: con trỏ nằm trong ô bảng hay mục danh sách thì sơ đồ vào sau khối cấp đầu chứa nó, đang chọn một node khác thì vào ngay sau node đó (bản vẽ `SoanThaoSinhHoc`).
 
 #### 5.15.9 Dán từ Word
 

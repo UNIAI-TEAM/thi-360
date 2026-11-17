@@ -5421,6 +5421,32 @@
         "update": "Update formula"
       },
       "close": "Close",
+      "cross": {
+        "addGeneration": "Add generation",
+        "description": "For genetics problems in Biology.",
+        "fields": {
+          "filialGenotype": "Genotype ratio F{n}",
+          "filialPhenotype": "Phenotype ratio F{n}",
+          "gametesA": "Gametes of the first parent",
+          "gametesB": "Gametes of the second parent",
+          "genotypeA": "Genotype of the first parent",
+          "genotypeB": "Genotype of the second parent",
+          "sexA": "Sex of the first parent",
+          "sexB": "Sex of the second parent"
+        },
+        "insert": "Insert Punnett square",
+        "phenotypePlaceholder": "Phenotype ratio (optional)",
+        "previewEmpty": "Nothing yet",
+        "previewLabel": "Preview",
+        "removeGeneration": "Remove generation F{n}",
+        "scriptHint": "Type _ for a subscript and ^ for a superscript: F_1, X^A. Wrap several characters in braces.",
+        "sexNone": "Not shown",
+        "subscript": "Subscript",
+        "superscript": "Superscript",
+        "symbolsNote": "The symbols ♂, ♀, F₁, F₂ and alleles on sex chromosomes are in Symbols.",
+        "title": "Punnett square",
+        "update": "Update Punnett square"
+      },
       "insert": "Insert",
       "stub": {
         "body": "Work in progress"
