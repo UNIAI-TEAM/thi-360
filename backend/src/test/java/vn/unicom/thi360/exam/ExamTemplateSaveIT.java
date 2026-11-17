@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,6 +27,11 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
     private static final Set<String> CODE_SOURCED_PARTS = Set.of(
             "BCA_FULL:3", "BCA_PART_TN_TU_CHON:1",
             "QDA_FULL:3", "QDA_PART_SCIENCE:1", "QDA_PART_ENGLISH:1");
+    // FU-BE7-3: H3 retires the legacy variable-count checker rules.
+    private static final Set<String> HSA_SCIENCE_TEMPLATES = Set.of("HSA_FULL", "HSA_PART_SCIENCE");
+    private static final Map<String, Integer> CODE_SOURCE_COUNTS = Map.of(
+            "BCA_FULL:3", 15, "BCA_PART_TN_TU_CHON:1", 15,
+            "QDA_FULL:3", 50, "QDA_PART_SCIENCE:1", 50, "QDA_PART_ENGLISH:1", 50);
     // FU-BE7-2: BE-5 will make the checker skip omitted blocks and remove this exception.
     private static final Set<String> OMITTED_BLOCK_TEMPLATES = Set.of(
             "SP2E_VAN_2026", "SP2E_VAN_OLD", "SPT_MATH_2025", "SPT_LY_2025",
@@ -133,20 +139,57 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
             mockMvc.perform(put(base + "/structure").with(asUser(Permissions.EXAM_MODIFY))
                             .contentType(MediaType.APPLICATION_JSON).content(update.toString()))
                     .andExpect(status().isOk());
+            String readBack = mockMvc.perform(get(base + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            JsonNode saved = mapper.readTree(readBack);
+            assertThat(omittedIds(saved.path("parts"))).as("%s omitted block flags", code)
+                    .containsExactlyInAnyOrderElementsOf(omittedIds(structure.path("parts")));
             String checked = mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY)))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             JsonNode result = mapper.readTree(checked);
             for (JsonNode issueList : result.findValues("issues")) {
                 for (JsonNode issue : issueList) {
-                    if ("STRUCTURE".equals(issue.path("group").asText())
+                    if (Set.of("STRUCTURE", "QUESTION_SET", "MATRIX", "POINTS").contains(issue.path("group").asText())
                             && "ERROR".equals(issue.path("severity").asText())) {
-                        if (!allowedCodeSourceIssue(code, structure.path("parts"), issue)
-                                && !allowedOmittedBlockIssue(code, structure.path("parts"), issue)) {
-                            failures.add(code + " structural issue: " + issue);
+                        if (!allowedCodeSourceIssue(code, saved.path("parts"), issue)
+                                && !allowedOmittedBlockIssue(code, saved.path("parts"), issue)
+                                && !allowedHsaScienceIssue(code, saved.path("parts"), issue)) {
+                            failures.add(code + " configuration issue: " + issue);
                         }
                     }
                 }
             }
+    }
+
+    private Set<String> omittedIds(JsonNode node) {
+        Set<String> ids = new LinkedHashSet<>();
+        collectOmittedIds(node, ids);
+        return ids;
+    }
+
+    private void collectOmittedIds(JsonNode node, Set<String> ids) {
+        if (node.isObject() && node.path("omitted").asBoolean()) {
+            assertThat(node.path("id").asText()).isNotBlank();
+            ids.add(node.path("id").asText());
+        }
+        node.forEach(child -> collectOmittedIds(child, ids));
+    }
+
+    private boolean allowedHsaScienceIssue(String code, JsonNode parts, JsonNode issue) {
+        if (!HSA_SCIENCE_TEMPLATES.contains(code)
+                || !Set.of("REMAINDER_GROUP_INVALID", "SUBJECT_QUOTA_COUNT_VARIES").contains(issue.path("code").asText())) return false;
+        for (JsonNode part : parts) {
+            if (!part.path("id").asText().equals(issue.path("partId").asText())) continue;
+            for (JsonNode option : part.path("options")) {
+                if (!"SUBJECT_CHOICE".equals(option.path("kind").asText())
+                        || !option.path("id").asText().equals(issue.path("optionId").asText())) continue;
+                for (JsonNode section : option.path("sections")) {
+                    if (section.path("id").asText().equals(issue.path("sectionId").asText())
+                            && Set.of("LY", "HOA", "SINH", "SU", "DIA").contains(section.path("subjectCode").asText())) return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean allowedOmittedBlockIssue(String code, JsonNode parts, JsonNode issue) {
@@ -209,10 +252,12 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
             long missing = 0;
             boolean listed = false;
             for (int i = 0; i < parts.size(); i++) {
-                if (CODE_SOURCED_PARTS.contains(code + ":" + (i + 1))) {
+                Integer expected = CODE_SOURCE_COUNTS.get(code + ":" + (i + 1));
+                if (expected != null) {
                     JsonNode part = parts.get(i);
-                    if (!part.hasNonNull("codeSource") || !part.path("questionCount").isIntegralNumber()) return false;
-                    missing += part.path("questionCount").asLong();
+                    if (!part.hasNonNull("codeSource") || part.path("questionCount").asInt(-1) != expected
+                            || part.path("questionCountRequired").asInt(-1) != expected) return false;
+                    missing += expected;
                     listed = true;
                 }
             }
@@ -223,8 +268,12 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
         for (int i = 0; i < parts.size(); i++) {
             JsonNode part = parts.get(i);
             if (part.path("id").asText().equals(issue.path("partId").asText())) {
-                return CODE_SOURCED_PARTS.contains(code + ":" + (i + 1))
-                        && part.hasNonNull("codeSource")
+                Integer expected = CODE_SOURCE_COUNTS.get(code + ":" + (i + 1));
+                return expected != null && part.hasNonNull("codeSource")
+                        && part.path("questionCount").asInt(-1) == expected
+                        && part.path("questionCountRequired").asInt(-1) == expected
+                        && (!"PART_TOTAL_MISMATCH".equals(issueCode)
+                                || (issue.path("required").asInt(-1) == expected && issue.path("available").asInt(-1) == 0))
                         && (!"OPTION_EMPTY".equals(issueCode)
                                 || "CHOICE".equals(part.path("participation").path("mode").asText()));
             }
