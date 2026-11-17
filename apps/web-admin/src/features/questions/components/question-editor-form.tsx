@@ -1,18 +1,29 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { isEmptyContent, planWordFill, type FillWrite } from "@/components/rich-text/insert/word/fill-form";
+import { clearWordPending, markWordPending } from "@/components/rich-text/insert/word/pending-marks";
+import { isWordHtml } from "@/components/rich-text/insert/word/parse";
+import type { WordPasteResult } from "@/components/rich-text/insert/word/word-paste-dialog";
 import { Button, ConfirmDialog, LiveStatus, notify, PageHeader } from "@thi360/ui";
-import { Info } from "lucide-react";
+import { ClipboardPaste, Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState, type FormEvent } from "react";
-import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
+import { lazy, Suspense, useEffect, useId, useState, type FormEvent } from "react";
+import { FormProvider, useForm, useFormContext, useWatch, type Path } from "react-hook-form";
 import type { ContentReference, QuestionType } from "@/features/content/types";
 import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { applyServerFieldErrors, serverErrorKey } from "../editor-field-errors";
-import { emptyEditorValues, parseBlankNumberStart, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
+import {
+  emptyEditorValues,
+  emptyOption,
+  parseBlankNumberStart,
+  toEditorValues,
+  toSaveRequest,
+  type QuestionEditorValues,
+} from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
 import { useUiLocale } from "../use-ui-locale";
 import { questionEditorSchema } from "../editor-schema";
@@ -23,7 +34,12 @@ import { ClassificationSection } from "./question-editor-classification";
 import { AttachmentsSection, CommonMistakesSection } from "./question-editor-extras";
 import { QuestionSetEditor } from "./question-editor-set";
 import { RichTextField } from "./question-editor-rich-field";
-import { EditorAnnounceProvider, EditorSection, FieldErrorText, useEditorError } from "./question-editor-shared";
+import { EditorAnnounceProvider, EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
+
+/** Hộp Dán từ Word tải khi cần: kéo theo KaTeX và bộ đổi OMML nên không vào gói của trang soạn lúc mở. */
+const WordPasteDialog = lazy(() =>
+  import("@/components/rich-text/insert/word/word-paste-dialog").then((module) => ({ default: module.WordPasteDialog })),
+);
 
 interface EditorFormCommon {
   reference: ContentReference;
@@ -67,6 +83,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const t = useTranslations("questions.editor");
   const tType = useTranslations("content.questionType");
   const format = useFormatter();
+  const tRich = useTranslations("richText");
   const router = useRouter();
   const formId = useId();
   // Một lần mở biểu mẫu tạo là một ý định lưu: các lần bấm Lưu và thử lại của nó dùng chung khóa idempotency.
@@ -76,6 +93,10 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const [conflict, setConflict] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [wordPaste, setWordPaste] = useState<{ id: number; html: string | null } | null>(null);
+  const openWordPaste = (html: string | null) => setWordPaste((current) => ({ id: (current?.id ?? 0) + 1, html }));
+  // Dấu "tự sửa chưa xác nhận" của Dán từ Word chỉ sống cùng biểu mẫu này.
+  useEffect(() => () => clearWordPending(), []);
   const question = props.question ?? null;
   const type = question?.type ?? props.type ?? "SINGLE_CHOICE";
 
@@ -204,6 +225,10 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
                     <Link href="/questions/new">{t("changeType")}</Link>
                   </Button>
                 )}
+                <Button type="button" variant="secondary" onClick={() => openWordPaste(null)} disabled={pending}>
+                  <ClipboardPaste aria-hidden />
+                  {tRich("insert.word.label")}
+                </Button>
                 <Button type="button" variant="secondary" onClick={cancel} disabled={pending}>
                   {t("cancel")}
                 </Button>
@@ -243,7 +268,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
             className="flex flex-col gap-4"
           >
             <ClassificationSection reference={props.reference} />
-            <ContentSection formId={formId} type={type} />
+            <ContentSection formId={formId} type={type} onWordPaste={openWordPaste} />
             {type === "QUESTION_SET" ? (
               <ChildrenSection formId={formId} reference={props.reference} />
             ) : (
@@ -268,13 +293,18 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
               router.push(leaveHref);
             }}
           />
+          {wordPaste && (
+            <Suspense fallback={null}>
+              <WordPasteHost key={wordPaste.id} type={type} html={wordPaste.html} onClose={() => setWordPaste(null)} />
+            </Suspense>
+          )}
         </div>
       </EditorAnnounceProvider>
     </FormProvider>
   );
 }
 
-function ContentSection({ formId, type }: { formId: string; type: QuestionType }) {
+function ContentSection({ formId, type, onWordPaste }: { formId: string; type: QuestionType; onWordPaste: (html: string) => void }) {
   const t = useTranslations("questions.editor");
   const error = useEditorError("content");
   const key = type === "QUESTION_SET" ? "passage" : type === "TRUE_FALSE" ? "sharedContent" : "content";
@@ -296,6 +326,13 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
             type === "QUESTION_SET" ? "set-passage" : type === "SINGLE_CHOICE" ? "stem-single-choice" : "default"
           }
           blankNumberStart={type === "QUESTION_SET" ? parseBlankNumberStart(blankStart ?? "1") : undefined}
+          // Nội dung Word vào ô đề bài: `onRichPaste` chạy trước bộ lọc HTML, nên OMML còn nguyên (spec 4.10).
+          onRichPaste={(clipboardData) => {
+            const html = clipboardData?.getData("text/html") ?? "";
+            if (!isWordHtml(html)) return false;
+            onWordPaste(html);
+            return true;
+          }}
         />
         {!error && (
           <p id={`${formId}-content-hint`} className="text-caption text-text-muted">
@@ -376,5 +413,61 @@ function VersionNotice({ question }: { question: QuestionDetail }) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Hộp Dán từ Word của biểu mẫu (spec 4.10): "Đưa vào biểu mẫu" điền đề bài, phương án (dạng có phương án) và lời giải;
+ * ô trống thì điền, ô đã có nội dung thì hỏi ghi đè. Chỗ tự sửa chưa xác nhận được đánh dấu trong ô sau khi điền.
+ */
+function WordPasteHost({ type, html, onClose }: { type: QuestionType; html: string | null; onClose: () => void }) {
+  const t = useTranslations("richText.insertDialog.word");
+  const { getValues, setValue, formState } = useFormContext<QuestionEditorValues>();
+  const announce = useAnnounce();
+  const [confirming, setConfirming] = useState<{ result: WordPasteResult; writes: FillWrite[]; clashes: FillWrite[] } | null>(null);
+  const choice = type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE";
+
+  const apply = (result: WordPasteResult, writes: FillWrite[]) => {
+    // Nhiều phương án hơn số ô đang có (dán A–D vào form còn ít ô): thêm ô phương án trống cho đủ.
+    const optionCount = Math.max(0, ...writes.map((write) => (write.target.field === "option" ? write.target.index + 1 : 0)));
+    const options = getValues("body.options");
+    if (optionCount > options.length) {
+      setValue("body.options", [...options, ...Array.from({ length: optionCount - options.length }, () => emptyOption())], { shouldDirty: true });
+    }
+    for (const write of writes) {
+      setValue(write.path as Path<QuestionEditorValues>, write.html as never, { shouldDirty: true, shouldValidate: formState.isSubmitted });
+    }
+    markWordPending(result.pending, t("mark"));
+    announce(t("live.applied"));
+    onClose();
+  };
+
+  const onApply = (result: WordPasteResult) => {
+    const writes = planWordFill(result, { choice, hasSolution: type !== "QUESTION_SET" });
+    const clashes = writes.filter((write) => !isEmptyContent(getValues(write.path as Path<QuestionEditorValues>) as string | undefined));
+    if (clashes.length > 0) setConfirming({ result, writes, clashes });
+    else apply(result, writes);
+  };
+
+  const fieldName = (write: FillWrite) =>
+    write.target.field === "option" ? t("fields.option", { label: write.target.label }) : write.target.field === "solution" ? t("fields.solution") : t("fields.stem");
+
+  return (
+    <>
+      <WordPasteDialog open onOpenChange={(open) => !open && onClose()} initialHtml={html} splitAvailable={choice} onApply={onApply} />
+      <ConfirmDialog
+        open={confirming !== null}
+        onOpenChange={(open) => !open && setConfirming(null)}
+        title={t("overwrite.title")}
+        description={t("overwrite.description", { fields: (confirming?.clashes ?? []).map(fieldName).join(", ") })}
+        confirmLabel={t("overwrite.confirm")}
+        cancelLabel={t("overwrite.cancel")}
+        onConfirm={() => {
+          const pendingApply = confirming;
+          setConfirming(null);
+          if (pendingApply) apply(pendingApply.result, pendingApply.writes);
+        }}
+      />
+    </>
   );
 }

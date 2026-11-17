@@ -5969,6 +5969,103 @@
         "phraseMultiBlock": "Chọn cụm trong một đoạn văn.",
         "relabel": "Đổi nhãn",
         "remove": "Bỏ gạch chân"
+      },
+      "word": {
+        "description": "Công thức được đổi sang LaTeX. Xem lại các chỗ được đánh dấu trước khi đưa vào biểu mẫu.",
+        "fields": {
+          "all": "Nội dung",
+          "option": "Phương án {label}",
+          "options": "Phương án",
+          "solution": "Lời giải",
+          "stem": "Đề bài"
+        },
+        "footer": {
+          "acceptAll": "Chấp nhận mọi chỗ tự sửa",
+          "apply": "Đưa vào biểu mẫu",
+          "blocked": "{count, plural, other {Còn # công thức cần gõ lại: gõ lại hoặc bỏ trước khi đưa vào biểu mẫu.}}",
+          "cancel": "Hủy",
+          "note": "Mục chưa xử lý vẫn được đánh dấu sau khi đưa vào biểu mẫu."
+        },
+        "images": {
+          "context": "Sau chữ: “{text}”",
+          "description": "Ảnh trong bản dán chỉ trỏ tới tệp trên máy nguồn nên trình duyệt không đọc được. Chèn lại bằng hộp Hình sau khi đưa vào biểu mẫu.",
+          "item": "Ảnh {index}",
+          "title": "Ảnh chưa đưa vào"
+        },
+        "live": {
+          "accepted": "Đã chấp nhận chỗ tự sửa",
+          "acceptedAll": "{count, plural, other {Đã chấp nhận # chỗ tự sửa}}",
+          "applied": "Đã đưa nội dung từ Word vào biểu mẫu",
+          "edited": "Đã lưu bản sửa tay",
+          "removed": "Đã bỏ công thức",
+          "typed": "Đã gõ lại công thức"
+        },
+        "mark": "Tự sửa từ Word, chờ xác nhận",
+        "overwrite": {
+          "cancel": "Giữ nội dung cũ",
+          "confirm": "Ghi đè",
+          "description": "Các ô sau đã có nội dung và sẽ bị thay bằng nội dung từ Word: {fields}.",
+          "title": "Ghi đè nội dung đang có?"
+        },
+        "paste": {
+          "hint": "Bấm vào khung này rồi nhấn Ctrl+V để dán nội dung đã sao chép từ Word.",
+          "label": "Vùng dán nội dung từ Word",
+          "notWord": "Nội dung vừa dán không phải từ Word nên không đổi được công thức. Hãy dán thẳng vào ô soạn."
+        },
+        "preview": {
+          "empty": "Không có nội dung.",
+          "formulaImage": "ảnh công thức",
+          "formulaRemoved": "đã bỏ công thức",
+          "split": "Tách theo nhãn A., B., C., D. và “Lời giải”",
+          "splitNoMatch": "Không thấy nhãn A., B., C., D. hay “Lời giải”: toàn bộ nội dung vào đề bài.",
+          "title": "Nội dung đã dán"
+        },
+        "review": {
+          "accept": "Chấp nhận",
+          "after": "Đã sửa thành",
+          "before": "Sau khi đổi từ Word",
+          "cancelEdit": "Hủy",
+          "edit": "Sửa tay",
+          "editLabel": "Mã LaTeX của chỗ này",
+          "empty": "Không có chỗ nào cần xem lại.",
+          "emptyFiltered": "Mọi chỗ đã xử lý.",
+          "fixes": {
+            "chemistry": "Công thức hóa học bị bọc ngoặc.",
+            "degree": "Ký hiệu độ viết thành chữ.",
+            "functionName": "Tên hàm bị tách thành từng chữ.",
+            "orSystem": "Hệ “hoặc” bị đổi thành phân số."
+          },
+          "onlyPending": "Chỉ hiện mục chưa xử lý",
+          "remove": "Bỏ",
+          "removeCancel": "Giữ lại",
+          "removeConfirm": "Bỏ",
+          "removeDescription": "Chỗ này sẽ bị xóa khỏi nội dung đưa vào biểu mẫu.",
+          "removeTitle": "Bỏ công thức này?",
+          "retype": "Gõ lại công thức",
+          "retypeCause": {
+            "image": "Công thức ở dạng ảnh nên không đọc được nội dung.",
+            "malformed": "Không đọc được nội dung công thức.",
+            "unsupported": "Công thức dùng phần tử Word chưa hỗ trợ ({element}) nên không đổi được."
+          },
+          "retypeContext": "Sau chữ: “{text}”",
+          "save": "Lưu",
+          "status": {
+            "accepted": "Đã chấp nhận",
+            "edited": "Đã sửa tay",
+            "fixed": "Đã tự sửa",
+            "removed": "Đã bỏ",
+            "retype": "Cần gõ lại",
+            "typed": "Đã gõ lại"
+          },
+          "title": "Chỗ cần xem lại",
+          "where": "Mục {index}: {field}"
+        },
+        "summary": {
+          "converted": "{count, plural, other {# công thức đã đổi đúng}}",
+          "note": "Tự sửa được: tên hàm bị tách chữ, hệ “hoặc” thành phân số, công thức hóa học bị bọc ngoặc, ký hiệu độ. Không tự sửa được: công thức ở dạng ảnh.",
+          "pending": "{count, plural, other {# công thức đã tự sửa, chờ xác nhận}}",
+          "retype": "{count, plural, other {# công thức cần gõ lại}}"
+        }
       }
     },
     "insertLoadError": "Không tải được hộp chèn. Kiểm tra kết nối rồi thử lại.",
