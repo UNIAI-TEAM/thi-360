@@ -28,6 +28,60 @@ class ExamStructureIT extends AbstractIntegrationTest {
     @Autowired private EntityManager entityManager;
 
     @Test
+    void topicQuotaLimitReturnsFieldErrorAndLeavesStructureUnchanged() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = before.path("parts").deepCopy();
+        var section = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0);
+        var quotas = section.putArray("topicQuotas");
+        for (int i = 0; i < 9; i++) {
+            var quota = quotas.addObject();
+            quota.put("id", "quota-" + i);
+            quota.put("name", "Topic");
+            quota.putArray("nodeIds");
+            quota.put("count", 1);
+            quota.put("basis", "QUESTION");
+            quota.put("enforcement", "REQUIRED");
+        }
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", before.path("revision").asLong());
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("topicQuotas"));
+        JsonNode after = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after).isEqualTo(before);
+    }
+
+    @Test
+    void examQuotasPersistAcrossSaveAndRead() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var request = mapper.createObjectNode();
+        request.set("parts", before.path("parts"));
+        request.put("expectedRevision", before.path("revision").asLong());
+        request.set("examQuotas", mapper.readTree("""
+                [{"id":"q","name":"Grade 12","dimension":"GRADE",
+                  "buckets":[{"codes":["GRADE_12"],"count":1}],
+                  "basis":"QUESTION","enforcement":"REQUIRED","subjectCodes":["TOAN"]}]
+                """));
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        JsonNode after = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after.path("examQuotas").get(0).path("id").asText()).isEqualTo("q");
+        assertThat(after.path("examQuotas").get(0).path("subjectCodes").get(0).asText()).isEqualTo("TOAN");
+    }
+
+    @Test
     void incompleteDraftSavesAndYearChangeNeedsConfirmation() throws Exception {
         String before = mockMvc.perform(get(EXAM + "/structure").with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

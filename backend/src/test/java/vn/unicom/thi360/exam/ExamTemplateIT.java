@@ -35,17 +35,23 @@ class ExamTemplateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void qdaBcaCombinationsKept() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/exam-templates")
-                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "QDA"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.code=='QDA_FULL')].structure.parts[*].options[?(@.kind=='COMBINATION')].code",
-                        Matchers.hasItems("QD01", "QD02", "QD03", "QD04")));
-        mockMvc.perform(get("/api/v1/admin/exam-templates")
-                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "BCA"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.code=='BCA_FULL')].structure.parts[*].options[?(@.kind=='COMBINATION')].code",
-                        Matchers.hasItems("CA1", "CA2", "CA3", "CA4")));
+    void qdaBcaUseSharedSubjectPoolsInsteadOfStoredCombinations() throws Exception {
+        for (String kind : List.of("QDA", "BCA")) {
+            var templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                            .with(asUser(Permissions.EXAM_VIEW)).param("kind", kind))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            var full = java.util.stream.StreamSupport.stream(templates.spliterator(), false)
+                    .filter(template -> (kind + "_FULL").equals(template.path("code").asText()))
+                    .findFirst().orElseThrow();
+            var parts = full.path("structure").path("parts");
+            assertThat(java.util.stream.StreamSupport.stream(parts.spliterator(), false)
+                    .anyMatch(part -> part.hasNonNull("codeSource") && !part.path("subjectPool").isEmpty())).isTrue();
+            for (var part : parts) {
+                for (var option : part.path("options")) {
+                    assertThat(option.path("kind").asText()).isNotEqualTo("COMBINATION");
+                }
+            }
+        }
     }
     @Test
     void hsaContainsFiveSubjectChoiceWithoutScienceCombinations() throws Exception {
