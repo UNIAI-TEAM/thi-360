@@ -1007,8 +1007,9 @@ public class ExamService {
                 exam.getStructureYear(),
                 exam.getMatrixYear(),
                 exam.isYearsConfirmed(),
-                new ExamCheckSummary(exam.getCheckStatus(), exam.getCheckIssueCount(),
-                        exam.getCheckedAt()),
+                new ExamCheckSummary(checkValidity.statuses(List.of(exam.getId()))
+                        .getOrDefault(exam.getId(), exam.getCheckStatus()),
+                        exam.getCheckIssueCount(), exam.getCheckedAt()),
                 0,
                 exam.getUpdatedAt(),
                 updatedBy,

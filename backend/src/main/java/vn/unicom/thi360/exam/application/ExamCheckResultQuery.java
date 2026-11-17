@@ -36,6 +36,7 @@ public class ExamCheckResultQuery {
             }
             String reason = validity.assess(List.of(examId)).get(examId).invalidReason();
             if (reason == null) result.putNull("invalidReason"); else result.put("invalidReason", reason);
+            result.put("stale", reason != null);
             return result;
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Invalid persisted check result", e);
