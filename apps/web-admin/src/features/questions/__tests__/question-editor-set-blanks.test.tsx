@@ -72,6 +72,14 @@ describe("câu chùm: Đánh số từ và bảng Chỗ trống và câu con", (
     expect(storedQuestion(id).body).toMatchObject({ type: "QUESTION_SET", blankNumberStart: 31 });
   });
 
+  it("bảng chỗ trống cuộn ngang trong khung `relative` để nhãn sr-only không làm cả trang cuộn ngang (ED-4 V-F2)", async () => {
+    const id = await seedSet("21");
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    await screen.findByRole("textbox", { name: "Number from" });
+    const wrapper = table().parentElement!;
+    expect(wrapper).toHaveClass("overflow-x-auto", "relative");
+  });
+
   it("Đánh số từ ngoài 1-200 bị chặn khi lưu và báo lỗi ở ô", async () => {
     const user = userEvent.setup();
     const id = await seedSet("21");
