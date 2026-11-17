@@ -109,8 +109,10 @@ export default function MathInsertDialog({ editor, open, onOpenChange, editing }
                 </TabsTrigger>
               ))}
             </TabsList>
+            {/* Vùng mẫu cao cố định (3 hàng ô 56px + đệm cho vòng focus, lộ một phần hàng 4 để báo còn cuộn): đổi tab
+                không làm hộp co giãn và nội dung bên dưới không nhảy. Tab nhiều mẫu hơn thì cuộn trong vùng này. */}
             {PALETTE_TABS.map((paletteTab) => (
-              <TabsContent key={paletteTab.id} value={paletteTab.id} className="mt-3">
+              <TabsContent key={paletteTab.id} value={paletteTab.id} className="-mx-1 mt-2 h-[228px] overflow-y-auto px-1 py-1">
                 <PaletteGrid
                   items={paletteTab.items}
                   label={t(`tabs.${paletteTab.id}`)}
