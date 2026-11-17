@@ -3,11 +3,13 @@ import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
 
 export type CatalogGroupResponse = components["schemas"]["CatalogGroupResponse"];
+/** Nhánh của mã tổ hợp (đợt 2B, spec mục 4); suy ra từ phiên bản tổ hợp đã sinh. */
+export type CombinationBranch = NonNullable<CombinationVersionResponse["branch"]>;
 export type CatalogItemResponse = components["schemas"]["CatalogItemResponse"];
-export type CreateCatalogGroupRequest = components["schemas"]["CreateCatalogGroupRequest"];
-export type UpdateCatalogGroupRequest = components["schemas"]["UpdateCatalogGroupRequest"];
 export type CreateCatalogItemRequest = components["schemas"]["CreateCatalogItemRequest"];
 export type UpdateCatalogItemRequest = components["schemas"]["UpdateCatalogItemRequest"];
+export type CreateCatalogGroupRequest = components["schemas"]["CreateCatalogGroupRequest"];
+export type UpdateCatalogGroupRequest = components["schemas"]["UpdateCatalogGroupRequest"];
 export type ReorderCatalogItemsRequest = components["schemas"]["ReorderCatalogItemsRequest"];
 export type CatalogTreeNodeResponse = components["schemas"]["CatalogTreeNodeResponse"];
 export type CatalogDescendantNodeResponse = components["schemas"]["CatalogDescendantNodeResponse"];

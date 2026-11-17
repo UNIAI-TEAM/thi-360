@@ -47,8 +47,8 @@ class ExamApiIT extends AbstractIntegrationTest {
 
     @Test
     void createChecksPermissionConflictValidationAndAudit() throws Exception {
-        String code = "HSA-F-" + UUID.randomUUID().toString().substring(0, 8);
-        String body = "{\"kind\":\"HSA\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"" + code + "\"}";
+        String code = "VACT-F-" + UUID.randomUUID().toString().substring(0, 8);
+        String body = "{\"kind\":\"VACT\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"" + code + "\"}";
         mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_VIEW))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(body))
@@ -66,10 +66,13 @@ class ExamApiIT extends AbstractIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_CODE_TAKEN"));
+        String invalidScopeBody = body.replace("\"FULL\"", "\"SUBJECT\"")
+                .replace("\"name\":\"Draft\"", "\"subjectCode\":\"TOAN\",\"name\":\"Draft\"")
+                .replace(code, code + "X");
         mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body.replace("\"FULL\"", "\"SUBJECT\"").replace(code, code + "X")))
+                        .content(invalidScopeBody))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EXAM_SCOPE_NOT_ALLOWED"));
     }

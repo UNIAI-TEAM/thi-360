@@ -29,6 +29,7 @@ import { buildCatalogDndAccessibility, type CatalogDndMessageKey } from "./dnd-a
 import { resolveTreeDragReorder } from "./components/tree-items-panel";
 import {
   CATALOG_ERROR_CODES,
+  COMBINATION_BRANCHES,
   pickName,
   resolveCatalogErrorMessage,
   resolveImportColumnLabel,
@@ -1738,11 +1739,157 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
       await within(editDialog).findByRole("button", { name: "Di chuyển Ngữ văn (VAN) lên" }),
     );
     expect(
-      await within(editDialog).findByText(/sẽ tạo phiên bản 2/),
+      await within(editDialog).findByText(/lần lưu này tạo phiên bản 2/),
     ).toBeInTheDocument();
     expect(
       within(editDialog).getByRole("button", { name: "Lưu thành phiên bản mới" }),
     ).toBeInTheDocument();
+  });
+
+  describe("nhánh và thứ tự môn của mã tổ hợp (đợt 2B)", () => {
+    const BRANCH_VERSION: CombinationVersionResponse = {
+      ...COMBINATION_VERSIONS[0]!,
+      branch: "SCIENCE",
+    };
+    const BRANCH_ITEM: CatalogItemResponse = { ...COMBINATION_ITEMS[0]!, combination: BRANCH_VERSION };
+    const branchApi = () =>
+      createMockApi({
+        listItems: vi.fn(async () => pageOfItems([BRANCH_ITEM])),
+        listItemVersions: vi.fn(async () => [BRANCH_VERSION]),
+      });
+
+    it("tạo mới: ô Nhánh mặc định Không có nhánh, chọn Tiếng Anh thì gửi branch, để mặc định thì không gửi", async () => {
+      const api = createMockApi();
+      renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+      async function fillAndSave(branchLabel: string | null) {
+        await userEvent.click(await screen.findByRole("button", { name: "Thêm giá trị" }));
+        const dialog = await screen.findByRole("dialog");
+        const branchBox = within(dialog).getByRole("combobox", { name: /Nhánh/ });
+        expect(branchBox).toHaveTextContent("Không có nhánh");
+
+        await userEvent.type(within(dialog).getByLabelText(/Mã giá trị/), "HSA_Q05");
+        await userEvent.type(within(dialog).getByLabelText(/Tên tiếng Việt/), "Q05");
+        await userEvent.click(within(dialog).getByRole("combobox", { name: /Kỳ thi/ }));
+        await userEvent.click(
+          await screen.findByRole("option", { name: "HSA — Đánh giá năng lực ĐHQG Hà Nội" }),
+        );
+        await userEvent.click(within(dialog).getByRole("combobox", { name: /Thêm môn/ }));
+        await userEvent.click(await screen.findByRole("option", { name: "ANH — Tiếng Anh" }));
+        if (branchLabel) {
+          await userEvent.click(branchBox);
+          await userEvent.click(await screen.findByRole("option", { name: branchLabel }));
+          expect(branchBox).toHaveTextContent(branchLabel);
+        }
+        await userEvent.click(within(dialog).getByRole("button", { name: "Lưu" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      }
+
+      await fillAndSave("Tiếng Anh");
+      await fillAndSave(null);
+
+      expect(api.createItem).toHaveBeenCalledTimes(2);
+      const [first, second] = vi.mocked(api.createItem).mock.calls.map((call) => call[1]);
+      expect(first).toMatchObject({ code: "HSA_Q05", branch: "ENGLISH", subjectItemIds: ["item-anh"] });
+      expect(second).not.toHaveProperty("branch");
+    });
+
+    it("sửa: ô Nhánh hiện nhánh đang có; chọn Không có nhánh thì gửi branch null cùng thứ tự môn", async () => {
+      const api = branchApi();
+      renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+      const table = await screen.findByRole("table", { name: "Danh sách giá trị danh mục" });
+      expect(await within(table).findByText("Khoa học")).toBeInTheDocument();
+
+      await userEvent.click(within(table).getByRole("button", { name: "Sửa QĐ01" }));
+      const dialog = await screen.findByRole("dialog");
+      const branchBox = within(dialog).getByRole("combobox", { name: /Nhánh/ });
+      expect(branchBox).toHaveTextContent("Khoa học");
+
+      await userEvent.click(branchBox);
+      await userEvent.click(await screen.findByRole("option", { name: "Không có nhánh" }));
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Lưu thành phiên bản mới" }),
+      );
+
+      await waitFor(() => expect(api.updateItem).toHaveBeenCalledTimes(1));
+      expect(api.updateItem).toHaveBeenCalledWith(
+        "item-qd01",
+        expect.objectContaining({ branch: null, subjectItemIds: ["item-toan", "item-van"] }),
+      );
+    });
+
+    it("nút lên/xuống đổi thứ tự môn, bị khóa ở hai đầu và thứ tự mới được gửi khi lưu", async () => {
+      const api = branchApi();
+      renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+      await userEvent.click(await screen.findByRole("button", { name: "Sửa QĐ01" }));
+      const dialog = await screen.findByRole("dialog");
+      const up = (name: string) => within(dialog).getByRole("button", { name: `Di chuyển ${name} lên` });
+      const down = (name: string) => within(dialog).getByRole("button", { name: `Di chuyển ${name} xuống` });
+
+      expect(up("Toán học (TOAN)")).toHaveAttribute("aria-disabled", "true");
+      expect(down("Toán học (TOAN)")).not.toHaveAttribute("aria-disabled");
+      expect(up("Ngữ văn (VAN)")).not.toHaveAttribute("aria-disabled");
+      expect(down("Ngữ văn (VAN)")).toHaveAttribute("aria-disabled", "true");
+
+      await userEvent.click(down("Toán học (TOAN)"));
+
+      const items = within(dialog).getAllByRole("listitem");
+      expect(items[0]).toHaveTextContent("Ngữ văn (VAN)");
+      expect(items[1]).toHaveTextContent("Toán học (TOAN)");
+      expect(up("Ngữ văn (VAN)")).toHaveAttribute("aria-disabled", "true");
+      expect(down("Toán học (TOAN)")).toHaveAttribute("aria-disabled", "true");
+
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Lưu thành phiên bản mới" }),
+      );
+      await waitFor(() => expect(api.updateItem).toHaveBeenCalledTimes(1));
+      expect(api.updateItem).toHaveBeenCalledWith(
+        "item-qd01",
+        expect.objectContaining({ branch: "SCIENCE", subjectItemIds: ["item-van", "item-toan"] }),
+      );
+    });
+
+    it("thay môn ở tổ hợp chưa dùng vẫn tạo phiên bản mới", async () => {
+      const api = branchApi();
+      renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+      await userEvent.click(await screen.findByRole("button", { name: "Sửa QĐ01" }));
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(within(dialog).getByRole("button", { name: "Bỏ môn Ngữ văn (VAN)" }));
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
+      await userEvent.click(within(dialog).getByRole("combobox", { name: /Thêm môn/ }));
+      await userEvent.click(await screen.findByRole("option", { name: "ANH — Tiếng Anh" }));
+
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Lưu thành phiên bản mới" })).toBeInTheDocument();
+    });
+
+    it("ngăn chi tiết và tab Phiên bản hiện nhánh theo ngôn ngữ đang chọn", async () => {
+      const api = branchApi();
+      renderCatalog({ api, locale: "en", search: "group=SUBJECT_COMBINATION" });
+
+      await userEvent.click(await screen.findByRole("button", { name: "Details for QD01" }));
+      const drawer = await screen.findByRole("dialog");
+      expect(within(drawer).getByText("Branch")).toBeInTheDocument();
+      expect(within(drawer).getByText("Science")).toBeInTheDocument();
+      expect(within(drawer).queryByText("Khoa học")).not.toBeInTheDocument();
+
+      await userEvent.click(within(drawer).getByRole("tab", { name: "Versions" }));
+      expect(await within(drawer).findByText("Branch: Science")).toBeInTheDocument();
+    });
+
+    it("nhãn nhánh có đủ ở vi và en, mỗi ngôn ngữ chỉ một thứ tiếng", () => {
+      for (const code of COMBINATION_BRANCHES) {
+        expect(viMessages.catalog.branches[code]).toBeTruthy();
+        expect(en.catalog.branches[code]).toBeTruthy();
+        expect(viMessages.catalog.branches[code]).not.toEqual(en.catalog.branches[code]);
+      }
+      expect(Object.keys(viMessages.catalog.branches)).toEqual(Object.keys(en.catalog.branches));
+    });
   });
 
   it("ngăn chi tiết giá trị: xem Thông tin, Nơi đang dùng, Lịch sử thay đổi (ẩn nếu thiếu AUDIT.VIEW) và Phiên bản cho tổ hợp", async () => {

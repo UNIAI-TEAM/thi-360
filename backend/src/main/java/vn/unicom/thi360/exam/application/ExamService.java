@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
@@ -368,20 +369,22 @@ public class ExamService {
 
     private ExamStructureResponse structureResponse(UUID examId, ExamStructureDocument doc, long revision) {
         ExamStructureDocument presented = ExamStructurePresentation.withPositionRanges(doc);
-        String kindCode = catalogLookup.findItem(requireExam(examId).getKindItemId())
-                .map(CatalogItemView::code).orElse(null);
-        List<StructureCombination> current = combinationLookup.listCurrent().stream()
-                .filter(value -> Objects.equals(value.examCode(), kindCode)).toList();
+        Exam exam = requireExam(examId);
+        List<CatalogCombinationView> current = combinationLookup.listCombinations(exam.getKindItemId());
         List<StructureCombination> combinations = new ArrayList<>();
         for (ExamPart part : doc.parts()) {
             if (part.codeSource() == null) {
                 continue;
             }
+            String branch = part.codeSource().branch();
             Set<String> subjects = new java.util.HashSet<>();
             part.subjectPool().forEach(section -> subjects.add(section.subjectCode()));
-            for (StructureCombination value : current) {
-                combinations.add(new StructureCombination(part.id(), value.code(), value.nameVi(), value.nameEn(),
-                        value.examCode(), value.subjectCodes(),
+            for (CatalogCombinationView value : current) {
+                if (branch != null && (value.branch() == null || !branch.equals(value.branch().name()))) {
+                    continue;
+                }
+                combinations.add(new StructureCombination(part.id(), value.itemCode(), value.itemNameVi(), value.itemNameEn(),
+                        value.examItemCode(), value.subjectCodes(),
                         value.subjectCodes().stream().filter(code -> !subjects.contains(code)).toList()));
             }
         }
@@ -788,11 +791,8 @@ public class ExamService {
     private ExamStructureSummary summarize(Exam exam, ExamStructureDocument doc) {
         int count = 0;
         if (doc.parts().stream().anyMatch(part -> part.codeSource() != null)) {
-            String kindCode = catalogLookup.findItem(exam.getKindItemId())
-                    .map(CatalogItemView::code).orElse(null);
-            count = (int) combinationLookup.listCurrent().stream()
-                    .filter(value -> Objects.equals(value.examCode(), kindCode))
-                    .map(StructureCombination::code).distinct().count();
+            count = (int) combinationLookup.listCombinations(exam.getKindItemId()).stream()
+                    .map(CatalogCombinationView::itemCode).distinct().count();
         }
         return blockRefProjector.summarize(doc.parts(), count);
     }

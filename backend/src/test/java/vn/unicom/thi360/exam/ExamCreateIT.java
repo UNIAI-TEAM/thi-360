@@ -63,13 +63,13 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void rejectsScopeNotAllowedForHsa() throws Exception {
-        String code = "HSA-S-" + UUID.randomUUID().toString().substring(0, 8);
+    void rejectsScopeNotAllowedForVact() throws Exception {
+        String code = "VACT-S-" + UUID.randomUUID().toString().substring(0, 8);
         mockMvc.perform(post("/api/v1/admin/exams")
                         .with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"kind\":\"HSA\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\",\"name\":\"Draft\",\"code\":\"" + code + "\"}"))
+                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\",\"name\":\"Draft\",\"code\":\"" + code + "\"}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EXAM_SCOPE_NOT_ALLOWED"));
     }
