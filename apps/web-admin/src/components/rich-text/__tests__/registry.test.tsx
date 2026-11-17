@@ -53,7 +53,7 @@ describe("insert registry", () => {
     for (const messages of [en, viMessages]) {
       expect(Object.keys(messages.richText.insert).sort()).toEqual(ids);
       // Khóa chung của hộp chèn + một khối `insertDialog.<id>` cho mỗi hộp thật (lane sóng 2 thêm dần).
-      const shared = ["cancel", "close", "insert", "stub"];
+      const shared = ["cancel", "close", "insert"];
       const keys = Object.keys(messages.richText.insertDialog);
       expect(keys.filter((key) => shared.includes(key)).sort()).toEqual(shared);
       for (const key of keys.filter((key) => !shared.includes(key))) expect(ids).toContain(key);

@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fail, fakeApi } from "@/test/fake-api";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { emptyChild, type EditorChild } from "../editor-form";
 import { renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
@@ -181,5 +182,27 @@ describe("câu chùm: Đánh số từ và bảng Chỗ trống và câu con", (
     await screen.findByRole("table", { name: "Blanks and sub-questions" });
     expect(screen.getAllByText("Duplicate number")).toHaveLength(2);
     expect(screen.getByText("No sub-question 5")).toBeInTheDocument();
+  });
+
+  it("lỗi 422 của body.blankNumberStart hiện ngay trên ô Đánh số từ, không chỉ ở dải thông báo", async () => {
+    const user = userEvent.setup();
+    const id = await seedSet("21");
+    fakeApi.put(
+      "/api/v1/admin/questions/{id}",
+      fail(422, {
+        code: "VALIDATION_FAILED",
+        message: "Validation failed",
+        fieldErrors: [{ code: "QUESTION_BLANK_NUMBER_START_INVALID", field: "body.blankNumberStart", message: "x" }] as never,
+      }),
+    );
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const start = await screen.findByRole("textbox", { name: "Number from" });
+    await user.click(screen.getByRole("button", { name: "Save question" }));
+
+    await screen.findByText("Not saved: the server rejected some fields. Fix the fields marked below.");
+    await waitFor(() => expect(start).toHaveAttribute("aria-invalid", "true"));
+    const error = document.getElementById(start.getAttribute("aria-describedby")!.split(" ").find((token) => document.getElementById(token)?.getAttribute("role") === "alert")!);
+    expect(error).toHaveTextContent("Blank numbering must start between 1 and 200.");
+    expect(navigation.push).not.toHaveBeenCalled();
   });
 });

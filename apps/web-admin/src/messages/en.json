@@ -2688,6 +2688,7 @@
           "QUESTION_PAIR_DUPLICATE_LEFT": "A left item is matched twice.",
           "QUESTION_ATTACHMENT_UNKNOWN": "The attachment no longer exists. Upload it again.",
           "QUESTION_WORD_LIMIT_INVALID": "The suggested word count must be greater than 0.",
+          "QUESTION_BLANK_NUMBER_START_INVALID": "Blank numbering must start between 1 and 200.",
           "QUESTION_SCORING_METHOD_MISSING": "No scoring method is chosen.",
           "QUESTION_SCORING_RULE_MISSING": "No scoring rule is chosen.",
           "POINTS_NOT_POSITIVE": "Points must be greater than 0.",
@@ -5688,7 +5689,7 @@
         "contentLabel": "Content",
         "description": "For literature, history and any question that quotes a text.",
         "keepBreaks": "Keep line breaks",
-        "kindLabel": "Excerpt type",
+        "kindLabel": "Quote type",
         "kindPoem": "Poem",
         "kindProse": "Prose",
         "kindSource": "Source text",
@@ -5698,13 +5699,10 @@
         "previewNote": "Prose and historical sources use the same block, without line breaks or numbering.",
         "sourceLabel": "Source note",
         "sourcePlaceholder": "Publisher, year, page",
-        "submit": "Insert excerpt",
-        "title": "Excerpt",
-        "update": "Update excerpt",
+        "submit": "Insert quote",
+        "title": "Quote",
+        "update": "Update quote",
         "workLabel": "Work"
-      },
-      "stub": {
-        "body": "Work in progress"
       },
       "symbols": {
         "aliases": {
