@@ -132,7 +132,7 @@ export default function MathInsertDialog({ editor, open, onOpenChange, editing }
               className={cn(
                 "flex min-h-[150px] items-center justify-center rounded-xl border border-border bg-surface p-4 transition-colors duration-150 motion-reduce:transition-none",
                 "focus-within:border-primary-text focus-within:ring-3 focus-within:ring-primary-text/15",
-                "[&_math-field]:w-full [&_math-field]:border-0 [&_math-field]:bg-transparent [&_math-field]:text-[28px] [&_math-field]:text-text [&_math-field]:outline-none",
+                "[&_math-field]:w-full [&_math-field]:border-0 [&_math-field]:bg-transparent [&_math-field]:text-[28px] [&_math-field]:text-text [&_math-field]:outline-hidden",
                 "[&_math-field::part(menu-toggle)]:hidden [&_math-field::part(virtual-keyboard-toggle)]:hidden",
               )}
             />

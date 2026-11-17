@@ -27,7 +27,7 @@ export interface SlashMenuOptions {
 
 /** Chữ thường, bỏ dấu tiếng Việt (kể cả đ) — để "cong thuc" khớp "Công thức". */
 export function foldText(text: string): string {
-  return text.normalize("NFD").replace(/\p{M}/gu, "").replace(/[đĐ]/g, "d").toLowerCase();
+  return text.normalize("NFD").replace(/\p{M}/gu, "").replace(/[\u0111\u0110]/g, "d").toLowerCase();
 }
 
 /** Lọc mục theo ô lọc: mọi từ của `query` phải xuất hiện trong tên, mô tả hoặc mã mục. Giữ thứ tự registry. */
