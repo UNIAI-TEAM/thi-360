@@ -562,6 +562,57 @@ class QuestionApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.usedIn", hasSize(0)));
     }
 
+    @Test
+    void questionSetBlankNumberStartSurvivesCreateVersionAndCopy() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).put("blankNumberStart", 31);
+        MvcResult created = mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.blankNumberStart").value(31)).andReturn();
+        JsonNode saved = read(created);
+        UUID id = UUID.fromString(saved.at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.body.blankNumberStart").value(31));
+        mockMvc.perform(post(BASE + "/{id}/duplicate", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.body.blankNumberStart").value(31));
+        mockMvc.perform(post(BASE + "/{id}/ready", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + currentRevision(id) + "}"))
+                .andExpect(status().isOk());
+        request.set("body", saved.path("body").deepCopy());
+        request.put("expectedRevision", currentRevision(id));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body"))
+                .put("passage", "<p>Đoạn đọc đã sửa.</p>");
+        mockMvc.perform(put(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.question.displayedVersionNo").value(2))
+                .andExpect(jsonPath("$.question.body.blankNumberStart").value(31));
+    }
+
+    @Test
+    void legacyQuestionSetDefaultsBlankNumberStartAndRejectsInvalidValues() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createQuestionSetRequest());
+        mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.body.blankNumberStart").value(1));
+        for (int invalid : new int[] {0, 201}) {
+            ((com.fasterxml.jackson.databind.node.ObjectNode) request.get("body")).put("blankNumberStart", invalid);
+            mockMvc.perform(post(BASE).with(asUser(Permissions.QUESTION_MODIFY))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("body.blankNumberStart"))
+                    .andExpect(jsonPath("$.fieldErrors[0].code").value("QUESTION_WORD_LIMIT_INVALID"));
+        }
+    }
+
     // ---------------------------------------------------------------- trợ giúp
 
     private UUID createQuestion() throws Exception {

@@ -628,4 +628,38 @@ class QuestionBodyValidationTests {
         assertEquals("body.options[1].content",
             errors.stream().filter(e -> e.code().equals("OPTION_EMPTY")).findFirst().orElseThrow().path());
     }
+
+    // ------------------------------------------------------------- blankNumberStart (spec 3.4)
+
+    private static QuestionBody questionSetBody(Integer blankNumberStart) {
+        return new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET,
+            "<p>Đọc đoạn sau.</p>", blankNumberStart, List.of(
+                new ChildQuestion(QuestionType.SINGLE_CHOICE, "<p>Câu con 1</p>", singleChoiceBody(), null, null, null, null, List.of(), null),
+                new ChildQuestion(QuestionType.SHORT_ANSWER, "<p>Câu con 2</p>", shortAnswerBody(), null, null, null, null, List.of(), null)));
+    }
+
+    @Test
+    void blankNumberStartDefaultsToOneForLegacyBodies() {
+        QuestionBody body = questionSetBody(null);
+        assertEquals(Integer.valueOf(1),
+            ((QuestionBody.QuestionSetBody) body).blankNumberStart());
+        assertTrue(QuestionBodyValidator.validateSave(
+            input(QuestionType.QUESTION_SET, body), null).isEmpty());
+    }
+
+    @Test
+    void blankNumberStartOutOfRangeRejected() {
+        for (Integer value : new Integer[] {0, -1, 201, 500}) {
+            List<QuestionFieldError> errors = QuestionBodyValidator.validateSave(
+                input(QuestionType.QUESTION_SET, questionSetBody(value)), null);
+            assertTrue(errors.stream().anyMatch(e ->
+                e.code().equals("QUESTION_WORD_LIMIT_INVALID")
+                    && e.path().equals("body.blankNumberStart")),
+                () -> "value " + value + " → " + errors);
+        }
+        assertTrue(QuestionBodyValidator.validateSave(
+            input(QuestionType.QUESTION_SET, questionSetBody(1)), null).isEmpty());
+        assertTrue(QuestionBodyValidator.validateSave(
+            input(QuestionType.QUESTION_SET, questionSetBody(200)), null).isEmpty());
+    }
 }

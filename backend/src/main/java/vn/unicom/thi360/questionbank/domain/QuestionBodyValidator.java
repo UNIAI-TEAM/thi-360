@@ -622,7 +622,6 @@ public final class QuestionBodyValidator {
         for (Element u : doc.select("u[data-label]")) {
             if (!kind.labelAllowed()) {
                 errors.add(QuestionFieldError.of("UNDERLINE_LABEL_MISPLACED", path));
-                continue;
             }
             if (!labels.add(u.attr("data-label").trim())) {
                 errors.add(QuestionFieldError.of("UNDERLINE_LABEL_DUPLICATE", path));
