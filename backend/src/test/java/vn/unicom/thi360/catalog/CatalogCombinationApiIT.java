@@ -412,7 +412,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void editCombination_updatesInPlaceWhenUnreferenced_andCreatesV2WhenReferenced() throws Exception {
+    void editCombination_versionsStructuralChangesAndKeepsNotesInPlace() throws Exception {
         String code = "COMBO_VER_" + suffix();
         MvcResult createRes = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", COMBINATION_GROUP_ID)
                         .with(asUser(Permissions.CATALOG_MODIFY))
@@ -421,6 +421,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                                 "code", code,
                                 "nameVi", "Tổ hợp phiên bản",
                                 "examItemId", SAMPLE_QDA_ID,
+                                "branch", "SCIENCE",
                                 "subjectItemIds", List.of(SAMPLE_TOAN_ID, SAMPLE_VAN_ID, SAMPLE_ANH_ID),
                                 "sourceNote", "Bản 1"))))
                 .andExpect(status().isCreated())
@@ -431,26 +432,29 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
         long ver = created.get("version").asLong();
         createdItemIds.add(itemId);
 
-        // Unreferenced -> edit subjects modifies v1 in place
-        MvcResult inPlaceRes = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
+        long revision = jdbcTemplate.queryForObject(
+                "SELECT revision FROM catalog.catalog_revision WHERE id = 1", Long.class);
+        // A mixed reorder and substitution on an unreferenced combination preserves v1.
+        MvcResult firstChange = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "subjectItemIds", List.of(SAMPLE_TOAN_ID, SAMPLE_LY_ID, SAMPLE_ANH_ID),
+                                "subjectItemIds", List.of(SAMPLE_ANH_ID, SAMPLE_VAN_ID, SAMPLE_LY_ID),
                                 "sourceNote", "Bản 1 sửa tại chỗ",
                                 "version", ver))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.combination.id").value(v1Id.toString()))
-                .andExpect(jsonPath("$.combination.versionNo").value(1))
-                .andExpect(jsonPath("$.combination.subjects[1].code").value("LY"))
+                .andExpect(jsonPath("$.combination.versionNo").value(2))
+                .andExpect(jsonPath("$.combination.subjects[0].code").value("ANH"))
                 .andReturn();
-        ver = objectMapper.readTree(inPlaceRes.getResponse().getContentAsString()).get("version").asLong();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT revision FROM catalog.catalog_revision WHERE id = 1", Long.class)).isGreaterThan(revision);
+        ver = objectMapper.readTree(firstChange.getResponse().getContentAsString()).get("version").asLong();
 
-        // Mark referenced by fake provider -> reorder subjects creates v2; v1 retains old data
+        // Source-note-only edits remain in place, even when referenced.
         fakeUsageRegistry.setUsages(
                 itemId, List.of(new CatalogUsage("Bài thi giả lập", "EXAM_DEFINITION", 1, false, List.of("Đề QĐ-01"))));
 
-        // Editing sourceNote alone without changing subjects/exam -> still in place (versionNo remains 1)
+        // Editing sourceNote alone retains v2.
         MvcResult noteOnlyRes = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -458,11 +462,11 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                                 "sourceNote", "Chỉ sửa ghi chú",
                                 "version", ver))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.combination.versionNo").value(1))
+                .andExpect(jsonPath("$.combination.versionNo").value(2))
                 .andReturn();
         ver = objectMapper.readTree(noteOnlyRes.getResponse().getContentAsString()).get("version").asLong();
 
-        // Changing subject order creates v2
+        // A further subject reorder creates v3.
         MvcResult v2Res = mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", itemId)
                         .with(asUser(Permissions.CATALOG_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -471,7 +475,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                                 "sourceNote", "Bản 2",
                                 "version", ver))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.combination.versionNo").value(2))
+                .andExpect(jsonPath("$.combination.versionNo").value(3))
                 .andExpect(jsonPath("$.combination.isCurrent").value(true))
                 .andExpect(jsonPath("$.combination.subjects[0].code").value("ANH"))
                 .andExpect(jsonPath("$.combination.subjects[1].code").value("TOAN"))
@@ -484,11 +488,13 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/catalog/items/{id}/versions", itemId)
                         .with(asUser(Permissions.CATALOG_VIEW)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].versionNo").value(2))
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].versionNo").value(3))
                 .andExpect(jsonPath("$[0].isCurrent").value(true))
-                .andExpect(jsonPath("$[1].versionNo").value(1))
-                .andExpect(jsonPath("$[1].isCurrent").value(false));
+                .andExpect(jsonPath("$[1].versionNo").value(2))
+                .andExpect(jsonPath("$[1].isCurrent").value(false))
+                .andExpect(jsonPath("$[2].versionNo").value(1))
+                .andExpect(jsonPath("$[2].isCurrent").value(false));
 
         // Historical v1 endpoint still returns old subject list in original order
         mockMvc.perform(get("/api/v1/admin/catalog/combination-versions/{versionId}", v1Id)
@@ -496,8 +502,9 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.versionNo").value(1))
                 .andExpect(jsonPath("$.isCurrent").value(false))
+                .andExpect(jsonPath("$.branch").value("SCIENCE"))
                 .andExpect(jsonPath("$.subjects[0].code").value("TOAN"))
-                .andExpect(jsonPath("$.subjects[1].code").value("LY"))
+                .andExpect(jsonPath("$.subjects[1].code").value("VAN"))
                 .andExpect(jsonPath("$.subjects[2].code").value("ANH"));
 
         verify(auditRecorder, atLeastOnce()).record(argThat(e ->

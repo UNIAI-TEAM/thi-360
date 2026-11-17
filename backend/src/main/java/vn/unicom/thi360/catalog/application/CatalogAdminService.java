@@ -820,11 +820,6 @@ public class CatalogAdminService {
                     plan.currentVersion().replaceInPlace(
                             plan.targetExamItemId(), plan.targetBranch(), plan.targetSourceNote());
                     combinationVersionRepository.saveAndFlush(plan.currentVersion());
-                    if (plan.subjectsChanged()) {
-                        combinationSubjectRepository.deleteAllByIdCombinationVersionId(plan.currentVersion().getId());
-                        combinationSubjectRepository.flush();
-                        saveCombinationSubjects(plan.currentVersion().getId(), plan.targetSubjectIds());
-                    }
                 }
             }
         } else if (request.branch() != null
@@ -2093,13 +2088,7 @@ public class CatalogAdminService {
                 : (current != null ? current.getSourceNote() : null);
         boolean sourceNoteChanged = current != null && !Objects.equals(targetSourceNote, current.getSourceNote());
 
-        boolean orderChanged = subjectsChanged
-                && currentSubjectIds.size() == targetSubjectIds.size()
-                && new HashSet<>(currentSubjectIds).equals(new HashSet<>(targetSubjectIds));
-        boolean createNewVersion = current != null
-                && (branchChanged || orderChanged
-                        || ((subjectsChanged || examChanged)
-                                && isCombinationVersionReferenced(item.getId(), current.getId())));
+        boolean createNewVersion = current != null && (branchChanged || subjectsChanged || examChanged);
 
         boolean changed = current == null || subjectsChanged || examChanged || branchChanged || sourceNoteChanged;
         return new CombinationUpdatePlan(
@@ -2108,7 +2097,6 @@ public class CatalogAdminService {
                 targetBranch,
                 targetSubjectIds,
                 targetSourceNote,
-                subjectsChanged,
                 changed,
                 createNewVersion);
     }
@@ -2209,14 +2197,6 @@ public class CatalogAdminService {
         combinationSubjectRepository.flush();
     }
 
-    private boolean isCombinationVersionReferenced(UUID itemId, UUID versionId) {
-        for (CatalogUsageProvider provider : usageProviders) {
-            if (provider.isCombinationVersionReferenced(itemId, versionId)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private record CombinationUpdatePlan(
             CombinationVersion currentVersion,
@@ -2224,7 +2204,6 @@ public class CatalogAdminService {
             CombinationBranch targetBranch,
             List<UUID> targetSubjectIds,
             String targetSourceNote,
-            boolean subjectsChanged,
             boolean changed,
             boolean createNewVersion
     ) {
