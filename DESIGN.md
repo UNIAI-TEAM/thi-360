@@ -396,11 +396,11 @@ Bản vẽ `SoanThaoCongThucToan`; lưu thành `span.math-inline` hoặc `span.m
 
 #### 5.15.2 Hộp Công thức hóa học
 
-Ô "Gõ nhanh" theo cú pháp mhchem, nút mũi tên/trạng thái/điện tích, trên và dưới mũi tên, "Ghi sau phương trình", xem trước (bản vẽ `SoanThaoHoaHoc`).
+Ô "Gõ nhanh" theo cú pháp mhchem: chuỗi gõ chính là nội dung `\ce{…}`, không có bộ chuyển đổi. Bốn nhóm nút `SymbolGrid` (Mũi tên, Trạng thái, Điện tích, Khác: ΔrH°, nồng độ `[ ]`, liên kết đôi/ba, đồng vị) chèn đoạn mhchem tại con trỏ của ô Gõ nhanh; riêng nút ΔrH° ghi LaTeX `\Delta_r H^\circ_{298} = ` vào ô "Ghi sau phương trình" vì đó là công thức riêng. "Trên mũi tên" và "Dưới mũi tên" ghép vào mũi tên đầu tiên theo `->[trên][dưới]` (chỉ ô dưới thì `->[][dưới]`; không có mũi tên thì điều kiện bị bỏ). "Ghi sau phương trình" (LaTeX) là một công thức cùng dòng riêng đặt sau phương trình cách một khoảng trắng; phương trình ở dạng Dòng riêng thì ghi sau nằm ở đoạn ngay dưới. Trong dòng / Dòng riêng như hộp toán, mặc định Trong dòng. Xem trước dựng bằng `renderMath` (KaTeX + mhchem); phương trình hoặc ghi sau không dựng được thì ô báo lỗi (`role="alert"`, `aria-invalid`) và Chèn tắt. Dùng gần đây (danh sách `chemistry`, theo người dùng) lưu nội dung `\ce{…}` kèm điều kiện. Mở lại (công thức `\ce{…}` đang chọn): hộp tự đọc node đang chọn, tách điều kiện của mũi tên đầu tiên về hai ô Trên/Dưới, "Ghi sau" để trống (công thức riêng đứng nguyên), nút chính đổi thành "Cập nhật công thức" và thay đúng node đó. Chọn công thức toán thường rồi chèn hóa học thì chèn sau nó, không thay nó (bản vẽ `SoanThaoHoaHoc`).
 
 #### 5.15.3 Hộp Ký hiệu và đơn vị
 
-Lưới `SymbolGrid` theo nhóm, ô tìm theo tên vi/en, hộp không đóng sau mỗi lần bấm (bản vẽ `SoanThaoKyHieu`).
+Ô tìm ở đầu hộp, rồi các nhóm `SymbolGrid` theo thứ tự bản vẽ: Dùng gần đây (chỉ khi đã dùng), Chữ Hy Lạp, Toán tử và quan hệ, Mũi tên, Đơn vị đo, Sinh học, Phiên âm IPA; mỗi nút 40×40 có `aria-label` là tên ký hiệu ở ngôn ngữ đang dùng. Ô tìm không phân biệt hoa/thường và dấu, khớp tên ở cả tiếng Việt lẫn tiếng Anh ("omega", "độ C", "mũi tên") và chính ký tự; khi đang tìm chỉ hiện nhóm còn ký hiệu khớp, không có thì hiện "Không có ký hiệu nào khớp". Bấm ký hiệu chèn chữ Unicode thường vào con trỏ (thay vùng chọn chữ; đang chọn một node thì chèn sau node đó); đơn vị m/s², W/m² và mục sinh học F₁, F₂, Xᴬ, Xᵃ chèn bằng `sup`/`sub` thật, chữ gõ tiếp sau đó không thừa kế chỉ số. Hộp không đóng và không lấy focus khỏi hộp sau mỗi lần bấm; nút Đóng ở chân hộp. Dùng gần đây lưu id ký hiệu (danh sách `symbols`, theo người dùng). Ký hiệu là chữ thường nên không có khung "đang chọn" và không mở lại (bản vẽ `SoanThaoKyHieu`).
 
 #### 5.15.4 Hộp Bảng số liệu
 
@@ -426,7 +426,7 @@ Bản vẽ `SoanThaoTiengAnh`; chỉ có ở `fieldContext` `stem-single-choice`
 
 #### 5.15.8 Hộp Sơ đồ lai
 
-Lưới thế hệ P, G, F₁…, Thêm thế hệ (bản vẽ `SoanThaoSinhHoc`).
+Lưới thế hệ, mỗi hàng một thế hệ: P (chọn ♂/♀/Không ghi và kiểu gen cho từng bên, dấu × giữa hai bên), G (giao tử hai bên), F₁ (tỉ lệ kiểu gen và tỉ lệ kiểu hình tùy chọn); "Thêm thế hệ" thêm F₂, F₃…, từ F₂ trở đi có nút xóa thế hệ. Chữ trong ô là chữ thường; `_` và `^` tạo chỉ số dưới/trên (`F_1`, `X^A`, nhiều ký tự thì `_{12}`), hai nút Chỉ số dưới/Chỉ số trên chèn `_`/`^` tại con trỏ ô đang gõ. Xem trước hiện từng hàng dạng "P: …". Lưu thành `figure.cross` đúng mẫu `cross-diagram`: hai bên của P cách nhau ` × `, hai bên của G và tỉ lệ kiểu gen/kiểu hình của một thế hệ cách nhau ` ; ` trong cùng một ô; hàng P và G chỉ có khi có chữ, thế hệ con tính đến thế hệ cuối có chữ. Mở lại (chọn sơ đồ trong nội dung, node `crossDiagram`): hộp tự đọc node đang chọn, đọc ngược các hàng P, G, F<n> về lưới, nút chính đổi thành "Cập nhật sơ đồ lai" và sửa đúng node đó; hàng có nhãn khác P/G/F<n> bị bỏ và thẻ lạ trong ô chỉ giữ chữ. Chèn mới: con trỏ nằm trong ô bảng hay mục danh sách thì sơ đồ vào sau khối cấp đầu chứa nó, đang chọn một node khác thì vào ngay sau node đó (bản vẽ `SoanThaoSinhHoc`).
 
 #### 5.15.9 Dán từ Word
 
