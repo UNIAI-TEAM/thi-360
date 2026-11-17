@@ -6,6 +6,7 @@ import {
   convertMatrixUnit,
   countsToPercents,
   gridToCells,
+  groupCounts,
   splitEvenly,
   structureTotals,
   validateBlock,
@@ -180,6 +181,57 @@ describe("tổng điểm của cấu trúc (G1)", () => {
     const part = exam.parts.find((item) => item.mode === "CHOICE")!;
     part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
     expect(structureTotals(exam.parts).totalPoints).toBe(150);
+  });
+});
+
+describe("HSA 17 − 1 (H3)", () => {
+  /** Phần Khoa học của đề HSA mẫu, chỉ giữ phương án `SUBJECT_CHOICE` (nhóm môn đầu của phần). */
+  const hsaChoicePart = () => {
+    const exam = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!);
+    const part = exam.parts.find((item) => item.mode === "CHOICE")!;
+    part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
+    return { exam, part, science: part.options[0]! };
+  };
+
+  it("môn khai 17 câu: môn nhận cách chia 16 tính 16 câu trên đề, tổng điểm vẫn 150", () => {
+    const { exam, science } = hsaChoicePart();
+    for (const section of science.sections) {
+      section.questionCount = 17;
+      section.blocks = [
+        block({}, { id: `${section.id}-fixed`, questionCount: 10 }),
+        block({}, { id: `${section.id}-tail`, questionCount: 7 }),
+      ];
+    }
+    // Cách chia đầu cho môn đầu 16 câu (17 − 1): điểm của môn đó 10 + 6; môn không được chọn tính 0.
+    expect(structureTotals(exam.parts)).toMatchObject({ totalQuestions: 150, totalPoints: 150, allocated: 150 });
+    // Tổng nhóm vẫn đối chiếu số câu khai báo 17 (mục 3.5), không báo thiếu.
+    const structural = validateStructure(exam.parts, AXES).filter(
+      (issue) => issue.code === "BLOCKS_TOTAL" || issue.code === "SECTIONS_TOTAL",
+    );
+    expect(structural).toEqual([]);
+  });
+
+  it("bỏ câu chỉ ở nhóm câu đơn: chùm giữ nguyên khi môn nhận 16", () => {
+    const { exam, science } = hsaChoicePart();
+    for (const section of science.sections) {
+      section.questionCount = 17;
+      section.blocks = [
+        block({}, { id: `${section.id}-singles`, questionCount: 4 }),
+        block({}, { id: `${section.id}-set`, questionType: "QUESTION_SET", questionCount: 13, setCount: 13, setSize: 1 }),
+      ];
+    }
+    // Môn đầu nhận 16: chùm 13 câu không bị bỏ, nhóm câu đơn mất một câu (4 → 3).
+    expect(groupCounts(science.sections[0]!, 16)).toEqual([3, 13]);
+    expect(structureTotals(exam.parts).totalPoints).toBe(150);
+  });
+
+  it("nhóm lấy phần còn lại của môn khai 17 nhận phần chênh khi môn nhận 16", () => {
+    const { science } = hsaChoicePart();
+    const section = {
+      ...science.sections[0]!,
+      blocks: [block({}, { questionCount: 10 }), block({}, { questionCount: null })],
+    };
+    expect(groupCounts(section, 16)).toEqual([10, 6]);
   });
 });
 
