@@ -5699,13 +5699,10 @@
         "previewNote": "Prose and historical sources use the same block, without line breaks or numbering.",
         "sourceLabel": "Source note",
         "sourcePlaceholder": "Publisher, year, page",
-        "submit": "Insert excerpt",
+        "submit": "Insert quote",
         "title": "Quote",
-        "update": "Update excerpt",
+        "update": "Update quote",
         "workLabel": "Work"
-      },
-      "stub": {
-        "body": "Work in progress"
       },
       "symbols": {
         "aliases": {

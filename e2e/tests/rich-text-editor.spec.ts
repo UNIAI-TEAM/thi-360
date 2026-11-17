@@ -222,7 +222,7 @@ test("ED-QA flow 4: Van question with a poem excerpt (quote, line numbers)", asy
   await dialog.getByLabel("Author").fill("Nguyen Du");
   await dialog.getByLabel("Work").fill("Truyen Kieu");
   await expect(dialog.locator("blockquote.quote")).toBeVisible();
-  await dialog.getByRole("button", { name: "Insert excerpt" }).click();
+  await dialog.getByRole("button", { name: "Insert quote" }).click();
   await expect(dialog).toBeHidden();
   await fillChoices(page, 1);
 
