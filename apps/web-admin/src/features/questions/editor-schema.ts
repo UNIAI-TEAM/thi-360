@@ -3,6 +3,7 @@ import { MULTIPLE_CHOICE_RULES, QUESTION_TYPES, TRUE_FALSE_METHODS } from "@/fea
 import { questionHtmlText } from "@/components/rich-text/sanitize";
 import {
   countBlankMarkers,
+  isBlankNumberStart,
   parsePoints,
   pointsTotal,
   rubricTotal,
@@ -67,6 +68,7 @@ export type EditorErrorKey =
   | "childKnowledgeRequired"
   | "childrenMin"
   | "childContentRequired"
+  | "blankNumberStartInvalid"
   | "scoreValueInvalid"
   | "scoreNotIncreasing"
   | "scoreLastMismatch"
@@ -212,6 +214,9 @@ export function validateBody(
       return;
     }
     case "QUESTION_SET":
+      if (!isBlankNumberStart(body.blankNumberStart)) {
+        issues.push({ path: [...prefix, "blankNumberStart"], message: "blankNumberStartInvalid" });
+      }
       return;
     case "ESSAY": {
       if (blankHtml(body.gradingGuide)) issues.push({ path: [...prefix, "gradingGuide"], message: "gradingGuideRequired" });
@@ -312,6 +317,7 @@ const bodySchema = z.object({
   rubric: z.array(z.object({ id: z.string(), description: z.string(), points: z.string() })),
   sampleAnswer: z.string(),
   wordLimit: z.string(),
+  blankNumberStart: z.string(),
 });
 
 /** Lược đồ của biểu mẫu: kiểu dữ liệu ở `z.object`, quy tắc nghiệp vụ trong `validateQuestionEditor`. */

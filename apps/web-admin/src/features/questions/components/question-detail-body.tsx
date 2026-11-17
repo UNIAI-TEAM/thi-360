@@ -6,7 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode } from "react";
 import { questionHtmlText, RichTextView } from "@/components/rich-text";
 import { ClozePassage } from "./cloze-passage";
-import type { QuestionBody, QuestionDetail } from "../types";
+import { blankNumberStartOf, type QuestionBody, type QuestionDetail } from "../types";
 import { optionLetter, statementLetter } from "./question-editor-shared";
 
 type BodySource = Pick<QuestionDetail, "type" | "content" | "body" | "children" | "solution" | "points">;
@@ -42,7 +42,7 @@ function QuestionSetView({ question, headingLevel }: { question: BodySource; hea
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-border bg-subtle p-3.5 text-body text-text">
-        <RichTextView html={passage} />
+        <RichTextView html={passage} blankNumberStart={blankNumberStartOf(question.body)} />
       </div>
       <ol className="m-0 flex list-none flex-col gap-3 p-0">
         {question.children.map((child, index) => (

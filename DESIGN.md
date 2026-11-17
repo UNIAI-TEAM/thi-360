@@ -416,7 +416,13 @@ Bản vẽ `SoanThaoDoanTrich`, hai cột từ `lg` (một cột ở màn hẹp)
 
 #### 5.15.7 Gạch chân đánh nhãn và Chỗ trống
 
-Nhãn tự lấy chữ kế tiếp; khung "Cụm đang chọn" có Đổi nhãn, Bỏ gạch chân; chỗ trống gắn với câu con (bản vẽ `SoanThaoTiengAnh`).
+Bản vẽ `SoanThaoTiengAnh`; chỉ có ở `fieldContext` `stem-single-choice` (gạch chân) và `set-passage` (chỗ trống).
+
+- **Hộp Gạch chân đánh nhãn:** hiện cụm đang chọn (gạch chân) và nhóm nút nhãn A–H (ô 40×40, radio ẩn, đang chọn viền `primary-600` nền `primary-50`). Nhãn mặc định là chữ kế tiếp chưa dùng, câu dưới nhóm nút nói rõ; nhãn mà cụm khác đang dùng bị khóa (đọc là "{nhãn}, đã dùng ở cụm khác") vì hai cụm cùng nhãn chặn Sẵn sàng; hết A–H thì báo và tắt nút. Chưa bôi đen (hoặc vùng chọn trải nhiều đoạn) thì nút chính tắt kèm hướng dẫn. Mở lại trên cụm đã gạch: giữ nhãn, nút chính là Đổi nhãn, có Bỏ gạch chân. Gạch chân thường trong vùng chọn bị thay bằng nhãn.
+- **Khung "Cụm đang chọn: nhãn C"** (dải `subtle` dưới thanh công cụ như khung công thức): Đổi nhãn mở lại hộp, Bỏ gạch chân gỡ nhãn khỏi cả cụm.
+- **Phương án tự lấy** (Trắc nghiệm 1 đáp án, `question-editor-choice.tsx`): ô chọn "Phương án tự lấy theo các cụm gạch chân" hiện khi đề bài có cụm đánh nhãn; không lưu thành trường. Bật khi tạo cụm thứ hai trong câu mới; mở câu đã lưu thì bật chỉ khi mọi phương án đúng chữ của cụm cùng nhãn. Bật: phương án n lấy chữ thuần của nhãn n, hiện dạng khung `subtle` kèm icon khóa "theo cụm gạch chân" thay cho ô soạn, theo kịp khi sửa cụm; dòng `warning` dưới danh sách nêu nhãn thiếu hoặc thừa. Nhiều đáp án không có ô này.
+- **Hộp Chỗ trống:** chèn `span.blank` gắn câu con đầu tiên chưa có chỗ trống, kèm xem trước "(số) ____" theo Đánh số từ; hết câu con trống thì báo "Thêm câu con trước" và tắt nút. Mở lại trên chỗ trống đang chọn: danh sách radio các câu con còn trống (kể cả câu con của chính nó) và Xóa chỗ trống. Chip chỗ trống là hộp nét đứt màu `info` (như `rich-text.css`).
+- **Câu chùm** (`question-editor-set.tsx`): ô "Đánh số từ" (1–200) và bảng "Chỗ trống và câu con" (chỗ trống, câu con · dạng, đáp án, nút Sửa mở câu con) ở đầu khối câu con; chỗ trống trỏ tới câu con không có hoặc trùng số hiện chữ `danger`. Đổi thứ tự hoặc xóa câu con thì ngữ liệu tự đánh lại `data-blank` và báo qua vùng thông báo.
 
 #### 5.15.8 Hộp Sơ đồ lai
 

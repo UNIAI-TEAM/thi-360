@@ -7,6 +7,7 @@ import { RichTextView } from "@/components/rich-text";
 import { indexKnowledge, knowledgeName } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { QuestionVersion } from "../editor-types";
+import { blankNumberStartOf } from "../types";
 import { diffSnapshots, SNAPSHOT_FIELDS, type QuestionVersionChange } from "../editor-versioning";
 import { describeBody } from "./question-detail-body";
 
@@ -61,7 +62,7 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
       case "points":
         return String(change[side]);
       case "content":
-        return <RichTextView html={change[side]} />;
+        return <RichTextView html={change[side]} blankNumberStart={blankNumberStartOf((side === "before" ? before : after).snapshot.body)} />;
       case "solution":
         return change[side] ? <RichTextView html={change[side]} /> : t("none");
       case "tagCodes":
@@ -79,14 +80,18 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
         ) : (
           t("none")
         );
-      case "body":
+      case "body": {
+        const body = change[side];
+        // Ngữ liệu câu chùm: dựng bằng RichTextView để chỗ trống hiện số theo `blankNumberStart` của từng bên (ED-4 V-F4).
+        if (body.type === "QUESTION_SET") return <RichTextView html={body.passage} blankNumberStart={blankNumberStartOf(body)} />;
         return (
           <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-            {describeBody(change[side], tBody).map((line, index) => (
+            {describeBody(body, tBody).map((line, index) => (
               <li key={index}>{line}</li>
             ))}
           </ul>
         );
+      }
       case "children":
         return change[side].length ? (
           <ol className="m-0 flex list-none flex-col gap-0.5 p-0">

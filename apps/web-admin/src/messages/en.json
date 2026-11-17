@@ -2496,7 +2496,13 @@
         "add": "Add option",
         "added": "Added option {letter}.",
         "removed": "Deleted option {letter}.",
-        "moved": "Moved option {letter} to position {position}."
+        "moved": "Moved option {letter} to position {position}.",
+        "autoLabel": "Options taken from the underlined phrases",
+        "fromPhrase": "from underlined phrase",
+        "autoMissing": "No underlined phrase for option {letters}.",
+        "autoExtra": "Underlined phrase {labels} has no option.",
+        "autoMoveLocked": "Options follow their underlined phrases. Turn off the automatic options to reorder.",
+        "autoRemoveLocked": "Options follow their underlined phrases. Turn off the automatic options to delete this one."
       },
       "statements": {
         "hint": "Mark every statement True or False. At least 2 statements.",
@@ -2605,6 +2611,22 @@
           "backToInherit": "Use the set's knowledge",
           "inheritedAnnounce": "The sub-question uses the set's knowledge again.",
           "knowledgeApplied": "{count, plural, one {# own knowledge item} other {# own knowledge items}} selected."
+        },
+        "blanks": {
+          "child": "Sub-question {number}",
+          "columnAnswer": "Answer",
+          "columnBlank": "Blank",
+          "columnChild": "Sub-question",
+          "columnEdit": "Edit",
+          "duplicate": "Duplicate number",
+          "edit": "Edit sub-question {number}",
+          "empty": "The passage has no blanks yet. Press Blank in the passage toolbar to insert one.",
+          "noChild": "No sub-question {number}",
+          "startHint": "Blank n shows Number from + n − 1 (1–200).",
+          "startLabel": "Number from",
+          "title": "Blanks and sub-questions",
+          "updated": "The blanks in the passage were renumbered to follow the sub-question order.",
+          "without": "Sub-questions without a blank: {numbers}."
         }
       },
       "errors": {
@@ -2639,6 +2661,7 @@
         "childKnowledgeRequired": "Choose at least one own knowledge item or use the set's knowledge.",
         "childrenMin": "A question set needs at least 2 sub-questions.",
         "childContentRequired": "Enter the sub-question text.",
+        "blankNumberStartInvalid": "Enter a whole number from 1 to 200.",
         "scoreValueInvalid": "Points must be a number of 0 or more.",
         "scoreNotIncreasing": "Points cannot be lower than the previous cell.",
         "scoreLastMismatch": "The last cell must equal the question points.",
@@ -2826,6 +2849,11 @@
         "POINTS_INVALID": "Points are not valid: they must be greater than 0 with at most 4 decimal places.",
         "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
         "CATALOG_VALUE_UNKNOWN": "A classification value is not in the catalog or has been retired.",
+        "BLANK_CHILD_MISMATCH": "A blank points to a sub-question that does not exist, or two blanks share the same number.",
+        "BLANK_OUTSIDE_SET_PASSAGE": "Numbered blanks are only allowed in a question set passage.",
+        "UNDERLINE_LABEL_DUPLICATE": "Two underlined phrases use the same label.",
+        "UNDERLINE_LABEL_MISPLACED": "Labelled underlines are only allowed in the stem of a single-answer multiple-choice question.",
+        "IMAGE_ALT_MISSING": "An image has no alt text (a warning, does not block Ready).",
         "READINESS_OTHER": "A check was not met ({value})."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
@@ -5346,6 +5374,16 @@
       }
     },
     "insertDialog": {
+      "blank": {
+        "apply": "Insert blank",
+        "change": "Change sub-question",
+        "childOption": "Sub-question {number} · {type}",
+        "childrenLegend": "Sub-question linked to the blank",
+        "needChild": "Add a sub-question first: every sub-question already has a blank.",
+        "newTarget": "The new blank is linked to {child}.",
+        "preview": "Shown in the passage",
+        "remove": "Remove blank"
+      },
       "cancel": "Cancel",
       "chemistry": {
         "afterLabel": "Note after the equation",
@@ -5910,6 +5948,23 @@
         "unitLabel": "Unit",
         "unmerge": "Split cell",
         "update": "Update table"
+      },
+      "underline-label": {
+        "allUsed": "All labels A–H are in use.",
+        "apply": "Underline",
+        "labelLegend": "Label",
+        "labelUsed": "{label}, used by another phrase",
+        "nextHint": "Next unused label: {label}",
+        "panel": {
+          "relabel": "Change label",
+          "remove": "Remove underline",
+          "title": "Selected phrase: label {label}"
+        },
+        "phrase": "Selected phrase",
+        "phraseEmpty": "Select a phrase in the question text first, then press the button again.",
+        "phraseMultiBlock": "Select a phrase inside a single paragraph.",
+        "relabel": "Change label",
+        "remove": "Remove underline"
       }
     },
     "insertLoadError": "Couldn't load the insert dialog. Check your connection and try again.",

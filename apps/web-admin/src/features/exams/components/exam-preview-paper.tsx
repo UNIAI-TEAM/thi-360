@@ -112,7 +112,7 @@ function PreviewItemView({ item, setIndex }: { item: PreviewItem; setIndex: numb
       </div>
       {item.passage ? (
         <blockquote className="rounded-md border-s-4 border-border bg-subtle px-3 py-2 text-body text-text">
-          <RichTextView html={item.passage} />
+          <RichTextView html={item.passage} blankNumberStart={item.blankNumberStart} />
         </blockquote>
       ) : (
         <p className="text-body text-text-muted italic">{t("simulatedPassage")}</p>
