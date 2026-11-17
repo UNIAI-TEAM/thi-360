@@ -4337,8 +4337,6 @@
         "SUBJECT_MATRIX_TOTAL_MISMATCH": "Môn {subject}: tổng chỉ tiêu {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} other {khối lớp, độ khó}} là {available, number} câu, phải bằng {required, number} câu của môn.",
         "GROUP_ANSWER_TYPE_MISSING": "Nhóm {block} chưa có dạng trả lời, trong khi môn {subject} không khai chỉ tiêu dạng trả lời.",
         "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: số câu từng môn của phương án chọn môn không hợp lệ (cần {required, number}, hiện {available, number}). Số phần tử phải bằng số môn được chọn, tổng bằng số câu của phương án, và mỗi môn phải thuộc nhóm tự nhiên hoặc xã hội để chia số câu.",
-        "REMAINDER_GROUP_INVALID": "Môn {subject} có số câu thay đổi: cần đúng một nhóm câu đơn lấy phần còn lại, và tổng các nhóm cố định không vượt {required, number} câu (hiện {available, number}).",
-        "SUBJECT_QUOTA_COUNT_VARIES": "Môn {subject} nhận từ {required, number} đến {available, number} câu: chỉ tiêu cấp môn phải khai theo tỉ lệ, không khai theo số câu.",
         "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: chỉ tiêu dạng {answerType} cần {required, number} câu, hiện có {available, number} câu phù hợp.",
         "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: không đủ nguồn cho chỉ tiêu cấp môn, cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
         "MATRIX_NON_INTEGER": "Khối {block} có chỉ tiêu không phải số nguyên.",
@@ -4353,8 +4351,7 @@
         "DIMENSION_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
         "COMPETENCY_SHORTAGE": "Khối {block}: nguồn câu hỏi năng lực {competency} chưa đủ cho chỉ tiêu.",
         "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: nguồn câu hỏi dạng {answerType} chưa đủ cho chỉ tiêu.",
-        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu cấp môn.",
-        "REMAINDER_GROUP_INVALID": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}} có số câu thay đổi: cần đúng một nhóm câu đơn lấy phần còn lại, và tổng các nhóm cố định không vượt số câu của môn."
+        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu cấp môn."
       }
     },
     "versions": {

@@ -77,14 +77,14 @@ export interface SubjectAllocation {
 
 /**
  * Số câu của từng nhóm: nhóm có số câu cố định giữ nguyên; nhóm "lấy phần còn lại" duy nhất nhận phần còn lại của môn.
- * Hơn một nhóm như vậy là sai cấu hình: không nhóm nào nhận (cùng quy tắc `REMAINDER_GROUP_INVALID` của kiểm tra, R1-5).
+ * Hơn một nhóm như vậy là sai cấu hình: không nhóm nào nhận.
  */
 function blockUnits(blocks: readonly QuestionBlock[], remainder: number | null): number[] {
   const single = remainderGroupCount(blocks) === 1;
   return blocks.map((block) => block.questionCount ?? (single ? (remainder ?? 0) : 0));
 }
 
-/** Số nhóm "lấy phần còn lại" của môn; tối đa một (spec 5.2, `REMAINDER_GROUP_INVALID`). */
+/** Số nhóm "lấy phần còn lại" của môn; tối đa một (spec 5.2). */
 export function remainderGroupCount(blocks: readonly QuestionBlock[]): number {
   return blocks.filter((block) => block.questionCount === null).length;
 }

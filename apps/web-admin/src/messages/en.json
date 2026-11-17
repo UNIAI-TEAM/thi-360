@@ -4337,8 +4337,6 @@
         "SUBJECT_MATRIX_TOTAL_MISMATCH": "Subject {subject}: the quotas {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} other {by grade and difficulty}} add up to {available, number} questions; they must add up to the subject's {required, number}.",
         "GROUP_ANSWER_TYPE_MISSING": "Group {block} has no answer type, and subject {subject} sets no answer-type quota.",
         "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: the per-subject counts of the subject choice are invalid (need {required, number}, found {available, number}). There must be one value per chosen subject, adding up to the option's question count, and every subject must belong to the natural or social group so the counts can be split.",
-        "REMAINDER_GROUP_INVALID": "Subject {subject} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed {required, number} questions (found {available, number}).",
-        "SUBJECT_QUOTA_COUNT_VARIES": "Subject {subject} receives {required, number} to {available, number} questions: subject quotas must be set as percentages, not as question counts.",
         "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: the {answerType} quota needs {required, number} questions; {available, number} matching questions are available.",
         "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: not enough source for the subject quota; it needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
         "MATRIX_NON_INTEGER": "Block {block} has a quota that is not a whole number.",
@@ -4353,8 +4351,7 @@
         "DIMENSION_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
         "COMPETENCY_SHORTAGE": "Block {block}: there are not enough {competency} source questions for the quota.",
         "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: there are not enough {answerType} source questions for the quota.",
-        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the subject quota.",
-        "REMAINDER_GROUP_INVALID": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed the subject's question count."
+        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the subject quota."
       }
     },
     "versions": {
