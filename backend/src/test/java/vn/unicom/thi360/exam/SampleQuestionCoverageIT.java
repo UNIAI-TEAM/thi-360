@@ -228,6 +228,25 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
     }
 
     @Test
+    @Transactional
+    void incompleteMapidPrerequisitesEmitNoPartialSet() {
+        String sample = "select id from questionbank.question where code ~ '^SEED-2B-MAPID-[1-3](-[0-2])?$'";
+        jdbc.update("delete from questionbank.question_knowledge where question_id in (" + sample + ")");
+        jdbc.update("delete from questionbank.question_tag where question_id in (" + sample + ")");
+        jdbc.update("delete from questionbank.question_version where question_id in (" + sample + ")");
+        jdbc.update("delete from questionbank.question where parent_id in (" + sample + ")");
+        jdbc.update("delete from questionbank.question where id in (" + sample + ")");
+        jdbc.update("""
+                update catalog.catalog_item set code = 'BE10-MISSING-MAPID', code_normalized = 'be10-missing-mapid'
+                where group_id = '00000000-0000-7000-8100-000000000009' and code = '0D1-1-3'
+                """);
+        ScriptUtils.executeSqlScript(DataSourceUtils.getConnection(dataSource),
+                new ClassPathResource("db/devdata/R__seed_questionbank_dev_data.sql"));
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question where id in (" + sample + ")",
+                Integer.class)).isZero();
+    }
+
+    @Test
     void checkerRejectsEmptyRemaindersAndInheritedFilters() throws Exception {
         List<String> failures = new ArrayList<>();
         int[] checked = {0};

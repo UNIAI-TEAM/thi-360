@@ -705,6 +705,9 @@ WITH sets AS (
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'TOAN'
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G10'
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+    WHERE (SELECT count(*) FROM catalog.catalog_item
+           WHERE group_id = '00000000-0000-7000-8100-000000000009'
+             AND code IN ('0D1-1-1', '0D1-1-2', '0D1-1-3')) = 3
 ), children AS (
     SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id, node.id AS node_id,
            jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
