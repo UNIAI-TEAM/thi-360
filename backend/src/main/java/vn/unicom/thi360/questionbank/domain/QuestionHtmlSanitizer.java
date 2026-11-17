@@ -396,6 +396,9 @@ public class QuestionHtmlSanitizer {
             }
             case "span": {
                 String cls = el.attr("class").trim();
+                if (el.hasAttr("data-blank") && !"blank".equals(cls)) {
+                    return drop(el, violations, "span", "data-blank", false);
+                }
                 if ("math-block".equals(cls) && !isTopLevel(el)) {
                     // Công thức khối chỉ ở cấp đầu (spec 3.1).
                     return drop(el, violations, "span", null, false);
@@ -432,7 +435,7 @@ public class QuestionHtmlSanitizer {
     }
 
     private static boolean isBlankSpan(Element el) {
-        return "blank".equals(el.attr("class").trim()) || el.hasAttr("data-blank");
+        return "blank".equals(el.attr("class").trim());
     }
 
     private static boolean isTopLevel(Element el) {

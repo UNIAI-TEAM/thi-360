@@ -236,6 +236,20 @@
       "allowImages": true,
       "html": "<p><span class=\"blank\" data-blank=\"1\">text</span></p>",
       "violations": [{ "tag": "span" }]
+    },
+    {
+      "name": "bad-blank-without-class",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p><span data-blank=\"1\"></span></p>",
+      "violations": [{ "tag": "span", "attribute": "data-blank" }]
+    },
+    {
+      "name": "bad-blank-on-math-inline",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p><span class=\"math-inline\" data-blank=\"1\">\\(x\\)</span></p>",
+      "violations": [{ "tag": "span", "attribute": "data-blank" }]
     }
   ]
 }
