@@ -16,7 +16,7 @@ export interface CoverImage {
 }
 
 /**
- * Ảnh giới thiệu (UniNote PBI-04 mục 4, không bắt buộc). Dữ liệu mẫu: chỉ xem trước tại chỗ bằng đường dẫn tạm, không
+ * Ảnh giới thiệu (UniNote PBI-04 mục 4, không bắt buộc). Chưa có API tải ảnh bìa: chỉ xem trước tại chỗ bằng đường dẫn tạm, không
  * tải lên; tên tệp không gửi kèm khi tạo bài.
  *
  * Nút chọn tệp theo kiểu nút Phụ của kit (như màn Cấp tài khoản hàng loạt): ô chọn tệp thật ẩn về hình ảnh nhưng vẫn

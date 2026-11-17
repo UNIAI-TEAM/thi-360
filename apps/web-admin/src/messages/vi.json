@@ -4411,11 +4411,11 @@
       },
       "discontinue": {
         "action": "Ngừng bán",
-        "title": "Ngừng bán {code}?",
+        "title": "Ngừng bán bài thi {code}?",
         "description": "Bài thi không còn mở bán cho lượt mua mới. Học viên đã mua vẫn làm được theo phiên bản đang phục vụ; lượt đang làm và kết quả cũ giữ nguyên.",
         "confirm": "Ngừng bán",
         "cancel": "Hủy",
-        "done": "Đã ngừng bán {code}.",
+        "done": "Đã ngừng bán bài thi {code}.",
         "error": "Không ngừng bán được bài thi. Thử lại.",
         "conflict": "Bài thi không còn ở trạng thái Đang phục vụ hoặc đã thay đổi. Tải lại trang rồi thử lại."
       },
@@ -4724,7 +4724,7 @@
       "templatePart": "{kind} · Theo phần {scope}",
       "cover": {
         "label": "Ảnh giới thiệu",
-        "hint": "Tỉ lệ 16:9 · PNG, JPG hoặc WebP, tối đa 5 MB · hiện ở danh sách và trang giới thiệu. Dữ liệu mẫu: ảnh chưa được tải lên.",
+        "hint": "Tỉ lệ 16:9 · PNG, JPG hoặc WebP, tối đa 5 MB · hiện ở danh sách và trang giới thiệu. Ảnh chỉ để xem trước, chưa được lưu cùng bài thi.",
         "removeAria": "Bỏ ảnh {name}",
         "size": "{size, number} KB",
         "invalidType": "Chọn tệp ảnh PNG, JPG hoặc WebP.",
