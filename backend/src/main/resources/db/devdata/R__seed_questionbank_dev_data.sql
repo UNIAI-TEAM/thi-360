@@ -564,6 +564,26 @@ WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
   AND subject.code IN ('TOAN', 'VAN', 'ANH', 'LY', 'HOA', 'SINH', 'SU', 'DIA',
                        'ECON_LAW', 'TECH_INDUSTRY', 'TECH_AGRICULTURE', 'INFORMATICS');
 
+-- Legacy SP2E science scores each of four statements independently.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-2b-sp2e-tf-' || subject.code || '-' || n)::uuid,
+       'SEED-2B-SP2E-TF-' || subject.code || '-' || n,
+       'TRUE_FALSE', subject.id, grade.id, level.id, NULL, 0.8,
+       '<p>Science true or false</p>',
+       jsonb_build_object('type', 'TRUE_FALSE', 'scoringMethod', 'PER_STATEMENT',
+           'statements', jsonb_build_array(
+               jsonb_build_object('id', 'a', 'content', '<p>First</p>', 'answer', true, 'points', 0.2),
+               jsonb_build_object('id', 'b', 'content', '<p>Second</p>', 'answer', false, 'points', 0.2),
+               jsonb_build_object('id', 'c', 'content', '<p>Third</p>', 'answer', true, 'points', 0.2),
+               jsonb_build_object('id', 'd', 'content', '<p>Fourth</p>', 'answer', false, 'points', 0.2))),
+       NULL, NULL
+FROM catalog.catalog_item subject
+CROSS JOIN generate_series(1, 6) n
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
+  AND subject.code IN ('LY', 'HOA', 'SINH');
+
 INSERT INTO seed_question_rows
 SELECT md5('thi360-2b-general-matching-' || subject.code || '-' || n)::uuid,
        'SEED-2B-MATCHING-GENERAL-' || subject.code || '-' || n,

@@ -102,6 +102,22 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void technologyAndLegacyScienceHaveExactPointSources() {
+        for (String code : List.of("TECH_INDUSTRY", "TECH_AGRICULTURE", "LY", "HOA", "SINH")) {
+            UUID subject = jdbc.queryForObject("""
+                    select id from catalog.catalog_item
+                    where group_id = '00000000-0000-7000-8100-000000000002' and code = ?
+                    """, UUID.class, code);
+            boolean technology = code.startsWith("TECH_");
+            var filter = new QuestionSourcePort.Filter(subject, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+                    technology ? QuestionType.SHORT_ANSWER : QuestionType.TRUE_FALSE, null, null, List.of(), List.of(),
+                    new BigDecimal(technology ? "0.25" : "0.8"),
+                    technology ? null : new QuestionSourcePort.ItemShape(4, null, null), List.of(), List.of());
+            assertThat(source.findCandidates(filter, 100)).as(code).hasSizeGreaterThanOrEqualTo(technology ? 4 : 5);
+        }
+    }
+
+    @Test
     @Transactional
     void taggedSamplesAreQueryableWhenCatalogCodesExist() {
         List<String> codes = List.of("ANH_PHAT_AM", "ANH_TRONG_AM", "ANH_DONG_NGHIA", "ANH_TRAI_NGHIA",
