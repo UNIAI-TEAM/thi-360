@@ -86,20 +86,26 @@ function mapFreeText(latex: string, transform: (text: string) => string): string
   return out;
 }
 
-/** Chữ cái đầu của dãy chữ cái (cách nhau tối đa một khoảng trắng) là tên hàm → viết lại thành `\name`. */
+/**
+ * Tên hàm trong một dãy chữ cái (cách nhau tối đa một khoảng trắng): quét mọi vị trí chứ không chỉ đầu dãy, để
+ * `xsinx` (biến viết nghiêng dính nhau) cũng thành `x\sin x`. Phần sau tên hàm được quét tiếp.
+ */
+function fixFunctionRun(run: string): string {
+  for (let i = 0; i < run.length; i++) {
+    if (run[i] === " ") continue;
+    for (const name of FUNCTIONS_LONGEST_FIRST) {
+      const literal = run.startsWith(name, i) ? name : run.startsWith([...name].join(" "), i) ? [...name].join(" ") : null;
+      if (literal === null) continue;
+      const rest = run.slice(i + literal.length).trimStart();
+      return `${run.slice(0, i).trimEnd()}${functionCommand(name)}${rest ? ` ${fixFunctionRun(rest)}` : ""}`;
+    }
+  }
+  return run;
+}
+
+/** Dãy chữ cái chứa tên hàm bị tách chữ hoặc dính biến → viết lại thành `\name`. */
 function fixFunctionNames(latex: string): string {
-  return mapFreeText(latex, (text) =>
-    text.replace(/[A-Za-z](?: ?[A-Za-z])*/g, (run) => {
-      for (const name of FUNCTIONS_LONGEST_FIRST) {
-        const spaced = [...name].join(" ");
-        const literal = run.startsWith(name) ? name : run.startsWith(spaced) ? spaced : null;
-        if (literal === null) continue;
-        const rest = run.slice(literal.length).trimStart();
-        return rest ? `${functionCommand(name)} ${rest}` : functionCommand(name);
-      }
-      return run;
-    }),
-  );
+  return mapFreeText(latex, (text) => text.replace(/[A-Za-z](?: ?[A-Za-z])*/g, fixFunctionRun));
 }
 
 /**

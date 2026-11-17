@@ -94,6 +94,16 @@ function findLabel(text: string, label: OptionLabel, from: number): { start: num
 }
 
 /**
+ * Độ dài `nfcLength` đo trên chữ đã chuẩn hóa NFC ứng với bao nhiêu ký tự đầu của chữ gốc: clipboard có thể ở dạng
+ * NFD (dấu tách rời), khi đó độ dài hai dạng khác nhau mà các vị trí của `segments` tính trên chữ gốc.
+ */
+function rawOffsetOfNfcLength(text: string, nfcLength: number): number {
+  let offset = nfcLength;
+  while (offset < text.length && text.slice(0, offset).normalize("NFC").length < nfcLength) offset++;
+  return offset;
+}
+
+/**
  * Tách các khối cấp đầu của HTML nội bộ thành đề bài, phương án A–D và lời giải. Không tìm thấy nhãn nào thì mọi thứ
  * ở đề bài và `found = false`.
  */
@@ -118,7 +128,7 @@ export function splitByLabels(blocks: Element[]): SplitFields {
     if (header) {
       section = "solution";
       result.found = true;
-      const rest = extract(block, segments, header[0].length, text.length);
+      const rest = extract(block, segments, rawOffsetOfNfcLength(text, header[0].length), text.length);
       if (nonEmpty(rest)) result.solution.push(rest);
       continue;
     }

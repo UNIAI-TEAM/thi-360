@@ -1,6 +1,7 @@
 import katex from "katex";
 import { describe, expect, it } from "vitest";
 import { autoFix } from "../fixers";
+import { ommlToLatex } from "../omml";
 
 describe("autoFix: tên hàm bị tách chữ", () => {
   it.each([
@@ -88,5 +89,27 @@ describe("autoFix: kết hợp", () => {
   it("returns formulas without any of the four defects unchanged", () => {
     const latex = "S_{\\Delta IAB}=\\frac{1}{2}IA\\cdot IB\\cdot\\sin \\widehat{AIB}";
     expect(autoFix(latex)).toEqual({ latex, kinds: [] });
+  });
+});
+
+describe("autoFix: ký hiệu độ trong chữ thường, tên hàm dính biến", () => {
+  it("leaves a degree sign inside \\text{} alone and still fixes the one outside", () => {
+    const normalRun = ommlToLatex('<m:oMath><m:r><m:rPr><m:sty m:val="nor"/></m:rPr><m:t>30°</m:t></m:r></m:oMath>').latex;
+    expect(normalRun).toBe("\\text{30°}");
+    expect(autoFix(normalRun)).toEqual({ latex: normalRun, kinds: [] });
+    expect(() => katex.renderToString(normalRun, { throwOnError: true })).not.toThrow();
+
+    const mixed = autoFix(`${normalRun}+A=30°`);
+    expect(mixed).toEqual({ latex: `${normalRun}+A=30^{\\circ}`, kinds: ["degree"] });
+    expect(() => katex.renderToString(mixed.latex, { throwOnError: true })).not.toThrow();
+  });
+
+  it.each([
+    ["xsinx", "x\\sin x"],
+    ["x s i n x", "x\\sin x"],
+    ["2xcosx+1", "2x\\cos x+1"],
+    ["asinxcosx", "a\\sin x\\cos x"],
+  ])("finds a function name that does not start the letter run: %s → %s", (raw, fixed) => {
+    expect(autoFix(raw)).toEqual({ latex: fixed, kinds: ["functionName"] });
   });
 });
