@@ -19,7 +19,7 @@ import { blankNumbersOfDoc, firstChildWithoutBlank } from "./blank-numbering";
  */
 export default function BlankInsertDialog({ editor, open, onOpenChange }: InsertDialogProps) {
   const tEntry = useTranslations("richText.insert.blank");
-  const t = useTranslations("richText.insert.blank.dialog");
+  const t = useTranslations("richText.insertDialog.blank");
   const tType = useTranslations("content.questionType");
   const groupId = useId();
   // Ngoài biểu mẫu soạn câu (không có `FormProvider`) `useFormContext` trả `null`: hộp chỉ báo "Thêm câu con trước".

@@ -16,7 +16,7 @@ import { nextUnderlineLabel, readLabelSelection, UNDERLINE_LABELS } from "./labe
  */
 export default function UnderlineLabelInsertDialog({ editor, open, onOpenChange }: InsertDialogProps) {
   const tEntry = useTranslations("richText.insert.underline-label");
-  const t = useTranslations("richText.insert.underline-label.dialog");
+  const t = useTranslations("richText.insertDialog.underline-label");
   const groupId = useId();
   // Vùng chọn chụp một lần lúc mở: mở lại hộp luôn thấy đúng cụm đã chọn, kể cả khi focus rời trình soạn.
   const [target] = useState(() => readLabelSelection(editor.state));

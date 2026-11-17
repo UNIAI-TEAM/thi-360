@@ -13,7 +13,7 @@ import { readLabelSelection } from "./labels";
  * Bỏ gạch chân gỡ nhãn khỏi cả cụm ngay.
  */
 export default function UnderlineLabelSelectionPanel({ editor, target, openDialog }: SelectionPanelProps) {
-  const t = useTranslations("richText.insert.underline-label.panel");
+  const t = useTranslations("richText.insertDialog.underline-label.panel");
   if (!(target instanceof PMMark)) return null;
   const label = String(target.attrs.label ?? "");
 
