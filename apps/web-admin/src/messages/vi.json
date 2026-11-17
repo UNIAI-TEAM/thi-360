@@ -2496,7 +2496,11 @@
         "add": "Thêm phương án",
         "added": "Đã thêm phương án {letter}.",
         "removed": "Đã xóa phương án {letter}.",
-        "moved": "Đã chuyển phương án {letter} tới vị trí {position}."
+        "moved": "Đã chuyển phương án {letter} tới vị trí {position}.",
+        "autoLabel": "Phương án tự lấy theo các cụm gạch chân",
+        "fromPhrase": "theo cụm gạch chân",
+        "autoMissing": "Chưa có cụm gạch chân cho phương án {letters}.",
+        "autoExtra": "Cụm gạch chân {labels} chưa có phương án."
       },
       "statements": {
         "hint": "Mỗi ý phải được đánh dấu Đúng hoặc Sai. Cần ít nhất 2 ý.",

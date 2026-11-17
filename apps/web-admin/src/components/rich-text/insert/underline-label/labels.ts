@@ -31,6 +31,20 @@ export function underlinePhrasesOfHtml(html: string): UnderlinePhrase[] {
   }));
 }
 
+/** Chữ của cụm đầu tiên cho từng nhãn (hai cụm cùng nhãn là lỗi; lấy cụm đầu để phương án vẫn có chữ). */
+export function phraseTextByLabel(html: string): Map<string, string> {
+  const byLabel = new Map<string, string>();
+  for (const phrase of underlinePhrasesOfHtml(html)) {
+    if (phrase.label && !byLabel.has(phrase.label)) byLabel.set(phrase.label, phrase.text);
+  }
+  return byLabel;
+}
+
+/** HTML của một phương án lấy từ cụm gạch chân: chữ thuần trong một đoạn, đã escape. */
+export function choiceHtmlOfPhrase(text: string): string {
+  return `<p>${text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`;
+}
+
 /** Cụm gạch chân đánh nhãn trong vùng chọn hiện tại của trình soạn. */
 export interface LabelPhraseSelection {
   /** Nhãn của cụm đang chọn; `null` khi vùng chọn chưa phải cụm đánh nhãn (chèn mới). */

@@ -158,6 +158,11 @@ export function draftRowId(prefix: string): string {
   return `new-${prefix}-${rowSequence}`;
 }
 
+/** Id này là id tạm của dòng chưa lưu (từ `draftRowId`)? */
+export function isDraftRowId(id: string): boolean {
+  return id.startsWith("new-");
+}
+
 export function emptyOption(): EditorOption {
   return { id: draftRowId("o"), content: "", correct: false };
 }

@@ -2496,7 +2496,11 @@
         "add": "Add option",
         "added": "Added option {letter}.",
         "removed": "Deleted option {letter}.",
-        "moved": "Moved option {letter} to position {position}."
+        "moved": "Moved option {letter} to position {position}.",
+        "autoLabel": "Options taken from the underlined phrases",
+        "fromPhrase": "from underlined phrase",
+        "autoMissing": "No underlined phrase for option {letters}.",
+        "autoExtra": "Underlined phrase {labels} has no option."
       },
       "statements": {
         "hint": "Mark every statement True or False. At least 2 statements.",
