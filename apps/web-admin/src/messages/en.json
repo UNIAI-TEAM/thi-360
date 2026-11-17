@@ -5306,21 +5306,82 @@
       "latexPlaceholder": "x^2 + y^2 = z^2",
       "title": "Insert formula"
     },
+    "insert": {
+      "blank": {
+        "label": "Blank",
+        "description": "Numbered blank linked to a child of the set"
+      },
+      "chemistry": {
+        "label": "Chemistry formula",
+        "description": "Subscripts, charges, reaction arrows, conditions, states"
+      },
+      "cross": {
+        "label": "Punnett square",
+        "description": "P, G, F₁ for genetics"
+      },
+      "image": {
+        "label": "Image",
+        "description": "Charts, maps, diagrams, figures; with caption and source"
+      },
+      "math": {
+        "label": "Math formula",
+        "description": "Fractions, roots, limits, integrals, systems, vectors",
+        "panel": {
+          "title": "Selected formula",
+          "latexLabel": "LaTeX of the selected formula",
+          "displayLabel": "Display style",
+          "inline": "Inline",
+          "block": "Own line",
+          "edit": "Edit",
+          "delete": "Delete formula"
+        }
+      },
+      "quote": {
+        "label": "Quote",
+        "description": "Poems, prose, historical sources; keeps line breaks"
+      },
+      "symbols": {
+        "label": "Symbols and units",
+        "description": "Greek letters, units, biology symbols, IPA"
+      },
+      "table": {
+        "label": "Data table",
+        "description": "Paste from Excel; with table name, unit and source"
+      },
+      "underline-label": {
+        "label": "Labeled underline",
+        "description": "Error-spotting questions; pronunciation or stress"
+      },
+      "word": {
+        "label": "Paste from Word",
+        "description": "Bring stem, options and explanation from a Word document"
+      }
+    },
+    "insertDialog": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "insert": "Insert",
+      "stub": {
+        "body": "Work in progress"
+      }
+    },
+    "insertLoadError": "Couldn't load the insert dialog. Check your connection and try again.",
     "mathUnbalanced": "Math delimiters are unbalanced",
     "toolbar": {
       "bold": "Bold",
       "bulletList": "Bullet list",
-      "formula": "Insert formula",
-      "image": "Insert image",
-      "imageUploading": "Uploading image",
+      "groupHistory": "History",
+      "groupInsert": "Insert",
+      "groupText": "Text",
       "italic": "Italic",
       "label": "Content formatting",
       "orderedList": "Numbered list",
+      "redo": "Redo",
       "strike": "Strikethrough",
       "subscript": "Subscript",
       "superscript": "Superscript",
-      "table": "Insert table",
-      "underline": "Underline"
+      "underline": "Underline",
+      "undo": "Undo"
     }
   }
 }

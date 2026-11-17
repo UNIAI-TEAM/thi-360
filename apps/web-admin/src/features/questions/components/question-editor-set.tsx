@@ -178,6 +178,7 @@ function ChildCard({
                 aria-invalid={contentError ? true : undefined}
                 aria-describedby={contentError ? `${cardId}-content-error` : undefined}
                 name={`children.${index}.content`}
+                fieldContext={child.type === "SINGLE_CHOICE" ? "stem-single-choice" : "default"}
               />
               <FieldErrorText
                 id={`${cardId}-content-error`}
