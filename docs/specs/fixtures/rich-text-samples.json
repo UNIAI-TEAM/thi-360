@@ -250,6 +250,26 @@
       "allowImages": true,
       "html": "<p><span class=\"math-inline\" data-blank=\"1\">\\(x\\)</span></p>",
       "violations": [{ "tag": "span", "attribute": "data-blank" }]
+    },
+    {
+      "name": "bad-quote-source-before-body",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><p class=\"figure-source\">source</p><p>body</p></blockquote>",
+      "violations": [{ "tag": "blockquote" }]
+    },
+    {
+      "name": "bad-quote-source-before-footer",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><p>body</p><p class=\"figure-source\">source</p><footer>author</footer></blockquote>",
+      "violations": [{ "tag": "blockquote" }]
+    },
+    {
+      "name": "quote-footer-then-source",
+      "valid": true,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><p>body</p><footer>author</footer><p class=\"figure-source\">source</p></blockquote>"
     }
   ]
 }

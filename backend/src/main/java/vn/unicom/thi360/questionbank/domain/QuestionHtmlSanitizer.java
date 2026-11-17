@@ -537,7 +537,8 @@ public class QuestionHtmlSanitizer {
         }
         List<Element> children = el.children();
         int i = 0;
-        while (i < children.size() && children.get(i).tagName().equals("p")) {
+        while (i < children.size() && children.get(i).tagName().equals("p")
+                && !isPWithClass(children.get(i), "figure-source")) {
             i++;
         }
         boolean ok = i >= 1;
