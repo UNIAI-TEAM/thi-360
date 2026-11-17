@@ -188,6 +188,12 @@ public class ExamService {
                 + " LEFT JOIN catalog.catalog_item s ON s.id = e.subject_item_id";
         if (checkStatus != null && !checkStatus.isBlank()) {
             String wanted = checkStatus.trim().toUpperCase(Locale.ROOT);
+            try {
+                ExamCheckStatus.valueOf(wanted);
+            } catch (IllegalArgumentException ex) {
+                throw new ValidationException(List.of(new FieldError("checkStatus",
+                        "INVALID_CHECK_STATUS", messages.get("validation.exam.checkStatus.invalid"))));
+            }
             // Trạng thái hiệu lực làm vị từ DB (spec 5.4, B5): cùng phép so như
             // ExamCheckValidity.assess — hash cấu trúc, snapshot cấu hình, revision profile,
             // revision danh mục và từng source revision đã lưu. Count và trang đều dùng
@@ -316,7 +322,7 @@ public class ExamService {
                 Boolean.TRUE.equals(r.get("has_english_option")),
                 ((Number) r.get("combination_count")).intValue(),
                 (String) r.get("timing"),
-                (Integer) r.get("duration_minutes"),
+                "SHARED".equals(r.get("timing")) ? (Integer) r.get("duration_minutes") : null,
                 (BigDecimal) r.get("max_score"),
                 (BigDecimal) r.get("reference_max"),
                 (String) r.get("practice_scoring"),
@@ -999,7 +1005,7 @@ public class ExamService {
                 exam.isHasEnglishOption(),
                 exam.getCombinationCount(),
                 exam.getTiming(),
-                exam.getDurationMinutes(),
+                "SHARED".equals(exam.getTiming()) ? exam.getDurationMinutes() : null,
                 exam.getMaxScore(),
                 exam.getReferenceMax(),
                 exam.getPracticeScoring(),
