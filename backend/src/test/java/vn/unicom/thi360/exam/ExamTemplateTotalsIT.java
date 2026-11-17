@@ -178,7 +178,7 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
     }
 
     private void assertFull(String code, int questions, String points, int minutes) throws Exception {
-        var row = jdbc.queryForMap("select timing, duration_minutes, structure::text as document from exam.exam_template where code = ?", code);
+        var row = jdbc.queryForMap("select timing, duration_minutes, max_score, structure::text as document from exam.exam_template where code = ?", code);
         JsonNode parts = mapper.readTree((String) row.get("document")).path("parts");
         assertThat(parts).as(code).isNotEmpty();
         int count = 0;
@@ -191,6 +191,7 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
         }
         assertThat(count).as("%s required questions", code).isEqualTo(questions);
         assertThat(score).as("%s points", code).isEqualByComparingTo(points);
+        assertThat((BigDecimal) row.get("max_score")).as("%s stored scale", code).isEqualByComparingTo(points);
         int duration = "SHARED".equals(row.get("timing")) ? ((Number) row.get("duration_minutes")).intValue() : partMinutes;
         assertThat(duration).as("%s minutes", code).isEqualTo(minutes);
     }
