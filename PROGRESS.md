@@ -126,14 +126,15 @@
       7. phạm vi bài, bài ôn chủ đề và điểm tối đa của phần thực làm (FS-1, FS-5, FS-6).
     - M.Trường chốt (2026-11-17): giữ tự luận chấm tay; định hướng Tin chọn ở màn chuẩn bị; bộ đề SP2E làm trong đợt 3; nhóm giữ thứ tự, câu đảo trong nhóm, Văn nhóm 5 có công tắc.
   - **Đợt 2B, UNI-2647 (2026-11-17):**
-    - Đặc tả, bảng yêu cầu R-01 đến R-105, plan ở worktree `D:/orca/workspaces/cong-thi-360/UNI-2647-dot-2b` (`docs/specs/2026-11-17-pbi04-dot-2b*.md`, `docs/plans/2026-11-17-pbi04-dot-2b.md`). Chưa commit.
+    - Đặc tả, bảng yêu cầu R-01 đến R-105, plan: `docs/specs/2026-11-17-pbi04-dot-2b*.md`, `docs/plans/2026-11-17-pbi04-dot-2b.md`.
     - Plan: 17 task, 100 điểm, 5 sóng; cổng G0 (đợt 2 và PR UNI-2622 đã merge), G1 (duyệt), G2 (bản vẽ canvas trang 17 trở đi, xuất `docs/design/dot-2b/`, xong trước khi BE-1 merge).
     - Review Fable: lượt 1 Fable sửa đặc tả 2B, TM; plan 1 Chặn, 12 Nên sửa (tôi sửa: tách BE-4, FE-3, thêm BE-10 câu hỏi mẫu, BE-1 viết lại `R__` đề thi). Lượt 2 Fable sửa thêm (H20: tối đa 8 chỉ tiêu chủ đề mỗi cấp), không còn Chặn. Báo cáo `.thi360-dev/review-2b-r1.md`, `review-2b-r2.md`.
-    - Đợt 3 đã sửa theo 2B (chưa commit, nhánh `docs/UNI-2622-dac-ta-pbi-05`): LT (Tin chọn trước, 17 − 1, `PaperOrdering`, số câu và điểm từ `paths[]`); TM C17 và mục 16 bộ đề; plan 36 task, 103 điểm, cổng G0b chặn EX-1, EX-2; `docs/design/dot-3/README.md` có danh sách màn cần vẽ lại.
+    - Đợt 3 đã sửa theo 2B (nhánh `docs/UNI-2622-dac-ta-pbi-05`): LT (Tin chọn trước, 17 − 1, `PaperOrdering`, số câu và điểm từ `paths[]`); TM C17 và mục 16 bộ đề; plan 36 task, 103 điểm, cổng G0b chặn EX-1, EX-2; `docs/design/dot-3/README.md` có danh sách màn cần vẽ lại.
     - **M.Trường chốt K6 đến K15 (2026-11-17):** chỉ tiêu chủ đề là "ít nhất"; Văn SP2E V1 bỏ phần Viết, mặc định bản đề minh họa cũ 30 câu; phiên bản cấu trúc chọn ở bước 2; khối lớp của môn không phân lớp chỉ để đối chiếu; chỉ tiêu cấp phần để sau V1; bỏ dạng bài, phân biệt bằng nhãn và MAPID; sinh thử đảo phương án như đề thật; bỏ revision riêng của tập mã; THPTQG Tin 24 + 2 + 2 (BA xác nhận). Fable thêm H21 (độ khó tham khảo), H22 (nhãn khớp một trong).
     - Fable lượt 3, 3b áp quyết định vào đặc tả; tôi sửa hai plan; lượt 4 rà khớp, không còn Chặn (`.thi360-dev/review-2b-r3.md`, `r3b`, `r4`). Plan 2B vẫn 17 task, 100 điểm; đợt 3 36 task, 103 điểm.
     - **Hỏi BA:** danh sách và tên nhãn dạng câu; câu thật phải gắn nhãn; các câu còn lại ở 2B mục 18.
-    - **Tiếp theo:** M.Trường duyệt (G1); vẽ bản vẽ 2B (G2, bước 2 có ô chọn phiên bản) và vẽ lại các màn đợt 3; commit, PR khi được yêu cầu. Chưa cook.
+    - **M.Trường duyệt đặc tả và plan 2B, đợt 3 ngày 2026-11-17 (G1).** PR #70 (2B) đã merge vào `develop`; PR của UNI-2622 mở cùng ngày.
+    - **Tiếp theo:** vẽ bản vẽ 2B (G2: canvas trang 17 trở đi, bước 2 có ô chọn phiên bản, biểu mẫu nhóm có nhãn, sinh thử) và vẽ lại 5 màn đợt 3 (chuẩn bị làm bài, chọn phần 3, xác nhận nộp, bộ đề, làm thử). Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
 

@@ -98,13 +98,13 @@ Sóng: 1 BE-1 · FE-3a → 2 BE-2a · BE-4 · BE-5a · FE-3b · FE-3c → 3 BE-2
 
 | Issue | Việc | Trạng thái |
 |---|---|---|
-| UNI-2622 | Đặc tả thương mại `docs/specs/2026-11-16-thuong-mai-pbi-05-09.md` (trang giới thiệu, danh mục, đăng ký, email, khuyến mãi, voucher, đơn hàng, VNPAY, hoàn tiền, Bài thi của tôi) và đặc tả lượt thi `docs/specs/2026-11-16-luot-thi-pbi-10-13.md` (làm bài 7 kỳ thi, lưu và khôi phục, chấm, kết quả, lịch sử). Plan triển khai `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-05-13.md` (36 task, 103 điểm, sửa theo đợt 2B: cổng G0b, bộ đề CM-6, FB), đã qua 2 lượt review và 2 lượt review theo 2B; chờ duyệt, chưa cook | in_progress |
+| UNI-2622 | Đặc tả thương mại `docs/specs/2026-11-16-thuong-mai-pbi-05-09.md` (trang giới thiệu, danh mục, đăng ký, email, khuyến mãi, voucher, đơn hàng, VNPAY, hoàn tiền, Bài thi của tôi) và đặc tả lượt thi `docs/specs/2026-11-16-luot-thi-pbi-10-13.md` (làm bài 7 kỳ thi, lưu và khôi phục, chấm, kết quả, lịch sử). Plan triển khai `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-05-13.md` (36 task, 103 điểm, sửa theo đợt 2B: cổng G0b, bộ đề CM-6, FB), đã qua 2 lượt review và các lượt review theo 2B; M.Trường duyệt 2026-11-17; chưa cook | in_progress |
 
 ### Đợt 2B · Cập nhật bài thi và ma trận theo UniNote PBI-04 2026-11-17
 
 | Issue | Việc | Trạng thái |
 |---|---|---|
-| UNI-2647 | Đặc tả `docs/specs/2026-11-17-pbi04-dot-2b.md`, bảng yêu cầu `docs/specs/2026-11-17-pbi04-dot-2b-yeu-cau.md`, plan `docs/plans/2026-11-17-pbi04-dot-2b.md` (17 task, 100 điểm). Ở worktree `UNI-2647-dot-2b` (tách từ `develop`), chưa commit. Đã qua 4 lượt review của Fable; M.Trường đã chốt K6 đến K15; chờ duyệt, chưa cook | in_progress |
+| UNI-2647 | Đặc tả `docs/specs/2026-11-17-pbi04-dot-2b.md`, bảng yêu cầu `docs/specs/2026-11-17-pbi04-dot-2b-yeu-cau.md`, plan `docs/plans/2026-11-17-pbi04-dot-2b.md` (17 task, 100 điểm). Đã qua 4 lượt review của Fable; M.Trường chốt K6 đến K15 và duyệt 2026-11-17; PR #70 đã merge. Chưa cook; chờ bản vẽ G2 | in_progress |
 
 ### Thứ tự làm
 
