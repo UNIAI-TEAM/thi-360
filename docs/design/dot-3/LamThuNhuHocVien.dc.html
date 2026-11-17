@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài thi · làm thử như học viên</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.m{font-family:'Cambria Math','Times New Roman',serif;font-size:1.08em}
+.fld{height:48px;box-sizing:border-box;padding:0 12px;border:1px solid var(--bd);border-radius:12px;background:var(--sf);color:var(--tx);font:inherit;font-size:16px}
+</style>
+</helmet>
+<div class="th {{theme}}" style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); background: var(--bg); min-height: 2000px">
+
+  <section aria-labelledby="entry" style="background: var(--sb); border-bottom: 1px dashed var(--bds); padding: 20px 24px; display: flex; flex-direction: column; gap: 10px">
+    <h2 id="entry" style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx3)">Lối vào · tab Xem trước của bài thi (web admin)</h2>
+    <div style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px">
+      <div style="flex: 1 1 360px; min-width: 0"><strong>Đề thử SPT Toán · đường duy nhất</strong><div style="font-size: 12.5px; color: var(--tx3)">22 câu · 7 điểm · tạo lúc 10:42, giữ 30 phút · thứ tự câu và phương án đã đảo như đề thật</div></div>
+      <button type="button" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font: inherit; font-weight: 600; cursor: pointer">Xem thứ tự gốc</button>
+      <button type="button" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font: inherit; font-weight: 600; cursor: pointer">Sinh đề thử mới</button>
+      <a href="LamThuNhuHocVien.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Làm thử như học viên</a>
+    </div>
+    <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: var(--tx3)">Làm thử dùng đúng đề thử đang xem. Mở trong tab mới; tab Xem trước giữ nguyên. Cần quyền EXAM.VIEW.</p>
+  </section>
+
+  <header style="background: var(--sf); border-bottom: 1px solid var(--bd)">
+    <div style="max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+        <div aria-hidden="true" style="width: 40px; height: 40px; flex: none; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 700; display: flex; align-items: center; justify-content: center">360</div>
+        <div style="min-width: 0"><div style="font-size: 16px; line-height: 24px; font-weight: 600">SPT Toán – Đề luyện số 1</div><div style="font-size: 12.5px; line-height: 19px; color: var(--tx3)">SPT · Bài thi theo môn · {{partName}}</div></div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+        <span style="height: 32px; box-sizing: border-box; padding: 0 12px; border-radius: 9999px; background: var(--wnb); color: var(--wn); display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>Làm thử · không tạo lượt</span>
+        <span style="height: 32px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 9999px; color: var(--tx2); display: inline-flex; align-items: center; font-size: 13px; font-weight: 500">Không tính giờ</span>
+        <a href="KetQuaLamThu.dc.html" style="height: 44px; box-sizing: border-box; padding: 0 18px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap">Nộp và chấm thử</a>
+      </div>
+    </div>
+  </header>
+
+  <div role="note" style="max-width: 1280px; margin: 16px auto 0; box-sizing: border-box; padding: 0 24px">
+    <div style="border: 1px solid var(--wnbd); background: var(--wnb); border-radius: 12px; padding: 12px 16px; color: var(--tx2)"><strong style="color: var(--wn)">Bạn đang làm thử như học viên.</strong> Không tạo lượt thi, không trừ lượt, không tạo kết quả học tập. Câu chỉ được ghi sổ là xem trước. Đóng tab là bỏ lần làm thử.</div>
+  </div>
+
+  <nav aria-label="Các phần của đề thử" style="max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 16px 24px 0">
+    <div role="tablist" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 8px">
+      <sc-for list="{{parts}}" as="p" hint-placeholder-count="3">
+        <button type="button" role="tab" aria-selected="{{p.sel}}" onClick="{{p.pick}}" style="{{p.style}}"><span style="display: block; font-weight: 600">{{p.name}}</span><span style="display: block; font-size: 12.5px; line-height: 19px; color: var(--tx3)">{{p.meta}}</span></button>
+      </sc-for>
+    </div>
+  </nav>
+
+  <main style="max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 16px 24px 32px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px">
+      <section aria-labelledby="q-title" style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px"><h1 id="q-title" style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 700">{{qTitle}}</h1><span style="height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; background: var(--p50); color: var(--pt); display: inline-flex; align-items: center">{{qType}}</span><span style="font-size: 12.5px; color: var(--tx3)">{{qPoints}}</span></div>
+
+        <sc-if value="{{isMc}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 14px; font-size: 16px; line-height: 26px">
+            <div>Tập nghiệm của bất phương trình <span class="m">log<sub>2</sub>(<i>x</i> − 1) &lt; 3</span> là</div>
+            <fieldset style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+              <legend class="sr-only">Phương án của câu 3</legend>
+              <sc-for list="{{mc}}" as="o" hint-placeholder-count="4">
+                <label style="{{o.style}}"><input type="radio" name="mc3" checked="{{o.on}}" onChange="{{o.pick}}" style="width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--p600)"><strong style="font-weight: 600">{{o.key}}.</strong><span class="m">{{o.text}}</span></label>
+              </sc-for>
+            </fieldset>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isTf}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 14px; font-size: 16px; line-height: 26px">
+            <div>Cho hàm số <span class="m"><i>f</i>(<i>x</i>) = <i>x</i><sup>3</sup> − 3<i>x</i> + 1</span>. Mỗi ý sau đúng hay sai?</div>
+            <div role="table" aria-label="Các ý của câu 1, phần II" style="border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+              <sc-for list="{{tf}}" as="s" hint-placeholder-count="4">
+                <div role="row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 14px; border-bottom: 1px solid var(--bd)">
+                  <span role="cell" style="flex: 1 1 320px; min-width: 0"><strong>{{s.key}})</strong> <span class="m">{{s.text}}</span></span>
+                  <span role="cell" style="display: flex; gap: 8px">
+                    <button type="button" aria-pressed="{{s.tOn}}" onClick="{{s.setT}}" style="{{s.tStyle}}">Đúng</button>
+                    <button type="button" aria-pressed="{{s.fOn}}" onClick="{{s.setF}}" style="{{s.fStyle}}">Sai</button>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isSa}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 14px; font-size: 16px; line-height: 26px">
+            <div>Một hình hộp chữ nhật có ba kích thước 2, 3 và 6. Tính độ dài đường chéo của hình hộp.</div>
+            <label style="display: flex; flex-direction: column; gap: 6px; max-width: 320px"><span style="font-size: 14px; font-weight: 500">Đáp án</span><input class="fld" inputmode="decimal" value="7"><span style="font-size: 12.5px; line-height: 19px; color: var(--tx3)">Nhập số nguyên.</span></label>
+          </div>
+        </sc-if>
+
+        <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: var(--tx3); padding-top: 12px; border-top: 1px solid var(--bd)">Câu hiện bằng thành phần câu hỏi của màn làm bài; thứ tự câu và phương án như học viên thấy.</p>
+      </section>
+
+      <aside aria-labelledby="pal" style="flex: 1 1 300px; max-width: 360px; min-width: 0; box-sizing: border-box; background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <h2 id="pal" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Danh sách câu</h2>
+        <sc-for list="{{pal}}" as="g" hint-placeholder-count="3">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="font-size: 12.5px; font-weight: 600; color: var(--tx3)">{{g.name}}</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px">
+              <sc-for list="{{g.qs}}" as="b" hint-placeholder-count="8">
+                <button type="button" aria-label="{{b.label}}" onClick="{{b.go}}" style="{{b.style}}">{{b.n}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: var(--tx3)">Làm thử chuyển qua lại giữa các phần được, không khóa phần như lượt thật.</p>
+      </aside>
+    </div>
+
+    <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 16px">
+      <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Đề thử đã hết hạn (PREVIEW_EXPIRED)</h3>
+          <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px"><strong style="color: var(--er)">Đề thử đã hết hạn sau 30 phút.</strong><span style="color: var(--tx2)">Câu trả lời của lần làm thử này không chấm được. Sinh đề thử mới ở tab Xem trước rồi làm thử lại.</span><a href="LamThuNhuHocVien.dc.html" style="align-self: flex-start; height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Về tab Xem trước</a></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Đề thử chưa sinh được</h3>
+          <p style="margin: 0; color: var(--tx2)">Đường lỗi khi sinh thử thì nút Làm thử như học viên bị khóa, kèm dòng "Chưa có đề thử để làm".</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Đang tải đề, thiếu quyền</h3>
+          <div aria-busy="true" aria-label="Đang mở đề thử" style="display: flex; flex-direction: column; gap: 8px"><div style="height: 18px; width: 50%; border-radius: 6px; background: var(--sb)"></div><div style="height: 48px; border-radius: 12px; background: var(--sb)"></div><div style="height: 48px; border-radius: 12px; background: var(--sb)"></div></div>
+          <p style="margin: 0; color: var(--tx2)">Thiếu EXAM.VIEW: trang 403 của web admin.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Rời trang khi đã trả lời</h3>
+          <p style="margin: 0; color: var(--tx2)">Hỏi "Bỏ lần làm thử này?" với hai nút Ở lại, Bỏ. Câu trả lời làm thử không được lưu ở máy chủ trước khi nộp.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":2000}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { q: 'p1-3', mc: 'B', tf: { a: 'T', b: 'F', c: 'T', d: '' } }; }
+renderVals() {
+const st = this.state;
+const partOf = st.q.split('-')[0];
+const partsDef = [['p1', 'Phần I · Trắc nghiệm', '16 câu · 0,25 điểm mỗi câu', 'p1-3'], ['p2', 'Phần II · Đúng/Sai', '2 câu · tối đa 1 điểm mỗi câu', 'p2-1'], ['p3', 'Phần III · Trả lời ngắn', '4 câu · 0,25 điểm mỗi câu', 'p3-1']];
+const parts = partsDef.map((p) => {
+const on = p[0] === partOf;
+return { name: p[1], meta: p[2], sel: on ? 'true' : 'false', pick: () => this.setState({ q: p[3] }),
+style: 'min-height: 56px; box-sizing: border-box; padding: 8px 12px; text-align: left; border-radius: 12px; font: inherit; color: var(--tx); cursor: pointer; ' + (on ? 'border: 2px solid var(--p600); background: var(--p50)' : 'border: 1px solid var(--bd); background: var(--sf)') };
+});
+const mcDef = [['A', '(1; 7)'], ['B', '(1; 9)'], ['C', '(−∞; 9)'], ['D', '[1; 9)']];
+const mc = mcDef.map((o) => {
+const on = st.mc === o[0];
+return { key: o[0], text: o[1], on, pick: () => this.setState({ mc: o[0] }),
+style: 'display: flex; align-items: center; gap: 12px; min-height: 52px; box-sizing: border-box; padding: 10px 14px; border-radius: 12px; cursor: pointer; ' + (on ? 'border: 2px solid var(--p600); background: var(--p50)' : 'border: 1px solid var(--bd); background: var(--sf)') };
+});
+const tfDef = [['a', 'f′(x) = 3x² − 3'], ['b', 'Hàm số đồng biến trên khoảng (−1; 1)'], ['c', 'Giá trị cực đại của hàm số bằng 3'], ['d', 'Phương trình f(x) = 0 có đúng hai nghiệm thực']];
+const btn = (on) => 'min-width: 72px; height: 44px; padding: 0 12px; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; ' + (on ? 'border: 2px solid var(--p600); background: var(--p50); color: var(--pt)' : 'border: 1px solid var(--bd); background: var(--sf); color: var(--tx2)');
+const tf = tfDef.map((s) => {
+const v = st.tf[s[0]];
+const set = (x) => { const n = Object.assign({}, st.tf); n[s[0]] = x; this.setState({ tf: n }); };
+return { key: s[0], text: s[1], tOn: v === 'T' ? 'true' : 'false', fOn: v === 'F' ? 'true' : 'false', tStyle: btn(v === 'T'), fStyle: btn(v === 'F'), setT: () => set('T'), setF: () => set('F') };
+});
+const answered = { 'p1': [1, 2, 3, 4, 5, 6, 7, 9, 10, 11], 'p2': [1], 'p3': [1, 2] };
+const counts = { p1: 16, p2: 2, p3: 4 };
+const names = { p1: 'Phần I', p2: 'Phần II', p3: 'Phần III' };
+const pal = ['p1', 'p2', 'p3'].map((p) => {
+const qs = [];
+for (let i = 1; i <= counts[p]; i++) {
+const id = p + '-' + i;
+const cur = id === st.q;
+const ans = answered[p].indexOf(i) >= 0;
+qs.push({ n: i, label: names[p] + ', câu ' + i + (ans ? ', đã trả lời' : ', chưa trả lời') + (cur ? ', đang xem' : ''), go: () => this.setState({ q: id }),
+style: 'width: 44px; height: 44px; padding: 0; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; ' + (cur ? 'border: 2px solid var(--p600); background: var(--sf); color: var(--tx)' : ans ? 'border: 1px solid var(--p200); background: var(--p50); color: var(--pt)' : 'border: 1px solid var(--bd); background: var(--sf); color: var(--tx2)') });
+}
+return { name: names[p], qs };
+});
+const kind = partOf === 'p1' ? 'mc' : partOf === 'p2' ? 'tf' : 'sa';
+const n = st.q.split('-')[1];
+const meta = { mc: ['Chọn một đáp án', '0,25 điểm'], tf: ['Đúng/Sai', 'Tối đa 1 điểm'], sa: ['Trả lời ngắn', '0,25 điểm'] }[kind];
+return {
+theme: this.props.dark ? 'dark' : '', parts, mc, tf, pal,
+isMc: kind === 'mc', isTf: kind === 'tf', isSa: kind === 'sa',
+qTitle: names[partOf] + ' · Câu ' + n, qType: meta[0], qPoints: meta[1], partName: partsDef.filter((p) => p[0] === partOf)[0][1]
+};
+}
+}
+</script>
+</body>
+</html>

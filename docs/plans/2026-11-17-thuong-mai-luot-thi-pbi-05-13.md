@@ -1112,7 +1112,7 @@ Số mục trỏ vào TM, LT, BE.
 
 **Spec:** LT 5.1, 5.2 (bước 5), 6, 7.2, 7.4, 8, L7, L8, F10, F12.
 
-**Thiết kế** (`docs/design/dot-3/`, canvas trang 12): `ChuanBiLamBai`, `DangChuanBiDe`, `LamBaiTheoPhan`, `LamBaiMobileTheoPhan`, `HoanThanhPhan`, `ChonPhan3`, `NopBaiXacNhan`, `TiepQuanLuot`. Bản vẽ trước đợt 2B: `ChuanBiLamBai` chưa có chọn định hướng; `ChonPhan3`, `NopBaiXacNhan` còn ô giữ chỗ và cảnh báo định hướng. Theo đặc tả (LT 6.2), không theo các chỗ đó.
+**Thiết kế** (`docs/design/dot-3/`, canvas trang 12): `ChuanBiLamBai`, `DangChuanBiDe`, `LamBaiTheoPhan`, `LamBaiMobileTheoPhan`, `HoanThanhPhan`, `ChonPhan3`, `NopBaiXacNhan`, `TiepQuanLuot`. Đã vẽ lại theo đợt 2B ngày 2026-11-17: `ChuanBiLamBai` có chọn định hướng Tin học (như mã BCA) và số câu, thời lượng, điểm tối đa của đường; `ChonPhan3` bỏ ô giữ chỗ định hướng, QDA hiện mã kèm tên môn theo thứ tự; `NopBaiXacNhan` bỏ cảnh báo định hướng.
 
 **Sản phẩm:**
 
@@ -1209,7 +1209,7 @@ Số mục trỏ vào TM, LT, BE.
 
 **Spec:** TM 16.4. **Phụ thuộc mềm:** FA-3.
 
-**Thiết kế:** chưa có. Cần vẽ trước khi lane bắt đầu: màn admin "Bộ đề" (danh sách, tạo, sửa), thẻ và trang chi tiết bộ, trang mua bộ, nhóm thẻ theo bộ ở `/home`. Chưa có bản vẽ thì lane không bắt đầu (Phần E).
+**Thiết kế** (`docs/design/dot-3/`, canvas trang 20): admin `BoDeAdmin`, `TaoBoDe`; học viên `ChiTietBoDe` (kèm thẻ bộ ở danh mục), `XacNhanMuaBo`, `BaiThiCuaToiTheoBo`.
 
 **Sản phẩm:**
 
@@ -1226,7 +1226,7 @@ Số mục trỏ vào TM, LT, BE.
 
 **Spec:** LT 9.2, 12; 2B H17 (R-16, Q-24).
 
-**Thiết kế** (`docs/design/dot-3/`, canvas trang 16): `LuotThiAdmin`, `ChiTietLuotThiAdmin`; `/grading` giữ màn đợt 2.
+**Thiết kế** (`docs/design/dot-3/`, canvas trang 16 và 20): `LuotThiAdmin`, `ChiTietLuotThiAdmin`; `/grading` giữ màn đợt 2; làm thử như học viên `LamThuNhuHocVien` (nút vào ở tab Xem trước), `KetQuaLamThu` (trang 20).
 
 **Sản phẩm:**
 

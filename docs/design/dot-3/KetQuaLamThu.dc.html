@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài thi · kết quả làm thử</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+thead th{position:sticky;top:0;z-index:1;background:var(--thd)}
+</style>
+</helmet>
+<div class="th {{theme}}" style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); background: var(--bg); min-height: 2300px">
+
+  <header style="background: var(--sf); border-bottom: 1px solid var(--bd)">
+    <div style="max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+        <div aria-hidden="true" style="width: 40px; height: 40px; flex: none; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 700; display: flex; align-items: center; justify-content: center">360</div>
+        <div style="min-width: 0"><div style="font-size: 16px; line-height: 24px; font-weight: 600">SPT Toán – Đề luyện số 1</div><div style="font-size: 12.5px; line-height: 19px; color: var(--tx3)">Kết quả làm thử · đề thử tạo lúc 10:42</div></div>
+      </div>
+      <span style="height: 32px; box-sizing: border-box; padding: 0 12px; border-radius: 9999px; background: var(--wnb); color: var(--wn); display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600">Làm thử · không tạo lượt</span>
+    </div>
+  </header>
+
+  <main style="max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+    <div role="note" style="border: 1px solid var(--wnbd); background: var(--wnb); border-radius: 12px; padding: 12px 16px; color: var(--tx2)">Lần làm thử này không tạo lượt thi và không tạo kết quả học tập; không có trong lịch sử của học viên nào. Điểm chấm bằng đúng bộ chấm của lượt thi thật.</div>
+
+    <section aria-labelledby="sum" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; padding: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 32px">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <h1 id="sum" style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx3)">Điểm làm thử</h1>
+        <div style="font-size: 36px; line-height: 44px; font-weight: 700; font-variant-numeric: tabular-nums">5,5 <span style="font-size: 20px; color: var(--tx3); font-weight: 600">/ 7</span></div>
+      </div>
+      <dl style="flex: 1 1 520px; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px 24px; font-variant-numeric: tabular-nums">
+        <div><dt style="color: var(--tx3)">Phần I · Trắc nghiệm</dt><dd style="margin: 0; font-weight: 600">3,25 / 4</dd></div>
+        <div><dt style="color: var(--tx3)">Phần II · Đúng/Sai</dt><dd style="margin: 0; font-weight: 600">1,5 / 2</dd></div>
+        <div><dt style="color: var(--tx3)">Phần III · Trả lời ngắn</dt><dd style="margin: 0; font-weight: 600">0,75 / 1</dd></div>
+        <div><dt style="color: var(--tx3)">22 câu</dt><dd style="margin: 0; font-weight: 600">17 đúng · 1 đúng một phần · 3 sai · 1 bỏ trống</dd></div>
+      </dl>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <a href="LamThuNhuHocVien.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Làm lại đề này</a>
+        <a href="LamThuNhuHocVien.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Về tab Xem trước</a>
+      </div>
+    </section>
+
+    <section aria-labelledby="tbl" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; overflow: hidden">
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px">
+        <h2 id="tbl" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Điểm từng câu</h2>
+        <span style="color: var(--tx3)">Câu theo thứ tự học viên thấy. Đúng/Sai ghi từng ý.</span>
+      </div>
+      <div role="region" tabindex="0" aria-labelledby="cap" style="overflow: auto">
+        <table style="width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums">
+          <caption id="cap" class="sr-only">Điểm từng câu của lần làm thử</caption>
+          <thead>
+            <tr style="text-align: left; font-size: 13px; color: var(--tx3)">
+              <th scope="col" style="padding: 10px 20px; font-weight: 600; border-bottom: 1px solid var(--bd)">Câu</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; border-bottom: 1px solid var(--bd)">Dạng</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; border-bottom: 1px solid var(--bd)">Đã trả lời</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; border-bottom: 1px solid var(--bd)">Đáp án đúng</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; border-bottom: 1px solid var(--bd)">Kết quả</th>
+              <th scope="col" style="padding: 10px 20px; font-weight: 600; border-bottom: 1px solid var(--bd); text-align: right">Điểm</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="22">
+              <sc-if value="{{r.isHead}}" hint-placeholder-val="{{false}}">
+                <tr><th scope="rowgroup" colspan="6" style="padding: 10px 20px 6px; text-align: left; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx3); font-weight: 600; background: var(--sb)">{{r.head}}</th></tr>
+              </sc-if>
+              <sc-if value="{{r.isRow}}" hint-placeholder-val="{{true}}">
+                <tr>
+                  <th scope="row" style="padding: 10px 20px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--bd); vertical-align: top">{{r.n}}</th>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid var(--bd); vertical-align: top">{{r.type}}</td>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid var(--bd); vertical-align: top">
+                    <sc-if value="{{r.noSub}}" hint-placeholder-val="{{true}}"><span>{{r.given}}</span></sc-if>
+                    <sc-if value="{{r.hasSub}}" hint-placeholder-val="{{false}}">
+                      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px">
+                        <sc-for list="{{r.subs}}" as="s" hint-placeholder-count="4">
+                          <li style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center"><strong>{{s.k}})</strong> chọn {{s.given}} · đúng là {{s.key}} <span style="{{s.chip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.icon}}"></path></svg>{{s.res}}</span></li>
+                        </sc-for>
+                      </ul>
+                    </sc-if>
+                  </td>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid var(--bd); vertical-align: top">{{r.key}}</td>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid var(--bd); vertical-align: top"><span style="{{r.chip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.icon}}"></path></svg>{{r.res}}</span></td>
+                  <td style="padding: 10px 20px; border-bottom: 1px solid var(--bd); text-align: right; vertical-align: top; white-space: nowrap">{{r.pts}}</td>
+                </tr>
+              </sc-if>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; padding: 12px 20px 16px; font-size: 12.5px; line-height: 19px; color: var(--tx3)">Đúng/Sai SPT chấm theo số ý đúng: 1 ý 0,1; 2 ý 0,25; 3 ý 0,5; 4 ý 1 điểm. Điểm làm tròn ở bước cuối.</p>
+    </section>
+
+    <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 16px">
+      <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Đề có câu tự luận</h3>
+          <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center"><strong>BCA · Phần 1 · Ngữ văn</strong><span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 9999px; background: var(--wnb); color: var(--wn); font-size: 12.5px; font-weight: 500"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>Chấm tay</span></div>
+            <span style="color: var(--tx2)">Chờ chấm · không có điểm tự động. Bài viết thử (612 chữ) hiện cạnh hướng dẫn chấm và tiêu chí để đối chiếu. Điểm làm thử ghi "61 / 75 phần trắc nghiệm · tự luận chưa chấm".</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Đề thử hết hạn khi nộp (PREVIEW_EXPIRED)</h3>
+          <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 12px; padding: 12px 16px; color: var(--tx2)"><strong style="display: block; color: var(--er)">Không chấm được: đề thử đã hết hạn.</strong>Sinh đề thử mới ở tab Xem trước rồi làm thử lại.</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Đang chấm, lỗi chấm</h3>
+          <div role="status" aria-busy="true" style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px 16px; color: var(--tx2)">Đang chấm thử…</div>
+          <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 12px; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="flex: 1 1 180px; color: var(--er); font-weight: 600">Chưa chấm được. Câu trả lời vẫn còn trên trang.</span><button type="button" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font: inherit; font-weight: 600; cursor: pointer">Chấm lại</button></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":2300}}'>
+class Component extends DCLogic {
+chip(kind) {
+const c = { ok: ['--okb', '--ok'], bad: ['--erb', '--er'], warn: ['--wnb', '--wn'], off: ['--ntb', '--nt'] }[kind];
+return 'display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 9999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+renderVals() {
+const OK = 'M20 6 9 17l-5-5', BAD = 'M18 6 6 18M6 6l12 12', PART = 'M5 12h14', NONE = 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z';
+const res = { ok: ['Đúng', OK, 'ok'], bad: ['Sai', BAD, 'bad'], part: ['Đúng một phần', PART, 'warn'], none: ['Bỏ trống', NONE, 'off'] };
+const mk = (n, type, given, key, r, pts, subs) => {
+const x = res[r];
+return { isHead: false, isRow: true, n, type, given, key, res: x[0], icon: x[1], chip: this.chip(x[2]), pts, hasSub: !!subs, noSub: !subs, subs: subs || [] };
+};
+const keys = 'BDACABCDBADCABDA';
+const rows = [{ isHead: true, isRow: false, head: 'Phần I · Trắc nghiệm · 3,25 / 4' }];
+for (let i = 1; i <= 16; i++) {
+const k = keys[i - 1];
+if (i === 15) rows.push(mk(i, 'Một đáp án', '—', k, 'none', '0 / 0,25'));
+else if (i === 8 || i === 12) rows.push(mk(i, 'Một đáp án', k === 'A' ? 'C' : 'A', k, 'bad', '0 / 0,25'));
+else rows.push(mk(i, 'Một đáp án', k, k, 'ok', '0,25 / 0,25'));
+}
+const sub = (k, g, key) => { const ok = g === key; const x = ok ? res.ok : res.bad; return { k, given: g, key, res: x[0], icon: x[1], chip: this.chip(x[2]) }; };
+rows.push({ isHead: true, isRow: false, head: 'Phần II · Đúng/Sai · 1,5 / 2' });
+rows.push(mk(1, 'Đúng/Sai', '', 'a Đ · b S · c Đ · d S', 'ok', '1 / 1', [sub('a', 'Đúng', 'Đúng'), sub('b', 'Sai', 'Sai'), sub('c', 'Đúng', 'Đúng'), sub('d', 'Sai', 'Sai')]));
+rows.push(mk(2, 'Đúng/Sai', '', 'a S · b Đ · c Đ · d S', 'part', '0,5 / 1', [sub('a', 'Sai', 'Sai'), sub('b', 'Đúng', 'Đúng'), sub('c', 'Sai', 'Đúng'), sub('d', 'Sai', 'Sai')]));
+rows.push({ isHead: true, isRow: false, head: 'Phần III · Trả lời ngắn · 0,75 / 1' });
+rows.push(mk(1, 'Trả lời ngắn', '7', '7', 'ok', '0,25 / 0,25'));
+rows.push(mk(2, 'Trả lời ngắn', '0,5', '0,5', 'ok', '0,25 / 0,25'));
+rows.push(mk(3, 'Trả lời ngắn', '12', '12', 'ok', '0,25 / 0,25'));
+rows.push(mk(4, 'Trả lời ngắn', '3,14', '3,15', 'bad', '0 / 0,25'));
+return { theme: this.props.dark ? 'dark' : '', rows };
+}
+}
+</script>
+</body>
+</html>

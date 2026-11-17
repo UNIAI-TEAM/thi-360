@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · nhóm câu chùm (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+input,select,button{font:inherit}
+input,select{color-scheme:light}.th.dark input,.th.dark select{color-scheme:dark}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; min-height: 2050px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · HSA FULL › Phần 2 · Văn học – Ngôn ngữ › Nhóm 5</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+    <div style="padding: 16px; border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+          <h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Nhóm 5 · Đọc hiểu theo ngữ liệu</h1>
+          <span style="{{chipInfo}}">Câu 26–50</span><span style="{{chipWarn}}">Cần kiểm tra lại</span>
+        </div>
+        <p style="margin: 0; color: var(--tx3)">Thứ tự nhóm theo mẫu, không đổi. Dải câu do hệ thống tính.</p>
+      </div>
+      <div style="display: flex; gap: 8px; align-self: flex-start">
+        <a href="BaiThiBuoc2.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; border: 1px solid var(--bd); color: var(--tx2); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Về màn môn</a>
+        <button type="button" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra môn</button>
+      </div>
+    </div>
+
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="g-name" style="font-weight: 600">Tên nhóm</label>
+          <input id="g-name" value="Đọc hiểu theo ngữ liệu" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)">
+        </div>
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px">
+          <legend style="font-weight: 600; margin-bottom: 6px">Cách lấy</legend>
+          <div style="display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sb); gap: 2px">
+            <label style="flex: 1; min-height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 8px; color: var(--tx2); cursor: pointer"><input type="radio" name="mode" class="sr-only">Câu đơn</label>
+            <label style="flex: 1; min-height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 8px; background: var(--sf); color: var(--pt); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.10); cursor: pointer"><input type="radio" name="mode" checked class="sr-only">Câu chùm</label>
+          </div>
+        </fieldset>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="g-type" style="font-weight: 600">Loại câu hỏi của câu con</label>
+          <select id="g-type" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"><option selected>Một đáp án</option><option>Nhiều đáp án</option><option>Đúng/Sai</option><option>Trả lời ngắn</option><option>Bất kỳ</option></select>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; align-items: end">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="g-sets" style="font-weight: 600">Số chùm</label>
+          <input id="g-sets" value="5" inputmode="numeric" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="g-child" style="font-weight: 600">Số câu con mỗi chùm</label>
+          <input id="g-child" value="5" inputmode="numeric" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)">
+        </div>
+        <p style="margin: 0; padding-bottom: 8px; color: var(--tx2); font-variant-numeric: tabular-nums"><strong>25 câu</strong> · luôn lấy nguyên chùm</p>
+      </div>
+
+      <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span id="sw-l" style="font-weight: 600">Đảo thứ tự các chùm</span>
+          <span id="sw-d" style="color: var(--tx3)">Chùm đã chọn đổi vị trí trong nhóm theo từng đề. Câu con trong chùm giữ thứ tự. Chỉ nhóm 5 của Văn HSA và Văn QDA có công tắc này.</span>
+        </div>
+        <button type="button" role="switch" aria-checked="true" aria-labelledby="sw-l" aria-describedby="sw-d" style="flex: none; width: 44px; height: 24px; border: 0; padding: 2px; border-radius: 9999px; background: var(--pf); display: flex; justify-content: flex-end; cursor: pointer"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 9999px; background: #FFFFFF"></span></button>
+      </div>
+
+      <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+        <legend style="font-weight: 600; margin-bottom: 8px">Phạm vi kiến thức</legend>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <label style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 2px solid var(--p600); background: var(--p50); border-radius: 10px; cursor: pointer"><input type="radio" name="ks" checked style="margin: 0; accent-color: var(--p600)">Toàn môn</label>
+          <label style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid var(--bd); border-radius: 10px; cursor: pointer"><input type="radio" name="ks" style="margin: 0; accent-color: var(--p600)">Theo chủ đề</label>
+        </div>
+      </fieldset>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+          <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Điều kiện của nhóm</h2>
+          <span style="color: var(--tx3)">Mọi câu của nhóm phải thỏa các điều kiện.</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <span style="{{cond}}">Điểm mỗi câu: 1 <button type="button" aria-label="Bỏ điều kiện Điểm mỗi câu" style="width: 24px; height: 24px; border: 0; border-radius: 9999px; background: transparent; color: inherit; cursor: pointer">×</button></span>
+          <div style="position: relative">
+            <button type="button" aria-haspopup="menu" aria-expanded="true" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--p100); color: var(--pt); font-weight: 600; cursor: pointer">+ Thêm điều kiện</button>
+            <ul role="menu" aria-label="Loại điều kiện" style="position: absolute; left: 0; top: 42px; z-index: 2; width: 320px; margin: 0; padding: 6px; list-style: none; background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; box-shadow: 0 6px 18px rgba(20,20,30,.12)">
+              <sc-for list="{{menu}}" as="m" hint-placeholder-count="5">
+                <li role="none"><button type="button" role="menuitem" aria-disabled="{{m.dis}}" style="{{m.style}}"><span style="font-weight: 600">{{m.label}}</span><span style="font-size: 12.5px; color: var(--tx3)">{{m.hint}}</span></button></li>
+              </sc-for>
+            </ul>
+          </div>
+        </div>
+        <div style="height: 300px" aria-hidden="true"></div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px">
+          <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Điều kiện riêng từng chùm</h2>
+          <span style="color: var(--tx3)">Chùm không đặt gì thì dùng điều kiện của nhóm. Nhãn khớp một trong các nhãn.</span>
+        </div>
+        <div role="region" tabindex="0" aria-labelledby="cap-slots" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+          <table style="width: 100%; min-width: 760px; border-collapse: collapse">
+            <caption id="cap-slots" class="sr-only">Điều kiện của 5 chùm</caption>
+            <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 10px 14px; width: 90px">Chùm</th><th scope="col" style="padding: 10px 8px">Loại văn bản (nhãn)</th><th scope="col" style="padding: 10px 8px">Kiến thức (MAPID)</th><th scope="col" style="padding: 10px 14px; text-align: right">Thao tác</th></tr></thead>
+            <tbody>
+              <sc-for list="{{slots}}" as="s" hint-placeholder-count="5">
+                <tr style="border-top: 1px solid var(--bd)">
+                  <th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">Chùm {{s.i}}</th>
+                  <td style="padding: 8px"><span style="{{s.tagStyle}}">{{s.tag}}</span><sc-if value="{{s.err}}" hint-placeholder-val="{{false}}"><div role="alert" style="margin-top: 6px; color: var(--er); font-weight: 500">Chưa có ngữ liệu thơ đủ 5 câu con (ngân hàng có 3).</div></sc-if></td>
+                  <td style="padding: 8px; color: var(--tx3)">Theo điều kiện của nhóm</td>
+                  <td style="padding: 4px 14px; text-align: right"><button type="button" aria-label="Sửa điều kiện chùm {{s.i}}" style="height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Sửa</button></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Điều kiện theo vị trí câu con</h2>
+        <p style="margin: 0; color: var(--tx3)">Câu con ở vị trí hoặc dải vị trí trong chùm phải có ít nhất một MAPID đã chọn. Hệ thống chỉ chọn chùm có đủ câu con khớp.</p>
+        <button type="button" style="align-self: flex-start; height: 36px; padding: 0 12px; border-radius: 12px; border: 1px dashed var(--bds); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">+ Thêm điều kiện theo vị trí</button>
+      </div>
+    </div>
+
+    <div style="padding: 12px 16px; border-top: 1px solid var(--bd); display: flex; justify-content: flex-end; gap: 8px">
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Hủy thay đổi</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--pf); color: var(--op); font-weight: 600; cursor: pointer">Lưu nhóm</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 16px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Điều kiện theo vị trí câu con · SP2E Tiếng Anh, nhóm Đọc hiểu 2 (câu 43–50, 1 chùm × 8)</h3>
+      <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="font-weight: 600; min-width: 170px">Câu con 6–7 (câu 48–49)</span><span style="{{cond}}">MAPID: Suy luận</span></div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="font-weight: 600; min-width: 170px">Câu con 8 (câu 50)</span><span style="{{cond}}">MAPID: Ý chính</span></div>
+        <div role="alert" style="color: var(--er); font-weight: 500">Không có chùm nào có câu con đúng MAPID ở vị trí yêu cầu (vị trí 8 · Ý chính).</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Sửa nhãn của một chùm (chọn nhiều)</h3>
+        <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+          <label for="tag-s" style="font-weight: 600">Loại văn bản · chùm 2</label>
+          <input id="tag-s" placeholder="Tìm nhãn" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)">
+          <div style="display: flex; flex-wrap: wrap; gap: 6px"><span style="{{cond}}">Thông tin ×</span><span style="{{cond}}">Khoa học – chính luận ×</span></div>
+          <span style="font-size: 12.5px; color: var(--tx3)">Khớp một trong các nhãn: chùm có nhãn Thông tin hoặc Khoa học – chính luận đều được.</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đổi số chùm khi đã có điều kiện riêng</h3>
+        <div role="status" style="border: 1px solid var(--wnbd); background: var(--wnb); border-radius: 12px; padding: 12px; color: var(--tx2)">Số chùm giảm từ 5 xuống 4. Điều kiện riêng của chùm 5 (Văn xuôi) sẽ bị bỏ khi lưu.</div>
+        <h3 style="margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Nhóm chùm không có công tắc đảo (mọi nhóm khác)</h3>
+        <p style="margin: 0; color: var(--tx2)">Không hiện công tắc. Dòng chú thích: “Câu và chùm trong nhóm luôn được đảo; câu con giữ thứ tự.”</p>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":2050}}'>
+class Component extends DCLogic {
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+renderVals() {
+const cond = 'display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 4px 0 12px; border-radius: 9999px; border: 1px solid var(--p200); background: var(--p50); color: var(--p800); font-weight: 500';
+const tagOk = 'display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 9999px; border: 1px solid var(--p200); background: var(--p50); color: var(--p800); font-weight: 500';
+const tagBad = 'display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 9999px; border: 1px solid var(--er); background: var(--erb); color: var(--er); font-weight: 500';
+const slots = ['Nghị luận xã hội', 'Thông tin', 'Khoa học – chính luận', 'Thơ', 'Văn xuôi'].map((t, i) => ({ i: i + 1, tag: t, err: i === 3, tagStyle: i === 3 ? tagBad : tagOk }));
+const item = 'width: 100%; min-height: 44px; box-sizing: border-box; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; text-align: left; display: flex; flex-direction: column; color: var(--tx); cursor: pointer';
+const menu = [
+['Kiến thức (MAPID)', 'Chọn nhiều, khớp một trong các mã', false],
+['Nhãn hoặc loại văn bản', 'Chọn nhiều, khớp một trong các nhãn', false],
+['Hình dạng câu', 'Số ý Đúng/Sai; số ý trái và lựa chọn phải của Ghép đôi', false],
+['Định dạng đáp án', 'Chỉ cho nhóm có câu Trả lời ngắn', true],
+['Điểm mỗi câu', 'Đã thêm', true]
+].map((m) => ({ label: m[0], hint: m[1], dis: m[2] ? 'true' : 'false', style: item + (m[2] ? '; opacity: .55; cursor: not-allowed' : '') }));
+return { theme: this.props.dark ? 'dark' : '', chipInfo: this.chip('info'), chipWarn: this.chip('warn'), cond, slots, menu };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Hộp thoại thay đổi chưa lưu · ba nút</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+button{font:inherit}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 720px; min-height: 1120px; box-sizing: border-box; padding: 32px; background: var(--ov); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 24px">
+
+  <div role="dialog" aria-modal="true" aria-labelledby="d-t" aria-describedby="d-d" style="background: var(--sf); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 6px 18px rgba(20,20,30,.12)">
+    <h2 id="d-t" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Lưu thay đổi của Hóa học?</h2>
+    <p id="d-d" style="margin: 0; color: var(--tx2)">Bạn đang chuyển sang <strong>Sinh học</strong>. Hóa học còn thay đổi chưa lưu:</p>
+    <ul style="margin: 0; padding-left: 20px; color: var(--tx2); display: flex; flex-direction: column; gap: 4px">
+      <li>Nhóm 1 · Trắc nghiệm một đáp án: số câu 18 → 21.</li>
+      <li>Phân bố độ khó: TH 17 → 20.</li>
+    </ul>
+    <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px">
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Ở lại</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--erbd); background: var(--sf); color: var(--er); font-weight: 600; cursor: pointer">Bỏ thay đổi</button>
+      <a href="BaiThiBuoc2.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Lưu và chuyển</a>
+    </div>
+  </div>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 16px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">“Lưu và chuyển” bị lỗi: ở lại, hiện lỗi trong hộp thoại</h3>
+      <div style="border: 1px solid var(--bd); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <strong style="font-size: 16px">Lưu thay đổi của Hóa học?</strong>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được.</strong> Mỗi môn có tối đa 8 chỉ tiêu chủ đề. Bạn vẫn ở Hóa học để sửa.</div>
+        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px">
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600">Ở lại</button>
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--erbd); background: var(--sf); color: var(--er); font-weight: 600">Bỏ thay đổi</button>
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--pf); color: var(--op); font-weight: 600">Lưu và chuyển</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đang lưu</h3>
+      <p style="margin: 0; color: var(--tx2)">Nút “Lưu và chuyển” hiện vòng quay, giữ tên và độ rộng (<code>aria-busy</code>); hai nút còn lại bị khóa tới khi xong.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Khi nào hiện, câu đầu theo nơi chuyển tới</h3>
+      <ul style="margin: 0; padding-left: 20px; color: var(--tx2); display: flex; flex-direction: column; gap: 4px">
+        <li>Chuyển môn, phần hoặc nhóm: “Bạn đang chuyển sang Sinh học.”</li>
+        <li>Đổi tab: “Bạn đang chuyển sang tab Kiểm tra.”</li>
+        <li>Quay lại bước 1: “Bạn đang quay lại Thông tin chung.”</li>
+        <li>Rời trang bằng menu hoặc liên kết trong ứng dụng: “Bạn đang rời trang soạn bài thi.”</li>
+        <li>Đóng tab hoặc tải lại trang: trình duyệt chỉ cho hộp thoại của nó, không có ba nút.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":720,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: this.props.dark ? 'dark' : '' };
+}
+}
+</script>
+</body>
+</html>

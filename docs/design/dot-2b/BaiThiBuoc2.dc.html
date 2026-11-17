@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài thi · bước 2 bốn vùng (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tab{position:relative}
+[aria-current="page"].tab::after{content:"";position:absolute;inset:auto 8px 0;border-bottom:2px solid currentColor}
+input,select,button{font:inherit}
+select{color-scheme:light}.th.dark select{color-scheme:dark}
+</style>
+</helmet>
+<div class="th {{theme}}" style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); background: var(--bg); min-height: 2350px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: var(--sf); border-right: 1px solid var(--bd); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: var(--pf); color: var(--op); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: var(--p900)">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="15">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx3)">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: var(--sf); border-bottom: 1px solid var(--bd); display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <nav aria-label="Vị trí" style="min-width: 0; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Nội dung <span aria-hidden="true">›</span> <a href="BaiThi.dc.html" style="text-decoration: none">Bài thi</a> <span aria-hidden="true">›</span> <strong aria-current="page" style="color: var(--tx); font-weight: 600">QDA-F-001</strong></nav>
+      <span style="flex: none; height: 40px; padding: 0 12px 0 4px; border: 1px solid var(--bd); border-radius: 9999px; display: inline-flex; align-items: center; gap: 8px; color: var(--tx2); font-weight: 500"><span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: var(--p50); color: var(--pt); font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">CA</span>content.admin</span>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+        <div style="min-width: 0; display: flex; flex-direction: column; gap: 8px">
+          <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">QDA · Đề luyện tổng hợp số 1</h1>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <span style="{{chipOff}}">QDA</span><span style="{{chipOff}}">Toàn bài</span><span style="{{chipOff}}"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Nháp</span>
+            <span style="{{chipWarn}}">Có thay đổi chưa lưu</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Lưu</button>
+          <a href="KiemTra2B.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3"></path></svg>Kiểm tra toàn bài</a>
+          <a href="KiemTra2B.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px">Tiếp tục<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></a>
+        </div>
+      </div>
+
+      <nav aria-label="Trang của bài thi" style="display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--bd); padding-bottom: 6px">
+        <a class="tab" href="HopThoaiChuaLuu2B.dc.html" style="flex: none; height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 500; color: var(--tx3)">Thông tin chung</a>
+        <a class="tab" href="BaiThiBuoc2.dc.html" aria-current="page" style="flex: none; height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 500; color: var(--pt); background: var(--p50)">Cấu trúc</a>
+        <a class="tab" href="HopThoaiChuaLuu2B.dc.html" style="flex: none; height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 500; color: var(--tx3)">Kiểm tra</a>
+        <a class="tab" href="HopThoaiChuaLuu2B.dc.html" style="flex: none; height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 500; color: var(--tx3)">Xem trước</a>
+        <a class="tab" href="HopThoaiChuaLuu2B.dc.html" style="flex: none; height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 500; color: var(--tx3)">Phiên bản và công bố</a>
+      </nav>
+
+      <section aria-label="Vùng a · Thông tin bài" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px">
+        <dl style="margin: 0; flex: 999 1 600px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px 24px; font-variant-numeric: tabular-nums">
+          <div><dt style="font-size: 12.5px; color: var(--tx3)">Kỳ thi</dt><dd style="margin: 0; font-weight: 600">QDA</dd></div>
+          <div><dt style="font-size: 12.5px; color: var(--tx3)">Phạm vi</dt><dd style="margin: 0; font-weight: 600">Toàn bài</dd></div>
+          <div><dt style="font-size: 12.5px; color: var(--tx3)">Tổng số câu</dt><dd style="margin: 0; font-weight: 600">150</dd></div>
+          <div><dt style="font-size: 12.5px; color: var(--tx3)">Thời lượng</dt><dd style="margin: 0; font-weight: 600">195 phút</dd></div>
+          <div><dt style="font-size: 12.5px; color: var(--tx3)">Điểm tối đa</dt><dd style="margin: 0; font-weight: 600">150</dd></div>
+        </dl>
+        <button type="button" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>Sửa thông tin tổng quan</button>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+
+        <nav aria-labelledby="h-b" style="flex: 1 1 280px; max-width: 100%; background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <h2 id="h-b" style="margin: 0 4px 6px; font-size: 13px; line-height: 20px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx3)">Phần và môn</h2>
+          <sc-for list="{{tree}}" as="t" hint-placeholder-count="12">
+            <sc-if value="{{t.isHead}}" hint-placeholder-val="{{false}}">
+              <div style="margin-top: 8px; padding: 4px 4px 2px; font-size: 12.5px; font-weight: 600; color: var(--tx3)">{{t.label}}</div>
+            </sc-if>
+            <sc-if value="{{t.isItem}}" hint-placeholder-val="{{true}}">
+              <a href="{{t.href}}" aria-current="{{t.current}}" style="{{t.style}}">
+                <span style="min-width: 0; display: flex; flex-direction: column"><span style="font-weight: 600">{{t.label}}</span><span style="font-size: 12.5px; color: var(--tx3)">{{t.sub}}</span></span>
+                <span style="{{t.chip}}">{{t.status}}</span>
+              </a>
+            </sc-if>
+            <sc-if value="{{t.isCode}}" hint-placeholder-val="{{false}}">
+              <div style="padding: 6px 8px 6px 20px; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--tx2)">
+                <span style="min-width: 0"><span style="font-weight: 600">{{t.label}}</span> {{t.sub}}</span>
+                <span style="{{t.chip}}">{{t.status}}</span>
+              </div>
+            </sc-if>
+          </sc-for>
+          <p style="margin: 6px 4px 0; font-size: 12.5px; color: var(--tx3)">Mã đọc từ danh mục tổ hợp, chỉ xem. Trạng thái của mã là trạng thái xấu nhất của các môn trong mã.</p>
+        </nav>
+
+        <section aria-labelledby="h-c" style="flex: 999 1 520px; min-width: 0; background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+          <div style="padding: 16px; border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px">
+            <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px">
+              <div style="font-size: 12.5px; color: var(--tx3)">Phần 3 · Khoa học hoặc Tiếng Anh</div>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><h2 id="h-c" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Hóa học · 25 câu</h2><span style="{{chipBad}}">Chưa hoàn tất</span></div>
+              <p style="margin: 0; color: var(--tx3)">Một ma trận dùng chung cho mọi mã có Hóa học: QĐ01 (câu 26–50), QĐ02 (câu 1–25).</p>
+            </div>
+            <button type="button" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra môn</button>
+          </div>
+
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <a href="PhanBoMon2B.dc.html" style="{{pillOn}}">Chỉ tiêu cấp môn</a>
+              <a href="NhomCauDon2B.dc.html" style="{{pillOff}}">Nhóm 1 · Trắc nghiệm</a>
+              <a href="NhomCauDon2B.dc.html" style="{{pillOff}}">Nhóm 2 · Điền đáp án</a>
+              <a href="NhomChum2B.dc.html" style="{{pillOff}}">Nhóm 3 · Câu chùm</a>
+            </div>
+
+            <div role="region" tabindex="0" aria-labelledby="cap-q" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+              <table style="width: 100%; min-width: 560px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+                <caption id="cap-q" style="text-align: left; padding: 12px 16px; font-weight: 700; font-size: 16px">Chỉ tiêu cấp môn</caption>
+                <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 10px 16px">Chỉ tiêu</th><th scope="col" style="padding: 10px 8px">Mức · đơn vị</th><th scope="col" style="padding: 10px 8px; text-align: right">Yêu cầu</th><th scope="col" style="padding: 10px 8px; text-align: right">Đã phân bổ</th><th scope="col" style="padding: 10px 16px">Còn thiếu</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{quotas}}" as="q" hint-placeholder-count="4">
+                    <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 10px 16px; text-align: left; font-weight: 600">{{q.name}}</th><td style="padding: 10px 8px"><span style="{{q.lvl}}">{{q.level}}</span></td><td style="padding: 10px 8px; text-align: right">{{q.req}}</td><td style="padding: 10px 8px; text-align: right">{{q.got}}</td><td style="padding: 10px 16px; color: {{q.missColor}}; font-weight: 600">{{q.miss}}</td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
+                <h3 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Nhóm lấy câu</h3>
+                <button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--p100); color: var(--pt); font-weight: 600; cursor: pointer">+ Thêm nhóm</button>
+              </div>
+              <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
+                <sc-for list="{{blocks}}" as="b" hint-placeholder-count="3">
+                  <li style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px">
+                    <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                      <span style="font-weight: 600">{{b.name}}</span>
+                      <span style="color: var(--tx3)">{{b.detail}}</span>
+                    </div>
+                    <a href="{{b.href}}" style="min-height: 44px; display: inline-flex; align-items: center; font-weight: 600">Sửa nhóm</a>
+                  </li>
+                </sc-for>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <aside aria-labelledby="h-d" style="flex: 1 1 300px; max-width: 100%; background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <h2 id="h-d" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Tổng hợp</h2>
+          <div role="status" style="border: 1px solid var(--wnbd); background: var(--wnb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--wn)">Mã QĐ01:</strong> Đã phân bổ 47/50 câu. Còn thiếu 3 câu.</div>
+          <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums">
+            <caption class="sr-only">Mục tiêu và đã phân bổ theo phần, theo mã</caption>
+            <thead><tr style="text-align: left; font-size: 12.5px; color: var(--tx3)"><th scope="col" style="padding: 6px 0">Mục</th><th scope="col" style="padding: 6px 0; text-align: right">Đã / mục tiêu</th></tr></thead>
+            <tbody>
+              <sc-for list="{{sum}}" as="r" hint-placeholder-count="7">
+                <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 6px 0; text-align: left; font-weight: 500">{{r.name}}</th><td style="padding: 6px 0; text-align: right; font-weight: 600; color: {{r.color}}">{{r.val}}</td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; font-variant-numeric: tabular-nums">
+            <div><dt style="font-size: 12.5px; color: var(--tx3)">Trắc nghiệm</dt><dd style="margin: 0; font-weight: 600">150 điểm</dd></div>
+            <div><dt style="font-size: 12.5px; color: var(--tx3)">Tự luận</dt><dd style="margin: 0; font-weight: 600">0 điểm</dd></div>
+            <div><dt style="font-size: 12.5px; color: var(--tx3)">Câu chùm</dt><dd style="margin: 0; font-weight: 600">Phần 2: 5 chùm, 25 câu con</dd></div>
+            <div><dt style="font-size: 12.5px; color: var(--tx3)">Lệnh hỏi</dt><dd style="margin: 0; font-weight: 600">150</dd></div>
+          </dl>
+          <div style="border-top: 1px solid var(--bd); padding-top: 12px; display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Cần xử lý</h3>
+            <a href="NhomCauDon2B.dc.html" style="display: flex; gap: 8px; align-items: flex-start; color: var(--er); font-weight: 600"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM15 9l-6 6M9 9l6 6"></path></svg><span>Hóa học: tổng các nhóm 22, mục tiêu 25. Mở Nhóm 1, ô Số câu.</span></a>
+            <a href="#h-b" style="display: flex; gap: 8px; align-items: flex-start; color: var(--wn); font-weight: 600"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"></path></svg><span>Ngôn ngữ – Văn học, Sinh học: đã sửa sau lần kiểm tra trước. Cần kiểm tra lại.</span></a>
+          </div>
+        </aside>
+      </div>
+
+      <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 20px">
+        <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Vùng (a) khi môn có hai phiên bản cấu trúc · SP2E Vật lí theo môn (QDA FULL chỉ có một phiên bản nên ô bị ẩn)</h3>
+          <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end">
+            <div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: 6px">
+              <label for="ver" style="font-weight: 600">Phiên bản cấu trúc</label>
+              <select id="ver" aria-describedby="ver-d" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"><option selected>Cấu trúc 2026 theo đề án (mặc định)</option><option>Đề minh họa cũ</option></select>
+              <span id="ver-d" style="color: var(--tx3)">28 câu, 60 phút: Phần I 16 trắc nghiệm, Phần II 4 Đúng/Sai × 4 ý, Phần III 8 trả lời ngắn.</span>
+            </div>
+            <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 6px">
+              <span style="font-size: 12.5px; color: var(--tx3)">Nếu chọn “Đề minh họa cũ”</span>
+              <span style="color: var(--tx2)">20 câu, 50 lệnh hỏi, 10 điểm, 60 phút: 10 trắc nghiệm, 5 Đúng/Sai, 5 ghép đôi (4 ý trái, 6 lựa chọn phải).</span>
+            </div>
+            <div style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start">
+              <span style="font-size: 12.5px; color: var(--tx3)">Điểm của bản 2026</span>
+              <span style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="{{chipWarn}}">Chờ chuyên gia xác nhận</span><button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Xác nhận</button></span>
+            </div>
+          </div>
+          <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Chọn phiên bản khác mở hộp thoại hai bước (<a href="DoiPhienBan2B.dc.html">Đổi phiên bản cấu trúc</a>).</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 20px">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Vùng (b) của HSA FULL · Khoa học 5 môn</h3>
+            <ul style="margin: 0; padding: 12px; list-style: none; border: 1px solid var(--bd); border-radius: 12px; display: flex; flex-direction: column; gap: 4px">
+              <sc-for list="{{hsa}}" as="h" hint-placeholder-count="8">
+                <li style="{{h.style}}"><span style="min-width: 0"><span style="font-weight: 600">{{h.label}}</span> <span style="color: var(--tx3); font-size: 12.5px">{{h.sub}}</span></span><span style="{{h.chip}}">{{h.status}}</span></li>
+              </sc-for>
+            </ul>
+            <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Bấm Phần 3 · Khoa học mở tổng quan 5 môn có nút “Thiết lập” (<a href="KhoaHocHSA2B.dc.html">xem màn</a>).</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Mục mở đầu tiên</h3>
+            <ul style="margin: 0; padding-left: 20px; color: var(--tx2); display: flex; flex-direction: column; gap: 4px">
+              <li>Bài chỉ có một môn: mở môn đó.</li>
+              <li>Toàn bài: mở Phần 1, môn Toán.</li>
+              <li>Bài theo phần Khoa học: mở tổng quan Khoa học.</li>
+            </ul>
+            <h3 style="margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Sửa thông tin tổng quan</h3>
+            <p style="margin: 0; color: var(--tx2)">Mở hộp thoại có đúng bảng tổng quan của bước 1. Lưu thì giữ nguyên nhóm và chỉ tiêu; chênh lệch hiện ngay ở Tổng hợp, ví dụ “Toán: mục tiêu 40, đã phân bổ 50, vượt 10.”</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đang tải cấu trúc</h3>
+            <div aria-busy="true" style="display: flex; gap: 8px"><div style="flex: 1; height: 120px; border-radius: 12px; background: var(--sb)"></div><div style="flex: 3; height: 120px; border-radius: 12px; background: var(--sb)"></div><span class="sr-only">Đang tải</span></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Người khác vừa sửa bài (412)</h3>
+            <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 12px; padding: 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được.</strong> Bài thi vừa được người khác sửa. Tải lại để xem bản mới; thay đổi của bạn sẽ mất. <button type="button" style="height: 36px; padding: 0 12px; border: 1px solid var(--bd); border-radius: 12px; background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Tải lại</button></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Màn hẹp 390px</h3>
+            <p style="margin: 0; color: var(--tx2)">Bốn vùng xếp chồng: thông tin bài, danh sách, vùng sửa, tổng hợp. Chỉ cần đọc được; sửa trên máy tính.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":2350}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+question: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+exam: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+grading: 'M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+list: 'M4 6h16M4 12h16M4 18h16',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, 'BangDieuKhien.dc.html'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'],
+['h', 'Nội dung'], ['questions', 'Ngân hàng câu hỏi', I.question, 'NganHangCauHoi.dc.html'], ['exams', 'Bài thi', I.exam, 'BaiThi.dc.html'], ['grading', 'Chấm tự luận', I.grading, '#'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', I.sliders, 'TuyChinhGiaoDien.dc.html']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: var(--p50); color: var(--pt); font-weight: 600' : 'color: var(--tx2); font-weight: 500') });
+}
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'flex: none; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+renderVals() {
+const st = { ok: 'Đã kiểm tra', warn: 'Cần kiểm tra lại', bad: 'Chưa hoàn tất' };
+const itemStyle = (on) => 'min-height: 44px; box-sizing: border-box; padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; text-decoration: none; color: var(--tx); ' + (on ? 'background: var(--p50); box-shadow: inset 3px 0 0 var(--pt)' : '');
+const T = [
+['i', 'Phần 1 · Toán', '50 câu · 80 phút', 'ok'],
+['i', 'Phần 2 · Ngôn ngữ – Văn học', '50 câu · 55 phút', 'warn'],
+['i', 'Phần 3 · Khoa học hoặc Tiếng Anh', '50 câu · 60 phút · 6 môn, 5 mã', 'bad'],
+['h', 'Môn của phần 3'],
+['i', 'Vật lí', '25 câu', 'ok'], ['i', 'Hóa học', '25 câu', 'bad', true], ['i', 'Sinh học', '25 câu', 'warn'], ['i', 'Lịch sử', '25 câu', 'ok'], ['i', 'Địa lí', '25 câu', 'ok'], ['i', 'Tiếng Anh', '50 câu · 10 nhóm', 'ok'],
+['h', 'Mã (chỉ xem)'],
+['c', 'QĐ01', 'Vật lí → Hóa học', 'bad'], ['c', 'QĐ02', 'Hóa học → Sinh học', 'bad'], ['c', 'QĐ03', 'Vật lí → Sinh học', 'warn'], ['c', 'QĐ04', 'Lịch sử → Địa lí', 'ok'], ['c', 'QĐ05', 'Tiếng Anh', 'ok']
+];
+const tree = T.map((t) => ({ isHead: t[0] === 'h', isItem: t[0] === 'i', isCode: t[0] === 'c', label: t[1], sub: t[2] || '', status: st[t[3]] || '', chip: t[3] ? this.chip(t[3]) : '',
+href: t[4] ? '#h-c' : 'HopThoaiChuaLuu2B.dc.html', current: t[4] ? 'page' : 'false', style: itemStyle(!!t[4]) }));
+const lvl = (k) => this.chip(k);
+const quotas = [
+['Tổng số câu', 'Bắt buộc · câu', 'info', '25', '22', 'Thiếu 3', 'var(--er)'],
+['Câu điền đáp án', 'Bắt buộc · câu', 'info', 'Ít nhất 1', '1', '—', 'var(--tx3)'],
+['Lớp 10 / 11 / 12', 'Bắt buộc · câu', 'info', '6 / 5 / 14', '5 / 5 / 12', '1 / 0 / 2', 'var(--wn)'],
+['Độ khó NB / TH / VD', 'Bắt buộc · câu', 'info', '4 / 20 / 1', '4 / 17 / 1', '0 / 3 / 0', 'var(--wn)']
+].map((q) => ({ name: q[0], level: q[1], lvl: lvl(q[2]), req: q[3], got: q[4], miss: q[5], missColor: q[6] }));
+const blocks = [
+['Nhóm 1 · Trắc nghiệm một đáp án', 'Câu đơn · 18 câu · Toàn môn · 1 điểm mỗi câu', 'NhomCauDon2B.dc.html'],
+['Nhóm 2 · Điền đáp án', 'Câu đơn · 1 câu · Trả lời ngắn · định dạng: số nguyên, số thập phân', 'NhomCauDon2B.dc.html'],
+['Nhóm 3 · Câu chùm', 'Câu chùm · 1 chùm × 3 câu con · Toàn môn', 'NhomChum2B.dc.html']
+].map((b) => ({ name: b[0], detail: b[1], href: b[2] }));
+const sum = [
+['Phần 1 · Toán', '50 / 50', 'var(--ok)'], ['Phần 2 · Ngôn ngữ – Văn học', '50 / 50', 'var(--ok)'],
+['Phần 3 · QĐ01', '47 / 50', 'var(--er)'], ['Phần 3 · QĐ02', '47 / 50', 'var(--er)'], ['Phần 3 · QĐ03', '50 / 50', 'var(--ok)'], ['Phần 3 · QĐ04', '50 / 50', 'var(--ok)'], ['Phần 3 · QĐ05', '50 / 50', 'var(--ok)']
+].map((r) => ({ name: r[0], val: r[1], color: r[2] }));
+const liStyle = 'min-height: 40px; padding: 4px 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px';
+const hsa = [['Phần 1 · Toán', '50 câu', 'ok'], ['Phần 2 · Văn học – Ngôn ngữ', '50 câu', 'ok'], ['Phần 3 · Khoa học', 'chọn 3 trong 5', 'warn'],
+['Vật lí', '17 câu', 'ok'], ['Hóa học', '17 câu', 'ok'], ['Sinh học', '17 câu', 'warn'], ['Lịch sử', '17 câu', 'ok'], ['Địa lí', '17 câu', 'ok'], ['Phần 3 · Tiếng Anh', '50 câu · 11 nhóm', 'ok']]
+.map((h, i) => ({ label: h[0], sub: h[1], status: st[h[2]], chip: this.chip(h[2]), style: liStyle + (i >= 3 && i <= 7 ? '; padding-left: 20px' : '') }));
+const pill = (on) => 'min-height: 36px; box-sizing: border-box; padding: 0 12px; border-radius: 9999px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 600; ' + (on ? 'background: var(--pf); color: var(--op)' : 'border: 1px solid var(--bd); color: var(--tx2)');
+return {
+theme: this.props.dark ? 'dark' : '', nav: this.nav('exams'), tree, quotas, blocks, sum, hsa,
+chipOff: this.chip('off'), chipWarn: this.chip('warn'), chipBad: this.chip('bad'), pillOn: pill(true), pillOff: pill(false)
+};
+}
+}
+</script>
+</body>
+</html>
