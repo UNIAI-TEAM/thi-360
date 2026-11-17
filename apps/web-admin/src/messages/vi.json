@@ -5359,6 +5359,67 @@
     },
     "insertDialog": {
       "cancel": "Hủy",
+      "chemistry": {
+        "afterLabel": "Ghi sau phương trình",
+        "afterPlaceholder": "Công thức LaTeX riêng, hoặc dùng nút ΔrH°",
+        "block": "Dòng riêng",
+        "bottomLabel": "Dưới mũi tên",
+        "bottomPlaceholder": "Không bắt buộc",
+        "buttons": {
+          "arrowBack": "Mũi tên ngược",
+          "arrowReversible": "Thuận nghịch",
+          "arrowSingle": "Mũi tên một chiều",
+          "chargeMinus": "Điện tích −",
+          "chargePlus": "Điện tích +",
+          "chargeThreeMinus": "Điện tích 3−",
+          "chargeThreePlus": "Điện tích 3+",
+          "chargeTwoMinus": "Điện tích 2−",
+          "chargeTwoPlus": "Điện tích 2+",
+          "concentration": "Nồng độ",
+          "doubleBond": "Liên kết đôi",
+          "enthalpy": "Biến thiên enthalpy",
+          "gas": "Chất khí bay lên",
+          "isotope": "Đồng vị",
+          "precipitate": "Kết tủa",
+          "stateAqueous": "Trạng thái (aq)",
+          "stateGas": "Trạng thái (g)",
+          "stateLiquid": "Trạng thái (l)",
+          "stateSolid": "Trạng thái (s)",
+          "tripleBond": "Liên kết ba"
+        },
+        "description": "Gõ như viết tay, hệ thống tự đặt chỉ số và mũi tên.",
+        "displayLabel": "Kiểu hiển thị",
+        "errors": {
+          "equation": "Phương trình chưa hợp lệ, kiểm tra lại cú pháp.",
+          "note": "Phần ghi sau chưa hợp lệ, kiểm tra lại cú pháp."
+        },
+        "groups": {
+          "arrows": "Mũi tên",
+          "charges": "Điện tích",
+          "other": "Khác",
+          "states": "Trạng thái"
+        },
+        "inline": "Trong dòng",
+        "insert": "Chèn vào nội dung",
+        "previewEmpty": "Chưa có công thức",
+        "previewLabel": "Xem trước",
+        "quickLabel": "Gõ nhanh",
+        "recentLabel": "Dùng gần đây",
+        "rules": {
+          "arrowLead": "Gõ",
+          "arrowOr": "hoặc",
+          "arrowTail": "cho mũi tên",
+          "becomes": "thành",
+          "chargeLead": "Gõ ^ cho điện tích:",
+          "subscriptLead": "Số đứng sau ký hiệu nguyên tố thành chỉ số dưới:",
+          "title": "Quy tắc gõ"
+        },
+        "structureNote": "Công thức cấu tạo và cơ chế phản ứng: chèn bằng nút Hình.",
+        "title": "Công thức và phương trình hóa học",
+        "topLabel": "Trên mũi tên",
+        "topPlaceholder": "t°, xt, enzyme…",
+        "update": "Cập nhật công thức"
+      },
       "close": "Đóng",
       "insert": "Chèn",
       "stub": {

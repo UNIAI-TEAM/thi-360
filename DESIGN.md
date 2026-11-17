@@ -388,7 +388,7 @@ Trình soạn và khung xem nội dung HTML (UNI-2617, mở rộng ở UNI-2638)
 
 #### 5.15.2 Hộp Công thức hóa học
 
-Ô "Gõ nhanh" theo cú pháp mhchem, nút mũi tên/trạng thái/điện tích, trên và dưới mũi tên, "Ghi sau phương trình", xem trước (bản vẽ `SoanThaoHoaHoc`).
+Ô "Gõ nhanh" theo cú pháp mhchem: chuỗi gõ chính là nội dung `\ce{…}`, không có bộ chuyển đổi. Bốn nhóm nút `SymbolGrid` (Mũi tên, Trạng thái, Điện tích, Khác: ΔrH°, nồng độ `[ ]`, liên kết đôi/ba, đồng vị) chèn đoạn mhchem tại con trỏ của ô Gõ nhanh; riêng nút ΔrH° ghi LaTeX `\Delta_r H^\circ_{298} = ` vào ô "Ghi sau phương trình" vì đó là công thức riêng. "Trên mũi tên" và "Dưới mũi tên" ghép vào mũi tên đầu tiên theo `->[trên][dưới]` (chỉ ô dưới thì `->[][dưới]`; không có mũi tên thì điều kiện bị bỏ). "Ghi sau phương trình" (LaTeX) là một công thức cùng dòng riêng đặt sau phương trình cách một khoảng trắng; phương trình ở dạng Dòng riêng thì ghi sau nằm ở đoạn ngay dưới. Trong dòng / Dòng riêng như hộp toán, mặc định Trong dòng. Xem trước dựng bằng `renderMath` (KaTeX + mhchem); phương trình hoặc ghi sau không dựng được thì ô báo lỗi (`role="alert"`, `aria-invalid`) và Chèn tắt. Dùng gần đây (danh sách `chemistry`, theo người dùng) lưu nội dung `\ce{…}` kèm điều kiện. Mở lại (công thức `\ce{…}` đang chọn): hộp tự đọc node đang chọn, tách điều kiện của mũi tên đầu tiên về hai ô Trên/Dưới, "Ghi sau" để trống (công thức riêng đứng nguyên), nút chính đổi thành "Cập nhật công thức" và thay đúng node đó. Chọn công thức toán thường rồi chèn hóa học thì chèn sau nó, không thay nó (bản vẽ `SoanThaoHoaHoc`).
 
 #### 5.15.3 Hộp Ký hiệu và đơn vị
 

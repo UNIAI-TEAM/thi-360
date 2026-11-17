@@ -5359,6 +5359,67 @@
     },
     "insertDialog": {
       "cancel": "Cancel",
+      "chemistry": {
+        "afterLabel": "Note after the equation",
+        "afterPlaceholder": "Separate LaTeX formula, or use the ΔrH° button",
+        "block": "Own line",
+        "bottomLabel": "Below the arrow",
+        "bottomPlaceholder": "Optional",
+        "buttons": {
+          "arrowBack": "Reverse arrow",
+          "arrowReversible": "Reversible",
+          "arrowSingle": "One-way arrow",
+          "chargeMinus": "Charge −",
+          "chargePlus": "Charge +",
+          "chargeThreeMinus": "Charge 3−",
+          "chargeThreePlus": "Charge 3+",
+          "chargeTwoMinus": "Charge 2−",
+          "chargeTwoPlus": "Charge 2+",
+          "concentration": "Concentration",
+          "doubleBond": "Double bond",
+          "enthalpy": "Enthalpy change",
+          "gas": "Gas evolved",
+          "isotope": "Isotope",
+          "precipitate": "Precipitate",
+          "stateAqueous": "State (aq)",
+          "stateGas": "State (g)",
+          "stateLiquid": "State (l)",
+          "stateSolid": "State (s)",
+          "tripleBond": "Triple bond"
+        },
+        "description": "Type as you would write by hand; subscripts and arrows are set for you.",
+        "displayLabel": "Display mode",
+        "errors": {
+          "equation": "The equation is not valid; check the syntax.",
+          "note": "The note after the equation is not valid; check the syntax."
+        },
+        "groups": {
+          "arrows": "Arrows",
+          "charges": "Charges",
+          "other": "Other",
+          "states": "States"
+        },
+        "inline": "Inline",
+        "insert": "Insert into content",
+        "previewEmpty": "No formula yet",
+        "previewLabel": "Preview",
+        "quickLabel": "Quick typing",
+        "recentLabel": "Recently used",
+        "rules": {
+          "arrowLead": "Type",
+          "arrowOr": "or",
+          "arrowTail": "for an arrow",
+          "becomes": "becomes",
+          "chargeLead": "Type ^ for a charge:",
+          "subscriptLead": "A number after an element symbol becomes a subscript:",
+          "title": "Typing rules"
+        },
+        "structureNote": "Structural formulas and reaction mechanisms: insert them with the Image button.",
+        "title": "Chemistry formula",
+        "topLabel": "Above the arrow",
+        "topPlaceholder": "t°, cat., enzyme…",
+        "update": "Update formula"
+      },
       "close": "Close",
       "insert": "Insert",
       "stub": {
