@@ -202,15 +202,22 @@ public class SolverInputBuilder {
                             : List.of();
                     var shape = block.itemShape() == null ? null : new QuestionSourcePort.ItemShape(
                             block.itemShape().statements(), block.itemShape().leftItems(), block.itemShape().rightItems());
-                    var conditions = block.childConditions().stream()
-                            .map(c -> new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds())).toList();
+                    var conditions = block.childConditions().stream().map(c -> {
+                        if (c.from() == null || c.to() == null) {
+                            throw new IllegalArgumentException("Child condition requires both from and to bounds");
+                        }
+                        return new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds());
+                    }).toList();
                     List<List<String>> slotTags = slot == null || slot.tagCodes().isEmpty()
                             ? List.of() : List.of(slot.tagCodes());
+                    List<List<String>> slotCompetencies = slot == null || slot.knowledgeScope() == null
+                            || slot.knowledgeScope().competencyCodes().isEmpty() ? List.of()
+                            : List.of(slot.knowledgeScope().competencyCodes());
                     filters.put(group, new QuestionSourcePort.Filter(subject, subtrees,
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                             shape, block.answerFormats().stream().map(AnswerFormat::valueOf).toList(), conditions,
-                            slotTags, slotScopes));
+                            slotTags, slotScopes, slotCompetencies));
                     groups.add(group);
                 }
             }

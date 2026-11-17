@@ -308,6 +308,18 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 + String.join(" or ", alternatives) + ")" + restriction + " order by q.id" + tail + "), ";
     }
 
+    private void addCompetencyGroup(List<String> parts, MapSqlParameterSource params,
+            String parameter, List<String> codes) {
+        if (codes == null || codes.isEmpty()) return;
+        List<UUID> ids = codes.stream().map(c -> catalog.findActiveItem("COMPETENCY", c))
+                .flatMap(java.util.Optional::stream).map(CatalogItemView::id).toList();
+        if (ids.isEmpty()) parts.add("false");
+        else {
+            params.addValue(parameter, ids);
+            parts.add("q.competency_item_id in (:" + parameter + ")");
+        }
+    }
+
     private String predicate(Filter f, int index, MapSqlParameterSource params) {
         String p = "f" + index + "_";
         List<String> parts = new ArrayList<>();
@@ -336,14 +348,11 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 parts.add("q.task_type_item_id = :" + p + "task");
             }
         }
-        if (f.competencyCodes() != null && !f.competencyCodes().isEmpty()) {
-            List<UUID> ids = f.competencyCodes().stream()
-                    .map(c -> catalog.findActiveItem("COMPETENCY", c))
-                    .flatMap(java.util.Optional::stream).map(CatalogItemView::id).toList();
-            if (ids.isEmpty()) parts.add("false");
-            else {
-                params.addValue(p + "competencies", ids);
-                parts.add("q.competency_item_id in (:" + p + "competencies)");
+        addCompetencyGroup(parts, params, p + "competencies", f.competencyCodes());
+        if (f.additionalCompetencyGroups() != null) {
+            for (int j = 0; j < f.additionalCompetencyGroups().size(); j++) {
+                addCompetencyGroup(parts, params, p + "extraCompetencies" + j,
+                        f.additionalCompetencyGroups().get(j));
             }
         }
         addTagGroup(parts, params, p + "tags", f.tagCodes());

@@ -27,14 +27,15 @@ public interface QuestionSourcePort {
             List<AnswerFormat> answerFormats,
             List<ChildCondition> childConditions,
             List<List<String>> additionalTagGroups,
-            List<List<List<UUID>>> additionalKnowledgeGroups) {
+            List<List<List<UUID>>> additionalKnowledgeGroups,
+            List<List<String>> additionalCompetencyGroups) {
         public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
                 QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
                 List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
                 ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions) {
             this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
                     tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
-                    childConditions, List.of(), List.of());
+                    childConditions, List.of(), List.of(), List.of());
         }
     }
 

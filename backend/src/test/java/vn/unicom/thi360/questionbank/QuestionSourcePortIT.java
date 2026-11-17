@@ -430,7 +430,7 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         jdbc.update("insert into questionbank.question_knowledge values (?,?,false)", first, slotNode);
         var both = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
                 QuestionType.SINGLE_CHOICE, null, null, List.of("ONE-OF-A"), List.of(), null, null, null, null,
-                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))));
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))), List.of());
         assertThat(source.findCandidates(both, 1)).extracting(QuestionSourcePort.Candidate::questionId)
                 .containsExactly(first);
         assertThat(source.count(both).total()).isEqualTo(1);
@@ -440,10 +440,70 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                 set, tagOne, set, tagTwo);
         var bothSet = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of("ONE-OF-A"), List.of(), null, null, null, null,
-                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))));
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))), List.of());
         assertThat(source.findCandidates(bothSet, 1)).extracting(QuestionSourcePort.Candidate::questionId)
                 .containsExactly(set);
         assertThat(source.count(bothSet).total()).isEqualTo(2);
+        assertConjunctDecoys(false, tagOne, tagTwo, parentNode, slotNode);
+        assertConjunctDecoys(true, tagOne, tagTwo, parentNode, slotNode);
+    }
+
+    private void assertConjunctDecoys(boolean sets, UUID parentTag, UUID slotTag, UUID parentNode, UUID slotNode) {
+        UUID subject = UUID.randomUUID();
+        var roots = new java.util.ArrayList<UUID>();
+        for (int i = 0; i < 5; i++) {
+            roots.add(sets ? setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", null, null)
+                    : question(subject, "READY", 1, 1));
+        }
+        roots.sort(java.util.Comparator.comparing(UUID::toString));
+        for (int i = 0; i < roots.size(); i++) {
+            UUID root = roots.get(i);
+            // Parent-only and slot-only decoys for each dimension, with the other dimension passing.
+            if (i != 1) jdbc.update("insert into questionbank.question_tag values (?, ?)", root, parentTag);
+            if (i != 0) jdbc.update("insert into questionbank.question_tag values (?, ?)", root, slotTag);
+            if (i != 3) jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", root, parentNode);
+            if (i != 2) jdbc.update("insert into questionbank.question_knowledge values (?,?,false)", root, slotNode);
+        }
+        var filter = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
+                sets ? QuestionType.QUESTION_SET : QuestionType.SINGLE_CHOICE, null, null,
+                List.of("ONE-OF-A"), List.of(), null, null, null, null,
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))), List.of());
+        assertThat(source.findCandidates(filter, 1)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(roots.get(4));
+        assertThat(source.count(filter).total()).isEqualTo(sets ? 2 : 1);
+    }
+
+    @Test
+    void slotCompetencyAndParentCompetencyBothFilterSetRoots() {
+        UUID group = UUID.fromString("00000000-0000-7000-8100-00000000000a");
+        UUID c1 = UUID.randomUUID();
+        UUID c2 = UUID.randomUUID();
+        int next = jdbc.queryForObject("select coalesce(max(value), 0) + 1 from catalog.catalog_item where group_id = ?",
+                Integer.class, group);
+        for (int i = 0; i < 2; i++) {
+            UUID id = i == 0 ? c1 : c2;
+            String code = i == 0 ? "TEST-COMP-ONE" : "TEST-COMP-TWO";
+            jdbc.update("""
+                    insert into catalog.catalog_item(id, group_id, code, code_normalized, value,
+                        name_vi, name_en, display_order, status, is_system, depth, path)
+                    values (?, ?, ?, ?, ?, ?, ?, 0, 1, false, 1, ?)
+                    """, id, group, code, code.toLowerCase(), next + i, code, code, "/" + id + "/");
+        }
+        UUID subject = UUID.randomUUID();
+        UUID one = setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", null, null);
+        UUID two = setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", null, null);
+        jdbc.update("update questionbank.question set competency_item_id=? where id=?", c1, one);
+        jdbc.update("update questionbank.question set competency_item_id=? where id=?", c2, two);
+        var slotOnly = new QuestionSourcePort.Filter(subject, null, List.of(), QuestionType.QUESTION_SET,
+                null, null, List.of(), List.of(), null, null, null, null,
+                List.of(), List.of(), List.of(List.of("TEST-COMP-ONE")));
+        assertThat(source.findCandidates(slotOnly, 10)).extracting(QuestionSourcePort.Candidate::questionId).containsExactly(one);
+        assertThat(source.count(slotOnly).total()).isEqualTo(2);
+        var both = new QuestionSourcePort.Filter(subject, null, List.of(), QuestionType.QUESTION_SET,
+                null, null, List.of(), List.of("TEST-COMP-TWO"), null, null, null, null,
+                List.of(), List.of(), List.of(List.of("TEST-COMP-ONE")));
+        assertThat(source.findCandidates(both, 10)).isEmpty();
+        assertThat(source.count(both).total()).isZero();
     }
 
     @Test

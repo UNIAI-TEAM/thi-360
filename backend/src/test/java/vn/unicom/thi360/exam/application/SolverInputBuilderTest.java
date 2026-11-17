@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -202,9 +203,9 @@ class SolverInputBuilderTest {
         var matrix = new BlockMatrix(MatrixMode.SEPARATE, MatrixUnit.COUNT, List.of(),
                 List.of(new MatrixDimensionValue("G12", BigDecimal.valueOf(10))), List.of(), List.of());
         var slots = java.util.stream.IntStream.rangeClosed(1, 5)
-                .mapToObj(i -> new BlockSlot(i, new KnowledgeScope(List.of(slotNode), List.of()), List.of("TAG" + i))).toList();
+                .mapToObj(i -> new BlockSlot(i, new KnowledgeScope(List.of(slotNode), List.of("SLOT")), List.of("TAG" + i))).toList();
         var block = new QuestionBlock("literature", "Literature", QuestionType.QUESTION_SET, 10, 5, 2,
-                new KnowledgeScope(List.of(parentNode), List.of()), matrix, QuestionType.SINGLE_CHOICE, null, false, null, List.of("PARENT"), null,
+                new KnowledgeScope(List.of(parentNode), List.of("PARENT")), matrix, QuestionType.SINGLE_CHOICE, null, false, null, List.of("PARENT"), null,
                 true, false, slots, List.of(), null, List.of(), false, List.of(), null);
         var section = new ExamSection("s", "LIT", 10, null, null, null, null, List.of(block));
         var part = new ExamPart("p", 1, "Part", null, null, null, null, null, null, List.of(section), List.of());
@@ -222,10 +223,42 @@ class SolverInputBuilderTest {
         assertThat(filters.getAllValues()).allSatisfy(f -> {
             assertThat(f.knowledgeGroups()).containsExactly(List.of(parentNode));
             assertThat(f.additionalKnowledgeGroups()).containsExactly(List.of(List.of(slotNode)));
+            assertThat(f.competencyCodes()).containsExactly("PARENT");
+            assertThat(f.additionalCompetencyGroups()).containsExactly(List.of("SLOT"));
         });
         assertThat(filters.getAllValues()).extracting(QuestionSourcePort.Filter::additionalTagGroups)
                 .containsExactly(List.of(List.of("TAG1")), List.of(List.of("TAG2")), List.of(List.of("TAG3")),
                         List.of(List.of("TAG4")), List.of(List.of("TAG5")));
+    }
+
+    @Test
+    void childConditionsRequireBothBounds() {
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(UUID.randomUUID());
+        when(catalog.findActiveItem("SUBJECT", "LIT")).thenReturn(Optional.of(subject));
+        var builder = new SolverInputBuilder(catalog, source, SolverLimits.defaults());
+        for (var condition : List.of(new ChildCondition(null, 1, List.of()),
+                new ChildCondition(1, null, List.of()))) {
+            var block = new QuestionBlock("set", "Set", QuestionType.QUESTION_SET, 1, 1, 1,
+                    null, null, null, null, false, null, List.of(), null,
+                    true, false, List.of(), List.of(condition), null, List.of(), false, List.of(), null);
+            var section = new ExamSection("s", "LIT", 1, null, null, null, null, List.of(block));
+            var part = new ExamPart("p", 1, "Part", null, null, null, null, null, null, List.of(section), List.of());
+            assertThatThrownBy(() -> builder.build(UUID.randomUUID(), new ExamStructureDocument(List.of(part))))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("from and to");
+        }
+        var block = new QuestionBlock("set", "Set", QuestionType.QUESTION_SET, 1, 1, 1,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(new ChildCondition(1, 1, List.of())), null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "LIT", 1, null, null, null, null, List.of(block));
+        var part = new ExamPart("p", 1, "Part", null, null, null, null, null, null, List.of(section), List.of());
+        var input = builder.build(UUID.randomUUID(), new ExamStructureDocument(List.of(part)));
+        input.candidates().candidatesFor(((SolvePart.Fixed) input.parts().getFirst()).sections().getFirst().groups().getFirst());
+        var filter = ArgumentCaptor.forClass(QuestionSourcePort.Filter.class);
+        verify(source).findCandidates(filter.capture(), eq(20001));
+        assertThat(filter.getValue().childConditions()).containsExactly(new QuestionSourcePort.ChildCondition(1, 1, List.of()));
     }
 
     @Test
