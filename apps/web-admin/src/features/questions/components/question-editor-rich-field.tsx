@@ -43,6 +43,7 @@ export function RichTextField({
   "aria-describedby": ariaDescribedby,
   "aria-invalid": ariaInvalid,
   "aria-required": ariaRequired,
+  onRichPaste,
 }: {
   name: Path<QuestionEditorValues>;
   id?: string;
@@ -56,6 +57,8 @@ export function RichTextField({
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
   "aria-required"?: boolean;
+  /** Chuyển thẳng cho `RichTextEditor.onRichPaste`: thấy `clipboardData` gốc trước bộ lọc; trả `true` thì bỏ dán mặc định. */
+  onRichPaste?: (clipboardData: DataTransfer | null) => boolean;
 }) {
   const { control } = useFormContext<QuestionEditorValues>();
   const registry = useRichEditorRegistry();
@@ -88,6 +91,7 @@ export function RichTextField({
             value={typeof field.value === "string" ? field.value : ""}
             onChange={field.onChange}
             onImageUploadError={onImageUploadError}
+            onRichPaste={onRichPaste}
             placeholder={placeholder}
             invalid={ariaInvalid === true}
             aria-label={ariaLabel}

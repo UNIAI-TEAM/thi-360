@@ -1,11 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import type { InsertDialogProps } from "../registry";
-import { StubDialog } from "../shared/stub-dialog";
-
-/** Hộp tạm của mục `word` — lane sóng 2 thay bằng hộp thật theo bản vẽ của mục. */
-export default function WordInsertDialog({ open, onOpenChange }: InsertDialogProps) {
-  const t = useTranslations("richText.insert.word");
-  return <StubDialog open={open} onOpenChange={onOpenChange} title={t("label")} description={t("description")} />;
+/**
+ * Chỗ giữ của mục `word` trong registry (`INSERT_REGISTRY` đòi mọi mục có `load`). Mục này không hiện ở thanh công
+ * cụ lẫn menu `/` (`showIn` luôn false), nên hộp này không bao giờ được mở. Hộp "Dán từ Word" thật nằm ở
+ * `word-paste-dialog.tsx`, do form soạn câu hỏi mở (`features/questions/components/question-editor-form.tsx`).
+ */
+export default function WordInsertDialog() {
+  return null;
 }
