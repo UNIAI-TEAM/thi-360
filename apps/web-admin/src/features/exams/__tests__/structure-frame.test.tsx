@@ -219,7 +219,7 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
     const issues = heading.closest("section")!;
     await user.click(within(issues).getAllByRole("button", { name: "Đến chỗ sửa" })[0]!);
     // Lỗi của chính phần đang sửa: ở lại phần đó, không hỏi chuyển.
-    expect(window.location.search).toMatch(/part=part-42|section=|block=/);
+    expect(window.location.search).toBe("?part=part-42");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
@@ -312,11 +312,12 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     const user = userEvent.setup();
     openStructure(QDA, "?section=sec-41");
     await screen.findByRole("navigation", { name: "Cấu trúc" });
-    const blocks = backend.app(QDA).parts[0]!.sections[0]!.blocks;
-    expect(blocks.length).toBeGreaterThan(0);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    await user.click((await screen.findAllByRole("button", { name: /^Thêm nhóm/ }))[0]!);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Làm bản nháp bẩn tại môn đang mở rồi mở nhóm khác của cùng môn: cùng phạm vi nên không hỏi (R-05).
+    await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
+    expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Mở nhóm Điền đáp án" }));
+    await waitFor(() => expect(window.location.search).toBe("?block=blk-40"));
+    expect(screen.queryByRole("dialog", { name: dialogName })).not.toBeInTheDocument();
   });
 
   it("xóa nhóm đang mở khi bản nháp bẩn: thao tác của người dùng nên không hỏi, mở phần chứa nhóm", async () => {

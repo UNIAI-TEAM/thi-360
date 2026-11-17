@@ -297,7 +297,8 @@ function StructureEditor({
         },
         onError: (error) => {
           const message = saveErrorText(error);
-          notify.error(message);
+          // Có `onFailed` thì nơi gọi tự hiện lỗi (ví dụ `role="alert"` trong hộp thoại chuyển mục); không toast kẻo trùng.
+          if (!options.onFailed) notify.error(message);
           announce(message);
           options.onFailed?.(message);
         },
@@ -441,6 +442,8 @@ function StructureEditor({
           onApplied={(parts) => {
             setDraft(parts);
             setBaseline(JSON.stringify(parts));
+            // Phiên bản mới làm kết quả kiểm tra cũ hết hiệu lực: huy hiệu trạng thái tính lại từ đầu.
+            setCheckResult(null);
           }}
         />
         {yearsPending && (
