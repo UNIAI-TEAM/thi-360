@@ -785,6 +785,7 @@ export function ExamInfoFields({
                 onChange={field.onChange}
                 aria-label={t("instructionsLabel")}
                 allowImages={false}
+                fieldContext="instructions"
                 invalid={Boolean(errors.instructions)}
                 placeholder={t("instructionsPlaceholder")}
               />
