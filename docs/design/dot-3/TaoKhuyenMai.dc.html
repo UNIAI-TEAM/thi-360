@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tạo, sửa khuyến mãi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+:focus-visible{outline:2px solid #059669;outline-offset:2px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+input:disabled,textarea:disabled,select:disabled{background:#F1F2F4;color:#54545A;cursor:not-allowed}
+button:disabled{opacity:.6;cursor:not-allowed}
+fieldset:disabled label{cursor:not-allowed}
+.mono{font-family:ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.04em}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 2200px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #047857; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="19">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <nav aria-label="Vị trí" style="min-width: 0; color: #54545A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thương mại <span aria-hidden="true">›</span> <a href="KhuyenMai.dc.html" style="text-decoration: none">Khuyến mãi</a> <span aria-hidden="true">›</span> <strong aria-current="page" style="color: #11181C; font-weight: 600">{{crumb}}</strong></nav>
+      <button type="button" aria-haspopup="menu" style="flex: none; height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">KD</span>
+        <span>kinhdoanh.admin</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <a href="{{backHref}}" style="align-self: flex-start; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; font-weight: 500; text-decoration: none"><span aria-hidden="true">‹</span> {{backLabel}}</a>
+        <h1 id="page-title" style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">{{title}}</h1>
+        <p style="margin: 0; color: #54545A; text-wrap: pretty">{{subtitle}}</p>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px">
+        <form id="promo-form" aria-labelledby="page-title" novalidate style="flex: 999 1 560px; min-width: 0; margin: 0; display: flex; flex-direction: column; gap: 16px">
+
+          <sc-if value="{{locked}}" hint-placeholder-val="{{true}}">
+            <div id="lock-reason" role="note" style="border: 1px solid #BFDBFE; background: #EFF6FF; border-radius: 12px; padding: 12px 16px; display: flex; gap: 10px; align-items: flex-start">
+              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 1px"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+              <div style="display: flex; flex-direction: column; gap: 2px">
+                <strong style="font-weight: 600; color: #1E3A8A">Voucher đã có 37 lượt dùng nên một số trường bị khóa.</strong>
+                <span style="color: #3A3A42">Chỉ sửa được tên, mô tả, thời điểm kết thúc, tổng số lần dùng và trạng thái, để các đơn đã dùng mã vẫn đúng với điều kiện lúc dùng. Cần đổi mức giảm, phạm vi hay người dùng thì ngừng voucher này và tạo voucher mới.</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <section aria-labelledby="sec-1" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+            <h2 id="sec-1" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700; display: flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 13px; display: inline-flex; align-items: center; justify-content: center">1</span>Loại và thông tin</h2>
+
+            <fieldset disabled="{{locked}}" style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+              <legend style="padding: 0 0 6px; font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px">Loại <span aria-hidden="true" style="color: #B91C1C">*</span><sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span style="{{lockChip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Không đổi được sau khi tạo</span></sc-if></legend>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 8px">
+                <sc-for list="{{kindOpts}}" as="o" hint-placeholder-count="2">
+                  <label style="{{o.style}}">
+                    <input type="radio" name="kind" value="{{o.id}}" checked="{{o.checked}}" onChange="{{o.pick}}" style="width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #059669">
+                    <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">{{o.label}}</span><span style="font-size: 12.5px; line-height: 18px; color: #54545A">{{o.desc}}</span></span>
+                  </label>
+                </sc-for>
+              </div>
+            </fieldset>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px">
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="p-name" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tên <span aria-hidden="true" style="color: #B91C1C">*</span></label>
+                <input id="p-name" name="name" type="text" required autocomplete="off" value="{{v.name}}" placeholder="Ví dụ: Chào tài khoản mới" aria-describedby="p-name-hint" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+                <div id="p-name-hint" style="font-size: 12.5px; line-height: 18px; color: #54545A">Chỉ quản trị viên thấy</div>
+              </div>
+              <sc-if value="{{isVoucher}}" hint-placeholder-val="{{true}}">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <label for="p-code" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px">Mã voucher <span aria-hidden="true" style="color: #B91C1C">*</span><sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span style="{{lockChip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Đã khóa</span></sc-if></label>
+                  <div style="display: flex; gap: 8px">
+                    <input id="p-code" class="mono" name="code" type="text" required disabled="{{locked}}" value="{{v.code}}" placeholder="Ví dụ: K7M2PX9W" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="p-code-hint" style="flex: 1 1 auto; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font-size: 14px; color: #11181C">
+                    <button type="button" disabled="{{locked}}" onClick="{{suggest}}" style="flex: none; height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid #A7F3D0; background: #FFFFFF; color: #065F46; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"></path></svg>Gợi ý mã</button>
+                  </div>
+                  <div id="p-code-hint" style="font-size: 12.5px; line-height: 18px; color: #54545A">{{codeHint}}</div>
+                </div>
+              </sc-if>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <label for="p-desc" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mô tả</label>
+              <textarea id="p-desc" name="description" rows="2" placeholder="Mục đích, kênh phát mã, người phụ trách" style="box-sizing: border-box; padding: 10px 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; resize: vertical">{{v.desc}}</textarea>
+            </div>
+
+            <fieldset style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px">
+              <legend style="float: left; margin-right: 8px; font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Trạng thái</legend>
+              <label style="display: flex; align-items: center; gap: 8px; min-height: 44px"><input type="radio" name="status" value="ACTIVE" checked style="width: 18px; height: 18px; accent-color: #059669">Hoạt động</label>
+              <label style="display: flex; align-items: center; gap: 8px; min-height: 44px"><input type="radio" name="status" value="STOPPED" style="width: 18px; height: 18px; accent-color: #059669">Ngừng</label>
+              <span style="flex: 1 1 260px; font-size: 12.5px; line-height: 18px; color: #54545A">Ngừng có hiệu lực ngay; đơn chờ đã giữ lượt vẫn thanh toán được. Mở lại được nếu chưa hết hạn.</span>
+            </fieldset>
+          </section>
+
+          <section aria-labelledby="sec-2" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px">
+            <fieldset disabled="{{locked}}" aria-describedby="{{lockDesc}}" style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+              <legend style="padding: 0; margin-bottom: 16px; font-size: 18px; line-height: 28px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 13px; display: inline-flex; align-items: center; justify-content: center">2</span><span id="sec-2">Mức giảm</span><sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span style="{{lockChip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Đã khóa vì có lượt dùng</span></sc-if></legend>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px">
+                <span style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Kiểu giảm</span>
+                <sc-for list="{{dtypeOpts}}" as="o" hint-placeholder-count="2">
+                  <label style="display: flex; align-items: center; gap: 8px; min-height: 44px"><input type="radio" name="discountType" value="{{o.id}}" checked="{{o.checked}}" onChange="{{o.pick}}" style="width: 18px; height: 18px; accent-color: #059669">{{o.label}}</label>
+                </sc-for>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <label for="p-value" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">{{valueLabel}} <span aria-hidden="true" style="color: #B91C1C">*</span></label>
+                  <div style="display: flex; align-items: center; border: 1px solid #E8E8EC; border-radius: 10px; overflow: hidden">
+                    <input id="p-value" name="discountValue" type="text" inputmode="numeric" value="{{v.value}}" aria-describedby="p-value-hint" style="flex: 1 1 auto; min-width: 0; height: 38px; box-sizing: border-box; padding: 0 12px; border: 0; font: inherit; color: #11181C; text-align: right; font-variant-numeric: tabular-nums">
+                    <span aria-hidden="true" style="flex: none; height: 38px; padding: 0 12px; display: inline-flex; align-items: center; color: #54545A; background: #FAFAFB; border-left: 1px solid #E8E8EC">{{valueUnit}}</span>
+                  </div>
+                  <div id="p-value-hint" style="font-size: 12.5px; line-height: 18px; color: #54545A">{{valueHint}}</div>
+                </div>
+                <sc-if value="{{isPercent}}" hint-placeholder-val="{{true}}">
+                  <div style="display: flex; flex-direction: column; gap: 4px">
+                    <label for="p-max" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Giảm tối đa</label>
+                    <div style="display: flex; align-items: center; border: 1px solid #E8E8EC; border-radius: 10px; overflow: hidden">
+                      <input id="p-max" name="maxDiscountVnd" type="text" inputmode="numeric" value="{{v.max}}" aria-describedby="p-max-hint" style="flex: 1 1 auto; min-width: 0; height: 38px; box-sizing: border-box; padding: 0 12px; border: 0; font: inherit; color: #11181C; text-align: right; font-variant-numeric: tabular-nums">
+                      <span aria-hidden="true" style="flex: none; height: 38px; padding: 0 12px; display: inline-flex; align-items: center; color: #54545A; background: #FAFAFB; border-left: 1px solid #E8E8EC">đ</span>
+                    </div>
+                    <div id="p-max-hint" style="font-size: 12.5px; line-height: 18px; color: #54545A">Để trống nếu không giới hạn</div>
+                  </div>
+                </sc-if>
+              </div>
+              <sc-if value="{{isVoucher}}" hint-placeholder-val="{{true}}">
+                <label style="display: flex; align-items: flex-start; gap: 10px; min-height: 44px"><input type="checkbox" name="combinable" checked="{{v.combinable}}" style="width: 18px; height: 18px; margin: 1px 0 0; flex: none; accent-color: #059669"><span><span style="font-weight: 500">Cộng với khuyến mãi tự động</span><span style="display: block; font-size: 12.5px; line-height: 18px; color: #54545A">Bật: voucher tính trên giá đã giảm. Tắt: hệ thống chọn cách có lợi hơn cho học viên (chỉ khuyến mãi hoặc chỉ voucher) và ghi rõ đã áp cách nào.</span></span></label>
+              </sc-if>
+              <sc-if value="{{isAuto}}" hint-placeholder-val="{{false}}">
+                <p style="margin: 0; font-size: 12.5px; line-height: 18px; color: #54545A">Giá sau giảm không xuống dưới 5.000 đ (mức tối thiểu của cổng thanh toán). Bài thi bị giữ ở mức này được cảnh báo ở danh sách. Bài thi nằm trong nhiều khuyến mãi tự động chỉ áp cái giảm nhiều tiền nhất.</p>
+              </sc-if>
+            </fieldset>
+          </section>
+
+          <section aria-labelledby="sec-3" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+            <h2 id="sec-3" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700; display: flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 13px; display: inline-flex; align-items: center; justify-content: center">3</span>Thời gian và giới hạn</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px">
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="p-start" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px">Bắt đầu <span aria-hidden="true" style="color: #B91C1C">*</span><sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span style="{{lockChip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Đã khóa</span></sc-if></label>
+                <input id="p-start" name="startsAt" type="datetime-local" disabled="{{locked}}" value="{{v.start}}" aria-describedby="{{lockDesc}}" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="p-end" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Kết thúc <span aria-hidden="true" style="color: #B91C1C">*</span></label>
+                <input id="p-end" name="endsAt" type="datetime-local" min="2026-11-17T10:30" value="{{v.end}}" aria-describedby="p-end-hint" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+                <div id="p-end-hint" style="font-size: 12.5px; line-height: 18px; color: #54545A">{{endHint}}</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="p-total" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">{{totalLabel}}</label>
+                <input id="p-total" name="totalLimit" type="number" min="{{totalMin}}" step="1" value="{{v.total}}" aria-describedby="p-total-hint" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; font-variant-numeric: tabular-nums">
+                <div id="p-total-hint" style="font-size: 12.5px; line-height: 18px; color: #54545A">{{totalHint}}</div>
+              </div>
+              <sc-if value="{{isVoucher}}" hint-placeholder-val="{{true}}">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <label for="p-per" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px">Số lần mỗi tài khoản <span aria-hidden="true" style="color: #B91C1C">*</span><sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span style="{{lockChip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Đã khóa</span></sc-if></label>
+                  <input id="p-per" name="perUserLimit" type="number" min="1" step="1" disabled="{{locked}}" value="{{v.per}}" aria-describedby="{{lockDesc}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; font-variant-numeric: tabular-nums">
+                </div>
+              </sc-if>
+            </div>
+            <p style="margin: 0; font-size: 12.5px; line-height: 18px; color: #54545A">Áp dụng từ lúc bắt đầu tới trước lúc kết thúc. Đơn chờ thanh toán giữ một lượt trong 15 phút; đơn hết hạn hoặc bị hủy thì lượt được trả lại.</p>
+          </section>
+
+          <section aria-labelledby="sec-4" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px">
+            <fieldset disabled="{{locked}}" aria-describedby="{{lockDesc}}" style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+              <legend style="padding: 0; margin-bottom: 16px; font-size: 18px; line-height: 28px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 13px; display: inline-flex; align-items: center; justify-content: center">4</span><span id="sec-4">Phạm vi</span><sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span style="{{lockChip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Đã khóa vì có lượt dùng</span></sc-if></legend>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 8px">
+                <sc-for list="{{scopeOpts}}" as="o" hint-placeholder-count="3">
+                  <label style="{{o.style}}">
+                    <input type="radio" name="scope" value="{{o.id}}" checked="{{o.checked}}" onChange="{{o.pick}}" style="width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #059669">
+                    <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">{{o.label}}</span><span style="font-size: 12.5px; line-height: 18px; color: #54545A">{{o.desc}}</span></span>
+                  </label>
+                </sc-for>
+              </div>
+              <sc-if value="{{scopeKind}}" hint-placeholder-val="{{false}}">
+                <div role="group" aria-label="Kỳ thi áp dụng" style="display: flex; flex-wrap: wrap; gap: 4px 16px">
+                  <sc-for list="{{kinds}}" as="k" hint-placeholder-count="7">
+                    <label style="display: flex; align-items: center; gap: 8px; min-height: 44px"><input type="checkbox" name="examKinds" value="{{k.code}}" checked="{{k.checked}}" style="width: 18px; height: 18px; accent-color: #059669">{{k.code}}</label>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{scopeExam}}" hint-placeholder-val="{{false}}">
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <label for="p-exam-q" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tìm bài thi đã công bố</label>
+                  <input id="p-exam-q" type="search" role="combobox" aria-expanded="false" aria-autocomplete="list" placeholder="Tên hoặc mã bài thi" autocomplete="off" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+                  <ul aria-label="Bài thi đã chọn" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px">
+                    <li style="height: 32px; box-sizing: border-box; padding: 0 4px 0 12px; border: 1px solid #059669; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px">QDA FULL · Đề luyện số 1 <button type="button" aria-label="Bỏ QDA FULL · Đề luyện số 1" style="width: 28px; height: 28px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></li>
+                    <li style="height: 32px; box-sizing: border-box; padding: 0 4px 0 12px; border: 1px solid #059669; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px">QDA Tiếng Anh · Bài lẻ số 1 <button type="button" aria-label="Bỏ QDA Tiếng Anh · Bài lẻ số 1" style="width: 28px; height: 28px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></li>
+                  </ul>
+                  <div style="font-size: 12.5px; line-height: 18px; color: #54545A">Chỉ chọn được bài đã công bố. Bài ngừng bán sau đó thì không còn áp dụng.</div>
+                </div>
+              </sc-if>
+            </fieldset>
+          </section>
+
+          <sc-if value="{{isVoucher}}" hint-placeholder-val="{{true}}">
+            <section aria-labelledby="sec-5" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px">
+              <fieldset disabled="{{locked}}" aria-describedby="{{lockDesc}}" style="margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+                <legend style="padding: 0; margin-bottom: 16px; font-size: 18px; line-height: 28px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 13px; display: inline-flex; align-items: center; justify-content: center">5</span><span id="sec-5">Người dùng được dùng mã</span><sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span style="{{lockChip}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Đã khóa vì có lượt dùng</span></sc-if></legend>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 8px">
+                  <sc-for list="{{audOpts}}" as="o" hint-placeholder-count="3">
+                    <label style="{{o.style}}">
+                      <input type="radio" name="audience" value="{{o.id}}" checked="{{o.checked}}" onChange="{{o.pick}}" style="width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: #059669">
+                      <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">{{o.label}}</span><span style="font-size: 12.5px; line-height: 18px; color: #54545A">{{o.desc}}</span></span>
+                    </label>
+                  </sc-for>
+                </div>
+                <sc-if value="{{audSelected}}" hint-placeholder-val="{{false}}">
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px">
+                    <div style="display: flex; flex-direction: column; gap: 8px">
+                      <label for="p-class-q" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Lớp</label>
+                      <input id="p-class-q" type="search" role="combobox" aria-expanded="false" aria-autocomplete="list" placeholder="Tên hoặc mã lớp" autocomplete="off" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+                      <ul aria-label="Lớp đã chọn" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px">
+                        <li style="height: 32px; box-sizing: border-box; padding: 0 4px 0 12px; border: 1px solid #059669; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px">QDA-K12-01 · 42 học viên <button type="button" aria-label="Bỏ lớp QDA-K12-01" style="width: 28px; height: 28px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></li>
+                      </ul>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px">
+                      <label for="p-user-q" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Học viên</label>
+                      <input id="p-user-q" type="search" role="combobox" aria-expanded="false" aria-autocomplete="list" placeholder="Tên đăng nhập, họ tên hoặc email" autocomplete="off" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C">
+                      <ul aria-label="Học viên đã chọn" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px">
+                        <li style="height: 32px; box-sizing: border-box; padding: 0 4px 0 12px; border: 1px solid #059669; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px">nguyenminhkhoa · Nguyễn Minh Khoa <button type="button" aria-label="Bỏ học viên nguyenminhkhoa" style="width: 28px; height: 28px; padding: 0; border: 0; border-radius: 9999px; background: transparent; color: #047857; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p style="margin: 0; font-size: 12.5px; line-height: 18px; color: #54545A">Xét lớp hiện tại của học viên lúc tính giá: học viên rời lớp thì không dùng được mã nữa.</p>
+                </sc-if>
+              </fieldset>
+            </section>
+          </sc-if>
+
+          <section aria-labelledby="h-other" style="border: 1px dashed #A1A1AA; border-radius: 12px; padding: 20px; background: #FFFFFF; display: flex; flex-direction: column; gap: 14px">
+            <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #3A3A42">Lưu khi người khác vừa sửa (412)</h3>
+              <div role="alert" style="border: 1px solid #FECACA; background: #FEF2F2; border-radius: 12px; padding: 12px 16px; display: flex; gap: 10px">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 1px"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"></path></svg>
+                <div><strong style="font-weight: 600; color: #B91C1C">Voucher vừa được người khác sửa. Đã nạp lại bản mới nhất.</strong> <span style="color: #3A3A42">Thay đổi của bạn chưa được lưu; xem lại rồi nhập lại phần cần sửa.</span></div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: #3A3A42">Voucher vừa có lượt dùng trong lúc sửa (409)</h3>
+              <div role="alert" style="border: 1px solid #FECACA; background: #FEF2F2; border-radius: 12px; padding: 12px 16px; color: #3A3A42"><strong style="font-weight: 600; color: #B91C1C">Voucher đã có lượt dùng nên không đổi được mức giảm, phạm vi, người dùng, mã, thời điểm bắt đầu và số lần mỗi tài khoản.</strong> Các trường này được khóa và nạp lại giá trị đã lưu.</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px">
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="x-code" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Mã voucher</label>
+                <input id="x-code" class="mono" type="text" value="HE2026" aria-invalid="true" aria-describedby="x-code-err" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #B91C1C; border-radius: 10px; font-size: 14px; color: #11181C">
+                <div id="x-code-err" style="font-size: 12.5px; line-height: 18px; color: #B91C1C">Mã này đã dùng cho một voucher khác, kể cả voucher đã ngừng hoặc đã xóa. Chọn mã khác hoặc bấm Gợi ý mã.</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="x-total" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Tổng số lần dùng</label>
+                <input id="x-total" type="number" value="30" aria-invalid="true" aria-describedby="x-total-err" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #B91C1C; border-radius: 10px; font: inherit; color: #11181C">
+                <div id="x-total-err" style="font-size: 12.5px; line-height: 18px; color: #B91C1C">Không nhỏ hơn số lần đã dùng (37).</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="x-end" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Kết thúc</label>
+                <input id="x-end" type="datetime-local" value="2026-11-10T00:00" aria-invalid="true" aria-describedby="x-end-err" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #B91C1C; border-radius: 10px; font: inherit; color: #11181C">
+                <div id="x-end-err" style="font-size: 12.5px; line-height: 18px; color: #B91C1C">Thời điểm kết thúc không sớm hơn hiện tại và phải sau thời điểm bắt đầu.</div>
+              </div>
+            </div>
+          </section>
+        </form>
+
+        <aside aria-label="Tóm tắt và thử giá" style="flex: 1 1 340px; min-width: 0; box-sizing: border-box; position: sticky; top: 24px; display: flex; flex-direction: column; gap: 16px">
+          <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+            <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Tóm tắt</h2>
+            <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-variant-numeric: tabular-nums">
+              <div><dt style="font-size: 12.5px; line-height: 18px; color: #54545A">Mức giảm</dt><dd style="margin: 0; font-weight: 600">{{sum.discount}}</dd></div>
+              <div><dt style="font-size: 12.5px; line-height: 18px; color: #54545A">Thời gian</dt><dd style="margin: 0; font-weight: 600">{{sum.time}}</dd></div>
+              <div><dt style="font-size: 12.5px; line-height: 18px; color: #54545A">Đã dùng</dt><dd style="margin: 0; font-weight: 600">{{sum.used}}</dd></div>
+              <div><dt style="font-size: 12.5px; line-height: 18px; color: #54545A">Phạm vi</dt><dd style="margin: 0; font-weight: 600">{{sum.scope}}</dd></div>
+            </dl>
+            <div style="border-top: 1px solid #E8E8EC; padding-top: 14px; display: flex; flex-direction: column; gap: 8px">
+              <h3 id="todo-title" style="margin: 0; font-size: 14px; line-height: 21px; font-weight: 600">Cần xử lý</h3>
+              <sc-if value="{{hasTodo}}" hint-placeholder-val="{{false}}">
+                <ul aria-labelledby="todo-title" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px">
+                  <sc-for list="{{todos}}" as="t" hint-placeholder-count="2">
+                    <li><a href="{{t.href}}" style="min-height: 36px; box-sizing: border-box; padding: 6px 8px; margin: 0 -8px; border-radius: 8px; display: flex; align-items: flex-start; gap: 8px; color: #B91C1C; font-weight: 500; text-decoration: none"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v4M12 16h.01"></path></svg><span style="text-decoration: underline; text-underline-offset: 2px">{{t.text}}</span></a></li>
+                  </sc-for>
+                </ul>
+              </sc-if>
+              <sc-if value="{{noTodo}}" hint-placeholder-val="{{true}}">
+                <p style="margin: 0; display: flex; align-items: flex-start; gap: 8px; color: #047857"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M20 6 9 17l-5-5"></path></svg>Không còn mục cần xử lý</p>
+              </sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <button type="submit" form="promo-form" style="height: 44px; padding: 0 16px; border: 0; border-radius: 12px; background: #047857; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">{{submitLabel}}</button>
+              <a href="{{backHref}}" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center">Hủy</a>
+            </div>
+          </div>
+
+          <section aria-labelledby="try-title" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+            <div>
+              <h2 id="try-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Thử giá</h2>
+              <p style="margin: 2px 0 0; font-size: 12.5px; line-height: 18px; color: #54545A">Tính như ở bước xác nhận mua, theo giá đang bán và khuyến mãi tự động đang chạy.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <label for="try-exam" style="font-size: 13px; line-height: 20px; font-weight: 500; color: #3A3A42">Bài thi</label>
+              <select id="try-exam" disabled="{{tryDisabled}}" style="height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF">
+                <option>HSA FULL · Đề luyện số 1 (HSA-F-001)</option>
+                <option>QDA FULL · Đề luyện số 1 (QDA-F-001)</option>
+                <option>HSA Toán · Bài lẻ số 1 (HSA-L-TOAN-001)</option>
+              </select>
+            </div>
+            <sc-if value="{{tryDisabled}}" hint-placeholder-val="{{false}}">
+              <p style="margin: 0; color: #3A3A42; display: flex; gap: 8px; align-items: flex-start"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01"></path></svg>Lưu để thử giá với bài thi cụ thể.</p>
+            </sc-if>
+            <sc-if value="{{tryReady}}" hint-placeholder-val="{{true}}">
+              <div role="status" style="display: flex; flex-direction: column; gap: 8px; font-variant-numeric: tabular-nums">
+                <dl style="margin: 0; display: flex; flex-direction: column; gap: 8px">
+                  <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #3A3A42">Giá gốc (bản đang bán v2)</dt><dd style="margin: 0; font-weight: 600">199.000 đ</dd></div>
+                  <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #3A3A42; min-width: 0">Chỉ khuyến mãi tự động<span style="display: block; font-size: 12.5px; line-height: 18px; color: #54545A">Mừng năm học mới · HSA, giảm 20%</span></dt><dd style="margin: 0; text-align: right"><s style="color: #54545A">199.000 đ</s><span style="display: block; font-weight: 600">159.200 đ</span></dd></div>
+                  <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #3A3A42; min-width: 0">Chỉ voucher THI360MOI<span style="display: block; font-size: 12.5px; line-height: 18px; color: #54545A">30% là 59.700 đ, giữ ở mức tối đa 50.000 đ</span></dt><dd style="margin: 0; text-align: right"><s style="color: #54545A">199.000 đ</s><span style="display: block; font-weight: 600">149.000 đ</span></dd></div>
+                </dl>
+                <div style="border-top: 1px solid #E8E8EC; padding-top: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px">
+                  <span style="font-weight: 600">Học viên trả</span>
+                  <span style="font-size: 20px; line-height: 28px; font-weight: 700; color: #064E3B">149.000 đ</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+                  <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 12.5px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Áp dụng: chỉ voucher</span>
+                  <span style="font-size: 12.5px; line-height: 18px; color: #54545A">Có lợi hơn khuyến mãi tự động 10.200 đ. Voucher không cộng khuyến mãi nên hệ thống chọn cách rẻ hơn.</span>
+                </div>
+                <p style="margin: 0; font-size: 12.5px; line-height: 18px; color: #54545A">Tính theo giá trị đã lưu; thay đổi chưa lưu chưa được tính. Học viên phải là tài khoản mới mới dùng được mã.</p>
+              </div>
+            </sc-if>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2200},"mode":{"editor":"enum","options":["Sửa voucher đã dùng","Tạo mới"],"default":"Sửa voucher đã dùng"}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { kind: 'VOUCHER', dtype: 'PERCENT', scope: 'EXAM', aud: 'SELECTED', code: '' };
+}
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+attempt: 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16',
+question: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+exam: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+grading: 'M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+list: 'M4 6h16M4 12h16M4 18h16',
+tag: 'M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01',
+order: 'M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1zM16 8H8M16 12H8M13 16H8',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, 'BangDieuKhien.dc.html'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'], ['attempts', 'Lượt thi', I.attempt, 'LuotThiAdmin.dc.html'],
+['h', 'Nội dung'], ['questions', 'Ngân hàng câu hỏi', I.question, 'NganHangCauHoi.dc.html'], ['exams', 'Bài thi', I.exam, 'BaiThi.dc.html'], ['grading', 'Chấm tự luận', I.grading, '#'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Thương mại'], ['promotions', 'Khuyến mãi', I.tag, 'KhuyenMai.dc.html'], ['orders', 'Đơn hàng', I.order, 'DonHang.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', I.sliders, 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+opts(list, current, key, locked) {
+const base = 'min-height: 44px; box-sizing: border-box; padding: 12px; border-radius: 12px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; ';
+return list.map((o) => {
+const on = current === o[0];
+return { id: o[0], label: o[1], desc: o[2] || '', checked: on, pick: () => { if (!locked) this.setState({ [key]: o[0] }); },
+style: base + (on ? 'border: 2px solid ' + (locked ? '#A1A1AA' : '#059669') + '; background: ' + (locked ? '#F1F2F4' : '#ECFDF5') : 'border: 1px solid #E8E8EC; background: ' + (locked ? '#FAFAFB' : '#FFFFFF') + '; margin: 1px') };
+});
+}
+renderVals() {
+const editing = (this.props.mode ?? 'Sửa voucher đã dùng') !== 'Tạo mới';
+const locked = editing;
+const kind = editing ? 'VOUCHER' : this.state.kind;
+const dtype = editing ? 'PERCENT' : this.state.dtype;
+const scope = editing ? 'ALL' : this.state.scope;
+const aud = editing ? 'NEW_ACCOUNT' : this.state.aud;
+const isVoucher = kind === 'VOUCHER';
+const isPercent = dtype === 'PERCENT';
+const v = editing
+? { name: 'Chào tài khoản mới', code: 'THI360MOI', desc: 'Phát qua trang Facebook và email chào mừng. Phụ trách: nhóm kinh doanh.', value: '30', max: '50.000', start: '2026-11-01T00:00', end: '2027-01-01T00:00', total: '200', per: '1', combinable: false }
+: { name: '', code: this.state.code, desc: '', value: '', max: '', start: '2026-11-20T00:00', end: '', total: '', per: '1', combinable: false };
+const todos = editing ? [] : [
+{ text: 'Nhập tên', href: '#p-name' },
+{ text: isVoucher ? 'Nhập mã voucher hoặc bấm Gợi ý mã' : 'Nhập mức giảm', href: isVoucher ? '#p-code' : '#p-value' },
+{ text: 'Chọn thời điểm kết thúc', href: '#p-end' }
+];
+return {
+nav: this.nav('promotions'),
+crumb: editing ? 'THI360MOI · Sửa' : 'Tạo mới',
+title: editing ? 'Sửa voucher THI360MOI' : (isVoucher ? 'Tạo voucher' : 'Tạo khuyến mãi tự động'),
+subtitle: editing ? 'Đang chạy · đã dùng 37 / 200 lần · tạo bởi kinhdoanh.admin lúc 08:05 · 01/11/2026' : 'Khuyến mãi tự động áp cho mọi người xem bài thi; voucher do học viên nhập mã khi xác nhận mua.',
+backHref: editing ? 'ChiTietKhuyenMai.dc.html' : 'KhuyenMai.dc.html',
+backLabel: editing ? 'Chi tiết voucher' : 'Danh sách khuyến mãi',
+submitLabel: editing ? 'Lưu thay đổi' : (isVoucher ? 'Tạo voucher' : 'Tạo khuyến mãi'),
+locked: locked,
+lockDesc: locked ? 'lock-reason' : '',
+lockChip: 'display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 9999px; background: #F1F2F4; color: #54545A; font-size: 12px; font-weight: 500; white-space: nowrap',
+isVoucher: isVoucher, isAuto: !isVoucher, isPercent: isPercent,
+v: v,
+codeHint: editing ? 'Đã khóa vì có lượt dùng. Mã không phân biệt hoa thường.' : 'Không phân biệt hoa thường. Không trùng mã nào đã có, kể cả voucher đã ngừng hoặc đã xóa. Mã gợi ý gồm 8 ký tự, bỏ 0, O, 1, I.',
+suggest: () => this.setState({ code: 'K7M2PX9W' }),
+kindOpts: this.opts([['AUTO', 'Khuyến mãi tự động', 'Áp cho mọi người xem, kể cả khách; thẻ hiện giá gốc gạch ngang.'], ['VOUCHER', 'Voucher', 'Học viên nhập mã ở bước xác nhận mua; có giới hạn người dùng.']], kind, 'kind', locked),
+dtypeOpts: this.opts([['PERCENT', 'Theo phần trăm'], ['AMOUNT', 'Theo số tiền']], dtype, 'dtype', locked),
+valueLabel: isPercent ? 'Phần trăm giảm' : 'Số tiền giảm',
+valueUnit: isPercent ? '%' : 'đ',
+valueHint: isPercent ? 'Từ 1 đến 100. Làm tròn xuống tới đồng.' : 'Lớn hơn 0. Không giảm quá giá bài thi.',
+endHint: editing ? 'Không sớm hơn hiện tại (10:30 · 17/11/2026).' : 'Sau thời điểm bắt đầu.',
+totalLabel: isVoucher ? 'Tổng số lần dùng' : 'Tổng số suất',
+totalMin: editing ? '37' : '1',
+totalHint: editing ? 'Không nhỏ hơn số lần đã dùng (37). Để trống nếu không giới hạn.' : 'Để trống nếu không giới hạn.',
+scopeOpts: this.opts([['ALL', 'Tất cả bài thi', 'Mọi bài đang bán'], ['EXAM_KIND', 'Theo kỳ thi', 'Bài đang bán của kỳ thi đã chọn'], ['EXAM', 'Theo bài thi', 'Chỉ bài đã chọn']], scope, 'scope', locked),
+scopeKind: scope === 'EXAM_KIND', scopeExam: scope === 'EXAM',
+kinds: ['HSA', 'QDA', 'BCA', 'V-ACT', 'SPT', 'SP2E', 'THPTQG'].map((c) => ({ code: c, checked: c === 'QDA' })),
+audOpts: this.opts([['ALL', 'Mọi học viên', ''], ['NEW_ACCOUNT', 'Tài khoản mới', 'Chưa có đơn nào hoàn thành'], ['SELECTED', 'Lớp hoặc học viên chỉ định', 'Chọn lớp, học viên bên dưới']], aud, 'aud', locked),
+audSelected: aud === 'SELECTED',
+sum: editing
+? { discount: '30%, tối đa 50.000 đ', time: '01/11/2026 → 01/01/2027', used: '37 / 200', scope: 'Tất cả bài thi' }
+: { discount: 'Chưa nhập', time: '20/11/2026 → chưa chọn', used: '0', scope: scope === 'EXAM' ? '2 bài thi' : (scope === 'EXAM_KIND' ? 'Kỳ thi QDA' : 'Tất cả bài thi') },
+todos: todos, hasTodo: todos.length > 0, noTodo: todos.length === 0,
+tryDisabled: !editing, tryReady: editing
+};
+}
+}
+</script>
+</body>
+</html>

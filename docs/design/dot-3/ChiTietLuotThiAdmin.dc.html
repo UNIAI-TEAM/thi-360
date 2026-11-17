@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Chi tiết lượt thi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+thead th{position:sticky;top:0;z-index:1;background:#FAFAFB}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 2960px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #047857; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="19">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <nav aria-label="Vị trí" style="min-width: 0; color: #54545A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Người dùng <span aria-hidden="true">›</span> <a href="LuotThiAdmin.dc.html" style="text-decoration: none">Lượt thi</a> <span aria-hidden="true">›</span> <strong aria-current="page" style="color: #11181C; font-weight: 600">7C1E4B9A</strong></nav>
+      <button type="button" aria-haspopup="menu" style="flex: none; height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">OT</span>
+        <span>ops.thanh</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 8px">
+        <a href="LuotThiAdmin.dc.html" style="align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>Danh sách lượt thi</a>
+        <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: 0.01em">Lượt 7C1E4B9A</h1>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: #EFF6FF; color: #1D4ED8; font-size: 12.5px; font-weight: 500; white-space: nowrap"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Đang làm</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: #FEF2F2; color: #B91C1C; font-size: 12.5px; font-weight: 500; white-space: nowrap"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Phần 3 sinh đề lỗi</span>
+          <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; background: #F1F2F4; color: #3A3A42; font-size: 12.5px; font-weight: 500">HSA</span>
+          <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; background: #F1F2F4; color: #3A3A42; font-size: 12.5px; font-weight: 500">FULL</span>
+        </div>
+      </div>
+
+      <div role="alert" style="background: #FEF2F2; border: 1px solid #FECACA; border-left: 4px solid #B91C1C; border-radius: 12px; padding: 12px 16px; display: flex; gap: 12px; align-items: flex-start">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 1px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v4M12 16h.01"></path></svg>
+        <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px">
+          <p style="margin: 0; font-weight: 600; color: #991B1B">Phần 3 sinh đề lỗi 4 lần liên tiếp (lần cuối 17/11/2026 11:22:01)</p>
+          <p style="margin: 0; color: #3A3A42">Lượt không tự kết thúc vì lỗi sinh đề; học viên vẫn có thể bấm Thử lại. Nếu không khắc phục được, đánh dấu lượt hỏng để đóng lượt, rồi cấp bù 1 lượt.</p>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+        <div style="flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section aria-labelledby="h-info" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+            <h2 id="h-info" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Thông tin lượt</h2>
+            <dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px 24px; font-variant-numeric: tabular-nums">
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Học viên</dt><dd style="margin: 0; font-weight: 600">nguyenminhanh <span style="font-weight: 400; color: #54545A">· Nguyễn Minh Anh</span></dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Bài thi</dt><dd style="margin: 0; font-weight: 600">Đề thi thử ĐGNL HSA số 3 <span style="font-weight: 400; color: #54545A">· HSA-F-003 · bản công bố v2</span></dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Lượt số</dt><dd style="margin: 0; font-weight: 500">2</dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Tính giờ</dt><dd style="margin: 0; font-weight: 500">Từng phần, làm tuần tự</dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Bắt đầu</dt><dd style="margin: 0; font-weight: 500">17/11/2026 09:00:12</dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Phiên đang làm</dt><dd style="margin: 0; font-weight: 500">Phiên B <span style="color: #54545A">· hoạt động lúc 11:22:40</span></dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Lần cấp đã dùng</dt><dd style="margin: 0; font-weight: 500">Đơn <a href="ChiTietDonHang.dc.html">DH261102XK4T7M</a></dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Xem kết quả</dt><dd style="margin: 0; font-weight: 500">Điểm, đáp án và lời giải</dd></div>
+            </dl>
+          </section>
+
+          <section aria-labelledby="h-parts" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+            <div style="padding: 16px; border-bottom: 1px solid #E8E8EC">
+              <h2 id="h-parts" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Các phần và hạn</h2>
+            </div>
+            <div role="region" tabindex="0" aria-labelledby="cap-parts" style="overflow: auto">
+              <table style="width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums">
+                <caption id="cap-parts" class="sr-only">Các phần của lượt 7C1E4B9A</caption>
+                <thead>
+                  <tr style="text-align: left; font-size: 13px; line-height: 18px; color: #54545A">
+                    <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Phần</th>
+                    <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Trạng thái</th>
+                    <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Mở lúc</th>
+                    <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Hạn</th>
+                    <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Đóng lúc</th>
+                    <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Lý do đóng</th>
+                    <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #E8E8EC; text-align: right">Lần sinh đề</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{parts}}" as="p" hint-placeholder-count="3">
+                    <tr>
+                      <th scope="row" style="padding: 10px 16px; text-align: left; font-weight: 400; border-bottom: 1px solid #E8E8EC; min-width: 220px">
+                        <div style="font-weight: 600">{{p.name}}</div>
+                        <div style="font-size: 12.5px; line-height: 18px; color: #54545A">{{p.meta}}</div>
+                        <sc-if value="{{p.hasChoice}}" hint-placeholder-val="{{false}}"><div style="font-size: 12.5px; line-height: 18px; color: #3A3A42">{{p.choice}}</div></sc-if>
+                      </th>
+                      <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC"><span style="{{p.st.style}}"><span aria-hidden="true" style="{{p.st.dot}}"></span>{{p.st.text}}</span></td>
+                      <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{p.open}}</td>
+                      <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{p.deadline}}</td>
+                      <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{p.closed}}</td>
+                      <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC">{{p.reason}}</td>
+                      <td style="padding: 10px 16px; border-bottom: 1px solid #E8E8EC; text-align: right">
+                        <div style="font-weight: 600; color: {{p.triesColor}}">{{p.tries}}</div>
+                        <sc-if value="{{p.hasErr}}" hint-placeholder-val="{{false}}"><div style="font-size: 12.5px; line-height: 18px; color: #B91C1C">{{p.err}}</div></sc-if>
+                      </td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <aside aria-labelledby="h-actions" style="flex: 1 1 320px; max-width: 420px; min-width: 0; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <h2 id="h-actions" style="margin: 0 0 8px; font-size: 18px; line-height: 28px; font-weight: 700">Xử lý lượt</h2>
+          <div style="padding: 12px 0; border-top: 1px solid #E8E8EC; display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #54545A"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5"></path></svg>Chấm lại</div>
+            <p id="d-regrade" style="margin: 0; font-size: 13px; color: #54545A">Chỉ dùng khi lượt ở trạng thái Lỗi chấm. Chấm lại dùng cùng bài làm và phiên bản câu; điểm tự luận đã chấm được giữ.</p>
+            <button type="button" disabled aria-describedby="d-regrade" style="align-self: flex-start; height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #F1F2F4; color: #71717A; font: inherit; font-weight: 600">Chấm lại</button>
+          </div>
+          <div style="padding: 12px 0; border-top: 1px solid #E8E8EC; display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #B91C1C"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4s1-1 4-1 5 2 8 2 4-1 4-1v11s-1 1-4 1-5-2-8-2-4 1-4 1"></path></svg>Đánh dấu lượt hỏng</div>
+            <p id="d-fault" style="margin: 0; font-size: 13px; color: #3A3A42">Đóng lượt với lý do lỗi hệ thống. Phần 3 thành bỏ qua, 0 điểm; phần 1 và 2 vẫn được chấm. Kết quả ghi "Lượt kết thúc do lỗi hệ thống". Cần nhập lý do.</p>
+            <a href="#dlg-fault" aria-describedby="d-fault" style="align-self: flex-start; height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; border: 1px solid #FECACA; background: #FFFFFF; color: #B91C1C; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Đánh dấu hỏng…</a>
+          </div>
+          <div style="padding: 12px 0 4px; border-top: 1px solid #E8E8EC; display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #54545A"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v8M8 12h8"></path></svg>Cấp bù 1 lượt</div>
+            <p id="d-comp" style="margin: 0; font-size: 13px; color: #54545A">Chỉ cấp bù cho lượt đã đánh dấu hỏng, mỗi lượt một lần. Cần nhập lý do.</p>
+            <button type="button" disabled aria-describedby="d-comp" style="align-self: flex-start; height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #F1F2F4; color: #71717A; font: inherit; font-weight: 600">Cấp bù 1 lượt</button>
+          </div>
+          <p style="margin: 8px 0 0; padding-top: 12px; border-top: 1px solid #E8E8EC; font-size: 12.5px; line-height: 18px; color: #54545A">Nút hiện theo quyền: Chấm lại cần GRADING.MODIFY; Đánh dấu hỏng và Cấp bù cần ATTEMPT.COMPENSATE. Lần xem lượt này được ghi vào nhật ký.</p>
+        </aside>
+      </div>
+
+      <section aria-labelledby="h-events" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px">
+          <h2 id="h-events" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Dòng sự kiện</h2>
+          <span style="color: #54545A">13 sự kiện · không ghi nội dung câu trả lời, chỉ ghi câu và thứ tự lưu</span>
+        </div>
+        <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column">
+          <sc-for list="{{events}}" as="e" hint-placeholder-count="13">
+            <li style="display: grid; grid-template-columns: 150px 20px minmax(0, 1fr); gap: 0 12px; font-variant-numeric: tabular-nums">
+              <span style="padding: 8px 0; color: #54545A; font-size: 13px; white-space: nowrap">{{e.at}}</span>
+              <span aria-hidden="true" style="position: relative; display: flex; justify-content: center"><span style="position: absolute; top: 0; bottom: 0; width: 1px; background: #E8E8EC"></span><span style="{{e.dot}}"></span></span>
+              <div style="padding: 8px 0 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="font-weight: 600; color: {{e.color}}">{{e.title}}</span><sc-if value="{{e.hasSession}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 9999px; border: 1px solid #E8E8EC; font-size: 12px; color: #54545A">{{e.session}}</span></sc-if></div>
+                <span style="color: #3A3A42">{{e.detail}}</span>
+              </div>
+            </li>
+          </sc-for>
+        </ol>
+      </section>
+
+      <section aria-labelledby="h-answers" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 16px; border-bottom: 1px solid #E8E8EC; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px">
+          <div style="min-width: 0">
+            <h2 id="h-answers" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Câu trả lời cuối máy chủ đã nhận</h2>
+            <p style="margin: 2px 0 0; color: #54545A">100 câu đã phát ở phần 1 và 2 · 87 câu có trả lời</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; min-width: 180px">
+            <label for="f-part" style="font-size: 13px; font-weight: 500; color: #3A3A42">Phần</label>
+            <select id="f-part" name="part" style="height: 44px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; background: #FFFFFF"><option>Tất cả</option><option>Phần 1</option><option>Phần 2</option></select>
+          </div>
+        </div>
+        <div role="region" tabindex="0" aria-labelledby="cap-answers" style="overflow: auto">
+          <table style="width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums">
+            <caption id="cap-answers" class="sr-only">Câu trả lời cuối của lượt 7C1E4B9A</caption>
+            <thead>
+              <tr style="text-align: left; font-size: 13px; line-height: 18px; color: #54545A">
+                <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Câu</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Phần</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Dạng câu</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Câu trả lời</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Nhận lúc</th>
+                <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC; text-align: right">Thứ tự lưu</th>
+                <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Phiên</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{answers}}" as="a" hint-placeholder-count="6">
+                <tr>
+                  <th scope="row" style="padding: 10px 16px; text-align: left; font-weight: 600; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{a.no}}</th>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{a.part}}</td>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{a.type}}</td>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; color: {{a.color}}">{{a.answer}}</td>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; white-space: nowrap">{{a.at}}</td>
+                  <td style="padding: 10px 8px; border-bottom: 1px solid #E8E8EC; text-align: right">{{a.seq}}</td>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #E8E8EC">{{a.session}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: #54545A">
+          <div style="font-variant-numeric: tabular-nums">Hiển thị 6 trên 100 câu</div>
+          <nav aria-label="Phân trang câu trả lời" style="display: flex; flex-wrap: wrap; gap: 6px">
+            <button type="button" disabled style="height: 44px; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #F1F2F4; color: #54545A; font: inherit">Trước</button>
+            <button type="button" aria-current="page" style="height: 44px; min-width: 44px; border: 1px solid #059669; border-radius: 10px; background: #ECFDF5; color: #047857; font: inherit; font-weight: 600">1</button>
+            <button type="button" style="height: 44px; min-width: 44px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; color: #3A3A42; font: inherit">2</button>
+            <button type="button" style="height: 44px; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; color: #3A3A42; font: inherit">Sau</button>
+          </nav>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-other" style="border: 1px dashed #D4D4DA; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px">
+        <h2 id="h-other" style="margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">Trạng thái khác</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px; align-items: start">
+
+          <div id="dlg-fault" style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #3A3A42">Hộp thoại Đánh dấu lượt hỏng, khi bấm xác nhận mà chưa nhập lý do</h3>
+            <div role="dialog" aria-labelledby="dlg-fault-title" aria-describedby="dlg-fault-desc" style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); border: 1px solid #E8E8EC; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <h4 id="dlg-fault-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Đánh dấu lượt 7C1E4B9A hỏng?</h4>
+                  <p id="dlg-fault-desc" style="margin: 0; color: #54545A">Lượt đang mở sẽ đóng ngay với lý do lỗi hệ thống. Phần 3 thành bỏ qua và được 0 điểm; phần đã làm vẫn được chấm. Học viên thấy ghi chú "Lượt kết thúc do lỗi hệ thống".</p>
+                </div>
+                <button type="button" aria-label="Đóng" style="flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+              <dl style="margin: 0; padding: 10px 14px; border-radius: 12px; background: #F7F8F9; display: flex; flex-wrap: wrap; gap: 6px 24px">
+                <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Học viên</dt><dd style="margin: 0; font-weight: 600">nguyenminhanh</dd></div>
+                <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Bài thi</dt><dd style="margin: 0; font-weight: 600">Đề thi thử ĐGNL HSA số 3 · lượt 2</dd></div>
+                <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Phần lỗi</dt><dd style="margin: 0; font-weight: 600">Phần 3 · 4 lần sinh đề lỗi</dd></div>
+              </dl>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="fault-reason" style="font-size: 13px; font-weight: 600; color: #3A3A42">Lý do <span aria-hidden="true" style="color: #B91C1C">*</span></label>
+                <textarea id="fault-reason" name="reason" rows="3" required aria-invalid="true" aria-describedby="fault-reason-err" style="box-sizing: border-box; padding: 10px 12px; border: 2px solid #B91C1C; border-radius: 10px; font: inherit; color: #11181C; resize: vertical"></textarea>
+                <span id="fault-reason-err" style="font-size: 12.5px; line-height: 18px; color: #B91C1C; font-weight: 500">Nhập lý do đánh dấu lượt hỏng.</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+                <button type="button" style="height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Hủy</button>
+                <button type="button" style="height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: #B91C1C; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Đánh dấu hỏng và đóng lượt</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="dlg-comp" style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #3A3A42">Hộp thoại Cấp bù, khi lần cấp của lượt đã bị hoàn hết</h3>
+            <div role="dialog" aria-labelledby="dlg-comp-title" aria-describedby="dlg-comp-desc" style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); border: 1px solid #E8E8EC; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <h4 id="dlg-comp-title" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Cấp bù 1 lượt cho nguyenminhanh?</h4>
+                  <p id="dlg-comp-desc" style="margin: 0; color: #54545A">Lượt bù mang quyền lợi của lần cấp mà lượt 7C1E4B9A đã dùng (đơn DH261102XK4T7M). Mỗi lượt hỏng chỉ được cấp bù một lần.</p>
+                </div>
+                <button type="button" aria-label="Đóng" style="flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3A3A42; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <label for="comp-reason" style="font-size: 13px; font-weight: 600; color: #3A3A42">Lý do <span aria-hidden="true" style="color: #B91C1C">*</span></label>
+                <textarea id="comp-reason" name="reason" rows="3" required style="box-sizing: border-box; padding: 10px 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; color: #11181C; resize: vertical">Phần 3 sinh đề lỗi 4 lần do lỗi hệ thống, học viên không làm được phần 3. Đã đánh dấu lượt hỏng lúc 11:30.</textarea>
+              </div>
+              <p role="alert" style="margin: 0; padding: 10px 12px; border-radius: 10px; background: #FEF2F2; color: #991B1B; display: flex; gap: 8px; align-items: flex-start"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 3px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v4M12 16h.01"></path></svg>Không cấp bù được: lần cấp mà lượt này đã dùng đã được hoàn tiền hết.</p>
+              <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+                <button type="button" style="height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Hủy</button>
+                <button type="button" style="height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: #047857; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Cấp bù 1 lượt</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 12px; align-items: start">
+          <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600">Đã đánh dấu hỏng, chưa cấp bù</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px">
+              <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: #EFF6FF; color: #1D4ED8; font-size: 12.5px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Đang chấm</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: #FFFBEB; color: #B45309; font-size: 12.5px; font-weight: 500"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4s1-1 4-1 5 2 8 2 4-1 4-1v11s-1 1-4 1-5-2-8-2-4 1-4 1"></path></svg>Lượt hỏng</span>
+            </div>
+            <p style="margin: 0; color: #3A3A42; font-variant-numeric: tabular-nums">Đánh dấu lúc 17/11/2026 11:30 bởi ops.thanh. Lý do: phần 3 sinh đề lỗi 4 lần, không khắc phục được.</p>
+            <a href="#dlg-comp" style="align-self: flex-start; height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: #047857; color: #FFFFFF; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v8M8 12h8"></path></svg>Cấp bù 1 lượt…</a>
+            <p style="margin: 0; font-size: 12.5px; color: #54545A">Sau khi cấp bù, nút thay bằng dòng "Đã cấp bù 1 lượt · 17/11/2026 11:32 · ops.thanh"; không cấp lần hai.</p>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600">Lượt lỗi chấm (lượt 9AC27B4E)</h3>
+            <span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: #FEF2F2; color: #B91C1C; font-size: 12.5px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Lỗi chấm</span>
+            <p style="margin: 0; color: #3A3A42">Chấm tự động hết số lần thử. Lỗi lần cuối: không đọc được quy tắc chấm của câu 23. Học viên đang thấy "Bài làm đã được ghi nhận, kết quả đang được xử lý".</p>
+            <button type="button" style="align-self: flex-start; height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: #047857; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5"></path></svg>Chấm lại</button>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600">Thiếu quyền ATTEMPT.COMPENSATE</h3>
+            <p style="margin: 0; color: #3A3A42">Khối Xử lý lượt chỉ còn mục Chấm lại (nếu có GRADING.MODIFY). Không có mục Đánh dấu lượt hỏng và Cấp bù 1 lượt. Thiếu cả hai quyền thì không hiện khối Xử lý lượt.</p>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600">Không tải được lượt thi</h3>
+            <p style="margin: 0; color: #54545A">Kiểm tra kết nối rồi thử lại.</p>
+            <button type="button" style="height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Thử lại</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2960}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+timer: 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16',
+question: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+exam: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+grading: 'M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+list: 'M4 6h16M4 12h16M4 18h16',
+tag: 'M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01',
+receipt: 'M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1zM16 8H8M16 12H8M13 16H8',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, 'BangDieuKhien.dc.html'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'], ['attempts', 'Lượt thi', I.timer, 'LuotThiAdmin.dc.html'],
+['h', 'Nội dung'], ['questions', 'Ngân hàng câu hỏi', I.question, 'NganHangCauHoi.dc.html'], ['exams', 'Bài thi', I.exam, 'BaiThi.dc.html'], ['grading', 'Chấm tự luận', I.grading, '#'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Thương mại'], ['promotions', 'Khuyến mãi', I.tag, 'KhuyenMai.dc.html'], ['orders', 'Đơn hàng', I.receipt, 'DonHang.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', I.sliders, 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+chip(kind, text) {
+const c = { ok: ['#ECFDF5', '#047857'], warn: ['#FFFBEB', '#B45309'], bad: ['#FEF2F2', '#B91C1C'], off: ['#F1F2F4', '#54545A'], info: ['#EFF6FF', '#1D4ED8'] }[kind];
+return {
+text: text,
+style: 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + c[0] + '; color: ' + c[1],
+dot: 'width: 8px; height: 8px; border-radius: 9999px; flex: none; background: ' + c[1]
+};
+}
+renderVals() {
+const parts = [
+['Phần 1 · Tư duy định lượng', '50 câu · 75 phút', '', ['off', 'Đã đóng'], '09:00:12', '10:15:12', '10:14:05', 'Hoàn thành phần', '1', ''],
+['Phần 2 · Tư duy định tính', '50 câu · 60 phút', '', ['off', 'Đã đóng'], '10:14:05', '11:14:05', '11:13:50', 'Hoàn thành phần', '1', ''],
+['Phần 3 · Khoa học hoặc Tiếng Anh', '50 câu · 60 phút', 'Đã chọn Khoa học: Vật lí 17 · Hóa học 17 · Sinh học 16 câu', ['bad', 'Sinh đề lỗi'], '—', '—', '—', '—', '4', 'Quá thời gian sinh đề']
+].map((d) => ({
+name: d[0], meta: d[1], hasChoice: !!d[2], choice: d[2], st: this.chip(d[3][0], d[3][1]),
+open: d[4], deadline: d[5], closed: d[6], reason: d[7], tries: d[8], hasErr: !!d[9], err: d[9],
+triesColor: d[9] ? '#B91C1C' : '#11181C'
+}));
+const col = { ok: '#047857', bad: '#B91C1C', warn: '#B45309', off: '#A1A1AA', info: '#1D4ED8' };
+const text = { ok: '#047857', bad: '#B91C1C', warn: '#92400E', off: '#11181C', info: '#1D4ED8' };
+const events = [
+['17/11/2026 09:00:12', 'info', 'Bắt đầu lượt', 'Phiên A', 'Giữ 1 lượt từ đơn DH261102XK4T7M.'],
+['17/11/2026 09:00:12', 'off', 'Mở phần 1', '', 'Hạn 10:15:12.'],
+['17/11/2026 09:00:14', 'off', 'Nhận phiên làm bài', 'Phiên A', 'Phiên A giữ quyền sửa bài.'],
+['17/11/2026 09:52:40', 'warn', 'Tiếp quản phiên', 'Phiên B', 'Phiên B tiếp quản từ phiên A.'],
+['17/11/2026 09:52:41', 'warn', 'Từ chối lưu', 'Phiên A', 'Câu 38, thứ tự lưu 112: phiên đã bị tiếp quản.'],
+['17/11/2026 10:14:05', 'off', 'Đóng phần 1', 'Phiên B', 'Hoàn thành phần.'],
+['17/11/2026 10:14:05', 'off', 'Mở phần 2', '', 'Hạn 11:14:05.'],
+['17/11/2026 11:13:50', 'off', 'Đóng phần 2', 'Phiên B', 'Hoàn thành phần.'],
+['17/11/2026 11:14:30', 'ok', 'Xác nhận lựa chọn phần 3', 'Phiên B', 'Khoa học: Vật lí, Hóa học, Sinh học.'],
+['17/11/2026 11:14:31', 'bad', 'Sinh đề lỗi', '', 'Phần 3, lần 1: quá thời gian sinh đề.'],
+['17/11/2026 11:15:01', 'bad', 'Sinh đề lỗi', '', 'Phần 3, lần 2: hệ thống tự thử lại sau 30 giây.'],
+['17/11/2026 11:17:01', 'bad', 'Sinh đề lỗi', '', 'Phần 3, lần 3: tự thử lại sau 2 phút. Đã báo vận hành.'],
+['17/11/2026 11:22:01', 'bad', 'Sinh đề lỗi', '', 'Phần 3, lần 4: tự thử lại sau 5 phút.']
+].map((d) => ({ at: d[0], title: d[2], session: d[3], hasSession: !!d[3], detail: d[4], color: text[d[1]],
+dot: 'position: relative; margin-top: 14px; width: 10px; height: 10px; border-radius: 9999px; box-sizing: border-box; border: 2px solid #FFFFFF; box-shadow: 0 0 0 1px ' + col[d[1]] + '; background: ' + col[d[1]] }));
+const answers = [
+['Câu 1', 'Phần 1', 'Một đáp án', 'Phương án C', '09:03:41', '4', 'A'],
+['Câu 2', 'Phần 1', 'Trả lời ngắn', '12,5', '09:06:10', '9', 'A'],
+['Câu 17', 'Phần 1', 'Đúng sai', 'Ý a Đúng · ý b Sai · ý c Sai · ý d Đúng', '09:31:22', '61', 'A'],
+['Câu 38', 'Phần 1', 'Một đáp án', 'Phương án A', '09:52:58', '113', 'B'],
+['Câu 51', 'Phần 2', 'Một đáp án', 'Bỏ trống', '—', '—', '—'],
+['Câu 64', 'Phần 2', 'Điền khuyết', 'Ô 1: phát triển · Ô 2: bền vững', '10:41:07', '188', 'B']
+].map((d) => ({ no: d[0], part: d[1], type: d[2], answer: d[3], at: d[4], seq: d[5], session: d[6] === '—' ? '—' : 'Phiên ' + d[6], color: d[3] === 'Bỏ trống' ? '#54545A' : '#11181C' }));
+return { nav: this.nav('attempts'), parts, events, answers };
+}
+}
+</script>
+</body>
+</html>

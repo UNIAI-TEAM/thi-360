@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Chi tiết voucher</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+:focus-visible{outline:2px solid #059669;outline-offset:2px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+thead th{position:sticky;top:0;z-index:1;background:#FAFAFB}
+button:disabled{cursor:not-allowed}
+.mono{font-family:ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.04em}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 1560px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E8E8EC; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: #047857; color: #FFFFFF; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: #064E3B">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="19">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: #FFFFFF; border-bottom: 1px solid #E8E8EC; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <nav aria-label="Vị trí" style="min-width: 0; color: #54545A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thương mại <span aria-hidden="true">›</span> <a href="KhuyenMai.dc.html" style="text-decoration: none">Khuyến mãi</a> <span aria-hidden="true">›</span> <strong aria-current="page" style="color: #11181C; font-weight: 600">THI360MOI</strong></nav>
+      <button type="button" aria-haspopup="menu" style="flex: none; height: 40px; padding: 0 10px 0 4px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">KD</span>
+        <span>kinhdoanh.admin</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <a href="KhuyenMai.dc.html" style="align-self: flex-start; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; font-weight: 500; text-decoration: none"><span aria-hidden="true">‹</span> Danh sách khuyến mãi</a>
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 6px">
+            <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700"><span class="mono">THI360MOI</span> · Chào tài khoản mới</h1>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; background: #F1F2F4; color: #3A3A42; font-size: 12.5px; font-weight: 500">Voucher</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-size: 12.5px; font-weight: 500; white-space: nowrap"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>Đang chạy</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <a href="TaoKhuyenMai.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; border: 1px solid #A7F3D0; background: #FFFFFF; color: #065F46; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>Sửa</a>
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM10 15V9M14 15V9"></path></svg>Ngừng voucher</button>
+              <button type="button" disabled aria-describedby="del-reason" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid #E8E8EC; background: #F1F2F4; color: #54545A; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg>Xóa</button>
+            </div>
+            <span id="del-reason" style="font-size: 12.5px; line-height: 18px; color: #54545A">Chỉ xóa được khi chưa có lượt dùng</span>
+          </div>
+        </div>
+      </div>
+
+      <dl aria-label="Số liệu sử dụng" style="margin: 0; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px 24px; font-variant-numeric: tabular-nums">
+        <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Đã dùng</dt><dd style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 700">37 / 200</dd><dd style="margin: 0; font-size: 12.5px; color: #54545A">35 đã xác nhận · 2 đang giữ</dd></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Còn lại</dt><dd style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 700">163 lần</dd></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Tiền đã giảm</dt><dd style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 700">1.587.400 đ</dd><dd style="margin: 0; font-size: 12.5px; color: #54545A">Tính trên lần đã xác nhận</dd></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 12.5px; color: #54545A">Thời gian</dt><dd style="margin: 0; font-weight: 600">01/11/2026 00:00</dd><dd style="margin: 0; color: #3A3A42">→ 01/01/2027 00:00</dd></div>
+      </dl>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px">
+        <section aria-labelledby="h-uses" style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 16px; border-bottom: 1px solid #E8E8EC; display: flex; flex-direction: column; gap: 12px">
+            <div>
+              <h2 id="h-uses" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Các lần dùng</h2>
+              <p style="margin: 2px 0 0; color: #54545A">Đơn chờ thanh toán giữ một lần dùng trong 15 phút. Đơn hết hạn, bị hủy hoặc bị thay thế thì trả lại lần dùng. Đơn đã hoàn tiền vẫn tính là đã dùng.</p>
+            </div>
+            <search style="display: block">
+              <form aria-label="Lọc lần dùng" style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px">
+                <label style="flex: 2 1 240px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: #3A3A42">Tìm kiếm
+                  <input type="search" name="q" placeholder="Mã đơn hoặc tài khoản" autocomplete="off" spellcheck="false" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; font-size: 14px; color: #11181C">
+                </label>
+                <label style="flex: 1 1 160px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: #3A3A42">Trạng thái
+                  <select name="state" style="height: 40px; padding: 0 10px; border: 1px solid #E8E8EC; border-radius: 10px; font: inherit; font-size: 14px; color: #11181C; background: #FFFFFF"><option>Tất cả</option><option>Đang giữ</option><option>Đã dùng</option><option>Đã trả lại</option></select>
+                </label>
+              </form>
+            </search>
+          </div>
+          <div style="padding: 10px 16px; border-bottom: 1px solid #E8E8EC" role="status"><strong style="font-weight: 600">41</strong> lần dùng, gồm 4 lần đã trả lại</div>
+          <div role="region" tabindex="0" aria-labelledby="cap-uses" style="overflow: auto">
+            <table style="width: 100%; min-width: 860px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums">
+              <caption id="cap-uses" class="vh">Các lần dùng voucher THI360MOI</caption>
+              <thead>
+                <tr style="text-align: left; font-size: 13px; line-height: 18px; color: #54545A">
+                  <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Mã đơn</th>
+                  <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Tài khoản</th>
+                  <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Bài thi</th>
+                  <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC; text-align: right">Số tiền giảm</th>
+                  <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Trạng thái</th>
+                  <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #E8E8EC">Thời điểm</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{uses}}" as="u" hint-placeholder-count="8">
+                  <tr style="vertical-align: top">
+                    <th scope="row" style="padding: 12px 16px; text-align: left; font-weight: 400; border-bottom: 1px solid #E8E8EC; white-space: nowrap"><a href="ChiTietDonHang.dc.html" class="mono" style="font-weight: 600; text-decoration: none">{{u.order}}</a></th>
+                    <td style="padding: 12px 8px; border-bottom: 1px solid #E8E8EC">{{u.user}}<div style="font-size: 12.5px; line-height: 18px; color: #54545A">{{u.fullName}}</div></td>
+                    <td style="padding: 12px 8px; border-bottom: 1px solid #E8E8EC; max-width: 240px">{{u.exam}}</td>
+                    <td style="padding: 12px 8px; border-bottom: 1px solid #E8E8EC; text-align: right; white-space: nowrap">−{{u.amount}}</td>
+                    <td style="padding: 12px 8px; border-bottom: 1px solid #E8E8EC"><span style="{{u.st.style}}"><span aria-hidden="true" style="{{u.st.dot}}"></span>{{u.st.text}}</span><sc-if value="{{u.hasNote}}" hint-placeholder-val="{{false}}"><div style="margin-top: 4px; font-size: 12.5px; line-height: 18px; color: #54545A">{{u.note}}</div></sc-if></td>
+                    <td style="padding: 12px 16px; border-bottom: 1px solid #E8E8EC; color: #54545A; white-space: nowrap">{{u.at}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: #54545A">
+            <div>Hiển thị 1–8 trên 41 · 8 dòng mỗi trang</div>
+            <nav aria-label="Phân trang các lần dùng" style="display: flex; flex-wrap: wrap; gap: 6px">
+              <button type="button" disabled style="height: 36px; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #F1F2F4; color: #54545A; font: inherit">Trước</button>
+              <button type="button" aria-current="page" style="height: 36px; min-width: 36px; border: 1px solid #059669; border-radius: 10px; background: #ECFDF5; color: #047857; font: inherit; font-weight: 600">1</button>
+              <button type="button" style="height: 36px; min-width: 36px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; color: #3A3A42; font: inherit; cursor: pointer">2</button>
+              <button type="button" style="height: 36px; min-width: 36px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; color: #3A3A42; font: inherit; cursor: pointer">3</button>
+              <span aria-hidden="true" style="align-self: center">…</span>
+              <button type="button" style="height: 36px; min-width: 36px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; color: #3A3A42; font: inherit; cursor: pointer">6</button>
+              <button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #E8E8EC; border-radius: 10px; background: #FFFFFF; color: #3A3A42; font: inherit; cursor: pointer">Sau</button>
+            </nav>
+          </div>
+        </section>
+
+        <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section aria-labelledby="h-info" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+            <h2 id="h-info" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Thông tin</h2>
+            <dl style="margin: 0; display: flex; flex-direction: column; gap: 10px">
+              <sc-for list="{{info}}" as="i" hint-placeholder-count="10">
+                <div style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid #F1F2F4">
+                  <dt style="font-size: 12.5px; line-height: 18px; color: #54545A">{{i.k}}</dt>
+                  <dd style="margin: 0; font-weight: 500; overflow-wrap: anywhere">{{i.v}}</dd>
+                </div>
+              </sc-for>
+            </dl>
+          </section>
+
+          <section aria-labelledby="h-hist" style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+            <h2 id="h-hist" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Lịch sử thay đổi</h2>
+            <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0">
+              <sc-for list="{{hist}}" as="h" hint-placeholder-count="3">
+                <li style="display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid #F1F2F4">
+                  <span aria-hidden="true" style="flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 9999px; background: #047857"></span>
+                  <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                    <span style="font-weight: 600">{{h.what}}</span>
+                    <span style="color: #3A3A42">{{h.detail}}</span>
+                    <span style="font-size: 12.5px; line-height: 18px; color: #54545A">{{h.who}} · {{h.at}}</span>
+                  </div>
+                </li>
+              </sc-for>
+            </ol>
+          </section>
+        </div>
+      </div>
+
+      <section aria-labelledby="h-other" style="border: 1px dashed #A1A1AA; border-radius: 12px; padding: 16px; background: #FFFFFF; display: flex; flex-direction: column; gap: 10px">
+        <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+        <ul style="margin: 0; padding-left: 20px; color: #3A3A42; display: flex; flex-direction: column; gap: 6px">
+          <li><strong style="font-weight: 600">Chưa có lần dùng:</strong> bảng hiện "Chưa có lần dùng nào"; nút Xóa bấm được và mở hộp thoại xác nhận (xóa mềm, mã vẫn không dùng lại được).</li>
+          <li><strong style="font-weight: 600">Đã ngừng:</strong> chip "Đã ngừng"; nút "Ngừng voucher" đổi thành "Mở lại" khi chưa hết hạn, ẩn khi đã hết hạn.</li>
+          <li><strong style="font-weight: 600">Khuyến mãi tự động:</strong> không có dòng mã, người dùng, số lần mỗi tài khoản; thêm cảnh báo khi giá bị giữ ở mức tối thiểu 5.000 đ tại một bài thi.</li>
+          <li><strong style="font-weight: 600">Chỉ có quyền xem:</strong> ẩn Sửa, Ngừng, Xóa.</li>
+          <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span><strong style="font-weight: 600">Lỗi tải các lần dùng:</strong> "Không tải được các lần dùng."</span><button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid #E8E8EC; background: #FFFFFF; color: #3A3A42; font: inherit; font-weight: 600; cursor: pointer">Thử lại</button></li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+attempt: 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16',
+question: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+exam: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+grading: 'M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+list: 'M4 6h16M4 12h16M4 18h16',
+tag: 'M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01',
+order: 'M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1zM16 8H8M16 12H8M13 16H8',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, 'BangDieuKhien.dc.html'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'], ['attempts', 'Lượt thi', I.attempt, 'LuotThiAdmin.dc.html'],
+['h', 'Nội dung'], ['questions', 'Ngân hàng câu hỏi', I.question, 'NganHangCauHoi.dc.html'], ['exams', 'Bài thi', I.exam, 'BaiThi.dc.html'], ['grading', 'Chấm tự luận', I.grading, '#'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Thương mại'], ['promotions', 'Khuyến mãi', I.tag, 'KhuyenMai.dc.html'], ['orders', 'Đơn hàng', I.order, 'DonHang.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', I.sliders, 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: #ECFDF5; color: #047857; font-weight: 600' : 'color: #3A3A42; font-weight: 500') });
+}
+chip(state) {
+const m = { RESERVED: ['#FFFBEB', '#B45309', 'Đang giữ'], CONFIRMED: ['#ECFDF5', '#047857', 'Đã dùng'], RELEASED: ['#F1F2F4', '#54545A', 'Đã trả lại'] }[state];
+return {
+text: m[2],
+style: 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: ' + m[0] + '; color: ' + m[1],
+dot: 'width: 8px; height: 8px; border-radius: 9999px; flex: none; background: ' + m[1]
+};
+}
+renderVals() {
+const uses = [
+['DH261117Q7HX2M', 'tranthilinh', 'Trần Thị Linh', 'HSA FULL · Đề luyện số 1', '50.000 đ', 'RESERVED', 'Đơn chờ thanh toán, hết hạn lúc 10:57', '17/11/2026 10:42'],
+['DH261117W5NC8R', 'nguyenminhkhoa', 'Nguyễn Minh Khoa', 'QDA FULL · Đề luyện số 1', '50.000 đ', 'RESERVED', 'Đơn chờ thanh toán, hết hạn lúc 10:33', '17/11/2026 10:18'],
+['DH261117B4KZ6T', 'lehoangnam', 'Lê Hoàng Nam', 'HSA Toán · Bài lẻ số 1', '29.700 đ', 'CONFIRMED', '', '17/11/2026 09:15'],
+['DH261116T8WD3F', 'phamthuha', 'Phạm Thu Hà', 'HSA FULL · Đề luyện số 1', '50.000 đ', 'CONFIRMED', '', '16/11/2026 21:20'],
+['DH261116M2PZ5K', 'phamthuha', 'Phạm Thu Hà', 'HSA FULL · Đề luyện số 1', '50.000 đ', 'RELEASED', 'Đơn hết hạn, đã trả lại lần dùng', '16/11/2026 21:03'],
+['DH261115H6JV9Q', 'vuducanh', 'Vũ Đức Anh', 'BCA FULL · Đề luyện số 1', '50.000 đ', 'CONFIRMED', 'Đơn đã hoàn tiền, vẫn tính là đã dùng', '15/11/2026 14:30'],
+['DH261114R3KY7N', 'dangngocmai', 'Đặng Ngọc Mai', 'QDA Tiếng Anh · Bài lẻ số 1', '11.700 đ', 'CONFIRMED', '', '14/11/2026 19:48'],
+['DH261112C9FX4L', 'hoangtuankiet', 'Hoàng Tuấn Kiệt', 'QDA FULL · Đề luyện số 1', '50.000 đ', 'CONFIRMED', '', '12/11/2026 08:02']
+].map((u) => ({ order: u[0], user: u[1], fullName: u[2], exam: u[3], amount: u[4], st: this.chip(u[5]), hasNote: !!u[6], note: u[6], at: u[7] }));
+const info = [
+['Loại', 'Voucher'],
+['Mã', 'THI360MOI'],
+['Mức giảm', '30%, tối đa 50.000 đ'],
+['Cộng với khuyến mãi tự động', 'Không: hệ thống chọn cách có lợi hơn cho học viên'],
+['Phạm vi', 'Tất cả bài thi đang bán'],
+['Người dùng', 'Tài khoản mới (chưa có đơn nào hoàn thành)'],
+['Số lần mỗi tài khoản', '1'],
+['Tổng số lần dùng', '200'],
+['Mô tả', 'Phát qua trang Facebook và email chào mừng. Phụ trách: nhóm kinh doanh.'],
+['Tạo', 'kinhdoanh.admin · 08:05 · 01/11/2026']
+].map((i) => ({ k: i[0], v: i[1] }));
+const hist = [
+{ what: 'Sửa voucher', detail: 'Tổng số lần dùng: 100 → 200', who: 'kinhdoanh.admin', at: '16:20 · 15/11/2026' },
+{ what: 'Sửa voucher', detail: 'Kết thúc: 01/12/2026 00:00 → 01/01/2027 00:00', who: 'kinhdoanh.admin', at: '09:12 · 10/11/2026' },
+{ what: 'Tạo voucher', detail: 'Trạng thái Hoạt động', who: 'kinhdoanh.admin', at: '08:05 · 01/11/2026' }
+];
+return { nav: this.nav('promotions'), uses, info, hist };
+}
+}
+</script>
+</body>
+</html>
