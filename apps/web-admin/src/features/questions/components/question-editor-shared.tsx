@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { get, useFormState, type FieldError } from "react-hook-form";
 import type { QuestionEditorValues } from "../editor-form";
+import type { ReadinessIssue } from "../readiness";
 
 /** Đường dẫn tới phần thân của câu đơn hoặc của một câu con trong câu chùm. */
 export type BodyPath = "body" | `children.${number}.body`;
@@ -44,6 +45,29 @@ function RichEditorRegistryProvider({ children }: { children: ReactNode }) {
 
 export function useRichEditorRegistry() {
   return useContext(RichEditorRegistryContext);
+}
+
+/**
+ * Cảnh báo Sẵn sàng của máy chủ dành cho trình soạn (spec 2026-11-17 mục 3): trang sửa tải `GET /questions/{id}/
+ * readiness` một lần khi mở và đưa danh sách xuống đây; khối soạn phương án lọc theo `position`/`child` để hiện dưới
+ * phương án gây cảnh báo. Câu đang tạo chưa có cảnh báo (chưa từng lưu).
+ */
+const ReadinessWarningsContext = createContext<readonly ReadinessIssue[]>([]);
+
+export function EditorWarningsProvider({
+  warnings,
+  children,
+}: {
+  warnings: readonly ReadinessIssue[];
+  children: ReactNode;
+}) {
+  return <ReadinessWarningsContext.Provider value={warnings}>{children}</ReadinessWarningsContext.Provider>;
+}
+
+/** Cảnh báo của máy chủ theo `code`, `position` (phương án, tính từ 1) và `child` (câu con của chùm, tính từ 1). */
+export function useEditorWarnings(code: string, position: number, child?: number): readonly ReadinessIssue[] {
+  const warnings = useContext(ReadinessWarningsContext);
+  return warnings.filter((warning) => warning.code === code && warning.position === position && warning.child === child);
 }
 
 /** Lỗi đã dịch của một trường (kể cả lỗi cấp mảng mà resolver đặt ở `.root`). */

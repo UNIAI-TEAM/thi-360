@@ -64,6 +64,8 @@ const PLACEMENTS: Record<string, Placement> = {
   UNDERLINE_LABEL_DUPLICATE: place("UNDERLINE_LABEL_DUPLICATE", "STRUCTURE", "content"),
   UNDERLINE_LABEL_MISPLACED: place("UNDERLINE_LABEL_MISPLACED", "STRUCTURE", "content"),
   IMAGE_ALT_MISSING: place("IMAGE_ALT_MISSING", "CONTENT", "content"),
+  // Cảnh báo phương án nhắc tới phương án khác (spec 2026-11-17 mục 3): không chặn, hiện dưới phương án đó ở trình soạn.
+  OPTION_REFERS_TO_OTHERS: place("OPTION_REFERS_TO_OTHERS", "CONTENT", "content"),
 };
 
 const FALLBACK = place("READINESS_OTHER", "STRUCTURE", "structure");

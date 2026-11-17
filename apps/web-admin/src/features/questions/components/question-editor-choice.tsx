@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Checkbox, cn } from "@thi360/ui";
-import { Lock, Plus } from "lucide-react";
+import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
@@ -16,6 +16,7 @@ import {
   RowActions,
   useAnnounce,
   useEditorError,
+  useEditorWarnings,
   type BodyPath,
   type ContentPath,
 } from "./question-editor-shared";
@@ -350,6 +351,48 @@ function OptionRow({
       </div>
       {correct && <span className="ps-7 text-caption font-medium text-primary-text">{t("correctBadge")}</span>}
       <FieldErrorText id={`${inputId}-error`} message={error} />
+      <OptionRefersWarning prefix={prefix} index={index} />
     </li>
+  );
+}
+
+/** Chỉ số câu con (tính từ 1) của đường dẫn `children.<n>.body`; `undefined` với thân câu đơn. */
+function childIndexOf(prefix: BodyPath): number | undefined {
+  const match = /^children\.(\d+)\.body$/.exec(prefix);
+  return match ? Number(match[1]) + 1 : undefined;
+}
+
+/**
+ * Cảnh báo `OPTION_REFERS_TO_OTHERS` của máy chủ dưới phương án gây cảnh báo (spec 2026-11-17 mục 3), cùng đường hiện
+ * cảnh báo Sẵn sàng; nút "Bật giữ thứ tự" đặt cờ nên lần kiểm tra lại sau khi lưu không còn cảnh báo.
+ */
+function OptionRefersWarning({ prefix, index }: { prefix: BodyPath; index: number }) {
+  const t = useTranslations("questions.editor.choice.keepOrder");
+  const announce = useAnnounce();
+  const { control, setValue } = useFormContext<QuestionEditorValues>();
+  const warnings = useEditorWarnings("OPTION_REFERS_TO_OTHERS", index + 1, childIndexOf(prefix));
+  const keepOrder = useWatch({ control, name: `${prefix}.keepOptionOrder` });
+  if (keepOrder || warnings.length === 0) return null;
+  return (
+    <div
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/30 bg-warning-bg px-3 py-2 text-caption text-warning"
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        <TriangleAlert aria-hidden className="size-4 shrink-0" />
+        {t("refersWarning")}
+      </span>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          setValue(`${prefix}.keepOptionOrder`, true, { shouldDirty: true });
+          announce(t("keepOrderOn"));
+        }}
+      >
+        {t("turnOn")}
+      </Button>
+    </div>
   );
 }
