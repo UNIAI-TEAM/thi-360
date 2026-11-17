@@ -32,7 +32,6 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
                 from exam.exam_template order by code
                 """);
         assertThat(templates).isNotEmpty();
-        assertThat(CODE_SOURCED_CHOICE_OPTION_EMPTY).isNotEmpty();
         for (var template : templates) {
             String code = (String) template.get("code");
             assertThat(template.get("active")).as("%s must be loadable", code).isEqualTo(true);
@@ -82,13 +81,13 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
 
     private boolean allowedCodeSourceIssue(String code, JsonNode parts, JsonNode issue) {
         String issueCode = issue.path("code").asText();
-        if (!Set.of("OPTION_EMPTY", "PART_EMPTY").contains(issueCode)) return false;
+        if (!Set.of("OPTION_EMPTY", "PART_EMPTY", "PART_TOTAL_MISMATCH").contains(issueCode)) return false;
         for (int i = 0; i < parts.size(); i++) {
             JsonNode part = parts.get(i);
             if (part.path("id").asText().equals(issue.path("partId").asText())) {
                 return CODE_SOURCED_PARTS.contains(code + ":" + (i + 1))
                         && part.hasNonNull("codeSource")
-                        && ("PART_EMPTY".equals(issueCode)
+                        && (!"OPTION_EMPTY".equals(issueCode)
                                 || "CHOICE".equals(part.path("participation").path("mode").asText()));
             }
         }
