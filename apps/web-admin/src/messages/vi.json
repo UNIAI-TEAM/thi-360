@@ -4779,7 +4779,6 @@
       "instructionsLabel": "Hướng dẫn làm bài",
       "instructionsPlaceholder": "Ví dụ: cách chọn tổ hợp, quy định về thời gian làm bài",
       "instructionsHint": "Học viên đọc trước khi bắt đầu. Có thể để trống khi lưu nháp; chưa chèn được ảnh.",
-      "templateFull": "{kind} · Toàn bài",
       "templatePart": "{kind} · Theo phần {scope}",
       "cover": {
         "label": "Ảnh giới thiệu",
@@ -4971,8 +4970,6 @@
         "PER_PART": "thời lượng theo từng phần",
         "SHARED": "thời lượng chung cho cả bài"
       },
-      "templateSubject": "{kind} {subject} {year}",
-      "templateBlank": "{kind} {subject} (chưa có mẫu)",
       "noSubject": "chưa chọn môn",
       "subjectField": {
         "subject": "Môn của bài thi",

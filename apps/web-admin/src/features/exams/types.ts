@@ -322,7 +322,7 @@ export interface ExamTemplate {
   durationMinutes: number | null;
   maxScore: number | null;
   /**
-   * Nhóm mẫu của kỳ thi `templateBy = SUBJECT` (2B 15.1): `STRUCTURE` — "Dùng cấu trúc môn", `REVIEW` — "Tự thiết
+   * Nhóm mẫu của kỳ thi `templateBy = SUBJECT` (2B 15.1): `STANDARD` — "Dùng cấu trúc môn", `REVIEW` — "Tự thiết
    * lập bài ôn" (rút gọn). Kỳ thi khác để trống.
    */
   buildMode?: ExamBuildMode | null;

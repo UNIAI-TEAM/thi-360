@@ -162,6 +162,36 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
   }, 20_000);
 });
 
+describe("trang Tạo bài thi, nhánh thật: đổi lựa chọn sau khi sửa bảng", () => {
+  const HSA_PART_MATH = template("HSA_PART_MATH", { kindCode: "HSA", scope: "PART", partCode: "MATH", label: "HSA · Toán" }, [
+    part(1, "Toán", 50, 75, [section("MATH", 50)]),
+  ]);
+  const HSA_PART_LIT = template("HSA_PART_LIT", { kindCode: "HSA", scope: "PART", partCode: "LITERATURE", label: "HSA · Văn" }, [
+    part(1, "Văn", 50, 60, [section("LITERATURE", 50)]),
+  ]);
+
+  // [nhãn, ô chọn đổi]: cả hai đi qua `requestScope`, bảng đã sửa thì hỏi trước khi nạp lại.
+  it.each([
+    ["kỳ thi", () => screen.getByRole("radio", { name: /^QDA/ })],
+    ["phần", () => screen.getByRole("radio", { name: "Văn" })],
+  ])("đổi %s sau khi sửa bảng: hỏi xác nhận, Giữ lựa chọn cũ không mất số đã sửa", async (_label, target) => {
+    createServer([...ALL_TEMPLATES, HSA_PART_MATH, HSA_PART_LIT]).install();
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(await screen.findByRole("radio", { name: "Toán" })).toBeChecked();
+    const count = screen.getByRole("textbox", { name: /^Số câu của/ });
+    await user.clear(count);
+    await user.type(count, "7");
+    await user.click(target());
+    const dialog = await screen.findByRole("alert");
+    expect(within(dialog).getByText(/Đổi sang/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Giữ lựa chọn cũ" }));
+    expect(screen.getByRole("radio", { name: /^HSA/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Toán" })).toBeChecked();
+    expect(screen.getByRole("textbox", { name: /^Số câu của/ })).toHaveValue("7");
+  }, 20_000);
+});
+
 describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi", () => {
   it("SPT Toán: nhóm Tự luận tạm bỏ qua hiện mờ, không có ô nhập, không tính vào tổng; thời lượng chung phải nhập", async () => {
     const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();

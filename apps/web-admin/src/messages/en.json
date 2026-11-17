@@ -4779,7 +4779,6 @@
       "instructionsLabel": "Exam instructions",
       "instructionsPlaceholder": "For example: how to choose a combination, rules about time",
       "instructionsHint": "Learners read this before they start. It can stay empty in a draft; images are not supported yet.",
-      "templateFull": "{kind} · Whole exam",
       "templatePart": "{kind} · By part {scope}",
       "cover": {
         "label": "Cover image",
@@ -4971,8 +4970,6 @@
         "PER_PART": "duration per part",
         "SHARED": "one shared duration"
       },
-      "templateSubject": "{kind} {subject} {year}",
-      "templateBlank": "{kind} {subject} (no template)",
       "noSubject": "no subject chosen",
       "subjectField": {
         "subject": "Exam subject",
