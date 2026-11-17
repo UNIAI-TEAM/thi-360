@@ -17,8 +17,8 @@ INSERT INTO exam.exam_kind_profile (exam_item_id, scopes, template_by, timing, m
   ('00000000-0000-7000-8200-000000000102','{FULL,PART}','KIND','PER_PART',150,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000103','{FULL}','KIND','SHARED',100,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000104','{FULL}','KIND','SHARED',NULL,1200,'LINEAR',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8400-000000000105','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8400-000000000106','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  ('00000000-0000-7000-8400-000000000105','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  ('00000000-0000-7000-8400-000000000106','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000107','{SUBJECT}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0)
 ON CONFLICT (exam_item_id) DO NOTHING;
 
