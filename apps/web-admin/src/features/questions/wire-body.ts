@@ -35,11 +35,12 @@ export interface WireChild {
 }
 
 export type WireBody =
-  | { type: "SINGLE_CHOICE"; options?: WireChoice[] | null }
+  | { type: "SINGLE_CHOICE"; options?: WireChoice[] | null; shuffleOptions?: boolean | null }
   | {
       type: "MULTIPLE_CHOICE";
       options?: WireChoice[] | null;
       scoringRule?: MultipleChoiceRule | null;
+      shuffleOptions?: boolean | null;
     }
   | { type: "SHORT_ANSWER"; answers?: string[] | null; inputHint?: string | null }
   | {
@@ -91,12 +92,17 @@ const side = (item: WireSide) => ({ id: item.id ?? "", content: item.content ?? 
 export function fromWireBody(wire: WireBody, childIds: readonly string[] = []): QuestionBody {
   switch (wire.type) {
     case "SINGLE_CHOICE":
-      return { type: "SINGLE_CHOICE", options: (wire.options ?? []).map(choice) };
+      return {
+        type: "SINGLE_CHOICE",
+        options: (wire.options ?? []).map(choice),
+        ...(wire.shuffleOptions === false ? { shuffleOptions: false } : {}),
+      };
     case "MULTIPLE_CHOICE":
       return {
         type: "MULTIPLE_CHOICE",
         options: (wire.options ?? []).map(choice),
         scoringRule: wire.scoringRule ?? "ALL_OR_NOTHING",
+        ...(wire.shuffleOptions === false ? { shuffleOptions: false } : {}),
       };
     case "SHORT_ANSWER":
       return { type: "SHORT_ANSWER", answers: wire.answers ?? [], inputHint: wire.inputHint ?? null };

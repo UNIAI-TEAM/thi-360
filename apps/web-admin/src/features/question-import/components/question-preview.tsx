@@ -141,6 +141,13 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
               </p>
             )}
 
+            {(draft.type === "SINGLE_CHOICE" || draft.type === "MULTIPLE_CHOICE") && (
+              <p className="text-caption text-text-secondary">
+                <span className="font-semibold">{t("preview.keepOrderLabel")}: </span>
+                {draft.keepOptionOrder ? t("preview.keepOrderYes") : t("preview.keepOrderNo")}
+              </p>
+            )}
+
             {draft.type === "TRUE_FALSE" && (
               <p className="text-caption text-text-secondary">
                 <span className="font-semibold">{t("preview.scoringLabel")}: </span>

@@ -1,10 +1,10 @@
 "use client";
 
 import { Button, Checkbox, cn } from "@thi360/ui";
-import { Lock, Plus } from "lucide-react";
+import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { questionHtmlText } from "@/components/rich-text";
 import { choiceHtmlOfPhrase, phraseTextByLabel } from "@/components/rich-text/insert/underline-label/labels";
 import { MULTIPLE_CHOICE_RULES } from "@/features/content/types";
@@ -16,6 +16,7 @@ import {
   RowActions,
   useAnnounce,
   useEditorError,
+  useEditorWarnings,
   type BodyPath,
   type ContentPath,
 } from "./question-editor-shared";
@@ -138,6 +139,7 @@ export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; mu
             <OptionRow
               key={field.rowKey}
               prefix={prefix}
+              optionId={field.id}
               index={index}
               count={fields.length}
               multiple={multiple}
@@ -190,8 +192,40 @@ export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; mu
           )}
         </div>
       </fieldset>
+      <KeepOptionOrderField prefix={prefix} />
       {multiple && <ScoringRuleField prefix={prefix} />}
     </>
+  );
+}
+
+/**
+ * Ô "Giữ thứ tự phương án" (spec 2026-11-17 mục 2): chọn nghĩa là `shuffleOptions = false`, mặc định không chọn.
+ * Câu con Một đáp án / Nhiều đáp án của câu chùm dùng chung (đường dẫn theo `prefix`).
+ */
+function KeepOptionOrderField({ prefix }: { prefix: BodyPath }) {
+  const t = useTranslations("questions.editor.choice.keepOrder");
+  const { control } = useFormContext<QuestionEditorValues>();
+  const id = useId();
+  return (
+    <Controller
+      control={control}
+      name={`${prefix}.keepOptionOrder`}
+      render={({ field }) => (
+        <div className="flex flex-col">
+          <label className="flex min-h-10 items-center gap-2.5 text-body text-text">
+            <Checkbox
+              checked={field.value}
+              aria-describedby={`${id}-hint`}
+              onCheckedChange={(checked) => field.onChange(checked === true)}
+            />
+            {t("label")}
+          </label>
+          <p id={`${id}-hint`} className="ps-7 text-caption text-text-muted">
+            {t("hint")}
+          </p>
+        </div>
+      )}
+    />
   );
 }
 
@@ -235,6 +269,7 @@ function ScoringRuleField({ prefix }: { prefix: BodyPath }) {
 
 function OptionRow({
   prefix,
+  optionId,
   index,
   count,
   multiple,
@@ -247,6 +282,8 @@ function OptionRow({
   onRemove,
 }: {
   prefix: BodyPath;
+  /** Id phương án trong dữ liệu biểu mẫu: khóa khớp cảnh báo `OPTION_REFERS_TO_OTHERS`, không đổi khi đổi chỗ/xóa dòng. */
+  optionId: string;
   index: number;
   count: number;
   multiple: boolean;
@@ -318,6 +355,48 @@ function OptionRow({
       </div>
       {correct && <span className="ps-7 text-caption font-medium text-primary-text">{t("correctBadge")}</span>}
       <FieldErrorText id={`${inputId}-error`} message={error} />
+      <OptionRefersWarning prefix={prefix} optionId={optionId} />
     </li>
+  );
+}
+
+/** Chỉ số câu con (tính từ 1) của đường dẫn `children.<n>.body`; `undefined` với thân câu đơn. */
+function childIndexOf(prefix: BodyPath): number | undefined {
+  const match = /^children\.(\d+)\.body$/.exec(prefix);
+  return match ? Number(match[1]) + 1 : undefined;
+}
+
+/**
+ * Cảnh báo `OPTION_REFERS_TO_OTHERS` của máy chủ dưới phương án gây cảnh báo (spec 2026-11-17 mục 3), cùng đường hiện
+ * cảnh báo Sẵn sàng; nút "Bật giữ thứ tự" đặt cờ nên lần kiểm tra lại sau khi lưu không còn cảnh báo.
+ */
+function OptionRefersWarning({ prefix, optionId }: { prefix: BodyPath; optionId: string }) {
+  const t = useTranslations("questions.editor.choice.keepOrder");
+  const announce = useAnnounce();
+  const { control, setValue } = useFormContext<QuestionEditorValues>();
+  const warnings = useEditorWarnings("OPTION_REFERS_TO_OTHERS", optionId, childIndexOf(prefix));
+  const keepOrder = useWatch({ control, name: `${prefix}.keepOptionOrder` });
+  if (keepOrder || warnings.length === 0) return null;
+  return (
+    <div
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/30 bg-warning-bg px-3 py-2 text-caption text-warning"
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        <TriangleAlert aria-hidden className="size-4 shrink-0" />
+        {t("refersWarning")}
+      </span>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          setValue(`${prefix}.keepOptionOrder`, true, { shouldDirty: true });
+          announce(t("keepOrderOn"));
+        }}
+      >
+        {t("turnOn")}
+      </Button>
+    </div>
   );
 }

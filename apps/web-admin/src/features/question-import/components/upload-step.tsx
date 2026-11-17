@@ -45,6 +45,7 @@ const TEMPLATE_ROWS = [
   { key: "knowledge", required: false },
   { key: "tags", required: false },
   { key: "setCode", required: false },
+  { key: "keepOptionOrder", required: false },
 ] as const satisfies ReadonlyArray<{ key: ImportField; required: boolean }>;
 
 export interface UploadStepProps {

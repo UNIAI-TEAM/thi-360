@@ -46,6 +46,20 @@ class QuestionImportTemplateIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void headerRowContainsKeepOptionOrder() throws Exception {
+        byte[] bytes = mockMvc.perform(get("/api/v1/admin/question-imports/template")
+                        .with(asUser(Permissions.QUESTION_MODIFY)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            var header = workbook.getSheetAt(0).getRow(0);
+            var cells = new HashSet<String>();
+            header.forEach(cell -> cells.add(cell.getStringCellValue()));
+            // Fails if the column is dropped: headers are canonical field names, no localized alias.
+            assertThat(cells).contains("keepOptionOrder");
+        }
+    }
+
+    @Test
     void examplesPerTypeValidateAndIncludeBcaPoint() throws Exception {
         byte[] bytes = mockMvc.perform(get("/api/v1/admin/question-imports/template")
                         .with(asUser(Permissions.QUESTION_MODIFY))).andExpect(status().isOk())

@@ -112,7 +112,7 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString());
     }
     @Test
-    void previewOfSeededChoiceDoesNotExposeShuffleOptions() throws Exception {
+    void previewOfSeededChoiceExposesShuffleOptions() throws Exception {
         UUID seededQuestion = seededPreviewQuestion();
         String blocks = """
                 [{"id":"g","name":"Group","questionType":"SINGLE_CHOICE","questionCount":1,
@@ -126,7 +126,27 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         assertThat(UUID.fromString(question.path("questionId").asText())).isEqualTo(seededQuestion);
         assertThat(code).isEqualTo(SEEDED_PREVIEW_CODE);
         assertThat(question.path("body").path("options")).isNotEmpty();
-        assertThat(question.findValues("shuffleOptions")).isEmpty();
+        assertThat(question.path("body").path("shuffleOptions").asBoolean()).isTrue();
+    }
+
+    @Test
+    void previewPreservesExplicitShuffleOptionsFalse() throws Exception {
+        Subject subject = subject();
+        UUID questionId = question(subject, "SINGLE_CHOICE", "keep order", false);
+        jdbc.update("""
+                update questionbank.question_version
+                set snapshot = jsonb_set(snapshot, '{body,shuffleOptions}', 'false'::jsonb)
+                where question_id = ? and version_no = 1
+                """, questionId);
+        UUID examId = exam(part(subject.code(),
+                "[{\"id\":\"g\",\"name\":\"Group\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]", "null"));
+        JsonNode body = preview(examId, "{\"pathId\":\"default\",\"seed\":123}")
+                .path("paper").path("parts").get(0).path("blocks").get(0).path("items").get(0)
+                .path("question").path("body");
+        // Fails if preview rewrites an explicit false back to the default true or drops the field.
+        assertThat(body.get("shuffleOptions")).as("explicit false must survive preview").isNotNull();
+        assertThat(body.path("shuffleOptions").isBoolean()).isTrue();
+        assertThat(body.path("shuffleOptions").asBoolean()).isFalse();
     }
     @Test
     void previewOmitsLegacyMatchingShuffleFlagsFromStoredSnapshot() throws Exception {

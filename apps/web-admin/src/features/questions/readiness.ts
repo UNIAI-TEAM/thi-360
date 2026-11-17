@@ -111,7 +111,9 @@ export type ReadinessIssueCode =
   | "READINESS_OTHER"
   // Cảnh báo (D20)
   | "PRIMARY_KNOWLEDGE_MISSING"
-  | "IMAGE_ALT_MISSING";
+  | "IMAGE_ALT_MISSING"
+  // Cảnh báo phương án nhắc tới phương án khác (spec 2026-11-17 mục 3)
+  | "OPTION_REFERS_TO_OTHERS";
 
 export interface ReadinessIssue {
   code: ReadinessIssueCode;
@@ -120,6 +122,8 @@ export interface ReadinessIssue {
   child?: number;
   /** Vị trí trong câu (phương án, ô trống, ô thả), tính từ 1. */
   position?: number;
+  /** Id phương án đã khớp khi mở trình soạn: `position` trôi khi đổi chỗ/xóa dòng, `id` thì không. */
+  resolvedOptionId?: string;
   /** Giá trị gây lỗi: mã danh mục, MAPID, tên tệp. */
   value?: string;
 }

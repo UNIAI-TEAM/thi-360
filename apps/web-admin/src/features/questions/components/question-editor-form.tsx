@@ -10,7 +10,7 @@ import { ClipboardPaste, Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { lazy, Suspense, useEffect, useId, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useState, type FormEvent } from "react";
 import { FormProvider, useForm, useFormContext, useWatch, type Path } from "react-hook-form";
 import type { ContentReference, QuestionType } from "@/features/content/types";
 import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
@@ -25,6 +25,8 @@ import {
   type QuestionEditorValues,
 } from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
+import { resolveOptionWarnings } from "../readiness-mapping";
+import { useQuestionReadiness } from "../queries";
 import { useUiLocale } from "../use-ui-locale";
 import { questionEditorSchema } from "../editor-schema";
 import { editCreatesNewVersion } from "../editor-versioning";
@@ -34,7 +36,14 @@ import { ClassificationSection } from "./question-editor-classification";
 import { AttachmentsSection, CommonMistakesSection } from "./question-editor-extras";
 import { QuestionSetEditor } from "./question-editor-set";
 import { RichTextField } from "./question-editor-rich-field";
-import { EditorAnnounceProvider, EditorSection, FieldErrorText, useAnnounce, useEditorError } from "./question-editor-shared";
+import {
+  EditorAnnounceProvider,
+  EditorSection,
+  EditorWarningsProvider,
+  FieldErrorText,
+  useAnnounce,
+  useEditorError,
+} from "./question-editor-shared";
 
 /** Hộp Dán từ Word tải khi cần: kéo theo KaTeX và bộ đổi OMML nên không vào gói của trang soạn lúc mở. */
 const WordPasteDialog = lazy(() =>
@@ -108,6 +117,14 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
     shouldFocusError: false,
   });
   const { handleSubmit, formState } = methods;
+
+  // Cảnh báo Sẵn sàng (ví dụ phương án tự tham chiếu) của câu đang sửa; câu tạo mới chưa có.
+  const readiness = useQuestionReadiness(question?.id ?? null);
+  // `position` của cảnh báo trỏ sai khi đổi chỗ/xóa phương án trước khi lưu: khớp sang id phương án ngay lúc tải.
+  const readinessWarnings = useMemo(
+    () => (question ? resolveOptionWarnings(readiness.data?.warnings ?? [], question) : []),
+    [readiness.data?.warnings, question],
+  );
 
   const createMutation = useCreateQuestion();
   const updateMutation = useUpdateQuestion(question?.id ?? "");
@@ -213,6 +230,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
 
   return (
     <FormProvider {...methods}>
+      <EditorWarningsProvider warnings={readinessWarnings}>
       <EditorAnnounceProvider announce={setLiveMessage}>
         <div className="flex flex-col gap-5">
           <PageHeader
@@ -300,6 +318,7 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
           )}
         </div>
       </EditorAnnounceProvider>
+      </EditorWarningsProvider>
     </FormProvider>
   );
 }

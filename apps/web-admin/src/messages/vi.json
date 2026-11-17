@@ -2487,6 +2487,13 @@
         "legendMultiple": "Phương án, chọn các đáp án đúng",
         "hintSingle": "Chọn ô tròn ở phương án đúng. Cần ít nhất 2 phương án.",
         "hintMultiple": "Tích ô vuông ở mọi phương án đúng. Cần ít nhất 2 phương án và 1 đáp án đúng.",
+        "keepOrder": {
+          "hint": "Bật khi phương án nhắc tới phương án khác, ví dụ “Cả A và B”.",
+          "keepOrderOn": "Đã bật giữ thứ tự phương án.",
+          "label": "Giữ thứ tự phương án",
+          "refersWarning": "Phương án nhắc tới phương án khác. Nên bật “Giữ thứ tự phương án” để thứ tự không bị đảo.",
+          "turnOn": "Bật giữ thứ tự"
+        },
         "correctCount": "Đã chọn {count, number} đáp án đúng",
         "correctLabel": "Phương án {letter} là đáp án đúng",
         "contentLabel": "Nội dung phương án {letter}",
@@ -2855,6 +2862,7 @@
         "UNDERLINE_LABEL_DUPLICATE": "Hai cụm gạch chân dùng cùng một nhãn.",
         "UNDERLINE_LABEL_MISPLACED": "Gạch chân đánh nhãn chỉ dùng ở đề bài câu Trắc nghiệm 1 đáp án.",
         "IMAGE_ALT_MISSING": "Có hình chưa có mô tả thay thế (cảnh báo, không chặn Sẵn sàng).",
+        "OPTION_REFERS_TO_OTHERS": "Phương án {position, number} nhắc tới phương án khác. Nên bật “Giữ thứ tự phương án” để thứ tự không bị đảo.",
         "READINESS_OTHER": "Chưa đạt điều kiện kiểm tra ({value})."
       },
       "childIssue": "Câu con {child, number}: {issue}",
@@ -3220,7 +3228,8 @@
       "inputHint": "Hướng dẫn nhập",
       "gradingGuide": "Hướng dẫn chấm",
       "commonMistakes": "Lỗi sai thường gặp",
-      "taskType": "Dạng bài"
+      "taskType": "Dạng bài",
+      "keepOptionOrder": "Giữ thứ tự phương án"
     },
     "upload": {
       "heading": "Chọn tệp câu hỏi",
@@ -3263,7 +3272,8 @@
         "taskType": "Dạng bài",
         "knowledge": "Kiến thức (MAPID)",
         "tags": "Nhãn",
-        "setCode": "Mã chùm"
+        "setCode": "Mã chùm",
+        "keepOptionOrder": "Giữ thứ tự phương án"
       },
       "rules": {
         "sourceCode": "Dùng để nhận ra câu đã nhập trước đó; không lặp trong tệp.",
@@ -3285,7 +3295,8 @@
         "taskType": "Tên hoặc mã dạng bài trong danh mục.",
         "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống vẫn nhập được; nên bổ sung sau (thiếu kiến thức chỉ là cảnh báo, không chặn Sẵn sàng).",
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
-        "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm."
+        "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm.",
+        "keepOptionOrder": "Chỉ cho Trắc nghiệm 1 đáp án và Nhiều đáp án, không bắt buộc: Có hoặc Không (cũng nhận x hoặc để trống, Yes/No, TRUE/FALSE, 1/0). Để trống nghĩa là không giữ, phương án vẫn bị đảo. Điền ở dạng khác thì bị bỏ qua."
       },
       "footerNote": "Câu nhập vào ở trạng thái Nháp. Câu đã có trong ngân hàng (trùng Mã nguồn) không bị ghi đè, trừ khi chọn tạo phiên bản mới ở bước 2.",
       "colFileHeader": "Tên cột trong tệp"
@@ -3446,7 +3457,10 @@
       "points": "Điểm",
       "pointsDefault": "1 (mặc định)",
       "taskType": "Dạng bài",
-      "commonMistakes": "Lỗi sai thường gặp"
+      "commonMistakes": "Lỗi sai thường gặp",
+      "keepOrderLabel": "Giữ thứ tự phương án",
+      "keepOrderYes": "Có",
+      "keepOrderNo": "Không"
     },
     "issues": {
       "REQUIRED": {
@@ -3604,6 +3618,10 @@
       "CHILD_SOURCE_CODE_IGNORED": {
         "message": "Mã nguồn của câu con được bỏ qua",
         "fix": "Chỉ dòng Câu chùm mang Mã nguồn; để trống ở câu con."
+      },
+      "KEEP_OPTION_ORDER_IGNORED": {
+        "message": "Cột {column} chỉ dùng cho Trắc nghiệm 1 đáp án và Nhiều đáp án nên được bỏ qua ở dòng này",
+        "fix": "Để trống ô này ở dòng không phải Trắc nghiệm 1 đáp án hoặc Nhiều đáp án."
       }
     },
     "errorReport": {

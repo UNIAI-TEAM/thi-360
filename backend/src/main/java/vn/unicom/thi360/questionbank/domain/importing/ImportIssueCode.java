@@ -54,7 +54,8 @@ public enum ImportIssueCode {
     SET_NO_CHILDREN,
     KNOWLEDGE_MISSING,
     CHILD_FIELD_IGNORED,
-    CHILD_SOURCE_CODE_IGNORED;
+    CHILD_SOURCE_CODE_IGNORED,
+    KEEP_OPTION_ORDER_IGNORED;
 
     /** Mã mà API trả trong {@code ImportRowIssue.code}; giữ đúng tên enum như mock. */
     public String code() {

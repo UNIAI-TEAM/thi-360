@@ -70,6 +70,18 @@ class QuestionBodyJsonTests {
     }
 
     @Test
+    void choiceShuffleOptionsDefaultsAndRoundTrips() throws Exception {
+        for (String type : List.of("SINGLE_CHOICE", "MULTIPLE_CHOICE")) {
+            String base = "{\"type\":\"" + type + "\",\"options\":[]}";
+            var defaultBody = MAPPER.readValue(base, QuestionBody.class);
+            assertTrue(MAPPER.valueToTree(defaultBody).path("shuffleOptions").asBoolean());
+            String fixed = base.replace("}", ",\"shuffleOptions\":false}");
+            var fixedBody = MAPPER.readValue(fixed, QuestionBody.class);
+            assertEquals(false, MAPPER.valueToTree(fixedBody).path("shuffleOptions").asBoolean());
+        }
+    }
+
+    @Test
     void matchingBodyShape() throws Exception {
         String json = """
             {"type":"MATCHING",

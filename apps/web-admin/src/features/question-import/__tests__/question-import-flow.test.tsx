@@ -194,12 +194,12 @@ describe("Nhập câu hỏi từ tệp (API thật, client giả)", () => {
     expect(within(history).getByText("120 tạo mới · 3 trùng · 2 lỗi")).toBeInTheDocument();
   });
 
-  it("bước 1: hướng dẫn nêu đủ 8 dạng câu và 20 cột của tệp mẫu (vi và en)", async () => {
+  it("bước 1: hướng dẫn nêu đủ 8 dạng câu và 21 cột của tệp mẫu (vi và en)", async () => {
     stubImportApi();
     const { unmount } = renderWithProviders(<QuestionImportView />);
     const viTable = await screen.findByRole("table", { name: "Các cột của tệp mẫu" });
-    expect(within(viTable).getAllByRole("row")).toHaveLength(21);
-    expect(screen.getByText("20 cột, dòng đầu là tên cột")).toBeInTheDocument();
+    expect(within(viTable).getAllByRole("row")).toHaveLength(22);
+    expect(screen.getByText("21 cột, dòng đầu là tên cột")).toBeInTheDocument();
     const rowOf = (table: HTMLElement, name: string) => within(table).getByRole("rowheader", { name }).closest("tr")!;
     const viType = rowOf(viTable, "Dạng câu");
     for (const name of ["Trả lời ngắn", "Điền khuyết", "Ghép đôi", "Tự luận", "Câu chùm", "Đúng / Sai"]) {
@@ -212,8 +212,8 @@ describe("Nhập câu hỏi từ tệp (API thật, client giả)", () => {
 
     renderWithProviders(<QuestionImportView />, { locale: "en", messages: en });
     const enTable = await screen.findByRole("table", { name: "Template columns" });
-    expect(within(enTable).getAllByRole("row")).toHaveLength(21);
-    expect(screen.getByText("20 columns, the first row holds the column names")).toBeInTheDocument();
+    expect(within(enTable).getAllByRole("row")).toHaveLength(22);
+    expect(screen.getByText("21 columns, the first row holds the column names")).toBeInTheDocument();
     const enType = rowOf(enTable, "Question type");
     for (const name of ["Short answer", "Cloze", "Matching", "Essay", "Question set", "True / False"]) {
       expect(enType).toHaveTextContent(name);

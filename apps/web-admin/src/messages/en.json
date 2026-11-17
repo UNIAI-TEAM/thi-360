@@ -2487,6 +2487,13 @@
         "legendMultiple": "Options, choose the correct answers",
         "hintSingle": "Select the circle of the correct option. At least 2 options.",
         "hintMultiple": "Tick every correct option. At least 2 options and 1 correct answer.",
+        "keepOrder": {
+          "hint": "Turn on when an option refers to another option, such as “Both A and B”.",
+          "keepOrderOn": "Keep option order turned on.",
+          "label": "Keep option order",
+          "refersWarning": "This option refers to other options. Consider turning on “Keep option order” so the options are not shuffled.",
+          "turnOn": "Keep order"
+        },
         "correctCount": "{count, plural, one {# correct answer} other {# correct answers}} selected",
         "correctLabel": "Option {letter} is correct",
         "contentLabel": "Option {letter} text",
@@ -2855,6 +2862,7 @@
         "UNDERLINE_LABEL_DUPLICATE": "Two underlined phrases use the same label.",
         "UNDERLINE_LABEL_MISPLACED": "Labelled underlines are only allowed in the stem of a single-answer multiple-choice question.",
         "IMAGE_ALT_MISSING": "An image has no alt text (a warning, does not block Ready).",
+        "OPTION_REFERS_TO_OTHERS": "Option {position, number} refers to other options. Consider turning on “Keep option order” so the options are not shuffled.",
         "READINESS_OTHER": "A check was not met ({value})."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
@@ -3220,7 +3228,8 @@
       "inputHint": "Input hint",
       "gradingGuide": "Grading guide",
       "commonMistakes": "Common mistakes",
-      "taskType": "Task type"
+      "taskType": "Task type",
+      "keepOptionOrder": "Keep option order"
     },
     "upload": {
       "heading": "Choose a question file",
@@ -3263,7 +3272,8 @@
         "taskType": "Task type",
         "knowledge": "Knowledge (MAPID)",
         "tags": "Tags",
-        "setCode": "Set code"
+        "setCode": "Set code",
+        "keepOptionOrder": "Keep option order"
       },
       "rules": {
         "sourceCode": "Identifies a question imported before; must not repeat within the file.",
@@ -3285,7 +3295,8 @@
         "taskType": "Name or code of a task type in the catalog.",
         "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty the row can still be imported; add knowledge later (missing knowledge is only a warning and does not block Ready).",
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
-        "setCode": "A Question set row and its child questions share the same set code."
+        "setCode": "A Question set row and its child questions share the same set code.",
+        "keepOptionOrder": "Only for single-answer and multiple-answer questions, optional: Yes or No (also x or empty, TRUE/FALSE, 1/0). Empty means the options are still shuffled. Ignored on other types."
       },
       "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2.",
       "colFileHeader": "Header in file"
@@ -3446,7 +3457,10 @@
       "points": "Points",
       "pointsDefault": "1 (default)",
       "taskType": "Task type",
-      "commonMistakes": "Common mistakes"
+      "commonMistakes": "Common mistakes",
+      "keepOrderLabel": "Keep option order",
+      "keepOrderYes": "Yes",
+      "keepOrderNo": "No"
     },
     "issues": {
       "REQUIRED": {
@@ -3604,6 +3618,10 @@
       "CHILD_SOURCE_CODE_IGNORED": {
         "message": "The child question source code is ignored",
         "fix": "Only the set row carries a source code; leave it empty on child rows."
+      },
+      "KEEP_OPTION_ORDER_IGNORED": {
+        "message": "The {column} column only applies to single-answer and multiple-answer questions, so it is ignored on this row",
+        "fix": "Leave this cell empty on rows that are not single-answer or multiple-answer questions."
       }
     },
     "errorReport": {

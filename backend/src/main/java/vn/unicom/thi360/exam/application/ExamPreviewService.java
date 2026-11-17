@@ -308,6 +308,13 @@ public class ExamPreviewService {
                 cleaned.remove(List.of("shuffleLeft", "shuffleRight"));
                 body = cleaned;
             }
+            if (body instanceof ObjectNode object
+                    && ("SINGLE_CHOICE".equals(text(body, "type")) || "MULTIPLE_CHOICE".equals(text(body, "type")))
+                    && !body.hasNonNull("shuffleOptions")) {
+                ObjectNode normalized = object.deepCopy();
+                normalized.put("shuffleOptions", true);
+                body = normalized;
+            }
             return new PreviewQuestion(number - 1, id, code, version, unit.answerType().name(), false,
                     text(snapshot, "content"), unit.gradeCode(), unit.difficultyCode(), ref, points,
                     options(body), answer(body), text(snapshot, "solution"), rubric(body), body.isMissingNode() ? null : body);

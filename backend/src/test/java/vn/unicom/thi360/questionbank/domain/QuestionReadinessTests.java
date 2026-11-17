@@ -217,4 +217,60 @@ class QuestionReadinessTests {
         assertTrue(result.errors().stream()
             .noneMatch(e -> e.code().equals("IMAGE_ALT_MISSING")));
     }
+    @Test
+    void optionReferencesWarnOnlyWhenShuffled() {
+        List<String> positive = List.of("A và B", "A, B và C", "cả A", "phương án A",
+            "đáp án A", "câu A", "A hoặc B", "A and B", "both A", "option A",
+            "tất cả các phương án trên", "tất cả đều đúng", "cả hai", "cả ba",
+            "không có đáp án nào", "đáp án khác", "các phương án trên",
+            "all of the above", "none of the above", "both of the above", "neither",
+            "<strong>CẢ A</strong> và B");
+        List<String> negative = List.of("Asia", "vitamin A", "Phương án đúng là số dương",
+            "A", "B", "C là số dương", "optionally", "câu chuyện", "không có đáp số");
+        for (String text : positive) {
+            assertTrue(optionWarnings(text, true).stream().anyMatch(w -> w.path().equals("body.options[0].content")), text);
+            assertTrue(optionWarnings(text, false).isEmpty(), text);
+        }
+        for (String text : negative) {
+            assertTrue(optionWarnings(text, true).isEmpty(), text);
+        }
+    }
+
+    private static List<QuestionFieldError> optionWarnings(String text, boolean shuffle) {
+        var body = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
+            new QuestionBody.ChoiceOption("a", text, true),
+            new QuestionBody.ChoiceOption("b", "other", false)), shuffle);
+        return QuestionBodyValidator.validateReady(input(QuestionType.SINGLE_CHOICE, body, "Question"),
+            FULL, true, vn.unicom.thi360.questionbank.spi.QuestionAssetResolver.none()).warnings().stream()
+            .filter(w -> w.code().equals("OPTION_REFERS_TO_OTHERS")).toList();
+    }
+
+    @Test
+    void multipleChoiceReferenceWarnsWithoutBlockingReady() {
+        var options = List.of(new QuestionBody.ChoiceOption("a", "A và B", true),
+            new QuestionBody.ChoiceOption("b", "other", true));
+        for (boolean shuffle : List.of(true, false)) {
+            var body = new QuestionBody.MultipleChoiceBody(QuestionType.MULTIPLE_CHOICE, options,
+                QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING, shuffle);
+            var result = QuestionBodyValidator.validateReady(input(QuestionType.MULTIPLE_CHOICE, body, "Question"),
+                FULL, true, vn.unicom.thi360.questionbank.spi.QuestionAssetResolver.none());
+            assertTrue(result.ready());
+            assertTrue(result.warnings().stream().anyMatch(w -> w.code().equals("OPTION_REFERS_TO_OTHERS")
+                && w.path().equals("body.options[0].content")) == shuffle);
+        }
+    }
+
+    @Test
+    void optionReferenceInSetChildHasNestedPath() {
+        var choice = new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, List.of(
+            new QuestionBody.ChoiceOption("a", "A và B", true),
+            new QuestionBody.ChoiceOption("b", "other", false)), true);
+        var nested = new QuestionBody.ChildQuestion(QuestionType.SINGLE_CHOICE, "Question",
+            choice, null, null, null, null, List.of(), null);
+        var set = setBody("Passage", List.of(nested, child("Question")));
+        var result = QuestionBodyValidator.validateReady(input(QuestionType.QUESTION_SET, set, "Passage"),
+            FULL, true, vn.unicom.thi360.questionbank.spi.QuestionAssetResolver.none());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.code().equals("OPTION_REFERS_TO_OTHERS")
+            && w.path().equals("body.children[0].body.options[0].content")));
+    }
 }

@@ -367,6 +367,12 @@ Quy ước thêm ở FE-3b (giao diện ngân hàng câu hỏi theo UniNote 2026
 - **Chấm thử:** nút "Chấm thử" mới hiện đáp án đúng và điểm; đổi đáp án sau khi chấm thì kết quả cũ ẩn tới lần chấm sau. Mỗi ý (ô trống, mệnh đề, cặp ghép, câu con) ghi Đúng, Sai hoặc Bỏ trống bằng chữ kèm icon, không chỉ màu; điểm hiển thị làm tròn nửa lên 2 chữ số ở bước cuối. Câu Tự luận không có điểm tự động: hiện "Chờ chấm" và bảng đối chiếu bài làm thử với hướng dẫn chấm, tiêu chí và bài mẫu.
 - **Cột nhiều dòng của tệp nhập** (Lựa chọn, Lựa chọn phải, Đáp án, Cách chấm, Tiêu chí chấm): mỗi mục một dòng trong ô; thiếu đáp án chỉ cảnh báo (câu vào Nháp), tham chiếu sai hoặc cách chấm sai là lỗi chặn dòng.
 
+Quy ước thêm ở cờ Giữ thứ tự phương án (UNI-2648; đặc tả `docs/specs/2026-11-17-giu-thu-tu-phuong-an.md`):
+
+- **Khối phương án của trình soạn** (`question-editor-choice.tsx`, Trắc nghiệm 1 đáp án, Nhiều đáp án và câu con cùng dạng): dưới danh sách phương án có `Checkbox` "Giữ thứ tự phương án" (mặc định không chọn; chọn nghĩa là `shuffleOptions = false`) kèm dòng gợi ý `text-caption text-text-muted` thụt `ps-7` như ô "Dùng lại lựa chọn" của câu Ghép đôi. Đúng/Sai, Ghép đôi và các dạng khác không có ô này. Mở lại câu giữ nguyên trạng thái.
+- **Cảnh báo dưới phương án:** mã `OPTION_REFERS_TO_OTHERS` của kiểm tra Sẵn sàng hiện ngay dưới phương án gây cảnh báo, khung `warning-bg` viền `warning/30` chữ `warning` kèm icon `TriangleAlert` (không chỉ màu) và nút `secondary` cỡ `sm` "Bật giữ thứ tự" bật cờ và báo qua vùng thông báo. Cảnh báo không chặn Sẵn sàng, tự ẩn khi cờ đã bật; trang sửa lấy danh sách cảnh báo một lần khi mở, nên cảnh báo mới chỉ cập nhật sau khi lưu và mở lại.
+- **Tệp nhập:** cột tùy chọn "Giữ thứ tự phương án" nằm cuối bảng cột của tệp mẫu; bản xem trước dòng Trắc nghiệm hiện "Giữ thứ tự phương án: Có/Không", và dòng dạng khác có điền cột nhận cảnh báo `KEEP_OPTION_ORDER_IGNORED` (khung `warning`, như các cảnh báo dòng khác).
+
 ### 5.15 Editor and preview (rich text)
 
 Trình soạn và khung xem nội dung HTML (UNI-2617, mở rộng ở UNI-2638): `RichTextEditor` và `RichTextView` ở `components/rich-text`, dùng cho Hướng dẫn làm bài của bài thi, nội dung, phương án, ngữ liệu và lời giải của câu hỏi. Đặc tả: `docs/specs/2026-11-17-trinh-soan-noi-dung.md`; bản vẽ: `docs/design/dot-2/SoanThao*.dc.html`.

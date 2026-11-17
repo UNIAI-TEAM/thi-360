@@ -37,6 +37,7 @@ export const IMPORT_FIELDS = [
   "gradingGuide",
   "commonMistakes",
   "taskType",
+  "keepOptionOrder",
 ] as const;
 export type ImportField = (typeof IMPORT_FIELDS)[number];
 
@@ -136,6 +137,7 @@ export const IMPORT_ISSUE_CODES = [
   "IMPORT_SOURCE_TYPE_MISMATCH",
   "CHILD_FIELD_IGNORED",
   "CHILD_SOURCE_CODE_IGNORED",
+  "KEEP_OPTION_ORDER_IGNORED",
 ] as const;
 export type ImportIssueCode = (typeof IMPORT_ISSUE_CODES)[number];
 
@@ -234,6 +236,8 @@ export interface ImportQuestionDraft {
   commonMistakes: string | null;
   /** Dạng bài (cột Dạng bài), mã trong danh mục. */
   taskTypeCode: string | null;
+  /** Một đáp án / Nhiều đáp án: cột Giữ thứ tự phương án (`true`: giữ thứ tự khi sinh đề); dạng khác `false`. */
+  keepOptionOrder: boolean;
   /** Điểm của câu (cột Điểm); `null`: mặc định 1. */
   points: number | null;
   /** Trả lời ngắn: hướng dẫn nhập (cột Hướng dẫn nhập). */

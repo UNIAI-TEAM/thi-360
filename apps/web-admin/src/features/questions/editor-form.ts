@@ -59,6 +59,8 @@ export interface EditorCriterion {
 
 export interface EditorBody {
   options: EditorOption[];
+  /** Một đáp án / Nhiều đáp án: giữ thứ tự phương án khi sinh đề (ô "Giữ thứ tự phương án", spec 2026-11-17 mục 2). */
+  keepOptionOrder: boolean;
   /** Nhiều đáp án: đúng hết mới có điểm hay chấm từng phần. */
   scoringRule: MultipleChoiceRule;
   statements: EditorStatement[];
@@ -201,6 +203,7 @@ export function emptyBody(type: QuestionType, locale: AppLocale = "vi"): EditorB
       type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE"
         ? [emptyOption(), emptyOption(), emptyOption(), emptyOption()]
         : [],
+    keepOptionOrder: false,
     scoringRule: "ALL_OR_NOTHING",
     statements: statements.map((statement, index) => ({ ...statement, points: statementShare[index] ?? "" })),
     scoringMethod: "COUNT_TABLE",
@@ -278,11 +281,13 @@ export function bodyToEditor(body: QuestionBody, locale: AppLocale = "vi"): Edit
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
+        keepOptionOrder: body.shuffleOptions === false,
       };
     case "MULTIPLE_CHOICE":
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
+        keepOptionOrder: body.shuffleOptions === false,
         scoringRule: body.scoringRule,
       };
     case "TRUE_FALSE": {
@@ -422,12 +427,15 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
+        // Chỉ gửi khi giữ thứ tự: thiếu hoặc `true` nghĩa là đảo như cũ.
+        ...(body.keepOptionOrder ? { shuffleOptions: false } : {}),
       };
     case "MULTIPLE_CHOICE":
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
         scoringRule: body.scoringRule,
+        ...(body.keepOptionOrder ? { shuffleOptions: false } : {}),
       };
     case "TRUE_FALSE": {
       const perStatement = body.scoringMethod === "PER_STATEMENT";

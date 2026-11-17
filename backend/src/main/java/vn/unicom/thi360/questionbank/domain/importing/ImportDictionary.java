@@ -49,7 +49,8 @@ public record ImportDictionary(
             Map.entry(ImportField.INPUT_HINT, List.of("Hướng dẫn nhập", "Input hint")),
             Map.entry(ImportField.GRADING_GUIDE, List.of("Hướng dẫn chấm", "Grading guide")),
             Map.entry(ImportField.COMMON_MISTAKES, List.of("Lỗi sai thường gặp", "Common mistakes")),
-            Map.entry(ImportField.TASK_TYPE, List.of("Dạng bài", "Task type")));
+            Map.entry(ImportField.TASK_TYPE, List.of("Dạng bài", "Task type")),
+            Map.entry(ImportField.KEEP_OPTION_ORDER, List.of("Giữ thứ tự phương án", "Keep option order")));
         List<String> ignoreHeaders = List.of("Ghi chú nội bộ", "Ghi chú", "STT");
         Map<QuestionType, List<String>> typeAliases = Map.ofEntries(
             Map.entry(QuestionType.SINGLE_CHOICE,
