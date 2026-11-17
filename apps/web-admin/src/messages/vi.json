@@ -2172,7 +2172,7 @@
       "selectedTitle": "Đã chọn ({count, number})",
       "primary": "Kiến thức chính",
       "primaryBadge": "Chính",
-      "primaryHint": "Cần có kiến thức chính để chuyển câu hỏi sang Sẵn sàng.",
+      "primaryHint": "Nên chọn kiến thức chính; thiếu thì chỉ có cảnh báo, câu hỏi vẫn chuyển sang Sẵn sàng được.",
       "noneSelected": "Chưa chọn kiến thức nào.",
       "empty": "Không có kiến thức khớp bộ lọc.",
       "loadError": "Không tải được cây kiến thức.",
@@ -3257,7 +3257,7 @@
         "grade": "Số lớp (10, 11, 12) hoặc tên khối.",
         "difficulty": "Nhận biết, Thông hiểu, Vận dụng hoặc Vận dụng cao.",
         "taskType": "Tên hoặc mã dạng bài trong danh mục.",
-        "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống thì phải bổ sung trước khi chuyển Sẵn sàng.",
+        "knowledge": "MAPID cấp Kiến thức; nhiều mã cách nhau dấu phẩy, mã đầu là kiến thức chính. Để trống vẫn nhập được; nên bổ sung sau (thiếu kiến thức chỉ là cảnh báo, không chặn Sẵn sàng).",
         "tags": "Tên hoặc mã nhãn, cách nhau dấu phẩy. Nhãn không có trong danh mục bị bỏ qua.",
         "setCode": "Dòng Câu chùm và các câu con của nó ghi cùng một Mã chùm."
       },
@@ -3298,7 +3298,7 @@
       "requiredHeading": "Trường bắt buộc",
       "requiredMapped": "đã ánh xạ",
       "requiredMissing": "chưa ánh xạ",
-      "knowledgeWarning": "<b>Kiến thức (MAPID)</b> chưa ánh xạ — câu nhập vào sẽ ở trạng thái Nháp và phải bổ sung kiến thức trước khi chuyển Sẵn sàng.",
+      "knowledgeWarning": "<b>Kiến thức (MAPID)</b> chưa ánh xạ — câu nhập vào ở trạng thái Nháp và thiếu kiến thức; nên bổ sung, nhưng đây chỉ là cảnh báo, không chặn chuyển Sẵn sàng.",
       "duplicateLegend": "Khi gặp câu đã nhập trước đó",
       "duplicateHint": "Nhận ra bằng cột Mã nguồn trùng với câu đã có trong ngân hàng.",
       "policy": {
@@ -3489,7 +3489,7 @@
       },
       "KNOWLEDGE_MISSING": {
         "message": "Chưa có kiến thức (MAPID)",
-        "fix": "Bổ sung kiến thức trước khi chuyển Sẵn sàng."
+        "fix": "Nên bổ sung kiến thức; thiếu thì chỉ có cảnh báo, không chặn Sẵn sàng."
       },
       "TAG_UNKNOWN": {
         "message": "Nhãn “{value}” không có trong danh mục, sẽ bỏ qua",
@@ -3605,7 +3605,7 @@
       "errorsValue": "{count, number} dòng",
       "errorsDetail": "Có trong file lỗi, kèm vị trí dòng và cột",
       "nextHeading": "Việc cần làm tiếp",
-      "missingKnowledge": "{count, number} câu thiếu kiến thức chính phải bổ sung trước khi chuyển Sẵn sàng.",
+      "missingKnowledge": "{count, number} câu thiếu kiến thức chính; nên bổ sung (chỉ là cảnh báo, không chặn chuyển Sẵn sàng).",
       "viewDrafts": "Xem các câu Nháp",
       "notForExam": "Câu nhập vào chưa được dùng để sinh đề cho tới khi ở trạng thái Sẵn sàng.",
       "viewImported": "Xem các câu vừa nhập",

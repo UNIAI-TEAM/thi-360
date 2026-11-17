@@ -2172,7 +2172,7 @@
       "selectedTitle": "Selected ({count, number})",
       "primary": "Primary knowledge",
       "primaryBadge": "Primary",
-      "primaryHint": "A primary knowledge item is required before a question can be Ready.",
+      "primaryHint": "A primary knowledge item is recommended; without one it is only a warning and the question can still become Ready.",
       "noneSelected": "No knowledge selected.",
       "empty": "No knowledge matches the filters.",
       "loadError": "Could not load the knowledge tree.",
@@ -3257,7 +3257,7 @@
         "grade": "Grade number (10, 11, 12) or grade name.",
         "difficulty": "Recognition, Comprehension, Application or High application.",
         "taskType": "Name or code of a task type in the catalog.",
-        "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty, it must be added before moving to Ready.",
+        "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty the row can still be imported; add knowledge later (missing knowledge is only a warning and does not block Ready).",
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
         "setCode": "A Question set row and its child questions share the same set code."
       },
@@ -3298,7 +3298,7 @@
       "requiredHeading": "Required fields",
       "requiredMapped": "mapped",
       "requiredMissing": "not mapped",
-      "knowledgeWarning": "<b>Knowledge (MAPID)</b> is not mapped — imported questions will be Draft and need knowledge added before moving to Ready.",
+      "knowledgeWarning": "<b>Knowledge (MAPID)</b> is not mapped — imported questions will be Draft and lack knowledge; adding it is recommended, but it is only a warning and does not block moving to Ready.",
       "duplicateLegend": "When a question was imported before",
       "duplicateHint": "Detected by a source code that matches a question already in the bank.",
       "policy": {
@@ -3489,7 +3489,7 @@
       },
       "KNOWLEDGE_MISSING": {
         "message": "No knowledge (MAPID)",
-        "fix": "Add knowledge before moving the question to Ready."
+        "fix": "Adding knowledge is recommended; without it there is only a warning and Ready is not blocked."
       },
       "TAG_UNKNOWN": {
         "message": "Tag “{value}” is not in the catalog and will be skipped",
@@ -3605,7 +3605,7 @@
       "errorsValue": "{count, plural, one {# row} other {# rows}}",
       "errorsDetail": "Listed in the error file with row and column",
       "nextHeading": "Next steps",
-      "missingKnowledge": "{count, plural, one {# question lacks} other {# questions lack}} primary knowledge, which must be added before moving to Ready.",
+      "missingKnowledge": "{count, plural, one {# question lacks} other {# questions lack}} primary knowledge; adding it is recommended (only a warning, Ready is not blocked).",
       "viewDrafts": "View Draft questions",
       "notForExam": "Imported questions are not used to generate exams until they are Ready.",
       "viewImported": "View imported questions",
