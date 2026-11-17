@@ -61,4 +61,22 @@ class TrimPolicyTest {
         }
         assertThat(trimmedSubjects).containsExactlyInAnyOrder("PHY", "CHEM", "BIO");
     }
+    @Test
+    void excludingSetChildRejectsTheWholeSet() {
+        GroupQuota sets = GroupQuota.set("sets", 1, 2, null);
+        var section = new SectionOnPath("PHY", "phy", null, null, List.of(sets), "NATURAL");
+        var other = new SectionOnPath("CHEM", "chem", null, null, List.of(sets), "NATURAL");
+        var choice = new SubjectChoice("science", List.of(section, other), 1, List.of(2));
+        var blocked = new PathCandidate("blocked", 1, "blocked", null, List.of(
+                new CountingUnit("used-child", "SINGLE_CHOICE", null, null, List.of(), List.of(), null),
+                new CountingUnit("other-child", "SINGLE_CHOICE", null, null, List.of(), List.of(), null)));
+        var alternative = new PathCandidate("alternative", 1, "alternative", null, List.of(
+                new CountingUnit("alt-1", "SINGLE_CHOICE", null, null, List.of(), List.of(), null),
+                new CountingUnit("alt-2", "SINGLE_CHOICE", null, null, List.of(), List.of(), null)));
+        var result = new PaperSolver().solvePick(choice, List.of("PHY"), 1,
+                group -> List.of(blocked, alternative), Set.of("used-child"));
+        assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(result.witness().getFirst().groups().getFirst().picks())
+                .extracting(QuestionPick::questionId).containsExactly("alternative");
+    }
 }
