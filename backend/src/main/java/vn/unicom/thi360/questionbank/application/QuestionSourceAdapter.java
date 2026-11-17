@@ -346,34 +346,18 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 parts.add("q.competency_item_id in (:" + p + "competencies)");
             }
         }
-        if (f.tagCodes() != null && !f.tagCodes().isEmpty()) {
-            List<UUID> ids = f.tagCodes().stream()
-                    .map(c -> catalog.findActiveItem("QUESTION_TAG", c))
-                    .flatMap(java.util.Optional::stream).map(CatalogItemView::id).toList();
-            if (ids.isEmpty()) parts.add("false");
-            else {
-                params.addValue(p + "tags", ids);
-                parts.add("exists (select 1 from questionbank.question_tag t "
-                        + "where t.question_id=q.id and t.tag_item_id in (:" + p + "tags))");
+        addTagGroup(parts, params, p + "tags", f.tagCodes());
+        if (f.additionalTagGroups() != null) {
+            for (int j = 0; j < f.additionalTagGroups().size(); j++) {
+                addTagGroup(parts, params, p + "extraTags" + j, f.additionalTagGroups().get(j));
             }
         }
-        if (f.knowledgeGroups() != null && !f.knowledgeGroups().isEmpty()) {
-            List<String> scope = new ArrayList<>();
-            for (int j = 0; j < f.knowledgeGroups().size(); j++) {
-                List<UUID> group = f.knowledgeGroups().get(j);
-                if (group.isEmpty()) {
-                    scope.add("false");
-                    continue;
-                }
-                String k = p + "knowledge" + j;
-                params.addValue(k, group);
-                scope.add("exists (select 1 from questionbank.question_knowledge k "
-                        + "join questionbank.question x on x.id=k.question_id "
-                        + "where (x.id=q.id or (x.parent_id=q.id and x.deleted_at is null)) "
-                        + "and k.knowledge_item_id in (:" + k + "))");
+        addKnowledgeGroup(parts, params, p + "knowledge", f.knowledgeGroups());
+        if (f.additionalKnowledgeGroups() != null) {
+            for (int j = 0; j < f.additionalKnowledgeGroups().size(); j++) {
+                addKnowledgeGroup(parts, params, p + "extraKnowledge" + j + "_",
+                        f.additionalKnowledgeGroups().get(j));
             }
-            // H22/R-77: every selected scope is one-of; Match.ALL is retained only for SPI compatibility.
-            parts.add("(" + String.join(" or ", scope) + ")");
         }
         if (f.itemShape() != null) {
             String rootShape = shapePredicate("q.type", "v.snapshot", p + "shape", f.itemShape(), params);
@@ -426,6 +410,39 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                     + "where (b->>'points')::numeric <> :" + p + "points) else q.points = :" + p + "points end)");
         }
         return "(" + String.join(" and ", parts) + ")";
+    }
+
+    private void addTagGroup(List<String> parts, MapSqlParameterSource params, String key, List<String> codes) {
+        if (codes == null || codes.isEmpty()) return;
+        List<UUID> ids = codes.stream().map(c -> catalog.findActiveItem("QUESTION_TAG", c))
+                .flatMap(java.util.Optional::stream).map(CatalogItemView::id).toList();
+        if (ids.isEmpty()) {
+            parts.add("false");
+        } else {
+            params.addValue(key, ids);
+            parts.add("exists (select 1 from questionbank.question_tag t "
+                    + "where t.question_id=q.id and t.tag_item_id in (:" + key + "))");
+        }
+    }
+
+    private static void addKnowledgeGroup(List<String> parts, MapSqlParameterSource params, String prefix,
+            List<List<UUID>> groups) {
+        if (groups == null || groups.isEmpty()) return;
+        List<String> alternatives = new ArrayList<>();
+        for (int j = 0; j < groups.size(); j++) {
+            List<UUID> group = groups.get(j);
+            if (group.isEmpty()) {
+                alternatives.add("false");
+                continue;
+            }
+            String key = prefix + j;
+            params.addValue(key, group);
+            alternatives.add("exists (select 1 from questionbank.question_knowledge k "
+                    + "join questionbank.question x on x.id=k.question_id "
+                    + "where (x.id=q.id or (x.parent_id=q.id and x.deleted_at is null)) "
+                    + "and k.knowledge_item_id in (:" + key + "))");
+        }
+        parts.add("(" + String.join(" or ", alternatives) + ")");
     }
 
     private String shapePredicate(String type, String snapshot, String prefix,

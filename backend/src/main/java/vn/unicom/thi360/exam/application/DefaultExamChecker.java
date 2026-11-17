@@ -74,7 +74,7 @@ public class DefaultExamChecker implements ExamChecker {
         }
         ExamStructureDocument solverDocument = invalidOptions.isEmpty() ? snapshot.structure()
                 : maskInvalidOptions(snapshot.structure(), invalidOptions.keySet());
-        SolverInputBuilder.SolverInput input = builder.build(snapshot.exam().getId(), solverDocument);
+        SolverInputBuilder.SolverInput input = builder.build(snapshot.exam().getKindItemId(), solverDocument);
         Duration remaining = Duration.between(clock.instant(), deadline);
         if (remaining.isNegative()) remaining = Duration.ZERO;
         SolverLimits bounded = new SolverLimits(limits.maxPaths(), limits.maxCandidatesPerBlock(),
@@ -96,7 +96,7 @@ public class DefaultExamChecker implements ExamChecker {
             }
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
                     part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
-                    part.maxPoints(), part.sections(), options));
+                    part.maxPoints(), part.sections(), options, part.subjectPool(), part.codeSource()));
         }
         return new ExamStructureDocument(parts);
     }

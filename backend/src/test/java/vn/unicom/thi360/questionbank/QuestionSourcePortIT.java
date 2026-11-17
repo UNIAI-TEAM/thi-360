@@ -37,8 +37,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     @Autowired PlatformTransactionManager transactionManager;
 
     private QuestionSourcePort.Filter filter(UUID subject, List<List<UUID>> scope) {
-        return new QuestionSourcePort.Filter(subject, scope, QuestionSourcePort.Match.ANY,
-                List.of(QuestionType.SINGLE_CHOICE), null, null, null, List.of(), List.of(), null);
+        return new QuestionSourcePort.Filter(subject, scope,
+                List.of(QuestionType.SINGLE_CHOICE), null, null, null, List.of(), List.of(), null, null, null, null);
     }
 
     private UUID question(UUID subject, String status, int currentVersion, int workingVersion) {
@@ -166,8 +166,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                         + "\"statements\":[{\"id\":\"s1\"},{\"id\":\"s2\"},{\"id\":\"s3\"},{\"id\":\"s4\"}]}}", root);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 2",
                 "{\"body\":{\"scoringMethod\":\"PER_STATEMENT\",\"scoreTable\":[9,9,9,9]}}", root);
-        var trueFalse = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.TRUE_FALSE, null, null, List.of(), List.of(), null);
+        var trueFalse = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.TRUE_FALSE, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.findCandidates(trueFalse, 10)).singleElement().satisfies(candidate -> {
             assertThat(candidate.code()).isEqualTo("TEST-" + root);
             assertThat(candidate.units().getFirst().code()).isEqualTo("TEST-" + root);
@@ -187,8 +187,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                 "{\"body\":{\"scoringRule\":\"PARTIAL\"}}", multiple);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 2",
                 "{\"body\":{\"scoringRule\":\"ALL_OR_NOTHING\"}}", multiple);
-        var multipleChoice = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.MULTIPLE_CHOICE, null, null, List.of(), List.of(), null);
+        var multipleChoice = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.MULTIPLE_CHOICE, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.findCandidates(multipleChoice, 10)).singleElement().satisfies(candidate -> {
             assertThat(candidate.multipleChoiceRule()).isEqualTo("PARTIAL");
             assertThat(candidate.units().getFirst().scoring().multipleChoiceRule()).isEqualTo("PARTIAL");
@@ -205,8 +205,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                 child, "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.25,1]}}");
         jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,2,?::jsonb)",
                 child, "{\"body\":{\"scoringMethod\":\"PER_STATEMENT\",\"scoreTable\":[9,9]}}");
-        var sets = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null);
+        var sets = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.findCandidates(sets, 10)).singleElement().satisfies(candidate -> {
             assertThat(candidate.code()).isEqualTo("SET-" + set);
             assertThat(candidate.trueFalseMethod()).isNull();
@@ -229,8 +229,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         UUID second = UUID.randomUUID();
         jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?, 'SINGLE_CHOICE','READY',?,0,1)", first, "C-" + first, set);
         jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?, 'SHORT_ANSWER','READY',?,1,2)", second, "C-" + second, set);
-        var setFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null);
+        var setFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.count(setFilter).total()).isEqualTo(2);
         assertThat(source.count(setFilter).byAnswerType()).containsExactlyInAnyOrder(
                 new QuestionSourcePort.AnswerTypeCount(QuestionType.SINGLE_CHOICE, 1),
@@ -245,16 +245,16 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                     assertThat(v.childCodes()).containsEntry(first, "C-" + first)
                             .containsEntry(second, "C-" + second);
                 });
-        var pointsFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), BigDecimal.ONE);
+        var pointsFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), BigDecimal.ONE, null, null, null);
         assertThat(source.count(pointsFilter).total()).isZero();
 
         UUID cloze = UUID.randomUUID();
         jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?, 'CLOZE','READY',?,1)", cloze, "CLOZE-" + cloze, subject);
         jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
                 cloze, "{\"body\":{\"blanks\":[{\"id\":\"a\",\"points\":1},{\"id\":\"b\",\"points\":2}]}}");
-        var clozeFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.CLOZE, null, null, List.of(), List.of(), null);
+        var clozeFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.CLOZE, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.count(clozeFilter).total()).isEqualTo(2);
         assertThat(source.findCandidates(clozeFilter, 1)).singleElement().satisfies(c ->
                 assertThat(c.units()).extracting(QuestionSourcePort.Unit::reference).containsExactly("a", "b"));
@@ -271,7 +271,7 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         jdbc.update("UPDATE questionbank.question SET type = 'MATCHING' WHERE id = ?", wrongShape);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
                 "{\"body\":{\"left\":[{},{},{}],\"right\":[{},{},{},{},{}]}}", wrongShape);
-        var shapeFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var shapeFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.MATCHING, null, null, List.of(), List.of(), null,
                 new QuestionSourcePort.ItemShape(null, 4, 6), null, null);
         assertThat(source.findCandidates(shapeFilter, 10)).singleElement().satisfies(candidate -> {
@@ -287,7 +287,7 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         jdbc.update("UPDATE questionbank.question SET type = 'SHORT_ANSWER' WHERE id = ?", integerAnswer);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
                 "{\"body\":{\"answers\":[\"1\"],\"answerFormat\":\"INTEGER\"}}", integerAnswer);
-        var answerFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var answerFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
                 List.of(AnswerFormat.INTEGER), null);
         assertThat(source.findCandidates(answerFilter, 10)).singleElement()
@@ -307,10 +307,10 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                 "{\"body\":{\"answerFormat\":\"INTEGER\"}}", integer);
         jdbc.update("update questionbank.question_version set snapshot=?::jsonb where question_id=?",
                 "{\"body\":{\"answerFormat\":\"DECIMAL\"}}", decimal);
-        var one = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var one = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
                 List.of(AnswerFormat.INTEGER), null);
-        var two = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var two = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
                 List.of(AnswerFormat.INTEGER, AnswerFormat.DECIMAL), null);
         assertThat(source.findCandidates(one, 10)).extracting(QuestionSourcePort.Candidate::questionId)
@@ -348,7 +348,7 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         String threeFive = "{\"body\":{\"left\":[{},{},{}],\"right\":[{},{},{},{},{}]}}";
         UUID shapeMatch = setWithChildren(subject, "MATCHING", fourSix, fourSix, nodeA, nodeB);
         UUID shapeWrong = setWithChildren(subject, "MATCHING", fourSix, threeFive, nodeB, nodeA);
-        var shape = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var shape = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null,
                 new QuestionSourcePort.ItemShape(null, 4, 6), null, null);
         assertThat(source.findCandidates(shape, 10)).extracting(QuestionSourcePort.Candidate::questionId)
@@ -362,21 +362,21 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         UUID formatMatch = setWithChildren(subject, "SHORT_ANSWER", integer, integer, nodeA, nodeB);
         UUID formatWrong = setWithChildren(subject, "SHORT_ANSWER", integer, decimal, nodeA, nodeA);
         UUID formatMissing = setWithChildren(subject, "SHORT_ANSWER", integer, unset, nodeB, nodeB);
-        var format = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var format = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, List.of(AnswerFormat.INTEGER), null);
         assertThat(source.findCandidates(format, 10)).extracting(QuestionSourcePort.Candidate::questionId)
                 .containsExactly(formatMatch);
         assertThat(source.matching(format, List.of(formatMatch, formatWrong, formatMissing))).containsExactly(formatMatch);
         assertThat(source.count(format).total()).isEqualTo(2);
 
-        var both = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var both = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, List.of(AnswerFormat.INTEGER),
                 List.of(new QuestionSourcePort.ChildCondition(1, 1, List.of(nodeA)),
                         new QuestionSourcePort.ChildCondition(2, 2, List.of(nodeB))));
-        var range = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var range = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null,
                 List.of(new QuestionSourcePort.ChildCondition(1, 2, List.of(nodeA))));
-        var missing = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
+        var missing = new QuestionSourcePort.Filter(subject, null, List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null,
                 List.of(new QuestionSourcePort.ChildCondition(1, 3, List.of(nodeA, nodeB))));
         assertThat(source.findCandidates(both, 10)).extracting(QuestionSourcePort.Candidate::questionId)
@@ -416,18 +416,40 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         UUID none = question(subject, "READY", 1, 1);
         jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", first, tagOne);
         jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", second, tagTwo);
-        var filter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.SINGLE_CHOICE, null, null, List.of("ONE-OF-A", "ONE-OF-B"), List.of(), null);
+        var filter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.SINGLE_CHOICE, null, null, List.of("ONE-OF-A", "ONE-OF-B"), List.of(), null, null, null, null);
         assertThat(source.count(filter).total()).isEqualTo(2);
         assertThat(source.findCandidates(filter, 10)).extracting(QuestionSourcePort.Candidate::questionId)
                 .containsExactlyInAnyOrder(first, second);
         assertThat(source.matching(filter, List.of(first, second, none))).containsExactlyInAnyOrder(first, second);
+
+        UUID parentNode = QuestionTestSupport.KNOWLEDGE_CHAPTER_ID;
+        UUID slotNode = QuestionTestSupport.KNOWLEDGE_LEAF_ID;
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", first, tagTwo);
+        jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", first, parentNode);
+        jdbc.update("insert into questionbank.question_knowledge values (?,?,false)", first, slotNode);
+        var both = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
+                QuestionType.SINGLE_CHOICE, null, null, List.of("ONE-OF-A"), List.of(), null, null, null, null,
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))));
+        assertThat(source.findCandidates(both, 1)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(first);
+        assertThat(source.count(both).total()).isEqualTo(1);
+
+        UUID set = setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", parentNode, slotNode);
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?), (?, ?)",
+                set, tagOne, set, tagTwo);
+        var bothSet = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of("ONE-OF-A"), List.of(), null, null, null, null,
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))));
+        assertThat(source.findCandidates(bothSet, 1)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(set);
+        assertThat(source.count(bothSet).total()).isEqualTo(2);
     }
 
     @Test
     void endpointExpandsDescendants() throws Exception {
         String body = "{\"subjectCode\":\"TOAN\",\"questionType\":\"SINGLE_CHOICE\",\"knowledgeScope\":{\"nodeIds\":[\""
-                + QuestionTestSupport.KNOWLEDGE_CHAPTER_ID + "\"],\"match\":\"ANY\"}}";
+                + QuestionTestSupport.KNOWLEDGE_CHAPTER_ID + "\"]}}";
         String path = "/api/v1/admin/exams/available-questions/count";
         int before = mapper.readTree(mockMvc.perform(post(path).with(asUser(Permissions.EXAM_VIEW))
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
