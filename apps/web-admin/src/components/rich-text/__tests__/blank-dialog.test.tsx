@@ -139,3 +139,21 @@ describe("hộp Chỗ trống đánh số", () => {
     expect(emitted()).toBe(FIXTURE.replace('<span class="blank" data-blank="1"></span>', ""));
   });
 });
+
+describe("số hiển thị của chỗ trống trong trình soạn theo blankNumberStart", () => {
+  const shown = () => [...document.querySelectorAll(".rich-text-blank")].map((node) => node.textContent);
+
+  it("hiện (21) (22); đổi số thì dựng lại hiển thị, HTML giữ nguyên và không phát onChange", async () => {
+    const onChange = vi.fn();
+    const view = renderWithProviders(<RichTextEditor value={FIXTURE} onChange={onChange} fieldContext="set-passage" blankNumberStart={21} aria-label="Passage" />, {
+      locale: "en",
+      messages: en,
+    });
+    await waitFor(() => expect(shown()).toEqual(["(21) ____", "(22) ____"]));
+
+    view.rerender(<RichTextEditor value={FIXTURE} onChange={onChange} fieldContext="set-passage" blankNumberStart={31} aria-label="Passage" />);
+    await waitFor(() => expect(shown()).toEqual(["(31) ____", "(32) ____"]));
+    expect(tiptap().getHTML()).toBe(FIXTURE);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

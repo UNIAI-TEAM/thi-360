@@ -64,6 +64,9 @@ describe("câu chùm: Đánh số từ và bảng Chỗ trống và câu con", (
     await user.type(start, "31");
     await waitFor(() => expect(within(rowsOf()[0]!).getByText("(31) ____")).toBeInTheDocument());
     expect(within(rowsOf()[1]!).getByText("(32) ____")).toBeInTheDocument();
+    // Ngữ liệu trong trình soạn cũng hiện số mới (ED-VG F1, ngữ liệu ở ô soạn).
+    const passage = screen.getByRole("textbox", { name: /^Shared passage/ });
+    await waitFor(() => expect([...passage.querySelectorAll(".rich-text-blank")].map((node) => node.textContent)).toEqual(["(31) ____", "(32) ____"]));
 
     await save(id);
     expect(storedQuestion(id).body).toMatchObject({ type: "QUESTION_SET", blankNumberStart: 31 });

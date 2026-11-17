@@ -37,6 +37,8 @@ export interface RichTextEditorProps extends AriaAttributes {
   allowImages?: boolean;
   /** Ngữ cảnh của trường đang soạn (spec 4.1): quyết định mục Chèn nào hiện trên thanh công cụ. */
   fieldContext?: FieldContext;
+  /** Số bắt đầu đánh chỗ trống của ngữ liệu câu chùm (spec 3.4): chỗ trống n hiện `blankNumberStart + n − 1`; mặc định 1. Đổi số chỉ dựng lại hiển thị, không đổi HTML. */
+  blankNumberStart?: number;
   /**
    * Gọi khi dán, trước mọi xử lý của ProseMirror (kể cả bước lọc HTML `transformPastedHTML`), với `clipboardData` gốc
    * chưa lọc (spec 4.10, ED-5 dùng để bắt nội dung Word). Trả `true` thì trình soạn chặn dán mặc định: không lọc, không chèn gì.
@@ -154,6 +156,7 @@ export function RichTextEditor({
   onChange,
   allowImages = true,
   fieldContext = "default",
+  blankNumberStart = 1,
   onRichPaste,
   id,
   disabled = false,
@@ -237,7 +240,7 @@ export function RichTextEditor({
     {
       immediatelyRender: false,
       extensions: [
-        ...createRichTextExtensions({ allowImages, placeholder, renderLatex }),
+        ...createRichTextExtensions({ allowImages, placeholder, renderLatex, blankNumberStart }),
         SlashMenu,
         MathInputRule,
         ...editorPlugins,
@@ -297,7 +300,7 @@ export function RichTextEditor({
       },
     },
     // placeholder của extension chỉ đọc lúc tạo; allowImages đổi schema lọc dán — dựng lại editor.
-    [allowImages, placeholder],
+    [allowImages, placeholder, blankNumberStart],
   );
 
   // Node/mark đang chọn khớp mục registry nào — cho khung "đang chọn" và `aria-pressed` của nút Chèn.
