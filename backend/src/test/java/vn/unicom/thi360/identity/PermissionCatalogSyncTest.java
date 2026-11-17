@@ -277,6 +277,106 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void dot2Db_retainedPermissionRows_backfillsContentAdminOnce_andEvictsItsCache() {
+        // Fixture đợt-2 (R1-1/R1-4): mọi dòng permission còn nguyên, content_admin chỉ còn 2
+        // grant danh mục cũ, khóa một lần chưa có -> sync phải gán đủ 7 mặc định một lần duy nhất.
+        String upgradeKey = "identity.permission_upgrade.content_admin_defaults";
+        String[] addedCodes = {
+            Permissions.QUESTION_VIEW, Permissions.QUESTION_MODIFY,
+            Permissions.EXAM_VIEW, Permissions.EXAM_MODIFY, Permissions.EXAM_PUBLISH
+        };
+        Role contentAdmin = roleRepository.findByCodeNormalized("content_admin").orElseThrow();
+        UUID roleId = contentAdmin.getId();
+
+        UUID userId = Ids.newId();
+        insertUser(userId);
+        jdbcTemplate.update(
+                "INSERT INTO identity.user_role (user_id, role_id, assigned_at) VALUES (?, ?, now())",
+                userId, roleId);
+        String authzKey = SessionAuthzResolver.AUTHZ_KEY_PREFIX + userId;
+        redisTemplate.opsForValue().set(authzKey, "snapshot");
+
+        UUID userViewId = permissionRepository.findByCode(Permissions.USER_VIEW).orElseThrow().getId();
+
+        try {
+            jdbcTemplate.update("DELETE FROM shared.system_setting WHERE key = ?", upgradeKey);
+            jdbcTemplate.update(
+                    "DELETE FROM identity.role_permission WHERE role_id = ? AND permission_id IN"
+                            + " (SELECT id FROM identity.permission WHERE code IN (?,?,?,?,?))",
+                    roleId,
+                    addedCodes[0], addedCodes[1], addedCodes[2], addedCodes[3], addedCodes[4]);
+            assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(2);
+
+            permissionCatalogSync.sync();
+
+            Set<String> codes = permissionRepository
+                    .findAllById(rolePermissionRepository.findAllByIdRoleId(roleId).stream()
+                            .map(rp -> rp.getId().getPermissionId())
+                            .toList())
+                    .stream()
+                    .map(PermissionEntity::getCode)
+                    .collect(Collectors.toSet());
+            assertThat(codes).contains(addedCodes)
+                    .contains(Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY)
+                    .hasSize(7);
+            // Khóa ghi kết quả "applied" và snapshot authz của người dùng content_admin bị xóa.
+            String marker = jdbcTemplate.queryForObject(
+                    "SELECT value::text FROM shared.system_setting WHERE key = ?",
+                    String.class, upgradeKey);
+            assertThat(marker).contains("\"applied\":true");
+            assertThat(redisTemplate.hasKey(authzKey)).isFalse();
+
+            // Chạy lại: không thêm link trùng, không đụng lại khóa.
+            permissionCatalogSync.sync();
+            assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(7);
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM identity.role_permission WHERE role_id = ?",
+                    Long.class, roleId)).isEqualTo(7L);
+
+            // Vai trò đã bị tùy biến: gỡ cố ý một grant đã gán + thêm một grant ngoài mặc định
+            // -> các lần sync sau không khôi phục, không gỡ (khóa một lần đã chốt).
+            UUID examViewId = permissionRepository.findByCode(Permissions.EXAM_VIEW)
+                    .orElseThrow().getId();
+            jdbcTemplate.update(
+                    "DELETE FROM identity.role_permission WHERE role_id = ? AND permission_id = ?",
+                    roleId, examViewId);
+            jdbcTemplate.update(
+                    "INSERT INTO identity.role_permission (role_id, permission_id, granted_at)"
+                            + " VALUES (?, ?, now())",
+                    roleId, userViewId);
+            permissionCatalogSync.sync();
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM identity.role_permission"
+                            + " WHERE role_id = ? AND permission_id = ?",
+                    Long.class, roleId, examViewId)).isZero();
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM identity.role_permission"
+                            + " WHERE role_id = ? AND permission_id = ?",
+                    Long.class, roleId, userViewId)).isEqualTo(1L);
+        } finally {
+            // Trả vai trò về đúng 7 mặc định cho các test sau.
+            jdbcTemplate.update(
+                    "DELETE FROM identity.role_permission WHERE role_id = ? AND permission_id = ?",
+                    roleId, userViewId);
+            jdbcTemplate.update(
+                    """
+                    INSERT INTO identity.role_permission (role_id, permission_id, granted_at)
+                    SELECT ?, p.id, now() FROM identity.permission p
+                    WHERE p.code IN (?,?,?,?,?) AND NOT EXISTS (
+                        SELECT 1 FROM identity.role_permission rp
+                        WHERE rp.role_id = ? AND rp.permission_id = p.id)
+                    """,
+                    roleId,
+                    addedCodes[0], addedCodes[1], addedCodes[2], addedCodes[3], addedCodes[4],
+                    roleId);
+            jdbcTemplate.update("DELETE FROM shared.system_setting WHERE key = ?", upgradeKey);
+            jdbcTemplate.update("DELETE FROM identity.user_role WHERE user_id = ?", userId);
+            jdbcTemplate.update("DELETE FROM identity.user_account WHERE id = ?", userId);
+            redisTemplate.delete(authzKey);
+        }
+    }
+
     private void insertUser(UUID userId) {
         Long seq = jdbcTemplate.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
         String userCode = String.format("U%06d", seq);
