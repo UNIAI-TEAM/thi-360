@@ -2609,6 +2609,22 @@
           "backToInherit": "Use the set's knowledge",
           "inheritedAnnounce": "The sub-question uses the set's knowledge again.",
           "knowledgeApplied": "{count, plural, one {# own knowledge item} other {# own knowledge items}} selected."
+        },
+        "blanks": {
+          "child": "Sub-question {number}",
+          "columnAnswer": "Answer",
+          "columnBlank": "Blank",
+          "columnChild": "Sub-question",
+          "columnEdit": "Edit",
+          "duplicate": "Duplicate number",
+          "edit": "Edit sub-question {number}",
+          "empty": "The passage has no blanks yet. Press Blank in the passage toolbar to insert one.",
+          "noChild": "No sub-question {number}",
+          "startHint": "Blank n shows Number from + n − 1 (1–200).",
+          "startLabel": "Number from",
+          "title": "Blanks and sub-questions",
+          "updated": "The blanks in the passage were renumbered to follow the sub-question order.",
+          "without": "Sub-questions without a blank: {numbers}."
         }
       },
       "errors": {
@@ -5319,7 +5335,17 @@
     "insert": {
       "blank": {
         "label": "Blank",
-        "description": "Numbered blank linked to a child of the set"
+        "description": "Numbered blank linked to a child of the set",
+        "dialog": {
+          "apply": "Insert blank",
+          "change": "Change sub-question",
+          "childOption": "Sub-question {number} · {type}",
+          "childrenLegend": "Sub-question linked to the blank",
+          "needChild": "Add a sub-question first: every sub-question already has a blank.",
+          "newTarget": "The new blank is linked to {child}.",
+          "preview": "Shown in the passage",
+          "remove": "Remove blank"
+        }
       },
       "chemistry": {
         "label": "Chemistry formula",

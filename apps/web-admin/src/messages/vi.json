@@ -2609,6 +2609,22 @@
           "backToInherit": "Dùng kiến thức của bộ",
           "inheritedAnnounce": "Câu con dùng lại kiến thức của bộ.",
           "knowledgeApplied": "Đã chọn {count, number} kiến thức riêng."
+        },
+        "blanks": {
+          "child": "Câu con {number}",
+          "columnAnswer": "Đáp án",
+          "columnBlank": "Chỗ trống",
+          "columnChild": "Câu con",
+          "columnEdit": "Sửa",
+          "duplicate": "Trùng số",
+          "edit": "Sửa câu con {number}",
+          "empty": "Ngữ liệu chưa có chỗ trống. Bấm Chỗ trống trên thanh công cụ của ô ngữ liệu để chèn.",
+          "noChild": "Không có câu con {number}",
+          "startHint": "Chỗ trống thứ n hiện số Đánh số từ + n − 1 (1–200).",
+          "startLabel": "Đánh số từ",
+          "title": "Chỗ trống và câu con",
+          "updated": "Số chỗ trống trong ngữ liệu đã được đánh lại theo thứ tự câu con.",
+          "without": "Câu con chưa có chỗ trống: {numbers}."
         }
       },
       "errors": {
@@ -5319,7 +5335,17 @@
     "insert": {
       "blank": {
         "label": "Chỗ trống",
-        "description": "Ô trống gắn với câu con của câu chùm"
+        "description": "Ô trống gắn với câu con của câu chùm",
+        "dialog": {
+          "apply": "Chèn chỗ trống",
+          "change": "Đổi câu con",
+          "childOption": "Câu con {number} · {type}",
+          "childrenLegend": "Câu con gắn với chỗ trống",
+          "needChild": "Thêm câu con trước: chưa còn câu con nào chưa có chỗ trống.",
+          "newTarget": "Chỗ trống mới gắn với {child}.",
+          "preview": "Hiện trong ngữ liệu",
+          "remove": "Xóa chỗ trống"
+        }
       },
       "chemistry": {
         "label": "Công thức hóa học",
