@@ -45,7 +45,10 @@ export default function BlankInsertDialog({ editor, open, onOpenChange }: Insert
   });
   const { attached, usedByOthers, types, start } = snapshot;
   const free = types.flatMap((_, index) => (usedByOthers.includes(index + 1) ? [] : [index + 1]));
-  const [choice, setChoice] = useState<number | null>(attached ? attached.blank : firstChildWithoutBlank(types.length, usedByOthers));
+  // Chỗ trống mồ côi (số lớn hơn số câu con) không có câu con để chọn sẵn: bắt chọn một câu con rồi mới cho đổi.
+  const [choice, setChoice] = useState<number | null>(
+    attached ? (free.includes(attached.blank) ? attached.blank : null) : firstChildWithoutBlank(types.length, usedByOthers),
+  );
   const canApply = choice !== null;
 
   const childLabel = (number: number) => t("childOption", { number, type: tType(types[number - 1] ?? "SINGLE_CHOICE") });

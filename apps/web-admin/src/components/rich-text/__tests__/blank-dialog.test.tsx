@@ -129,6 +129,21 @@ describe("hộp Chỗ trống đánh số", () => {
     expect(emitted()).toBe(FIXTURE.replace('data-blank="1"', 'data-blank="3"'));
   });
 
+  it("chỗ trống mồ côi: không chọn sẵn câu con nào, nút Đổi khóa tới khi chọn", async () => {
+    const { emitted } = renderPassage({ value: FIXTURE.replace('data-blank="2"', 'data-blank="5"'), childCount: 3 });
+    await ready();
+    selectBlank(5);
+    const { user, dialog } = await openBlankDialog();
+    const change = dialog.getByRole("button", { name: "Change sub-question" });
+    expect(dialog.queryAllByRole("radio", { checked: true })).toHaveLength(0);
+    expect(change).toBeDisabled();
+    await user.click(dialog.getByRole("radio", { name: /Sub-question 2 ·/ }));
+    expect(change).toBeEnabled();
+    await user.click(change);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(emitted()).toBe(FIXTURE);
+  });
+
   it("Xóa chỗ trống chỉ bỏ chỗ trống đó", async () => {
     const { emitted } = renderPassage({ value: FIXTURE });
     await ready();
