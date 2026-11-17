@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -50,35 +51,28 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             assertThat(row.get("build_mode")).as(code).isEqualTo(fixture.path("buildMode").asText());
             assertThat(row.get("is_default")).as(code).isEqualTo(fixture.path("isDefault").asBoolean());
             JsonNode parts = mapper.readTree((String) row.get("document")).path("parts");
-            int questions = 0;
-            int minutes = 0;
-            boolean hasMinutes = false;
-            boolean straightforward = true;
-            BigDecimal points = BigDecimal.ZERO;
+            Integer minutes = null;
             for (JsonNode part : parts) {
-                straightforward &= part.path("options").isEmpty() && part.path("subjectPool").isEmpty();
-                questions += part.path("questionCountRequired").asInt();
-                if (part.hasNonNull("maxPoints")) points = points.add(part.path("maxPoints").decimalValue());
                 if (part.hasNonNull("durationMinutes")) {
-                    hasMinutes = true;
-                    minutes += part.path("durationMinutes").asInt();
+                    minutes = (minutes == null ? 0 : minutes) + part.path("durationMinutes").asInt();
                 }
             }
-            if (fixture.hasNonNull("questions")) {
-                assertThat(questions).as("%s questions", code).isEqualTo(fixture.path("questions").asInt());
+            if (fixture.hasNonNull("questions") || fixture.hasNonNull("maxPoints")) {
+                List<Totals> paths = pathTotals(parts, (String) row.get("kind_code"));
+                assertThat(paths).as("%s paths", code).isNotEmpty();
+                for (Totals path : paths) {
+                    if (fixture.hasNonNull("questions")) {
+                        assertThat(path.questions()).as("%s path questions", code)
+                                .isEqualTo(fixture.path("questions").asInt());
+                    }
+                    if (fixture.hasNonNull("maxPoints")) {
+                        assertThat(path.points()).as("%s path points", code).isNotNull();
+                        assertThat(path.points()).as("%s path points", code)
+                                .isEqualByComparingTo(fixture.path("maxPoints").decimalValue());
+                    }
+                }
             }
-            if (fixture.hasNonNull("maxPoints")) {
-                assertThat(points).as("%s max points", code).isEqualByComparingTo(fixture.path("maxPoints").decimalValue());
-            }
-            if (straightforward && fixture.hasNonNull("questions") && fixture.hasNonNull("maxPoints")) {
-                Totals actual = totals(parts);
-                assertThat(actual.questions()).as("%s non-omitted block questions", code)
-                        .isEqualTo(fixture.path("questions").asInt());
-                assertThat(actual.points()).as("%s non-omitted block points", code)
-                        .isEqualByComparingTo(fixture.path("maxPoints").decimalValue());
-            }
-            Integer duration = "SHARED".equals(row.get("timing")) ? (Integer) row.get("duration_minutes")
-                    : hasMinutes ? minutes : null;
+            Integer duration = "SHARED".equals(row.get("timing")) ? (Integer) row.get("duration_minutes") : minutes;
             Integer expectedDuration = fixture.hasNonNull("durationMinutes") ? fixture.path("durationMinutes").asInt() : null;
             assertThat(duration).as("%s duration", code).isEqualTo(expectedDuration);
         }
@@ -169,6 +163,31 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void pathTotalsEnumerateSubjectPicksAndBranchesWithoutOmittedBlocks() throws Exception {
+        JsonNode parts = mapper.readTree("""
+                [
+                  {"participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"kind":"SUBJECT_CHOICE","chooseSubjects":2,"countsByPick":[2,1],"sections":[
+                      {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":2,"requiredPointsPerQuestion":1}]},
+                      {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":2,"requiredPointsPerQuestion":1}]},
+                      {"blocks":[{"questionType":"SINGLE_CHOICE","questionCount":2,"requiredPointsPerQuestion":1}]}
+                    ]}
+                  ]},
+                  {"participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"kind":"BRANCH","blocks":[{"questionType":"TRUE_FALSE","questionCount":1,"requiredPointsPerQuestion":1}]},
+                    {"kind":"BRANCH","blocks":[{"questionType":"TRUE_FALSE","questionCount":1,"requiredPointsPerQuestion":1}]}
+                  ],"sections":[{"blocks":[{"questionType":"ESSAY","questionCount":1,"omitted":true}]}]}
+                ]
+                """);
+        List<Totals> paths = pathTotals(parts, "HSA");
+        assertThat(paths).hasSize(12);
+        assertThat(paths).allSatisfy(path -> {
+            assertThat(path.questions()).isEqualTo(4);
+            assertThat(path.points()).isEqualByComparingTo("4");
+        });
+    }
+
+    @Test
     void informaticsTotalsApplyToEachBranch() throws Exception {
         assertInformaticsBranches("SPT_INFORMATICS_2025", 22, "7", 1);
         assertInformaticsBranches("THPTQG_INFORMATICS_2025", 28, "10", 2);
@@ -226,6 +245,118 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
 
     private record Totals(int questions, BigDecimal points) { }
 
+    private List<Totals> pathTotals(JsonNode parts, String kind) {
+        List<Totals> paths = List.of(new Totals(0, BigDecimal.ZERO));
+        for (JsonNode part : parts) {
+            Totals common = totals(part.path("sections"));
+            List<Totals> alternatives;
+            if (part.hasNonNull("codeSource")) {
+                assertThat(part.path("options")).as("code source cannot also declare options").isEmpty();
+                alternatives = codeSourceTotals(part, kind);
+            } else if (!part.path("options").isEmpty()) {
+                List<List<Totals>> options = new ArrayList<>();
+                for (JsonNode option : part.path("options")) options.add(optionTotals(option));
+                int choose = "CHOICE".equals(part.path("participation").path("mode").asText())
+                        ? part.path("participation").path("choose").asInt() : options.size();
+                alternatives = new ArrayList<>();
+                chooseOptions(options, 0, choose, new Totals(0, BigDecimal.ZERO), alternatives);
+            } else {
+                alternatives = List.of(new Totals(0, BigDecimal.ZERO));
+            }
+            assertThat(alternatives).as("%s part alternatives", kind).isNotEmpty();
+            List<Totals> next = new ArrayList<>();
+            for (Totals prior : paths) for (Totals alternative : alternatives) {
+                next.add(add(add(prior, common), alternative));
+            }
+            paths = next;
+        }
+        return paths;
+    }
+
+    private List<Totals> codeSourceTotals(JsonNode part, String kind) {
+        String branch = part.path("codeSource").path("branch").asText(null);
+        var rows = jdbc.queryForList("""
+                select v.id, s.code as subject_code
+                from catalog.combination_version v
+                join catalog.catalog_item k on k.id = v.exam_item_id
+                join catalog.combination_subject cs on cs.combination_version_id = v.id
+                join catalog.catalog_item s on s.id = cs.subject_item_id
+                where k.code = ? and v.is_current and (cast(? as text) is null or v.branch = ?)
+                order by v.id, cs.position
+                """, kind, branch, branch);
+        Map<Object, Totals> combinations = new LinkedHashMap<>();
+        for (var row : rows) {
+            String subjectCode = (String) row.get("subject_code");
+            JsonNode subject = null;
+            for (JsonNode candidate : part.path("subjectPool")) {
+                if (subjectCode.equals(candidate.path("subjectCode").asText())) subject = candidate;
+            }
+            assertThat(subject).as("%s %s subject pool", kind, subjectCode).isNotNull();
+            combinations.merge(row.get("id"), totals(subject), this::add);
+        }
+        assertThat(combinations).as("%s catalog combinations, branch %s", kind, branch).isNotEmpty();
+        return new ArrayList<>(combinations.values());
+    }
+
+    private List<Totals> optionTotals(JsonNode option) {
+        if (!"SUBJECT_CHOICE".equals(option.path("kind").asText())) return List.of(totals(option));
+        int choose = option.path("chooseSubjects").asInt();
+        JsonNode counts = option.path("countsByPick");
+        assertThat(counts.size()).as("subject-choice counts").isEqualTo(choose);
+        List<Totals> result = new ArrayList<>();
+        chooseSubjects(option.path("sections"), counts, new boolean[option.path("sections").size()],
+                0, new Totals(0, BigDecimal.ZERO), result);
+        return result;
+    }
+
+    private void chooseSubjects(JsonNode sections, JsonNode counts, boolean[] used, int position,
+            Totals current, List<Totals> result) {
+        if (position == counts.size()) {
+            result.add(current);
+            return;
+        }
+        for (int i = 0; i < sections.size(); i++) {
+            if (used[i]) continue;
+            JsonNode section = sections.get(i);
+            Totals configured = totals(section);
+            int selected = counts.get(position).asInt();
+            assertThat(selected).isBetween(0, configured.questions());
+            BigDecimal points = configured.points();
+            if (points != null && selected != configured.questions()) {
+                List<JsonNode> blocks = new ArrayList<>();
+                collectBlocks(section, blocks);
+                Set<BigDecimal> rates = new HashSet<>();
+                for (JsonNode block : blocks) {
+                    if (!block.path("omitted").asBoolean() && block.hasNonNull("requiredPointsPerQuestion")) {
+                        rates.add(block.path("requiredPointsPerQuestion").decimalValue().stripTrailingZeros());
+                    }
+                }
+                assertThat(rates).as("subject-choice reduction requires a uniform point value").hasSize(1);
+                points = rates.iterator().next().multiply(BigDecimal.valueOf(selected));
+            }
+            used[i] = true;
+            chooseSubjects(sections, counts, used, position + 1, add(current, new Totals(selected, points)), result);
+            used[i] = false;
+        }
+    }
+
+    private void chooseOptions(List<List<Totals>> options, int start, int remaining,
+            Totals current, List<Totals> result) {
+        if (remaining == 0) {
+            result.add(current);
+            return;
+        }
+        for (int i = start; i <= options.size() - remaining; i++) {
+            for (Totals choice : options.get(i)) chooseOptions(options, i + 1, remaining - 1,
+                    add(current, choice), result);
+        }
+    }
+
+    private Totals add(Totals left, Totals right) {
+        return new Totals(left.questions() + right.questions(),
+                left.points() == null || right.points() == null ? null : left.points().add(right.points()));
+    }
+
     private Totals totals(JsonNode parts) {
         List<JsonNode> blocks = new ArrayList<>();
         collectBlocks(parts, blocks);
@@ -233,11 +364,17 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
         BigDecimal points = BigDecimal.ZERO;
         for (JsonNode block : blocks) {
             if (block.path("omitted").asBoolean()) continue;
+            assertThat(block.hasNonNull("questionCount")
+                    || (block.hasNonNull("setCount") && block.hasNonNull("setSize")))
+                    .as("count for %s", block).isTrue();
             int count = block.hasNonNull("questionCount") ? block.path("questionCount").asInt()
                     : block.path("setCount").asInt() * block.path("setSize").asInt();
-            assertThat(block.hasNonNull("requiredPointsPerQuestion")).as("points for %s", block).isTrue();
             questions += count;
-            points = points.add(block.path("requiredPointsPerQuestion").decimalValue().multiply(BigDecimal.valueOf(count)));
+            if (!block.hasNonNull("requiredPointsPerQuestion")) {
+                points = null;
+            } else if (points != null) {
+                points = points.add(block.path("requiredPointsPerQuestion").decimalValue().multiply(BigDecimal.valueOf(count)));
+            }
         }
         return new Totals(questions, points);
     }
