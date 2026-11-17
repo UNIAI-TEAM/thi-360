@@ -1,5 +1,7 @@
 package vn.unicom.thi360.identity.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -68,6 +70,7 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
     private final AuthzSnapshotService authzSnapshotService;
     private final JdbcTemplate jdbc;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
 
     public PermissionCatalogSync(
             PermissionRepository permissionRepository,
@@ -76,6 +79,7 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
             TransactionTemplate transactionTemplate,
             AuthzSnapshotService authzSnapshotService,
             JdbcTemplate jdbc,
+            ObjectMapper objectMapper,
             Clock clock) {
         this.permissionRepository = Objects.requireNonNull(permissionRepository);
         this.roleRepository = Objects.requireNonNull(roleRepository);
@@ -84,6 +88,7 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
         this.authzSnapshotService = Objects.requireNonNull(authzSnapshotService);
         this.jdbc = Objects.requireNonNull(jdbc);
         this.clock = Objects.requireNonNull(clock);
+        this.objectMapper = Objects.requireNonNull(objectMapper);
     }
 
     @Override
@@ -234,7 +239,9 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
             return;
         }
 
-        String outcome = "\"skipped\", \"reason\": \"no system content_admin role\"";
+        boolean applied = false;
+        int granted = 0;
+        String reason = "no system content_admin role";
         Role role = roleRepository
                 .findByCodeNormalized(Normalizer.normalize("content_admin"))
                 .filter(Role::isSystem)
@@ -257,16 +264,25 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
                 rolePermissionRepository.saveAll(newLinks);
                 rolePermissionRepository.flush();
                 authzSnapshotService.evictByRole(role.getId());
-                outcome = "\"applied\", \"granted\": " + newLinks.size();
+                applied = true;
+                granted = newLinks.size();
+                reason = null;
             } else {
-                outcome = actual.containsAll(defaults)
-                        ? "\"skipped\", \"reason\": \"defaults already granted\""
-                        : "\"skipped\", \"reason\": \"role customized\"";
+                reason = actual.containsAll(defaults) ? "defaults already granted" : "role customized";
             }
+        }
+        ObjectNode marker = objectMapper.createObjectNode()
+                .put("applied", applied)
+                .put("outcome", applied ? "applied" : "skipped")
+                .put("granted", granted);
+        if (reason == null) {
+            marker.putNull("reason");
+        } else {
+            marker.put("reason", reason);
         }
         jdbc.update(
                 "UPDATE shared.system_setting SET value = ?::jsonb, updated_at = ? WHERE key = ?",
-                "{" + outcome + "}",
+                marker.toString(),
                 java.sql.Timestamp.from(now),
                 CONTENT_ADMIN_UPGRADE_KEY);
     }

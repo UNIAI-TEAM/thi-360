@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +51,9 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void afterStartup_permissionTableMatchesEnumAndBits_andRerunningIsIdempotent_andPreservesExtraRows() {
@@ -278,7 +283,7 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void dot2Db_retainedPermissionRows_backfillsContentAdminOnce_andEvictsItsCache() {
+    void dot2Db_retainedPermissionRows_backfillsContentAdminOnce_andEvictsItsCache() throws Exception {
         // Fixture đợt-2 (R1-1/R1-4): mọi dòng permission còn nguyên, content_admin chỉ còn 2
         // grant danh mục cũ, khóa một lần chưa có -> sync phải gán đủ 7 mặc định một lần duy nhất.
         String upgradeKey = "identity.permission_upgrade.content_admin_defaults";
@@ -321,10 +326,14 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
                     .contains(Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY)
                     .hasSize(7);
             // Khóa ghi kết quả "applied" và snapshot authz của người dùng content_admin bị xóa.
-            String marker = jdbcTemplate.queryForObject(
+            // jsonb trả về text đã chuẩn hóa (": ") nên phải parse JSON, không so text thô.
+            String markerJson = jdbcTemplate.queryForObject(
                     "SELECT value::text FROM shared.system_setting WHERE key = ?",
                     String.class, upgradeKey);
-            assertThat(marker).contains("\"applied\":true");
+            JsonNode marker = objectMapper.readTree(markerJson);
+            assertThat(marker.get("outcome").asText()).isEqualTo("applied");
+            assertThat(marker.get("applied").asBoolean()).isTrue();
+            assertThat(marker.get("granted").asInt()).isEqualTo(5);
             assertThat(redisTemplate.hasKey(authzKey)).isFalse();
 
             // Chạy lại: không thêm link trùng, không đụng lại khóa.
