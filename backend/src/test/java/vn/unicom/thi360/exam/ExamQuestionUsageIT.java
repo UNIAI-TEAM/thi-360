@@ -63,7 +63,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                 """;
         var document = new ExamStructureCodec(mapper).read(json);
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
-        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null, code -> null);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null);
         refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
         assertThat(provider.examUsagesOf(question)).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
                 .contains("pool-block");
@@ -95,8 +95,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                 """.formatted(parent.id());
         var document = new ExamStructureCodec(mapper).read(json);
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
-        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null,
-                code -> null);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null);
         refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
         UUID unrelatedExam = UUID.randomUUID();
         UUID unrelatedSubject = UUID.randomUUID();
@@ -105,7 +104,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')",
                 unrelatedExam, json);
         var unrelatedResolver = new ExamBlockRefProjector.CodeResolver(code -> unrelatedSubject, code -> null,
-                code -> null, code -> null);
+                code -> null);
         refs.saveAllAndFlush(projector.project(unrelatedExam, document.parts(), unrelatedResolver));
 
         var actual = provider.examUsagesOf(question);

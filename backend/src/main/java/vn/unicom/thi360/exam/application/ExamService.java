@@ -496,7 +496,7 @@ public class ExamService {
         } catch (DataIntegrityViolationException ex) {
             throw codeTaken();
         }
-        ExamStructureSummary summary = blockRefProjector.summarize(doc.parts());
+        ExamStructureSummary summary = summarize(exam, doc);
         exam.applyStructureSummary(summary.questionCount(), summary.hasEssay(),
                 summary.hasEnglishOption(), summary.combinationCount());
 
@@ -777,12 +777,24 @@ public class ExamService {
             structure.replace(partsJson, quotasJson, hash, edited, actor, now);
             structureRepository.save(structure);
         }
-        ExamStructureSummary summary = blockRefProjector.summarize(doc.parts());
+        ExamStructureSummary summary = summarize(exam, doc);
         exam.applyStructureSummary(summary.questionCount(), summary.hasEssay(),
                 summary.hasEnglishOption(), summary.combinationCount());
         exam.markStructureChanged(actor, now);
         rewriteBlockRefs(exam.getId(), doc);
         examRepository.flush();
+    }
+
+    private ExamStructureSummary summarize(Exam exam, ExamStructureDocument doc) {
+        int count = 0;
+        if (doc.parts().stream().anyMatch(part -> part.codeSource() != null)) {
+            String kindCode = catalogLookup.findItem(exam.getKindItemId())
+                    .map(CatalogItemView::code).orElse(null);
+            count = (int) combinationLookup.listCurrent().stream()
+                    .filter(value -> Objects.equals(value.examCode(), kindCode))
+                    .map(StructureCombination::code).distinct().count();
+        }
+        return blockRefProjector.summarize(doc.parts(), count);
     }
 
     private void rewriteBlockRefs(UUID examId, ExamStructureDocument doc) {
@@ -799,8 +811,6 @@ public class ExamService {
         return new CodeResolver(
                 code -> catalogLookup.findActiveItem(SUBJECT_GROUP, code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("COMPETENCY", code).map(CatalogItemView::id).orElse(null),
-                code -> catalogLookup.findActiveItem("SUBJECT_COMBINATION", code)
-                        .map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("QUESTION_TAG", code).map(CatalogItemView::id).orElse(null));
     }
 
@@ -817,8 +827,15 @@ public class ExamService {
                     requireActiveReference(SUBJECT_GROUP, option.code());
                 }
                 option.sections().forEach(this::validateSectionReferences);
-                option.blocks().forEach(this::validateBlockReferences);
+                validateBlockReferences(option.blocks());
             }
+        }
+        for (var quota : doc.examQuotas()) {
+            String group = quota.dimension() == vn.unicom.thi360.exam.domain.ExamQuota.Dimension.GRADE
+                    ? "GRADE" : "QUESTION_LEVEL";
+            quota.buckets().forEach(bucket -> bucket.codes().forEach(code -> requireActiveReference(group, code)));
+            quota.subjectCodes().forEach(code -> requireActiveReference(SUBJECT_GROUP, code));
+            quota.excludeSubjectCodes().forEach(code -> requireActiveReference(SUBJECT_GROUP, code));
         }
     }
 
@@ -826,24 +843,52 @@ public class ExamService {
         requireActiveReference(SUBJECT_GROUP, section.subjectCode());
         validateScopeReferences(section.knowledgeScope());
         validateMatrixReferences(section.matrix());
-        section.blocks().forEach(this::validateBlockReferences);
+        Set<String> groupIds = section.blocks().stream().map(QuestionBlock::id)
+                .collect(java.util.stream.Collectors.toSet());
+        validateTopicReferences(section.topicQuotas(), groupIds);
+        validateBlockReferences(section.blocks());
     }
 
-    private void validateBlockReferences(QuestionBlock block) {
-        block.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
-        validateScopeReferences(block.knowledgeScope());
-        validateMatrixReferences(block.matrix());
-    }
-    private void validateScopeReferences(KnowledgeScope scope) {
-        if (scope == null) {
-            return;
+    private void validateBlockReferences(List<QuestionBlock> blocks) {
+        Set<String> groupIds = blocks.stream().map(QuestionBlock::id)
+                .collect(java.util.stream.Collectors.toSet());
+        for (QuestionBlock block : blocks) {
+            block.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
+            validateScopeReferences(block.knowledgeScope());
+            validateMatrixReferences(block.matrix());
+            block.slots().forEach(slot -> {
+                validateScopeReferences(slot.knowledgeScope());
+                slot.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
+            });
+            block.childConditions().forEach(condition -> validateKnowledgeIds(condition.nodeIds()));
+            validateTopicReferences(block.topicQuotas(), groupIds);
         }
-        for (UUID nodeId : scope.nodeIds()) {
+    }
+
+    private void validateTopicReferences(List<vn.unicom.thi360.exam.domain.TopicQuota> quotas, Set<String> groupIds) {
+        for (var quota : quotas) {
+            validateKnowledgeIds(quota.nodeIds());
+            quota.gradeCodes().forEach(code -> requireActiveReference("GRADE", code));
+            quota.difficultyCodes().forEach(code -> requireActiveReference("QUESTION_LEVEL", code));
+            if (!groupIds.containsAll(quota.groupIds())) {
+                throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+            }
+        }
+    }
+
+    private void validateKnowledgeIds(List<UUID> nodeIds) {
+        for (UUID nodeId : nodeIds) {
             if (catalogLookup.findItem(nodeId).filter(item -> "KNOWLEDGE".equals(item.groupCode())
                     && item.effectiveStatus() == CatalogStatus.ACTIVE).isEmpty()) {
                 throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
             }
         }
+    }
+    private void validateScopeReferences(KnowledgeScope scope) {
+        if (scope == null) {
+            return;
+        }
+        validateKnowledgeIds(scope.nodeIds());
         for (String competency : scope.competencyCodes()) {
             requireActiveReference("COMPETENCY", competency);
         }

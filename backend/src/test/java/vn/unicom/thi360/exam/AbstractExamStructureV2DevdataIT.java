@@ -96,8 +96,7 @@ abstract class AbstractExamStructureV2DevdataIT {
             Set<String> poolPartIds = document.parts().stream().filter(p -> p.codeSource() != null)
                     .map(ExamPart::id).collect(Collectors.toSet());
             assertThat(poolPartIds).isNotEmpty();
-            var resolver = new ExamBlockRefProjector.CodeResolver(code -> null, code -> null,
-                    code -> null, code -> null);
+            var resolver = new ExamBlockRefProjector.CodeResolver(code -> null, code -> null, code -> null);
             var expected = projector.project(examId, document.parts(), resolver).stream()
                     .filter(r -> poolPartIds.contains(r.getPartId()))
                     .map(r -> new RefKey(r.getPartId(), r.getSectionId(), r.getBlockId(),

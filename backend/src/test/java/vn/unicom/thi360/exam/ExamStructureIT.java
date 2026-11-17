@@ -59,6 +59,60 @@ class ExamStructureIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void duplicateRemapsQuotaReferencesToCopiedBlocks() throws Exception {
+        JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) before.path("parts").deepCopy();
+        var section = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0);
+        var block = (com.fasterxml.jackson.databind.node.ObjectNode) section.path("blocks").get(0);
+        String oldId = block.path("id").asText();
+        var quota = mapper.createObjectNode().put("id", "quota").put("count", 1);
+        quota.putArray("groupIds").add(oldId);
+        section.putArray("topicQuotas").add(quota);
+        block.putArray("topicQuotas").add(quota.deepCopy());
+        var request = mapper.createObjectNode().put("expectedRevision", before.path("revision").asLong());
+        request.set("parts", parts);
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        String duplicate = mockMvc.perform(post(EXAM + "/duplicate").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Quota copy\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String copyId = mapper.readTree(duplicate).path("id").asText();
+        JsonNode copy = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/" + copyId + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode copiedSection = copy.path("parts").get(0).path("sections").get(0);
+        JsonNode copiedBlock = copiedSection.path("blocks").get(0);
+        String newId = copiedBlock.path("id").asText();
+        assertThat(newId).isNotEqualTo(oldId);
+        assertThat(copiedSection.path("topicQuotas").get(0).path("groupIds").get(0).asText()).isEqualTo(newId);
+        assertThat(copiedBlock.path("topicQuotas").get(0).path("groupIds").get(0).asText()).isEqualTo(newId);
+    }
+    @Test
+    void savingCodeSourceKeepsCombinationCount() throws Exception {
+        UUID id = jdbc.queryForObject("select id from exam.exam where template_code = 'QDA_FULL' limit 1", UUID.class);
+        String url = "/api/v1/admin/exams/" + id;
+        JsonNode before = mapper.readTree(mockMvc.perform(get(url + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        long expected = java.util.stream.StreamSupport.stream(before.path("combinations").spliterator(), false)
+                .map(value -> value.path("code").asText()).distinct().count();
+        assertThat(expected).isGreaterThan(1);
+        var request = mapper.createObjectNode().put("expectedRevision", before.path("revision").asLong());
+        request.set("parts", before.path("parts"));
+        request.set("examQuotas", before.path("examQuotas"));
+        mockMvc.perform(put(url + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        JsonNode after = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after.path("combinationCount").asLong()).isEqualTo(expected);
+    }
+
+
+    @Test
     void examQuotasPersistAcrossSaveAndRead() throws Exception {
         JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
                         .with(asUser(Permissions.EXAM_VIEW)))
@@ -68,7 +122,7 @@ class ExamStructureIT extends AbstractIntegrationTest {
         request.put("expectedRevision", before.path("revision").asLong());
         request.set("examQuotas", mapper.readTree("""
                 [{"id":"q","name":"Grade 12","dimension":"GRADE",
-                  "buckets":[{"codes":["GRADE_12"],"count":1}],
+                  "buckets":[{"codes":["G12"],"count":1}],
                   "basis":"QUESTION","enforcement":"REQUIRED","subjectCodes":["TOAN"]}]
                 """));
         mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
@@ -239,7 +293,7 @@ class ExamStructureIT extends AbstractIntegrationTest {
         JsonNode before = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        for (int scenario = 0; scenario < 13; scenario++) {
+        for (int scenario = 0; scenario < 20; scenario++) {
             var parts = (com.fasterxml.jackson.databind.node.ArrayNode) before.path("parts").deepCopy();
             var first = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0);
             var section = (com.fasterxml.jackson.databind.node.ObjectNode) first.path("sections").get(0);
@@ -266,6 +320,31 @@ class ExamStructureIT extends AbstractIntegrationTest {
                     option.put("kind", "COMBINATION");
                     option.put("code", "MISSING_COMBINATION");
                 }
+                case 13 -> {
+                    block.put("questionType", "QUESTION_SET").put("setCount", 1).put("setSize", 1);
+                    block.set("slots", mapper.readTree("""
+                            [{"index":1,"knowledgeScope":{"nodeIds":["00000000-0000-7000-8200-999999999999"]}}]
+                            """));
+                }
+                case 14 -> {
+                    block.put("questionType", "QUESTION_SET").put("setCount", 1).put("setSize", 1);
+                    block.set("slots", mapper.readTree("[{\"index\":1,\"tagCodes\":[\"MISSING_TAG\"]}]"));
+                }
+                case 15 -> block.set("childConditions", mapper.readTree("""
+                        [{"from":1,"to":1,"nodeIds":["00000000-0000-7000-8200-999999999999"]}]
+                        """));
+                case 16 -> section.set("topicQuotas", mapper.readTree("""
+                        [{"id":"q","count":1,"nodeIds":["00000000-0000-7000-8200-999999999999"]}]
+                        """));
+                case 17 -> section.set("topicQuotas", mapper.readTree("""
+                        [{"id":"q","count":1,"gradeCodes":["MISSING_GRADE"]}]
+                        """));
+                case 18 -> block.set("topicQuotas", mapper.readTree("""
+                        [{"id":"q","count":1,"difficultyCodes":["MISSING_LEVEL"]}]
+                        """));
+                case 19 -> section.set("topicQuotas", mapper.readTree("""
+                        [{"id":"q","count":1,"groupIds":["MISSING_BLOCK"]}]
+                        """));
                 default -> throw new AssertionError(scenario);
             }
             var request = mapper.createObjectNode();
@@ -499,13 +578,11 @@ class ExamStructureIT extends AbstractIntegrationTest {
         JsonNode savedScience = saved.path("parts").get(2).path("options").get(0).path("sections");
         assertThat(savedScience).hasSize(5);
         String[] subjects = {"HOA", "SINH", "SU", "DIA", "LY"};
-        String[] groups = {"HSA_HOA_REMAINDER", "HSA_SINH_REMAINDER", "HSA_SU_REMAINDER",
-                "HSA_DIA_REMAINDER", "HSA_LY_REMAINDER"};
         for (int i = 0; i < 5; i++) {
             assertThat(savedScience.get(i).path("subjectCode").asText()).isEqualTo(subjects[i]);
             assertThat(savedScience.get(i).path("groupOrder").isMissingNode()).isTrue();
-            assertThat(savedScience.get(i).path("blocks").get(0).path("templateGroupCode").asText())
-                    .isEqualTo(groups[i]);
+            assertThat(savedScience.get(i).path("blocks").get(0).path("templateGroupCode"))
+                    .isEqualTo(science.get(i).path("blocks").get(0).path("templateGroupCode"));
         }
 
         JsonNode savedAnh = saved.path("parts").get(2).path("options").get(1).path("sections")

@@ -33,7 +33,6 @@ public class ExamBlockRefProjector {
     /** Resolver code → id giá trị danh mục (theo nhóm), null khi không có. */
     public record CodeResolver(Function<String, UUID> subjectByCode,
                                Function<String, UUID> competencyByCode,
-                               Function<String, UUID> combinationByCode,
                                Function<String, UUID> tagByCode) {
     }
 
@@ -199,18 +198,14 @@ public class ExamBlockRefProjector {
             boolean hasEnglishOption, int combinationCount) {
     }
 
-    public ExamStructureSummary summarize(List<ExamPart> parts) {
+    public ExamStructureSummary summarize(List<ExamPart> parts, int combinationCount) {
         int questionCount = 0;
         boolean hasEssay = false;
         boolean hasEnglishOption = false;
-        Set<String> combinationKeys = new LinkedHashSet<>();
         if (parts != null) {
             for (ExamPart part : parts) {
                 if (part == null) {
                     continue;
-                }
-                if (part.codeSource() != null) {
-                    combinationKeys.add(part.id());
                 }
                 if (part.questionCount() != null) {
                     questionCount += part.questionCount();
@@ -244,7 +239,7 @@ public class ExamBlockRefProjector {
                 }
             }
         }
-        return new ExamStructureSummary(questionCount, hasEssay, hasEnglishOption, combinationKeys.size());
+        return new ExamStructureSummary(questionCount, hasEssay, hasEnglishOption, combinationCount);
     }
 
 
