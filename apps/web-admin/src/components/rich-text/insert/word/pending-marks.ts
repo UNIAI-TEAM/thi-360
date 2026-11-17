@@ -45,7 +45,10 @@ function decorate(doc: PMNode): DecorationSet {
     if (!pendingLatex.has(latex)) return;
     decorations.push(
       Decoration.node(pos, pos + node.nodeSize, {
-        class: "rounded-sm bg-warning-bg outline outline-1 outline-warning",
+        // Cờ `!` (important): `.rich-text-editor-content .rich-text-math` trong rich-text.css đặt nền và viền chip công
+        // thức bằng hai lớp, thắng tiện ích một lớp nên dấu chờ xác nhận sẽ vô hình nếu không ép.
+        class:
+          "rounded-sm bg-warning-bg! outline-2! outline-solid! outline-warning! [&.ProseMirror-selectednode]:outline-primary-text!",
         "data-word-pending": "true",
         title: markLabel,
       }),
