@@ -94,6 +94,18 @@ Issue cha: **UNI-2606** · Thi 360 · Đợt 2 · Backend PBI-03 + PBI-04 và n�
 
 Sóng: 1 BE-1 · FE-3a → 2 BE-2a · BE-4 · BE-5a · FE-3b · FE-3c → 3 BE-2b · BE-3 · BE-5b · FE-4 → 4 BE-6 · FE-1 → 5 FE-2 → 6 QA. `integration/dot-2` vào `develop` qua PR #63 (`8986f0f`) ngày 2026-11-17; việc tồn UNI-2634 làm thẳng trên `develop`.
 
+### Thương mại và lượt thi (PBI-05 đến PBI-13)
+
+| Issue | Việc | Trạng thái |
+|---|---|---|
+| UNI-2622 | Đặc tả thương mại `docs/specs/2026-11-16-thuong-mai-pbi-05-09.md` (trang giới thiệu, danh mục, đăng ký, email, khuyến mãi, voucher, đơn hàng, VNPAY, hoàn tiền, Bài thi của tôi) và đặc tả lượt thi `docs/specs/2026-11-16-luot-thi-pbi-10-13.md` (làm bài 7 kỳ thi, lưu và khôi phục, chấm, kết quả, lịch sử). Plan triển khai `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-05-13.md` (36 task, 103 điểm, sửa theo đợt 2B: cổng G0b, bộ đề CM-6, FB), đã qua 2 lượt review và các lượt review theo 2B; M.Trường duyệt 2026-11-17; chưa cook | in_progress |
+
+### Đợt 2B · Cập nhật bài thi và ma trận theo UniNote PBI-04 2026-11-17
+
+| Issue | Việc | Trạng thái |
+|---|---|---|
+| UNI-2647 | Đặc tả `docs/specs/2026-11-17-pbi04-dot-2b.md`, bảng yêu cầu `docs/specs/2026-11-17-pbi04-dot-2b-yeu-cau.md`, plan `docs/plans/2026-11-17-pbi04-dot-2b.md` (17 task, 100 điểm). Đã qua 4 lượt review của Fable; M.Trường chốt K6 đến K15 và duyệt 2026-11-17; PR #70 đã merge. Chưa cook; chờ bản vẽ G2 | in_progress |
+
 ### Thứ tự làm
 
 ```

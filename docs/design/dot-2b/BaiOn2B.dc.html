@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · bài ôn rút gọn (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+input,select,button{font:inherit}
+input,select{color-scheme:light}.th.dark input,.th.dark select{color-scheme:dark}
+summary{cursor:pointer}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; min-height: 1100px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · HSA theo môn Toán · Tự thiết lập bài ôn</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px">
+      <div><h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Bài ôn · Toán · 10 câu</h1><p style="margin: 2px 0 0; color: var(--tx3)">Số câu, thời lượng và thang điểm lấy từ bước 1. Bài ôn có một phần, một môn, một nhóm.</p></div>
+      <button type="button" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra môn</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px">
+      <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px">
+        <legend style="font-weight: 600; margin-bottom: 6px">Phạm vi kiến thức</legend>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 36px"><input type="radio" name="ks" style="margin: 0; accent-color: var(--p600)">Toàn môn</label>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 36px"><input type="radio" name="ks" checked style="margin: 0; accent-color: var(--p600)">Theo chủ đề</label>
+        <span style="display: inline-flex; align-self: flex-start; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 9999px; border: 1px solid var(--p200); background: var(--p50); color: var(--p800); font-weight: 500">Hàm số ×</span>
+      </fieldset>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="t" style="font-weight: 600">Dạng câu</label>
+        <select id="t" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"><option>Bất kỳ</option><option selected>Một đáp án</option><option>Trả lời ngắn</option></select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="q" style="font-weight: 600">Số lượng</label>
+        <input id="q" value="10" inputmode="numeric" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)">
+        <span style="font-size: 12.5px; color: var(--tx3)">Khớp số câu ở bước 1.</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <details style="border: 1px solid var(--bd); border-radius: 12px; padding: 0 14px"><summary style="min-height: 44px; display: flex; align-items: center; font-weight: 600">Phân bố khối lớp <span style="margin-left: 8px; font-weight: 400; color: var(--tx3)">· chưa đặt</span></summary><p style="margin: 0 0 12px; color: var(--tx3)">Như ở bài thường: mức Bắt buộc hoặc Tham khảo, đơn vị câu.</p></details>
+      <details style="border: 1px solid var(--bd); border-radius: 12px; padding: 0 14px"><summary style="min-height: 44px; display: flex; align-items: center; font-weight: 600">Độ khó <span style="margin-left: 8px; font-weight: 400; color: var(--tx3)">· chưa đặt</span></summary><p style="margin: 0 0 12px; color: var(--tx3)">Như ở bài thường.</p></details>
+      <details style="border: 1px solid var(--bd); border-radius: 12px; padding: 0 14px"><summary style="min-height: 44px; display: flex; align-items: center; font-weight: 600">Câu chùm <span style="margin-left: 8px; font-weight: 400; color: var(--tx3)">· không lấy câu chùm</span></summary><p style="margin: 0 0 12px; color: var(--tx3)">Bật để lấy nguyên chùm: số chùm và số câu con mỗi chùm.</p></details>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 10px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+    <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Số lượng khác bước 1.</strong> Bước 1 đặt 10 câu, ở đây đang 12. Sửa một trong hai chỗ.</div>
+    <p style="margin: 0; color: var(--tx2)">Danh sách (vùng b) của bài ôn chỉ có một mục “Bài ôn · Toán”. Tổng hợp (vùng d) chỉ có số câu, lệnh hỏi, điểm.</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: this.props.dark ? 'dark' : '' };
+}
+}
+</script>
+</body>
+</html>

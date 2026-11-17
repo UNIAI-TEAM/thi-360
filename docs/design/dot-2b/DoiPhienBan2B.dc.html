@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Hộp thoại đổi phiên bản cấu trúc · hai bước</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+button{font:inherit}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 760px; min-height: 1500px; box-sizing: border-box; padding: 32px; background: var(--ov); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 24px">
+
+  <div role="dialog" aria-modal="true" aria-labelledby="d1-t" style="background: var(--sf); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+    <div style="font-size: 12.5px; font-weight: 600; color: var(--tx3)">Bước 1/2</div>
+    <h2 id="d1-t" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Đổi sang “Đề minh họa cũ”?</h2>
+    <p style="margin: 0; color: var(--tx2)">Cấu trúc nạp lại theo phiên bản mới. Các phần sau bị thay toàn bộ, gồm nhóm, phân bổ và chỉ tiêu đã sửa:</p>
+    <ul style="margin: 0; padding-left: 20px; color: var(--tx2); display: flex; flex-direction: column; gap: 4px">
+      <li>Phần I · 16 trắc nghiệm → 10 trắc nghiệm</li>
+      <li>Phần II · 4 Đúng/Sai → 5 Đúng/Sai</li>
+      <li>Phần III · 8 trả lời ngắn → 5 ghép đôi (4 ý trái, 6 lựa chọn phải)</li>
+    </ul>
+    <p style="margin: 0; color: var(--tx2)">Thay đổi chưa lưu cũng mất. Mọi trạng thái kiểm tra của bài chuyển “Cần kiểm tra lại”.</p>
+    <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px">
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Hủy</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--pf); color: var(--op); font-weight: 600; cursor: pointer">Nạp lại cấu trúc</button>
+    </div>
+  </div>
+
+  <div role="dialog" aria-modal="true" aria-labelledby="d2-t" aria-describedby="d2-d" style="background: var(--sf); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+    <div style="font-size: 12.5px; font-weight: 600; color: var(--tx3)">Bước 2/2 · chỉ hiện khi bạn đã sửa tổng quan ở bước 1</div>
+    <h2 id="d2-t" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Giữ số tổng quan đã sửa?</h2>
+    <p id="d2-d" style="margin: 0; color: var(--tx2)">Bạn đã sửa số của mẫu đang dùng. Chọn giữ số đã sửa hay lấy số của mẫu mới.</p>
+    <div role="region" tabindex="0" aria-labelledby="cap-ov" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+      <table style="width: 100%; min-width: 560px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+        <caption id="cap-ov" class="sr-only">So sánh số tổng quan</caption>
+        <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 10px 14px">Mục</th><th scope="col" style="padding: 10px 8px; text-align: right">Mẫu đang dùng</th><th scope="col" style="padding: 10px 8px; text-align: right">Đang có (đã sửa)</th><th scope="col" style="padding: 10px 14px; text-align: right">Mẫu mới</th></tr></thead>
+        <tbody>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">Thời lượng bài</th><td style="padding: 10px 8px; text-align: right">60 phút</td><td style="padding: 10px 8px; text-align: right; font-weight: 700; color: var(--wn)">45 phút · đã sửa</td><td style="padding: 10px 14px; text-align: right">60 phút</td></tr>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">Phần I · số câu</th><td style="padding: 10px 8px; text-align: right">16</td><td style="padding: 10px 8px; text-align: right">16</td><td style="padding: 10px 14px; text-align: right">10</td></tr>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">Phần II · số câu</th><td style="padding: 10px 8px; text-align: right">4</td><td style="padding: 10px 8px; text-align: right">4</td><td style="padding: 10px 14px; text-align: right">5</td></tr>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">Phần III · số câu</th><td style="padding: 10px 8px; text-align: right">8</td><td style="padding: 10px 8px; text-align: right">8</td><td style="padding: 10px 14px; text-align: right">5</td></tr>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">Điểm tối đa</th><td style="padding: 10px 8px; text-align: right">10</td><td style="padding: 10px 8px; text-align: right">10</td><td style="padding: 10px 14px; text-align: right">10</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+      <legend class="sr-only">Cách lấy số tổng quan</legend>
+      <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 2px solid var(--p600); background: var(--p50); border-radius: 12px; cursor: pointer"><input type="radio" name="ov" checked style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--p600)"><span><span style="font-weight: 600">Giữ số đã sửa</span><br><span style="color: var(--tx3)">Giữ thời lượng 45 phút. Phần và môn còn có trong mẫu mới giữ số đã sửa; phần, môn mới lấy số của mẫu.</span></span></label>
+      <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--bd); border-radius: 12px; cursor: pointer"><input type="radio" name="ov" style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--p600)"><span><span style="font-weight: 600">Lấy số của mẫu mới</span><br><span style="color: var(--tx3)">Thời lượng về 60 phút, số câu và điểm theo “Đề minh họa cũ”.</span></span></label>
+    </fieldset>
+    <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px">
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Hủy đổi phiên bản</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--pf); color: var(--op); font-weight: 600; cursor: pointer">Nạp lại cấu trúc</button>
+    </div>
+  </div>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 12px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+    <ul style="margin: 0; padding-left: 20px; color: var(--tx2); display: flex; flex-direction: column; gap: 6px">
+      <li><strong>Chưa sửa gì ở cấu trúc và tổng quan:</strong> nạp luôn, không hiện hộp thoại nào.</li>
+      <li><strong>Cấu trúc đã sửa, tổng quan chưa sửa:</strong> chỉ có bước 1.</li>
+      <li><strong>Hủy ở bước 1 hoặc bước 2:</strong> ô phiên bản trở lại giá trị cũ, không gửi lệnh nào.</li>
+      <li><strong>Đang nạp:</strong> nút “Nạp lại cấu trúc” hiện vòng quay, giữ tên; ô phiên bản bị khóa.</li>
+    </ul>
+    <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Không nạp được phiên bản.</strong> Bài vừa được người khác sửa. Tải lại bài rồi thử lại. <button type="button" style="height: 36px; padding: 0 12px; border: 1px solid var(--bd); border-radius: 12px; background: var(--sf); color: var(--tx2); font-weight: 600">Tải lại</button></div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":760,"height":1500}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: this.props.dark ? 'dark' : '' };
+}
+}
+</script>
+</body>
+</html>
