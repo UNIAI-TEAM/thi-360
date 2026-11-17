@@ -132,6 +132,10 @@ final class SubproblemSolver {
                         }
                         supply[r] += vec[r];
                     }
+                    int[] slot = ctx.slotBlocks()[g];
+                    for (int r = slot[0]; r < slot[1]; r++) {
+                        supply[r] += vec[r];
+                    }
                     // chỉ tiêu phía môn của section chứa nhóm g: hợp nguồn của các nhóm cùng
                     // section, mỗi ứng viên (theo khóa) đếm một lần (R2-3)
                     if (countedForSubject.add(ctx.sectionOf()[g] + ":"

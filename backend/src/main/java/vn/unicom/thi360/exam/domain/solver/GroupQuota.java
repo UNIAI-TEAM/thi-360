@@ -41,6 +41,7 @@ import java.util.Set;
  * @param mapidGroups           chỉ tiêu nhóm MAPID bổ sung; rỗng = không có
  * @param requiredPointsPerUnit điểm bắt buộc của từng đơn vị; null = không lọc
  * @param expectedScoringRule   quy tắc chấm mong đợi; null = không so
+ * @param slotParent            chỉ tiêu dùng chung của các slot cùng nhóm cha; null nếu không phải slot
  */
 public record GroupQuota(
         String groupId,
