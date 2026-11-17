@@ -339,9 +339,9 @@ class ExamApiIT extends AbstractIntegrationTest {
                 mapper.createObjectNode())).isTrue();
 
         String q = prefix.toLowerCase(java.util.Locale.ROOT);
-        assertStatusPage(q, "UNCHECKED", 2, 0, 3, uncheckedCodes);
+        assertStatusPage(q, "UNCHECKED", 2, 0, 2, uncheckedCodes);
         assertStatusPage(q, "UNCHECKED", 2, 1, 1, uncheckedCodes);
-        assertStatusPage(q, "NEEDS_RECHECK", 2, 0, 3, recheckCodes);
+        assertStatusPage(q, "NEEDS_RECHECK", 2, 0, 2, recheckCodes);
         assertStatusPage(q, "NEEDS_RECHECK", 2, 1, 1, recheckCodes);
         assertStatusPage(q, "VALID", 20, 0, 1, null);
         assertStatusPage(q, "INVALID", 20, 0, 0, null);
