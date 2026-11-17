@@ -14,6 +14,7 @@ import { SymbolGrid, type SymbolGridItem } from "../shared/symbol-grid";
 import { insertSymbol } from "./insert-symbol";
 import { matchesQuery } from "./search";
 import { SYMBOL_GROUP_IDS, symbolById, symbolText, SYMBOLS, type SymbolDef, type SymbolGroupId } from "./symbol-data";
+import { WideSymbolGrid } from "./wide-symbol-grid";
 
 const RECENT_SCOPE = "symbols";
 
@@ -107,10 +108,12 @@ export default function SymbolsInsertDialog({ editor, open, onOpenChange }: Inse
               glyph: glyphOf(entry),
               label: t(`names.${entry.id}`),
             }));
+            // Đơn vị dài (`mol/L`, `W/m²`) tràn ô 40px của SymbolGrid: nhóm có đơn vị dùng lưới rộng theo chữ.
+            const Grid = group.entries.some((entry) => entry.group === "units") ? WideSymbolGrid : SymbolGrid;
             return (
               <section key={group.id} className="flex flex-col gap-1.5">
                 <h3 className="text-field-label text-text">{t(`groups.${group.id}`)}</h3>
-                <SymbolGrid
+                <Grid
                   aria-label={t(`groups.${group.id}`)}
                   items={items}
                   onPick={(_, index) => pick(group.entries[index]!)}
