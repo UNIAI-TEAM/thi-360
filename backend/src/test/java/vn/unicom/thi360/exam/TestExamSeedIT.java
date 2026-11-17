@@ -36,6 +36,21 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired DataSource dataSource;
+    @Test
+    void seededHsaMathContextHasKnownChildAnswerType() throws Exception {
+        String json = jdbc.queryForObject("""
+            SELECT parts::text FROM exam.exam_structure
+            WHERE exam_id = '00000000-0000-7000-8700-000000000001'
+            """, String.class);
+        JsonNode section = mapper.readTree(json).path("parts").get(0).path("sections").get(0);
+        JsonNode block = java.util.stream.StreamSupport.stream(section.path("blocks").spliterator(), false)
+            .filter(node -> "HSA_MATH_CONTEXT".equals(node.path("templateGroupCode").asText()))
+            .findFirst().orElseThrow();
+        assertThat(block.path("childAnswerType").asText()).isEqualTo("SINGLE_CHOICE");
+        assertThat(section.path("answerQuotas").path("items").get(0).path("value").asInt()).isEqualTo(35);
+        assertThat(section.path("answerQuotas").path("items").get(1).path("value").asInt()).isEqualTo(15);
+    }
+
 
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
