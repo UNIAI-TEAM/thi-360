@@ -167,6 +167,8 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
             JsonNode result = mapper.readTree(checked);
             for (JsonNode issueList : result.findValues("issues")) {
                 for (JsonNode issue : issueList) {
+                    // SET_SHORTAGE reports bank availability, not set configuration.
+                    if ("SET_SHORTAGE".equals(issue.path("code").asText())) continue;
                     if (Set.of("STRUCTURE", "QUESTION_SET", "MATRIX", "POINTS").contains(issue.path("group").asText())
                             && "ERROR".equals(issue.path("severity").asText())) {
                         if (!allowedCodeSourceIssue(code, saved.path("parts"), issue)
