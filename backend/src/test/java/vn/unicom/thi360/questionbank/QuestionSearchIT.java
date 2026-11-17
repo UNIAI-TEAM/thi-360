@@ -173,13 +173,13 @@ class QuestionSearchIT extends AbstractIntegrationTest {
 
     @Test
     void tagFilterMatchesLinkedItems() throws Exception {
-        // Nhóm QUESTION_TAG để trống trong seed: tạo một giá trị dùng cho test.
+        // Tạo nhãn riêng với giá trị chưa được dữ liệu seed sử dụng.
         jdbcTemplate.update(
                 "INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value,"
                         + " name_vi, name_en, display_order, status, is_system, depth, path)"
-                        + " VALUES (?, ?, ?, ?, 1, 'Nhan IT', 'IT tag', 0, 1, false, 1, ?)",
+                        + " VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(value), 0) + 1 FROM catalog.catalog_item WHERE group_id = ?), 'Nhan IT', 'IT tag', 0, 1, false, 1, ?)",
                 TAG_ITEM_ID, QuestionTestSupport.QUESTION_TAG_GROUP_ID, TAG_CODE,
-                TAG_CODE.toLowerCase(), "/" + TAG_ITEM_ID + "/");
+                TAG_CODE.toLowerCase(), QuestionTestSupport.QUESTION_TAG_GROUP_ID, "/" + TAG_ITEM_ID + "/");
         createQuestion("{\"type\":\"SINGLE_CHOICE\",\"content\":\"<p>Q?</p>\",\"body\":"
                 + QuestionTestSupport.singleChoiceBody()
                 + ",\"tagCodes\":[\"" + TAG_CODE + "\"]}");
