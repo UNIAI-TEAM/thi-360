@@ -1,6 +1,6 @@
 # Thiết lập bài thi và ma trận đề
 
-Bản lưu UniNote của BA (Hưng Nguyễn Duy), cập nhật 2026-11-16 16:23, lấy về ngày 2026-11-16. Nguồn: uniworkos, thư mục "Tài liệu Thi 360". Chỉ đọc; bản gốc ở uniworkos.
+Bản lưu UniNote của BA (Hưng Nguyễn Duy), cập nhật 2026-11-17 08:56, lấy về ngày 2026-11-17. Nguồn: uniworkos, thư mục "Tài liệu Thi 360". Chỉ đọc; bản gốc ở uniworkos.
 
 ## 1. Thông tin chung
 
@@ -147,7 +147,7 @@ Mỗi bài thi gồm một hoặc nhiều phần có thứ tự. Trong một ph�
 | Số câu trên đề | Tổng số câu xuất hiện trong phần, bao gồm cả nội dung lựa chọn nếu đề trình bày nhiều phương án. |
 | Số câu phải làm | Số câu học viên thực hiện theo phương án đã chọn. Khi toàn bộ câu đều bắt buộc, hệ thống sử dụng số câu trên đề làm giá trị mặc định. |
 | Thời lượng | Với đồng hồ riêng, khai báo số phút cho từng phần. Với đồng hồ chung, khai báo thời lượng một lần ở cấp bài thi. |
-| Điểm tối đa | Ghi nhận ở cấp bài, phần hoặc thành phần tính điểm theo cấu trúc của kỳ thi. |
+| Điểm tối đa | Ghi nhận ở cấp bài, phần theo cấu trúc của kỳ thi. |
 
 Ví dụ, trong phần Sử dụng ngôn ngữ của V-ACT, Tiếng Việt và Tiếng Anh đều bắt buộc nên học viên làm đủ 60 câu. Trong phần 3 của QDA, nhiều mã tổ hợp có thể được mở, nhưng mỗi học viên chỉ chọn một mã và làm 50 câu.
 
@@ -164,49 +164,7 @@ Ví dụ, trong phần Sử dụng ngôn ngữ của V-ACT, Tiếng Việt và T
 
 Khối câu hỏi dùng để giữ cấu trúc chuyên môn và thứ tự các dạng bài trong một phần thi.
 
-Ví dụ: Phần Tiếng Anh có các khối hoàn thành câu, chọn từ, đọc điền và đọc hiểu.
-
-### 6.1. Thiết lập ma trận đề HSA
-
-Quản trị viên thiết lập ma trận theo từng môn. Trong mỗi môn, hệ thống khởi tạo các nhóm lấy câu theo cấu trúc HSA. Mỗi nhóm có cách khai báo riêng. Ví dụ, nhóm “Từ đồng nghĩa” của Tiếng Anh cần số câu đơn và phạm vi kiến thức, còn nhóm “Đọc hiểu” của Ngữ văn cần số chùm và số câu con trong mỗi chùm.
-
-Đối với nhánh Khoa học, quản trị viên thiết lập nguồn câu cho đủ 5 môn. Khi vào thi, học viên tự chọn 3 môn. Hệ thống căn cứ vào 3 môn đã chọn để xác định số câu của từng môn và lấy ngẫu nhiên câu hỏi từ ngân hàng. Quản trị viên không phải khai báo lặp lại ma trận cho từng tổ hợp.
-
-### 6.1.1. Nguyên tắc khai báo theo môn và nhóm câu
-
-| Nội dung | Quy tắc áp dụng |
-|---|---|
-| Nhóm dạng bài | Hệ thống khởi tạo theo môn. Ví dụ, Tiếng Anh có nhóm đồng nghĩa, trái nghĩa, hoàn thành hội thoại, đọc hiểu. Ngữ văn có nhóm nhận diện lỗi dùng từ và nhóm đọc ngữ liệu. |
-| Dạng trả lời | Xác định cách học viên làm bài. Nhóm có cấu trúc cố định thì hệ thống điền sẵn. Ví dụ, nhóm từ đồng nghĩa dùng trắc nghiệm 4 lựa chọn, một đáp án đúng. |
-| Câu đơn | Khai báo số câu cần lấy và phạm vi nguồn câu. |
-| Câu chùm | Khai báo số chùm cần lấy, số câu con của mỗi chùm và phạm vi ngữ liệu hoặc dạng bài. Hệ thống lấy nguyên chùm. |
-| Phạm vi kiến thức | Chọn một hoặc nhiều MAPID cho môn hoặc nhóm cần giới hạn nguồn. Nếu nhóm không có giới hạn MAPID riêng, áp dụng phạm vi đã khai báo cho môn. |
-| Khối lớp và độ khó | Khai báo ở cấp môn nếu cần kiểm soát phân bổ toàn môn. Chỉ khai báo riêng ở cấp nhóm khi nhóm đó có yêu cầu cụ thể. |
-| Thứ tự | Lấy theo cấu trúc môn. Tiếng Anh giữ thứ tự các khối dạng bài. Ngữ văn giữ các câu cùng nhóm và các câu cùng ngữ liệu liền nhau. |
-
-Quy tắc tính số câu: Các chỉ tiêu dạng trả lời, khối lớp, độ khó và MAPID cùng mô tả những câu được chọn. Ví dụ, một câu Toán lớp 12, mức Vận dụng, thuộc chùm và có dạng điền đáp án được tính một lần vào tổng số câu, đồng thời đóng góp vào từng chỉ tiêu tương ứng.
-
-### 6.1.2. Thiết lập môn Toán học và xử lí số liệu
-
-Phần Toán gồm 50 câu trong 75 phút. Quản trị viên khai báo phân bổ dạng trả lời cho toàn môn, sau đó thiết lập các chùm ngữ cảnh cần có.
-
-| Nội dung thiết lập | Giá trị theo tài liệu HSA | Cách lấy câu |
-|---|---|---|
-| Trắc nghiệm 4 lựa chọn | 35 câu | Tính cả câu đơn và câu con trắc nghiệm nằm trong chùm. |
-| Điền đáp án | 15 câu | Tính cả câu đơn và câu con điền đáp án nằm trong chùm. |
-| Chùm ngữ cảnh | Khai báo số chùm và số câu con/chùm | Lấy nguyên chùm và trừ số câu con đã lấy khỏi chỉ tiêu của từng dạng trả lời. |
-| Phân bổ khối lớp tham khảo | Lớp 10 có 3 câu, lớp 11 có 20 câu, lớp 12 có 27 câu | Áp dụng trên toàn bộ 50 câu. |
-| Phân bổ độ khó tham khảo | Nhận biết 2, Thông hiểu 21, Vận dụng 20, Vận dụng cao 7 | Áp dụng trên toàn bộ 50 câu. |
-| Nội dung kiến thức | Phạm vi MAPID môn Toán | Lấy ngẫu nhiên các câu phù hợp với phạm vi đã chọn và các chỉ tiêu đã xác nhận. |
-
-### 6.2. Quy tắc cấu trúc
-
-- Tổng số câu các khối phải bằng số câu của phần/môn.
-- Nếu yêu cầu ba bộ × năm câu, nguồn được lấy phải đáp ứng đúng số bộ và kích thước bộ.
-- Không tự thay một bộ năm câu bằng năm câu độc lập.
-- Không tự thay Cloze bằng Question Set dù có cùng số câu.
-- Thứ tự cố định của các dạng bài Tiếng Anh phải được bảo toàn.
-- Với nhóm Văn được phép đảo, chỉ đảo cả nhóm; các câu trong nhóm vẫn liền nhau.
+Chi tiết xem tại các phần thiết lập cấu trúc theo từng chi tiết đề
 
 ## 7. Thiết lập ma trận lựa chọn câu hỏi
 
@@ -260,12 +218,7 @@ Cấu hình công bố lưu số câu nguyên làm căn cứ sinh đề. Mặc �
 
 ### 7.4. Lựa chọn nhiều MAPID
 
-Mỗi phạm vi MAPID có chế độ đối chiếu rõ ràng:
-
-| Chế độ | Điều kiện câu hỏi |
-|---|---|
-| Khớp ít nhất một MAPID | Có ít nhất một mã trong danh sách đã chọn; đề xuất làm mặc định |
-| Khớp tất cả MAPID | Có đầy đủ các mã đã chọn |
+Mỗi phạm vi MAPID có chế độ đối chiếu rõ ràng, Có ít nhất một mã trong danh sách đã chọn
 
 Nếu thiết lập chỉ tiêu riêng cho từng nhóm MAPID:
 

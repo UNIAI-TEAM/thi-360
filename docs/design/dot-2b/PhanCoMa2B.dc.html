@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · phần có mã, danh sách môn (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+button{font:inherit}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; min-height: 1750px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · QDA FULL › Phần 3 (tổng quan phần)</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+    <div style="padding: 16px; border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Phần 3 · Khoa học hoặc Tiếng Anh</h1><span style="{{chipBad}}">Chưa hoàn tất</span></div>
+        <p style="margin: 0; color: var(--tx3)">50 câu · 60 phút chung cho hai môn của mã · 50 điểm. Mỗi môn một ma trận, dùng chung cho mọi mã có môn đó.</p>
+      </div>
+      <button type="button" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra phần</button>
+    </div>
+
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px">
+      <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Môn của phần</h2>
+      <div role="region" tabindex="0" aria-labelledby="cap-s" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+        <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+          <caption id="cap-s" class="sr-only">Sáu môn của phần 3</caption>
+          <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 10px 14px">Môn</th><th scope="col" style="padding: 10px 8px; text-align: right">Số câu</th><th scope="col" style="padding: 10px 8px">Cách lấy</th><th scope="col" style="padding: 10px 8px">Dùng trong mã</th><th scope="col" style="padding: 10px 8px">Trạng thái</th><th scope="col" style="padding: 10px 14px; text-align: right">Thao tác</th></tr></thead>
+          <tbody>
+            <sc-for list="{{subjects}}" as="s" hint-placeholder-count="6">
+              <tr style="border-top: 1px solid var(--bd)">
+                <th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">{{s.name}}</th>
+                <td style="padding: 10px 8px; text-align: right">{{s.q}}</td>
+                <td style="padding: 10px 8px; color: var(--tx2)">{{s.how}}</td>
+                <td style="padding: 10px 8px">{{s.codes}}</td>
+                <td style="padding: 10px 8px"><span style="{{s.chip}}">{{s.status}}</span></td>
+                <td style="padding: 4px 14px; text-align: right"><a href="BaiThiBuoc2.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; font-weight: 600">Thiết lập</a></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+          <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Mã của kỳ thi (chỉ xem)</h2>
+          <a href="CauHinhChung.dc.html" style="font-weight: 600">Sửa ở Cấu hình chung › Tổ hợp</a>
+        </div>
+        <ul style="margin: 0; padding: 0; list-style: none; border: 1px solid var(--bd); border-radius: 12px">
+          <sc-for list="{{codes}}" as="c" hint-placeholder-count="5">
+            <li style="padding: 10px 14px; border-top: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
+              <span style="min-width: 0"><strong>{{c.code}}</strong> · {{c.order}} <span style="font-size: 12.5px; color: var(--tx3)">· nhánh {{c.branch}} · {{c.pos}}</span></span>
+              <span style="{{c.chip}}">{{c.status}}</span>
+            </li>
+          </sc-for>
+        </ul>
+        <p style="margin: 0; color: var(--tx3)">Không chọn mã hay gán môn cho mã ở đây. Thứ tự môn của mã quyết định vị trí câu: QĐ02 có Hóa học ở câu 1–25, Sinh học ở câu 26–50.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 16px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Mã có môn chưa có ma trận (danh mục vừa thêm mã mới)</h3>
+      <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span><strong style="color: var(--er)">Mã [MÃ MỚI] thiếu môn Tin học.</strong> Thêm ma trận cho Tin học để mã này dùng được.</span><button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--pf); color: var(--op); font-weight: 600; cursor: pointer">+ Thêm môn Tin học</button></div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">BCA · Phần 3 · Trắc nghiệm tự chọn (câu 66–80)</h3>
+      <ul style="margin: 0; padding: 0; list-style: none; border: 1px solid var(--bd); border-radius: 12px">
+        <sc-for list="{{bca}}" as="b" hint-placeholder-count="4">
+          <li style="padding: 10px 14px; border-top: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px"><span><strong>{{b.name}}</strong> · 15 câu: 12 câu đơn (66–77), 1 chùm 3 câu con (78–80) · lớp {{b.grade}} · độ khó {{b.diff}}</span><span style="color: var(--tx3)">Mã {{b.code}}</span></li>
+        </sc-for>
+      </ul>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">QDA theo phần Tiếng Anh</h3>
+      <p style="margin: 0; color: var(--tx2)">Chỉ có môn Tiếng Anh và mã QĐ05 (nhánh Tiếng Anh). Theo phần Khoa học: 5 môn, mã QĐ01–QĐ04.</p>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":1750}}'>
+class Component extends DCLogic {
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+renderVals() {
+const st = { ok: 'Đã kiểm tra', warn: 'Cần kiểm tra lại', bad: 'Chưa hoàn tất' };
+const subjects = [
+['Vật lí', '25', '2 chùm × 3, 1 câu điền, 18 trắc nghiệm đơn', 'QĐ01, QĐ03', 'ok'],
+['Hóa học', '25', '1 chùm × 3, 1 câu điền, 18 trắc nghiệm đơn (thiếu 3)', 'QĐ01, QĐ02', 'bad'],
+['Sinh học', '25', '1 chùm × 3, 1 câu điền, 21 trắc nghiệm đơn', 'QĐ02, QĐ03', 'warn'],
+['Lịch sử', '25', '1 chùm × 3, 22 trắc nghiệm đơn', 'QĐ04', 'ok'],
+['Địa lí', '25', '1 chùm × 3, 22 trắc nghiệm đơn', 'QĐ04', 'ok'],
+['Tiếng Anh', '50', '10 nhóm theo vị trí', 'QĐ05', 'ok']
+].map((s) => ({ name: s[0], q: s[1], how: s[2], codes: s[3], status: st[s[4]], chip: this.chip(s[4]) }));
+const codes = [
+['QĐ01', 'Vật lí → Hóa học', 'Khoa học', 'Lý 1–25, Hóa 26–50', 'bad'],
+['QĐ02', 'Hóa học → Sinh học', 'Khoa học', 'Hóa 1–25, Sinh 26–50', 'bad'],
+['QĐ03', 'Vật lí → Sinh học', 'Khoa học', 'Lý 1–25, Sinh 26–50', 'warn'],
+['QĐ04', 'Lịch sử → Địa lí', 'Khoa học', 'Sử 1–25, Địa 26–50', 'ok'],
+['QĐ05', 'Tiếng Anh', 'Tiếng Anh', 'Anh 1–50', 'ok']
+].map((c) => ({ code: c[0], order: c[1], branch: c[2], pos: c[3], status: st[c[4]], chip: this.chip(c[4]) }));
+const bca = [['Vật lí', 'CA1', '2/3/10', '3/4/7/1'], ['Hóa học', 'CA2', '3/3/9', '1/7/6/1'], ['Sinh học', 'CA3', '2/3/10', '4/5/4/2'], ['Địa lí', 'CA4', '2/1/12', '2/10/3/0']]
+.map((b) => ({ name: b[0], code: b[1], grade: b[2], diff: b[3] }));
+return { theme: this.props.dark ? 'dark' : '', chipBad: this.chip('bad'), subjects, codes, bca };
+}
+}
+</script>
+</body>
+</html>

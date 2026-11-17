@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Thanh toán chưa thành công</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: #11181C; background: #F7F8F9; min-height: 900px">
+
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E8E8EC">
+    <div style="max-width: 1170px; margin: 0 auto; box-sizing: border-box; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px">
+      <a href="TrangChuDot3.dc.html" aria-label="Thi 360, về trang giới thiệu" style="display: flex; align-items: center; gap: 12px; text-decoration: none">
+        <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 12px; background: #047857; color: #FFFFFF; font-weight: 700; display: flex; align-items: center; justify-content: center">360</span>
+        <span style="font-size: 18px; line-height: 28px; font-weight: 700; color: #064E3B">Thi 360</span>
+      </a>
+      <nav aria-label="Trang học viên" style="flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 4px">
+        <a href="BaiThiCuaToi.dc.html" style="height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; color: #3A3A42; font-weight: 500; text-decoration: none">Bài thi của tôi</a>
+        <a href="LichSuLamBai.dc.html" style="height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; color: #3A3A42; font-weight: 500; text-decoration: none">Lịch sử</a>
+        <a href="HoSo.dc.html" style="height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; color: #3A3A42; font-weight: 500; text-decoration: none">Hồ sơ</a>
+        <a href="DonCuaToi.dc.html" style="height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; color: #3A3A42; font-weight: 500; text-decoration: none">Đơn của tôi</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <button type="button" aria-label="Chuyển sang chế độ tối" style="width: 44px; height: 44px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; color: #3A3A42; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
+        <button type="button" aria-label="Chọn ngôn ngữ" aria-haspopup="menu" style="width: 44px; height: 44px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; color: #3A3A42; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg></button>
+        <button type="button" aria-haspopup="menu" aria-expanded="false" style="height: 44px; padding: 0 10px 0 6px; border: 1px solid #E8E8EC; border-radius: 9999px; background: #FFFFFF; font: inherit; font-weight: 500; color: #3A3A42; display: flex; align-items: center; gap: 8px; cursor: pointer">
+          <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 9999px; background: #ECFDF5; color: #047857; font-weight: 600; display: flex; align-items: center; justify-content: center">MA</span>
+          <span>nguyenminhanh</span>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1170px; margin: 0 auto; box-sizing: border-box; padding: 48px 24px 56px; display: flex; flex-direction: column; align-items: center; gap: 32px">
+    <section aria-labelledby="result-title" style="width: 100%; max-width: 640px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 24px; box-shadow: 0 24px 60px rgba(20,20,30,.08); padding: 40px 32px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center">
+      <span aria-hidden="true" style="width: 64px; height: 64px; border-radius: 9999px; background: #FEF2F2; color: #B91C1C; display: flex; align-items: center; justify-content: center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6M9 9l6 6"></path></svg></span>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h1 id="result-title" style="margin: 0; font-size: 30px; line-height: 38px; font-weight: 700">Thanh toán chưa thành công</h1>
+        <p style="margin: 0; color: #54545A">Bạn đã hủy giao dịch trên VNPAY. Bài thi chưa được cấp.</p>
+      </div>
+      <dl style="width: 100%; margin: 0; box-sizing: border-box; padding: 16px 20px; border: 1px solid #E8E8EC; border-radius: 12px; background: #F7F8F9; display: flex; flex-direction: column; gap: 10px; text-align: left">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px">
+          <dt style="color: #54545A">Mã đơn</dt>
+          <dd style="margin: 0; font-weight: 600; font-variant-numeric: tabular-nums">DH261117K7M2Q9</dd>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px">
+          <dt style="color: #54545A">Bài thi</dt>
+          <dd style="margin: 0; font-weight: 600">Đề thi thử ĐGNL HSA số 3</dd>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px">
+          <dt style="color: #54545A">Số tiền</dt>
+          <dd style="margin: 0; font-weight: 600; font-variant-numeric: tabular-nums">310.000 đ</dd>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px">
+          <dt style="color: #54545A">Đơn giữ giá tới</dt>
+          <dd style="margin: 0; font-weight: 600; font-variant-numeric: tabular-nums">09:57, 17/11/2026</dd>
+        </div>
+      </dl>
+      <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px">
+        <button type="button" style="width: 100%; max-width: 360px; height: 52px; border: 0; border-radius: 12px; background: #047857; color: #FFFFFF; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 20px rgba(5,150,105,.25)">Thanh toán lại</button>
+        <a href="DonCuaToi.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; font-weight: 500">Xem đơn của tôi</a>
+      </div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: #54545A">Thanh toán lại dùng đúng đơn này với giá đã chốt, không tạo đơn mới.</p>
+    </section>
+
+    <section aria-labelledby="other-states" style="width: 100%; box-sizing: border-box; border: 1px dashed #D4D4D8; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <h2 id="other-states" style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #54545A">Trạng thái khác</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px">
+
+        <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="font-size: 12.5px; line-height: 19px; font-weight: 600; color: #54545A">Đơn đã hết hạn</div>
+          <div style="padding: 12px; border-radius: 10px; background: #F1F2F4; display: flex; flex-direction: column; gap: 4px">
+            <strong>Đơn đã hết hạn thanh toán</strong>
+            <span style="color: #3A3A42">Đơn DH261117K7M2Q9 quá 15 phút chưa được thanh toán. Hãy tạo đơn mới theo giá hiện tại.</span>
+          </div>
+          <a href="XacNhanMua.dc.html" style="align-self: flex-start; height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: #047857; color: #FFFFFF; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Tạo đơn mới</a>
+        </div>
+
+        <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="font-size: 12.5px; line-height: 19px; font-weight: 600; color: #54545A">Giao dịch thất bại (lý do theo mã VNPAY)</div>
+          <div style="padding: 12px; border-radius: 10px; background: #FEF2F2; display: flex; flex-direction: column; gap: 4px">
+            <strong style="color: #B91C1C">Thanh toán chưa thành công</strong>
+            <span style="color: #3A3A42">Tài khoản ngân hàng không đủ số dư để thanh toán.</span>
+          </div>
+          <ul style="margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 19px; color: #54545A; display: flex; flex-direction: column; gap: 2px">
+            <li>Hết thời gian chờ: "Giao dịch đã hết thời gian chờ thanh toán."</li>
+            <li>Sai OTP hoặc mật khẩu quá số lần: "Bạn đã nhập sai thông tin xác thực quá số lần cho phép."</li>
+            <li>Lý do khác: "Ngân hàng hoặc VNPAY từ chối giao dịch."</li>
+          </ul>
+          <button type="button" style="align-self: flex-start; height: 44px; padding: 0 16px; border: 0; border-radius: 12px; background: #047857; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Thanh toán lại</button>
+        </div>
+
+        <div style="background: #FFFFFF; border: 1px solid #E8E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="font-size: 12.5px; line-height: 19px; font-weight: 600; color: #54545A">Bấm Thanh toán lại khi bài đã ngừng bán</div>
+          <div role="alert" style="padding: 12px; border-radius: 10px; background: #F1F2F4; display: flex; flex-direction: column; gap: 4px">
+            <strong>Bài thi đã ngừng bán</strong>
+            <span style="color: #3A3A42">Không thể tiếp tục thanh toán đơn này.</span>
+          </div>
+          <a href="TrangChuDot3.dc.html" style="align-self: flex-start; height: 44px; box-sizing: border-box; padding: 0 16px; border: 1px solid #E8E8EC; border-radius: 12px; background: #FFFFFF; color: #3A3A42; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Về danh mục bài thi</a>
+        </div>
+
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
