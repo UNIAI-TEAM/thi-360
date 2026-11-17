@@ -10,6 +10,7 @@ import { RichTextEditor } from "../rich-text-editor";
 import { RichTextView } from "../view/rich-text-view";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
 
+vi.mock("mathlive", () => import("./mathlive-mock").then((module) => module.mathliveModule));
 vi.mock("@/features/questions/api", async (importOriginal) => {
   const actual = await importOriginal<typeof QuestionsApi>();
   // Lớp mẫu đã gỡ: trả tài nguyên giả theo hợp đồng `uploadQuestionAsset` (QA UNI-2621).
@@ -102,12 +103,12 @@ describe("RichTextEditor", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent("Bold");
   });
 
-  it("inserts a block formula when Block is chosen", async () => {
+  it("inserts a block formula when Own line is chosen", async () => {
     const user = userEvent.setup();
     const { onChange } = renderEditor();
 
     await user.click(screen.getByRole("button", { name: "Math formula" }));
-    await user.click(await screen.findByRole("radio", { name: "Block" }));
+    await user.click(await screen.findByRole("button", { name: "Own line" }));
     fireEvent.change(await screen.findByLabelText("LaTeX code"), { target: { value: "\\sum_{i=1}^n i" } });
     await user.click(screen.getByRole("button", { name: "Insert formula" }));
 
@@ -116,19 +117,23 @@ describe("RichTextEditor", () => {
     });
   });
 
-  it("inserts an image via uploadQuestionAsset (mock) with data-asset-id", async () => {
+  it("inserts an image through the Image dialog (no direct upload) with data-asset-id", async () => {
     const user = userEvent.setup();
     const { onChange, container } = renderEditor();
+    // Nút Hình không còn ô chọn tệp riêng: tệp chọn trong hộp Hình.
+    expect(container.querySelector('input[type="file"]')).toBeNull();
 
-    const input = container.querySelector<HTMLInputElement>('input[type="file"]');
-    expect(input).toBeTruthy();
-    const file = new File(["png"], "diagram.png", { type: "image/png" });
-    await user.upload(input!, file);
+    await user.click(screen.getByRole("button", { name: "Image" }));
+    await user.upload(await screen.findByLabelText("Choose image file"), new File(["png"], "diagram.png", { type: "image/png" }));
+    await user.type(await screen.findByLabelText(/^Alternative text/), "Diagram");
+    await user.click(screen.getByRole("button", { name: "Insert image" }));
 
     await waitFor(() => {
       expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining("<img"));
     });
     const html = onChange.mock.lastCall?.[0] as string;
+    expect(html).toContain('<figure class="image"');
+    expect(html).toContain('alt="Diagram"');
     expect(html).toContain("data-asset-id=");
     expect(html).toContain('src="/api/v1/admin/question-assets/');
   });

@@ -384,7 +384,15 @@ Trình soạn và khung xem nội dung HTML (UNI-2617, mở rộng ở UNI-2638)
 
 #### 5.15.1 Hộp Công thức toán
 
-Ô soạn trực quan đồng bộ hai chiều với ô mã LaTeX, bảng nút theo tab, nhãn Hợp lệ/Lỗi cú pháp, xem trước trong câu, dùng gần đây (bản vẽ `SoanThaoCongThucToan`). Bản tạm hiện tại chỉ có ô LaTeX và chọn Cùng dòng/Khối. Lưu thành `span.math-inline` hoặc `span.math-block`.
+Bản vẽ `SoanThaoCongThucToan`; lưu thành `span.math-inline` hoặc `span.math-block`.
+
+- **Bố cục:** hai cột trên màn rộng (3 : 2, cột phải ngăn bằng viền trái), một cột dưới 1024px; hộp rộng 1000px, toàn màn dưới 640px (`InsertDialogShell`). Cột trái: hàng tab nhóm mẫu (`Tabs` kiểu `content`, tám tab: Thường dùng, Phân số/căn, Mũ/chỉ số, Giới hạn/tích phân, Hệ/ma trận, Hình học/vectơ, Tập hợp/logic, Hy Lạp; tự cuộn ngang khi hẹp), lưới nút mẫu, ô "Soạn trực quan", ô "Mã LaTeX". Cột phải: "Xem trước" kèm nút Trong dòng/Dòng riêng, "Dùng gần đây", dòng ghi chú cuối.
+- **Lưới nút mẫu:** 8 cột ở màn rộng (6 ở màn vừa, 4 ở màn hẹp), nút cao 56px, viền `border`, nền `surface`, rê chuột `subtle` + `border-strong`; mặt nút là chính công thức dựng bằng KaTeX, ô giữ chỗ là ô vuông rỗng; mỗi nút có `aria-label` và tooltip vi/en. Không dùng `SymbolGrid` (nút 40×40 không đủ chỗ cho giới hạn, tích phân, ma trận). Lưới tắt khi ô soạn trực quan chưa tải xong.
+- **Ô soạn trực quan:** `mathlive` (chỉ tải khi mở hộp), cao tối thiểu 150px, chữ 28px, viền `border`, focus `primary-text` + vòng 3px như ô nhập; bàn phím ảo và trình đơn riêng của mathlive tắt (nút mẫu thay bàn phím). Gợi ý phím một dòng dưới ô (Tab, `/`, `^`, `_`); tải lỗi thì ô ẩn lời gợi ý và hiện thông báo, ô mã LaTeX vẫn dùng được.
+- **Ô mã LaTeX:** `Textarea` hai dòng, chữ mono, đồng bộ hai chiều với ô trực quan. Nhãn trạng thái (`StatusChip`) ở góc phải nhãn ô: Hợp lệ (success), Lỗi cú pháp (danger), Còn ô giữ chỗ (warning), trống thì không nhãn. Dưới ô là một dòng chữ `danger` nêu lý do ("Thiếu dấu đóng", "Lệnh không hỗ trợ: \…", "Công thức chưa dựng được", hoặc nhắc điền ô giữ chỗ). Chèn tắt khi lỗi, trống hoặc còn ô giữ chỗ; mở lại để sửa đổi nhãn nút thành "Cập nhật công thức".
+- **Xem trước:** nền `subtle`, bo 12px; đặt công thức vào câu đang soạn, tối đa 80 ký tự chữ mỗi bên điểm chèn; Dòng riêng căn giữa trên một dòng.
+- **Dùng gần đây:** tối đa 8 công thức của người dùng (`localStorage`), nút cao 44px, bấm để chèn vào ô trực quan; không có phiên hoặc lỗi lưu trữ thì mục này không hiện.
+- **Khung "Công thức đang chọn":** ô mã LaTeX sửa trực tiếp (viền `danger` khi không dựng được), nút Sửa mở hộp này, Trong dòng/Dòng riêng (đổi kiểu mà công thức vẫn được chọn, khung không biến mất), Xóa công thức (`danger`) ở mép phải.
 
 #### 5.15.2 Hộp Công thức hóa học
 
@@ -396,15 +404,15 @@ Trình soạn và khung xem nội dung HTML (UNI-2617, mở rộng ở UNI-2638)
 
 #### 5.15.4 Hộp Bảng số liệu
 
-Tên bảng, đơn vị, nguồn, lưới ô sửa trực tiếp, dán từ Excel, gộp ô, tối đa 30×15 (bản vẽ `SoanThaoBang`).
+Bản vẽ `SoanThaoBang`. Hàng trên: Tên bảng và Đơn vị (hai cột từ `sm`); hàng nút `role="toolbar"` (Thêm hàng, Thêm cột, Xóa hàng, Xóa cột, Gộp ô, Tách ô; nút `secondary` cỡ `sm`) rồi ba `Checkbox` "Hàng đầu là tiêu đề", "Cột đầu là tiêu đề", "Căn phải cột số"; lưới ô là một `table` có tên, mỗi ô là `Input` không viền và không bo (ô tiêu đề nền `subtle`, chữ đậm; ô trong vùng chọn nhiều ô nền `primary-50`), cuộn trong khung viền `border`; dưới lưới là ô Nguồn và các dòng gợi ý (dán từ Excel, chọn nhiều ô, giới hạn). Thêm/xóa hàng cột tác động lên ô đang chọn; Thêm hàng/cột tắt ở 30 hàng, 15 cột; dán vượt giới hạn thì cắt phần thừa và báo bằng dòng `role="status"` màu `warning`. Enter trong ô xuống ô dưới, không gửi biểu mẫu; mũi tên đổi ô (trái/phải chỉ khi con trỏ ở mép chữ); chọn nhiều ô bằng Shift+bấm hoặc Alt+Shift+mũi tên rồi Gộp ô; vùng gộp không vắt qua ranh giới hàng/cột tiêu đề. Ô chứa định dạng nội tuyến (`sub`, `sup`, công thức) hiện mã HTML của ô bằng chữ đơn cách (`font-mono`) để sửa mà không mất định dạng. Ghi chú đơn vị và nguồn lưu `p.figure-note`/`p.figure-source` bắt đầu bằng nhãn "Đơn vị:" và "Nguồn:" (hoặc "Unit:" và "Source:") của ngôn ngữ người soạn. Nút chính là Chèn bảng (Cập nhật bảng khi mở lại bảng đang chọn), tắt khi bảng chưa có chữ nào.
 
 #### 5.15.5 Hộp Hình
 
-Tải ảnh, mô tả thay thế bắt buộc, chú thích, nguồn, độ rộng, cho phóng to; không có ở ô `allowImages={false}` (bản vẽ `SoanThaoHinh`).
+Hộp hai cột (bản vẽ `SoanThaoHinh`): trái là Xem trước (ảnh theo độ rộng đã chọn, chú thích) cùng nút Chọn ảnh / Thay ảnh và Xóa ảnh, dòng "Nhận PNG, JPG, WebP." và lỗi tải lên (413, 422, 429...) ngay dưới; phải là Mô tả thay thế (bắt buộc, có dấu `*` và câu hướng dẫn cho trình đọc màn hình), Chú thích dưới hình, Nguồn, Độ rộng (`Tabs` kiểu `segmented`: Nhỏ / Vừa / Rộng hết khung) và ô "Cho phép học viên phóng to hình khi thi" (`Checkbox`). Nút Chèn hình tắt khi chưa có ảnh, đang tải lên hoặc mô tả trống; mở lại một hình đang chọn thì nút là Cập nhật hình. Ảnh tải qua `POST /question-assets` (nút Hình trên thanh công cụ không còn tải thẳng); lưu thành `figure.image` với `data-width` và `data-zoom`, dòng nguồn `p.figure-source` bắt đầu bằng "Nguồn: ". Không có ở ô `allowImages={false}`; dán hoặc thả tệp ảnh vào vùng soạn vẫn tải thẳng.
 
 #### 5.15.6 Hộp Đoạn trích
 
-Kiểu Thơ/Văn xuôi/Tư liệu, nội dung, tác giả, tác phẩm, ghi chú nguồn, giữ ngắt dòng, đánh số dòng (bản vẽ `SoanThaoDoanTrich`).
+Bản vẽ `SoanThaoDoanTrich`, hai cột từ `lg` (một cột ở màn hẹp). Trái: nhóm radio "Kiểu đoạn trích" (Thơ, Văn xuôi, Tư liệu; chọn một giá trị nên là nhóm radio, mục 5.2), Nội dung (`Textarea`, bắt buộc, có dấu `*`), hai `Checkbox` "Giữ nguyên ngắt dòng" và "Đánh số dòng, 5 dòng một lần" (tắt khi không phải Thơ), Tác giả, Tác phẩm, Ghi chú nguồn. Phải: Xem trước dựng bằng chính `RichTextView` (cột số dòng bên trái, chỉ hiện số 5, 10, 15…, đếm liên tục qua các khổ) kèm câu "Văn xuôi và tư liệu lịch sử dùng cùng khối này, không ngắt dòng và không đánh số." Dòng trống tách khổ hoặc đoạn; thơ giữ ngắt dòng thì mỗi dòng là một `br`, tắt thì mỗi khổ là một dòng liền. Chú thích cuối là `footer` dạng "(Tác giả, <cite>Tác phẩm</cite>)", ghi chú nguồn là `p.figure-source`. Nút chính là Chèn đoạn trích (Cập nhật đoạn trích khi mở lại), tắt khi nội dung trống.
 
 #### 5.15.7 Gạch chân đánh nhãn và Chỗ trống
 
