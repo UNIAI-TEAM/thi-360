@@ -10,7 +10,7 @@ import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.questionbank.api.AvailableQuestionCountController;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
-
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 @Service
 public class AvailableQuestionCountService {
     private final QuestionSourcePort source;
@@ -45,11 +45,6 @@ public class AvailableQuestionCountService {
         List<List<UUID>> groups = null;
         QuestionSourcePort.Match match = QuestionSourcePort.Match.ANY;
         if (scope != null && scope.nodeIds() != null && !scope.nodeIds().isEmpty()) {
-            try {
-                match = QuestionSourcePort.Match.valueOf(scope.match());
-            } catch (IllegalArgumentException | NullPointerException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid knowledge match");
-            }
             List<CatalogItemView> nodes = catalog.listActiveGroupItems("KNOWLEDGE");
             groups = scope.nodeIds().stream().map(id -> {
                 var root = nodes.stream().filter(node -> node.id().equals(id)).findFirst();
@@ -59,15 +54,22 @@ public class AvailableQuestionCountService {
         }
         List<String> competencies = query.competencyCodes();
         if (competencies == null && scope != null) competencies = scope.competencyCodes();
+        List<QuestionSourcePort.ChildCondition> childConditions = query.childConditions() == null
+                ? null : query.childConditions().stream()
+                .map(c -> new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds())).toList();
+        QuestionSourcePort.ItemShape itemShape = query.itemShape() == null ? null
+                : new QuestionSourcePort.ItemShape(query.itemShape().statements(),
+                        query.itemShape().leftItems(), query.itemShape().rightItems());
         return new QuestionSourcePort.Filter(subjectId, groups, match, query.answerTypes(), query.questionType(),
                 query.taskTypeCode(), query.childAnswerType(), query.tagCodes(), competencies,
-                query.requiredPointsPerQuestion());
+                query.requiredPointsPerQuestion(), itemShape, query.answerFormats(), childConditions);
     }
 
     private AvailableQuestionCountController.Response response(QuestionSourcePort.Counts counts) {
-        return new AvailableQuestionCountController.Response(counts.total(),
+        return new AvailableQuestionCountController.Response(counts.total(), counts.commandCount(),
                 counts.byCell().stream().map(c -> new AvailableQuestionCountController.Cell(c.gradeCode(), c.difficultyCode(), c.value())).toList(),
                 counts.byAnswerType().stream().map(c -> new AvailableQuestionCountController.AnswerType(c.answerType(), c.value())).toList(),
                 counts.byCompetency().stream().map(c -> new AvailableQuestionCountController.Competency(c.competencyCode(), c.value())).toList());
     }
+
 }

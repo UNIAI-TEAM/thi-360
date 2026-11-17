@@ -1,7 +1,7 @@
 import type { components } from "@thi360/api-client";
 import type { MultipleChoiceRule, TrueFalseMethod } from "@/features/content/types";
 import type { ChildQuestionType, SaveChildQuestionRequest } from "./editor-types";
-import type { QuestionBody } from "./types";
+import { isAnswerFormat, type QuestionBody } from "./types";
 
 /**
  * Phần thân câu hỏi trên dây (JSON của `QuestionBody` phía Java, spec 4.3). OpenAPI sinh ra kiểu lỏng và tự mâu thuẫn
@@ -42,7 +42,7 @@ export type WireBody =
       scoringRule?: MultipleChoiceRule | null;
       shuffleOptions?: boolean | null;
     }
-  | { type: "SHORT_ANSWER"; answers?: string[] | null; inputHint?: string | null }
+  | { type: "SHORT_ANSWER"; answers?: string[] | null; inputHint?: string | null; answerFormat?: string | null }
   | {
       type: "CLOZE";
       passage?: string | null;
@@ -105,7 +105,13 @@ export function fromWireBody(wire: WireBody, childIds: readonly string[] = []): 
         ...(wire.shuffleOptions === false ? { shuffleOptions: false } : {}),
       };
     case "SHORT_ANSWER":
-      return { type: "SHORT_ANSWER", answers: wire.answers ?? [], inputHint: wire.inputHint ?? null };
+      return {
+        type: "SHORT_ANSWER",
+        answers: wire.answers ?? [],
+        inputHint: wire.inputHint ?? null,
+        // Giá trị chưa biết (backend thêm định dạng mới) đọc là chưa đặt, không làm hỏng biểu mẫu.
+        ...(isAnswerFormat(wire.answerFormat) ? { answerFormat: wire.answerFormat } : {}),
+      };
     case "CLOZE":
       return {
         type: "CLOZE",
