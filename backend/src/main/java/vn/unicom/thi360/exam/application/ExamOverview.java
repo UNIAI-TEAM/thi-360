@@ -76,11 +76,11 @@ final class ExamOverview {
     }
 
     static List<ExamOverviewRequest.Row> changes(ExamStructureDocument current, ExamStructureDocument baseline) {
-        Map<String, ExamPart> original = new HashMap<>();
-        baseline.parts().forEach(part -> original.put(part.id(), part));
+        Map<Integer, ExamPart> original = new HashMap<>();
+        baseline.parts().forEach(part -> original.put(part.order(), part));
         List<ExamOverviewRequest.Row> changes = new ArrayList<>();
         for (ExamPart part : current.parts()) {
-            ExamPart before = original.get(part.id());
+            ExamPart before = original.get(part.order());
             if (before == null) continue;
             Integer count = java.util.Objects.equals(part.questionCount(), before.questionCount())
                     ? null : part.questionCount();
@@ -93,14 +93,14 @@ final class ExamOverview {
                 changes.add(new ExamOverviewRequest.Row(part.id(), null, null, null, count, duration, points));
             }
             Map<String, ExamSection> sections = new HashMap<>();
-            before.sections().forEach(s -> sections.put(s.id(), s));
-            before.subjectPool().forEach(s -> sections.put(s.id(), s));
-            before.options().forEach(o -> o.sections().forEach(s -> sections.put(s.id(), s)));
+            before.sections().forEach(s -> sections.put(s.subjectCode(), s));
+            before.subjectPool().forEach(s -> sections.put(s.subjectCode(), s));
+            before.options().forEach(o -> o.sections().forEach(s -> sections.put(s.subjectCode(), s)));
             List<ExamSection> actual = new ArrayList<>(part.sections());
             actual.addAll(part.subjectPool());
             part.options().forEach(o -> actual.addAll(o.sections()));
             for (ExamSection section : actual) {
-                ExamSection old = sections.get(section.id());
+                ExamSection old = sections.get(section.subjectCode());
                 if (old != null && section.questionCount() != null
                         && !java.util.Objects.equals(section.questionCount(), old.questionCount())) {
                     changes.add(new ExamOverviewRequest.Row(part.id(), section.id(), null,
@@ -112,7 +112,7 @@ final class ExamOverview {
     }
 
     static List<ExamOverviewRequest.Row> presentIn(ExamStructureDocument source,
-            ExamStructureDocument destination, List<ExamOverviewRequest.Row> changes, boolean sameTemplate) {
+            ExamStructureDocument destination, List<ExamOverviewRequest.Row> changes) {
         Map<String, ExamPart> originals = new HashMap<>();
         source.parts().forEach(part -> originals.put(part.id(), part));
         List<ExamOverviewRequest.Row> result = new ArrayList<>();
@@ -120,9 +120,7 @@ final class ExamOverview {
             ExamPart original = originals.get(row.partId());
             if (original == null) continue;
             List<ExamPart> matches = destination.parts().stream()
-                    .filter(part -> sameTemplate
-                            ? java.util.Objects.equals(part.id(), original.id())
-                            : original.order() != null && java.util.Objects.equals(part.order(), original.order()))
+                    .filter(part -> original.order() != null && java.util.Objects.equals(part.order(), original.order()))
                     .toList();
             if (matches.size() != 1) continue;
             ExamPart part = matches.getFirst();
@@ -132,10 +130,8 @@ final class ExamOverview {
                 candidates.addAll(part.subjectPool());
                 part.options().forEach(option -> candidates.addAll(option.sections()));
                 List<ExamSection> matching = candidates.stream()
-                        .filter(section -> sameTemplate
-                                ? java.util.Objects.equals(section.id(), row.sectionId())
-                                : row.subjectCode() != null
-                                        && java.util.Objects.equals(section.subjectCode(), row.subjectCode()))
+                        .filter(section -> row.subjectCode() != null
+                                && java.util.Objects.equals(section.subjectCode(), row.subjectCode()))
                         .toList();
                 if (matching.size() != 1) continue;
                 sectionId = matching.getFirst().id();

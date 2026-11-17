@@ -781,7 +781,8 @@ public class ExamService {
             if (subjectPart) {
                 baseline = selectSubjectPart(baseline, exam.getPartCode());
             }
-            List<ExamOverviewRequest.Row> changes = ExamOverview.changes(readStoredStructure(structure), baseline);
+            ExamStructureDocument current = readStoredStructure(structure);
+            List<ExamOverviewRequest.Row> changes = ExamOverview.changes(current, baseline);
             if (!changes.isEmpty() && request.overviewPolicy() == null) {
                 throw new ConflictException(ExamErrorCodes.OVERVIEW_CONFIRM,
                         messages.get(ExamErrorCodes.OVERVIEW_CONFIRM), List.of(
@@ -791,8 +792,7 @@ public class ExamService {
                                         objectMapper.valueToTree(ExamOverview.rows(doc)).toString())));
             }
             if ("KEEP_EDITED".equals(request.overviewPolicy())) {
-                doc = ExamOverview.apply(doc, ExamOverview.presentIn(baseline, doc, changes,
-                        Objects.equals(previous.getCode(), template.getCode())));
+                doc = ExamOverview.apply(doc, ExamOverview.presentIn(current, doc, changes));
             }
         }
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());

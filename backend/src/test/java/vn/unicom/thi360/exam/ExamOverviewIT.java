@@ -191,6 +191,58 @@ class ExamOverviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void duplicatedAndPreBackfillIdsKeepEditedOverview() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        jdbc.update("UPDATE exam.exam_template SET structure=jsonb_set(structure, '{parts,0,order}', '1'::jsonb) WHERE code='HSA_FULL'");
+        String create = "{\"kind\":\"HSA\",\"scope\":\"FULL\",\"code\":\"HSA-D-" + suffix
+                + "\",\"name\":\"Duplicate overview\"}";
+        var created = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(create))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String sourceUrl = "/api/v1/admin/exams/" + created.path("id").asText();
+        var duplicate = mapper.readTree(mockMvc.perform(post(sourceUrl + "/duplicate")
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Overview copy\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        // Simulate a template whose identifiers were backfilled after the original exam was created.
+        jdbc.update("""
+                UPDATE exam.exam_template SET structure=jsonb_set(jsonb_set(structure,
+                    '{parts,0,id}', '"backfilled-part"'::jsonb),
+                    '{parts,0,sections,0,id}', '"backfilled-section"'::jsonb) WHERE code='HSA_FULL'
+                """);
+        for (var exam : List.of(created, duplicate)) {
+            String url = "/api/v1/admin/exams/" + exam.path("id").asText();
+            var detail = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            String partId = detail.path("parts").get(0).path("id").asText();
+            var edit = Map.of("expectedRevision", detail.path("revision").asLong(), "overview",
+                    List.of(Map.of("partId", partId, "questionCount", 40, "durationMinutes", 42, "maxPoints", 8)));
+            var edited = mapper.readTree(mockMvc.perform(put(url + "/overview").with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(edit)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            String load = "{\"templateCode\":\"HSA_FULL\",\"confirmReplace\":true,\"expectedRevision\":"
+                    + edited.path("revision").asLong();
+            mockMvc.perform(post(url + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON).content(load + "}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_OVERVIEW_CONFIRM"));
+            var kept = mapper.readTree(mockMvc.perform(post(url + "/structure/template")
+                            .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                            .content(load + ",\"overviewPolicy\":\"KEEP_EDITED\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].questionCount").value(40))
+                    .andExpect(jsonPath("$.parts[0].durationMinutes").value(42))
+                    .andExpect(jsonPath("$.parts[0].maxPoints").value(8))
+                    .andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post(url + "/structure/template").with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"templateCode\":\"HSA_FULL\",\"confirmReplace\":true,"
+                                    + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":"
+                                    + kept.path("revision").asLong() + "}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.parts[0].questionCount").value(50));
+        }
+    }
+
+    @Test
     void createsSubjectFromDefaultAndReviewTemplate() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         String templateCode = "QDA_SUBJECT_HOA_" + suffix;
