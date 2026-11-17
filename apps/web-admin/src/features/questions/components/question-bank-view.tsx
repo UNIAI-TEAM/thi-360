@@ -38,7 +38,6 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { indexKnowledge, knowledgeName, type KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { QUESTION_STATUS_TONE } from "@/features/content/status";
@@ -400,7 +399,6 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
           </div>
         }
       />
-      <ContentMockBanner />
 
       <QuestionFiltersBar
         filters={filters}

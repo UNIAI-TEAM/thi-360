@@ -7,7 +7,7 @@ import type {
   QuestionType,
   TrueFalseMethod,
 } from "@/features/content/types";
-import type { MockPage } from "@/lib/mock/content-mock";
+import type { ApiPage } from "@/lib/api/page";
 
 export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
@@ -58,11 +58,6 @@ export interface ExamSummary {
   subjectCode: string | null;
   /** `SHARED`: `durationMinutes` là thời lượng chung, các phần không có thời lượng riêng (BCA, V-ACT). */
   timing: ExamTiming;
-  /**
-   * `true`: danh sách của máy chủ không trả cách tính thời gian nên `timing` không có nghĩa; màn chỉ ghi thời lượng
-   * trung tính, không nói "chung" hay "theo phần". Bỏ trống: `timing` đã biết.
-   */
-  timingUnknown?: boolean;
   /** Thang điểm thô; `null` khi chưa đặt (V-ACT đặt thang luyện tập lúc thiết lập). */
   maxScore: number | null;
   /** Thang tham chiếu hiển thị (V-ACT 1.200); `null` khi không có (D11). */
@@ -310,10 +305,8 @@ export interface ListExamsQuery {
   sort?: string;
 }
 
-/** Trang danh sách bài thi. `incomplete`: lọc phía máy khách đã dừng ở số trang tối đa nên kết quả có thể chưa đủ. */
-export interface ExamListPage extends MockPage<ExamSummary> {
-  incomplete?: boolean;
-}
+/** Trang danh sách bài thi. */
+export type ExamListPage = ApiPage<ExamSummary>;
 
 /**
  * Mẫu cấu trúc nạp sẵn khi tạo bài thi. Kỳ thi `templateBy = KIND` có một mẫu FULL (và mẫu bài lẻ); kỳ thi

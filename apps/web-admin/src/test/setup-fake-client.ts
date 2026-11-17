@@ -8,7 +8,5 @@ vi.mock("@/lib/api/client", async () => {
   return { createBrowserApiClient: fake.fakeBrowserApiClient };
 });
 
-// Project fake-client chạy nhánh API thật: cả hai cờ dữ liệu mẫu tắt cho mọi test (plan B7). `setup.ts` chung bật cờ
-// cho các project khác; file này ghi đè sau nó. Test của mã chỉ có bản mẫu tự bật lại bằng `vi.stubEnv` trong file đó.
-process.env.NEXT_PUBLIC_THI360_CONTENT_MOCK = "false";
+// Cờ dữ liệu mẫu của `/grading` tắt trong project này (các màn content/questions/import/exams luôn gọi client giả).
 process.env.NEXT_PUBLIC_THI360_GRADING_MOCK = "false";

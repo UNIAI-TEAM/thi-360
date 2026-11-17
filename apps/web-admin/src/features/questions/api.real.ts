@@ -23,7 +23,7 @@ import type {
 } from "./types";
 import { loadRetireImpact } from "./usage-real";
 
-/** Nhánh API thật của Ngân hàng câu hỏi (`/api/v1/admin/questions`); giữ chữ ký của bản mẫu `api.mock.ts`. */
+/** Nhánh API thật của Ngân hàng câu hỏi (`/api/v1/admin/questions`) (bản mẫu đã gỡ ở QA). */
 
 /** `ListQuestionsQuery` của web -> tham số truy vấn của máy chủ (`updatedFrom/To` chưa có bên máy chủ, bỏ qua). */
 function toFilterParams(query: ListQuestionsQuery) {

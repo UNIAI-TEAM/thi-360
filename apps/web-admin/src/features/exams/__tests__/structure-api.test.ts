@@ -18,14 +18,13 @@ import { ExamsBackend } from "./fake-exams-backend";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu để createExam nở tổ hợp.
 vi.mock(import("@/features/content/api"), async () => {
-  const { getContentReference } = await import("@/features/content/api.mock");
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
   return { getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
 let backend: ExamsBackend;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   backend = new ExamsBackend();
   backend.install();
 });

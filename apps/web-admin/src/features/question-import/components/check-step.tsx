@@ -59,7 +59,7 @@ function initialTab(validation: ImportValidation): CheckTab {
   return "valid";
 }
 
-/** Ghi tab vào `?tab=` để tải lại vẫn mở đúng tab (DESIGN.md mục 5.5); giữ các tham số khác như `mockState`. */
+/** Ghi tab vào `?tab=` để tải lại vẫn mở đúng tab (DESIGN.md mục 5.5); giữ các tham số khác của URL. */
 export function writeTabToUrl(tab: CheckTab | null) {
   if (typeof window === "undefined") return;
   const params = new URLSearchParams(window.location.search);

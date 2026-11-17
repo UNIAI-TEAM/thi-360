@@ -44,10 +44,10 @@ WITH sets AS (
            md5('thi360-seed-math-set-' || n || '-sc')::uuid AS sc_id,
            md5('thi360-seed-math-set-' || n || '-sa')::uuid AS sa_id,
            subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
-    FROM generate_series(1, 12) n
+    FROM generate_series(1, 120) n
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'TOAN'
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003'
-        AND grade.code = (ARRAY['G10', 'G11', 'G12'])[1 + (n - 1) / 4]
+        AND grade.code = (ARRAY['G10', 'G11', 'G12'])[1 + (n - 1) / 40]
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004'
         AND level.code = (ARRAY['NB', 'TH', 'VD', 'VDC'])[1 + (n - 1) % 4]
 ), children AS (
@@ -91,7 +91,7 @@ SELECT md5('thi360-seed-' || subject.code || '-' || grade.code || '-' || level.c
 FROM catalog.catalog_item subject
 CROSS JOIN catalog.catalog_item grade
 CROSS JOIN catalog.catalog_item level
-CROSS JOIN generate_series(1, 6) n
+CROSS JOIN generate_series(1, 36) n
 WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
   AND subject.code IN ('LY', 'HOA', 'SINH', 'SU', 'DIA', 'ANH')
   AND grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
@@ -114,7 +114,7 @@ JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100
 LEFT JOIN catalog.catalog_item task_item ON task_item.group_id = '00000000-0000-7000-8100-000000000006' AND task_item.code = task.code
 CROSS JOIN catalog.catalog_item grade
 CROSS JOIN catalog.catalog_item level
-CROSS JOIN generate_series(1, 2) n
+CROSS JOIN generate_series(1, 48) n
 WHERE grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
   AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC');
 
@@ -146,13 +146,14 @@ WHERE grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN 
 WITH sets AS (
     SELECT subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id,
            task.code AS task_code, task_item.id AS task_type_id,
-           md5('thi360-seed-reading-' || task.code || grade.code || level.code)::uuid AS id,
-           'SEED-READING-' || task.code || '-' || grade.code || '-' || level.code AS code
+           md5('thi360-seed-reading-' || task.code || '-' || grade.code || '-' || level.code || '-' || sn)::uuid AS id,
+           'SEED-READING-' || task.code || '-' || grade.code || '-' || level.code || '-' || lpad(sn::text, 2, '0') AS code
     FROM (VALUES ('ANH', 'READING_COMPREHENSION'), ('VAN', 'PASSAGE_READING')) task(subject_code, code)
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = task.subject_code
     LEFT JOIN catalog.catalog_item task_item ON task_item.group_id = '00000000-0000-7000-8100-000000000006' AND task_item.code = task.code
     CROSS JOIN catalog.catalog_item grade
     CROSS JOIN catalog.catalog_item level
+    CROSS JOIN generate_series(1, 24) sn
     WHERE grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
       AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD', 'VDC')
 ), children AS (

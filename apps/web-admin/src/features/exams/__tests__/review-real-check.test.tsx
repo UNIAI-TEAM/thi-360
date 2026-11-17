@@ -21,7 +21,6 @@ const done = {
 let server: FakeServer;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   server = new FakeServer()
     .on("POST", CHECK_PATH, (request) =>
       request.url.searchParams.get("deep") === "true"

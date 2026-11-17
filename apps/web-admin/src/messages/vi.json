@@ -1251,6 +1251,7 @@
   "forbidden": {
     "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
+    "descriptionOrigin": "Máy chủ từ chối yêu cầu vì địa chỉ trang quản trị không khớp với cấu hình (THI360_ADMIN_URL). Hãy liên hệ quản trị hệ thống; đăng nhập lại không giải quyết được.",
     "eyebrow": "MÃ LỖI 403",
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
@@ -2699,9 +2700,10 @@
         "added": "Đã thêm {count, number} tệp đính kèm.",
         "removed": "Đã bỏ tệp {name}.",
         "rejected": {
+          "FAILED": "{name}: không tải lên được.",
+          "RATE_LIMITED": "{name}: bạn tải lên quá nhiều tệp trong thời gian ngắn (tối đa 60 tệp mỗi 10 phút). Thử lại sau.",
           "TOO_LARGE": "{name}: tệp lớn hơn 20 MB.",
-          "UNSUPPORTED_TYPE": "{name}: loại tệp không được hỗ trợ.",
-          "FAILED": "{name}: không tải lên được."
+          "UNSUPPORTED_TYPE": "{name}: loại tệp không được hỗ trợ."
         }
       },
       "scoreTable": {
@@ -3642,7 +3644,6 @@
       "hint": "Sửa bài đang phục vụ tạo bản làm việc; bản công bố cũ vẫn phục vụ tới khi công bố bản mới.",
       "tableAriaLabel": "Danh sách bài thi",
       "resultCount": "{count, number} bài thi khớp bộ lọc",
-      "incomplete": "Kết quả có thể chưa đủ: chỉ đọc 1.000 bài đầu để lọc theo kiểm tra hoặc bản sửa. Thu hẹp bằng ô tìm kiếm hoặc kỳ thi.",
       "loadingCount": "Đang tải danh sách…",
       "errorCount": "Không tải được danh sách",
       "errorTitle": "Không tải được danh sách bài thi",

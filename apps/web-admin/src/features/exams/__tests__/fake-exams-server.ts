@@ -2,7 +2,7 @@ import type { components } from "@thi360/api-client";
 import { vi } from "vitest";
 
 /**
- * Máy chủ giả cho test nhánh API thật của Bài thi (`CONTENT_MOCK` tắt): thay `fetch` toàn cục, ghi lại từng yêu cầu và trả
+ * Máy chủ giả cho test nhánh API thật của Bài thi: thay `fetch` toàn cục, ghi lại từng yêu cầu và trả
  * phản hồi xếp sẵn theo `METHOD đường-dẫn`. Đi qua đúng `createApiClient` và các hàm chuyển đổi của sản phẩm, không dùng
  * kho dữ liệu mẫu. Không thêm thư viện (không dùng msw).
  */

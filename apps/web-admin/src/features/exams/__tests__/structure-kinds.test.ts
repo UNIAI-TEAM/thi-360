@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import referenceFixture from "@/features/content/mock/reference.json";
+import referenceFixture from "@/test/fixtures/content-reference.json";
 import type { ContentReference } from "@/features/content/types";
 import {
   defaultTrueFalseTable,

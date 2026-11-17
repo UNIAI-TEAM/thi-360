@@ -6,7 +6,7 @@ import en from "@/messages/en.json";
 import { apiContentReference, fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import { renderWithProviders } from "@/test/render";
 import { QuestionImportView } from "../components/question-import-view";
-import templateFixture from "../mock/template.json";
+import templateFixture from "./fixtures/template.json";
 
 withRealApi();
 

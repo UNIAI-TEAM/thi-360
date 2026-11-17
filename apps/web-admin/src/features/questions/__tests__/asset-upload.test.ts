@@ -40,6 +40,8 @@ describe("tải tài nguyên câu hỏi (nhánh thật, client giả)", () => {
         image: "imageTypeNotAllowed",
         attachment: "attachmentTypeNotAllowed",
       },
+      { response: fail(415), reason: "TYPE_NOT_ALLOWED", image: "imageTypeNotAllowed", attachment: "attachmentTypeNotAllowed" },
+      { response: fail(422), reason: "TYPE_NOT_ALLOWED", image: "imageTypeNotAllowed", attachment: "attachmentTypeNotAllowed" },
       { response: fail(429, { code: "RATE_LIMITED" }), reason: "RATE_LIMITED", image: "rateLimited", attachment: "rateLimited" },
       { response: fail(403, { code: "FORBIDDEN" }), reason: "FORBIDDEN", image: "forbidden", attachment: "forbidden" },
       { response: fail(500, { code: "INTERNAL" }), reason: "UNKNOWN", image: "uploadFailed", attachment: "uploadFailed" },

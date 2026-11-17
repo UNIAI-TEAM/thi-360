@@ -12,7 +12,7 @@ import { HSA_001_CHECK } from "./review-fixtures";
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
-  const { getContentReference } = await import("@/features/content/api.mock");
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
@@ -20,7 +20,6 @@ const HSA = "ex-hsa-f-001";
 const POLL_MS = 2000;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   // Kết quả kiểm tra gần nhất của HSA-F-001 (có cách chọn môn chưa xác nhận được, cần Kiểm tra kỹ).
   new ExamsBackend().seedCheck(HSA, HSA_001_CHECK).install();
 });

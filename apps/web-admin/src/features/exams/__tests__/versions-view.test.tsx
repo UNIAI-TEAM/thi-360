@@ -9,7 +9,7 @@ import { ExamsBackend } from "./fake-exams-backend";
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
-  const { getContentReference } = await import("@/features/content/api.mock");
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
@@ -24,7 +24,6 @@ const EN = "opt-30";
 const SCIENCE = "opt-sci-1";
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   const backend = new ExamsBackend();
   // Kiểm tra gần nhất: đường Tiếng Anh hợp lệ, đường Khoa học thiếu nguồn (hộp thoại chỉ cho chọn đường hợp lệ).
   backend.seedCheck(HSA, {

@@ -1,12 +1,12 @@
 "use client";
 
 import { RichTextEditor, type RichTextEditorHandle } from "@/components/rich-text";
-import { notify } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { Controller, useFormContext, type Path } from "react-hook-form";
 import { questionAssetErrorMessageKey } from "../asset-upload";
 import type { QuestionEditorValues } from "../editor-form";
+import { notifyImageUploadError } from "../editor/upload-toasts";
 import { useRichEditorRegistry } from "./question-editor-shared";
 
 const EDITABLE = '[contenteditable="true"]';
@@ -56,7 +56,7 @@ export function RichTextField({
   const tAssetErrors = useTranslations("questions.assets.errors");
   // Ảnh dán/thả/chọn bị máy chủ từ chối (413, 422, 429...): trình soạn chỉ báo lỗi lên, nói cho người dùng ở đây.
   const onImageUploadError = useCallback(
-    (error: unknown) => notify.error(tAssetErrors(questionAssetErrorMessageKey(error, "IMAGE"))),
+    (error: unknown) => notifyImageUploadError(tAssetErrors(questionAssetErrorMessageKey(error, "IMAGE"))),
     [tAssetErrors],
   );
   const registerHandle = useCallback(

@@ -13,7 +13,7 @@ import { afterEach, beforeEach, vi } from "vitest";
  *   const fake = await import("@/test/fake-api");
  *   return { createBrowserApiClient: fake.fakeBrowserApiClient };
  * });
- * useRealApi(); // stubEnv CONTENT_MOCK=false + dọn registry mỗi test
+ * withRealApi(); // tắt cờ GRADING_MOCK + dọn registry mỗi test
  * fakeApi.get("/api/v1/admin/questions", ok(apiPage));
  * ```
  *
@@ -120,13 +120,12 @@ export function fieldErrors(code: string, errors: { field: string; message?: str
 }
 
 /**
- * Cài cho một file test: cả hai cờ dữ liệu mẫu tắt (nhánh API thật chạy, như trong production; danh mục dùng chung
- * cũng đọc dữ liệu mẫu khi `GRADING_MOCK` bật) và dọn registry trước mỗi test. Gọi sau `vi.mock("@/lib/api/client", …)`.
+ * Cài cho một file test: cờ `GRADING_MOCK` tắt (nhánh API thật chạy, như trong production) và dọn registry trước
+ * mỗi test. Gọi sau `vi.mock("@/lib/api/client", …)`.
  */
 export function withRealApi(): void {
   beforeEach(() => {
     fakeApi.reset();
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
     vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "false");
   });
   afterEach(() => {

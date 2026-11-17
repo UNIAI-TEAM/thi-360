@@ -17,6 +17,9 @@ const exam = mapExamSummary({
   kind: "HSA",
   scope: "FULL",
   status: "PUBLISHED",
+  revision: 7,
+  timing: "PER_PART",
+  practiceScoring: "RAW",
   servingVersion: 2,
   hasUnpublishedChanges: false,
   questionCount: 10,
@@ -29,13 +32,11 @@ const exam = mapExamSummary({
 } as Parameters<typeof mapExamSummary>[0]);
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
 });
 
 describe("ngừng bán từ danh sách, nhánh thật", () => {
-  it("bấm lại sau lỗi máy chủ gửi lại cùng Idempotency-Key và cùng revision vừa đọc", async () => {
+  it("bấm lại sau lỗi máy chủ gửi lại cùng Idempotency-Key và cùng revision của dòng danh sách", async () => {
     const server = new FakeServer()
-      .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ status: "PUBLISHED", servingVersion: 2 }) })
       .on(
         "POST",
         DISCONTINUE_PATH,

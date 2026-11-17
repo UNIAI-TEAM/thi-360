@@ -148,6 +148,42 @@ describe("phân bổ của một khối", () => {
   });
 });
 
+describe("tổng điểm của cấu trúc (G1)", () => {
+  it("nhóm lấy phần còn lại nhận phần chênh của môn và tính điểm, không tính 0", () => {
+    const part = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!.parts[0]!);
+    part.mode = "FIXED";
+    part.options = [];
+    const section = part.sections[0]!;
+    section.questionCount = 10;
+    section.blocks = [
+      block({}, { id: "fixed", questionCount: 4, requiredPointsPerQuestion: 2 }),
+      block({}, { id: "rest", questionCount: null, requiredPointsPerQuestion: 1 }),
+    ];
+    part.sections = [section];
+    expect(structureTotals([part]).totalPoints).toBe(4 * 2 + 6 * 1);
+  });
+
+  it("phương án SUBJECT_CHOICE của HSA tính điểm theo countsByPick, không tính 0 (đề dev seed)", () => {
+    // HSA-F-DEV-001 (seed): Khoa học 5 môn qc null, mỗi môn một nhóm lấy phần còn lại; tiêu đề từng báo 100 / 150.
+    const exam = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!);
+    const part = exam.parts.find((item) => item.mode === "CHOICE")!;
+    part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
+    for (const section of part.options[0]!.sections) {
+      section.blocks = [block({}, { questionCount: null })];
+    }
+    const totals = structureTotals(exam.parts);
+    expect(totals).toMatchObject({ totalQuestions: 150, totalPoints: 150, allocated: 150, missing: 0 });
+  });
+
+  it("phương án SUBJECT_CHOICE có nhóm cố định và nhóm phần còn lại (bài tạo từ mẫu) vẫn đủ 150 điểm", () => {
+    // Mẫu HSA nạp sẵn: mỗi môn Khoa học một nhóm 10 câu + một nhóm lấy phần còn lại (17/17/16 − 10).
+    const exam = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!);
+    const part = exam.parts.find((item) => item.mode === "CHOICE")!;
+    part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
+    expect(structureTotals(exam.parts).totalPoints).toBe(150);
+  });
+});
+
 describe("cấu trúc của bài mẫu", () => {
   const exams = EXAMS_FIXTURE.exams;
 

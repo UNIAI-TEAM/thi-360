@@ -18,7 +18,6 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { QUESTION_TYPES, type QuestionType } from "@/features/content/types";
 
 const TYPE_ICON: Record<QuestionType, LucideIcon> = {
@@ -51,7 +50,6 @@ export function QuestionTypePicker({ initialType = "SINGLE_CHOICE" }: { initialT
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={t("title")} description={t("description")} />
-      <ContentMockBanner />
       <Card padding="none" className="@container p-4 sm:p-6">
         <form
           className="flex flex-col gap-5"

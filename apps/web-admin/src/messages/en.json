@@ -1251,6 +1251,7 @@
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "descriptionOrigin": "The server rejected this request because the admin address does not match its configuration (THI360_ADMIN_URL). Contact a system administrator; signing in again will not fix this.",
     "eyebrow": "ERROR 403",
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
@@ -2699,9 +2700,10 @@
         "added": "{count, plural, one {# attachment} other {# attachments}} added.",
         "removed": "Removed file {name}.",
         "rejected": {
+          "FAILED": "{name}: the upload failed.",
+          "RATE_LIMITED": "{name}: you uploaded too many files in a short time (up to 60 files per 10 minutes). Try again later.",
           "TOO_LARGE": "{name}: the file is larger than 20 MB.",
-          "UNSUPPORTED_TYPE": "{name}: this file type is not supported.",
-          "FAILED": "{name}: the upload failed."
+          "UNSUPPORTED_TYPE": "{name}: this file type is not supported."
         }
       },
       "scoreTable": {
@@ -3642,7 +3644,6 @@
       "hint": "Editing a serving exam creates a working copy; the published version keeps serving until a new one is published.",
       "tableAriaLabel": "Exam list",
       "resultCount": "{count, plural, one {# exam matches} other {# exams match}} the filters",
-      "incomplete": "Results may be incomplete: only the first 1,000 exams were read to filter by check or working copy. Narrow the list with search or exam type.",
       "loadingCount": "Loading the list…",
       "errorCount": "Could not load the list",
       "errorTitle": "Could not load exams",

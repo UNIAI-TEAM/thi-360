@@ -3,7 +3,7 @@ import * as mock from "./api.mock";
 
 /**
  * API của hàng chờ chấm tự luận. Cờ `NEXT_PUBLIC_THI360_GRADING_MOCK` bật thì chạy dữ liệu mẫu (`api.mock.ts`, đọc đề
- * từ kho câu hỏi mẫu nên không phụ thuộc cờ `CONTENT_MOCK`); tắt thì nhánh API thật, chưa nối (đợt chấm điểm).
+ * từ kho câu hỏi mẫu của chính feature); tắt thì nhánh API thật, chưa nối (đợt chấm điểm).
  */
 
 export type { PageResponseGradingAttempt } from "./api.mock";

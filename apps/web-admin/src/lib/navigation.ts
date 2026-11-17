@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
-import { isContentMockEnabled, isGradingMockEnabled, type MockFlag } from "@/lib/mock/flags";
+import { isGradingMockEnabled } from "@/lib/mock/flags";
 
 /**
  * Menu chính của web admin, nguồn duy nhất cho sidebar, breadcrumb và lối tắt ở Bảng điều khiển.
@@ -33,10 +33,10 @@ export interface NavItem {
   /** Đặt `true` cho mục không hiện thành thẻ lối tắt (chính trang Bảng điều khiển). */
   excludeFromShortcuts?: boolean;
   /**
-   * Màn chạy được trên dữ liệu mẫu: hiện khi người dùng có `permission`, hoặc khi cờ tương ứng bật
-   * (`NEXT_PUBLIC_THI360_CONTENT_MOCK` cho PBI-03, PBI-04; `NEXT_PUBLIC_THI360_GRADING_MOCK` cho `/grading`).
+   * Màn chạy được trên dữ liệu mẫu: hiện khi người dùng có `permission`, hoặc khi cờ
+   * `NEXT_PUBLIC_THI360_GRADING_MOCK` bật (chỉ còn `/grading` sau QA UNI-2621).
    */
-  mockFlag?: MockFlag;
+  mockFlag?: "grading";
 }
 
 export interface NavGroup {
@@ -82,14 +82,12 @@ export const NAVIGATION: readonly NavGroup[] = [
         href: "/questions",
         icon: FileQuestion,
         permission: "QUESTION.VIEW",
-        mockFlag: "content",
       },
       {
         id: "exams",
         href: "/exams",
         icon: ClipboardList,
         permission: "EXAM.VIEW",
-        mockFlag: "content",
       },
       {
         id: "grading",
@@ -125,10 +123,12 @@ export const NAVIGATION: readonly NavGroup[] = [
   },
 ];
 
-export type MockFlags = Readonly<Record<MockFlag, boolean>>;
+export interface MockFlags {
+  readonly grading: boolean;
+}
 
 export function currentMockFlags(): MockFlags {
-  return { content: isContentMockEnabled(), grading: isGradingMockEnabled() };
+  return { grading: isGradingMockEnabled() };
 }
 
 /** Hiện khi cờ dữ liệu mẫu của mục bật, hoặc người dùng có quyền (mục không có quyền: mọi người dùng thấy). */

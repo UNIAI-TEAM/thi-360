@@ -254,7 +254,7 @@ export interface CheckGroupResult {
   issues: CheckIssue[];
 }
 
-/** Kết quả thuần của `checkExam` (không có thời điểm, thời gian chạy). */
+/** Kết quả thuần của một lần kiểm tra (không có thời điểm, thời gian chạy). */
 export interface ExamCheckOutcome {
   status: Extract<ExamCheckStatus, "VALID" | "INVALID">;
   /** Số vấn đề khác nhau trên mọi đường (khối dùng chung giữa các đường chỉ tính một lần). */

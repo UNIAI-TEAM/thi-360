@@ -83,6 +83,17 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
         }
     }
 
+    /** F-09a: đề dev HSA phải check VALID trên dữ liệu seed (contract W-BE mục 3). */
+    @Test
+    void seededHsaDevExamChecksValid() throws Exception {
+        UUID seeded = UUID.fromString("00000000-0000-7000-8700-000000000001");
+        String response = mockMvc.perform(post("/api/v1/admin/exams/" + seeded + "/check")
+                        .with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("VALID"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(response).path("issueCount").asInt()).isZero();
+    }
+
     static String[][] draftFixtures() {
         String prefix = "{\"parts\":[{\"id\":\"p\",\"questionCount\":1,\"sections\":[{\"id\":\"s\",\"subjectCode\":\"MATH\",\"questionCount\":1,";
         String suffix = "}]}]}";

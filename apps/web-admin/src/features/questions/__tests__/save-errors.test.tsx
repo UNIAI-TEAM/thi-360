@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, fakeApi } from "@/test/fake-api";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { questionStore, renderEn, rich, seedQuestion } from "./editor-test-kit";
+import { fakeQuestions, renderEn, rich, seedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -29,8 +29,8 @@ describe("lưu câu hỏi: xung đột 412", () => {
     rich(await questionText()).set("<p>Chữ gõ ở tab thứ hai</p>");
 
     // Tab thứ nhất lưu trước: máy chủ tăng revision và đổi nội dung.
-    const opened = questionStore.require("q-0001").revision;
-    const other = questionStore.require("q-0001");
+    const opened = fakeQuestions.require("q-0001").revision;
+    const other = fakeQuestions.require("q-0001");
     other.revision = opened + 1;
     other.content = "<p>Chữ từ tab thứ nhất</p>";
 
@@ -40,7 +40,7 @@ describe("lưu câu hỏi: xung đột 412", () => {
     expect(notice).toHaveTextContent("Someone else has changed this data");
     expect(notice).toHaveTextContent("your save was not applied");
     expect(sentRevision(0)).toBe(opened);
-    expect(questionStore.require("q-0001").content).toBe("<p>Chữ từ tab thứ nhất</p>");
+    expect(fakeQuestions.require("q-0001").content).toBe("<p>Chữ từ tab thứ nhất</p>");
     expect(navigation.push).not.toHaveBeenCalled();
 
     // Tải lại: biểu mẫu dựng lại từ bản mới, phần đã gõ bị bỏ, thông báo biến mất.
@@ -52,7 +52,7 @@ describe("lưu câu hỏi: xung đột 412", () => {
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/questions/q-0001"));
     expect(sentRevision(1)).toBe(opened + 1);
-    expect(questionStore.require("q-0001").content).toBe("<p>Bản sửa sau khi tải lại</p>");
+    expect(fakeQuestions.require("q-0001").content).toBe("<p>Bản sửa sau khi tải lại</p>");
   });
 
   it("xung đột không phải lỗi chung: không hiện chữ lỗi lưu và không giữ trạng thái lưu thành công", async () => {

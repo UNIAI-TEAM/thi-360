@@ -9,7 +9,7 @@ import { ExamsBackend } from "./fake-exams-backend";
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
-  const { getContentReference } = await import("@/features/content/api.mock");
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
@@ -19,7 +19,6 @@ vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 let backend: ExamsBackend;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   routerMock.push.mockReset();
   backend = new ExamsBackend();
   backend.install();

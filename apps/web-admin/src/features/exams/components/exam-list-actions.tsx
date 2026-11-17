@@ -50,7 +50,7 @@ export function ExamListRowActions({ exam, onAnnounce }: { exam: ExamSummary; on
   const runDiscontinue = () => {
     setDiscontinueError(null);
     // Một khóa cho mỗi lần ngừng bán của bài này: bấm lại sau lỗi mạng dùng lại khóa; xong thì thả khóa.
-    discontinue.mutate({ id: exam.id, idempotencyKey: idempotency.keyFor(exam.id) }, {
+    discontinue.mutate({ id: exam.id, expectedRevision: exam.revision, idempotencyKey: idempotency.keyFor(exam.id) }, {
       onSuccess: () => {
         idempotency.release();
         setConfirmOpen(false);

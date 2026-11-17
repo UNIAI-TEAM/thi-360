@@ -1,6 +1,6 @@
 import type { ListQuestionsQuery } from "./types";
 
-/** Khóa truy vấn của Ngân hàng câu hỏi: dùng chung bởi facade `api.ts` và bản mẫu `api.mock.ts`. */
+/** Khóa truy vấn của Ngân hàng câu hỏi: dùng chung bởi facade `api.ts` (bản mẫu đã gỡ ở QA, UNI-2621). */
 export const QUESTIONS_QUERY_KEYS = {
   all: ["questions"] as const,
   lists: () => ["questions", "list"] as const,

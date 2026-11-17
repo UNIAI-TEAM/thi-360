@@ -7,7 +7,7 @@ import { renderWithProviders } from "@/test/render";
 import { QuestionBankView } from "../components/question-bank-view";
 import { apiCounts, apiPage, withQuestionsServer } from "./api-fixtures";
 
-const questionStore = withQuestionsServer();
+const fakeQuestions = withQuestionsServer();
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -24,8 +24,8 @@ async function expectCount(text: string) {
 }
 
 /** So cau mau tinh tu kho (cac nhanh khac co the them cau mau vao kho). */
-function countWhere(predicate: (question: ReturnType<typeof questionStore.all>[number]) => boolean = () => true): number {
-  return questionStore.all().filter(predicate).length;
+function countWhere(predicate: (question: ReturnType<typeof fakeQuestions.all>[number]) => boolean = () => true): number {
+  return fakeQuestions.all().filter(predicate).length;
 }
 
 function setUrl(search: string) {
@@ -106,7 +106,7 @@ describe("QuestionBankView", () => {
     const dialog = await screen.findByRole("dialog", { name: "Chuyển câu hỏi sang Sẵn sàng" });
     await userEvent.click(await within(dialog).findByRole("button", { name: "Chuyển sang Sẵn sàng" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(questionStore.require("q-0002").status).toBe("READY");
+    expect(fakeQuestions.require("q-0002").status).toBe("READY");
   });
 
   it("chon nhieu dong va ngung su dung hang loat", async () => {
@@ -123,8 +123,8 @@ describe("QuestionBankView", () => {
     const dialog = await screen.findByRole("dialog", { name: "Ngừng sử dụng 2 câu?" });
     expect(dialog).toHaveTextContent("CH-000001, CH-000003");
     await userEvent.click(within(dialog).getByRole("button", { name: "Ngừng sử dụng" }));
-    await waitFor(() => expect(questionStore.require("q-0001").status).toBe("RETIRED"));
-    expect(questionStore.require("q-0003").status).toBe("RETIRED");
+    await waitFor(() => expect(fakeQuestions.require("q-0001").status).toBe("RETIRED"));
+    expect(fakeQuestions.require("q-0003").status).toBe("RETIRED");
   });
 
   it("khung hep hien danh sach the", async () => {
@@ -137,9 +137,9 @@ describe("QuestionBankView", () => {
   });
 
   it("loc theo Dang bai tu URL, hien chip va doi duoc trong Bo loc khac", async () => {
-    questionStore.update("q-0001", (question) => ({ ...question, taskTypeCode: "CALCULATION" }));
-    questionStore.update("q-0002", (question) => ({ ...question, taskTypeCode: "CALCULATION" }));
-    questionStore.update("q-0003", (question) => ({ ...question, taskTypeCode: "REASONING" }));
+    fakeQuestions.update("q-0001", (question) => ({ ...question, taskTypeCode: "CALCULATION" }));
+    fakeQuestions.update("q-0002", (question) => ({ ...question, taskTypeCode: "CALCULATION" }));
+    fakeQuestions.update("q-0003", (question) => ({ ...question, taskTypeCode: "REASONING" }));
     setUrl("?taskType=CALCULATION");
     renderWithProviders(<QuestionBankView />);
 
@@ -158,6 +158,6 @@ describe("QuestionBankView", () => {
     const table = await screen.findByRole("table", { name: "Danh sách câu hỏi khớp bộ lọc" });
     expect(await within(table).findByRole("columnheader", { name: /Điểm/ })).toBeInTheDocument();
     const row = within(table).getByRole("link", { name: "Tính giới hạn lim (2n + 1)/(n + 3)." }).closest("tr")!;
-    expect(row).toHaveTextContent(`${questionStore.require("q-0001").points}`);
+    expect(row).toHaveTextContent(`${fakeQuestions.require("q-0001").points}`);
   });
 });

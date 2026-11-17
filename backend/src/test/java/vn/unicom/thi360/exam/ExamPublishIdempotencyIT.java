@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -231,6 +232,50 @@ class ExamPublishIdempotencyIT extends AbstractIntegrationTest {
                 + "ON CONFLICT (subject_item_id) DO UPDATE SET revision = questionbank.question_source_revision.revision + 1", SUBJECT);
         mockMvc.perform(post(url()).with(asUser(Permissions.EXAM_PUBLISH)).header("Idempotency-Key", UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_REQUIRED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("SOURCE_CHANGED"));
+    }
+
+    /** FE-2:5 F5: sửa + Sẵn sàng một câu nguồn qua API tăng question_source_revision → publish 409. */
+    @Test
+    void editAndReadySourceQuestionBlocksPublish() throws Exception {
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", EXAM);
+        UUID question = jdbc.queryForObject(
+                "SELECT id FROM questionbank.question WHERE code = 'SEED-MATH-G10-NB-SC-001'", UUID.class);
+        assertThat(question).isNotNull();
+        long sourceBefore = jdbc.queryForObject(
+                "SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?",
+                Long.class, SUBJECT);
+        saveCheck(EXAM, question, "VALID");
+
+        long revision = jdbc.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, question);
+        mockMvc.perform(put("/api/v1/admin/questions/{id}", question)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + revision + ",\"subjectCode\":\"TOAN\","
+                                + "\"gradeCode\":\"G10\",\"difficultyCode\":\"NB\","
+                                + "\"content\":\"<p>Câu hỏi đã sửa</p>\","
+                                + "\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":["
+                                + "{\"id\":\"a\",\"content\":\"<p>One</p>\",\"correct\":true},"
+                                + "{\"id\":\"b\",\"content\":\"<p>Two</p>\",\"correct\":false}]}}"))
+                .andExpect(status().isOk());
+        long afterEdit = jdbc.queryForObject(
+                "SELECT revision FROM questionbank.question WHERE id = ?", Long.class, question);
+        mockMvc.perform(post("/api/v1/admin/questions/{id}/ready", question)
+                        .with(asUser(Permissions.QUESTION_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + afterEdit + "}"))
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject(
+                "SELECT revision FROM questionbank.question_source_revision WHERE subject_item_id = ?",
+                Long.class, SUBJECT)).isGreaterThan(sourceBefore);
+
+        long examRevision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, EXAM);
+        String body = "{\"pathIds\":[\"default\"],\"expectedRevision\":" + examRevision + "}";
+        mockMvc.perform(post(url()).with(asUser(Permissions.EXAM_PUBLISH))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_REQUIRED"))
                 .andExpect(jsonPath("$.fieldErrors[0].code").value("SOURCE_CHANGED"));
     }

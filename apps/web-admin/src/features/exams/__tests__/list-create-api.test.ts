@@ -10,7 +10,6 @@ vi.mock("@/features/content/api", () => ({ getContentReference: async () => ({ c
 let backend: ExamsBackend;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   backend = new ExamsBackend();
   backend.install();
 });
@@ -75,8 +74,8 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
     const page = await listExams({ subjectCode: "INFORMATICS" });
     expect(page.content.map((item) => item.code)).toContain("THPTQG-F-TIN-009");
     const row = page.content.find((item) => item.code === "THPTQG-F-TIN-009")!;
-    // Danh sách thật không trả timing/số nhánh; thời lượng chung của SHARED vẫn có.
-    expect(row).toMatchObject({ scope: "SUBJECT", durationMinutes: 50, timingUnknown: true });
+    // Danh sách thật mang timing và môn của bài (BE gap đóng ở QA, UNI-2621); số nhánh vẫn chỉ có ở cấu trúc.
+    expect(row).toMatchObject({ scope: "SUBJECT", durationMinutes: 50, timing: "SHARED", subjectCode: "INFORMATICS", revision: 1 });
   });
 
   it("V-ACT: thang 1.200, điểm phần 600/300/300; năng lực của mẫu thành phạm vi kiến thức của khối", async () => {

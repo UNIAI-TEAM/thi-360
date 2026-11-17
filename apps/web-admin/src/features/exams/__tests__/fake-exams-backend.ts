@@ -1,5 +1,5 @@
 import type { components } from "@thi360/api-client";
-import referenceFixture from "@/features/content/mock/reference.json";
+import referenceFixture from "@/test/fixtures/content-reference.json";
 import type { ContentReference, ExamKindOption } from "@/features/content/types";
 import {
   combinationsForKind,
@@ -32,7 +32,7 @@ import { EXAMS_FIXTURE, FIXTURE_TEMPLATES } from "./exam-fixture";
 import { FakeServer, type Handler, type Recorded, type Reply } from "./fake-exams-server";
 
 /**
- * Máy chủ giả có trạng thái cho nhánh API thật của Bài thi (`CONTENT_MOCK` tắt): giữ bài thi dưới dạng wire
+ * Máy chủ giả có trạng thái cho nhánh API thật của Bài thi: giữ bài thi dưới dạng wire
  * (`ExamDetailResponse`) và trả lời mọi đường `/api/v1/admin/exams/**` mà client thật gọi, gồm viết (tạo, sửa,
  * nạp lại mẫu, sao chép, ngừng bán, công bố). Phản hồi đi qua `createApiClient` và các hàm chuyển đổi của sản
  * phẩm như nhánh thật; dữ liệu dựng lại chính xác từ `exam-fixture.ts`.
@@ -461,7 +461,7 @@ export class ExamsBackend {
     });
   }
 
-  /** Cấu trúc nạp theo mẫu (cùng đường dựng của trang Tạo bài thi và `api.mock` trước đây). */
+  /** Cấu trúc nạp theo mẫu (cùng đường dựng của trang Tạo bài thi và lớp mẫu trước đây). */
   private buildParts(request: ScopeRequest, template: ExamTemplate | undefined, timing: ExamTiming): ExamPart[] {
     const inputs = initialParts({
       templates: FIXTURE_TEMPLATES,
@@ -595,6 +595,8 @@ export class ExamsBackend {
       if (query.get("scope") && exam.scope !== query.get("scope")) return false;
       if (query.get("subject") && exam.subjectCode !== query.get("subject") && exam.partCode !== query.get("subject")) return false;
       if (query.get("status") && exam.status !== query.get("status")) return false;
+      if (query.get("checkStatus") && exam.check.status !== query.get("checkStatus")) return false;
+      if (query.get("hasUnpublishedChanges") === "true" && !exam.hasUnpublishedChanges) return false;
       return true;
     });
     rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -608,6 +610,12 @@ export class ExamsBackend {
         kind: exam.kind,
         scope: exam.scope,
         status: exam.status,
+        revision: exam.revision,
+        partCode: exam.partCode,
+        subjectCode: exam.subjectCode,
+        timing: exam.timing,
+        referenceMax: exam.referenceMax,
+        practiceScoring: exam.practiceScoring,
         servingVersion: exam.servingVersion,
         hasUnpublishedChanges: exam.hasUnpublishedChanges,
         questionCount: exam.questionCount,

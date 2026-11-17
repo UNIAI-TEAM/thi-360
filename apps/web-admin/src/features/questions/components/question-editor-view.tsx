@@ -5,7 +5,6 @@ import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
-import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference } from "@/features/content/queries";
 import type { QuestionType } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -87,7 +86,6 @@ function EditorSkeleton({ title }: { title: string }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={title} />
-      <ContentMockBanner />
       <div className="flex flex-col gap-4" aria-busy="true" aria-label={t("loading")}>
         <Skeleton className="h-40" />
         <Skeleton className="h-36" />
@@ -116,7 +114,6 @@ function EditorError({
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={title} />
-      <ContentMockBanner />
       <Card>
         <EmptyState
           icon={<TriangleAlert />}

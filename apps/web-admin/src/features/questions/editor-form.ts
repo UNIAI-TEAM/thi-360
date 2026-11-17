@@ -365,7 +365,7 @@ export function toEditorValues(question: QuestionDetail, locale: AppLocale = "vi
         content: child.content,
         solution: child.solution ?? "",
         points: formatPoints(child.points, locale),
-        // Mock và máy chủ trả phân loại đã kế thừa: giống câu cha thì hiện là "kế thừa".
+        // Máy chủ trả phân loại đã kế thừa: giống câu cha thì hiện là "kế thừa".
         gradeCode: child.gradeCode === question.gradeCode ? "" : child.gradeCode,
         difficultyCode: child.difficultyCode === question.difficultyCode ? "" : child.difficultyCode,
         knowledgeOverride: !sameKnowledge,

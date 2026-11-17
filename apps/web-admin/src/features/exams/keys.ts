@@ -1,6 +1,6 @@
 import type { AvailableQuestionsQuery, ListExamsQuery, SubjectAvailableQuestionsQuery, SuggestExamCodeQuery } from "./types";
 
-/** Khóa truy vấn của Bài thi: dùng chung bởi facade `api.ts` và bản mẫu `api.mock.ts`. */
+/** Khóa truy vấn của Bài thi: dùng chung bởi facade `api.ts` (bản mẫu đã gỡ ở QA, UNI-2621). */
 export const EXAMS_QUERY_KEYS = {
   all: ["exams"] as const,
   lists: () => ["exams", "list"] as const,

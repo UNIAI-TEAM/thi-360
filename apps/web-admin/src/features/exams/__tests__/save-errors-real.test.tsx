@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getContentReference } from "@/features/content/api.mock";
+import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import type * as ContentApi from "@/features/content/api";
 import { renderWithProviders } from "@/test/render";
 import { ExamGeneralView } from "../components/exam-general-view";
@@ -23,7 +23,6 @@ const REVISION_CONFLICT = { status: 412, body: { code: "EXAM_REVISION_CONFLICT",
 let server: FakeServer;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   server = new FakeServer()
     .on("GET", EXAM_PATH, { status: 200, body: examDetailWire() })
     .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [] })

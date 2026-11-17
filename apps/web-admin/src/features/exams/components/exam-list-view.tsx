@@ -27,7 +27,6 @@ import { FileText, Plus, Search, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
-import { ContentMockBanner } from "@/features/content/components/content-mock-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import {
   FILTER_FORM,
@@ -157,18 +156,14 @@ export function ExamListView() {
 
   const { structureText, updatedText, choiceText } = useMemo(
     () => ({
-      /**
-       * Số câu và thời lượng. Danh sách của máy chủ không cho biết cách tính thời gian (`timingUnknown`): ghi thời
-       * lượng trung tính, không có thì "—", không nói "chung" hay "theo phần".
-       */
+      /** Số câu và thời lượng: thời lượng chung ghi "chung", chưa có thời lượng ghi "—", còn lại ghi tổng thời lượng. */
       structureText: (exam: ExamSummary) => {
-        const key = exam.timingUnknown
-          ? exam.durationMinutes > 0
-            ? "list.structureValue"
-            : "list.structureValueNoDuration"
-          : exam.timing === "SHARED"
-            ? "list.structureValueShared"
-            : "list.structureValue";
+        const key =
+          exam.durationMinutes <= 0
+            ? "list.structureValueNoDuration"
+            : exam.timing === "SHARED"
+              ? "list.structureValueShared"
+              : "list.structureValue";
         return t(key, { questions: exam.totalQuestions, minutes: exam.durationMinutes });
       },
       updatedText: (exam: ExamSummary) => format.dateTime(new Date(exam.updatedAt), "dateTime"),
@@ -345,7 +340,6 @@ export function ExamListView() {
           </Button>
         }
       />
-      <ContentMockBanner />
 
       <Card padding="md" className="@container">
         <search>
@@ -467,7 +461,6 @@ export function ExamListView() {
                 : t("list.resultCount", { count: total })}
           </p>
           <p className="text-caption text-text-muted">{t("list.hint")}</p>
-          {examsQuery.data?.incomplete && <StatusChip tone="warning">{t("list.incomplete")}</StatusChip>}
           <LiveStatus message={liveMessage || resultStatus} />
         </div>
 

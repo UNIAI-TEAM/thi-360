@@ -60,7 +60,7 @@ function readSelectionFromUrl(): StructureSelection | null {
   return partId ? { kind: "part", partId } : null;
 }
 
-/** Ghi mục đang mở vào `?block=` / `?section=` / `?part=` (giữ `?mockState=`) để tải lại hoặc gửi đường dẫn vẫn mở đúng chỗ. */
+/** Ghi mục đang mở vào `?block=` / `?section=` / `?part=` (giữ tham số xem trạng thái của màn) để tải lại hoặc gửi đường dẫn vẫn mở đúng chỗ. */
 function writeSelectionToUrl(selection: StructureSelection): void {
   const url = new URL(window.location.href);
   url.searchParams.delete(SELECTION_PARAMS.block);

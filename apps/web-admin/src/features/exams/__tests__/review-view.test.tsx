@@ -11,7 +11,7 @@ import { HSA_001_CHECK, HSA_002_RUN, PREVIEW_HSA_001_EN, PREVIEW_HSA_001_SCIENCE
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
-  const { getContentReference } = await import("@/features/content/api.mock");
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
@@ -27,7 +27,6 @@ const HSA = "ex-hsa-f-001";
 let backend: ExamsBackend;
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   navigation.search = "";
   window.history.replaceState(null, "", "/");
   backend = new ExamsBackend();

@@ -4,8 +4,6 @@ import { QUESTION_TYPES, type QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
-import { isContentMockEnabled } from "@/lib/mock/flags";
-import * as mock from "./review-api.mock";
 import type {
   BlockCheck,
   BlockCheckResult,
@@ -63,16 +61,15 @@ import type {
 } from "./types";
 
 /**
- * API của Kiểm tra cấu hình, Kiểm tra kỹ, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11). Cờ
- * `NEXT_PUBLIC_THI360_CONTENT_MOCK` bật thì chạy dữ liệu mẫu (`review-api.mock.ts`); tắt thì gọi API thật qua
- * `@thi360/api-client` và chuyển đổi sang kiểu của `review-types.ts` (`mapX` ở cuối file).
+ * API của Kiểm tra cấu hình, Kiểm tra kỹ, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11): gọi API thật qua
+ * `@thi360/api-client` và chuyển đổi sang kiểu của `review-types.ts` (`mapX` ở cuối file). Bản mẫu đã gỡ ở QA.
  */
 
 export { EXAM_REVIEW_QUERY_KEYS } from "./review-keys";
 
 /* ---------- Lỗi ---------- */
 
-/** Lỗi của nhánh API thật: cùng hình dạng `MockApiError` ({status, code, fieldErrors}) để màn hình xử lý chung. */
+/** Lỗi của nhánh API thật: mang {status, code, fieldErrors} để màn hình xử lý chung. */
 export class ExamsApiError extends ApiStatusError {
   readonly code?: string;
   readonly fieldErrors: readonly FieldError[];
@@ -286,34 +283,17 @@ async function discontinueExamReal({
   return mapExamDetail(data);
 }
 
-/* ---------- Chọn nhánh theo cờ ---------- */
+/* ---------- API thật (bản mẫu đã gỡ ở QA, UNI-2621) ---------- */
 
-export const getExamCheck = async (request: { examId: string }) =>
-  isContentMockEnabled() ? mock.getExamCheck(request) : getExamCheckReal(request);
-
-export const runExamCheck = async (request: RunExamCheckRequest) =>
-  isContentMockEnabled() ? mock.runExamCheck(request) : runExamCheckReal(request);
-
-export const startDeepCheck = async (examId: string) =>
-  isContentMockEnabled() ? mock.startDeepCheck(examId) : startDeepCheckReal(examId);
-
-export const getCheckRun = async (examId: string, runId: string) =>
-  isContentMockEnabled() ? mock.getCheckRun(examId, runId) : getCheckRunReal(examId, runId);
-
-export const generatePreview = async (request: GeneratePreviewRequest) =>
-  isContentMockEnabled() ? mock.generatePreview(request) : generatePreviewReal(request);
-
-export const listExamVersions = async (request: { examId: string }) =>
-  isContentMockEnabled() ? mock.listExamVersions(request) : listExamVersionsReal(request);
-
-export const getExamVersion = async (request: { examId: string; version: number }) =>
-  isContentMockEnabled() ? mock.getExamVersion(request) : getExamVersionReal(request);
-
-export const publishExam = async (request: PublishExamRequest) =>
-  isContentMockEnabled() ? mock.publishExam(request) : publishExamReal(request);
-
-export const discontinueExam = async (request: DiscontinueExamRequest) =>
-  isContentMockEnabled() ? mock.discontinueExam(request) : discontinueExamReal(request);
+export const getExamCheck = getExamCheckReal;
+export const runExamCheck = runExamCheckReal;
+export const startDeepCheck = startDeepCheckReal;
+export const getCheckRun = getCheckRunReal;
+export const generatePreview = generatePreviewReal;
+export const listExamVersions = listExamVersionsReal;
+export const getExamVersion = getExamVersionReal;
+export const publishExam = publishExamReal;
+export const discontinueExam = discontinueExamReal;
 
 export interface ExamReviewApiDeps {
   getExamCheck: typeof getExamCheck;

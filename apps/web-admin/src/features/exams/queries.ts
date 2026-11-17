@@ -133,8 +133,8 @@ export function useDuplicateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
 export function useDiscontinueExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
   const invalidate = useInvalidateExams();
   return useMutation({
-    // `expectedRevision` chỉ có khi nơi gọi nắm revision của bản đang xem; dòng danh sách không gửi (client đọc lại).
-    mutationFn: ({ id, expectedRevision, idempotencyKey }: { id: string; expectedRevision?: number; idempotencyKey?: string }) =>
+    // `expectedRevision`: revision của bản đang xem (dòng danh sách hoặc màn Phiên bản); lệch thì máy chủ trả 412.
+    mutationFn: ({ id, expectedRevision, idempotencyKey }: { id: string; expectedRevision: number; idempotencyKey?: string }) =>
       deps.discontinueExam(id, expectedRevision, idempotencyKey),
     onSuccess: () => invalidate(),
   });

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import referenceFixture from "@/features/content/mock/reference.json";
+import referenceFixture from "@/test/fixtures/content-reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { sheetFromTable } from "../files";
 import { checkMapping, normalizeHeader, suggestMapping } from "../mapping";
-import dictionaryFixture from "../mock/import-dictionary.json";
-import sampleSheet from "../mock/sample-sheet.json";
-import templateFixture from "../mock/template.json";
+import dictionaryFixture from "./fixtures/import-dictionary.json";
+import sampleSheet from "./fixtures/sample-sheet.json";
+import templateFixture from "./fixtures/template.json";
 import type { ColumnMapping, ImportDictionary, ImportRowResult } from "../types";
 import { bracesBalanced, parseRubric, summarizeImport, validateImportRows } from "../validation";
 

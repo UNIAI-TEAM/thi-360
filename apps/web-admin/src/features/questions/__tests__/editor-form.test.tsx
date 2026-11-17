@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionEditorView } from "../components/question-editor-view";
 import { QuestionTypePicker } from "../components/question-type-picker";
-import { questionStore, renderEn } from "./editor-test-kit";
+import { fakeQuestions, renderEn } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -64,7 +64,7 @@ describe("biểu mẫu soạn câu hỏi", () => {
     await user.click(screen.getByRole("button", { name: "Save question" }));
     await vi.waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/questions/q-0003"));
     // Câu đang phục vụ giữ trạng thái và bản phục vụ; bản Nháp mới là `workingVersion` (spec 9.2).
-    expect(questionStore.require("q-0003")).toMatchObject({ status: "READY", version: 2, workingVersion: 3 });
+    expect(fakeQuestions.require("q-0003")).toMatchObject({ status: "READY", version: 2, workingVersion: 3 });
   });
 
   it("câu không tồn tại thì báo không tìm thấy", async () => {

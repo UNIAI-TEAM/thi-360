@@ -86,10 +86,12 @@ public class ExamAdminController {
             @RequestParam(required = false) String scope, @RequestParam(required = false) String status,
             @RequestParam(required = false) Boolean hasEssay,
             @RequestParam(required = false) Boolean hasEnglishOption,
+            @RequestParam(required = false) String checkStatus,
+            @RequestParam(required = false) Boolean hasUnpublishedChanges,
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String sort) {
         return exams.listExams(q, kind, subject, scope, status, hasEssay, hasEnglishOption,
-                PageQuery.of(page, size, sort, SORT_FIELDS, Sort.unsorted()));
+                checkStatus, hasUnpublishedChanges, PageQuery.of(page, size, sort, SORT_FIELDS, Sort.unsorted()));
     }
 
     @GetMapping("/exams/{id}")

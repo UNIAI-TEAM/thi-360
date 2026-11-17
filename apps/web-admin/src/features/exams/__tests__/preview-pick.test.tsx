@@ -9,7 +9,7 @@ import { PREVIEW_HSA_000_SCIENCE_PCG } from "./review-fixtures";
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
-  const { getContentReference } = await import("@/features/content/api.mock");
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
@@ -25,7 +25,6 @@ const HSA = "ex-hsa-f-000";
 const SCIENCE = "opt-sci-4";
 
 beforeEach(() => {
-  vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
   navigation.search = "";
   window.history.replaceState(null, "", "/");
   // Máy chủ sinh đề: đề của đường Khoa học khi học viên chọn Vật lí, Hóa học, Địa lí (hai môn tự nhiên một môn xã hội).

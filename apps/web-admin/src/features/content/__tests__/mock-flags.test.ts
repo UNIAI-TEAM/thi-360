@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getContentReference } from "@/features/content/api";
-import { listExams } from "@/features/exams/api";
 import { getGradingAttempt, getGradingFilterOptions, listGradingAttempts } from "@/features/grading/api";
-import { listQuestions } from "@/features/questions/api";
-import { isContentMockEnabled, isGradingMockEnabled, notWired } from "@/lib/mock/flags";
+import { isGradingMockEnabled, notWired } from "@/lib/mock/flags";
+import { apiContentReference } from "@/test/fake-api";
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api/client", () => ({ createBrowserApiClient: () => ({ GET: get }) }));
@@ -15,40 +14,27 @@ afterEach(() => {
 
 const NOT_WIRED = "ch\u01b0a n\u1ed1i API";
 
-describe("cờ dữ liệu mẫu của đợt 2 (plan B7)", () => {
-  it("đọc từng cờ: true và false rõ ràng; bỏ trống thì chỉ bật khi chạy dev", () => {
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+describe("cờ dữ liệu mẫu của /grading (plan B7, QA UNI-2621)", () => {
+  it("đọc cờ: true và false rõ ràng; bỏ trống thì chỉ bật khi chạy dev", () => {
     vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", " TRUE ");
-    expect(isContentMockEnabled()).toBe(false);
     expect(isGradingMockEnabled()).toBe(true);
+    vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "false");
+    expect(isGradingMockEnabled()).toBe(false);
 
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "");
+    vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "");
     vi.stubEnv("NODE_ENV", "development");
-    expect(isContentMockEnabled()).toBe(true);
+    expect(isGradingMockEnabled()).toBe(true);
     vi.stubEnv("NODE_ENV", "production");
-    expect(isContentMockEnabled()).toBe(false);
+    expect(isGradingMockEnabled()).toBe(false);
   });
 
   it("nhánh API thật chưa nối ném đúng thông báo", () => {
     expect(notWired).toThrow(NOT_WIRED);
   });
 
-  it("CONTENT_MOCK tắt, GRADING_MOCK bật: /grading vẫn chạy trên dữ liệu mẫu, PBI-03 và PBI-04 không còn dữ liệu mẫu", async () => {
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
+  it("GRADING_MOCK bật: /grading chạy trên kho câu hỏi mẫu; danh mục vẫn gọi API thật (F-02)", async () => {
     vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "true");
 
-    get.mockResolvedValueOnce({ data: undefined, error: { code: "UNAVAILABLE" }, response: { ok: false, status: 503 } });
-    await expect(listQuestions({})).rejects.toMatchObject({ status: 503, code: "UNAVAILABLE" });
-    // Bài thi đã nối API (UNI-2620): cờ tắt thì gọi máy chủ, không còn NOT_WIRED và không đọc dữ liệu mẫu.
-    get.mockResolvedValueOnce({
-      data: { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 },
-      error: undefined,
-      response: { ok: true, status: 200 },
-    });
-    await expect(listExams({})).resolves.toMatchObject({ content: [], totalElements: 0 });
-    expect(get).toHaveBeenCalledWith("/api/v1/admin/exams", expect.anything());
-
-    // Danh sách chờ chấm, bộ lọc và màn chấm đọc đề từ kho câu hỏi mẫu (`questionStore`) nên vẫn chạy.
     const page = await listGradingAttempts({});
     expect(page.totalElements).toBeGreaterThan(0);
     const options = await getGradingFilterOptions();
@@ -57,22 +43,21 @@ describe("cờ dữ liệu mẫu của đợt 2 (plan B7)", () => {
     expect(detail.essays.length).toBeGreaterThan(0);
     expect(detail.essays.every((essay) => essay.maxPoints > 0 && essay.rubric !== undefined)).toBe(true);
 
-    // Danh mục dùng chung của màn chấm (bộ lọc môn) vẫn đọc được khi cờ chấm bật.
-    expect((await getContentReference()).subjects.length).toBeGreaterThan(0);
+    // F-02: cờ chấm không còn đổi danh mục dùng chung sang dữ liệu mẫu.
+    get.mockResolvedValueOnce({
+      data: apiContentReference({ subjects: [{ code: "MATH", name: "Toán" }] }),
+      response: { ok: true, status: 200 },
+    });
+    const reference = await getContentReference();
+    expect(get).toHaveBeenCalledWith("/api/v1/admin/content-reference");
+    expect(reference.subjects).toEqual([{ code: "MATH", name: "Toán" }]);
   });
 
-  it("GRADING_MOCK tắt: /grading không còn dữ liệu mẫu dù CONTENT_MOCK bật", async () => {
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "true");
+  it("GRADING_MOCK tắt: /grading ném 'chưa nối API'; danh mục gọi API thật và đổi sang kiểu của web", async () => {
     vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "false");
 
     await expect(listGradingAttempts({})).rejects.toThrow(NOT_WIRED);
-    expect((await listQuestions({})).totalElements).toBeGreaterThan(0);
-    expect((await listExams({})).totalElements).toBeGreaterThan(0);
-  });
 
-  it("cả hai cờ tắt: danh mục dùng chung gọi API thật và đổi sang kiểu của web", async () => {
-    vi.stubEnv("NEXT_PUBLIC_THI360_CONTENT_MOCK", "false");
-    vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "false");
     get.mockResolvedValueOnce({
       data: {
         subjects: [{ code: "MATH", name: "Mathematics" }],

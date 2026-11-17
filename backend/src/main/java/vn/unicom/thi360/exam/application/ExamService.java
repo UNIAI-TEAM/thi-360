@@ -145,7 +145,7 @@ public class ExamService {
     @Transactional(readOnly = true)
     public PageResponse<ExamSummaryResponse> listExams(String q, String kind, String subject,
             String scope, String status, Boolean hasEssay, Boolean hasEnglishOption,
-            PageQuery pageQuery) {
+            String checkStatus, Boolean hasUnpublishedChanges, PageQuery pageQuery) {
         StringBuilder where = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
         if (q != null && !q.isBlank()) {
@@ -178,10 +178,50 @@ public class ExamService {
             where.append(" AND e.has_english_option = ?");
             params.add(hasEnglishOption);
         }
+        if (hasUnpublishedChanges != null) {
+            where.append(" AND e.has_unpublished_changes = ?");
+            params.add(hasUnpublishedChanges);
+        }
 
-        String base = " FROM exam.exam e"
+        String joins = " FROM exam.exam e"
                 + " LEFT JOIN catalog.catalog_item k ON k.id = e.kind_item_id"
-                + " LEFT JOIN catalog.catalog_item s ON s.id = e.subject_item_id" + where;
+                + " LEFT JOIN catalog.catalog_item s ON s.id = e.subject_item_id";
+        if (checkStatus != null && !checkStatus.isBlank()) {
+            String wanted = checkStatus.trim().toUpperCase(Locale.ROOT);
+            // Trạng thái hiệu lực làm vị từ DB (spec 5.4, B5): cùng phép so như
+            // ExamCheckValidity.assess — hash cấu trúc, snapshot cấu hình, revision profile,
+            // revision danh mục và từng source revision đã lưu. Count và trang đều dùng
+            // predicate này nên trang nhỏ không vật liệu hóa danh sách id trong Java.
+            joins += " LEFT JOIN exam.exam_structure es ON es.exam_id = e.id"
+                    + " LEFT JOIN exam.exam_kind_profile kp ON kp.exam_item_id = e.kind_item_id"
+                    + " LEFT JOIN exam.exam_check_run cr ON cr.exam_id = e.id";
+            where.append(" AND (CASE WHEN cr.id IS NULL"
+                    + " THEN CASE WHEN e.check_status = 'UNCHECKED' THEN 'UNCHECKED'"
+                    + " ELSE 'NEEDS_RECHECK' END"
+                    + " WHEN es.structure_hash IS NULL"
+                    + " OR es.structure_hash IS DISTINCT FROM cr.structure_hash"
+                    + " THEN 'NEEDS_RECHECK'"
+                    + " WHEN NOT (cr.config_snapshot = jsonb_build_object("
+                    + "'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code,"
+                    + " 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code,"
+                    + " 'structureYear', e.structure_year, 'matrixYear', e.matrix_year,"
+                    + " 'yearsConfirmed', e.years_confirmed, 'timing', e.timing,"
+                    + " 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score,"
+                    + " 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring))"
+                    + " OR cr.profile_revision IS DISTINCT FROM kp.revision"
+                    + " OR cr.catalog_revision IS DISTINCT FROM ?"
+                    + " THEN 'NEEDS_RECHECK'"
+                    + " WHEN EXISTS (SELECT 1 FROM jsonb_each_text(cr.source_revisions) sr"
+                    + " LEFT JOIN questionbank.question_source_revision qs"
+                    + " ON qs.subject_item_id = sr.key::uuid"
+                    + " WHERE sr.value::bigint IS DISTINCT FROM COALESCE(qs.revision, 0))"
+                    + " THEN 'NEEDS_RECHECK'"
+                    + " ELSE cr.result->>'status' END) = ?");
+            params.add(catalogLookup.revision());
+            params.add(wanted);
+        }
+
+        String base = joins + where;
         Long total = jdbcTemplate.queryForObject("SELECT COUNT(*)" + base, Long.class,
                 params.toArray());
         String orderBy = orderClause(pageQuery);
@@ -193,7 +233,9 @@ public class ExamService {
                         + " e.has_unpublished_changes, e.question_count, e.has_essay,"
                         + " e.has_english_option, e.combination_count, e.duration_minutes,"
                         + " e.max_score, e.check_status, e.check_issue_count, e.checked_at,"
-                        + " e.updated_at, e.updated_by, k.code AS kind_code,"
+                        + " e.updated_at, e.updated_by, e.part_code, s.code AS subject_code,"
+                        + " e.timing, e.reference_max, e.practice_scoring, e.revision,"
+                        + " k.code AS kind_code,"
                         + " k.name_vi AS kind_vi, k.name_en AS kind_en" + base + orderBy
                         + " LIMIT ? OFFSET ?",
                 dataParams.toArray());
@@ -264,6 +306,8 @@ public class ExamService {
                 (String) r.get("kind_code"),
                 kindName,
                 (String) r.get("scope"),
+                (String) r.get("part_code"),
+                (String) r.get("subject_code"),
                 (String) r.get("status"),
                 (Integer) r.get("serving_version"),
                 Boolean.TRUE.equals(r.get("has_unpublished_changes")),
@@ -271,14 +315,18 @@ public class ExamService {
                 Boolean.TRUE.equals(r.get("has_essay")),
                 Boolean.TRUE.equals(r.get("has_english_option")),
                 ((Number) r.get("combination_count")).intValue(),
+                (String) r.get("timing"),
                 (Integer) r.get("duration_minutes"),
                 (BigDecimal) r.get("max_score"),
+                (BigDecimal) r.get("reference_max"),
+                (String) r.get("practice_scoring"),
                 new ExamCheckSummary(checkStatus,
                         ((Number) r.get("check_issue_count")).intValue(),
                         toInstant(r.get("checked_at"))),
                 0,
                 toInstant(r.get("updated_at")),
-                people.get(updatedBy));
+                people.get(updatedBy),
+                ((Number) r.get("revision")).longValue());
     }
 
     private static Instant toInstant(Object value) {
@@ -959,8 +1007,9 @@ public class ExamService {
                 exam.getStructureYear(),
                 exam.getMatrixYear(),
                 exam.isYearsConfirmed(),
-                new ExamCheckSummary(exam.getCheckStatus(), exam.getCheckIssueCount(),
-                        exam.getCheckedAt()),
+                new ExamCheckSummary(checkValidity.statuses(List.of(exam.getId()))
+                        .getOrDefault(exam.getId(), exam.getCheckStatus()),
+                        exam.getCheckIssueCount(), exam.getCheckedAt()),
                 0,
                 exam.getUpdatedAt(),
                 updatedBy,

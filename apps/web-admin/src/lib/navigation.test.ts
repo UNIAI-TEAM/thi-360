@@ -181,7 +181,7 @@ describe("NAVIGATION của đợt 1", () => {
 });
 
 describe("mục dữ liệu mẫu của đợt 2", () => {
-  const contentIds = (granted: string[], flags: { content: boolean; grading: boolean }) =>
+  const contentIds = (granted: string[], flags: { grading: boolean }) =>
     filterNavigation(NAVIGATION, new Set(granted), flags)
       .find((g) => g.id === "content")
       ?.items.map((item) => item.id);
@@ -193,13 +193,12 @@ describe("mục dữ liệu mẫu của đợt 2", () => {
     expect(resolveBreadcrumb(NAVIGATION, "/grading/att-bca-001")?.item.id).toBe("grading");
   });
 
-  it("hiện khi có quyền hoặc khi cờ dữ liệu mẫu của mục bật; mỗi cờ chỉ mở các mục của nó", () => {
-    const none = { content: false, grading: false };
+  it("chỉ /grading còn hiện theo cờ dữ liệu mẫu; các mục khác theo quyền (QA UNI-2621)", () => {
+    const none = { grading: false };
     expect(contentIds(["CATALOG.VIEW"], none)).toEqual(["catalog"]);
-    expect(contentIds(["CATALOG.VIEW"], { content: true, grading: true })).toEqual(["questions", "exams", "grading", "catalog"]);
-    expect(contentIds(["CATALOG.VIEW"], { content: true, grading: false })).toEqual(["questions", "exams", "catalog"]);
-    expect(contentIds(["CATALOG.VIEW"], { content: false, grading: true })).toEqual(["grading", "catalog"]);
+    expect(contentIds(["CATALOG.VIEW"], { grading: true })).toEqual(["grading", "catalog"]);
     expect(contentIds(["QUESTION.VIEW", "EXAM.VIEW", "GRADING.VIEW"], none)).toEqual(["questions", "exams", "grading"]);
     expect(contentIds(["EXAM.VIEW"], none)).toEqual(["exams"]);
+    expect(contentIds(["QUESTION.VIEW"], { grading: true })).toEqual(["questions", "grading"]);
   });
 });
