@@ -46,12 +46,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
 
     @Test
     void sampleFormatsAndDistinctLiteraturePassagesAreAvailable() throws Exception {
-        var passages = jdbc.queryForList("""
-                select v.snapshot::text from questionbank.question q
-                join questionbank.question_version v on v.question_id=q.id and v.version_no=q.current_version_no
-                where q.parent_id is null and q.code like 'SEED-2B-LITERATURE-literature_sp2e-%'
-                order by q.code
-                """, String.class);
+        var passages = servingSp2ePassages();
         assertThat(passages).hasSize(4);
         Set<String> texts = new HashSet<>();
         List<Integer> lengths = new ArrayList<>();
@@ -99,6 +94,26 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                   on v.question_id=q.id and v.version_no=q.current_version_no
                 where q.code in ('SEED-2B-ORDER-SINGLE_CHOICE', 'SEED-2B-ORDER-MULTIPLE_CHOICE')
                 """, String.class)).containsExactlyInAnyOrder("false", "false");
+    }
+
+    private List<String> servingSp2ePassages() {
+        return jdbc.queryForList("""
+                select v.snapshot::text from questionbank.question q
+                join questionbank.question_version v on v.question_id=q.id and v.version_no=q.current_version_no
+                where q.parent_id is null and q.status = 'READY' and q.deleted_at is null
+                  and q.code like 'SEED-2B-LITERATURE-literature_sp2e-%'
+                order by q.code
+                """, String.class);
+    }
+
+    @Test
+    @Transactional
+    void retiredSp2ePassageIsNotAvailable() {
+        jdbc.update("""
+                update questionbank.question set status = 'RETIRED'
+                where code = 'SEED-2B-LITERATURE-literature_sp2e-0.2-1'
+                """);
+        assertThat(servingSp2ePassages()).hasSize(3);
     }
 
     @Test
