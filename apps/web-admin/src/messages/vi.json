@@ -5049,6 +5049,7 @@
         "descriptionNoTemplate": "Chưa có mẫu mặc định: nhập số câu, thời lượng và điểm của các phần ngay trên dòng.",
         "versionAtStep2": "Phiên bản cấu trúc chọn ở bước 2",
         "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
+        "regionLabel": "Bảng cấu trúc tổng quan của bài thi",
         "col": {
           "part": "Phần hoặc môn",
           "count": "Số câu",

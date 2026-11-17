@@ -170,7 +170,7 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
     const omitted = (await screen.findByText("Tự luận")).closest("tr")!;
     expect(within(omitted).getByText("tạm bỏ qua")).toBeInTheDocument();
     expect(within(omitted).queryByRole("textbox")).toBeNull();
-    expect(omitted.className).toContain("opacity-60");
+    expect(omitted.className).not.toContain("opacity");
     expect(screen.getAllByRole("textbox", { name: /^Số câu của/ })).toHaveLength(1);
     expect(within(screen.getByRole("complementary", { name: "Tóm tắt" })).getByText("Tổng số câu").parentElement).toHaveTextContent("22");
 
@@ -179,7 +179,10 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
     await user.click(submit());
     expect(await screen.findAllByText("Thời lượng chung phải là số phút nguyên dương.")).not.toHaveLength(0);
     expect(server.calls("POST", EXAMS_PATH)).toHaveLength(0);
-    await user.type(screen.getByRole("textbox", { name: /^Thời lượng chung/ }), "90");
+    const shared = screen.getByRole("textbox", { name: /^Thời lượng chung/ });
+    expect(shared).toBeInvalid();
+    expect(shared).toHaveAccessibleDescription("Thời lượng chung phải là số phút nguyên dương.");
+    await user.type(shared, "90");
     await user.click(submit());
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
     expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ durationMinutes: 90 });

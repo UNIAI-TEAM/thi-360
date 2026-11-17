@@ -5049,6 +5049,7 @@
         "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
         "versionAtStep2": "Structure version is chosen in step 2",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
+        "regionLabel": "Exam structure overview table",
         "col": {
           "part": "Part or subject",
           "count": "Questions",

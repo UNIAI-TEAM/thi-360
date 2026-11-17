@@ -528,7 +528,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
               subjectName={subjectName}
               sharedDuration={{
                 value: values.sharedDuration ? String(values.sharedDuration) : "",
-                invalid: Boolean(formState.errors.sharedDuration),
+                error: formState.errors.sharedDuration?.message,
                 onChange: (text) => setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted }),
               }}
               maxScore={
@@ -536,7 +536,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                   ? undefined
                   : {
                       value: values.maxScore == null ? "" : String(values.maxScore),
-                      invalid: Boolean(formState.errors.maxScore),
+                      error: formState.errors.maxScore?.message,
                       onChange: (text) =>
                         setValue("maxScore", text.trim() === "" ? null : Number(text), {
                           shouldDirty: true,

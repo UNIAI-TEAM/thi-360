@@ -123,9 +123,17 @@ describe("trang Tạo bài thi, bước 1: bảng tổng quan", () => {
     await user.clear(countInputs()[0]!);
     await user.type(countInputs()[0]!, "0");
     expect((await screen.findAllByText("Số câu phải là số nguyên dương.")).length).toBeGreaterThan(0);
+    expect(countInputs()[0]).toHaveAccessibleDescription("Số câu phải là số nguyên dương.");
     await user.click(submitButton());
     expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
     expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  it("khung cuộn ngang của bảng là vùng có tên, focus được bằng phím", async () => {
+    await renderPage();
+    const region = screen.getByRole("region", { name: "Bảng cấu trúc tổng quan của bài thi" });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(within(region).getByRole("table")).toBeInTheDocument();
   });
 
   it("không sửa bảng thì không gửi overview; sửa thì chỉ gửi dòng khác mẫu rồi mở bước 2", async () => {

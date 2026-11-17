@@ -20,7 +20,6 @@ export interface OverviewRow {
   /** Khóa so khớp gửi máy chủ. */
   partId?: string;
   partCode?: string;
-  partOrder?: number;
   sectionId?: string;
   /** Ô nhập dạng chữ; rỗng hợp lệ (mẫu chưa ghi / bài ôn tự đặt). */
   questionCount: string;
@@ -61,7 +60,6 @@ function partRow(part: ExamTemplate["parts"][number], index: number): OverviewRo
     label: part.name,
     subjectCode: "",
     partId: part.partId || undefined,
-    partOrder: part.order ?? index + 1,
     questionCount: formatNumber(base.questionCount),
     durationMinutes: formatNumber(base.durationMinutes),
     maxPoints: formatNumber(base.maxPoints),
@@ -86,7 +84,6 @@ function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sect
     subjectCode: section?.subjectCode ?? "",
     sectionId: section?.sectionId || undefined,
     partId: part.partId || undefined,
-    partOrder: part.order ?? partIndex + 1,
     questionCount: formatNumber(base.questionCount),
     durationMinutes: "",
     maxPoints: "",
@@ -98,7 +95,6 @@ function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sect
 
 /** Nhóm tạm bỏ qua của môn (SPT Toán: Tự luận): hiện mờ, chỉ đọc, không tính vào tổng và không vào `overview`. */
 function omittedRow(
-  part: ExamTemplate["parts"][number],
   partIndex: number,
   sectionIndex: number,
   subjectCode: string,
@@ -110,7 +106,6 @@ function omittedRow(
     kind: "omitted",
     label: block.name,
     subjectCode,
-    partOrder: part.order ?? partIndex + 1,
     questionCount: "",
     durationMinutes: "",
     maxPoints: "",
@@ -142,14 +137,14 @@ export function overviewRowsFromTemplate(
       sections.forEach((section, sectionIndex) => {
         rows.push(sectionRow(part, index, sectionIndex));
         (section.omittedBlocks ?? []).forEach((block, blockIndex) =>
-          rows.push(omittedRow(part, index, sectionIndex, section.subjectCode, block, blockIndex)),
+          rows.push(omittedRow(index, sectionIndex, section.subjectCode, block, blockIndex)),
         );
       });
     } else {
       // Một môn: nhóm tạm bỏ qua nằm ngay dưới dòng phần (SPT Toán: Tự luận).
       sections.forEach((section, sectionIndex) =>
         (section.omittedBlocks ?? []).forEach((block, blockIndex) =>
-          rows.push(omittedRow(part, index, sectionIndex, section.subjectCode, block, blockIndex)),
+          rows.push(omittedRow(index, sectionIndex, section.subjectCode, block, blockIndex)),
         ),
       );
     }
