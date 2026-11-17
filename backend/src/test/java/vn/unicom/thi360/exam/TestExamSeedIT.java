@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -60,6 +61,197 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             assertThat(parts.findValues("groupOrder")).isEmpty();
             assertThat(parts.findValues("shuffle")).isEmpty();
         }
+    }
+
+    @Test
+    void repairMigrationCleansPersistedLegacyRowsWithoutRevisionOrApiLeak() throws Exception {
+        UUID subjectId = UUID.fromString("00000000-0000-7000-8200-000000000201");
+        UUID setId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+        UUID matchingId = UUID.randomUUID();
+        UUID examId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        UUID checkRunId = UUID.randomUUID();
+        UUID publisherId = UUID.randomUUID();
+
+        jdbc.update("""
+                INSERT INTO questionbank.question
+                    (id, code, type, status, subject_item_id, current_version_no, points, revision)
+                VALUES (?, 'LEGACY-REPAIR-SET', 'QUESTION_SET', 'READY', ?, 1, 2, 41)
+                """, setId, subjectId);
+        jdbc.update("""
+                INSERT INTO questionbank.question
+                    (id, code, type, status, parent_id, position, subject_item_id,
+                     current_version_no, points, revision)
+                VALUES (?, 'LEGACY-REPAIR-SET-CHILD', 'SINGLE_CHOICE', 'READY', ?, 0, ?, 1, 1, 17)
+                """, childId, setId, subjectId);
+        jdbc.update("""
+                INSERT INTO questionbank.question
+                    (id, code, type, status, subject_item_id, current_version_no, points, revision)
+                VALUES (?, 'LEGACY-REPAIR-MATCHING', 'MATCHING', 'READY', ?, 1, 2, 19)
+                """, matchingId, subjectId);
+
+        String childSnapshot = """
+                {"content":"legacy child","points":1,
+                 "body":{"type":"SINGLE_CHOICE","shuffleOptions":true,
+                         "options":[{"id":"a","content":"A","correct":true},
+                                    {"id":"b","content":"B","correct":false}]}}
+                """;
+        String setSnapshot = """
+                {"content":"legacy set","points":2,
+                 "body":{"type":"QUESTION_SET","passage":"legacy passage","children":[{
+                   "id":"%s","type":"SINGLE_CHOICE","content":"legacy child","points":1,
+                   "body":{"type":"SINGLE_CHOICE","shuffleOptions":true,
+                           "options":[{"id":"a","content":"A","correct":true},
+                                      {"id":"b","content":"B","correct":false}]}
+                 }]}}
+                """.formatted(childId);
+        String matchingSnapshot = """
+                {"content":"legacy matching","points":2,
+                 "body":{"type":"MATCHING","left":[{"id":"l","content":"L"}],
+                         "right":[{"id":"r","content":"R"}],
+                         "pairs":[{"leftId":"l","rightId":"r","points":2}],
+                         "reuseRight":false,"shuffleLeft":true,"shuffleRight":false}}
+                """;
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot, ready_at) "
+                + "VALUES (?, 1, ?::jsonb, now())", childId, childSnapshot);
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot, ready_at) "
+                + "VALUES (?, 1, ?::jsonb, now())", setId, setSnapshot);
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot, ready_at) "
+                + "VALUES (?, 1, ?::jsonb, now())", matchingId, matchingSnapshot);
+        jdbc.update("""
+                INSERT INTO questionbank.question_source_revision(subject_item_id, revision)
+                VALUES (?, 73) ON CONFLICT (subject_item_id) DO NOTHING
+                """, subjectId);
+
+        String legacyParts = """
+                {"parts":[{"id":"p","order":1,"name":"Legacy part","questionCount":1,
+                  "participation":{"mode":"ALL","choose":null},"sections":[{
+                    "id":"s","subjectCode":"TOAN","questionCount":1,"groupOrder":"SHUFFLE",
+                    "blocks":[
+                      {"id":"b-null","questionType":"QUESTION_SET","questionCount":1,
+                       "setCount":1,"setSize":1,"templateGroupCode":"HSA_MATH_CONTEXT",
+                       "childAnswerType":null,"shuffle":"FIXED"},
+                      {"id":"b-edited","questionType":"QUESTION_SET","questionCount":1,
+                       "setCount":1,"setSize":1,"templateGroupCode":"HSA_MATH_CONTEXT",
+                       "childAnswerType":"MULTIPLE_CHOICE","shuffle":"SHUFFLE"}
+                    ]}],"options":[]}]}
+                """;
+        jdbc.update("""
+                INSERT INTO exam.exam
+                    (id, code, code_normalized, name, scope, timing, status, serving_version,
+                     check_status, has_unpublished_changes, revision)
+                VALUES (?, 'LEGACY-REPAIR-EXAM', 'legacy-repair-exam', 'Legacy repair',
+                        'FULL', 'SHARED', 'PUBLISHED', 1, 'VALID', false, 13)
+                """, examId);
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id, parts, structure_hash) VALUES (?, ?::jsonb, 'stable')",
+                examId, legacyParts);
+        jdbc.update("""
+                INSERT INTO exam.exam_template
+                    (code, kind_code, scope, timing, structure)
+                VALUES ('LEGACY_REPAIR_TEMPLATE', 'HSA', 'FULL', 'SHARED', ?::jsonb)
+                """, legacyParts);
+        jdbc.update("""
+                INSERT INTO exam.exam_version
+                    (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids,
+                     check_run_id, state, status, published_at, published_by)
+                VALUES (?, ?, 1, '{}'::jsonb, ?::jsonb, ARRAY['default'], ARRAY['default'],
+                        ?, 'SERVING', 'PUBLISHED', now(), ?)
+                """, versionId, examId, legacyParts, checkRunId, publisherId);
+
+        List<Map<String, Object>> questionRevisions = jdbc.queryForList(
+                "SELECT id::text AS id, revision FROM questionbank.question ORDER BY id::text");
+        List<Map<String, Object>> sourceRevisions = jdbc.queryForList(
+                "SELECT subject_item_id::text AS id, revision FROM questionbank.question_source_revision "
+                        + "ORDER BY subject_item_id::text");
+        List<Map<String, Object>> examRevisions = jdbc.queryForList(
+                "SELECT id::text AS id, revision FROM exam.exam ORDER BY id::text");
+        Map<String, Object> examState = jdbc.queryForMap(
+                "SELECT status, check_status, serving_version, has_unpublished_changes, revision "
+                        + "FROM exam.exam WHERE id = ?", examId);
+
+        runRepairMigration();
+
+        String repairedSetSnapshot = jdbc.queryForObject(
+                "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?", String.class, setId);
+        String repairedMatchingSnapshot = jdbc.queryForObject(
+                "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?",
+                String.class, matchingId);
+        String repairedTemplate = jdbc.queryForObject(
+                "SELECT structure::text FROM exam.exam_template WHERE code = 'LEGACY_REPAIR_TEMPLATE'",
+                String.class);
+        String repairedStructure = jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
+        String repairedVersion = jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_version WHERE id = ?", String.class, versionId);
+        assertNoLegacyKeys(mapper.readTree(repairedSetSnapshot));
+        assertNoLegacyKeys(mapper.readTree(repairedMatchingSnapshot));
+        assertNoLegacyKeys(mapper.readTree(repairedTemplate));
+        assertNoLegacyKeys(mapper.readTree(repairedStructure));
+        assertNoLegacyKeys(mapper.readTree(repairedVersion));
+        assertHsaMathTypes(mapper.readTree(repairedTemplate));
+        assertHsaMathTypes(mapper.readTree(repairedStructure));
+        assertThat(jdbc.queryForObject(
+                "SELECT structure_hash FROM exam.exam_structure WHERE exam_id = ?", String.class, examId))
+                .isEqualTo("stable");
+        assertThat(jdbc.queryForMap(
+                "SELECT status, check_status, serving_version, has_unpublished_changes, revision "
+                        + "FROM exam.exam WHERE id = ?", examId)).isEqualTo(examState);
+
+        JsonNode setResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/{id}", setId)
+                        .with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode matchingResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/{id}", matchingId)
+                        .with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode structureResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", examId)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode versionResponse = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/versions/1", examId)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertNoLegacyKeys(setResponse);
+        assertNoLegacyKeys(matchingResponse);
+        assertNoLegacyKeys(structureResponse);
+        assertNoLegacyKeys(versionResponse);
+        JsonNode templateResponse = null;
+        for (JsonNode candidate : templates) {
+            if ("LEGACY_REPAIR_TEMPLATE".equals(candidate.path("code").asText())) {
+                templateResponse = candidate;
+                break;
+            }
+        }
+        assertThat(templateResponse).isNotNull();
+        assertNoLegacyKeys(templateResponse);
+
+        runRepairMigration();
+
+        assertThat(jdbc.queryForObject(
+                "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?",
+                String.class, setId)).isEqualTo(repairedSetSnapshot);
+        assertThat(jdbc.queryForObject(
+                "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?",
+                String.class, matchingId)).isEqualTo(repairedMatchingSnapshot);
+        assertThat(jdbc.queryForObject(
+                "SELECT structure::text FROM exam.exam_template WHERE code = 'LEGACY_REPAIR_TEMPLATE'",
+                String.class)).isEqualTo(repairedTemplate);
+        assertThat(jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId))
+                .isEqualTo(repairedStructure);
+        assertThat(jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_version WHERE id = ?", String.class, versionId))
+                .isEqualTo(repairedVersion);
+        assertThat(jdbc.queryForList(
+                "SELECT id::text AS id, revision FROM questionbank.question ORDER BY id::text"))
+                .isEqualTo(questionRevisions);
+        assertThat(jdbc.queryForList(
+                "SELECT subject_item_id::text AS id, revision FROM questionbank.question_source_revision "
+                        + "ORDER BY subject_item_id::text")).isEqualTo(sourceRevisions);
+        assertThat(jdbc.queryForList("SELECT id::text AS id, revision FROM exam.exam ORDER BY id::text"))
+                .isEqualTo(examRevisions);
     }
 
 
@@ -315,6 +507,26 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 .isEqualTo(exams);
         assertThat(jdbc.queryForList("SELECT subject_item_id, revision FROM questionbank.question_source_revision ORDER BY subject_item_id"))
                 .isEqualTo(revisions);
+    }
+
+    private void runRepairMigration() {
+        ScriptUtils.executeSqlScript(
+                DataSourceUtils.getConnection(dataSource),
+                new ClassPathResource("db/migration/exam/V202611171223__repair_legacy_shuffle_data.sql"));
+    }
+
+    private static void assertNoLegacyKeys(JsonNode json) {
+        for (String key : List.of("shuffleOptions", "shuffleLeft", "shuffleRight",
+                "groupOrder", "shuffle", "blockShuffleRule")) {
+            assertThat(json.findValues(key)).as(key).isEmpty();
+        }
+    }
+
+    private static void assertHsaMathTypes(JsonNode json) {
+        assertThat(json.findValues("templateGroupCode").stream().map(JsonNode::asText).toList())
+                .contains("HSA_MATH_CONTEXT");
+        assertThat(json.findValues("childAnswerType").stream().map(JsonNode::asText).toList())
+                .contains("SINGLE_CHOICE", "MULTIPLE_CHOICE");
     }
 
     private static Set<String> codes(JsonNode result) {
