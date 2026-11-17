@@ -96,7 +96,7 @@ export default function CrossInsertDialog({ editor, open, onOpenChange }: Insert
         placeholder={placeholder}
         autoComplete="off"
         spellCheck={false}
-        className="min-w-0 flex-1"
+        className="min-w-[7.5rem] flex-1"
       />
     );
   }
