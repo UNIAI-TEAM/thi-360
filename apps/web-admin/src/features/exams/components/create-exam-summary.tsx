@@ -54,7 +54,7 @@ export function CreateExamSummaryPanel({
   const number = (value: number | null) => (value === null ? "—" : String(value));
 
   return (
-    <section aria-labelledby={headingId}>
+    <section aria-labelledby={headingId} className="flex-[1_1_300px] sticky top-4">
       <Card padding="md" className="flex flex-col gap-4">
         <h2 id={headingId} className="text-title font-semibold text-text">
           {t("title")}

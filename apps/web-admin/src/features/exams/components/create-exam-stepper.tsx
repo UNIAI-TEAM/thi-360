@@ -16,12 +16,12 @@ export function CreateExamStepper() {
   return (
     <ol
       aria-label={t("ariaLabel")}
-      className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-2 sm:gap-2"
+      className="flex flex-col items-start gap-1 rounded-lg border border-border bg-surface p-2 sm:flex-row sm:items-center sm:gap-2"
     >
       {steps.map((step, index) => (
         <li key={step.no} className="flex items-center gap-2">
           {index > 0 && (
-            <span aria-hidden className="text-text-muted">
+            <span aria-hidden className="hidden text-text-muted sm:inline">
               —
             </span>
           )}

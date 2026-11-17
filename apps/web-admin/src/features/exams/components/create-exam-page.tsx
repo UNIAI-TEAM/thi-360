@@ -15,7 +15,7 @@ import {
   Skeleton,
   Textarea,
 } from "@thi360/ui";
-import { ChevronLeft, Lock, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronLeft, Lock, RefreshCw, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -485,162 +485,187 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                   {(controlProps) => (
                     <Input
                       {...controlProps}
-                      {...register("code")}
+                      {...register("name")}
                       autoComplete="off"
-                      autoCapitalize="characters"
-                      spellCheck={false}
-                      maxLength={EXAM_CODE_MAX}
-                      className="min-w-0 flex-1"
+                      maxLength={EXAM_NAME_MAX}
+                      placeholder={t("namePlaceholder")}
                     />
-                    <GenerateCodeButton onClick={() => void generateCode()} loading={suggestion.isFetching} />
-                  </div>
-                )}
-              </FormField>
+                  )}
+                </FormField>
+              </div>
+              <div data-field="kind">
+                <KindSelect kinds={kinds} value={selection.kind} onChange={(kind) => requestScope({ kind })} />
+              </div>
             </div>
-            <div data-field="description">
-              <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_3fr]">
+              <div data-field="code">
+                <FormField label={t("code")} required hint={t("codeHint")} error={formState.errors.code?.message}>
+                  {(controlProps) => (
+                    <div className="flex gap-2">
+                      <Input
+                        {...controlProps}
+                        {...register("code")}
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        maxLength={EXAM_CODE_MAX}
+                        className="min-w-0 flex-1"
+                      />
+                      <GenerateCodeButton onClick={() => void generateCode()} loading={suggestion.isFetching} />
+                    </div>
+                  )}
+                </FormField>
+              </div>
+              <div data-field="description">
+                <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
+                  {(controlProps) => (
+                    <Textarea
+                      {...controlProps}
+                      {...register("description")}
+                      rows={3}
+                      maxLength={EXAM_DESCRIPTION_MAX}
+                      placeholder={t("descriptionPlaceholder")}
+                    />
+                  )}
+                </FormField>
+              </div>
+            </div>
+
+            <div data-field="instructions">
+              <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={formState.errors.instructions?.message}>
                 {(controlProps) => (
-                  <Textarea
-                    {...controlProps}
-                    {...register("description")}
-                    rows={3}
-                    maxLength={EXAM_DESCRIPTION_MAX}
-                    placeholder={t("descriptionPlaceholder")}
+                  <Controller
+                    control={control}
+                    name="instructions"
+                    render={({ field }) => (
+                      <RichTextEditor
+                        {...controlProps}
+                        value={field.value}
+                        onChange={field.onChange}
+                        aria-label={t("instructionsLabel")}
+                        allowImages={false}
+                        fieldContext="instructions"
+                        invalid={Boolean(formState.errors.instructions)}
+                        placeholder={t("instructionsPlaceholder")}
+                      />
+                    )}
                   />
                 )}
               </FormField>
             </div>
-          </div>
+          </FormSection>
 
-          <div data-field="instructions">
-            <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={formState.errors.instructions?.message}>
-              {(controlProps) => (
-                <Controller
-                  control={control}
-                  name="instructions"
-                  render={({ field }) => (
-                    <RichTextEditor
-                      {...controlProps}
-                      value={field.value}
-                      onChange={field.onChange}
-                      aria-label={t("instructionsLabel")}
-                      allowImages={false}
-                      fieldContext="instructions"
-                      invalid={Boolean(formState.errors.instructions)}
-                      placeholder={t("instructionsPlaceholder")}
-                    />
-                  )}
-                />
-              )}
-            </FormField>
-          </div>
-        </FormSection>
+          <FormSection step={2} title={tStep("sections.scope")} description={tStep("sections.scopeDescription", { kind: kindLabel(selection.kind) })}>
+            <CreateExamScopeFields
+              kinds={kinds}
+              subjects={reference.subjects}
+              templates={templates}
+              selection={selection}
+              errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
+              onChange={requestScope}
+            />
 
-        <FormSection step={2} title={tStep("sections.scope")} description={tStep("sections.scopeDescription", { kind: kindLabel(selection.kind) })}>
-          <CreateExamScopeFields
-            kinds={kinds}
-            subjects={reference.subjects}
-            templates={templates}
-            selection={selection}
-            errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
-            onChange={requestScope}
-          />
-
-          {pendingSelection && (
-            <div
-              ref={pendingRef}
-              tabIndex={-1}
-              role="alert"
-              className={cn("flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning-bg p-4", focusRing)}
-            >
-              <div className="flex items-start gap-2.5">
-                <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-                <div className="flex flex-col gap-1">
-                  <p className="font-semibold text-text">{tStep("replace.title", { name: selectionLabel(pendingSelection) })}</p>
-                  <p className="text-body text-text-secondary">{tStep("replace.description")}</p>
+            {pendingSelection && (
+              <div
+                ref={pendingRef}
+                tabIndex={-1}
+                role="alert"
+                className={cn("flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning-bg p-4", focusRing)}
+              >
+                <div className="flex items-start gap-2.5">
+                  <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+                  <div className="flex flex-col gap-1">
+                    <p className="font-semibold text-text">{tStep("replace.title", { name: selectionLabel(pendingSelection) })}</p>
+                    <p className="text-body text-text-secondary">{tStep("replace.description")}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setPendingSelection(null)}>
+                    {tStep("replace.cancel")}
+                  </Button>
+                  <Button type="button" size="sm" onClick={() => applyScope(pendingSelection)}>
+                    {tStep("replace.confirm")}
+                  </Button>
                 </div>
               </div>
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setPendingSelection(null)}>
-                  {tStep("replace.cancel")}
-                </Button>
-                <Button type="button" size="sm" onClick={() => applyScope(pendingSelection)}>
-                  {tStep("replace.confirm")}
+            )}
+          </FormSection>
+
+          <FormSection
+            step={3}
+            title={tOverview("title")}
+            description={
+              templatesStatus === "loading"
+                ? undefined
+                : templateName(template)
+                  ? tOverview("description", { template: templateName(template) ?? "" })
+                  : tOverview("descriptionNoTemplate")
+            }
+          >
+            <TemplateNotes template={template} name={templateName(template) ?? undefined} />
+            <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
+            {templatesStatus === "error" && (
+              <div
+                role="alert"
+                className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="text-body text-text-secondary">
+                  <strong className="font-semibold text-danger">{tOverview("loadError.title")}</strong> {tOverview("loadError.description")}
+                </p>
+                <Button type="button" variant="secondary" size="sm" onClick={onRetryTemplates}>
+                  {t("retry")}
                 </Button>
               </div>
-            </div>
-          )}
-        </FormSection>
+            )}
+            {templatesStatus === "ready" && !template && <p className="text-body text-text-secondary">{tOverview("noTemplate")}</p>}
+            {templatesStatus === "loading" ? (
+              <div aria-busy="true" className="flex flex-col gap-2">
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-10 w-1/2" />
+                <span className="sr-only">{tOverview("loading")}</span>
+              </div>
+            ) : (
+              <ExamOverviewTable
+                rows={rows}
+                timing={values.timing}
+                showPoints={showPoints}
+                onCellChange={onCellChange}
+                issues={cellIssues}
+                subjectName={subjectName}
+                sharedDuration={{
+                  value: sharedText,
+                  error: formState.errors.sharedDuration?.message,
+                  onChange: (text) => {
+                    setSharedText(text);
+                    setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
+                  },
+                }}
+                maxScore={
+                  showPoints
+                    ? undefined
+                    : {
+                        value: maxScoreText,
+                        error: formState.errors.maxScore?.message,
+                        onChange: (text) => {
+                          setMaxScoreText(text);
+                          setValue("maxScore", text.trim() === "" ? null : parseNumber(text), {
+                            shouldDirty: true,
+                            shouldValidate: formState.isSubmitted,
+                          });
+                        },
+                      }
+                }
+              />
+            )}
+          </FormSection>
 
-        <FormSection
-          step={3}
-          title={tOverview("title")}
-          description={
-            templatesStatus === "loading"
-              ? undefined
-              : templateName(template)
-                ? tOverview("description", { template: templateName(template) ?? "" })
-                : tOverview("descriptionNoTemplate")
-          }
-        >
-          <TemplateNotes template={template} name={templateName(template) ?? undefined} />
-          <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
-          {templatesStatus === "error" && (
-            <div
-              role="alert"
-              className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <p className="text-body text-text-secondary">
-                <strong className="font-semibold text-danger">{tOverview("loadError.title")}</strong> {tOverview("loadError.description")}
-              </p>
-              <Button type="button" variant="secondary" size="sm" onClick={onRetryTemplates}>
-                {t("retry")}
-              </Button>
-            </div>
+          {submitError && (
+            <p role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-danger">
+              {submitError}
+            </p>
           )}
-          {templatesStatus === "ready" && !template && <p className="text-body text-text-secondary">{tOverview("noTemplate")}</p>}
-          {templatesStatus === "loading" ? (
-            <div aria-busy="true" className="flex flex-col gap-2">
-              <Skeleton className="h-10" />
-              <Skeleton className="h-10 w-3/4" />
-              <Skeleton className="h-10 w-1/2" />
-              <span className="sr-only">{tOverview("loading")}</span>
-            </div>
-          ) : (
-            <ExamOverviewTable
-              rows={rows}
-              timing={values.timing}
-              showPoints={showPoints}
-              onCellChange={onCellChange}
-              issues={cellIssues}
-              subjectName={subjectName}
-              sharedDuration={{
-                value: sharedText,
-                error: formState.errors.sharedDuration?.message,
-                onChange: (text) => {
-                  setSharedText(text);
-                  setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
-                },
-              }}
-              maxScore={
-                showPoints
-                  ? undefined
-                  : {
-                      value: maxScoreText,
-                      error: formState.errors.maxScore?.message,
-                      onChange: (text) => {
-                        setMaxScoreText(text);
-                        setValue("maxScore", text.trim() === "" ? null : parseNumber(text), {
-                          shouldDirty: true,
-                          shouldValidate: formState.isSubmitted,
-                        });
-                      },
-                    }
-              }
-            />
-          )}
-        </FormSection>
-      </form>
 
           <div className="flex flex-wrap justify-end gap-2">
             {cancelButton}
