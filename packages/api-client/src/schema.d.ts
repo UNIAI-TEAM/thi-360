@@ -2123,7 +2123,6 @@ export interface components {
         /** @description Phạm vi kiến thức có hiệu lực của nhóm */
         AvailableQuestionsKnowledgeScope: {
             competencyCodes?: string[];
-            match?: string;
             nodeIds?: string[];
         };
         /** @description Bộ lọc nguồn câu hỏi của một nhóm */
