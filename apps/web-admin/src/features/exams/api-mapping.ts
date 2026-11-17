@@ -41,7 +41,6 @@ function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   if (!scope) return null;
   return {
     nodeIds: scope.nodeIds ?? [],
-    match: "ANY",
     ...(scope.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
   };
 }
@@ -98,7 +97,6 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
     knowledgeScope: mapScope(block.knowledgeScope),
     tagCodes: block.tagCodes ?? [],
     matrix: mapMatrix(block.matrix),
-    taskTypeCode: null,
     childAnswerType: nullable(block.childAnswerType),
     templateGroupCode: nullable(block.templateGroupCode),
     answerTypeLocked: block.answerTypeLocked ?? false,
@@ -167,7 +165,7 @@ export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
     if (value && typeof value === "object") {
       return Object.fromEntries(
         Object.entries(value as Record<string, unknown>)
-          .filter(([key, item]) => key !== "match" && key !== "taskTypeCode" && item !== null && item !== undefined)
+          .filter(([, item]) => item !== null && item !== undefined)
           .map(([key, item]) => [key, strip(item)]),
       );
     }
@@ -304,7 +302,6 @@ function templateBlock(block: QuestionBlock): ExamTemplateBlock {
     setCount: block.setCount,
     setSize: block.setSize,
     ...(block.expectedScoring ? { expectedScoring: block.expectedScoring } : {}),
-    taskTypeCode: block.taskTypeCode,
     childAnswerType: block.childAnswerType,
     templateGroupCode: block.templateGroupCode,
     answerTypeLocked: block.answerTypeLocked,

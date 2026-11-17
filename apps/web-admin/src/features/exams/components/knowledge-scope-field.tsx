@@ -9,7 +9,7 @@ import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
 import type { KnowledgeScope } from "../types";
 
-const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [], match: "ANY" };
+const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [] };
 
 export interface KnowledgeScopeFieldProps {
   /** Phạm vi riêng; `null` hoặc `nodeIds` rỗng: nhóm kế thừa phạm vi của môn, môn không giới hạn MAPID. */
@@ -22,9 +22,8 @@ export interface KnowledgeScopeFieldProps {
   inherited?: { scope: KnowledgeScope | null };
   reference: ContentReference | undefined;
   subjectCode: string;
-  /** Tên môn hoặc nhóm, cho tên nhóm radio và mô tả hộp chọn. */
+  /** Tên môn hoặc nhóm, cho mô tả hộp chọn. */
   name: string;
-  fieldId: string;
 }
 
 /**

@@ -138,7 +138,7 @@ export function BlockEditor({
     const knowledgeScope =
       codes.length === 0 && (block.knowledgeScope?.nodeIds.length ?? 0) === 0
         ? null
-        : { nodeIds: [], match: "ANY" as const, ...block.knowledgeScope, competencyCodes: codes };
+        : { nodeIds: [], ...block.knowledgeScope, competencyCodes: codes };
     // Chiều năng lực của ma trận đi theo năng lực đã chọn (giữ giá trị của năng lực còn lại).
     const byCompetency = matrix.byCompetency?.length
       ? (codes.length ? codes : competencyChoices.map((item) => item.code)).map((code) => ({
@@ -324,7 +324,6 @@ export function BlockEditor({
       {isSet && <p className="text-caption text-text-muted">{t("setWholeNote")}</p>}
 
       <KnowledgeScopeField
-        fieldId={block.id}
         value={block.knowledgeScope}
         onChange={setScope}
         inherited={{ scope: section.knowledgeScope }}
