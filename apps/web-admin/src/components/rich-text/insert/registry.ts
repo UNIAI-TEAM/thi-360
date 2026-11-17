@@ -33,6 +33,7 @@ import {
   UNDERLINE_LABEL_MARK,
 } from "../extensions";
 import MathSelectionPanel from "./math/selection-panel";
+import { WordPendingMarks } from "./word/pending-marks";
 
 /** Ngữ cảnh của trường đang soạn (spec 3.3/4.1): quyết định mục chèn nào hiện. */
 export type FieldContext = "stem-single-choice" | "set-passage" | "instructions" | "default";
@@ -208,8 +209,8 @@ export const INSERT_REGISTRY: InsertEntry[] = [
     showIn: () => false,
     load: () => import("./word/dialog"),
     openForSelection: () => null,
-    // ED-5 gắn decoration "chỗ tự sửa chưa xác nhận" qua slot này.
-    editorPlugins: () => [],
+    // Decoration "chỗ tự sửa chưa xác nhận" của Dán từ Word (ED-5): không vào HTML, xem word/pending-marks.ts.
+    editorPlugins: () => [WordPendingMarks.configure()],
   },
 ];
 
