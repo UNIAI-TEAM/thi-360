@@ -2,17 +2,18 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { BLANK_NODE } from "../../extensions/names";
 
 /**
- * Chỗ trống đánh số `span.blank[data-blank="n"]` (spec 3.2): `data-blank` = n trỏ tới câu con thứ n theo thứ tự hiện
- * tại (3.5). HTML đã lưu không nhất thiết đúng từng byte dạng chuẩn của bảng mẫu (thứ tự thuộc tính, khoảng trắng, nháy
- * đơn, lớp phụ) nên thẻ được đọc theo thuộc tính chứ không so chuỗi; chỉ thẻ chỗ trống bị đổi số mới được ghi lại đúng
- * dạng chuẩn `<span class="blank" data-blank="n"></span>`, mọi byte còn lại của HTML giữ nguyên.
+ * Numbered blank `span.blank[data-blank="n"]` (spec 3.2): `data-blank` = n points at the n-th sub-question in its
+ * current order (3.5). Stored HTML is not guaranteed to match the canonical form of the template byte for byte
+ * (attribute order, whitespace, single quotes, extra classes), so tags are read by attribute rather than compared as
+ * strings; only a blank whose number changes is rewritten to the canonical form
+ * `<span class="blank" data-blank="n"></span>`, every other byte of the HTML stays as is.
  */
 const SPAN_ELEMENT = /<span\b((?:[^>"']|"[^"]*"|'[^']*')*)>[^<]*<\/span>/gi;
 const ATTRIBUTE = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 
 const blankSpan = (number: number) => `<span class="blank" data-blank="${number}"></span>`;
 
-/** Số `data-blank` của thẻ `<span …>` có lớp `blank` và `data-blank` là số nguyên dương; không phải chỗ trống thì `null`. */
+/** `data-blank` number of a `<span …>` tag with class `blank` and a positive-integer `data-blank`; `null` if it is not a blank. */
 function blankNumberOfAttributes(attributes: string): number | null {
   let isBlank = false;
   let number: number | null = null;
@@ -25,7 +26,7 @@ function blankNumberOfAttributes(attributes: string): number | null {
   return isBlank ? number : null;
 }
 
-/** Thay từng chỗ trống bằng `replace(số, thẻ gốc)`; thẻ khác giữ nguyên. */
+/** Replaces each blank with `replace(number, original tag)`; other tags stay as is. */
 function mapBlanks(html: string, replace: (number: number, span: string) => string): string {
   return html.replace(SPAN_ELEMENT, (span, attributes: string) => {
     const number = blankNumberOfAttributes(attributes);
@@ -33,7 +34,7 @@ function mapBlanks(html: string, replace: (number: number, span: string) => stri
   });
 }
 
-/** Số `data-blank` của các chỗ trống trong HTML, theo thứ tự xuất hiện. */
+/** `data-blank` numbers of the blanks in the HTML, in order of appearance. */
 export function blankNumbersOfHtml(html: string): number[] {
   const numbers: number[] = [];
   mapBlanks(html, (number, span) => {
@@ -43,7 +44,7 @@ export function blankNumbersOfHtml(html: string): number[] {
   return numbers;
 }
 
-/** Số `data-blank` của các chỗ trống trong tài liệu của trình soạn, bỏ node ở `exceptPos`. */
+/** `data-blank` numbers of the blanks in the editor document, skipping the node at `exceptPos`. */
 export function blankNumbersOfDoc(doc: PMNode, exceptPos?: number): number[] {
   const numbers: number[] = [];
   doc.descendants((node, pos) => {
@@ -53,7 +54,7 @@ export function blankNumbersOfDoc(doc: PMNode, exceptPos?: number): number[] {
   return numbers;
 }
 
-/** Câu con (đánh số từ 1) đầu tiên trong `childCount` câu chưa có chỗ trống; `null` khi không còn câu nào. */
+/** First sub-question (numbered from 1) among `childCount` that has no blank yet; `null` when none is left. */
 export function firstChildWithoutBlank(childCount: number, usedNumbers: readonly number[]): number | null {
   const used = new Set(usedNumbers);
   for (let number = 1; number <= childCount; number += 1) {
@@ -63,8 +64,8 @@ export function firstChildWithoutBlank(childCount: number, usedNumbers: readonly
 }
 
 /**
- * Đổi thứ tự câu con: câu ở vị trí `from` (tính từ 0) chuyển tới `to`; chỗ trống của nó đi theo, chỗ trống của các câu
- * con bị dịch chỗ được đánh lại (spec 3.5).
+ * Reorders sub-questions: the one at index `from` (0-based) moves to `to`; its blank follows it, and the blanks of the
+ * sub-questions it displaces are renumbered (spec 3.5).
  */
 export function renumberBlanksAfterMove(html: string, from: number, to: number): string {
   return mapBlanks(html, (number, span) => {
@@ -78,8 +79,8 @@ export function renumberBlanksAfterMove(html: string, from: number, to: number):
 }
 
 /**
- * Xóa câu con ở vị trí `removed` (tính từ 0): chỗ trống của nó bị xóa, số lớn hơn giảm 1 (spec 3.5). Chỉ chỗ trống bị
- * xóa; chữ quanh nó giữ nguyên.
+ * Removes the sub-question at index `removed` (0-based): its blank is deleted and larger numbers drop by 1 (spec 3.5).
+ * Only the blank is removed; the text around it stays as is.
  */
 export function renumberBlanksAfterRemove(html: string, removed: number): string {
   return mapBlanks(html, (number, span) => {
