@@ -141,6 +141,7 @@
       - dòng Thiết kế của FE-1…FE-4 (plan 2B) và FS-5, FB, FA-4 (plan đợt 3) đã cập nhật.
     - **Cook đợt 2B bắt đầu 2026-11-17 23:45 (UTC+7).** Issue cha UNI-2649, 17 sub-issue UNI-2650…UNI-2666 (bảng ở `TASK.md`). Nhánh `integration/dot-2b` từ `develop` 23c64377 (đã có đợt trình soạn và cờ Giữ thứ tự phương án). Orca Run `run_89ebffeca5a8`, thư mục đợt chạy `.thi360-dev/dot-2b-cook/` (tên `dot-2b/` của plan A1 đã dùng cho lane mockup UNI-2599). Sóng 1: BE-1 (bro), BE-2 (Windows), BE-3 (bro).
       - 2026-11-18 01:46 (UTC+7): BE-3 (UNI-2652, PR #81) merge vào `integration/dot-2b`: `answerFormat`, bộ lọc `findCandidates`, nhập câu hỏi. Advisor chạy lại web (261 test) và backend phần câu hỏi (86 test), xanh. Tiến độ 4/100.
+      - 2026-11-18 03:15 (UTC+7): BE-1 (UNI-2650, PR #82) merge: mô hình cấu trúc v2, migration 28 cấu trúc mẫu, hợp đồng API cả đợt (stub 501), api-client mới. Advisor chạy lại backend phần đề thi (299 test) và web (236 test), xanh. Tạm thời đề mẫu HSA, QDA, BCA kiểm tra chưa hợp lệ cho tới BE-4a, BE-5. Tiến độ 14/100. Mở sóng 2: FE-1, FE-2, vòng sau của BE-2.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
