@@ -132,8 +132,6 @@ export type QuestionBody =
       pairs: MatchingPair[];
       /** Một lựa chọn dùng cho nhiều mục trái (`true`) hay một lần (`false`). */
       reuseRight: boolean;
-      shuffleLeft: boolean;
-      shuffleRight: boolean;
     }
   | {
       type: "ESSAY";

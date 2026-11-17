@@ -1001,7 +1001,7 @@ public final class QuestionImportParser {
                 pairPoints.isEmpty() ? null : pairPoints.get(leftPositions.get(entry.getKey()))));
         }
         return new QuestionBody.MatchingBody(
-            QuestionType.MATCHING, leftSides, rightSides, pairs, reuseRight, null, null);
+            QuestionType.MATCHING, leftSides, rightSides, pairs, reuseRight);
     }
 
     private static QuestionBody parseEssay(RowParse row, Raw raw) {

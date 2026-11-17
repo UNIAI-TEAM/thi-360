@@ -197,7 +197,7 @@ SELECT md5('thi360-seed-extra-' || kind.type || '-' || n)::uuid,
            WHEN 'CLOZE' THEN jsonb_build_object('type', kind.type, 'passage', '<p>Text [[x]] [[y]]</p>',
                'blanks', jsonb_build_array(jsonb_build_object('id', 'x', 'answers', jsonb_build_array('one'), 'points', 1),
                                            jsonb_build_object('id', 'y', 'answers', jsonb_build_array('two'), 'points', 1)))
-           ELSE jsonb_build_object('type', kind.type, 'reuseRight', false, 'shuffleLeft', false, 'shuffleRight', false,
+           ELSE jsonb_build_object('type', kind.type, 'reuseRight', false,
                'left', jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>Left one</p>'),
                                          jsonb_build_object('id', 'b', 'content', '<p>Left two</p>')),
                'right', jsonb_build_array(jsonb_build_object('id', 'c', 'content', '<p>Right one</p>'),

@@ -62,8 +62,6 @@ export type WireBody =
       right?: WireSide[] | null;
       pairs?: { leftId?: string | null; rightId?: string | null; points?: number | null }[] | null;
       reuseRight?: boolean | null;
-      shuffleLeft?: boolean | null;
-      shuffleRight?: boolean | null;
     }
   | {
       type: "ESSAY";
@@ -141,8 +139,6 @@ export function fromWireBody(wire: WireBody, childIds: readonly string[] = []): 
           points: pair.points ?? 0,
         })),
         reuseRight: wire.reuseRight ?? false,
-        shuffleLeft: wire.shuffleLeft ?? false,
-        shuffleRight: wire.shuffleRight ?? false,
       };
     case "ESSAY":
       return {

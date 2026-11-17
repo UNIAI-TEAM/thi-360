@@ -159,6 +159,32 @@ class QuestionApiIT extends AbstractIntegrationTest {
         mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.body.shuffleOptions").doesNotExist());
     }
+    @Test
+    void legacyMatchingShuffleFlagsAreAcceptedButNotReturned() throws Exception {
+        var request = (com.fasterxml.jackson.databind.node.ObjectNode)
+                objectMapper.readTree(QuestionTestSupport.createSingleChoiceRequest());
+        request.put("type", "MATCHING");
+        request.set("body", objectMapper.readTree("""
+                {"type":"MATCHING","left":[{"id":"l1","content":"Left"}],
+                 "right":[{"id":"r1","content":"Right"}],
+                 "pairs":[{"leftId":"l1","rightId":"r1","points":1}],
+                 "reuseRight":false,"shuffleLeft":true,"shuffleRight":true}
+                """));
+        MvcResult created = mockMvc.perform(post(BASE)
+                        .with(asUser(Permissions.QUESTION_MODIFY, Permissions.QUESTION_VIEW))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body.shuffleLeft").doesNotExist())
+                .andExpect(jsonPath("$.body.shuffleRight").doesNotExist())
+                .andReturn();
+        UUID id = UUID.fromString(read(created).at("/summary/id").asText());
+        mockMvc.perform(get(BASE + "/{id}", id).with(asUser(Permissions.QUESTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.shuffleLeft").doesNotExist())
+                .andExpect(jsonPath("$.body.shuffleRight").doesNotExist());
+    }
+
 
     @Test
     void createQuestionSetPersistsChildrenAsRows() throws Exception {

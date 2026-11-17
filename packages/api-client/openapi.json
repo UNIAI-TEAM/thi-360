@@ -5080,12 +5080,6 @@
               },
               "type" : "array"
             },
-            "shuffleLeft" : {
-              "type" : "boolean"
-            },
-            "shuffleRight" : {
-              "type" : "boolean"
-            },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"

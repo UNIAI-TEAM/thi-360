@@ -302,6 +302,12 @@ public class ExamPreviewService {
             totalPoints = totalPoints.add(points);
             KnowledgeRef ref = countKnowledge(snapshot, subjectCode);
             JsonNode body = snapshot.path("body");
+            if (body instanceof ObjectNode object && "MATCHING".equals(text(body, "type"))
+                    && (body.has("shuffleLeft") || body.has("shuffleRight"))) {
+                ObjectNode cleaned = object.deepCopy();
+                cleaned.remove(List.of("shuffleLeft", "shuffleRight"));
+                body = cleaned;
+            }
             return new PreviewQuestion(number - 1, id, code, version, unit.answerType().name(), false,
                     text(snapshot, "content"), unit.gradeCode(), unit.difficultyCode(), ref, points,
                     options(body), answer(body), text(snapshot, "solution"), rubric(body), body.isMissingNode() ? null : body);

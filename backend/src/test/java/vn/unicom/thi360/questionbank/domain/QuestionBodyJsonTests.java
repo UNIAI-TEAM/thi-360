@@ -81,5 +81,8 @@ class QuestionBodyJsonTests {
         QuestionBody parsed = MAPPER.readValue(json, QuestionBody.class);
         QuestionBody.MatchingBody body = assertInstanceOf(QuestionBody.MatchingBody.class, parsed);
         assertEquals("l1", body.pairs().get(0).leftId());
+        var serialized = MAPPER.readTree(MAPPER.writeValueAsString(body));
+        assertEquals(false, serialized.has("shuffleLeft"));
+        assertEquals(false, serialized.has("shuffleRight"));
     }
 }

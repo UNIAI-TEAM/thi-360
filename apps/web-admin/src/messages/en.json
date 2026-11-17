@@ -2565,9 +2565,7 @@
         "emptyOption": "(empty)",
         "optionsLegend": "Options",
         "reuseRight": "A choice can be used for several items",
-        "reuseRightHint": "Off: each choice can be assigned to at most one left item.",
-        "shuffleLeft": "Shuffle the left column during the exam",
-        "shuffleRight": "Shuffle the right column during the exam"
+        "reuseRightHint": "Off: each choice can be assigned to at most one left item."
       },
       "set": {
         "hint": "Each sub-question is a full question with its own type, classified like the set. At least 2 sub-questions.",

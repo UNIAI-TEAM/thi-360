@@ -105,10 +105,10 @@ describe("trinh soan Ghep doi", () => {
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
     expect(storedQuestion(id).body).toMatchObject({
       reuseRight: true,
-      shuffleLeft: false,
-      shuffleRight: true,
       pairs: [{ rightId: "r1" }, { rightId: "r1" }, { rightId: "r3" }],
     });
+    expect(storedQuestion(id).body).not.toHaveProperty("shuffleLeft");
+    expect(storedQuestion(id).body).not.toHaveProperty("shuffleRight");
   });
 
   it("tong diem cac cap lech diem cau thi chan luu, Chia deu sua lai", async () => {

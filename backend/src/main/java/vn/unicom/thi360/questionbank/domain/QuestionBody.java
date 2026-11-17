@@ -131,14 +131,13 @@ public sealed interface QuestionBody {
      * một lựa chọn dùng nhiều lần. Sẵn sàng: mọi mục trái có cặp, cặp trỏ tới lựa chọn có thật,
      * {@code reuseRight = false} thì mỗi lựa chọn dùng tối đa một lần, tổng điểm cặp = điểm câu.
      */
+    @JsonIgnoreProperties({"shuffleLeft", "shuffleRight"})
     record MatchingBody(
         QuestionType type,
         List<MatchingSide> left,
         List<MatchingSide> right,
         List<MatchingPair> pairs,
-        Boolean reuseRight,
-        Boolean shuffleLeft,
-        Boolean shuffleRight) implements QuestionBody {
+        Boolean reuseRight) implements QuestionBody {
 
         public MatchingBody {
             type = QuestionType.MATCHING;

@@ -33,14 +33,15 @@ type ApiKnowledgeNode = Schemas["KnowledgeNode"];
 type ApiExamKind = Schemas["ExamKindOption"];
 
 /**
- * Nguồn dữ liệu mẫu dạng web (đọc JSON thuần). Câu mẫu của lane Chấm bài còn cờ `shuffleOptions` cũ: phương án luôn được
- * đảo khi sinh đề, không còn cờ trên câu hỏi, nên bỏ cờ đó khi nạp.
+ * Câu mẫu của lane Chấm bài còn cờ đảo cũ; bỏ chúng khi nạp vì lượt thi luôn tự đảo.
  */
 function withoutShuffleFlag<T>(value: T): T {
   if (Array.isArray(value)) return value.map(withoutShuffleFlag) as T;
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).flatMap(([key, entry]) => (key === "shuffleOptions" ? [] : [[key, withoutShuffleFlag(entry)]])),
+      Object.entries(value).flatMap(([key, entry]) =>
+        ["shuffleOptions", "shuffleLeft", "shuffleRight"].includes(key) ? [] : [[key, withoutShuffleFlag(entry)]],
+      ),
     ) as T;
   }
   return value;

@@ -108,6 +108,24 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         assertThat(question.path("body").path("options")).isNotEmpty();
         assertThat(question.findValues("shuffleOptions")).isEmpty();
     }
+    @Test
+    void previewOmitsLegacyMatchingShuffleFlagsFromStoredSnapshot() throws Exception {
+        Subject subject = subject();
+        UUID questionId = question(subject, "MATCHING", "matching", false);
+        jdbc.update("""
+                update questionbank.question_version set snapshot = jsonb_set(snapshot, '{body}',
+                    '{"type":"MATCHING","left":[],"right":[],"pairs":[],"reuseRight":false,
+                      "shuffleLeft":true,"shuffleRight":false}'::jsonb)
+                where question_id = ? and version_no = 1
+                """, questionId);
+        UUID examId = exam(part(subject.code(), "[{\"id\":\"g\",\"name\":\"Group\",\"questionType\":\"MATCHING\",\"questionCount\":1}]", "null"));
+        JsonNode paper = preview(examId, "{\"pathId\":\"default\",\"seed\":123}").path("paper");
+        JsonNode body = paper.path("parts").get(0).path("blocks").get(0).path("items").get(0).path("question").path("body");
+        assertThat(body.path("type").asText()).isEqualTo("MATCHING");
+        assertThat(body.has("shuffleLeft")).isFalse();
+        assertThat(body.has("shuffleRight")).isFalse();
+    }
+
 
 
     @Test

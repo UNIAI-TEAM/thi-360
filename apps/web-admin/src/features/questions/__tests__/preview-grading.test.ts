@@ -153,8 +153,6 @@ describe("cham thu: quy tac cham theo spec muc 8", () => {
           { leftId: "l3", rightId: "r2", points: 1 },
         ],
         reuseRight: true,
-        shuffleLeft: false,
-        shuffleRight: false,
       },
       2,
     );

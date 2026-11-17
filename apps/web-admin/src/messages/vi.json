@@ -2565,9 +2565,7 @@
         "emptyOption": "(chưa nhập)",
         "optionsLegend": "Tùy chọn",
         "reuseRight": "Một lựa chọn dùng được cho nhiều mục",
-        "reuseRightHint": "Tắt: mỗi lựa chọn chỉ gắn cho tối đa một mục trái.",
-        "shuffleLeft": "Đảo thứ tự cột trái khi thi",
-        "shuffleRight": "Đảo thứ tự cột phải khi thi"
+        "reuseRightHint": "Tắt: mỗi lựa chọn chỉ gắn cho tối đa một mục trái."
       },
       "set": {
         "hint": "Mỗi câu con là một câu đầy đủ với dạng riêng, phân loại theo câu chùm. Cần ít nhất 2 câu con.",

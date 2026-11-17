@@ -89,7 +89,7 @@ class QuestionBodyValidationTests {
             List.of(
                 new MatchingPair("l1", "r1", new BigDecimal("0.5")),
                 new MatchingPair("l2", "r2", new BigDecimal("0.5"))),
-            false, true, true);
+            false);
     }
 
     static QuestionBody essayBody() {
@@ -287,7 +287,7 @@ class QuestionBodyValidationTests {
             List.of(new MatchingSide("l1", "a")),
             List.of(new MatchingSide("r1", "x")),
             List.of(new MatchingPair("l1", "r9", BigDecimal.ONE)),
-            false, false, false);
+            false);
         assertTrue(codes(QuestionBodyValidator.validateSave(input(QuestionType.MATCHING, body), null))
             .contains("QUESTION_PAIR_UNKNOWN_RIGHT"));
     }
@@ -298,7 +298,7 @@ class QuestionBodyValidationTests {
             List.of(new MatchingSide("l1", "a")),
             List.of(new MatchingSide("r1", "x"), new MatchingSide("r2", "y")),
             List.of(new MatchingPair("l1", "r1", BigDecimal.ONE), new MatchingPair("l1", "r2", BigDecimal.ONE)),
-            true, false, false);
+            true);
         assertTrue(codes(QuestionBodyValidator.validateSave(input(QuestionType.MATCHING, body), null))
             .contains("QUESTION_PAIR_DUPLICATE_LEFT"));
     }
@@ -423,7 +423,7 @@ class QuestionBodyValidationTests {
             List.of(new MatchingSide("l1", "a"), new MatchingSide("l2", "b")),
             List.of(new MatchingSide("r1", "x"), new MatchingSide("r2", "y")),
             List.of(new MatchingPair("l1", "r1", BigDecimal.ONE), new MatchingPair("l2", "r2", null)),
-            false, false, false);
+            false);
         QuestionBody rubric = new QuestionBody.EssayBody(QuestionType.ESSAY, "guide",
             List.of(new EssayCriterion("c1", "criterion", null)), null, null);
         for (QuestionBody body : List.of(statements, allMissing, pairs, rubric)) {
@@ -497,7 +497,7 @@ class QuestionBodyValidationTests {
             List.of(new MatchingSide("l1", "a"), new MatchingSide("l2", "b")),
             List.of(new MatchingSide("r1", "x")),
             List.of(new MatchingPair("l1", "r1", new BigDecimal("0.4"))),
-            false, false, false);
+            false);
         List<String> codes = codes(readyErrors(input(QuestionType.MATCHING, body)));
         assertTrue(codes.contains("QUESTION_LEFT_UNPAIRED"));
         assertTrue(codes.contains("QUESTION_PAIR_POINTS_MISMATCH"));
@@ -507,7 +507,7 @@ class QuestionBodyValidationTests {
             List.of(new MatchingSide("r1", "x")),
             List.of(new MatchingPair("l1", "r1", new BigDecimal("0.5")),
                 new MatchingPair("l2", "r1", new BigDecimal("0.5"))),
-            false, false, false);
+            false);
         assertTrue(codes(readyErrors(input(QuestionType.MATCHING, reused))).contains("QUESTION_RIGHT_REUSED"));
     }
 
@@ -527,7 +527,7 @@ class QuestionBodyValidationTests {
             List.of("SUBJECT_MISSING", "GRADE_MISSING", "DIFFICULTY_MISSING")));
         QuestionBody matching = new QuestionBody.MatchingBody(QuestionType.MATCHING,
             List.of(new MatchingSide("l", "<p> </p>")), List.of(new MatchingSide("r", "")),
-            List.of(new MatchingPair("l", "r", BigDecimal.ONE)), false, false, false);
+            List.of(new MatchingPair("l", "r", BigDecimal.ONE)), false);
         QuestionInput draft = input(QuestionType.MATCHING, matching);
         assertTrue(QuestionBodyValidator.validateSave(draft, null).isEmpty());
         var errors = readyErrors(draft);
@@ -602,7 +602,7 @@ class QuestionBodyValidationTests {
                 new MatchingSide("r3", "<p>Phải 3</p>")),
             List.of(new MatchingPair("l1", "r1", new BigDecimal("0.5")),
                 new MatchingPair("l2", "r2", new BigDecimal("0.5"))),
-            false, true, true);
+            false);
         QuestionInput matchingInput = input(QuestionType.MATCHING, matching);
         assertTrue(QuestionBodyValidator.validateSave(matchingInput, null).isEmpty());
         var matchingErrors = readyErrors(matchingInput);

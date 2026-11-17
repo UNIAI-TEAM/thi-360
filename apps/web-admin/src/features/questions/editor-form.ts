@@ -72,8 +72,6 @@ export interface EditorBody {
   right: EditorMatchRight[];
   /** Ghép đôi: một lựa chọn dùng cho nhiều mục trái (`true`) hay một lần (`false`). */
   reuseRight: boolean;
-  shuffleLeft: boolean;
-  shuffleRight: boolean;
   /** Tự luận: hướng dẫn chấm (bắt buộc khi Sẵn sàng), tiêu chí chấm (tùy chọn), bài làm mẫu, số chữ gợi ý (rỗng: không giới hạn). */
   gradingGuide: string;
   rubric: EditorCriterion[];
@@ -187,8 +185,6 @@ export function emptyBody(type: QuestionType, locale: AppLocale = "vi"): EditorB
     left: matchRight.map((right, index) => emptyMatchLeft(right.id, matchShare[index] ?? "")),
     right: matchRight,
     reuseRight: false,
-    shuffleLeft: false,
-    shuffleRight: true,
     gradingGuide: "",
     rubric: [],
     sampleAnswer: "",
@@ -315,8 +311,6 @@ export function bodyToEditor(body: QuestionBody, locale: AppLocale = "vi"): Edit
         }),
         right: body.right.map((item) => ({ ...item })),
         reuseRight: body.reuseRight,
-        shuffleLeft: body.shuffleLeft,
-        shuffleRight: body.shuffleRight,
       };
     }
     case "QUESTION_SET":
@@ -453,8 +447,6 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
           .filter((item) => item.rightId)
           .map((item) => ({ leftId: item.id, rightId: item.rightId, points: parsePoints(item.points) })),
         reuseRight: body.reuseRight,
-        shuffleLeft: body.shuffleLeft,
-        shuffleRight: body.shuffleRight,
       };
     case "QUESTION_SET":
       return { type, passage: trimmed(content), childIds: [] };

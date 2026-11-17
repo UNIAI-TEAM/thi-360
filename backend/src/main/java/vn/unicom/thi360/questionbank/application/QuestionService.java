@@ -1041,7 +1041,7 @@ public class QuestionService {
                     b.type(),
                     sanitizeSides(b.left(), path + ".left", errors),
                     sanitizeSides(b.right(), path + ".right", errors),
-                    b.pairs(), b.reuseRight(), b.shuffleLeft(), b.shuffleRight());
+                    b.pairs(), b.reuseRight());
             case QuestionBody.EssayBody b -> new QuestionBody.EssayBody(
                     b.type(),
                     cleanField(b.gradingGuide(), path + ".gradingGuide", errors),

@@ -47,6 +47,9 @@ class OpenApiExportIT extends AbstractIntegrationTest {
         assertObjectKeysSorted(root, "$");
 
         JsonNode schemas = root.path("components").path("schemas");
+        JsonNode matching = schemas.path("MatchingBody").path("allOf").get(1).path("properties");
+        assertThat(matching.has("shuffleLeft")).isFalse();
+        assertThat(matching.has("shuffleRight")).isFalse();
         JsonNode versionParts = schemas.path("ExamVersionDetail").path("properties").path("parts");
         assertThat(versionParts.path("type").asText()).isEqualTo("array");
         assertThat(versionParts.path("items").path("$ref").asText()).isEqualTo("#/components/schemas/ExamPart");

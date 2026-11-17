@@ -4440,8 +4440,6 @@ export interface components {
             pairs?: components["schemas"]["MatchingPair"][];
             reuseRight?: boolean;
             right?: components["schemas"]["MatchingSide"][];
-            shuffleLeft?: boolean;
-            shuffleRight?: boolean;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });

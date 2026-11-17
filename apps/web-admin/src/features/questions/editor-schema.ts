@@ -304,8 +304,6 @@ const bodySchema = z.object({
   left: z.array(z.object({ id: z.string(), content: z.string(), rightId: z.string(), points: z.string() })),
   right: z.array(z.object({ id: z.string(), content: z.string() })),
   reuseRight: z.boolean(),
-  shuffleLeft: z.boolean(),
-  shuffleRight: z.boolean(),
   scoringMethod: z.enum(TRUE_FALSE_METHODS),
   scoringRule: z.enum(MULTIPLE_CHOICE_RULES),
   scoreTable: z.array(z.string()),
