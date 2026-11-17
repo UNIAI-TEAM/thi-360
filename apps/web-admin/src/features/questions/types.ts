@@ -142,6 +142,11 @@ export type QuestionBody =
       wordLimit: number | null;
     };
 
+/** Số bắt đầu đánh chỗ trống để truyền cho `RichTextView` khi dựng ngữ liệu; dạng khác câu chùm không có chỗ trống (1). */
+export function blankNumberStartOf(body: QuestionBody): number {
+  return body.type === "QUESTION_SET" ? body.blankNumberStart : 1;
+}
+
 export interface QuestionDetail extends QuestionSummary {
   /** Đề bài. Mockup lưu chữ thuần; trình soạn HTML là việc của FE-4. */
   content: string;

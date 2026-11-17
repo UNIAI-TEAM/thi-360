@@ -7,7 +7,7 @@ import { useId } from "react";
 import { questionHtmlText, RichTextView } from "@/components/rich-text";
 import { ClozePassage } from "../components/cloze-passage";
 import { optionLetter, statementLetter } from "../components/question-editor-shared";
-import type { QuestionDetail } from "../types";
+import { blankNumberStartOf, type QuestionDetail } from "../types";
 import { countWords, emptyAnswer, type PartResult, type PartState, type PreviewAnswer, type QuestionResult } from "./grading";
 import { roundScore, useScoreFormat } from "./score-format";
 
@@ -41,7 +41,7 @@ export function QuestionPlayer({ question, answer, onChange, result, headingLeve
             body.type === "QUESTION_SET" && "rounded-lg border border-border bg-subtle p-3.5",
           )}
         >
-          {passage ? <RichTextView html={passage} /> : t("noContent")}
+          {passage ? <RichTextView html={passage} blankNumberStart={blankNumberStartOf(body)} /> : t("noContent")}
         </div>
       )}
       {question.attachmentIds.length > 0 && (

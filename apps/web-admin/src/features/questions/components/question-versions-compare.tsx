@@ -7,6 +7,7 @@ import { RichTextView } from "@/components/rich-text";
 import { indexKnowledge, knowledgeName } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { QuestionVersion } from "../editor-types";
+import { blankNumberStartOf } from "../types";
 import { diffSnapshots, SNAPSHOT_FIELDS, type QuestionVersionChange } from "../editor-versioning";
 import { describeBody } from "./question-detail-body";
 
@@ -61,7 +62,7 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
       case "points":
         return String(change[side]);
       case "content":
-        return <RichTextView html={change[side]} />;
+        return <RichTextView html={change[side]} blankNumberStart={blankNumberStartOf((side === "before" ? before : after).snapshot.body)} />;
       case "solution":
         return change[side] ? <RichTextView html={change[side]} /> : t("none");
       case "tagCodes":
