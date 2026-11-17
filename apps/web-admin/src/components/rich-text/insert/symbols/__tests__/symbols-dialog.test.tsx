@@ -193,6 +193,21 @@ describe("symbols dialog: search", () => {
     expect(screen.queryByRole("button", { name: names.unitOhm })).toBeNull();
   });
 
+  it("announces an empty result in a status region that was already in the page", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor());
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    await user.type(screen.getByRole("searchbox", { name: t.searchLabel }), "zzzz");
+
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent(t.noResults);
+
+    await user.clear(screen.getByRole("searchbox", { name: t.searchLabel }));
+    expect(status).toBeEmptyDOMElement();
+  });
+
   it("matches English names and the character itself, and says so when nothing matches", async () => {
     const user = userEvent.setup();
     renderDialog(createEditor());

@@ -98,11 +98,10 @@ export default function SymbolsInsertDialog({ editor, open, onOpenChange }: Inse
         </div>
 
         <div className="flex max-h-[min(55vh,26rem)] flex-col gap-4 overflow-y-auto pr-1">
-          {groups.length === 0 && (
-            <p role="status" className="text-body text-text-muted">
-              {t("noResults")}
-            </p>
-          )}
+          {/* Vùng thông báo luôn có trong DOM để trình đọc màn hình đọc được chữ "không có kết quả" khi nó xuất hiện. */}
+          <p role="status" className={groups.length === 0 ? "text-body text-text-muted" : "sr-only"}>
+            {groups.length === 0 ? t("noResults") : ""}
+          </p>
           {groups.map((group) => {
             const items: SymbolGridItem[] = group.entries.map((entry) => ({
               glyph: glyphOf(entry),
