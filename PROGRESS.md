@@ -71,7 +71,7 @@
     - Sau khi triển khai lên CSDL dev/demo: bấm Kiểm tra lại các bài thi đã kiểm tra (đổi danh mục và bỏ khóa đảo cũ). Chưa có dữ liệu thật, chưa có môi trường thật (M.Trường, 17/11).
     - Để lại: ảnh trong nội dung nhập tệp (luồng nhập chỉ nhận chữ); chữ "(UniNote 11.2)" hiện trên banner bài thi đã công bố (tên tài liệu nội bộ, sửa đợt sau); nhãn tiếng Anh số ít khi đếm 1; G5 (chỉ báo chạy kiểm tra sâu sau khi đổi tab) mới kiểm bằng giả lập.
     - Chưa có xác nhận: dạng "Hoàn thành câu" thay cho phương án 12/12/11; SP2E Toán 2026 90 phút; THPTQG Tin học phần II 6 câu; thứ tự nhóm có luôn đảo không.
-  - Bản demo trên VPS vẫn chạy `develop` @ `b4bb20f` (trước đợt 2 backend), chưa triển khai lại.
+  - Bản demo trên VPS chạy `develop` @ `5f2767c` từ 2026-11-17 (đã bỏ cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK`; Ngân hàng câu hỏi, Bài thi chạy trên backend thật với dữ liệu mẫu và 28 đề test; `/grading` vẫn là dữ liệu mẫu).
 
 ### Nhật ký đợt 1
 
