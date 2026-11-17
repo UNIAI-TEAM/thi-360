@@ -98,7 +98,8 @@ function isMath(node: PMNode): boolean {
 }
 
 function nodeIs(name: string) {
-  return (target: PMNode | PMMark) => target instanceof PMNode && target.type.name === name;
+  // `null` = không khớp: matchSelection / nháy đúp chỉ coi null|undefined là "không khớp", `false` sẽ thắng mọi node.
+  return (target: PMNode | PMMark) => (target instanceof PMNode && target.type.name === name ? true : null);
 }
 
 /**
