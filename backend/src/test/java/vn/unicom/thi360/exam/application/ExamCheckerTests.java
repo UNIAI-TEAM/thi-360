@@ -204,7 +204,39 @@ class ExamCheckerTests {
                 """;
         JsonNode result = check(exam, document(doc)).result();
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
-        assertThat(issueCodes(result)).contains("REMAINDER_GROUP_INVALID");
+        assertThat(issueCodes(result)).contains("SECTION_TOTAL_MISMATCH");
+    }
+
+    @Test
+    void omittedEssayIsReportedWithoutAffectingTotalsOrRequiringManualGrading() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        String doc = """
+                {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":1,"blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1},
+                {"id":"essay","questionType":"ESSAY","questionCount":1,"omitted":true}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        assertThat(issueCodes(result)).contains("OMITTED_GROUPS_PRESENT").doesNotContain("MANUAL_GRADING_REQUIRED");
+        JsonNode issue = result.path("groups").findValues("issues").stream()
+                .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                .filter(value -> "OMITTED_GROUPS_PRESENT".equals(value.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(issue.path("location").path("blockId").asText()).isEqualTo("essay");
+    }
+
+    @Test
+    void incompleteChildBoundsAreReportedBeforeConstructingSolverInput() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        String doc = """
+                {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":1,"blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1,
+                "childConditions":[{"from":1}]}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(issueCodes(result)).contains("SECTION_INCOMPLETE");
+        verify(source, never()).findCandidates(any(), anyInt());
     }
 
     @Test
@@ -347,24 +379,25 @@ class ExamCheckerTests {
                 "options":[{"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":3,
                 "countsByPick":[17,17,16],"sections":[%s]}]}]}
                 """.formatted(String.join(",", sections));
-        // FU-BE4a-1: BE-5 subtracts the TrimPolicy drop from SUBJECT_CHOICE totals, restoring VALID for HSA.
         JsonNode path = check(exam, document(doc)).result().path("paths").get(0);
         assertThat(path.path("result").asText()).isEqualTo("INVALID");
         assertThat(path.path("selections")).hasSize(10);
-        // FU-BE4a-1: full-count totals are interim until BE-5 applies the TrimPolicy drop.
         for (JsonNode selection : path.path("selections")) {
-            assertThat(selection.path("result").asText()).isEqualTo("INVALID");
             assertThat(selection.path("counts")).hasSize(3);
             for (JsonNode count : selection.path("counts")) assertThat(count.asInt()).isEqualTo(17);
             int social = 0;
             for (JsonNode code : selection.path("subjectCodes")) {
                 if (List.of("D", "E").contains(code.asText())) social++;
             }
-            JsonNode points = java.util.stream.StreamSupport.stream(selection.path("issues").spliterator(), false)
-                    .filter(issue -> "POINTS_TOTAL_MISMATCH".equals(issue.path("code").asText()))
-                    .findFirst().orElseThrow();
-            // FU-BE4a-1: this includes 17 + 17 + 17 before the SUBJECT_CHOICE trim.
-            assertThat(points.path("available").asInt()).isEqualTo(51 + 17 * social);
+            if (social == 0) {
+                assertThat(selection.path("result").asText()).isEqualTo("VALID");
+            } else {
+                assertThat(selection.path("result").asText()).isEqualTo("INVALID");
+                JsonNode points = java.util.stream.StreamSupport.stream(selection.path("issues").spliterator(), false)
+                        .filter(issue -> "POINTS_TOTAL_MISMATCH".equals(issue.path("code").asText()))
+                        .findFirst().orElseThrow();
+                assertThat(points.path("available").asInt()).isEqualTo(50 + 17 * social - (social == 1 ? 1 : 0));
+            }
         }
     }
 

@@ -73,6 +73,44 @@ class ExamCheckDiagnosticTests {
                 .path("code").asText()).isEqualTo("SUBJECT_QUOTA_INFEASIBLE");
     }
 
+    @Test
+    void slotShortageIdentifiesParentBlockAndSlot() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        ExamStructureDocument doc = mapper.readValue("""
+                {"parts":[{"id":"p","sections":[{"id":"s","subjectCode":"PHY",
+                "blocks":[{"id":"b","name":"Passages","questionType":"QUESTION_SET"}]}]}]}
+                """, ExamStructureDocument.class);
+        var issue = new ExamCheckSolverIssues(new ExamCheckIssues(mapper), doc, 30)
+                .failure(SolveReason.INSUFFICIENT_SOURCE, "PHY", "b:slot:4", null, List.of());
+        assertThat(issue.path("code").asText()).isEqualTo("SLOT_SOURCE_SHORTAGE");
+        assertThat(issue.path("location").path("partId").asText()).isEqualTo("p");
+        assertThat(issue.path("location").path("sectionId").asText()).isEqualTo("s");
+        assertThat(issue.path("location").path("blockId").asText()).isEqualTo("b");
+        assertThat(issue.path("location").path("slotIndex").asInt()).isEqualTo(4);
+    }
+
+    @Test
+    void missingCombinationSubjectNamesOnlyAffectedCodes() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        ExamStructureDocument doc = mapper.readValue("""
+                {"parts":[{"id":"p","codeSource":{"source":"GLOBAL_LIST"},"subjectPool":[
+                {"id":"physics","subjectCode":"PHY","blocks":[]},
+                {"id":"biology","subjectCode":"BIO","blocks":[]}]}]}
+                """, ExamStructureDocument.class);
+        var definitions = java.util.Map.of("p", java.util.Map.of(
+                "QD01", List.of("PHY", "CHEM"),
+                "QD02", List.of("CHEM", "BIO"),
+                "QD03", List.of("PHY", "BIO")));
+        var problems = new ExamCheckRules(mapper, null, doc, definitions).combinationIssues();
+        assertThat(problems).hasSize(1);
+        var issue = problems.getFirst();
+        assertThat(issue.path("code").asText()).isEqualTo("COMBINATION_SUBJECT_MISSING");
+        assertThat(issue.path("subjectCode").asText()).isEqualTo("CHEM");
+        assertThat(issue.path("location").path("partId").asText()).isEqualTo("p");
+        assertThat(issue.path("affectedCodes")).extracting(node -> node.asText())
+                .containsExactlyInAnyOrder("QD01", "QD02");
+    }
+
     private static Unit unit(QuestionType type, ScoringDetails scoring) {
         return new Unit(null, null, type, null, null, List.of(), List.of(), null, scoring);
     }

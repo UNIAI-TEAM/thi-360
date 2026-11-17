@@ -155,13 +155,49 @@ final class ExamCheckPathPresenter {
             if (info == null) continue;
             int sectionCount = section.questionCount() == null ? 0 : section.questionCount();
             int fixed = section.groups().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
+            Map<String, List<GroupQuota>> groupsByBlock = new LinkedHashMap<>();
             for (GroupQuota group : section.groups()) {
-                QuestionBlock block = info.section.blocks().stream().filter(candidate -> Objects.equals(candidate.id(), group.groupId()))
+                String blockId = group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
+                groupsByBlock.computeIfAbsent(blockId, ignored -> new ArrayList<>()).add(group);
+            }
+            for (var entry : groupsByBlock.entrySet()) {
+                QuestionBlock block = info.section.blocks().stream().filter(candidate -> Objects.equals(candidate.id(), entry.getKey()))
                         .findFirst().orElse(null);
                 if (block == null) continue;
-                int required = group.kind() == GroupQuota.GroupKind.SET ? fixedCount(group)
-                        : group.questionCount() == null ? Math.max(0, sectionCount - fixed) : group.questionCount();
-                blocks.add(block(info, block, group, required, allIssues));
+                ObjectNode combined = null;
+                for (GroupQuota group : entry.getValue()) {
+                    int required = group.kind() == GroupQuota.GroupKind.SET ? fixedCount(group)
+                            : group.questionCount() == null ? Math.max(0, sectionCount - fixed) : group.questionCount();
+                    ObjectNode row = block(info, block, group, required, allIssues);
+                    if (combined == null) combined = row;
+                    else {
+                        combined.put("required", combined.path("required").asInt() + required);
+                        if ("NOT_FOUND".equals(row.path("result").asText())) combined.put("result", "NOT_FOUND");
+                        else if ("UNCONFIRMED".equals(row.path("result").asText())
+                                && !"NOT_FOUND".equals(combined.path("result").asText())) combined.put("result", "UNCONFIRMED");
+                        ArrayNode existing = (ArrayNode) combined.path("issues");
+                        for (var issue : row.path("issues")) {
+                            boolean present = false;
+                            for (var value : existing) if (value.path("key").equals(issue.path("key"))) present = true;
+                            if (!present) existing.add(issue);
+                        }
+                    }
+                }
+                if (combined != null) {
+                    if (sources.complete(entry.getValue())) {
+                        combined.put("available", sources.union(entry.getValue()).size());
+                        if (block.setSize() != null) {
+                            long sets = entry.getValue().stream().flatMap(group -> sources.pool(group).candidates().stream())
+                                    .filter(candidate -> candidate.setId() != null && candidate.units().size() == block.setSize())
+                                    .map(candidate -> candidate.questionId()).distinct().count();
+                            combined.put("availableSets", sets);
+                        }
+                    } else {
+                        combined.putNull("available");
+                        combined.putNull("availableSets");
+                    }
+                    blocks.add(combined);
+                }
             }
             subjects.add(subject(info, section, sectionCount));
         }
@@ -266,7 +302,7 @@ final class ExamCheckPathPresenter {
         }
         if (!pool.complete()) {
             ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.DEADLINE_EXCEEDED,
-                    info.section.subjectCode(), block.id(), null, List.of());
+                    info.section.subjectCode(), group.groupId(), null, List.of());
             addBlockIssue(pathIssues, blockIssues, issue);
         } else {
             boolean set = group.kind() == GroupQuota.GroupKind.SET;
@@ -274,7 +310,7 @@ final class ExamCheckPathPresenter {
             int target = set ? group.setCount() : required;
             if (available < target) {
                 ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE,
-                        info.section.subjectCode(), block.id(), null, List.of());
+                        info.section.subjectCode(), group.groupId(), null, List.of());
                 issue.put("required", target);
                 issue.put("available", available);
                 addBlockIssue(pathIssues, blockIssues, issue);
