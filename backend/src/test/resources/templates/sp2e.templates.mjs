@@ -5,7 +5,7 @@ const names={TOAN:'Toán',VAN:'Ngữ văn',LY:'Vật lí',HOA:'Hóa học',SINH:
 const source=[];
 const b=(name,questionType,questionCount,points,extra={})=>({name,questionType,questionCount,requiredPointsPerQuestion:points,...extra});
 const set=(name,n,size,points,extra={})=>b(name,'QUESTION_SET',n*size,points,{setCount:n,setSize:size,childAnswerType:'SINGLE_CHOICE',...extra});
-const tf=(n,points=1,extra={})=>b('Đúng/Sai','TRUE_FALSE',n,points,{itemShape:{statements:4},...extra});
+const tf=(n,points=1,extra={})=>b('Đúng/Sai','TRUE_FALSE',n,points,{itemShape:{statements:4},expectedScoring:{trueFalseMethod:'COUNT_TABLE',trueFalseTable:[0.1,0.25,0.5,1]},...extra});
 const part=(name,code,blocks,maxPoints)=>{
   const questionCount=blocks.reduce((n,x)=>n+(x.omitted?0:x.questionCount),0);
   return {name,questionCount,questionCountOnPaper:questionCount,questionCountRequired:questionCount,participation:{mode:'ALL'},maxPoints:maxPoints||null,sections:[{subjectCode:code,questionCount,blocks}],options:[]};
