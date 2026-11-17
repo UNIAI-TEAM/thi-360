@@ -96,7 +96,6 @@ export function BlockEditor({
     answerTypes: block.questionType === null ? quotaTypes : [],
     childAnswerType: block.childAnswerType,
     knowledgeScope: effectiveScope(block, section),
-    taskTypeCode: block.taskTypeCode,
     tagCodes: block.tagCodes,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
   });
@@ -154,7 +153,6 @@ export function BlockEditor({
   );
 
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
-  const taskTypes = reference?.taskTypes ?? [];
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -315,16 +313,6 @@ export function BlockEditor({
               {...controlProps}
               value={block.requiredPointsPerQuestion}
               onValueChange={(requiredPointsPerQuestion) => update({ requiredPointsPerQuestion })}
-            />
-          )}
-        </FormField>
-        <FormField label={isSet ? t("taskTypeSet") : t("taskType")} hint={isSet ? t("taskTypeSetHint") : undefined}>
-          {(controlProps) => (
-            <Select
-              {...controlProps}
-              value={block.taskTypeCode ?? ANY}
-              onValueChange={(value) => update({ taskTypeCode: value === ANY ? null : value })}
-              options={[{ value: ANY, label: t("taskTypeAny") }, ...taskTypes.map((item) => ({ value: item.code, label: item.name }))]}
             />
           )}
         </FormField>

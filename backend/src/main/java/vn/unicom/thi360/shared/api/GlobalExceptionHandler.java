@@ -206,6 +206,14 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.BAD_GATEWAY, ex.getCode(), message, List.of(), request);
     }
 
+    @ExceptionHandler(NotImplementedException.class)
+    @ResponseStatus(HttpStatus.NOT_IMPLEMENTED)
+    public ResponseEntity<ApiError> handleNotImplemented(NotImplementedException ex, HttpServletRequest request) {
+        Locale locale = resolveLocale(request);
+        String message = resolveMessage("NOT_IMPLEMENTED", null, "INTERNAL_ERROR", locale);
+        return respond(HttpStatus.NOT_IMPLEMENTED, "NOT_IMPLEMENTED", message, List.of(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex, HttpServletRequest request) {

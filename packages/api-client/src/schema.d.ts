@@ -766,6 +766,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/exams/{id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Cập nhật tổng quan bài thi */
+        put: operations["updateOverview"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/exams/{id}/preview": {
         parameters: {
             query?: never;
@@ -794,6 +811,23 @@ export interface paths {
         get: operations["structure"];
         /** Lưu cấu trúc bản làm việc */
         put: operations["updateStructure"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{id}/structure/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tổng hợp cấu trúc bài thi */
+        get: operations["structureSummary"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2089,7 +2123,6 @@ export interface components {
             requiredPointsPerQuestion?: number;
             subjectCode: string;
             tagCodes?: string[];
-            taskTypeCode?: string;
         };
         AvailableQuestionsResponse: {
             byAnswerType?: components["schemas"]["AvailableQuestionsAnswerType"][];
@@ -2109,14 +2142,26 @@ export interface components {
             trueFalseTable?: number[];
         };
         BlockMatrix: {
+            /** @enum {string} */
+            basis?: "QUESTION" | "PROMPT" | "POINTS";
             byCompetency?: components["schemas"]["MatrixDimensionValue"][];
             byDifficulty?: components["schemas"]["MatrixDimensionValue"][];
             byGrade?: components["schemas"]["MatrixDimensionValue"][];
             cells?: components["schemas"]["MatrixCell"][];
             /** @enum {string} */
+            difficultyEnforcement?: "REQUIRED" | "REFERENCE";
+            /** @enum {string} */
+            gradeEnforcement?: "REQUIRED" | "REFERENCE";
+            /** @enum {string} */
             mode?: "COMBINED" | "SEPARATE";
             /** @enum {string} */
             unit?: "COUNT" | "PERCENT";
+        };
+        BlockSlot: {
+            /** Format: int32 */
+            index?: number;
+            knowledgeScope?: components["schemas"]["KnowledgeScope"];
+            tagCodes?: string[];
         };
         /** @description Nguồn dữ liệu đang chặn xóa tài khoản */
         Blocker: {
@@ -2132,6 +2177,12 @@ export interface components {
              * @example COMMERCE
              */
             source: string;
+        };
+        Bucket: {
+            codes?: string[];
+            /** Format: int32 */
+            count?: number;
+            percent?: number;
         };
         /** @description Kết quả xử lý từng tài khoản trong thao tác gán hàng loạt */
         BulkAuthzItemResponse: {
@@ -2816,6 +2867,13 @@ export interface components {
             /** @description Mật khẩu hiện tại */
             oldPassword: string;
         };
+        ChildCondition: {
+            /** Format: int32 */
+            from?: number;
+            nodeIds?: string[];
+            /** Format: int32 */
+            to?: number;
+        };
         ChildQuestion: {
             body?: components["schemas"]["QuestionBody"];
             content?: string;
@@ -2987,6 +3045,10 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
+        CodeSource: {
+            branch?: string;
+            source?: string;
+        };
         /** @description Mã tổ hợp môn gắn với một kỳ thi */
         CombinationOption: {
             /** @description Mã tổ hợp */
@@ -3219,6 +3281,11 @@ export interface components {
         };
         /** @description Tạo bài thi Nháp theo phạm vi (spec 5.2, 9.2) */
         CreateExamRequest: {
+            /**
+             * @description STANDARD | REVIEW
+             * @enum {string}
+             */
+            buildMode?: "STANDARD" | "REVIEW";
             /** @description Mã bài thi (duy nhất, không phân biệt hoa thường) */
             code: string;
             /** @description Mô tả */
@@ -3236,6 +3303,8 @@ export interface components {
             maxScore?: number;
             /** @description Tên bài thi */
             name: string;
+            /** @description Cấu trúc tổng quan */
+            overview?: components["schemas"]["ExamOverviewRow"][];
             /** @description Mã phần; bắt buộc khi scope = PART */
             partCode?: string;
             /** @description FULL | PART | SUBJECT; phải nằm trong scopes của hồ sơ kỳ thi */
@@ -3465,6 +3534,7 @@ export interface components {
             status?: string;
         };
         ExamCheckIssue: {
+            affectedCodes?: string[];
             answerType?: string;
             available?: number;
             blockId?: string;
@@ -3476,6 +3546,7 @@ export interface components {
             gradeCode?: string;
             group?: string;
             key?: string;
+            location?: components["schemas"]["ExamIssueLocation"];
             optionId?: string;
             partId?: string;
             partName?: string;
@@ -3504,6 +3575,12 @@ export interface components {
             /** Format: int32 */
             totalQuestions?: number;
         };
+        ExamCheckRequest: {
+            partId?: string;
+            /** @enum {string} */
+            scope?: "EXAM" | "PART" | "SECTION";
+            sectionId?: string;
+        };
         ExamCheckRequirement: {
             byCompetency?: components["schemas"]["ExamCheckDimension"][];
             byDifficulty?: components["schemas"]["ExamCheckDimension"][];
@@ -3528,6 +3605,7 @@ export interface components {
             paths?: components["schemas"]["ExamCheckPath"][];
             /** Format: int32 */
             printedQuestions?: number;
+            sectionStates?: components["schemas"]["ExamSectionState"][];
             stale?: boolean;
             status?: string;
             /** Format: int64 */
@@ -3665,6 +3743,16 @@ export interface components {
             /** Format: int64 */
             expectedRevision: number;
         };
+        ExamIssueLocation: {
+            blockId?: string;
+            /** Format: int32 */
+            childPosition?: number;
+            partId?: string;
+            pathId?: string;
+            sectionId?: string;
+            /** Format: int32 */
+            slotIndex?: number;
+        };
         /** @description Một kỳ thi trong danh mục EXAM kèm hồ sơ (spec 6) */
         ExamKindOption: {
             /** @description Mã kỳ thi (HSA, QDA…) */
@@ -3695,7 +3783,25 @@ export interface components {
             /** @description Bảng điểm Đúng/Sai nhiều ý (số điểm theo số ý đúng) */
             trueFalseScoring?: components["schemas"]["JsonNode"];
         };
+        /** @description Cập nhật tổng quan bài thi */
+        ExamOverviewRequest: {
+            /** Format: int64 */
+            expectedRevision: number;
+            overview: components["schemas"]["ExamOverviewRow"][];
+        };
+        ExamOverviewRow: {
+            /** Format: int32 */
+            durationMinutes?: number;
+            maxPoints?: number;
+            partCode?: string;
+            partId?: string;
+            /** Format: int32 */
+            questionCount?: number;
+            sectionId?: string;
+            subjectCode?: string;
+        };
         ExamPart: {
+            codeSource?: components["schemas"]["CodeSource"];
             /** Format: int32 */
             durationMinutes?: number;
             id?: string;
@@ -3712,6 +3818,7 @@ export interface components {
             /** Format: int32 */
             questionCountRequired?: number;
             sections?: components["schemas"]["ExamSection"][];
+            subjectPool?: components["schemas"]["ExamSection"][];
         };
         ExamPartOption: {
             blocks?: components["schemas"]["QuestionBlock"][];
@@ -3722,7 +3829,7 @@ export interface components {
             expertConfirmed?: boolean;
             id?: string;
             /** @enum {string} */
-            kind?: "SUBJECT" | "COMBINATION" | "BRANCH" | "SUBJECT_CHOICE";
+            kind?: "SUBJECT" | "BRANCH" | "SUBJECT_CHOICE";
             name?: string;
             sections?: components["schemas"]["ExamSection"][];
         };
@@ -3965,6 +4072,19 @@ export interface components {
             /** Format: int32 */
             version?: number;
         };
+        ExamQuota: {
+            /** @enum {string} */
+            basis?: "QUESTION" | "PROMPT" | "POINTS";
+            buckets?: components["schemas"]["Bucket"][];
+            /** @enum {string} */
+            dimension?: "GRADE" | "DIFFICULTY";
+            /** @enum {string} */
+            enforcement?: "REQUIRED" | "REFERENCE";
+            excludeSubjectCodes?: string[];
+            id?: string;
+            name?: string;
+            subjectCodes?: string[];
+        };
         ExamSection: {
             answerQuotas?: components["schemas"]["AnswerQuotas"];
             blocks?: components["schemas"]["QuestionBlock"][];
@@ -3976,17 +4096,54 @@ export interface components {
             /** Format: int32 */
             questionCount?: number;
             subjectCode?: string;
+            topicQuotas?: components["schemas"]["TopicQuota"][];
+        };
+        ExamSectionState: {
+            partId?: string;
+            sectionId?: string;
+            /** @enum {string} */
+            state?: "INCOMPLETE" | "CHECKED" | "NEEDS_CHECK";
+            subjectCode?: string;
         };
         /** @description Cấu trúc bản làm việc của bài thi (GET/PUT /exams/{id}/structure) */
         ExamStructureResponse: {
+            combinations?: components["schemas"]["StructureCombination"][];
             /** Format: uuid */
             examId: string;
+            examQuotas?: components["schemas"]["ExamQuota"][];
             parts: components["schemas"]["ExamPart"][];
             /**
              * Format: int64
              * @description Revision của bài thi — gửi lại trong expectedRevision khi PUT
              */
             revision: number;
+        };
+        /** @description Tổng hợp cấu trúc theo phần, môn và nhóm */
+        ExamStructureSummaryResponse: {
+            parts?: components["schemas"]["ExamStructureSummaryRow"][];
+        };
+        ExamStructureSummaryRow: {
+            /** Format: int32 */
+            allocated?: number;
+            blockId?: string;
+            /** Format: int32 */
+            childCount?: number;
+            /** Format: int32 */
+            commandCount?: number;
+            /** Format: int32 */
+            difference?: number;
+            /** Format: int32 */
+            essayCount?: number;
+            maxPoints?: number;
+            name?: string;
+            /** Format: int32 */
+            objectiveCount?: number;
+            partId?: string;
+            sectionId?: string;
+            /** Format: int32 */
+            setCount?: number;
+            /** Format: int32 */
+            target?: number;
         };
         /** @description Bài thi trong danh sách (spec 9.2 listExam) */
         ExamSummaryResponse: {
@@ -4048,6 +4205,8 @@ export interface components {
         ExamTemplateResponse: {
             /** @description Có đang hoạt động */
             active: boolean;
+            /** @description STANDARD | REVIEW */
+            buildMode: string;
             code: string;
             /**
              * Format: int32
@@ -4056,8 +4215,12 @@ export interface components {
             durationMinutes?: number;
             /** @description Ghi chú của chuyên gia khi dựng mẫu */
             expertNote?: string;
+            /** @description Phiên bản mặc định */
+            isDefault: boolean;
             /** @description Mã kỳ thi áp dụng */
             kindCode: string;
+            /** @description Nhãn phiên bản cấu trúc */
+            label?: string;
             /**
              * Format: int32
              * @description Năm ma trận
@@ -4078,6 +4241,8 @@ export interface components {
             structureYear?: number;
             /** @description Mã môn khi mẫu theo môn */
             subjectCode?: string;
+            /** @description Tóm tắt phiên bản cấu trúc */
+            summary?: string;
             /** @description PER_PART | SHARED */
             timing: string;
         };
@@ -4352,6 +4517,14 @@ export interface components {
             subjectCode?: string;
             value?: string;
         };
+        ItemShape: {
+            /** Format: int32 */
+            leftItems?: number;
+            /** Format: int32 */
+            rightItems?: number;
+            /** Format: int32 */
+            statements?: number;
+        };
         JsonNode: Record<string, never>;
         /** @description Nút trong cây kiến thức (danh mục KNOWLEDGE) */
         KnowledgeNode: {
@@ -4387,9 +4560,6 @@ export interface components {
         };
         KnowledgeScope: {
             competencyCodes?: string[];
-            includeDescendants?: boolean;
-            /** @enum {string} */
-            match?: "ANY" | "ALL";
             nodeIds?: string[];
         };
         /** @description Một dòng sổ đã dùng */
@@ -4411,6 +4581,11 @@ export interface components {
              * @description Revision đang xem; lệch → 412 EXAM_REVISION_CONFLICT
              */
             expectedRevision: number;
+            /**
+             * @description Cách xử lý tổng quan đã sửa
+             * @enum {string}
+             */
+            overviewPolicy?: "USE_TEMPLATE" | "KEEP_EDITED";
             /** @description Mã nguyên mẫu; phải khớp kỳ thi + phạm vi (+ phần/môn) của bài */
             templateCode: string;
         };
@@ -4965,6 +5140,12 @@ export interface components {
              */
             time: string;
         };
+        PositionRange: {
+            /** Format: int32 */
+            from?: number;
+            /** Format: int32 */
+            to?: number;
+        };
         QuestionAssetUploadResponse: {
             fileName?: string;
             /** Format: uuid */
@@ -4974,14 +5155,19 @@ export interface components {
             url?: string;
         };
         QuestionBlock: {
+            answerFormats?: string[];
             answerTypeLocked?: boolean;
             /** @enum {string} */
             childAnswerType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+            childConditions?: components["schemas"]["ChildCondition"][];
             expectedScoring?: components["schemas"]["BlockExpectedScoring"];
             id?: string;
+            itemShape?: components["schemas"]["ItemShape"];
             knowledgeScope?: components["schemas"]["KnowledgeScope"];
             matrix?: components["schemas"]["BlockMatrix"];
             name?: string;
+            omitted?: boolean;
+            positionRange?: components["schemas"]["PositionRange"];
             /** Format: int32 */
             questionCount?: number;
             /** @enum {string} */
@@ -4991,9 +5177,12 @@ export interface components {
             setCount?: number;
             /** Format: int32 */
             setSize?: number;
+            shuffleEditable?: boolean;
+            shuffleUnits?: boolean;
+            slots?: components["schemas"]["BlockSlot"][];
             tagCodes?: string[];
-            taskTypeCode?: string;
             templateGroupCode?: string;
+            topicQuotas?: components["schemas"]["TopicQuota"][];
         };
         QuestionBody: {
             type: string;
@@ -5420,6 +5609,16 @@ export interface components {
             content?: string;
             letter?: string;
         };
+        /** @description Mã tổ hợp đang hiệu lực từ Global List */
+        StructureCombination: {
+            code?: string;
+            examCode?: string;
+            missingSubjects?: string[];
+            nameEn?: string;
+            nameVi?: string;
+            partId?: string;
+            subjectCodes?: string[];
+        };
         /** @description Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối) */
         StudentLearningResponse: {
             /** @description Kết quả đánh giá năng lực */
@@ -5444,6 +5643,20 @@ export interface components {
         SuggestExamCodeResponse: {
             /** @example HSA-S-TOAN-004 */
             code: string;
+        };
+        TopicQuota: {
+            /** @enum {string} */
+            basis?: "QUESTION" | "PROMPT" | "POINTS";
+            /** Format: int32 */
+            count?: number;
+            difficultyCodes?: string[];
+            /** @enum {string} */
+            enforcement?: "REQUIRED" | "REFERENCE";
+            gradeCodes?: string[];
+            groupIds?: string[];
+            id?: string;
+            name?: string;
+            nodeIds?: string[];
         };
         /** @description Yêu cầu chuyển học viên sang lớp học khác */
         TransferClassMemberRequest: {
@@ -5687,6 +5900,7 @@ export interface components {
         };
         /** @description Thay toàn bộ cấu trúc bản làm việc (PUT /exams/{id}/structure, spec 9.2) */
         UpdateExamStructureRequest: {
+            examQuotas?: components["schemas"]["ExamQuota"][];
             /**
              * Format: int64
              * @description Revision đang xem; lệch → 412 EXAM_REVISION_CONFLICT
@@ -6397,6 +6611,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -6513,6 +6736,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6658,6 +6890,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -6777,6 +7018,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6907,6 +7157,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -7021,6 +7280,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7155,6 +7423,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -7271,6 +7548,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7399,6 +7685,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -7513,6 +7808,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7638,6 +7942,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7774,6 +8087,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -7899,6 +8221,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -8013,6 +8344,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8148,6 +8488,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -8265,6 +8614,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8397,6 +8755,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -8511,6 +8878,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8640,6 +9016,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -8753,6 +9138,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8887,6 +9281,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -9001,6 +9404,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9129,6 +9541,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -9243,6 +9664,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9375,6 +9805,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -9493,6 +9932,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9622,6 +10070,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -9735,6 +10192,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9863,6 +10329,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -9977,6 +10452,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10111,6 +10595,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -10234,6 +10727,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -10348,6 +10850,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10477,6 +10988,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -10595,6 +11115,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10729,6 +11258,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -10854,6 +11392,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -10970,6 +11517,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11103,6 +11659,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -11221,6 +11786,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11347,6 +11921,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -11459,6 +12042,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11591,6 +12183,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -11706,6 +12307,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11845,6 +12455,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -11963,6 +12582,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12093,6 +12721,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -12209,6 +12846,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12340,6 +12986,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -12461,6 +13116,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -12483,7 +13147,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExamCheckRequest"];
+            };
+        };
         responses: {
             /** @description Synchronous check */
             200: {
@@ -12586,6 +13254,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12708,6 +13385,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12842,6 +13528,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -12969,6 +13664,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -13083,6 +13787,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13212,6 +13925,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -13326,6 +14048,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13451,6 +14182,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13585,6 +14325,149 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExamOverviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -13710,6 +14593,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -13824,6 +14716,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13956,6 +14857,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -13967,7 +14877,7 @@ export interface operations {
             };
         };
     };
-    loadTemplate: {
+    structureSummary: {
         parameters: {
             query?: never;
             header?: never;
@@ -13976,11 +14886,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoadExamTemplateRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -13988,7 +14894,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ExamDetailResponse"];
+                    "*/*": components["schemas"]["ExamStructureSummaryResponse"];
                 };
             };
             /** @description Bad Request */
@@ -14074,6 +14980,149 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    loadTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoadExamTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description EXAM_STRUCTURE_REPLACE_CONFIRM or EXAM_OVERVIEW_CONFIRM */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14213,6 +15262,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -14325,6 +15383,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14446,6 +15513,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14577,6 +15653,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -14691,6 +15776,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14819,6 +15913,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -14931,6 +16034,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15065,6 +16177,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -15184,6 +16305,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15319,6 +16449,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -15438,6 +16577,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15577,6 +16725,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -15691,6 +16848,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15817,6 +16983,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -15929,6 +17104,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16055,6 +17239,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16189,6 +17382,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -16307,6 +17509,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16451,6 +17662,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -16576,6 +17796,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -16688,6 +17917,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16820,6 +18058,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -16938,6 +18185,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17078,6 +18334,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -17192,6 +18457,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17324,6 +18598,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -17440,6 +18723,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17570,6 +18862,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -17684,6 +18985,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17816,6 +19126,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -17934,6 +19253,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18062,6 +19390,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -18183,6 +19520,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -18297,6 +19643,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18430,6 +19785,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -18549,6 +19913,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18679,6 +20052,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -18800,6 +20182,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -18912,6 +20303,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19044,6 +20444,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -19162,6 +20571,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19306,6 +20724,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -19422,6 +20849,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19555,6 +20991,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -19671,6 +21116,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19800,6 +21254,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -19914,6 +21377,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20036,6 +21508,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20168,6 +21649,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -20289,6 +21779,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -20403,6 +21902,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20535,6 +22043,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -20649,6 +22166,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20777,6 +22303,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -20891,6 +22426,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21019,6 +22563,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -21133,6 +22686,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21265,6 +22827,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -21379,6 +22950,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21511,6 +23091,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -21625,6 +23214,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21750,6 +23348,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21893,6 +23500,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -22007,6 +23623,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22137,6 +23762,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -22250,6 +23884,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22378,6 +24021,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -22492,6 +24144,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22620,6 +24281,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -22736,6 +24406,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22867,6 +24546,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -22986,6 +24674,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Bad Gateway */
             502: {
                 headers: {
@@ -23098,6 +24795,15 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -8,7 +8,6 @@ import { KnowledgePickerDialog } from "@/features/content/components/knowledge-p
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
 import type { KnowledgeScope } from "../types";
-import { ChoiceCardGroup } from "./create-exam-fields";
 
 const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [], match: "ANY" };
 
@@ -33,7 +32,7 @@ export interface KnowledgeScopeFieldProps {
  * nhóm cùng trống hiện "Không giới hạn MAPID". Phạm vi riêng của nhóm thay hẳn phạm vi của môn, không giao với nó.
  * Mở hộp chọn không đổi `value` (R1-3): hủy/Esc giữ nguyên kế thừa, chỉ áp dụng mới đặt phạm vi riêng.
  */
-export function KnowledgeScopeField({ value, onChange, inherited, reference, subjectCode, name, fieldId }: KnowledgeScopeFieldProps) {
+export function KnowledgeScopeField({ value, onChange, inherited, reference, subjectCode, name }: KnowledgeScopeFieldProps) {
   const t = useTranslations("exams.scopeField");
   const [pickerOpen, setPickerOpen] = useState(false);
   const knowledgeIndex = useMemo(() => indexKnowledge(reference?.knowledgeTree ?? []), [reference]);
@@ -96,17 +95,6 @@ export function KnowledgeScopeField({ value, onChange, inherited, reference, sub
               </Button>
             )}
           </div>
-          <ChoiceCardGroup
-            variant="pill"
-            legend={t("match")}
-            name={`${fieldId}-match`}
-            value={value.match}
-            onChange={(match) => onChange({ ...value, match })}
-            options={[
-              { value: "ANY", label: t("matchAny") },
-              { value: "ALL", label: t("matchAll") },
-            ]}
-          />
         </>
       )}
       <KnowledgePickerDialog

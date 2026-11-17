@@ -35,6 +35,14 @@ public class ExamTemplate {
     private BigDecimal maxScore;
     @Column(name = "expert_note")
     private String expertNote;
+    @Column(name = "label")
+    private String label;
+    @Column(name = "summary")
+    private String summary;
+    @Column(name = "build_mode", nullable = false)
+    private String buildMode = "STANDARD";
+    @Column(name = "is_default", nullable = false)
+    private boolean defaultTemplate;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private JsonNode structure;
@@ -73,6 +81,10 @@ public class ExamTemplate {
     public Integer getDurationMinutes() { return durationMinutes; }
     public BigDecimal getMaxScore() { return maxScore; }
     public String getExpertNote() { return expertNote; }
+    public String getLabel() { return label; }
+    public String getSummary() { return summary; }
+    public String getBuildMode() { return buildMode; }
+    public boolean isDefaultTemplate() { return defaultTemplate; }
     public JsonNode getStructure() { return structure; }
     public boolean isActive() { return active; }
 }

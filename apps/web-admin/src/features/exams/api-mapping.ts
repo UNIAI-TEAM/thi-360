@@ -41,7 +41,7 @@ function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   if (!scope) return null;
   return {
     nodeIds: scope.nodeIds ?? [],
-    match: scope.match ?? "ANY",
+    match: "ANY",
     ...(scope.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
   };
 }
@@ -98,7 +98,7 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
     knowledgeScope: mapScope(block.knowledgeScope),
     tagCodes: block.tagCodes ?? [],
     matrix: mapMatrix(block.matrix),
-    taskTypeCode: nullable(block.taskTypeCode),
+    taskTypeCode: null,
     childAnswerType: nullable(block.childAnswerType),
     templateGroupCode: nullable(block.templateGroupCode),
     answerTypeLocked: block.answerTypeLocked ?? false,
@@ -167,7 +167,7 @@ export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
     if (value && typeof value === "object") {
       return Object.fromEntries(
         Object.entries(value as Record<string, unknown>)
-          .filter(([, item]) => item !== null && item !== undefined)
+          .filter(([key, item]) => key !== "match" && key !== "taskTypeCode" && item !== null && item !== undefined)
           .map(([key, item]) => [key, strip(item)]),
       );
     }

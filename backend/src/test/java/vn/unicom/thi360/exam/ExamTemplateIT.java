@@ -78,6 +78,23 @@ class ExamTemplateIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[?(@.code=='BCA_FULL')].durationMinutes", Matchers.hasItem(180)));
     }
 
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void templateReturnsStoredVersionMetadata() throws Exception {
+        jdbc.update("update exam.exam_template set label = ?, summary = ?, build_mode = ?, is_default = ? where code = ?",
+                "Current", "Summary", "STANDARD", true, "HSA_FULL");
+        var templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)).param("kind", "HSA"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var hsa = java.util.stream.StreamSupport.stream(templates.spliterator(), false)
+                .filter(template -> "HSA_FULL".equals(template.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(hsa.path("label").asText()).isEqualTo("Current");
+        assertThat(hsa.path("summary").asText()).isEqualTo("Summary");
+        assertThat(hsa.path("buildMode").asText()).isEqualTo("STANDARD");
+        assertThat(hsa.path("isDefault").asBoolean()).isTrue();
+    }
+
 
     @Test
     void templatesRequireExamView() throws Exception {
