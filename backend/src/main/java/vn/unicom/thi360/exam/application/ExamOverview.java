@@ -86,7 +86,9 @@ final class ExamOverview {
                     ? null : part.questionCount();
             Integer duration = java.util.Objects.equals(part.durationMinutes(), before.durationMinutes())
                     ? null : part.durationMinutes();
-            var points = java.util.Objects.equals(part.maxPoints(), before.maxPoints()) ? null : part.maxPoints();
+            var points = part.maxPoints() == null || before.maxPoints() == null
+                    ? (java.util.Objects.equals(part.maxPoints(), before.maxPoints()) ? null : part.maxPoints())
+                    : part.maxPoints().compareTo(before.maxPoints()) == 0 ? null : part.maxPoints();
             if (count != null || duration != null || points != null) {
                 changes.add(new ExamOverviewRequest.Row(part.id(), null, null, null, count, duration, points));
             }
