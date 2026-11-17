@@ -5076,6 +5076,8 @@ export interface components {
         QuestionSetBody: {
             type: "QuestionSetBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
+            /** Format: int32 */
+            blankNumberStart?: number;
             children?: components["schemas"]["ChildQuestion"][];
             passage?: string;
             /** @enum {string} */

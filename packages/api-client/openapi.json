@@ -6148,6 +6148,10 @@
           "$ref" : "#/components/schemas/QuestionBody"
         }, {
           "properties" : {
+            "blankNumberStart" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
             "children" : {
               "items" : {
                 "$ref" : "#/components/schemas/ChildQuestion"
