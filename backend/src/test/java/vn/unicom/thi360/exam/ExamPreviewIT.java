@@ -22,10 +22,24 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class ExamPreviewIT extends AbstractIntegrationTest {
     private static final UUID SUBJECT_GROUP = UUID.fromString("00000000-0000-7000-8100-000000000002");
+    private static final UUID PREVIEW_KNOWLEDGE_LEAF = UUID.fromString("00000000-0000-7000-8200-000000001201");
+    private static final String SEEDED_PREVIEW_CODE = "SEED-MATH-G10-NB-SC-001";
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
 
     private record Subject(UUID id, String code) {}
+
+    private UUID seededPreviewQuestion() {
+        UUID id = jdbc.queryForObject("select id from questionbank.question where code = ?",
+                UUID.class, SEEDED_PREVIEW_CODE);
+        jdbc.update("""
+                insert into questionbank.question_knowledge(question_id, knowledge_item_id, is_primary)
+                values (?, ?, true)
+                on conflict (question_id, knowledge_item_id) do update set is_primary = excluded.is_primary
+                """, id, PREVIEW_KNOWLEDGE_LEAF);
+        return id;
+    }
+
 
     private Subject subject() {
         UUID id = UUID.randomUUID();
@@ -99,12 +113,18 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     }
     @Test
     void previewOfSeededChoiceDoesNotExposeShuffleOptions() throws Exception {
-        UUID examId = exam(part("TOAN", "[{\"id\":\"g\",\"name\":\"Group\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]", "null"));
+        UUID seededQuestion = seededPreviewQuestion();
+        String blocks = """
+                [{"id":"g","name":"Group","questionType":"SINGLE_CHOICE","questionCount":1,
+                  "knowledgeScope":{"nodeIds":["00000000-0000-7000-8200-000000001201"],"match":"ANY"}}]
+                """;
+        UUID examId = exam(part("TOAN", blocks, "null"));
         JsonNode paper = preview(examId, "{\"pathId\":\"default\",\"seed\":123}").path("paper");
         JsonNode question = paper.path("parts").get(0).path("blocks").get(0).path("items").get(0).path("question");
         String code = jdbc.queryForObject("select code from questionbank.question where id = ?",
                 String.class, UUID.fromString(question.path("questionId").asText()));
-        assertThat(code).startsWith("SEED-");
+        assertThat(UUID.fromString(question.path("questionId").asText())).isEqualTo(seededQuestion);
+        assertThat(code).isEqualTo(SEEDED_PREVIEW_CODE);
         assertThat(question.path("body").path("options")).isNotEmpty();
         assertThat(question.findValues("shuffleOptions")).isEmpty();
     }
