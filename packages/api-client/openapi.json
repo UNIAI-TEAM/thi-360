@@ -5212,6 +5212,9 @@
               "enum" : [ "ALL_OR_NOTHING", "PARTIAL" ],
               "type" : "string"
             },
+            "shuffleOptions" : {
+              "type" : "boolean"
+            },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
@@ -6868,6 +6871,9 @@
                 "$ref" : "#/components/schemas/ChoiceOption"
               },
               "type" : "array"
+            },
+            "shuffleOptions" : {
+              "type" : "boolean"
             },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
