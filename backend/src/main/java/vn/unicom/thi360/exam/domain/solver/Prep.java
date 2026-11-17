@@ -3,7 +3,9 @@ package vn.unicom.thi360.exam.domain.solver;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -171,6 +173,7 @@ final class Prep {
             List<Requirement> reqs,
             List<QuotaRef> reqRefs,
             int[][] subjectBlocks,
+            int[][] slotBlocks,
             int[] reqFrom,
             int[] reqTo,
             List<List<PathCandidate>> cands,
@@ -252,6 +255,7 @@ final class Prep {
         List<int[]> dims = new ArrayList<>();
         String subjectCode = problem.subjectCode();
         int[][] subjectBlocks = new int[nS][];
+        int[][] slotBlocks = new int[groups.size()][2];
         int[] reqFrom = new int[groups.size()];
         int[] reqTo = new int[groups.size()];
 
@@ -307,6 +311,68 @@ final class Prep {
                 return null;
             }
 
+            // Slot groups have individual selection totals but share their parent's quotas.
+            Map<String, SlotParentQuota> parents = new LinkedHashMap<>();
+            for (int g = 0; g < groups.size(); g++) {
+                if (sectionOf[g] != s) continue;
+                SlotParentQuota parent = groups.get(g).group().slotParent();
+                if (parent == null) continue;
+                SlotParentQuota previous = parents.putIfAbsent(parent.parentGroupId(), parent);
+                if (previous != null && !previous.equals(parent)) {
+                    throw new IllegalArgumentException("inconsistent slot parent " + parent.parentGroupId());
+                }
+            }
+            for (SlotParentQuota parent : parents.values()) {
+                int total = 0;
+                for (int g = 0; g < groups.size(); g++) {
+                    if (sectionOf[g] == s && parent.equals(groups.get(g).group().slotParent())) {
+                        total += groups.get(g).units();
+                    }
+                }
+                int from = reqs.size();
+                String id = parent.parentGroupId();
+                if (parent.matrix() instanceof MatrixQuota.Combined combined) {
+                    addDim(reqs, reqRefs, dims, combined.cells().stream()
+                            .map(c -> new DimensionQuota(c.gradeCode() + "/" + c.difficultyCode(), c.quota()))
+                            .toList(), combined.unit(), total, apportioner,
+                            i -> Requirement.groupCell(id, combined.cells().get(i)), i -> null,
+                            Integer.MIN_VALUE, failReason, "slot parent " + id + " combined matrix");
+                } else if (parent.matrix() instanceof MatrixQuota.Separate separate) {
+                    if (!separate.grades().isEmpty()) {
+                        addDim(reqs, reqRefs, dims, separate.grades(), separate.unit(), total, apportioner,
+                                i -> Requirement.groupGrade(id, separate.grades().get(i)), i -> null,
+                                Integer.MIN_VALUE, failReason, "slot parent " + id + " grade dimension");
+                    }
+                    if (!separate.difficulties().isEmpty()) {
+                        addDim(reqs, reqRefs, dims, separate.difficulties(), separate.unit(), total, apportioner,
+                                i -> Requirement.groupDifficulty(id, separate.difficulties().get(i)), i -> null,
+                                Integer.MIN_VALUE, failReason, "slot parent " + id + " difficulty dimension");
+                    }
+                }
+                List<CompetencyQuota> competencies = parent.competencies();
+                int[] resolved = !competencies.isEmpty() && competencies.getFirst().unit() == QuotaUnit.PERCENT
+                        ? apportioner.apportion(competencies.stream().map(CompetencyQuota::quota).toList(), total)
+                        : null;
+                for (int i = 0; i < competencies.size(); i++) {
+                    CompetencyQuota competency = competencies.get(i);
+                    reqs.add(Requirement.competency(id, competency,
+                            resolved == null ? competency.quota() : resolved[i]));
+                    reqRefs.add(null);
+                }
+                for (MapidGroupQuota group : parent.mapidGroups()) {
+                    reqs.add(Requirement.mapidGroup(id, group, deadlineCheck, matcherScans));
+                    reqRefs.add(null);
+                }
+                if (failReason[0] != null) {
+                    failGroup[0] = id;
+                    return null;
+                }
+                for (int g = 0; g < groups.size(); g++) {
+                    if (sectionOf[g] == s && parent.equals(groups.get(g).group().slotParent())) {
+                        slotBlocks[g] = new int[]{from, reqs.size()};
+                    }
+                }
+            }
             // ---- chỉ tiêu phía nhóm của section s ----
             for (int g = 0; g < groups.size(); g++) {
                 if (sectionOf[g] != s) {
@@ -405,11 +471,11 @@ final class Prep {
                 units[g][i] = c.units().size();
                 int[] vec = contrib[g][i];
                 usable[g][i] = usableFor(rg.group(), c, vec, reqs, subjectBlocks, dimsArr,
-                        reqFrom[g], reqTo[g], sectionOf[g], deadlineCheck);
+                        reqFrom[g], reqTo[g], sectionOf[g], slotBlocks[g], deadlineCheck);
             }
         }
         return new SubproblemContext(problem.subjectCode(), problem.count(), sections, groups,
-                sectionOf, reqs, reqRefs, subjectBlocks, reqFrom, reqTo, cands, contrib, units,
+                sectionOf, reqs, reqRefs, subjectBlocks, slotBlocks, reqFrom, reqTo, cands, contrib, units,
                 keys, usable, dimsArr);
     }
 
@@ -460,7 +526,7 @@ final class Prep {
      */
     private static boolean usableFor(GroupQuota group, PathCandidate c, int[] vec,
             List<Requirement> reqs, int[][] subjectBlocks, int[][] dims, int reqFrom, int reqTo,
-            int sectionIdx, Runnable deadlineCheck) {
+            int sectionIdx, int[] slotBlock, Runnable deadlineCheck) {
         List<CountingUnit> us = c.units();
         if (us.isEmpty()) {
             return false;
@@ -520,7 +586,7 @@ final class Prep {
                 if ((scans++ & 0x3FF) == 0) {
                     deadlineCheck.run();
                 }
-                if (!dimApplies(dim, reqFrom, reqTo, sectionIdx)) {
+                if (!dimApplies(dim, reqFrom, reqTo, sectionIdx, slotBlock)) {
                     continue;
                 }
                 boolean covered = false;
@@ -543,7 +609,8 @@ final class Prep {
         int[] blk = subjectBlocks[sectionIdx];
         for (int r = 0; r < rCount; r++) {
             if (vec[r] > 0 && reqs.get(r).quota() == 0
-                    && ((r >= blk[0] && r < blk[1]) || (r >= reqFrom && r < reqTo))) {
+                    && ((r >= blk[0] && r < blk[1]) || (r >= reqFrom && r < reqTo)
+                    || (r >= slotBlock[0] && r < slotBlock[1]))) {
                 return false;
             }
         }
@@ -555,8 +622,12 @@ final class Prep {
      * nhóm (owner = chỉ số nhóm nằm trong [reqFrom, reqTo) của nó) hoặc chỉ tiêu phía môn của
      * section chứa nhóm (owner = -(sectionIdx+1)).
      */
-    private static boolean dimApplies(int[] dim, int reqFrom, int reqTo, int sectionIdx) {
+    private static boolean dimApplies(int[] dim, int reqFrom, int reqTo, int sectionIdx,
+            int[] slotBlock) {
         int owner = dim[2];
+        if (owner == Integer.MIN_VALUE) {
+            return dim[0] >= slotBlock[0] && dim[1] <= slotBlock[1];
+        }
         if (owner >= 0) {
             return dim[0] >= reqFrom && dim[1] <= reqTo;
         }

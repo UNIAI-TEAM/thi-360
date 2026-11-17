@@ -4101,6 +4101,8 @@
         "partChoose": "{part}: the number of options to choose is {choose, number}; it must be between 1 and {options, number}.",
         "sectionsTotal": "{part}: the subjects add up to {actual, number} questions; the part requires {expected, number}.",
         "blocksTotal": "{section}: the blocks have {actual, number} questions; the subject needs {expected, number}.",
+        "subjectCountExceeds": "{section}: declares {declared, number} questions but the split gives {allocated, number}; it may exceed the split by one at most (HSA 17 − 1).",
+        "subjectTrimImpossible": "{section}: one question must be dropped to reach {allocated, number}, but the subject has no standalone question to drop (sets are never split); the server will reject it.",
         "dimension": {
           "COMBINED": "matrix",
           "GRADE": "by grade",

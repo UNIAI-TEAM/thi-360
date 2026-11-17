@@ -188,8 +188,10 @@ final class PathSearch {
             int[] full = classVecs.get(c);
             int[] masked = new int[full.length];
             int[] blk = ctx.subjectBlocks()[ctx.sectionOf()[g]];
+            int[] slot = ctx.slotBlocks()[g];
             for (int r = 0; r < full.length; r++) {
-                if ((r >= blk[0] && r < blk[1]) || (r >= ctx.reqFrom()[g] && r < ctx.reqTo()[g])) {
+                if ((r >= blk[0] && r < blk[1]) || (r >= ctx.reqFrom()[g] && r < ctx.reqTo()[g])
+                        || (r >= slot[0] && r < slot[1])) {
                     masked[r] = full[r];
                 }
             }

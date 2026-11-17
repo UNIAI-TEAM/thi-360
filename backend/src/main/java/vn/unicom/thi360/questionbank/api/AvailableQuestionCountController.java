@@ -35,7 +35,7 @@ public class AvailableQuestionCountController {
     }
 
     @Schema(name = "AvailableQuestionsKnowledgeScope", description = "Phạm vi kiến thức có hiệu lực của nhóm")
-    public record KnowledgeScope(List<@NotNull UUID> nodeIds, String match, List<String> competencyCodes) {}
+    public record KnowledgeScope(List<@NotNull UUID> nodeIds, List<String> competencyCodes) {}
 
     @Schema(name = "AvailableQuestionsItemShape")
     public record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}

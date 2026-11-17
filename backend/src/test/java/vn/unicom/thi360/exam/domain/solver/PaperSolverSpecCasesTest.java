@@ -358,8 +358,8 @@ class PaperSolverSpecCasesTest {
         }
         SubjectChoice choice = new SubjectChoice("opt-sc", sections, 2, List.of(3, 2));
         CandidateSource source = g -> pools;
-        PathResult a = solver.solvePick(choice, List.of("CS0", "CS1"), 42L, source);
-        PathResult b = solver.solvePick(choice, List.of("CS0", "CS1"), 42L, source);
+        PathResult a = solver.solvePick(choice, List.of("CS0", "CS1"), 42L, source, java.util.Set.of());
+        PathResult b = solver.solvePick(choice, List.of("CS0", "CS1"), 42L, source, java.util.Set.of());
         assertThat(a.status()).isEqualTo(SolveStatus.VALID);
         assertThat(b.status()).isEqualTo(SolveStatus.VALID);
         assertThat(b.witness()).isEqualTo(a.witness());
