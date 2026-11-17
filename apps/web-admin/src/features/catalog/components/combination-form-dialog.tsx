@@ -267,26 +267,14 @@ function CombinationFormBody({
     showReason &&
     (usagesQuery.isPending || usagesQuery.isError || Boolean(usagesQuery.data?.blocking));
 
-  const branchChanged = mode === "edit" && watchedBranch !== initialBranch;
-  const orderChanged =
-    mode === "edit" &&
-    watchedSubjectIds.length === initialSubjectIds.length &&
-    watchedSubjectIds.length > 0 &&
-    !watchedSubjectIds.every((id, index) => id === initialSubjectIds[index]);
-  const membershipOrExamChanged =
-    mode === "edit" &&
-    (watchedExamId !== initialExamId ||
-      watchedSubjectIds.length !== initialSubjectIds.length ||
-      watchedSubjectIds.some((id) => !initialSubjectIds.includes(id)));
-  const compositionChanged = branchChanged || orderChanged || membershipOrExamChanged;
-
-  const currentVersionNo = initialCombo?.versionNo ?? 1;
-  const isReferenced = (usagesQuery.data?.totalCount ?? 0) > 0;
-  // Đợt 2B: đổi nhánh hoặc thứ tự môn luôn tạo phiên bản mới (kể cả khi chưa được dùng);
-  // đổi kỳ thi hoặc danh sách môn chỉ tạo phiên bản mới khi phiên bản hiện tại đã được tham chiếu.
   const willCreateNewVersion =
     mode === "edit" &&
-    (branchChanged || orderChanged || (membershipOrExamChanged && isReferenced));
+    (watchedBranch !== initialBranch ||
+      watchedExamId !== initialExamId ||
+      watchedSubjectIds.length !== initialSubjectIds.length ||
+      !watchedSubjectIds.every((id, index) => id === initialSubjectIds[index]));
+
+  const currentVersionNo = initialCombo?.versionNo ?? 1;
 
   const examOptions = useMemo(() => {
     const active = (examsQuery.data ?? []).map((opt) => ({
@@ -885,7 +873,7 @@ function CombinationFormBody({
         )}
       </FormField>
 
-      {willCreateNewVersion ? (
+      {willCreateNewVersion && (
         <div
           role="note"
           className="flex items-start gap-2.5 rounded-md border border-warning bg-warning-bg px-3.5 py-2.5 text-field-label text-warning"
@@ -898,14 +886,6 @@ function CombinationFormBody({
             })}
           </span>
         </div>
-      ) : (
-        mode === "edit" &&
-        compositionChanged &&
-        !usagesQuery.isPending && (
-          <p className="rounded-md border border-border bg-page px-3.5 py-2.5 text-field-label text-text-secondary">
-            {t("combinationDialog.inPlaceVersionHint", { version: currentVersionNo })}
-          </p>
-        )
       )}
 
       <DialogFooter className="flex-wrap pt-1">

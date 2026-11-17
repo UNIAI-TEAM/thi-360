@@ -1853,6 +1853,20 @@ describe("CatalogView Slice 2: tổ hợp, ngăn chi tiết, ngừng sử dụng
       );
     });
 
+    it("thay môn ở tổ hợp chưa dùng vẫn tạo phiên bản mới", async () => {
+      const api = branchApi();
+      renderCatalog({ api, search: "group=SUBJECT_COMBINATION" });
+
+      await userEvent.click(await screen.findByRole("button", { name: "Sửa QĐ01" }));
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(within(dialog).getByRole("button", { name: "Bỏ môn Ngữ văn (VAN)" }));
+      await userEvent.click(within(dialog).getByRole("combobox", { name: /Thêm môn/ }));
+      await userEvent.click(await screen.findByRole("option", { name: "ANH — Tiếng Anh" }));
+
+      expect(await within(dialog).findByText(/lần lưu này tạo phiên bản 2/)).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Lưu thành phiên bản mới" })).toBeInTheDocument();
+    });
+
     it("ngăn chi tiết và tab Phiên bản hiện nhánh theo ngôn ngữ đang chọn", async () => {
       const api = branchApi();
       renderCatalog({ api, locale: "en", search: "group=SUBJECT_COMBINATION" });
