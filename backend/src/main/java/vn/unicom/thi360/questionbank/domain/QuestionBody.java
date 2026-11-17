@@ -8,8 +8,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-import vn.unicom.thi360.questionbank.spi.QuestionType;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 /**
  * Phần thân câu hỏi theo dạng (spec mục 4.3, hợp đồng dữ liệu spec 9.2). Jackson đọc/ghi theo
  * trường {@code type} (plan B1). Mỗi dạng là một record; các phần tử con (phương án, mệnh đề,
@@ -71,16 +72,22 @@ public sealed interface QuestionBody {
 
     /**
      * Trả lời ngắn: {@code answers.get(0)} là đáp án chuẩn, sau là các đáp án được chấp nhận
-     * (tối đa 20); {@code inputHint} là hướng dẫn nhập.
+     * (tối đa 20); {@code inputHint} là hướng dẫn nhập; {@code answerFormat} là kiểu nhập tùy chọn.
      */
     record ShortAnswerBody(
         QuestionType type,
         List<String> answers,
-        String inputHint) implements QuestionBody {
+        String inputHint,
+        AnswerFormat answerFormat) implements QuestionBody {
 
         public ShortAnswerBody {
             type = QuestionType.SHORT_ANSWER;
             answers = answers == null ? List.of() : List.copyOf(answers);
+        }
+
+        /** Compatibility constructor for snapshots and callers predating answerFormat. */
+        public ShortAnswerBody(QuestionType type, List<String> answers, String inputHint) {
+            this(type, answers, inputHint, null);
         }
     }
 

@@ -1,12 +1,15 @@
 "use client";
 
-import { Button, FormField, IconButton, Input } from "@thi360/ui";
+import { Button, FormField, IconButton, Input, Select } from "@thi360/ui";
 import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { draftRowId, type QuestionEditorValues } from "../editor-form";
+import { ANSWER_FORMATS } from "../types";
 import { FieldErrorText, GroupError, useAnnounce, useEditorError, type BodyPath } from "./question-editor-shared";
+
+const NONE = "__none__";
 
 /**
  * Đáp án của câu Trả lời ngắn (spec 4.3): đáp án chuẩn đứng đầu, sau là các đáp án được chấp nhận (khớp đúng sau
@@ -14,6 +17,7 @@ import { FieldErrorText, GroupError, useAnnounce, useEditorError, type BodyPath 
  */
 export function ShortAnswerEditor({ prefix }: { prefix: BodyPath }) {
   const t = useTranslations("questions.editor.shortAnswer");
+  const tFormat = useTranslations("questions.detail.body.answerFormats");
   const announce = useAnnounce();
   const groupId = useId();
   const { control, register } = useFormContext<QuestionEditorValues>();
@@ -55,6 +59,26 @@ export function ShortAnswerEditor({ prefix }: { prefix: BodyPath }) {
       <FormField label={t("inputHint")} hint={t("inputHintHint")}>
         {(controlProps) => <Input {...controlProps} autoComplete="off" {...register(`${prefix}.inputHint`)} />}
       </FormField>
+      <Controller
+        control={control}
+        name={`${prefix}.answerFormat`}
+        render={({ field }) => (
+          <FormField label={t("answerFormat")} hint={t("answerFormatHint")}>
+            {(controlProps) => (
+              <Select
+                {...controlProps}
+                name={field.name}
+                value={field.value || NONE}
+                options={[
+                  { value: NONE, label: t("answerFormatNone") },
+                  ...ANSWER_FORMATS.map((format) => ({ value: format, label: tFormat(format) })),
+                ]}
+                onValueChange={(value) => field.onChange(value === NONE ? "" : value)}
+              />
+            )}
+          </FormField>
+        )}
+      />
     </div>
   );
 }

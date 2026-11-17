@@ -2,7 +2,7 @@ import type { AppLocale } from "@thi360/web-kit/preferences";
 import type { KnowledgeRef, MultipleChoiceRule, QuestionType, TrueFalseMethod } from "@/features/content/types";
 import { normalizePrimary } from "@/features/content/knowledge-tree";
 import { isChildQuestionType, type ChildQuestionType, type SaveChildQuestionRequest, type SaveQuestionRequest } from "./editor-types";
-import { clozeMarker, type QuestionBody, type QuestionDetail } from "./types";
+import { clozeMarker, isAnswerFormat, type QuestionBody, type QuestionDetail } from "./types";
 
 /**
  * Giá trị biểu mẫu soạn câu hỏi và chuyển đổi qua lại với dữ liệu API.
@@ -81,6 +81,8 @@ export interface EditorBody {
   wordLimit: string;
   /** Trả lời ngắn: hướng dẫn nhập cho học viên. */
   inputHint: string;
+  /** Trả lời ngắn: định dạng đáp án (H11); chuỗi rỗng: không đặt. */
+  answerFormat: string;
   /** Câu chùm: số bắt đầu đánh chỗ trống của ngữ liệu (chuỗi như ô nhập; 1–200, mặc định "1"); dạng khác không dùng. */
   blankNumberStart: string;
 }
@@ -217,6 +219,7 @@ export function emptyBody(type: QuestionType, locale: AppLocale = "vi"): EditorB
     sampleAnswer: "",
     wordLimit: "",
     inputHint: "",
+    answerFormat: "",
     blankNumberStart: "1",
   };
 }
@@ -321,6 +324,7 @@ export function bodyToEditor(body: QuestionBody, locale: AppLocale = "vi"): Edit
           },
         ],
         inputHint: body.inputHint ?? "",
+        answerFormat: body.answerFormat ?? "",
       };
     case "CLOZE":
       return {
@@ -460,6 +464,8 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
         type,
         answers: (body.blanks[0]?.answers ?? []).map((answer) => trimmed(answer.value)).filter(Boolean),
         inputHint: trimmed(body.inputHint) || null,
+        // Chỉ gửi khi đã đặt: thiếu nghĩa là chưa đặt định dạng (PUT thay cả thân câu, nên thiếu cũng là xóa).
+        ...(isAnswerFormat(body.answerFormat) ? { answerFormat: body.answerFormat } : {}),
       };
     case "CLOZE":
       return {

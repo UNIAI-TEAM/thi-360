@@ -11,6 +11,7 @@ import vn.unicom.thi360.questionbank.domain.importing.ExistingQuestionRef;
 import vn.unicom.thi360.questionbank.domain.importing.ImportQuestionDraft;
 import vn.unicom.thi360.questionbank.domain.importing.ImportRowStatus;
 import vn.unicom.thi360.questionbank.domain.importing.ImportSummary;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /** Public preview preserves the web import draft fields and includes the full typed body. */
@@ -22,9 +23,9 @@ public record QuestionImportValidationResponse(UUID uploadId, List<Row> rows, Im
     public record Statement(String letter, String content, Boolean answer) {}
     public record Criterion(String description, BigDecimal points) {}
     public record Draft(QuestionType type, String content, List<Option> options, List<Statement> statements,
-            List<String> acceptedAnswers, BigDecimal points, String inputHint, String gradingGuide,
-            List<Criterion> rubric, String sampleAnswer, String solution, String subjectCode, String gradeCode,
-            String difficultyCode, List<KnowledgeRef> knowledge, List<String> tagCodes, String setCode,
+            List<String> acceptedAnswers, BigDecimal points, String inputHint, AnswerFormat answerFormat,
+            String gradingGuide, List<Criterion> rubric, String sampleAnswer, String solution, String subjectCode,
+            String gradeCode, String difficultyCode, List<KnowledgeRef> knowledge, List<String> tagCodes, String setCode,
             QuestionBody body, String taskTypeCode, List<String> commonMistakes) {}
 
     public static QuestionImportValidationResponse from(QuestionImportValidationService.Validation validation) {
@@ -41,6 +42,7 @@ public record QuestionImportValidationResponse(UUID uploadId, List<Row> rows, Im
         List<String> answers = List.of();
         List<Criterion> rubric = List.of();
         String inputHint = null, gradingGuide = null, sampleAnswer = null;
+        AnswerFormat answerFormat = null;
         if (source.body() instanceof QuestionBody.SingleChoiceBody b) {
             addOptions(options, b.options());
         } else if (source.body() instanceof QuestionBody.MultipleChoiceBody b) {
@@ -48,6 +50,7 @@ public record QuestionImportValidationResponse(UUID uploadId, List<Row> rows, Im
         } else if (source.body() instanceof QuestionBody.ShortAnswerBody b) {
             answers = b.answers();
             inputHint = b.inputHint();
+            answerFormat = b.answerFormat();
         } else if (source.body() instanceof QuestionBody.TrueFalseBody b) {
             for (int i = 0; i < b.statements().size(); i++) {
                 var s = b.statements().get(i);
@@ -61,7 +64,7 @@ public record QuestionImportValidationResponse(UUID uploadId, List<Row> rows, Im
         List<KnowledgeRef> knowledge = source.knowledge().stream()
                 .map(k -> new KnowledgeRef(k.nodeId(), k.code(), knowledgeNames.get(k.nodeId()), k.primary())).toList();
         return new Draft(source.type(), source.content(), List.copyOf(options), List.copyOf(statements), answers,
-                source.points(), inputHint, gradingGuide, rubric, sampleAnswer, source.solution(), source.subjectCode(),
+                source.points(), inputHint, answerFormat, gradingGuide, rubric, sampleAnswer, source.solution(), source.subjectCode(),
                 source.gradeCode(), source.difficultyCode(), knowledge, source.tagCodes(), source.setCode(),
                 source.body(), source.taskTypeCode(), source.commonMistakes());
     }

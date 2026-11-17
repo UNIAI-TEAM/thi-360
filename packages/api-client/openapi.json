@@ -293,6 +293,30 @@
         },
         "type" : "object"
       },
+      "AvailableQuestionsChildCondition" : {
+        "properties" : {
+          "from" : {
+            "format" : "int32",
+            "maximum" : 20,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "nodeIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "to" : {
+            "format" : "int32",
+            "maximum" : 20,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "AvailableQuestionsCompetency" : {
         "properties" : {
           "code" : {
@@ -300,6 +324,23 @@
           },
           "value" : {
             "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AvailableQuestionsItemShape" : {
+        "properties" : {
+          "leftItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "rightItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "statements" : {
+            "format" : "int32",
             "type" : "integer"
           }
         },
@@ -330,6 +371,13 @@
       "AvailableQuestionsQuery" : {
         "description" : "Bộ lọc nguồn câu hỏi của một nhóm",
         "properties" : {
+          "answerFormats" : {
+            "items" : {
+              "enum" : [ "INTEGER", "DECIMAL", "FRACTION", "TEXT", "CHEM_FORMULA", "CHEM_EQUATION" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "answerTypes" : {
             "items" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
@@ -341,11 +389,20 @@
             "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
             "type" : "string"
           },
+          "childConditions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AvailableQuestionsChildCondition"
+            },
+            "type" : "array"
+          },
           "competencyCodes" : {
             "items" : {
               "type" : "string"
             },
             "type" : "array"
+          },
+          "itemShape" : {
+            "$ref" : "#/components/schemas/AvailableQuestionsItemShape"
           },
           "knowledgeScope" : {
             "$ref" : "#/components/schemas/AvailableQuestionsKnowledgeScope"
@@ -389,6 +446,10 @@
               "$ref" : "#/components/schemas/AvailableQuestionsCell"
             },
             "type" : "array"
+          },
+          "commandCount" : {
+            "format" : "int64",
+            "type" : "integer"
           },
           "total" : {
             "format" : "int64",
@@ -2537,6 +2598,10 @@
               "type" : "string"
             },
             "type" : "array"
+          },
+          "answerFormat" : {
+            "enum" : [ "INTEGER", "DECIMAL", "FRACTION", "TEXT", "CHEM_FORMULA", "CHEM_EQUATION" ],
+            "type" : "string"
           },
           "body" : {
             "oneOf" : [ {
@@ -7387,6 +7452,10 @@
           "$ref" : "#/components/schemas/QuestionBody"
         }, {
           "properties" : {
+            "answerFormat" : {
+              "enum" : [ "INTEGER", "DECIMAL", "FRACTION", "TEXT", "CHEM_FORMULA", "CHEM_EQUATION" ],
+              "type" : "string"
+            },
             "answers" : {
               "items" : {
                 "type" : "string"

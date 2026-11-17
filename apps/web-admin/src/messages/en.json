@@ -2340,6 +2340,15 @@
         "standardAnswer": "Standard answer",
         "acceptedAnswer": "Accepted answer",
         "inputHint": "Input hint:",
+        "answerFormat": "Answer format:",
+        "answerFormats": {
+          "INTEGER": "Integer",
+          "DECIMAL": "Decimal",
+          "FRACTION": "Fraction",
+          "TEXT": "Text",
+          "CHEM_FORMULA": "Chemical formula",
+          "CHEM_EQUATION": "Chemical equation"
+        },
         "noRubric": "No rubric yet.",
         "sampleAnswer": "Sample answer",
         "scoreTableTitle": "Score by number of correct statements",
@@ -2768,7 +2777,10 @@
         "add": "Add accepted answer",
         "added": "Added answer {number}.",
         "inputHint": "Input hint",
-        "inputHintHint": "Optional. Learners see it while answering, for example “Write a decimal comma”."
+        "inputHintHint": "Optional. Learners see it while answering, for example “Write a decimal comma”.",
+        "answerFormat": "Answer format",
+        "answerFormatHint": "Optional. Used to filter questions when a group of an exam asks for specific formats; a question without a format is not picked by a filtered group.",
+        "answerFormatNone": "None"
       },
       "essay": {
         "manualGrading": "Graded by hand",

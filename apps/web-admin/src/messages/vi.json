@@ -2340,6 +2340,15 @@
         "standardAnswer": "Đáp án chuẩn",
         "acceptedAnswer": "Đáp án được chấp nhận",
         "inputHint": "Hướng dẫn nhập:",
+        "answerFormat": "Định dạng đáp án:",
+        "answerFormats": {
+          "INTEGER": "Số nguyên",
+          "DECIMAL": "Số thập phân",
+          "FRACTION": "Phân số",
+          "TEXT": "Văn bản",
+          "CHEM_FORMULA": "Công thức hóa học",
+          "CHEM_EQUATION": "Phương trình hóa học"
+        },
         "noRubric": "Chưa có tiêu chí chấm.",
         "sampleAnswer": "Bài làm mẫu",
         "scoreTableTitle": "Bảng điểm theo số ý đúng",
@@ -2768,7 +2777,10 @@
         "add": "Thêm đáp án được chấp nhận",
         "added": "Đã thêm đáp án {number}.",
         "inputHint": "Hướng dẫn nhập",
-        "inputHintHint": "Không bắt buộc. Học viên thấy khi làm bài, ví dụ “Viết dấu phẩy thập phân”."
+        "inputHintHint": "Không bắt buộc. Học viên thấy khi làm bài, ví dụ “Viết dấu phẩy thập phân”.",
+        "answerFormat": "Định dạng đáp án",
+        "answerFormatHint": "Không bắt buộc. Dùng để lọc câu khi sinh đề theo nhóm có chỉ định định dạng; câu chưa đặt định dạng không vào nhóm có lọc.",
+        "answerFormatNone": "Không đặt"
       },
       "essay": {
         "manualGrading": "Chấm tay",
