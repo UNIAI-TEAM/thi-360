@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bộ đề · danh sách</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+thead th{position:sticky;top:0;z-index:1;background:var(--thd)}
+input,select{color-scheme:light}
+.th.dark input,.th.dark select{color-scheme:dark}
+</style>
+</helmet>
+<div class="th {{theme}}" style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); background: var(--bg); min-height: 1560px; display: flex; flex-wrap: wrap">
+
+  <nav aria-label="Menu chính" style="flex: 1 1 248px; box-sizing: border-box; background: var(--sf); border-right: 1px solid var(--bd); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 10px; background: var(--pf); color: var(--op); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">360</div>
+      <div style="font-size: 16px; line-height: 24px; font-weight: 700; color: var(--p900)">Thi 360 · Quản trị</div>
+    </div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="20">
+      <sc-if value="{{n.head}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 14px 12px 6px; font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx3)">{{n.label}}</div>
+      </sc-if>
+      <sc-if value="{{n.link}}" hint-placeholder-val="{{true}}">
+        <a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"></path></svg>
+          <span>{{n.label}}</span>
+        </a>
+      </sc-if>
+    </sc-for>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; padding: 0 24px; background: var(--sf); border-bottom: 1px solid var(--bd); display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <nav aria-label="Vị trí" style="min-width: 0; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thương mại <span aria-hidden="true">›</span> <strong aria-current="page" style="color: var(--tx); font-weight: 600">Bộ đề</strong></nav>
+      <button type="button" aria-haspopup="menu" style="flex: none; height: 40px; padding: 0 10px 0 4px; border: 1px solid var(--bd); border-radius: 9999px; background: var(--sf); font: inherit; font-weight: 500; color: var(--tx2); display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 9999px; background: var(--p50); color: var(--pt); font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center">TM</span>
+        <span>sales.admin</span>
+      </button>
+    </header>
+
+    <main style="box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+        <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px">
+          <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 700">Bộ đề</h1>
+          <p style="margin: 0; color: var(--tx3)">Một bộ gồm 2–12 bài thi đang bán của cùng kỳ thi, có giá và số lượt mỗi bài riêng. Mua bộ thì từng bài được cấp lượt riêng.</p>
+        </div>
+        <a href="TaoBoDe.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>Tạo bộ đề</a>
+      </div>
+
+      <div style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 12px">
+        <div role="group" aria-label="Lọc theo trạng thái" style="display: flex; flex-wrap: wrap; gap: 6px">
+          <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+            <button type="button" aria-pressed="{{t.pressed}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}} <span style="font-variant-numeric: tabular-nums; opacity: .85">{{t.count}}</span></button>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <label style="flex: 1 1 280px; min-width: 0; position: relative; display: flex">
+            <span class="sr-only">Tìm theo tên hoặc mã bộ</span>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 12px; color: var(--tx3)"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35"></path></svg>
+            <input type="search" placeholder="Tìm theo tên hoặc mã bộ" style="width: 100%; height: 40px; box-sizing: border-box; padding: 0 12px 0 36px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); font: inherit">
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; color: var(--tx2)">Kỳ thi
+            <select style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); font: inherit; min-width: 160px"><option>Tất cả</option><option>SP2E</option><option>SPT</option><option>HSA</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div role="region" tabindex="0" aria-labelledby="cap-b" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; overflow: auto">
+        <table style="width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums">
+          <caption id="cap-b" class="sr-only">Danh sách bộ đề</caption>
+          <thead>
+            <tr style="text-align: left; font-size: 13px; color: var(--tx3)">
+              <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid var(--bd)">Bộ đề</th>
+              <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid var(--bd)">Kỳ thi</th>
+              <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid var(--bd); text-align: right">Số bài</th>
+              <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid var(--bd); text-align: right">Giá</th>
+              <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid var(--bd); text-align: right">Lượt mỗi bài</th>
+              <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid var(--bd)">Trạng thái</th>
+              <th scope="col" style="padding: 12px 8px; font-weight: 600; border-bottom: 1px solid var(--bd)">Cập nhật</th>
+              <th scope="col" style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid var(--bd); text-align: right"><span class="sr-only">Thao tác</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+              <tr>
+                <th scope="row" style="padding: 12px 16px; text-align: left; font-weight: 400; border-bottom: 1px solid var(--bd)">
+                  <a href="TaoBoDe.dc.html" style="font-weight: 600; text-decoration: none">{{r.name}}</a>
+                  <div style="font-size: 12.5px; color: var(--tx3)">{{r.code}} · {{r.items}}</div>
+                </th>
+                <td style="padding: 12px 8px; border-bottom: 1px solid var(--bd)">{{r.kind}}</td>
+                <td style="padding: 12px 8px; border-bottom: 1px solid var(--bd); text-align: right">{{r.count}}</td>
+                <td style="padding: 12px 8px; border-bottom: 1px solid var(--bd); text-align: right; white-space: nowrap">{{r.price}}</td>
+                <td style="padding: 12px 8px; border-bottom: 1px solid var(--bd); text-align: right">{{r.attempts}}</td>
+                <td style="padding: 12px 8px; border-bottom: 1px solid var(--bd)">
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                    <span style="{{r.chip}}"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 9999px; background: currentColor"></span>{{r.status}}</span>
+                    <sc-if value="{{r.hasExtra}}" hint-placeholder-val="{{false}}"><span style="{{r.extraChip}}">{{r.extra}}</span></sc-if>
+                  </div>
+                  <sc-if value="{{r.hasNote}}" hint-placeholder-val="{{false}}"><div style="margin-top: 4px; font-size: 12.5px; line-height: 19px; color: var(--er)">{{r.note}}</div></sc-if>
+                </td>
+                <td style="padding: 12px 8px; border-bottom: 1px solid var(--bd); white-space: nowrap; color: var(--tx2)">{{r.updated}}</td>
+                <td style="padding: 4px 16px; border-bottom: 1px solid var(--bd); text-align: right; white-space: nowrap">
+                  <a href="TaoBoDe.dc.html" aria-label="Sửa {{r.name}}" title="Sửa" style="width: 44px; height: 44px; border-radius: 8px; color: var(--tx2); display: inline-flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></a>
+                  <button type="button" aria-label="Thao tác khác với {{r.name}}" aria-haspopup="menu" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--tx2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM12 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM12 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path></svg></button>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: var(--tx3)">Menu "Thao tác khác": Xem trang bán, Công bố, Ngừng bán, Xem đơn của bộ. Giá, tên và mã bộ là dữ liệu mẫu.</p>
+
+      <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 16px">
+        <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Rỗng</h3>
+            <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+              <span aria-hidden="true" style="width: 48px; height: 48px; border-radius: 9999px; background: var(--p50); color: var(--pt); display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V21H3V8M1 3h22v5H1zM10 12h4"></path></svg></span>
+              <div style="font-weight: 600">Chưa có bộ đề nào</div>
+              <p style="margin: 0; color: var(--tx3)">Cần ít nhất 2 bài thi đang bán của cùng kỳ thi để tạo bộ.</p>
+              <a href="TaoBoDe.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: var(--pf); color: var(--op); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Tạo bộ đề</a>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Lọc không có kết quả</h3>
+            <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+              <div style="font-weight: 600">Không có bộ đề khớp bộ lọc</div>
+              <p style="margin: 0; color: var(--tx3)">Đang lọc: Ngừng bán · SPT.</p>
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font: inherit; font-weight: 600; cursor: pointer">Xóa tất cả bộ lọc</button>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Đang tải</h3>
+            <div aria-busy="true" aria-label="Đang tải danh sách bộ đề" style="border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+              <div style="height: 16px; width: 70%; border-radius: 6px; background: var(--sb)"></div>
+              <div style="height: 16px; width: 90%; border-radius: 6px; background: var(--sb)"></div>
+              <div style="height: 16px; width: 60%; border-radius: 6px; background: var(--sb)"></div>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Lỗi tải</h3>
+            <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 12px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+              <span style="flex: 1 1 200px; color: var(--er); font-weight: 600">Không tải được danh sách bộ đề.</span>
+              <button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font: inherit; font-weight: 600; cursor: pointer">Thử lại</button>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <h3 style="margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--tx2)">Thiếu quyền</h3>
+            <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+              <div style="font-weight: 600">Bạn không có quyền xem bộ đề</div>
+              <p style="margin: 0; color: var(--tx3)">Cần quyền EXAM.VIEW. Liên hệ quản trị viên hệ thống để được cấp.</p>
+            </div>
+            <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: var(--tx3)">Có EXAM.VIEW mà thiếu EXAM.MODIFY, EXAM.PUBLISH: nút ghi vẫn hiện, máy chủ trả 403 thì hiện lỗi (DESIGN 5.14).</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { tab: 'all' }; }
+nav(active) {
+const I = {
+home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+school: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5',
+attempt: 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16',
+question: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+exam: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+grading: 'M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+list: 'M4 6h16M4 12h16M4 18h16',
+bundle: 'M21 8V21H3V8M1 3h22v5H1zM10 12h4',
+tag: 'M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01',
+order: 'M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1zM16 8H8M16 12H8M13 16H8',
+shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2'
+};
+const items = [
+['h', 'Tổng quan'], ['home', 'Bảng điều khiển', I.home, 'BangDieuKhien.dc.html'],
+['h', 'Người dùng'], ['users', 'Tài khoản', I.users, 'TaiKhoan.dc.html'], ['classes', 'Lớp học', I.school, 'LopHoc.dc.html'], ['attempts', 'Lượt thi', I.attempt, 'LuotThiAdmin.dc.html'],
+['h', 'Nội dung'], ['questions', 'Ngân hàng câu hỏi', I.question, 'NganHangCauHoi.dc.html'], ['exams', 'Bài thi', I.exam, 'BaiThi.dc.html'], ['grading', 'Chấm tự luận', I.grading, '#'], ['catalog', 'Cấu hình chung', I.list, 'CauHinhChung.dc.html'],
+['h', 'Thương mại'], ['bundles', 'Bộ đề', I.bundle, 'BoDeAdmin.dc.html'], ['promotions', 'Khuyến mãi', I.tag, 'KhuyenMai.dc.html'], ['orders', 'Đơn hàng', I.order, 'DonHang.dc.html'],
+['h', 'Hệ thống'], ['rbac', 'Phân quyền', I.shield, 'VaiTro.dc.html'], ['theme', 'Tùy chỉnh giao diện', I.sliders, 'TuyChinhGiaoDien.dc.html'], ['audit', 'Nhật ký', I.history, '#']
+];
+const base = 'height: 44px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; ';
+return items.map((it) => it[0] === 'h'
+? { head: true, link: false, label: it[1] }
+: { head: false, link: true, label: it[1], icon: it[2], href: it[3], current: it[0] === active ? 'page' : 'false',
+style: base + (it[0] === active ? 'background: var(--p50); color: var(--pt); font-weight: 600' : 'color: var(--tx2); font-weight: 500') });
+}
+chip(kind) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[kind];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+renderVals() {
+const all = [
+['BO-SP2E-001', 'Bộ đề SP2E khối A00', 'Toán, Vật lí, Hóa học', 'SP2E', 3, '349.000 đ', 2, 'ON', 'ok', 'Đang bán', '', '', '', '16/11/2026 09:12'],
+['BO-SP2E-002', 'Bộ đề SP2E khối B00', 'Toán, Hóa học, Sinh học', 'SP2E', 3, '349.000 đ', 2, 'ON', 'ok', 'Đang bán', 'warn', 'Có thay đổi chưa công bố', '', '17/11/2026 08:40'],
+['BO-SP2E-003', 'Bộ đề SP2E khối C00', 'Ngữ văn, Lịch sử, Địa lí', 'SP2E', 3, '329.000 đ', 2, 'UN', 'bad', 'Không bán được', '', '', 'Bài "SP2E Lịch sử – Đề luyện số 1" đã ngừng bán. Thay bài rồi công bố lại.', '17/11/2026 10:05'],
+['BO-SPT-001', 'Bộ đề SPT ba môn tự nhiên', 'Vật lí, Hóa học, Sinh học', 'SPT', 3, '299.000 đ', 1, 'DRAFT', 'off', 'Nháp', '', '', '', '17/11/2026 11:20'],
+['BO-SP2E-000', 'Bộ đề SP2E thử nghiệm tháng 10', 'Toán, Ngữ văn', 'SP2E', 2, '199.000 đ', 1, 'OFF', 'off', 'Ngừng bán', '', '', '', '30/10/2026 16:02']
+];
+const tabsDef = [['all', 'Tất cả'], ['DRAFT', 'Nháp'], ['ON', 'Đang bán'], ['UN', 'Không bán được'], ['OFF', 'Ngừng bán']];
+const tabs = tabsDef.map((t) => {
+const on = this.state.tab === t[0];
+return { label: t[1], count: t[0] === 'all' ? all.length : all.filter((r) => r[7] === t[0]).length, pressed: on ? 'true' : 'false', pick: () => this.setState({ tab: t[0] }),
+style: 'height: 36px; padding: 0 12px; border-radius: 9999px; font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; ' + (on ? 'border: 0; background: var(--pf); color: var(--op)' : 'border: 1px solid var(--bd); background: var(--sf); color: var(--tx2)') };
+});
+const rows = all.filter((r) => this.state.tab === 'all' || r[7] === this.state.tab).map((r) => ({
+code: r[0], name: r[1], items: r[2], kind: r[3], count: r[4], price: r[5], attempts: r[6], chip: this.chip(r[8]), status: r[9],
+hasExtra: !!r[10], extraChip: r[10] ? this.chip(r[10]) : '', extra: r[11], hasNote: !!r[12], note: r[12], updated: r[13]
+}));
+return { theme: this.props.dark ? 'dark' : '', nav: this.nav('bundles'), tabs, rows };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · HSA Khoa học 5 môn (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+button{font:inherit}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; min-height: 1500px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · HSA FULL › Phần 3 · Khoa học (tổng quan)</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+    <div style="padding: 16px; border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Khoa học · học viên chọn 3 trong 5 môn</h1><span style="{{chipWarn}}">Cần kiểm tra lại</span></div>
+        <p style="margin: 0; color: var(--tx3)">50 câu · 60 phút. Mỗi môn khai một ma trận 17 câu.</p>
+      </div>
+      <button type="button" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra phần</button>
+    </div>
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px">
+      <div style="border: 1px solid var(--inbd); background: var(--inb); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+        <strong style="color: var(--in)">Cách chia số câu (chỉ xem)</strong>
+        <span style="color: var(--tx2)">Ba môn nhận 17, 17 và 16 câu. Môn nhận 16 câu: 2 môn tự nhiên + 1 môn xã hội thì môn xã hội; 1 tự nhiên + 2 xã hội thì môn tự nhiên; 3 môn tự nhiên thì chọn ngẫu nhiên 1 môn.</span>
+        <span style="color: var(--tx2)">Môn nhận 16 câu vẫn sinh theo ma trận 17 câu, rồi bỏ 1 câu đơn; không bỏ câu con của chùm. Lý, Hóa, Sinh: nếu 17 câu có câu điền thì vẫn còn ít nhất 1 câu điền.</span>
+      </div>
+      <div role="region" tabindex="0" aria-labelledby="cap" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+        <table style="width: 100%; min-width: 780px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+          <caption id="cap" class="sr-only">Năm môn Khoa học</caption>
+          <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 10px 14px">Môn</th><th scope="col" style="padding: 10px 8px; text-align: right">Số câu</th><th scope="col" style="padding: 10px 8px">Lớp 10/11/12</th><th scope="col" style="padding: 10px 8px">NB/TH/VD</th><th scope="col" style="padding: 10px 8px">Nhóm</th><th scope="col" style="padding: 10px 8px">Trạng thái</th><th scope="col" style="padding: 10px 14px; text-align: right">Thao tác</th></tr></thead>
+          <tbody>
+            <sc-for list="{{subjects}}" as="s" hint-placeholder-count="5">
+              <tr style="border-top: 1px solid var(--bd)">
+                <th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">{{s.name}} <span style="font-size: 12.5px; font-weight: 400; color: var(--tx3)">· {{s.kind}}</span></th>
+                <td style="padding: 10px 8px; text-align: right">17</td>
+                <td style="padding: 10px 8px">{{s.g}}</td>
+                <td style="padding: 10px 8px">{{s.d}}</td>
+                <td style="padding: 10px 8px; color: var(--tx2)">{{s.blocks}}</td>
+                <td style="padding: 10px 8px"><span style="{{s.chip}}">{{s.status}}</span></td>
+                <td style="padding: 4px 14px; text-align: right"><a href="BaiThiBuoc2.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; font-weight: 600">Thiết lập</a></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h2" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+    <h2 id="h2" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đầu màn môn khi bấm “Thiết lập” · thanh chuyển môn</h2>
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--bd); border-radius: 12px; padding: 10px 14px">
+      <span><span style="font-size: 12.5px; color: var(--tx3)">Khoa học › môn 1/5</span><br><strong style="font-size: 16px">Vật lí · 17 câu</strong> <span style="{{chipOk}}">Đã kiểm tra</span></span>
+      <span style="display: flex; flex-wrap: wrap; gap: 8px">
+        <a href="KhoaHocHSA2B.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; border: 1px solid var(--bd); color: var(--tx2); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center">Về tổng quan Khoa học</a>
+        <a href="BaiThiBuoc2.dc.html" style="height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; background: var(--p100); color: var(--pt); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px">Môn tiếp theo: Hóa học<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></a>
+      </span>
+    </div>
+    <p style="margin: 0; color: var(--tx3)">Có thay đổi chưa lưu thì “Môn tiếp theo” mở hộp thoại ba nút.</p>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 12px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+    <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Sinh học không bỏ được câu.</strong> 17 câu của môn cần ít nhất 2 câu đơn để bỏ 1 câu khi môn nhận 16 câu. Hiện có 1 câu đơn (còn lại là câu con của chùm).</div>
+    <p style="margin: 0; color: var(--tx2)">Môn chưa thiết lập: dòng hiện “Chưa hoàn tất”, cột Nhóm ghi “Chưa có nhóm”, nút “Thiết lập” giữ nguyên.</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":1500}}'>
+class Component extends DCLogic {
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+renderVals() {
+const st = { ok: 'Đã kiểm tra', warn: 'Cần kiểm tra lại', bad: 'Chưa hoàn tất' };
+const subjects = [
+['Vật lí', 'tự nhiên', '5/6/6', '3/1/13', '2 chùm × 3, 11 câu đơn', 'ok'],
+['Hóa học', 'tự nhiên', '2/8/7', '4/5/8', '1 chùm × 3, 14 câu đơn', 'ok'],
+['Sinh học', 'tự nhiên', '3/5/9', '7/7/3', '1 chùm × 3, 14 câu đơn', 'warn'],
+['Lịch sử', 'xã hội', '2/5/10', '7/8/2', '1 chùm × 3, 14 câu đơn', 'ok'],
+['Địa lí', 'xã hội', '2/4/11', '5/9/3', '1 chùm × 3, 14 câu đơn', 'ok']
+].map((s) => ({ name: s[0], kind: s[1], g: s[2], d: s[3], blocks: s[4], status: st[s[5]], chip: this.chip(s[5]) }));
+return { theme: this.props.dark ? 'dark' : '', chipWarn: this.chip('warn'), chipOk: this.chip('ok'), subjects };
+}
+}
+</script>
+</body>
+</html>

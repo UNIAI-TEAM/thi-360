@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · tổng quan bài, chỉ tiêu cấp bài (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+input,button{font:inherit}
+input{color-scheme:light}.th.dark input{color-scheme:dark}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; min-height: 1550px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · BCA FULL › Tổng quan bài (mục đầu danh sách)</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px">
+    <div><h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Tổng quan bài · BCA FULL</h1><p style="margin: 2px 0 0; color: var(--tx3)">81 câu · 180 phút chung · 100 điểm.</p></div>
+
+    <div role="region" tabindex="0" aria-labelledby="cap-pts" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+      <table style="width: 100%; min-width: 640px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+        <caption id="cap-pts" style="text-align: left; padding: 12px 14px; font-size: 16px; font-weight: 700">Điểm theo môn</caption>
+        <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Môn</th><th scope="col" style="padding: 8px; text-align: right">Số câu</th><th scope="col" style="padding: 8px; text-align: right">Điểm mỗi câu</th><th scope="col" style="padding: 8px 14px; text-align: right">Tổng điểm</th></tr></thead>
+        <tbody>
+          <sc-for list="{{pts}}" as="p" hint-placeholder-count="5">
+            <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">{{p.n}}</th><td style="padding: 8px; text-align: right">{{p.q}}</td><td style="padding: 8px; text-align: right">{{p.e}}</td><td style="padding: 8px 14px; text-align: right; font-weight: 600">{{p.t}}</td></tr>
+          </sc-for>
+          <tr style="border-top: 1px solid var(--bd); background: var(--sb); font-weight: 700"><th scope="row" style="padding: 8px 14px; text-align: left">Tự luận 25 · Trắc nghiệm 75</th><td style="padding: 8px; text-align: right">81</td><td style="padding: 8px"></td><td style="padding: 8px 14px; text-align: right">100</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+      <div style="padding: 12px 14px; background: var(--thd); border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px">
+        <div><h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Chỉ tiêu cấp bài</h2><span style="font-size: 12.5px; color: var(--tx3)">Từ mẫu: chỉ sửa giá trị, không thêm, xóa hay đổi tiêu chí. Đối chiếu theo từng mã CA1–CA4.</span></div>
+        <span style="{{chipWarn}}">Tham khảo</span>
+      </div>
+      <sc-for list="{{quotas}}" as="q" hint-placeholder-count="2">
+        <div style="padding: 12px 14px; border-top: 1px solid var(--bd); display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline"><h3 style="margin: 0; font-size: 14px; font-weight: 700">{{q.name}}</h3><span style="color: var(--tx3)">Tính trên {{q.scope}} · đơn vị câu</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 12px">
+            <sc-for list="{{q.buckets}}" as="b" hint-placeholder-count="3">
+              <label style="display: flex; flex-direction: column; gap: 4px; min-width: 150px"><span style="font-weight: 600">{{b.k}}</span><span style="display: flex; align-items: center; gap: 6px"><input value="{{b.p}}" aria-label="Tỉ lệ {{b.k}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right">%</span><span style="font-size: 12.5px; color: var(--tx3)">{{b.conv}}</span></label>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <p style="margin: 0; padding: 10px 14px; border-top: 1px solid var(--bd); color: var(--tx3)">Chỉ tiêu trải nhiều môn chỉ ở mức Tham khảo: nút “Bắt buộc” bị khóa. Chỉ tiêu cấp bài của đúng một môn (ví dụ độ khó cả môn Toán SP2E, ba phần) mới đặt Bắt buộc được.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 12px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">SP2E Toán · chỉ tiêu cấp bài một môn (tỷ trọng tham khảo theo BA)</h3>
+      <p style="margin: 0; color: var(--tx2); font-variant-numeric: tabular-nums">Độ khó trên 40 câu của ba phần: NB 30% = 12 câu · TH 30% = 12 câu · VD 25% = 10 câu · VDC 15% = 6 câu. Mức: <span style="{{chipWarn}}">Tham khảo</span> (đổi được sang Bắt buộc).</p>
+    </div>
+    <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được.</strong> Chỉ tiêu cấp bài trải nhiều môn không đặt Bắt buộc được.</div>
+    <p style="margin: 0; color: var(--tx2)">Bài không có chỉ tiêu cấp bài: khối ghi “Mẫu của bài này không có chỉ tiêu cấp bài.”</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":1550}}'>
+class Component extends DCLogic {
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+renderVals() {
+const pts = [['Phần I · Ngữ văn (tự luận)', '1', '25', '25'], ['Toán', '35', '1', '35'], ['Lịch sử', '10', '1', '10'], ['Tiếng Anh', '20', '0,75', '15'], ['Môn tự chọn (mỗi mã)', '15', '1', '15']]
+.map((p) => ({ n: p[0], q: p[1], e: p[2], t: p[3] }));
+const quotas = [
+{ name: 'Khối lớp', scope: '60 câu: Toán, Lịch sử, môn tự chọn (không gồm Tiếng Anh, tự luận Văn)', buckets: [{ k: 'Lớp 10 + 11', p: '30', conv: '≈ 18 câu' }, { k: 'Lớp 12', p: '70', conv: '≈ 42 câu' }] },
+{ name: 'Độ khó', scope: '80 câu trắc nghiệm (không gồm tự luận Văn)', buckets: [{ k: 'NB + TH', p: '30', conv: '≈ 24 câu' }, { k: 'VD', p: '50', conv: '≈ 40 câu' }, { k: 'VDC', p: '20', conv: '≈ 16 câu' }] }
+];
+return { theme: this.props.dark ? 'dark' : '', chipWarn: this.chip('warn'), pts, quotas };
+}
+}
+</script>
+</body>
+</html>
