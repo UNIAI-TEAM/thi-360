@@ -343,8 +343,8 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                     checked[0]++;
                     String type = text(block, "questionType", null);
                     boolean set = "QUESTION_SET".equals(type) || "CLOZE".equals(type);
-                    Integer units = set ? block.path("setCount").asInt(0) * block.path("setSize").asInt(0)
-                            : integer(block, "questionCount");
+                    Integer units = integer(block, "questionCount");
+                    if (set) units = block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
                     if (units == null && count == null) {
                         failures.add(template + " / " + currentSubject + ": unresolved remainder");
                     } else {
