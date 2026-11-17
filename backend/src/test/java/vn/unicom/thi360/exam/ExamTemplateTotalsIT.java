@@ -146,7 +146,7 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
     @Test
     void preservedAndRequirementScalesAndClocksAreIndependentOfFixtures() {
         for (var row : jdbc.queryForList("""
-                select code, kind_code, max_score, duration_minutes
+                select code, kind_code, scope, part_code, subject_code, max_score, duration_minutes
                 from exam.exam_template where build_mode = 'STANDARD'
                 """)) {
             String code = (String) row.get("code");
@@ -163,6 +163,37 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
                 String scale = "SP2E_VAN_OLD".equals(code) ? "6"
                         : "SP2E_VAN_2026".equals(code) ? "5" : "10";
                 assertThat((BigDecimal) row.get("max_score")).as("%s scale", code).isEqualByComparingTo(scale);
+            } else if ("SPT".equals(kind)) {
+                String subject = (String) row.get("subject_code");
+                String scale = "VAN".equals(subject) ? "3"
+                        : Set.of("ANH", "HOA").contains(subject) ? "8" : "7";
+                assertThat((BigDecimal) row.get("max_score")).as("%s scale", code).isEqualByComparingTo(scale);
+            } else if (Set.of("HSA", "QDA", "BCA").contains(kind)) {
+                String scope = (String) row.get("scope");
+                String subject = (String) row.get("subject_code");
+                String part = (String) row.get("part_code");
+                int scale;
+                if ("BCA".equals(kind)) {
+                    if ("FULL".equals(scope)) scale = 100;
+                    else if ("PART".equals(scope)) scale = switch (part) {
+                        case "VAN_TU_LUAN" -> 25;
+                        case "TN_BAT_BUOC" -> 60;
+                        case "TN_TU_CHON" -> 15;
+                        default -> throw new AssertionError("Unknown BCA part: " + part);
+                    };
+                    else scale = switch (subject) {
+                        case "VAN" -> 25;
+                        case "TOAN" -> 35;
+                        case "SU" -> 10;
+                        case "ANH", "LY", "HOA", "SINH", "DIA" -> 15;
+                        default -> throw new AssertionError("Unknown BCA subject: " + subject);
+                    };
+                } else if ("FULL".equals(scope)) scale = 150;
+                else if ("SUBJECT".equals(scope) && Set.of("LY", "HOA", "SINH", "SU", "DIA").contains(subject)) {
+                    scale = "HSA".equals(kind) ? 17 : 25;
+                } else scale = 50;
+                assertThat((BigDecimal) row.get("max_score")).as("%s scale", code)
+                        .isEqualByComparingTo(BigDecimal.valueOf(scale));
             }
         }
     }
