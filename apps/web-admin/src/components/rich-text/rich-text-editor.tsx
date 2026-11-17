@@ -1,7 +1,7 @@
 "use client";
 
 import { uploadQuestionAsset } from "@/features/questions/api";
-import { cn } from "@thi360/ui";
+import { cn, notify } from "@thi360/ui";
 import type { Mark as PMMark, Node as PMNode } from "@tiptap/pm/model";
 import { NodeSelection, Selection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -166,6 +166,8 @@ export function RichTextEditor({
   const hasFocusedRef = useRef(false);
   // HTML đã phát qua onChange: lọc lặp phát hiện (vòng đồng bộ, khởi tạo rỗng → "<p></p>").
   const lastEmittedRef = useRef<string | null>(null);
+  // Lần bấm mở hộp mới nhất: các lần tải bất đồng bộ về muộn hơn không được ghi đè hộp của lần bấm sau.
+  const loadTokenRef = useRef(0);
   useEffect(() => {
     onChangeRef.current = onChange;
     allowImagesRef.current = allowImages;
@@ -193,10 +195,18 @@ export function RichTextEditor({
   );
 
   function openEntry(entry: InsertEntry, editing: unknown) {
-    void entry.load().then((module) => {
-      setDialogModule(module);
-      setDialogState({ entry, editing });
-    });
+    const token = ++loadTokenRef.current;
+    entry.load().then(
+      (module) => {
+        // Bấm nhanh hai nút Chèn: chỉ lần bấm sau cùng được mở, kết quả tải cũ hơn bị bỏ.
+        if (token !== loadTokenRef.current) return;
+        setDialogModule(module);
+        setDialogState({ entry, editing });
+      },
+      () => {
+        if (token === loadTokenRef.current) notify.error(t("insertLoadError"));
+      },
+    );
   }
 
   const editor = useEditor(

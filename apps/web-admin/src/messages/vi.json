@@ -5363,6 +5363,7 @@
         "description": "Đưa đề, phương án và lời giải từ tài liệu Word"
       }
     },
+    "insertLoadError": "Không tải được hộp chèn. Kiểm tra kết nối rồi thử lại.",
     "mathUnbalanced": "Công thức có dấu mở hoặc đóng không khớp",
     "toolbar": {
       "bold": "Đậm",

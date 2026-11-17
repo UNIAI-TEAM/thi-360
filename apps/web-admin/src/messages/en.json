@@ -5363,6 +5363,7 @@
         "description": "Bring stem, options and explanation from a Word document"
       }
     },
+    "insertLoadError": "Couldn't load the insert dialog. Check your connection and try again.",
     "mathUnbalanced": "Math delimiters are unbalanced",
     "toolbar": {
       "bold": "Bold",
