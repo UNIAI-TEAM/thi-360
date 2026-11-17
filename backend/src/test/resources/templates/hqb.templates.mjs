@@ -88,7 +88,7 @@ const bcaHistory=section('SU',10,[block('Trắc nghiệm độc lập','SINGLE_C
 const bcaEnglish=section('ANH',20,[block('Phát âm','SINGLE_CHOICE',1,{tagCodes:['ANH_PHAT_AM'],requiredPointsPerQuestion:.75}),block('Trọng âm','SINGLE_CHOICE',1,{tagCodes:['ANH_TRONG_AM'],requiredPointsPerQuestion:.75}),block('Từ vựng và ngữ pháp','SINGLE_CHOICE',8,{tagCodes:['ANH_TU_VUNG_NGU_PHAP'],requiredPointsPerQuestion:.75}),set('Đọc điền',1,5,{tagCodes:['ANH_DOC_DIEN'],requiredPointsPerQuestion:.75}),set('Đọc hiểu',1,5,{tagCodes:['ANH_DOC_HIEU'],requiredPointsPerQuestion:.75})],{matrix:matrix([],[3,9,8,0],'REQUIRED','REFERENCE')});
 const bcaEssay=section('VAN',1,[block('Nghị luận xã hội từ 500 chữ','ESSAY',1,{requiredPointsPerQuestion:25,tagCodes:['VAN_NGHI_LUAN_XA_HOI']})]);
 const scienceOption={kind:'SUBJECT_CHOICE',code:'SCIENCE',name:'Khoa học',chooseSubjects:3,countsByPick:[17,17,16],sections:scientific.map(s=>science('HSA',s))};
-const hsaChoice=part('Khoa học hoặc Tiếng Anh',50,60,[],{participation:{mode:'CHOICE',choose:1},options:[scienceOption,{kind:'SUBJECT',code:'ENGLISH',name:'Tiếng Anh',sections:[english('HSA')]}]});
+const hsaChoice=part('Khoa học hoặc Tiếng Anh',50,60,[],{participation:{mode:'CHOICE',choose:1},options:[scienceOption,{kind:'SUBJECT',code:'ANH',name:'Tiếng Anh',sections:[english('HSA')]}]});
 const qdaChoice=part('Khoa học hoặc Tiếng Anh',50,60,[],{codeSource:{source:'GLOBAL_LIST',branch:null},subjectPool:[...scientific.map(s=>science('QDA',s)),english('QDA')]});
 const bcaChoice=part('Trắc nghiệm tự chọn',15,null,[],{codeSource:{source:'GLOBAL_LIST',branch:null},subjectPool:['LY','HOA','SINH','DIA'].map(s=>science('BCA',s))});
 const sources=[];
