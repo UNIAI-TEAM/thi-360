@@ -106,6 +106,17 @@ final class PathSearch {
         return picked;
     }
 
+    private List<List<Integer>> selectedIndices() {
+        List<List<Integer>> selected = new ArrayList<>(ctx.groups().size());
+        for (int g = 0; g < ctx.groups().size(); g++) selected.add(new ArrayList<>());
+        for (int p = 0; p < nPairs; p++) {
+            if (chosen[p] != null) {
+                for (int[] member : chosen[p]) selected.get(pairGroup[p]).add(member[1]);
+            }
+        }
+        return selected;
+    }
+
     // ---------------------------------------------------------------- lớp đóng góp
 
     /** Gom ứng viên usable thành lớp theo vector đóng góp; thành viên = (nhóm, chỉ số ứng viên). */
@@ -121,10 +132,11 @@ final class PathSearch {
                     continue;
                 }
                 int[] vec = ctx.contrib()[g][i];
-                Integer c = classOf.get(Arrays.toString(vec));
+                String signature = Arrays.toString(vec) + TopicAssignments.signature(ctx, g, pool.get(i));
+                Integer c = classOf.get(signature);
                 if (c == null) {
                     c = classVecs.size();
-                    classOf.put(Arrays.toString(vec), c);
+                    classOf.put(signature, c);
                     classVecs.add(vec);
                     members.add(new ArrayList<>());
                 }
@@ -378,6 +390,10 @@ final class PathSearch {
                 if (v != 0) {
                     return;
                 }
+            }
+            if (TopicAssignments.hasQuotas(ctx)
+                    && TopicAssignments.assign(ctx, selectedIndices(), deadlineCheck) == null) {
+                return;
             }
             terminalOk = true;
             stack.clear();

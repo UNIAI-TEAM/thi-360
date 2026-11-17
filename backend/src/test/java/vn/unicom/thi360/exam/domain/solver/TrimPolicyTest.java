@@ -79,4 +79,23 @@ class TrimPolicyTest {
         assertThat(result.witness().getFirst().groups().getFirst().picks())
                 .extracting(QuestionPick::questionId).containsExactly("alternative");
     }
+    @Test
+    void trimPreservesRequiredTopicAndReturnsUpdatedAssignment() {
+        var group = GroupQuota.single("g", 2);
+        var quota = new TopicQuota("topic", List.of("A"), 1, List.of(), List.of(), List.of());
+        var section = new SectionOnPath("PHY", "section", 2,
+                new SubjectQuota(null, null, List.of(quota)), List.of(group));
+        var required = new PathCandidate("required", 1, null, null,
+                List.of(new CountingUnit(null, "SINGLE_CHOICE", null, null, List.of("A"), List.of(), null)));
+        var extra = PathCandidate.standalone("extra", 1, "SINGLE_CHOICE", null, null, null);
+        var witness = new SubjectWitness("PHY", 2, List.of(new GroupWitness("g", List.of(
+                new QuestionPick("required", 1, List.of(new TopicAssignment("SECTION", "section", "topic", 0))),
+                new QuestionPick("extra", 1)))));
+        for (int seed = 0; seed < 20; seed++) {
+            var result = TrimPolicy.trim(section, witness, ignored -> List.of(required, extra), seed);
+            assertThat(result.droppedQuestion().questionId()).isEqualTo("extra");
+            assertThat(result.witness().groups().getFirst().picks().getFirst().topicAssignments())
+                    .containsExactly(new TopicAssignment("SECTION", "section", "topic", 0));
+        }
+    }
 }

@@ -87,13 +87,18 @@ final class SubproblemSolver {
                             : SolveReason.NO_JOINT_SOLUTION,
                     null);
         }
+        var assignments = TopicAssignments.assign(ctx, picked, deadlineCheck);
+        if (assignments == null) {
+            throw new IllegalStateException("selected candidates do not satisfy topic quotas");
+        }
         // đề chứng minh theo nhóm, theo thứ tự nhóm của problem
         List<GroupWitness> witness = new ArrayList<>(ctx.groups().size());
         for (int g = 0; g < ctx.groups().size(); g++) {
             List<QuestionPick> picks = new ArrayList<>();
             for (int i : picked.get(g)) {
                 PathCandidate c = ctx.cands().get(g).get(i);
-                picks.add(new QuestionPick(c.questionId(), c.versionNo()));
+                picks.add(new QuestionPick(c.questionId(), c.versionNo(),
+                        assignments.getOrDefault(new TopicAssignments.Pick(g, i), List.of())));
             }
             witness.add(new GroupWitness(ctx.groups().get(g).group().groupId(), picks));
         }

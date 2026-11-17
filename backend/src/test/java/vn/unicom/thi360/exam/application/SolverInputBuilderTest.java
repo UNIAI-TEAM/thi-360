@@ -302,4 +302,79 @@ class SolverInputBuilderTest {
                     .satisfies(g -> assertThat(g.picks()).extracting(QuestionPick::questionId).containsExactly(stress.toString()));
         }
     }
+
+    @Test
+    void requiredExamQuotaAggregatesOneSubjectAcrossParts() {
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        UUID subjectId = UUID.randomUUID();
+        CatalogItemView subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(subjectId);
+        when(catalog.findActiveItem("SUBJECT", "TOAN")).thenReturn(Optional.of(subject));
+        java.util.concurrent.atomic.AtomicBoolean secondIsHard = new java.util.concurrent.atomic.AtomicBoolean(false);
+        when(source.findCandidates(any(), eq(20001))).thenAnswer(call -> {
+            QuestionSourcePort.Filter filter = call.getArgument(0);
+            UUID id = UUID.nameUUIDFromBytes(filter.tagCodes().getFirst().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String difficulty = filter.tagCodes().contains("B") && secondIsHard.get() ? "HARD" : "EASY";
+            var unit = new QuestionSourcePort.Unit(id, null, QuestionType.SINGLE_CHOICE,
+                    "G12", difficulty, List.of(), List.of(), BigDecimal.ONE);
+            return List.of(new QuestionSourcePort.Candidate(id, 1, null, List.of(unit), null, null));
+        });
+        var parts = new java.util.ArrayList<ExamPart>();
+        for (int i = 0; i < 2; i++) {
+            String tag = i == 0 ? "A" : "B";
+            var block = new QuestionBlock("b" + i, "B", QuestionType.SINGLE_CHOICE, 1, null, null,
+                    null, null, null, null, false, null, List.of(tag), null,
+                    true, false, List.of(), List.of(), null, List.of(), false, List.of(), null);
+            var section = new ExamSection("s" + i, "TOAN", 1, null, null, null, null, List.of(block));
+            parts.add(new ExamPart("p" + i, i, "Part", null, 1, 1, 1, null, null,
+                    List.of(section), List.of()));
+        }
+        var quota = new ExamQuota("q", "difficulty", ExamQuota.Dimension.DIFFICULTY,
+                List.of(new ExamQuota.Bucket(List.of("EASY"), 1, null),
+                        new ExamQuota.Bucket(List.of("HARD"), 1, null)),
+                QuotaBasis.QUESTION, QuotaEnforcement.REQUIRED, List.of("TOAN"), List.of());
+        var document = new ExamStructureDocument(parts, List.of(quota));
+        var builder = new SolverInputBuilder(catalog, source, SolverLimits.defaults());
+        var invalid = builder.build(UUID.randomUUID(), document);
+        assertThat(new PaperSolver().solveAll(invalid.parts(), invalid.candidates(), SolveMode.check()).status())
+                .isEqualTo(SolveStatus.INVALID);
+        secondIsHard.set(true);
+        var valid = builder.build(UUID.randomUUID(), document);
+        assertThat(new PaperSolver().solveAll(valid.parts(), valid.candidates(), SolveMode.check()).status())
+                .isEqualTo(SolveStatus.VALID);
+    }
+    @Test
+    void builderExpandsRequiredTopicNodesAndIgnoresReferenceTopics() {
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        UUID root = UUID.randomUUID(), child = UUID.randomUUID();
+        CatalogItemView rootItem = mock(CatalogItemView.class);
+        CatalogItemView childItem = mock(CatalogItemView.class);
+        when(rootItem.id()).thenReturn(root);
+        when(rootItem.path()).thenReturn("/root/");
+        when(childItem.id()).thenReturn(child);
+        when(childItem.path()).thenReturn("/root/child/");
+        when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of(rootItem, childItem));
+        var required = new vn.unicom.thi360.exam.domain.TopicQuota("required", "R", List.of(root), 1,
+                QuotaBasis.QUESTION, QuotaEnforcement.REQUIRED, List.of("G12"), List.of("HARD"), List.of("g"));
+        var reference = new vn.unicom.thi360.exam.domain.TopicQuota("reference", "R", List.of(root), 1,
+                QuotaBasis.QUESTION, QuotaEnforcement.REFERENCE, List.of(), List.of(), List.of());
+        var block = new QuestionBlock("g", "G", QuestionType.SINGLE_CHOICE, 1, null, null,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(), null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "TOAN", 1, null, null, null, null,
+                List.of(block), List.of(required, reference));
+        var part = new ExamPart("p", 1, "P", null, 1, 1, 1, null, null, List.of(section), List.of());
+        var input = new SolverInputBuilder(catalog, source, SolverLimits.defaults())
+                .build(UUID.randomUUID(), new ExamStructureDocument(List.of(part)));
+        var quota = ((SolvePart.Fixed) input.parts().getFirst()).sections().getFirst()
+                .subjectQuota().topicQuotas();
+        assertThat(quota).singleElement().satisfies(q -> {
+            assertThat(q.nodeIds()).containsExactlyInAnyOrder(root.toString(), child.toString());
+            assertThat(q.gradeCodes()).containsExactly("G12");
+            assertThat(q.difficultyCodes()).containsExactly("HARD");
+            assertThat(q.groupIds()).containsExactly("g");
+        });
+    }
 }
