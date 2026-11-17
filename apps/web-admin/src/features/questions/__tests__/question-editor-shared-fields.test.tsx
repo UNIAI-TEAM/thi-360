@@ -156,4 +156,11 @@ describe("cau con cua bo cau hoi sua phan loai rieng", () => {
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/questions/${id}`));
     expect(storedQuestion(id).children[0]?.knowledge).toEqual(storedQuestion(id).knowledge);
   });
+
+  it("de bai cau con Trac nghiem 1 dap an co muc Gach chan danh nhan trong nhom Chen", async () => {
+    const id = await seedSet();
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    const first = await openChild(1);
+    expect(first.getByRole("button", { name: "Labeled underline" })).toBeInTheDocument();
+  });
 });
