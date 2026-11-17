@@ -12,6 +12,7 @@ import {
   LATEX_ESCAPES,
   NARY_COMMANDS,
   SYMBOL_COMMANDS,
+  TEXT_ESCAPES,
   functionCommand,
 } from "./latex-symbols";
 
@@ -150,7 +151,7 @@ function brace(s: string): string {
 /** Phần chữ thường giữa các ký tự lạ, bọc `\text{…}` (dấu tiếng Việt, ký tự KaTeX không dựng được trong chế độ toán). */
 function textGroup(text: string): string {
   let out = "";
-  for (const char of text) out += LATEX_ESCAPES[char] ?? char;
+  for (const char of text) out += TEXT_ESCAPES[char] ?? char;
   return `\\text{${out}}`;
 }
 

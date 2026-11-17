@@ -152,3 +152,11 @@ describe("ommlToLatex: outside the subset", () => {
     expect(() => ommlToLatex('<!DOCTYPE m [<!ENTITY a "aaaa">]><m:oMath><m:r><m:t>&a;</m:t></m:r></m:oMath>')).toThrow(MalformedOmmlError);
   });
 });
+
+describe("ommlToLatex: normal-text runs are valid in text mode", () => {
+  it("escapes backslash, tilde, caret and ampersand with text-mode commands and KaTeX renders the result", () => {
+    const result = latex(run("a\\b ~ c ^ d &amp; e %", "nor"));
+    expect(result).toBe("\\text{a\\textbackslash b \\textasciitilde  c \\textasciicircum  d \\& e \\%}");
+    expect(() => katex.renderToString(result, { throwOnError: true })).not.toThrow();
+  });
+});

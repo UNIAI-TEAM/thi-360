@@ -146,6 +146,15 @@ export const LATEX_ESCAPES: Readonly<Record<string, string>> = {
   "^": "\\wedge ",
 };
 
+/** Như `LATEX_ESCAPES` nhưng cho chế độ chữ (`\text{…}`): `\backslash`, `\sim`, `\wedge` chỉ có trong chế độ toán, `&` phải thoát. */
+export const TEXT_ESCAPES: Readonly<Record<string, string>> = {
+  ...LATEX_ESCAPES,
+  "\\": "\\textbackslash ",
+  "~": "\\textasciitilde ",
+  "^": "\\textasciicircum ",
+  "&": "\\&",
+};
+
 /** Toán tử lớn của `m:nary`: ký tự → lệnh, và có đặt cận trên/dưới (limits) hay cạnh bên mặc định. */
 export const NARY_COMMANDS: Readonly<Record<string, { command: string; integral: boolean }>> = {
   "∑": { command: "\\sum", integral: false },

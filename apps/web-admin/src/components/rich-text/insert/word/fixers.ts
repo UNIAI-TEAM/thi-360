@@ -104,10 +104,13 @@ function fixFunctionNames(latex: string): string {
 
 /**
  * Ký hiệu độ → `^{\circ}`: ký tự `°`/`º`/`˚`, hoặc số mũ chữ "o" sau một số (`30^o`, gõ tay trong Word).
- * `x^0` và `x^o` sau biến không đổi: có thể là lũy thừa thật.
+ * `x^0` và `x^o` sau biến không đổi: có thể là lũy thừa thật. Chữ trong `\text{…}` (run "văn bản thường" của Word,
+ * `30°`) giữ nguyên: `^{\circ}` không hợp lệ trong chế độ chữ, còn `°` tự nó KaTeX dựng được.
  */
 function fixDegree(latex: string): string {
-  return latex.replace(/[°º˚]/g, "^{\\circ}").replace(/(\d+|\{\d+\})\^(?:o|\{o\})(?![A-Za-z0-9])/g, "$1^{\\circ}");
+  return mapFreeText(latex, (text) =>
+    text.replace(/[°º˚]/g, "^{\\circ}").replace(/(\d+|\{\d+\})\^(?:o|\{o\})(?![A-Za-z0-9])/g, "$1^{\\circ}"),
+  );
 }
 
 const RELATION = /=|\\neq|\\leq|\\geq|<|>/;
