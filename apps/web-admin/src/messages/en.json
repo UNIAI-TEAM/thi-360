@@ -5426,14 +5426,12 @@
         "pasteHint": "Paste a range of cells from Excel or Google Sheets straight into the table.",
         "selectHint": "Hold Shift while clicking a cell (or press Alt+Shift+arrow) to select several cells, then choose Merge cells.",
         "sourceLabel": "Source",
-        "sourcePrefix": "Source:",
         "submit": "Insert table",
         "title": "Data table",
         "titleLabel": "Table title",
         "toolsLabel": "Table tools",
         "truncated": "The pasted range is larger than {rows} rows by {cols} columns, so the excess was dropped.",
         "unitLabel": "Unit",
-        "unitPrefix": "Unit:",
         "unmerge": "Split cell",
         "update": "Update table"
       }

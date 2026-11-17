@@ -4,16 +4,22 @@ import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { createRichTextExtensions } from "../extensions";
 import { stripTrailingEmptyParagraph } from "../html-contract";
 import TableInsertDialog from "../insert/table/dialog";
 import {
   createDraft,
+  deleteCol,
+  deleteRow,
+  isCovered,
   isNumericText,
   parseClipboardGrid,
   parseTable,
   serializeTable,
+  setHeaderCol,
+  setHeaderRow,
   unwrapFigure,
 } from "../insert/table/table-model";
 import { sanitizeQuestionHtml } from "../sanitize";
@@ -28,7 +34,6 @@ const samples = (
   }
 ).samples;
 const fixture = (name: string) => samples.find((sample) => sample.name === name)!.html;
-const LABELS = { unitPrefix: "Đơn vị:", sourcePrefix: "Nguồn:" };
 
 const editors: Editor[] = [];
 function createEditor(content: string): Editor {
@@ -65,7 +70,7 @@ describe("table model", () => {
   it.each(["data-table", "data-table-merged-cell-with-math"])("reads and writes fixture %s unchanged", (name) => {
     const html = fixture(name);
     const draft = parseTable(unwrapFigure(html)!);
-    expect(serializeTable(draft, LABELS)).toBe(html);
+    expect(serializeTable(draft)).toBe(html);
   });
 
   it("parses Excel text with quoted multi-line cells and a trailing newline", () => {
@@ -82,11 +87,11 @@ describe("table model", () => {
       ["x", "1", "2"],
       ["y", "3", "n/a"],
     ].map((row) => row.map((text) => ({ text, rich: false })));
-    expect(serializeTable(draft, LABELS)).toBe(
+    expect(serializeTable(draft)).toBe(
       '<figure class="data-table"><table><thead><tr><th scope="col">Năm</th><th scope="col">A</th><th scope="col">B</th></tr></thead>' +
         '<tbody><tr><th scope="row">x</th><td class="num">1</td><td>2</td></tr><tr><th scope="row">y</th><td class="num">3</td><td>n/a</td></tr></tbody></table></figure>',
     );
-    expect(serializeTable({ ...draft, alignNumbers: false }, LABELS)).not.toContain("num");
+    expect(serializeTable({ ...draft, alignNumbers: false })).not.toContain("num");
   });
 
   it("escapes plain cell text", () => {
@@ -94,7 +99,49 @@ describe("table model", () => {
     draft.headerRow = false;
     draft.headerCol = false;
     draft.cells = [[{ text: "a < b & c", rich: false }]];
-    expect(serializeTable(draft, LABELS)).toContain("<td>a &lt; b &amp; c</td>");
+    expect(serializeTable(draft)).toContain("<td>a &lt; b &amp; c</td>");
+  });
+
+  it("moves the origin of a vertical merge down with its text when the origin row is deleted", () => {
+    const draft = createDraft(4, 2);
+    draft.cells[1]![0] = { text: "gộp", rich: false };
+    draft.merges = [{ row: 1, col: 0, rowSpan: 3, colSpan: 1 }];
+
+    const after = deleteRow(draft, 1);
+
+    expect(after.merges).toEqual([{ row: 1, col: 0, rowSpan: 2, colSpan: 1 }]);
+    expect(after.cells[1]![0]).toEqual({ text: "gộp", rich: false });
+    expect(isCovered(after, 2, 0)).toBe(true);
+    expect(deleteRow(draft, 3).merges).toEqual([{ row: 1, col: 0, rowSpan: 2, colSpan: 1 }]);
+    expect(deleteRow(draft, 3).cells[1]![0]!.text).toBe("gộp");
+  });
+
+  it("moves the origin of a horizontal merge right with its text when the origin column is deleted", () => {
+    const draft = createDraft(2, 4);
+    draft.cells[0]![1] = { text: "gộp", rich: false };
+    draft.merges = [{ row: 0, col: 1, rowSpan: 1, colSpan: 3 }];
+
+    const after = deleteCol(draft, 1);
+
+    expect(after.merges).toEqual([{ row: 0, col: 1, rowSpan: 1, colSpan: 2 }]);
+    expect(after.cells[0]![1]).toEqual({ text: "gộp", rich: false });
+  });
+
+  it("splits merges that cross the header boundary when the header row or column is switched on", () => {
+    const draft = createDraft(4, 4);
+    draft.headerRow = false;
+    draft.headerCol = false;
+    const keep = { row: 2, col: 2, rowSpan: 2, colSpan: 2 };
+    draft.merges = [{ row: 0, col: 0, rowSpan: 2, colSpan: 1 }, { row: 0, col: 2, rowSpan: 1, colSpan: 2 }, keep];
+
+    const withRow = setHeaderRow(draft, true);
+    expect(withRow.headerRow).toBe(true);
+    expect(withRow.merges).toEqual([{ row: 0, col: 2, rowSpan: 1, colSpan: 2 }, keep]);
+
+    const withCol = setHeaderCol(draft, true);
+    expect(withCol.headerCol).toBe(true);
+    expect(withCol.merges).toEqual([{ row: 0, col: 0, rowSpan: 2, colSpan: 1 }, { row: 0, col: 2, rowSpan: 1, colSpan: 2 }, keep]);
+    expect(setHeaderRow(withRow, false).merges).toEqual(withRow.merges);
   });
 });
 
@@ -118,6 +165,38 @@ describe("table dialog", () => {
 
     expect(emitted(editor)).toBe(fixture("data-table"));
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("stores the Vietnamese unit and source prefixes even when the interface is English", async () => {
+    const user = userEvent.setup();
+    const editor = createEditor("");
+    renderWithProviders(<TableInsertDialog editor={editor} open onOpenChange={vi.fn()} editing={null} />, {
+      locale: "en",
+      messages: en,
+    });
+
+    await user.type(screen.getByLabelText("Unit"), "Tỉ USD");
+    await user.type(screen.getByLabelText("Source"), "World Bank, 2022");
+    await user.click(screen.getByLabelText("Cell row 1, column 1"));
+    await user.paste("a");
+    await user.click(screen.getByRole("button", { name: "Insert table" }));
+
+    expect(emitted(editor)).toContain('<p class="figure-note">Đơn vị: Tỉ USD</p><p class="figure-source">Nguồn: World Bank, 2022</p>');
+  });
+
+  it("right-aligns number columns in the grid only while the switch is on", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor(""));
+    await user.click(cell(1, 1));
+    await user.paste("Năm\tGiá\nA\t1096,1\nB\t2148,6");
+
+    expect(cell(2, 2)).toHaveClass("text-right");
+    expect(cell(3, 2)).toHaveClass("text-right");
+    expect(cell(1, 2)).not.toHaveClass("text-right");
+    expect(cell(2, 1)).not.toHaveClass("text-right");
+
+    await user.click(screen.getByRole("checkbox", { name: "Căn phải cột số" }));
+    expect(cell(2, 2)).not.toHaveClass("text-right");
   });
 
   it("honours the header row, header column and number-alignment switches", async () => {
@@ -162,6 +241,9 @@ describe("table dialog", () => {
     await user.keyboard("{Shift>}");
     await user.click(cell(1, 2));
     await user.keyboard("{/Shift}");
+    expect(cell(1, 1).closest("td")).toHaveAttribute("aria-selected", "true");
+    expect(cell(1, 2).closest("td")).toHaveAttribute("aria-selected", "true");
+    expect(cell(2, 1).closest("td")).toHaveAttribute("aria-selected", "false");
     await user.click(screen.getByRole("button", { name: "Gộp ô" }));
     expect(screen.queryByLabelText("Ô hàng 1, cột 2")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Chèn bảng" }));
@@ -198,7 +280,7 @@ describe("table dialog", () => {
     await user.click(cell(1, 1));
     await user.paste(wide);
 
-    const grid = screen.getByRole("table", { name: "Lưới ô của bảng" });
+    const grid = screen.getByRole("grid", { name: "Lưới ô của bảng" });
     expect(within(grid).getAllByRole("row")).toHaveLength(30);
     expect(within(grid).getAllByRole("textbox")).toHaveLength(30 * 15);
     expect(screen.getByRole("status").textContent).toContain("30 hàng, 15 cột");

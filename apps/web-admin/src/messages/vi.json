@@ -5426,14 +5426,12 @@
         "pasteHint": "Dán thẳng vùng ô từ Excel hoặc Google Sheets vào bảng.",
         "selectHint": "Giữ Shift khi bấm ô (hoặc Alt+Shift+mũi tên) để chọn nhiều ô rồi bấm Gộp ô.",
         "sourceLabel": "Nguồn",
-        "sourcePrefix": "Nguồn:",
         "submit": "Chèn bảng",
         "title": "Bảng số liệu",
         "titleLabel": "Tên bảng",
         "toolsLabel": "Công cụ bảng",
         "truncated": "Vùng dán vượt quá {rows} hàng, {cols} cột nên phần thừa đã bị bỏ.",
         "unitLabel": "Đơn vị",
-        "unitPrefix": "Đơn vị:",
         "unmerge": "Tách ô",
         "update": "Cập nhật bảng"
       }

@@ -25,6 +25,7 @@ import {
   mergeAt,
   mergeCells,
   mergeInRect,
+  numericColumns,
   originOf,
   parseClipboardGrid,
   parseTable,
@@ -32,6 +33,8 @@ import {
   rowCount,
   serializeTable,
   setCellText,
+  setHeaderCol,
+  setHeaderRow,
   unmergeCells,
   unwrapFigure,
   type TableDraft,
@@ -154,13 +157,15 @@ export default function TableInsertDialog({ editor, open, onOpenChange }: Insert
 
   function submit() {
     if (!hasContent(draft)) return;
-    const figure = serializeTable(draft, { unitPrefix: t("unitPrefix"), sourcePrefix: t("sourcePrefix") });
+    const figure = serializeTable(draft);
     const inner = unwrapFigure(sanitizeQuestionHtml(figure).html);
     if (inner === null) return;
     upsertAtom(editor, DATA_TABLE_NODE, { html: inner }, initial.existing);
     onOpenChange(false);
   }
 
+  // Cột số căn phải trong lưới giống như khi lưu (`td.num`).
+  const numericCols = draft.alignNumbers ? numericColumns(draft) : new Set<number>();
   const mergeEnabled = canMerge(draft, rect);
   const splitEnabled = mergeInRect(draft, rect) !== undefined;
 
@@ -215,11 +220,11 @@ export default function TableInsertDialog({ editor, open, onOpenChange }: Insert
 
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <label className="flex items-center gap-2 text-body text-text-secondary">
-            <Checkbox checked={draft.headerRow} onCheckedChange={(value) => setDraft({ ...draft, headerRow: value === true })} />
+            <Checkbox checked={draft.headerRow} onCheckedChange={(value) => update(setHeaderRow(draft, value === true))} />
             {t("headerRow")}
           </label>
           <label className="flex items-center gap-2 text-body text-text-secondary">
-            <Checkbox checked={draft.headerCol} onCheckedChange={(value) => setDraft({ ...draft, headerCol: value === true })} />
+            <Checkbox checked={draft.headerCol} onCheckedChange={(value) => update(setHeaderCol(draft, value === true))} />
             {t("headerCol")}
           </label>
           <label className="flex items-center gap-2 text-body text-text-secondary">
@@ -228,8 +233,8 @@ export default function TableInsertDialog({ editor, open, onOpenChange }: Insert
           </label>
         </div>
 
-        <div className="overflow-auto rounded-lg border border-border">
-          <table ref={gridRef} aria-label={t("gridLabel")} className="w-full border-collapse">
+        <div className="min-h-44 overflow-auto rounded-lg border border-border">
+          <table ref={gridRef} role="grid" aria-multiselectable aria-label={t("gridLabel")} className="w-full border-collapse">
             <tbody>
               {draft.cells.map((cellsRow, row) => (
                 <tr key={row}>
@@ -242,6 +247,8 @@ export default function TableInsertDialog({ editor, open, onOpenChange }: Insert
                     return (
                       <td
                         key={col}
+                        role="gridcell"
+                        aria-selected={multiple ? selected : undefined}
                         colSpan={merge?.colSpan}
                         rowSpan={merge?.rowSpan}
                         className={cn("border border-border p-0", isHeader && "bg-subtle", selected && "bg-primary-50")}
@@ -255,6 +262,7 @@ export default function TableInsertDialog({ editor, open, onOpenChange }: Insert
                           className={cn(
                             "h-9 min-w-24 rounded-none border-0 bg-transparent px-2",
                             isHeader && "font-semibold",
+                            !isHeader && numericCols.has(col) && (merge?.colSpan ?? 1) === 1 && "text-right",
                             cell.rich && "font-mono text-caption",
                           )}
                           onChange={(event) => update(setCellText(draft, row, col, event.target.value))}

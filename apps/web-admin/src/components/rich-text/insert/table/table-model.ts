@@ -40,11 +40,13 @@ export interface CellRect {
   col2: number;
 }
 
-export interface TableLabels {
-  /** Tiền tố ghi cả dấu hai chấm, ví dụ "Unit:"; đi vào HTML đã lưu. */
-  unitPrefix: string;
-  sourcePrefix: string;
-}
+/**
+ * Chữ mở đầu dòng đơn vị và dòng nguồn trong HTML lưu (spec 3.2: `p.figure-note` là `Đơn vị: …`, `p.figure-source` là
+ * `Nguồn: …`; spec 5: nhãn đến từ HTML đã lưu, không dịch). Đây là nội dung lưu, không đổi theo ngôn ngữ giao diện;
+ * viết bằng mã thoát Unicode để mã nguồn không chứa chữ có dấu ngoài tệp dịch.
+ */
+export const UNIT_PREFIX = "\u0110\u01A1n v\u1ECB: ";
+export const SOURCE_PREFIX = "Ngu\u1ED3n: ";
 
 const emptyCell = (): TableCell => ({ text: "", rich: false });
 
@@ -101,7 +103,7 @@ export function originOf(draft: TableDraft, row: number, col: number): { row: nu
 /**
  * Cột nào gồm toàn ô số: xét mọi ô gốc không phải tiêu đề; ô gộp nhiều cột hoặc ô trống làm cột đó không đạt.
  */
-function numericColumns(draft: TableDraft): Set<number> {
+export function numericColumns(draft: TableDraft): Set<number> {
   const cols = colCount(draft);
   const seen = new Array<boolean>(cols).fill(false);
   const ok = new Array<boolean>(cols).fill(true);
@@ -130,7 +132,7 @@ function spanAttributes(merge: Merge | undefined): string {
   return out;
 }
 
-/** Có ô nào ngoài ô tiêu đề có chữ không — điều kiện để cho phép Chèn. */
+/** Có ô nào (kể cả ô tiêu đề) có chữ không; ô bị che không tính — điều kiện để cho phép Chèn. */
 export function hasContent(draft: TableDraft): boolean {
   return draft.cells.some((row, r) =>
     row.some((cell, c) => !isCovered(draft, r, c) && cell.text.trim().length > 0),
@@ -138,7 +140,7 @@ export function hasContent(draft: TableDraft): boolean {
 }
 
 /** Xuất `<figure class="data-table">…</figure>` đúng dạng bảng mẫu; innerHTML của node atom là phần bên trong figure. */
-export function serializeTable(draft: TableDraft, labels: TableLabels): string {
+export function serializeTable(draft: TableDraft): string {
   const numericCols = draft.alignNumbers ? numericColumns(draft) : new Set<number>();
   const rows = rowCount(draft);
   const cols = colCount(draft);
@@ -178,15 +180,15 @@ export function serializeTable(draft: TableDraft, labels: TableLabels): string {
     `<figure class="data-table">` +
     (title ? `<figcaption>${escapeText(title)}</figcaption>` : "") +
     table +
-    (unit ? `<p class="figure-note">${escapeText(`${labels.unitPrefix} ${unit}`)}</p>` : "") +
-    (source ? `<p class="figure-source">${escapeText(`${labels.sourcePrefix} ${source}`)}</p>` : "") +
+    (unit ? `<p class="figure-note">${escapeText(`${UNIT_PREFIX}${unit}`)}</p>` : "") +
+    (source ? `<p class="figure-source">${escapeText(`${SOURCE_PREFIX}${source}`)}</p>` : "") +
     `</figure>`
   );
 }
 
-/** Bỏ tiền tố nhãn ("Đơn vị:", "Source:"…) mà hộp ghi vào đầu ghi chú và nguồn. */
-function stripLabelPrefix(text: string): string {
-  return text.replace(/^[^:<>]{1,24}:\s*/, "").trim();
+/** Bỏ chữ mở đầu chuẩn (`UNIT_PREFIX`/`SOURCE_PREFIX`) khỏi ghi chú/nguồn đã lưu; không có chữ đó thì giữ nguyên chữ. */
+function stripLabelPrefix(text: string, prefix: string): string {
+  return (text.startsWith(prefix) ? text.slice(prefix.length) : text).trim();
 }
 
 function spanOf(element: Element, name: string): number {
@@ -204,8 +206,8 @@ export function parseTable(innerHtml: string): TableDraft {
     const tag = child.tagName.toLowerCase();
     if (tag === "figcaption") draft.title = child.textContent?.trim() ?? "";
     else if (tag === "table") table = child;
-    else if (child.classList.contains("figure-note")) draft.unit = stripLabelPrefix(child.textContent ?? "");
-    else if (child.classList.contains("figure-source")) draft.source = stripLabelPrefix(child.textContent ?? "");
+    else if (child.classList.contains("figure-note")) draft.unit = stripLabelPrefix(child.textContent ?? "", UNIT_PREFIX);
+    else if (child.classList.contains("figure-source")) draft.source = stripLabelPrefix(child.textContent ?? "", SOURCE_PREFIX);
   }
   if (!table) return createDraft();
 
@@ -366,6 +368,10 @@ function shrunk(merge: Merge): Merge | null {
   return merge.rowSpan === 1 && merge.colSpan === 1 ? null : merge;
 }
 
+/**
+ * Xóa hàng. Ô gộp bị cắt ngắn đi một hàng; nếu hàng bị xóa chính là hàng của ô gốc mà ô gộp vẫn còn thì ô gốc dời
+ * xuống hàng kế (nay ở cùng chỉ số) và mang theo chữ của ô gốc cũ, để chữ không mất còn ô gộp thì ở lại.
+ */
 export function deleteRow(draft: TableDraft, row: number): TableDraft {
   if (rowCount(draft) <= 1) return draft;
   const cells = draft.cells.filter((_, index) => index !== row);
@@ -373,11 +379,14 @@ export function deleteRow(draft: TableDraft, row: number): TableDraft {
     if (row < m.row) return [{ ...m, row: m.row - 1 }];
     if (row >= m.row + m.rowSpan) return [m];
     const next = shrunk({ ...m, rowSpan: m.rowSpan - 1 });
-    return next ? [next] : [];
+    if (!next) return [];
+    if (row === m.row) cells[row] = cells[row]!.map((cell, col) => (col === m.col ? draft.cells[row]![m.col]! : cell));
+    return [next];
   });
   return { ...draft, cells, merges };
 }
 
+/** Xóa cột; ô gốc dời sang cột kế cùng chữ khi cột bị xóa là cột của ô gốc mà ô gộp còn lại (như `deleteRow`). */
 export function deleteCol(draft: TableDraft, col: number): TableDraft {
   if (colCount(draft) <= 1) return draft;
   const cells = draft.cells.map((row) => row.filter((_, index) => index !== col));
@@ -385,9 +394,23 @@ export function deleteCol(draft: TableDraft, col: number): TableDraft {
     if (col < m.col) return [{ ...m, col: m.col - 1 }];
     if (col >= m.col + m.colSpan) return [m];
     const next = shrunk({ ...m, colSpan: m.colSpan - 1 });
-    return next ? [next] : [];
+    if (!next) return [];
+    if (col === m.col) cells[m.row]![col] = draft.cells[m.row]![col]!;
+    return [next];
   });
   return { ...draft, cells, merges };
+}
+
+/** Bật/tắt hàng đầu là tiêu đề. Bật thì tách các ô gộp vắt qua ranh giới `thead`/`tbody` (ô gốc ở hàng đầu, nhiều hàng). */
+export function setHeaderRow(draft: TableDraft, on: boolean): TableDraft {
+  const merges = on ? draft.merges.filter((m) => !(m.row === 0 && m.rowSpan > 1)) : draft.merges;
+  return { ...draft, headerRow: on, merges };
+}
+
+/** Bật/tắt cột đầu là tiêu đề. Bật thì tách các ô gộp vắt qua ranh giới cột tiêu đề (ô gốc ở cột đầu, nhiều cột). */
+export function setHeaderCol(draft: TableDraft, on: boolean): TableDraft {
+  const merges = on ? draft.merges.filter((m) => !(m.col === 0 && m.colSpan > 1)) : draft.merges;
+  return { ...draft, headerCol: on, merges };
 }
 
 export function setCellText(draft: TableDraft, row: number, col: number, text: string): TableDraft {
