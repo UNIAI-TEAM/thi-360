@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  countBlankMarkers,
   emptyChild,
   emptyEditorValues,
-  insertBlankMarker,
   parsePoints,
   questionSetPoints,
   removeBlankMarker,
@@ -12,7 +10,7 @@ import {
   type QuestionEditorValues,
 } from "../editor-form";
 import { questionEditorSchema, validateQuestionEditor } from "../editor-schema";
-import { questionStore } from "../mock/store";
+import { fixtureAll } from "./api-fixtures";
 
 const KNOWLEDGE = [{ nodeId: "k-1", code: "MAP-1", name: "Ham so bac nhat", primary: true }];
 
@@ -60,6 +58,18 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
     expect(messages(singleChoice([0, 2]))).toContain("singleCorrectRequired");
   });
 
+  it("ô HTML không còn chữ nào là trống như backend isBlankHtml, ô chỉ có ảnh thì không", () => {
+    const base = singleChoice([0]);
+    for (const empty of ["<p></p><p></p>", "<p> </p>", "<p><br></p>"]) {
+      expect(messages({ ...base, content: empty })).toEqual(["contentRequired"]);
+      expect(
+        messages({ ...base, body: { ...base.body, options: base.body.options.map((o, i) => (i === 1 ? { ...o, content: empty } : o)) } }),
+      ).toEqual(["optionRequired"]);
+    }
+    const imageOnly = '<p><img src="/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f" data-asset-id="9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f"></p>';
+    expect(messages({ ...base, content: imageOnly })).toEqual([]);
+  });
+
   it("nhiều đáp án: cần ít nhất một phương án đúng và ít nhất 2 phương án", () => {
     const values = { ...singleChoice([0, 1]), type: "MULTIPLE_CHOICE" as const };
     expect(messages(values)).toEqual([]);
@@ -88,25 +98,27 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
     expect(messages(values)).toEqual([]);
   });
 
-  it("điền đáp án: số chỗ trống ___ phải bằng số ô đáp án", () => {
-    const values = classified(emptyEditorValues("FILL_IN"));
+  it("điền khuyết: số chỗ trống ___ phải bằng số ô đáp án", () => {
+    const values = classified(emptyEditorValues("CLOZE"));
     values.content = "Thủ đô của Việt Nam là ___ .";
     expect(messages(values)).toContain("blanksMin");
-    values.body.blanks = [{ id: "b1", answers: [{ id: "a1", value: "Hà Nội" }] }];
+    values.body.blanks = [{ id: "b1", answers: [{ id: "a1", value: "Hà Nội" }], points: "1" }];
     expect(messages(values)).toEqual([]);
     values.content = "Không có chỗ trống.";
     expect(messages(values)).toContain("blankCountMismatch");
     values.content = "___ và ___";
-    values.body.blanks.push({ id: "b2", answers: [{ id: "a2", value: " " }] });
+    values.body.blanks.push({ id: "b2", answers: [{ id: "a2", value: " " }], points: "1" });
     expect(messages(values)).toEqual(["blankAnswerRequired"]);
   });
 
-  it("kéo thả: ô thả cần nội dung và thẻ đúng, thẻ nhiễu không được trống", () => {
-    const values = classified(emptyEditorValues("DRAG_DROP"));
-    expect(messages(values)).toEqual(expect.arrayContaining(["zoneLabelRequired", "zoneItemRequired"]));
-    values.body.zones = values.body.zones.map((zone, index) => ({ ...zone, label: `Ô ${index}`, itemContent: `Thẻ ${index}` }));
-    values.body.distractors = [{ id: "d1", content: "" }];
-    expect(messages(values)).toEqual(["distractorRequired"]);
+  it("ghép đôi: mục trái cần nội dung và lựa chọn đúng, lựa chọn không được trống", () => {
+    const values = classified(emptyEditorValues("MATCHING"));
+    expect(messages(values)).toEqual(expect.arrayContaining(["matchLeftRequired", "matchRightRequired"]));
+    values.body.left = values.body.left.map((item, index) => ({ ...item, content: `Mục ${index}` }));
+    values.body.right = values.body.right.map((item, index) => ({ ...item, content: `Lựa chọn ${index}` }));
+    expect(messages(values)).toEqual([]);
+    values.body.right = [...values.body.right, { id: "spare", content: "" }];
+    expect(messages(values)).toEqual(["matchRightRequired"]);
   });
 
   it("câu chùm: cần đoạn dẫn và ít nhất 2 câu con hợp lệ", () => {
@@ -141,24 +153,6 @@ describe("lược đồ biểu mẫu soạn câu hỏi", () => {
 });
 
 describe("chỗ trống của câu Điền đáp án", () => {
-  it("chèn ___ tại con trỏ, thêm khoảng trắng và trả thứ tự chỗ trống", () => {
-    const first = insertBlankMarker("Thủ đô là.", 9);
-    expect(first.content).toBe("Thủ đô là ___ .");
-    expect(first.index).toBe(0);
-    expect(first.caret).toBe(13);
-
-    const second = insertBlankMarker("___ và", 0);
-    expect(second.content).toBe("___ ___ và");
-    expect(second.index).toBe(0);
-    expect(countBlankMarkers(second.content)).toBe(2);
-  });
-
-  it("không cắt đôi chỗ trống có sẵn", () => {
-    const result = insertBlankMarker("a ___ b", 3);
-    expect(result.content).toBe("a ___ ___ b");
-    expect(result.index).toBe(1);
-  });
-
   it("xóa đúng chỗ trống thứ n", () => {
     expect(removeBlankMarker("a ___ b ___ c", 1)).toBe("a ___ b  c");
     expect(removeBlankMarker("a ___ b", 3)).toBe("a ___ b");
@@ -167,7 +161,7 @@ describe("chỗ trống của câu Điền đáp án", () => {
 
 describe("chuyển đổi giữa câu hỏi và biểu mẫu", () => {
   it("mọi câu mẫu đi qua biểu mẫu rồi trở lại giữ nguyên phần thân, phân loại và điểm", () => {
-    for (const question of questionStore.all()) {
+    for (const question of fixtureAll()) {
       const values = toEditorValues(question);
       const request = toSaveRequest(values);
       expect(request.type, question.code).toBe(question.type);

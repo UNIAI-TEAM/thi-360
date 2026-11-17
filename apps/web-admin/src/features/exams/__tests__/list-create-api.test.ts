@@ -1,11 +1,17 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { MockApiError } from "@/lib/mock/content-mock";
-import { createExam, listExams, suggestExamCode, updateExamInfo } from "../api";
-import { examStore } from "../mock/store";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { applyExamTemplate, createExam, listExams, suggestExamCode, updateExamInfo, updateExamStructure } from "../api";
+import { ExamsApiError } from "../review-api";
 import type { CreateExamRequest } from "../types";
+import { ExamsBackend } from "./fake-exams-backend";
 
-afterEach(() => {
-  examStore.reset();
+// Danh mục tổ hợp là dữ liệu của FE-1 (Nội dung); createExam đọc khi có parts tùy chỉnh.
+vi.mock("@/features/content/api", () => ({ getContentReference: async () => ({ combinations: [] }) }));
+
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 function request(overrides: Partial<CreateExamRequest>): CreateExamRequest {
@@ -13,27 +19,26 @@ function request(overrides: Partial<CreateExamRequest>): CreateExamRequest {
     name: "Bai thu",
     code: "THU-001",
     kind: "HSA",
-    format: "FULL",
-    templateCode: "HSA_FULL",
-    singleSubjectCode: null,
+    scope: "FULL",
     description: null,
     ...overrides,
   };
 }
 
 async function rejectsWith(promise: Promise<unknown>, status: number, code: string) {
-  await expect(promise).rejects.toBeInstanceOf(MockApiError);
-  await promise.catch((error: MockApiError) => {
-    expect(error.status).toBe(status);
-    expect(error.code).toBe(code);
-  });
+  const error = await promise.then(
+    () => undefined,
+    (caught: unknown) => caught,
+  );
+  expect(error).toBeInstanceOf(ExamsApiError);
+  expect(error).toMatchObject({ status, code });
 }
 
 describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
   it("BCA: thời lượng chung 180, thang 100, điểm phần 25/60/15, phần 2 ba môn, CA1–CA4 kèm khối; có tự luận", async () => {
-    const exam = await createExam(request({ kind: "BCA", code: "bca-t-001", templateCode: "BCA_FULL" }));
+    const exam = await createExam(request({ kind: "BCA", code: "bca-t-001" }));
     expect(exam).toMatchObject({ timing: "SHARED", durationMinutes: 180, maxScore: 100, hasEssay: true, subjectCode: null });
-    expect(exam.parts.map((part) => [part.points, part.durationMinutes])).toEqual([
+    expect(exam.parts.map((part) => [part.maxPoints, part.durationMinutes])).toEqual([
       [25, null],
       [60, null],
       [15, null],
@@ -53,7 +58,7 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
       request({
         kind: "THPTQG",
         code: "THPTQG-F-TIN-009",
-        templateCode: "THPTQG_INFORMATICS_2025",
+        scope: "SUBJECT",
         subjectCode: "INFORMATICS",
       }),
     );
@@ -61,93 +66,106 @@ describe("tạo bài thi theo bảy kỳ thi (nạp nguyên mẫu)", () => {
     const choice = exam.parts[1]!;
     expect(choice.mode).toBe("CHOICE");
     expect(choice.sections).toMatchObject([{ subjectCode: "INFORMATICS", questionCount: 2 }]);
-    expect(choice.sections[0]!.blocks[0]!.expectedScoring).toEqual({ trueFalseTable: [0.1, 0.25, 0.5, 1] });
+    expect(choice.sections[0]!.blocks[0]!.expectedScoring).toEqual({ trueFalseMethod: "COUNT_TABLE", trueFalseTable: [0.1, 0.25, 0.5, 1] });
     expect(choice.options.map((option) => [option.kind, option.code, option.sections[0]?.subjectCode])).toEqual([
       ["BRANCH", "CS", "INFORMATICS"],
       ["BRANCH", "ICT", "INFORMATICS"],
     ]);
     const page = await listExams({ subjectCode: "INFORMATICS" });
-    expect(page.content.map((item) => [item.code, item.branchCount, item.timing])).toContainEqual(["THPTQG-F-TIN-009", 2, "SHARED"]);
+    expect(page.content.map((item) => item.code)).toContain("THPTQG-F-TIN-009");
+    const row = page.content.find((item) => item.code === "THPTQG-F-TIN-009")!;
+    // Danh sách thật mang timing và môn của bài (BE gap đóng ở QA, UNI-2621); số nhánh vẫn chỉ có ở cấu trúc.
+    expect(row).toMatchObject({ scope: "SUBJECT", durationMinutes: 50, timing: "SHARED", subjectCode: "INFORMATICS", revision: 1 });
   });
 
   it("V-ACT: thang 1.200, điểm phần 600/300/300; năng lực của mẫu thành phạm vi kiến thức của khối", async () => {
-    const exam = await createExam(request({ kind: "VACT", code: "VACT-T-001", templateCode: "VACT_FULL" }));
+    const exam = await createExam(request({ kind: "VACT", code: "VACT-T-001" }));
     expect(exam.maxScore).toBe(1200);
-    expect(exam.parts.map((part) => part.points)).toEqual([600, 300, 300]);
-    expect(exam.parts[1]!.sections[0]!.blocks[0]!.knowledgeScope.competencyCodes).toEqual(["VACT-TOAN"]);
+    expect(exam.parts.map((part) => part.maxPoints)).toEqual([600, 300, 300]);
+    expect(exam.parts[1]!.sections[0]!.blocks[0]!.knowledgeScope?.competencyCodes).toEqual(["VACT-TOAN"]);
   });
 
-  it("SP2E Toán 2026 dùng ma trận 2025: giữ xác nhận của người tạo", async () => {
-    const pending = await createExam(
-      request({ kind: "SP2E", code: "SP2E-T-001", templateCode: "SP2E_MATH_2026", subjectCode: "MATH" }),
-    );
-    expect(pending).toMatchObject({ structureYear: 2026, matrixYear: 2025, yearsConfirmed: false });
-    const confirmed = await createExam(
-      request({
-        kind: "SP2E",
-        code: "SP2E-T-002",
-        templateCode: "SP2E_MATH_2026",
-        subjectCode: "MATH",
-        yearsConfirmed: true,
-      }),
-    );
-    expect(confirmed.yearsConfirmed).toBe(true);
+  it("SP2E Toán: bước 1 nạp mẫu mới nhất (cấu trúc 2026, ma trận 2025, chưa xác nhận); năm cũ nạp ở bước Cấu trúc", async () => {
+    const exam = await createExam(request({ kind: "SP2E", code: "SP2E-T-001", scope: "SUBJECT", subjectCode: "MATH" }));
+    expect(exam).toMatchObject({ templateCode: "SP2E_MATH_2026", structureYear: 2026, matrixYear: 2025, yearsConfirmed: false });
+    const older = await applyExamTemplate(exam.id, {
+      templateCode: "SP2E_MATH_2025",
+      confirmReplace: true,
+      expectedRevision: exam.revision,
+    });
+    expect(older).toMatchObject({ templateCode: "SP2E_MATH_2025", structureYear: 2025, yearsConfirmed: true });
+    expect(older.revision).toBe(exam.revision + 1);
   });
 
-  it("từ chối phạm vi sai: thiếu môn, hình thức không có, mẫu khác môn, thang điểm không hợp lệ", async () => {
-    await rejectsWith(createExam(request({ kind: "THPTQG", templateCode: null })), 422, "EXAM_SUBJECT_REQUIRED");
+  it("từ chối phạm vi sai: thiếu phần hoặc môn, phạm vi kỳ thi không cho, thang điểm không hợp lệ", async () => {
+    await rejectsWith(createExam(request({ kind: "THPTQG", scope: "SUBJECT" })), 422, "EXAM_PART_OR_SUBJECT_REQUIRED");
+    await rejectsWith(createExam(request({ kind: "HSA", scope: "PART" })), 422, "EXAM_PART_OR_SUBJECT_REQUIRED");
+    await rejectsWith(createExam(request({ kind: "BCA", scope: "PART", partCode: "MATH" })), 422, "EXAM_SCOPE_NOT_ALLOWED");
+    await rejectsWith(createExam(request({ kind: "THPTQG", scope: "FULL" })), 422, "EXAM_SCOPE_NOT_ALLOWED");
+    await rejectsWith(createExam(request({ maxScore: 0 })), 422, "EXAM_MAX_SCORE_INVALID");
+  });
+
+  it("mẫu của bước Cấu trúc phải khớp bài thi", async () => {
+    const exam = await createExam(request({ kind: "THPTQG", code: "THPTQG-S-TOAN-555", scope: "SUBJECT", subjectCode: "MATH" }));
     await rejectsWith(
-      createExam(request({ kind: "BCA", format: "SINGLE", templateCode: null, singleSubjectCode: "MATH" })),
-      422,
-      "EXAM_FORMAT_NOT_ALLOWED",
-    );
-    await rejectsWith(
-      createExam(request({ kind: "THPTQG", subjectCode: "PHYSICS", templateCode: "THPTQG_MATH_2025" })),
+      applyExamTemplate(exam.id, { templateCode: "THPTQG_PHYSICS_2025", confirmReplace: true, expectedRevision: exam.revision }),
       422,
       "EXAM_TEMPLATE_MISMATCH",
     );
-    await rejectsWith(createExam(request({ maxScore: 0 })), 422, "EXAM_MAX_SCORE_INVALID");
   });
 });
 
 describe("mã gợi ý và sửa Thông tin chung", () => {
-  it("mã gợi ý theo kỳ thi và môn: THPTQG-F-TOAN-nnn, số tiếp theo chưa dùng", async () => {
-    const first = await suggestExamCode({ kind: "THPTQG", format: "FULL", singleScope: null, subjectCode: "MATH" });
-    expect(first).toMatch(/^THPTQG-F-TOAN-\d{3}$/);
-    await createExam(request({ kind: "THPTQG", code: first, templateCode: "THPTQG_MATH_2025", subjectCode: "MATH" }));
-    const next = await suggestExamCode({ kind: "THPTQG", format: "FULL", singleScope: null, subjectCode: "MATH" });
+  it("mã gợi ý theo kỳ thi, phạm vi và môn: THPTQG-S-TOAN-nnn, số tiếp theo chưa dùng", async () => {
+    const first = await suggestExamCode({ kind: "THPTQG", scope: "SUBJECT", subjectCode: "MATH" });
+    expect(first).toMatch(/^THPTQG-S-TOAN-\d{3}$/);
+    await createExam(request({ kind: "THPTQG", code: first, scope: "SUBJECT", subjectCode: "MATH" }));
+    const next = await suggestExamCode({ kind: "THPTQG", scope: "SUBJECT", subjectCode: "MATH" });
     expect(next).not.toBe(first);
-    expect(next).toMatch(/^THPTQG-F-TOAN-\d{3}$/);
+    expect(next).toMatch(/^THPTQG-S-TOAN-\d{3}$/);
   });
 
   it("đổi môn của bài nháp nạp lại cấu trúc theo mẫu của môn mới; thang điểm sửa được", async () => {
     const exam = await createExam(
-      request({ kind: "THPTQG", code: "THPTQG-F-TOAN-777", templateCode: "THPTQG_MATH_2025", subjectCode: "MATH" }),
+      request({ kind: "THPTQG", code: "THPTQG-S-TOAN-777", scope: "SUBJECT", subjectCode: "MATH" }),
     );
-    const updated = await updateExamInfo(exam.id, {
+    const info = {
       name: exam.name,
       code: exam.code,
       kind: "THPTQG",
-      format: "FULL",
-      templateCode: "THPTQG_LITERATURE_2025",
-      singleSubjectCode: null,
+      scope: "SUBJECT" as const,
       subjectCode: "LITERATURE",
       maxScore: 10,
       description: null,
-    });
+      confirmReplace: true,
+    };
+    const updated = await updateExamInfo(exam.id, { ...info, expectedRevision: exam.revision });
     expect(updated).toMatchObject({ subjectCode: "LITERATURE", totalQuestions: 7, durationMinutes: 120, hasEssay: true });
-    const rescored = await updateExamInfo(exam.id, {
+    const rescored = await updateExamInfo(exam.id, { ...info, maxScore: 20, expectedRevision: updated.revision });
+    expect(rescored.maxScore).toBe(20);
+    expect(rescored.parts.map((part) => part.id)).toEqual(updated.parts.map((part) => part.id));
+  });
+
+  it("sửa Thông tin chung: 412 EXAM_REVISION_CONFLICT khi revision lệch, 409 khi cần xác nhận nạp lại cấu trúc", async () => {
+    const exam = await createExam(request({ kind: "THPTQG", code: "THPTQG-S-TOAN-778", scope: "SUBJECT", subjectCode: "MATH" }));
+    const info = {
       name: exam.name,
       code: exam.code,
       kind: "THPTQG",
-      format: "FULL",
-      templateCode: "THPTQG_LITERATURE_2025",
-      singleSubjectCode: null,
-      subjectCode: "LITERATURE",
-      maxScore: 20,
-      description: null,
-    });
-    expect(rescored.maxScore).toBe(20);
-    expect(rescored.parts.map((part) => part.id)).toEqual(updated.parts.map((part) => part.id));
+      scope: "SUBJECT" as const,
+      subjectCode: "MATH",
+      maxScore: 10,
+      description: "Mo ta moi",
+    };
+    await rejectsWith(updateExamInfo(exam.id, { ...info, expectedRevision: exam.revision + 3 }), 412, "EXAM_REVISION_CONFLICT");
+    const saved = await updateExamInfo(exam.id, { ...info, expectedRevision: exam.revision });
+    expect(saved.revision).toBe(exam.revision + 1);
+    // Đã sửa cấu trúc tay thì đổi môn cần xác nhận.
+    await updateExamStructure(exam.id, { parts: saved.parts, expectedRevision: saved.revision });
+    await rejectsWith(
+      updateExamInfo(exam.id, { ...info, subjectCode: "LITERATURE", expectedRevision: saved.revision + 1 }),
+      409,
+      "EXAM_STRUCTURE_REPLACE_CONFIRM",
+    );
   });
 });

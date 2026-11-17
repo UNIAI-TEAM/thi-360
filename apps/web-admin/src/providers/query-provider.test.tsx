@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
 import en_messages from "@/messages/en.json";
 import vi_messages from "@/messages/vi.json";
+import { ContentApiError } from "@/features/content/api-error";
 import { ApiStatusError } from "@/lib/api/query-client";
 import { FORBIDDEN_PATH, QueryProvider } from "./query-provider";
 
@@ -145,6 +146,16 @@ describe("QueryProvider: lỗi toàn cục", () => {
     expect(mocks.refreshSession).not.toHaveBeenCalled();
     expect(mocks.toastError).toHaveBeenCalledWith(vi_messages.errors.forbiddenToast);
     expect(mocks.redirectToLogin).not.toHaveBeenCalled();
+  });
+
+  it("403 ORIGIN_INVALID (G9) không refresh phiên, không toast thiếu quyền, chuyển tới /forbidden?reason=origin", async () => {
+    queryFn.mockRejectedValue(new ContentApiError(403, "", "ORIGIN_INVALID"));
+    renderProbe();
+
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith(`${FORBIDDEN_PATH}?reason=origin`));
+    expect(mocks.refreshSession).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it("403 khi /auth/refresh trả 401 thì chuyển về trang đăng nhập", async () => {

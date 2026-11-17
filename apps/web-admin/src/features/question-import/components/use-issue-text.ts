@@ -33,6 +33,7 @@ export function useIssueText(reference: ContentReference | undefined): (issue: I
         subject: issue.subjectCode ? lookup.subject(issue.subjectCode) : "",
         options,
         min: issue.min ?? 0,
+        max: issue.max ?? 0,
         type: issue.questionType ?? "other",
       };
       return {

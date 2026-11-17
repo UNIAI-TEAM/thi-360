@@ -89,15 +89,17 @@ class CatalogBasicApiIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void migrationSeedsNineSystemGroupsWithI18nNamesAndKnowledgeDefaults() throws Exception {
+    void migrationSeedsTenSystemGroupsWithI18nNamesAndKnowledgeDefaults() throws Exception {
         mockMvc.perform(get("/api/v1/admin/catalog/groups")
                         .param("type", "SYSTEM")
                         .param("size", "50")
                         .with(asUser(Permissions.CATALOG_VIEW)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items", hasSize(9)))
+                .andExpect(jsonPath("$.items", hasSize(10)))
                 .andExpect(jsonPath("$.items[?(@.code=='EXAM')].nameVi").value("Kỳ thi"))
                 .andExpect(jsonPath("$.items[?(@.code=='EXAM')].nameEn").value("Exam"))
+                .andExpect(jsonPath("$.items[?(@.code=='COMPETENCY')].nameVi").value("Năng lực"))
+                .andExpect(jsonPath("$.items[?(@.code=='COMPETENCY')].levels[0]").value("Năng lực"))
                 .andExpect(jsonPath("$.items[?(@.code=='QUESTION_TAG')].nameEn").value("Question tag"))
                 .andExpect(jsonPath("$.items[?(@.code=='KNOWLEDGE')].kind").value("TREE"))
                 .andExpect(jsonPath("$.items[?(@.code=='KNOWLEDGE')].levels[0]").value("Chương"))

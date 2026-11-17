@@ -1251,6 +1251,7 @@
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
+    "descriptionOrigin": "The server rejected this request because the admin address does not match its configuration (THI360_ADMIN_URL). Contact a system administrator; signing in again will not fix this.",
     "eyebrow": "ERROR 403",
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
@@ -2147,10 +2148,11 @@
     "questionType": {
       "SINGLE_CHOICE": "Single choice",
       "MULTIPLE_CHOICE": "Multiple choice",
-      "TRUE_FALSE": "True / False",
-      "FILL_IN": "Fill in the answer",
-      "DRAG_DROP": "Drag and drop",
+      "SHORT_ANSWER": "Short answer",
+      "CLOZE": "Cloze",
       "QUESTION_SET": "Question set",
+      "TRUE_FALSE": "True/False",
+      "MATCHING": "Matching",
       "ESSAY": "Essay"
     },
     "questionStatus": {
@@ -2252,7 +2254,8 @@
         "moreAria": "More actions for question {code}",
         "moreTooltip": "More actions",
         "markReady": "Mark as ready",
-        "retire": "Retire"
+        "retire": "Retire",
+        "preview": "Preview"
       }
     },
     "detail": {
@@ -2269,6 +2272,7 @@
       "tabsLabel": "Question details",
       "tabs": {
         "content": "Content",
+        "preview": "Preview",
         "usage": "Where used",
         "versions": "Version history"
       },
@@ -2318,26 +2322,30 @@
         "correct": "Correct answer",
         "true": "True",
         "false": "False",
-        "zoneLabel": "Drop zone {number}",
-        "correctItem": "Correct card:",
-        "distractors": "Distractors: {items}",
-        "noDistractors": "No distractors.",
+        "zoneLabel": "Item {number}",
+        "correctItem": "Matched with:",
+        "distractors": "Extra choices: {items}",
+        "noDistractors": "No extra choices.",
         "manualGrading": "Graded by hand",
         "scoringRule": "Scoring:",
         "scoringRules": {
           "ALL_OR_NOTHING": "All correct or nothing",
           "PARTIAL": "Partial credit (proportional; any wrong pick gives 0)"
         },
-        "essayMaxPoints": "Maximum {points} points",
+        "essayMaxPoints": "Maximum {points, plural, one {# point} other {# points}}",
         "wordLimit": "{count, plural, one {about # word} other {about # words}}",
         "rubricTitle": "Rubric",
+        "gradingGuideTitle": "Grading guide",
+        "noGradingGuide": "No grading guide yet.",
+        "standardAnswer": "Standard answer",
+        "acceptedAnswer": "Accepted answer",
+        "inputHint": "Input hint:",
         "noRubric": "No rubric yet.",
         "sampleAnswer": "Sample answer",
         "scoreTableTitle": "Score by number of correct statements",
         "scoreTableCell": "{count, plural, one {# correct} other {# correct}}",
         "scoreTableLine": "Score by number of correct statements: {values}",
-        "scoreValue": "{value, number}",
-        "essaySummary": "Graded by hand · maximum {points, number} points"
+        "scoreValue": "{value, number}"
       }
     },
     "editor": {
@@ -2368,17 +2376,20 @@
         "passage": "Shared passage"
       },
       "contentHint": {
-        "default": "Plain multi-line text. The rich editor with formulas, images and tables comes later.",
+        "default": "Use the toolbar for text formatting, lists, tables, images and formulas (Σ button).",
         "fillIn": "Type ___ (three underscores) where the answer goes, or place the cursor and press “Add blank”.",
         "trueFalse": "Shared by every statement: given data, figures, tables.",
         "passage": "Reading text, data table or figure shared by all sub-questions.",
-        "essay": "The essay prompt and its requirements, such as the expected length. Learners write an answer; a grader scores it by hand against the rubric."
+        "essay": "The essay prompt and its requirements, such as the expected length. Learners write an answer; a grader scores it by hand against the rubric.",
+        "matching": "The shared stem of the matching question, such as the instruction or context. Enter the items and choices below.",
+        "shortAnswer": "The question learners answer with a final answer only, not a worked solution. Enter the standard answer below."
       },
       "bodyTitle": {
         "options": "Options",
         "statements": "Statements",
+        "shortAnswer": "Answer",
         "blanks": "Answers for each blank",
-        "dragDrop": "Drop zones and cards",
+        "matching": "Matching pairs",
         "children": "Sub-questions",
         "essay": "Grading guide"
       },
@@ -2389,11 +2400,18 @@
       },
       "saveErrors": {
         "generic": "The question could not be saved. Try again in a moment.",
-        "QUESTION_VERSION_CONFLICT": "The question was just saved elsewhere. Reload the page to edit the latest version.",
+        "fieldErrors": "Not saved: the server rejected some fields. Fix the fields marked below.",
+        "VALIDATION_FAILED": "Not saved: the server rejected the question data as invalid but did not point to a specific field. Review the question and try saving again.",
+        "QUESTION_REVISION_CONFLICT": "The data was changed by someone else. Reload the page to edit the latest version.",
         "QUESTION_TYPE_IMMUTABLE": "A saved question cannot change type. Create a new question instead.",
         "QUESTION_SET_CHILDREN_MIN": "A question set needs at least 2 sub-questions.",
         "QUESTION_BODY_TYPE_MISMATCH": "The answer section does not match the question type.",
         "NOT_FOUND": "The question no longer exists."
+      },
+      "conflict": {
+        "title": "Someone else has changed this data",
+        "description": "This question was just saved elsewhere, so your save was not applied. Reload the latest version to keep editing; what you typed here will not be kept.",
+        "reload": "Reload latest version"
       },
       "leave": {
         "title": "Discard unsaved changes?",
@@ -2415,11 +2433,12 @@
         "descriptions": {
           "SINGLE_CHOICE": "Several options, exactly one is correct.",
           "MULTIPLE_CHOICE": "Several options, more than one may be correct.",
-          "TRUE_FALSE": "One stem; each statement is True or False.",
-          "FILL_IN": "Learners type a number or text into blanks.",
-          "DRAG_DROP": "Learners drag cards into the gaps of a sentence.",
+          "TRUE_FALSE": "One stem; each statement is True or False; scored per statement or by the number of correct statements.",
+          "SHORT_ANSWER": "Learners type the final answer; it must match the standard or an accepted answer exactly.",
+          "CLOZE": "A passage with several blanks, each with its own answer and points.",
+          "MATCHING": "Learners match each item in the left column with one choice in the right column; the columns may differ in length.",
           "QUESTION_SET": "One shared passage for several sub-questions.",
-          "ESSAY": "A written answer, graded by hand against the rubric."
+          "ESSAY": "A written answer, graded by hand against a mandatory grading guide."
         },
         "cancel": "Cancel",
         "continue": "Continue"
@@ -2434,6 +2453,7 @@
         "pointsHint": "Default 1, greater than 0.",
         "pointsTotal": "Points (calculated)",
         "pointsTotalHint": "Sum of the sub-question points.",
+        "pointsTotalClozeHint": "Sum of the blank points.",
         "knowledge": "Knowledge",
         "primary": "Primary",
         "noKnowledge": "No knowledge selected.",
@@ -2450,7 +2470,10 @@
         "tagRemoved": "Removed tag {name}.",
         "competency": "Competency",
         "competencyNone": "None",
-        "competencyHint": "Used by exams whose matrix is split by competency (V-ACT). Optional."
+        "competencyHint": "Used by exams whose matrix is split by competency (V-ACT). Optional.",
+        "taskType": "Task type",
+        "taskTypeHint": "Pick it when the exam matrix allocates by task type. Optional.",
+        "taskTypeNone": "None"
       },
       "rows": {
         "moveUp": "Move {name} up",
@@ -2486,7 +2509,21 @@
         "add": "Add statement",
         "added": "Added statement {letter}.",
         "removed": "Deleted statement {letter}.",
-        "moved": "Moved statement {letter} to position {position}."
+        "moved": "Moved statement {letter} to position {position}.",
+        "methodLegend": "Scoring method",
+        "method": {
+          "COUNT_TABLE": {
+            "label": "By number of correct statements",
+            "description": "Look up the points table by how many statements the learner answers correctly (for example THPTQG 0.1 / 0.25 / 0.5 / 1)."
+          },
+          "PER_STATEMENT": {
+            "label": "Points per statement",
+            "description": "Each correct statement earns the points set for it; the statement points add up to the question points."
+          }
+        },
+        "methodChosen": "Scoring method set to: {method}.",
+        "pointsLabel": "Statement {letter} points",
+        "pointsReflowed": "Statement points were split evenly again across {count, plural, one {# statement} other {# statements}}."
       },
       "blanks": {
         "hint": "Each blank may accept several answers; matching any of them is correct. Deleting a blank also removes its gap from the text.",
@@ -2500,31 +2537,42 @@
         "remove": "Delete blank {number}",
         "add": "Add blank",
         "added": "Added blank {number} and its gap in the text.",
-        "removed": "Deleted blank {number} and its gap in the text."
+        "removed": "Deleted blank {number} and its gap in the text.",
+        "pointsLabel": "Points",
+        "pointsAria": "Points of blank {number}"
       },
-      "dragDrop": {
-        "summary": "During the exam, learners see {total, plural, one {# card} other {# cards}}: {correct, number} correct and {distractors, number} distractors.",
-        "zoneTitle": "Drop zone {number}",
-        "zoneName": "drop zone {number}",
-        "zoneLabel": "Text before the drop zone",
-        "zoneLabelHint": "The part of the sentence learners read before dropping a card.",
-        "zoneItem": "Correct card",
-        "addZone": "Add drop zone",
-        "zoneAdded": "Added drop zone {number}.",
-        "zoneRemoved": "Deleted drop zone {number}.",
-        "zoneMoved": "Moved drop zone {number} to position {position}.",
-        "distractorsLegend": "Distractor cards",
-        "distractorsHint": "Cards that belong to no drop zone, so learners must choose.",
-        "noDistractors": "No distractor cards.",
-        "distractorLabel": "Distractor {number}",
-        "removeDistractor": "Delete distractor {number}",
-        "addDistractor": "Add distractor",
-        "distractorAdded": "Added distractor {number}.",
-        "distractorRemoved": "Deleted distractor {number}."
+      "matching": {
+        "hint": "Enter the items in the left column and the choices in the right column, then pick the correct choice and the points for each pair. The right column may have more choices than the left; a choice that belongs to no pair is a spare.",
+        "summary": "Left column: {left, plural, one {# item} other {# items}}; right column: {right, plural, one {# choice} other {# choices}} ({spare, plural, one {# spare} other {# spare}}).",
+        "pairTitle": "Pair {number}",
+        "pairName": "pair {number}",
+        "leftLabel": "Left column item",
+        "answerLabel": "Correct choice",
+        "answerPlaceholder": "Select",
+        "pointsLabel": "Pair points",
+        "addPair": "Add pair",
+        "pairAdded": "Added pair {number}.",
+        "pairRemoved": "Deleted pair {number}.",
+        "pairMoved": "Moved pair {number} to position {position}.",
+        "reflowed": "The question points were split evenly across {count, plural, one {# pair} other {# pairs}}.",
+        "rightLegend": "Right column choices",
+        "rightHint": "Each left item picks its correct choice from this list. Deleting a choice means the items using it must be set again.",
+        "rightLabel": "Choice {letter}",
+        "rightName": "choice {letter}",
+        "addRight": "Add choice",
+        "rightAdded": "Added choice {letter}.",
+        "rightRemoved": "Deleted choice {letter}.",
+        "rightMoved": "Moved choice {letter} to position {position}.",
+        "emptyOption": "(empty)",
+        "optionsLegend": "Options",
+        "reuseRight": "A choice can be used for several items",
+        "reuseRightHint": "Off: each choice can be assigned to at most one left item.",
+        "shuffleLeft": "Shuffle the left column during the exam",
+        "shuffleRight": "Shuffle the right column during the exam"
       },
       "set": {
         "hint": "Each sub-question is a full question with its own type, classified like the set. At least 2 sub-questions.",
-        "totalPoints": "Question set total: {points, number} points",
+        "totalPoints": "Question set total: {points, plural, one {# point} other {# points}}",
         "childTitle": "Question {number}",
         "childName": "sub-question {number}",
         "hasErrors": "Has errors",
@@ -2543,7 +2591,24 @@
         "addLegend": "Add sub-question",
         "added": "Added sub-question {number}: {type}.",
         "removed": "Deleted sub-question {number}.",
-        "moved": "Moved sub-question {number} to position {position}."
+        "moved": "Moved sub-question {number} to position {position}.",
+        "classification": {
+          "legend": "Sub-question classification",
+          "hint": "Follows the question set by default. Pick another value to override it for this sub-question; the matrix counts the sub-question by its own classification.",
+          "grade": "Grade",
+          "difficulty": "Difficulty",
+          "inherit": "Same as the set: {value}",
+          "notChosen": "not selected",
+          "knowledge": "Knowledge",
+          "inherited": "Same as the set",
+          "own": "Own",
+          "noKnowledge": "No knowledge yet.",
+          "override": "Choose own knowledge",
+          "change": "Change own knowledge",
+          "backToInherit": "Use the set's knowledge",
+          "inheritedAnnounce": "The sub-question uses the set's knowledge again.",
+          "knowledgeApplied": "{count, plural, one {# own knowledge item} other {# own knowledge items}} selected."
+        }
       },
       "errors": {
         "subjectRequired": "Select a subject.",
@@ -2553,11 +2618,8 @@
         "pointsInvalid": "Points must be a number greater than 0.",
         "contentRequired": "Enter the question text.",
         "passageRequired": "Enter the shared passage.",
-        "contentMax": "The text is too long.",
-        "solutionMax": "The solution is too long.",
         "optionsMin": "At least 2 options are required.",
         "optionRequired": "Enter the option text.",
-        "optionMax": "The text is too long.",
         "singleCorrectRequired": "Choose exactly one correct option.",
         "multipleCorrectRequired": "Choose at least one correct option.",
         "statementsMin": "At least 2 statements are required.",
@@ -2567,22 +2629,82 @@
         "blankAnswerRequired": "Enter at least one accepted answer.",
         "answerMax": "The answer is too long.",
         "blankCountMismatch": "The number of ___ gaps in the text must equal the number of answer blanks.",
-        "zonesMin": "At least one drop zone is required.",
-        "zoneLabelRequired": "Enter the text before the drop zone.",
-        "zoneItemRequired": "Enter the correct card for the drop zone.",
-        "distractorRequired": "Enter the distractor text or delete it.",
+        "matchLeftMin": "At least one matching pair is required.",
+        "matchLeftRequired": "Enter the left column item.",
+        "matchRightRequired": "Enter the choice text or delete the choice.",
+        "matchAnswerRequired": "Choose the correct choice for this item.",
+        "matchRightReused": "This choice is already assigned to another item. Turn on “A choice can be used for several items” or pick another choice.",
+        "pairPointsInvalid": "Pair points must be a number greater than 0.",
+        "pairPointsMismatch": "The pair points must add up to the question points.",
+        "blankPointsInvalid": "Blank points must be a number greater than 0.",
+        "statementPointsInvalid": "Statement points must be a number greater than 0.",
+        "statementPointsMismatch": "The statement points must add up to the question points.",
+        "childKnowledgeRequired": "Choose at least one own knowledge item or use the set's knowledge.",
         "childrenMin": "A question set needs at least 2 sub-questions.",
         "childContentRequired": "Enter the sub-question text.",
         "scoreValueInvalid": "Points must be a number of 0 or more.",
         "scoreNotIncreasing": "Points cannot be lower than the previous cell.",
         "scoreLastMismatch": "The last cell must equal the question points.",
-        "rubricMin": "Add at least one criterion.",
+        "gradingGuideRequired": "Enter the grading guide.",
         "criterionRequired": "Enter the criterion description.",
-        "criterionMax": "The description is too long.",
         "criterionPointsInvalid": "Criterion points must be a number greater than 0.",
         "rubricTotalMismatch": "The criteria must add up to the question points.",
-        "sampleAnswerMax": "The sample answer is too long.",
-        "wordLimitInvalid": "The length must be a whole number greater than 0."
+        "wordLimitInvalid": "The length must be a whole number greater than 0.",
+        "server": {
+          "QUESTION_CONTENT_UNSAFE": "The content has parts that are not allowed (formatting or images outside the allowed list). Remove them and save again.",
+          "QUESTION_BODY_INVALID": "The answer section is not valid.",
+          "QUESTION_BODY_TYPE_MISMATCH": "The answer section does not match the question type.",
+          "QUESTION_TYPE_MISSING": "No question type is chosen.",
+          "QUESTION_DUPLICATE_ID": "Some items have the same id. Reload the page and enter them again.",
+          "QUESTION_OPTIONS_TOO_MANY": "At most 10 options.",
+          "QUESTION_STATEMENTS_TOO_MANY": "At most 8 statements.",
+          "QUESTION_BLANKS_TOO_MANY": "At most 30 blanks.",
+          "QUESTION_ANSWERS_TOO_MANY": "At most 20 answers.",
+          "QUESTION_CHILDREN_TOO_MANY": "At most 20 sub-questions.",
+          "QUESTION_CHILD_TYPE_NOT_ALLOWED": "This type cannot be a sub-question of a question set.",
+          "QUESTION_BLANK_MARKER_MISMATCH": "The blank markers in the passage do not match the list of blanks.",
+          "QUESTION_PAIR_UNKNOWN_LEFT": "A pair points to a left item that does not exist.",
+          "QUESTION_PAIR_UNKNOWN_RIGHT": "A pair points to a right choice that does not exist.",
+          "QUESTION_PAIR_DUPLICATE_LEFT": "A left item is matched twice.",
+          "QUESTION_ATTACHMENT_UNKNOWN": "The attachment no longer exists. Upload it again.",
+          "QUESTION_WORD_LIMIT_INVALID": "The suggested word count must be greater than 0.",
+          "QUESTION_SCORING_METHOD_MISSING": "No scoring method is chosen.",
+          "QUESTION_SCORING_RULE_MISSING": "No scoring rule is chosen.",
+          "POINTS_NOT_POSITIVE": "Points must be greater than 0.",
+          "POINTS_TOO_MANY_DECIMALS": "Points allow at most 4 decimal places.",
+          "POINTS_TOO_LARGE": "Points are too large.",
+          "SCORE_TABLE_INVALID": "The score table is not valid.",
+          "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
+          "CATALOG_VALUE_UNKNOWN": "The value is not in the catalog or has been retired.",
+          "UNKNOWN": "The server did not accept this value."
+        }
+      },
+      "pointsTotal": {
+        "matches": "Points total: {total, number} / {points, number}",
+        "differs": "Points total: {total, number} / {points, number}, does not match the question points yet",
+        "totalOnly": "Points total: {total, number}. Enter valid question points to compare.",
+        "even": "Split evenly"
+      },
+      "commonMistakes": {
+        "title": "Common mistakes",
+        "hint": "Misunderstandings or slips learners often make. Used as reference data for AI explanations; never shown to learners during the exam."
+      },
+      "attachments": {
+        "title": "Attachments",
+        "none": "No attachments.",
+        "choose": "Choose files",
+        "input": "Choose attachments",
+        "hint": "PDF, DOCX, XLSX, PNG, JPEG, WebP or MP3, up to 20 MB per file.",
+        "size": "{kb} KB",
+        "remove": "Remove file {name}",
+        "added": "{count, plural, one {# attachment} other {# attachments}} added.",
+        "removed": "Removed file {name}.",
+        "rejected": {
+          "FAILED": "{name}: the upload failed.",
+          "RATE_LIMITED": "{name}: you uploaded too many files in a short time (up to 60 files per 10 minutes). Try again later.",
+          "TOO_LARGE": "{name}: the file is larger than 20 MB.",
+          "UNSUPPORTED_TYPE": "{name}: this file type is not supported."
+        }
       },
       "scoreTable": {
         "legend": "Score by number of correct statements",
@@ -2609,12 +2731,25 @@
           "description": "Points in proportion to the correct options picked; picking any wrong option gives 0."
         }
       },
+      "shortAnswer": {
+        "hint": "The first answer is the standard answer; the others are spellings that are also accepted. The system does not accept equivalent forms on its own (0.5 differs from 1/2 unless 1/2 is listed).",
+        "standardLabel": "Standard answer",
+        "acceptedLabel": "Accepted answer {number}",
+        "remove": "Remove answer {number}",
+        "removed": "Removed answer {number}.",
+        "add": "Add accepted answer",
+        "added": "Added answer {number}.",
+        "inputHint": "Input hint",
+        "inputHintHint": "Optional. Learners see it while answering, for example “Write a decimal comma”."
+      },
       "essay": {
         "manualGrading": "Graded by hand",
-        "maxPoints": "Maximum {points} points (the question's Points field).",
+        "gradingGuide": "Grading guide",
+        "gradingGuideHint": "Required. Graders see it while grading; learners do not.",
+        "maxPoints": "Maximum {points, plural, one {# point} other {# points}} (the question's Points field).",
         "maxPointsUnknown": "The maximum comes from the question's Points field.",
-        "rubricLegend": "Rubric",
-        "rubricHint": "Each criterion has a description and maximum points. The criteria must add up to the question points.",
+        "rubricLegend": "Rubric (optional)",
+        "rubricHint": "Each criterion has a description and maximum points. If you add criteria, they must add up to the question points.",
         "descriptionLabel": "Criterion {number} description",
         "pointsLabel": "Criterion {number} points",
         "rowName": "criterion {number}",
@@ -2642,7 +2777,7 @@
       "rules": {
         "CONTENT": "All required content is filled in",
         "ANSWER": "Every graded item has a valid answer",
-        "CLASSIFICATION": "Grade, difficulty and primary knowledge are set",
+        "CLASSIFICATION": "Subject, grade and difficulty are set",
         "CATALOG_VALUES": "Classification values are valid and match the subject",
         "NO_GAPS": "No sub-question or position is missing an answer",
         "RESOURCES": "Images, formulas and passages render correctly",
@@ -2656,18 +2791,19 @@
         "OPTION_EMPTY": "Option {position, number} is empty.",
         "TOO_FEW_OPTIONS": "At least 2 options are required.",
         "STATEMENT_EMPTY": "Statement {position, number} is empty.",
-        "DRAG_ITEM_EMPTY": "Drag item {position, number} is empty.",
-        "ZONE_LABEL_EMPTY": "Drop zone {position, number} has no label.",
+        "MATCH_RIGHT_EMPTY": "Right-hand choice {position, number} is empty.",
+        "MATCH_LEFT_EMPTY": "Left-hand item {position, number} is empty.",
         "SET_WITHOUT_CHILDREN": "The question set has no sub-questions.",
         "NO_CORRECT_OPTION": "No correct answer is selected.",
         "SINGLE_CHOICE_MANY_CORRECT": "A single-answer question has more than one correct answer.",
         "NO_STATEMENTS": "There are no statements.",
         "NO_BLANKS": "There are no blanks.",
-        "NO_DROP_ZONES": "There are no drop zones.",
+        "NO_ANSWERS": "There are no answers.",
+        "NO_PAIRS": "There are no pairs.",
         "SUBJECT_MISSING": "No subject is selected.",
         "GRADE_MISSING": "No grade is selected.",
         "DIFFICULTY_MISSING": "No difficulty is selected.",
-        "PRIMARY_KNOWLEDGE_MISSING": "No primary knowledge is selected.",
+        "PRIMARY_KNOWLEDGE_MISSING": "No primary knowledge is selected (a warning, does not block Ready).",
         "SUBJECT_INVALID": "Subject {value} is not in the catalog.",
         "GRADE_INVALID": "Grade {value} is not in the catalog.",
         "DIFFICULTY_INVALID": "Difficulty {value} is not in the catalog.",
@@ -2675,15 +2811,25 @@
         "KNOWLEDGE_INVALID": "Knowledge {value} is inactive or not at the knowledge level.",
         "KNOWLEDGE_OTHER_SUBJECT": "Knowledge {value} belongs to another subject.",
         "BLANK_WITHOUT_ANSWER": "Blank {position, number} has no answer.",
-        "ZONE_WITHOUT_ANSWER": "Drop zone {position, number} has no correct item.",
+        "LEFT_WITHOUT_PAIR": "Left-hand item {position, number} is not paired with a choice.",
         "RESOURCE_UNAVAILABLE": "Could not load {value}.",
         "TYPE_UNSUPPORTED": "This question type is not supported.",
         "BODY_TYPE_MISMATCH": "The answer part does not match the question type.",
-        "NESTED_SET": "A question set cannot contain another question set.",
+        "NESTED_SET": "A question set cannot contain another question set or a cloze question.",
         "CRITERION_EMPTY": "Rubric criterion {position, number} has no description.",
         "SCORE_TABLE_INVALID": "The score table is not valid (one cell per statement, never decreasing, last cell equal to the question points).",
-        "NO_RUBRIC": "The essay question has no rubric.",
-        "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points."
+        "STATEMENT_POINTS_MISMATCH": "The statement points do not add up to the question points.",
+        "BLANK_MARKER_MISMATCH": "The blank markers in the passage do not match the list of blanks: each marker needs exactly one blank and the other way round.",
+        "PAIR_INVALID": "A pair points to a missing item, a left item is matched twice, or a choice is reused although each choice may be used only once.",
+        "PAIR_POINTS_MISMATCH": "The pair points do not add up to the question points.",
+        "NO_GRADING_GUIDE": "The essay question has no grading guide.",
+        "RUBRIC_TOTAL_MISMATCH": "The rubric total does not equal the question points.",
+        "TOO_FEW_CORRECT_OPTIONS": "A multiple-choice question needs at least 2 correct options.",
+        "STATEMENT_ANSWER_REQUIRED": "Statement {position, number} has no true or false answer.",
+        "POINTS_INVALID": "Points are not valid: they must be greater than 0 with at most 4 decimal places.",
+        "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
+        "CATALOG_VALUE_UNKNOWN": "A classification value is not in the catalog or has been retired.",
+        "READINESS_OTHER": "A check was not met ({value})."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
       "moreIssues": "and {count, plural, one {# more place} other {# more places}}",
@@ -2732,6 +2878,7 @@
         "QUESTION_NOT_READY": "The question does not meet the conditions; the list has been refreshed.",
         "QUESTION_ALREADY_READY": "The question is already ready.",
         "QUESTION_ALREADY_RETIRED": "The question is already retired.",
+        "QUESTION_REVISION_CONFLICT": "The data was changed by someone else. Reload and try again.",
         "NOT_FOUND": "Question not found.",
         "UNKNOWN": "The action failed. Please try again."
       }
@@ -2769,7 +2916,8 @@
       "chipCreatedTo": "Created to {value}",
       "remove": "Remove filter {label}",
       "clearAll": "Clear all filters",
-      "competency": "Competency"
+      "competency": "Competency",
+      "taskType": "Task type"
     },
     "bulk": {
       "groupLabel": "Bulk actions",
@@ -2847,7 +2995,7 @@
         "descriptionDraft": "The content of v{version} overwrites draft v{current}. Older versions and the attempts that used them stay unchanged.",
         "confirm": "Restore",
         "done": "Copied the content of v{version} into draft v{current}.",
-        "conflict": "The question was just saved elsewhere. Reload the page and try again.",
+        "conflict": "Someone else has changed this data. The latest version has been reloaded; try again.",
         "failed": "Could not restore. Try again in a moment."
       },
       "view": {
@@ -2898,6 +3046,79 @@
         }
       }
     },
+    "preview": {
+      "noContent": "This question has no prompt yet.",
+      "attachments": "{count, plural, one {# attachment} other {# attachments}}",
+      "hintSingle": "Choose one answer.",
+      "hintMultiple": "Choose one or more answers.",
+      "shortAnswerLabel": "Your answer",
+      "blankLabel": "Blank {number}",
+      "blankPlaceholder": "({number})",
+      "statementLegend": "Statement {letter}",
+      "true": "True",
+      "false": "False",
+      "matchReuse": "One choice can be used for several items.",
+      "matchOnce": "Each choice can be used only once.",
+      "matchPlaceholder": "Not chosen",
+      "matchItem": "Item {number}",
+      "matchSelectLabel": "Choice matched to item {number}",
+      "childTitle": "Question {number}",
+      "points": "{points, plural, one {# point} other {# points}}",
+      "essayLabel": "Your answer",
+      "essayWords": "{count, plural, one {# word} other {# words}}",
+      "essayWordsLimit": "{count, plural, one {# word} other {# words}}, limit {limit}",
+      "deviceLabel": "Display frame",
+      "device": {
+        "web": "Web",
+        "phone": "Phone"
+      },
+      "frame": {
+        "web": "Preview in a desktop browser",
+        "phone": "Preview on a phone screen"
+      },
+      "actions": {
+        "fillCorrect": "Fill in correct answers",
+        "reset": "Start over",
+        "grade": "Try grading"
+      },
+      "essay": {
+        "title": "Compare with the grading guide",
+        "yourAnswer": "Trial answer",
+        "sampleAnswer": "Sample answer",
+        "noAnswer": "No answer yet.",
+        "noSample": "This question has no sample answer.",
+        "guide": "Grading guide",
+        "noGuide": "This question has no grading guide.",
+        "criterionPoints": "{points, plural, one {# point} other {# points}}"
+      },
+      "result": {
+        "title": "Trial grading result",
+        "idle": "Choose, change or leave answers blank, then press Try grading to see the score of each part and of the whole question.",
+        "score": "{earned} / {max, plural, one {# point} other {# points}}",
+        "manualPending": "Awaiting grading: the Essay part is scored by a grader and is not included in this score.",
+        "correct": "Correct",
+        "wrong": "Wrong",
+        "blank": "Blank",
+        "partPoints": "{earned}/{max, plural, one {# point} other {# points}}",
+        "correctOption": "Correct answer",
+        "wrongPick": "Wrong choice",
+        "standardAnswer": "Standard answer: {answer}",
+        "statementKey": "Answer: {answer}",
+        "matchKey": "Correct match: {answer}",
+        "state": {
+          "correct": "All correct",
+          "partial": "Partly correct",
+          "wrong": "Wrong",
+          "blank": "Blank",
+          "manual": "Awaiting grading"
+        },
+        "rowChild": "Question {number}",
+        "rowBlank": "Blank {number}",
+        "rowPair": "Item {number}",
+        "rowStatement": "Statement {letter}",
+        "childPoints": "{earned}/{max, plural, one {# point} other {# points}}"
+      }
+    },
     "usage": {
       "title": "Where used",
       "description": "Exams with a question block that can draw this question, with attempts per version.",
@@ -2916,6 +3137,17 @@
       "errorTitle": "Could not load where this question is used",
       "errorDescription": "Try again in a moment.",
       "retry": "Try again"
+    },
+    "assets": {
+      "errors": {
+        "imageTooLarge": "The image is larger than 5 MB.",
+        "attachmentTooLarge": "The file is larger than 20 MB.",
+        "imageTypeNotAllowed": "Only PNG, JPEG or WebP images are accepted.",
+        "attachmentTypeNotAllowed": "This file type is not accepted.",
+        "rateLimited": "You uploaded too many files in a short time (up to 60 files per 10 minutes). Try again later.",
+        "forbidden": "You do not have permission to upload files for questions.",
+        "uploadFailed": "The file could not be uploaded. Try again."
+      }
     }
   },
   "questionImport": {
@@ -2954,13 +3186,21 @@
       "knowledge": "Knowledge (MAPID)",
       "tags": "Tags",
       "setCode": "Set code",
-      "rubric": "Rubric"
+      "rubric": "Rubric",
+      "points": "Points",
+      "options": "Options",
+      "matchRight": "Right-hand choices",
+      "scoring": "Scoring",
+      "inputHint": "Input hint",
+      "gradingGuide": "Grading guide",
+      "commonMistakes": "Common mistakes",
+      "taskType": "Task type"
     },
     "upload": {
       "heading": "Choose a question file",
       "dropzoneTitle": "Drag a file here or click to choose",
       "dropzoneHint": ".xlsx or .csv file, up to {maxRows, number} rows, no larger than {maxMb, number} MB",
-      "mockHint": "Sample mode: an .xlsx file is always read as a built-in sample sheet; a .csv file (for example the template) is read for real.",
+      "readNote": "Reading the file adds no questions to the bank: you check and preview the result before importing.",
       "chooseFile": "Choose file",
       "changeFile": "Choose another file",
       "selectedFileLabel": "Selected file",
@@ -2970,30 +3210,59 @@
       "submit": "Read file",
       "uploadErrorFallback": "Could not read the file. Try again later.",
       "columnsHeading": "Template columns",
-      "columnsHint": "The first row holds the column names",
+      "columnsHint": "{count, number} columns, the first row holds the column names",
       "colName": "Column",
       "colRequired": "Required",
       "colRules": "Rules",
       "yes": "Yes",
       "no": "No",
       "optional": "Optional",
-      "optionsRow": "A, B, C, D",
+      "headers": {
+        "sourceCode": "Source code",
+        "type": "Question type",
+        "content": "Content",
+        "points": "Points",
+        "options": "Options",
+        "matchRight": "Right options",
+        "correctAnswer": "Answer",
+        "scoring": "Scoring",
+        "inputHint": "Input hint",
+        "gradingGuide": "Grading guide",
+        "rubric": "Rubric",
+        "solution": "Solution",
+        "commonMistakes": "Common mistakes",
+        "subject": "Subject",
+        "grade": "Grade",
+        "difficulty": "Difficulty",
+        "taskType": "Task type",
+        "knowledge": "Knowledge (MAPID)",
+        "tags": "Tags",
+        "setCode": "Set code"
+      },
       "rules": {
         "sourceCode": "Identifies a question imported before; must not repeat within the file.",
-        "type": "Single choice, Multiple choice, True / False, Fill in, Essay or Question set.",
-        "content": "The question text; for a Question set row, the shared passage. Write formulas in LaTeX.",
-        "options": "Choice options, or the statements of a True / False question. Choice questions need at least 2 options.",
-        "correctAnswer": "Letter of the correct option (A); several answers separated by commas (A, C); True / False takes T or F per statement; Fill in lists accepted answers separated by |; Essay takes a sample answer (optional). Leave empty on a Question set row.",
+        "type": "Single choice, Multiple choice, Short answer, Cloze, True / False, Matching, Essay or Question set.",
+        "content": "The question text; on a Question set row, the shared passage; a Cloze question marks its blanks as [[b1]], [[b2]]. Write formulas in LaTeX.",
+        "points": "Question points, a number greater than 0 (0.75 or 0,75). Leave empty for the default 1; Cloze takes the sum of its blank points, True / False takes the Scoring column.",
+        "options": "One item per line in the cell, as “A. text”: Choice options (up to 10), the statements of a True / False question (a., b., … up to 8) or the left-hand items of a Matching question (1., 2., …).",
+        "matchRight": "Matching only: the right-hand choices, one per line (A. …); there may be more choices than left-hand items.",
+        "correctAnswer": "Choice: letter of the correct option (A; several answers A, C). Short answer: one accepted answer per line, the first is the standard answer. Cloze: one line per blank, “b1 = answer 1 | answer 2”. True / False: T or F per statement (T, F, T). Matching: one line per pair, “1 = A”. Essay: a sample answer (optional). Leave empty on a Question set row.",
+        "scoring": "Multiple choice: ALL_OR_NOTHING or PARTIAL. True / False: PER_STATEMENT: 0.25 / 0.25 or COUNT_TABLE: 0.1 / 0.25 / 0.5 / 1. Cloze: one line per blank, “b1 = 1” (points of each blank). Matching: ONCE (each choice used once) or REUSE (a choice can be reused).",
+        "inputHint": "Short answer: the input hint shown to learners, optional.",
+        "gradingGuide": "Essay: the grading guide. Leave empty and the question stays Draft until one is added.",
+        "rubric": "Essay questions only, optional: write each criterion as “Description: points”, separated by ; or a new line (for example Opening: 0.25; Body: 1). If you add criteria, the question points equal the criteria total.",
         "solution": "Solution or worked explanation.",
+        "commonMistakes": "Common mistakes, optional.",
         "subject": "Subject name or code from the catalog. Child questions left empty take the Question set row's value.",
         "grade": "Grade number (10, 11, 12) or grade name.",
         "difficulty": "Recognition, Comprehension, Application or High application.",
+        "taskType": "Name or code of a task type in the catalog.",
         "knowledge": "MAPID at Knowledge level; several codes separated by commas, the first one is the primary knowledge. If empty, it must be added before moving to Ready.",
         "tags": "Tag names or codes separated by commas. Tags not in the catalog are skipped.",
-        "setCode": "A Question set row and its child questions share the same set code.",
-        "rubric": "Essay questions only: write each criterion as “Description: points”, separated by ; (for example Opening: 0.25; Body: 1). The question points equal the criteria total. Leave empty and the question stays Draft until a rubric is added."
+        "setCode": "A Question set row and its child questions share the same set code."
       },
-      "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2."
+      "footerNote": "Imported questions are Draft. Questions already in the bank (same source code) are not overwritten unless you choose to create a new version in step 2.",
+      "colFileHeader": "Header in file"
     },
     "fileErrors": {
       "IMPORT_INVALID_FILE": "Only .xlsx or .csv files are accepted.",
@@ -3001,7 +3270,8 @@
       "IMPORT_EMPTY_FILE": "The file has no data rows.",
       "IMPORT_FILE_TOO_LARGE": "The file is larger than 5 MB.",
       "IMPORT_ROW_LIMIT_EXCEEDED": "The file has more than 2,000 data rows. Split it into several files.",
-      "IMPORT_INVALID_HEADER": "The first row of the file must hold the column names."
+      "IMPORT_INVALID_HEADER": "The first row of the file must hold the column names.",
+      "IMPORT_FORMULA_NOT_ALLOWED": "The file contains Excel formula cells. Convert them to values and choose the file again."
     },
     "mapping": {
       "heading": "Map columns",
@@ -3121,7 +3391,7 @@
       "issuesHeading": "Errors and warnings",
       "errorLabel": "Error",
       "warningLabel": "Warning",
-      "fixHint": "Fix it in the file and upload again. The question content in this example is sample data.",
+      "fixHint": "Fix it in the file and upload again.",
       "status": {
         "VALID": "Valid",
         "ERROR": "Has errors",
@@ -3130,7 +3400,27 @@
       "rubric": "Rubric",
       "noRubric": "No rubric yet; the question stays Draft until one is added.",
       "criterionPoints": "{points, number} pts",
-      "sampleAnswer": "Sample answer"
+      "sampleAnswer": "Sample answer",
+      "scoringLabel": "Scoring",
+      "scoringRules": {
+        "ALL_OR_NOTHING": "All correct or no points",
+        "PARTIAL": "Partial credit"
+      },
+      "trueFalseScoring": {
+        "PER_STATEMENT": "Points per statement: {points}",
+        "COUNT_TABLE": "Table by correct statements: {points}",
+        "EVEN": "Table split evenly by the question points"
+      },
+      "blanksLabel": "Blanks",
+      "pairsLabel": "Matched pairs",
+      "pairWith": "matched with {key}. {content}",
+      "rightChoices": "Right-hand choices: {items}",
+      "matchReuse": "A choice can be used for several items",
+      "matchOnce": "Each choice is used once",
+      "points": "Points",
+      "pointsDefault": "1 (default)",
+      "taskType": "Task type",
+      "commonMistakes": "Common mistakes"
     },
     "issues": {
       "REQUIRED": {
@@ -3139,11 +3429,7 @@
       },
       "TYPE_UNKNOWN": {
         "message": "Question type “{value}” is not supported",
-        "fix": "Use one of: Single choice, Multiple choice, True / False, Fill in, Essay, Question set."
-      },
-      "TYPE_NOT_IMPORTABLE": {
-        "message": "Type “{value}” cannot be imported from a file yet",
-        "fix": "Create drag-and-drop questions on the Add question screen."
+        "fix": "Use one of: Single choice, Multiple choice, Short answer, Cloze, Question set, True/False, Matching, Essay."
       },
       "SUBJECT_UNKNOWN": {
         "message": "Subject “{value}” is not in the catalog",
@@ -3166,12 +3452,16 @@
         "fix": "Questions attach only to Knowledge nodes, the last level of the tree."
       },
       "OPTIONS_TOO_FEW": {
-        "message": "At least {min, number} options are needed",
-        "fix": "Fill in the option columns A, B, C, D."
+        "message": "{type, select, MATCHING {At least {min, number} items are needed in each column} other {At least {min, number} options are needed}}",
+        "fix": "{type, select, MATCHING {Fill the Choices column (left items) and the Right choices column, one item per line as “1. text” and “A. text”.} other {Fill the Choices column, one option per line as “A. text”, or the option columns A, B, C, D of the old file.}}"
+      },
+      "OPTIONS_TOO_MANY": {
+        "message": "At most {max, number} items",
+        "fix": "Remove the extra items in column {column}."
       },
       "ANSWER_INVALID": {
-        "message": "Correct answer “{value}” does not match the options",
-        "fix": "{type, select, MULTIPLE_CHOICE {Write the letters of the correct options separated by commas, for example A, C.} TRUE_FALSE {Write T or F for each filled statement, separated by commas, for example T, F, T.} other {Write one of A, B, C, D for a filled option.}}"
+        "message": "{type, select, CLOZE {The answer “{value}” matches no blank in the content} MATCHING {The pair “{value}” is not valid} SHORT_ANSWER {There are more than 20 answers} other {The correct answer “{value}” does not match the options}}",
+        "fix": "{type, select, MULTIPLE_CHOICE {Write the letters of the correct options separated by commas, for example A, C.} TRUE_FALSE {Write T or F for each statement that has text, separated by commas, for example T, F, T.} CLOZE {One line per blank as “b1 = answer 1 | answer 2”; the blank code must appear in the content as [[b1]].} MATCHING {One line “1 = A” per pair, linking a left item to an existing right choice; one pair per left item, and each choice only once unless Scoring is REUSE.} SHORT_ANSWER {At most 20 answers, one per line.} other {Write one letter from A to J of an option that has text.}}"
       },
       "FORMULA_INVALID": {
         "message": "The formula in column {column} cannot be read (unbalanced braces)",
@@ -3209,9 +3499,85 @@
         "message": "Rubric criterion “{value}” has no points or invalid points",
         "fix": "Write each criterion as “Description: points” with points greater than 0, separated by ;."
       },
-      "RUBRIC_MISSING": {
-        "message": "The essay question has no rubric",
-        "fix": "The question is still imported as Draft; add a rubric before marking it Ready."
+      "GRADING_GUIDE_MISSING": {
+        "message": "The essay question has no grading guide",
+        "fix": "The question is still imported as Draft; add a grading guide before marking it Ready."
+      },
+      "POINTS_INVALID": {
+        "message": "Points “{value}” are not valid",
+        "fix": "Enter points as a number greater than 0, for example 1 or 0.75."
+      },
+      "TASK_TYPE_UNKNOWN": {
+        "message": "The task type “{value}” is not in the catalog",
+        "fix": "Use the name or code of an active task type, or leave it empty."
+      },
+      "SCORING_INVALID": {
+        "message": "The scoring “{value}” is not valid",
+        "fix": "{type, select, MULTIPLE_CHOICE {Write ALL_OR_NOTHING or PARTIAL.} TRUE_FALSE {Write “PER_STATEMENT: 0.25 / 0.25” (adds up to the question points) or “COUNT_TABLE: 0.1 / 0.25 / 0.5 / 1” (not decreasing, last value equals the question points), one value per statement.} CLOZE {One line “b1 = 0.5” per blank, with a blank code from the content and points greater than 0.} MATCHING {Write REUSE or ONCE.} other {Check the Scoring column.}}"
+      },
+      "ANSWER_MISSING": {
+        "message": "Answers are incomplete",
+        "fix": "The question is still imported as a Draft; add the answers before marking it Ready."
+      },
+      "CLOZE_MARKER_INVALID": {
+        "message": "A blank marker in the content is repeated or there are more than {max, number} blanks",
+        "fix": "Give each blank its own code, for example [[b1]], [[b2]]; at most 30 blanks."
+      },
+      "SET_CHILD_TYPE_INVALID": {
+        "message": "The type “{value}” cannot be a child of a Question set",
+        "fix": "Import Cloze as a standalone question, without a Set code."
+      },
+      "ENTRY_DUPLICATE": {
+        "message": "“{value}” is repeated in the {column} column",
+        "fix": "Write each label or blank code once per column; delete the repeated line or change the label."
+      },
+      "OPTIONS_MISSING": {
+        "message": "No option has any content",
+        "fix": "Fill the Options column, one option per line like “A. text”."
+      },
+      "KNOWLEDGE_AMBIGUOUS": {
+        "message": "Knowledge code {value} matches several nodes in the {subject} knowledge structure",
+        "fix": "Use the full code so it matches exactly one node."
+      },
+      "CELL_SYNTAX": {
+        "message": "The cell in column {column} has invalid syntax",
+        "fix": "Write the cell following the rules of this column in the template columns table."
+      },
+      "CLOZE_MARKER_MISMATCH": {
+        "message": "The blank markers in the content do not match the answers",
+        "fix": "Each [[b1]] marker in the content needs exactly one “b1 = answer” line and the other way round."
+      },
+      "BLANK_UNKNOWN": {
+        "message": "Blank {value} is not in the content",
+        "fix": "Use a blank code that appears in the content, like [[b1]]."
+      },
+      "SET_CHILD_INVALID": {
+        "message": "The set has an invalid child question, so the whole set is not imported",
+        "fix": "Fix the failing child rows that share this set code."
+      },
+      "CHILD_TYPE_NOT_ALLOWED": {
+        "message": "This question type cannot be a child question",
+        "fix": "A child question cannot be a Question set or Fill in the blanks."
+      },
+      "UNSAFE_CONTENT": {
+        "message": "The content in column {column} has elements that are not allowed",
+        "fix": "Remove unusual tags, attributes or links; keep only basic formatting and formulas."
+      },
+      "SAVE_VALIDATION": {
+        "message": "This row failed the checks made when saving",
+        "fix": "Review the content, answers and points of the row; if it still fails, contact support with the row number."
+      },
+      "IMPORT_SOURCE_TYPE_MISMATCH": {
+        "message": "Source code {value} already belongs to a question of another type",
+        "fix": "Change the source code, or use the type of the existing question."
+      },
+      "CHILD_FIELD_IGNORED": {
+        "message": "Column {column} of a child question is ignored",
+        "fix": "Leave this cell empty on child rows; the child follows the set row."
+      },
+      "CHILD_SOURCE_CODE_IGNORED": {
+        "message": "The child question source code is ignored",
+        "fix": "Only the set row carries a source code; leave it empty on child rows."
       }
     },
     "errorReport": {
@@ -3337,6 +3703,7 @@
       "discontinueConflict": "The exam is no longer serving. Reload the list and try again.",
       "discontinueError": "Could not stop selling the exam. Try again later.",
       "structureValueShared": "{questions, plural, one {# question} other {# questions}} · {minutes, number} min shared",
+      "structureValueNoDuration": "{questions, plural, one {# question} other {# questions}} · —",
       "essay": "Has essay",
       "choice": {
         "english": "English",
@@ -3353,9 +3720,12 @@
       "discard": "Undo changes",
       "saved": "General information saved.",
       "saveError": "Could not save the general information. Try again later.",
-      "scopeLocked": "This exam has been published, so its exam type, format, template and subject cannot change: scope changes must respect access already sold (UniNote 11.2).",
+      "saveConflict": "Someone else just changed this exam. Reload the page to see the latest version; your unsaved changes are still on screen.",
+      "saveInvalid": "The exam information has an invalid value. Check the fields and save again.",
+      "fieldInvalid": "Invalid value.",
+      "scopeLocked": "This exam has been published, so its exam type, scope, part and subject cannot change: scope changes must respect access already sold (UniNote 11.2).",
       "replaceTitle": "Reload the structure from the new template?",
-      "replaceDescription": "Changing the exam type, format, template or subject replaces the current structure ({parts, plural, one {# part} other {# parts}}, {blocks, plural, one {# question block} other {# question blocks}}) with the new template. Configured blocks and matrices will be lost.",
+      "replaceDescription": "Changing the exam type, scope, part or subject replaces the current structure with that of the latest template, with the parts below. Configured blocks and matrices will be lost.",
       "replaceConfirm": "Reload structure",
       "facts": {
         "status": "Status",
@@ -3390,12 +3760,22 @@
       "loadErrorDescription": "Check your connection and try again.",
       "retry": "Try again"
     },
+    "reload": {
+      "listTitle": "Parts that will be reloaded ({count, number})",
+      "noParts": "This template has no parts: the structure will be left empty.",
+      "partName": "{order, number}. {name}",
+      "partMeta": "{questions, plural, one {# question} other {# questions}} · {minutes, number} min",
+      "partMetaShared": "{questions, plural, one {# question} other {# questions}} · shared duration",
+      "partMetaNoDuration": "{questions, plural, one {# question} other {# questions}} · no duration yet",
+      "cancel": "Keep the current structure",
+      "close": "Close"
+    },
     "structure": {
       "title": "Structure and matrix",
       "errorTitle": "Could not load the exam structure",
       "errorDescription": "Check your connection and try again.",
       "emptyTitle": "This exam has no parts yet",
-      "emptyDescription": "Choose the exam type, format and template in General information to load the initial parts.",
+      "emptyDescription": "Choose the exam type and exam scope in General information to load the initial parts.",
       "emptyAction": "Open General information",
       "save": "Save",
       "discard": "Discard changes",
@@ -3404,20 +3784,34 @@
       "saved": "Structure and matrix saved.",
       "savedRecheck": "Structure and matrix saved. The exam needs to be checked again before publishing.",
       "saveError": "Could not save the structure. Your changes are still on screen; try again later.",
+      "saveConflict": "Someone else just changed this exam. Reload the page to see the latest version; your unsaved changes are still on screen.",
+      "saveInvalid": "The structure has an invalid value (questions, duration or points). Fix it and save again.",
       "workingNote": "Saving updates the working copy; version v{version} keeps serving learners until a new version is published.",
       "draftNote": "This exam has not been published. Save often and check the configuration before publishing.",
+      "version": {
+        "label": "Structure version",
+        "placeholder": "Choose a version",
+        "hint": "{count, number} versions match this exam's exam type, scope and subject. Changing the version reloads the structure after you confirm.",
+        "hintSingle": "There is only one version for this exam's exam type, scope and subject.",
+        "reloadTitle": "Reload the structure from {name}?",
+        "reloadDescription": "The current structure is replaced with the parts below. Configured blocks and matrices will be lost.",
+        "reloadDescriptionDirty": "The current structure, including unsaved changes, is replaced with the parts below. Configured blocks and matrices will be lost.",
+        "reloadConfirm": "Reload structure",
+        "reloaded": "Structure reloaded from {name}.",
+        "reloadError": "Could not reload the structure. Try again later."
+      },
       "discardTitle": "Discard unsaved changes?",
       "discardDescription": "The structure returns to the last save. This cannot be undone.",
       "discardConfirm": "Discard changes",
       "discarded": "Unsaved changes discarded.",
       "issuesSummary": "Issues to fix ({count, number})",
       "issueGo": "Go to it",
-      "newBlockName": "{subject} · New block",
-      "blockAdded": "Added block {name}.",
-      "blockRemoved": "Removed block {name}. Save to apply.",
+      "newBlockName": "{subject} · New group",
+      "blockAdded": "Added group {name}.",
+      "blockRemoved": "Removed group {name}. Save to apply.",
       "combinationAttached": "Attached combination {code}. Save to apply.",
       "combinationRemoved": "Removed combination {code}. Save to apply.",
-      "blockLocation": "{hasOption, select, yes {{part} · {option} · {subject}} other {{part} · {subject}}} · block {position, number} of {total, number}",
+      "blockLocation": "{hasOption, select, yes {{part} · {option} · {subject}} other {{part} · {subject}}} · group {position, number} of {total, number}",
       "summary": {
         "label": "Structure summary",
         "questions": "Total questions",
@@ -3441,13 +3835,15 @@
         "title": "Structure",
         "summary": "{parts, plural, one {# part} other {# parts}} · {count, plural, one {# question} other {# questions}}",
         "partMeta": "{count, number} q{hasMinutes, select, yes { · {minutes, number} min} other {}}",
-        "section": "{subject} · {count, plural, one {# question} other {# questions}}",
+        "sectionOf": "Subject {subject}",
+        "sectionCountVaries": "count depends on the choice",
+        "pickSubjects": "Learners choose {count, number} subjects",
         "blockCount": "{count, plural, one {# question} other {# questions}}",
         "sets": "({sets, number} sets × {size, number})",
-        "addBlock": "Add a block to {subject}",
-        "noBlocks": "No question blocks yet.",
+        "addBlock": "Add a group to {subject}",
+        "noBlocks": "No question groups yet.",
         "noOptions": "No paths yet.",
-        "untitledBlock": "Untitled block",
+        "untitledBlock": "Untitled group",
         "hasIssue": "has issues",
         "common": "Common",
         "expertPending": "awaiting expert confirmation"
@@ -3459,7 +3855,11 @@
         "nameRequired": "Enter the part name.",
         "order": "Order",
         "orderHint": "From the template",
-        "questionCount": "Questions",
+        "questionCountOnPaper": "Questions on the paper",
+        "questionCountOnPaperHint": "Includes the elective content when the paper shows several options",
+        "paperInvalid": "Questions on the paper cannot be fewer than the questions to answer.",
+        "questionCount": "Questions to answer",
+        "questionCountHint": "When every question is required, equal to the questions on the paper",
         "countInvalid": "Questions must be a positive whole number.",
         "duration": "Duration (minutes)",
         "durationInvalid": "Duration must be greater than 0.",
@@ -3469,71 +3869,177 @@
         "subject": "Subject",
         "sectionCount": "Questions",
         "sectionCountAria": "Questions for {subject}",
-        "allocated": "Allocated to blocks",
+        "allocated": "Allocated to groups",
         "allocatedValue": "{allocated, number} / {count, number}",
-        "blockCount": "{count, plural, one {# block} other {# blocks}}",
+        "blockCount": "{count, plural, one {# group} other {# groups}}",
         "actions": "Actions",
-        "addBlock": "Add block",
-        "addBlockTarget": "Add block to {subject}",
+        "addBlock": "Add group",
+        "addBlockTarget": "Add group to {subject}",
+        "openSubject": "Edit subject {subject}",
         "total": "Total",
         "sharedDuration": "{minutes, plural, one {# minute} other {# minutes}}, shared by the whole exam",
         "sharedHint": "The exam uses a shared duration, so parts have no duration of their own. Change it in General.",
-        "points": "Part points",
-        "pointsHint": "On every path, the blocks of this part must add up to the part points.",
+        "points": "Part maximum points",
+        "pointsHint": "Leave empty if the part has no points of its own. When set, the blocks on every path must add up to the part points.",
         "pointsHintFixed": "The blocks currently total {points, number} points; they must equal the part points.",
         "pointsInvalid": "The block points do not add up to the part points.",
         "commonTitle": "Common to every branch",
         "commonHint": "Every learner takes the common sections, then picks one branch.",
         "commonCaption": "Common subjects and questions of {name}",
-        "commonTotal": "{count, plural, one {# common question} other {# common questions}}"
+        "commonTotal": "{count, plural, one {# common question} other {# common questions}}",
+        "participation": {
+          "title": "Participation rule",
+          "all": "Learners take all content of the part.",
+          "choosePrefix": "Learners choose",
+          "chooseAria": "Number of options to choose",
+          "chooseSuffix": "of {count, plural, one {# option} other {# options}}",
+          "subjectChoice": "Learners take the subject-choice option below.",
+          "hint": "The number of options to choose cannot exceed the number of options in the part."
+        }
       },
       "block": {
-        "title": "Question block · {name}",
+        "title": "Question group · {name}",
         "untitled": "Untitled",
-        "name": "Block name",
-        "questionType": "Question type",
+        "name": "Group name",
+        "backToSection": "Back to the subject",
+        "fromTemplate": "Group created from the template ({code}).",
+        "questionType": "Answer type",
+        "typeLocked": "Filled in by the template; it cannot be changed.",
+        "typeOpen": "By the subject's answer-type targets",
+        "typeOpenHint": "The group's questions fill the answer-type targets the subject still lacks.",
+        "childAnswerType": "Sub-question type",
+        "childAnswerTypeHint": "Sub-questions count toward the subject's answer-type target with this type.",
+        "childAnswerTypeAny": "Any type",
         "questionCount": "Questions to draw",
-        "questionCountHint": "Counted as single questions or independently scored sub-questions",
+        "questionCountHint": "Counted as single, independently scored questions",
+        "remainder": "Take the rest of the subject",
+        "remainderHint": "The group gets the questions the subject still needs after the other groups (at most one per subject).",
+        "remainderTaken": "Another group of this subject already takes the rest; untick it there first.",
         "setCount": "Number of sets",
-        "setSize": "Questions per set",
-        "setHint": "The block draws {count, plural, one {# sub-question} other {# sub-questions}}",
-        "setNotApplicable": "Sets × questions per set: only for the Question set type.",
-        "points": "Points per question",
-        "shuffle": "Shuffle rule",
-        "shuffleRules": {
-          "SHUFFLE": "Shuffle questions within the block",
-          "KEEP_ORDER": "Keep order"
-        },
-        "scope": "Knowledge scope (MAPID)",
-        "scopeNone": "No MAPID limit",
-        "scopePick": "Choose knowledge",
-        "scopeRemove": "Remove knowledge {code} {name}",
-        "match": "Matching",
-        "matchAny": "Match at least one (default)",
-        "matchAll": "Match all",
-        "descendants": "Include child knowledge",
-        "descendantsHint": "Off by default; turn on to include child codes of the selected chapters and lessons",
-        "pickerDescription": "Scope of block {name}: chapters, lessons or knowledge items can be chosen.",
-        "moveUp": "Move block {name} up",
-        "moveDown": "Move block {name} down",
-        "remove": "Remove block {name}",
-        "removeTitle": "Remove block {name}?",
-        "removeDescription": "The block ({count, plural, one {# question} other {# questions}}) and its matrix are removed from the draft. Save to apply.",
-        "removeConfirm": "Remove block",
+        "setSize": "Sub-questions per set",
+        "setHint": "The group draws {count, plural, one {# sub-question} other {# sub-questions}}",
+        "setWholeNote": "Sets are always drawn whole; the group's count is sets × sub-questions per set.",
+        "points": "Required points per question",
+        "pointsOpenHint": "Optional. Leave empty to accept any question; points come from the question version.",
+        "pointsTotal": "Only questions worth exactly {points, plural, one {# point} other {# points}} enter the source; the group is worth {total, plural, one {# point} other {# points}}.",
+        "taskType": "Task type",
+        "taskTypeSet": "Task type or passage",
+        "taskTypeSetHint": "Limit the source by task type; set the passage scope with MAPID below.",
+        "taskTypeAny": "Do not filter by task type",
+        "ownMatrix": "The group's own grade and difficulty matrix",
+        "ownMatrixNone": "Not set (optional)",
+        "ownMatrixSet": "Set",
+        "ownMatrixHint": "Only set it when the group needs its own allocation. The group's questions still count toward the subject's targets.",
+        "ownMatrixNeedsCount": "A group that takes the rest has no fixed question count yet, so it cannot have its own matrix.",
+        "ownMatrixRemove": "Remove the group's matrix",
+        "moveUp": "Move group {name} up",
+        "moveDown": "Move group {name} down",
+        "remove": "Remove group {name}",
+        "removeTitle": "Remove group {name}?",
+        "removeDescription": "The group ({count, plural, one {# question} other {# questions}}) and its matrix are removed from the draft. Save to apply.",
+        "removeConfirm": "Remove group",
         "errors": {
-          "nameRequired": "Enter the block name.",
+          "nameRequired": "Enter the group name.",
           "countPositive": "Questions to draw must be greater than 0.",
-          "setMismatch": "Sets × questions per set must equal the block's question count ({expected, number})."
+          "setMismatch": "Sets × sub-questions per set must equal the group's question count ({expected, number})."
         },
-        "pointsTotal": "The block is worth {points, number} points.",
         "manualGrading": "Manual grading",
         "competencies": "Competencies",
         "competenciesHint": "Only draw questions tagged with one of the selected competencies. None selected: any competency of the subject."
+      },
+      "subject": {
+        "title": "Subject {subject}",
+        "choiceGroup": {
+          "NATURAL": "Natural science",
+          "SOCIAL": "Social science"
+        },
+        "countUnknown": "The subject's question count is not set yet.",
+        "countVaries": "Subject questions: {counts} (depending on the learner's choice of 3 subjects)",
+        "countFixed": "{count, plural, one {# question} other {# questions}}",
+        "allocated": "Allocated",
+        "allocatedValue": "{allocated, number} / {count, plural, one {# question} other {# questions}}",
+        "allocatedUnknown": "{allocated, plural, one {# question} other {# questions}}",
+        "matches": "Matches the subject's question count",
+        "missing": "{count, plural, one {# question} other {# questions}} missing",
+        "over": "{count, plural, one {# question} other {# questions}} too many",
+        "caseLegend": "View by the subject's question count",
+        "caseOption": "{count, plural, one {# question} other {# questions}}",
+        "caseHint": "The subject gets a different number of questions depending on the choice; percentage targets are converted to counts for each case with the largest remainder method.",
+        "quotaTitle": "Subject targets",
+        "quotaHint": "Answer type, grade, difficulty and MAPID all describe the same set of questions: a question counts once toward the total and toward every target. Sub-questions of a set count toward the answer-type target.",
+        "unit": "Enter as",
+        "unitCount": "Questions",
+        "unitPercent": "Percent",
+        "total": "Total",
+        "totalPercent": "{total, number}%",
+        "totalOf": "{total, number} / {count, number}",
+        "actions": "Actions",
+        "countVariesError": "This subject's question count varies: declare targets as percentages, not as question counts.",
+        "answerTypes": {
+          "title": "Answer type",
+          "caption": "Answer-type targets of {subject}",
+          "declare": "Set targets",
+          "remove": "Remove targets",
+          "none": "The subject does not control the number of questions by answer type.",
+          "type": "Type",
+          "quota": "Target",
+          "resolved": "Questions",
+          "allocated": "Allocated",
+          "missing": "Missing",
+          "source": "Source",
+          "quotaAria": "Target for {type}",
+          "removeType": "Remove type {type}",
+          "addType": "Add an answer type",
+          "percentMismatch": "The percentages add up to {total, number}%; they must equal 100%.",
+          "countMismatch": "The targets add up to {total, plural, one {# question} other {# questions}}; the subject has {count, number}.",
+          "openMatches": "Groups with no set answer type ({count, number} questions) exactly cover the missing targets.",
+          "undeclared": "No target declared",
+          "openDiff": "Groups with no set answer type have {count, number} questions, {missing, number} off from the missing targets."
+        },
+        "matrix": {
+          "title": "Grade and difficulty",
+          "declare": "Set targets",
+          "remove": "Remove targets",
+          "none": "The subject does not control the grade and difficulty allocation.",
+          "gradeTitle": "By grade",
+          "difficultyTitle": "By difficulty",
+          "quota": "Target",
+          "allocated": "Allocated in groups",
+          "missing": "Missing"
+        },
+        "groups": {
+          "title": "Question groups",
+          "add": "Add a group",
+          "addAria": "Add a group to {subject}",
+          "empty": "This subject has no question groups yet.",
+          "caption": "Question groups of {subject}",
+          "name": "Group",
+          "type": "Answer type",
+          "countHeader": "Questions",
+          "scope": "Source scope",
+          "actions": "Actions",
+          "untitled": "Untitled",
+          "typeOpen": "By the subject's targets",
+          "typeSetOf": "{type} · sub-questions {child}",
+          "typeLocked": "Answer type filled in by the template",
+          "count": "{count, plural, one {# question} other {# questions}}",
+          "countSets": "{sets, number} sets × {size, number} sub-questions = {total, number} questions",
+          "countRemainder": "The rest ({count, number} questions)",
+          "countRemainderInvalid": "The rest (cannot be split)",
+          "remainderConflict": "The subject has {count, plural, one {# group} other {# groups}} taking the rest; only one is allowed. The check reports an error until one is left.",
+          "scopeOwn": "{count, plural, one {# own knowledge item} other {# own knowledge items}}",
+          "scopeSection": "By the subject's scope",
+          "scopeNone": "No MAPID limit",
+          "open": "Open group",
+          "openAria": "Open group {name}"
+        }
       },
       "issues": {
         "partCount": "{part}: the question count must be a positive whole number.",
         "partDuration": "{part}: the duration must be greater than 0 minutes.",
         "noOptions": "{part}: there is no path for learners to choose.",
+        "partPaperCount": "{part}: the questions on the paper ({onPaper, number}) are fewer than the questions to answer ({required, number}).",
+        "partChoose": "{part}: the number of options to choose is {choose, number}; it must be between 1 and {options, number}.",
         "sectionsTotal": "{part}: the subjects add up to {actual, number} questions; the part requires {expected, number}.",
         "blocksTotal": "{section}: the blocks have {actual, number} questions; the subject needs {expected, number}.",
         "dimension": {
@@ -3555,7 +4061,6 @@
       "yearsPending": "The structure year ({structure}) differs from the matrix year ({matrix}) and is not confirmed. The exam cannot be published until this is confirmed in General.",
       "yearsLink": "Open General",
       "expertNote": "Template note: {note}",
-      "combinationsGenerated": "{count, plural, one {Added # combination.} other {Added # combinations.}}",
       "branchAdded": "Added branch {name}.",
       "optionConfirmed": "Confirmed the question counts of {code}.",
       "scoring": {
@@ -3593,10 +4098,34 @@
       "toPreview": "Generate preview paper",
       "lastRun": "Checked at {time} against the current question source · took {seconds, number} s · processing limit {limit, number} s",
       "stale": "The question source or the configuration changed after this check. Check again before publishing.",
+      "staleReason": {
+        "STRUCTURE_CHANGED": "The exam structure changed after this check. Check again before publishing.",
+        "CONFIG_CHANGED": "The exam configuration changed after this check. Check again before publishing.",
+        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing."
+      },
       "runError": "The check could not run. Try again.",
       "live": {
         "running": "Checking the configuration",
         "done": "Check finished: {valid, number} valid, {invalid, number} invalid, {unconfirmed, number} unconfirmed paths."
+      },
+      "deep": {
+        "start": "Deep check",
+        "runningLabel": "Deep check running…",
+        "hint": "Some results could not be confirmed within the processing limit. Deep check gives the solver up to {seconds, number} seconds and runs in the background.",
+        "live": {
+          "running": "Deep check is running. The new result appears when it finishes.",
+          "failed": "The deep check did not finish."
+        },
+        "running": {
+          "title": "Deep check is running",
+          "description": "Runs in the background for up to {seconds, number} seconds. The results below are from the previous check and are replaced when it finishes. Updates pause while you are on another tab and resume when you come back."
+        },
+        "failed": {
+          "title": "The deep check did not finish",
+          "abandoned": "The background run was interrupted before it produced a result. The results below are still from the previous check.",
+          "generic": "Could not get the deep check result. The results below are still from the previous check.",
+          "retry": "Try again"
+        }
       },
       "emptyTitle": "Configuration not checked yet",
       "emptyDescription": "Check every choice path before publishing. The result shows which paths can generate a paper and what to fix.",
@@ -3626,7 +4155,7 @@
         "UNCONFIRMED": "Unconfirmed"
       },
       "noIssue": "None",
-      "moreIssues": "and {count, plural, one {# more issue} other {# more issues}}",
+      "moreIssues": "And {count, plural, one {# more issue} other {# more issues}}.",
       "issueWithPath": "{path}: {issue}",
       "paths": {
         "title": "Results by choice path",
@@ -3634,12 +4163,13 @@
         "tableLabel": "Check results of {count, plural, one {# choice path} other {# choice paths}}",
         "empty": "This exam has no choice path yet",
         "sub": "{questions, plural, one {# question} other {# questions}} · {minutes, plural, one {# minute} other {# minutes}}",
+        "subSelections": "{picks, plural, one {# subject set} other {# subject sets}} · {cases, plural, one {# case} other {# cases}}",
         "partsValue": "Part {list}",
         "previewAria": "Generate a preview paper for {path}",
         "previewTooltip": "Generate preview paper",
         "fix": "Go to matrix row",
         "fixAria": "Go to the matrix row to fix for {path}",
-        "rerunExtended": "Check again with a longer limit",
+        "deepAria": "Deep check {path}",
         "viewOverlap": "View overlapping source",
         "columns": {
           "path": "Choice path",
@@ -3655,6 +4185,18 @@
         "INVALID": "there is a definite error, such as a wrong question total or fewer source questions than the quota.",
         "UNCONFIRMED": "no solution was found within the processing limit; this does not mean the bank lacks questions.",
         "note": "The last two results cannot be published for the affected scope."
+      },
+      "selections": {
+        "title": "{path}: results for each subject set the learner can pick",
+        "summary": "{total, plural, one {# case} other {# cases}}: {valid, number} valid, {invalid, number} invalid, {unconfirmed, number} unconfirmed.",
+        "rule": "Learners pick {choose, number} subjects. Two subjects of the same group (natural or social) get {high, number} questions each and the other subject gets {low, number}. When all {choose, number} subjects are in one group, one of them gets {low, number}: that subject set has {choose, number} splits and every split is checked.",
+        "tableLabel": "Check results for each subject set of {path}",
+        "empty": "This path has no subject choice yet",
+        "columns": {
+          "subjects": "Subjects and questions per subject",
+          "result": "Result",
+          "issue": "Issue"
+        }
       },
       "groups": {
         "title": "Check groups",
@@ -3718,8 +4260,8 @@
         "MATRIX_NEGATIVE": "Block {block} has a negative quota.",
         "PERCENT_TOTAL_INVALID": "Block {block}: the percentages {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} COMPETENCY {by competency} other {of the matrix}} add up to {available, number}%; they must add up to 100%.",
         "SET_SIZE_MISMATCH": "Block {block}: sets × questions per set is {available, number}; the block needs {required, number} questions.",
-        "CELL_SHORTAGE": "Block {block} needs {required, number} questions at {grade}/{difficulty}; {available, number} matching questions are available.",
-        "DIMENSION_SHORTAGE": "Block {block} needs {required, number} questions at {level}; {available, number} matching questions are available.",
+        "CELL_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "DIMENSION_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
         "MATRIX_INFEASIBLE": "Block {block}: each dimension has enough source questions, but no selection of {required, number} questions meets grade and difficulty together.",
         "SET_SHORTAGE": "Block {block} requires {required, number} sets; only {available, number} valid sets are available.",
         "OVERLAP_UNCONFIRMED": "Block {block}: {available, number} questions are shared between knowledge groups; no solution was found within the processing limit ({seconds, number} seconds, sample). This does not mean the bank lacks questions.",
@@ -3729,7 +4271,21 @@
         "POINTS_TOTAL_MISMATCH": "The path totals {available, number} points; the exam scale is {required, number}.",
         "COMPETENCY_SHORTAGE": "Block {block} needs {required, number} questions for {competency}; {available, number} matching questions are available.",
         "RUBRIC_MISSING": "Block {block}: {available, plural, one {# essay source question has} other {# essay source questions have}} no rubric ({codes}).",
-        "SCORING_MISMATCH": "Block {block}: {available, plural, one {# source question uses} other {# source questions use}} a scoring rule different from the block's expected rule ({codes}). Warning only; publishing is not blocked."
+        "SCORING_MISMATCH": "Block {block}: {available, plural, one {# source question uses} other {# source questions use}} a scoring rule different from the block's expected rule ({codes}). Warning only; publishing is not blocked.",
+        "ANSWER_QUOTA_TOTAL_MISMATCH": "Subject {subject}: the answer-type quotas add up to {available, number} questions; they must add up to the subject's {required, number}.",
+        "SUBJECT_MATRIX_TOTAL_MISMATCH": "Subject {subject}: the quotas {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} other {by grade and difficulty}} add up to {available, number} questions; they must add up to the subject's {required, number}.",
+        "GROUP_ANSWER_TYPE_MISSING": "Group {block} has no answer type, and subject {subject} sets no answer-type quota.",
+        "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: the per-subject counts of the subject choice are invalid (need {required, number}, found {available, number}). There must be one value per chosen subject, adding up to the option's question count, and every subject must belong to the natural or social group so the counts can be split.",
+        "REMAINDER_GROUP_INVALID": "Subject {subject} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed {required, number} questions (found {available, number}).",
+        "SUBJECT_QUOTA_COUNT_VARIES": "Subject {subject} receives {required, number} to {available, number} questions: subject quotas must be set as percentages, not as question counts.",
+        "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: the {answerType} quota needs {required, number} questions; {available, number} matching questions are available.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: not enough source for the subject quota; it needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "MATRIX_NON_INTEGER": "Block {block} has a quota that is not a whole number.",
+        "MATRIX_INCOMPLETE": "Block {block} has not chosen how its matrix applies (combined or separate).",
+        "PART_EMPTY": "{part} has no questions yet.",
+        "SHARED_PART_DURATION": "{part}: the exam uses a shared timer, so a part must not set its own duration.",
+        "ANSWER_QUOTA_DUPLICATE": "Subject {subject}: the {answerType} answer type appears twice in the answer-type quotas.",
+        "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
       }
     },
     "versions": {
@@ -3765,6 +4321,7 @@
           "BLOCK_CHANGED": "Block changed",
           "MATRIX_CHANGED": "Matrix changed",
           "ORDER_RULE_CHANGED": "Shuffle rule changed",
+          "ORDER_CHANGED": "Order changed",
           "QUESTIONS_REPLACED": "Questions replaced"
         },
         "warning": {
@@ -3775,7 +4332,55 @@
         "beforeFirst": "Before",
         "after": "After (working copy)",
         "openAria": "Open the change in {where}",
-        "openTooltip": "Open the change"
+        "openTooltip": "Open the change",
+        "where": {
+          "all": {
+            "block": "Blocks",
+            "option": "Options",
+            "part": "Parts",
+            "section": "Subjects"
+          },
+          "config": "Exam settings",
+          "field": {
+            "answerQuotas": "Answer-type targets",
+            "childAnswerType": "Sub-question type",
+            "choiceGroup": "Subject group",
+            "chooseSubjects": "Subjects to choose",
+            "description": "Description",
+            "durationMinutes": "Duration",
+            "groupOrder": "Group order",
+            "instructions": "Instructions",
+            "knowledgeScope": "Knowledge scope",
+            "matrix": "Matrix",
+            "maxPoints": "Part maximum points",
+            "maxScore": "Maximum score",
+            "mode": "Part mode",
+            "name": "Name",
+            "order": "Order",
+            "participation": "Participation rule",
+            "practiceScoring": "Practice scoring",
+            "questionCount": "Questions",
+            "questionCountOnPaper": "Questions on the paper",
+            "questionCountRequired": "Questions to answer",
+            "questionType": "Answer type",
+            "referenceMax": "Reference scale",
+            "requiredPointsPerQuestion": "Points per question",
+            "setCount": "Number of sets",
+            "setSize": "Questions per set",
+            "shuffle": "Shuffle rule",
+            "subjectCode": "Subject",
+            "tagCodes": "Tags",
+            "taskTypeCode": "Task type",
+            "timing": "Timing"
+          },
+          "item": {
+            "block": "Block",
+            "option": "Option",
+            "part": "Part",
+            "section": "Subject"
+          },
+          "structure": "Structure"
+        }
       },
       "history": {
         "title": "Publishing history",
@@ -3811,7 +4416,8 @@
         "confirm": "Discontinue",
         "cancel": "Cancel",
         "done": "{code} is discontinued.",
-        "error": "Could not discontinue the exam. Try again."
+        "error": "Could not discontinue the exam. Try again.",
+        "conflict": "The exam is no longer serving or has changed. Reload the page and try again."
       },
       "detail": {
         "close": "Close",
@@ -3862,6 +4468,11 @@
       "SPT": "SPT",
       "SP2E": "SP2E",
       "THPTQG": "THPTQG"
+    },
+    "scope": {
+      "FULL": "Full exam",
+      "PART": "By part",
+      "SUBJECT": "By subject"
     },
     "format": {
       "FULL": "FULL",
@@ -3944,6 +4555,40 @@
         "matchAll": "The generated paper matches every matrix quota.",
         "mismatch": "The generated paper misses {count, plural, one {# matrix quota} other {# matrix quotas}}."
       },
+      "subjects": {
+        "legend": "Pick {count, plural, one {# subject} other {# subjects}} to preview",
+        "group": {
+          "NATURAL": "Natural",
+          "SOCIAL": "Social"
+        },
+        "remaining": "{picked, number} of {choose, number} subjects picked. Pick all {choose, number} to generate a paper.",
+        "split": "Questions per subject: {list}.",
+        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Regenerate to try another split.",
+        "full": "All {choose, number} subjects picked. Clear one to switch to another subject."
+      },
+      "subjectQuotas": {
+        "title": "Subject quotas",
+        "tableLabel": "Subject quotas compared with the generated paper",
+        "empty": "This paper sets no subject quotas",
+        "noneNote": "The subjects on this paper declare no answer type, grade or difficulty quota at subject level.",
+        "matchAll": "The generated paper matches every subject quota.",
+        "mismatchAll": "The generated paper misses {count, plural, one {# subject quota} other {# subject quotas}}.",
+        "questionCount": "{count, plural, one {# question} other {# questions}} on the paper",
+        "match": "Match",
+        "mismatch": "Mismatch",
+        "kind": {
+          "ANSWER_TYPE": "Answer type: {name}",
+          "GRADE": "Grade: {name}",
+          "DIFFICULTY": "Difficulty: {name}"
+        },
+        "columns": {
+          "subject": "Subject",
+          "quota": "Quota",
+          "required": "Required",
+          "generated": "Generated",
+          "result": "Result"
+        }
+      },
       "checks": {
         "title": "Checks on the generated paper",
         "name": {
@@ -3988,7 +4633,16 @@
       },
       "errors": {
         "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
-        "CHECK_REQUIRED": "The configuration must be checked again before publishing.",
+        "checkRequired": {
+          "NO_CHECK": "The exam has not been checked yet. Check the configuration, then publish.",
+          "STRUCTURE_CHANGED": "The exam structure changed after the last check. Check again, then publish.",
+          "CONFIG_CHANGED": "The exam configuration changed after the last check. Check again, then publish.",
+          "SOURCE_CHANGED": "The question source changed after the last check. Check again, then publish.",
+          "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
+          "UNKNOWN": "The configuration must be checked again before publishing."
+        },
+        "recheck": "Check again",
+        "revisionConflict": "The exam was just edited elsewhere. Close this dialog, reload the page, then publish again.",
         "NOTHING_TO_PUBLISH": "There is no working copy to publish.",
         "generic": "Could not publish. Try again."
       },
@@ -4030,7 +4684,7 @@
       "sections": {
         "info": "General information",
         "structure": "Initial structure",
-        "structureDescription": "Loaded from the {name} template · changing the exam type, format, subject or template reloads the structure after confirmation",
+        "structureDescription": "Loaded from the {name} template · changing the exam type, scope, part or subject reloads the structure after confirmation",
         "choice": "Elective part · Part {order}",
         "choiceDescription": "Every learner path must have {count, plural, one {# question} other {# questions}}",
         "timing": "Time and scoring",
@@ -4045,14 +4699,17 @@
       "generateCode": "Generate code",
       "codeGenerated": "Generated code {code}.",
       "kind": "Exam type",
-      "format": "Format",
-      "formatFull": "FULL",
-      "formatFullDescription": "All three parts",
-      "formatSingle": "Single subject",
-      "formatSingleDescription": "One part or subject",
-      "singleSubject": "Part or subject",
-      "singleSubjectHint": "A single-subject exam has only the chosen part or subject",
-      "singleScope": {
+      "scope": "Exam scope",
+      "scopeFull": "Whole exam",
+      "scopeFullDescription": "All parts of the exam",
+      "scopePart": "By part",
+      "scopePartDescription": "One part of the exam",
+      "scopeSubject": "By subject",
+      "scopeSubjectDescription": "All parts of one subject",
+      "scopeOnly": "This exam type only has this scope",
+      "part": "Exam part",
+      "partHint": "A by-part exam has only the chosen part",
+      "partName": {
         "MATH": "Math",
         "LITERATURE": "Literature",
         "SCIENCE": "Science",
@@ -4060,8 +4717,11 @@
       },
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Introduce the exam's content and goals",
-      "templateFull": "{kind} FULL",
-      "templateSingle": "{kind} single-subject {scope}",
+      "instructionsLabel": "Exam instructions",
+      "instructionsPlaceholder": "For example: how to choose a combination, rules about time",
+      "instructionsHint": "Learners read this before they start. It can stay empty in a draft; images are not supported yet.",
+      "templateFull": "{kind} · Whole exam",
+      "templatePart": "{kind} · By part {scope}",
       "cover": {
         "label": "Cover image",
         "hint": "16:9 · PNG, JPG or WebP up to 5 MB · shown in listings and on the intro page. Sample data: the image is not uploaded.",
@@ -4159,8 +4819,9 @@
       "fields": {
         "name": "Exam name",
         "code": "Exam code",
-        "singleSubject": "Part or subject",
+        "part": "Exam part",
         "description": "Description",
+        "instructions": "Exam instructions",
         "parts": "Initial structure",
         "partName": "Part {order} · name",
         "partSubject": "Part {order} · subject",
@@ -4187,7 +4848,8 @@
       "errors": {
         "codeTaken": "This exam code is already used. Enter another code.",
         "generic": "Could not create the exam. Try again later.",
-        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again."
+        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again.",
+        "structureNotSaved": "Exam {code} was created with the template structure, but the structure you edited could not be saved. Redo your edits in the Structure and matrix tab."
       },
       "validation": {
         "nameRequired": "Enter the exam name.",
@@ -4196,7 +4858,7 @@
         "codeInvalid": "Use only unaccented letters, digits and hyphens, starting with a letter or digit.",
         "codeMax": "The code can have at most {max} characters.",
         "codeTaken": "This exam code is already used. Enter another code.",
-        "subjectRequired": "Choose the part or subject of the single-subject exam.",
+        "subjectRequired": "Choose the part of the by-part exam.",
         "descriptionMax": "The description can have at most {max} characters.",
         "partNameRequired": "Enter the part name.",
         "partNameMax": "The part name can have at most {max} characters.",
@@ -4242,26 +4904,25 @@
         "PER_PART": "duration per part",
         "SHARED": "one shared duration"
       },
-      "formatOnlyFull": "This exam type only has FULL exams",
       "templateSubject": "{kind} {subject} {year}",
       "templateBlank": "{kind} {subject} (no template)",
       "noSubject": "no subject chosen",
-      "subjectTemplate": {
+      "subjectField": {
         "subject": "Exam subject",
-        "subjectHint": "{count, plural, one {# subject has} other {# subjects have}} a structure template; subjects without one start with an empty structure",
-        "subjectPlaceholder": "Choose a subject",
-        "subjectWithTemplates": "{subject} · {count, plural, one {# template} other {# templates}}",
-        "noTemplate": "{subject} has no structure template yet. The initial structure starts empty: enter the questions and duration, and add parts if needed.",
-        "template": "Structure template",
-        "templateHint": "Templates by structure year, newest first",
-        "templateYear": "Structure {year}"
+        "hint": "{count, plural, one {# subject has} other {# subjects have}} a structure template; subjects without one start with an empty structure",
+        "placeholder": "Choose a subject",
+        "withTemplates": "{subject} · {count, plural, one {# template} other {# templates}}",
+        "noTemplate": "{subject} has no structure template yet. The initial structure starts empty: enter the questions and duration, and add parts if needed."
       },
       "templateNotes": {
+        "loaded": "The system loads the latest template: {name}.",
+        "changeInStructure": "To use another year's version, choose it in the Structure step.",
         "structureYear": "Structure year",
         "matrixYear": "Matrix year",
         "yearsDiffer": "The {structureYear} structure uses the {matrixYear} matrix: an expert must confirm the matrix targets before it is sold.",
         "yearsConfirm": "An expert has confirmed that the {matrixYear} matrix targets fit this structure",
         "yearsConfirmHint": "Until it is confirmed, the configuration check blocks publishing. You can confirm later in General information.",
+        "yearsConfirmLater": "An expert confirms the matrix targets in General information after the exam is created.",
         "expertNote": "Template note"
       },
       "timing": {
@@ -4342,6 +5003,50 @@
       "competencyHint": "A separate dimension, independent of grade and difficulty: it must add up to the block's question count.",
       "competencyHeader": "Competency"
     },
+    "scopeField": {
+      "legend": "Knowledge scope (MAPID)",
+      "inheritsSection": "By the subject's scope",
+      "inheritsCount": "The subject's scope has {count, plural, one {# knowledge item} other {# knowledge items}}",
+      "none": "No MAPID limit",
+      "setOwn": "Set own scope",
+      "pick": "Choose knowledge",
+      "remove": "Remove knowledge {code} {name}",
+      "useSection": "Use the subject's scope",
+      "match": "Matching",
+      "matchAny": "Match at least one (default)",
+      "matchAll": "Match all",
+      "pickerDescription": "Scope of {name}: chapters, lessons or knowledge items can be chosen. A chosen node also matches questions tagged with its child nodes."
+    },
+    "subjectChoice": {
+      "title": "{name}",
+      "pick": "Learners choose {count, number} of {total, number} subjects",
+      "editOnce": "Each subject is edited once; nothing is repeated for each set of three subjects.",
+      "ruleTitle": "How the questions are split by subject group",
+      "rule": "The group with more chosen subjects gets {high, number} questions per subject; the subject of the other group gets {low, number}. When all three subjects are natural sciences, the system picks at random, before drawing questions, which subject gets {low, number}.",
+      "example": "{groups}: {cases}",
+      "or": "or",
+      "choiceGroup": {
+        "NATURAL": "Natural science",
+        "SOCIAL": "Social science"
+      },
+      "choiceGroupShort": {
+        "NATURAL": "natural",
+        "SOCIAL": "social"
+      },
+      "caption": "Subjects of the option and the number of question groups of each",
+      "subject": "Subject",
+      "group": "Subject group",
+      "groups": "Groups",
+      "actions": "Actions",
+      "edit": "Edit subject",
+      "editSubject": "Edit subject {subject}"
+    },
+    "templateName": {
+      "full": "{kind} · Whole exam",
+      "part": "{kind} · By part {scope}",
+      "subject": "{kind} · {subject}",
+      "withYear": "{name} · {year}"
+    },
     "combinations": {
       "title": "Paths learners choose",
       "description": "Only paths and combinations attached to the exam are shown to learners",
@@ -4372,7 +5077,6 @@
         "total": "The subjects must add up to the part's question count. The system never splits 51 questions and drops one.",
         "fixed": "Per-subject counts are fixed in each combination; the system never picks which subject loses a question per attempt.",
         "newCodes": "Combination codes added later in Shared configuration are not added to serving exams automatically.",
-        "sample": "The subjects of KH-1, KH-2 and KH-3 are sample data, pending BA input in Shared configuration.",
         "expert": "Newly generated combinations, or ones whose counts were edited, await expert confirmation; paths that use them cannot be published."
       },
       "attachDialog": {
@@ -4389,29 +5093,12 @@
       "branchesCaption": "Branches of this part",
       "branchesEmpty": "No branches yet. Add a branch for learners to choose.",
       "addBranch": "Add branch",
-      "generate": "Generate combinations",
       "temporaryCode": "Temporary code",
       "totalWithCommon": "{total, number} / {count, number} (incl. {common, number} common)",
       "expertPending": "Awaiting expert confirmation",
       "expertConfirm": "Confirm",
       "expertConfirmAria": "Confirm the question counts of {code}",
       "expertConfirmed": "Expert confirmed",
-      "generator": {
-        "title": "Generate subject combinations",
-        "description": "Pick the subjects and how many go in each combination. Each combination has {count, plural, one {# question} other {# questions}} split across its subjects.",
-        "subjectsLegend": "Subjects to choose from",
-        "size": "Subjects per combination",
-        "sizeHint": "From 1 to {total, number}.",
-        "sizeInvalid": "Subjects per combination must be from 1 to {total, number}.",
-        "listLegend": "Generated combinations ({selected, number} / {total, number} selected)",
-        "listEmpty": "Pick subjects and a size to generate combinations.",
-        "attached": "Attached",
-        "temporaryCode": "Temporary code",
-        "required": "Select at least one combination.",
-        "note": "A combination with the same subjects as a catalog entry uses the catalog code; others get a temporary TH-nn code. Every combination added here awaits expert confirmation of its per-subject counts.",
-        "cancel": "Cancel",
-        "submit": "{count, plural, one {Add # combination} other {Add # combinations}}"
-      },
       "branchDialog": {
         "title": "Add branch",
         "description": "A branch is what learners pick after the common sections; it has {count, plural, one {# question} other {# questions}}.",
@@ -4428,7 +5115,7 @@
   },
   "grading": {
     "status": {
-      "GRADING": "Grading",
+      "GRADING": "Awaiting grading",
       "SCORED": "Scored"
     },
     "filters": {
@@ -4577,7 +5264,7 @@
         "save": "Save draft",
         "saved": "Draft scores saved.",
         "unsaved": "You have unsaved scores.",
-        "hint": "Save a draft to continue later; the attempt stays in Grading."
+        "hint": "Save a draft to continue later; the attempt stays in Awaiting grading."
       },
       "finish": {
         "action": "Finish grading",
@@ -4601,6 +5288,36 @@
         "NOT_FOUND": "Attempt not found.",
         "generic": "Could not save the scores. Try again."
       }
+    }
+  },
+  "richText": {
+    "formula": {
+      "block": "Block",
+      "cancel": "Cancel",
+      "close": "Close",
+      "description": "Enter LaTeX code; the formula is shown rendered inside the content.",
+      "displayLabel": "Display style",
+      "inline": "Inline",
+      "insert": "Insert formula",
+      "latexLabel": "LaTeX code",
+      "latexPlaceholder": "x^2 + y^2 = z^2",
+      "title": "Insert formula"
+    },
+    "mathUnbalanced": "Math delimiters are unbalanced",
+    "toolbar": {
+      "bold": "Bold",
+      "bulletList": "Bullet list",
+      "formula": "Insert formula",
+      "image": "Insert image",
+      "imageUploading": "Uploading image",
+      "italic": "Italic",
+      "label": "Content formatting",
+      "orderedList": "Numbered list",
+      "strike": "Strikethrough",
+      "subscript": "Subscript",
+      "superscript": "Superscript",
+      "table": "Insert table",
+      "underline": "Underline"
     }
   }
 }

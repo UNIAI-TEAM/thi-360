@@ -1,28 +1,35 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { MockApiError } from "@/lib/mock/content-mock";
-import { getQuestion } from "../api";
+import { describe, expect, it } from "vitest";
+import { ContentApiError } from "@/features/content/api-error";
+import { fail, fakeApi } from "@/test/fake-api";
+import { getQuestion, getQuestionRetireImpact } from "../api";
 import {
   createQuestion,
   duplicateQuestion,
   getQuestionUsage,
   listQuestionVersions,
-  resetQuestionHistoryForTests,
   restoreQuestionVersion,
   updateQuestion,
 } from "../editor-api";
 import { toEditorValues, toSaveRequest } from "../editor-form";
 import { deriveVersionStates, diffSnapshots, servingVersion, toSnapshot } from "../editor-versioning";
 import type { UpdateQuestionRequest } from "../editor-types";
-import { questionStore } from "../mock/store";
+import { withQuestionsServer } from "./api-fixtures";
 
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
+const store = withQuestionsServer({
+  usage: {
+    "q-0003": {
+      examIds: ["ex-1", "ex-2", "ex-3"],
+      ledger: [
+        { examId: "ex-1", kind: "ATTEMPT", versionNo: 1 },
+        { examId: "ex-2", kind: "ATTEMPT", versionNo: 2 },
+      ],
+    },
+  },
 });
 
 async function editRequest(id: string, change: (request: UpdateQuestionRequest) => void): Promise<UpdateQuestionRequest> {
   const question = await getQuestion(id);
-  const request: UpdateQuestionRequest = { ...toSaveRequest(toEditorValues(question)), expectedVersion: question.version };
+  const request: UpdateQuestionRequest = { ...toSaveRequest(toEditorValues(question)), expectedRevision: question.revision };
   change(request);
   return request;
 }
@@ -79,7 +86,7 @@ describe("trạng thái phiên bản", () => {
   });
 });
 
-describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
+describe("API soạn câu hỏi (nhánh thật, client giả)", () => {
   it("tạo câu mới luôn ở trạng thái Nháp, phiên bản 1, có một mục lịch sử", async () => {
     const source = await getQuestion("q-0001");
     const created = await createQuestion(toSaveRequest(toEditorValues(source)));
@@ -90,13 +97,36 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     expect(versions.versions.map((entry) => [entry.version, entry.state])).toEqual([[1, "WORKING"]]);
   });
 
+  it("tạo: thử lại sau 5xx dùng lại khóa idempotency, sau 422 thì khóa mới, đổi nội dung giữa hai lần thì khóa mới", async () => {
+    const POST = "/api/v1/admin/questions";
+    const keys = () =>
+      fakeApi.calls
+        .filter((call) => call.method === "POST" && call.path === POST)
+        .map((call) => (call.options as { params: { header: Record<string, string> } }).params.header["Idempotency-Key"]);
+    const request = { ...toSaveRequest(toEditorValues(await getQuestion("q-0001"))), saveIntentId: "intent-1" };
+
+    fakeApi.post(POST, fail(503, { code: "UNAVAILABLE" }));
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 503 });
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 503 });
+    expect(keys()[1]).toBe(keys()[0]);
+
+    // Sửa nội dung rồi gửi lại: khác thân thì máy chủ từ chối cùng khóa (409), nên là lệnh mới.
+    await expect(createQuestion({ ...request, content: `${request.content} (sửa)` })).rejects.toMatchObject({ status: 503 });
+    expect(keys()[2]).not.toBe(keys()[0]);
+
+    fakeApi.post(POST, fail(422, { code: "VALIDATION_FAILED" }));
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 422 });
+    await expect(createQuestion(request)).rejects.toMatchObject({ status: 422 });
+    expect(keys()[4]).not.toBe(keys()[3]);
+  });
+
   it("sửa câu Sẵn sàng tạo phiên bản Nháp mới, bản cũ vẫn hiện hành", async () => {
     const request = await editRequest("q-0021", (r) => {
       r.content = "Đề bài đã sửa";
     });
     const { question, versionCreated } = await updateQuestion("q-0021", request);
     expect(versionCreated).toBe(true);
-    expect(question).toMatchObject({ version: 4, status: "DRAFT", content: "Đề bài đã sửa" });
+    expect(question).toMatchObject({ version: 3, workingVersion: 4, status: "READY", content: "Đề bài đã sửa" });
 
     const versions = await listQuestionVersions("q-0021");
     expect(versions.versions.map((entry) => [entry.version, entry.state])).toEqual([
@@ -117,15 +147,16 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     expect(versionCreated).toBe(false);
     expect(question.version).toBe(2);
     const versions = await listQuestionVersions("q-0006");
-    expect(versions.versions.map((entry) => entry.state)).toEqual(["WORKING", "CURRENT"]);
+    // Câu Nháp chưa từng Sẵn sàng không có bản đang phục vụ: bản 1 đã được thay thế.
+    expect(versions.versions.map((entry) => entry.state)).toEqual(["WORKING", "SUPERSEDED"]);
     expect(versions.versions[0]?.snapshot.content).toBe("Bản nháp mới");
   });
 
-  it("báo 409 khi phiên bản đã đổi và 422 khi đổi dạng câu", async () => {
+  it("báo 412 QUESTION_REVISION_CONFLICT khi revision đã đổi và 422 khi đổi dạng câu", async () => {
     const stale = await editRequest("q-0001", (r) => {
-      r.expectedVersion = 99;
+      r.expectedRevision = 99;
     });
-    await expect(updateQuestion("q-0001", stale)).rejects.toMatchObject({ status: 409, code: "QUESTION_VERSION_CONFLICT" });
+    await expect(updateQuestion("q-0001", stale)).rejects.toMatchObject({ status: 412, code: "QUESTION_REVISION_CONFLICT" });
     const retyped = await editRequest("q-0001", (r) => {
       r.type = "MULTIPLE_CHOICE";
       if (r.body.type === "SINGLE_CHOICE") r.body = { ...r.body, type: "MULTIPLE_CHOICE", scoringRule: "ALL_OR_NOTHING" };
@@ -138,17 +169,17 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
     const oldest = before.versions[before.versions.length - 1]!;
     const { question, versionCreated } = await restoreQuestionVersion("q-0021", {
       version: oldest.version,
-      expectedVersion: before.latestVersion,
+      expectedRevision: (await getQuestion("q-0021")).revision,
     });
     expect(versionCreated).toBe(true);
-    expect(question.status).toBe("DRAFT");
+    expect(question).toMatchObject({ status: "READY", workingVersion: before.latestVersion + 1 });
     expect(question.content).toBe(oldest.snapshot.content);
     const after = await listQuestionVersions("q-0021");
     expect(after.latestVersion).toBe(before.latestVersion + 1);
 
-    await expect(restoreQuestionVersion("q-0021", { version: 42, expectedVersion: after.latestVersion })).rejects.toBeInstanceOf(
-      MockApiError,
-    );
+    await expect(
+      restoreQuestionVersion("q-0021", { version: 42, expectedRevision: (await getQuestion("q-0021")).revision }),
+    ).rejects.toBeInstanceOf(ContentApiError);
   });
 
   it("nhân bản câu chùm tạo câu Nháp mới với câu con mới", async () => {
@@ -173,5 +204,64 @@ describe("API soạn câu hỏi (dữ liệu mẫu)", () => {
 
     const unused = await getQuestionUsage("q-0002");
     expect(unused.exams).toEqual([]);
+  });
+
+  it("nơi đang dùng lấy phần, lựa chọn, khối và trạng thái bài từ dòng nguồn, nhiều khối của một bài gộp một dòng", async () => {
+    store.server().setUsage("q-0003", {
+      examIds: [],
+      blocks: [
+        {
+          examId: "ex-1",
+          examCode: "HSA-01",
+          examName: "HSA mẫu 1",
+          examStatus: "PUBLISHED",
+          partName: "Phần 1",
+          blockName: "Khối Toán",
+        },
+        {
+          examId: "ex-1",
+          examCode: "HSA-01",
+          examName: "HSA mẫu 1",
+          examStatus: "PUBLISHED",
+          partName: "Phần 3",
+          optionCode: "A00",
+          optionName: "Tổ hợp A00",
+          blockName: "Khối Lý",
+        },
+        { examId: "ex-2", examCode: "HSA-02", examName: "HSA mẫu 2", examStatus: "DISCONTINUED", partName: "Phần 2" },
+      ],
+      ledger: [{ examId: "ex-1", kind: "ATTEMPT", versionNo: 2 }],
+    });
+    const calls = () => fakeApi.calls.filter((call) => call.path === "/api/v1/admin/exams/{id}");
+    const before = calls().length;
+    const usage = await getQuestionUsage("q-0003");
+    expect(calls().length).toBe(before);
+    expect(usage.examCount).toBe(2);
+    expect(usage.exams[0]).toMatchObject({
+      examId: "ex-1",
+      examCode: "HSA-01",
+      examName: "HSA mẫu 1",
+      examStatus: "PUBLISHED",
+      attemptsByVersion: [{ version: 2, attemptCount: 1 }],
+      blocks: [
+        { partName: "Phần 1", optionCode: null, optionName: "", blockName: "Khối Toán" },
+        { partName: "Phần 3", optionCode: "A00", optionName: "Tổ hợp A00", blockName: "Khối Lý" },
+      ],
+    });
+    expect(usage.exams[1]).toMatchObject({ examId: "ex-2", examStatus: "DISCONTINUED", partName: "Phần 2" });
+    expect(usage.attemptCount).toBe(1);
+  });
+
+  it("nơi đang dùng đọc chi tiết bài khi dòng nguồn thiếu thông tin, ngừng câu lấy mã lựa chọn từ dòng nguồn", async () => {
+    store.server().setUsage("q-0003", {
+      examIds: ["ex-9"],
+      blocks: [{ examId: "ex-9", optionCode: "B00", blockName: "Khối" }],
+      exams: [{ id: "ex-9", code: "THPT-09", name: "THPT 9", status: "PUBLISHED", servingVersion: 3 }],
+    });
+    const usage = await getQuestionUsage("q-0003");
+    expect(usage.exams[0]).toMatchObject({ examCode: "THPT-09", examName: "THPT 9", examStatus: "PUBLISHED" });
+
+    const impact = await getQuestionRetireImpact("q-0003");
+    expect(impact.exams[0]).toMatchObject({ examCode: "THPT-09", servingVersion: 3, optionCode: "B00" });
   });
 });

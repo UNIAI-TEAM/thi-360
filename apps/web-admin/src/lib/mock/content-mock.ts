@@ -1,23 +1,15 @@
+import type { ApiPage } from "@/lib/api/page";
 import { ApiStatusError } from "@/lib/api/query-client";
 
 /**
- * Lớp dữ liệu mẫu cho các màn đợt 2 (Ngân hàng câu hỏi, Bài thi) khi backend chưa có nghiệp vụ.
+ * Lớp dữ liệu mẫu còn lại của đợt 2: chỉ `/grading` (QA UNI-2621 gỡ mock của Ngân hàng câu hỏi, Nhập, Bài thi).
  *
  * Quy ước (DESIGN.md mục 5.14):
  * - Giao diện chỉ gọi hook TanStack Query trong `features/<x>/queries.ts`; hook gọi hàm trong `features/<x>/api.ts`.
- * - Hàm trong `api.ts` hiện gọi `mockRequest(...)` đọc dữ liệu từ `features/<x>/mock/*.json` (dữ liệu tiếng Việt nằm
+ * - Hàm của lớp dữ liệu mẫu grading gọi `mockRequest(...)` đọc dữ liệu từ `mock/*.json` (dữ liệu tiếng Việt nằm
  *   trong JSON vì test quét mã nguồn chặn chữ có dấu trong `.ts`/`.tsx`).
- * - Khi có API thật: thay phần thân hàm bằng lời gọi `@thi360/api-client`, giữ nguyên chữ ký; kiểu trong `types.ts`
- *   đổi thành bí danh của `components["schemas"][...]`. Hook và giao diện không phải sửa.
+ * - `grading/api.ts` chọn giữa bản mẫu và `notWired` theo cờ ở `lib/mock/flags.ts` (nhánh thật chưa nối: đợt chấm).
  */
-
-/** Bật menu và các màn dữ liệu mẫu. Mặc định bật khi chạy dev, tắt khi build production trừ khi đặt cờ `true`. */
-export function isContentMockEnabled(): boolean {
-  const flag = process.env.NEXT_PUBLIC_THI360_CONTENT_MOCK?.trim().toLowerCase();
-  if (flag === "true") return true;
-  if (flag === "false") return false;
-  return process.env.NODE_ENV === "development";
-}
 
 export const MOCK_SCENARIOS = ["data", "empty", "error", "loading"] as const;
 export type MockScenario = (typeof MOCK_SCENARIOS)[number];
@@ -98,16 +90,8 @@ export function createMockStore<T extends { id: string }>(seed: readonly T[]) {
   };
 }
 
-export interface MockPage<T> {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-}
-
 /** Cắt trang giống `PageResponse` của backend (trang tính từ 0). */
-export function paginate<T>(items: readonly T[], page = 0, size = 20): MockPage<T> {
+export function paginate<T>(items: readonly T[], page = 0, size = 20): ApiPage<T> {
   const totalElements = items.length;
   const totalPages = Math.max(1, Math.ceil(totalElements / size));
   const safePage = Math.min(Math.max(page, 0), totalPages - 1);

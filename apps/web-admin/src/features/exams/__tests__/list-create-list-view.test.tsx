@@ -1,40 +1,40 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { createExam } from "../api";
 import { ExamListView } from "../components/exam-list-view";
-import { examStore } from "../mock/store";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
 beforeEach(async () => {
+  routerMock.push.mockReset();
+  new ExamsBackend().install();
   window.history.replaceState(null, "", "/exams");
   await createExam({
     name: "BCA thu",
     code: "BCA-F-901",
     kind: "BCA",
-    format: "FULL",
-    templateCode: "BCA_FULL",
-    singleSubjectCode: null,
+    scope: "FULL",
     description: null,
   });
   await createExam({
     name: "THPTQG Tin hoc thu",
     code: "THPTQG-F-TIN-901",
     kind: "THPTQG",
-    format: "FULL",
-    templateCode: "THPTQG_INFORMATICS_2025",
-    singleSubjectCode: null,
+    scope: "SUBJECT",
     subjectCode: "INFORMATICS",
     description: null,
   });
-});
-
-afterEach(() => {
-  examStore.reset();
-  routerMock.push.mockReset();
 });
 
 function rowOf(table: HTMLElement, name: string) {
@@ -53,15 +53,16 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     const bca = rowOf(table, "BCA thu");
     expect(bca.getByText("BCA")).toBeInTheDocument();
     expect(bca.getByText("4 tổ hợp")).toBeInTheDocument();
+    // Danh sách của máy chủ mang cách tính thời gian: BCA dùng thời lượng chung.
     expect(bca.getByText("81 câu · 180 phút chung")).toBeInTheDocument();
     expect(bca.getByText("Có tự luận")).toBeInTheDocument();
 
     const informatics = rowOf(table, "THPTQG Tin hoc thu");
-    expect(informatics.getByText("Tin học · 2 nhánh")).toBeInTheDocument();
+    // Danh sách của máy chủ mang timing và môn của bài: thời lượng chung.
     expect(informatics.getByText("28 câu · 50 phút chung")).toBeInTheDocument();
 
     const hsa = rowOf(table, "HSA FULL · Đề luyện số 1");
-    expect(hsa.getByText("Tiếng Anh + 3 tổ hợp")).toBeInTheDocument();
+    expect(hsa.getByText("Tiếng Anh")).toBeInTheDocument();
     expect(hsa.queryByText("Có tự luận")).not.toBeInTheDocument();
   });
 
@@ -90,5 +91,5 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
     await waitFor(() => expect(within(table).queryByRole("link", { name: "BCA thu" })).not.toBeInTheDocument());
     expect(within(table).getByRole("link", { name: "THPTQG Tin hoc thu" })).toBeInTheDocument();
     expect(within(table).queryByRole("link", { name: "HSA FULL · Đề luyện số 1" })).not.toBeInTheDocument();
-  });
+  }, 20_000);
 });

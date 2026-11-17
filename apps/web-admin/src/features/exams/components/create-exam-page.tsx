@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, get, useForm, useWatch } from "react-hook-form";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { RichTextEditor } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -39,37 +39,32 @@ import {
   EXAM_DESCRIPTION_MAX,
   EXAM_NAME_MAX,
   emptyPart,
-  type ExamScope,
-  findTemplate,
   initialParts,
-  isSingleScope,
-  isSubjectKind,
   kindOptionFor,
-  NO_TEMPLATE,
+  latestTemplate,
   partsEdited,
   resolveScope,
+  sameSelection,
   scopeDefaults,
   type ScopeDefaults,
-  type SingleScope,
+  type ScopeSelection,
   summarizeParts,
   sumPoints,
   toCreateExamRequest,
 } from "../create-exam-schema";
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
+import { ExamStructureSaveError } from "../review-api";
 import type { ExamTemplate } from "../types";
 import { CreateExamCover, type CoverImage } from "./create-exam-cover";
 import {
-  ChoiceCardGroup,
-  FormatField,
   GenerateCodeButton,
-  KindField,
-  SubjectTemplateFields,
+  ScopeFields,
   TemplateNotes,
   TimingScoreFields,
   useCreateExamMessages,
   useKindLabel,
-  useSingleScopes,
+  usePartNames,
 } from "./create-exam-fields";
 import { CreateExamChoiceEditor, CreateExamPartsEditor } from "./create-exam-structure";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
@@ -144,26 +139,15 @@ export function CreateExamPage() {
         </Link>
         <PageHeader title={t("title")} description={t("description")} />
       </div>
-      <MockDataBanner />
       {body}
     </div>
   );
 }
 
 interface PendingScope {
-  scope: ExamScope;
+  scope: ScopeSelection;
   parts: CreatePartValues[];
   defaults: ScopeDefaults;
-}
-
-function sameScope(a: ExamScope, b: ExamScope): boolean {
-  return (
-    a.kind === b.kind &&
-    a.format === b.format &&
-    a.singleScope === b.singleScope &&
-    a.subjectCode === b.subjectCode &&
-    a.templateCode === b.templateCode
-  );
 }
 
 function CreateExamForm({ templates, reference }: { templates: readonly ExamTemplate[]; reference: ContentReference }) {
@@ -177,8 +161,8 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const subjectName = lookup.subject;
   const kindLabel = useKindLabel();
   const kinds = reference.examKinds;
-  const singleScopes = useSingleScopes();
-  const scopeName = singleScopes.scopeName;
+  const partNames = usePartNames();
+  const scopeName = partNames.partName;
   const pendingRef = useRef<HTMLDivElement>(null);
   const messages = useCreateExamMessages();
   const [takenCodes, setTakenCodes] = useState<ReadonlySet<string>>(() => new Set());
@@ -187,22 +171,22 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
 
   /** Cấu trúc khởi tạo và giá trị thời lượng, thang điểm của một phạm vi. */
   const loadScope = useCallback(
-    (scope: ExamScope): PendingScope => {
-      const template = findTemplate(templates, scope.templateCode);
+    (scope: ScopeSelection): PendingScope => {
+      const template = latestTemplate(templates, scope);
       return {
         scope,
         parts: initialParts({
           templates,
           kind: scope.kind,
-          format: scope.format,
-          singleScope: scope.singleScope,
+          scope: scope.scope,
+          partCode: scope.partCode,
           combinations: combinationsForKind(reference.combinations, scope.kind),
           scopeName,
-          template: scope.format === "FULL" ? (template ?? null) : undefined,
+          template: scope.scope === "PART" ? undefined : (template ?? null),
           subjectCode: scope.subjectCode,
           subjectName,
         }),
-        defaults: scopeDefaults(template, kindOptionFor(kinds, scope.kind), scope.format),
+        defaults: scopeDefaults(template, kindOptionFor(kinds, scope.kind), scope.scope),
       };
     },
     [templates, reference.combinations, kinds, scopeName, subjectName],
@@ -214,7 +198,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
         templates,
         kinds,
         reference.subjects,
-        { kind: kinds[0]?.code ?? "", format: "FULL", singleScope: "", subjectCode: "", templateCode: NO_TEMPLATE },
+        { kind: kinds[0]?.code ?? "", scope: "FULL", partCode: "", subjectCode: "" },
         {},
       ),
     ),
@@ -227,13 +211,13 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
       name: "",
       code: "",
       kind: initial.scope.kind,
-      format: initial.scope.format,
-      singleSubjectCode: initial.scope.singleScope,
+      scope: initial.scope.scope,
+      partCode: initial.scope.partCode,
       subjectCode: initial.scope.subjectCode,
-      templateCode: initial.scope.templateCode,
       ...initial.defaults,
       yearsConfirmed: false,
       description: "",
+      instructions: "",
       parts: initial.parts,
     },
   });
@@ -246,13 +230,13 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   const [liveMessage, setLiveMessage] = useState("");
   const guard = useUnsavedChangesGuard((formState.isDirty || cover !== null) && !createExam.isSuccess);
 
-  // Mã gợi ý theo kỳ thi, hình thức và môn; người dùng đã sửa mã thì giữ mã của họ.
+  // Mã gợi ý theo kỳ thi, phạm vi, phần hoặc môn; người dùng đã sửa mã thì giữ mã của họ.
   const suggestion = useSuggestedExamCode(
     {
       kind: values.kind,
-      format: values.format,
-      singleScope: values.format === "SINGLE" ? values.singleSubjectCode : null,
-      subjectCode: values.subjectCode || null,
+      scope: values.scope,
+      partCode: values.scope === "PART" ? values.partCode : null,
+      subjectCode: values.scope === "SUBJECT" ? values.subjectCode || null : null,
     },
     true,
   );
@@ -272,15 +256,20 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     [reference.combinations, values.kind],
   );
   const currentKind = kindOptionFor(kinds, values.kind);
-  const currentTemplate = findTemplate(templates, values.templateCode);
+  const currentTemplate = latestTemplate(templates, {
+    kind: values.kind,
+    scope: values.scope,
+    partCode: values.partCode,
+    subjectCode: values.subjectCode,
+  });
 
-  // ------------------------------------------------------------ đổi kỳ thi, hình thức, phần/môn bài lẻ, môn, mẫu
+  // ------------------------------------------------------------ đổi kỳ thi, phạm vi, phần hoặc môn
 
-  const templateName = (scope: ExamScope) => {
+  const templateName = (scope: ScopeSelection) => {
     const kind = kindLabel(scope.kind);
-    if (scope.format === "SINGLE") return t("templateSingle", { kind, scope: scopeName(scope.singleScope) });
-    if (isSubjectKind(kinds, scope.kind)) {
-      const template = findTemplate(templates, scope.templateCode);
+    if (scope.scope === "PART") return t("templatePart", { kind, scope: scopeName(scope.partCode) });
+    if (scope.scope === "SUBJECT") {
+      const template = latestTemplate(templates, scope);
       const subject = scope.subjectCode ? subjectName(scope.subjectCode) : t("noSubject");
       return template
         ? t("templateSubject", { kind, subject, year: String(template.structureYear ?? "") })
@@ -289,21 +278,19 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     return t("templateFull", { kind });
   };
 
-  const currentScope = (): ExamScope => ({
+  const currentScope = (): ScopeSelection => ({
     kind: getValues("kind"),
-    format: getValues("format"),
-    singleScope: getValues("singleSubjectCode"),
+    scope: getValues("scope"),
+    partCode: getValues("partCode"),
     subjectCode: getValues("subjectCode"),
-    templateCode: getValues("templateCode"),
   });
 
   const applyScope = ({ scope, parts, defaults }: PendingScope) => {
     const dirty = { shouldDirty: true } as const;
     setValue("kind", scope.kind, dirty);
-    setValue("format", scope.format, dirty);
-    setValue("singleSubjectCode", scope.singleScope, { ...dirty, shouldValidate: formState.isSubmitted });
+    setValue("scope", scope.scope, dirty);
+    setValue("partCode", scope.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
     setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
-    setValue("templateCode", scope.templateCode, dirty);
     setValue("timing", defaults.timing, dirty);
     setValue("sharedDuration", defaults.sharedDuration, dirty);
     setValue("maxScore", defaults.maxScore, dirty);
@@ -316,10 +303,10 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
   };
 
   /** Đổi phạm vi sau khi đã sửa cấu trúc thì hỏi ngay tại chỗ trước khi nạp mẫu (bản vẽ); chưa sửa thì nạp luôn. */
-  const requestScope = (change: Partial<ExamScope>) => {
+  const requestScope = (change: Partial<ScopeSelection>) => {
     const current = currentScope();
     const scope = resolveScope(templates, kinds, reference.subjects, current, change);
-    if (sameScope(scope, current)) {
+    if (sameSelection(scope, current)) {
       setPendingScope(null);
       return;
     }
@@ -404,12 +391,13 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
           case "name":
           case "code":
           case "description":
+          case "instructions":
           case "subjectCode":
           case "sharedDuration":
           case "maxScore":
             return t(`fields.${head}`);
-          case "singleSubjectCode":
-            return t("fields.singleSubject");
+          case "partCode":
+            return t("fields.part");
           default:
             return t("fields.parts");
         }
@@ -478,7 +466,10 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
 
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
-    createExam.mutate(toCreateExamRequest(submitted, templates), {
+    // Cấu trúc chưa sửa so với mẫu thì không gửi: máy chủ nạp mẫu, giữ nguyên các trường của mẫu.
+    const request = toCreateExamRequest(submitted);
+    if (!partsEdited(submitted.parts, baseline)) delete request.parts;
+    createExam.mutate(request, {
       onSuccess: (exam) => {
         const message = t("success", { code: exam.code });
         notify.success(message);
@@ -486,6 +477,14 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
         router.push(examTabHref(exam.id, "structure"));
       },
       onError: (error) => {
+        if (error instanceof ExamStructureSaveError) {
+          // Bài đã được tạo: không POST lại (trùng mã). Chuyển sang bài để sửa lại cấu trúc ở tab Cấu trúc.
+          const message = t("errors.structureNotSaved", { code: error.exam.code });
+          notify.error(message);
+          setLiveMessage(message);
+          router.push(examTabHref(error.exam.id, "structure"));
+          return;
+        }
         const status = getErrorStatus(error);
         if (status === 409) {
           const code = submitted.code.trim().toUpperCase();
@@ -554,57 +553,14 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
               </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <div data-field="kind">
-                <KindField kinds={kinds} value={values.kind} onChange={(kind) => requestScope({ kind })} />
-              </div>
-              <FormatField
-                kinds={kinds}
-                kind={values.kind}
-                value={values.format}
-                onChange={(format) => requestScope({ format })}
-              />
-            </div>
-
-            {values.format === "SINGLE" && (
-              <div data-field="singleSubjectCode" className="flex flex-col gap-1">
-                <Controller
-                  control={control}
-                  name="singleSubjectCode"
-                  render={({ field }) => (
-                    <ChoiceCardGroup
-                      legend={t("singleSubject")}
-                      name={field.name}
-                      value={(isSingleScope(field.value) ? field.value : "") as SingleScope}
-                      required
-                      variant="pill"
-                      hint={t("singleSubjectHint")}
-                      options={singleScopes.options}
-                      onChange={(singleScope) => requestScope({ singleScope })}
-                    />
-                  )}
-                />
-                {formState.errors.singleSubjectCode?.message && (
-                  <p role="alert" className="text-caption text-danger">
-                    {formState.errors.singleSubjectCode.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {currentKind?.templateBy === "SUBJECT" && values.format === "FULL" && (
-              <SubjectTemplateFields
-                kind={values.kind}
-                format={values.format}
-                subjects={reference.subjects}
-                templates={templates}
-                subjectCode={values.subjectCode}
-                templateCode={values.templateCode}
-                subjectError={formState.errors.subjectCode?.message}
-                onSubjectChange={(subjectCode) => requestScope({ subjectCode })}
-                onTemplateChange={(templateCode) => requestScope({ templateCode })}
-              />
-            )}
+            <ScopeFields
+              kinds={kinds}
+              subjects={reference.subjects}
+              templates={templates}
+              values={values}
+              errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
+              onChange={requestScope}
+            />
 
             {pendingScope && (
               <div
@@ -631,13 +587,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
               </div>
             )}
 
-            <Controller
-              control={control}
-              name="yearsConfirmed"
-              render={({ field }) => (
-                <TemplateNotes template={currentTemplate} yearsConfirmed={field.value} onYearsConfirmedChange={field.onChange} />
-              )}
-            />
+            <TemplateNotes template={currentTemplate} name={templateName(currentScope())} />
 
             <div data-field="description">
               <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
@@ -648,6 +598,28 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                     rows={3}
                     maxLength={EXAM_DESCRIPTION_MAX}
                     placeholder={t("descriptionPlaceholder")}
+                  />
+                )}
+              </FormField>
+            </div>
+
+            <div data-field="instructions">
+              <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={formState.errors.instructions?.message}>
+                {(controlProps) => (
+                  <Controller
+                    control={control}
+                    name="instructions"
+                    render={({ field }) => (
+                      <RichTextEditor
+                        {...controlProps}
+                        value={field.value}
+                        onChange={field.onChange}
+                        aria-label={t("instructionsLabel")}
+                        allowImages={false}
+                        invalid={Boolean(formState.errors.instructions)}
+                        placeholder={t("instructionsPlaceholder")}
+                      />
+                    )}
                   />
                 )}
               </FormField>
@@ -729,7 +701,7 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
               <CreateExamPartsEditor
                 control={control}
                 parts={values.parts}
-                format={values.format}
+                scope={values.scope}
                 timing={values.timing}
                 pointsByPart={values.pointsByPart}
                 subjects={reference.subjects}

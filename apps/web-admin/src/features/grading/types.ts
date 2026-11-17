@@ -6,7 +6,7 @@ import type { EssayCriterion } from "@/features/questions/types";
  * OpenAPI của backend, đổi các kiểu dưới đây thành bí danh của `components["schemas"][...]` và sửa chỗ lệch ở `api.ts`.
  *
  * Phần trắc nghiệm được chấm ngay khi nộp; phần tự luận chấm tay theo tiêu chí của câu. Lượt thi ở trạng thái
- * `GRADING` ("Đang chấm") tới khi người chấm hoàn tất, sau đó là `SCORED` ("Đã có điểm") và có tổng điểm.
+ * `GRADING` ("Chờ chấm") tới khi người chấm hoàn tất, sau đó là `SCORED` ("Đã có điểm") và có tổng điểm.
  */
 
 export const GRADING_STATUSES = ["GRADING", "SCORED"] as const;

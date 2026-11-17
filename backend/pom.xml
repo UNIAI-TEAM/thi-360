@@ -29,6 +29,10 @@
         <aws-sdk.version>2.31.22</aws-sdk.version>
         <testcontainers-redis.version>2.2.4</testcontainers-redis.version>
         <testcontainers-keycloak.version>3.6.0</testcontainers-keycloak.version>
+        <!-- Nhóm test `perf` bị loại khỏi lệnh chuẩn; `-Dgroups=perf` (hoặc -Dgroups=<tag>) chạy
+             đúng nhóm đó vì profile explicit-test-groups xóa giá trị loại trừ. -->
+        <tests.excludedGroups>perf</tests.excludedGroups>
+        <jsoup.version>1.21.2</jsoup.version>
     </properties>
 
     <dependencyManagement>
@@ -137,6 +141,22 @@
             <artifactId>s3</artifactId>
             <version>${aws-sdk.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>${jsoup.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-webp</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.14.1</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -199,7 +219,17 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${tests.excludedGroups}</excludedGroups>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${tests.excludedGroups}</excludedGroups>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -215,4 +245,18 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>explicit-test-groups</id>
+            <activation>
+                <property>
+                    <name>groups</name>
+                </property>
+            </activation>
+            <properties>
+                <tests.excludedGroups></tests.excludedGroups>
+            </properties>
+        </profile>
+    </profiles>
 </project>

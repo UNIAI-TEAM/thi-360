@@ -33,9 +33,9 @@ describe("bo loc Ngan hang cau hoi tren URL", () => {
   it("ghi URL chi gom gia tri khac mac dinh va giu tham so khac", () => {
     const query = serializeQuestionFilters(
       { ...DEFAULT_QUESTION_FILTERS, status: "READY", knowledge: ["a", "b"], page: 2 },
-      "?mockState=empty&status=DRAFT",
+      "?tab=notes&status=DRAFT",
     );
-    expect(new URLSearchParams(query).toString()).toBe("mockState=empty&status=READY&knowledge=a%2Cb&page=2");
+    expect(new URLSearchParams(query).toString()).toBe("tab=notes&status=READY&knowledge=a%2Cb&page=2");
     expect(serializeQuestionFilters(DEFAULT_QUESTION_FILTERS)).toBe("");
   });
 
@@ -61,5 +61,13 @@ describe("bo loc Ngan hang cau hoi tren URL", () => {
     const filters = { ...DEFAULT_QUESTION_FILTERS, knowledge: ["a", "b"], tag: "TRAP", createdFrom: "2026-11-01" };
     expect(countAdvancedFilters(filters)).toBe(3);
     expect(hasActiveQuestionFilters(filters)).toBe(true);
+  });
+
+  it("Dang bai di qua URL, tham so API va bo dem Bo loc khac", () => {
+    const filters = parseQuestionFilters("?taskType=CALCULATION&createdTo=2026-11-30");
+    expect(filters.taskType).toBe("CALCULATION");
+    expect(toListQuestionsQuery(filters)).toMatchObject({ taskTypeCode: "CALCULATION", createdTo: "2026-11-30" });
+    expect(countAdvancedFilters(filters)).toBe(2);
+    expect(new URLSearchParams(serializeQuestionFilters(filters)).get("taskType")).toBe("CALCULATION");
   });
 });

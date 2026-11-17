@@ -34,14 +34,15 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
     const subject = names.subject(section.subjectCode);
     return (
       <li key={section.id} className="flex flex-col gap-0.5">
-        <div className="flex items-center justify-between gap-2 pl-3">
-          {showSubject ? (
-            <span className="min-w-0 text-caption font-semibold text-text-secondary">
-              {t("section", { subject, count: section.questionCount })}
-            </span>
-          ) : (
-            <span className="sr-only">{subject}</span>
-          )}
+        <div className="flex items-center justify-between gap-2">
+          <OutlineButton
+            current={selection?.kind === "section" && selection.sectionId === section.id}
+            onClick={() => onSelect({ kind: "section", sectionId: section.id })}
+            meta={section.questionCount === null ? t("sectionCountVaries") : t("blockCount", { count: section.questionCount })}
+            warning={null}
+          >
+            <span className="text-caption font-semibold">{showSubject || section.choiceGroup ? subject : t("sectionOf", { subject })}</span>
+          </OutlineButton>
           <IconButton
             icon={<Plus />}
             className="ml-auto size-8"
@@ -58,7 +59,7 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
                 <OutlineButton
                   current={selection?.kind === "block" && selection.blockId === block.id}
                   onClick={() => onSelect({ kind: "block", blockId: block.id })}
-                  meta={t("blockCount", { count: block.questionCount })}
+                  meta={t("blockCount", { count: block.questionCount ?? 0 })}
                   warning={blockHasIssue(block.id) ? t("hasIssue") : null}
                   inset
                 >
@@ -117,7 +118,12 @@ export function ExamStructureOutline({ parts, selection, issues, names, onSelect
                     <li key={option.id} className="flex flex-col gap-0.5 border-l border-border pl-2">
                       <span className="flex flex-wrap items-center gap-x-1.5 pl-1 text-label font-medium text-text">
                         {optionLabel(option, names)}
-                        {option.expertConfirmed === false && (
+                        {option.kind === "SUBJECT_CHOICE" && (
+                          <span className="text-caption font-normal text-text-muted">
+                            {t("pickSubjects", { count: option.chooseSubjects ?? 0 })}
+                          </span>
+                        )}
+                        {option.kind !== "SUBJECT_CHOICE" && option.expertConfirmed === false && (
                           <span className="inline-flex items-center gap-1 text-caption font-normal text-warning">
                             <TriangleAlert aria-hidden className="size-3.5" />
                             {t("expertPending")}

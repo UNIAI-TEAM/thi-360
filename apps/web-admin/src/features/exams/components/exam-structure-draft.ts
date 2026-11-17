@@ -15,8 +15,35 @@ export function draftId(prefix: string): string {
 
 export const ENGLISH_CODE = "ENGLISH";
 
-/** Đang sửa gì: một phần (thông tin phần, nhánh và tổ hợp) hoặc một khối. */
-export type StructureSelection = { kind: "part"; partId: string } | { kind: "block"; blockId: string };
+/** Đang sửa gì: một phần (thông tin phần, lựa chọn), một môn (chỉ tiêu cấp môn và các nhóm) hoặc một nhóm lấy câu. */
+export type StructureSelection =
+  | { kind: "part"; partId: string }
+  | { kind: "section"; sectionId: string }
+  | { kind: "block"; blockId: string };
+
+export interface SectionContext {
+  part: ExamPart;
+  option: ExamPartOption | null;
+  section: ExamSection;
+  location: SectionLocation;
+}
+
+export function findSection(parts: readonly ExamPart[], sectionId: string): SectionContext | null {
+  for (const part of parts) {
+    for (const group of sectionGroups(part)) {
+      const section = group.sections.find((item) => item.id === sectionId);
+      if (section) {
+        return {
+          part,
+          option: part.options.find((option) => option.id === group.optionId) ?? null,
+          section,
+          location: { partId: part.id, optionId: group.optionId, sectionId },
+        };
+      }
+    }
+  }
+  return null;
+}
 
 export interface BlockContext {
   part: ExamPart;
@@ -94,10 +121,14 @@ export function newBlock(name: string): QuestionBlock {
     questionCount: 0,
     setCount: null,
     setSize: null,
-    pointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
+    requiredPointsPerQuestion: null,
+    knowledgeScope: null,
     tagCodes: [],
     matrix: emptyMatrix(),
+    taskTypeCode: null,
+    childAnswerType: null,
+    templateGroupCode: null,
+    answerTypeLocked: false,
     shuffle: "SHUFFLE",
   };
 }
@@ -131,15 +162,17 @@ export function moveBlock(parts: readonly ExamPart[], blockId: string, offset: -
 }
 
 /**
- * Đổi số câu của phần. Phần cố định chỉ có một môn thì số câu của môn đổi theo (hai số phải bằng nhau). Phần nhiều môn và
- * các tổ hợp giữ phân bổ đã khai báo; lệch thì báo lỗi để người dùng tự chia (không tự giảm câu, mục 5.3).
+ * Đổi số câu học viên phải làm của phần. Phần cố định chỉ có một môn thì số câu của môn đổi theo (hai số phải bằng nhau).
+ * Phần nhiều môn và các tổ hợp giữ phân bổ đã khai báo; lệch thì báo lỗi để người dùng tự chia (không tự giảm câu, mục
+ * 5.3). Số câu trên đề đi theo khi hai số đang bằng nhau (khi mọi câu đều bắt buộc, số câu trên đề là mặc định, mục 5.2).
  */
 export function setPartQuestionCount(part: ExamPart, questionCount: number): ExamPart {
   const syncSingle = (sections: ExamSection[], count: number) =>
     sections.length === 1 ? [{ ...sections[0]!, questionCount: count }] : sections;
+  const onPaper = part.questionCountOnPaper === part.questionCount ? questionCount : part.questionCountOnPaper;
   // Phần tự chọn có phần chung: giữ số câu phần chung, lựa chọn một môn nhận phần còn lại.
   if (part.mode === "CHOICE" && part.sections.length) {
-    const next = { ...part, questionCount };
+    const next = { ...part, questionCount, questionCountRequired: questionCount, questionCountOnPaper: onPaper };
     const remaining = optionQuestionCount(next);
     return {
       ...next,
@@ -151,11 +184,23 @@ export function setPartQuestionCount(part: ExamPart, questionCount: number): Exa
   return {
     ...part,
     questionCount,
+    questionCountRequired: questionCount,
+    questionCountOnPaper: onPaper,
     sections: syncSingle(part.sections, questionCount),
     options: part.options.map((option) =>
       option.kind === "SUBJECT" ? { ...option, sections: syncSingle(option.sections, questionCount) } : option,
     ),
   };
+}
+
+/** Số câu in trên đề của phần (gồm cả nội dung lựa chọn nếu đề trình bày nhiều phương án). */
+export function setPartOnPaper(part: ExamPart, questionCountOnPaper: number): ExamPart {
+  return { ...part, questionCountOnPaper };
+}
+
+/** Số phương án học viên phải chọn của phần tự chọn (quy tắc tham gia `CHOICE`). */
+export function setPartChoose(part: ExamPart, choose: number): ExamPart {
+  return { ...part, participation: { mode: "CHOICE", choose } };
 }
 
 /** Gắn một lựa chọn vào phần tự chọn; số câu các môn chia đều theo phần dư lớn nhất (50 câu, 3 môn: 17–17–16). */
@@ -174,14 +219,21 @@ export function buildOption(
       id: draftId("sec"),
       subjectCode,
       questionCount: counts[index] ?? 0,
+      knowledgeScope: null,
+      answerQuotas: null,
+      matrix: null,
+      groupOrder: "SHUFFLE",
+      choiceGroup: null,
       blocks: [],
     })),
+    chooseSubjects: null,
+    countsByPick: null,
   };
 }
 
 /** Số câu một lựa chọn phải có: số câu của phần trừ phần chung (THPTQG Tin học: 4 − 2 = 2). */
 export function optionQuestionCount(part: ExamPart): number {
-  return Math.max(part.questionCount - part.sections.reduce((total, section) => total + section.questionCount, 0), 0);
+  return Math.max(part.questionCount - part.sections.reduce((total, section) => total + (section.questionCount ?? 0), 0), 0);
 }
 
 export function attachCombination(parts: readonly ExamPart[], partId: string, combination: CombinationOption): ExamPart[] {
@@ -219,18 +271,15 @@ export function firstBlockId(part: ExamPart): string | null {
 }
 
 export function selectionExists(parts: readonly ExamPart[], selection: StructureSelection): boolean {
-  return selection.kind === "part"
-    ? parts.some((part) => part.id === selection.partId)
-    : findBlock(parts, selection.blockId) !== null;
+  if (selection.kind === "part") return parts.some((part) => part.id === selection.partId);
+  if (selection.kind === "section") return findSection(parts, selection.sectionId) !== null;
+  return findBlock(parts, selection.blockId) !== null;
 }
 
-/** Mặc định mở khối đầu tiên của bài; bài chưa có khối thì mở phần đầu tiên. */
+/** Mặc định mở môn đầu tiên của phần cố định có môn (soạn theo môn, B9); không có thì mở phần đầu tiên. */
 export function defaultSelection(parts: readonly ExamPart[]): StructureSelection | null {
   for (const part of parts) {
-    if (part.mode === "FIXED") {
-      const blockId = firstBlockId(part);
-      if (blockId) return { kind: "block", blockId };
-    }
+    if (part.mode === "FIXED" && part.sections[0]) return { kind: "section", sectionId: part.sections[0].id };
   }
   return parts[0] ? { kind: "part", partId: parts[0].id } : null;
 }
@@ -255,93 +304,9 @@ export function confirmOption(parts: readonly ExamPart[], partId: string, option
   }));
 }
 
-/** Đổi điểm của phần (BCA 25 / 60 / 15). */
-export function setPartPoints(parts: readonly ExamPart[], partId: string, points: number): ExamPart[] {
-  return updatePart(parts, partId, (part) => ({ ...part, points }));
-}
-
-/** Mọi cách chọn `k` phần tử theo thứ tự đã cho (thứ tự từ điển của chỉ số): 5 môn chọn 3 cho 10 cách. */
-export function kCombinations<T>(items: readonly T[], k: number): T[][] {
-  if (k <= 0 || k > items.length) return [];
-  const result: T[][] = [];
-  const pick = (start: number, chosen: T[]) => {
-    if (chosen.length === k) {
-      result.push([...chosen]);
-      return;
-    }
-    for (let index = start; index <= items.length - (k - chosen.length); index += 1) {
-      chosen.push(items[index]!);
-      pick(index + 1, chosen);
-      chosen.pop();
-    }
-  };
-  pick(0, []);
-  return result;
-}
-
-/** Một tổ hợp sinh từ "chọn k trong n môn". */
-export interface GeneratedCombination {
-  /** Mã danh mục khi danh mục đã có tổ hợp cùng các môn; không thì mã tạm `TH-nn` theo thứ tự sinh. */
-  code: string;
-  /** Có trong danh mục Tổ hợp của kỳ thi. */
-  catalogued: boolean;
-  /** Môn theo thứ tự của danh mục (khi có) hoặc theo thứ tự đã chọn. */
-  subjectCodes: string[];
-  /** Đã gắn vào phần (cùng các môn), không gắn lại. */
-  attached: boolean;
-}
-
-export const TEMPORARY_COMBINATION_PREFIX = "TH-";
-
-function sameSubjects(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((code) => b.includes(code));
-}
-
-/**
- * Sinh các tổ hợp "chọn `k` trong các môn đã chọn" (HSA: 5 môn chọn 3 được 10 tổ hợp). Tổ hợp trùng môn với danh mục
- * dùng mã danh mục (KH-1…); tổ hợp chưa có mã nhận mã tạm `TH-nn` để quản trị viên đối chiếu, chờ nhập vào Cấu hình chung.
- */
-export function generateCombinations(
-  subjectCodes: readonly string[],
-  k: number,
-  catalog: readonly CombinationOption[],
-  part: ExamPart,
-): GeneratedCombination[] {
-  const attachedSets = part.options
-    .filter((option) => option.kind === "COMBINATION")
-    .map((option) => option.sections.map((section) => section.subjectCode));
-  return kCombinations(subjectCodes, k).map((subjects, index) => {
-    const match = catalog.find((combination) => sameSubjects(combination.subjectCodes, subjects));
-    return {
-      code: match?.code ?? `${TEMPORARY_COMBINATION_PREFIX}${String(index + 1).padStart(2, "0")}`,
-      catalogued: Boolean(match),
-      subjectCodes: match ? [...match.subjectCodes] : subjects,
-      attached: attachedSets.some((set) => sameSubjects(set, subjects)),
-    };
-  });
-}
-
-/**
- * Gắn các tổ hợp đã sinh: số câu chia đều theo phần dư lớn nhất (17–17–16) và chờ chuyên gia xác nhận. Tổ hợp mã tạm
- * mang tên ghép từ tên môn (`subjectName`) để hiện khi danh mục chưa có.
- */
-export function attachGenerated(
-  parts: readonly ExamPart[],
-  partId: string,
-  combinations: readonly GeneratedCombination[],
-  subjectName: (code: string) => string,
-): ExamPart[] {
-  return updatePart(parts, partId, (part) => {
-    const used = new Set(part.options.map((option) => option.code));
-    const added = combinations
-      .filter((combination) => !combination.attached && !used.has(combination.code))
-      .map((combination) => ({
-        ...buildOption("COMBINATION", combination.code, combination.subjectCodes, optionQuestionCount(part)),
-        name: combination.catalogued ? null : combination.subjectCodes.map(subjectName).join(" – "),
-        expertConfirmed: false,
-      }));
-    return { ...part, options: [...part.options, ...added] };
-  });
+/** Đổi điểm tối đa của phần (BCA 25 / 60 / 15); `null`: phần không chia điểm riêng. */
+export function setPartPoints(parts: readonly ExamPart[], partId: string, maxPoints: number | null): ExamPart[] {
+  return updatePart(parts, partId, (part) => ({ ...part, maxPoints }));
 }
 
 /** Thêm một nhánh nội dung (THPTQG Tin học: Khoa học máy tính, Tin học ứng dụng) với một môn, đủ số câu còn lại. */

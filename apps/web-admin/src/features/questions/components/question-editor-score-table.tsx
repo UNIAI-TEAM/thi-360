@@ -23,6 +23,7 @@ import {
   scaleScoreTable,
   type QuestionEditorValues,
 } from "../editor-form";
+import { useUiLocale } from "../use-ui-locale";
 import { FieldErrorText, pointsPathOf, useAnnounce, useEditorError, type BodyPath } from "./question-editor-shared";
 
 /**
@@ -35,6 +36,7 @@ export function ScoreTableEditor({ prefix }: { prefix: BodyPath }) {
   const t = useTranslations("questions.editor.scoreTable");
   const format = useFormatter();
   const announce = useAnnounce();
+  const locale = useUiLocale();
   const groupId = useId();
   const pointsPath = pointsPathOf(prefix);
   const { control, getValues, setValue, formState, trigger } = useFormContext<QuestionEditorValues>();
@@ -43,7 +45,7 @@ export function ScoreTableEditor({ prefix }: { prefix: BodyPath }) {
   const points = parsePoints(pointsText);
   const referenceQuery = useContentReference();
   const templates = (referenceQuery.data?.examKinds ?? []).flatMap((kind) =>
-    kind.scoringDefaults.trueFalseTable?.length ? [{ code: kind.code, name: kind.name, table: kind.scoringDefaults.trueFalseTable }] : [],
+    kind.scoringDefaults.trueFalse.table.length ? [{ code: kind.code, name: kind.name, table: kind.scoringDefaults.trueFalse.table }] : [],
   );
   const count = statements.length;
 
@@ -64,8 +66,12 @@ export function ScoreTableEditor({ prefix }: { prefix: BodyPath }) {
     const current = getValues(`${prefix}.scoreTable`).map(parsePoints);
     const last = current.at(-1);
     if (last === undefined || current.some((value) => !Number.isFinite(value)) || !samePoints(last, before)) return;
-    setValue(`${prefix}.scoreTable`, scaleScoreTable(current, points).map(formatPoints), { shouldDirty: true });
-  }, [points, prefix, getValues, setValue]);
+    setValue(
+      `${prefix}.scoreTable`,
+      scaleScoreTable(current, points).map((value) => formatPoints(value, locale)),
+      { shouldDirty: true },
+    );
+  }, [points, prefix, locale, getValues, setValue]);
 
   const basePoints = points > 0 ? points : DEFAULT_POINTS;
 
@@ -86,7 +92,7 @@ export function ScoreTableEditor({ prefix }: { prefix: BodyPath }) {
           variant="outline"
           size="sm"
           disabled={count === 0}
-          onClick={() => applyTable(evenScoreTableText(count, basePoints), t("evenApplied"))}
+          onClick={() => applyTable(evenScoreTableText(count, basePoints, locale), t("evenApplied"))}
         >
           <Scale aria-hidden />
           {t("even")}
@@ -109,7 +115,7 @@ export function ScoreTableEditor({ prefix }: { prefix: BodyPath }) {
                   disabled={!fits}
                   onSelect={() =>
                     applyTable(
-                      scaleScoreTable(template.table, basePoints).map(formatPoints),
+                      scaleScoreTable(template.table, basePoints).map((value) => formatPoints(value, locale)),
                       t("templateApplied", { kind: template.code }),
                     )
                   }

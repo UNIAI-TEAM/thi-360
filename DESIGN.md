@@ -321,35 +321,62 @@ Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
 - **Vùng xem trước chỉ để nhìn** (xem trước giao diện) mang `inert` và `aria-hidden`, không nhận focus.
 - **Trang đổi mật khẩu** mở từ menu tài khoản dùng `?source=account-menu` để hiện lối "Quay lại"; luồng bắt buộc đổi mật khẩu không có lối này.
 
-### 5.14 Màn dữ liệu mẫu (đợt 2, chưa có backend)
+### 5.14 Màn đợt 2: Ngân hàng câu hỏi, Bài thi (API thật) và `/grading` (dữ liệu mẫu)
 
-Áp dụng cho Ngân hàng câu hỏi và Bài thi (UNI-2590) cho tới khi backend có nghiệp vụ; khi nối API thật thì bỏ dải và cờ, giữ nguyên giao diện.
+Từ QA (UNI-2621) Ngân hàng câu hỏi, Nhập câu hỏi và Bài thi chỉ gọi API thật; lớp mẫu và cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` đã gỡ. Chỉ `/grading` còn chạy trên dữ liệu mẫu tới đợt chấm điểm.
 
-- **Cờ:** menu và trang chỉ có khi `isContentMockEnabled()` (`lib/mock/content-mock.ts`) trả `true`: biến `NEXT_PUBLIC_THI360_CONTENT_MOCK=true|false`, bỏ trống thì bật khi `next dev`, tắt khi build. Mục menu mang `mockOnly: true` (`lib/navigation.ts`), trang gọi `notFound()` khi cờ tắt.
-- **Dải "Dữ liệu mẫu":** `MockDataBanner` (`components/mock-data-banner.tsx`), một lần mỗi màn, ngay dưới tiêu đề trang (trang soạn bài thi: dưới khung tiêu đề chung). Hộp thoại không lặp lại dải.
-- **Dữ liệu:** giao diện chỉ gọi hook trong `features/<x>/queries.ts`; hook gọi `features/<x>/api.ts`; `api.ts` trả `mockRequest(...)` đọc từ `features/<x>/mock/*.json` (chữ tiếng Việt nằm trong JSON). Ghi dữ liệu đi qua kho trong bộ nhớ (`createMockStore`) để các màn thấy cùng thay đổi tới khi tải lại trang. Nối backend = thay thân hàm trong `api.ts`, kiểu trong `types.ts` thành bí danh của `@thi360/api-client`.
-- **Bốn trạng thái xem được bằng URL:** `?mockState=loading|empty|error` cho mọi truy vấn đọc của trang (thao tác ghi dùng `ignoreScenario`). Mỗi màn vẫn phải có đủ bốn trạng thái như mọi màn khác.
-- **Mã quyền:** chưa có mã `QUESTION.*`, `EXAM.*`; mục menu để `permission: null`, không ẩn nút theo quyền.
+- **Cờ:** một cờ trong `lib/mock/flags.ts`: `NEXT_PUBLIC_THI360_GRADING_MOCK` (`/grading`); giá trị `true|false`, bỏ trống thì bật khi `next dev`, tắt khi build. Trang nằm sau `PermissionGate` (`features/session/permission-gate.tsx`) ở `layout.tsx`: `/questions` cần `QUESTION.VIEW`, `/exams` cần `EXAM.VIEW`, `/grading` cần `GRADING.VIEW` **hoặc** cờ bật (`flag="grading"`; mục menu mang `mockFlag: "grading"` trong `lib/navigation.ts`). Thiếu thì hiện trang 403.
+- **Dải "Dữ liệu mẫu":** `MockDataBanner` (`components/mock-data-banner.tsx`) chỉ còn ở `/grading`, một lần mỗi màn, ngay dưới tiêu đề trang. Hộp thoại không lặp lại dải.
+- **Dữ liệu:** giao diện chỉ gọi hook trong `features/<x>/queries.ts`; hook gọi `features/<x>/api.ts`. Ngân hàng câu hỏi và Bài thi: `api.ts` gọi `@thi360/api-client`, kiểu trong `types.ts` là bí danh của client; mọi lệnh ghi gửi `expectedRevision` (lệch thì 412 `QUESTION_REVISION_CONFLICT` hoặc `EXAM_REVISION_CONFLICT`); test dùng client giả (`src/test/fake-api.ts`, dự án vitest `fake-client`). `/grading`: `api.ts` bọc hàm của `api.mock.ts` bằng `gradingApi` (cờ tắt thì lỗi "chưa nối API"); `api.mock.ts` đọc `features/grading/mock/*.json`, ghi qua kho trong bộ nhớ (`createMockStore`).
+- **Bốn trạng thái:** mỗi màn có đủ bốn trạng thái như mọi màn khác; `?mockState=loading|empty|error` chỉ còn tác dụng ở `/grading`.
+- **Mã quyền:** menu và trang dùng `QUESTION.VIEW`, `EXAM.VIEW`, `GRADING.VIEW`; nút ghi chưa ẩn theo `QUESTION.MODIFY`, `EXAM.MODIFY`, `EXAM.PUBLISH` (backend trả 403, giao diện hiện lỗi).
 - **Trang soạn bài thi** `/exams/[id]` có khung chung `ExamEditorLayout` (tiêu đề, chip trạng thái, dải tóm tắt `<dl>`, `NavTabs` bốn trang con: `/exams/[id]`, `/structure`, `/review`, `/versions`). Trang con đọc bài thi bằng `useExam(id)`.
 - **Chọn kiến thức (MAPID):** dùng `KnowledgePickerDialog` (`features/content/components`) cho mọi nơi chọn nút của cây Cấu trúc kiến thức; câu hỏi chỉ tick cấp Kiến thức và có một kiến thức chính, phạm vi khối của bài thi cho tick cả Chương và Bài (`selectableLevels`, `withPrimary={false}`).
 
 Quy ước rút ra khi làm các màn đợt 2 (UNI-2590), áp dụng cho mọi màn sau:
 
 - **Tạo đối tượng có nhiều phần** (cấu trúc, phân bổ, nhiều quy tắc phụ thuộc nhau, ví dụ Tạo bài thi `/exams/new`) dùng **trang riêng**, không dùng hộp thoại: các khối đánh số theo thứ tự nhập, cột **Tóm tắt** bên phải dính khi cuộn (xuống dưới biểu mẫu khi khung hẹp) gồm các con số tính trực tiếp và danh sách "Cần xử lý" mà mỗi mục đưa focus tới ô lỗi. Hộp thoại chỉ cho biểu mẫu ngắn (mục 5.10).
-- **Đổi lựa chọn làm mất phần đã nhập** (nạp lại mẫu khi đổi kỳ thi, hình thức): hỏi xác nhận ngay trong trang, nêu rõ phần sẽ bị thay; chưa sửa gì thì nạp luôn.
+- **Đổi lựa chọn làm mất phần đã nhập** (nạp lại mẫu khi đổi kỳ thi, phạm vi, phần, môn hoặc phiên bản năm của cấu trúc): hỏi xác nhận, nêu rõ phần sẽ bị thay. Ở trang Tạo bài thi hỏi ngay trong trang; ở Thông tin chung và bước Cấu trúc dùng hộp thoại liệt kê các phần sẽ nạp lại (`ReloadStructureDialog`) và nói rõ thay đổi chưa lưu cũng mất; chưa sửa gì thì nạp luôn.
 - **Danh sách có trạng thái** (Ngân hàng câu hỏi): dải trạng thái kèm số lượng mỗi trạng thái đứng đầu thanh lọc; bộ lọc ít dùng gom vào "Bộ lọc khác"; bộ lọc đang áp dụng hiện thành chip "Đang lọc" bỏ được từng cái, kèm "Xóa tất cả bộ lọc". Mọi bộ lọc nằm trên URL.
-- **Trang chi tiết có trang con** (câu hỏi: Nội dung, Nơi đang dùng, Lịch sử phiên bản; bài thi: bốn trang con) dùng layout chung của đoạn đường dẫn (nhóm route như `questions/[id]/(detail)/layout.tsx`) và `NavTabs`; trang Sửa nằm ngoài nhóm để không có thanh tab.
+- **Trang chi tiết có trang con** (câu hỏi: Nội dung, Xem trước, Nơi đang dùng, Lịch sử phiên bản; bài thi: bốn trang con) dùng layout chung của đoạn đường dẫn (nhóm route như `questions/[id]/(detail)/layout.tsx`) và `NavTabs`; trang Sửa nằm ngoài nhóm để không có thanh tab.
 - **Luồng nhiều bước** (Nhập câu hỏi từ tệp, Cấp tài khoản hàng loạt): đổi bước thì focus về tiêu đề bước; lỗi chặn bước tiếp hiện thành bảng tóm tắt lỗi nhận focus; báo cáo lỗi tải về là CSV tạo ở trình duyệt.
 - **Cột của `Table` phải ổn định** (`useMemo` hoặc khai báo ngoài component): mảng `columns` mới ở mỗi lần render làm bảng dựng lại ô, mất focus và hỏng việc trả focus khi đóng hộp thoại. Trạng thái của dòng (đang chạy, đang chọn) đưa vào ô qua context hoặc dữ liệu dòng, không qua closure của `columns`.
 
 Quy ước thêm ở đợt 7 kỳ thi và chấm tự luận (UNI-2599):
 
-- **Câu chấm tay:** câu và khối dạng Tự luận mang nhãn "Chấm tay" (icon kèm chữ, không chỉ màu) ở mọi nơi hiện câu: soạn, chi tiết, khối của cấu trúc, xem trước, phiên bản. Lượt thi còn câu chưa chấm ghi "Đang chấm", có điểm tự luận rồi mới ghi "Đã có điểm".
-- **Chờ chuyên gia xác nhận:** số liệu chờ chuyên gia (tổ hợp chia 17–17–16, năm cấu trúc khác năm ma trận) hiện chip trạng thái "Chờ chuyên gia xác nhận" kèm nút "Xác nhận"; xác nhận xong chip đổi thành "Chuyên gia đã xác nhận". Kiểm tra cấu hình chặn công bố khi còn mục chờ.
+- **Câu chấm tay:** câu và khối dạng Tự luận mang nhãn "Chấm tay" (icon kèm chữ, không chỉ màu) ở mọi nơi hiện câu: soạn, chi tiết, khối của cấu trúc, xem trước, phiên bản. Lượt thi còn câu chưa chấm ghi "Chờ chấm" (tiếng Anh "Awaiting grading"; mã trạng thái vẫn là `GRADING`), có điểm tự luận rồi mới ghi "Đã có điểm".
+- **Chờ chuyên gia xác nhận:** số liệu chờ chuyên gia (số câu tổ hợp QDA, BCA do tổ hợp sinh hoặc mới sửa, năm cấu trúc khác năm ma trận) hiện chip trạng thái "Chờ chuyên gia xác nhận" kèm nút "Xác nhận"; xác nhận xong chip đổi thành "Chuyên gia đã xác nhận". Kiểm tra cấu hình chặn công bố khi còn mục chờ. Cách chia 17–17–16 của phương án Khoa học HSA đã có quy định (B10) nên không mang chip này.
 - **Thời lượng chung:** bài dùng một thời lượng cho cả bài thì phần không có ô thời lượng; chỗ hiện thời lượng phần ghi chữ chỉ đọc "… phút, dùng chung cả bài", danh sách ghi "… phút chung".
 - **Bảng điểm sửa được** (bảng điểm câu Đúng/Sai, tiêu chí chấm): mỗi ô là một ô nhập số nhận dấu phẩy hoặc dấu chấm như ô Điểm; lỗi hiện ngay dưới ô sai (không phải số, nhỏ hơn ô trước, ô cuối khác điểm của câu), dòng tổng nói rõ đã khớp chưa.
 - **Chọn tệp:** không để lộ nút chọn tệp gốc của trình duyệt (chữ theo ngôn ngữ trình duyệt). Ẩn `input type="file"` bằng `sr-only` + `peer`, dùng `label` mang `buttonVariants` của kit làm nút, kèm dòng tên tệp đã chọn hoặc "Chưa chọn …"; vòng focus lấy từ `peer-focus-visible`.
 - **Màn chấm** (`/grading/[attemptId]`): đề và bài làm bên trái, tiêu chí chấm bên phải, xếp chồng khi khung hẹp (`@4xl`); thanh câu hỏi có điểm tạm từng câu; hoàn tất chấm hỏi xác nhận trong trang và đưa focus tới ô thiếu điểm đầu tiên.
+
+Quy ước thêm ở ma trận theo môn và bước 1 theo phạm vi (UNI-2613):
+
+- **Bước 1 Tạo bài thi** chọn Phạm vi bài thi (Toàn bài, Theo phần, Theo môn; kỳ thi chỉ có một phạm vi thì hiện một dòng chữ thay nhóm radio), rồi Phần thi (Theo phần) hoặc Môn (Theo môn), có Hướng dẫn làm bài (trình soạn `RichTextEditor`, không nhận ảnh, mục 5.15). Không có ô chọn mẫu hay năm: hệ thống nạp mẫu mới nhất và ghi chú mẫu (`TemplateNotes`) nói đổi phiên bản năm ở bước Cấu trúc.
+- **Bước Cấu trúc:** ô "Phiên bản cấu trúc" (`StructureVersionPicker`) nằm trong thẻ tổng hợp, chỉ hiện khi có mẫu khớp bài; một phiên bản thì khóa ô. Mỗi phần có Quy tắc tham gia (làm tất cả, hoặc chọn k phương án), Số câu trên đề, Số câu phải làm (mặc định bằng số câu trên đề) và Điểm tối đa của phần để trống được.
+- **Soạn theo môn:** cột Cấu trúc đi phần → môn → nhóm; bấm môn mở màn môn (`ExamStructureSubjectPanel`) gồm khu **Chỉ tiêu cấp môn** (dạng trả lời, khối lớp và độ khó, MAPID) và danh sách nhóm lấy câu do mẫu khởi tạo; bấm nhóm mở màn nhóm, có nút "Về màn môn". Mặc định mở môn đầu tiên.
+- **Đã phân bổ và còn thiếu** đứng cạnh từng chỉ tiêu (cột "Đã phân bổ", "Còn thiếu"; thiếu hiện màu cảnh báo kèm số, không chỉ màu). Câu con của chùm trừ vào chỉ tiêu dạng trả lời theo dạng của câu con; nhóm chưa xác định dạng được ghi riêng ("nhóm chưa xác định dạng") và lấp phần chỉ tiêu còn thiếu. Môn có số câu thay đổi (Khoa học: 16 hoặc 17) có nút chọn trường hợp để xem số câu quy ra; chỉ tiêu của môn đó khai theo %.
+- **Nhóm lấy câu:** nhóm câu đơn khai số câu (hoặc "lấy phần còn lại của môn"), nhóm câu chùm khai số chùm và số câu con mỗi chùm, luôn lấy nguyên chùm. Dạng trả lời mẫu đã điền sẵn hiện ô chỉ đọc kèm icon khóa. Phạm vi MAPID để trống hiện "Theo phạm vi của môn" (`KnowledgeScopeField`), môn và nhóm cùng trống hiện "Không giới hạn MAPID"; không có công tắc "cấp dưới" (nút chọn khớp cả nút con). Nhóm chưa chọn nút nào (kể cả đã tick năng lực hoặc đã hủy hộp chọn) luôn kế thừa MAPID của môn; mở hộp chọn không đổi giá trị cho tới khi bấm Áp dụng. Ma trận lớp, độ khó riêng của nhóm là mục `<details>` mặc định đóng. Không có ô "Quy tắc đảo" (do mẫu quy định).
+- **Phương án chọn môn (HSA Khoa học):** một thẻ có tên phương án, "Học viên chọn 3 trong 5 môn", quy tắc chia 17–17–16 theo nhóm môn ở dạng chỉ đọc kèm ví dụ, bảng 5 môn có nút "Soạn môn". Không liệt kê 10 tổ hợp, không có hộp thoại sinh tổ hợp; QDA, BCA giữ màn tổ hợp gắn từ danh mục.
+- **Điểm tạm chờ BA** (spec mục 12: môn nhận 16 câu khi cả ba môn tự nhiên, chỉ tiêu theo % của môn Khoa học, tính nút con của MAPID) nằm ở hàm riêng (`subject-choice.ts`, `subject-matrix.ts`), không rải trong giao diện.
+
+Quy ước thêm ở FE-3b (giao diện ngân hàng câu hỏi theo UniNote 2026-11-16):
+
+- **Xem trước câu hỏi** (`features/questions/preview`, tab Xem trước và mục "Xem trước" của menu dòng): câu hiện như học viên thấy trong **khung web** (cửa sổ trình duyệt, nội dung tối đa `max-w-3xl`) hoặc **khung điện thoại** (360px, `w-90`), chuyển bằng `Tabs` kiểu `segmented`. Bề rộng nội dung đo bằng container query của khung (`@container`), không theo cửa sổ admin. Phương án giữ thứ tự gốc (đảo thứ tự chỉ có ở lượt thi).
+- **Chấm thử:** nút "Chấm thử" mới hiện đáp án đúng và điểm; đổi đáp án sau khi chấm thì kết quả cũ ẩn tới lần chấm sau. Mỗi ý (ô trống, mệnh đề, cặp ghép, câu con) ghi Đúng, Sai hoặc Bỏ trống bằng chữ kèm icon, không chỉ màu; điểm hiển thị làm tròn nửa lên 2 chữ số ở bước cuối. Câu Tự luận không có điểm tự động: hiện "Chờ chấm" và bảng đối chiếu bài làm thử với hướng dẫn chấm, tiêu chí và bài mẫu.
+- **Cột nhiều dòng của tệp nhập** (Lựa chọn, Lựa chọn phải, Đáp án, Cách chấm, Tiêu chí chấm): mỗi mục một dòng trong ô; thiếu đáp án chỉ cảnh báo (câu vào Nháp), tham chiếu sai hoặc cách chấm sai là lỗi chặn dòng.
+
+### 5.15 Editor and preview (rich text)
+
+Trình soạn và khung xem nội dung HTML (UNI-2617): `RichTextEditor` và `RichTextView` ở `components/rich-text`, dùng cho Hướng dẫn làm bài của bài thi, nội dung, phương án và lời giải của câu hỏi.
+
+- **Thanh công cụ** nằm trên khung soạn (`role="toolbar"`, tên "Định dạng nội dung"), hàng nút icon lucide 16px kèm `aria-label`: Đậm, Nghiêng, Gạch chân, Gạch ngang, Chỉ số dưới, Chỉ số trên, Danh sách chấm, Danh sách số, Chèn bảng, Chèn công thức, Chèn ảnh. Chỉ có đúng các định dạng mà bộ lọc HTML của máy chủ cho phép; không thêm nút ngoài danh sách đó.
+- **Khung soạn** dùng token của ô nhập (mục 5.2): viền `border`, focus `primary-text`; có lỗi thì viền `danger` và `aria-invalid`, kèm dòng lỗi của `FormField`. Nhãn đi qua `aria-label` của vùng soạn vì `label for` không gắn được vào vùng `contenteditable`. Chiều cao tối thiểu 7rem, tối đa 28rem rồi cuộn trong khung.
+- **Công thức:** nút "Chèn công thức" mở hộp thoại nhập mã LaTeX, chọn "Cùng dòng" hoặc "Khối"; công thức nằm trong nội dung là **chip** đã dựng bằng KaTeX, viền `primary`, bấm chọn rồi mở lại để sửa. Lưu thành `span.math-inline` hoặc `span.math-block`.
+- **Cảnh báo công thức:** công thức có dấu mở hoặc đóng không khớp hiện dòng chữ màu `warning` ("Công thức có dấu mở hoặc đóng không khớp", `role="alert"`) ngay dưới khung soạn; chỉ cảnh báo, không chặn nhập hay lưu.
+- **Nút ảnh:** chỉ hiện khi `allowImages` bật (mặc định). `allowImages={false}` (Hướng dẫn làm bài của bài thi, spec 5.2) ẩn nút Chèn ảnh, chặn dán và thả ảnh; khung xem với `allowImages={false}` bỏ mọi `img`.
+- **Khung xem:** nơi chỉ đọc HTML (xem trước đề, chi tiết câu hỏi) dùng `RichTextView`, không bao giờ `dangerouslySetInnerHTML` trực tiếp; view lọc lại theo cùng danh sách cho phép rồi dựng công thức bằng KaTeX sau khi trang đã gắn vào trình duyệt. Xem trước đề của bài thi hiển thị đoạn dẫn của chùm, nội dung câu, phương án và lời giải bằng `RichTextView`; tiêu chí chấm, đáp án ngắn và các nhãn là chữ thuần nên giữ thẻ văn bản.
 
 ## 6. Icon và hình ảnh
 

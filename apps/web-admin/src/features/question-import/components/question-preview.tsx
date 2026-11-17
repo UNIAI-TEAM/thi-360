@@ -2,8 +2,9 @@
 
 import { Card, StatusChip, type StatusTone } from "@thi360/ui";
 import { Check, CircleX, TriangleAlert } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { type RefObject, useId } from "react";
+import { RichTextView, questionHtmlText } from "@/components/rich-text";
 import { useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import type { IssueText } from "../error-report";
@@ -23,10 +24,16 @@ export interface QuestionPreviewProps {
   describe: (issue: ImportRowIssue) => IssueText;
 }
 
+/** Ô HTML có thể trống: trống hiện chữ thay thế thay vì khung rỗng. */
+function HtmlOrNone({ html, none, className }: { html: string | null | undefined; none: string; className: string }) {
+  return html ? <RichTextView html={html} className={className} /> : <div className={className}>{none}</div>;
+}
+
 /** Xem trước một dòng như câu hỏi học viên sẽ thấy, kèm phân loại và lỗi của dòng (bản vẽ `NhapCauHoiKiemTra`). */
 export function QuestionPreview({ row, rows, reference, headingRef, describe }: QuestionPreviewProps) {
   const t = useTranslations("questionImport");
   const tc = useTranslations("content");
+  const format = useFormatter();
   const lookup = useReferenceLookup(reference);
   const headingId = useId();
 
@@ -65,7 +72,7 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
             {row.parentRowNumber !== null && (
               <p className="text-caption text-text-muted">{t("check.setChild", { row: row.parentRowNumber })}</p>
             )}
-            <p className="text-body whitespace-pre-wrap wrap-anywhere text-text">{draft.content || none}</p>
+            <HtmlOrNone html={draft.content} none={none} className="text-body wrap-anywhere text-text" />
 
             {draft.options.length > 0 && (
               <ul aria-label={t("preview.optionsLabel")} className="flex flex-col gap-2">
@@ -77,7 +84,7 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
                     <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-subtle text-caption font-semibold">
                       {option.letter}
                     </span>
-                    <span className="min-w-0 flex-1 wrap-anywhere">{option.content}</span>
+                    <RichTextView html={option.content} className="min-w-0 flex-1 wrap-anywhere" />
                     {option.correct && (
                       <span className="flex shrink-0 items-center gap-1 text-caption font-semibold text-success">
                         <Check aria-hidden className="size-4" />
@@ -99,7 +106,7 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
                     <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-subtle text-caption font-semibold">
                       {statement.letter.toLowerCase()}
                     </span>
-                    <span className="min-w-0 flex-1 wrap-anywhere">{statement.content}</span>
+                    <RichTextView html={statement.content} className="min-w-0 flex-1 wrap-anywhere" />
                     <span className="shrink-0 text-caption font-semibold text-text-secondary">
                       {statement.answer === null
                         ? t("preview.noAnswer")
@@ -112,11 +119,80 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
               </ul>
             )}
 
-            {draft.type === "FILL_IN" && (
+            {draft.type === "MULTIPLE_CHOICE" && (
+              <p className="text-caption text-text-secondary">
+                <span className="font-semibold">{t("preview.scoringLabel")}: </span>
+                {t(`preview.scoringRules.${draft.scoringRule ?? "ALL_OR_NOTHING"}`)}
+              </p>
+            )}
+
+            {draft.type === "TRUE_FALSE" && (
+              <p className="text-caption text-text-secondary">
+                <span className="font-semibold">{t("preview.scoringLabel")}: </span>
+                {draft.trueFalseScoring
+                  ? t(`preview.trueFalseScoring.${draft.trueFalseScoring.method}`, {
+                      points: draft.trueFalseScoring.points.map((point) => format.number(point)).join(" / "),
+                    })
+                  : t("preview.trueFalseScoring.EVEN")}
+              </p>
+            )}
+
+            {draft.type === "SHORT_ANSWER" && (
               <p className="text-body text-text">
                 <span className="font-semibold">{t("preview.acceptedAnswers")}: </span>
                 {draft.acceptedAnswers.length > 0 ? draft.acceptedAnswers.join(" | ") : none}
               </p>
+            )}
+
+            {draft.type === "CLOZE" && (
+              <ul aria-label={t("preview.blanksLabel")} className="flex flex-col gap-2">
+                {draft.blanks.map((blank) => (
+                  <li
+                    key={blank.id}
+                    className="flex flex-wrap items-start gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-body text-text"
+                  >
+                    <span className="shrink-0 rounded-full bg-subtle px-2 text-caption font-semibold">{blank.id}</span>
+                    <span className="min-w-0 flex-1 wrap-anywhere">
+                      {blank.answers.length > 0 ? blank.answers.join(" | ") : t("preview.noAnswer")}
+                    </span>
+                    <span className="shrink-0 text-caption font-semibold text-text-secondary">
+                      {t("preview.criterionPoints", { points: blank.points ?? 1 })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {draft.matching && (
+              <div className="flex flex-col gap-2">
+                <ul aria-label={t("preview.pairsLabel")} className="flex flex-col gap-2">
+                  {draft.matching.left.map((item) => {
+                    const pair = draft.matching?.pairs.find((candidate) => candidate.leftKey === item.key);
+                    const right = draft.matching?.right.find((candidate) => candidate.key === pair?.rightKey);
+                    return (
+                      <li
+                        key={item.key}
+                        className="flex flex-wrap items-start gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-body text-text"
+                      >
+                        <span className="shrink-0 rounded-full bg-subtle px-2 text-caption font-semibold">{item.key}</span>
+                        <RichTextView html={item.content} className="min-w-0 flex-1 wrap-anywhere" />
+                        <span className="min-w-0 text-text-secondary wrap-anywhere">
+                          {right
+                            ? t("preview.pairWith", { key: right.key, content: questionHtmlText(right.content) })
+                            : t("preview.noAnswer")}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-caption text-text-secondary">
+                  {t("preview.rightChoices", {
+                    items: draft.matching.right.map((item) => `${item.key}. ${questionHtmlText(item.content)}`).join("; "),
+                  })}
+                  {" · "}
+                  {draft.matching.reuseRight ? t("preview.matchReuse") : t("preview.matchOnce")}
+                </p>
+              </div>
             )}
 
             {draft.type === "ESSAY" && (
@@ -161,7 +237,7 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
                       className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body"
                     >
                       <span className="text-caption text-text-muted">{t("preview.childRow", { row: child.rowNumber })}</span>
-                      <span className="min-w-0 flex-1 wrap-anywhere text-text">{child.draft.content || none}</span>
+                      <HtmlOrNone html={child.draft.content} none={none} className="min-w-0 flex-1 wrap-anywhere text-text" />
                       <StatusChip tone={ROW_STATUS_TONE[child.status]}>{t(`preview.status.${child.status}`)}</StatusChip>
                     </li>
                   ))}
@@ -187,8 +263,20 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
             </dd>
             <dt className="text-text-muted">{t("preview.tags")}</dt>
             <dd className="text-text">{draft.tagCodes.length > 0 ? draft.tagCodes.map(lookup.tag).join(", ") : none}</dd>
+            <dt className="text-text-muted">{t("preview.points")}</dt>
+            <dd className="text-text">{draft.points === null ? t("preview.pointsDefault") : format.number(draft.points)}</dd>
+            <dt className="text-text-muted">{t("preview.taskType")}</dt>
+            <dd className="text-text">
+              {draft.taskTypeCode
+                ? (reference?.taskTypes.find((option) => option.code === draft.taskTypeCode)?.name ?? draft.taskTypeCode)
+                : none}
+            </dd>
             <dt className="text-text-muted">{t("preview.solution")}</dt>
-            <dd className="wrap-anywhere text-text">{draft.solution ?? none}</dd>
+            <dd className="text-text">
+              <HtmlOrNone html={draft.solution} none={none} className="wrap-anywhere" />
+            </dd>
+            <dt className="text-text-muted">{t("preview.commonMistakes")}</dt>
+            <dd className="wrap-anywhere text-text">{draft.commonMistakes ?? none}</dd>
           </dl>
 
           {row.issues.length > 0 && (

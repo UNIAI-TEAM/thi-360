@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import type { CatalogOption, ExamKindOption } from "@/features/content/types";
+import { RichTextEditor } from "@/components/rich-text";
 import {
   createExamInfoSchema,
   EXAM_CODE_MAX,
@@ -14,20 +15,18 @@ import {
   type CreateExamSchemaMessages,
   type ExamInfoFormValues,
   type ExamInfoSchemaMessages,
-  type ExamScope,
-  formatsForKind,
-  isSingleScope,
-  isSubjectKind,
+  isPartCode,
   kindOptionFor,
-  SINGLE_SCOPES,
-  type SingleScope,
-  subjectTemplates,
+  PART_CODES,
+  type PartCode,
+  type ScopeSelection,
+  scopesForKind,
   type TakenCodes,
   templateCountBySubject,
   yearsDiffer,
 } from "../create-exam-schema";
 import { sum } from "../matrix";
-import type { ExamFormat, ExamKind, ExamTemplate, ExamTiming } from "../types";
+import type { ExamKind, ExamScope, ExamTemplate, ExamTiming } from "../types";
 
 /** Chữ báo lỗi của Thông tin chung (`exams.create.validation`). */
 export function useExamInfoMessages(): ExamInfoSchemaMessages {
@@ -78,22 +77,23 @@ export function useKindLabel() {
   return useCallback((code: string) => (t.has(code) ? t(code) : code), [t]);
 }
 
-/** Lựa chọn Hình thức dạng thẻ (bản vẽ TaoBaiThi), chỉ các hình thức kỳ thi cho phép. */
-export function useFormatOptions(formats: readonly ExamFormat[]): ChoiceCardOption<ExamFormat>[] {
+/** Phạm vi bài thi dạng thẻ (PBI-04 mục 4), chỉ các phạm vi kỳ thi cho phép. */
+export function useScopeOptions(scopes: readonly ExamScope[]): ChoiceCardOption<ExamScope>[] {
   const t = useTranslations("exams.create");
-  const all: ChoiceCardOption<ExamFormat>[] = [
-    { value: "FULL", label: t("formatFull"), description: t("formatFullDescription") },
-    { value: "SINGLE", label: t("formatSingle"), description: t("formatSingleDescription") },
+  const all: ChoiceCardOption<ExamScope>[] = [
+    { value: "FULL", label: t("scopeFull"), description: t("scopeFullDescription") },
+    { value: "PART", label: t("scopePart"), description: t("scopePartDescription") },
+    { value: "SUBJECT", label: t("scopeSubject"), description: t("scopeSubjectDescription") },
   ];
-  return all.filter((option) => formats.includes(option.value));
+  return all.filter((option) => scopes.includes(option.value));
 }
 
-/** Phần/môn áp dụng của bài lẻ: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi). */
-export function useSingleScopes() {
-  const t = useTranslations("exams.create.singleScope");
-  const scopeName = useCallback((scope: string) => (isSingleScope(scope) ? t(scope) : scope), [t]);
-  const options: ChoiceCardOption<SingleScope>[] = SINGLE_SCOPES.map((scope) => ({ value: scope, label: t(scope) }));
-  return { options, scopeName };
+/** Phần của bài Theo phần: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi). */
+export function usePartNames() {
+  const t = useTranslations("exams.create.partName");
+  const partName = useCallback((code: string) => (isPartCode(code) ? t(code) : code), [t]);
+  const options: ChoiceCardOption<PartCode>[] = PART_CODES.map((code) => ({ value: code, label: t(code) }));
+  return { options, partName };
 }
 
 export interface ChoiceCardOption<T extends string> {
@@ -286,10 +286,10 @@ export function KindField({
 }
 
 /**
- * Hình thức (FULL, bài lẻ) theo `formats` của kỳ thi. Kỳ thi chỉ có FULL thì không cần chọn: hiện một dòng nêu hình
- * thức thay cho nhóm radio một lựa chọn.
+ * Phạm vi bài thi (Toàn bài, Theo phần, Theo môn) theo `scopes` của kỳ thi. Kỳ thi chỉ có một phạm vi thì không cần
+ * chọn: hiện một dòng nêu phạm vi thay cho nhóm radio một lựa chọn.
  */
-export function FormatField({
+export function ScopeField({
   kinds,
   kind,
   value,
@@ -298,28 +298,27 @@ export function FormatField({
 }: {
   kinds: readonly ExamKindOption[];
   kind: ExamKind;
-  value: ExamFormat;
-  onChange: (format: ExamFormat) => void;
+  value: ExamScope;
+  onChange: (scope: ExamScope) => void;
   disabled?: boolean;
 }) {
   const t = useTranslations("exams.create");
-  const formats = formatsForKind(kinds, kind);
-  const options = useFormatOptions(formats);
+  const options = useScopeOptions(scopesForKind(kinds, kind));
   if (options.length <= 1) {
     return (
       <div className="flex flex-col gap-1.5">
-        <p className="text-field-label font-medium text-text-secondary">{t("format")}</p>
+        <p className="text-field-label font-medium text-text-secondary">{t("scope")}</p>
         <p className="flex min-h-10 flex-col justify-center text-body">
-          <span className="font-semibold text-text">{options[0]?.label ?? t("formatFull")}</span>
-          <span className="text-caption text-text-muted">{t("formatOnlyFull")}</span>
+          <span className="font-semibold text-text">{options[0]?.label ?? t("scopeFull")}</span>
+          <span className="text-caption text-text-muted">{t("scopeOnly")}</span>
         </p>
       </div>
     );
   }
   return (
     <ChoiceCardGroup
-      legend={t("format")}
-      name="format"
+      legend={t("scope")}
+      name="scope"
       value={value}
       required
       disabled={disabled}
@@ -334,96 +333,144 @@ function yearText(year: number | null | undefined): string {
   return year === null || year === undefined ? "" : String(year);
 }
 
-/**
- * Môn và mẫu theo năm của kỳ thi có mẫu theo môn (SPT, SP2E, THPTQG): chọn môn (nêu số mẫu của môn), rồi chọn mẫu
- * theo năm cấu trúc. Môn chưa có mẫu thì báo cấu trúc khởi tạo để trống.
- */
-export function SubjectTemplateFields({
+/** Môn của bài Theo môn (nêu số mẫu theo năm của môn). Môn chưa có mẫu thì báo cấu trúc khởi tạo để trống. */
+export function SubjectField({
   kind,
-  format,
   subjects,
   templates,
   subjectCode,
-  templateCode,
-  subjectError,
+  error,
   disabled,
-  onSubjectChange,
-  onTemplateChange,
+  onChange,
 }: {
   kind: ExamKind;
-  format: ExamFormat;
   subjects: readonly CatalogOption[];
   templates: readonly ExamTemplate[];
   subjectCode: string;
-  templateCode: string;
-  subjectError?: string;
+  error?: string;
   disabled?: boolean;
-  onSubjectChange: (subjectCode: string) => void;
-  onTemplateChange: (templateCode: string) => void;
+  onChange: (subjectCode: string) => void;
 }) {
-  const t = useTranslations("exams.create.subjectTemplate");
-  const counts = templateCountBySubject(templates, kind, format);
+  const t = useTranslations("exams.create.subjectField");
+  const counts = templateCountBySubject(templates, kind);
   const options = subjects.map((subject) => {
     const count = counts.get(subject.code) ?? 0;
-    return { value: subject.code, label: count > 0 ? t("subjectWithTemplates", { subject: subject.name, count }) : subject.name };
+    return { value: subject.code, label: count > 0 ? t("withTemplates", { subject: subject.name, count }) : subject.name };
   });
-  const available = subjectCode ? subjectTemplates(templates, kind, format, subjectCode) : [];
   const subjectName = subjects.find((subject) => subject.code === subjectCode)?.name ?? subjectCode;
 
   return (
     <div data-field="subjectCode" className="flex flex-col gap-3">
-      <FormField label={t("subject")} required hint={t("subjectHint", { count: counts.size })} error={subjectError}>
+      <FormField label={t("subject")} required hint={t("hint", { count: counts.size })} error={error}>
         {(controlProps) => (
           <Select
             {...controlProps}
             name="subjectCode"
             value={subjectCode || undefined}
             disabled={disabled}
-            placeholder={t("subjectPlaceholder")}
-            onValueChange={onSubjectChange}
+            placeholder={t("placeholder")}
+            onValueChange={onChange}
             options={options}
           />
         )}
       </FormField>
-      {subjectCode &&
-        (available.length === 0 ? (
-          <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-body text-text-secondary">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
-            {t("noTemplate", { subject: subjectName })}
-          </p>
-        ) : (
-          <ChoiceCardGroup
-            legend={t("template")}
-            name="templateCode"
-            value={templateCode}
-            required
-            disabled={disabled}
-            hint={available.length > 1 ? t("templateHint") : undefined}
-            options={available.map((template) => ({
-              value: template.code,
-              label: t("templateYear", { year: yearText(template.structureYear) }),
-              description: template.name,
-            }))}
-            onChange={onTemplateChange}
-          />
-        ))}
+      {subjectCode && !counts.has(subjectCode) && (
+        <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-body text-text-secondary">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
+          {t("noTemplate", { subject: subjectName })}
+        </p>
+      )}
     </div>
   );
 }
 
 /**
- * Ghi chú của mẫu: năm cấu trúc và năm ma trận; hai năm khác nhau thì ô xác nhận chuyên môn (chưa xác nhận thì kiểm
- * tra cấu hình chặn công bố); điều chuyên gia cần xác nhận (`expertNote`).
+ * Kỳ thi, phạm vi bài thi, phần (Theo phần) hoặc môn (Theo môn) của bước 1 và của tab Thông tin chung (PBI-04 mục 4).
+ * Mẫu và năm không chọn ở đây: hệ thống nạp mẫu mới nhất, phiên bản năm chọn ở bước Cấu trúc.
+ */
+export function ScopeFields({
+  kinds,
+  subjects,
+  templates,
+  values,
+  errors,
+  disabled,
+  onChange,
+}: {
+  kinds: readonly ExamKindOption[];
+  subjects: readonly CatalogOption[];
+  templates: readonly ExamTemplate[];
+  values: ScopeSelection;
+  errors: { partCode?: string; subjectCode?: string };
+  disabled?: boolean;
+  onChange: (change: Partial<ScopeSelection>) => void;
+}) {
+  const t = useTranslations("exams.create");
+  const parts = usePartNames();
+  return (
+    <div className="flex flex-col gap-4">
+      <div data-field="kind">
+        <KindField kinds={kinds} value={values.kind} disabled={disabled} onChange={(kind) => onChange({ kind })} />
+      </div>
+      <ScopeField
+        kinds={kinds}
+        kind={values.kind}
+        value={values.scope}
+        disabled={disabled}
+        onChange={(scope) => onChange({ scope })}
+      />
+      {values.scope === "PART" && (
+        <div data-field="partCode" className="flex flex-col gap-1">
+          <ChoiceCardGroup
+            legend={t("part")}
+            name="partCode"
+            value={(isPartCode(values.partCode) ? values.partCode : "") as PartCode}
+            required
+            disabled={disabled}
+            variant="pill"
+            hint={t("partHint")}
+            options={parts.options}
+            onChange={(partCode) => onChange({ partCode })}
+          />
+          {errors.partCode && (
+            <p role="alert" className="text-caption text-danger">
+              {errors.partCode}
+            </p>
+          )}
+        </div>
+      )}
+      {values.scope === "SUBJECT" && (
+        <SubjectField
+          kind={values.kind}
+          subjects={subjects}
+          templates={templates}
+          subjectCode={values.subjectCode}
+          error={errors.subjectCode}
+          disabled={disabled}
+          onChange={(subjectCode) => onChange({ subjectCode })}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Ghi chú của mẫu đã nạp: tên mẫu, năm cấu trúc và năm ma trận; hai năm khác nhau thì ô xác nhận chuyên môn khi có
+ * `onYearsConfirmedChange` (chưa xác nhận thì kiểm tra cấu hình chặn công bố), không thì chỉ nhắc xác nhận sau khi tạo;
+ * điều chuyên gia cần xác nhận (`expertNote`).
  */
 export function TemplateNotes({
   template,
-  yearsConfirmed,
+  name,
+  yearsConfirmed = false,
   onYearsConfirmedChange,
   disabled,
 }: {
   template: ExamTemplate | undefined;
-  yearsConfirmed: boolean;
-  onYearsConfirmedChange: (confirmed: boolean) => void;
+  /** Tên đã dịch của mẫu; thiếu thì dùng `template.name` của dữ liệu. */
+  name?: string;
+  yearsConfirmed?: boolean;
+  onYearsConfirmedChange?: (confirmed: boolean) => void;
   disabled?: boolean;
 }) {
   const t = useTranslations("exams.create.templateNotes");
@@ -432,9 +479,14 @@ export function TemplateNotes({
   if (!template) return null;
   const hasYears = template.structureYear != null || template.matrixYear != null;
   const differ = yearsDiffer(template);
-  if (!hasYears && !template.expertNote) return null;
   return (
     <div className="flex flex-col gap-3">
+      <p className="flex items-start gap-2 text-body text-text-secondary">
+        <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
+        <span>
+          {t("loaded", { name: name ?? template.name })} {t("changeInStructure")}
+        </span>
+      </p>
       {hasYears && (
         <dl className="flex flex-wrap gap-x-6 gap-y-1 text-body">
           <div className="flex gap-1.5">
@@ -456,24 +508,28 @@ export function TemplateNotes({
               matrixYear: yearText(template.matrixYear),
             })}
           </p>
-          <div className="flex items-start gap-2.5">
-            <Checkbox
-              id={checkboxId}
-              checked={yearsConfirmed}
-              disabled={disabled}
-              aria-describedby={hintId}
-              onCheckedChange={(checked) => onYearsConfirmedChange(checked === true)}
-              className="mt-0.5"
-            />
-            <div className="flex flex-col gap-0.5">
-              <label htmlFor={checkboxId} className="cursor-pointer font-medium text-text">
-                {t("yearsConfirm", { matrixYear: yearText(template.matrixYear) })}
-              </label>
-              <p id={hintId} className="text-caption text-text-secondary">
-                {t("yearsConfirmHint")}
-              </p>
+          {onYearsConfirmedChange ? (
+            <div className="flex items-start gap-2.5">
+              <Checkbox
+                id={checkboxId}
+                checked={yearsConfirmed}
+                disabled={disabled}
+                aria-describedby={hintId}
+                onCheckedChange={(checked) => onYearsConfirmedChange(checked === true)}
+                className="mt-0.5"
+              />
+              <div className="flex flex-col gap-0.5">
+                <label htmlFor={checkboxId} className="cursor-pointer font-medium text-text">
+                  {t("yearsConfirm", { matrixYear: yearText(template.matrixYear) })}
+                </label>
+                <p id={hintId} className="text-caption text-text-secondary">
+                  {t("yearsConfirmHint")}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="text-caption text-text-secondary">{t("yearsConfirmLater")}</p>
+          )}
         </div>
       )}
       {template.expertNote && (
@@ -571,9 +627,9 @@ export function TimingScoreFields({
 }
 
 /**
- * Các trường Thông tin chung của tab Thông tin chung (UniNote PBI-04 mục 4; spec 7 kỳ thi): tên, mã, kỳ thi, hình thức,
- * phần/môn bài lẻ, môn và mẫu theo năm, ghi chú của mẫu, thời lượng chung, thang điểm, mô tả. `lockScope` khóa kỳ thi,
- * hình thức, môn, mẫu (bài đã công bố). Đổi phạm vi gọi `onScopeChange` để chọn lại mẫu.
+ * Các trường Thông tin chung của tab Thông tin chung (UniNote PBI-04 mục 4; spec 7 kỳ thi): tên, mã, kỳ thi, phạm vi,
+ * phần hoặc môn, ghi chú của mẫu đã nạp, thời lượng chung, thang điểm, mô tả, hướng dẫn làm bài. `lockScope` khóa kỳ thi,
+ * phạm vi, phần, môn (bài đã công bố). Đổi phạm vi gọi `onScopeChange`; phiên bản năm chọn ở bước Cấu trúc.
  */
 export function ExamInfoFields({
   control,
@@ -583,6 +639,7 @@ export function ExamInfoFields({
   kinds,
   subjects,
   templates,
+  template,
   partMinutes,
   lockScope = false,
   lockScopeHint,
@@ -597,17 +654,17 @@ export function ExamInfoFields({
   kinds: readonly ExamKindOption[];
   subjects: readonly CatalogOption[];
   templates: readonly ExamTemplate[];
+  /** Mẫu đã nạp của bài (hoặc mẫu mới nhất của phạm vi đang chọn); `undefined` khi không có mẫu. */
+  template: ExamTemplate | undefined;
   /** Tổng thời lượng các phần đang lưu (bài tính thời lượng theo phần). */
   partMinutes: number;
   lockScope?: boolean;
   lockScopeHint?: string;
-  onScopeChange: (change: Partial<ExamScope>) => void;
+  onScopeChange: (change: Partial<ScopeSelection>) => void;
   onGenerateCode?: () => void;
   generatingCode?: boolean;
 }) {
   const t = useTranslations("exams.create");
-  const singleScopes = useSingleScopes();
-  const template = templates.find((item) => item.code === values.templateCode);
   const kind = kindOptionFor(kinds, values.kind);
   const timingHeadingId = useId();
 
@@ -643,57 +700,20 @@ export function ExamInfoFields({
         </FormField>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <KindField kinds={kinds} value={values.kind} disabled={lockScope} onChange={(next) => onScopeChange({ kind: next })} />
-        <FormatField
-          kinds={kinds}
-          kind={values.kind}
-          value={values.format}
-          disabled={lockScope}
-          onChange={(format) => onScopeChange({ format })}
-        />
-      </div>
+      <ScopeFields
+        kinds={kinds}
+        subjects={subjects}
+        templates={templates}
+        values={values}
+        errors={{ partCode: errors.partCode?.message, subjectCode: errors.subjectCode?.message }}
+        disabled={lockScope}
+        onChange={onScopeChange}
+      />
       {lockScope && lockScopeHint && (
         <p className="flex items-start gap-2 text-caption text-text-muted">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           {lockScopeHint}
         </p>
-      )}
-
-      {values.format === "SINGLE" && (
-        <div data-field="singleSubjectCode" className="flex flex-col gap-1">
-          <ChoiceCardGroup
-            legend={t("singleSubject")}
-            name="singleSubjectCode"
-            value={(isSingleScope(values.singleSubjectCode) ? values.singleSubjectCode : "") as SingleScope}
-            required
-            disabled={lockScope}
-            variant="pill"
-            hint={t("singleSubjectHint")}
-            options={singleScopes.options}
-            onChange={(scope) => onScopeChange({ singleScope: scope })}
-          />
-          {errors.singleSubjectCode?.message && (
-            <p role="alert" className="text-caption text-danger">
-              {errors.singleSubjectCode.message}
-            </p>
-          )}
-        </div>
-      )}
-
-      {isSubjectKind(kinds, values.kind) && (
-        <SubjectTemplateFields
-          kind={values.kind}
-          format={values.format}
-          subjects={subjects}
-          templates={templates}
-          subjectCode={values.subjectCode}
-          templateCode={values.templateCode}
-          subjectError={errors.subjectCode?.message}
-          disabled={lockScope}
-          onSubjectChange={(subjectCode) => onScopeChange({ subjectCode })}
-          onTemplateChange={(templateCode) => onScopeChange({ templateCode })}
-        />
       )}
 
       <Controller
@@ -744,6 +764,25 @@ export function ExamInfoFields({
           />
         )}
       </FormField>
+      <FormField label={t("instructionsLabel")} hint={t("instructionsHint")} error={errors.instructions?.message}>
+        {(controlProps) => (
+          <Controller
+            control={control}
+            name="instructions"
+            render={({ field }) => (
+              <RichTextEditor
+                {...controlProps}
+                value={field.value}
+                onChange={field.onChange}
+                aria-label={t("instructionsLabel")}
+                allowImages={false}
+                invalid={Boolean(errors.instructions)}
+                placeholder={t("instructionsPlaceholder")}
+              />
+            )}
+          />
+        )}
+      </FormField>
     </div>
   );
 }
@@ -754,13 +793,13 @@ export function ExamInfoFields({
  */
 export function TemplatePreview({
   template,
-  format,
+  scope,
   subjectName,
   headingLevel = 3,
   footer,
 }: {
   template: ExamTemplate | undefined;
-  format: ExamFormat;
+  scope: ExamScope;
   subjectName: string | null;
   headingLevel?: 2 | 3;
   footer?: ReactNode;
@@ -770,7 +809,7 @@ export function TemplatePreview({
   const Heading = headingLevel === 2 ? "h2" : "h3";
   const shared = template?.timing === "SHARED";
   const rows =
-    format === "SINGLE"
+    scope === "PART"
       ? [
           {
             name: subjectName ?? t("subjectPending"),

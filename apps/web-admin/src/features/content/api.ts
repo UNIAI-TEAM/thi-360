@@ -1,22 +1,16 @@
-import { mockRequest } from "@/lib/mock/content-mock";
-import referenceFixture from "./mock/reference.json";
+import type { AppLocale } from "@thi360/web-kit/preferences";
 import type { ContentReference } from "./types";
+import { getContentReference as getContentReferenceReal } from "./api.real";
 
 /**
- * Dữ liệu tham chiếu của Ngân hàng câu hỏi và Bài thi: môn, khối, độ khó, nhãn, mã tổ hợp, cây kiến thức.
- * Dữ liệu mẫu. Khi nối backend: gọi API lựa chọn của danh mục dùng chung (`/api/v1/admin/catalog/...`) và ghép lại
- * thành `ContentReference`; giữ nguyên chữ ký hàm.
+ * Dữ liệu tham chiếu của Ngân hàng câu hỏi và Bài thi: `GET /content-reference` (`api.real.ts`).
+ * Lớp dữ liệu mẫu và cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` đã gỡ ở QA (UNI-2621). Danh mục của màn chấm
+ * `/grading` cũng đọc từ API thật — `GRADING_MOCK` chỉ còn điều khiển hàng chờ chấm, không đổi danh mục (F-02).
  */
-const reference = referenceFixture as ContentReference;
+export { CONTENT_QUERY_KEYS } from "./keys";
 
-export const CONTENT_QUERY_KEYS = {
-  all: ["content"] as const,
-  reference: () => ["content", "reference"] as const,
-};
-
-export async function getContentReference(): Promise<ContentReference> {
-  return mockRequest(() => reference);
-}
+/** `locale` chỉ để bản dựng của test chọn tên; bản thật nhận ngôn ngữ từ cookie qua proxy (`Accept-Language`). */
+export const getContentReference: (locale?: AppLocale) => Promise<ContentReference> = getContentReferenceReal;
 
 export interface ContentApiDeps {
   getContentReference: typeof getContentReference;

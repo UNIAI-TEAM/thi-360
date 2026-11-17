@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   countAvailableQuestions,
+  countSubjectAvailableQuestions,
   createExam,
   discontinueExam,
   duplicateExam,
@@ -11,36 +12,53 @@ import {
   updateExamInfo,
   updateExamStructure,
 } from "../api";
-import { examStore } from "../mock/store";
-import type { CreateExamRequest } from "../types";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { ExamsApiError } from "../review-api";
+import type { AvailableQuestionsQuery, CreateExamRequest } from "../types";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu để createExam nở tổ hợp.
+vi.mock(import("@/features/content/api"), async () => {
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { getContentReference, defaultContentApiDeps: { getContentReference } };
+});
+
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  backend = new ExamsBackend();
+  backend.install();
+});
 
 const NEW_EXAM: CreateExamRequest = {
   name: "Đề HSA thử",
   code: "hsa-f-003",
   kind: "HSA",
-  format: "FULL",
-  templateCode: "HSA_FULL",
-  singleSubjectCode: null,
+  scope: "FULL",
   description: "  ",
 };
 
-afterEach(() => {
-  examStore.reset();
-});
+/** Nhóm câu đơn Toán chọn một đáp án, chưa giới hạn phạm vi; các test đặt `knowledgeScope` riêng. */
+const MATH_SINGLE: AvailableQuestionsQuery = {
+  subjectCode: "MATH",
+  questionType: "SINGLE_CHOICE",
+  answerTypes: [],
+  childAnswerType: null,
+  knowledgeScope: null,
+};
 
 async function rejectsWith(promise: Promise<unknown>, status: number, code: string) {
-  await expect(promise).rejects.toBeInstanceOf(MockApiError);
-  await promise.catch((error: MockApiError) => {
-    expect(error.status).toBe(status);
-    expect(error.code).toBe(code);
-  });
+  const error = await promise.then(
+    () => undefined,
+    (caught: unknown) => caught,
+  );
+  expect(error).toBeInstanceOf(ExamsApiError);
+  expect(error).toMatchObject({ status, code });
 }
 
 describe("tạo bài thi", () => {
   it("gợi ý mã tiếp theo chưa dùng", async () => {
-    expect(await suggestExamCode({ kind: "HSA", format: "FULL" })).toBe("HSA-F-003");
-    expect(await suggestExamCode({ kind: "QDA", format: "SINGLE" })).toBe("QDA-L-001");
+    expect(await suggestExamCode({ kind: "HSA", scope: "FULL" })).toBe("HSA-F-003");
+    expect(await suggestExamCode({ kind: "QDA", scope: "PART" })).toBe("QDA-P-001");
   });
 
   it("tạo bài Nháp theo mẫu, mã viết hoa, cấu trúc 3 phần với khối để trống", async () => {
@@ -54,23 +72,26 @@ describe("tạo bài thi", () => {
       check: { status: "UNCHECKED" },
     });
     expect(exam.parts.map((part) => part.mode)).toEqual(["FIXED", "FIXED", "CHOICE"]);
-    expect(exam.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "KH-1", "KH-2", "KH-3"]);
-    expect(exam.parts[2]!.options[1]!.sections.map((section) => section.questionCount)).toEqual([17, 17, 16]);
-    expect(exam.parts.flatMap((part) => part.sections).every((section) => section.blocks.length === 0)).toBe(true);
+    expect(exam.parts[2]!.options.map((option) => option.code)).toEqual(["ENGLISH", "SCIENCE"]);
+    const science = exam.parts[2]!.options[1]!;
+    expect(science).toMatchObject({ kind: "SUBJECT_CHOICE", chooseSubjects: 3, countsByPick: [17, 17, 16] });
+    expect(science).not.toHaveProperty("expertConfirmed");
+    expect(science.sections.map((section) => section.choiceGroup)).toEqual(["NATURAL", "NATURAL", "NATURAL", "SOCIAL", "SOCIAL"]);
+    expect(science.sections.map((section) => section.questionCount)).toEqual([null, null, null, null, null]);
+    expect(exam.combinationCount).toBe(0);
     expect(exam.versions.map((version) => version.state)).toEqual(["WORKING"]);
     expect((await getExamStructure(exam.id)).parts).toHaveLength(3);
   });
 
   it("mã gợi ý của bài lẻ có đoạn môn", async () => {
-    expect(await suggestExamCode({ kind: "HSA", format: "SINGLE", singleScope: "MATH" })).toBe("HSA-L-TOAN-002");
-    expect(await suggestExamCode({ kind: "QDA", format: "SINGLE", singleScope: "SCIENCE" })).toBe("QDA-L-KH-001");
+    expect(await suggestExamCode({ kind: "HSA", scope: "PART", partCode: "MATH" })).toBe("HSA-P-TOAN-001");
+    expect(await suggestExamCode({ kind: "QDA", scope: "PART", partCode: "SCIENCE" })).toBe("QDA-P-KH-001");
   });
 
   it("tạo theo cấu trúc khởi tạo đã chỉnh: phần cố định, Tiếng Anh, tổ hợp với số câu từng môn", async () => {
     const exam = await createExam({
       ...NEW_EXAM,
       kind: "QDA",
-      templateCode: "QDA_FULL",
       code: "QDA-F-009",
       parts: [
         { name: "Toán", questionCount: 40, durationMinutes: 70, mode: "FIXED", subjectCode: "MATH", englishOption: false, combinations: [] },
@@ -92,7 +113,7 @@ describe("tạo bài thi", () => {
     ]);
   });
 
-  it("cấu trúc khởi tạo sai bị chặn 422", async () => {
+  it("cấu trúc khởi tạo sai bị chặn 422; mã tổ hợp lạ được giữ như phương án COMBINATION", async () => {
     const choice = {
       name: "Khoa học",
       questionCount: 50,
@@ -102,29 +123,41 @@ describe("tạo bài thi", () => {
       englishOption: false,
       combinations: [{ code: "KH-1", subjectCounts: [17, 17, 17] }],
     };
-    await rejectsWith(createExam({ ...NEW_EXAM, parts: [choice] }), 422, "EXAM_STRUCTURE_INVALID");
-    await rejectsWith(createExam({ ...NEW_EXAM, parts: [{ ...choice, combinations: [] }] }), 422, "EXAM_STRUCTURE_INVALID");
-    await rejectsWith(createExam({ ...NEW_EXAM, parts: [] }), 422, "EXAM_STRUCTURE_INVALID");
+    // KH-1 là tổ hợp 3 môn của HSA: partsFromInput nở thành COMBINATION với số câu từng môn (máy chủ tin client).
+    const exam = await createExam({ ...NEW_EXAM, code: "HSA-F-010", parts: [choice] });
+    expect(exam.parts[0]!.options).toMatchObject([{ kind: "COMBINATION", code: "KH-1" }]);
+    expect(exam.parts[0]!.options[0]!.sections.map((section) => section.questionCount)).toEqual([17, 17, 17]);
+    // POST tạo xong thì PUT cấu trúc chặn: bài Nháp vẫn còn (ExamStructureSaveError bọc ExamsApiError 422).
+    await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-011", parts: [{ ...choice, combinations: [] }] }), 422, "EXAM_STRUCTURE_INVALID");
+    await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-012", parts: [] }), 422, "EXAM_STRUCTURE_INVALID");
   });
 
-  it("chặn mã trùng và phạm vi thiếu môn hoặc mẫu", async () => {
+  it("chặn mã trùng và phạm vi không hợp lệ", async () => {
     await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-001" }), 409, "EXAM_CODE_TAKEN");
-    await rejectsWith(createExam({ ...NEW_EXAM, templateCode: null }), 422, "EXAM_TEMPLATE_MISMATCH");
-    await rejectsWith(
-      createExam({ ...NEW_EXAM, format: "SINGLE", templateCode: null, singleSubjectCode: null }),
-      422,
-      "EXAM_SUBJECT_REQUIRED",
-    );
+    await rejectsWith(createExam({ ...NEW_EXAM, scope: "SUBJECT" }), 422, "EXAM_SCOPE_NOT_ALLOWED");
+    await rejectsWith(createExam({ ...NEW_EXAM, scope: "PART", partCode: null }), 422, "EXAM_PART_OR_SUBJECT_REQUIRED");
   });
 });
 
 describe("sửa bài thi", () => {
+  it("lưu cấu trúc lệch revision bị từ chối 412 EXAM_REVISION_CONFLICT và không đổi bài", async () => {
+    const before = await getExam("ex-qda-f-001");
+    await rejectsWith(
+      updateExamStructure(before.id, { parts: before.parts, expectedRevision: before.revision + 1 }),
+      412,
+      "EXAM_REVISION_CONFLICT",
+    );
+    expect((await getExam(before.id)).revision).toBe(before.revision);
+    const saved = await updateExamStructure(before.id, { parts: before.parts, expectedRevision: before.revision });
+    expect(saved.revision).toBe(before.revision + 1);
+  });
+
   it("lưu cấu trúc: có bản sửa chưa công bố, bài đã kiểm tra chuyển Cần kiểm tra lại", async () => {
     const before = await getExam("ex-qda-f-001");
     expect(before.check.status).toBe("VALID");
     const parts = structuredClone(before.parts);
     parts[0]!.durationMinutes = (parts[0]!.durationMinutes ?? 0) + 5;
-    const saved = await updateExamStructure("ex-qda-f-001", { parts });
+    const saved = await updateExamStructure("ex-qda-f-001", { parts, expectedRevision: before.revision });
     expect(saved.hasUnpublishedChanges).toBe(true);
     expect(saved.check.status).toBe("NEEDS_RECHECK");
     expect(saved.durationMinutes).toBe(before.durationMinutes + 5);
@@ -134,37 +167,36 @@ describe("sửa bài thi", () => {
 
   it("bài chưa kiểm tra vẫn giữ Chưa kiểm tra sau khi lưu", async () => {
     const draft = await getExam("ex-hsa-f-002");
-    const saved = await updateExamStructure(draft.id, { parts: draft.parts });
+    const saved = await updateExamStructure(draft.id, { parts: draft.parts, expectedRevision: draft.revision });
     expect(saved.check.status).toBe("UNCHECKED");
   });
 
-  it("đã công bố thì không đổi được kỳ thi, hình thức, mẫu; tên và mã vẫn sửa được", async () => {
+  it("đã công bố thì không đổi được kỳ thi, phạm vi; tên và mã vẫn sửa được", async () => {
     const exam = await getExam("ex-hsa-f-001");
     const info = {
       name: "Đề HSA đổi tên",
       code: exam.code,
       kind: exam.kind,
-      format: exam.format,
-      templateCode: exam.templateCode,
-      singleSubjectCode: exam.singleSubjectCode,
+      scope: exam.scope,
+      partCode: exam.partCode,
       description: null,
+      expectedRevision: exam.revision,
     };
-    await rejectsWith(updateExamInfo(exam.id, { ...info, kind: "QDA", templateCode: "QDA_FULL" }), 409, "EXAM_SCOPE_LOCKED");
+    await rejectsWith(updateExamInfo(exam.id, { ...info, kind: "QDA" }), 409, "EXAM_SCOPE_LOCKED");
     const renamed = await updateExamInfo(exam.id, info);
     expect(renamed.name).toBe("Đề HSA đổi tên");
     expect(renamed.parts).toEqual(exam.parts);
   });
 
-  it("bài chưa công bố đổi mẫu thì nạp lại cấu trúc theo mẫu mới", async () => {
+  it("bài chưa công bố đổi kỳ thi thì nạp lại cấu trúc theo mẫu mới", async () => {
     const exam = await getExam("ex-hsa-f-002");
     const changed = await updateExamInfo(exam.id, {
       name: exam.name,
       code: exam.code,
       kind: "QDA",
-      format: "FULL",
-      templateCode: "QDA_FULL",
-      singleSubjectCode: null,
+      scope: "FULL",
       description: null,
+      expectedRevision: exam.revision,
     });
     expect(changed.kind).toBe("QDA");
     expect(changed.parts.map((part) => [part.questionCount, part.durationMinutes, part.mode])).toEqual([
@@ -203,26 +235,65 @@ describe("sao chép và ngừng bán", () => {
     expect(first.parts.some((part) => sourceIds.has(part.id))).toBe(false);
   });
 
-  it("chỉ ngừng bán được bài Đang bán", async () => {
-    expect((await discontinueExam("ex-qda-f-001")).status).toBe("DISCONTINUED");
-    await rejectsWith(discontinueExam("ex-hsa-f-002"), 409, "EXAM_NOT_PUBLISHED");
+  it("chỉ ngừng bán được bài Đang bán; revision cũ của nơi gọi thì máy chủ trả 412", async () => {
+    const published = await getExam("ex-qda-f-001");
+    await rejectsWith(discontinueExam(published.id, published.revision + 4), 412, "EXAM_REVISION_CONFLICT");
+
+    // Nơi gọi gửi revision của bản đang xem: không đọc lại chi tiết, POST mang revision cũ.
+    const posts = backend.calls("POST", "/api/v1/admin/exams/ex-qda-f-001/discontinue");
+    expect(posts[0]!.body).toMatchObject({ expectedRevision: published.revision + 4 });
+    expect(backend.calls("GET", "/api/v1/admin/exams/ex-qda-f-001")).toHaveLength(1);
+
+    expect((await discontinueExam(published.id, published.revision)).status).toBe("DISCONTINUED");
+    const draft = await getExam("ex-hsa-f-002");
+    await rejectsWith(discontinueExam(draft.id, draft.revision), 409, "EXAM_NOT_PUBLISHED");
   });
 });
 
 describe("nguồn câu hỏi của khối", () => {
-  it("đếm câu Sẵn sàng theo môn và dạng, thu hẹp khi chọn kiến thức", async () => {
-    const all = await countAvailableQuestions({
+  it("đếm nguồn gửi đúng lọc theo môn, dạng và phạm vi kiến thức", async () => {
+    backend.seedCounts("count", { status: 200, body: { total: 3, cells: [{ gradeCode: "GRADE_10", value: 3 }] } });
+    const counted = await countAvailableQuestions({
+      ...MATH_SINGLE,
+      knowledgeScope: { nodeIds: ["kn-1D4"], match: "ANY" },
+    });
+    expect(counted.total).toBe(3);
+    const [call] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count");
+    expect(call?.body).toMatchObject({
       subjectCode: "MATH",
       questionType: "SINGLE_CHOICE",
-      knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
+      knowledgeScope: { nodeIds: ["kn-1D4"], match: "ANY" },
     });
-    expect(all.total).toBeGreaterThan(0);
-    expect(all.cells.reduce((total, cell) => total + cell.value, 0)).toBe(all.total);
-    const none = await countAvailableQuestions({
+  });
+
+  it("countSubjectAvailableQuestions gửi nhóm và ánh xạ byAnswerType", async () => {
+    backend.seedCounts("count-subject", {
+      status: 200,
+      body: {
+        total: 12,
+        cells: [{ gradeCode: "GRADE_10", value: 12 }],
+        byAnswerType: [
+          { answerType: "SINGLE_CHOICE", value: 8 },
+          { answerType: "SHORT_ANSWER", value: 4 },
+        ],
+      },
+    });
+    const counted = await countSubjectAvailableQuestions({
       subjectCode: "MATH",
-      questionType: "SINGLE_CHOICE",
-      knowledgeScope: { nodeIds: ["khong-co"], match: "ANY", includeDescendants: true },
+      groups: [
+        { ...MATH_SINGLE, knowledgeScope: { nodeIds: ["kn-1D4"], match: "ANY" } },
+        { ...MATH_SINGLE, questionType: null, answerTypes: ["SHORT_ANSWER"], knowledgeScope: null },
+      ],
     });
-    expect(none.total).toBe(0);
+    expect(counted.total).toBe(12);
+    expect(counted.byAnswerType.map((item) => item.answerType)).toEqual(["SINGLE_CHOICE", "SHORT_ANSWER"]);
+    const [call] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count-subject");
+    expect(call?.body).toMatchObject({
+      subjectCode: "MATH",
+      groups: [
+        { knowledgeScope: { nodeIds: ["kn-1D4"] }, questionType: "SINGLE_CHOICE" },
+        { answerTypes: ["SHORT_ANSWER"] },
+      ],
+    });
   });
 });

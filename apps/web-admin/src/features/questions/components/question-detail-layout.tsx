@@ -7,7 +7,6 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { MockDataBanner } from "@/components/mock-data-banner";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { QUESTION_STATUS_TONE } from "@/features/content/status";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -18,8 +17,8 @@ import type { QuestionDetail } from "../types";
 import { ManualGradingBadge } from "./question-detail-body";
 import { MarkReadyDialog, RetireQuestionDialog } from "./question-status-dialogs";
 
-/** Ba trang con của chi tiết câu hỏi, mỗi trang một đường dẫn (NavTabs, DESIGN.md 5.5). */
-export const QUESTION_DETAIL_TABS = ["content", "usage", "versions"] as const;
+/** Bốn trang con của chi tiết câu hỏi, mỗi trang một đường dẫn (NavTabs, DESIGN.md 5.5). */
+export const QUESTION_DETAIL_TABS = ["content", "preview", "usage", "versions"] as const;
 export type QuestionDetailTab = (typeof QUESTION_DETAIL_TABS)[number];
 
 export function questionTabHref(questionId: string, tab: QuestionDetailTab): string {
@@ -29,7 +28,7 @@ export function questionTabHref(questionId: string, tab: QuestionDetailTab): str
 
 export function questionTabFromPathname(pathname: string): QuestionDetailTab {
   const last = pathname.replace(/\/+$/, "").split("/").at(-1);
-  return last === "usage" || last === "versions" ? last : "content";
+  return last === "preview" || last === "usage" || last === "versions" ? last : "content";
 }
 
 export function questionEditHref(questionId: string): string {
@@ -64,7 +63,6 @@ export function QuestionDetailLayout({ questionId, children }: { questionId: str
     return (
       <div className="flex flex-col gap-5">
         <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
-        <MockDataBanner />
         <Card>
           <EmptyState
             icon={<TriangleAlert />}
@@ -91,7 +89,6 @@ export function QuestionDetailLayout({ questionId, children }: { questionId: str
   return (
     <div className="flex flex-col gap-5">
       <QuestionDetailHeader question={question} />
-      <MockDataBanner />
       <NavTabs aria-label={t("tabsLabel")}>
         {QUESTION_DETAIL_TABS.map((tab) => (
           <NavTab key={tab} asChild current={tab === activeTab}>

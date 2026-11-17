@@ -1,17 +1,27 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { createExam } from "../api";
 import { ExamGeneralView } from "../components/exam-general-view";
-import { examStore } from "../mock/store";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-afterEach(() => {
-  examStore.reset();
+let backend: ExamsBackend;
+
+beforeEach(() => {
   routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
 });
 
 function facts() {
@@ -26,9 +36,7 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
       name: "BCA thu",
       code: "BCA-F-902",
       kind: "BCA",
-      format: "FULL",
-      templateCode: "BCA_FULL",
-      singleSubjectCode: null,
+      scope: "FULL",
       description: null,
     });
     const user = userEvent.setup();
@@ -44,8 +52,8 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
     await user.clear(shared);
     await user.type(shared, "170");
     await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
-    await waitFor(() => expect(examStore.get(exam.id)?.durationMinutes).toBe(170));
-    expect(examStore.get(exam.id)?.parts).toHaveLength(3);
+    await waitFor(() => expect(backend.app(exam.id).durationMinutes).toBe(170));
+    expect(backend.app(exam.id).parts).toHaveLength(3);
   });
 
   it("SP2E Toán 2026: chờ chuyên gia xác nhận năm ma trận; xác nhận rồi Lưu", async () => {
@@ -53,9 +61,7 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
       name: "SP2E thu",
       code: "SP2E-F-TOAN-902",
       kind: "SP2E",
-      format: "FULL",
-      templateCode: "SP2E_MATH_2026",
-      singleSubjectCode: null,
+      scope: "SUBJECT",
       subjectCode: "MATH",
       description: null,
     });
@@ -69,7 +75,7 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
 
     await user.click(confirm);
     await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
-    await waitFor(() => expect(examStore.get(exam.id)?.yearsConfirmed).toBe(true));
+    await waitFor(() => expect(backend.app(exam.id).yearsConfirmed).toBe(true));
     expect(await facts().findByText("Chuyên gia đã xác nhận")).toBeInTheDocument();
   });
 });

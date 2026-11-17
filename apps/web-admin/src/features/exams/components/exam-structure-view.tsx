@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
+import { getErrorStatus } from "@/lib/api/query-client";
 import { yearsNeedConfirmation } from "../check";
 import { examTabHref } from "../editor-tabs";
 import { combinationsForKind } from "../create-exam-schema";
@@ -18,46 +19,55 @@ import {
   addBlock,
   addBranch,
   attachCombination,
-  attachGenerated,
   confirmOption,
   defaultSelection,
   ENGLISH_CODE,
   findBlock,
+  findSection,
   moveBlock,
   newBlock,
   removeBlock,
   removeOption,
   selectionExists,
   setEnglishOption,
+  setPartChoose,
+  setPartOnPaper,
   setPartPoints,
   setPartQuestionCount,
   setSectionCount,
   type StructureSelection,
   updateBlock,
   updatePart,
+  updateSection,
 } from "./exam-structure-draft";
 import { issueTarget, optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
 import { ExamStructureOutline } from "./exam-structure-outline";
 import { ExamStructurePartPanel } from "./exam-structure-part-panel";
+import { ExamStructureSubjectPanel } from "./exam-structure-subject-panel";
+import { StructureVersionPicker } from "./structure-version-picker";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 
-const SELECTION_PARAMS = { part: "part", block: "block" } as const;
+const SELECTION_PARAMS = { part: "part", section: "section", block: "block" } as const;
 
 function readSelectionFromUrl(): StructureSelection | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const blockId = params.get(SELECTION_PARAMS.block);
   if (blockId) return { kind: "block", blockId };
+  const sectionId = params.get(SELECTION_PARAMS.section);
+  if (sectionId) return { kind: "section", sectionId };
   const partId = params.get(SELECTION_PARAMS.part);
   return partId ? { kind: "part", partId } : null;
 }
 
-/** Ghi mục đang mở vào `?block=` / `?part=` (giữ `?mockState=`) để tải lại hoặc gửi đường dẫn vẫn mở đúng chỗ. */
+/** Ghi mục đang mở vào `?block=` / `?section=` / `?part=` (giữ tham số xem trạng thái của màn) để tải lại hoặc gửi đường dẫn vẫn mở đúng chỗ. */
 function writeSelectionToUrl(selection: StructureSelection): void {
   const url = new URL(window.location.href);
   url.searchParams.delete(SELECTION_PARAMS.block);
+  url.searchParams.delete(SELECTION_PARAMS.section);
   url.searchParams.delete(SELECTION_PARAMS.part);
   if (selection.kind === "block") url.searchParams.set(SELECTION_PARAMS.block, selection.blockId);
+  else if (selection.kind === "section") url.searchParams.set(SELECTION_PARAMS.section, selection.sectionId);
   else url.searchParams.set(SELECTION_PARAMS.part, selection.partId);
   window.history.replaceState(window.history.state, "", url);
 }
@@ -136,6 +146,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
       structure={structureQuery.data}
       syncKey={structureQuery.dataUpdatedAt}
       reference={referenceQuery.data}
+      templates={templatesQuery.data ?? []}
       template={templatesQuery.data?.find((item) => item.code === examQuery.data.templateCode) ?? null}
     />
   );
@@ -146,12 +157,14 @@ function StructureEditor({
   structure,
   syncKey,
   reference,
+  templates,
   template,
 }: {
   exam: ExamDetail;
   structure: ExamStructure;
   syncKey: number;
   reference: ContentReference;
+  templates: readonly ExamTemplate[];
   template: ExamTemplate | null;
 }) {
   const t = useTranslations("exams.structure");
@@ -217,14 +230,6 @@ function StructureEditor({
     [reference, exam.kind],
   );
   const kindCombinations = useMemo(() => combinationsForKind(reference.combinations, exam.kind), [reference, exam.kind]);
-  const subjectPool = useMemo(
-    () =>
-      reference.subjects
-        .map((subject) => subject.code)
-        .filter((code) => kindCombinations.some((combination) => combination.subjectCodes.includes(code))),
-    [reference, kindCombinations],
-  );
-  const defaultCombinationSize = Math.max(0, ...kindCombinations.map((combination) => combination.subjectCodes.length));
   const branchSubjects = reference.subjects;
   const yearsPending = yearsNeedConfirmation(exam);
 
@@ -239,7 +244,7 @@ function StructureEditor({
 
   const runSave = () => {
     save.mutate(
-      { parts: draft },
+      { parts: draft, expectedRevision: exam.revision },
       {
         onSuccess: () => {
           setBaseline(JSON.stringify(draft));
@@ -247,15 +252,19 @@ function StructureEditor({
           notify.success(message);
           announce(message);
         },
-        onError: () => {
-          notify.error(t("saveError"));
-          announce(t("saveError"));
+        onError: (error) => {
+          // 412: bài đã được người khác sửa (không tự nạp lại để không mất bản nháp); 422: dữ liệu sai kiểu.
+          const status = getErrorStatus(error);
+          const message = status === 412 ? t("saveConflict") : status === 422 ? t("saveInvalid") : t("saveError");
+          notify.error(message);
+          announce(message);
         },
       },
     );
   };
 
   const blockContext = current?.kind === "block" ? findBlock(draft, current.blockId) : null;
+  const sectionContext = current?.kind === "section" ? findSection(draft, current.sectionId) : null;
   const selectedPart = current?.kind === "part" ? draft.find((part) => part.id === current.partId) : null;
 
   return (
@@ -322,6 +331,16 @@ function StructureEditor({
         <p className="text-caption text-text-muted">
           {exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote")}
         </p>
+        <StructureVersionPicker
+          exam={exam}
+          templates={templates}
+          dirty={dirty}
+          onAnnounce={announce}
+          onApplied={(parts) => {
+            setDraft(parts);
+            setBaseline(JSON.stringify(parts));
+          }}
+        />
         {yearsPending && (
           <p className="flex flex-wrap items-start gap-x-2 gap-y-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-body text-text">
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
@@ -369,10 +388,24 @@ function StructureEditor({
           onAddBlock={handleAddBlock}
         />
         <div className="min-w-0">
-          {blockContext ? (
+          {sectionContext ? (
+            <ExamStructureSubjectPanel
+              key={sectionContext.section.id}
+              context={sectionContext}
+              subjectName={lookup.subject(sectionContext.section.subjectCode)}
+              axes={axes}
+              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+              reference={reference}
+              onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
+              onSelectBlock={(blockId) => select({ kind: "block", blockId })}
+              onAddBlock={() => handleAddBlock(sectionContext.part.id, sectionContext.location.optionId, sectionContext.section)}
+            />
+          ) : blockContext ? (
             <BlockEditor
               key={blockContext.block.id}
               block={blockContext.block}
+              section={blockContext.section}
+              onOpenSection={() => select({ kind: "section", sectionId: blockContext.section.id })}
               subjectCode={blockContext.section.subjectCode}
               locationText={t("blockLocation", {
                 part: blockContext.part.name,
@@ -411,14 +444,14 @@ function StructureEditor({
                   !selectedPart.options.some((option) => option.kind === "BRANCH") &&
                   !template?.parts[selectedPart.order - 1]?.options?.length)
               }
-              subjectPool={subjectPool}
-              defaultCombinationSize={defaultCombinationSize}
               branchSubjects={branchSubjects}
               onPoints={(points) => setDraft((parts) => setPartPoints(parts, selectedPart.id, points))}
-              onGenerate={(combinations) => {
-                setDraft((parts) => attachGenerated(parts, selectedPart.id, combinations, lookup.subject));
-                announce(t("combinationsGenerated", { count: combinations.length }));
-              }}
+              onOnPaper={(count) =>
+                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartOnPaper(part, count)))
+              }
+              onChoose={(choose) =>
+                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartChoose(part, choose)))
+              }
               onAddBranch={(branch) => {
                 setDraft((parts) => addBranch(parts, selectedPart.id, branch));
                 announce(t("branchAdded", { name: branch.name.trim() }));
@@ -451,6 +484,7 @@ function StructureEditor({
                 if (option) announce(t("combinationRemoved", { code: option.kind === "BRANCH" ? (option.name ?? option.code) : option.code }));
               }}
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
+              onSelectSection={(sectionId) => select({ kind: "section", sectionId })}
             />
           ) : null}
         </div>

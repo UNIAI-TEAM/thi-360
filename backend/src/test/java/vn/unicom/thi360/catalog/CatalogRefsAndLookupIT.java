@@ -286,15 +286,16 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
         // Verify B13 counts & [MẪU] descriptions in test/dev profile
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "EXAM").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].code", containsInAnyOrder("HSA", "QDA")));
+                .andExpect(jsonPath("$[*].code",
+                        containsInAnyOrder("HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG")));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "SUBJECT").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(12)));
+                .andExpect(jsonPath("$", hasSize(18)));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "GRADE").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(3)));
+                .andExpect(jsonPath("$", hasSize(4)));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "QUESTION_LEVEL").with(asStudent()))
                 .andExpect(status().isOk())
@@ -302,15 +303,18 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "QUESTION_FORMAT").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].code", containsInAnyOrder("SINGLE_CHOICE", "SHORT_ANSWER")));
+                .andExpect(jsonPath("$", hasSize(8)));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "TASK_TYPE").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].code", containsInAnyOrder("SINGLE", "CLUSTER")));
+                .andExpect(jsonPath("$[*].code", org.hamcrest.Matchers.hasItems("SINGLE", "CLUSTER")))
+                .andExpect(jsonPath("$[*].code", org.hamcrest.Matchers.hasItems("SYNONYM", "ANTONYM",
+                        "DIALOGUE_COMPLETION", "READING_COMPREHENSION", "WORD_USAGE_ERROR",
+                        "PASSAGE_READING")));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "SUBJECT_COMBINATION").with(asStudent()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(5)))
+                .andExpect(jsonPath("$", hasSize(16)))
                 .andExpect(jsonPath("$[0].description").value(org.hamcrest.Matchers.startsWith("[MẪU]")));
 
         // KNOWLEDGE: 0D1 has 14 leaves; filtering by TOAN & G10 returns all 26 leaves (14 + 6 + 6)

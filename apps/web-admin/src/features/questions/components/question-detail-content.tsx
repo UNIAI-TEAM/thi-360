@@ -3,8 +3,9 @@
 import { Badge, Card, Chip, Skeleton } from "@thi360/ui";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, type ReactNode } from "react";
-import { indexKnowledge, knowledgePath } from "@/features/content/knowledge-tree";
+import { indexKnowledge, knowledgeName, knowledgePath } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
+import { RichTextView } from "@/components/rich-text";
 import { useQuestion } from "../queries";
 import type { QuestionDetail } from "../types";
 import { QuestionBodyView } from "./question-detail-body";
@@ -31,7 +32,11 @@ function DetailContent({ question }: { question: QuestionDetail }) {
           </DetailSection>
           {!isSet && (
             <DetailSection title={t("sections.solution")}>
-              <p className="text-body whitespace-pre-wrap text-text">{question.solution ?? t("noSolution")}</p>
+              {question.solution ? (
+                <RichTextView className="text-body text-text" html={question.solution} />
+              ) : (
+                <p className="text-body text-text">{t("noSolution")}</p>
+              )}
             </DetailSection>
           )}
         </div>
@@ -91,7 +96,7 @@ function InfoSection({ question }: { question: QuestionDetail }) {
                   <li key={ref.nodeId} className="flex flex-col">
                     <span className="flex flex-wrap items-center gap-1.5">
                       <span className="font-medium">
-                        {ref.code} · {ref.name}
+                        {ref.code} · {knowledgeName(index, ref)}
                       </span>
                       {ref.primary && <Badge>{t("info.primary")}</Badge>}
                     </span>

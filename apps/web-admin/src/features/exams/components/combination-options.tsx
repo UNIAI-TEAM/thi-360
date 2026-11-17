@@ -21,16 +21,15 @@ import {
   StatusChip,
   useCardMode,
 } from "@thi360/ui";
-import { CircleMinus, Pencil, Plus, Shapes } from "lucide-react";
+import { CircleMinus, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
 import type { CombinationOption } from "@/features/content/types";
-import { sum, type StructureIssue } from "../matrix";
+import { countOf, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamPartOption } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { BranchDialog } from "./exam-structure-branch-dialog";
-import { CombinationGeneratorDialog } from "./exam-structure-combination-generator";
-import { ENGLISH_CODE, firstBlockId, type GeneratedCombination, optionQuestionCount } from "./exam-structure-draft";
+import { ENGLISH_CODE, firstBlockId, optionQuestionCount } from "./exam-structure-draft";
 import type { StructureNames } from "./exam-structure-issues";
 
 export interface CombinationOptionsProps {
@@ -40,14 +39,10 @@ export interface CombinationOptionsProps {
   issues: readonly StructureIssue[];
   /** Hiện ô bật nhánh Tiếng Anh (HSA, QDA); kỳ thi có lựa chọn gắn sẵn trong mẫu (BCA, THPTQG) thì không. */
   showEnglish: boolean;
-  /** Môn ghép được khi sinh tổ hợp "chọn k trong n" và số môn mỗi tổ hợp mặc định. */
-  subjectPool: readonly string[];
-  defaultCombinationSize: number;
   /** Môn chọn được khi thêm nhánh nội dung. */
   branchSubjects: ReadonlyArray<{ code: string; name: string }>;
   onToggleEnglish: (enabled: boolean) => void;
   onAttach: (combination: CombinationOption) => void;
-  onGenerate: (combinations: GeneratedCombination[]) => void;
   onAddBranch: (branch: { name: string; subjectCode: string }) => void;
   onConfirm: (optionId: string) => void;
   onRemove: (optionId: string) => void;
@@ -75,12 +70,9 @@ export function CombinationOptions({
   names,
   issues,
   showEnglish,
-  subjectPool,
-  defaultCombinationSize,
   branchSubjects,
   onToggleEnglish,
   onAttach,
-  onGenerate,
   onAddBranch,
   onConfirm,
   onRemove,
@@ -92,7 +84,6 @@ export function CombinationOptions({
   const englishId = useId();
   const englishHintId = useId();
   const [attachOpen, setAttachOpen] = useState(false);
-  const [generatorOpen, setGeneratorOpen] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
   const [removing, setRemoving] = useState<ExamPartOption | null>(null);
 
@@ -100,10 +91,11 @@ export function CombinationOptions({
   const attached = part.options.filter((option) => option.kind === "COMBINATION");
   const branches = part.options.filter((option) => option.kind === "BRANCH");
   const available = combinations.filter((combination) => !attached.some((option) => option.code === combination.code));
-  const commonCount = sum(part.sections.map((section) => section.questionCount));
+  const commonCount = sum(part.sections.map(countOf));
   const branchMode = branches.length > 0 || part.sections.length > 0;
-  const showCombinations = combinations.length > 0 || attached.length > 0;
-  const canGenerate = subjectPool.length > 1 && defaultCombinationSize > 0;
+  // Phần có phương án chọn môn (HSA Khoa học) không dùng tổ hợp KH-n: không hiện nhóm tổ hợp và quy tắc của tổ hợp.
+  const hasSubjectChoice = part.options.some((option) => option.kind === "SUBJECT_CHOICE");
+  const showCombinations = !hasSubjectChoice && (combinations.length > 0 || attached.length > 0);
 
   const label = (option: ExamPartOption) =>
     option.kind === "BRANCH" ? (option.name ?? option.code) : option.code;
@@ -189,18 +181,10 @@ export function CombinationOptions({
           caption2={(option) => option.name ?? names.combination(option.code)}
           temporary={(option) => Boolean(option.name)}
           actions={
-            <>
-              {canGenerate && (
-                <Button type="button" variant="secondary" size="sm" aria-haspopup="dialog" onClick={() => setGeneratorOpen(true)}>
-                  <Shapes />
-                  <span>{t("generate")}</span>
-                </Button>
-              )}
-              <Button type="button" variant="secondary" size="sm" aria-haspopup="dialog" onClick={() => setAttachOpen(true)}>
-                <Plus />
-                <span>{t("attach")}</span>
-              </Button>
-            </>
+            <Button type="button" variant="secondary" size="sm" aria-haspopup="dialog" onClick={() => setAttachOpen(true)}>
+              <Plus />
+              <span>{t("attach")}</span>
+            </Button>
           }
           onConfirm={onConfirm}
           onRemove={setRemoving}
@@ -210,13 +194,14 @@ export function CombinationOptions({
         />
       )}
 
-      <ul className="ml-5 list-disc space-y-1 text-caption text-text-muted">
-        <li>{t("rules.total")}</li>
-        <li>{t("rules.fixed")}</li>
-        <li>{t("rules.expert")}</li>
-        <li>{t("rules.newCodes")}</li>
-        {showCombinations && <li>{t("rules.sample")}</li>}
-      </ul>
+      {!hasSubjectChoice && (
+        <ul className="ml-5 list-disc space-y-1 text-caption text-text-muted">
+          <li>{t("rules.total")}</li>
+          <li>{t("rules.fixed")}</li>
+          <li>{t("rules.expert")}</li>
+          <li>{t("rules.newCodes")}</li>
+        </ul>
+      )}
 
       <CombinationAttachDialog
         open={attachOpen}
@@ -229,18 +214,6 @@ export function CombinationOptions({
           setAttachOpen(false);
         }}
       />
-      {canGenerate && (
-        <CombinationGeneratorDialog
-          open={generatorOpen}
-          onOpenChange={setGeneratorOpen}
-          part={part}
-          subjectPool={subjectPool}
-          defaultSize={defaultCombinationSize}
-          catalog={combinations}
-          names={names}
-          onGenerate={onGenerate}
-        />
-      )}
       <BranchDialog
         open={branchOpen}
         onOpenChange={setBranchOpen}
@@ -380,7 +353,7 @@ function OptionGroup({
             <span className="whitespace-nowrap text-text">{t("subjectPosition", { position: index + 1, subject })}</span>
             <BlockNumberInput
               className="h-8 w-14 px-2"
-              value={section.questionCount}
+              value={section.questionCount ?? 0}
               onValueChange={(value) => onSectionCount(option.id, section.id, value)}
               aria-label={t("subjectCountAria", { code: label(option), subject })}
             />
@@ -390,7 +363,7 @@ function OptionGroup({
     </div>
   );
 
-  const totalOf = (option: ExamPartOption) => commonCount + sum(option.sections.map((section) => section.questionCount));
+  const totalOf = (option: ExamPartOption) => commonCount + sum(option.sections.map(countOf));
   const totalText = (option: ExamPartOption) =>
     commonCount > 0
       ? t("totalWithCommon", { common: commonCount, total: totalOf(option), count: part.questionCount })

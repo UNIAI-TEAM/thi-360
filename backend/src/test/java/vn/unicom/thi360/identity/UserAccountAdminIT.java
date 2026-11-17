@@ -459,13 +459,38 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("PRIVILEGE_ESCALATION"));
 
-        // Has USER.ASSIGN + CONTENT_ADMIN permissions -> 201
-        MvcResult okRes = mockMvc.perform(post("/api/v1/admin/users")
+        // Has USER.ASSIGN but only legacy CONTENT_ADMIN permissions (missing the
+        // question/exam group added by F-07) -> 403 PRIVILEGE_ESCALATION
+        mockMvc.perform(post("/api/v1/admin/users")
                         .with(asUser(
                                 Permissions.USER_MODIFY,
                                 Permissions.USER_ASSIGN,
                                 Permissions.CATALOG_VIEW,
                                 Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "role.partial.%s",
+                                  "password": "Valid@1234",
+                                  "fullName": "Partial Perms",
+                                  "roleIds": ["%s"]
+                                }
+                                """.formatted(sfx, contentAdmin.getId())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PRIVILEGE_ESCALATION"));
+
+        // Has USER.ASSIGN + full CONTENT_ADMIN permissions -> 201
+        MvcResult okRes = mockMvc.perform(post("/api/v1/admin/users")
+                        .with(asUser(
+                                Permissions.USER_MODIFY,
+                                Permissions.USER_ASSIGN,
+                                Permissions.CATALOG_VIEW,
+                                Permissions.CATALOG_MODIFY,
+                                Permissions.QUESTION_VIEW,
+                                Permissions.QUESTION_MODIFY,
+                                Permissions.EXAM_VIEW,
+                                Permissions.EXAM_MODIFY,
+                                Permissions.EXAM_PUBLISH))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

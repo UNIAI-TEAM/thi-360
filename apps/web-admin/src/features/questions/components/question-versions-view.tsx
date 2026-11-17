@@ -23,8 +23,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
+import { RichTextView } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { isRevisionConflict } from "@/features/content/api-error";
 import { QUESTIONS_QUERY_KEYS, toQuestionSummary } from "../api";
 import type { QuestionVersion, QuestionVersionList, QuestionVersionState } from "../editor-types";
 import { useQuestionVersions, useRestoreQuestionVersion } from "../editor-queries";
@@ -173,7 +174,7 @@ function VersionsContent({ list, question }: { list: QuestionVersionList; questi
         onConfirm={() => {
           if (!restoring) return;
           restore.mutate(
-            { version: restoring.version, expectedVersion: question.version },
+            { version: restoring.version, expectedRevision: question.revision },
             {
               onSuccess: ({ question: saved }) => {
                 setRestoring(null);
@@ -182,11 +183,10 @@ function VersionsContent({ list, question }: { list: QuestionVersionList; questi
                 setLiveMessage(message);
               },
               onError: (error) => {
-                setRestoreError(
-                  error instanceof MockApiError && error.code === "QUESTION_VERSION_CONFLICT"
-                    ? t("restore.conflict")
-                    : t("restore.failed"),
-                );
+                const conflict = isRevisionConflict(error);
+                // Câu đã được sửa ở nơi khác: nạp lại để lần thử sau dùng đúng `revision` mới.
+                if (conflict) void queryClient.invalidateQueries({ queryKey: QUESTIONS_QUERY_KEYS.detail(question.id) });
+                setRestoreError(conflict ? t("restore.conflict") : t("restore.failed"));
               },
             },
           );
@@ -331,7 +331,11 @@ function VersionViewDialog({
               {questionType !== "QUESTION_SET" && (
                 <div className="flex flex-col gap-1">
                   <h3 className="text-label font-semibold text-text">{t("view.solution")}</h3>
-                  <p className="text-body whitespace-pre-wrap text-text">{version.snapshot.solution ?? t("view.noSolution")}</p>
+                  {version.snapshot.solution ? (
+                    <RichTextView className="text-body text-text" html={version.snapshot.solution} />
+                  ) : (
+                    <p className="text-body text-text">{t("view.noSolution")}</p>
+                  )}
                 </div>
               )}
             </div>

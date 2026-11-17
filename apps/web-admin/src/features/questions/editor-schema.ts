@@ -1,8 +1,10 @@
 import { z } from "zod";
-import { MULTIPLE_CHOICE_RULES, QUESTION_TYPES } from "@/features/content/types";
+import { MULTIPLE_CHOICE_RULES, QUESTION_TYPES, TRUE_FALSE_METHODS } from "@/features/content/types";
+import { questionHtmlText } from "@/components/rich-text/sanitize";
 import {
   countBlankMarkers,
   parsePoints,
+  pointsTotal,
   rubricTotal,
   samePoints,
   type EditorBody,
@@ -21,23 +23,17 @@ import { CHILD_QUESTION_TYPES } from "./editor-types";
  * - Trắc nghiệm nhiều đáp án: ít nhất 2 phương án, ít nhất một phương án đúng.
  * - Đúng/Sai: ít nhất 2 ý, mỗi ý chọn Đúng hoặc Sai. Bảng điểm theo số ý đúng: mỗi ô là số không âm, không giảm dần,
  *   ô cuối bằng điểm của câu (UNI-2599).
- * - Điền đáp án: ít nhất 1 ô, mỗi ô có ít nhất một đáp án chấp nhận, số chỗ trống `___` trong đề bài bằng số ô.
- * - Kéo thả: ít nhất 1 ô thả, mỗi ô có nhãn và thẻ đúng; thẻ nhiễu không rỗng.
+ * - Trả lời ngắn: ít nhất một đáp án. Điền khuyết: ít nhất 1 ô, mỗi ô có ít nhất một đáp án, số chỗ trống `___` trong đề
+ *   bài bằng số ô. Ghép đôi: ít nhất 1 mục trái, mỗi mục có nhãn và lựa chọn đúng; lựa chọn thừa không rỗng.
  * - Câu chùm: đoạn dẫn chung, ít nhất 2 câu con, mỗi câu con hợp lệ theo dạng của nó.
- * - Tự luận: ít nhất 1 tiêu chí chấm, mỗi tiêu chí có mô tả và điểm lớn hơn 0, tổng điểm tiêu chí bằng điểm của câu;
- *   số chữ gợi ý (nếu có) là số nguyên dương (UNI-2599, chấm tay).
+ * - Tự luận: hướng dẫn chấm bắt buộc; tiêu chí chấm tùy chọn, có thì mỗi tiêu chí có mô tả, điểm lớn hơn 0 và tổng bằng
+ *   điểm của câu (D20); số chữ gợi ý (nếu có) là số nguyên dương.
  */
 
-export const CONTENT_MAX = 10_000;
-export const OPTION_MAX = 1_000;
-export const SOLUTION_MAX = 10_000;
 export const ANSWER_MAX = 200;
 export const MIN_OPTIONS = 2;
 export const MIN_STATEMENTS = 2;
 export const MIN_CHILDREN = 2;
-export const MIN_CRITERIA = 1;
-export const CRITERION_MAX = 1_000;
-export const SAMPLE_ANSWER_MAX = 10_000;
 
 export type EditorErrorKey =
   | "subjectRequired"
@@ -47,11 +43,8 @@ export type EditorErrorKey =
   | "pointsInvalid"
   | "contentRequired"
   | "passageRequired"
-  | "contentMax"
-  | "solutionMax"
   | "optionsMin"
   | "optionRequired"
-  | "optionMax"
   | "singleCorrectRequired"
   | "multipleCorrectRequired"
   | "statementsMin"
@@ -61,21 +54,26 @@ export type EditorErrorKey =
   | "blankAnswerRequired"
   | "answerMax"
   | "blankCountMismatch"
-  | "zonesMin"
-  | "zoneLabelRequired"
-  | "zoneItemRequired"
-  | "distractorRequired"
+  | "matchLeftMin"
+  | "matchLeftRequired"
+  | "matchRightRequired"
+  | "matchAnswerRequired"
+  | "matchRightReused"
+  | "pairPointsInvalid"
+  | "pairPointsMismatch"
+  | "blankPointsInvalid"
+  | "statementPointsInvalid"
+  | "statementPointsMismatch"
+  | "childKnowledgeRequired"
   | "childrenMin"
   | "childContentRequired"
   | "scoreValueInvalid"
   | "scoreNotIncreasing"
   | "scoreLastMismatch"
-  | "rubricMin"
+  | "gradingGuideRequired"
   | "criterionRequired"
-  | "criterionMax"
   | "criterionPointsInvalid"
   | "rubricTotalMismatch"
-  | "sampleAnswerMax"
   | "wordLimitInvalid";
 
 export interface EditorIssue {
@@ -84,6 +82,9 @@ export interface EditorIssue {
 }
 
 const blank = (value: string) => value.trim().length === 0;
+
+/** Ô HTML trống: không còn chữ nào và không có ảnh — mirror `isBlankHtml` của backend (`<p></p>` cũng là trống). */
+const blankHtml = (value: string) => questionHtmlText(value).trim() === "" && !/<img\b/i.test(value);
 
 function validatePoints(value: string, path: (string | number)[], issues: EditorIssue[]) {
   const points = parsePoints(value);
@@ -108,10 +109,7 @@ export function validateBody(
     case "SINGLE_CHOICE":
     case "MULTIPLE_CHOICE": {
       body.options.forEach((option, index) => {
-        if (blank(option.content)) issues.push({ path: [...prefix, "options", index, "content"], message: "optionRequired" });
-        else if (option.content.length > OPTION_MAX) {
-          issues.push({ path: [...prefix, "options", index, "content"], message: "optionMax" });
-        }
+        if (blankHtml(option.content)) issues.push({ path: [...prefix, "options", index, "content"], message: "optionRequired" });
       });
       const correct = body.options.filter((option) => option.correct).length;
       if (body.options.length < MIN_OPTIONS) issues.push({ path: [...prefix, "options"], message: "optionsMin" });
@@ -124,25 +122,53 @@ export function validateBody(
     }
     case "TRUE_FALSE": {
       body.statements.forEach((statement, index) => {
-        if (blank(statement.content)) {
+        if (blankHtml(statement.content)) {
           issues.push({ path: [...prefix, "statements", index, "content"], message: "statementRequired" });
-        } else if (statement.content.length > OPTION_MAX) {
-          issues.push({ path: [...prefix, "statements", index, "content"], message: "optionMax" });
         }
         if (statement.answer === "") {
           issues.push({ path: [...prefix, "statements", index, "answer"], message: "statementAnswerRequired" });
+        }
+        if (body.scoringMethod === "PER_STATEMENT") {
+          const value = parsePoints(statement.points);
+          if (!Number.isFinite(value) || value <= 0) {
+            issues.push({ path: [...prefix, "statements", index, "points"], message: "statementPointsInvalid" });
+          }
         }
       });
       if (body.statements.length < MIN_STATEMENTS) {
         issues.push({ path: [...prefix, "statements"], message: "statementsMin" });
       }
-      validateScoreTable(body.scoreTable, pointsValid ? questionPoints : null, [...prefix, "scoreTable"], issues);
+      if (body.scoringMethod === "COUNT_TABLE") {
+        validateScoreTable(body.scoreTable, pointsValid ? questionPoints : null, [...prefix, "scoreTable"], issues);
+      } else if (
+        pointsValid &&
+        body.statements.every((statement) => parsePoints(statement.points) > 0) &&
+        !samePoints(pointsTotal(body.statements.map((statement) => statement.points)), questionPoints)
+      ) {
+        issues.push({ path: [...prefix, "statements"], message: "statementPointsMismatch" });
+      }
       return;
     }
-    case "FILL_IN": {
+    case "SHORT_ANSWER": {
+      const answers = body.blanks[0]?.answers ?? [];
+      if (answers.every((answer) => blank(answer.value))) {
+        issues.push({ path: [...prefix, "blanks", 0, "answers"], message: "blankAnswerRequired" });
+      }
+      answers.forEach((answer, answerIndex) => {
+        if (answer.value.length > ANSWER_MAX) {
+          issues.push({ path: [...prefix, "blanks", 0, "answers", answerIndex, "value"], message: "answerMax" });
+        }
+      });
+      return;
+    }
+    case "CLOZE": {
       body.blanks.forEach((entry, index) => {
         if (entry.answers.every((answer) => blank(answer.value))) {
           issues.push({ path: [...prefix, "blanks", index, "answers"], message: "blankAnswerRequired" });
+        }
+        const blankPoints = parsePoints(entry.points);
+        if (!Number.isFinite(blankPoints) || blankPoints <= 0) {
+          issues.push({ path: [...prefix, "blanks", index, "points"], message: "blankPointsInvalid" });
         }
         entry.answers.forEach((answer, answerIndex) => {
           if (answer.value.length > ANSWER_MAX) {
@@ -156,43 +182,52 @@ export function validateBody(
       }
       return;
     }
-    case "DRAG_DROP": {
-      body.zones.forEach((zone, index) => {
-        if (blank(zone.label)) issues.push({ path: [...prefix, "zones", index, "label"], message: "zoneLabelRequired" });
-        if (blank(zone.itemContent)) {
-          issues.push({ path: [...prefix, "zones", index, "itemContent"], message: "zoneItemRequired" });
+    case "MATCHING": {
+      const rightIds = new Set(body.right.map((item) => item.id));
+      const used = new Set<string>();
+      body.left.forEach((item, index) => {
+        const at = [...prefix, "left", index];
+        if (blankHtml(item.content)) issues.push({ path: [...at, "content"], message: "matchLeftRequired" });
+        if (!item.rightId || !rightIds.has(item.rightId)) {
+          issues.push({ path: [...at, "rightId"], message: "matchAnswerRequired" });
+        } else {
+          if (!body.reuseRight && used.has(item.rightId)) issues.push({ path: [...at, "rightId"], message: "matchRightReused" });
+          used.add(item.rightId);
         }
+        const value = parsePoints(item.points);
+        if (!Number.isFinite(value) || value <= 0) issues.push({ path: [...at, "points"], message: "pairPointsInvalid" });
       });
-      body.distractors.forEach((item, index) => {
-        if (blank(item.content)) {
-          issues.push({ path: [...prefix, "distractors", index, "content"], message: "distractorRequired" });
-        }
+      body.right.forEach((item, index) => {
+        const at = [...prefix, "right", index, "content"];
+        if (blankHtml(item.content)) issues.push({ path: at, message: "matchRightRequired" });
       });
-      if (body.zones.length < 1) issues.push({ path: [...prefix, "zones"], message: "zonesMin" });
+      if (body.left.length < 1) issues.push({ path: [...prefix, "left"], message: "matchLeftMin" });
+      else if (
+        pointsValid &&
+        body.left.every((item) => parsePoints(item.points) > 0) &&
+        !samePoints(pointsTotal(body.left.map((item) => item.points)), questionPoints)
+      ) {
+        issues.push({ path: [...prefix, "left"], message: "pairPointsMismatch" });
+      }
       return;
     }
     case "QUESTION_SET":
       return;
     case "ESSAY": {
+      if (blankHtml(body.gradingGuide)) issues.push({ path: [...prefix, "gradingGuide"], message: "gradingGuideRequired" });
       body.rubric.forEach((criterion, index) => {
         const at = [...prefix, "rubric", index];
-        if (blank(criterion.description)) issues.push({ path: [...at, "description"], message: "criterionRequired" });
-        else if (criterion.description.length > CRITERION_MAX) {
-          issues.push({ path: [...at, "description"], message: "criterionMax" });
-        }
+        if (blankHtml(criterion.description)) issues.push({ path: [...at, "description"], message: "criterionRequired" });
         const value = parsePoints(criterion.points);
         if (!Number.isFinite(value) || value <= 0) issues.push({ path: [...at, "points"], message: "criterionPointsInvalid" });
       });
-      if (body.rubric.length < MIN_CRITERIA) issues.push({ path: [...prefix, "rubric"], message: "rubricMin" });
-      else if (
+      if (
+        body.rubric.length > 0 &&
         pointsValid &&
         body.rubric.every((criterion) => parsePoints(criterion.points) > 0) &&
         !samePoints(rubricTotal(body.rubric), questionPoints)
       ) {
         issues.push({ path: [...prefix, "rubric"], message: "rubricTotalMismatch" });
-      }
-      if (body.sampleAnswer.length > SAMPLE_ANSWER_MAX) {
-        issues.push({ path: [...prefix, "sampleAnswer"], message: "sampleAnswerMax" });
       }
       const wordLimit = body.wordLimit.trim();
       if (wordLimit && (!/^\d+$/.test(wordLimit) || Number(wordLimit) <= 0)) {
@@ -235,26 +270,24 @@ export function validateQuestionEditor(values: QuestionEditorValues): EditorIssu
   if (blank(values.subjectCode)) issues.push({ path: ["subjectCode"], message: "subjectRequired" });
   if (blank(values.gradeCode)) issues.push({ path: ["gradeCode"], message: "gradeRequired" });
   if (blank(values.difficultyCode)) issues.push({ path: ["difficultyCode"], message: "difficultyRequired" });
-  if (!isSet) validatePoints(values.points, ["points"], issues);
+  if (!isSet && values.type !== "CLOZE") validatePoints(values.points, ["points"], issues);
   if (values.knowledge.length === 0) issues.push({ path: ["knowledge"], message: "knowledgeRequired" });
 
-  if (blank(values.content)) issues.push({ path: ["content"], message: isSet ? "passageRequired" : "contentRequired" });
-  else if (values.content.length > CONTENT_MAX) issues.push({ path: ["content"], message: "contentMax" });
+  if (blankHtml(values.content)) issues.push({ path: ["content"], message: isSet ? "passageRequired" : "contentRequired" });
 
   validateBody(values.type, values.body, values.content, ["body"], issues, values.points);
 
   if (isSet) {
     values.children.forEach((child, index) => {
       const prefix = ["children", index];
-      if (blank(child.content)) issues.push({ path: [...prefix, "content"], message: "childContentRequired" });
-      else if (child.content.length > CONTENT_MAX) issues.push({ path: [...prefix, "content"], message: "contentMax" });
+      if (blankHtml(child.content)) issues.push({ path: [...prefix, "content"], message: "childContentRequired" });
       validateBody(child.type, child.body, child.content, [...prefix, "body"], issues, child.points);
       validatePoints(child.points, [...prefix, "points"], issues);
-      if (child.solution.length > SOLUTION_MAX) issues.push({ path: [...prefix, "solution"], message: "solutionMax" });
+      if (child.knowledgeOverride && child.knowledge.length === 0) {
+        issues.push({ path: [...prefix, "knowledge"], message: "childKnowledgeRequired" });
+      }
     });
     if (values.children.length < MIN_CHILDREN) issues.push({ path: ["children"], message: "childrenMin" });
-  } else if (values.solution.length > SOLUTION_MAX) {
-    issues.push({ path: ["solution"], message: "solutionMax" });
   }
   return issues;
 }
@@ -263,12 +296,22 @@ const optionSchema = z.object({ id: z.string(), content: z.string(), correct: z.
 const bodySchema = z.object({
   options: z.array(optionSchema),
   shuffleOptions: z.boolean(),
-  statements: z.array(z.object({ id: z.string(), content: z.string(), answer: z.enum(["", "TRUE", "FALSE"]) })),
-  blanks: z.array(z.object({ id: z.string(), answers: z.array(z.object({ id: z.string(), value: z.string() })) })),
-  zones: z.array(z.object({ id: z.string(), label: z.string(), itemId: z.string(), itemContent: z.string() })),
-  distractors: z.array(z.object({ id: z.string(), content: z.string() })),
+  statements: z.array(
+    z.object({ id: z.string(), content: z.string(), answer: z.enum(["", "TRUE", "FALSE"]), points: z.string() }),
+  ),
+  blanks: z.array(
+    z.object({ id: z.string(), answers: z.array(z.object({ id: z.string(), value: z.string() })), points: z.string() }),
+  ),
+  left: z.array(z.object({ id: z.string(), content: z.string(), rightId: z.string(), points: z.string() })),
+  right: z.array(z.object({ id: z.string(), content: z.string() })),
+  reuseRight: z.boolean(),
+  shuffleLeft: z.boolean(),
+  shuffleRight: z.boolean(),
+  scoringMethod: z.enum(TRUE_FALSE_METHODS),
   scoringRule: z.enum(MULTIPLE_CHOICE_RULES),
   scoreTable: z.array(z.string()),
+  gradingGuide: z.string(),
+  inputHint: z.string(),
   rubric: z.array(z.object({ id: z.string(), description: z.string(), points: z.string() })),
   sampleAnswer: z.string(),
   wordLimit: z.string(),
@@ -282,11 +325,14 @@ export const questionEditorSchema = z
     gradeCode: z.string(),
     difficultyCode: z.string(),
     competencyCode: z.string(),
+    taskTypeCode: z.string(),
     points: z.string(),
     knowledge: z.array(z.object({ nodeId: z.string(), code: z.string(), name: z.string(), primary: z.boolean() })),
     tagCodes: z.array(z.string()),
     content: z.string(),
     solution: z.string(),
+    commonMistakes: z.string(),
+    attachmentIds: z.array(z.string()),
     body: bodySchema,
     children: z.array(
       z.object({
@@ -296,6 +342,10 @@ export const questionEditorSchema = z
         content: z.string(),
         solution: z.string(),
         points: z.string(),
+        gradeCode: z.string(),
+        difficultyCode: z.string(),
+        knowledgeOverride: z.boolean(),
+        knowledge: z.array(z.object({ nodeId: z.string(), code: z.string(), name: z.string(), primary: z.boolean() })),
         body: bodySchema,
       }),
     ),
