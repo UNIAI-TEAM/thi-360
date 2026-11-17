@@ -191,14 +191,14 @@ class PaperSolverOracleTest {
                 .contains(ViolationCode.SUBJECT_ANSWER_QUOTA);
 
         // lặp định danh ngay trong một ứng viên (R2-18): ứng viên 3 đơn vị có hai câu con cùng id
-        PathCandidate dup = new PathCandidate("dup", 1, "dup", null, null, List.of(
+        PathCandidate dup = new PathCandidate("dup", 1, "dup", null, List.of(
                 new CountingUnit("c0", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE),
                 new CountingUnit("c1", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE),
                 new CountingUnit("c1", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE)));
-        PathCandidate alias = new PathCandidate("al", 1, "al", null, null, List.of(
+        PathCandidate alias = new PathCandidate("al", 1, "al", null, List.of(
                 new CountingUnit("al", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE),
                 new CountingUnit("c2", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),

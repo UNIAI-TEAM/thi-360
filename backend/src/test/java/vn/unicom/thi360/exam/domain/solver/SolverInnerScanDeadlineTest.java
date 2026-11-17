@@ -25,7 +25,7 @@ class SolverInnerScanDeadlineTest {
         List<String> nodes = IntStream.range(0, 2050).mapToObj(i -> "node-" + i).toList();
         CountingUnit unit = new CountingUnit(null, "SINGLE_CHOICE", "G10", "NB", nodes,
                 List.of(), BigDecimal.ONE);
-        PathCandidate candidate = new PathCandidate("q", 1, null, null, null, List.of(unit));
+        PathCandidate candidate = new PathCandidate("q", 1, null, null, List.of(unit));
         ScanClock clock = new ScanClock();
 
         PathResult result = new PaperSolver(SolverLimits.defaults(), clock).solvePath(
@@ -44,7 +44,7 @@ class SolverInnerScanDeadlineTest {
         groups.add(setGroup);
         IntStream.range(0, 1024).forEach(i -> groups.add(GroupQuota.single("empty-" + i, 0)));
         SectionOnPath section = new SectionOnPath("MATH", "section", 2, SubjectQuota.NONE, groups);
-        PathCandidate candidate = new PathCandidate("set-question", 1, "set-question", null, null, List.of(
+        PathCandidate candidate = new PathCandidate("set-question", 1, "set-question", null, List.of(
                 new CountingUnit("a", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(), BigDecimal.ONE),
                 new CountingUnit("b", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(), BigDecimal.ONE)));
         PairScanClock clock = new PairScanClock(6);
@@ -124,7 +124,7 @@ class SolverInnerScanDeadlineTest {
                 .mapToObj(i -> new CountingUnit("child-" + i, "SINGLE_CHOICE", "G10", "NB",
                         List.of(), List.of(), BigDecimal.ONE))
                 .toList();
-        PathCandidate candidate = new PathCandidate("set", 1, "set", null, null, units);
+        PathCandidate candidate = new PathCandidate("set", 1, "set", null, units);
         PairScanClock clock = new PairScanClock(4);
 
         PathResult result = new PaperSolver(SolverLimits.defaults(), clock).solvePath(
@@ -142,7 +142,7 @@ class SolverInnerScanDeadlineTest {
                 .mapToObj(i -> new CompetencyQuota("competency-" + i, 0)).toList();
         GroupQuota group = new GroupQuota("set-group", GroupQuota.GroupKind.SET, null, null,
                 1, 2, null, null, quotas, List.of(), null, null);
-        PathCandidate candidate = new PathCandidate("set", 1, "set", null, null, List.of(
+        PathCandidate candidate = new PathCandidate("set", 1, "set", null, List.of(
                 new CountingUnit("a", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(), BigDecimal.ONE),
                 new CountingUnit("b", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(), BigDecimal.ONE)));
         PairScanClock clock = new PairScanClock(5);

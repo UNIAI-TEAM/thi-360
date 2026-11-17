@@ -253,7 +253,7 @@ public class SolverInputBuilder {
                     item.competencyCodes(), item.points()));
         }
         return new PathCandidate(candidate.questionId().toString(), candidate.versionNo(),
-                candidate.setId() == null ? null : candidate.setId().toString(), candidate.taskTypeCode(),
+                candidate.setId() == null ? null : candidate.setId().toString(),
                 candidate.scoringRule(), units);
     }
 }
