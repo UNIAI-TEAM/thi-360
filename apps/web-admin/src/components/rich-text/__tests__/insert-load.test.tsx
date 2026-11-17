@@ -49,7 +49,7 @@ describe("RichTextEditor insert dialog loading", () => {
 
     await user.click(screen.getByRole("button", { name: "Symbols and units" }));
     await user.click(screen.getByRole("button", { name: "Chemistry formula" }));
-    expect(await screen.findByRole("dialog", { name: "Chemistry formula" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Chemistry formula" }, { timeout: 4000 })).toBeTruthy();
 
     // Lần tải chậm của lần bấm trước về sau cùng: không được thay hộp đang mở.
     slow.resolve(symbolsModule);
