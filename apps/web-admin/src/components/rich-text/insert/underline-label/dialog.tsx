@@ -86,7 +86,7 @@ export default function UnderlineLabelInsertDialog({ editor, open, onOpenChange 
                   className={cn(
                     "inline-flex size-10 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-body font-semibold text-text",
                     "has-checked:border-primary-600 has-checked:bg-primary-50 has-checked:text-primary-text",
-                    "has-focus-visible:ring-3 has-focus-visible:ring-primary-text/15",
+                    "has-focus-visible:outline-3 has-focus-visible:outline-primary-text",
                     "has-disabled:cursor-not-allowed has-disabled:opacity-50",
                   )}
                 >
