@@ -2639,6 +2639,7 @@
         "childKnowledgeRequired": "Choose at least one own knowledge item or use the set's knowledge.",
         "childrenMin": "A question set needs at least 2 sub-questions.",
         "childContentRequired": "Enter the sub-question text.",
+        "blankNumberStartInvalid": "Enter a whole number from 1 to 200.",
         "scoreValueInvalid": "Points must be a number of 0 or more.",
         "scoreNotIncreasing": "Points cannot be lower than the previous cell.",
         "scoreLastMismatch": "The last cell must equal the question points.",

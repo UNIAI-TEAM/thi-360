@@ -2639,6 +2639,7 @@
         "childKnowledgeRequired": "Chọn ít nhất một kiến thức riêng hoặc dùng kiến thức của bộ.",
         "childrenMin": "Câu chùm cần ít nhất 2 câu con.",
         "childContentRequired": "Nhập đề bài câu con.",
+        "blankNumberStartInvalid": "Nhập số nguyên từ 1 đến 200.",
         "scoreValueInvalid": "Điểm phải là số không âm.",
         "scoreNotIncreasing": "Điểm không được nhỏ hơn ô trước.",
         "scoreLastMismatch": "Ô cuối phải bằng điểm của câu.",
