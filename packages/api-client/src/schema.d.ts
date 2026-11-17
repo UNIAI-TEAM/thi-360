@@ -2066,10 +2066,25 @@ export interface components {
             /** Format: int64 */
             value?: number;
         };
+        AvailableQuestionsChildCondition: {
+            /** Format: int32 */
+            from?: number;
+            nodeIds?: string[];
+            /** Format: int32 */
+            to?: number;
+        };
         AvailableQuestionsCompetency: {
             code?: string;
             /** Format: int64 */
             value?: number;
+        };
+        AvailableQuestionsItemShape: {
+            /** Format: int32 */
+            leftItems?: number;
+            /** Format: int32 */
+            rightItems?: number;
+            /** Format: int32 */
+            statements?: number;
         };
         /** @description Phạm vi kiến thức có hiệu lực của nhóm */
         AvailableQuestionsKnowledgeScope: {
@@ -2079,10 +2094,13 @@ export interface components {
         };
         /** @description Bộ lọc nguồn câu hỏi của một nhóm */
         AvailableQuestionsQuery: {
+            answerFormats?: ("INTEGER" | "DECIMAL" | "FRACTION" | "TEXT" | "CHEM_FORMULA" | "CHEM_EQUATION")[];
             answerTypes?: ("SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY")[];
             /** @enum {string} */
             childAnswerType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+            childConditions?: components["schemas"]["AvailableQuestionsChildCondition"][];
             competencyCodes?: string[];
+            itemShape?: components["schemas"]["AvailableQuestionsItemShape"];
             knowledgeScope?: components["schemas"]["AvailableQuestionsKnowledgeScope"];
             /** @enum {string} */
             questionType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
@@ -2095,6 +2113,8 @@ export interface components {
             byAnswerType?: components["schemas"]["AvailableQuestionsAnswerType"][];
             byCompetency?: components["schemas"]["AvailableQuestionsCompetency"][];
             cells?: components["schemas"]["AvailableQuestionsCell"][];
+            /** Format: int64 */
+            commandCount?: number;
             /** Format: int64 */
             total?: number;
         };
@@ -3330,6 +3350,8 @@ export interface components {
         };
         Draft: {
             acceptedAnswers?: string[];
+            /** @enum {string} */
+            answerFormat?: "INTEGER" | "DECIMAL" | "FRACTION" | "TEXT" | "CHEM_FORMULA" | "CHEM_EQUATION";
             body?: components["schemas"]["ClozeBody"] | components["schemas"]["EssayBody"] | components["schemas"]["MatchingBody"] | components["schemas"]["MultipleChoiceBody"] | components["schemas"]["QuestionSetBody"] | components["schemas"]["ShortAnswerBody"] | components["schemas"]["SingleChoiceBody"] | components["schemas"]["TrueFalseBody"];
             commonMistakes?: string[];
             content?: string;
@@ -5395,6 +5417,8 @@ export interface components {
         ShortAnswerBody: {
             type: "ShortAnswerBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
+            /** @enum {string} */
+            answerFormat?: "INTEGER" | "DECIMAL" | "FRACTION" | "TEXT" | "CHEM_FORMULA" | "CHEM_EQUATION";
             answers?: string[];
             inputHint?: string;
             /** @enum {string} */
