@@ -392,7 +392,7 @@ Trình soạn và khung xem nội dung HTML (UNI-2617, mở rộng ở UNI-2638)
 
 #### 5.15.3 Hộp Ký hiệu và đơn vị
 
-Lưới `SymbolGrid` theo nhóm, ô tìm theo tên vi/en, hộp không đóng sau mỗi lần bấm (bản vẽ `SoanThaoKyHieu`).
+Ô tìm ở đầu hộp, rồi các nhóm `SymbolGrid` theo thứ tự bản vẽ: Dùng gần đây (chỉ khi đã dùng), Chữ Hy Lạp, Toán tử và quan hệ, Mũi tên, Đơn vị đo, Sinh học, Phiên âm IPA; mỗi nút 40×40 có `aria-label` là tên ký hiệu ở ngôn ngữ đang dùng. Ô tìm không phân biệt hoa/thường và dấu, khớp tên ở cả tiếng Việt lẫn tiếng Anh ("omega", "độ C", "mũi tên") và chính ký tự; khi đang tìm chỉ hiện nhóm còn ký hiệu khớp, không có thì hiện "Không có ký hiệu nào khớp". Bấm ký hiệu chèn chữ Unicode thường vào con trỏ (thay vùng chọn chữ; đang chọn một node thì chèn sau node đó); đơn vị m/s², W/m² và mục sinh học F₁, F₂, Xᴬ, Xᵃ chèn bằng `sup`/`sub` thật, chữ gõ tiếp sau đó không thừa kế chỉ số. Hộp không đóng và không lấy focus khỏi hộp sau mỗi lần bấm; nút Đóng ở chân hộp. Dùng gần đây lưu id ký hiệu (danh sách `symbols`, theo người dùng). Ký hiệu là chữ thường nên không có khung "đang chọn" và không mở lại (bản vẽ `SoanThaoKyHieu`).
 
 #### 5.15.4 Hộp Bảng số liệu
 
