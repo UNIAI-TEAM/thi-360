@@ -1,6 +1,7 @@
 package vn.unicom.thi360.questionbank.domain;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -18,22 +19,26 @@ import org.jsoup.safety.Safelist;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetResolver;
 
 /**
- * Lọc HTML nội dung câu hỏi theo danh sách cho phép của spec mục 4.2 (plan B6: jsoup).
+ * Lọc HTML nội dung câu hỏi theo danh sách cho phép (spec mục 4.2, mở rộng theo spec
+ * 2026-11-17 mục 3). Hai lượt: <b>danh sách phẳng</b> (thẻ, thuộc tính, giá trị đóng) rồi
+ * <b>lượt theo phần tử</b> cho luật cấu trúc của spec 3.3 mà danh sách phẳng không diễn đạt
+ * được (quan hệ cha/con, số và thứ tự con, thuộc tính theo ngữ cảnh).
  *
- * <p>Quy tắc: các thẻ {@code p, br, strong, em, u, s, sub, sup, ul, ol, li, table, thead, tbody,
- * tr, th, td, span, img}; {@code td}/{@code th} thêm {@code colspan, rowspan}; {@code span} chỉ
- * nhận {@code class} là {@code math-inline} hoặc {@code math-block}; {@code img} nhận
- * {@code src, alt, width, height, data-asset-id} và phải trỏ tới tài nguyên của hệ thống.
+ * <p>Danh sách phẳng: thẻ {@code p, br, strong, em, u, s, sub, sup, ul, ol, li, table, thead,
+ * tbody, tr, th, td, span, img, figure, figcaption, blockquote, footer, cite}; thuộc tính theo
+ * {@link #attributeAllowed} (giá trị đóng của {@code class}, {@code scope}, {@code data-*}).
  * Không cho {@code style}, {@code script}, thuộc tính sự kiện {@code on*}, liên kết ngoài
- * (kể cả {@code javascript:}).
+ * (kể cả {@code javascript:}). Lượt cấu trúc: {@link #checkStructure} — vi phạm thì bỏ phần
+ * tử (cả khối {@code figure}/{@code blockquote}) và báo theo thẻ, hoặc thẻ + thuộc tính khi
+ * sai/thiếu giá trị; con của phần tử đã báo không báo tiếp.
  *
  * <p>{@link #clean(String)} trả kết quả gồm HTML đã lọc và danh sách phần bị bỏ/sửa; lời gọi
  * quyết định theo spec: nội dung không đổi thì lưu như cũ, có phần bị bỏ thì 422
  * {@code QUESTION_CONTENT_UNSAFE}. Phần {@code src} của {@code img} luôn được viết lại từ
  * {@code data-asset-id} qua {@link QuestionAssetResolver}: thiếu id hoặc id không tra được là
  * lỗi; {@code src} đầu vào khác đường phục vụ thật bị loại và báo. Với
- * {@link #clean(String, boolean)} truyền {@code allowImages=false} thì mọi {@code img} là vi
- * phạm và bị loại (nội dung chỉ chữ, ví dụ hướng dẫn làm bài của spec 5.2).
+ * {@link #clean(String, boolean)} truyền {@code allowImages=false} thì mọi {@code img} và cả
+ * {@code figure class="image"} là vi phạm và bị loại (nội dung chỉ chữ).
  */
 public class QuestionHtmlSanitizer {
 
@@ -70,34 +75,50 @@ public class QuestionHtmlSanitizer {
     private static final Set<String> ALLOWED_TAGS = Set.of(
         "p", "br", "strong", "em", "u", "s", "sub", "sup",
         "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
-        "span", "img");
+        "span", "img", "figure", "figcaption", "blockquote", "footer", "cite");
 
     private static final Set<String> ALLOWED_TAGS_NO_IMG = Set.of(
         "p", "br", "strong", "em", "u", "s", "sub", "sup",
         "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
-        "span");
+        "span", "figure", "figcaption", "blockquote", "footer", "cite");
 
     private static final Safelist SAFELIST = safelist(true);
 
     private static final Safelist SAFELIST_NO_IMG = safelist(false);
 
     private static Safelist safelist(boolean allowImages) {
+        // Thuộc tính mở rộng vẫn qua attributeAllowed: Safelist chỉ giới hạn tên.
         Safelist safelist = Safelist.none()
             .addTags(
                 "p", "br", "strong", "em", "u", "s", "sub", "sup",
                 "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
-                "span")
-            .addAttributes("span", "class")
-            .addAttributes("td", "colspan", "rowspan")
-            .addAttributes("th", "colspan", "rowspan");
+                "span", "figure", "figcaption", "blockquote", "footer", "cite")
+            .addAttributes("span", "class", "data-blank")
+            .addAttributes("u", "data-label")
+            .addAttributes("p", "class")
+            .addAttributes("td", "colspan", "rowspan", "class")
+            .addAttributes("th", "colspan", "rowspan", "scope")
+            .addAttributes("figure", "class", "data-width", "data-zoom")
+            .addAttributes("blockquote", "class", "data-kind", "data-line-numbers");
         if (allowImages) {
             safelist.addTags("img")
                 .addAttributes("img", "src", "alt", "width", "height", "data-asset-id");
         }
         return safelist;
     }
-
     private static final Set<String> MATH_CLASSES = Set.of("math-inline", "math-block");
+    private static final Set<String> SPAN_CLASSES = Set.of("math-inline", "math-block", "blank");
+    private static final Set<String> P_CLASSES = Set.of("figure-note", "figure-source");
+    private static final Set<String> FIGURE_CLASSES = Set.of("data-table", "image", "cross");
+    private static final Set<String> FIGURE_WIDTHS = Set.of("small", "medium", "full");
+    private static final Set<String> FIGURE_ZOOM = Set.of("true", "false");
+    private static final Set<String> QUOTE_KINDS = Set.of("poem", "prose", "source");
+    private static final Set<String> QUOTE_LINE_NUMBERS = Set.of("0", "5");
+    private static final Set<String> TH_SCOPES = Set.of("col", "row");
+    /** Nội dung phân tử được phép trong ô của bảng số liệu và sơ đồ lai (spec 3.2). */
+    private static final Set<String> FIGURE_CELL_INLINE = Set.of(
+        "strong", "em", "sub", "sup", "br");
+
 
     private final QuestionAssetResolver assetResolver;
 
@@ -141,7 +162,8 @@ public class QuestionHtmlSanitizer {
         clean.outputSettings(new Document.OutputSettings().prettyPrint(false));
         stripDisallowed(clean);
         rewriteImages(clean, violations);
-        return new Result(clean.body().html(), violations);
+        checkStructure(clean.body(), violations, allowImages);
+        return new Result(clean.body().html(), dedup(violations));
     }
 
     /** Chữ thuần của một đoạn HTML (để dựng {@code content_text} và kiểm tra rỗng). */
@@ -244,10 +266,17 @@ public class QuestionHtmlSanitizer {
             }
         }
     }
+    /**
+     * Danh sách phẳng về thuộc tính (dùng bởi {@link #inspect} và {@link #stripDisallowed}):
+     * chỉ trả {@code true} khi tên thuộc tính thuộc thẻ <i>và</i> giá trị nằm trong danh sách
+     * đóng của nó. Thuộc tính đúng-tên-nhưng-sai-chỗ ({@code data-width} trên figure không
+     * phải ảnh, {@code data-line-numbers} khác 0 khi không thơ) do lượt cấu trúc xử lý.
+     */
     private boolean attributeAllowed(String tag, String name, String value) {
         if (name.startsWith("on") || name.equals("style")) {
             return false;
         }
+        String v = value == null ? "" : value.trim();
         switch (tag) {
             case "img":
                 return switch (name) {
@@ -256,12 +285,52 @@ public class QuestionHtmlSanitizer {
                     default -> false;
                 };
             case "span":
-                return name.equals("class") && MATH_CLASSES.contains(value.trim());
+                return switch (name) {
+                    case "class" -> SPAN_CLASSES.contains(v);
+                    case "data-blank" -> isBlankNumber(v);
+                    default -> false;
+                };
+            case "u":
+                return name.equals("data-label") && v.matches("[A-H]");
+            case "p":
+                return name.equals("class") && P_CLASSES.contains(v);
             case "td":
+                return switch (name) {
+                    case "colspan", "rowspan" -> true;
+                    case "class" -> v.equals("num");
+                    default -> false;
+                };
             case "th":
-                return name.equals("colspan") || name.equals("rowspan");
+                return switch (name) {
+                    case "colspan", "rowspan" -> true;
+                    case "scope" -> TH_SCOPES.contains(v);
+                    default -> false;
+                };
+            case "figure":
+                return switch (name) {
+                    case "class" -> FIGURE_CLASSES.contains(v);
+                    case "data-width" -> FIGURE_WIDTHS.contains(v);
+                    case "data-zoom" -> FIGURE_ZOOM.contains(v);
+                    default -> false;
+                };
+            case "blockquote":
+                return switch (name) {
+                    case "class" -> v.equals("quote");
+                    case "data-kind" -> QUOTE_KINDS.contains(v);
+                    case "data-line-numbers" -> QUOTE_LINE_NUMBERS.contains(v);
+                    default -> false;
+                };
             default:
                 return false;
+        }
+    }
+
+    private static boolean isBlankNumber(String value) {
+        try {
+            int n = Integer.parseInt(value);
+            return n >= 1 && n <= 20;
+        } catch (NumberFormatException e) {
+            return false;
         }
     }
 
@@ -272,6 +341,252 @@ public class QuestionHtmlSanitizer {
     private boolean isSafeInternalSrc(String value) {
         String trimmed = value.trim();
         return trimmed.startsWith("/") && !trimmed.startsWith("//");
+    }
+
+    // ---------------------------------------------------------------- luật cấu trúc (spec 3.3)
+
+    /**
+     * Duyệt cây <b>đã lọc</b> và áp các luật cấu trúc: phần tử vi phạm bị bỏ ({@code figure}
+     * và {@code blockquote} bỏ cả khối, phần tử khác được mở bọc giữ chữ) và không báo tiếp con
+     * của nó. Báo thẻ kèm thuộc tính khi sai/thiếu giá trị, chỉ thẻ khi sai cấu trúc.
+     */
+    private void checkStructure(Element parent, List<Violation> violations, boolean allowImages) {
+        for (Element el : new ArrayList<>(parent.children())) {
+            if (structuralViolation(el, violations, allowImages)) {
+                continue; // con của phần tử đã báo không được kiểm tiếp
+            }
+            checkStructure(el, violations, allowImages);
+        }
+    }
+
+    /**
+     * {@code true} khi {@code el} vi phạm một luật cấu trúc (đã báo và đã bỏ/mở bọc);
+     * {@code false} nghĩa là phần tử hợp lệ và duyệt tiếp con của nó.
+     */
+    private boolean structuralViolation(Element el, List<Violation> violations, boolean allowImages) {
+        switch (el.tagName().toLowerCase(Locale.ROOT)) {
+            case "figure":
+                return checkFigure(el, violations, allowImages);
+            case "blockquote":
+                return checkQuote(el, violations);
+            case "figcaption":
+                if (el.parent() == null || !el.parent().tagName().equals("figure")) {
+                    return drop(el, violations, "figcaption", null, false);
+                }
+                return false;
+            case "footer":
+                if (el.parent() == null || !el.parent().tagName().equals("blockquote")
+                        || !"quote".equals(el.parent().attr("class").trim())) {
+                    return drop(el, violations, "footer", null, false);
+                }
+                return false;
+            case "cite":
+                if (el.parent() == null || !el.parent().tagName().equals("footer")) {
+                    return drop(el, violations, "cite", null, false);
+                }
+                return false;
+            case "p": {
+                String cls = el.attr("class").trim();
+                if (P_CLASSES.contains(cls)
+                        && (el.parent() == null || !(el.parent().tagName().equals("figure")
+                                || el.parent().tagName().equals("blockquote")))) {
+                    return drop(el, violations, "p", "class", false);
+                }
+                return false;
+            }
+            case "span": {
+                String cls = el.attr("class").trim();
+                if ("math-block".equals(cls) && !isTopLevel(el)) {
+                    // Công thức khối chỉ ở cấp đầu (spec 3.1).
+                    return drop(el, violations, "span", null, false);
+                }
+                if (isBlankSpan(el)) {
+                    if (!el.hasAttr("data-blank")) {
+                        return drop(el, violations, "span", "data-blank", false);
+                    }
+                    if (!el.children().isEmpty()) {
+                        return drop(el, violations, "span", null, false);
+                    }
+                }
+                return false;
+            }
+            case "td":
+            case "th": {
+                // Ô của bảng trong figure chỉ chứa chữ + phân tử inline (spec 3.2).
+                if (el.closest("figure") != null) {
+                    for (Element child : el.children()) {
+                        String tag = child.tagName();
+                        if (tag.equals("span") && child.hasClass("math-inline")) {
+                            continue;
+                        }
+                        if (!FIGURE_CELL_INLINE.contains(tag)) {
+                            drop(child, violations, tag, null, false);
+                        }
+                    }
+                }
+                return false;
+            }
+            default:
+                return false;
+        }
+    }
+
+    private static boolean isBlankSpan(Element el) {
+        return "blank".equals(el.attr("class").trim()) || el.hasAttr("data-blank");
+    }
+
+    private static boolean isTopLevel(Element el) {
+        return el.parent() != null && el.parent().tagName().equals("body");
+    }
+
+    /**
+     * {@code figure} chỉ có {@code class} ∈ {@code {data-table, image, cross}}, nằm ở cấp đầu,
+     * và con trực tiếp đúng dãy của loại (spec 3.3). {@code data-width}/{@code data-zoom}
+     * bắt buộc và chỉ có ở {@code figure.image}; lọc không ảnh thì {@code figure.image} là
+     * vi phạm.
+     */
+    private boolean checkFigure(Element el, List<Violation> violations, boolean allowImages) {
+        String cls = el.attr("class").trim();
+        if (!FIGURE_CLASSES.contains(cls)) {
+            return drop(el, violations, "figure", "class", true);
+        }
+        if (!"image".equals(cls) && (el.hasAttr("data-width") || el.hasAttr("data-zoom"))) {
+            return drop(el, violations, "figure",
+                    el.hasAttr("data-width") ? "data-width" : "data-zoom", true);
+        }
+        if ("image".equals(cls)) {
+            if (!allowImages) {
+                return drop(el, violations, "figure", null, true);
+            }
+            if (el.attr("data-width").isBlank()) {
+                return drop(el, violations, "figure", "data-width", true);
+            }
+            if (el.attr("data-zoom").isBlank()) {
+                return drop(el, violations, "figure", "data-zoom", true);
+            }
+        }
+        if (!isTopLevel(el)) {
+            return drop(el, violations, "figure", null, true);
+        }
+        List<Element> children = el.children();
+        return switch (cls) {
+            case "image" -> {
+                int i = 0;
+                boolean ok = children.size() >= 1 && children.get(i).tagName().equals("img");
+                if (ok) {
+                    i++;
+                    if (i < children.size() && children.get(i).tagName().equals("figcaption")) {
+                        i++;
+                    }
+                    if (i < children.size() && isPWithClass(children.get(i), "figure-source")) {
+                        i++;
+                    }
+                    ok = i == children.size() && !hasStrayText(el);
+                }
+                yield ok ? false : drop(el, violations, "figure", null, true);
+            }
+            case "data-table" -> {
+                int i = 0;
+                if (i < children.size() && children.get(i).tagName().equals("figcaption")) {
+                    i++;
+                }
+                boolean ok = i < children.size() && children.get(i).tagName().equals("table");
+                if (ok) {
+                    i++;
+                    if (i < children.size() && isPWithClass(children.get(i), "figure-note")) {
+                        i++;
+                    }
+                    if (i < children.size() && isPWithClass(children.get(i), "figure-source")) {
+                        i++;
+                    }
+                    ok = i == children.size() && !hasStrayText(el);
+                }
+                yield ok ? false : drop(el, violations, "figure", null, true);
+            }
+            default -> { // cross
+                boolean ok = children.size() == 1
+                        && children.get(0).tagName().equals("table")
+                        && !hasStrayText(el);
+                yield ok ? false : drop(el, violations, "figure", null, true);
+            }
+        };
+    }
+
+    /**
+     * {@code blockquote} chỉ {@code class="quote"}, {@code data-kind} ∈ {poem, prose, source},
+     * {@code data-line-numbers} ∈ {0, 5} (khác 0 chỉ khi poem), ở cấp đầu; con là một hay
+     * nhiều {@code p}, rồi tùy chọn {@code footer} và {@code p.figure-source}.
+     */
+    private boolean checkQuote(Element el, List<Violation> violations) {
+        if (!"quote".equals(el.attr("class").trim())) {
+            return drop(el, violations, "blockquote", "class", true);
+        }
+        String kind = el.attr("data-kind");
+        if (kind.isBlank()) {
+            return drop(el, violations, "blockquote", "data-kind", true);
+        }
+        String lineNumbers = el.attr("data-line-numbers");
+        if (lineNumbers.isBlank() || (!"0".equals(lineNumbers) && !"poem".equals(kind))) {
+            return drop(el, violations, "blockquote", "data-line-numbers", true);
+        }
+        if (!isTopLevel(el)) {
+            return drop(el, violations, "blockquote", null, true);
+        }
+        List<Element> children = el.children();
+        int i = 0;
+        while (i < children.size() && children.get(i).tagName().equals("p")) {
+            i++;
+        }
+        boolean ok = i >= 1;
+        if (i < children.size() && children.get(i).tagName().equals("footer")) {
+            i++;
+        }
+        if (i < children.size() && isPWithClass(children.get(i), "figure-source")) {
+            i++;
+        }
+        ok = ok && i == children.size() && !hasStrayText(el);
+        return ok ? false : drop(el, violations, "blockquote", null, true);
+    }
+
+    private static boolean isPWithClass(Element el, String cls) {
+        return el.tagName().equals("p") && cls.equals(el.attr("class").trim());
+    }
+
+    private static boolean hasStrayText(Element el) {
+        for (Node node : el.childNodes()) {
+            if (node instanceof TextNode text && !text.isBlank()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Báo vi phạm và bỏ phần tử: {@code whole} (figure/blockquote) bỏ cả khối, còn lại mở
+     * bọc để giữ phần chữ con. Trả {@code true} để vòng duyệt không đi tiếp vào con.
+     */
+    private static boolean drop(
+            Element el, List<Violation> violations, String tag, String attribute, boolean whole) {
+        violations.add(attribute == null ? Violation.tag(tag)
+                : Violation.attribute(tag, attribute, null));
+        if (whole) {
+            el.remove();
+        } else {
+            el.unwrap();
+        }
+        return true;
+    }
+
+    /** Gộp vi phạm trùng (thẻ, thuộc tính) — mỗi vi phạm báo một lần (spec 3.3). */
+    private static List<Violation> dedup(List<Violation> violations) {
+        List<Violation> result = new ArrayList<>(violations.size());
+        Set<String> seen = new HashSet<>();
+        for (Violation v : violations) {
+            if (seen.add(v.tag() + " " + (v.attribute() == null ? "" : v.attribute()))) {
+                result.add(v);
+            }
+        }
+        return result;
     }
 
 }
