@@ -3909,12 +3909,39 @@
         "wholeExam": "Whole exam"
       },
       "leave": {
+        "change": {
+          "blockAdded": "Added group {name} to {subject}.",
+          "blockCount": "{name}: questions {from} → {to}.",
+          "blockRemoved": "Removed group {name} from {subject}.",
+          "blockRenamed": "Renamed group {from} to {to}.",
+          "blockSettings": "{name}: group settings changed.",
+          "empty": "not set",
+          "partNumber": {
+            "durationMinutes": "{part}: duration {from} → {to}.",
+            "maxPoints": "{part}: maximum points {from} → {to}.",
+            "questionCount": "{part}: questions {from} → {to}.",
+            "questionCountOnPaper": "{part}: questions on paper {from} → {to}.",
+            "questionCountRequired": "{part}: questions to answer {from} → {to}."
+          },
+          "partRenamed": "Renamed part {from} to {to}.",
+          "partSettings": "{part}: part settings changed.",
+          "sectionCount": "{subject}: questions {from} → {to}.",
+          "sectionSettings": "{subject}: subject targets changed."
+        },
+        "changesIntro": "Unsaved changes:",
+        "changesMore": "and {count, plural, one {# more change} other {# more changes}}.",
         "close": "Close",
-        "description": "The structure has unsaved changes. Save and continue, discard them to go back to the last saved version, or stay to keep editing.",
+        "destination": {
+          "general": "You are going back to General information.",
+          "item": "You are switching to {name}.",
+          "page": "You are leaving the exam editor.",
+          "tab": "You are switching to the {tab} tab."
+        },
         "discard": "Discard changes",
         "saveAndGo": "Save and continue",
         "stay": "Stay",
-        "title": "You have unsaved changes"
+        "title": "Save changes to {name}?",
+        "titleGeneric": "Save changes?"
       },
       "list": {
         "blockCount": "{count, plural, one {# question} other {# questions}}",

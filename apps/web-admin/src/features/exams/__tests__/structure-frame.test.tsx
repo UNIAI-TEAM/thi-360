@@ -39,7 +39,7 @@ function openStructure(examId: string, search = "") {
 }
 
 const list = () => screen.findByRole("navigation", { name: "Cấu trúc" });
-const dialogName = "Còn thay đổi chưa lưu";
+const dialogName = "Lưu thay đổi của Phần 1 · Toán học?";
 
 /* ---------- dữ liệu dựng tay cho các phép thử thuần ---------- */
 
@@ -245,6 +245,12 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     );
   });
 
+  it("tên mục đang mở ở tiêu đề, đích đến ở câu đầu, danh sách ghi thay đổi", async () => {
+    const { dialog } = await makeDirty();
+    expect(within(dialog).getByText("Bạn đang chuyển sang Phần 2 · Ngữ văn. Còn thay đổi chưa lưu:")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("structure-leave-changes")).toHaveTextContent("Phần 1 · Toán học: điểm tối đa chưa đặt → 50.");
+  });
+
   it("Ở lại: đóng hộp thoại, vẫn ở mục cũ và giữ giá trị đã sửa", async () => {
     const { user, dialog } = await makeDirty();
     await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
@@ -292,6 +298,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
     await user.click(screen.getByRole("link", { name: "Sửa thông tin tổng quan" }));
     const dialog = await screen.findByRole("dialog", { name: dialogName });
+    expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));

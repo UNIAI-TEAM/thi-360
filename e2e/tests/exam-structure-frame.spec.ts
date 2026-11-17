@@ -30,7 +30,7 @@ test("sửa phần rồi chuyển phần: hộp thoại ba nút, Bỏ thay đổ
 
   // Chuyển sang Phần 2: hộp thoại ba nút.
   await parts.nth(1).click();
-  const dialog = page.getByRole("dialog", { name: "Còn thay đổi chưa lưu" });
+  const dialog = page.getByRole("dialog", { name: /^Lưu thay đổi của/ });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Ở lại" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Lưu và chuyển" })).toBeVisible();

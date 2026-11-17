@@ -10,7 +10,7 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { yearsNeedConfirmation } from "../check";
-import { examTabHref } from "../editor-tabs";
+import { examTabFromPathname, examTabHref } from "../editor-tabs";
 import { combinationsForKind } from "../create-exam-schema";
 import type { MatrixAxes } from "../matrix";
 import { useExam, useExamStructure, useExamStructureSummary, useExamTemplates, useUpdateExamStructure } from "../queries";
@@ -49,7 +49,8 @@ import {
 } from "./exam-structure-draft";
 import { ExamEditorActions } from "./exam-editor-actions";
 import { optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
-import { ExamStructureLeaveDialog } from "./exam-structure-leave-dialog";
+import { describeStructureChanges } from "./exam-structure-changes";
+import { ExamStructureLeaveDialog, type LeaveDestination } from "./exam-structure-leave-dialog";
 import { ExamStructureList } from "./exam-structure-list";
 import { ExamStructurePartPanel } from "./exam-structure-part-panel";
 import { ExamStructureSubjectPanel } from "./exam-structure-subject-panel";
@@ -356,6 +357,36 @@ function StructureEditor({
     proceedLeave();
   };
 
+  /** Tên môn hoặc phần của một mục để gọi trong hộp thoại chuyển mục; nhóm gọi theo tên nhóm. */
+  const selectionName = (parts: readonly ExamPart[], target: StructureSelection, scope: boolean): string | null => {
+    if (target.kind === "part") return parts.find((part) => part.id === target.partId)?.name ?? null;
+    if (target.kind === "option") {
+      const option = parts.find((part) => part.id === target.partId)?.options.find((item) => item.id === target.optionId);
+      return option ? optionLabel(option, names) : null;
+    }
+    if (target.kind === "section") {
+      const found = findSection(parts, target.sectionId);
+      return found ? lookup.subject(found.section.subjectCode) : null;
+    }
+    const found = findBlock(parts, target.blockId);
+    if (!found) return null;
+    return scope ? lookup.subject(found.section.subjectCode) : found.block.name || t("block.untitled");
+  };
+  const leaveItemName = leaveOpen && current ? selectionName(draft, current, true) : null;
+  const leaveDestination: LeaveDestination = (() => {
+    if (pendingSelection) return { kind: "item", name: selectionName(draft, pendingSelection, false) ?? "" };
+    const href = guard.pendingHref;
+    const base = `/exams/${encodeURIComponent(exam.id)}`;
+    const path = href?.split(/[?#]/)[0] ?? "";
+    if (path !== base && !path.startsWith(`${base}/`)) return { kind: "page" };
+    const tab = examTabFromPathname(path);
+    return tab === "general" ? { kind: "general" } : { kind: "tab", tab: examsT(`editor.tabs.${tab}`) };
+  })();
+  const leaveChanges = useMemo(
+    () => (leaveOpen ? describeStructureChanges(JSON.parse(baseline) as ExamPart[], draft, lookup.subject) : []),
+    [leaveOpen, baseline, draft, lookup],
+  );
+
   const blockContext = current?.kind === "block" ? findBlock(draft, current.blockId) : null;
   const sectionContext = current?.kind === "section" ? findSection(draft, current.sectionId) : null;
   const selectedPart =
@@ -623,6 +654,9 @@ function StructureEditor({
         open={leaveOpen}
         saving={save.isPending}
         error={leaveError}
+        itemName={leaveItemName}
+        destination={leaveDestination}
+        changes={leaveChanges}
         onSaveAndGo={leaveAfterSave}
         onDiscard={leaveAfterDiscard}
         onStay={stayHere}

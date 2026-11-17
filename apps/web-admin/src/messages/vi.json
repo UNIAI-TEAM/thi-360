@@ -3909,12 +3909,39 @@
         "wholeExam": "Cả bài"
       },
       "leave": {
+        "change": {
+          "blockAdded": "Thêm nhóm {name} vào {subject}.",
+          "blockCount": "{name}: số câu {from} → {to}.",
+          "blockRemoved": "Xóa nhóm {name} khỏi {subject}.",
+          "blockRenamed": "Đổi tên nhóm {from} thành {to}.",
+          "blockSettings": "{name}: đổi cấu hình nhóm.",
+          "empty": "chưa đặt",
+          "partNumber": {
+            "durationMinutes": "{part}: thời lượng {from} → {to}.",
+            "maxPoints": "{part}: điểm tối đa {from} → {to}.",
+            "questionCount": "{part}: số câu {from} → {to}.",
+            "questionCountOnPaper": "{part}: số câu trên đề {from} → {to}.",
+            "questionCountRequired": "{part}: số câu phải làm {from} → {to}."
+          },
+          "partRenamed": "Đổi tên phần {from} thành {to}.",
+          "partSettings": "{part}: đổi thiết lập phần.",
+          "sectionCount": "{subject}: số câu {from} → {to}.",
+          "sectionSettings": "{subject}: đổi chỉ tiêu cấp môn."
+        },
+        "changesIntro": "Còn thay đổi chưa lưu:",
+        "changesMore": "và {count, number} thay đổi khác.",
         "close": "Đóng",
-        "description": "Cấu trúc có thay đổi chưa lưu. Lưu rồi chuyển, bỏ thay đổi để quay về lần lưu gần nhất, hoặc ở lại để sửa tiếp.",
+        "destination": {
+          "general": "Bạn đang quay lại Thông tin chung.",
+          "item": "Bạn đang chuyển sang {name}.",
+          "page": "Bạn đang rời trang soạn bài thi.",
+          "tab": "Bạn đang chuyển sang tab {tab}."
+        },
         "discard": "Bỏ thay đổi",
         "saveAndGo": "Lưu và chuyển",
         "stay": "Ở lại",
-        "title": "Còn thay đổi chưa lưu"
+        "title": "Lưu thay đổi của {name}?",
+        "titleGeneric": "Lưu thay đổi?"
       },
       "list": {
         "blockCount": "{count, number} câu",
