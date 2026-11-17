@@ -5,6 +5,8 @@ import type { Editor } from "@tiptap/core";
 import en from "@/messages/en.json";
 import type * as QuestionsApi from "@/features/questions/api";
 import { renderWithProviders } from "@/test/render";
+import { INSERT_REGISTRY } from "../insert/registry";
+import { StubDialog } from "../insert/shared/stub-dialog";
 import { RichTextEditor } from "../rich-text-editor";
 
 vi.mock("@/features/questions/api", async (importOriginal) => {
@@ -131,12 +133,21 @@ describe("RichTextEditor toolbar", () => {
 
   it("opens the interim stub dialog for a registry entry without a real dialog", async () => {
     const user = userEvent.setup();
-    renderEditor();
-    await user.click(screen.getByRole("button", { name: "Symbols and units" }));
-    expect(await screen.findByRole("dialog")).toBeTruthy();
-    expect(await screen.findByText("Work in progress")).toBeTruthy();
-    await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Mục `symbols` đã có hộp thật (ED-2): giả lập mục chưa có hộp bằng cách trả hộp tạm từ `load`.
+    const symbols = INSERT_REGISTRY.find((entry) => entry.id === "symbols")!;
+    const spy = vi.spyOn(symbols, "load").mockResolvedValue({
+      default: ({ open, onOpenChange }) => <StubDialog open={open} onOpenChange={onOpenChange} title="Symbols and units" />,
+    });
+    try {
+      renderEditor();
+      await user.click(screen.getByRole("button", { name: "Symbols and units" }));
+      expect(await screen.findByRole("dialog")).toBeTruthy();
+      expect(await screen.findByText("Work in progress")).toBeTruthy();
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("calls onRichPaste with the raw clipboardData before sanitizing, and skips default paste on true", async () => {
