@@ -5,12 +5,16 @@ import { BLANK_NODE } from "./names";
  * Chỗ trống đánh số `<span class="blank" data-blank="n">` (spec 3.2, E8): inline atom,
  * `data-blank` là thứ tự câu con (1–20); số hiển thị khi dựng = `blankNumberStart` + n − 1.
  */
-export const Blank = Node.create<Record<string, never>>({
+export const Blank = Node.create<{ blankNumberStart: number }>({
   name: BLANK_NODE,
   group: "inline",
   inline: true,
   atom: true,
   selectable: true,
+
+  addOptions() {
+    return { blankNumberStart: 1 };
+  },
 
   addAttributes() {
     return {
@@ -34,10 +38,11 @@ export const Blank = Node.create<Record<string, never>>({
   },
 
   addNodeView() {
+    const { blankNumberStart } = this.options;
     return ({ node }) => {
       const dom = document.createElement("span");
       dom.className = "blank rich-text-blank";
-      dom.textContent = `(${node.attrs.blank}) ____`;
+      dom.textContent = `(${blankNumberStart + Number(node.attrs.blank) - 1}) ____`;
       return { dom };
     };
   },

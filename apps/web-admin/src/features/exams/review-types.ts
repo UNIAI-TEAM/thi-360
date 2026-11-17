@@ -340,6 +340,8 @@ export type PreviewItem =
       version: number | null;
       simulated: boolean;
       passage: string | null;
+      /** Số bắt đầu đánh chỗ trống của ngữ liệu (spec UNI-2638 mục 3.4, 5); thiếu: 1. */
+      blankNumberStart?: number;
       children: PreviewQuestion[];
     };
 

@@ -12,7 +12,7 @@ import type { ContentReference, QuestionType } from "@/features/content/types";
 import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { applyServerFieldErrors, serverErrorKey } from "../editor-field-errors";
-import { emptyEditorValues, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
+import { emptyEditorValues, parseBlankNumberStart, toEditorValues, toSaveRequest, type QuestionEditorValues } from "../editor-form";
 import { useCreateQuestion, useUpdateQuestion } from "../editor-queries";
 import { useUiLocale } from "../use-ui-locale";
 import { questionEditorSchema } from "../editor-schema";
@@ -280,6 +280,8 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
   const key = type === "QUESTION_SET" ? "passage" : type === "TRUE_FALSE" ? "sharedContent" : "content";
   const hintKey = CONTENT_HINT_KEY[type];
   const titleId = `${formId}-content-title`;
+  const { control } = useFormContext<QuestionEditorValues>();
+  const blankStart = useWatch({ control, name: "body.blankNumberStart" });
   return (
     <EditorSection title={t(`contentTitle.${key}`)} titleId={titleId} required>
       <div className="flex flex-col gap-1.5">
@@ -293,6 +295,7 @@ function ContentSection({ formId, type }: { formId: string; type: QuestionType }
           fieldContext={
             type === "QUESTION_SET" ? "set-passage" : type === "SINGLE_CHOICE" ? "stem-single-choice" : "default"
           }
+          blankNumberStart={type === "QUESTION_SET" ? parseBlankNumberStart(blankStart ?? "1") : undefined}
         />
         {!error && (
           <p id={`${formId}-content-hint`} className="text-caption text-text-muted">

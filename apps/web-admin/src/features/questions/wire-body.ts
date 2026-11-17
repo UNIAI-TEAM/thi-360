@@ -47,7 +47,7 @@ export type WireBody =
       passage?: string | null;
       blanks?: { id?: string | null; answers?: string[] | null; points?: number | null }[] | null;
     }
-  | { type: "QUESTION_SET"; passage?: string | null; children?: WireChild[] | null }
+  | { type: "QUESTION_SET"; passage?: string | null; blankNumberStart?: number | null; children?: WireChild[] | null }
   | {
       type: "TRUE_FALSE";
       statements?:
@@ -114,6 +114,7 @@ export function fromWireBody(wire: WireBody, childIds: readonly string[] = []): 
       return {
         type: "QUESTION_SET",
         passage: wire.passage ?? "",
+        blankNumberStart: wire.blankNumberStart ?? 1,
         childIds: childIds.length > 0 ? [...childIds] : (wire.children ?? []).flatMap((child) => (child.id ? [child.id] : [])),
       };
     case "TRUE_FALSE":
@@ -182,7 +183,12 @@ export function toWireBody(
   ids: ChildClassificationIds,
 ): WireBody {
   if (body.type === "QUESTION_SET") {
-    return { type: "QUESTION_SET", passage: body.passage, children: children.map((child) => toWireChild(child, ids)) };
+    return {
+      type: "QUESTION_SET",
+      passage: body.passage,
+      blankNumberStart: body.blankNumberStart,
+      children: children.map((child) => toWireChild(child, ids)),
+    };
   }
   return body;
 }

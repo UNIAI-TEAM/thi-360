@@ -2496,7 +2496,13 @@
         "add": "Thêm phương án",
         "added": "Đã thêm phương án {letter}.",
         "removed": "Đã xóa phương án {letter}.",
-        "moved": "Đã chuyển phương án {letter} tới vị trí {position}."
+        "moved": "Đã chuyển phương án {letter} tới vị trí {position}.",
+        "autoLabel": "Phương án tự lấy theo các cụm gạch chân",
+        "fromPhrase": "theo cụm gạch chân",
+        "autoMissing": "Chưa có cụm gạch chân cho phương án {letters}.",
+        "autoExtra": "Cụm gạch chân {labels} chưa có phương án.",
+        "autoMoveLocked": "Phương án đang theo cụm gạch chân. Tắt tự lấy phương án để đổi thứ tự.",
+        "autoRemoveLocked": "Phương án đang theo cụm gạch chân. Tắt tự lấy phương án để xóa phương án này."
       },
       "statements": {
         "hint": "Mỗi ý phải được đánh dấu Đúng hoặc Sai. Cần ít nhất 2 ý.",
@@ -2605,6 +2611,22 @@
           "backToInherit": "Dùng kiến thức của bộ",
           "inheritedAnnounce": "Câu con dùng lại kiến thức của bộ.",
           "knowledgeApplied": "Đã chọn {count, number} kiến thức riêng."
+        },
+        "blanks": {
+          "child": "Câu con {number}",
+          "columnAnswer": "Đáp án",
+          "columnBlank": "Chỗ trống",
+          "columnChild": "Câu con",
+          "columnEdit": "Sửa",
+          "duplicate": "Trùng số",
+          "edit": "Sửa câu con {number}",
+          "empty": "Ngữ liệu chưa có chỗ trống. Bấm Chỗ trống trên thanh công cụ của ô ngữ liệu để chèn.",
+          "noChild": "Không có câu con {number}",
+          "startHint": "Chỗ trống thứ n hiện số Đánh số từ + n − 1 (1–200).",
+          "startLabel": "Đánh số từ",
+          "title": "Chỗ trống và câu con",
+          "updated": "Số chỗ trống trong ngữ liệu đã được đánh lại theo thứ tự câu con.",
+          "without": "Câu con chưa có chỗ trống: {numbers}."
         }
       },
       "errors": {
@@ -2639,6 +2661,7 @@
         "childKnowledgeRequired": "Chọn ít nhất một kiến thức riêng hoặc dùng kiến thức của bộ.",
         "childrenMin": "Câu chùm cần ít nhất 2 câu con.",
         "childContentRequired": "Nhập đề bài câu con.",
+        "blankNumberStartInvalid": "Nhập số nguyên từ 1 đến 200.",
         "scoreValueInvalid": "Điểm phải là số không âm.",
         "scoreNotIncreasing": "Điểm không được nhỏ hơn ô trước.",
         "scoreLastMismatch": "Ô cuối phải bằng điểm của câu.",
@@ -2826,6 +2849,11 @@
         "POINTS_INVALID": "Điểm chưa hợp lệ: cần lớn hơn 0 và không quá 4 chữ số thập phân.",
         "MATH_UNBALANCED": "Công thức chưa đóng đủ dấu.",
         "CATALOG_VALUE_UNKNOWN": "Có giá trị phân loại không có trong danh mục hoặc đã ngừng.",
+        "BLANK_CHILD_MISMATCH": "Có chỗ trống trỏ tới câu con không tồn tại, hoặc hai chỗ trống cùng số.",
+        "BLANK_OUTSIDE_SET_PASSAGE": "Chỗ trống đánh số chỉ được đặt trong ngữ liệu của câu chùm.",
+        "UNDERLINE_LABEL_DUPLICATE": "Hai cụm gạch chân dùng cùng một nhãn.",
+        "UNDERLINE_LABEL_MISPLACED": "Gạch chân đánh nhãn chỉ dùng ở đề bài câu Trắc nghiệm 1 đáp án.",
+        "IMAGE_ALT_MISSING": "Có hình chưa có mô tả thay thế (cảnh báo, không chặn Sẵn sàng).",
         "READINESS_OTHER": "Chưa đạt điều kiện kiểm tra ({value})."
       },
       "childIssue": "Câu con {child, number}: {issue}",
@@ -5346,6 +5374,16 @@
       }
     },
     "insertDialog": {
+      "blank": {
+        "apply": "Chèn chỗ trống",
+        "change": "Đổi câu con",
+        "childOption": "Câu con {number} · {type}",
+        "childrenLegend": "Câu con gắn với chỗ trống",
+        "needChild": "Thêm câu con trước: chưa còn câu con nào chưa có chỗ trống.",
+        "newTarget": "Chỗ trống mới gắn với {child}.",
+        "preview": "Hiện trong ngữ liệu",
+        "remove": "Xóa chỗ trống"
+      },
       "cancel": "Hủy",
       "close": "Đóng",
       "image": {
@@ -5601,6 +5639,23 @@
         "unitLabel": "Đơn vị",
         "unmerge": "Tách ô",
         "update": "Cập nhật bảng"
+      },
+      "underline-label": {
+        "allUsed": "Đã dùng hết nhãn A–H.",
+        "apply": "Gạch chân",
+        "labelLegend": "Nhãn",
+        "labelUsed": "{label}, đã dùng ở cụm khác",
+        "nextHint": "Nhãn kế tiếp chưa dùng: {label}",
+        "panel": {
+          "relabel": "Đổi nhãn",
+          "remove": "Bỏ gạch chân",
+          "title": "Cụm đang chọn: nhãn {label}"
+        },
+        "phrase": "Cụm đang chọn",
+        "phraseEmpty": "Bôi đen một cụm chữ trong đề bài rồi bấm lại.",
+        "phraseMultiBlock": "Chọn cụm trong một đoạn văn.",
+        "relabel": "Đổi nhãn",
+        "remove": "Bỏ gạch chân"
       }
     },
     "insertLoadError": "Không tải được hộp chèn. Kiểm tra kết nối rồi thử lại.",

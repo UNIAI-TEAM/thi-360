@@ -12,7 +12,7 @@ import { useRichEditorRegistry } from "./question-editor-shared";
 const EDITABLE = '[contenteditable="true"]';
 
 /** TipTap dựng vùng soạn sau lần render đầu: chưa có thì chờ nó xuất hiện (tối đa 1 giây) rồi mới focus. */
-function focusEditable(root: HTMLElement) {
+export function focusEditable(root: HTMLElement) {
   const ready = root.querySelector<HTMLElement>(EDITABLE);
   if (ready) {
     ready.focus();
@@ -37,6 +37,7 @@ export function RichTextField({
   id,
   placeholder,
   fieldContext,
+  blankNumberStart,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledby,
   "aria-describedby": ariaDescribedby,
@@ -48,6 +49,8 @@ export function RichTextField({
   placeholder?: string;
   /** Ngữ cảnh của ô (đề bài trắc nghiệm 1 đáp án, ngữ liệu câu chùm…): lọc mục Chèn (spec 4.1). */
   fieldContext?: FieldContext;
+  /** Ngữ liệu câu chùm: số bắt đầu đánh chỗ trống (spec 3.4). */
+  blankNumberStart?: number;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   "aria-describedby"?: string;
@@ -80,6 +83,7 @@ export function RichTextField({
           <RichTextEditor
             handleRef={registerHandle}
             fieldContext={fieldContext}
+            blankNumberStart={blankNumberStart}
             id={id}
             value={typeof field.value === "string" ? field.value : ""}
             onChange={field.onChange}

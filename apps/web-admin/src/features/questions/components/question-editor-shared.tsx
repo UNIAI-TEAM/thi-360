@@ -129,11 +129,15 @@ export function statementLetter(index: number): string {
   return String.fromCharCode(97 + (index % 26));
 }
 
-/** Lên, xuống, xóa của một dòng; nút bị khóa (đầu/cuối danh sách) vẫn focus được và tooltip nêu lý do. */
+/**
+ * Lên, xuống, xóa của một dòng; nút bị khóa (đầu/cuối danh sách, hoặc `locked` do bên gọi) vẫn focus được và tooltip nêu
+ * lý do.
+ */
 export function RowActions({
   index,
   count,
   name,
+  locked,
   onMove,
   onRemove,
 }: {
@@ -141,27 +145,38 @@ export function RowActions({
   count: number;
   /** Tên dòng để ghép vào nhãn, ví dụ "phương án A". */
   name: string;
+  /** Lý do bên gọi khóa từng nút (ví dụ phương án đang lấy theo cụm gạch chân); không có thì nút theo vị trí. */
+  locked?: { up?: string; down?: string; remove?: string };
   onMove: (from: number, to: number) => void;
   onRemove: () => void;
 }) {
   const t = useTranslations("questions.editor.rows");
+  const upReason = index === 0 ? t("alreadyFirst") : locked?.up;
+  const downReason = index === count - 1 ? t("alreadyLast") : locked?.down;
   return (
     <div className="flex shrink-0 items-center">
       <IconButton
         aria-label={t("moveUp", { name })}
         icon={<ArrowUp />}
-        disabled={index === 0}
-        tooltip={index === 0 ? t("alreadyFirst") : undefined}
+        disabled={upReason !== undefined}
+        tooltip={upReason}
         onClick={() => onMove(index, index - 1)}
       />
       <IconButton
         aria-label={t("moveDown", { name })}
         icon={<ArrowDown />}
-        disabled={index === count - 1}
-        tooltip={index === count - 1 ? t("alreadyLast") : undefined}
+        disabled={downReason !== undefined}
+        tooltip={downReason}
         onClick={() => onMove(index, index + 1)}
       />
-      <IconButton tone="danger" aria-label={t("remove", { name })} icon={<Trash2 />} onClick={onRemove} />
+      <IconButton
+        tone="danger"
+        aria-label={t("remove", { name })}
+        icon={<Trash2 />}
+        disabled={locked?.remove !== undefined}
+        tooltip={locked?.remove}
+        onClick={onRemove}
+      />
     </div>
   );
 }

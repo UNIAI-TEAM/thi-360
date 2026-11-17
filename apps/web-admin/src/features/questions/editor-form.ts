@@ -79,6 +79,8 @@ export interface EditorBody {
   wordLimit: string;
   /** Trả lời ngắn: hướng dẫn nhập cho học viên. */
   inputHint: string;
+  /** Câu chùm: số bắt đầu đánh chỗ trống của ngữ liệu (chuỗi như ô nhập; 1–200, mặc định "1"); dạng khác không dùng. */
+  blankNumberStart: string;
 }
 
 export interface EditorChild {
@@ -129,6 +131,23 @@ export function countBlankMarkers(content: string): number {
   return content.split(BLANK_MARKER).length - 1;
 }
 
+/** Khoảng hợp lệ của `blankNumberStart` (spec UNI-2638 mục 3.4). */
+export const BLANK_NUMBER_START_MIN = 1;
+export const BLANK_NUMBER_START_MAX = 200;
+
+/** Ô "Đánh số từ" là số nguyên 1–200 không? */
+export function isBlankNumberStart(value: string): boolean {
+  const text = value.trim();
+  if (!/^\d{1,3}$/.test(text)) return false;
+  const number = Number(text);
+  return number >= BLANK_NUMBER_START_MIN && number <= BLANK_NUMBER_START_MAX;
+}
+
+/** Giá trị gửi lên: ô hợp lệ thì lấy, không thì 1 (kiểm tra đã chặn lúc lưu). */
+export function parseBlankNumberStart(value: string): number {
+  return isBlankNumberStart(value) ? Number(value.trim()) : BLANK_NUMBER_START_MIN;
+}
+
 /** Điểm mặc định của câu đơn và câu con (UniNote PBI-03 mục 4.1). */
 export const DEFAULT_POINTS = 1;
 
@@ -137,6 +156,11 @@ let rowSequence = 0;
 export function draftRowId(prefix: string): string {
   rowSequence += 1;
   return `new-${prefix}-${rowSequence}`;
+}
+
+/** Id này là id tạm của dòng chưa lưu (từ `draftRowId`)? */
+export function isDraftRowId(id: string): boolean {
+  return id.startsWith("new-");
 }
 
 export function emptyOption(): EditorOption {
@@ -190,6 +214,7 @@ export function emptyBody(type: QuestionType, locale: AppLocale = "vi"): EditorB
     sampleAnswer: "",
     wordLimit: "",
     inputHint: "",
+    blankNumberStart: "1",
   };
 }
 
@@ -314,7 +339,7 @@ export function bodyToEditor(body: QuestionBody, locale: AppLocale = "vi"): Edit
       };
     }
     case "QUESTION_SET":
-      return base;
+      return { ...base, blankNumberStart: String(body.blankNumberStart) };
     case "ESSAY":
       return {
         ...base,
@@ -449,7 +474,7 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
         reuseRight: body.reuseRight,
       };
     case "QUESTION_SET":
-      return { type, passage: trimmed(content), childIds: [] };
+      return { type, passage: trimmed(content), blankNumberStart: parseBlankNumberStart(body.blankNumberStart), childIds: [] };
     case "ESSAY": {
       const wordLimit = Number.parseInt(body.wordLimit.trim(), 10);
       return {
