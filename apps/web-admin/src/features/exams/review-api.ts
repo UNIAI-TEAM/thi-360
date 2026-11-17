@@ -387,7 +387,6 @@ const INVALID_REASONS: Record<string, true> = {
 const PREVIEW_CHECK_CODES: Record<string, true> = {
   NO_DUPLICATES: true,
   SETS_INTACT: true,
-  FIXED_BLOCK_ORDER: true,
   TOTAL_POINTS: true,
 };
 const VERSION_STATES: Record<string, true> = { WORKING: true, SERVING: true, RETIRED: true };

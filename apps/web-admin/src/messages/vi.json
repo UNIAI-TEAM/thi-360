@@ -4427,8 +4427,9 @@
         "note": "Ghi chú",
         "partMeta": "{count, number} câu{hasMinutes, select, yes { · {minutes, number} phút} other {}}{hasPoints, select, yes { · {points, number} điểm} other {}}",
         "section": "{subject} · {count, number} câu",
-        "block": "{name} · {type} · {count, number} câu · {mode, select, COMBINED {ma trận kết hợp} other {ma trận riêng}}{manual, select, yes { · chấm tay} other {}}",
-        "common": "Phần chung"
+        "block": "{name}{hasType, select, yes { · {type}} other {}} · {count, number} câu · {mode, select, COMBINED {ma trận kết hợp} other {ma trận riêng}}{manual, select, yes { · chấm tay} other {}}",
+        "common": "Phần chung",
+        "subjectChoice": "Chọn môn"
       }
     },
     "editor": {
@@ -4594,7 +4595,6 @@
         "name": {
           "NO_DUPLICATES": "Không lặp câu hoặc phiên bản của cùng câu",
           "SETS_INTACT": "Bộ câu hỏi lấy nguyên bộ, câu con liền nhau",
-          "FIXED_BLOCK_ORDER": "Thứ tự khối Tiếng Anh giữ cố định",
           "TOTAL_POINTS": "Tổng điểm {value, number}"
         },
         "status": {

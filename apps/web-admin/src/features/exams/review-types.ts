@@ -386,7 +386,7 @@ export interface PreviewPart {
   blocks: PreviewBlock[];
 }
 
-export type PreviewCheckCode = "NO_DUPLICATES" | "SETS_INTACT" | "FIXED_BLOCK_ORDER" | "TOTAL_POINTS";
+export type PreviewCheckCode = "NO_DUPLICATES" | "SETS_INTACT" | "TOTAL_POINTS";
 
 export interface PreviewCheck {
   code: PreviewCheckCode;

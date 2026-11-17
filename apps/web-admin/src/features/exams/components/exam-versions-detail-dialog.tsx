@@ -54,7 +54,9 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
       ? (option.name ?? option.code)
       : option.kind === "COMBINATION"
         ? `${option.code} · ${option.name ?? nameOf(option.kind, option.code)}`
-        : nameOf(option.kind, option.code);
+        : option.kind === "SUBJECT_CHOICE"
+          ? (option.name ?? t("detail.subjectChoice"))
+          : nameOf(option.kind, option.code);
   return (
     <div className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1 scroll-shadows-y">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-subtle px-3.5 py-3 text-body">
@@ -132,6 +134,7 @@ function SectionList({ sections }: { sections: ExamSection[] }) {
                   {t("block", {
                     name: block.name,
                     type: block.questionType ? types(block.questionType) : "",
+                    hasType: block.questionType ? "yes" : "no",
                     count: block.questionCount ?? 0,
                     mode: block.matrix?.mode ?? "COMBINED",
                     manual: block.questionType === "ESSAY" ? "yes" : "no",

@@ -4427,8 +4427,9 @@
         "note": "Note",
         "partMeta": "{count, plural, one {# question} other {# questions}}{hasMinutes, select, yes { · {minutes, plural, one {# minute} other {# minutes}}} other {}}{hasPoints, select, yes { · {points, plural, one {# point} other {# points}}} other {}}",
         "section": "{subject} · {count, plural, one {# question} other {# questions}}",
-        "block": "{name} · {type} · {count, plural, one {# question} other {# questions}} · {mode, select, COMBINED {combined matrix} other {separate matrix}}{manual, select, yes { · manual grading} other {}}",
-        "common": "Common"
+        "block": "{name}{hasType, select, yes { · {type}} other {}} · {count, plural, one {# question} other {# questions}} · {mode, select, COMBINED {combined matrix} other {separate matrix}}{manual, select, yes { · manual grading} other {}}",
+        "common": "Common",
+        "subjectChoice": "Subject pick"
       }
     },
     "editor": {
@@ -4594,7 +4595,6 @@
         "name": {
           "NO_DUPLICATES": "No repeated question or version of the same question",
           "SETS_INTACT": "Question sets taken whole, sub-questions consecutive",
-          "FIXED_BLOCK_ORDER": "English block order kept fixed",
           "TOTAL_POINTS": "Total score {value, number}"
         },
         "status": {
