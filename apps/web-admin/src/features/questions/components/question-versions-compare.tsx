@@ -80,14 +80,18 @@ export function QuestionVersionsCompare({ before, after }: { before: QuestionVer
         ) : (
           t("none")
         );
-      case "body":
+      case "body": {
+        const body = change[side];
+        // Ngữ liệu câu chùm: dựng bằng RichTextView để chỗ trống hiện số theo `blankNumberStart` của từng bên (ED-4 V-F4).
+        if (body.type === "QUESTION_SET") return <RichTextView html={body.passage} blankNumberStart={blankNumberStartOf(body)} />;
         return (
           <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-            {describeBody(change[side], tBody).map((line, index) => (
+            {describeBody(body, tBody).map((line, index) => (
               <li key={index}>{line}</li>
             ))}
           </ul>
         );
+      }
       case "children":
         return change[side].length ? (
           <ol className="m-0 flex list-none flex-col gap-0.5 p-0">

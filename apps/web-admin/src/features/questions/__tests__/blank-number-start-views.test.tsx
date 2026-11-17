@@ -41,6 +41,33 @@ function set(blankNumberStart: number): QuestionDetail {
   };
 }
 
+function makeVersion(version: number, content: string, blankNumberStart: number, passage = "<p>Plain</p>"): QuestionVersion {
+  const question = set(blankNumberStart);
+  return {
+    version,
+    state: "SUPERSEDED",
+    savedAt: "2026-11-17T00:00:00Z",
+    savedBy: { id: "u1", name: "A" } as QuestionVersion["savedBy"],
+    attemptCount: 0,
+    snapshot: {
+      subjectCode: question.subjectCode,
+      gradeCode: question.gradeCode,
+      difficultyCode: question.difficultyCode,
+      competencyCode: question.competencyCode,
+      taskTypeCode: question.taskTypeCode,
+      points: question.points,
+      knowledge: question.knowledge,
+      tagCodes: question.tagCodes,
+      content,
+      body: { ...(question.body as Extract<QuestionDetail["body"], { type: "QUESTION_SET" }>), passage, blankNumberStart },
+      solution: question.solution,
+      commonMistakes: question.commonMistakes,
+      attachmentIds: question.attachmentIds,
+      children: question.children,
+    },
+  };
+}
+
 describe("số chỗ trống theo blankNumberStart ở mọi nơi dựng ngữ liệu (ED-VG F1)", () => {
   it("chi tiết câu hỏi và hộp xem phiên bản (QuestionBodyView)", async () => {
     renderEn(<QuestionBodyView question={set(21)} />);
@@ -54,36 +81,18 @@ describe("số chỗ trống theo blankNumberStart ở mọi nơi dựng ngữ l
   });
 
   it("so sánh phiên bản dựng ngữ liệu của từng bên theo số bắt đầu của bên đó", async () => {
-    const make = (version: number, content: string, blankNumberStart: number): QuestionVersion => {
-      const question = set(blankNumberStart);
-      return {
-        version,
-        state: "SUPERSEDED",
-        savedAt: "2026-11-17T00:00:00Z",
-        savedBy: { id: "u1", name: "A" } as QuestionVersion["savedBy"],
-        attemptCount: 0,
-        snapshot: {
-          subjectCode: question.subjectCode,
-          gradeCode: question.gradeCode,
-          difficultyCode: question.difficultyCode,
-          competencyCode: question.competencyCode,
-          taskTypeCode: question.taskTypeCode,
-          points: question.points,
-          knowledge: question.knowledge,
-          tagCodes: question.tagCodes,
-          content,
-          body: { ...(question.body as Extract<QuestionDetail["body"], { type: "QUESTION_SET" }>), blankNumberStart },
-          solution: question.solution,
-          commonMistakes: question.commonMistakes,
-          attachmentIds: question.attachmentIds,
-          children: question.children,
-        },
-      };
-    };
-    renderEn(<QuestionVersionsCompare before={make(1, "<p>Cũ</p>", 1)} after={make(2, PASSAGE, 21)} />);
+    renderEn(<QuestionVersionsCompare before={makeVersion(1, "<p>Cũ</p>", 1)} after={makeVersion(2, PASSAGE, 21)} />);
     await waitFor(() => {
       const blanks = [...document.querySelectorAll(".blank")].map((node) => node.textContent);
       expect(blanks).toEqual(["(21) ____", "(22) ____"]);
+    });
+  });
+
+  it("so sánh phiên bản: ngữ liệu câu chùm đổi hiện chỗ trống đánh số theo số bắt đầu của từng bên (ED-4 V-F4)", async () => {
+    renderEn(<QuestionVersionsCompare before={makeVersion(1, "<p>Đề</p>", 1, PASSAGE.replace("Crutzen", "Other"))} after={makeVersion(2, "<p>Đề</p>", 21, PASSAGE)} />);
+    await waitFor(() => {
+      const blanks = [...document.querySelectorAll(".blank")].map((node) => node.textContent);
+      expect(blanks).toEqual(["(1) ____", "(2) ____", "(21) ____", "(22) ____"]);
     });
   });
 
