@@ -48,6 +48,8 @@ export interface RichTextExtensionsOptions {
   placeholder?: string;
   /** Dựng công thức trong chip soạn thảo; bỏ qua thì hiện mã LaTeX thô. */
   renderLatex?: (latex: string, displayMode: boolean, target: HTMLElement, options?: KatexOptions) => void;
+  /** Số bắt đầu của chỗ trống đánh số (spec 3.4): chỗ trống n hiện `blankNumberStart + n − 1`; mặc định 1. */
+  blankNumberStart?: number;
 }
 
 /**
@@ -56,7 +58,7 @@ export interface RichTextExtensionsOptions {
  * rồi nối vào mảng trả về.
  */
 export function createRichTextExtensions(options: RichTextExtensionsOptions = {}): AnyExtension[] {
-  const { allowImages = true, placeholder, renderLatex } = options;
+  const { allowImages = true, placeholder, renderLatex, blankNumberStart = 1 } = options;
   return [
     StarterKit.configure({
       // Document tùy biến nhận nhóm topLevel; schema chỉ gồm các thẻ của danh sách cho phép.
@@ -85,7 +87,7 @@ export function createRichTextExtensions(options: RichTextExtensionsOptions = {}
     CrossDiagram,
     Quote,
     UnderlineLabel,
-    Blank,
+    Blank.configure({ blankNumberStart }),
     HtmlSanitize.configure({ allowImages }),
   ];
 }

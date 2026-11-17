@@ -15,7 +15,7 @@ import { createRichTextExtensions } from "./extensions";
 import { MathInputRule } from "./extensions/math-input-rule";
 import { SlashMenu } from "./extensions/slash-menu";
 import { stripTrailingEmptyParagraph } from "./html-contract";
-import { INSERT_REGISTRY, registryEditorPlugins, toolbarInsertEntries, type FieldContext, type InsertDialogModule, type InsertEntry } from "./insert/registry";
+import { INSERT_REGISTRY, registryEditorPlugins, slashMenuEntries, toolbarInsertEntries, type FieldContext, type InsertDialogModule, type InsertEntry } from "./insert/registry";
 import { hasUnbalancedMath, sanitizeQuestionHtml } from "./sanitize";
 import { RichTextToolbar } from "./toolbar/toolbar";
 import "./rich-text.css";
@@ -37,6 +37,8 @@ export interface RichTextEditorProps extends AriaAttributes {
   allowImages?: boolean;
   /** Ngữ cảnh của trường đang soạn (spec 4.1): quyết định mục Chèn nào hiện trên thanh công cụ. */
   fieldContext?: FieldContext;
+  /** Số bắt đầu đánh chỗ trống của ngữ liệu câu chùm (spec 3.4): chỗ trống n hiện `blankNumberStart + n − 1`; mặc định 1. Đổi số chỉ dựng lại hiển thị, không đổi HTML. */
+  blankNumberStart?: number;
   /**
    * Gọi khi dán, trước mọi xử lý của ProseMirror (kể cả bước lọc HTML `transformPastedHTML`), với `clipboardData` gốc
    * chưa lọc (spec 4.10, ED-5 dùng để bắt nội dung Word). Trả `true` thì trình soạn chặn dán mặc định: không lọc, không chèn gì.
@@ -154,6 +156,7 @@ export function RichTextEditor({
   onChange,
   allowImages = true,
   fieldContext = "default",
+  blankNumberStart = 1,
   onRichPaste,
   id,
   disabled = false,
@@ -167,8 +170,6 @@ export function RichTextEditor({
   const t = useTranslations("richText");
   const [dialogState, setDialogState] = useState<{ entry: InsertEntry; editing: unknown } | null>(null);
   const [dialogModule, setDialogModule] = useState<InsertDialogModule | null>(null);
-  const [imageUploading, setImageUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Ô soạn render lại theo mỗi phím gõ (qua `value`): chỉ quét công thức khi `value` đổi.
   const mathWarning = useMemo(() => typeof document !== "undefined" && hasUnbalancedMath(value ?? ""), [value]);
@@ -180,6 +181,10 @@ export function RichTextEditor({
   const onRichPasteRef = useRef(onRichPaste);
   // `handleDoubleClick` của TipTap chụp lúc tạo editor: đi qua ref để luôn gọi bản `openEntry` mới nhất.
   const openEntryRef = useRef<(entry: InsertEntry, editing: unknown) => void>(() => {});
+  // Menu `/` được dựng một lần cùng editor: mục (theo fieldContext), cách mở hộp và hàm dịch đi qua ref để luôn mới nhất.
+  const slashEntriesRef = useRef<InsertEntry[]>([]);
+  const slashSelectRef = useRef<(entry: InsertEntry) => void>(() => {});
+  const translateRef = useRef<(key: string) => string>((key) => key);
   // Chưa từng focus thì vùng soạn chưa có con trỏ do người dùng đặt: `insertText` chèn ở cuối thay vì đầu tài liệu.
   const hasFocusedRef = useRef(false);
   // HTML đã phát qua onChange: lọc lặp phát hiện (vòng đồng bộ, khởi tạo rỗng → "<p></p>").
@@ -198,6 +203,9 @@ export function RichTextEditor({
     uploadErrorRef.current = onImageUploadError;
     onRichPasteRef.current = onRichPaste;
     openEntryRef.current = openEntry;
+    slashEntriesRef.current = slashMenuEntries(fieldContext).filter((entry) => entry.id !== "image" || allowImages);
+    slashSelectRef.current = onToolbarEntry;
+    translateRef.current = (key) => t(key as never);
   });
 
   const insertEntries = useMemo(
@@ -237,8 +245,12 @@ export function RichTextEditor({
     {
       immediatelyRender: false,
       extensions: [
-        ...createRichTextExtensions({ allowImages, placeholder, renderLatex }),
-        SlashMenu,
+        ...createRichTextExtensions({ allowImages, placeholder, renderLatex, blankNumberStart }),
+        SlashMenu.configure({
+          getEntries: () => slashEntriesRef.current,
+          onSelect: (entry) => slashSelectRef.current(entry),
+          translate: (key) => translateRef.current(key),
+        }),
         MathInputRule,
         ...editorPlugins,
       ],
@@ -297,7 +309,7 @@ export function RichTextEditor({
       },
     },
     // placeholder của extension chỉ đọc lúc tạo; allowImages đổi schema lọc dán — dựng lại editor.
-    [allowImages, placeholder],
+    [allowImages, placeholder, blankNumberStart],
   );
 
   // Node/mark đang chọn khớp mục registry nào — cho khung "đang chọn" và `aria-pressed` của nút Chèn.
@@ -372,31 +384,9 @@ export function RichTextEditor({
     }
   }
 
-  async function insertImageFile(file: File) {
-    if (!editor) return;
-    setImageUploading(true);
-    try {
-      const asset = await uploadQuestionAsset(file, "IMAGE");
-      editor
-        .chain()
-        .focus()
-        .insertContent({ type: "image", attrs: { src: asset.url, alt: asset.fileName, dataAssetId: asset.id } })
-        .run();
-    } catch (error) {
-      onImageUploadError?.(error);
-    } finally {
-      setImageUploading(false);
-    }
-  }
-
-  // Tạm cho tới khi ED-3 (UNI-2643) có hộp Hình: nút Hình chọn tệp và tải lên thẳng như trước; đang chọn một hình
-  // của registry thì mở lại hộp của mục như mọi mục khác.
+  // Nút Hình mở hộp `insert/image` như mọi mục; đang chọn một hình thì mở lại hộp để sửa hình đó.
   function onToolbarEntry(entry: InsertEntry) {
     const reopening = selection?.entry.id === entry.id;
-    if (entry.id === "image" && !reopening) {
-      if (!imageUploading) fileInputRef.current?.click();
-      return;
-    }
     openEntry(entry, reopening ? selection.editing : null);
   }
 
@@ -445,21 +435,6 @@ export function RichTextEditor({
         selectedEntryId={selection?.entry.id ?? null}
         onOpenEntry={onToolbarEntry}
       />
-      {allowImages && (
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="sr-only"
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (file) void insertImageFile(file);
-          }}
-        />
-      )}
 
       {/* Khung "đang chọn" của mục registry khớp node/mark hiện tại (spec 4.1). */}
       {editor && SelectionPanel && selection && (

@@ -33,6 +33,7 @@ import {
   UNDERLINE_LABEL_MARK,
 } from "../extensions";
 import MathSelectionPanel from "./math/selection-panel";
+import UnderlineLabelSelectionPanel from "./underline-label/selection-panel";
 import { WordPendingMarks } from "./word/pending-marks";
 
 /** Ngữ cảnh của trường đang soạn (spec 3.3/4.1): quyết định mục chèn nào hiện. */
@@ -182,6 +183,7 @@ export const INSERT_REGISTRY: InsertEntry[] = [
     showIn: (fieldContext) => fieldContext === "stem-single-choice",
     load: () => import("./underline-label/dialog"),
     openForSelection: (target) => (target instanceof PMMark && target.type.name === UNDERLINE_LABEL_MARK ? true : null),
+    selectionPanel: UnderlineLabelSelectionPanel,
   },
   {
     id: "blank",

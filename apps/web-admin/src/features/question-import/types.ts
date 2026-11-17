@@ -216,6 +216,8 @@ export interface ImportQuestionDraft {
   type: QuestionType | null;
   /** Đề bài; với dòng ngữ liệu của câu chùm là ngữ liệu chung. */
   content: string;
+  /** Dòng ngữ liệu của câu chùm: số bắt đầu đánh chỗ trống (spec UNI-2638 mục 3.4); thiếu: 1. */
+  blankNumberStart?: number;
   options: ImportDraftOption[];
   statements: ImportDraftStatement[];
   /** Trả lời ngắn: đáp án chuẩn đứng đầu, sau là các đáp án được chấp nhận. */

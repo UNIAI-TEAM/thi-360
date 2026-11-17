@@ -1,4 +1,4 @@
-import { act, waitFor } from "@testing-library/react";
+import { act, fireEvent, waitFor } from "@testing-library/react";
 import { expect, vi } from "vitest";
 import type { Editor } from "@tiptap/react";
 import type { ReactElement } from "react";
@@ -17,6 +17,8 @@ export const fakeQuestions = withQuestionsServer();
 vi.setConfig({ testTimeout: 20_000 });
 // jsdom không có `elementFromPoint` mà ProseMirror gọi khi focus/cuộn tới con trỏ.
 if (typeof document.elementFromPoint !== "function") document.elementFromPoint = () => null;
+// Hộp công thức của các ô soạn HTML tải `mathlive` khi mở; jsdom không chạy được thư viện thật nên dùng bản giả (plan B4).
+vi.mock("mathlive", () => import("@/components/rich-text/__tests__/mathlive-mock").then((module) => module.mathliveModule));
 
 /** Dựng chung cho test của từng trình soạn dạng câu (`question-editor-<dạng>.test.tsx`). */
 
@@ -86,4 +88,19 @@ export function rich(element: HTMLElement) {
       await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
     },
   };
+}
+
+/**
+ * Dán một tệp ảnh thuần (không có `text/html`) vào vùng soạn: đường dán/thả ảnh của trình soạn tải ảnh lên thẳng, không
+ * qua hộp Hình (hộp chỉ mở từ nút Hình của thanh công cụ).
+ */
+export function pasteImageFile(target: HTMLElement, file: File) {
+  fireEvent.paste(target, {
+    clipboardData: {
+      getData: () => "",
+      types: ["Files"],
+      files: [file],
+      items: [{ kind: "file", type: file.type, getAsFile: () => file }],
+    },
+  });
 }

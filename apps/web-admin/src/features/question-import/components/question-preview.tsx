@@ -25,8 +25,18 @@ export interface QuestionPreviewProps {
 }
 
 /** Ô HTML có thể trống: trống hiện chữ thay thế thay vì khung rỗng. */
-function HtmlOrNone({ html, none, className }: { html: string | null | undefined; none: string; className: string }) {
-  return html ? <RichTextView html={html} className={className} /> : <div className={className}>{none}</div>;
+function HtmlOrNone({
+  html,
+  none,
+  className,
+  blankNumberStart,
+}: {
+  html: string | null | undefined;
+  none: string;
+  className: string;
+  blankNumberStart?: number;
+}) {
+  return html ? <RichTextView html={html} className={className} blankNumberStart={blankNumberStart} /> : <div className={className}>{none}</div>;
 }
 
 /** Xem trước một dòng như câu hỏi học viên sẽ thấy, kèm phân loại và lỗi của dòng (bản vẽ `NhapCauHoiKiemTra`). */
@@ -72,7 +82,12 @@ export function QuestionPreview({ row, rows, reference, headingRef, describe }: 
             {row.parentRowNumber !== null && (
               <p className="text-caption text-text-muted">{t("check.setChild", { row: row.parentRowNumber })}</p>
             )}
-            <HtmlOrNone html={draft.content} none={none} className="text-body wrap-anywhere text-text" />
+            <HtmlOrNone
+              html={draft.content}
+              none={none}
+              className="text-body wrap-anywhere text-text"
+              blankNumberStart={draft.blankNumberStart}
+            />
 
             {draft.options.length > 0 && (
               <ul aria-label={t("preview.optionsLabel")} className="flex flex-col gap-2">
