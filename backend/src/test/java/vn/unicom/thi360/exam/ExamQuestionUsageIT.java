@@ -62,7 +62,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Usage exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)", exam, exam.toString(), exam.toString());
         String json = """
                 {"parts":[{"id":"p","name":"Part","participation":{"mode":"CHOICE","choose":1},"sections":[
-                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"],"match":"ANY"},
+                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"]},
                    "blocks":[{"id":"inherited","name":"Inherited","questionType":"SINGLE_CHOICE"},
                              {"id":"wrong-type","name":"Wrong type","questionType":"SHORT_ANSWER"}]}],
                   "options":[{"id":"choice","code":"SCIENCE","name":"Science","kind":"SUBJECT_CHOICE",
@@ -73,7 +73,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         var document = new ExamStructureCodec(mapper).read(json);
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
         var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null,
-                code -> null, code -> null);
+                code -> null);
         refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
         UUID unrelatedExam = UUID.randomUUID();
         UUID unrelatedSubject = UUID.randomUUID();
@@ -82,7 +82,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')",
                 unrelatedExam, json);
         var unrelatedResolver = new ExamBlockRefProjector.CodeResolver(code -> unrelatedSubject, code -> null,
-                code -> null, code -> null, code -> null);
+                code -> null, code -> null);
         refs.saveAllAndFlush(projector.project(unrelatedExam, document.parts(), unrelatedResolver));
 
         var actual = provider.examUsagesOf(question);

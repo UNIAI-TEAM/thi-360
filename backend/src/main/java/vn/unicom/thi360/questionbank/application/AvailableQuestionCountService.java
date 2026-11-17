@@ -60,7 +60,7 @@ public class AvailableQuestionCountService {
         List<String> competencies = query.competencyCodes();
         if (competencies == null && scope != null) competencies = scope.competencyCodes();
         return new QuestionSourcePort.Filter(subjectId, groups, match, query.answerTypes(), query.questionType(),
-                query.taskTypeCode(), query.childAnswerType(), query.tagCodes(), competencies,
+                null, query.childAnswerType(), query.tagCodes(), competencies,
                 query.requiredPointsPerQuestion());
     }
 

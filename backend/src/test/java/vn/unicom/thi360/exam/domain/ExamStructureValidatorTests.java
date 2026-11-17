@@ -30,7 +30,8 @@ class ExamStructureValidatorTests {
 
     @Test
     void includeDescendantsIsRejected() {
-        KnowledgeScope removedField = new KnowledgeScope(List.of(UUID.randomUUID()), KnowledgeMatch.ANY, true, List.of());
+        KnowledgeScope removedField = new KnowledgeScope(List.of(UUID.randomUUID()), List.of());
+        removedField.captureLegacyField("includeDescendants", MAPPER.getNodeFactory().booleanNode(true));
         QuestionBlock block = new QuestionBlock("block", "single", QuestionType.SINGLE_CHOICE, 1,
                 null, null, removedField, null, null, null, null, false, null, List.of(), null);
         ExamSection section = new ExamSection("section", "MATH", 1, null, null, null,
@@ -91,7 +92,7 @@ class ExamStructureValidatorTests {
 
     @Test
     void jsonCodecRoundTripsB9Fields() {
-        KnowledgeScope scope = new KnowledgeScope(List.of(UUID.randomUUID()), KnowledgeMatch.ALL, null, List.of("VACT-TOAN"));
+        KnowledgeScope scope = new KnowledgeScope(List.of(UUID.randomUUID()), List.of("VACT-TOAN"));
         ExamSection section = new ExamSection("section", "MATH", 50, scope,
                 new AnswerQuotas(MatrixUnit.COUNT, List.of(new AnswerQuota(QuestionType.SINGLE_CHOICE, java.math.BigDecimal.valueOf(35)))),
                 null, null, List.of(new QuestionBlock("block", "single", null, null, null, null,

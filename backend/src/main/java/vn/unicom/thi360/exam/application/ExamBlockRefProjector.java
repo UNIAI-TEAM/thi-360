@@ -32,7 +32,6 @@ public class ExamBlockRefProjector {
 
     /** Resolver code → id giá trị danh mục (theo nhóm), null khi không có. */
     public record CodeResolver(Function<String, UUID> subjectByCode,
-                               Function<String, UUID> taskTypeByCode,
                                Function<String, UUID> competencyByCode,
                                Function<String, UUID> combinationByCode,
                                Function<String, UUID> tagByCode) {
@@ -57,11 +56,14 @@ public class ExamBlockRefProjector {
             for (ExamSection section : part.sections()) {
                 projectSections(examId, rows, resolver, subjectCache, partId, null, section);
             }
+            for (ExamSection section : part.subjectPool()) {
+                projectSections(examId, rows, resolver, subjectCache, partId, null, section);
+            }
             for (ExamPartOption option : part.options()) {
                 if (option == null) {
                     continue;
                 }
-                OptionCtx ctx = new OptionCtx(option.code(), optionCombination(option, resolver),
+                OptionCtx ctx = new OptionCtx(option.code(),
                         option.kind() == OptionKind.SUBJECT ? option.code() : null);
                 for (ExamSection section : option.sections()) {
                     projectSections(examId, rows, resolver, subjectCache, partId, ctx, section);
@@ -74,15 +76,7 @@ public class ExamBlockRefProjector {
         return rows;
     }
 
-    /** Option kind COMBINATION: {@code code} là mã tổ hợp trong nhóm SUBJECT_COMBINATION. */
-    private static UUID optionCombination(ExamPartOption option, CodeResolver resolver) {
-        if (option.kind() != OptionKind.COMBINATION || resolver.combinationByCode() == null) {
-            return null;
-        }
-        return resolver.combinationByCode().apply(option.code());
-    }
-
-    private record OptionCtx(String optionCode, UUID combinationItemId, String subjectCode) {
+    private record OptionCtx(String optionCode, String subjectCode) {
     }
 
     private void projectSections(UUID examId, List<ExamBlockRef> rows, CodeResolver resolver,
@@ -118,14 +112,13 @@ public class ExamBlockRefProjector {
                 resolveCached(subjectCache, resolver.subjectByCode(), subjectCode),
                 block.questionType() != null ? block.questionType().name() : null,
                 answerTypes(block, section),
-                resolve(resolver.taskTypeByCode(), block.taskTypeCode()),
                 knowledgeItemIds(scope),
                 knowledgeMode(scope),
                 inherited,
                 tagItemIds(block.tagCodes(), resolver),
                 competencyItemIds(scope, resolver),
                 block.requiredPointsPerQuestion(),
-                option == null ? null : option.combinationItemId()));
+                null));
     }
 
     /** Các dạng câu có trong khối: questionType + dạng con của bộ câu; khối chưa ghi → quota của section. */
@@ -155,7 +148,7 @@ public class ExamBlockRefProjector {
     }
 
     private static String knowledgeMode(KnowledgeScope scope) {
-        return scope == null || scope.match() == null ? null : scope.match().name();
+        return scope == null ? null : "ANY";
     }
 
     private static List<UUID> competencyItemIds(KnowledgeScope scope, CodeResolver resolver) {
@@ -216,6 +209,9 @@ public class ExamBlockRefProjector {
                 if (part == null) {
                     continue;
                 }
+                if (part.codeSource() != null) {
+                    combinationKeys.add(part.id());
+                }
                 if (part.questionCount() != null) {
                     questionCount += part.questionCount();
                 }
@@ -225,12 +221,15 @@ public class ExamBlockRefProjector {
                         hasEnglishOption = true;
                     }
                 }
+                for (ExamSection s : part.subjectPool()) {
+                    hasEssay |= hasEssay(s.blocks(), s);
+                    if ("ANH".equals(s.subjectCode())) {
+                        hasEnglishOption = true;
+                    }
+                }
                 for (ExamPartOption o : part.options()) {
                     if (o == null) {
                         continue;
-                    }
-                    if (o.kind() == OptionKind.COMBINATION) {
-                        combinationKeys.add(o.code() == null ? "" : o.code());
                     }
                     if (o.kind() == OptionKind.SUBJECT && "ANH".equals(o.code())) {
                         hasEnglishOption = true;

@@ -6,29 +6,47 @@ import java.util.List;
 import java.util.Set;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
+import vn.unicom.thi360.shared.api.FieldError;
 
 /** Type-level checks for PUT structure; completeness and feasibility belong to BE-5b. */
 public final class ExamStructureValidator {
     public static final int MAX_PATHS = 200;
+    public static final int DEFAULT_MAX_TOPIC_QUOTAS = 8;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
     private ExamStructureValidator() {
     }
 
     public static void validate(ExamStructureDocument document) {
+        validate(document, DEFAULT_MAX_TOPIC_QUOTAS);
+    }
+
+    public static void validate(ExamStructureDocument document, int maxTopicQuotas) {
         if (document == null) {
             invalid("structure", "structure is required");
+        }
+        if (maxTopicQuotas < 1) {
+            throw new IllegalArgumentException("maxTopicQuotas must be positive");
         }
         Set<String> ids = new HashSet<>();
         if (document.parts().size() > 10) {
             throw new BusinessRuleException("EXAM_PATH_LIMIT_EXCEEDED");
         }
+        Set<String> fixedSubjects = new HashSet<>();
         for (ExamPart part : document.parts()) {
             if (part == null) {
                 invalid("parts", "part must not be null");
             }
-            validatePart(part, ids);
+            for (ExamSection section : part.sections()) {
+                if (section != null) {
+                    fixedSubjects.add(section.subjectCode());
+                }
+            }
         }
+        for (ExamPart part : document.parts()) {
+            validatePart(part, ids, maxTopicQuotas, fixedSubjects);
+        }
+        validateExamQuotas(document.examQuotas());
         long paths = pathCount(document.parts());
         if (paths > MAX_PATHS) {
             throw new BusinessRuleException("EXAM_PATH_LIMIT_EXCEEDED");
@@ -41,15 +59,25 @@ public final class ExamStructureValidator {
         return pathCount(document.parts());
     }
 
-    private static void validatePart(ExamPart part, Set<String> ids) {
-        if (part == null) {
-            invalid("parts", "part must not be null");
-        }
+    private static void validatePart(ExamPart part, Set<String> ids, int maxTopicQuotas,
+            Set<String> fixedSubjects) {
         id(part.id(), "parts.id", ids);
         nonNegative(part.durationMinutes(), "parts.durationMinutes");
         nonNegative(part.questionCount(), "parts.questionCount");
         nonNegative(part.questionCountOnPaper(), "parts.questionCountOnPaper");
         nonNegative(part.questionCountRequired(), "parts.questionCountRequired");
+        if (part.codeSource() != null && !part.options().isEmpty()) {
+            invalid("parts.options", "a code-source part must not have options");
+        }
+        if (part.codeSource() == null && !part.subjectPool().isEmpty()) {
+            invalid("parts.subjectPool", "subjectPool requires codeSource");
+        }
+        for (ExamSection section : part.subjectPool()) {
+            validateSection(section, ids, maxTopicQuotas);
+            if (!fixedSubjects.add(section.subjectCode())) {
+                invalid("parts.subjectPool", "subjectPool subject is duplicated");
+            }
+        }
         if (part.participation() != null && part.participation().mode() == ParticipationMode.CHOICE) {
             if (part.participation().choose() == null || part.participation().choose() < 1) {
                 invalid("parts.participation.choose", "choice count must be positive");
@@ -60,12 +88,12 @@ public final class ExamStructureValidator {
         }
         int blockCount = 0;
         for (ExamSection section : part.sections()) {
-            validateSection(section, ids);
+            validateSection(section, ids, maxTopicQuotas);
             blockCount += section == null ? 0 : section.blocks().size();
         }
         int optionCount = 0;
         for (ExamPartOption option : part.options()) {
-            validateOption(option, ids);
+            validateOption(option, ids, maxTopicQuotas);
             optionCount++;
             if (option != null) {
                 blockCount += option.blocks().size();
@@ -83,7 +111,7 @@ public final class ExamStructureValidator {
         }
     }
 
-    private static void validateSection(ExamSection section, Set<String> ids) {
+    private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas) {
         if (section == null) {
             invalid("sections", "section must not be null");
         }
@@ -94,6 +122,7 @@ public final class ExamStructureValidator {
         nonNegative(section.questionCount(), "sections.questionCount");
         validateScope(section.knowledgeScope(), "sections.knowledgeScope");
         validateMatrix(section.matrix(), "sections.matrix");
+        validateTopicQuotas(section.topicQuotas(), "sections.topicQuotas", maxTopicQuotas);
         if (section.answerQuotas() != null) {
             for (AnswerQuota quota : section.answerQuotas().items()) {
                 if (quota == null || quota.answerType() == null || quota.value() == null
@@ -104,13 +133,13 @@ public final class ExamStructureValidator {
             }
         }
         for (QuestionBlock block : section.blocks()) {
-            validateBlock(block, ids);
+            validateBlock(block, ids, maxTopicQuotas);
         }
     }
 
-    private static void validateOption(ExamPartOption option, Set<String> ids) {
+    private static void validateOption(ExamPartOption option, Set<String> ids, int maxTopicQuotas) {
         if (option == null || option.kind() == null) {
-            invalid("options", "option kind is required");
+            invalid("options.kind", "option kind is invalid or unsupported");
         }
         id(option.id(), "options.id", ids);
         if (option.code() == null || option.code().isBlank()) {
@@ -137,14 +166,14 @@ public final class ExamStructureValidator {
             }
         }
         for (ExamSection section : option.sections()) {
-            validateSection(section, ids);
+            validateSection(section, ids, maxTopicQuotas);
         }
         for (QuestionBlock block : option.blocks()) {
-            validateBlock(block, ids);
+            validateBlock(block, ids, maxTopicQuotas);
         }
     }
 
-    private static void validateBlock(QuestionBlock block, Set<String> ids) {
+    private static void validateBlock(QuestionBlock block, Set<String> ids, int maxTopicQuotas) {
         if (block == null) {
             invalid("blocks", "block must not be null");
         }
@@ -160,17 +189,34 @@ public final class ExamStructureValidator {
         }
         validateScope(block.knowledgeScope(), "blocks.knowledgeScope");
         validateMatrix(block.matrix(), "blocks.matrix");
+        validateTopicQuotas(block.topicQuotas(), "blocks.topicQuotas", maxTopicQuotas);
+        if (!block.slots().isEmpty()) {
+            if (block.setCount() == null) {
+                invalid("blocks.slots.index", "slots require a question set");
+            }
+            for (BlockSlot slot : block.slots()) {
+                if (slot == null || slot.index() == null || slot.index() < 1
+                        || slot.index() > block.setCount()) {
+                    invalid("blocks.slots.index", "slot index must be between 1 and setCount");
+                }
+                if (slot.knowledgeScope() != null) {
+                    validateScope(slot.knowledgeScope(), "blocks.slots.knowledgeScope");
+                }
+            }
+        }
+        if (Boolean.TRUE.equals(block.omitted())
+                && block.questionType() != QuestionType.ESSAY
+                && block.childAnswerType() != QuestionType.ESSAY) {
+            invalid("blocks.omitted", "only ESSAY blocks may be omitted");
+        }
     }
 
     private static void validateScope(KnowledgeScope scope, String field) {
         if (scope == null) {
             return;
         }
-        if (scope.includeDescendants() != null) {
+        if (scope.hasLegacyFields()) {
             throw new BusinessRuleException("EXAM_STRUCTURE_INVALID");
-        }
-        if (scope.match() == null) {
-            invalid(field + ".match", "knowledge match is required");
         }
         if (scope.nodeIds().stream().anyMatch(id -> id == null)) {
             invalid(field + ".nodeIds", "knowledge node id must not be null");
@@ -184,10 +230,56 @@ public final class ExamStructureValidator {
         if (matrix.mode() == null || matrix.unit() == null) {
             invalid(field, "matrix mode and unit are required");
         }
+        if (matrix.mode() == MatrixMode.COMBINED
+                && effectiveEnforcement(matrix.gradeEnforcement())
+                        != effectiveEnforcement(matrix.difficultyEnforcement())) {
+            invalid(field, "combined matrix grade and difficulty enforcement must match");
+        }
         validateDimensionValues(matrix.cells(), field + ".cells", true, matrix.unit());
         validateDimensionValues(matrix.byGrade(), field + ".byGrade", false, matrix.unit());
         validateDimensionValues(matrix.byDifficulty(), field + ".byDifficulty", false, matrix.unit());
         validateDimensionValues(matrix.byCompetency(), field + ".byCompetency", false, matrix.unit());
+    }
+
+    private static QuotaEnforcement effectiveEnforcement(QuotaEnforcement enforcement) {
+        return enforcement == null ? QuotaEnforcement.REQUIRED : enforcement;
+    }
+
+    private static void validateTopicQuotas(List<TopicQuota> quotas, String field, int max) {
+        if (quotas.size() > max) {
+            throw new BusinessRuleException("EXAM_STRUCTURE_INVALID",
+                    "topic quota limit exceeded",
+                    List.of(new FieldError("topicQuotas", "MAX_TOPIC_QUOTAS", "Too many topic quotas")));
+        }
+        Set<String> ids = new HashSet<>();
+        for (TopicQuota quota : quotas) {
+            if (quota == null || quota.id() == null || !ids.add(quota.id())
+                    || quota.count() == null || quota.count() < 0
+                    || quota.basis() != null && quota.basis() != QuotaBasis.QUESTION) {
+                invalid(field, "topic quota is invalid");
+            }
+        }
+    }
+
+    private static void validateExamQuotas(List<ExamQuota> quotas) {
+        for (ExamQuota quota : quotas) {
+            if (quota == null || quota.dimension() == null || quota.basis() != QuotaBasis.QUESTION
+                    || quota.enforcement() == null) {
+                invalid("examQuotas", "exam quota is invalid");
+            }
+            if (quota.enforcement() == QuotaEnforcement.REQUIRED
+                    && quota.subjectCodes().size() != 1) {
+                throw new BusinessRuleException("EXAM_QUOTA_SCOPE_INVALID");
+            }
+            for (ExamQuota.Bucket bucket : quota.buckets()) {
+                if (bucket == null || bucket.codes().isEmpty()
+                        || bucket.count() != null && bucket.count() < 0
+                        || bucket.percent() != null
+                        && (bucket.percent().signum() < 0 || bucket.percent().compareTo(ONE_HUNDRED) > 0)) {
+                    invalid("examQuotas", "exam quota bucket is invalid");
+                }
+            }
+        }
     }
 
     private static void validateDimensionValues(List<?> values, String field, boolean cells,

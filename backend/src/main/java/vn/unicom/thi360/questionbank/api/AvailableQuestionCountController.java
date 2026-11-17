@@ -34,7 +34,7 @@ public class AvailableQuestionCountController {
     @Schema(name = "AvailableQuestionsQuery", description = "Bộ lọc nguồn câu hỏi của một nhóm")
     public record Query(@NotBlank String subjectCode, QuestionType questionType,
                         List<QuestionType> answerTypes, QuestionType childAnswerType,
-                        KnowledgeScope knowledgeScope, String taskTypeCode, List<String> tagCodes,
+                        KnowledgeScope knowledgeScope, List<String> tagCodes,
                         List<String> competencyCodes, BigDecimal requiredPointsPerQuestion) {}
 
     @Schema(name = "AvailableQuestionsSubjectQuery", description = "Các nhóm nguồn của một môn")

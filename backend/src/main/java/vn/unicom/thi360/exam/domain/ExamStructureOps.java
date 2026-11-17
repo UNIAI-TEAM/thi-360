@@ -31,7 +31,7 @@ public final class ExamStructureOps {
         for (ExamPart part : doc.parts()) {
             parts.add(mapPart(part, regenerate));
         }
-        return new ExamStructureDocument(parts);
+        return new ExamStructureDocument(parts, doc.examQuotas());
     }
 
     private static String id(String current, boolean regenerate) {
@@ -47,14 +47,18 @@ public final class ExamStructureOps {
         for (ExamSection s : part.sections()) {
             sections.add(mapSection(s, regenerate));
         }
+        List<ExamSection> subjectPool = new ArrayList<>();
+        for (ExamSection s : part.subjectPool()) {
+            subjectPool.add(mapSection(s, regenerate));
+        }
         List<ExamPartOption> options = new ArrayList<>();
         for (ExamPartOption o : part.options()) {
             options.add(mapOption(o, regenerate));
         }
         return new ExamPart(id(part.id(), regenerate), part.order(), part.name(),
                 part.durationMinutes(), part.questionCount(), part.questionCountOnPaper(),
-                part.questionCountRequired(), part.participation(), part.maxPoints(),
-                sections, options);
+                part.questionCountRequired(), part.participation(), part.maxPoints(), sections, options,
+                subjectPool, part.codeSource());
     }
 
     private static ExamSection mapSection(ExamSection s, boolean regenerate) {
@@ -66,8 +70,8 @@ public final class ExamStructureOps {
             blocks.add(mapBlock(b, regenerate));
         }
         return new ExamSection(id(s.id(), regenerate), s.subjectCode(), s.questionCount(),
-                s.knowledgeScope(), s.answerQuotas(), s.matrix(), s.choiceGroup(),
-                blocks);
+                s.knowledgeScope(), s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks,
+                s.topicQuotas());
     }
 
 
@@ -94,8 +98,10 @@ public final class ExamStructureOps {
         }
         return new QuestionBlock(id(b.id(), regenerate), b.name(), b.questionType(),
                 b.questionCount(), b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(),
-                b.taskTypeCode(), b.childAnswerType(), b.templateGroupCode(), b.answerTypeLocked(),
-                b.requiredPointsPerQuestion(), b.tagCodes(), b.expectedScoring());
+                b.childAnswerType(), b.templateGroupCode(), b.answerTypeLocked(),
+                b.requiredPointsPerQuestion(), b.tagCodes(), b.expectedScoring(), b.shuffleUnits(),
+                b.shuffleEditable(), b.slots(), b.childConditions(), b.itemShape(), b.answerFormats(),
+                b.omitted(), b.topicQuotas(), null);
     }
 
     /**
@@ -118,8 +124,11 @@ public final class ExamStructureOps {
             }
             List<ExamSection> sections = new ArrayList<>();
             for (ExamSection s : part.sections()) {
-                sections.add(s == null ? null
-                        : restoreSection(s, storedBlocks, templateOwned));
+                sections.add(s == null ? null : restoreSection(s, storedBlocks, templateOwned));
+            }
+            List<ExamSection> subjectPool = new ArrayList<>();
+            for (ExamSection s : part.subjectPool()) {
+                subjectPool.add(s == null ? null : restoreSection(s, storedBlocks, templateOwned));
             }
             List<ExamPartOption> options = new ArrayList<>();
             for (ExamPartOption o : part.options()) {
@@ -141,9 +150,19 @@ public final class ExamStructureOps {
             }
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(),
                     part.questionCount(), part.questionCountOnPaper(), part.questionCountRequired(),
-                    part.participation(), part.maxPoints(), sections, options));
+                    part.participation(), part.maxPoints(), sections, options, subjectPool,
+                    part.codeSource()));
         }
-        return new ExamStructureDocument(parts);
+        return new ExamStructureDocument(parts, incoming.examQuotas());
+    }
+    private static ExamSection restoreSection(ExamSection s,
+            Map<String, QuestionBlock> storedBlocks, boolean templateOwned) {
+        List<QuestionBlock> blocks = new ArrayList<>();
+        for (QuestionBlock b : s.blocks()) {
+            blocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateOwned));
+        }
+        return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
+                s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks, s.topicQuotas());
     }
 
     private static void index(ExamStructureDocument doc, Map<String, QuestionBlock> blocks) {
@@ -163,6 +182,15 @@ public final class ExamStructureOps {
                         blocks.putIfAbsent(b.id(), b);
                     }
                 });
+            }
+            for (ExamSection s : part.subjectPool()) {
+                if (s != null) {
+                    s.blocks().forEach(b -> {
+                        if (b != null) {
+                            blocks.putIfAbsent(b.id(), b);
+                        }
+                    });
+                }
             }
             for (ExamPartOption o : part.options()) {
                 if (o == null) {
@@ -187,15 +215,6 @@ public final class ExamStructureOps {
         }
     }
 
-    private static ExamSection restoreSection(ExamSection s,
-            Map<String, QuestionBlock> storedBlocks, boolean templateOwned) {
-        List<QuestionBlock> blocks = new ArrayList<>();
-        for (QuestionBlock b : s.blocks()) {
-            blocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateOwned));
-        }
-        return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
-                s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks);
-    }
 
     private static QuestionBlock restoreBlock(QuestionBlock b, Map<String, QuestionBlock> storedBlocks,
             boolean templateOwned) {
@@ -207,9 +226,11 @@ public final class ExamStructureOps {
             return b;
         }
         return new QuestionBlock(b.id(), b.name(), b.questionType(), b.questionCount(),
-                b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(), b.taskTypeCode(),
-                b.childAnswerType(), stored == null ? null : stored.templateGroupCode(),
-                stored != null && Boolean.TRUE.equals(stored.answerTypeLocked()), b.requiredPointsPerQuestion(),
-                b.tagCodes(), b.expectedScoring());
+                b.setCount(), b.setSize(), b.knowledgeScope(), b.matrix(), b.childAnswerType(),
+                stored == null ? null : stored.templateGroupCode(),
+                stored != null && Boolean.TRUE.equals(stored.answerTypeLocked()),
+                b.requiredPointsPerQuestion(), b.tagCodes(), b.expectedScoring(), b.shuffleUnits(),
+                b.shuffleEditable(), b.slots(), b.childConditions(), b.itemShape(), b.answerFormats(),
+                b.omitted(), b.topicQuotas(), null);
     }
 }

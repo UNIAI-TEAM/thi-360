@@ -116,7 +116,7 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         UUID seededQuestion = seededPreviewQuestion();
         String blocks = """
                 [{"id":"g","name":"Group","questionType":"SINGLE_CHOICE","questionCount":1,
-                  "knowledgeScope":{"nodeIds":["00000000-0000-7000-8200-000000001201"],"match":"ANY"}}]
+                  "knowledgeScope":{"nodeIds":["00000000-0000-7000-8200-000000001201"]}}]
                 """;
         UUID examId = exam(part("TOAN", blocks, "null"));
         JsonNode paper = preview(examId, "{\"pathId\":\"default\",\"seed\":123}").path("paper");

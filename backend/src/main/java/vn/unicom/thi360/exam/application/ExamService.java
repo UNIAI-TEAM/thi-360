@@ -57,10 +57,12 @@ import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.infrastructure.ExamBlockRefRepository;
 import vn.unicom.thi360.exam.infrastructure.ExamKindProfileRepository;
 import vn.unicom.thi360.exam.infrastructure.ExamRepository;
+import vn.unicom.thi360.exam.infrastructure.ExamStructureProperties;
 import vn.unicom.thi360.exam.infrastructure.ExamStructureRepository;
+import vn.unicom.thi360.exam.spi.CombinationLookup;
 import vn.unicom.thi360.identity.spi.UserDirectory;
-import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.ConflictException;
+import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.api.PageQuery;
@@ -100,7 +102,8 @@ public class ExamService {
     private final ObjectMapper objectMapper;
     private final AppMessages messages;
     private final ExamCheckValidity checkValidity;
-
+    private final ExamStructureProperties structureProperties;
+    private final CombinationLookup combinationLookup;
     public ExamService(
             ExamRepository examRepository,
             ExamStructureRepository structureRepository,
@@ -117,7 +120,9 @@ public class ExamService {
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
             AppMessages messages,
-            ExamCheckValidity checkValidity) {
+            ExamCheckValidity checkValidity,
+            ExamStructureProperties structureProperties,
+            CombinationLookup combinationLookup) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -134,8 +139,9 @@ public class ExamService {
         this.objectMapper = objectMapper;
         this.messages = messages;
         this.checkValidity = checkValidity;
+        this.structureProperties = structureProperties;
+        this.combinationLookup = combinationLookup;
     }
-
     private ExamStructureCodec codec() {
         return new ExamStructureCodec(objectMapper);
     }
@@ -356,7 +362,13 @@ public class ExamService {
     public ExamStructureResponse getExamStructure(UUID examId) {
         Exam exam = requireExam(examId);
         ExamStructureDocument doc = workingDocument(examId);
-        return new ExamStructureResponse(examId, doc.parts(), exam.getRevision());
+        return structureResponse(examId, doc, exam.getRevision());
+    }
+
+    private ExamStructureResponse structureResponse(UUID examId, ExamStructureDocument doc, long revision) {
+        ExamStructureDocument presented = ExamStructurePresentation.withPositionRanges(doc);
+        return new ExamStructureResponse(examId, presented.parts(), revision, presented.examQuotas(),
+                combinationLookup.listCurrent());
     }
 
     /** Mã gợi ý <KIND>-<F|P|S>-[PHẦN|MÔN-]<seq:03d>: số tiếp theo chưa dùng trong cùng tiền tố. */
@@ -428,7 +440,7 @@ public class ExamService {
         String templateCode = null;
         if (template != null) {
             doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
-            ExamStructureValidator.validate(doc);
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
             templateCode = template.getCode();
         } else {
             doc = new ExamStructureDocument(List.of());
@@ -471,8 +483,8 @@ public class ExamService {
         exam.applyStructureSummary(summary.questionCount(), summary.hasEssay(),
                 summary.hasEnglishOption(), summary.combinationCount());
 
-        structureRepository.save(new ExamStructure(exam.getId(), codec().write(doc),
-                hash(doc), null, false, actor, now));
+        structureRepository.save(new ExamStructure(exam.getId(), codec().writeParts(doc),
+                codec().writeQuotas(doc.examQuotas()), hash(doc), null, false, actor, now));
         rewriteBlockRefs(exam.getId(), doc);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.CREATE")
@@ -535,7 +547,7 @@ public class ExamService {
                 ExamStructureDocument doc = template != null
                         ? ExamStructureOps.assignMissingIds(codec().read(template.getStructure()))
                         : new ExamStructureDocument(List.of());
-                ExamStructureValidator.validate(doc);
+                ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
                 Integer duration = request.durationMinutes() != null ? request.durationMinutes()
@@ -616,7 +628,7 @@ public class ExamService {
         Instant now = Instant.now();
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
-        ExamStructureValidator.validate(doc);
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), template.getDurationMinutes(), template.getMaxScore(), actor, now);
         writeStructure(exam, doc, false, actor, now);
@@ -625,7 +637,7 @@ public class ExamService {
                 .target("EXAM", exam.getId().toString(), exam.getCode())
                 .after(Map.of("templateCode", template.getCode()))
                 .build());
-        return new ExamStructureResponse(examId, doc.parts(), examRepository.findById(examId)
+        return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
     }
 
@@ -639,10 +651,9 @@ public class ExamService {
         UUID actor = actorId();
 
         ExamStructureDocument incoming = ExamStructureOps.assignMissingIds(
-                new ExamStructureDocument(request.parts()));
+                new ExamStructureDocument(request.parts(), request.examQuotas()));
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
-        ExamStructureDocument storedDoc = stored == null ? null
-                : codec().read(stored.getParts());
+        ExamStructureDocument storedDoc = stored == null ? null : readStoredStructure(stored);
         String beforeHash = stored == null ? null : stored.getStructureHash();
         ExamTemplate template = exam.getTemplateCode() == null ? null
                 : templateService.findActive(exam.getTemplateCode());
@@ -654,7 +665,7 @@ public class ExamService {
                 : codec().read(template.getStructure());
         ExamStructureDocument doc = ExamStructureOps.restoreTemplateOwned(incoming, storedDoc,
                 templateDoc);
-        ExamStructureValidator.validate(doc);
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         validateStructureReferences(doc);
         List<String> changedPartIds = changedPartIds(storedDoc, doc);
         writeStructure(exam, doc, true, actor, now);
@@ -671,7 +682,7 @@ public class ExamService {
                 .before(beforeStructure)
                 .after(afterStructure)
                 .build());
-        return new ExamStructureResponse(examId, doc.parts(), examRepository.findById(examId)
+        return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
     }
 
@@ -707,9 +718,9 @@ public class ExamService {
         ExamStructure sourceStructure = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = sourceStructure == null
                 ? new ExamStructureDocument(List.of())
-                : ExamStructureOps.regenerateIds(codec().read(sourceStructure.getParts()));
-        structureRepository.save(new ExamStructure(copy.getId(), codec().write(doc),
-                hash(doc), null, false, actor, now));
+                : ExamStructureOps.regenerateIds(readStoredStructure(sourceStructure));
+        structureRepository.save(new ExamStructure(copy.getId(), codec().writeParts(doc),
+                codec().writeQuotas(doc.examQuotas()), hash(doc), null, false, actor, now));
         rewriteBlockRefs(copy.getId(), doc);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.DUPLICATE")
@@ -727,20 +738,26 @@ public class ExamService {
 
     private ExamStructureDocument workingDocument(UUID examId) {
         return structureRepository.findById(examId)
-                .map(s -> codec().read(s.getParts()))
+                .map(this::readStoredStructure)
                 .orElse(new ExamStructureDocument(List.of()));
+    }
+
+    private ExamStructureDocument readStoredStructure(ExamStructure structure) {
+        return new ExamStructureDocument(codec().read(structure.getParts()).parts(),
+                codec().readQuotas(structure.getExamQuotas()));
     }
 
     private void writeStructure(Exam exam, ExamStructureDocument doc, boolean edited,
             UUID actor, Instant now) {
-        JsonNode json = codec().write(doc);
+        JsonNode partsJson = codec().writeParts(doc);
+        JsonNode quotasJson = codec().writeQuotas(doc.examQuotas());
         String hash = hash(doc);
         ExamStructure structure = structureRepository.findById(exam.getId()).orElse(null);
         if (structure == null) {
-            structureRepository.save(new ExamStructure(exam.getId(), json, hash, null, edited,
+            structureRepository.save(new ExamStructure(exam.getId(), partsJson, quotasJson, hash, null, edited,
                     actor, now));
         } else {
-            structure.replace(json, hash, edited, actor, now);
+            structure.replace(partsJson, quotasJson, hash, edited, actor, now);
             structureRepository.save(structure);
         }
         ExamStructureSummary summary = blockRefProjector.summarize(doc.parts());
@@ -764,7 +781,6 @@ public class ExamService {
     private CodeResolver resolver() {
         return new CodeResolver(
                 code -> catalogLookup.findActiveItem(SUBJECT_GROUP, code).map(CatalogItemView::id).orElse(null),
-                code -> catalogLookup.findActiveItem("TASK_TYPE", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("COMPETENCY", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("SUBJECT_COMBINATION", code)
                         .map(CatalogItemView::id).orElse(null),
@@ -776,11 +792,12 @@ public class ExamService {
             for (ExamSection section : part.sections()) {
                 validateSectionReferences(section);
             }
+            for (ExamSection section : part.subjectPool()) {
+                validateSectionReferences(section);
+            }
             for (ExamPartOption option : part.options()) {
                 if (option.kind() == OptionKind.SUBJECT) {
                     requireActiveReference(SUBJECT_GROUP, option.code());
-                } else if (option.kind() == OptionKind.COMBINATION) {
-                    requireActiveReference("SUBJECT_COMBINATION", option.code());
                 }
                 option.sections().forEach(this::validateSectionReferences);
                 option.blocks().forEach(this::validateBlockReferences);
@@ -796,14 +813,10 @@ public class ExamService {
     }
 
     private void validateBlockReferences(QuestionBlock block) {
-        if (block.taskTypeCode() != null) {
-            requireActiveReference("TASK_TYPE", block.taskTypeCode());
-        }
         block.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
         validateScopeReferences(block.knowledgeScope());
         validateMatrixReferences(block.matrix());
     }
-
     private void validateScopeReferences(KnowledgeScope scope) {
         if (scope == null) {
             return;
