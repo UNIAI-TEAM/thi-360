@@ -19,7 +19,7 @@ import vn.unicom.thi360.catalog.api.CatalogInheritedRefResponse;
 import vn.unicom.thi360.catalog.api.CatalogItemRefResponse;
 import vn.unicom.thi360.catalog.api.CombinationSubjectResponse;
 import vn.unicom.thi360.catalog.api.CombinationVersionResponse;
-import vn.unicom.thi360.catalog.domain.CombinationBranch;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Component

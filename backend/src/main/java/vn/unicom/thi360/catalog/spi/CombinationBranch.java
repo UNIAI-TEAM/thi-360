@@ -1,4 +1,4 @@
-package vn.unicom.thi360.catalog.domain;
+package vn.unicom.thi360.catalog.spi;
 
 public enum CombinationBranch {
     SCIENCE,

@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import vn.unicom.thi360.catalog.domain.CombinationBranch;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Schema(description = "Phiên bản cấu hình của mã tổ hợp môn")

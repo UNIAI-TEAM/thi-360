@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
-import vn.unicom.thi360.catalog.domain.CombinationBranch;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Schema(description = "Yêu cầu tạo giá trị danh mục mới")

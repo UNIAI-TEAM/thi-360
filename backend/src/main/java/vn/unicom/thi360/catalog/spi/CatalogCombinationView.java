@@ -2,7 +2,6 @@ package vn.unicom.thi360.catalog.spi;
 
 import java.util.List;
 import java.util.UUID;
-import vn.unicom.thi360.catalog.domain.CombinationBranch;
 
 /**
  * Mã tổ hợp đang hiệu lực của nhóm kiểu COMBINATION: giá trị danh mục + kỳ thi +

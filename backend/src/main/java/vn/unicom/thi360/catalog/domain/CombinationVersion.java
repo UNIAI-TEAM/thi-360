@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 
 @Entity
 @Table(name = "combination_version", schema = "catalog")

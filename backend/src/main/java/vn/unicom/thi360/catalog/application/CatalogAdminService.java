@@ -47,7 +47,7 @@ import vn.unicom.thi360.catalog.domain.CatalogItem;
 import vn.unicom.thi360.catalog.domain.CatalogItemRef;
 import vn.unicom.thi360.catalog.domain.CatalogItemRefId;
 import vn.unicom.thi360.catalog.domain.CatalogNormalizer;
-import vn.unicom.thi360.catalog.domain.CombinationBranch;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.domain.CombinationSubject;
 import vn.unicom.thi360.catalog.domain.CombinationVersion;
 import vn.unicom.thi360.catalog.infrastructure.CatalogGroupRefRepository;

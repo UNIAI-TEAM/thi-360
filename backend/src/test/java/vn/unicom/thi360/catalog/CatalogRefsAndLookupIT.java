@@ -36,7 +36,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.application.CatalogCacheService;
-import vn.unicom.thi360.catalog.domain.CombinationBranch;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;

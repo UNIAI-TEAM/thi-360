@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import vn.unicom.thi360.catalog.domain.CombinationBranch;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Schema(description = "Yêu cầu cập nhật giá trị danh mục")
