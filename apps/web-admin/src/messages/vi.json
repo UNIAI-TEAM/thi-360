@@ -4101,6 +4101,8 @@
         "partChoose": "{part}: số phương án phải chọn là {choose, number}, phải từ 1 đến {options, number}.",
         "sectionsTotal": "{part}: tổng phân bổ là {actual, number} câu, yêu cầu của phần thi là {expected, number} câu.",
         "blocksTotal": "{section}: các khối có {actual, number} câu, môn cần {expected, number} câu.",
+        "subjectCountExceeds": "{section}: khai {declared, number} câu nhưng cách chia chỉ cho {allocated, number} câu; chỉ được hơn nhiều nhất một câu (HSA 17 − 1).",
+        "subjectTrimImpossible": "{section}: cần bỏ một câu để còn {allocated, number} câu nhưng môn không có câu đơn nào để bỏ (chùm không bị tách); máy chủ sẽ từ chối.",
         "dimension": {
           "COMBINED": "ma trận",
           "GRADE": "theo khối lớp",

@@ -289,6 +289,7 @@ describe("nguồn câu hỏi của khối", () => {
       questionType: "SINGLE_CHOICE",
       knowledgeScope: { nodeIds: ["kn-1D4"] },
     });
+    expect(JSON.stringify(call?.body)).not.toContain('"match"');
   });
 
   it("countSubjectAvailableQuestions gửi nhóm và ánh xạ byAnswerType", async () => {
@@ -320,5 +321,6 @@ describe("nguồn câu hỏi của khối", () => {
         { answerTypes: ["SHORT_ANSWER"] },
       ],
     });
+    expect(JSON.stringify(call?.body)).not.toContain('"match"');
   });
 });

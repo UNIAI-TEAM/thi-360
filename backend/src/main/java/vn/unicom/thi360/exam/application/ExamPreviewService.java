@@ -62,7 +62,7 @@ public class ExamPreviewService {
         PaperSolver solver = new PaperSolver(limits, clock);
         SolverInputBuilder.SolverInput input;
         try {
-            input = builder.build(id, maskUnselectedOptions(document, request.pathId()));
+            input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(document, request.pathId()));
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("EXAM_STRUCTURE_INVALID");
         }
@@ -138,7 +138,7 @@ public class ExamPreviewService {
             }
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
                     part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
-                    part.maxPoints(), part.sections(), options));
+                    part.maxPoints(), part.sections(), options, part.subjectPool(), part.codeSource()));
         }
         return new ExamStructureDocument(parts);
     }
@@ -204,6 +204,13 @@ public class ExamPreviewService {
                 for (ExamSection section : part.sections()) appendSection(section, null, blocks);
                 for (ChosenOption selected : path.chosen()) {
                     if (!part.id().equals(selected.partId())) continue;
+                    if (part.codeSource() != null) {
+                        for (SectionOnPath selectedSection : path.sections()) {
+                            part.subjectPool().stream().filter(s -> s.id().equals(selectedSection.sectionId()))
+                                    .findFirst().ifPresent(s -> appendSection(s, selected.optionId(), blocks));
+                        }
+                        continue;
+                    }
                     ExamPartOption option = part.options().stream().filter(o -> selected.optionId().equals(o.id())).findFirst().orElseThrow();
                     for (ExamSection section : option.sections()) appendSection(section, option.id(), blocks);
                     if (!option.blocks().isEmpty()) {
@@ -237,13 +244,25 @@ public class ExamPreviewService {
             if (resolved == null) return;
             List<QuestionSourcePort.Unit> sectionUnits = new ArrayList<>();
             for (QuestionBlock block : section.blocks()) {
-                GroupWitness group = witnesses.get(block.id());
-                if (group == null) throw new IllegalStateException("Missing group witness " + block.id());
+                if (Boolean.TRUE.equals(block.omitted())) continue;
+                List<QuestionPick> picks = new ArrayList<>();
+                if (block.slots().isEmpty()) {
+                    GroupWitness group = witnesses.get(block.id());
+                    if (group == null) throw new IllegalStateException("Missing group witness " + block.id());
+                    picks.addAll(group.picks());
+                } else {
+                    for (int index = 1; index <= block.setCount(); index++) {
+                        String id = block.id() + ":slot:" + index;
+                        GroupWitness group = witnesses.get(id);
+                        if (group == null) throw new IllegalStateException("Missing group witness " + id);
+                        picks.addAll(group.picks());
+                    }
+                }
                 List<QuestionSourcePort.Unit> units = new ArrayList<>();
                 List<PreviewItem> items = new ArrayList<>();
                 int first = number;
                 boolean blockManual = false;
-                for (QuestionPick pick : group.picks()) {
+                for (QuestionPick pick : picks) {
                     var version = versions.get(key(pick));
                     var candidate = candidates.get(key(pick));
                     if (version == null || candidate == null) throw new IllegalStateException("Missing selected question");

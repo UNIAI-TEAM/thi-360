@@ -18,6 +18,7 @@ import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.KnowledgeScope;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.ParticipationMode;
+import vn.unicom.thi360.exam.domain.QuotaEnforcement;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.domain.solver.CandidateSource;
 import vn.unicom.thi360.exam.domain.solver.CellQuota;
@@ -31,10 +32,12 @@ import vn.unicom.thi360.exam.domain.solver.QuotaUnit;
 import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.exam.domain.solver.SolveOption;
 import vn.unicom.thi360.exam.domain.solver.SolvePart;
+import vn.unicom.thi360.exam.domain.solver.SlotParentQuota;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
 import vn.unicom.thi360.exam.domain.solver.SubjectChoice;
 import vn.unicom.thi360.exam.domain.solver.SubjectQuota;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /** Translates a working exam structure into the shared checker/preview solver input. */
@@ -94,7 +97,7 @@ public class SolverInputBuilder {
     }
 
     /** Build all paths without reading candidates. Invalid draft structures may throw IllegalArgumentException. */
-    public SolverInput build(UUID examId, ExamStructureDocument document) {
+    public SolverInput build(UUID examKindId, ExamStructureDocument document) {
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         Map<UUID, CatalogItemView> knowledgeById = new HashMap<>();
         for (var item : knowledge) knowledgeById.put(item.id(), item);
@@ -108,6 +111,27 @@ public class SolverInputBuilder {
                 .toList()) {
             List<SectionOnPath> common = sections(part.sections(), false, filters, knowledge,
                     knowledgeById, descendants, subjects);
+            if (part.codeSource() != null) {
+                Map<String, SectionOnPath> pool = new LinkedHashMap<>();
+                for (SectionOnPath section : sections(part.subjectPool(), false, filters, knowledge,
+                        knowledgeById, descendants, subjects)) {
+                    pool.put(section.subjectCode(), section);
+                }
+                List<SolveOption> codeOptions = new ArrayList<>();
+                for (var combination : catalog.listCombinations(examKindId)) {
+                    String branch = part.codeSource().branch();
+                    if (branch != null && (combination.branch() == null || !branch.equals(combination.branch().name()))) continue;
+                    List<SectionOnPath> ordered = new ArrayList<>();
+                    for (String code : combination.subjectCodes()) {
+                        SectionOnPath section = pool.get(code);
+                        if (section == null) throw new IllegalArgumentException("Combination subject missing: " + code);
+                        ordered.add(section);
+                    }
+                    codeOptions.add(new SolveOption.Sections(part.id() + ":" + combination.itemCode(), ordered));
+                }
+                parts.add(new SolvePart.Choice(part.id(), common, codeOptions, 1));
+                continue;
+            }
             if (part.participation() == null || part.participation().mode() != ParticipationMode.CHOICE) {
                 parts.add(new SolvePart.Fixed(part.id(), common));
                 continue;
@@ -156,28 +180,62 @@ public class SolverInputBuilder {
                     catalog.findActiveItem("SUBJECT", code).map(CatalogItemView::id).orElse(null));
             List<GroupQuota> groups = new ArrayList<>();
             for (QuestionBlock block : section.blocks()) {
-                GroupQuota group = group(block);
-                KnowledgeScope scope = block.knowledgeScope() != null ? block.knowledgeScope() : section.knowledgeScope();
-                List<List<UUID>> subtrees = scope == null ? List.of() : scope.nodeIds().stream()
-                        .map(id -> descendants.computeIfAbsent(id, key -> {
-                            CatalogItemView root = knowledgeById.get(key);
-                            if (root == null) return List.of();
-                            return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
-                                    .map(CatalogItemView::id).toList();
-                        })).toList();
-                QuestionSourcePort.Match match = QuestionSourcePort.Match.ANY;
-                List<QuestionType> answerTypes = block.questionType() == null && section.answerQuotas() != null
-                        ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(a -> a != null).toList()
-                        : List.of();
-                filters.put(group, new QuestionSourcePort.Filter(subject, subtrees, match, answerTypes,
-                        block.questionType(), null, block.childAnswerType(), block.tagCodes(),
-                        scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion()));
-                groups.add(group);
+                if (Boolean.TRUE.equals(block.omitted())) continue;
+                GroupQuota parent = group(block);
+                int count = block.slots().isEmpty() ? 1 : block.setCount();
+                SlotParentQuota shared = block.slots().isEmpty() ? null
+                        : new SlotParentQuota(block.id(), parent.matrix(), parent.competencies(), parent.mapidGroups());
+                for (int index = 1; index <= count; index++) {
+                    final int slotIndex = index;
+                    var slot = block.slots().stream().filter(s -> s.index() == slotIndex).findFirst().orElse(null);
+                    GroupQuota group = shared == null ? parent : new GroupQuota(
+                            block.id() + ":slot:" + index, GroupQuota.GroupKind.SET, null, null,
+                            1, parent.setSize(), parent.childAnswerType(), null, List.of(), List.of(),
+                            parent.requiredPointsPerUnit(), null, shared);
+                    KnowledgeScope scope = block.knowledgeScope() != null ? block.knowledgeScope() : section.knowledgeScope();
+                    List<List<UUID>> subtrees = expandScope(scope, knowledge, knowledgeById, descendants);
+                    List<List<List<UUID>>> slotScopes = slot == null || slot.knowledgeScope() == null
+                            || slot.knowledgeScope().nodeIds().isEmpty() ? List.of()
+                            : List.of(expandScope(slot.knowledgeScope(), knowledge, knowledgeById, descendants));
+                    List<QuestionType> answerTypes = block.questionType() == null && section.answerQuotas() != null
+                            ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(a -> a != null).toList()
+                            : List.of();
+                    var shape = block.itemShape() == null ? null : new QuestionSourcePort.ItemShape(
+                            block.itemShape().statements(), block.itemShape().leftItems(), block.itemShape().rightItems());
+                    var conditions = block.childConditions().stream().map(c -> {
+                        if (c.from() == null || c.to() == null) {
+                            throw new IllegalArgumentException("Child condition requires both from and to bounds");
+                        }
+                        return new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds());
+                    }).toList();
+                    List<List<String>> slotTags = slot == null || slot.tagCodes().isEmpty()
+                            ? List.of() : List.of(slot.tagCodes());
+                    List<List<String>> slotCompetencies = slot == null || slot.knowledgeScope() == null
+                            || slot.knowledgeScope().competencyCodes().isEmpty() ? List.of()
+                            : List.of(slot.knowledgeScope().competencyCodes());
+                    filters.put(group, new QuestionSourcePort.Filter(subject, subtrees,
+                            answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
+                            scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
+                            shape, block.answerFormats().stream().map(AnswerFormat::valueOf).toList(), conditions,
+                            slotTags, slotScopes, slotCompetencies));
+                    groups.add(group);
+                }
             }
             result.add(new SectionOnPath(section.subjectCode(), section.id(), choice ? null : section.questionCount(),
                     subjectQuota(section), groups, section.choiceGroup() == null ? null : section.choiceGroup().name()));
         }
         return result;
+    }
+
+    private static List<List<UUID>> expandScope(KnowledgeScope scope, List<CatalogItemView> knowledge,
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+        if (scope == null) return List.of();
+        return scope.nodeIds().stream().map(id -> descendants.computeIfAbsent(id, key -> {
+            CatalogItemView root = knowledgeById.get(key);
+            if (root == null) return List.of();
+            return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                    .map(CatalogItemView::id).toList();
+        })).toList();
     }
 
     private static GroupQuota group(QuestionBlock block) {
@@ -209,13 +267,21 @@ public class SolverInputBuilder {
 
     private static MatrixQuota matrix(BlockMatrix matrix) {
         if (matrix == null) return null;
+        boolean gradeRequired = matrix.gradeEnforcement() == QuotaEnforcement.REQUIRED;
+        boolean difficultyRequired = matrix.difficultyEnforcement() == QuotaEnforcement.REQUIRED;
+        if (!gradeRequired && !difficultyRequired) return null;
         if (matrix.mode() == null) throw new IllegalArgumentException("Matrix mode is missing");
         if (matrix.mode().name().equals("COMBINED")) {
+            if (!gradeRequired || !difficultyRequired) {
+                throw new IllegalArgumentException("Combined matrix enforcement must match");
+            }
             return new MatrixQuota.Combined(matrix.cells().stream()
                     .map(c -> new CellQuota(c.gradeCode(), c.difficultyCode(), integer(c.value()))).toList(), unit(matrix));
         }
-        return new MatrixQuota.Separate(matrix.byGrade().stream().map(v -> new DimensionQuota(v.code(), integer(v.value()))).toList(),
-                matrix.byDifficulty().stream().map(v -> new DimensionQuota(v.code(), integer(v.value()))).toList(), unit(matrix));
+        return new MatrixQuota.Separate(
+                gradeRequired ? matrix.byGrade().stream().map(v -> new DimensionQuota(v.code(), integer(v.value()))).toList() : List.of(),
+                difficultyRequired ? matrix.byDifficulty().stream().map(v -> new DimensionQuota(v.code(), integer(v.value()))).toList() : List.of(),
+                unit(matrix));
     }
 
     private static QuotaUnit unit(BlockMatrix matrix) {
@@ -232,6 +298,7 @@ public class SolverInputBuilder {
     }
 
     private static int fixedBlockCount(QuestionBlock block) {
+        if (Boolean.TRUE.equals(block.omitted())) return 0;
         if (block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE) {
             if (block.setCount() == null || block.setSize() == null) throw new IllegalArgumentException("Set size is missing");
             return Math.multiplyExact(block.setCount(), block.setSize());

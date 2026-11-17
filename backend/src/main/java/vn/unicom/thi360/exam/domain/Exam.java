@@ -32,6 +32,8 @@ public class Exam {
     private UUID subjectItemId;
     @Column(name = "template_code")
     private String templateCode;
+    @Column(name = "build_mode", nullable = false)
+    private String buildMode = "STANDARD";
     @Column(name = "structure_year")
     private Integer structureYear;
     @Column(name = "matrix_year")
@@ -116,6 +118,8 @@ public class Exam {
     public String getPartCode() { return partCode; }
     public UUID getSubjectItemId() { return subjectItemId; }
     public String getTemplateCode() { return templateCode; }
+    public String getBuildMode() { return buildMode; }
+    public void setBuildMode(String buildMode) { this.buildMode = buildMode; }
     public Integer getStructureYear() { return structureYear; }
     public Integer getMatrixYear() { return matrixYear; }
     public boolean isYearsConfirmed() { return yearsConfirmed; }
@@ -187,6 +191,7 @@ public class Exam {
         this.partCode = source.partCode;
         this.subjectItemId = source.subjectItemId;
         this.templateCode = source.templateCode;
+        this.buildMode = source.buildMode;
         this.structureYear = source.structureYear;
         this.matrixYear = source.matrixYear;
         this.yearsConfirmed = source.yearsConfirmed;

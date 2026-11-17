@@ -99,8 +99,9 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         JsonNode result = mapper.readTree(response);
         assertThat(result.path("status").asText()).isIn("VALID", "INVALID");
+        // FU-BE4a-1: PART_TOTAL_MISMATCH and PATH_TOTAL_MISMATCH are interim; BE-5 subtracts the TrimPolicy drop.
         Set<String> allowed = Set.of("REMAINDER_GROUP_INVALID", "PART_POINTS_MISMATCH",
-                "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE");
+                "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE", "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH");
         JsonNode sciencePath = null;
         String sciencePartId = null;
         for (JsonNode path : result.path("paths")) {
@@ -130,11 +131,16 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
                 String code = issue.path("code").asText();
                 assertThat(code).isIn(allowed);
                 assertThat(scienceIssueKeys).contains(issue.path("key").asText());
-                if ("POINTS_TOTAL_MISMATCH".equals(code)) {
+                if ("POINTS_TOTAL_MISMATCH".equals(code) || "PATH_TOTAL_MISMATCH".equals(code)) {
                     // Exam-wide totals have no partId; constrain them to the observed H3 overcount.
                     assertThat(issue.path("partId").isNull()).isTrue();
                     assertThat(issue.path("required").decimalValue()).isEqualByComparingTo("150");
                     assertThat(issue.path("available").decimalValue()).isEqualByComparingTo("151");
+                } else if ("PART_TOTAL_MISMATCH".equals(code) || "PART_POINTS_MISMATCH".equals(code)) {
+                    // FU-BE4a-1: part totals include the untrimmed 17 + 17 + 17 until BE-5 applies the drop.
+                    assertThat(issue.path("partId").asText()).isEqualTo(sciencePartId);
+                    assertThat(issue.path("required").decimalValue()).isEqualByComparingTo("50");
+                    assertThat(issue.path("available").decimalValue()).isEqualByComparingTo("51");
                 } else {
                     assertThat(issue.path("partId").asText()).isEqualTo(sciencePartId);
                 }
