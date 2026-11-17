@@ -153,7 +153,7 @@ function BlankNumbering({ items, onEditChild }: { items: EditorChild[]; onEditCh
       {numbers.length === 0 ? (
         <p className="text-body text-text-muted">{t("blanks.empty")}</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-120 border-collapse text-left text-body">
             <caption className="sr-only">{t("blanks.title")}</caption>
             <thead>
