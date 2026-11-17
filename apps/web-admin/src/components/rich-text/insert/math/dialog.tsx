@@ -2,7 +2,8 @@
 
 import { SESSION_QUERY_KEY } from "@/features/session/api";
 import type { Session } from "@/features/session/types";
-import { cn, focusRing, StatusChip, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@thi360/ui";
+import { cn, focusRing, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@thi360/ui";
+import { Check, CircleAlert, TriangleAlert } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/core";
 import { useTranslations } from "next-intl";
@@ -218,13 +219,24 @@ export default function MathInsertDialog({ editor, open, onOpenChange, editing }
   );
 }
 
-/** Nhãn dưới ô LaTeX: Hợp lệ / Lỗi cú pháp / Còn ô giữ chỗ (trống thì để chỗ, không nhãn). */
+/** Màu và biểu tượng từng trạng thái của viên thuốc dưới ô LaTeX (không truyền trạng thái chỉ bằng màu). */
+const STATUS_PILL = {
+  valid: { Icon: Check, tone: "bg-success-bg text-success" },
+  placeholder: { Icon: TriangleAlert, tone: "bg-warning-bg text-warning" },
+  error: { Icon: CircleAlert, tone: "bg-danger-bg text-danger" },
+} as const;
+
+/** Viên thuốc có biểu tượng theo bản vẽ: Hợp lệ / Lỗi cú pháp / Còn ô giữ chỗ (trống thì để chỗ, không nhãn). */
 function LatexStatus({ check }: { check: LatexCheck["status"] }) {
   const t = useTranslations("richText.insertDialog.math.status");
   if (check === "empty") return <span aria-hidden className="h-6" />;
-  if (check === "valid") return <StatusChip tone="success">{t("valid")}</StatusChip>;
-  if (check === "placeholder") return <StatusChip tone="warning">{t("placeholder")}</StatusChip>;
-  return <StatusChip tone="danger">{t("error")}</StatusChip>;
+  const { Icon, tone } = STATUS_PILL[check];
+  return (
+    <span className={cn("inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-caption font-medium whitespace-nowrap", tone)}>
+      <Icon size={14} strokeWidth={2.6} aria-hidden className="shrink-0" />
+      {t(check)}
+    </span>
+  );
 }
 
 function LatexErrorText({ check }: { check: LatexCheck }) {
