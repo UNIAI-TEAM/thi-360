@@ -107,6 +107,24 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
         assertThat(allowedOmittedBlockIssue("SPT_VAN_2025", parts, issue)).isFalse();
     }
 
+    @Test
+    void codeSourceExceptionRejectsChangedDeclaredCountAndAvailability() throws Exception {
+        JsonNode parts = mapper.readTree("""
+                [{},{},{"id":"p3","questionCount":15,"questionCountRequired":15,
+                         "codeSource":{"source":"GLOBAL_LIST"}}]
+                """);
+        ObjectNode issue = mapper.createObjectNode().put("code", "PART_TOTAL_MISMATCH")
+                .put("partId", "p3").put("required", 15).put("available", 0);
+        assertThat(allowedCodeSourceIssue("BCA_FULL", parts, issue)).isTrue();
+        issue.put("available", 1);
+        assertThat(allowedCodeSourceIssue("BCA_FULL", parts, issue)).isFalse();
+        issue.put("available", 0);
+        ((ObjectNode) parts.get(2)).put("questionCount", 16);
+        assertThat(allowedCodeSourceIssue("BCA_FULL", parts, issue)).isFalse();
+        issue.put("code", "PATH_TOTAL_MISMATCH").putNull("partId").put("required", 82).put("available", 66);
+        assertThat(allowedCodeSourceIssue("BCA_FULL", parts, issue)).isFalse();
+    }
+
     private void checkTemplate(Map<String, Object> template, Set<String> failures) throws Exception {
             String code = (String) template.get("code");
             assertThat(template.get("active")).as("%s must be loadable", code).isEqualTo(true);
