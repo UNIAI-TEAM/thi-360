@@ -8,6 +8,7 @@ import {
   partCodesForKind,
   partNeedsSubject,
   type ScopeSelection,
+  subjectPartOptions,
   templateCountBySubject,
 } from "../create-exam-schema";
 import type { ExamBuildMode, ExamTemplate } from "../types";
@@ -43,9 +44,13 @@ export function CreateExamScopeFields({
   const partNames = usePartNames();
   const subjectFirst = selection.scope === "PART" && partNeedsSubject(kinds, selection.kind);
   const showSubject = selection.scope === "SUBJECT" || subjectFirst;
-  const subjectScope = selection.scope === "PART" ? "PART" : "SUBJECT";
-  const partCodes = selection.scope === "PART" ? partCodesForKind(templates, kinds, selection.kind, selection.subjectCode) : [];
-  const counts = templateCountBySubject(templates, selection.kind, subjectScope);
+  // SP2E, SPT: phần là các phần của mẫu Theo môn mặc định, nhãn lấy từ tên phần của mẫu.
+  const partOptions = subjectFirst
+    ? subjectPartOptions(templates, selection.kind, selection.subjectCode).map((option) => ({ value: option.code, label: option.name }))
+    : selection.scope === "PART"
+      ? partCodesForKind(templates, kinds, selection.kind).map((code) => ({ value: code, label: partNames.partName(code) }))
+      : [];
+  const counts = templateCountBySubject(templates, selection.kind);
   const subjectOptions = subjects
     .filter((subject) => !subjectFirst || counts.has(subject.code))
     .map((subject) => ({ value: subject.code, label: subject.name }));
@@ -102,7 +107,7 @@ export function CreateExamScopeFields({
       )}
       {selection.scope === "PART" && (
         <div data-field="partCode" className="flex flex-col gap-1">
-          {partCodes.length > 0 ? (
+          {partOptions.length > 0 ? (
             <ChoiceCardGroup
               legend={t("part")}
               name="partCode"
@@ -111,7 +116,7 @@ export function CreateExamScopeFields({
               disabled={disabled}
               variant="pill"
               hint={t("partHint")}
-              options={partCodes.map((code) => ({ value: code, label: partNames.partName(code) }))}
+              options={partOptions}
               onChange={(partCode) => onChange({ partCode })}
             />
           ) : (

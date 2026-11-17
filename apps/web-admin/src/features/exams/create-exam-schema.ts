@@ -110,28 +110,38 @@ export function latestTemplate(templates: readonly ExamTemplate[], selection: Sc
   return matches.find((template) => template.isDefault) ?? matches[0];
 }
 
-/** Số mẫu theo từng môn của kỳ thi (để ô chọn môn nêu môn nào có mẫu); `scope` mặc định `SUBJECT`, dùng `PART` khi chọn môn trước phần. */
-export function templateCountBySubject(
+/**
+ * Mẫu nạp cho bảng tổng quan của bước 1. Bài Theo phần của kỳ thi chọn môn trước (SP2E, SPT) không có mẫu Theo phần:
+ * lấy mẫu Theo môn mặc định của môn, thu về đúng phần đã chọn (`P<thứ tự>`) và thang điểm của phần. Các trường hợp khác
+ * là `latestTemplate`.
+ */
+export function scopeTemplate(
   templates: readonly ExamTemplate[],
-  kind: ExamKind,
-  scope: ApiExamScope = "SUBJECT",
-): Map<string, number> {
+  kinds: readonly ExamKindOption[],
+  selection: ScopeSelection,
+): ExamTemplate | undefined {
+  if (selection.scope !== "PART" || kindOptionFor(kinds, selection.kind)?.templateBy !== "SUBJECT") {
+    return latestTemplate(templates, selection);
+  }
+  const base = latestTemplate(templates, { ...selection, scope: "SUBJECT", partCode: "", buildMode: "STANDARD" });
+  if (!base) return undefined;
+  const parts = base.parts.filter((part, index) => subjectPartCode(part.order ?? index + 1) === selection.partCode);
+  return { ...base, parts, maxScore: parts[0]?.maxPoints ?? parts[0]?.points ?? base.maxScore };
+}
+
+/** Số mẫu Theo môn của từng môn trong kỳ thi (để ô chọn môn nêu môn nào có mẫu). */
+export function templateCountBySubject(templates: readonly ExamTemplate[], kind: ExamKind): Map<string, number> {
   const counts = new Map<string, number>();
   for (const template of templates) {
-    if (template.kind !== kind || template.scope !== scope || !template.subjectCode) continue;
+    if (template.kind !== kind || template.scope !== "SUBJECT" || !template.subjectCode) continue;
     counts.set(template.subjectCode, (counts.get(template.subjectCode) ?? 0) + 1);
   }
   return counts;
 }
 
 /** Môn mặc định khi chọn Theo môn (hoặc môn trước phần): môn đầu tiên của danh mục có mẫu; không có thì để trống. */
-export function defaultSubjectFor(
-  templates: readonly ExamTemplate[],
-  subjects: readonly CatalogOption[],
-  kind: ExamKind,
-  scope: ApiExamScope = "SUBJECT",
-): string {
-  const counts = templateCountBySubject(templates, kind, scope);
+export function defaultSubjectFor(templates: readonly ExamTemplate[], subjects: readonly CatalogOption[], kind: ExamKind): string {
+  const counts = templateCountBySubject(templates, kind);
   return subjects.find((subject) => counts.has(subject.code))?.code ?? "";
 }
 
@@ -147,9 +157,28 @@ export function yearsDiffer(template: Pick<ExamTemplate, "structureYear" | "matr
 }
 
 /**
- * Các phần chọn được của bài Theo phần: mã phần của các mẫu Theo phần của kỳ thi (BCA: Tự luận Văn, Trắc nghiệm bắt
- * buộc, tự chọn; SP2E, SPT: các phần của môn đã chọn). Kỳ thi `templateBy = KIND` chưa có mẫu Theo phần nào (HSA, QDA
- * trước khi nạp mẫu) dùng bốn phần chuẩn (`PART_CODES`).
+ * Mã phần của bài Theo phần đối với kỳ thi `templateBy = SUBJECT` (SP2E, SPT): `P<thứ tự>` (P1, P2, P3 = Phần I, II,
+ * III). Máy chủ không có mẫu Theo phần cho các kỳ thi này; phần lấy từ các phần của mẫu Theo môn mặc định.
+ */
+export const subjectPartCode = (order: number): string => `P${order}`;
+
+export interface SubjectPartOption {
+  code: string;
+  /** Tên phần theo mẫu (ví dụ "Phần I · Trắc nghiệm"). */
+  name: string;
+}
+
+/** Phần chọn được của môn (kỳ thi `templateBy = SUBJECT`): các phần của mẫu Theo môn mặc định (không tính bài ôn). */
+export function subjectPartOptions(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): SubjectPartOption[] {
+  const template = latestTemplate(templates, { kind, scope: "SUBJECT", partCode: "", subjectCode, buildMode: "STANDARD" });
+  return (template?.parts ?? []).map((part, index) => ({ code: subjectPartCode(part.order ?? index + 1), name: part.name }));
+}
+
+/**
+ * Các phần chọn được của bài Theo phần: kỳ thi `templateBy = SUBJECT` (SP2E, SPT) lấy các phần của mẫu Theo môn mặc định
+ * của môn đã chọn (`subjectPartOptions`); kỳ thi khác lấy mã phần của các mẫu Theo phần (BCA: Tự luận Văn, Trắc nghiệm
+ * bắt buộc, tự chọn). Kỳ thi `templateBy = KIND` chưa có mẫu Theo phần nào (HSA, QDA trước khi nạp mẫu) dùng bốn phần
+ * chuẩn (`PART_CODES`).
  */
 export function partCodesForKind(
   templates: readonly ExamTemplate[],
@@ -157,14 +186,15 @@ export function partCodesForKind(
   kind: ExamKind,
   subjectCode = "",
 ): string[] {
-  const bySubject = kindOptionFor(kinds, kind)?.templateBy === "SUBJECT";
+  if (kindOptionFor(kinds, kind)?.templateBy === "SUBJECT") {
+    return subjectPartOptions(templates, kind, subjectCode).map((option) => option.code);
+  }
   const codes: string[] = [];
   for (const template of templates) {
     if (template.kind !== kind || template.scope !== "PART" || !template.partCode) continue;
-    if (bySubject && subjectCode && template.subjectCode && template.subjectCode !== subjectCode) continue;
     if (!codes.includes(template.partCode)) codes.push(template.partCode);
   }
-  return codes.length === 0 && !bySubject ? [...PART_CODES] : codes;
+  return codes.length === 0 ? [...PART_CODES] : codes;
 }
 
 /** Kỳ thi `templateBy = SUBJECT` chọn môn trước phần (SP2E, SPT Theo phần); `subjectCode` bắt buộc khi `scope = PART`. */
@@ -193,11 +223,9 @@ export function resolveScope(
   const needsSubject = scope !== "FULL" && partNeedsSubject(kinds, kind);
   let subjectCode = "";
   if (scope === "SUBJECT" || needsSubject) {
-    const countScope = scope === "PART" ? "PART" : "SUBJECT";
     subjectCode = change.subjectCode ?? current.subjectCode;
-    const keep =
-      subjectCode && (change.subjectCode !== undefined || templateCountBySubject(templates, kind, countScope).has(subjectCode));
-    if (!keep) subjectCode = defaultSubjectFor(templates, subjects, kind, countScope);
+    const keep = subjectCode && (change.subjectCode !== undefined || templateCountBySubject(templates, kind).has(subjectCode));
+    if (!keep) subjectCode = defaultSubjectFor(templates, subjects, kind);
   }
   let partCode = "";
   if (scope === "PART") {

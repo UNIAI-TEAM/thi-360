@@ -71,13 +71,10 @@ const SPT_MATH = template(
   [part(1, "Toán", 22, null, [section("MATH", 22, [block("Trắc nghiệm", 22), block("Tự luận", 3, { questionType: "ESSAY", omitted: true })])])],
 );
 const SP2E_GEO_SUBJECT = template("SP2E_GEOGRAPHY_2026", { kindCode: "SP2E", subjectCode: "GEOGRAPHY", structureYear: 2026 }, [
-  part(1, "Địa lí", 28, 60, [section("GEOGRAPHY", 28)]),
+  part(1, "Phần I", 16, 20, [section("GEOGRAPHY", 16)]),
+  part(2, "Phần II", 4, 20, [section("GEOGRAPHY", 4)]),
+  part(3, "Phần III", 6, 20, [section("GEOGRAPHY", 6)]),
 ]);
-const SP2E_GEO_PART_I = template(
-  "SP2E_GEOGRAPHY_2026_PHAN_I",
-  { kindCode: "SP2E", scope: "PART", subjectCode: "GEOGRAPHY", partCode: "PHAN_I", structureYear: 2026 },
-  [part(1, "Phần I", 16, 20, [section("GEOGRAPHY", 16)])],
-);
 // Văn SP2E: mặc định là đề minh họa cũ (K15), dù mẫu 2026 mới hơn.
 const SP2E_LIT_2026 = template("SP2E_LITERATURE_2026", { kindCode: "SP2E", subjectCode: "LITERATURE", structureYear: 2026, isDefault: false }, [
   part(1, "Văn 2026", 22, 90, [section("LITERATURE", 22)]),
@@ -89,7 +86,7 @@ const SPT_REVIEW = template("SPT_REVIEW", { kindCode: "SPT", subjectCode: "MATH"
   part(1, "Bài ôn", 10, 15, [section("MATH", 10)]),
 ]);
 
-const ALL_TEMPLATES = [HSA_FULL, BCA_FULL, SPT_MATH, SPT_REVIEW, SP2E_GEO_SUBJECT, SP2E_GEO_PART_I, SP2E_LIT_2026, SP2E_LIT_OLD];
+const ALL_TEMPLATES = [HSA_FULL, BCA_FULL, SPT_MATH, SPT_REVIEW, SP2E_GEO_SUBJECT, SP2E_LIT_2026, SP2E_LIT_OLD];
 
 function createServer(templates: Wire[] = ALL_TEMPLATES) {
   return new FakeServer()
@@ -128,7 +125,7 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
     expect(screen.queryByText("Văn 2026")).toBeNull();
   }, 20_000);
 
-  it("SP2E Theo phần: chọn môn trước rồi phần; gửi môn, phần, không gửi build_mode", async () => {
+  it("SP2E Theo phần: chọn môn rồi phần của mẫu Theo môn mặc định; gửi môn và mã P<thứ tự>, không gửi build_mode", async () => {
     const server = createServer().on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
     const user = await renderPage();
     await user.click(screen.getByRole("radio", { name: /^SP2E/ }));
@@ -137,15 +134,54 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
     expect(screen.getByText("Chọn môn trước, rồi chọn phần của môn đó")).toBeInTheDocument();
     await user.click(screen.getByRole("combobox", { name: /^Môn/ }));
     await user.click(await screen.findByRole("option", { name: "Địa lí" }));
-    expect(await screen.findByRole("radio", { name: "PHAN_I" })).toBeChecked();
-    expect(within(rowOf("Phần I")).getByRole("textbox", { name: /^Số câu của/ })).toHaveValue("16");
-    await user.type(name(), "SP2E Địa lí Phần I");
+    const parts = within(await screen.findByRole("group", { name: /^Phần thi/ })).getAllByRole("radio");
+    expect(parts.map((radio) => radio.closest("label")?.textContent)).toEqual(["Phần I", "Phần II", "Phần III"]);
+    expect(parts[0]).toBeChecked();
+    expect(screen.getByRole("textbox", { name: /^Số câu của/ })).toHaveValue("16");
+    await user.click(parts[1]!);
+    await waitFor(() => expect(parts[1]).toBeChecked());
+    expect(screen.getByRole("textbox", { name: "Số câu của Phần II" })).toHaveValue("4");
+    await user.type(name(), "SP2E Địa lí Phần II");
     await user.click(submit());
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
     const body = server.calls("POST", EXAMS_PATH)[0]!.body as Wire;
-    expect(body).toMatchObject({ kind: "SP2E", scope: "PART", partCode: "PHAN_I", subjectCode: "GEOGRAPHY" });
+    expect(body).toMatchObject({ kind: "SP2E", scope: "PART", partCode: "P2", subjectCode: "GEOGRAPHY" });
     expect(body).not.toHaveProperty("buildMode");
     expect(body).not.toHaveProperty("overview");
+  }, 20_000);
+
+  it("SPT Theo phần: phần lấy từ mẫu Theo môn mặc định của môn (P1..P3), không từ mẫu Theo phần", async () => {
+    const SPT_MATH_THREE = template("SPT_MATH_V1", { kindCode: "SPT", subjectCode: "MATH", structureYear: 2025, timing: "SHARED", maxScore: 10 }, [
+      part(1, "Phần I · Trắc nghiệm", 16, null, [section("MATH", 16)], { maxPoints: 4 }),
+      part(2, "Phần II · Đúng/Sai", 2, null, [section("MATH", 2)], { maxPoints: 2 }),
+      part(3, "Phần III · Trả lời ngắn", 4, null, [section("MATH", 4)], { maxPoints: 1 }),
+    ]);
+    const server = createServer([HSA_FULL, SPT_MATH_THREE])
+      .on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() })
+      .install();
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /^SPT/ }));
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    const group = await screen.findByRole("group", { name: /^Phần thi/ });
+    expect(within(group).getAllByRole("radio").map((radio) => radio.closest("label")?.textContent)).toEqual([
+      "Phần I · Trắc nghiệm",
+      "Phần II · Đúng/Sai",
+      "Phần III · Trả lời ngắn",
+    ]);
+    await user.click(within(group).getByRole("radio", { name: "Phần II · Đúng/Sai" }));
+    expect(await screen.findByRole("textbox", { name: "Số câu của Phần II · Đúng/Sai" })).toHaveValue("2");
+    expect(screen.getAllByRole("textbox", { name: /^Số câu của/ })).toHaveLength(1);
+    await user.type(screen.getByRole("textbox", { name: /^Thời lượng chung/ }), "30");
+    await user.type(name(), "SPT Toán Phần II");
+    await user.click(submit());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({
+      kind: "SPT",
+      scope: "PART",
+      subjectCode: "MATH",
+      partCode: "P2",
+      maxScore: 2,
+    });
   }, 20_000);
 
   it("bài ôn có mẫu <KỲ>_REVIEW: nạp mẫu bài ôn, gửi build_mode REVIEW", async () => {

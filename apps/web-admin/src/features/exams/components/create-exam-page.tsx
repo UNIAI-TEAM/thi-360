@@ -31,11 +31,13 @@ import {
   EXAM_NAME_MAX,
   type ExamInfoFormValues,
   kindOptionFor,
-  latestTemplate,
+  partNeedsSubject,
   resolveScope,
   sameSelection,
   scopeDefaults,
   type ScopeSelection,
+  scopeTemplate,
+  subjectPartOptions,
   toCreateExamRequest,
 } from "../create-exam-schema";
 import {
@@ -189,6 +191,14 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const kindLabel = useKindLabel();
   const partNames = usePartNames();
   const kinds = reference.examKinds;
+  /** Tên phần: SP2E, SPT lấy từ tên phần của mẫu Theo môn (`P<thứ tự>`), kỳ thi khác theo mã phần. */
+  const partLabel = useCallback(
+    (next: ScopeSelection) =>
+      partNeedsSubject(kinds, next.kind)
+        ? (subjectPartOptions(templates, next.kind, next.subjectCode).find((option) => option.code === next.partCode)?.name ?? next.partCode)
+        : partNames.partName(next.partCode),
+    [templates, kinds, partNames],
+  );
   const pendingRef = useRef<HTMLDivElement>(null);
   const [takenCodes, setTakenCodes] = useState<ReadonlySet<string>>(() => new Set());
   const schema = useExamInfoSchema(takenCodes, kinds);
@@ -197,14 +207,14 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   /** Mẫu mặc định, dòng tổng quan và thời lượng, thang điểm của một lựa chọn (kỳ thi, phạm vi, môn, phần, `build_mode`). */
   const loadScope = useCallback(
     (selection: ScopeSelection): LoadedScope => {
-      const template = latestTemplate(templates, selection);
+      const template = scopeTemplate(templates, kinds, selection);
       if (template) return { selection, template, rows: overviewRowsFromTemplate(template, selection.scope, selection.partCode) };
       // Không có mẫu (bài ôn chưa có mẫu, môn chưa có mẫu): một dòng trống mang tên của phạm vi.
       const blankLabel =
         selection.scope === "SUBJECT"
           ? subjectName(selection.subjectCode)
           : selection.scope === "PART"
-            ? partNames.partName(selection.partCode)
+            ? partLabel(selection)
             : kindLabel(selection.kind);
       const rows = overviewRowsEmpty(selection.scope, selection.subjectCode, selection.partCode).map((row) => ({
         ...row,
@@ -212,7 +222,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       }));
       return { selection, template: undefined, rows };
     },
-    [templates, subjectName, partNames, kindLabel],
+    [templates, kinds, subjectName, partLabel, kindLabel],
   );
 
   const [initial] = useState<LoadedScope>(() =>
@@ -257,7 +267,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const { control, register, handleSubmit, setValue, setError, resetField, getFieldState, formState } = form;
   const values = useWatch({ control }) as ExamInfoFormValues;
 
-  const template = useMemo(() => latestTemplate(templates, selection), [templates, selection]);
+  const template = useMemo(() => scopeTemplate(templates, kinds, selection), [templates, kinds, selection]);
   const defaults = useMemo(
     () => scopeDefaults(template, kindOptionFor(kinds, selection.kind), selection.scope),
     [template, kinds, selection],
@@ -290,7 +300,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   const selectionLabel = (next: ScopeSelection) => {
     const kind = kindLabel(next.kind);
-    if (next.scope === "PART") return tStep("labelPart", { kind, scope: partNames.partName(next.partCode) });
+    if (next.scope === "PART") return tStep("labelPart", { kind, scope: partLabel(next) });
     if (next.scope === "SUBJECT") {
       const subject = next.subjectCode ? subjectName(next.subjectCode) : tStep("noSubject");
       return next.buildMode === "REVIEW" ? tStep("labelReview", { kind, subject }) : tStep("labelSubject", { kind, subject });
