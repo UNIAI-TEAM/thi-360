@@ -369,6 +369,13 @@ public final class ExamCheckRules {
                 || choose > option.sections().size() || option.sections().size() > 8
                 || counts.size() != choose || counts.stream().anyMatch(value -> value == null || value <= 0)
                 || option.sections().stream().anyMatch(section -> section.choiceGroup() == null);
+        // With one selected option it must fill the remainder after the common sections.
+        // Multiple selected options are checked together by the path-total rule instead.
+        if (!invalid && part.participation() != null
+                && Integer.valueOf(1).equals(part.participation().choose())
+                && part.questionCount() != null) {
+            invalid = counts.stream().mapToLong(Integer::longValue).sum() != target;
+        }
         if (!invalid) invalid = !allocationsMatch(option, choose, counts);
         if (!invalid) return null;
         ObjectNode issue = issue("SUBJECT_CHOICE_COUNTS_INVALID", "STRUCTURE", part, option.id(), null);

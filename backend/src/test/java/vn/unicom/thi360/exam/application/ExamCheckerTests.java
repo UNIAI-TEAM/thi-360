@@ -291,6 +291,22 @@ class ExamCheckerTests {
     }
 
     @Test
+    void scienceChoiceCountsMustFillThePartAfterCommonSections() throws Exception {
+        Exam exam = exam(50, null, "RAW");
+        String sections = scienceSection("PHY", "NATURAL") + ","
+                + scienceSection("CHEM", "NATURAL") + ","
+                + scienceSection("BIO", "NATURAL");
+        String doc = """
+                {"parts":[{"id":"p","questionCount":50,"participation":{"mode":"CHOICE","choose":1},
+                "options":[{"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE",
+                "chooseSubjects":3,"countsByPick":[17,17,17],"sections":[%s]}]}]}
+                """.formatted(sections);
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issueCodes(result)).contains("SUBJECT_CHOICE_COUNTS_INVALID");
+    }
+
+    @Test
     void scienceReportsAllTwelveSelectionsAndTheSeventeenQuestionShortfall() throws Exception {
         Exam exam = exam(50, null, "RAW");
         subject("ENGLISH", 50);
