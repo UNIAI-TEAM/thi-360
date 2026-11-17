@@ -6,6 +6,7 @@ import { CircleCheck, CircleMinus, CircleX } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import type { PreviewBlock, PreviewCheck, PreviewKnowledgeStat, PreviewPaper } from "../review-types";
+import { ExamPreviewSubjectQuotas } from "./exam-preview-subject-quotas";
 import { useLookup } from "./exam-review-shared";
 
 /** Đối chiếu phân bổ: chỉ tiêu yêu cầu với đề đã sinh theo từng khối, kiểm tra trên đề, thống kê theo kiến thức. */
@@ -21,6 +22,7 @@ export function ExamPreviewAllocation({ paper }: { paper: PreviewPaper }) {
 
   return (
     <div className="flex flex-col gap-5">
+      <ExamPreviewSubjectQuotas subjects={paper.subjects} />
       <Card padding="md" className="flex flex-col gap-3">
         <FormField label={t("blockLabel")} className="max-w-md">
           {(controlProps) => (

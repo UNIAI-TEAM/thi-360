@@ -1,6 +1,6 @@
 # Thiết lập bài thi và ma trận đề
 
-Bản lưu UniNote của BA (Hưng Nguyễn Duy), cập nhật 2026-11-16 11:12, lấy về ngày 2026-11-16. Nguồn: uniworkos, thư mục "Tài liệu Thi 360". Chỉ đọc; bản gốc ở uniworkos.
+Bản lưu UniNote của BA (Hưng Nguyễn Duy), cập nhật 2026-11-17 08:56, lấy về ngày 2026-11-17. Nguồn: uniworkos, thư mục "Tài liệu Thi 360". Chỉ đọc; bản gốc ở uniworkos.
 
 ## 1. Thông tin chung
 
@@ -65,7 +65,7 @@ Trong màn hình tạo/chỉnh sửa bài thi, bố trí các khu vực:
 
 | Khu vực | Nội dung |
 |---|---|
-| Thông tin chung | Tên bài, kỳ thi, hình thức FULL/bài lẻ, mô tả |
+| Thông tin chung | Tên bài, kỳ thi, hình thức FULL/Từng phần, mô tả |
 | Cấu trúc và ma trận | Phần thi, môn/tổ hợp, khối câu hỏi, số câu và tiêu chí lựa chọn |
 | Kiểm tra và xem trước | Lỗi cấu hình, nguồn câu hỏi, kết quả sinh thử và thống kê phân bổ |
 | Phiên bản và công bố | Lưu cấu hình đang sửa, công bố và xem phiên bản |
@@ -147,7 +147,7 @@ Mỗi bài thi gồm một hoặc nhiều phần có thứ tự. Trong một ph�
 | Số câu trên đề | Tổng số câu xuất hiện trong phần, bao gồm cả nội dung lựa chọn nếu đề trình bày nhiều phương án. |
 | Số câu phải làm | Số câu học viên thực hiện theo phương án đã chọn. Khi toàn bộ câu đều bắt buộc, hệ thống sử dụng số câu trên đề làm giá trị mặc định. |
 | Thời lượng | Với đồng hồ riêng, khai báo số phút cho từng phần. Với đồng hồ chung, khai báo thời lượng một lần ở cấp bài thi. |
-| Điểm tối đa | Ghi nhận ở cấp bài, phần hoặc thành phần tính điểm theo cấu trúc của kỳ thi. |
+| Điểm tối đa | Ghi nhận ở cấp bài, phần theo cấu trúc của kỳ thi. |
 
 Ví dụ, trong phần Sử dụng ngôn ngữ của V-ACT, Tiếng Việt và Tiếng Anh đều bắt buộc nên học viên làm đủ 60 câu. Trong phần 3 của QDA, nhiều mã tổ hợp có thể được mở, nhưng mỗi học viên chỉ chọn một mã và làm 50 câu.
 
@@ -164,33 +164,7 @@ Ví dụ, trong phần Sử dụng ngôn ngữ của V-ACT, Tiếng Việt và T
 
 Khối câu hỏi dùng để giữ cấu trúc chuyên môn và thứ tự các dạng bài trong một phần thi.
 
-Ví dụ: Phần Tiếng Anh có các khối hoàn thành câu, chọn từ, đọc điền và đọc hiểu.
-
-### 6.1. Thông tin khối
-
-| Trường | Yêu cầu | Quy tắc |
-|---|---|---|
-| Tên khối | Bắt buộc | Tên quản trị; có thể dùng làm tiêu đề hiển thị |
-| Thứ tự khối | Bắt buộc | Vị trí trong phần thi |
-| Môn học | Bắt buộc | Kế thừa từ phần/môn đang cấu hình |
-| Dạng câu hỏi | Bắt buộc | Trắc nghiệm, Short Answer, Cloze hoặc Question Set |
-| Dạng bài | Không bắt buộc | Chọn khi cần giới hạn một dạng bài chuyên môn |
-| Số câu cần lấy | Bắt buộc | Tính theo câu đơn hoặc câu con |
-| Số bộ và số câu mỗi bộ | Bắt buộc nếu cấu trúc quy định | Ví dụ: ba bộ, mỗi bộ năm câu |
-| Phạm vi MAPID | Không bắt buộc | Chọn nhiều MAPID để giới hạn kiến thức |
-| Bao gồm MAPID cấp dưới | Có giá trị mặc định | Mặc định không; khi bật sẽ lấy cả các mã con |
-| Quy tắc đảo | Bắt buộc | Giữ thứ tự hoặc đảo theo các quy tắc được hỗ trợ |
-
-Nếu không chọn MAPID, nguồn gồm các câu thuộc môn và thỏa các điều kiện còn lại; giao diện cần thể hiện rõ “Không giới hạn MAPID”.
-
-### 6.2. Quy tắc cấu trúc
-
-- Tổng số câu các khối phải bằng số câu của phần/môn.
-- Nếu yêu cầu ba bộ × năm câu, nguồn được lấy phải đáp ứng đúng số bộ và kích thước bộ.
-- Không tự thay một bộ năm câu bằng năm câu độc lập.
-- Không tự thay Cloze bằng Question Set dù có cùng số câu.
-- Thứ tự cố định của các dạng bài Tiếng Anh phải được bảo toàn.
-- Với nhóm Văn được phép đảo, chỉ đảo cả nhóm; các câu trong nhóm vẫn liền nhau.
+Chi tiết xem tại các phần thiết lập cấu trúc theo từng chi tiết đề
 
 ## 7. Thiết lập ma trận lựa chọn câu hỏi
 
@@ -244,12 +218,7 @@ Cấu hình công bố lưu số câu nguyên làm căn cứ sinh đề. Mặc �
 
 ### 7.4. Lựa chọn nhiều MAPID
 
-Mỗi phạm vi MAPID có chế độ đối chiếu rõ ràng:
-
-| Chế độ | Điều kiện câu hỏi |
-|---|---|
-| Khớp ít nhất một MAPID | Có ít nhất một mã trong danh sách đã chọn; đề xuất làm mặc định |
-| Khớp tất cả MAPID | Có đầy đủ các mã đã chọn |
+Mỗi phạm vi MAPID có chế độ đối chiếu rõ ràng, Có ít nhất một mã trong danh sách đã chọn
 
 Nếu thiết lập chỉ tiêu riêng cho từng nhóm MAPID:
 

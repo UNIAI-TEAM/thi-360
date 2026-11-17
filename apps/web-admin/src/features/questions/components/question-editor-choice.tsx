@@ -1,10 +1,10 @@
 "use client";
 
-import { Button, Checkbox, cn, Input } from "@thi360/ui";
+import { Button, cn } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef } from "react";
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { MULTIPLE_CHOICE_RULES } from "@/features/content/types";
 import { emptyOption, type QuestionEditorValues } from "../editor-form";
 import {
@@ -16,6 +16,7 @@ import {
   useEditorError,
   type BodyPath,
 } from "./question-editor-shared";
+import { RichTextField } from "./question-editor-rich-field";
 
 /**
  * Phương án của Trắc nghiệm 1 đáp án (ô tròn, đúng một đáp án) và nhiều đáp án (ô vuông, ít nhất một),
@@ -95,16 +96,6 @@ export function ChoiceOptionsEditor({ prefix, multiple }: { prefix: BodyPath; mu
             <Plus aria-hidden />
             {t("add")}
           </Button>
-          <Controller
-            control={control}
-            name={`${prefix}.shuffleOptions`}
-            render={({ field }) => (
-              <label className="flex min-h-10 items-center gap-2.5 text-body text-text">
-                <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
-                {t("shuffle")}
-              </label>
-            )}
-          />
         </div>
       </fieldset>
       {multiple && <ScoringRuleField prefix={prefix} />}
@@ -172,7 +163,7 @@ function OptionRow({
   onRemove: () => void;
 }) {
   const t = useTranslations("questions.editor.choice");
-  const { register, setValue, formState, trigger } = useFormContext<QuestionEditorValues>();
+  const { setValue, formState, trigger } = useFormContext<QuestionEditorValues>();
   const letter = optionLetter(index);
   const inputId = useId();
   const error = useEditorError(`${prefix}.options.${index}.content`);
@@ -202,15 +193,15 @@ function OptionRow({
           />
           <span aria-hidden>{letter}.</span>
         </label>
-        <Input
-          id={inputId}
-          aria-label={t("contentLabel", { letter })}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${inputId}-error` : undefined}
-          className="min-w-0 flex-1 basis-48"
-          autoComplete="off"
-          {...register(`${prefix}.options.${index}.content`)}
-        />
+        <div className="min-w-0 flex-1 basis-48">
+          <RichTextField
+            id={inputId}
+            aria-label={t("contentLabel", { letter })}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${inputId}-error` : undefined}
+            name={`${prefix}.options.${index}.content`}
+          />
+        </div>
         <RowActions index={index} count={count} name={t("rowName", { letter })} onMove={onMove} onRemove={onRemove} />
       </div>
       {correct && <span className="ps-7 text-caption font-medium text-primary-text">{t("correctBadge")}</span>}

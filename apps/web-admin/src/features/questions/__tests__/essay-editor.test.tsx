@@ -1,14 +1,10 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import en from "@/messages/en.json";
-import { renderWithProviders } from "@/test/render";
-import { resetQuestionHistoryForTests } from "../editor-api";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionDetailContent } from "../components/question-detail-content";
 import { QuestionDetailLayout } from "../components/question-detail-layout";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { questionStore } from "../mock/store";
+import { renderEn, rich } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ pathname: "/questions/new", push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -16,39 +12,31 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: navigation.push, replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
-function renderEn(ui: ReactElement) {
-  return renderWithProviders(ui, { locale: "en", messages: en });
-}
-
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   navigation.push.mockReset();
 });
 
-afterEach(() => {
-  questionStore.reset();
-  resetQuestionHistoryForTests();
-});
-
 describe("soan cau Tu luan", () => {
-  it("them tieu chi, tong diem lech diem cua cau thi bao loi khi luu", async () => {
+  it("tieu chi tuy chon, co thi tong diem phai khop diem cua cau; huong dan cham bat buoc", async () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="create" type="ESSAY" />);
     const section = (await screen.findByRole("heading", { name: "Grading guide" })).closest("section");
     if (!section) throw new Error("no grading section");
     expect(within(section).getByText("Graded by hand")).toBeInTheDocument();
-    expect(within(section).getByText("Criteria total 1 / 1: matches the question points")).toBeInTheDocument();
+    // Tiêu chí chấm là tùy chọn (D20): biểu mẫu mới chưa có tiêu chí, hướng dẫn chấm là bắt buộc.
+    expect(within(section).queryByText(/Criteria total/)).not.toBeInTheDocument();
 
     await user.click(within(section).getByRole("button", { name: "Add criterion" }));
-    const second = within(section).getByRole("textbox", { name: "Criterion 2 description" });
-    expect(second).toHaveFocus();
-    await user.type(second, "Lap luan");
-    await user.type(within(section).getByRole("textbox", { name: "Criterion 2 points" }), "0,5");
-    expect(within(section).getByText("Criteria total 1.5 / 1: does not match the question points yet")).toBeInTheDocument();
+    const first = within(section).getByRole("textbox", { name: "Criterion 1 description" });
+    expect(first).toHaveFocus();
+    rich(first).set("<p>Lap luan</p>");
+    await user.type(within(section).getByRole("textbox", { name: "Criterion 1 points" }), "0,5");
+    expect(within(section).getByText("Criteria total 0.5 / 1: does not match the question points yet")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Save draft" }));
     expect(await screen.findByText("The criteria must add up to the question points.")).toBeInTheDocument();
-    expect(screen.getByText("Enter the criterion description.")).toBeInTheDocument();
+    expect(screen.getByText("Enter the grading guide.")).toBeInTheDocument();
     expect(navigation.push).not.toHaveBeenCalled();
   });
 
@@ -56,9 +44,9 @@ describe("soan cau Tu luan", () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="edit" questionId="q-8001" />);
     const first = await screen.findByRole("textbox", { name: "Criterion 1 description" });
-    expect(first).toHaveValue("Đảm bảo hình thức đoạn văn khoảng 200 chữ");
+    expect(rich(first).text).toBe("Đảm bảo hình thức đoạn văn khoảng 200 chữ");
     await user.click(screen.getByRole("button", { name: "Move criterion 1 down" }));
-    expect(screen.getByRole("textbox", { name: "Criterion 2 description" })).toHaveValue(
+    expect(rich(screen.getByRole("textbox", { name: "Criterion 2 description" })).text).toBe(
       "Đảm bảo hình thức đoạn văn khoảng 200 chữ",
     );
     await user.click(screen.getByRole("button", { name: "Delete criterion 4" }));
@@ -72,7 +60,7 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="create" type="TRUE_FALSE" />);
     const table = await screen.findByRole("group", { name: "Score by number of correct statements" });
-    expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual(["0,5", "1"]);
+    expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual(["0.5", "1"]);
 
     await user.click(within(table).getByRole("button", { name: "From exam template…" }));
     expect(await screen.findByRole("menuitem", { name: /THPTQG/ })).toHaveAttribute("aria-disabled", "true");
@@ -81,18 +69,18 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     await user.click(screen.getByRole("button", { name: "Add statement" }));
     await user.click(screen.getByRole("button", { name: "Add statement" }));
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,25",
-      "0,5",
-      "0,75",
+      "0.25",
+      "0.5",
+      "0.75",
       "1",
     ]);
 
     await user.click(within(table).getByRole("button", { name: "From exam template…" }));
     await user.click(await screen.findByRole("menuitem", { name: /THPTQG/ }));
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,1",
-      "0,25",
-      "0,5",
+      "0.1",
+      "0.25",
+      "0.5",
       "1",
     ]);
   });
@@ -105,8 +93,8 @@ describe("bang diem Dung/Sai va quy tac nhieu dap an", () => {
     await user.clear(points);
     await user.type(points, "2");
     expect(within(table).getAllByRole("textbox").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "0,2",
-      "0,5",
+      "0.2",
+      "0.5",
       "1",
       "2",
     ]);
@@ -156,6 +144,6 @@ describe("chi tiet cau Tu luan va Dung/Sai", () => {
     navigation.pathname = "/questions/q-8008";
     renderEn(<QuestionDetailContent questionId="q-8008" />);
     expect(await screen.findByText("Competency")).toBeInTheDocument();
-    expect(await screen.findByText("Toán học")).toBeInTheDocument();
+    expect(await screen.findByText("Mathematical competence")).toBeInTheDocument();
   });
 });

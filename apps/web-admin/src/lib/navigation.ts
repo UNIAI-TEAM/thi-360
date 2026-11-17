@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
-import { isContentMockEnabled } from "@/lib/mock/content-mock";
+import { isGradingMockEnabled } from "@/lib/mock/flags";
 
 /**
  * Menu chính của web admin, nguồn duy nhất cho sidebar, breadcrumb và lối tắt ở Bảng điều khiển.
@@ -33,10 +33,10 @@ export interface NavItem {
   /** Đặt `true` cho mục không hiện thành thẻ lối tắt (chính trang Bảng điều khiển). */
   excludeFromShortcuts?: boolean;
   /**
-   * Mục của màn dữ liệu mẫu (đợt 2, chưa có backend): chỉ hiện khi bật `NEXT_PUBLIC_THI360_CONTENT_MOCK`
-   * (`isContentMockEnabled`). Khi nối backend: bỏ cờ này và đặt `permission` theo mã quyền thật.
+   * Màn chạy được trên dữ liệu mẫu: hiện khi người dùng có `permission`, hoặc khi cờ
+   * `NEXT_PUBLIC_THI360_GRADING_MOCK` bật (chỉ còn `/grading` sau QA UNI-2621).
    */
-  mockOnly?: boolean;
+  mockFlag?: "grading";
 }
 
 export interface NavGroup {
@@ -81,23 +81,20 @@ export const NAVIGATION: readonly NavGroup[] = [
         id: "questions",
         href: "/questions",
         icon: FileQuestion,
-        permission: null,
-        mockOnly: true,
+        permission: "QUESTION.VIEW",
       },
       {
         id: "exams",
         href: "/exams",
         icon: ClipboardList,
-        permission: null,
-        mockOnly: true,
+        permission: "EXAM.VIEW",
       },
       {
-        // Chưa có mã quyền chấm bài (UNI-2604): hiện như các màn dữ liệu mẫu khác; khi có backend đặt mã quyền thật.
         id: "grading",
         href: "/grading",
         icon: ClipboardCheck,
-        permission: null,
-        mockOnly: true,
+        permission: "GRADING.VIEW",
+        mockFlag: "grading",
       },
       {
         id: "catalog",
@@ -126,8 +123,17 @@ export const NAVIGATION: readonly NavGroup[] = [
   },
 ];
 
-function isVisible(item: NavItem, granted: ReadonlySet<string>, mockEnabled: boolean): boolean {
-  if (item.mockOnly && !mockEnabled) return false;
+export interface MockFlags {
+  readonly grading: boolean;
+}
+
+export function currentMockFlags(): MockFlags {
+  return { grading: isGradingMockEnabled() };
+}
+
+/** Hiện khi cờ dữ liệu mẫu của mục bật, hoặc người dùng có quyền (mục không có quyền: mọi người dùng thấy). */
+function isVisible(item: NavItem, granted: ReadonlySet<string>, flags: MockFlags): boolean {
+  if (item.mockFlag && flags[item.mockFlag]) return true;
   return item.permission === null || hasPermission(granted, item.permission);
 }
 
@@ -135,12 +141,12 @@ function isVisible(item: NavItem, granted: ReadonlySet<string>, mockEnabled: boo
 export function filterNavigation(
   groups: readonly NavGroup[],
   granted: ReadonlySet<string>,
-  mockEnabled = isContentMockEnabled(),
+  mockFlags: MockFlags = currentMockFlags(),
 ): NavGroup[] {
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => isVisible(item, granted, mockEnabled)),
+      items: group.items.filter((item) => isVisible(item, granted, mockFlags)),
     }))
     .filter((group) => group.items.length > 0);
 }

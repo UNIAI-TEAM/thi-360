@@ -1,0 +1,234 @@
+{
+  "_about": "Bảng mẫu HTML của trình soạn (UNI-2638, spec docs/specs/2026-11-17-trinh-soan-noi-dung.md mục 3). Dùng chung cho test Java (QuestionHtmlSanitizer) và vitest (TipTap, RichTextView). Mẫu valid=true: lọc không có vi phạm và kết quả bằng đúng chuỗi html; trình soạn nạp rồi xuất ra đúng chuỗi html (giá trị onChange, sau sanitize.ts). Chuỗi html là dạng jsoup xuất ra: dấu < > & trong chữ viết thành &lt; &gt; &amp; (kể cả trong LaTeX); công thức khối là span ở cấp đầu, không nằm trong p. Mẫu valid=false: lọc trả đúng các vi phạm liệt kê (tag, và attribute nếu có), so như tập hợp, không kể thứ tự. Thiếu hoặc sai giá trị thuộc tính: tag + attribute. Sai cấu trúc: chỉ tag. Phần tử đã bị báo ở lượt kiểm cấu trúc thì không báo tiếp các con của nó. Ảnh dùng id cố định; test Java dùng bộ phân giải ảnh giả trả /api/v1/admin/question-assets/<id> cho id này. ED-0a và ED-0b được thêm mẫu, không sửa mẫu đã có khi chưa hỏi Advisor.",
+  "assetId": "9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f",
+  "samples": [
+    {
+      "name": "math-inline-and-block",
+      "valid": true,
+      "allowImages": true,
+      "html": "<p>Tính <span class=\"math-inline\">\\(\\lim_{x \\to 1} \\frac{2x - \\sqrt{3x + 1}}{x^2 - 1}\\)</span>, ta được</p><span class=\"math-block\">\\[x^2 + y^2 = z^2\\]</span>"
+    },
+    {
+      "name": "chemistry-mhchem",
+      "valid": true,
+      "allowImages": true,
+      "html": "<p><span class=\"math-inline\">\\(\\ce{CaCO3(s) &lt;=&gt; CaO(s) + CO2(g)}\\)</span> <span class=\"math-inline\">\\(\\Delta_r H^\\circ_{298} = 179,2\\ \\mathrm{kJ}\\)</span></p>"
+    },
+    {
+      "name": "data-table",
+      "valid": true,
+      "allowImages": true,
+      "html": "<figure class=\"data-table\"><figcaption>TRỊ GIÁ XUẤT, NHẬP KHẨU CỦA HOA KÌ</figcaption><table><thead><tr><th scope=\"col\">Năm</th><th scope=\"col\">2000</th><th scope=\"col\">2020</th></tr></thead><tbody><tr><th scope=\"row\">Xuất khẩu</th><td class=\"num\">1096,1</td><td class=\"num\">2148,6</td></tr><tr><th scope=\"row\">Nhập khẩu</th><td class=\"num\">1477,2</td><td class=\"num\">2776,1</td></tr></tbody></table><p class=\"figure-note\">Đơn vị: Tỉ USD</p><p class=\"figure-source\">Nguồn: World Bank, 2022</p></figure>"
+    },
+    {
+      "name": "data-table-merged-cell-with-math",
+      "valid": true,
+      "allowImages": true,
+      "html": "<figure class=\"data-table\"><table><thead><tr><th scope=\"col\" colspan=\"2\">Giá trị</th></tr></thead><tbody><tr><td><span class=\"math-inline\">\\(x_1\\)</span></td><td>H<sub>2</sub>O</td></tr></tbody></table></figure>"
+    },
+    {
+      "name": "image-figure",
+      "valid": true,
+      "allowImages": true,
+      "html": "<figure class=\"image\" data-width=\"medium\" data-zoom=\"true\"><img src=\"/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\" alt=\"Biểu đồ số lượng lợn 2015 - 2021\" data-asset-id=\"9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\"><figcaption>Biểu đồ số lượng lợn và sản lượng thịt lợn</figcaption><p class=\"figure-source\">Nguồn: Số liệu theo https://www.gso.gov.vn</p></figure>"
+    },
+    {
+      "name": "quote-poem",
+      "valid": true,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"poem\" data-line-numbers=\"5\"><p>Buồn trông cửa bể chiều hôm,<br>Thuyền ai thấp thoáng cánh buồm xa xa?<br>Buồn trông ngọn nước mới sa,<br>Hoa trôi man mác biết là về đâu?</p><p>Buồn trông nội cỏ rầu rầu,<br>Chân mây mặt đất một màu xanh xanh.</p><footer>(Nguyễn Du, <cite>Truyện Kiều</cite>)</footer></blockquote>"
+    },
+    {
+      "name": "quote-prose-with-source",
+      "valid": true,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><p>Đoạn văn thứ nhất.</p><p>Đoạn văn thứ hai.</p><p class=\"figure-source\">NXB Giáo dục, 2020, tr. 12</p></blockquote>"
+    },
+    {
+      "name": "underline-labels",
+      "valid": true,
+      "allowImages": true,
+      "html": "<p>For millennia, the coconuts <u data-label=\"A\">has been</u> central <u data-label=\"B\">to</u> the lives of Polynesian peoples. <u>Plain underline</u> stays plain.</p>"
+    },
+    {
+      "name": "set-passage-blanks",
+      "valid": true,
+      "allowImages": true,
+      "html": "<p>The word Anthropocene was <span class=\"blank\" data-blank=\"1\"></span> by Dutch chemist Paul Crutzen in 2002. The Holocene began <span class=\"blank\" data-blank=\"2\"></span> years ago.</p>"
+    },
+    {
+      "name": "cross-diagram",
+      "valid": true,
+      "allowImages": true,
+      "html": "<figure class=\"cross\"><table><tbody><tr><th scope=\"row\">P</th><td>♂ AaBb × ♀ aabb</td></tr><tr><th scope=\"row\">G</th><td>AB, Ab, aB, ab ; ab</td></tr><tr><th scope=\"row\">F<sub>1</sub></th><td>1 AaBb : 1 Aabb : 1 aaBb : 1 aabb</td></tr></tbody></table></figure>"
+    },
+    {
+      "name": "legacy-plain-table",
+      "valid": true,
+      "allowImages": true,
+      "html": "<table><tbody><tr><td colspan=\"1\" rowspan=\"1\"><p>a</p></td><td colspan=\"1\" rowspan=\"1\"><p>b</p></td></tr></tbody></table>",
+      "note": "Bảng thường của FE-4 giữ nguyên để nội dung cũ đọc được."
+    },
+    {
+      "name": "bad-figure-unknown-class",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"gallery\"><figcaption>x</figcaption></figure>",
+      "violations": [{ "tag": "figure", "attribute": "class" }]
+    },
+    {
+      "name": "bad-figure-two-classes",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"image data-table\"><table><tbody><tr><td>1</td></tr></tbody></table></figure>",
+      "violations": [{ "tag": "figure", "attribute": "class" }]
+    },
+    {
+      "name": "bad-image-figure-without-img",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"image\" data-width=\"small\" data-zoom=\"false\"><figcaption>no image</figcaption></figure>",
+      "violations": [{ "tag": "figure" }]
+    },
+    {
+      "name": "bad-image-figure-when-images-off",
+      "valid": false,
+      "allowImages": false,
+      "html": "<figure class=\"image\" data-width=\"small\" data-zoom=\"false\"><img src=\"/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\" alt=\"x\" data-asset-id=\"9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\"></figure>",
+      "violations": [{ "tag": "img" }, { "tag": "figure" }]
+    },
+    {
+      "name": "bad-width-on-cross",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"cross\" data-width=\"full\"><table><tbody><tr><th scope=\"row\">P</th><td>x</td></tr></tbody></table></figure>",
+      "violations": [{ "tag": "figure", "attribute": "data-width" }]
+    },
+    {
+      "name": "bad-figure-nested-in-cell",
+      "valid": false,
+      "allowImages": true,
+      "html": "<table><tbody><tr><td><figure class=\"cross\"><table><tbody><tr><td>x</td></tr></tbody></table></figure></td></tr></tbody></table>",
+      "violations": [{ "tag": "figure" }]
+    },
+    {
+      "name": "bad-figcaption-outside-figure",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p>a</p><figcaption>loose</figcaption>",
+      "violations": [{ "tag": "figcaption" }]
+    },
+    {
+      "name": "bad-footer-outside-quote",
+      "valid": false,
+      "allowImages": true,
+      "html": "<footer><cite>x</cite></footer>",
+      "violations": [{ "tag": "footer" }]
+    },
+    {
+      "name": "bad-quote-line-numbers-on-prose",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"5\"><p>x</p></blockquote>",
+      "violations": [{ "tag": "blockquote", "attribute": "data-line-numbers" }]
+    },
+    {
+      "name": "bad-blank-with-child-and-range",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p><span class=\"blank\" data-blank=\"21\"></span><span class=\"blank\" data-blank=\"2\">x</span></p>",
+      "violations": [{ "tag": "span", "attribute": "data-blank" }, { "tag": "span" }]
+    },
+    {
+      "name": "bad-underline-label",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p><u data-label=\"Z\">x</u> <u data-label=\"AB\">y</u></p>",
+      "violations": [{ "tag": "u", "attribute": "data-label" }, { "tag": "u", "attribute": "data-label" }]
+    },
+    {
+      "name": "bad-figure-source-outside-figure",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p class=\"figure-source\">Nguồn</p>",
+      "violations": [{ "tag": "p", "attribute": "class" }]
+    },
+    {
+      "name": "bad-td-class-and-th-scope",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"data-table\"><table><tbody><tr><th scope=\"rowgroup\">a</th><td class=\"highlight\">1</td></tr></tbody></table></figure>",
+      "violations": [{ "tag": "th", "attribute": "scope" }, { "tag": "td", "attribute": "class" }]
+    },
+    {
+      "name": "bad-cite-outside-footer",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p>Theo <cite>Truyện Kiều</cite></p>",
+      "violations": [{ "tag": "cite" }]
+    },
+    {
+      "name": "bad-image-figure-two-imgs",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"image\" data-width=\"small\" data-zoom=\"false\"><img src=\"/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\" alt=\"a\" data-asset-id=\"9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\"><img src=\"/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\" alt=\"b\" data-asset-id=\"9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\"></figure>",
+      "violations": [{ "tag": "figure" }]
+    },
+    {
+      "name": "bad-image-figure-zoom-value",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"image\" data-width=\"medium\" data-zoom=\"yes\"><img src=\"/api/v1/admin/question-assets/9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\" alt=\"a\" data-asset-id=\"9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f\"></figure>",
+      "violations": [{ "tag": "figure", "attribute": "data-zoom" }]
+    },
+    {
+      "name": "bad-data-table-two-tables",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"data-table\"><table><tbody><tr><td>1</td></tr></tbody></table><table><tbody><tr><td>2</td></tr></tbody></table></figure>",
+      "violations": [{ "tag": "figure" }]
+    },
+    {
+      "name": "bad-cross-without-table",
+      "valid": false,
+      "allowImages": true,
+      "html": "<figure class=\"cross\"><p>P: AaBb</p></figure>",
+      "violations": [{ "tag": "figure" }]
+    },
+    {
+      "name": "bad-figure-in-list",
+      "valid": false,
+      "allowImages": true,
+      "html": "<ul><li><figure class=\"cross\"><table><tbody><tr><th scope=\"row\">P</th><td>x</td></tr></tbody></table></figure></li></ul>",
+      "violations": [{ "tag": "figure" }]
+    },
+    {
+      "name": "bad-quote-kind-and-class",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"letter\" data-line-numbers=\"0\"><p>x</p></blockquote><blockquote class=\"pull\" data-kind=\"prose\" data-line-numbers=\"0\"><p>y</p></blockquote>",
+      "violations": [{ "tag": "blockquote", "attribute": "data-kind" }, { "tag": "blockquote", "attribute": "class" }]
+    },
+    {
+      "name": "bad-quote-child",
+      "valid": false,
+      "allowImages": true,
+      "html": "<blockquote class=\"quote\" data-kind=\"prose\" data-line-numbers=\"0\"><ul><li>x</li></ul></blockquote>",
+      "violations": [{ "tag": "blockquote" }]
+    },
+    {
+      "name": "bad-blank-without-number",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p>a <span class=\"blank\"></span> b</p>",
+      "violations": [{ "tag": "span", "attribute": "data-blank" }]
+    },
+    {
+      "name": "bad-script-style-event",
+      "valid": false,
+      "allowImages": true,
+      "html": "<p style=\"color:red\" onclick=\"x()\">a</p><script>x()</script>",
+      "violations": [{ "tag": "p", "attribute": "style" }, { "tag": "p", "attribute": "onclick" }, { "tag": "script" }]
+    }
+  ]
+}

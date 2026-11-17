@@ -8,6 +8,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: metadata("titleTemplate", { title: t("title") }) };
 }
 
-export default function ForbiddenPage() {
-  return <ForbiddenView />;
+export default async function ForbiddenPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string | string[] }>;
+}) {
+  const { reason } = await searchParams;
+  return <ForbiddenView reason={reason === "origin" ? "origin" : undefined} />;
 }

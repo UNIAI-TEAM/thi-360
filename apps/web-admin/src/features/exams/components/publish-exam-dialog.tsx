@@ -22,8 +22,8 @@ import { useId, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { MockApiError } from "@/lib/mock/content-mock";
-import { useExamCheck, usePublishExam } from "../review-queries";
+import { checkRequiredReason, errorCodeOf } from "../review-api";
+import { useExamCheck, useIdempotencyKey, usePublishExam } from "../review-queries";
 import type { ExamCheckResult, ExamVersionList, PathCheck, PublishExamResponse } from "../review-types";
 import type { ExamDetail } from "../types";
 import { examTabHref } from "../editor-tabs";
@@ -157,7 +157,8 @@ function PublishForm({
   const publish = usePublishExam(exam.id);
   const fieldsetId = useId();
   const errorId = useId();
-  const [serverError, setServerError] = useState<string | null>(null);
+  const idempotency = useIdempotencyKey();
+  const [serverError, setServerError] = useState<{ message: string; recheck: boolean } | null>(null);
 
   /** Đường của bản làm việc còn chờ công bố; công bố một phần trước đó thì chỉ còn các đường chưa chọn. */
   const pending = new Set(versions.workingCopy?.unpublishedPaths.map((path) => path.pathId) ?? []);
@@ -197,19 +198,38 @@ function PublishForm({
     (values) => {
       setServerError(null);
       onSubmittingChange(true);
+      const note = values.note.trim() || null;
+      // Một khóa cho mỗi lần bấm Công bố: thử lại cùng nội dung giữ khóa, sửa lựa chọn hay ghi chú thì khóa mới.
+      const idempotencyKey = idempotency.keyFor(JSON.stringify([[...values.pathIds].sort(), note, exam.revision]));
       publish.mutate(
-        { pathIds: values.pathIds, note: values.note.trim() || null },
+        { pathIds: values.pathIds, note, expectedRevision: exam.revision, idempotencyKey },
         {
-          onSuccess: (response) => onPublished(response),
+          onSuccess: (response) => {
+            idempotency.release();
+            onPublished(response);
+          },
           onError: (error) => {
-            const code = error instanceof MockApiError ? error.code : undefined;
-            setServerError(
-              code === "PATH_NOT_VALID" || code === "CHECK_REQUIRED" || code === "NOTHING_TO_PUBLISH"
-                ? t(`errors.${code}`)
-                : getErrorStatus(error) === 422
-                  ? t("errors.PATH_NOT_VALID")
-                  : t("errors.generic"),
-            );
+            const reason = checkRequiredReason(error);
+            const code = errorCodeOf(error);
+            if (reason !== null) {
+              const known = ["NO_CHECK", "STRUCTURE_CHANGED", "CONFIG_CHANGED", "SOURCE_CHANGED", "PATH_NOT_VALID"];
+              setServerError({
+                message: t(`errors.checkRequired.${known.includes(reason) ? reason : "UNKNOWN"}`),
+                recheck: true,
+              });
+              return;
+            }
+            setServerError({
+              message:
+                code === "PATH_NOT_VALID" || code === "NOTHING_TO_PUBLISH"
+                  ? t(`errors.${code}`)
+                  : getErrorStatus(error) === 422
+                    ? t("errors.PATH_NOT_VALID")
+                    : getErrorStatus(error) === 412
+                      ? t("errors.revisionConflict")
+                      : t("errors.generic"),
+              recheck: false,
+            });
           },
           onSettled: () => onSubmittingChange(false),
         },
@@ -352,9 +372,17 @@ function PublishForm({
         </FormField>
 
         {serverError && (
-          <p role="alert" className="rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-2.5 text-body text-danger">
-            {serverError}
-          </p>
+          <div
+            role="alert"
+            className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-2.5 text-body text-danger"
+          >
+            <span className="min-w-0 flex-1">{serverError.message}</span>
+            {serverError.recheck && (
+              <Link href={reviewHref(exam.id)} className="rounded-sm font-medium text-primary-text hover:underline">
+                {t("errors.recheck")}
+              </Link>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,11 +1,17 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
 import { ExamVersionsView } from "../components/exam-versions-view";
-import { reviewStore } from "../mock/review-store";
-import { examStore } from "../mock/store";
+import { getExam } from "../api";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/exams/ex-hsa-f-001/versions",
@@ -14,11 +20,26 @@ vi.mock("next/navigation", () => ({
 }));
 
 const HSA = "ex-hsa-f-001";
+const EN = "opt-30";
+const SCIENCE = "opt-sci-1";
 
 beforeEach(() => {
-  examStore.reset();
-  questionStore.reset();
-  reviewStore.reset();
+  const backend = new ExamsBackend();
+  // Kiểm tra gần nhất: đường Tiếng Anh hợp lệ, đường Khoa học thiếu nguồn (hộp thoại chỉ cho chọn đường hợp lệ).
+  backend.seedCheck(HSA, {
+    examId: HSA,
+    status: "INVALID",
+    stale: false,
+    checkedAt: "2026-11-15T09:28:00+07:00",
+    durationSeconds: 31,
+    timeLimitSeconds: 30,
+    issueCount: 2,
+    paths: [
+      backend.checkPath(HSA, EN, "VALID"),
+      backend.checkPath(HSA, SCIENCE, "INVALID"),
+    ],
+  });
+  backend.install();
   window.history.replaceState(null, "", "/");
 });
 
@@ -46,21 +67,21 @@ describe("ExamVersionsView", () => {
     const { dialog } = await openPublishDialog();
     expect(within(dialog).getByRole("heading", { name: "Công bố bản sửa thành v3?" })).toBeInTheDocument();
     const boxes = within(dialog).getAllByRole("checkbox");
-    expect(boxes).toHaveLength(4);
-    expect(boxes.filter((box) => box.getAttribute("aria-checked") === "true")).toHaveLength(2);
-    expect(boxes.filter((box) => box.hasAttribute("disabled"))).toHaveLength(2);
-    expect(within(dialog).getByRole("checkbox", { name: /^KH-2/ })).toBeDisabled();
+    expect(boxes).toHaveLength(2);
+    expect(boxes.filter((box) => box.getAttribute("aria-checked") === "true")).toHaveLength(1);
+    expect(boxes.filter((box) => box.hasAttribute("disabled"))).toHaveLength(1);
+    expect(within(dialog).getByRole("checkbox", { name: /^Khoa học/ })).toBeDisabled();
   });
 
-  it("cong bo hai duong tao v3, duong con lai giu ban cu", async () => {
+  it("cong bo duong hop le tao v3, duong con lai giu ban cu", async () => {
     const { user, dialog } = await openPublishDialog();
-    await user.click(within(dialog).getByRole("button", { name: "Công bố 2 đường lựa chọn" }));
+    await user.click(within(dialog).getByRole("button", { name: "Công bố 1 đường lựa chọn" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const table = await screen.findByRole("table", { name: "Các phiên bản đã công bố của HSA-F-001" });
     await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(4));
-    const latest = reviewStore.state(examStore.require(HSA)).versions;
-    expect(latest.some((item) => item.version === 3)).toBe(true);
-    expect(examStore.require(HSA).hasUnpublishedChanges).toBe(true);
+    const exam = await getExam(HSA);
+    expect(exam.versions.some((item) => item.version === 3)).toBe(true);
+    expect(exam.hasUnpublishedChanges).toBe(true);
   });
 
   it("bao loi khi ghi chu qua dai", async () => {
@@ -68,7 +89,7 @@ describe("ExamVersionsView", () => {
     fireEvent.change(within(dialog).getByRole("textbox", { name: /Ghi chú công bố/ }), {
       target: { value: "a".repeat(501) },
     });
-    await user.click(within(dialog).getByRole("button", { name: "Công bố 2 đường lựa chọn" }));
+    await user.click(within(dialog).getByRole("button", { name: "Công bố 1 đường lựa chọn" }));
     expect(await within(dialog).findByText("Ghi chú tối đa 500 ký tự.")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });

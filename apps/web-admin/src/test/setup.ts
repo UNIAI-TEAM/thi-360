@@ -2,6 +2,9 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
+// Cờ dữ liệu mẫu còn lại `/grading` bật trong test để các màn chấm chạy trên kho mẫu (plan B7, QA UNI-2621).
+process.env.NEXT_PUBLIC_THI360_GRADING_MOCK = "true";
+
 afterEach(() => {
   cleanup();
 });
@@ -33,4 +36,19 @@ if (typeof window !== "undefined") {
       removeListener: () => {},
       dispatchEvent: () => false,
     }) as MediaQueryList;
+}
+
+// jsdom không đo layout: ProseMirror/TipTap gọi getClientRects khi scrollToSelection/paste.
+const emptyDomRectList = {
+  length: 0,
+  item: () => null,
+  [Symbol.iterator]: function* () {},
+} as unknown as DOMRectList;
+
+if (typeof Range !== "undefined") {
+  Range.prototype.getClientRects ??= () => emptyDomRectList;
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+}
+if (typeof Element !== "undefined") {
+  Element.prototype.getClientRects ??= () => emptyDomRectList;
 }

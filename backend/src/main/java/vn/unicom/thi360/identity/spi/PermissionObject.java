@@ -7,7 +7,9 @@ public enum PermissionObject {
     PERMISSION("PERMISSION", "Quyền"),
     CATALOG("CATALOG", "Danh mục"),
     AUDIT("AUDIT", "Nhật ký"),
-    APPEARANCE("APPEARANCE", "Giao diện");
+    APPEARANCE("APPEARANCE", "Giao diện"),
+    QUESTION("QUESTION", "Ngân hàng câu hỏi"),
+    EXAM("EXAM", "Bài thi");
 
     private final String code;
     private final String displayName;

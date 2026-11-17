@@ -1,14 +1,18 @@
 "use client";
 
-import { Button, Chip, cn, FormField, IconButton, Input, Label, Textarea } from "@thi360/ui";
+import { questionHtmlText } from "@/components/rich-text";
+import { Button, Chip, cn, FormField, IconButton, Input, Label } from "@thi360/ui";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
 import { get, useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
+import type { ContentReference } from "@/features/content/types";
 import { emptyChild, questionSetPoints, type EditorChild, type QuestionEditorValues } from "../editor-form";
+import { useUiLocale } from "../use-ui-locale";
 import { CHILD_QUESTION_TYPES, type ChildQuestionType } from "../editor-types";
-import { CONTENT_MAX, SOLUTION_MAX } from "../editor-schema";
+import { RichTextField } from "./question-editor-rich-field";
 import { QuestionBodyEditor } from "./question-editor-body";
+import { ChildClassification } from "./question-editor-child-classification";
 import { FieldErrorText, GroupError, optionLetter, RowActions, statementLetter, useAnnounce, useEditorError } from "./question-editor-shared";
 
 /**
@@ -16,13 +20,14 @@ import { FieldErrorText, GroupError, optionLetter, RowActions, statementLetter, 
  * cha, điểm riêng (mặc định 1); điểm câu chùm là tổng điểm câu con (UniNote PBI-03 mục 4.2). Câu con đã có thu gọn
  * thành dòng tóm tắt; câu con có lỗi tự mở ra để sửa.
  */
-export function QuestionSetEditor() {
+export function QuestionSetEditor({ reference }: { reference: ContentReference }) {
   const t = useTranslations("questions.editor.set");
   const tType = useTranslations("content.questionType");
   const announce = useAnnounce();
   const groupId = useId();
   const addGroupRef = useRef<HTMLDivElement>(null);
   const { control } = useFormContext<QuestionEditorValues>();
+  const locale = useUiLocale();
   const { fields, append, remove, move } = useFieldArray({ control, name: "children", keyName: "rowKey" });
   const children = useWatch({ control, name: "children" }) ?? [];
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -37,7 +42,7 @@ export function QuestionSetEditor() {
     });
 
   const add = (type: ChildQuestionType) => {
-    const child = emptyChild(type);
+    const child = emptyChild(type, locale);
     setExpanded((current) => new Set(current).add(child.key));
     append(child, { shouldFocus: true, focusName: `children.${fields.length}.content` });
     announce(t("added", { number: fields.length + 1, type: tType(type) }));
@@ -55,6 +60,7 @@ export function QuestionSetEditor() {
           <ChildCard
             key={field.rowKey}
             index={index}
+            reference={reference}
             count={fields.length}
             child={children[index] ?? field}
             expanded={expanded.has(field.key)}
@@ -92,6 +98,7 @@ function ChildCard({
   index,
   count,
   child,
+  reference,
   expanded,
   onToggle,
   onMove,
@@ -100,6 +107,7 @@ function ChildCard({
   index: number;
   count: number;
   child: EditorChild;
+  reference: ContentReference;
   expanded: boolean;
   onToggle: () => void;
   onMove: (from: number, to: number) => void;
@@ -138,7 +146,7 @@ function ChildCard({
           </div>
           {!open && (
             <>
-              <p className="line-clamp-2 text-body text-text">{child.content.trim() || t("noContent")}</p>
+              <p className="line-clamp-2 text-body text-text">{questionHtmlText(child.content).trim() || t("noContent")}</p>
               <p className="text-caption text-text-muted">{t("answerSummary", { answer: answerSummary(child, t) })}</p>
             </>
           )}
@@ -160,17 +168,16 @@ function ChildCard({
         {open && (
           <>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${cardId}-content`} required>
+              <Label id={`${cardId}-content-label`} htmlFor={`${cardId}-content`} required>
                 {t("contentLabel")}
               </Label>
-              <Textarea
+              <RichTextField
                 id={`${cardId}-content`}
-                rows={3}
-                maxLength={CONTENT_MAX}
+                aria-labelledby={`${cardId}-content-label`}
                 aria-required
                 aria-invalid={contentError ? true : undefined}
                 aria-describedby={contentError ? `${cardId}-content-error` : undefined}
-                {...register(`children.${index}.content`)}
+                name={`children.${index}.content`}
               />
               <FieldErrorText
                 id={`${cardId}-content-error`}
@@ -182,7 +189,6 @@ function ChildCard({
                 type={child.type}
                 prefix={`children.${index}.body`}
                 contentPath={`children.${index}.content`}
-                contentFieldId={`${cardId}-content`}
               />
             </div>
             <div className="grid gap-3 @lg:grid-cols-[10rem_minmax(0,1fr)]">
@@ -197,10 +203,11 @@ function ChildCard({
                 error={solutionError ? tErrors(solutionError) : undefined}
               >
                 {(controlProps) => (
-                  <Textarea {...controlProps} rows={2} maxLength={SOLUTION_MAX} {...register(`children.${index}.solution`)} />
+                  <RichTextField {...controlProps} aria-label={t("solutionLabel")} name={`children.${index}.solution`} />
                 )}
               </FormField>
             </div>
+            <ChildClassification index={index} reference={reference} />
           </>
         )}
       </div>
@@ -223,17 +230,20 @@ function answerSummary(child: EditorChild, t: ReturnType<typeof useTranslations>
       );
       return parts.length ? parts.join(", ") : t("noAnswer");
     }
-    case "FILL_IN": {
-      const answers = body.blanks.map((blank) => blank.answers.map((answer) => answer.value.trim()).filter(Boolean).join(" / "));
-      return answers.some(Boolean) ? answers.join("; ") : t("noAnswer");
+    case "SHORT_ANSWER": {
+      const answers = (body.blanks[0]?.answers ?? []).map((answer) => answer.value.trim()).filter(Boolean);
+      return answers.length ? answers.join(" / ") : t("noAnswer");
     }
-    case "DRAG_DROP": {
-      const items = body.zones.map((zone) => zone.itemContent.trim()).filter(Boolean);
-      return items.length ? items.join("; ") : t("noAnswer");
+    case "MATCHING": {
+      const pairs = body.left.map((item, position) => {
+        const rightIndex = body.right.findIndex((right) => right.id === item.rightId);
+        return `${position + 1}-${rightIndex === -1 ? "?" : optionLetter(rightIndex)}`;
+      });
+      return pairs.length ? pairs.join(", ") : t("noAnswer");
     }
     case "ESSAY": {
-      const criteria = body.rubric.map((criterion) => criterion.description.trim()).filter(Boolean);
-      return criteria.length ? criteria.join("; ") : t("noAnswer");
+      const guide = questionHtmlText(body.gradingGuide).trim();
+      return guide || t("noAnswer");
     }
   }
 }

@@ -18,8 +18,8 @@ import {
   optionTarget,
   PART_NAME_MAX,
 } from "../create-exam-schema";
-import { sum } from "../matrix";
-import type { ExamFormat, ExamTemplateBlock, ExamTiming } from "../types";
+import { countOf, sum } from "../matrix";
+import type { ExamScope, ExamTemplateBlock, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationAttachDialog } from "./combination-options";
 import { OptionalNumberInput } from "./create-exam-fields";
@@ -47,11 +47,11 @@ export function TemplateBlocksNote({ blocks }: { blocks: readonly ExamTemplateBl
   if (blocks.length === 0) return null;
   return (
     <div className="flex flex-col gap-1 text-caption text-text-muted">
-      <p className="font-semibold text-text-secondary">{t("title", { count: sum(blocks.map((block) => block.questionCount)) })}</p>
+      <p className="font-semibold text-text-secondary">{t("title", { count: sum(blocks.map(countOf)) })}</p>
       <ul className="flex flex-wrap gap-x-3 gap-y-1">
         {blocks.map((block, index) => (
           <li key={`${block.name}-${index}`} className="tabular-nums">
-            {t("item", { name: block.name, count: block.questionCount })}
+            {t("item", { name: block.name, count: block.questionCount ?? 0 })}
             {block.questionType === "ESSAY" && ` · ${t("essay")}`}
           </li>
         ))}
@@ -106,7 +106,7 @@ function SectionCountsEditor({
               </label>
               <BlockNumberInput
                 id={inputId}
-                value={section.questionCount}
+                value={section.questionCount ?? 0}
                 onValueChange={(value) =>
                   onChange(sections.map((item, position) => (position === index ? { ...item, questionCount: value } : item)))
                 }
@@ -145,7 +145,7 @@ function SectionCountsEditor({
 export function CreateExamPartsEditor({
   control,
   parts,
-  format,
+  scope,
   timing,
   pointsByPart,
   subjects,
@@ -158,7 +158,7 @@ export function CreateExamPartsEditor({
 }: {
   control: Control<CreateExamFormValues>;
   parts: readonly CreatePartValues[];
-  format: ExamFormat;
+  scope: ExamScope;
   timing: ExamTiming;
   pointsByPart: boolean;
   subjects: readonly CatalogOption[];
@@ -171,7 +171,7 @@ export function CreateExamPartsEditor({
 }) {
   const t = useTranslations("exams.create.parts");
   const subjectOptions = subjects.map((subject) => ({ value: subject.code, label: subject.name }));
-  const single = format === "SINGLE";
+  const single = scope === "PART";
   const perPart = timing === "PER_PART";
   const numberColumns = (1 + (perPart ? 1 : 0) + (pointsByPart ? 1 : 0)) as 1 | 2 | 3;
 

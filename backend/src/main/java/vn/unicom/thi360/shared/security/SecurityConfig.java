@@ -18,6 +18,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.access.AccessDeniedHandler;
 
 @Configuration
@@ -28,11 +29,15 @@ public class SecurityConfig {
     private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
 
     private RateLimitFilter activeRateLimitFilter;
+    private RateLimitFilter activeUploadRateLimitFilter;
 
     @PreDestroy
     public void cleanup() {
         if (activeRateLimitFilter != null) {
             activeRateLimitFilter.close();
+        }
+        if (activeUploadRateLimitFilter != null) {
+            activeUploadRateLimitFilter.close();
         }
     }
 
@@ -49,8 +54,11 @@ public class SecurityConfig {
             throws Exception {
 
         RateLimitFilter rateLimitFilter = new RateLimitFilter(
-                clientIpResolver, securityProperties, errorWriter, lettuceConnectionFactory);
+                clientIpResolver, securityProperties, errorWriter, lettuceConnectionFactory, true);
+        RateLimitFilter uploadRateLimitFilter = new RateLimitFilter(
+                clientIpResolver, securityProperties, errorWriter, lettuceConnectionFactory, false);
         this.activeRateLimitFilter = rateLimitFilter;
+        this.activeUploadRateLimitFilter = uploadRateLimitFilter;
         CookieAuthFilter cookieAuthFilter = new CookieAuthFilter();
         SessionFilter sessionFilter = new SessionFilter(
                 sessionStore, twoIssuerJwtDecoder, errorWriter, authzResolver);
@@ -113,6 +121,7 @@ public class SecurityConfig {
                 .addFilterAfter(sessionFilter, BearerTokenAuthenticationFilter.class)
                 .addFilterAfter(csrfFilter, SessionFilter.class)
                 .addFilterAfter(adminOriginFilter, CsrfFilter.class)
+                .addFilterAfter(uploadRateLimitFilter, AuthorizationFilter.class)
                 .build();
     }
 }

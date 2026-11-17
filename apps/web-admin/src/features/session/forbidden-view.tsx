@@ -29,12 +29,15 @@ function statusPageLandmarkProps(embedded: boolean): object {
   return contractHolds && embedded ? { embedded: true } : {};
 }
 
+/** Nguyên nhân bị chặn, truyền qua `?reason=`: `origin` = backend từ chối origin của admin (`ORIGIN_INVALID`, G9). */
+export type ForbiddenReason = "origin";
+
 /**
  * Trang 403 (`Forbidden.dc.html`): về trang chủ theo `homeUrl`, hoặc đăng xuất để vào bằng tài khoản khác.
  * Dùng ở hai nơi: trang riêng `/forbidden` (tự dựng `<main>`) và bên trong khung trang khi một màn thiếu quyền
  * (khung đã có `<main>`, nên không dựng thêm và tự đổi tiêu đề thẻ trình duyệt).
  */
-export function ForbiddenView() {
+export function ForbiddenView({ reason }: { reason?: ForbiddenReason } = {}) {
   const t = useTranslations("forbidden");
   const common = useTranslations("common");
   const errors = useTranslations("errors");
@@ -69,12 +72,14 @@ export function ForbiddenView() {
   }
 
   const description =
-    state.status === "ready"
-      ? t.rich("description", {
-          username: state.session.username,
-          strong: (chunks) => <strong className="font-semibold text-text">{chunks}</strong>,
-        })
-      : t("descriptionAnonymous");
+    reason === "origin"
+      ? t("descriptionOrigin")
+      : state.status === "ready"
+        ? t.rich("description", {
+            username: state.session.username,
+            strong: (chunks) => <strong className="font-semibold text-text">{chunks}</strong>,
+          })
+        : t("descriptionAnonymous");
 
   const homeHref = state.status === "ready" ? state.session.homeUrl : webUrl();
 

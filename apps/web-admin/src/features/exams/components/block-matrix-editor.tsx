@@ -27,7 +27,8 @@ export interface MatrixLabels {
 }
 
 export interface BlockMatrixEditorProps {
-  block: QuestionBlock;
+  /** Nhóm đã chuẩn hóa: chỉ tiêu riêng và số câu có giá trị (nhóm không có chỉ tiêu riêng hiện ma trận trống). */
+  block: QuestionBlock & { matrix: BlockMatrix; questionCount: number };
   axes: MatrixAxes;
   labels: MatrixLabels;
   /**
@@ -39,6 +40,11 @@ export interface BlockMatrixEditorProps {
   /** Số câu Sẵn sàng khớp bộ lọc của khối; `undefined` khi đang tải hoặc lỗi. */
   available: AvailableQuestionCounts | undefined;
   availableState: "loading" | "error" | "ready";
+  /**
+   * `false`: chỉ tiêu riêng tùy chọn của nhóm chưa được khai (ma trận trống chỉ để nhập): chưa cảnh báo tổng lệch.
+   * Mặc định `true`.
+   */
+  declared?: boolean;
 }
 
 const CELL_INPUT = "h-9 w-16 px-2";
@@ -56,6 +62,7 @@ export function BlockMatrixEditor({
   onChange,
   available,
   availableState,
+  declared = true,
 }: BlockMatrixEditorProps) {
   const t = useTranslations("exams.matrix");
   const format = useFormatter();
@@ -66,9 +73,11 @@ export function BlockMatrixEditor({
   const { matrix } = block;
   const percent = matrix.unit === "PERCENT";
   const allocation = computeAllocation(block, axes);
-  const issues = validateBlock(block, axes).filter(
-    (issue) => issue.code === "PERCENT_TOTAL" || issue.code === "ALLOCATION_TOTAL" || issue.code === "INVALID_VALUE",
-  );
+  const issues = declared
+    ? validateBlock(block, axes).filter(
+        (issue) => issue.code === "PERCENT_TOTAL" || issue.code === "ALLOCATION_TOTAL" || issue.code === "INVALID_VALUE",
+      )
+    : [];
   const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
 
   const sourceOf = (grade: string | null, difficulty: string | null) =>

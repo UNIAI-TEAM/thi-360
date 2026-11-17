@@ -3,8 +3,8 @@ spring:
     name: thi360-api
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: 21MB
+      max-request-size: 22MB
   datasource:
     url: ${THI360_DB_URL:jdbc:postgresql://localhost:${THI360_DB_PORT:54360}/${THI360_DB_NAME:thi360}}
     username: ${THI360_DB_USER:thi360}
@@ -26,6 +26,8 @@ spring:
       - catalog
       - audit
       - classroom
+      - questionbank
+      - exam
     table: flyway_schema_history
     locations:
       - classpath:db/migration
@@ -46,6 +48,9 @@ spring:
 server:
   port: ${THI360_API_PORT:8080}
   forward-headers-strategy: NATIVE
+  tomcat:
+    # Không swallow body vượt giới hạn thay vì cắt kết nối: multipart 413 trả về đúng JSON lỗi.
+    max-swallow-size: -1
 
 # Log: bố cục và mức log nằm ở logback-spring.xml. Dòng dưới thêm tên dịch vụ vào mỗi bản ghi JSON.
 logging:
@@ -117,7 +122,24 @@ thi360:
       lease-duration: PT5M
       retry-delay: PT5S
       max-attempts: 3
-
+  questionbank:
+    import:
+      max-file-bytes: 5242880
+      max-rows: 2000
+    scheduling:
+      enabled: true
+    assets:
+      # BE-2b (spec 4.2, plan B5): cỡ tệp theo loại; multipart chung 21/22 MB vẫn chặn trước.
+      max-image-size: ${THI360_QB_ASSET_IMAGE_MAX:5MB}
+      max-attachment-size: ${THI360_QB_ASSET_ATTACHMENT_MAX:20MB}
+      # Giới hạn tần suất tải lên theo người (quyết định 8.1): 60 tệp / 10 phút → 429.
+      upload-per-user-limit: ${THI360_QB_ASSET_RATE_LIMIT:60}
+      upload-per-user-window: ${THI360_QB_ASSET_RATE_WINDOW:PT10M}
+      # Tiền tố khóa trong bucket riêng tư dùng chung (quyết định 8.2).
+      key-prefix: ${THI360_QB_ASSET_KEY_PREFIX:questions/}
+      cleanup:
+        scheduling:
+          enabled: true
 ---
 spring:
   config:
@@ -192,6 +214,16 @@ thi360:
     enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
   cookie:
     secure: ${THI360_COOKIE_SECURE:false}
+  questionbank:
+    scheduling:
+      enabled: false
+    assets:
+      cleanup:
+        scheduling:
+          enabled: false
+  exam:
+    scheduling:
+      enabled: false
 ---
 spring:
   config:

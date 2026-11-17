@@ -1,4 +1,5 @@
 import type { PersonRef, QuestionType } from "@/features/content/types";
+import type { QuestionBody } from "@/features/questions/types";
 import type { ExamCheckStatus, ExamPart, ExamVersion, MatrixMode } from "./types";
 
 /**
@@ -39,9 +40,19 @@ export interface BlockAvailability {
   missingRubric?: string[];
 }
 
-/** Nguồn theo từng khối, khóa là id khối. */
+/** Số câu Sẵn sàng của cả môn (hợp nguồn các nhóm, mỗi câu một lần): theo ô Lớp × Độ khó và theo dạng trả lời. */
+export interface SectionAvailability {
+  sectionId: string;
+  total: number;
+  cells: CellAvailability[];
+  byAnswerType: Array<{ answerType: QuestionType; count: number }>;
+}
+
+/** Nguồn theo từng khối (khóa là id khối) và theo từng môn (khóa là id môn trong cấu trúc). */
 export interface ExamAvailability {
   blocks: Record<string, BlockAvailability>;
+  /** Bỏ trống: mọi chỉ tiêu cấp môn coi như không có nguồn. */
+  sections?: Record<string, SectionAvailability>;
 }
 
 /* ---------- Đường lựa chọn ---------- */
@@ -50,7 +61,7 @@ export interface ExamAvailability {
 export interface PathChoice {
   partId: string;
   optionId: string;
-  kind: "SUBJECT" | "COMBINATION" | "BRANCH";
+  kind: "SUBJECT" | "COMBINATION" | "BRANCH" | "SUBJECT_CHOICE";
   code: string;
   name: string;
 }
@@ -79,28 +90,45 @@ export const CHECK_GROUPS = [
 ] as const;
 export type CheckGroup = (typeof CHECK_GROUPS)[number];
 
-export type CheckIssueCode =
-  | "INFO_MISSING"
-  | "OPTION_EMPTY"
-  | "PATH_TOTAL_MISMATCH"
-  | "PART_TOTAL_MISMATCH"
-  | "SECTION_TOTAL_MISMATCH"
-  | "MATRIX_TOTAL_MISMATCH"
-  | "MATRIX_NEGATIVE"
-  | "PERCENT_TOTAL_INVALID"
-  | "SET_SIZE_MISMATCH"
-  | "CELL_SHORTAGE"
-  | "DIMENSION_SHORTAGE"
-  | "MATRIX_INFEASIBLE"
-  | "SET_SHORTAGE"
-  | "OVERLAP_UNCONFIRMED"
-  | "YEARS_UNCONFIRMED"
-  | "OPTION_UNCONFIRMED"
-  | "PART_POINTS_MISMATCH"
-  | "POINTS_TOTAL_MISMATCH"
-  | "COMPETENCY_SHORTAGE"
-  | "RUBRIC_MISSING"
-  | "SCORING_MISMATCH";
+/** Mã vấn đề của kiểm tra cấu hình và xem trước. Mã do backend thêm (BE-5b:13, BE-5b:17) nằm cuối danh sách. */
+export const CHECK_ISSUE_CODES = [
+  "INFO_MISSING",
+  "OPTION_EMPTY",
+  "PATH_TOTAL_MISMATCH",
+  "PART_TOTAL_MISMATCH",
+  "SECTION_TOTAL_MISMATCH",
+  "MATRIX_TOTAL_MISMATCH",
+  "MATRIX_NEGATIVE",
+  "PERCENT_TOTAL_INVALID",
+  "SET_SIZE_MISMATCH",
+  "CELL_SHORTAGE",
+  "DIMENSION_SHORTAGE",
+  "MATRIX_INFEASIBLE",
+  "SET_SHORTAGE",
+  "OVERLAP_UNCONFIRMED",
+  "YEARS_UNCONFIRMED",
+  "OPTION_UNCONFIRMED",
+  "PART_POINTS_MISMATCH",
+  "POINTS_TOTAL_MISMATCH",
+  "COMPETENCY_SHORTAGE",
+  "RUBRIC_MISSING",
+  "SCORING_MISMATCH",
+  "ANSWER_QUOTA_TOTAL_MISMATCH",
+  "SUBJECT_MATRIX_TOTAL_MISMATCH",
+  "GROUP_ANSWER_TYPE_MISSING",
+  "SUBJECT_CHOICE_COUNTS_INVALID",
+  "REMAINDER_GROUP_INVALID",
+  "SUBJECT_QUOTA_COUNT_VARIES",
+  "ANSWER_TYPE_SHORTAGE",
+  "SUBJECT_QUOTA_INFEASIBLE",
+  "PREVIEW_SUBJECTS_INVALID",
+  "MATRIX_NON_INTEGER",
+  "MATRIX_INCOMPLETE",
+  "PART_EMPTY",
+  "SHARED_PART_DURATION",
+  "ANSWER_QUOTA_DUPLICATE",
+] as const;
+export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
 /**
  * Mức của vấn đề. `ERROR`: lỗi xác định (Không hợp lệ). `UNCONFIRMED`: chưa tìm được phương án trong giới hạn xử lý.
@@ -130,6 +158,10 @@ export interface CheckIssue {
   dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | null;
   /** Năng lực của chỉ tiêu (chiều năng lực, V-ACT). */
   competencyCode: string | null;
+  /** Dạng trả lời của chỉ tiêu cấp môn (`ANSWER_TYPE_SHORTAGE`). */
+  answerType: QuestionType | null;
+  /** Số câu của môn trong trường hợp lỗi (môn của `SUBJECT_CHOICE` nhận 16 hoặc 17); `null` khi môn có số câu cố định. */
+  subjectCount: number | null;
   required: number | null;
   available: number | null;
   timeLimitSeconds: number | null;
@@ -168,7 +200,8 @@ export interface BlockCheck {
   optionId: string | null;
   blockId: string;
   blockName: string;
-  questionType: QuestionType;
+  questionType: QuestionType | null;
+  /** Số câu của nhóm trong trường hợp đang kiểm (nhóm "lấy phần còn lại" nhận phần chênh của môn). */
   required: number;
   setCount: number | null;
   setSize: number | null;
@@ -180,6 +213,25 @@ export interface BlockCheck {
   issues: CheckIssue[];
 }
 
+/** Kết quả một cách chọn môn của đường có `SUBJECT_CHOICE`: các môn, số câu từng môn và kết luận. */
+export interface PathSelectionCheck {
+  subjectCodes: string[];
+  counts: number[];
+  result: PathCheckResult;
+  issues: CheckIssue[];
+}
+
+/** Chỉ tiêu cấp môn yêu cầu và đạt, theo từng môn trên đường (kèm số câu của môn). */
+export interface SubjectCheck {
+  sectionId: string;
+  subjectCode: string;
+  optionId: string | null;
+  questionCount: number | null;
+  answerQuotas: Array<{ answerType: QuestionType; required: number; achieved: number }>;
+  byGrade: Array<{ code: string; required: number; achieved: number }>;
+  byDifficulty: Array<{ code: string; required: number; achieved: number }>;
+}
+
 export interface PathCheck extends ExamPathRef {
   result: PathCheckResult;
   partIds: string[];
@@ -188,6 +240,10 @@ export interface PathCheck extends ExamPathRef {
   totalMinutes: number;
   totalPoints: number;
   blocks: BlockCheck[];
+  /** Kết quả theo môn: chỉ tiêu cấp môn yêu cầu và đạt (đường có `SUBJECT_CHOICE`: theo từng cách chọn trong `selections`). */
+  subjects: SubjectCheck[];
+  /** Từng cách chọn môn của đường có `SUBJECT_CHOICE`; rỗng khi đường không có. */
+  selections: PathSelectionCheck[];
   /** Mọi vấn đề của đường (cấu trúc và của các khối). */
   issues: CheckIssue[];
 }
@@ -198,7 +254,7 @@ export interface CheckGroupResult {
   issues: CheckIssue[];
 }
 
-/** Kết quả thuần của `checkExam` (không có thời điểm, thời gian chạy). */
+/** Kết quả thuần của một lần kiểm tra (không có thời điểm, thời gian chạy). */
 export interface ExamCheckOutcome {
   status: Extract<ExamCheckStatus, "VALID" | "INVALID">;
   /** Số vấn đề khác nhau trên mọi đường (khối dùng chung giữa các đường chỉ tính một lần). */
@@ -213,11 +269,35 @@ export interface ExamCheckOutcome {
   maxScore: number | null;
 }
 
+/** Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi. */
+export type CheckInvalidReason = "STRUCTURE_CHANGED" | "CONFIG_CHANGED" | "SOURCE_CHANGED";
+
 export interface ExamCheckResult extends ExamCheckOutcome {
   examId: string;
   checkedAt: string;
   durationSeconds: number;
   timeLimitSeconds: number;
+  /** `true` khi bài đã đổi trong lúc kiểm tra: kết quả trả về nhưng không được lưu (spec 5.4). */
+  stale: boolean;
+  /** Kết quả đã lưu hết hiệu lực vì sao; `null` khi còn hiệu lực. */
+  invalidReason: CheckInvalidReason | null;
+}
+
+/**
+ * Lần kiểm tra kỹ chạy nền (spec 5.4: proxy web cắt ở 60 giây). `startDeepCheck` trả `runId`; web hỏi `getCheckRun` tới
+ * khi `state` khác `RUNNING`. `DONE` có `result`; `FAILED` có `errorCode` (ví dụ `CHECK_RUN_ABANDONED`).
+ */
+export type CheckRunState = "RUNNING" | "DONE" | "FAILED";
+
+export interface ExamCheckRun {
+  runId: string;
+  state: CheckRunState;
+  result: ExamCheckResult | null;
+  errorCode: string | null;
+}
+
+export interface StartDeepCheckResponse {
+  runId: string;
 }
 
 /* ---------- Đề xem trước ---------- */
@@ -242,11 +322,13 @@ export interface PreviewQuestion {
   knowledge: { nodeId: string; code: string; name: string } | null;
   points: number;
   options: PreviewOption[] | null;
-  /** Đáp án dạng chữ (điền đáp án, đúng sai); chỉ hiện trong chế độ quản trị. */
+  /** Đáp án dạng chữ (Trả lời ngắn, Điền khuyết, Đúng/Sai, Ghép đôi); chỉ hiện trong chế độ quản trị. */
   answer: string | null;
   solution: string | null;
-  /** Câu Tự luận: tiêu chí chấm (chấm tay); dạng khác để `null`. */
+  /** Câu Tự luận: tiêu chí chấm (chấm tay, tùy chọn); dạng khác để `null`. */
   rubric: Array<{ id: string; description: string; points: number }> | null;
+  /** Phần thân đủ để dựng Điền khuyết, Ghép đôi, Đúng/Sai; có đáp án vì là chế độ quản trị. `null` với câu mô phỏng. */
+  body: QuestionBody | null;
 }
 
 export type PreviewItem =
@@ -273,10 +355,12 @@ export interface PreviewBlock {
   blockId: string;
   blockName: string;
   subjectCode: string;
-  questionType: QuestionType;
+  /** Dạng trả lời của nhóm; `null` khi nhóm lấy theo chỉ tiêu dạng trả lời của môn. */
+  questionType: QuestionType | null;
   /** Khối Tự luận: chấm tay, điểm có sau khi người chấm xong. */
   manualGrading: boolean;
-  pointsPerQuestion: number;
+  /** Điểm mỗi câu của khối trên đề đã sinh (điểm lấy từ phiên bản câu, B5). */
+  pointsEach: number;
   firstNumber: number;
   lastNumber: number;
   questionCount: number;
@@ -302,7 +386,7 @@ export interface PreviewPart {
   blocks: PreviewBlock[];
 }
 
-export type PreviewCheckCode = "NO_DUPLICATES" | "SETS_INTACT" | "FIXED_BLOCK_ORDER" | "TOTAL_POINTS";
+export type PreviewCheckCode = "NO_DUPLICATES" | "SETS_INTACT" | "TOTAL_POINTS";
 
 export interface PreviewCheck {
   code: PreviewCheckCode;
@@ -318,6 +402,23 @@ export interface PreviewKnowledgeStat {
   count: number;
 }
 
+/** Một chỉ tiêu cấp môn trên đề đã sinh: số câu yêu cầu và số câu đề sinh ra. `code`: dạng trả lời, mã khối lớp hoặc mã độ khó. */
+export interface PreviewSubjectQuota {
+  kind: "ANSWER_TYPE" | "GRADE" | "DIFFICULTY";
+  code: string;
+  required: number;
+  generated: number;
+}
+
+/** Một môn trên đề đã sinh. Phương án `SUBJECT_CHOICE` chỉ có các môn đã chọn, `questionCount` theo B10 (16 hoặc 17 câu). */
+export interface PreviewSubject {
+  sectionId: string;
+  subjectCode: string;
+  questionCount: number;
+  /** Chỉ tiêu cấp môn của môn; rỗng khi môn không khai chỉ tiêu (mẫu cũ). */
+  quotas: PreviewSubjectQuota[];
+}
+
 export interface PreviewPaper {
   totalQuestions: number;
   totalPoints: number;
@@ -328,6 +429,7 @@ export interface PreviewPaper {
   /** Có khối Tự luận: điểm phần tự luận có sau khi chấm tay. */
   hasManualGrading: boolean;
   parts: PreviewPart[];
+  subjects: PreviewSubject[];
   checks: PreviewCheck[];
   knowledgeStats: PreviewKnowledgeStat[];
 }
@@ -362,7 +464,7 @@ export type ExamChangeKind =
   | "BLOCK_REMOVED"
   | "BLOCK_CHANGED"
   | "MATRIX_CHANGED"
-  | "ORDER_RULE_CHANGED"
+  | "ORDER_CHANGED"
   | "QUESTIONS_REPLACED";
 
 /** Một thay đổi của bản làm việc so với bản đang phục vụ. `where`, `before`, `after` là chữ dữ liệu. */
@@ -405,8 +507,6 @@ export interface ExamVersionDetail {
 
 export interface RunExamCheckRequest {
   examId: string;
-  /** Chạy với giới hạn xử lý dài hơn cho đường "Chưa xác nhận được". */
-  extendedTimeLimit?: boolean;
 }
 
 export interface GeneratePreviewRequest {
@@ -414,12 +514,21 @@ export interface GeneratePreviewRequest {
   pathId: string;
   seed: number;
   version?: number | null;
+  /**
+   * Đường có `SUBJECT_CHOICE`: đúng `chooseSubjects` môn thuộc phương án muốn xem; thiếu hoặc sai thì 422
+   * `PREVIEW_SUBJECTS_INVALID`.
+   */
+  subjectCodes?: string[];
 }
 
 export interface PublishExamRequest {
   examId: string;
   pathIds: string[];
   note: string | null;
+  /** `revision` của bài lúc mở màn (D13); lệch thì 412 `EXAM_REVISION_CONFLICT`. */
+  expectedRevision: number;
+  /** Khóa idempotency của lần bấm Công bố (spec 7.1); thử lại lần đó giữ cùng khóa. Bỏ trống: client tự sinh. */
+  idempotencyKey?: string;
 }
 
 export interface PublishExamResponse {
@@ -428,4 +537,12 @@ export interface PublishExamResponse {
   publishedPathIds: string[];
   /** Đường không công bố lần này, lượt thi mới vẫn dùng phiên bản cũ (số phiên bản cũ). */
   keptPaths: Array<{ pathId: string; version: number }>;
+}
+
+export interface DiscontinueExamRequest {
+  examId: string;
+  /** `revision` của bài lúc mở màn (D13); lệch thì 412 `EXAM_REVISION_CONFLICT`. */
+  expectedRevision: number;
+  /** Khóa idempotency của lần xác nhận ngừng bán (spec 7.1); thử lại lần đó giữ cùng khóa. */
+  idempotencyKey?: string;
 }

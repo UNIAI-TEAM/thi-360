@@ -12,8 +12,9 @@ import {
   validateStructure,
   type MatrixAxes,
 } from "../matrix";
-import fixture from "../mock/exams.json";
-import type { BlockMatrix, ExamDetail, QuestionBlock } from "../types";
+import { effectiveScope } from "../subject-matrix";
+import type { BlockMatrix, ExamSection, QuestionBlock } from "../types";
+import { EXAMS_FIXTURE } from "./exam-fixture";
 
 const AXES: MatrixAxes = {
   grades: ["GRADE_10", "GRADE_11", "GRADE_12"],
@@ -36,13 +37,17 @@ function block(matrix: Partial<BlockMatrix>, overrides: Partial<QuestionBlock> =
   return {
     id: "blk-test",
     name: "Khối thử",
-    questionType: "FILL_IN",
+    questionType: "SHORT_ANSWER",
     questionCount: 20,
     setCount: null,
     setSize: null,
-    pointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY", includeDescendants: false },
+    requiredPointsPerQuestion: 1,
+    knowledgeScope: { nodeIds: [], match: "ANY" },
     tagCodes: [],
+    taskTypeCode: null,
+    childAnswerType: null,
+    templateGroupCode: null,
+    answerTypeLocked: false,
     matrix: { mode: "COMBINED", unit: "COUNT", cells: [], byGrade: [], byDifficulty: [], ...matrix },
     ...overrides,
   };
@@ -143,8 +148,44 @@ describe("phân bổ của một khối", () => {
   });
 });
 
+describe("tổng điểm của cấu trúc (G1)", () => {
+  it("nhóm lấy phần còn lại nhận phần chênh của môn và tính điểm, không tính 0", () => {
+    const part = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!.parts[0]!);
+    part.mode = "FIXED";
+    part.options = [];
+    const section = part.sections[0]!;
+    section.questionCount = 10;
+    section.blocks = [
+      block({}, { id: "fixed", questionCount: 4, requiredPointsPerQuestion: 2 }),
+      block({}, { id: "rest", questionCount: null, requiredPointsPerQuestion: 1 }),
+    ];
+    part.sections = [section];
+    expect(structureTotals([part]).totalPoints).toBe(4 * 2 + 6 * 1);
+  });
+
+  it("phương án SUBJECT_CHOICE của HSA tính điểm theo countsByPick, không tính 0 (đề dev seed)", () => {
+    // HSA-F-DEV-001 (seed): Khoa học 5 môn qc null, mỗi môn một nhóm lấy phần còn lại; tiêu đề từng báo 100 / 150.
+    const exam = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!);
+    const part = exam.parts.find((item) => item.mode === "CHOICE")!;
+    part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
+    for (const section of part.options[0]!.sections) {
+      section.blocks = [block({}, { questionCount: null })];
+    }
+    const totals = structureTotals(exam.parts);
+    expect(totals).toMatchObject({ totalQuestions: 150, totalPoints: 150, allocated: 150, missing: 0 });
+  });
+
+  it("phương án SUBJECT_CHOICE có nhóm cố định và nhóm phần còn lại (bài tạo từ mẫu) vẫn đủ 150 điểm", () => {
+    // Mẫu HSA nạp sẵn: mỗi môn Khoa học một nhóm 10 câu + một nhóm lấy phần còn lại (17/17/16 − 10).
+    const exam = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!);
+    const part = exam.parts.find((item) => item.mode === "CHOICE")!;
+    part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
+    expect(structureTotals(exam.parts).totalPoints).toBe(150);
+  });
+});
+
 describe("cấu trúc của bài mẫu", () => {
-  const exams = (fixture as { exams: ExamDetail[] }).exams;
+  const exams = EXAMS_FIXTURE.exams;
 
   it("HSA-F-001: 150 câu, 195 phút, phân bổ đủ", () => {
     const exam = exams.find((item) => item.code === "HSA-F-001")!;
@@ -153,17 +194,60 @@ describe("cấu trúc của bài mẫu", () => {
     expect(validateStructure(exam.parts, AXES).filter((issue) => issue.code !== "BLOCK")).toEqual([]);
   });
 
-  it("tổ hợp có tổng môn lệch số câu của phần bị báo SECTIONS_TOTAL", () => {
-    const exam = structuredClone(exams.find((item) => item.code === "HSA-F-001")!);
+  it("tổ hợp có tổng môn lệch số câu của phần bị báo SECTIONS_TOTAL; SUBJECT_CHOICE theo countsByPick", () => {
+    const exam = structuredClone(exams.find((item) => item.code === "BCA-F-001" || item.code === "QDA-F-001")!);
     const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    choice.options[1]!.sections[0]!.questionCount = 18;
-    const issues = validateStructure(exam.parts, AXES);
-    expect(issues).toContainEqual({
+    const combination = choice.options.find((option) => option.kind === "COMBINATION")!;
+    combination.sections[0]!.questionCount = (combination.sections[0]!.questionCount ?? 0) + 1;
+    expect(validateStructure(exam.parts, AXES)).toContainEqual(
+      expect.objectContaining({ code: "SECTIONS_TOTAL", partId: choice.id, optionId: combination.id }),
+    );
+    const hsa = structuredClone(exams.find((item) => item.code === "HSA-F-001")!);
+    const hsaChoice = hsa.parts.find((part) => part.mode === "CHOICE")!;
+    const science = hsaChoice.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
+    science.countsByPick = [17, 17, 17];
+    expect(validateStructure(hsa.parts, AXES)).toContainEqual({
       code: "SECTIONS_TOTAL",
-      partId: choice.id,
-      optionId: choice.options[1]!.id,
+      partId: hsaChoice.id,
+      optionId: science.id,
       expected: 50,
       actual: 51,
     });
+  });
+});
+
+describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
+  const section = (knowledgeScope: ExamSection["knowledgeScope"]): ExamSection => ({
+    id: "s-math",
+    subjectCode: "MATH",
+    questionCount: 50,
+    knowledgeScope,
+    answerQuotas: null,
+    matrix: null,
+    choiceGroup: null,
+    blocks: [],
+  });
+  const singles = (knowledgeScope: QuestionBlock["knowledgeScope"]): QuestionBlock => ({
+    ...block({}, { questionType: "SINGLE_CHOICE", questionCount: 5, matrix: null }),
+    knowledgeScope,
+  });
+  it("group inherits subject scope; own scope not intersected", () => {
+    const math = section({ nodeIds: ["kn-1D4"], match: "ANY" });
+    // Nhóm không có phạm vi riêng (null) dùng phạm vi của môn.
+    expect(effectiveScope(singles(null), math)).toEqual(math.knowledgeScope);
+    // Nhóm có phạm vi riêng chỉ dùng phạm vi riêng, không giao với phạm vi của môn (kn-0D1 nằm ngoài kn-1D4).
+    const own = singles({ nodeIds: ["kn-0D1"], match: "ANY" });
+    expect(effectiveScope(own, math)).toEqual(own.knowledgeScope);
+    // Cả hai cùng trống là không giới hạn MAPID.
+    const open = section(null);
+    expect(effectiveScope(singles(null), open)).toBeNull();
+    // Phạm vi riêng chưa chọn nút (hủy hộp chọn, chỉ có năng lực) kế thừa nút của môn và giữ lọc năng lực (R1-3, R1-4).
+    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), math)).toEqual(math.knowledgeScope);
+    expect(effectiveScope(singles({ nodeIds: [], match: "ANY", competencyCodes: ["VACT-TOAN"] }), math)).toEqual({
+      nodeIds: ["kn-1D4"],
+      match: "ANY",
+      competencyCodes: ["VACT-TOAN"],
+    });
+    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), open)).toEqual({ nodeIds: [], match: "ANY" });
   });
 });

@@ -3,12 +3,13 @@
 import { Badge, Chip, cn } from "@thi360/ui";
 import { CircleCheck, CircleX, PenLine } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Fragment, type ReactNode } from "react";
-import { BLANK_MARKER } from "../editor-form";
+import { type ReactNode } from "react";
+import { questionHtmlText, RichTextView } from "@/components/rich-text";
+import { ClozePassage } from "./cloze-passage";
 import type { QuestionBody, QuestionDetail } from "../types";
 import { optionLetter, statementLetter } from "./question-editor-shared";
 
-type BodySource = Pick<QuestionDetail, "type" | "content" | "body" | "children" | "solution">;
+type BodySource = Pick<QuestionDetail, "type" | "content" | "body" | "children" | "solution" | "points">;
 
 /**
  * Đề bài và đáp án của một câu theo dạng (canvas `CauHoi*ChiTiet`). Dùng ở trang chi tiết, hộp thoại xem một
@@ -21,12 +22,14 @@ export function QuestionBodyView({ question, headingLevel = 3 }: { question: Bod
   }
   return (
     <div className="flex flex-col gap-3">
-      {question.body.type === "FILL_IN" ? (
-        <FillInContent content={question.content} body={question.body} />
+      {question.body.type === "CLOZE" ? (
+        <ClozeContent body={question.body} />
       ) : (
-        <p className="text-body whitespace-pre-wrap text-text">{question.content || t("noContent")}</p>
+        <div className="text-body text-text">
+          {question.content ? <RichTextView html={question.content} /> : t("noContent")}
+        </div>
       )}
-      <AnswersView body={question.body} />
+      <AnswersView body={question.body} points={question.points} />
     </div>
   );
 }
@@ -38,7 +41,9 @@ function QuestionSetView({ question, headingLevel }: { question: BodySource; hea
   const passage = question.body.type === "QUESTION_SET" ? question.body.passage || question.content : question.content;
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-lg border border-border bg-subtle p-3.5 text-body whitespace-pre-wrap text-text">{passage}</p>
+      <div className="rounded-lg border border-border bg-subtle p-3.5 text-body text-text">
+        <RichTextView html={passage} />
+      </div>
       <ol className="m-0 flex list-none flex-col gap-3 p-0">
         {question.children.map((child, index) => (
           <li key={child.id} className="flex flex-col gap-2.5 rounded-lg border border-border p-3.5">
@@ -51,9 +56,10 @@ function QuestionSetView({ question, headingLevel }: { question: BodySource; hea
             </div>
             <QuestionBodyView question={child} headingLevel={4} />
             {child.solution && (
-              <p className="text-caption text-text-secondary">
-                <span className="font-semibold">{t("childSolution")}</span> {child.solution}
-              </p>
+              <div className="flex gap-1 text-caption text-text-secondary">
+                <span className="font-semibold">{t("childSolution")}</span>
+                <RichTextView className="min-w-0 flex-1" html={child.solution} />
+              </div>
             )}
           </li>
         ))}
@@ -62,29 +68,23 @@ function QuestionSetView({ question, headingLevel }: { question: BodySource; hea
   );
 }
 
-/** Đề bài Điền đáp án: mỗi `___` thành ô có số thứ tự và đáp án chấp nhận. */
-function FillInContent({ content, body }: { content: string; body: Extract<QuestionBody, { type: "FILL_IN" }> }) {
+/** Ngữ liệu Điền khuyết: mỗi `[[id]]` thành ô có số thứ tự và đáp án. */
+function ClozeContent({ body }: { body: Extract<QuestionBody, { type: "CLOZE" }> }) {
   const t = useTranslations("questions.detail.body");
-  const parts = content.split(BLANK_MARKER);
   return (
-    <p className="text-body leading-8 whitespace-pre-wrap text-text">
-      {parts.map((part, index) => {
-        const blank = index < parts.length - 1 ? body.blanks[index] : undefined;
+    <ClozePassage
+      html={body.passage}
+      className="text-body leading-8 text-text"
+      renderBlank={(_blankId, index) => {
+        const blank = body.blanks[index];
         return (
-          <Fragment key={index}>
-            {part}
-            {index < parts.length - 1 && (
-              <mark className="mx-0.5 inline-flex items-baseline gap-1.5 rounded-md border border-primary-600 bg-primary-50 px-2 text-primary-text">
-                <span className="text-caption font-semibold">{t("blankLabel", { number: index + 1 })}</span>
-                <span className="font-semibold">
-                  {blank?.acceptedAnswers.length ? blank.acceptedAnswers.join(" / ") : t("noAnswer")}
-                </span>
-              </mark>
-            )}
-          </Fragment>
+          <mark className="mx-0.5 inline-flex items-baseline gap-1.5 rounded-md border border-primary-600 bg-primary-50 px-2 text-primary-text">
+            <span className="text-caption font-semibold">{t("blankLabel", { number: index + 1 })}</span>
+            <span className="font-semibold">{blank?.answers.length ? blank.answers.join(" / ") : t("noAnswer")}</span>
+          </mark>
         );
-      })}
-    </p>
+      }}
+    />
   );
 }
 
@@ -110,9 +110,8 @@ export function ManualGradingBadge() {
   );
 }
 
-export function AnswersView({ body }: { body: QuestionBody }) {
+export function AnswersView({ body, points }: { body: QuestionBody; points?: number }) {
   const t = useTranslations("questions.detail.body");
-  const format = useFormatter();
   switch (body.type) {
     case "SINGLE_CHOICE":
     case "MULTIPLE_CHOICE":
@@ -128,7 +127,7 @@ export function AnswersView({ body }: { body: QuestionBody }) {
                 )}
               >
                 <span className="font-semibold text-text">{optionLetter(index)}.</span>
-                <span className="min-w-0 flex-1 wrap-break-word text-text">{option.content}</span>
+                <RichTextView className="min-w-0 flex-1 wrap-break-word text-text" html={option.content} />
                 <CorrectMark correct={option.correct} />
               </li>
             ))}
@@ -147,7 +146,7 @@ export function AnswersView({ body }: { body: QuestionBody }) {
             {body.statements.map((statement, index) => (
               <li key={statement.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5">
                 <span className="font-semibold text-text">{statementLetter(index)})</span>
-                <span className="min-w-0 flex-1 wrap-break-word text-text">{statement.content}</span>
+                <RichTextView className="min-w-0 flex-1 wrap-break-word text-text" html={statement.content} />
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 text-caption font-semibold",
@@ -160,7 +159,7 @@ export function AnswersView({ body }: { body: QuestionBody }) {
               </li>
             ))}
           </ol>
-          <ScoreTableView table={body.scoreTable} />
+          <ScoreTableView table={body.scoringMethod === "COUNT_TABLE" ? body.scoreTable : undefined} />
         </div>
       );
     case "ESSAY":
@@ -169,9 +168,15 @@ export function AnswersView({ body }: { body: QuestionBody }) {
           <div className="flex flex-wrap items-center gap-2">
             <ManualGradingBadge />
             <span className="text-caption text-text-secondary">
-              {t("essayMaxPoints", { points: format.number(body.maxPoints) })}
+              {points !== undefined && t("essayMaxPoints", { points })}
               {body.wordLimit !== null && ` · ${t("wordLimit", { count: body.wordLimit })}`}
             </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-label font-semibold text-text">{t("gradingGuideTitle")}</p>
+            <div className="rounded-lg border border-border bg-subtle p-3.5 text-body text-text">
+              {body.gradingGuide ? <RichTextView html={body.gradingGuide} /> : t("noGradingGuide")}
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <p className="text-label font-semibold text-text">{t("rubricTitle")}</p>
@@ -185,9 +190,10 @@ export function AnswersView({ body }: { body: QuestionBody }) {
                     className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5"
                   >
                     <span className="font-semibold text-text">{index + 1}.</span>
-                    <span className="min-w-0 flex-1 wrap-break-word whitespace-pre-wrap text-text">
-                      {criterion.description || t("noContent")}
-                    </span>
+                    <RichTextView
+                      className="min-w-0 flex-1 wrap-break-word text-text"
+                      html={criterion.description || t("noContent")}
+                    />
                     <span className="shrink-0 text-caption font-semibold text-text-secondary">
                       {t("points", { points: criterion.points })}
                     </span>
@@ -199,37 +205,58 @@ export function AnswersView({ body }: { body: QuestionBody }) {
           {body.sampleAnswer && (
             <div className="flex flex-col gap-1">
               <p className="text-label font-semibold text-text">{t("sampleAnswer")}</p>
-              <p className="rounded-lg border border-border bg-subtle p-3.5 text-body whitespace-pre-wrap text-text">
-                {body.sampleAnswer}
-              </p>
+              <div className="rounded-lg border border-border bg-subtle p-3.5 text-body text-text">
+                <RichTextView html={body.sampleAnswer} />
+              </div>
             </div>
           )}
         </div>
       );
-    case "FILL_IN":
+    case "CLOZE":
       return null;
-    case "DRAG_DROP": {
-      const contentOf = new Map(body.items.map((item) => [item.id, item.content]));
-      const used = new Set(body.zones.map((zone) => zone.correctItemId));
-      const distractors = body.items.filter((item) => !used.has(item.id));
+    case "SHORT_ANSWER":
       return (
         <div className="flex flex-col gap-2">
           <ol className="m-0 flex list-none flex-col gap-2 p-0">
-            {body.zones.map((zone, index) => (
-              <li key={zone.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5">
+            {body.answers.map((answer, index) => (
+              <li key={index} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-success bg-success-bg px-3.5 py-2.5">
+                <span className="text-caption font-semibold text-text-muted">
+                  {index === 0 ? t("standardAnswer") : t("acceptedAnswer")}
+                </span>
+                <span className="min-w-0 flex-1 wrap-break-word text-text">{answer}</span>
+              </li>
+            ))}
+          </ol>
+          {body.inputHint && (
+            <p className="text-caption text-text-secondary">
+              <span className="font-semibold">{t("inputHint")}</span> {body.inputHint}
+            </p>
+          )}
+        </div>
+      );
+    case "MATCHING": {
+      const contentOf = new Map(body.right.map((item) => [item.id, questionHtmlText(item.content)]));
+      const pairOf = new Map(body.pairs.map((pair) => [pair.leftId, pair.rightId]));
+      const used = new Set(body.pairs.map((pair) => pair.rightId));
+      const distractors = body.right.filter((item) => !used.has(item.id));
+      return (
+        <div className="flex flex-col gap-2">
+          <ol className="m-0 flex list-none flex-col gap-2 p-0">
+            {body.left.map((item, index) => (
+              <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border px-3.5 py-2.5">
                 <span className="text-caption font-semibold text-text-muted">{t("zoneLabel", { number: index + 1 })}</span>
-                <span className="min-w-0 flex-1 wrap-break-word text-text">{zone.label}</span>
+                <RichTextView className="min-w-0 flex-1 wrap-break-word text-text" html={item.content} />
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-success bg-success-bg px-2 py-0.5 font-semibold text-success">
                   <CircleCheck aria-hidden className="size-4" />
                   <span className="sr-only">{t("correctItem")}</span>
-                  {contentOf.get(zone.correctItemId) ?? t("noAnswer")}
+                  {contentOf.get(pairOf.get(item.id) ?? "") ?? t("noAnswer")}
                 </span>
               </li>
             ))}
           </ol>
           <p className="text-caption text-text-secondary">
             {distractors.length
-              ? t("distractors", { items: distractors.map((item) => item.content).join(", ") })
+              ? t("distractors", { items: distractors.map((item) => questionHtmlText(item.content)).join(", ") })
               : t("noDistractors")}
           </p>
         </div>
@@ -267,45 +294,51 @@ export function describeBody(body: QuestionBody, t: (key: string, values?: Recor
     case "MULTIPLE_CHOICE":
       return [
         ...body.options.map(
-          (option, index) => `${optionLetter(index)}. ${option.content}${option.correct ? ` (${t("correct")})` : ""}`,
+          (option, index) => `${optionLetter(index)}. ${questionHtmlText(option.content)}${option.correct ? ` (${t("correct")})` : ""}`,
         ),
         ...(body.type === "MULTIPLE_CHOICE" ? [`${t("scoringRule")} ${t(`scoringRules.${body.scoringRule}`)}`] : []),
       ];
     case "TRUE_FALSE":
       return [
         ...body.statements.map(
-          (statement, index) => `${statementLetter(index)}) ${statement.content}: ${statement.answer ? t("true") : t("false")}`,
+          (statement, index) => `${statementLetter(index)}) ${questionHtmlText(statement.content)}: ${statement.answer ? t("true") : t("false")}`,
         ),
-        ...(body.scoreTable?.length
+        ...(body.scoringMethod === "COUNT_TABLE" && body.scoreTable.length
           ? [t("scoreTableLine", { values: body.scoreTable.map((value) => t("scoreValue", { value })).join(" / ") })]
           : []),
       ];
     case "ESSAY":
       return [
-        t("essaySummary", { points: body.maxPoints }),
+        `${t("gradingGuideTitle")}: ${questionHtmlText(body.gradingGuide) || t("noGradingGuide")}`,
         ...body.rubric.map(
-          (criterion, index) => `${index + 1}. ${criterion.description} (${t("points", { points: criterion.points })})`,
+          (criterion, index) => `${index + 1}. ${questionHtmlText(criterion.description)} (${t("points", { points: criterion.points })})`,
         ),
-        ...(body.sampleAnswer ? [`${t("sampleAnswer")}: ${body.sampleAnswer}`] : []),
+        ...(body.sampleAnswer ? [`${t("sampleAnswer")}: ${questionHtmlText(body.sampleAnswer)}`] : []),
         ...(body.wordLimit !== null ? [t("wordLimit", { count: body.wordLimit })] : []),
       ];
-    case "FILL_IN":
-      return body.blanks.map(
-        (blank, index) => `${t("blankLabel", { number: index + 1 })}: ${blank.acceptedAnswers.join(" / ") || t("noAnswer")}`,
-      );
-    case "DRAG_DROP": {
-      const contentOf = new Map(body.items.map((item) => [item.id, item.content]));
-      const used = new Set(body.zones.map((zone) => zone.correctItemId));
-      const distractors = body.items.filter((item) => !used.has(item.id));
+    case "SHORT_ANSWER":
       return [
-        ...body.zones.map(
-          (zone, index) =>
-            `${t("zoneLabel", { number: index + 1 })} ${zone.label} → ${contentOf.get(zone.correctItemId) ?? t("noAnswer")}`,
+        body.answers.join(" / ") || t("noAnswer"),
+        ...(body.inputHint ? [`${t("inputHint")} ${body.inputHint}`] : []),
+      ];
+    case "CLOZE":
+      return body.blanks.map(
+        (blank, index) => `${t("blankLabel", { number: index + 1 })}: ${blank.answers.join(" / ") || t("noAnswer")}`,
+      );
+    case "MATCHING": {
+      const contentOf = new Map(body.right.map((item) => [item.id, questionHtmlText(item.content)]));
+      const pairOf = new Map(body.pairs.map((pair) => [pair.leftId, pair.rightId]));
+      const used = new Set(body.pairs.map((pair) => pair.rightId));
+      const distractors = body.right.filter((item) => !used.has(item.id));
+      return [
+        ...body.left.map(
+          (item, index) =>
+            `${t("zoneLabel", { number: index + 1 })} ${questionHtmlText(item.content)} → ${contentOf.get(pairOf.get(item.id) ?? "") ?? t("noAnswer")}`,
         ),
-        ...(distractors.length ? [t("distractors", { items: distractors.map((item) => item.content).join(", ") })] : []),
+        ...(distractors.length ? [t("distractors", { items: distractors.map((item) => questionHtmlText(item.content)).join(", ") })] : []),
       ];
     }
     case "QUESTION_SET":
-      return [body.passage];
+      return [questionHtmlText(body.passage)];
   }
 }

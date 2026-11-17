@@ -1,7 +1,8 @@
-import type { KnowledgeRef, MultipleChoiceRule, QuestionType } from "@/features/content/types";
+import type { AppLocale } from "@thi360/web-kit/preferences";
+import type { KnowledgeRef, MultipleChoiceRule, QuestionType, TrueFalseMethod } from "@/features/content/types";
 import { normalizePrimary } from "@/features/content/knowledge-tree";
-import type { ChildQuestionType, SaveChildQuestionRequest, SaveQuestionRequest } from "./editor-types";
-import type { QuestionBody, QuestionDetail } from "./types";
+import { isChildQuestionType, type ChildQuestionType, type SaveChildQuestionRequest, type SaveQuestionRequest } from "./editor-types";
+import { clozeMarker, type QuestionBody, type QuestionDetail } from "./types";
 
 /**
  * Giá trị biểu mẫu soạn câu hỏi và chuyển đổi qua lại với dữ liệu API.
@@ -23,23 +24,28 @@ export interface EditorStatement {
   id: string;
   content: string;
   answer: StatementAnswer;
+  /** Điểm của ý khi chấm `PER_STATEMENT` (chuỗi như ô Điểm); chấm theo bảng thì không dùng. */
+  points: string;
 }
 
 export interface EditorBlank {
   id: string;
   /** Đối tượng thay cho chuỗi để `useFieldArray` giữ được khóa của từng dòng. */
   answers: { id: string; value: string }[];
+  /** Điểm của ô (Điền khuyết; chuỗi như ô Điểm, mặc định 1). Trả lời ngắn không dùng. */
+  points: string;
 }
 
-/** Ô thả và thẻ đúng của nó. */
-export interface EditorZone {
+/** Mục cột trái của câu Ghép đôi, kèm lựa chọn đúng ở cột phải và điểm của cặp. */
+export interface EditorMatchLeft {
   id: string;
-  label: string;
-  itemId: string;
-  itemContent: string;
+  content: string;
+  /** Id lựa chọn đúng ở cột phải; chuỗi rỗng: chưa chọn. */
+  rightId: string;
+  points: string;
 }
 
-export interface EditorDistractor {
+export interface EditorMatchRight {
   id: string;
   content: string;
 }
@@ -53,19 +59,26 @@ export interface EditorCriterion {
 
 export interface EditorBody {
   options: EditorOption[];
-  shuffleOptions: boolean;
   /** Nhiều đáp án: đúng hết mới có điểm hay chấm từng phần. */
   scoringRule: MultipleChoiceRule;
   statements: EditorStatement[];
+  /** Đúng/Sai: cộng điểm từng ý hay tra bảng theo số ý đúng. */
+  scoringMethod: TrueFalseMethod;
   /** Đúng/Sai: điểm khi đúng 1, 2, … ý (chuỗi như ô Điểm); rỗng: chia đều theo ý. */
   scoreTable: string[];
   blanks: EditorBlank[];
-  zones: EditorZone[];
-  distractors: EditorDistractor[];
-  /** Tự luận: tiêu chí chấm, bài làm mẫu, số chữ gợi ý (chuỗi rỗng: không giới hạn). */
+  /** Ghép đôi: cột trái (kèm đáp án và điểm từng cặp), cột phải (có thể nhiều hơn cột trái). */
+  left: EditorMatchLeft[];
+  right: EditorMatchRight[];
+  /** Ghép đôi: một lựa chọn dùng cho nhiều mục trái (`true`) hay một lần (`false`). */
+  reuseRight: boolean;
+  /** Tự luận: hướng dẫn chấm (bắt buộc khi Sẵn sàng), tiêu chí chấm (tùy chọn), bài làm mẫu, số chữ gợi ý (rỗng: không giới hạn). */
+  gradingGuide: string;
   rubric: EditorCriterion[];
   sampleAnswer: string;
   wordLimit: string;
+  /** Trả lời ngắn: hướng dẫn nhập cho học viên. */
+  inputHint: string;
 }
 
 export interface EditorChild {
@@ -77,6 +90,12 @@ export interface EditorChild {
   content: string;
   solution: string;
   points: string;
+  /** Khối lớp, độ khó riêng của câu con; chuỗi rỗng: kế thừa của bộ. */
+  gradeCode: string;
+  difficultyCode: string;
+  /** `true`: câu con có kiến thức riêng (`knowledge`); `false`: kế thừa của bộ. */
+  knowledgeOverride: boolean;
+  knowledge: KnowledgeRef[];
   body: EditorBody;
 }
 
@@ -87,6 +106,8 @@ export interface QuestionEditorValues {
   difficultyCode: string;
   /** Năng lực (V-ACT); chuỗi rỗng: không gắn. */
   competencyCode: string;
+  /** Dạng bài; chuỗi rỗng: không gắn. */
+  taskTypeCode: string;
   /** Chuỗi để giữ đúng điều người dùng gõ ("1,5"); đổi sang số khi lưu. */
   points: string;
   knowledge: KnowledgeRef[];
@@ -94,6 +115,9 @@ export interface QuestionEditorValues {
   /** Đề bài; câu chùm: đoạn dẫn chung. */
   content: string;
   solution: string;
+  /** Lỗi sai thường gặp. */
+  commonMistakes: string;
+  attachmentIds: string[];
   body: EditorBody;
   children: EditorChild[];
 }
@@ -120,19 +144,19 @@ export function emptyOption(): EditorOption {
 }
 
 export function emptyStatement(): EditorStatement {
-  return { id: draftRowId("s"), content: "", answer: "" };
+  return { id: draftRowId("s"), content: "", answer: "", points: "" };
 }
 
 export function emptyBlank(): EditorBlank {
-  return { id: draftRowId("b"), answers: [{ id: draftRowId("a"), value: "" }] };
+  return { id: draftRowId("b"), answers: [{ id: draftRowId("a"), value: "" }], points: String(DEFAULT_POINTS) };
 }
 
-export function emptyZone(): EditorZone {
-  return { id: draftRowId("z"), label: "", itemId: draftRowId("i"), itemContent: "" };
+export function emptyMatchRight(): EditorMatchRight {
+  return { id: draftRowId("mr"), content: "" };
 }
 
-export function emptyDistractor(): EditorDistractor {
-  return { id: draftRowId("i"), content: "" };
+export function emptyMatchLeft(rightId = "", points = ""): EditorMatchLeft {
+  return { id: draftRowId("ml"), content: "", rightId, points };
 }
 
 export function emptyCriterion(points = ""): EditorCriterion {
@@ -140,29 +164,36 @@ export function emptyCriterion(points = ""): EditorCriterion {
 }
 
 /**
- * Phần thân trống theo dạng: 4 phương án, 2 ý Đúng/Sai kèm bảng điểm chia đều, 2 ô thả, 1 tiêu chí chấm mang đủ điểm
- * mặc định; Điền đáp án thêm ô cùng lúc với chỗ trống.
+ * Phần thân trống theo dạng: 4 phương án, 2 ý Đúng/Sai (bảng điểm chia đều, điểm từng ý chia đều), 2 cặp ghép chia
+ * đều điểm, 1 tiêu chí chấm mang đủ điểm mặc định; Điền đáp án thêm ô cùng lúc với chỗ trống.
  */
-export function emptyBody(type: QuestionType): EditorBody {
+export function emptyBody(type: QuestionType, locale: AppLocale = "vi"): EditorBody {
+  const matchRight = type === "MATCHING" ? [emptyMatchRight(), emptyMatchRight()] : [];
+  const matchShare = evenSplitText(matchRight.length, DEFAULT_POINTS, locale);
+  const statements = type === "TRUE_FALSE" ? [emptyStatement(), emptyStatement()] : [];
+  const statementShare = evenSplitText(statements.length, DEFAULT_POINTS, locale);
   return {
     options:
       type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE"
         ? [emptyOption(), emptyOption(), emptyOption(), emptyOption()]
         : [],
-    shuffleOptions: true,
     scoringRule: "ALL_OR_NOTHING",
-    statements: type === "TRUE_FALSE" ? [emptyStatement(), emptyStatement()] : [],
-    scoreTable: type === "TRUE_FALSE" ? evenScoreTableText(2, DEFAULT_POINTS) : [],
-    blanks: [],
-    zones: type === "DRAG_DROP" ? [emptyZone(), emptyZone()] : [],
-    distractors: [],
-    rubric: type === "ESSAY" ? [emptyCriterion(formatPoints(DEFAULT_POINTS))] : [],
+    statements: statements.map((statement, index) => ({ ...statement, points: statementShare[index] ?? "" })),
+    scoringMethod: "COUNT_TABLE",
+    scoreTable: type === "TRUE_FALSE" ? evenScoreTableText(2, DEFAULT_POINTS, locale) : [],
+    blanks: type === "SHORT_ANSWER" ? [emptyBlank()] : [],
+    left: matchRight.map((right, index) => emptyMatchLeft(right.id, matchShare[index] ?? "")),
+    right: matchRight,
+    reuseRight: false,
+    gradingGuide: "",
+    rubric: [],
     sampleAnswer: "",
     wordLimit: "",
+    inputHint: "",
   };
 }
 
-export function emptyChild(type: ChildQuestionType): EditorChild {
+export function emptyChild(type: ChildQuestionType, locale: AppLocale = "vi"): EditorChild {
   return {
     key: draftRowId("c"),
     existingId: null,
@@ -170,30 +201,37 @@ export function emptyChild(type: ChildQuestionType): EditorChild {
     content: "",
     solution: "",
     points: String(DEFAULT_POINTS),
-    body: emptyBody(type),
+    gradeCode: "",
+    difficultyCode: "",
+    knowledgeOverride: false,
+    knowledge: [],
+    body: emptyBody(type, locale),
   };
 }
 
-export function emptyEditorValues(type: QuestionType): QuestionEditorValues {
+export function emptyEditorValues(type: QuestionType, locale: AppLocale = "vi"): QuestionEditorValues {
   return {
     type,
     subjectCode: "",
     gradeCode: "",
     difficultyCode: "",
     competencyCode: "",
+    taskTypeCode: "",
     points: String(DEFAULT_POINTS),
     knowledge: [],
     tagCodes: [],
     content: "",
     solution: "",
-    body: emptyBody(type),
+    commonMistakes: "",
+    attachmentIds: [],
+    body: emptyBody(type, locale),
     children: [],
   };
 }
 
-/** 1.5 → "1,5" (cách viết của ô Điểm). */
-export function formatPoints(points: number): string {
-  return String(points).replace(".", ",");
+/** 1.5 → "1,5" (vi) hoặc "1.5" (en): cách viết của ô Điểm theo ngôn ngữ giao diện. Khi đọc ô, cả hai dấu đều được nhận. */
+export function formatPoints(points: number, locale: AppLocale = "vi"): string {
+  return locale === "en" ? String(points) : String(points).replace(".", ",");
 }
 
 /** "1,5" hoặc "1.5" → 1.5; không phải số thì `NaN`. */
@@ -203,52 +241,76 @@ export function parsePoints(value: string): number {
   return Number(normalized);
 }
 
-export function bodyToEditor(body: QuestionBody): EditorBody {
+/** Dòng đáp án của biểu mẫu; câu Nháp chưa có đáp án vẫn hiện một dòng trống để nhập. */
+function answerRows(answers: readonly string[]): { id: string; value: string }[] {
+  return (answers.length > 0 ? answers : [""]).map((value) => ({ id: draftRowId("a"), value }));
+}
+
+export function bodyToEditor(body: QuestionBody, locale: AppLocale = "vi"): EditorBody {
   const base = emptyBody("QUESTION_SET");
   switch (body.type) {
     case "SINGLE_CHOICE":
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
-        shuffleOptions: body.shuffleOptions,
       };
     case "MULTIPLE_CHOICE":
       return {
         ...base,
         options: body.options.map((option) => ({ ...option })),
-        shuffleOptions: body.shuffleOptions,
         scoringRule: body.scoringRule,
       };
-    case "TRUE_FALSE":
+    case "TRUE_FALSE": {
+      const perStatement = body.scoringMethod === "PER_STATEMENT";
+      const questionPoints = perStatement
+        ? roundPoints(body.statements.reduce((sum, statement) => sum + (statement.points ?? 0), 0))
+        : (body.scoreTable.at(-1) ?? DEFAULT_POINTS);
+      const share = evenSplitText(body.statements.length, questionPoints > 0 ? questionPoints : DEFAULT_POINTS, locale);
       return {
         ...base,
-        statements: body.statements.map((statement) => ({
+        scoringMethod: body.scoringMethod,
+        statements: body.statements.map((statement, index) => ({
           id: statement.id,
           content: statement.content,
           answer: statement.answer ? "TRUE" : "FALSE",
+          points: statement.points === null ? (share[index] ?? "") : formatPoints(statement.points, locale),
         })),
-        scoreTable: body.scoreTable.map(formatPoints),
+        scoreTable: perStatement
+          ? evenScoreTableText(body.statements.length, questionPoints > 0 ? questionPoints : DEFAULT_POINTS, locale)
+          : body.scoreTable.map((value) => formatPoints(value, locale)),
       };
-    case "FILL_IN":
+    }
+    case "SHORT_ANSWER":
+      return {
+        ...base,
+        blanks: [
+          {
+            id: draftRowId("b"),
+            answers: answerRows(body.answers),
+            points: String(DEFAULT_POINTS),
+          },
+        ],
+        inputHint: body.inputHint ?? "",
+      };
+    case "CLOZE":
       return {
         ...base,
         blanks: body.blanks.map((blank) => ({
           id: blank.id,
-          answers: blank.acceptedAnswers.map((value) => ({ id: draftRowId("a"), value })),
+          answers: answerRows(blank.answers),
+          points: formatPoints(blank.points, locale),
         })),
       };
-    case "DRAG_DROP": {
-      const contentOf = new Map(body.items.map((item) => [item.id, item.content]));
-      const used = new Set(body.zones.map((zone) => zone.correctItemId));
+    case "MATCHING": {
+      const rightOf = new Map(body.pairs.map((pair) => [pair.leftId, pair]));
       return {
         ...base,
-        zones: body.zones.map((zone) => ({
-          id: zone.id,
-          label: zone.label,
-          itemId: zone.correctItemId,
-          itemContent: contentOf.get(zone.correctItemId) ?? "",
-        })),
-        distractors: body.items.filter((item) => !used.has(item.id)).map((item) => ({ ...item })),
+        left: body.left.map((item) => {
+          const pair = rightOf.get(item.id);
+          return { id: item.id, content: item.content, rightId: pair?.rightId ?? "", points: pair ? formatPoints(pair.points, locale) : "" };
+        }),
+        right: body.right.map((item) => ({ ...item })),
+        reuseRight: body.reuseRight,
       };
     }
     case "QUESTION_SET":
@@ -256,10 +318,11 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
     case "ESSAY":
       return {
         ...base,
+        gradingGuide: body.gradingGuide,
         rubric: body.rubric.map((criterion) => ({
           id: criterion.id,
           description: criterion.description,
-          points: formatPoints(criterion.points),
+          points: formatPoints(criterion.points, locale),
         })),
         sampleAnswer: body.sampleAnswer ?? "",
         wordLimit: body.wordLimit === null ? "" : String(body.wordLimit),
@@ -267,33 +330,61 @@ export function bodyToEditor(body: QuestionBody): EditorBody {
   }
 }
 
-export function toEditorValues(question: QuestionDetail): QuestionEditorValues {
+export function toEditorValues(question: QuestionDetail, locale: AppLocale = "vi"): QuestionEditorValues {
   return {
     type: question.type,
     subjectCode: question.subjectCode,
     gradeCode: question.gradeCode,
     difficultyCode: question.difficultyCode,
     competencyCode: question.competencyCode ?? "",
-    points: formatPoints(question.points),
+    taskTypeCode: question.taskTypeCode ?? "",
+    points: formatPoints(question.points, locale),
     knowledge: normalizePrimary(question.knowledge),
     tagCodes: [...question.tagCodes],
-    content: question.content,
+    content: question.body.type === "CLOZE" ? clozeToEditorContent(question.body.passage) : question.content,
     solution: question.solution ?? "",
-    body: bodyToEditor(question.body),
-    children: question.children.map((child) => ({
-      key: child.id,
-      existingId: child.id,
-      type: child.type === "QUESTION_SET" ? "SINGLE_CHOICE" : child.type,
-      content: child.content,
-      solution: child.solution ?? "",
-      points: formatPoints(child.points),
-      body: bodyToEditor(child.body),
-    })),
+    commonMistakes: question.commonMistakes ?? "",
+    attachmentIds: [...question.attachmentIds],
+    body: bodyToEditor(question.body, locale),
+    children: question.children.map((child) => {
+      const sameKnowledge = sameNodeIds(child.knowledge, question.knowledge);
+      return {
+        key: child.id,
+        existingId: child.id,
+        type: isChildQuestionType(child.type) ? child.type : "SINGLE_CHOICE",
+        content: child.content,
+        solution: child.solution ?? "",
+        points: formatPoints(child.points, locale),
+        // Máy chủ trả phân loại đã kế thừa: giống câu cha thì hiện là "kế thừa".
+        gradeCode: child.gradeCode === question.gradeCode ? "" : child.gradeCode,
+        difficultyCode: child.difficultyCode === question.difficultyCode ? "" : child.difficultyCode,
+        knowledgeOverride: !sameKnowledge,
+        knowledge: sameKnowledge ? [] : normalizePrimary(child.knowledge),
+        body: bodyToEditor(child.body, locale),
+      };
+    }),
   };
 }
 
 function trimmed(value: string): string {
   return value.trim();
+}
+
+const CLOZE_MARKER_RE = /\[\[[^\]]+\]\]/g;
+
+/** Ngữ liệu Điền khuyết (`[[b1]]`) sang đề bài của trình soạn (`___`). */
+export function clozeToEditorContent(passage: string): string {
+  return passage.replace(CLOZE_MARKER_RE, BLANK_MARKER);
+}
+
+/** Đề bài của trình soạn (`___`) sang ngữ liệu Điền khuyết: chỗ trống thứ n thành `[[id của ô n]]`. */
+export function clozePassage(content: string, blankIds: readonly string[]): string {
+  let index = 0;
+  return content.split(BLANK_MARKER).reduce((text, part, position) => {
+    if (position === 0) return part;
+    const id = blankIds[index++];
+    return `${text}${id === undefined ? BLANK_MARKER : clozeMarker(id)}${part}`;
+  }, "");
 }
 
 /**
@@ -306,44 +397,56 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
-        shuffleOptions: body.shuffleOptions,
       };
     case "MULTIPLE_CHOICE":
       return {
         type,
         options: body.options.map((option) => ({ id: option.id, content: trimmed(option.content), correct: option.correct })),
-        shuffleOptions: body.shuffleOptions,
         scoringRule: body.scoringRule,
       };
-    case "TRUE_FALSE":
+    case "TRUE_FALSE": {
+      const perStatement = body.scoringMethod === "PER_STATEMENT";
       return {
         type,
         statements: body.statements.map((statement) => ({
           id: statement.id,
           content: trimmed(statement.content),
           answer: statement.answer === "TRUE",
+          points: perStatement ? parsePoints(statement.points) : null,
         })),
-        scoreTable:
-          body.scoreTable.length === body.statements.length
+        scoringMethod: body.scoringMethod,
+        scoreTable: perStatement
+          ? []
+          : body.scoreTable.length === body.statements.length
             ? body.scoreTable.map(parsePoints)
             : evenScoreTable(body.statements.length, points),
       };
-    case "FILL_IN":
+    }
+    case "SHORT_ANSWER":
       return {
         type,
+        answers: (body.blanks[0]?.answers ?? []).map((answer) => trimmed(answer.value)).filter(Boolean),
+        inputHint: trimmed(body.inputHint) || null,
+      };
+    case "CLOZE":
+      return {
+        type,
+        passage: clozePassage(content, body.blanks.map((blank) => blank.id)),
         blanks: body.blanks.map((blank) => ({
           id: blank.id,
-          acceptedAnswers: blank.answers.map((answer) => trimmed(answer.value)).filter(Boolean),
+          answers: blank.answers.map((answer) => trimmed(answer.value)).filter(Boolean),
+          points: parsePoints(blank.points),
         })),
       };
-    case "DRAG_DROP":
+    case "MATCHING":
       return {
         type,
-        items: [
-          ...body.zones.map((zone) => ({ id: zone.itemId, content: trimmed(zone.itemContent) })),
-          ...body.distractors.map((item) => ({ id: item.id, content: trimmed(item.content) })),
-        ],
-        zones: body.zones.map((zone) => ({ id: zone.id, label: trimmed(zone.label), correctItemId: zone.itemId })),
+        left: body.left.map((item) => ({ id: item.id, content: trimmed(item.content) })),
+        right: body.right.map((item) => ({ id: item.id, content: trimmed(item.content) })),
+        pairs: body.left
+          .filter((item) => item.rightId)
+          .map((item) => ({ leftId: item.id, rightId: item.rightId, points: parsePoints(item.points) })),
+        reuseRight: body.reuseRight,
       };
     case "QUESTION_SET":
       return { type, passage: trimmed(content), childIds: [] };
@@ -351,7 +454,7 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
       const wordLimit = Number.parseInt(body.wordLimit.trim(), 10);
       return {
         type,
-        maxPoints: points,
+        gradingGuide: trimmed(body.gradingGuide),
         rubric: body.rubric.map((criterion) => ({
           id: criterion.id,
           description: trimmed(criterion.description),
@@ -364,14 +467,44 @@ export function editorToBody(type: QuestionType, body: EditorBody, content: stri
   }
 }
 
+/**
+ * Chia `points` đều cho `count` phần (làm tròn 2 chữ số); phần cuối nhận số dư để tổng đúng bằng `points`
+ * (ví dụ 1 chia 3 ra 0,33 / 0,33 / 0,34).
+ */
+export function evenSplit(count: number, points: number): number[] {
+  if (count <= 0) return [];
+  const share = Math.round((points * 100) / count) / 100;
+  return Array.from({ length: count }, (_, index) => (index === count - 1 ? roundPoints(points - share * (count - 1)) : share));
+}
+
+/** Như `evenSplit`, viết theo ô Điểm ("0,5"). */
+export function evenSplitText(count: number, points: number, locale: AppLocale = "vi"): string[] {
+  return evenSplit(count, points).map((value) => formatPoints(value, locale));
+}
+
+/** Tổng các điểm hợp lệ trong danh sách ô Điểm. */
+export function pointsTotal(values: readonly string[]): number {
+  return roundPoints(
+    values.reduce((sum, value) => {
+      const points = parsePoints(value);
+      return Number.isFinite(points) ? sum + points : sum;
+    }, 0),
+  );
+}
+
+function sameNodeIds(left: readonly { nodeId: string }[], right: readonly { nodeId: string }[]): boolean {
+  const ids = new Set(right.map((ref) => ref.nodeId));
+  return left.length === right.length && left.every((ref) => ids.has(ref.nodeId));
+}
+
 /** Bảng điểm Đúng/Sai chia đều: đúng `i + 1` ý được `(i + 1) / n` điểm của câu, làm tròn 2 chữ số. */
 export function evenScoreTable(statementCount: number, points: number): number[] {
   return Array.from({ length: statementCount }, (_, index) => Math.round((points * (index + 1) * 100) / statementCount) / 100);
 }
 
 /** Như `evenScoreTable`, viết theo ô Điểm ("0,5"). */
-export function evenScoreTableText(statementCount: number, points: number): string[] {
-  return evenScoreTable(statementCount, points).map(formatPoints);
+export function evenScoreTableText(statementCount: number, points: number, locale: AppLocale = "vi"): string[] {
+  return evenScoreTable(statementCount, points).map((value) => formatPoints(value, locale));
 }
 
 /** Làm tròn điểm tới 3 chữ số thập phân (0,125). */
@@ -412,6 +545,9 @@ function toChildRequest(child: EditorChild): SaveChildQuestionRequest {
     body: editorToBody(child.type, child.body, child.content, parsePoints(child.points)),
     solution: trimmed(child.solution) || null,
     points: parsePoints(child.points),
+    gradeCode: child.gradeCode || null,
+    difficultyCode: child.difficultyCode || null,
+    knowledgeIds: child.knowledgeOverride ? child.knowledge.map((ref) => ref.nodeId) : null,
   };
 }
 
@@ -424,12 +560,22 @@ export function toSaveRequest(values: QuestionEditorValues): SaveQuestionRequest
     subjectCode: values.subjectCode,
     gradeCode: values.gradeCode,
     difficultyCode: values.difficultyCode,
+    taskTypeCode: values.taskTypeCode || null,
     competencyCode: values.competencyCode || null,
-    points: isSet ? children.reduce((sum, child) => sum + child.points, 0) : parsePoints(values.points),
+    points: isSet
+      ? children.reduce((sum, child) => sum + child.points, 0)
+      : values.type === "CLOZE"
+        ? pointsTotal(values.body.blanks.map((blank) => blank.points))
+        : parsePoints(values.points),
     knowledge: normalizePrimary(values.knowledge),
     tagCodes: [...values.tagCodes],
-    content: trimmed(values.content),
+    content:
+      values.type === "CLOZE"
+        ? clozePassage(trimmed(values.content), values.body.blanks.map((blank) => blank.id))
+        : trimmed(values.content),
     solution: isSet ? null : trimmed(values.solution) || null,
+    commonMistakes: trimmed(values.commonMistakes) || null,
+    attachmentIds: [...values.attachmentIds],
     body: editorToBody(values.type, values.body, values.content, parsePoints(values.points)),
     children,
   };
@@ -441,31 +587,6 @@ export function questionSetPoints(children: readonly Pick<EditorChild, "points">
     const points = parsePoints(child.points);
     return Number.isFinite(points) ? sum + points : sum;
   }, 0);
-}
-
-/**
- * Chèn chỗ trống `___` vào đề bài tại vị trí con trỏ (không cắt đôi một chỗ trống có sẵn). Trả về đề bài mới, thứ tự
- * của chỗ trống vừa chèn (để thêm dòng đáp án đúng vị trí) và vị trí con trỏ sau chỗ trống.
- */
-export function insertBlankMarker(
-  content: string,
-  position: number,
-): { content: string; index: number; caret: number } {
-  let at = Math.min(Math.max(position, 0), content.length);
-  // Con trỏ đang nằm giữa một `___` thì dời ra sau nó.
-  for (let start = content.indexOf(BLANK_MARKER); start !== -1; start = content.indexOf(BLANK_MARKER, start + BLANK_MARKER.length)) {
-    if (at > start && at < start + BLANK_MARKER.length) at = start + BLANK_MARKER.length;
-  }
-  const before = content.slice(0, at);
-  const after = content.slice(at);
-  const spaceBefore = before.length > 0 && !/\s$/.test(before) ? " " : "";
-  const spaceAfter = after.length > 0 && !/^\s/.test(after) ? " " : "";
-  const next = `${before}${spaceBefore}${BLANK_MARKER}${spaceAfter}${after}`;
-  return {
-    content: next,
-    index: countBlankMarkers(before),
-    caret: before.length + spaceBefore.length + BLANK_MARKER.length,
-  };
 }
 
 /** Bỏ chỗ trống thứ `index` (tính từ 0) khỏi đề bài; không có thì giữ nguyên. */

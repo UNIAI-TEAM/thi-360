@@ -75,6 +75,7 @@ export function ExamReviewView({ examId }: { examId: string }) {
       <TabsContent value="check" forceMount className="mt-5 data-[state=inactive]:hidden">
         <ExamReviewCheck
           exam={exam}
+          active={state.tab === "check"}
           onPreview={(pathId) => {
             update({ tab: "preview", path: pathId ?? state.path, version: null });
             if (pathId) setPreviewRequest((value) => value + 1);

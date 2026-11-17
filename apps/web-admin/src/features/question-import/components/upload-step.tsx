@@ -18,41 +18,34 @@ import { type ChangeEvent, type DragEvent, type RefObject, useId, useRef, useSta
 import { importApiErrorCode, type QuestionImportApiDeps } from "../api";
 import { checkImportFile, isImportFileErrorCode, MAX_IMPORT_FILE_BYTES, MAX_IMPORT_ROWS } from "../files";
 import { useUploadQuestionFile } from "../queries";
-import type { ImportUpload } from "../types";
+import type { ImportField, ImportUpload } from "../types";
 
 /** Bề rộng thẻ (px) dưới đó bảng các cột của tệp mẫu thành danh sách thẻ, như màn cấp tài khoản hàng loạt. */
 const TEMPLATE_COLUMNS_CARD_BREAKPOINT = 512;
 
-type TemplateRowKey =
-  | "sourceCode"
-  | "type"
-  | "content"
-  | "options"
-  | "correctAnswer"
-  | "solution"
-  | "subject"
-  | "grade"
-  | "difficulty"
-  | "knowledge"
-  | "tags"
-  | "setCode"
-  | "rubric";
-
-const TEMPLATE_ROWS: ReadonlyArray<{ key: TemplateRowKey; required: boolean }> = [
+/** Các cột của tệp mẫu (8 dạng câu), theo thứ tự cột của tệp; Bắt buộc theo `REQUIRED_IMPORT_FIELDS`. */
+const TEMPLATE_ROWS = [
   { key: "sourceCode", required: false },
   { key: "type", required: true },
   { key: "content", required: true },
+  { key: "points", required: false },
   { key: "options", required: false },
+  { key: "matchRight", required: false },
   { key: "correctAnswer", required: true },
+  { key: "scoring", required: false },
+  { key: "inputHint", required: false },
+  { key: "gradingGuide", required: false },
+  { key: "rubric", required: false },
   { key: "solution", required: false },
+  { key: "commonMistakes", required: false },
   { key: "subject", required: true },
   { key: "grade", required: true },
   { key: "difficulty", required: true },
+  { key: "taskType", required: false },
   { key: "knowledge", required: false },
   { key: "tags", required: false },
   { key: "setCode", required: false },
-  { key: "rubric", required: false },
-];
+] as const satisfies ReadonlyArray<{ key: ImportField; required: boolean }>;
 
 export interface UploadStepProps {
   deps: QuestionImportApiDeps;
@@ -120,7 +113,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
 
   const templateRows = TEMPLATE_ROWS.map((row) => ({
     ...row,
-    name: row.key === "options" ? t("upload.optionsRow") : t(`fields.${row.key}`),
+    name: t(`upload.headers.${row.key}`),
     rules: t(`upload.rules.${row.key}`),
   }));
 
@@ -177,7 +170,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
           </label>
         </div>
 
-        <p className="text-caption text-text-muted">{t("upload.mockHint")}</p>
+        <p className="text-caption text-text-muted">{t("upload.readNote")}</p>
 
         {selectedFile && (
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-subtle px-3.5 py-2.5">
@@ -225,7 +218,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
           <h2 id={columnsHeadingId} className="text-title font-semibold text-text">
             {t("upload.columnsHeading")}
           </h2>
-          <span className="text-body text-text-muted">{t("upload.columnsHint")}</span>
+          <span className="text-body text-text-muted">{t("upload.columnsHint", { count: templateRows.length })}</span>
         </div>
         <div ref={columnsFrameRef} className="min-w-0">
           {columnsAsCards ? (
@@ -241,7 +234,10 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
                         <StatusChip tone="neutral">{t("upload.optional")}</StatusChip>
                       )
                     }
-                    meta={[{ label: t("upload.colRules"), value: row.rules }]}
+                    meta={[
+                      { label: t("upload.colFileHeader"), value: row.key },
+                      { label: t("upload.colRules"), value: row.rules },
+                    ]}
                   />
                 </CardListItem>
               ))}
@@ -253,6 +249,9 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
                   <tr className="bg-table-head text-left text-field-label text-text-muted">
                     <th scope="col" className="px-4 py-3 font-semibold">
                       {t("upload.colName")}
+                    </th>
+                    <th scope="col" className="px-2 py-3 font-semibold whitespace-nowrap">
+                      {t("upload.colFileHeader")}
                     </th>
                     <th scope="col" className="px-2 py-3 font-semibold whitespace-nowrap">
                       {t("upload.colRequired")}
@@ -268,6 +267,7 @@ export function UploadStep({ deps, headingRef, onUploaded }: UploadStepProps) {
                       <th scope="row" className="px-4 py-2.5 text-left align-top font-semibold whitespace-nowrap text-text">
                         {row.name}
                       </th>
+                      <td className="px-2 py-2.5 align-top font-mono text-text-secondary">{row.key}</td>
                       <td className="px-2 py-2.5 align-top text-text">
                         {row.required ? t("upload.yes") : t("upload.no")}
                       </td>

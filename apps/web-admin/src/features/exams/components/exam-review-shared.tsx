@@ -7,7 +7,9 @@ import Link from "next/link";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ChoiceNameResolver } from "../check";
-import type { BlockCheckResult, CheckIssue, ExamPathRef, PathCheckResult } from "../review-types";
+import { type ChangeLevel, parseChangeWhere } from "../change-where";
+import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
+import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */
 export const PATH_RESULT_TONE: Record<PathCheckResult, StatusTone> = {
@@ -77,9 +79,21 @@ export function useLookup() {
 /** Số mã câu nguồn nêu trong một vấn đề; còn lại ghi "…". */
 const QUESTION_CODES_SHOWN = 5;
 
+/** Mã vấn đề có câu mô tả riêng khi máy chủ không trả số câu cần/có (`exams.review.issueNoCount`). */
+const COUNT_ISSUE_CODES: Partial<Record<CheckIssueCode, true>> = {
+  CELL_SHORTAGE: true,
+  DIMENSION_SHORTAGE: true,
+  COMPETENCY_SHORTAGE: true,
+  ANSWER_TYPE_SHORTAGE: true,
+  SUBJECT_QUOTA_INFEASIBLE: true,
+  REMAINDER_GROUP_INVALID: true,
+};
+
 /** Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). */
 export function useIssueText() {
   const t = useTranslations("exams.review.issue");
+  const tNoCount = useTranslations("exams.review.issueNoCount");
+  const tContent = useTranslations("content");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
   return useCallback(
@@ -89,30 +103,43 @@ export function useIssueText() {
       const competency = issue.competencyCode
         ? (competencies?.find((item) => item.code === issue.competencyCode)?.name ?? issue.competencyCode)
         : "";
+      const grade = issue.gradeCode ? lookup.grade(issue.gradeCode) : "";
+      const difficulty = issue.difficultyCode ? lookup.difficulty(issue.difficultyCode) : "";
+      const level =
+        issue.dimension === "GRADE" && issue.gradeCode
+          ? grade
+          : issue.dimension === "COMPETENCY"
+            ? competency
+            : difficulty;
+      // Ô chỉ tiêu bị thiếu nguồn: "lớp/độ khó", hoặc một chiều; chiều không có tên thì bỏ cả cụm, không in "/".
+      const bucket =
+        issue.code === "DIMENSION_SHORTAGE" || issue.dimension === "GRADE" || issue.dimension === "DIFFICULTY"
+          ? level
+          : [grade, difficulty].filter(Boolean).join("/");
       const values = {
         block: issue.blockName ? `${subject} · ${issue.blockName}` : subject,
         subject,
         part: issue.partName ?? "",
-        grade: issue.gradeCode ? lookup.grade(issue.gradeCode) : "",
-        difficulty: issue.difficultyCode ? lookup.difficulty(issue.difficultyCode) : "",
-        level:
-          issue.dimension === "GRADE" && issue.gradeCode
-            ? lookup.grade(issue.gradeCode)
-            : issue.dimension === "COMPETENCY"
-              ? competency
-              : issue.difficultyCode
-                ? lookup.difficulty(issue.difficultyCode)
-                : "",
+        grade,
+        difficulty,
+        level,
+        bucket,
+        hasBucket: bucket ? "yes" : "no",
         dimension: issue.dimension ?? "NONE",
         required: issue.required ?? 0,
         available: issue.available ?? 0,
         seconds: issue.timeLimitSeconds ?? 0,
+        answerType: issue.answerType ? tContent(`questionType.${issue.answerType}`) : "",
+        count: issue.subjectCount ?? 0,
         competency,
         codes: codes.slice(0, QUESTION_CODES_SHOWN).join(", ") + (codes.length > QUESTION_CODES_SHOWN ? ", …" : ""),
       };
+      // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
+      const noCount = issue.required == null || issue.available == null;
+      if (noCount && COUNT_ISSUE_CODES[issue.code]) return tNoCount(issue.code, values);
       return t(issue.code, values);
     },
-    [t, lookup, competencies],
+    [t, tNoCount, tContent, lookup, competencies],
   );
 }
 
@@ -128,6 +155,12 @@ export function useIssueWithPath(paths: readonly ExamPathRef[]) {
       const choice = path?.choices.find((item) => item.optionId === issue.optionId);
       if (!choice) return text;
       const label = choice.kind === "COMBINATION" ? choice.code : choice.name;
+      // Câu của phần đã mở đầu bằng tên phần ("Khoa học hoặc Tiếng Anh: …"): không lặp tên lựa chọn nếu tên phần đã chứa nó.
+      const partName = issue.partName;
+      if (partName && text.startsWith(`${partName}: `)) {
+        if (partName.toLowerCase().includes(label.toLowerCase())) return text;
+        return `${partName} (${label})${text.slice(partName.length)}`;
+      }
       return t("issueWithPath", { path: label, issue: text });
     },
     [t, issueText, paths],
@@ -170,5 +203,62 @@ export function IconLink({ href, label, tooltip, icon }: { href: string; label: 
         </span>
       </Link>
     </Tooltip>
+  );
+}
+
+/** Tên các phần tử của cấu trúc hiện tại theo id, để dựng nhãn vị trí thay đổi. `null`: không có tên dùng được. */
+function structureNames(
+  parts: readonly ExamPart[],
+  subjectName: (code: string) => string,
+): Record<ChangeLevel, Map<string, string | null>> {
+  const names: Record<ChangeLevel, Map<string, string | null>> = {
+    part: new Map(),
+    section: new Map(),
+    block: new Map(),
+    option: new Map(),
+  };
+  const visitBlocks = (blocks: readonly { id: string; name: string }[] | undefined) => {
+    for (const block of blocks ?? []) names.block.set(block.id, block.name.trim() || null);
+  };
+  const visitSections = (sections: readonly ExamSection[]) => {
+    for (const section of sections) {
+      names.section.set(section.id, subjectName(section.subjectCode));
+      visitBlocks(section.blocks);
+    }
+  };
+  for (const part of parts) {
+    names.part.set(part.id, part.name.trim() || null);
+    visitSections(part.sections);
+    for (const option of part.options) {
+      names.option.set(option.id, option.kind === "COMBINATION" ? option.code : (option.name ?? option.code));
+      visitSections(option.sections);
+      visitBlocks(option.blocks);
+    }
+  }
+  return names;
+}
+
+/**
+ * Nhãn dễ đọc cho vị trí của một thay đổi (`ExamChange.where`): tên phần, môn, khối, lựa chọn lấy từ cấu trúc hiện tại,
+ * không có thì chữ chung ("Khối"); sau đó là nhãn của trường. Không bao giờ in id. `where` không phải đường dẫn (dữ liệu
+ * mẫu đã là chữ mô tả) giữ nguyên.
+ */
+export function useChangeWhere(exam: ExamDetail) {
+  const t = useTranslations("exams.versions.changes.where");
+  const lookup = useLookup();
+  const names = useMemo(() => structureNames(exam.parts, lookup.subject), [exam.parts, lookup]);
+  return useCallback(
+    (where: string) => {
+      const target = parseChangeWhere(where);
+      if (!target) return where;
+      const labels = target.steps.map((step) =>
+        step.id === null ? t(`all.${step.level}`) : (names[step.level].get(step.id) ?? t(`item.${step.level}`)),
+      );
+      if (target.config) labels.unshift(t("config"));
+      const field = target.fields.find((name) => t.has(`field.${name}`));
+      if (field) labels.push(t(`field.${field}`));
+      return labels.length > 0 ? labels.join(" · ") : t("structure");
+    },
+    [t, names],
   );
 }

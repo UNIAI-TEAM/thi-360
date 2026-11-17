@@ -19,5 +19,5 @@ Bản xem được: https://claude.ai/artifact/4WyWEQAR8DTdZQTmQA5eG7, trang 05�
 
 - Bản vẽ có 6 dạng câu, UniNote ghi 4 (Trắc nghiệm, Cloze, Short Answer, Question Set). Mockup theo 6 dạng.
 - Màn chi tiết các dạng câu (vẽ ở đợt 1) ghi trạng thái "Hoạt động"; mockup dùng Nháp / Sẵn sàng / Ngừng sử dụng theo UniNote mục 9.
-- Trình soạn thảo đầy đủ (trang 07 của canvas) chưa làm trong đợt mockup; ô đề bài là ô nhập nhiều dòng.
+- Trình soạn thảo đầy đủ (trang 07 của canvas): xuất ngày 2026-11-17 thành 10 tệp `SoanThao*.dc.html` (Tổng quan, Công thức toán, Hóa học, Ký hiệu, Bảng, Hình, Đoạn trích, Tiếng Anh, Sinh học, Dán từ Word). Làm ở UNI-2638, đặc tả `docs/specs/2026-11-17-trinh-soan-noi-dung.md`. Hộp Hình trong bản vẽ ghi nhận SVG; sản phẩm không nhận SVG (D17).
 - Mã môn, khối, độ khó, cây kiến thức, mã tổ hợp trong dữ liệu mẫu là mẫu; khi nối backend lấy từ danh mục dùng chung.

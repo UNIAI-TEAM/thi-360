@@ -4,7 +4,10 @@ import type {
   PersonRef,
   QuestionStatus,
   QuestionType,
+  TrueFalseMethod,
 } from "@/features/content/types";
+import type { ApiPage } from "@/lib/api/page";
+import type { ReadinessIssue } from "./readiness";
 
 /**
  * Câu hỏi trong ngân hàng (PBI-03), dữ liệu mẫu. Khi có OpenAPI của backend, đổi các kiểu dưới đây thành bí danh
@@ -22,15 +25,21 @@ export interface QuestionSummary {
   subjectCode: string;
   gradeCode: string;
   difficultyCode: string;
-  /** Điểm tối đa của câu. Câu Tự luận: bằng `body.maxPoints`. */
+  /** Điểm của câu (mặc định 1, lớn hơn 0). Bộ câu hỏi và Điền khuyết: tổng điểm thành phần, chỉ đọc. */
   points: number;
   knowledge: KnowledgeRef[];
   /** Năng lực (V-ACT), mã trong `ContentReference.competencies`; bỏ trống hoặc `null`: không gắn. */
   competencyCode?: string | null;
+  /** Dạng bài (`ContentReference.taskTypes`); `null`: chưa gắn. */
+  taskTypeCode: string | null;
   tagCodes: string[];
   hasSolution: boolean;
-  /** Phiên bản hiện hành, tính từ 1. */
+  /** Số phiên bản nội dung đang hiển thị, tính từ 1 (bản đang phục vụ; câu chưa từng Sẵn sàng: bản Nháp). Không dùng làm khóa lạc quan: xem `revision`. */
   version: number;
+  /** Số bản Nháp đang sửa của câu đã Sẵn sàng hoặc Ngừng sử dụng; `null`/bỏ trống: không có bản Nháp riêng. Lưu tiếp thì ghi đè bản này. */
+  workingVersion?: number | null;
+  /** Khóa lạc quan (D13): tăng ở mọi lần ghi, kể cả đổi trạng thái. Mọi lệnh ghi gửi lại làm `expectedRevision`. */
+  revision: number;
   /** Số bài thi (đã công bố hoặc đang soạn) đang dùng câu này; khác 0 thì không xóa hẳn được. */
   usedInExamCount: number;
   /** Mã nguồn khi nhập từ tệp (dùng để chống trùng); `null` với câu soạn tay. */
@@ -39,6 +48,16 @@ export interface QuestionSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Dòng của danh sách: câu hỏi kèm gợi ý điều kiện Sẵn sàng đầu tiên còn thiếu (câu Nháp, Ngừng sử dụng), để danh sách
+ * nêu ngay chỗ cần sửa như canvas `NganHangCauHoi`. Bên tạo dữ liệu khác có thể bỏ trống.
+ */
+export interface QuestionListItem extends QuestionSummary {
+  readinessHint?: ReadinessIssue | null;
+}
+
+export type PageResponseQuestionSummary = ApiPage<QuestionListItem>;
 
 export interface ChoiceOption {
   id: string;
@@ -50,62 +69,88 @@ export interface TrueFalseStatement {
   id: string;
   content: string;
   answer: boolean;
+  /** Điểm của ý khi `scoringMethod = PER_STATEMENT`; `null` khi chấm theo bảng. */
+  points: number | null;
 }
 
-export interface FillInBlank {
+/** Ô trống của câu Điền khuyết; vị trí đánh dấu `[[id]]` trong ngữ liệu. */
+export interface ClozeBlank {
   id: string;
-  /** Các đáp án được chấp nhận, so khớp không phân biệt hoa thường. */
-  acceptedAnswers: string[];
+  /** Đáp án chuẩn đứng đầu, sau là các đáp án được chấp nhận (khớp đúng sau chuẩn hóa, B7). */
+  answers: string[];
+  /** Điểm của ô, lớn hơn 0, mặc định 1. */
+  points: number;
 }
 
-export interface DragItem {
+export interface MatchingItem {
   id: string;
   content: string;
 }
 
-export interface DropZone {
-  id: string;
-  label: string;
-  /** Mục kéo đúng vào ô này. */
-  correctItemId: string;
-}
-
-/** Một tiêu chí của hướng dẫn chấm câu Tự luận. */
-export interface EssayCriterion {
-  id: string;
-  description: string;
-  /** Điểm tối đa của tiêu chí; tổng các tiêu chí bằng `maxPoints` của câu. */
+export interface MatchingPair {
+  leftId: string;
+  rightId: string;
   points: number;
 }
 
+/** Một tiêu chí của hướng dẫn chấm câu Tự luận (tùy chọn, D20). */
+export interface EssayCriterion {
+  id: string;
+  description: string;
+  /** Điểm tối đa của tiêu chí; có tiêu chí thì tổng bằng điểm của câu. */
+  points: number;
+}
+
+/** Dấu vị trí của ô trống trong ngữ liệu Điền khuyết: `[[b1]]`. */
+export function clozeMarker(blankId: string): string {
+  return `[[${blankId}]]`;
+}
+
 /**
- * Phần riêng theo dạng câu.
+ * Phần riêng theo dạng câu (spec 4.3, 9.2).
  *
- * - Nhiều đáp án: `scoringRule` (mặc định của kỳ thi, sửa được trên câu).
- * - Đúng/Sai: `scoreTable[i]` là điểm khi đúng `i + 1` ý, độ dài bằng số ý, phần tử cuối bằng điểm của câu
- *   (THPTQG 4 ý: 0,1 / 0,25 / 0,5 / 1).
- * - Tự luận: chấm tay theo `rubric`; `wordLimit` là số chữ gợi ý (đoạn văn 200 chữ), `null` khi không giới hạn.
+ * - Một đáp án, Nhiều đáp án: `options`; Nhiều đáp án thêm `scoringRule`. Phương án luôn được đảo khi sinh đề, không có cờ.
+ * - Trả lời ngắn: `answers` (đáp án chuẩn đứng đầu, tối đa 20), `inputHint` hướng dẫn nhập cho học viên.
+ * - Điền khuyết: `passage` có các dấu `[[id]]`, `blanks` mỗi ô một điểm.
+ * - Đúng/Sai: `scoringMethod`; `PER_STATEMENT` dùng `statements[].points`, `COUNT_TABLE` dùng `scoreTable` (độ dài bằng
+ *   số ý, không giảm, phần tử cuối bằng điểm của câu; THPTQG 4 ý: 0,1 / 0,25 / 0,5 / 1).
+ * - Ghép đôi: hai cột `left`, `right` (nhiều lựa chọn hơn mục cũng được), `pairs` nối mục trái với một lựa chọn phải.
+ * - Tự luận: `gradingGuide` bắt buộc khi Sẵn sàng, `rubric` tùy chọn, `wordLimit` để trống hoặc lớn hơn 0.
+ * - Bộ câu hỏi: ngữ liệu chung và id câu con; không nhận Bộ câu hỏi hay Điền khuyết làm câu con (D19).
  */
 export type QuestionBody =
-  | { type: "SINGLE_CHOICE"; options: ChoiceOption[]; shuffleOptions: boolean }
-  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; shuffleOptions: boolean; scoringRule: MultipleChoiceRule }
-  | { type: "TRUE_FALSE"; statements: TrueFalseStatement[]; scoreTable: number[] }
-  | { type: "FILL_IN"; blanks: FillInBlank[] }
-  | { type: "DRAG_DROP"; items: DragItem[]; zones: DropZone[] }
+  | { type: "SINGLE_CHOICE"; options: ChoiceOption[] }
+  | { type: "MULTIPLE_CHOICE"; options: ChoiceOption[]; scoringRule: MultipleChoiceRule }
+  | { type: "SHORT_ANSWER"; answers: string[]; inputHint: string | null }
+  | { type: "CLOZE"; passage: string; blanks: ClozeBlank[] }
   | { type: "QUESTION_SET"; passage: string; childIds: string[] }
+  | { type: "TRUE_FALSE"; statements: TrueFalseStatement[]; scoringMethod: TrueFalseMethod; scoreTable: number[] }
+  | {
+      type: "MATCHING";
+      left: MatchingItem[];
+      right: MatchingItem[];
+      pairs: MatchingPair[];
+      /** Một lựa chọn dùng cho nhiều mục trái (`true`) hay một lần (`false`). */
+      reuseRight: boolean;
+    }
   | {
       type: "ESSAY";
-      maxPoints: number;
+      /** Hướng dẫn chấm (HTML đã lọc); bắt buộc khi Sẵn sàng (D20). */
+      gradingGuide: string;
       rubric: EssayCriterion[];
       sampleAnswer: string | null;
       wordLimit: number | null;
     };
 
 export interface QuestionDetail extends QuestionSummary {
-  /** Đề bài. Mockup lưu chữ thuần; trình soạn thảo đầy đủ (canvas trang 07) chưa làm. */
+  /** Đề bài. Mockup lưu chữ thuần; trình soạn HTML là việc của FE-4. */
   content: string;
   body: QuestionBody;
   solution: string | null;
+  /** Lỗi sai thường gặp (HTML đã lọc); `null`: không có. */
+  commonMistakes: string | null;
+  /** Tệp đính kèm của câu (id tài nguyên); rỗng: không có. */
+  attachmentIds: string[];
   /** Câu con của câu chùm, đủ nội dung (rỗng với dạng khác). */
   children: QuestionDetail[];
 }
@@ -118,6 +163,8 @@ export interface ListQuestionsQuery {
   type?: QuestionType;
   status?: QuestionStatus;
   competencyCode?: string;
+  /** Dạng bài (`ContentReference.taskTypes`). */
+  taskTypeCode?: string;
   /** Lọc theo MAPID (id nút kiến thức); câu khớp khi gắn một trong các nút. */
   knowledgeIds?: string[];
   tagCode?: string;

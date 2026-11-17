@@ -19,19 +19,24 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import { EXAM_STATUS_TONE } from "@/features/exams/status";
 import type { QuestionUsageExam } from "../editor-types";
 import { useQuestionUsage } from "../editor-queries";
+import { usageLocation, type UsageLocationNames } from "../usage-location";
 
 function examHref(exam: QuestionUsageExam): string {
   return `/exams/${encodeURIComponent(exam.examId)}`;
 }
 
-function usageFormatters(t: ReturnType<typeof useTranslations>, subjectName: (code: string) => string) {
+function usageFormatters(t: ReturnType<typeof useTranslations>, names: UsageLocationNames) {
   return {
     attemptsText: (exam: QuestionUsageExam) => {
       const used = exam.attemptsByVersion.filter((entry) => entry.attemptCount > 0);
       if (used.length === 0) return t("noAttempts");
       return used.map((entry) => t("versionAttempts", { version: entry.version, count: entry.attemptCount })).join(" · ");
     },
-    location: (exam: QuestionUsageExam) => [exam.partName, subjectName(exam.subjectCode), exam.blockName].join(" › "),
+    /** Mỗi khối của bài một dòng: phần › lựa chọn › môn › khối. */
+    locations: (exam: QuestionUsageExam): string[] => {
+      const blocks = exam.blocks?.length ? exam.blocks : [{ partName: exam.partName, optionCode: null, optionName: "", blockName: exam.blockName }];
+      return blocks.map((block) => usageLocation(block, exam.subjectCode, names)).filter(Boolean);
+    },
   };
 }
 
@@ -45,10 +50,17 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
   const usageQuery = useQuestionUsage(questionId);
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
+  const names = useMemo<UsageLocationNames>(
+    () => ({
+      subject: lookup.subject,
+      combination: (code) => referenceQuery.data?.combinations.find((combination) => combination.code === code)?.name,
+    }),
+    [lookup, referenceQuery.data],
+  );
   const usage = usageQuery.data;
 
   const columns = useMemo<ColumnDef<QuestionUsageExam>[]>(() => {
-    const { attemptsText, location } = usageFormatters(t, lookup.subject);
+    const { attemptsText, locations } = usageFormatters(t, names);
     return [
       {
         id: "exam",
@@ -74,7 +86,13 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
       {
         id: "location",
         header: t("columns.location"),
-        cell: ({ row }) => <span className="block min-w-48 whitespace-normal">{location(row.original)}</span>,
+        cell: ({ row }) => (
+          <div className="flex min-w-48 flex-col gap-0.5 whitespace-normal">
+            {locations(row.original).map((line, index) => (
+              <span key={index}>{line}</span>
+            ))}
+          </div>
+        ),
       },
       {
         id: "attempts",
@@ -82,10 +100,10 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
         cell: ({ row }) => <span className="block min-w-36 whitespace-normal">{attemptsText(row.original)}</span>,
       },
     ];
-  }, [t, tExamStatus, lookup]);
+  }, [t, tExamStatus, names]);
 
   const cards = useMemo<TableCards<QuestionUsageExam>>(() => {
-    const { attemptsText, location } = usageFormatters(t, lookup.subject);
+    const { attemptsText, locations } = usageFormatters(t, names);
     return {
       render: (exam) => (
         <ListCard
@@ -97,13 +115,13 @@ export function QuestionUsageView({ questionId }: { questionId: string }) {
           caption={exam.examCode}
           status={<StatusChip tone={EXAM_STATUS_TONE[exam.examStatus]}>{tExamStatus(exam.examStatus)}</StatusChip>}
           meta={[
-            { label: t("columns.location"), value: location(exam) },
+            { label: t("columns.location"), value: locations(exam).join("; ") },
             { label: t("columns.attempts"), value: attemptsText(exam) },
           ]}
         />
       ),
     };
-  }, [t, tExamStatus, lookup]);
+  }, [t, tExamStatus, names]);
 
   return (
     <Card padding="none" className="flex flex-col gap-4 p-4 sm:p-5">

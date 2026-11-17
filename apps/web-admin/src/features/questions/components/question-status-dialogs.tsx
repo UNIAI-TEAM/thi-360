@@ -24,9 +24,10 @@ import { Check, CircleAlert, Info, Lock, PowerOff, TriangleAlert, X } from "luci
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useId, useMemo, type ReactNode } from "react";
+import { apiErrorCode, isRevisionConflict } from "@/features/content/api-error";
+import { indexKnowledge, knowledgeName } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { MockApiError } from "@/lib/mock/content-mock";
 import { QUESTION_STATUS_ERROR_CODES, type QuestionStatusErrorCode } from "../api";
 import { useMarkQuestionReady, useQuestionReadiness, useQuestionRetireImpact, useRetireQuestion } from "../queries";
 import {
@@ -69,10 +70,9 @@ export function useReadinessIssueText() {
 }
 
 function errorCodeOf(error: unknown): QuestionStatusErrorCode | "UNKNOWN" {
-  if (error instanceof MockApiError && error.code) {
-    const code = error.code;
-    if ((QUESTION_STATUS_ERROR_CODES as readonly string[]).includes(code)) return code as QuestionStatusErrorCode;
-  }
+  if (isRevisionConflict(error)) return "QUESTION_REVISION_CONFLICT";
+  const code = apiErrorCode(error);
+  if (code && (QUESTION_STATUS_ERROR_CODES as readonly string[]).includes(code)) return code as QuestionStatusErrorCode;
   return getErrorStatus(error) === 404 ? "NOT_FOUND" : "UNKNOWN";
 }
 
@@ -111,7 +111,7 @@ export function MarkReadyDialog({ question, open, onOpenChange, onDone }: Questi
             onClose={() => close(false)}
             onConfirm={() =>
               mutation.mutate(
-                { id: question.id },
+                { id: question.id, expectedRevision: question.revision },
                 {
                   onSuccess: (updated) => {
                     notify.success(t("readyDone", { code: updated.code }));
@@ -358,7 +358,7 @@ export function RetireQuestionDialog({ question, open, onOpenChange, onDone }: Q
             onClose={() => close(false)}
             onConfirm={() =>
               mutation.mutate(
-                { id: question.id },
+                { id: question.id, expectedRevision: question.revision },
                 {
                   onSuccess: (updated) => {
                     notify.success(t("retireDone", { code: updated.code }));
@@ -394,6 +394,7 @@ function RetireBody({
   const impact = useQuestionRetireImpact(question.id);
   const reference = useContentReference();
   const lookup = useReferenceLookup(reference.data);
+  const knowledgeIndex = useMemo(() => indexKnowledge(reference.data?.knowledgeTree ?? []), [reference.data]);
   const effectsId = useId();
   const usageHeadingId = useId();
   const primary = question.knowledge.find((ref) => ref.primary);
@@ -401,7 +402,7 @@ function RetireBody({
     contentT(`questionType.${question.type}`),
     lookup.subject(question.subjectCode),
     lookup.grade(question.gradeCode),
-    primary?.name,
+    primary ? knowledgeName(knowledgeIndex, primary) : undefined,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -513,7 +514,9 @@ function UsageTable({ question, exams }: { question: QuestionSummary; exams: Que
   );
   const impactChip = useCallback(
     (exam: QuestionUsageExam): ReactNode =>
-      exam.needed !== null && exam.available < exam.needed ? (
+      exam.needed === null ? (
+        <span className="text-text-muted">—</span>
+      ) : exam.available < exam.needed ? (
         <StatusChip tone="warning" className="h-auto min-h-6 py-0.5 whitespace-normal">
           {t("impactShortfall", {
             needed: exam.needed,

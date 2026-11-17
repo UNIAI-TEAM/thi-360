@@ -1,7 +1,5 @@
-import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { QuestionDetailLayout } from "@/features/questions/components/question-detail-layout";
-import { isContentMockEnabled } from "@/lib/mock/content-mock";
 
 /** Khung chung của ba trang con chi tiết câu hỏi; tiêu đề và thanh tab không dựng lại khi đổi trang con. */
 export default async function QuestionDetailRouteLayout({
@@ -11,7 +9,6 @@ export default async function QuestionDetailRouteLayout({
   params: Promise<{ id: string }>;
   children: ReactNode;
 }) {
-  if (!isContentMockEnabled()) notFound();
   const { id } = await params;
   return <QuestionDetailLayout questionId={id}>{children}</QuestionDetailLayout>;
 }

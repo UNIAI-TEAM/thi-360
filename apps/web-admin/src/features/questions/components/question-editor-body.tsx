@@ -3,8 +3,9 @@
 import type { QuestionType } from "@/features/content/types";
 import { BlanksEditor } from "./question-editor-blanks";
 import { ChoiceOptionsEditor } from "./question-editor-choice";
-import { DragDropEditor } from "./question-editor-drag";
 import { EssayEditor } from "./question-editor-essay";
+import { MatchingEditor } from "./question-editor-matching";
+import { ShortAnswerEditor } from "./question-editor-short-answer";
 import type { BodyPath, ContentPath } from "./question-editor-shared";
 import { StatementsEditor } from "./question-editor-statements";
 
@@ -13,12 +14,10 @@ export function QuestionBodyEditor({
   type,
   prefix,
   contentPath,
-  contentFieldId,
 }: {
   type: QuestionType;
   prefix: BodyPath;
   contentPath: ContentPath;
-  contentFieldId: string;
 }) {
   switch (type) {
     case "SINGLE_CHOICE":
@@ -27,10 +26,12 @@ export function QuestionBodyEditor({
       return <ChoiceOptionsEditor prefix={prefix} multiple />;
     case "TRUE_FALSE":
       return <StatementsEditor prefix={prefix} />;
-    case "FILL_IN":
-      return <BlanksEditor prefix={prefix} contentPath={contentPath} contentFieldId={contentFieldId} />;
-    case "DRAG_DROP":
-      return <DragDropEditor prefix={prefix} />;
+    case "SHORT_ANSWER":
+      return <ShortAnswerEditor prefix={prefix} />;
+    case "CLOZE":
+      return <BlanksEditor prefix={prefix} contentPath={contentPath} />;
+    case "MATCHING":
+      return <MatchingEditor prefix={prefix} />;
     case "ESSAY":
       return <EssayEditor prefix={prefix} />;
     case "QUESTION_SET":

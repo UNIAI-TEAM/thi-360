@@ -1,13 +1,18 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { questionStore } from "@/features/questions/mock/store";
 import { renderWithProviders } from "@/test/render";
 import { ExamReviewView } from "../components/exam-review-view";
 import { ExamVersionsView } from "../components/exam-versions-view";
-import { reviewStore } from "../mock/review-store";
-import { examStore } from "../mock/store";
-import { generatePreview } from "../review-api";
+import { ExamsBackend } from "./fake-exams-backend";
+import { BCA_RUN, HSA_001_CHECK, PREVIEW_BCA_CA1, THPTQG_TIN_RUN } from "./review-fixtures";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
 
 const navigation = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({
@@ -19,58 +24,23 @@ vi.mock("next/navigation", () => ({
 const BCA = "ex-bca-f-001";
 const THPTQG = "ex-thptqg-tin-001";
 
-/** Mẫu BCA cố ý có một câu tự luận chưa có tiêu chí chấm; bổ sung để đường CA1 sinh được đề. */
-function addMissingRubric() {
-  questionStore.update("q-7002", (question) =>
-    question.body.type === "ESSAY"
-      ? { ...question, body: { ...question.body, rubric: [{ id: "r1", description: "Nội dung nghị luận", points: 25 }] } }
-      : question,
-  );
-}
+let backend: ExamsBackend;
 
 beforeEach(() => {
-  examStore.reset();
-  questionStore.reset();
-  reviewStore.reset();
   navigation.search = "";
   window.history.replaceState(null, "", "/");
+  backend = new ExamsBackend();
+  // Máy chủ tính kết quả kiểm tra khi bấm "Kiểm tra cấu hình" và sinh đề khi bấm "Sinh đề xem trước".
+  backend
+    .seedRunResult(THPTQG, THPTQG_TIN_RUN)
+    .seedRunResult(BCA, BCA_RUN)
+    .seedCheck("ex-hsa-f-001", HSA_001_CHECK)
+    .seedPreview(BCA, "opt-b3-1", { status: 200, body: PREVIEW_BCA_CA1 });
+  backend.install();
 });
 
 describe("đề xem trước theo bảy kỳ thi", () => {
-  it("BCA: điểm từng phần, thời lượng chung, khối tự luận chấm tay kèm tiêu chí chấm", async () => {
-    addMissingRubric();
-    const result = await generatePreview({ examId: BCA, pathId: "opt-b3-1", seed: 1 });
-    if (result.status !== "GENERATED") throw new Error(`expected a paper, got ${result.status}`);
-    const { paper } = result;
-    expect(paper).toMatchObject({ totalQuestions: 81, totalPoints: 100, totalMinutes: 180, sharedDuration: true, hasManualGrading: true });
-    expect(paper.parts.map((part) => [part.points, part.maxPoints])).toEqual([
-      [25, 25],
-      [60, 60],
-      [15, 15],
-    ]);
-    expect(paper.parts.every((part) => part.durationMinutes === null)).toBe(true);
-    const essay = paper.parts[0]!.blocks[0]!;
-    expect(essay.manualGrading).toBe(true);
-    const item = essay.items[0]!;
-    if (item.kind !== "QUESTION") throw new Error("essay block must hold single questions");
-    expect(item.question.rubric).not.toBeNull();
-  });
-
-  it("BCA: câu tự luận thiếu tiêu chí chấm thì không sinh đề", async () => {
-    const result = await generatePreview({ examId: BCA, pathId: "opt-b3-1", seed: 1 });
-    expect(result.status).toBe("FAILED");
-    if (result.status === "FAILED") expect(result.issues.map((issue) => issue.code)).toContain("RUBRIC_MISSING");
-  });
-
-  it("THPTQG Tin học: đường Khoa học máy tính có 28 câu, 10 điểm", async () => {
-    const result = await generatePreview({ examId: THPTQG, pathId: "opt-t2-cs", seed: 3 });
-    if (result.status !== "GENERATED") throw new Error(`expected a paper, got ${result.status}`);
-    expect(result.paper).toMatchObject({ totalQuestions: 28, totalPoints: 10, totalMinutes: 50, hasManualGrading: false });
-    expect(result.paper.parts.map((part) => part.points)).toEqual([6, 4]);
-  });
-
   it("màn Đề xem trước của BCA hiện điểm phần và nhãn Chấm tay", async () => {
-    addMissingRubric();
     const user = userEvent.setup();
     navigation.search = "tab=preview&path=opt-b3-1";
     renderWithProviders(<ExamReviewView examId={BCA} />);
@@ -89,10 +59,10 @@ describe("kết quả kiểm tra theo bảy kỳ thi", () => {
     const user = userEvent.setup();
     renderWithProviders(<ExamReviewView examId={THPTQG} />);
     await user.click(await screen.findByRole("button", { name: "Kiểm tra cấu hình" }));
-    expect(await screen.findByText("28 câu làm (30 câu in trên đề)")).toBeInTheDocument();
+    expect(await screen.findByText("28 câu làm (đề ghi 30 câu)")).toBeInTheDocument();
     expect(screen.getByText("50 phút, chung cả bài")).toBeInTheDocument();
     expect(screen.getByText("10 / 10 điểm")).toBeInTheDocument();
-    expect(examStore.require(THPTQG).check.status).toBe("VALID");
+    expect(backend.app(THPTQG).check.status).toBe("VALID");
     expect(screen.getAllByText(/quy tắc chấm khác quy tắc mong đợi/).length).toBeGreaterThan(0);
   });
 
@@ -111,7 +81,7 @@ describe("hộp thoại công bố", () => {
     renderWithProviders(<ExamVersionsView examId="ex-hsa-f-001" />);
     await user.click(await screen.findByRole("button", { name: "Công bố" }));
     const dialog = await screen.findByRole("dialog");
-    const row = within(dialog).getByRole("checkbox", { name: /^KH-2/ }).parentElement!;
-    expect(within(row).getByText(/cần 3 câu/)).toBeInTheDocument();
+    const row = within(dialog).getByRole("checkbox", { name: /^Khoa học/ }).parentElement!;
+    expect(within(row).getByText(/không đủ nguồn cho chỉ tiêu cấp môn/)).toBeInTheDocument();
   });
 });

@@ -71,9 +71,28 @@ Issue cha: **UNI-2599** (con của UNI-2590) · HSA, QDA, BCA, V-ACT, SPT, SP2E,
 
 ### Backend PBI-03, PBI-04
 
-| Issue | Việc | Trạng thái |
-|---|---|---|
-| UNI-2605 | Đặc tả backend (`docs/specs/2026-11-16-be-pbi-03-04.md`); chia việc BE-1 đến BE-6, FE-1, FE-2, QA ở mục 11 | in_review |
+Issue cha: **UNI-2606** · Thi 360 · Đợt 2 · Backend PBI-03 + PBI-04 và nối web admin. Đặc tả UNI-2605 (`docs/specs/2026-11-16-be-pbi-03-04.md`), plan `docs/plans/2026-11-16-be-pbi-03-04.md` (hợp đồng ở Phần D, sóng ở Phần C). Nhánh tích hợp `integration/dot-2`.
+
+| Task | Issue | Việc | Phụ thuộc | Điểm | Trạng thái |
+|---|---|---|---|---|---|
+| BE-1 | UNI-2607 | Khung module, quyền, danh mục `COMPETENCY`, idempotency, `content-reference` | — | 8 | in_review (đã merge vào `integration/dot-2` qua PR #46 ngày 2026-11-16) |
+| FE-3a | UNI-2608 | Kiểu dữ liệu và dữ liệu mẫu theo spec mục 9.2 | — | 6 | in_review (merge PR #49) |
+| BE-2a | UNI-2609 | Câu hỏi: lưu, 8 dạng, trạng thái, revision, tìm kiếm, lọc HTML | BE-1 | 10 | in_review (merge PR #48, #51) |
+| BE-4 | UNI-2610 | Bài thi: hồ sơ kỳ thi, mẫu, tạo, cấu trúc, sao chép | BE-1 | 8 | in_review (merge PR #52) |
+| BE-5a | UNI-2611 | `PaperSolver` (thuần thuật toán) | BE-1 | 9 | in_review (merge PR #50) |
+| FE-3b | UNI-2612 | Giao diện ngân hàng câu hỏi theo UniNote mới | FE-3a | 7 | in_review (merge PR #54) |
+| FE-3c | UNI-2613 | Giao diện bài thi theo UniNote mới | FE-3a | 7 | in_review (merge PR #56) |
+| BE-2b | UNI-2614 | Ảnh và tệp đính kèm | BE-2a | 5 | in_review (merge PR #53) |
+| BE-3 | UNI-2615 | Nhập câu hỏi từ tệp | BE-2a | 7 | in_review (merge PR #55) |
+| BE-5b | UNI-2616 | Nguồn câu hỏi, kiểm tra cấu hình, hiệu lực, xem trước | BE-2a, BE-4, BE-5a | 7 | in_review (merge PR #57) |
+| FE-4 | UNI-2617 | Trình soạn HTML (TipTap) và KaTeX, nối vào các màn | FE-3b, FE-3c | 5 | in_review (merge PR #58) |
+| BE-6 | UNI-2618 | Phiên bản, công bố, ngừng bán, nơi đang dùng | BE-5b | 7 | in_review (merge PR #59) |
+| FE-1 | UNI-2619 | Nối API ngân hàng câu hỏi, nhập tệp; chuyển test sang giả lập client | FE-4, BE-2a, BE-2b, BE-3 | 5 | in_review (merge PR #60) |
+| FE-2 | UNI-2620 | Nối API bài thi; chuyển test sang giả lập client | FE-3c, FE-4, BE-4, BE-5b, BE-6 | 6 | in_review (merge PR #61) |
+| QA | UNI-2621 | E2E, xóa mock PBI-03/04, kiểm thử bảo mật, tài liệu | tất cả | 3 | in_review (merge PR #62) |
+| Việc tồn | UNI-2634 | Trả lời BA 17/11 (chùm Toán HSA một đáp án, luôn đảo câu), bộ đề test giả định, lỗi còn lại | QA | — | in_review (merge PR #64 vào `develop`) |
+
+Sóng: 1 BE-1 · FE-3a → 2 BE-2a · BE-4 · BE-5a · FE-3b · FE-3c → 3 BE-2b · BE-3 · BE-5b · FE-4 → 4 BE-6 · FE-1 → 5 FE-2 → 6 QA. `integration/dot-2` vào `develop` qua PR #63 (`8986f0f`) ngày 2026-11-17; việc tồn UNI-2634 làm thẳng trên `develop`.
 
 ### Thương mại và lượt thi (PBI-05 đến PBI-13)
 
@@ -112,7 +131,7 @@ Sóng 7:  T16
 
 | Đợt | PBI | Ghi chú |
 |---|---|---|
-| 2 · Nội dung | 03 Ngân hàng câu hỏi, 04 Bài thi và ma trận | Mockup giao diện ở UNI-2590, UNI-2599; đặc tả backend ở UNI-2605, chưa tạo issue cho từng task |
+| 2 · Nội dung | 03 Ngân hàng câu hỏi, 04 Bài thi và ma trận | Mockup giao diện ở UNI-2590, UNI-2599; đặc tả backend ở UNI-2605; triển khai ở UNI-2606 (mục Đợt 2 ở trên) |
 | 3 · Thi | 10–13 Làm bài, lưu bài, chấm, kết quả | Port một phần từ `lms-exam` |
 | 4 · Thương mại | 05, 06, 07–09 | Port nhiều từ `lms-exam/commercial` và `exam-portal` |
 | 5 · AI | 14–18 | Làm mới |

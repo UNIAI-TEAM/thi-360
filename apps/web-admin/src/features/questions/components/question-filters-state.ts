@@ -12,7 +12,7 @@ import type { ListQuestionsQuery } from "../types";
 
 /**
  * Bộ lọc của Ngân hàng câu hỏi, giữ trên URL để chia sẻ và tải lại trang vẫn đúng (DESIGN.md mục 5.13: tên và giá
- * trị query bằng tiếng Anh). Tham số khác (ví dụ `mockState`) được giữ nguyên.
+ * trị query bằng tiếng Anh). Tham số khác (ví dụ `tab`) được giữ nguyên.
  */
 
 export type SolutionFilter = "has" | "none";
@@ -26,6 +26,8 @@ export interface QuestionFilters {
   type: QuestionType | null;
   /** Mã năng lực (V-ACT). */
   competency: string | null;
+  /** Mã Dạng bài (`ContentReference.taskTypes`). */
+  taskType: string | null;
   /** Id nút kiến thức (MAPID); Chương hoặc Bài thì gồm cả kiến thức bên dưới. */
   knowledge: string[];
   tag: string | null;
@@ -53,6 +55,7 @@ export const DEFAULT_QUESTION_FILTERS: QuestionFilters = {
   difficulty: null,
   type: null,
   competency: null,
+  taskType: null,
   knowledge: [],
   tag: null,
   author: null,
@@ -72,6 +75,7 @@ const PARAM = {
   difficulty: "difficulty",
   type: "type",
   competency: "competency",
+  taskType: "taskType",
   knowledge: "knowledge",
   tag: "tag",
   author: "author",
@@ -113,6 +117,7 @@ export function parseQuestionFilters(search: string): QuestionFilters {
     difficulty: text(params.get(PARAM.difficulty)),
     type: oneOf(QUESTION_TYPES, params.get(PARAM.type)),
     competency: text(params.get(PARAM.competency)),
+    taskType: text(params.get(PARAM.taskType)),
     knowledge: (params.get(PARAM.knowledge) ?? "")
       .split(",")
       .map((id) => id.trim())
@@ -142,6 +147,7 @@ export function serializeQuestionFilters(filters: QuestionFilters, baseSearch = 
   set(PARAM.difficulty, filters.difficulty);
   set(PARAM.type, filters.type);
   set(PARAM.competency, filters.competency);
+  set(PARAM.taskType, filters.taskType);
   set(PARAM.knowledge, filters.knowledge.length ? filters.knowledge.join(",") : null);
   set(PARAM.tag, filters.tag);
   set(PARAM.author, filters.author);
@@ -164,6 +170,7 @@ export function toListQuestionsQuery(filters: QuestionFilters): ListQuestionsQue
     ...(filters.difficulty ? { difficultyCode: filters.difficulty } : {}),
     ...(filters.type ? { type: filters.type } : {}),
     ...(filters.competency ? { competencyCode: filters.competency } : {}),
+    ...(filters.taskType ? { taskTypeCode: filters.taskType } : {}),
     ...(filters.knowledge.length ? { knowledgeIds: filters.knowledge } : {}),
     ...(filters.tag ? { tagCode: filters.tag } : {}),
     ...(filters.author ? { createdById: filters.author } : {}),
@@ -180,6 +187,7 @@ export function toListQuestionsQuery(filters: QuestionFilters): ListQuestionsQue
 export function countAdvancedFilters(filters: QuestionFilters): number {
   return [
     filters.competency,
+    filters.taskType,
     filters.knowledge.length > 0,
     filters.tag,
     filters.author,

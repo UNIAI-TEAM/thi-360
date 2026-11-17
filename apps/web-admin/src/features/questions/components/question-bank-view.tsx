@@ -38,10 +38,11 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MockDataBanner } from "@/components/mock-data-banner";
+import { indexKnowledge, knowledgeName, type KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { QUESTION_STATUS_TONE } from "@/features/content/status";
-import { defaultQuestionBankApiDeps, type QuestionBankApiDeps, type QuestionListItem } from "../api";
+import { defaultQuestionBankApiDeps, type QuestionBankApiDeps } from "../api";
+import type { QuestionListItem } from "../types";
 import { useQuestionAuthors, useQuestionList, useQuestionStatusCounts } from "../queries";
 import type { QuestionSummary } from "../types";
 import { QuestionBankBulkBar, type SelectedQuestion } from "./question-bank-bulk-bar";
@@ -58,18 +59,22 @@ import { MarkReadyDialog, RetireQuestionDialog, useReadinessIssueText } from "./
  * Cột ưu tiên thấp tự ẩn theo bề rộng khung chứa bảng (DESIGN.md mục 5.9): Cập nhật ẩn trước, rồi Người tạo, Điểm
  * (đã có ở dòng phụ dưới nội dung), Dạng câu và Độ khó (hiện thành dòng tóm tắt dưới nội dung). Khung hẹp hơn 40rem
  * thì bảng thành danh sách thẻ.
+ *
+ * Mỗi ngưỡng xấp xỉ bề rộng tối thiểu của bảng khi còn cột đó cộng khoảng dư 3rem, để bảng vừa khung và cột Thao tác
+ * ghim không đè lên Cập nhật hay MAPID lúc mới mở. Đổi bề rộng tối thiểu của một cột (cột mới, `min-w-*`) thì phải
+ * đo lại các ngưỡng này trên trình duyệt ở các bề rộng 1440 và 1920.
  */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
-  "@max-[88rem]:[&_:is(th,td):has([data-col=updated])]:hidden",
-  "@max-[80rem]:[&_:is(th,td):has([data-col=author])]:hidden",
-  "@max-[72rem]:[&_:is(th,td):has([data-col=points])]:hidden",
-  "@max-[64rem]:[&_:is(th,td):has([data-col=type])]:hidden",
-  "@max-[64rem]:[&_:is(th,td):has([data-col=difficulty])]:hidden",
+  "@max-[111rem]:[&_:is(th,td):has([data-col=updated])]:hidden",
+  "@max-[103rem]:[&_:is(th,td):has([data-col=author])]:hidden",
+  "@max-[93rem]:[&_:is(th,td):has([data-col=points])]:hidden",
+  "@max-[87rem]:[&_:is(th,td):has([data-col=type])]:hidden",
+  "@max-[87rem]:[&_:is(th,td):has([data-col=difficulty])]:hidden",
 ].join(" ");
 
 /** Dòng tóm tắt dưới nội dung: chỉ hiện khi cột Dạng câu và Độ khó đã ẩn. */
-const NARROW_SUMMARY = "hidden @max-[64rem]:block";
+const NARROW_SUMMARY = "hidden @max-[87rem]:block";
 
 type DialogState = { kind: "ready" | "retire"; question: QuestionSummary } | null;
 
@@ -92,6 +97,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
   const authorsQuery = useQuestionAuthors(api);
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
+  const knowledgeIndex = useMemo(() => indexKnowledge(referenceQuery.data?.knowledgeTree ?? []), [referenceQuery.data]);
   const issueText = useReadinessIssueText();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -238,7 +244,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
         id: "knowledge",
         header: t("list.table.knowledge"),
         enableSorting: false,
-        cell: ({ row }) => <KnowledgeCell item={row.original} />,
+        cell: ({ row }) => <KnowledgeCell item={row.original} index={knowledgeIndex} />,
       },
       {
         id: "points",
@@ -299,7 +305,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
         ),
       },
     ],
-    [t, contentT, format, lookup, router, issueText, subjectGrade, openDialog],
+    [t, contentT, format, lookup, knowledgeIndex, router, issueText, subjectGrade, openDialog],
   );
 
   /**
@@ -393,7 +399,6 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
           </div>
         }
       />
-      <MockDataBanner />
 
       <QuestionFiltersBar
         filters={filters}
@@ -542,7 +547,7 @@ export function QuestionBankView({ deps }: QuestionBankViewProps) {
 }
 
 /** Ô MAPID: kiến thức chính (một dòng, cắt dấu ba chấm; đủ ở trang chi tiết) và "+n" khi gắn nhiều kiến thức. */
-function KnowledgeCell({ item }: { item: QuestionSummary }) {
+function KnowledgeCell({ item, index }: { item: QuestionSummary; index: ReadonlyMap<string, KnowledgeIndexEntry> }) {
   const t = useTranslations("questions.list");
   const primary = item.knowledge.find((ref) => ref.primary) ?? item.knowledge[0];
   if (!primary) return <span className="text-text-muted">{t("noKnowledge")}</span>;
@@ -550,7 +555,7 @@ function KnowledgeCell({ item }: { item: QuestionSummary }) {
   return (
     <div className="flex max-w-60 min-w-40 items-center gap-1.5">
       <span className="min-w-0 truncate text-text">
-        <span className="font-semibold">{primary.code}</span> {primary.name}
+        <span className="font-semibold">{primary.code}</span> {knowledgeName(index, primary)}
       </span>
       {more > 0 && (
         <span className="shrink-0 rounded-full bg-neutral-bg px-2 text-caption text-neutral tabular-nums">
@@ -562,7 +567,7 @@ function KnowledgeCell({ item }: { item: QuestionSummary }) {
   );
 }
 
-/** Sửa và menu "⋯" (Chuyển sang Sẵn sàng, Ngừng sử dụng) của một câu, dùng chung cho bảng và thẻ. */
+/** Sửa và menu "⋯" (Xem trước, Chuyển sang Sẵn sàng, Ngừng sử dụng) của một câu, dùng chung cho bảng và thẻ. */
 function RowActions({
   item,
   onOpen,
@@ -585,6 +590,10 @@ function RowActions({
           <IconButton icon={<MoreHorizontal />} aria-label={t("moreAria", { code: item.code })} tooltip={t("moreTooltip")} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => router.push(`/questions/${encodeURIComponent(item.id)}/preview`)}>
+            <Eye />
+            <span>{t("preview")}</span>
+          </DropdownMenuItem>
           {item.status !== "READY" && (
             <DropdownMenuItem onSelect={() => onOpen("ready", item)}>
               <CircleCheck />

@@ -14,6 +14,7 @@ export const IMPORT_FILE_ERROR_CODES = [
   "IMPORT_FILE_TOO_LARGE",
   "IMPORT_ROW_LIMIT_EXCEEDED",
   "IMPORT_INVALID_HEADER",
+  "IMPORT_FORMULA_NOT_ALLOWED",
 ] as const;
 export type ImportFileErrorCode = (typeof IMPORT_FILE_ERROR_CODES)[number];
 
