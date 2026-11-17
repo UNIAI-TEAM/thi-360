@@ -174,6 +174,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
 
         String repairedSetSnapshot = jdbc.queryForObject(
                 "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?", String.class, setId);
+        String repairedChildSnapshot = jdbc.queryForObject(
+                "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?", String.class, childId);
         String repairedMatchingSnapshot = jdbc.queryForObject(
                 "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?",
                 String.class, matchingId);
@@ -185,6 +187,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         String repairedVersion = jdbc.queryForObject(
                 "SELECT parts::text FROM exam.exam_version WHERE id = ?", String.class, versionId);
         assertNoLegacyKeys(mapper.readTree(repairedSetSnapshot));
+        assertNoLegacyKeys(mapper.readTree(repairedChildSnapshot));
         assertNoLegacyKeys(mapper.readTree(repairedMatchingSnapshot));
         assertNoLegacyKeys(mapper.readTree(repairedTemplate));
         assertNoLegacyKeys(mapper.readTree(repairedStructure));
@@ -232,6 +235,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?",
                 String.class, setId)).isEqualTo(repairedSetSnapshot);
+        assertThat(jdbc.queryForObject(
+                "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?",
+                String.class, childId)).isEqualTo(repairedChildSnapshot);
         assertThat(jdbc.queryForObject(
                 "SELECT snapshot::text FROM questionbank.question_version WHERE question_id = ?",
                 String.class, matchingId)).isEqualTo(repairedMatchingSnapshot);
