@@ -11,6 +11,10 @@ const part=(name,code,blocks,maxPoints)=>{
   return {name,questionCount,questionCountOnPaper:questionCount,questionCountRequired:questionCount,participation:{mode:'ALL'},maxPoints:maxPoints||null,sections:[{subjectCode:code,questionCount,blocks}],options:[]};
 };
 const quota=(s)=>({id:`${s.toLowerCase()}-difficulty-reference`,name:'Tỷ trọng độ khó tham khảo',dimension:'DIFFICULTY',basis:'QUESTION',enforcement:'REFERENCE',subjectCodes:[s],buckets:(s==='TOAN'?[30,30,25,15]:s==='VAN'?[20,30,30,20]:[30,30,20,20]).map((percent,i)=>({codes:[['NB','TH','VD','VDC'][i]],percent}))});
+const oldBiologyQuotas=[
+  {id:'sinh-grade-reference',name:'Phân bố lớp tham khảo',dimension:'GRADE',basis:'QUESTION',enforcement:'REFERENCE',subjectCodes:['SINH'],buckets:['G10','G11','G12'].map((code,i)=>({codes:[code],count:[2,4,14][i]}))},
+  {id:'sinh-difficulty-reference',name:'Tỷ trọng độ khó tham khảo',dimension:'DIFFICULTY',basis:'QUESTION',enforcement:'REFERENCE',subjectCodes:['SINH'],buckets:['NB','TH','VD'].map((code,i)=>({codes:[code],count:[4,9,7][i]}))}
+];
 const referenceMatrix={mode:'SEPARATE',unit:'COUNT',basis:'QUESTION',gradeEnforcement:'REFERENCE',difficultyEnforcement:'REFERENCE',byGrade:[],byDifficulty:[]};
 const note2026='Điểm từng dạng là số tạm; chờ chuyên gia xác nhận.';
 const oldNote={LY:'Chờ chuyên gia xác nhận. Phân bố tham khảo theo 50 lệnh hỏi: lớp 10/11/12 = 0/10/40; NB/TH/VD/VDC = 15/15/14/6.',HOA:'Chờ chuyên gia xác nhận. Phân bố tham khảo theo 50 lệnh hỏi: lớp 10/11/12/tổng hợp = 4/5/19/22; NB/TH/VD = 25/16/9.',SINH:'Chờ chuyên gia xác nhận. Phân bố tham khảo theo 20 câu: lớp 10/11/12 = 2/4/14; NB/TH/VD = 4/9/7.',SU:'Chờ chuyên gia xác nhận.'};
@@ -23,7 +27,7 @@ const sp2eGroup={
 
 function add(code,subject,parts,questions,points,duration,{old=false,note=note2026,existing=false,isDefault=true,rawPoints=points}={}) {
   if(['ANH','SU','DIA','ECON_LAW'].includes(subject)) for(const p of parts) for(const s of p.sections??[]) s.matrix=referenceMatrix;
-  const template={code,kindCode:'SP2E',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:old?2025:2026,matrixYear:old?2025:2026,timing:'SHARED',durationMinutes:duration,maxScore:points,expertNote:note,label:old&&subject==='VAN'?'SP2E – Ngữ văn – Đọc hiểu':`SP2E – ${names[subject]} – ${old?'Đề minh họa cũ':'Cấu trúc 2026 theo đề án'}`,summary:`${questions} câu, thang ${points} điểm${duration?`, ${duration} phút`:''}.`,buildMode:'STANDARD',isDefault,existing,expected:{questions,maxPoints:rawPoints},structure:{parts,examQuotas:[quota(subject)]}};
+  const template={code,kindCode:'SP2E',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:old?2025:2026,matrixYear:old?2025:2026,timing:'SHARED',durationMinutes:duration,maxScore:points,expertNote:note,label:old&&subject==='VAN'?'SP2E – Ngữ văn – Đọc hiểu':`SP2E – ${names[subject]} – ${old?'Đề minh họa cũ':'Cấu trúc 2026 theo đề án'}`,summary:`${questions} câu, thang ${points} điểm${duration?`, ${duration} phút`:''}.`,buildMode:'STANDARD',isDefault,existing,expected:{questions,maxPoints:rawPoints},structure:{parts,examQuotas:old&&subject==='SINH'?oldBiologyQuotas:[quota(subject)]}};
   assignGroups(template, ({block,subjectCode:s}) => {
     const suffix=(sp2eGroup[s]??sp2eGroup['*'])[block.name];
     return suffix?`SP2E_${s}_${suffix}${old?'_OLD':''}`:null;
