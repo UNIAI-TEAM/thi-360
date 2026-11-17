@@ -63,6 +63,16 @@ function renderLatex(latex: string, displayMode: boolean, target: HTMLElement) {
   }
 }
 
+/**
+ * Dạng chuẩn của nội dung để phát ra và để so với `value`: lọc theo danh sách cho phép rồi bỏ đúng một `<p></p>` rỗng ở
+ * cuối (TrailingNode của TipTap thêm sau khối atom cuối, hoặc người dùng vừa nhấn Enter). Dùng chung cho `onChange` và
+ * cho phần so sánh đồng bộ `value`, để hai bên luôn nhìn cùng một chuỗi: nếu không, bỏ đoạn rỗng ở một bên làm `value`
+ * lệch HTML của trình soạn và `setContent` dựng lại nội dung giữa lúc người dùng gõ (mất con trỏ).
+ */
+function normalizedContent(html: string, allowImages: boolean): string {
+  return stripTrailingEmptyParagraph(sanitizeQuestionHtml(html, { allowImages }).html);
+}
+
 /** Mảnh tệp ảnh của một sự kiện dán/thả. */
 function imageFilesOf(transfer: DataTransfer | null): File[] {
   if (!transfer) return [];
@@ -239,11 +249,7 @@ export function RichTextEditor({
         hasFocusedRef.current = true;
       },
       onUpdate: ({ editor: current }) => {
-        let html = sanitizeQuestionHtml(current.getHTML(), {
-          allowImages: allowImagesRef.current,
-        }).html;
-        // TipTap (TrailingNode) thêm một `<p></p>` sau khối atom cuối: bỏ trước khi phát để không lưu đoạn thừa.
-        html = html === "<p></p>" ? "" : stripTrailingEmptyParagraph(html);
+        const html = normalizedContent(current.getHTML(), allowImagesRef.current);
         if (html === lastEmittedRef.current) return;
         lastEmittedRef.current = html;
         onChangeRef.current(html);
@@ -276,16 +282,20 @@ export function RichTextEditor({
     return matchSelection(editor);
   }, [editor, selectionDescriptor]);
 
-  // Đồng bộ giá trị điều khiển: chỉ setContent khi `value` ngoài lệch HTML hiện có.
+  // Đồng bộ giá trị điều khiển: chỉ setContent khi `value` ngoài lệch nội dung hiện có. `value` là chuỗi mà chính trình soạn đã
+  // phát (đã bỏ một đoạn rỗng cuối) hoặc dữ liệu ngoài, nên khớp nếu bằng HTML thô của trình soạn hoặc bằng bản đã bỏ đoạn
+  // rỗng cuối của nó; không bỏ thêm lần nữa ở phía `value`, nếu không hai đoạn rỗng do người dùng tạo bị coi là lệch.
+  // `lastEmittedRef` luôn là giá trị `onChange` sẽ phát cho nội dung hiện có: focus lần đầu làm TrailingNode thêm đoạn rỗng
+  // mà không đổi nội dung thì không được phát `onChange`.
   useEffect(() => {
     if (!editor) return;
-    const normalize = (html: string) => (html === "<p></p>" ? "" : html);
-    const incoming = normalize(sanitizeQuestionHtml(value ?? "", { allowImages }).html);
-    const current = normalize(sanitizeQuestionHtml(editor.getHTML(), { allowImages }).html);
-    if (incoming !== current) {
+    const fromValue = sanitizeQuestionHtml(value ?? "", { allowImages }).html;
+    const incoming = fromValue === "<p></p>" ? "" : fromValue;
+    const raw = sanitizeQuestionHtml(editor.getHTML(), { allowImages }).html;
+    if (incoming !== (raw === "<p></p>" ? "" : raw) && incoming !== stripTrailingEmptyParagraph(raw)) {
       editor.commands.setContent(incoming, { emitUpdate: false });
-      lastEmittedRef.current = incoming;
     }
+    lastEmittedRef.current = normalizedContent(editor.getHTML(), allowImages);
   }, [editor, value, allowImages]);
 
   useEffect(() => {
