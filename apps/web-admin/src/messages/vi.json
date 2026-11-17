@@ -2827,6 +2827,11 @@
         "POINTS_INVALID": "Điểm chưa hợp lệ: cần lớn hơn 0 và không quá 4 chữ số thập phân.",
         "MATH_UNBALANCED": "Công thức chưa đóng đủ dấu.",
         "CATALOG_VALUE_UNKNOWN": "Có giá trị phân loại không có trong danh mục hoặc đã ngừng.",
+        "BLANK_CHILD_MISMATCH": "Có chỗ trống trỏ tới câu con không tồn tại, hoặc hai chỗ trống cùng số.",
+        "BLANK_OUTSIDE_SET_PASSAGE": "Chỗ trống đánh số chỉ được đặt trong ngữ liệu của câu chùm.",
+        "UNDERLINE_LABEL_DUPLICATE": "Hai cụm gạch chân dùng cùng một nhãn.",
+        "UNDERLINE_LABEL_MISPLACED": "Gạch chân đánh nhãn chỉ dùng ở đề bài câu Trắc nghiệm 1 đáp án.",
+        "IMAGE_ALT_MISSING": "Có hình chưa có mô tả thay thế (cảnh báo, không chặn Sẵn sàng).",
         "READINESS_OTHER": "Chưa đạt điều kiện kiểm tra ({value})."
       },
       "childIssue": "Câu con {child, number}: {issue}",

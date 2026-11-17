@@ -2827,6 +2827,11 @@
         "POINTS_INVALID": "Points are not valid: they must be greater than 0 with at most 4 decimal places.",
         "MATH_UNBALANCED": "A formula is missing a closing delimiter.",
         "CATALOG_VALUE_UNKNOWN": "A classification value is not in the catalog or has been retired.",
+        "BLANK_CHILD_MISMATCH": "A blank points to a sub-question that does not exist, or two blanks share the same number.",
+        "BLANK_OUTSIDE_SET_PASSAGE": "Numbered blanks are only allowed in a question set passage.",
+        "UNDERLINE_LABEL_DUPLICATE": "Two underlined phrases use the same label.",
+        "UNDERLINE_LABEL_MISPLACED": "Labelled underlines are only allowed in the stem of a single-answer multiple-choice question.",
+        "IMAGE_ALT_MISSING": "An image has no alt text (a warning, does not block Ready).",
         "READINESS_OTHER": "A check was not met ({value})."
       },
       "childIssue": "Sub-question {child, number}: {issue}",
