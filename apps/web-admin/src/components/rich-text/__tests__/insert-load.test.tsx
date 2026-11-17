@@ -59,4 +59,36 @@ describe("RichTextEditor insert dialog loading", () => {
     expect(screen.queryByRole("dialog", { name: "Symbols and units" })).toBeNull();
     expect(ui.error).not.toHaveBeenCalled();
   });
+
+  it("ignores a dialog load that resolves after the editor unmounted", async () => {
+    const user = userEvent.setup();
+    const symbolsModule = await entry("symbols").load();
+    const slow = Promise.withResolvers<InsertDialogModule>();
+    vi.spyOn(entry("symbols"), "load").mockReturnValue(slow.promise);
+    const { unmount } = renderEditor();
+
+    await user.click(screen.getByRole("button", { name: "Symbols and units" }));
+    unmount();
+    slow.resolve(symbolsModule);
+    await slow.promise;
+    await Promise.resolve();
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(ui.error).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when a load fails after the editor unmounted", async () => {
+    const user = userEvent.setup();
+    const slow = Promise.withResolvers<InsertDialogModule>();
+    vi.spyOn(entry("symbols"), "load").mockReturnValue(slow.promise);
+    const { unmount } = renderEditor();
+
+    await user.click(screen.getByRole("button", { name: "Symbols and units" }));
+    unmount();
+    slow.reject(new Error("ChunkLoadError"));
+    await slow.promise.catch(() => undefined);
+    await Promise.resolve();
+
+    expect(ui.error).not.toHaveBeenCalled();
+  });
 });

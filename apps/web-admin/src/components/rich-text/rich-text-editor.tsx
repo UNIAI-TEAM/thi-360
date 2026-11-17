@@ -186,6 +186,12 @@ export function RichTextEditor({
   const lastEmittedRef = useRef<string | null>(null);
   // Lần bấm mở hộp mới nhất: các lần tải bất đồng bộ về muộn hơn không được ghi đè hộp của lần bấm sau.
   const loadTokenRef = useRef(0);
+  // Rời trang/hủy trình soạn trước khi tải xong: bỏ kết quả về muộn, không mở hộp và không báo lỗi.
+  useEffect(() => {
+    return () => {
+      loadTokenRef.current += 1;
+    };
+  }, []);
   useEffect(() => {
     onChangeRef.current = onChange;
     allowImagesRef.current = allowImages;
@@ -478,6 +484,8 @@ export function RichTextEditor({
           open={true}
           onOpenChange={(open: boolean) => {
             if (!open) {
+              // Đóng hộp: lần tải đang chờ (nếu có) không được mở lại hộp sau đó.
+              loadTokenRef.current += 1;
               setDialogState(null);
               setDialogModule(null);
             }
