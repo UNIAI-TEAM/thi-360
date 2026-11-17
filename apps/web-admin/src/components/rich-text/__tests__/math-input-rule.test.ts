@@ -21,7 +21,7 @@ function createEditor(content = "<p></p>") {
 function type(target: Editor, text: string) {
   for (const char of text) {
     const { from, to } = target.state.selection;
-    const handled = target.view.someProp("handleTextInput", (handler) => handler(target.view, from, to, char));
+    const handled = target.view.someProp("handleTextInput", (handler) => handler(target.view, from, to, char, () => target.state.tr.insertText(char, from, to)));
     if (!handled) target.view.dispatch(target.state.tr.insertText(char, from, to));
   }
 }
