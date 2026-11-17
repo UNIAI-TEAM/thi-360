@@ -8,7 +8,7 @@ import { useCallback, useMemo, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ChoiceNameResolver } from "../check";
 import { type ChangeLevel, parseChangeWhere } from "../change-where";
-import type { BlockCheckResult, CheckIssue, ExamPathRef, PathCheckResult } from "../review-types";
+import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */
@@ -79,9 +79,20 @@ export function useLookup() {
 /** Số mã câu nguồn nêu trong một vấn đề; còn lại ghi "…". */
 const QUESTION_CODES_SHOWN = 5;
 
+/** Mã vấn đề có câu mô tả riêng khi máy chủ không trả số câu cần/có (`exams.review.issueNoCount`). */
+const COUNT_ISSUE_CODES: Partial<Record<CheckIssueCode, true>> = {
+  CELL_SHORTAGE: true,
+  DIMENSION_SHORTAGE: true,
+  COMPETENCY_SHORTAGE: true,
+  ANSWER_TYPE_SHORTAGE: true,
+  SUBJECT_QUOTA_INFEASIBLE: true,
+  REMAINDER_GROUP_INVALID: true,
+};
+
 /** Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). */
 export function useIssueText() {
   const t = useTranslations("exams.review.issue");
+  const tNoCount = useTranslations("exams.review.issueNoCount");
   const tContent = useTranslations("content");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
@@ -123,9 +134,12 @@ export function useIssueText() {
         competency,
         codes: codes.slice(0, QUESTION_CODES_SHOWN).join(", ") + (codes.length > QUESTION_CODES_SHOWN ? ", …" : ""),
       };
+      // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
+      const noCount = issue.required == null || issue.available == null;
+      if (noCount && COUNT_ISSUE_CODES[issue.code]) return tNoCount(issue.code, values);
       return t(issue.code, values);
     },
-    [t, tContent, lookup, competencies],
+    [t, tNoCount, tContent, lookup, competencies],
   );
 }
 
@@ -141,6 +155,12 @@ export function useIssueWithPath(paths: readonly ExamPathRef[]) {
       const choice = path?.choices.find((item) => item.optionId === issue.optionId);
       if (!choice) return text;
       const label = choice.kind === "COMBINATION" ? choice.code : choice.name;
+      // Câu của phần đã mở đầu bằng tên phần ("Khoa học hoặc Tiếng Anh: …"): không lặp tên lựa chọn nếu tên phần đã chứa nó.
+      const partName = issue.partName;
+      if (partName && text.startsWith(`${partName}: `)) {
+        if (partName.toLowerCase().includes(label.toLowerCase())) return text;
+        return `${partName} (${label})${text.slice(partName.length)}`;
+      }
       return t("issueWithPath", { path: label, issue: text });
     },
     [t, issueText, paths],

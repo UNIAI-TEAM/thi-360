@@ -3818,7 +3818,7 @@
         "allocated": "Allocated",
         "allocatedValue": "{allocated, number}, {missing, number} missing",
         "issues": "Issues to fix",
-        "questionsPrinted": "{count, plural, one {# question} other {# questions}} taken ({printed, number} printed)",
+        "questionsPrinted": "{count, plural, one {# question} other {# questions}} to answer ({printed, number} on the paper)",
         "sharedMinutes": "{count, number} min, shared",
         "pointsOfScale": "{points} / {scale} points"
       },
@@ -4140,7 +4140,7 @@
         "issues": "Issues to fix",
         "issuesValue": "{count, plural, one {# issue} other {# issues}}",
         "none": "None",
-        "questionsPrinted": "{count, plural, one {# question} other {# questions}} taken ({printed, number} printed)",
+        "questionsPrinted": "{count, plural, one {# question} other {# questions}} to answer ({printed, number} on the paper)",
         "pointsOfScale": "{points} / {scale} points"
       },
       "path": {
@@ -4257,8 +4257,8 @@
         "MATRIX_NEGATIVE": "Block {block} has a negative quota.",
         "PERCENT_TOTAL_INVALID": "Block {block}: the percentages {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} COMPETENCY {by competency} other {of the matrix}} add up to {available, number}%; they must add up to 100%.",
         "SET_SIZE_MISMATCH": "Block {block}: sets × questions per set is {available, number}; the block needs {required, number} questions.",
-        "CELL_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
-        "DIMENSION_SHORTAGE": "Block {block} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
+        "DIMENSION_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}} needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
         "MATRIX_INFEASIBLE": "Block {block}: each dimension has enough source questions, but no selection of {required, number} questions meets grade and difficulty together.",
         "SET_SHORTAGE": "Block {block} requires {required, number} sets; only {available, number} valid sets are available.",
         "OVERLAP_UNCONFIRMED": "Block {block}: {available, number} questions are shared between knowledge groups; no solution was found within the processing limit ({seconds, number} seconds, sample). This does not mean the bank lacks questions.",
@@ -4283,6 +4283,14 @@
         "SHARED_PART_DURATION": "{part}: the exam uses a shared timer, so a part must not set its own duration.",
         "ANSWER_QUOTA_DUPLICATE": "Subject {subject}: the {answerType} answer type appears twice in the answer-type quotas.",
         "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
+      },
+      "issueNoCount": {
+        "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
+        "DIMENSION_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
+        "COMPETENCY_SHORTAGE": "Block {block}: there are not enough {competency} source questions for the quota.",
+        "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: there are not enough {answerType} source questions for the quota.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the subject quota.",
+        "REMAINDER_GROUP_INVALID": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed the subject's question count."
       }
     },
     "versions": {

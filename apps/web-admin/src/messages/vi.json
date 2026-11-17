@@ -3818,7 +3818,7 @@
         "allocated": "Đã phân bổ",
         "allocatedValue": "{allocated, number}, còn thiếu {missing, number}",
         "issues": "Lỗi cần xử lý",
-        "questionsPrinted": "{count, number} câu làm ({printed, number} câu in trên đề)",
+        "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
         "sharedMinutes": "{count, number} phút, chung cả bài",
         "pointsOfScale": "{points} / {scale} điểm"
       },
@@ -4140,7 +4140,7 @@
         "issues": "Lỗi cần xử lý",
         "issuesValue": "{count, number} vấn đề",
         "none": "Không có",
-        "questionsPrinted": "{count, number} câu làm ({printed, number} câu in trên đề)",
+        "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
         "pointsOfScale": "{points} / {scale} điểm"
       },
       "path": {
@@ -4257,8 +4257,8 @@
         "MATRIX_NEGATIVE": "Khối {block} có chỉ tiêu âm.",
         "PERCENT_TOTAL_INVALID": "Khối {block}: tổng tỷ lệ {dimension, select, GRADE {theo khối lớp} DIFFICULTY {theo độ khó} COMPETENCY {theo năng lực} other {của ma trận}} là {available, number}%, phải bằng 100%.",
         "SET_SIZE_MISMATCH": "Khối {block}: số bộ × số câu mỗi bộ là {available, number}, khối cần {required, number} câu.",
-        "CELL_SHORTAGE": "Khối {block} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
-        "DIMENSION_SHORTAGE": "Khối {block} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
+        "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
+        "DIMENSION_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}} cần {required, number} câu{hasBucket, select, yes { {bucket}} other {}}, hiện có {available, number} câu phù hợp.",
         "MATRIX_INFEASIBLE": "Khối {block}: đủ nguồn từng chiều nhưng chưa có cách chọn {required, number} câu thỏa đồng thời khối lớp và độ khó.",
         "SET_SHORTAGE": "Khối {block} yêu cầu {required, number} bộ, nguồn hiện chỉ có {available, number} bộ hợp lệ.",
         "OVERLAP_UNCONFIRMED": "Khối {block}: {available, number} câu dùng chung giữa các nhóm kiến thức; chưa tìm được phương án trong giới hạn xử lý ({seconds, number} giây, mẫu). Không kết luận là ngân hàng thiếu câu.",
@@ -4283,6 +4283,14 @@
         "SHARED_PART_DURATION": "{part}: bài thi tính thời gian chung nên phần thi không đặt thời lượng riêng.",
         "ANSWER_QUOTA_DUPLICATE": "Môn {subject}: dạng {answerType} bị khai hai lần trong chỉ tiêu dạng trả lời.",
         "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
+      },
+      "issueNoCount": {
+        "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
+        "DIMENSION_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
+        "COMPETENCY_SHORTAGE": "Khối {block}: nguồn câu hỏi năng lực {competency} chưa đủ cho chỉ tiêu.",
+        "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: nguồn câu hỏi dạng {answerType} chưa đủ cho chỉ tiêu.",
+        "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu cấp môn.",
+        "REMAINDER_GROUP_INVALID": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}} có số câu thay đổi: cần đúng một nhóm câu đơn lấy phần còn lại, và tổng các nhóm cố định không vượt số câu của môn."
       }
     },
     "versions": {
@@ -4355,7 +4363,7 @@
             "participation": "Quy tắc tham gia",
             "practiceScoring": "Cách chấm luyện tập",
             "questionCount": "Số câu",
-            "questionCountOnPaper": "Số câu in trên đề",
+            "questionCountOnPaper": "Số câu trên đề",
             "questionCountRequired": "Số câu phải làm",
             "questionType": "Dạng trả lời",
             "referenceMax": "Thang tham chiếu",

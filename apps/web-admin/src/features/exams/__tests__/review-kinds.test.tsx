@@ -59,7 +59,7 @@ describe("kết quả kiểm tra theo bảy kỳ thi", () => {
     const user = userEvent.setup();
     renderWithProviders(<ExamReviewView examId={THPTQG} />);
     await user.click(await screen.findByRole("button", { name: "Kiểm tra cấu hình" }));
-    expect(await screen.findByText("28 câu làm (30 câu in trên đề)")).toBeInTheDocument();
+    expect(await screen.findByText("28 câu làm (đề ghi 30 câu)")).toBeInTheDocument();
     expect(screen.getByText("50 phút, chung cả bài")).toBeInTheDocument();
     expect(screen.getByText("10 / 10 điểm")).toBeInTheDocument();
     expect(backend.app(THPTQG).check.status).toBe("VALID");

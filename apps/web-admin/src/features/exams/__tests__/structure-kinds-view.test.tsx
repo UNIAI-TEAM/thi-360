@@ -35,7 +35,7 @@ describe("Cấu trúc theo bảy kỳ thi", () => {
     expect(await screen.findByRole("heading", { name: "Phần II · Đúng/Sai" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /Thời lượng \(phút\)/ })).not.toBeInTheDocument();
     expect(screen.getByText("50 phút, dùng chung cả bài")).toBeInTheDocument();
-    expect(screen.getByText("28 câu làm (30 câu in trên đề)")).toBeInTheDocument();
+    expect(screen.getByText("28 câu làm (đề ghi 30 câu)")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Phần chung của mọi nhánh" })).toBeInTheDocument();
     expect(screen.getByText("Nhánh (2)")).toBeInTheDocument();
     expect(screen.getAllByText(/Khoa học máy tính/).length).toBeGreaterThan(0);
