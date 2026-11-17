@@ -3,10 +3,11 @@
 import { Button, Input, Select } from "@thi360/ui";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { InsertDialogProps } from "../registry";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
 import {
+  cellErrors,
   cellSegments,
   crossRows,
   crossToHtml,
@@ -50,6 +51,10 @@ export default function CrossInsertDialog({ editor, open, onOpenChange }: Insert
 
   const html = crossToHtml(model);
   const rows = crossRows(model);
+  const errors = cellErrors(model);
+  const errorCells = Object.keys(errors) as CellId[];
+  const errorBase = useId();
+  const errorId = (cell: CellId) => `${errorBase}-${cell}`;
 
   // Sau khi nút chỉ số ghi ký hiệu vào ô, trả focus về ô và đặt con trỏ ngay sau ký hiệu.
   useLayoutEffect(() => {
@@ -81,9 +86,15 @@ export default function CrossInsertDialog({ editor, open, onOpenChange }: Insert
   }
 
   function submit() {
-    if (!html) return;
+    if (!html || errorCells.length > 0) return;
     upsertCross(editor, html, existing);
     onOpenChange(false);
+  }
+
+  function cellLabel(cell: CellId): string {
+    if (!cell.startsWith("filial.")) return t(`fields.${cell as "genotypeA"}`);
+    const [, index, field] = cell.split(".");
+    return t(field === "genotype" ? "fields.filialGenotype" : "fields.filialPhenotype", { n: Number(index) + 1 });
   }
 
   function cellInput(cell: CellId, ariaLabel: string, placeholder?: string) {
@@ -93,6 +104,8 @@ export default function CrossInsertDialog({ editor, open, onOpenChange }: Insert
         value={getCell(model, cell)}
         onChange={(event) => updateCell(cell, event.target.value)}
         aria-label={ariaLabel}
+        aria-invalid={errors[cell] ? true : undefined}
+        aria-describedby={errors[cell] ? errorId(cell) : undefined}
         placeholder={placeholder}
         autoComplete="off"
         spellCheck={false}
@@ -124,7 +137,7 @@ export default function CrossInsertDialog({ editor, open, onOpenChange }: Insert
       title={t("title")}
       description={t("description")}
       submitLabel={existing ? t("update") : t("insert")}
-      submitDisabled={!html}
+      submitDisabled={!html || errorCells.length > 0}
       onSubmit={submit}
     >
       <div className="flex flex-col gap-4">
@@ -181,6 +194,15 @@ export default function CrossInsertDialog({ editor, open, onOpenChange }: Insert
             </div>
           ))}
         </div>
+        {errorCells.length > 0 && (
+          <ul className="flex flex-col gap-1">
+            {errorCells.map((cell) => (
+              <li key={cell} id={errorId(cell)} role="alert" className="text-caption text-danger">
+                {t(`errors.${errors[cell]!}`, { field: cellLabel(cell) })}
+              </li>
+            ))}
+          </ul>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           <Button

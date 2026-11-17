@@ -70,6 +70,35 @@ export function setCell(model: CrossModel, id: CellId, value: string): CrossMode
   return { ...model, [id]: value };
 }
 
+/**
+ * Lỗi của một ô: `parent` là ô kiểu gen bố/mẹ có `×` (dấu tách hai bên) hoặc ♂/♀ ở đầu (bị đọc thành giới tính);
+ * `separator` là ô giao tử/thế hệ con có `;` (dấu tách hai phần). Những ký tự này làm mở lại đọc sai chỗ, nên hộp không
+ * cho lưu để sơ đồ luôn đọc ngược được đúng như đã gõ.
+ */
+export type CellError = "parent" | "separator";
+
+const PARENT_CELLS: CellId[] = ["genotypeA", "genotypeB"];
+
+/** Các ô đang chứa ký tự không đọc ngược được (xem `CellError`). */
+export function cellErrors(model: CrossModel): Partial<Record<CellId, CellError>> {
+  const errors: Partial<Record<CellId, CellError>> = {};
+  const ids: CellId[] = [
+    ...PARENT_CELLS,
+    "gametesA",
+    "gametesB",
+    ...model.filial.flatMap((_, index): CellId[] => [`filial.${index}.genotype`, `filial.${index}.phenotype`]),
+  ];
+  for (const id of ids) {
+    const value = getCell(model, id);
+    if (PARENT_CELLS.includes(id)) {
+      if (value.includes("×") || value.trimStart().charAt(0) in SIGN_SEX) errors[id] = "parent";
+    } else if (value.includes(";")) {
+      errors[id] = "separator";
+    }
+  }
+  return errors;
+}
+
 /** Ký hiệu chữ của một chỉ số `_x`/`^x`: số liền nhau hoặc một chữ cái, hoặc nhóm `{…}` không lồng. */
 const SHORT_SCRIPT = /^(\d+|[A-Za-z])/;
 const BRACE_SCRIPT = /^\{([^{}]+)\}/;

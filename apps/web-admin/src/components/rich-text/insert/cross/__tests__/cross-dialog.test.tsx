@@ -99,6 +99,28 @@ describe("cross dialog: output", () => {
     expect(insertButton()).toBeEnabled();
   });
 
+  it("refuses a cell that would read back into the wrong place, and says which cell", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor());
+    await fill(user, t.fields.genotypeA, "Aa");
+
+    await fill(user, t.fields.gametesA, "A; a");
+    expect(insertButton()).toBeDisabled();
+    expect(field(t.fields.gametesA)).toBeInvalid();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      t.errors.separator.replace("{field}", t.fields.gametesA),
+    );
+
+    await fill(user, t.fields.gametesA, "A, a");
+    await fill(user, t.fields.genotypeB, "a × a");
+    expect(insertButton()).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(t.errors.parent.replace("{field}", t.fields.genotypeB));
+
+    await fill(user, t.fields.genotypeB, "aa");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(insertButton()).toBeEnabled();
+  });
+
   it("changes the sex shown for a parent, or hides it", async () => {
     const user = userEvent.setup();
     const editor = createEditor();

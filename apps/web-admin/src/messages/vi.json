@@ -5450,6 +5450,10 @@
       "cross": {
         "addGeneration": "Thêm thế hệ",
         "description": "Dùng cho bài di truyền trong Sinh học.",
+        "errors": {
+          "parent": "{field}: không dùng dấu × hoặc ♂/♀ ở đầu ô (chọn giới tính ở ô bên cạnh).",
+          "separator": "{field}: không dùng dấu ; (dấu tách hai phần của hàng)."
+        },
         "fields": {
           "filialGenotype": "Tỉ lệ kiểu gen F{n}",
           "filialPhenotype": "Tỉ lệ kiểu hình F{n}",

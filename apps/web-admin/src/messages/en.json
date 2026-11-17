@@ -5450,6 +5450,10 @@
       "cross": {
         "addGeneration": "Add generation",
         "description": "For genetics problems in Biology.",
+        "errors": {
+          "parent": "{field}: do not use × or a leading ♂/♀ in this cell (pick the sex in the cell next to it).",
+          "separator": "{field}: do not use ; (it separates the two parts of the row)."
+        },
         "fields": {
           "filialGenotype": "Genotype ratio F{n}",
           "filialPhenotype": "Phenotype ratio F{n}",
