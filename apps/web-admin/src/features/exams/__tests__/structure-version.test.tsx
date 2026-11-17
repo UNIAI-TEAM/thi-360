@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { createExam } from "../api";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { ExamsBackend } from "./fake-exams-backend";
+import { FIXTURE_TEMPLATES } from "./exam-fixture";
+import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -41,10 +42,13 @@ describe("Cấu trúc: phiên bản năm", () => {
 
     await user.click(picker);
     await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
-    const dialog = await screen.findByRole("dialog", { name: /Nạp lại cấu trúc theo SP2E · Toán · 2025/ });
+    const dialog = await screen.findByRole("dialog", { name: /Đổi sang “SP2E · Toán · 2025”\?/ });
+    expect(within(dialog).getByText("Bước 1/2")).toBeInTheDocument();
     expect(within(dialog).getByText("Các phần sẽ được nạp lại (1)")).toBeInTheDocument();
     expect(within(dialog).getByText("1. Toán")).toBeInTheDocument();
-    expect(within(dialog).getByText("22 câu · chưa có thời lượng")).toBeInTheDocument();
+    // Trước → sau theo từng phần: cấu trúc hiện tại (bản 2026) và phần của mẫu 2025.
+    expect(within(dialog).getByText(/→ 22 câu · chưa có thời lượng$/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/^Toán · \d+ câu .* → /)).toBeInTheDocument();
     // Chưa xác nhận: cấu trúc chưa đổi.
     expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
 
@@ -61,9 +65,27 @@ describe("Cấu trúc: phiên bản năm", () => {
     await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
     await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
     const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Giữ cấu trúc hiện tại" }));
+    await user.click(within(dialog).getByRole("button", { name: "Hủy" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+  }, 20_000);
+
+  it("'Nếu chọn …': mỗi phiên bản khác hiện nhãn và tóm tắt của máy chủ; phiên bản chưa có tóm tắt thì không hiện", async () => {
+    // Máy chủ trả nhãn và tóm tắt cho phiên bản 2025; phiên bản 2026 (đang dùng) không có.
+    const wire = FIXTURE_TEMPLATES.map((template) =>
+      template.code === "SP2E_MATH_2025"
+        ? { ...toWireTemplate(template), label: "Đề minh họa cũ", summary: "22 câu, 10 điểm." }
+        : toWireTemplate(template),
+    );
+    backend = new ExamsBackend();
+    backend.server.on("GET", "/api/v1/admin/exam-templates", { status: 200, body: wire });
+    backend.install();
+    const exam = await createExam({ name: "SP2E thử", code: "SP2E-S-907", kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", description: null });
+    openStructure(exam.id);
+    const preview = await screen.findByTestId("structure-version-preview");
+    expect(preview).toHaveTextContent("Nếu chọn “Đề minh họa cũ”");
+    expect(preview).toHaveTextContent("22 câu, 10 điểm.");
+    expect(screen.getAllByTestId("structure-version-preview")).toHaveLength(1);
   }, 20_000);
 
   it("chỉ một phiên bản thì ẩn ô chọn phiên bản; phần chưa có mẫu cũng không hiện ô", async () => {
@@ -94,7 +116,7 @@ describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVER
     openStructure(exam.id);
     await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
     await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
-    const reload = await screen.findByRole("dialog", { name: /Nạp lại cấu trúc theo/ });
+    const reload = await screen.findByRole("dialog", { name: /Đổi sang “/ });
     await user.click(within(reload).getByRole("button", { name: "Nạp lại cấu trúc" }));
     const ask = await screen.findByRole("dialog", { name: "Giữ số tổng quan đã sửa?" });
     return { exam, user, ask };
@@ -104,7 +126,16 @@ describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVER
   it("hỏi lại sau hộp xác nhận nạp lại; chọn giữ số đã sửa thì gửi lại kèm KEEP_EDITED", async () => {
     const { exam, user, ask } = await startReload("SP2E-S-904");
     expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
-    await user.click(within(ask).getByRole("button", { name: "Giữ số đã sửa" }));
+    expect(within(ask).getByText("Bước 2/2 · chỉ hiện khi bạn đã sửa tổng quan ở bước 1")).toBeInTheDocument();
+    // So sánh số: mẫu đang dùng, bài hiện tại, mẫu mới (chỉ hàng có số).
+    const table = within(ask).getByRole("table", { name: "So sánh số tổng quan" });
+    for (const name of ["Mục", "Mẫu đang dùng", "Đang có (đã sửa)", "Mẫu mới"]) {
+      expect(within(table).getByRole("columnheader", { name })).toBeInTheDocument();
+    }
+    expect(within(table).getByRole("rowheader", { name: "Toán · số câu" })).toBeInTheDocument();
+    // Mặc định giữ số đã sửa.
+    expect(within(ask).getByRole("radio", { name: /Giữ số đã sửa/ })).toBeChecked();
+    await user.click(within(ask).getByRole("button", { name: "Nạp lại cấu trúc" }));
     await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
     expect(backend.server.calls("POST", templatePath(exam.id)).map((call) => policyOf(call.body))).toEqual([undefined, "KEEP_EDITED"]);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -112,14 +143,15 @@ describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVER
 
   it("chọn lấy số của mẫu thì gửi lại kèm USE_TEMPLATE", async () => {
     const { exam, user, ask } = await startReload("SP2E-S-905");
-    await user.click(within(ask).getByRole("button", { name: "Lấy số của phiên bản mới" }));
+    await user.click(within(ask).getByRole("radio", { name: /Lấy số của mẫu mới/ }));
+    await user.click(within(ask).getByRole("button", { name: "Nạp lại cấu trúc" }));
     await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
     expect(backend.server.calls("POST", templatePath(exam.id)).map((call) => policyOf(call.body))).toEqual([undefined, "USE_TEMPLATE"]);
   }, 20_000);
 
   it("hủy ở câu hỏi giữ số thì không nạp lại: cấu trúc giữ nguyên, không gửi thêm yêu cầu", async () => {
     const { exam, user, ask } = await startReload("SP2E-S-906");
-    await user.click(within(ask).getByRole("button", { name: "Hủy" }));
+    await user.click(within(ask).getByRole("button", { name: "Hủy đổi phiên bản" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
     expect(backend.server.calls("POST", templatePath(exam.id))).toHaveLength(1);

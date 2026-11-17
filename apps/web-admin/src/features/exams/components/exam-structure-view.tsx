@@ -471,6 +471,7 @@ function StructureEditor({
           exam={exam}
           templates={templates}
           dirty={dirty}
+          currentParts={draft}
           onAnnounce={announce}
           onApplied={(parts) => {
             setDraft(parts);
