@@ -49,6 +49,92 @@
   - **Chờ BA:** 6 dạng câu (bản vẽ) hay 4 (UniNote); câu Nháp có bắt buộc gắn kiến thức không; sửa câu Sẵn sàng thì về Nháp hay tạo phiên bản mới; công bố một phần khi còn lỗi; tạo bài thi Nháp khi còn mục "Cần xử lý"; danh mục tổ hợp chưa có trường kỳ thi nên lọc tổ hợp theo kỳ thi đang dựa vào dữ liệu mẫu; môn của KH-2; ảnh bìa lưu ở đâu.
   - Để lại: trình soạn thảo đầy đủ (canvas trang 07) chưa làm, ô đề bài là ô nhập nhiều dòng; test `question-import-flow` và `users-list` chậm khi chạy cả bộ trên máy bận (đạt khi chạy riêng).
 
+### Thương mại và lượt thi · PBI-05 đến PBI-13 (2026-11-16)
+
+- **UNI-2622** (đặc tả, nháp chờ duyệt). PBI-05 (uniworkos UNI-1634) giao cho M.Trường ngày 2026-11-16; BA thêm tài liệu PBI-06 đến PBI-13 cùng ngày.
+  - Bản lưu UniNote: `docs/design/thuong-mai/` (PBI-05, 06, 07–08, 09) và `docs/design/luot-thi/` (PBI-10 đến 13).
+  - **Đặc tả thương mại** `docs/specs/2026-11-16-thuong-mai-pbi-05-09.md`, C1–C16. M.Trường chốt:
+    - thông tin bán gắn bài thi, đổi theo phiên bản công bố;
+    - khuyến mãi tự động và voucher; voucher về 0 đồng thì cấp ngay;
+    - một hệ thống tài khoản cho admin và học viên;
+    - email theo cách của uniwork (OTP, liên kết đặt lại, hàng thư và worker);
+    - VNPAY sandbox, khóa trong biến môi trường, có cổng giả lập;
+    - chỉ quyền từ mua, có cột nguồn cho Bài theo lớp;
+    - mua thêm cộng lượt;
+    - hoàn tiền qua API VNPAY, ghi nhận tay khi API lỗi; hoàn toàn bộ đơn thì thu hồi lượt chưa dùng;
+    - không có thời hạn sử dụng.
+  - **Đặc tả lượt thi** `docs/specs/2026-11-16-luot-thi-pbi-10-13.md`, L1–L6. M.Trường chốt:
+    - tự luận chấm tay, đề FULL có tự luận vẫn mở, điểm tổng hiện sau khi chấm xong;
+    - kết quả xem mãi;
+    - D04: chờ chọn phần 3 tối đa 15 phút, quá thì kết thúc lượt và phần 3 được 0 điểm; ~~đề đồng hồ chung chuyển phần tự do~~ (thay bằng L7 ngày 2026-11-17);
+    - không có band điểm hay xếp loại, chỉ có tổng điểm (UniNote PBI-12 viết nhầm);
+    - D05: giữ lượt khi bắt đầu, tính khi kết thúc.
+  - **Chờ BA sửa UniNote:**
+    - thời hạn sử dụng (PBI-05, 06, 07, 09);
+    - mua thêm khi còn lượt;
+    - "không gộp theo email" ở task PBI-06;
+    - band điểm và chặn FULL có tự luận (PBI-12);
+    - thời hạn xem kết quả (PBI-13);
+    - D08, D09 chưa có nội dung.
+
+    Chi tiết ở mục 15 và mục 14 của hai đặc tả.
+  - **Review bằng Fable 5.2 (2026-11-16):** 9 điểm Chặn, 33 Nên sửa, 19 Nhỏ; đã sửa trong hai đặc tả. Thêm E24–E27 (thương mại) và F20–F21 (lượt thi). Phần VNPAY (chữ ký `querydr` và `refund`, mã trạng thái, số tiền tối thiểu) còn phải đối chiếu tài liệu và sandbox. Các chỗ cần sửa BE spec ghi ở Q11 và R11.
+  - **Review đặc tả lượt 2 (Fable, 2026-11-17):** Fable review và tự sửa hai đặc tả.
+  - **M.Trường chốt ngày 2026-11-17:**
+    - mọi đề làm tuần tự từng phần, kể cả đề đồng hồ chung (LT L7, thay R13);
+    - R14 theo BE spec mục 12 (đã chốt ở phiên PBI-03/04);
+    - sinh đề chạy nền ngay từ đầu: bắt đầu trả 202, web hỏi lại (LT L8);
+    - duyệt cả 6 phần thêm vào module `exam` (Q11, Q15, R11);
+    - VNPAY sandbox: dùng merchant sandbox cũ của reap, nay chỉ cho Thi 360 (mỗi Terminal Code một URL IPN); khóa ngoài repo; URL IPN `https://thi360.zone17.click/api/v1/public/payments/vnpay/ipn` đã đặt trên trang merchant sandbox (2026-11-17);
+    - Q9, Q14 M.Trường hỏi VNPAY, đợt vẫn chạy;
+    - đợt 3 bắt đầu sau khi đợt PBI-03/04 xong;
+    - tách C-0b;
+    - được dựng `integration/dot-3` trên VPS demo, không cần giữ dữ liệu cũ; VNPAY thật làm sau.
+  - **Plan** `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-05-13.md`:
+    - 34 task, 100 điểm, 8 sóng, có pipeline song song và chờ ở Phần C;
+    - đường dài nhất: C-0 → CM-4a → AT-1 → AT-2a → AT-4 → AT-5 → FA-4 → QA;
+    - đã qua 2 lượt review của Fable: lượt 1 có 3 Chặn, 18 Nên sửa, 8 Gợi ý, tôi đã sửa; lượt 2 có 0 Chặn, 7 Nên sửa, Fable tự sửa.
+  - **Tiếp theo:**
+    - M.Trường duyệt đặc tả và plan (G1); commit, mở PR khi M.Trường yêu cầu.
+    - Chưa cook. Cook sau khi đợt 2 về `develop` (G0).
+  - **Thiết kế FE đợt 3 (kiểm tra 2026-11-17):** canvas thiết kế (artifact `4WyWEQAR8DTdZQTmQA5eG7`, sửa lần cuối 2026-11-15) chưa có trang nào cho đợt 3. Canvas có 24 màn chưa chép vào repo: 6 màn `CauHoi*Thi` (làm bài trên máy tính) và 8 màn `ThiMobile*` (trang 09) dùng được cho FS-4, FS-5; 10 màn `SoanThao*` (trang 07) thuộc trình soạn thảo. Các màn làm bài vẽ theo 6 dạng câu cũ và cách làm cả đề một lượt, chưa theo 8 dạng (B6) và LT L7 (làm tuần tự từng phần).
+  - **Đã vẽ thiết kế đợt 3 (2026-11-17, M.Trường yêu cầu):**
+    - 43 màn mới trên canvas, chia 7 trang:
+      - trang 10: công khai, tài khoản;
+      - trang 11: mua bài;
+      - trang 12: làm bài theo phần;
+      - trang 13: dạng câu mới, xem lại;
+      - trang 14: kết quả;
+      - trang 15: admin thông tin bán, khuyến mãi;
+      - trang 16: admin đơn hàng, lượt thi.
+    - Thêm ghi chú lên trang 06 và 09: màn làm bài cũ chỉ còn dùng phần thân câu.
+    - Chép ra `docs/design/dot-3/` (43 màn mới và 14 màn làm bài cũ), kèm `README.md` ghi màn theo task, chỗ cần chốt và những gì agent tự đặt.
+    - Plan: thêm dòng **Thiết kế** vào 10 task FS và FA, thêm mục B8; FS-1 sửa thành "Vào bài thi" theo TM 11.3.
+    - Cần chốt: `wordLimit` tối thiểu hay tối đa; nhãn "Chờ chấm" (LT) khác "Đang chấm" (DESIGN 5.14); đánh số câu theo phần; nhãn trạng thái và câu chữ do agent đặt (README).
+  - **Ảnh hưởng của UniNote PBI-04 bản 2026-11-17 (kiểm tra ngày 2026-11-17):**
+    - Nguồn:
+      - phân tích của Advisor ở `.thi360-dev/pbi04-gap-2026-11-17.md`;
+      - 4 bản lưu cấu trúc HSA, QDA, BCA, SP2E/SPT ở `docs/design/dot-2/` (chưa commit).
+    - M.Trường muốn làm đợt 2B (sửa theo PBI-04 mới) trước đợt 3.
+    - Đợt 3 bị ảnh hưởng ở 7 điểm:
+      1. ma trận theo môn dùng chung cho các mã QDA, BCA, kèm ghi phiên bản quan hệ mã–môn khi công bố (EX-1, EX-2, AT-1, AT-2b, DS);
+      2. HSA 17 trừ 1 câu (EX-2 `solvePick`);
+      3. thứ tự nhóm: code đã bỏ `groupOrder`, nhưng LT F22 còn đọc; Văn giữ thứ tự nhóm, Tiếng Anh theo vị trí cố định;
+      4. V1 chưa có tự luận: BCA FULL không mở được bài có điểm; thang điểm V1 (LT L2, 9.2, 9.3; AT-5; FA-4; mẫu số Tin);
+      5. định hướng Tin học chọn ở màn chuẩn bị, chỉ sinh một nhánh (LT F4, 6.2; AT-2b; FS-5);
+      6. bộ đề SP2E bán nhiều bài trong một sản phẩm, trái TM C1;
+      7. phạm vi bài, bài ôn chủ đề và điểm tối đa của phần thực làm (FS-1, FS-5, FS-6).
+    - M.Trường chốt (2026-11-17): giữ tự luận chấm tay; định hướng Tin chọn ở màn chuẩn bị; bộ đề SP2E làm trong đợt 3; nhóm giữ thứ tự, câu đảo trong nhóm, Văn nhóm 5 có công tắc.
+  - **Đợt 2B, UNI-2647 (2026-11-17):**
+    - Đặc tả, bảng yêu cầu R-01 đến R-105, plan ở worktree `D:/orca/workspaces/cong-thi-360/UNI-2647-dot-2b` (`docs/specs/2026-11-17-pbi04-dot-2b*.md`, `docs/plans/2026-11-17-pbi04-dot-2b.md`). Chưa commit.
+    - Plan: 17 task, 100 điểm, 5 sóng; cổng G0 (đợt 2 và PR UNI-2622 đã merge), G1 (duyệt), G2 (bản vẽ canvas trang 17 trở đi, xuất `docs/design/dot-2b/`, xong trước khi BE-1 merge).
+    - Review Fable: lượt 1 Fable sửa đặc tả 2B, TM; plan 1 Chặn, 12 Nên sửa (tôi sửa: tách BE-4, FE-3, thêm BE-10 câu hỏi mẫu, BE-1 viết lại `R__` đề thi). Lượt 2 Fable sửa thêm (H20: tối đa 8 chỉ tiêu chủ đề mỗi cấp), không còn Chặn. Báo cáo `.thi360-dev/review-2b-r1.md`, `review-2b-r2.md`.
+    - Đợt 3 đã sửa theo 2B (chưa commit, nhánh `docs/UNI-2622-dac-ta-pbi-05`): LT (Tin chọn trước, 17 − 1, `PaperOrdering`, số câu và điểm từ `paths[]`); TM C17 và mục 16 bộ đề; plan 36 task, 103 điểm, cổng G0b chặn EX-1, EX-2; `docs/design/dot-3/README.md` có danh sách màn cần vẽ lại.
+    - **M.Trường chốt K6 đến K15 (2026-11-17):** chỉ tiêu chủ đề là "ít nhất"; Văn SP2E V1 bỏ phần Viết, mặc định bản đề minh họa cũ 30 câu; phiên bản cấu trúc chọn ở bước 2; khối lớp của môn không phân lớp chỉ để đối chiếu; chỉ tiêu cấp phần để sau V1; bỏ dạng bài, phân biệt bằng nhãn và MAPID; sinh thử đảo phương án như đề thật; bỏ revision riêng của tập mã; THPTQG Tin 24 + 2 + 2 (BA xác nhận). Fable thêm H21 (độ khó tham khảo), H22 (nhãn khớp một trong).
+    - Fable lượt 3, 3b áp quyết định vào đặc tả; tôi sửa hai plan; lượt 4 rà khớp, không còn Chặn (`.thi360-dev/review-2b-r3.md`, `r3b`, `r4`). Plan 2B vẫn 17 task, 100 điểm; đợt 3 36 task, 103 điểm.
+    - **Hỏi BA:** danh sách và tên nhãn dạng câu; câu thật phải gắn nhãn; các câu còn lại ở 2B mục 18.
+    - **Tiếp theo:** M.Trường duyệt (G1); vẽ bản vẽ 2B (G2, bước 2 có ô chọn phiên bản) và vẽ lại các màn đợt 3; commit, PR khi được yêu cầu. Chưa cook.
+
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
 
 - **UNI-2599** (cha), nền UNI-2600, bốn lane UNI-2601 đến UNI-2604; đặc tả `docs/specs/2026-11-16-mockup-7-ky-thi.md` (cấu trúc đề do M.Trường tóm tắt từ thư mục Drive "MÔ TẢ CẤU TRÚC ĐỀ THI - ALL KHÓA").
