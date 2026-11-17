@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ExamPreviewPaper } from "@/features/exams/components/exam-preview-paper";
 import type { PreviewPaper } from "@/features/exams/review-types";
