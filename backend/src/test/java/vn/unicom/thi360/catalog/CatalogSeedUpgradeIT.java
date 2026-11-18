@@ -6,7 +6,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redis.testcontainers.RedisContainer;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
@@ -31,6 +33,8 @@ import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -76,7 +80,9 @@ class CatalogSeedUpgradeIT {
                     ('11111111-1111-4111-8111-111111111111', '00000000-0000-7000-8100-000000000008', 'USER-TAG', 'user-tag', 2, 'User', 1, 1, false, 1, '/11111111-1111-4111-8111-111111111111/'),
                     ('11111111-1111-4111-8111-111111111112', '00000000-0000-7000-8100-000000000008', 'NONE', 'none', 3, 'None', 2, 1, false, 1, '/11111111-1111-4111-8111-111111111112/'),
                     ('11111111-1111-4111-8111-111111111113', '00000000-0000-7000-8100-000000000008', 'VACT-TOAN', 'vact-toan', 4, 'VACT Toan', 3, 1, false, 1, '/11111111-1111-4111-8111-111111111113/'),
-                    ('11111111-1111-4111-8111-111111111114', '00000000-0000-7000-8100-00000000000a', 'VACT', 'vact', 6, 'VACT', 5, 1, false, 1, '/11111111-1111-4111-8111-111111111114/')
+                    ('11111111-1111-4111-8111-111111111114', '00000000-0000-7000-8100-00000000000a', 'VACT', 'vact', 6, 'VACT', 5, 1, false, 1, '/11111111-1111-4111-8111-111111111114/'),
+                    ('11111111-1111-4111-8111-111111111141', '00000000-0000-7000-8100-000000000008', 'ANH_PHAT_HIEN_LOI', 'anh_phat_hien_loi', 10, 'Loi sai', 9, 1, false, 1, '/11111111-1111-4111-8111-111111111141/'),
+                    ('11111111-1111-4111-8111-111111111142', '00000000-0000-7000-8100-000000000008', 'ANH_DIEN_DAT_TUONG_DUONG', 'anh_dien_dat_tuong_duong', 11, 'Tuong duong', 10, 1, false, 1, '/11111111-1111-4111-8111-111111111142/')
                     """);
                 db.execute("""
                     INSERT INTO catalog.combination_version (id, item_id, version_no, exam_item_id, source_note, is_current)
@@ -93,6 +99,7 @@ class CatalogSeedUpgradeIT {
 
     @Autowired JdbcTemplate jdbc;
     @Autowired CatalogLookup lookup;
+    @Autowired QuestionSourcePort source;
     @Autowired ObjectMapper mapper;
 
     @Autowired MockMvc mockMvc;
@@ -107,7 +114,7 @@ class CatalogSeedUpgradeIT {
         assertThat(qd05.subjects()).extracting(subject -> subject.code()).containsExactly("ANH");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.combination_version WHERE id = '4df2381e-c78c-5577-805b-818bf8a76373' AND item_id = 'ffbd8a8b-e696-54c4-b87f-fd2e3033f0fe'", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForList("SELECT value FROM catalog.catalog_item WHERE group_id = ? AND code IN ('TEST-HIEM', 'USER-TAG') ORDER BY value", Integer.class, TAG_GROUP)).containsExactly(1, 2);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ? AND id::text LIKE '00000000-0000-7000-8601-%'", Integer.class, TAG_GROUP)).isEqualTo(46);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ? AND id::text LIKE '00000000-0000-7000-8601-%'", Integer.class, TAG_GROUP)).isEqualTo(44);
         int highWater = jdbc.queryForObject("SELECT max(value) FROM catalog.catalog_item WHERE group_id = ?", Integer.class, TAG_GROUP);
         assertThat(jdbc.queryForObject("SELECT last_value FROM catalog.catalog_group WHERE id = ?", Integer.class, TAG_GROUP)).isGreaterThanOrEqualTo(highWater);
         var result = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", TAG_GROUP)
@@ -137,5 +144,37 @@ class CatalogSeedUpgradeIT {
                 join catalog.catalog_item c on c.id = q.competency_item_id
                 where q.code like 'SEED-BE14-%' and c.code = 'VACT'
                 """, Integer.class)).isZero();
+    }
+
+    @Test
+    void occupiedD9TagsStillTagVactSamples() {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question
+                where code like 'SEED-BE14-VACT-NN-TA-ANH_PHAT_HIEN_LOI-%'
+                   or code like 'SEED-BE14-VACT-NN-TA-ANH_DIEN_DAT_TUONG_DUONG-%'
+                """, Integer.class)).isEqualTo(10);
+        UUID english = jdbc.queryForObject("""
+                select id from catalog.catalog_item
+                where group_id = '00000000-0000-7000-8100-000000000002' and code = 'ANH'
+                """, UUID.class);
+        for (var entry : Map.of(
+                "ANH_PHAT_HIEN_LOI", "11111111-1111-4111-8111-111111111141",
+                "ANH_DIEN_DAT_TUONG_DUONG", "11111111-1111-4111-8111-111111111142").entrySet()) {
+            var filter = new QuestionSourcePort.Filter(english, List.of(), List.of(),
+                    QuestionType.SINGLE_CHOICE, null, null, List.of(entry.getKey()), List.of("VACT-NN-TA"),
+                    new BigDecimal("10"), null, List.of(), List.of());
+            assertThat(source.count(filter).total()).as(entry.getKey()).isGreaterThanOrEqualTo(5);
+            assertThat(jdbc.queryForObject("""
+                    select count(*) from questionbank.question_tag t
+                    join questionbank.question q on q.id = t.question_id
+                    where t.tag_item_id = ?::uuid and q.code like 'SEED-BE14-%'
+                    """, Integer.class, entry.getValue())).as(entry.getKey()).isEqualTo(5);
+            assertThat(jdbc.queryForObject("""
+                    select count(*) from questionbank.question_version v
+                    join questionbank.question q on q.id = v.question_id
+                    where v.version_no = 1 and q.code like 'SEED-BE14-VACT-NN-TA-%'
+                      and v.snapshot->'tagItemIds' @> ?::jsonb
+                    """, Integer.class, "[\"" + entry.getValue() + "\"]")).as(entry.getKey()).isEqualTo(5);
+        }
     }
 }

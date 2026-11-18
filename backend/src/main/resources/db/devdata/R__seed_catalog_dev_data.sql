@@ -351,6 +351,13 @@ FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-0
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- D9 provisional codes: keep the six definitions together for BA reconciliation.
+-- The question seed resolves these tags through catalog.seed_tag_slot, keyed by the
+-- canonical seed id, so a pre-existing row with the same code and another UUID wins.
+CREATE TABLE IF NOT EXISTS catalog.seed_tag_slot (
+    slot uuid PRIMARY KEY,
+    item_id uuid NOT NULL
+);
+
 WITH seed(ordinal, code, name_vi, name_en) AS (
     VALUES
       (41, 'ANH_PHAT_HIEN_LOI', 'Phát hiện lỗi sai', 'Error identification'),
@@ -359,24 +366,35 @@ WITH seed(ordinal, code, name_vi, name_en) AS (
       (44, 'TD_XEP_HANG', 'Xếp hạng', 'Ranking'),
       (45, 'TD_BANG_SO_LIEU', 'Bảng số liệu', 'Data table'),
       (46, 'TD_BIEU_DO', 'Biểu đồ', 'Chart')
-), missing AS (
-    SELECT s.*, row_number() OVER (ORDER BY ordinal) AS allocation
+), existing AS (
+    SELECT s.ordinal, i.id
     FROM seed s
-    WHERE NOT EXISTS (
-        SELECT 1 FROM catalog.catalog_item i
-        WHERE i.group_id = '00000000-0000-7000-8100-000000000008'
-          AND i.code_normalized = lower(s.code)
-    )
+    JOIN catalog.catalog_item i ON i.group_id = '00000000-0000-7000-8100-000000000008'
+        AND i.code_normalized = lower(s.code)
+), missing AS (
+    SELECT s.*, row_number() OVER (ORDER BY ordinal) AS allocation,
+           ('00000000-0000-7000-8601-' || lpad(s.ordinal::text, 12, '0'))::uuid AS id
+    FROM seed s
+    WHERE NOT EXISTS (SELECT 1 FROM existing e WHERE e.ordinal = s.ordinal)
+), ins AS (
+    INSERT INTO catalog.catalog_item
+        (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, depth, path)
+    SELECT m.id, g.id, m.code, lower(m.code),
+           GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+           m.name_vi, m.name_en, '[MẪU] Nhãn phân loại câu hỏi', m.ordinal - 1, 1, false, 1,
+           '/' || m.id::text || '/'
+    FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000008'
+    ON CONFLICT (group_id, code_normalized) DO NOTHING
+    RETURNING code
+), resolved AS (
+    SELECT e.ordinal, e.id AS item_id FROM existing e
+    UNION ALL
+    SELECT s.ordinal, m.id FROM seed s JOIN ins ON ins.code = s.code JOIN missing m ON m.ordinal = s.ordinal
 )
-INSERT INTO catalog.catalog_item
-    (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, depth, path)
-SELECT ('00000000-0000-7000-8601-' || lpad(m.ordinal::text, 12, '0'))::uuid,
-       g.id, m.code, lower(m.code),
-       GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
-       m.name_vi, m.name_en, '[MẪU] Nhãn phân loại câu hỏi', m.ordinal - 1, 1, false, 1,
-       '/00000000-0000-7000-8601-' || lpad(m.ordinal::text, 12, '0') || '/'
-FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000008'
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+INSERT INTO catalog.seed_tag_slot (slot, item_id)
+SELECT ('00000000-0000-7000-8601-' || lpad(r.ordinal::text, 12, '0'))::uuid, r.item_id
+FROM resolved r
+ON CONFLICT (slot) DO UPDATE SET item_id = EXCLUDED.item_id;
 
 -- Sync lại last_value cho mọi nhóm sau khi seed đợt 2
 UPDATE catalog.catalog_group g
