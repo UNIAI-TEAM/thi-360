@@ -350,7 +350,18 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     if (selection.kind === "VACT" && selection.scope !== "FULL") return tStep("durationRequiredCustom", { kind: kindLabel(selection.kind) });
     if (selection.scope === "PART") return tStep("durationRequiredPart");
     if (selection.scope === "SUBJECT" && selection.buildMode === "REVIEW") return tStep("durationRequiredReview");
+    // F-1: bài cả môn từ mẫu để trống thời lượng (V-SAT Ngữ văn) — câu của bản vẽ, không phải câu số dương chung.
+    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null) return tStep("durationRequiredSubject");
     return generic;
+  })();
+  // G2c "Trạng thái khác": gợi ý dưới ô thời lượng theo nguồn của giá trị — mẫu điền sẵn, bài theo phần tự nhập
+  // (D24: không lấy thời lượng cả môn), mẫu để trống (D25/F-1).
+  const durationHint = (() => {
+    if (values.timing !== "SHARED") return null;
+    if (defaults.sharedDuration > 0) return tStep("durationHintPrefilled");
+    if (selection.scope === "PART") return tStep("durationHintPartCut");
+    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null) return tStep("durationHintEmpty");
+    return null;
   })();
   // Mã gợi ý theo kỳ thi, phạm vi, phần hoặc môn; người dùng đã sửa mã thì giữ mã của họ.
   const suggestion = useSuggestedExamCode(
@@ -745,6 +756,9 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                       }
                 }
               />
+            )}
+            {durationHint && templatesStatus === "ready" && (
+              <p className="text-caption text-text-muted">{durationHint}</p>
             )}
           </FormSection>
 

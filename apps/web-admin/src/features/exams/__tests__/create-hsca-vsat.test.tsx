@@ -159,7 +159,7 @@ async function renderPage(locale: "vi" | "en" = "vi") {
   return user;
 }
 
-const SUBMIT = "Lưu và tiếp tục";
+const SUBMIT = /^(Lưu và tiếp tục|Save and continue)$/;
 const submitButton = () => screen.getAllByRole("button", { name: SUBMIT })[0]!;
 const nameInput = () => screen.getByRole("textbox", { name: /Tên bài thi/ });
 const sharedDuration = () => screen.getByRole("textbox", { name: /^Thời lượng chung/ });
@@ -345,6 +345,44 @@ describe("bước 1 cho H-SCA, V-SAT: thời lượng theo mẫu và phạm vi",
     const engDuration = await screen.findByRole("textbox", { name: "Thời lượng của Tiếng Anh" });
     await waitFor(() => expect(engDuration).toHaveValue("50"));
     expect(engDuration).toBeEnabled();
+  }, 30_000);
+
+  it("gợi ý thời lượng theo nguồn giá trị (G2c, F-2) và câu lỗi của bài cả môn mẫu để trống (F-1)", async () => {
+    const user = await renderPage();
+    await pickKind(user, "VSAT");
+    // Toán: mẫu điền sẵn 90 phút.
+    await waitFor(() => expect(sharedDuration()).toHaveValue("90"));
+    expect(screen.getByText("Điền sẵn theo mẫu, sửa được.")).toBeInTheDocument();
+
+    // Ngữ văn: mẫu để trống thời lượng; bài cả môn bắt buộc nhập, báo đúng câu của bản vẽ.
+    await pickSubject(user, "Ngữ văn");
+    await waitFor(() => expect(sharedDuration()).toHaveValue(""));
+    await screen.findByText("Mẫu của môn này để trống thời lượng.");
+    await user.type(nameInput(), "V-SAT Văn");
+    await user.click(submitButton());
+    await screen.findByText("Chưa nhập thời lượng. Môn này không có thời lượng mặc định.", { selector: "p" });
+    expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
+
+    // THPTQG Toán theo phần: mẫu môn một đồng hồ chung, phần cắt không lấy thời lượng của cả môn (D24).
+    await pickKind(user, "THPTQG");
+    await pickSubject(user, "Toán");
+    await chooseScope(user, /^Theo phần/);
+    await waitFor(() => expect(sharedDuration()).toHaveValue(""));
+    await screen.findByText("Bài theo phần không lấy thời lượng của cả môn.");
+  }, 30_000);
+
+  it("F-1/F-2 tiếng Anh: gợi ý và câu lỗi thời lượng có bản dịch", async () => {
+    const user = await renderPage("en");
+    await user.click(screen.getByRole("combobox", { name: /^Exam type/ }));
+    await user.click(await screen.findByRole("option", { name: /\(VSAT\)$/ }));
+    await screen.findByText("Prefilled from the template; you can edit it.");
+    await user.click(screen.getByRole("combobox", { name: /^Subject/ }));
+    await user.click(await screen.findByRole("option", { name: "Literature" }));
+    await screen.findByText("This subject's template leaves the duration empty.");
+    await user.type(screen.getByRole("textbox", { name: /Exam name/ }), "V-SAT Lit");
+    await user.click(submitButton());
+    await screen.findByText("Duration missing. This subject has no default duration.", { selector: "p" });
+    expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
   }, 30_000);
 
 });
