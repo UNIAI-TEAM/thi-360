@@ -60,13 +60,12 @@ public class ExamPreviewService {
         var snapshot = request.version() == null ? store.load(id)
                 : sectionRequest ? store.loadVersionForSection(id, request.version(), request.target().sectionId())
                 : store.loadVersion(id, request.version(), request.pathId());
-        ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
+        ExamStructureDocument sourceDocument = new ExamStructureCodec(mapper).read(snapshot.parts());
+        ExamStructureDocument document = sourceDocument;
         PreviewSectionTarget.Selection sectionTarget = request.target() != null && "SECTION".equals(request.target().kind())
                 ? PreviewSectionTarget.select(document, request.target().sectionId(), request.target().sectionQuestionCount())
                 : null;
-        if (sectionTarget != null) {
-            document = segmentsOfWholePartOnly(document, sectionTarget.document(), request.target().sectionId());
-        }
+        if (sectionTarget != null) document = sectionTarget.document();
         var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
         ExamStructureDocument validationDocument = request.version() == null ? document
                 : PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
@@ -174,8 +173,9 @@ public class ExamPreviewService {
                 withFiles.isEmpty() ? Map.of() : attachmentPort.attachments(withFiles, false));
         PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
                 document, request.seed(), mapper, regeneration == null ? Map.of() : regeneration.retained());
+        if (sectionTarget != null) paper = segmentsOfCompletePartsOnly(paper, sourceDocument);
         // H40 rule 3 holds for every complete segmented part, whatever the request shape (explicit target, legacy
-        // pathId/seed, a section that is the whole part). A partial projection carries no segments, see above.
+        // pathId/seed, a section that generated the whole part). A partial projection carries no segments, see above.
         List<PreviewIssue> totals = new ArrayList<>();
         if (request.target() != null && sectionTarget == null) {
             totals.addAll(previewPartTotals(document, paper, request.pathId()));
@@ -248,20 +248,26 @@ public class ExamPreviewService {
     }
 
     /**
-     * A section projected out of its part declares the part's display segments only when it is the whole part:
-     * their positions count from the first number of the part, so next to other sections they would neither be
-     * complete nor comparable. Then the segments are dropped from the projection, neither returned nor validated.
+     * A section projected out of its part declares the part's display segments only when the generated paper holds
+     * that part complete: positions count from the part's first number, so they are comparable only if every
+     * position 1..{@code questionCount} of the part is present, as in the PATH or EXAM paper. The decision is made
+     * from the realized projection, not from the topology of the structure. Otherwise the segments are dropped,
+     * neither returned nor validated.
      */
-    private static ExamStructureDocument segmentsOfWholePartOnly(ExamStructureDocument source,
-            ExamStructureDocument projected, String sectionId) {
-        if (PreviewSectionTarget.coversWholePart(source, sectionId)) return projected;
-        List<ExamPart> parts = new ArrayList<>();
-        for (ExamPart part : projected.parts()) {
-            parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
-                    part.questionCountOnPaper(), part.questionCountRequired(), part.participation(), part.maxPoints(),
-                    part.sections(), part.options(), part.subjectPool(), part.codeSource(), List.of()));
+    private static PreviewPaper segmentsOfCompletePartsOnly(PreviewPaper paper, ExamStructureDocument source) {
+        Map<String, Integer> declared = new HashMap<>();
+        for (ExamPart part : source.parts()) declared.put(part.id(), part.questionCount());
+        List<PreviewPart> parts = new ArrayList<>();
+        for (PreviewPart part : paper.parts()) {
+            int generated = part.blocks().stream().mapToInt(PreviewBlock::questionCount).sum();
+            boolean complete = declared.get(part.partId()) != null && declared.get(part.partId()) == generated;
+            parts.add(complete ? part : new PreviewPart(part.partId(), part.name(), part.order(),
+                    part.durationMinutes(), part.firstNumber(), part.lastNumber(), part.points(), part.maxPoints(),
+                    part.blocks(), List.of()));
         }
-        return new ExamStructureDocument(parts, projected.examQuotas());
+        return new PreviewPaper(paper.totalQuestions(), paper.totalPoints(), paper.totalMinutes(),
+                paper.sharedDuration(), paper.hasManualGrading(), parts, paper.checks(), paper.knowledgeStats(),
+                paper.subjects());
     }
 
     /**

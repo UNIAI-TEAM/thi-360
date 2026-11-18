@@ -308,6 +308,64 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
         assertThat(partial.path("paper").path("parts").get(0).path("displaySegments")).isEmpty();
     }
 
+    private String firstSubject;
+
+    /** One SUBJECT_CHOICE option, one subject of 17 picked: the part holds all 17 numbers, whichever request builds it. */
+    private UUID oneSubjectChoicePart(int declaredCommands) {
+        subject();
+        for (int i = 0; i < 17; i++) single(List.of());
+        firstSubject = subjectCode;
+        subject();
+        for (int i = 0; i < 17; i++) single(List.of());
+        String block = "{\"id\":\"single\",\"name\":\"Single\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":17}";
+        return exam("""
+                [{"id":"part","order":1,"name":"Part","questionCount":17,"maxPoints":17,
+                  "displaySegments":[{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":17,"commandCount":%d,"maxPoints":17}],
+                  "participation":{"mode":"CHOICE","choose":1},
+                  "options":[{"id":"opt","kind":"SUBJECT_CHOICE","code":"OPT","name":"Option","chooseSubjects":1,"countsByPick":[17],
+                    "sections":[
+                      {"id":"s1","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[%s]},
+                      {"id":"s2","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[%s]}]}]}]
+                """.formatted(declaredCommands, firstSubject, block, subjectCode, block));
+    }
+
+    private List<String> subjectChoiceBodies() {
+        return List.of("{\"target\":{\"kind\":\"PATH\",\"pathId\":\"opt\",\"subjectCodes\":[\"" + firstSubject
+                + "\"]},\"seed\":7}", sectionBody("s1", 17));
+    }
+
+    @Test
+    void aSubjectChoiceOptionPickingOneSubjectOfTheWholePartValidatesAndReturnsSegmentsLikeItsPath() throws Exception {
+        UUID matching = oneSubjectChoicePart(17);
+        for (String body : subjectChoiceBodies()) {
+            JsonNode result = previewResult(matching, body);
+            assertThat(result.path("status").asText()).as(body + result).isEqualTo("GENERATED");
+            assertThat(result.path("paper").path("totalQuestions").asInt()).as(body).isEqualTo(17);
+            assertThat(result.path("paper").path("parts").get(0).path("displaySegments")).as(body)
+                    .extracting(node -> node.path("code").asText()).containsExactly("P1");
+        }
+        UUID mismatching = oneSubjectChoicePart(18);
+        for (String body : subjectChoiceBodies()) {
+            JsonNode result = previewResult(mismatching, body);
+            assertThat(result.path("status").asText()).as(body + result).isEqualTo("FAILED");
+            assertThat(result.path("issues")).as(body).hasSize(1);
+            JsonNode issue = result.path("issues").get(0);
+            assertThat(issue.path("code").asText()).isEqualTo("DISPLAY_SEGMENT_MISMATCH");
+            assertThat(issue.path("dimension").asText()).isEqualTo("COMMANDS");
+            assertThat(issue.path("required").decimalValue()).isEqualByComparingTo("18");
+            assertThat(issue.path("available").decimalValue()).isEqualByComparingTo("17");
+        }
+    }
+
+    @Test
+    void aSubjectChoiceSectionTrimmedToSixteenIsAPartialProjectionWithoutSegments() throws Exception {
+        UUID exam = oneSubjectChoicePart(18);
+        JsonNode trimmed = previewResult(exam, sectionBody("s1", 16));
+        assertThat(trimmed.path("status").asText()).as(trimmed.toString()).isEqualTo("GENERATED");
+        assertThat(trimmed.path("paper").path("totalQuestions").asInt()).isEqualTo(16);
+        assertThat(trimmed.path("paper").path("parts").get(0).path("displaySegments")).isEmpty();
+    }
+
     // ---- fixtures ------------------------------------------------------------------------------------------
 
     private void subject() {
