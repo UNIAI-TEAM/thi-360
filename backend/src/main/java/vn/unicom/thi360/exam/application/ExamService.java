@@ -480,8 +480,20 @@ public class ExamService {
                         messages.get(ExamErrorCodes.PART_NOT_FOUND));
             }
         }
+        String timing = template != null && template.getTiming() != null
+                ? template.getTiming() : profile != null ? profile.getTiming() : "PER_PART";
+        Integer overviewDuration = null;
         if (template != null && request.overview() != null) {
-            doc = ExamOverview.apply(doc, request.overview());
+            List<ExamOverviewRequest.Row> rows = request.overview();
+            if ("SHARED".equals(timing)) {
+                // With one shared time the duration belongs to the exam, never to a part (SHARED_PART_DURATION).
+                overviewDuration = rows.stream().filter(row -> row != null && row.sectionId() == null)
+                        .map(ExamOverviewRequest.Row::durationMinutes).filter(Objects::nonNull).findFirst().orElse(null);
+                rows = rows.stream().map(row -> row == null ? null : new ExamOverviewRequest.Row(row.partId(),
+                        row.sectionId(), row.partCode(), row.subjectCode(), row.questionCount(), null,
+                        row.maxPoints())).toList();
+            }
+            doc = ExamOverview.apply(doc, rows);
             ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         }
         if (template == null) {
@@ -489,13 +501,15 @@ public class ExamService {
             validateStructureReferences(doc);
         }
 
-        String timing = template != null && template.getTiming() != null
-                ? template.getTiming() : profile != null ? profile.getTiming() : "PER_PART";
         Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                : overviewDuration != null ? overviewDuration
                 : subjectPart ? doc.parts().getFirst().durationMinutes()
                 : template != null ? template.getDurationMinutes() : null;
         requireSharedDuration(timing, duration);
-        BigDecimal maxScore = request.maxScore() != null ? request.maxScore()
+        boolean review = "REVIEW".equals(buildMode);
+        // A review exam scores LINEAR (BE spec D11) with no profile scale: no scale entered gives no maximum.
+        BigDecimal maxScore = review ? request.maxScore()
+                : request.maxScore() != null ? request.maxScore()
                 : subjectPart ? doc.parts().getFirst().maxPoints()
                 : template != null && template.getMaxScore() != null ? template.getMaxScore()
                 : profile != null ? profile.getMaxScore() : null;
@@ -510,11 +524,11 @@ public class ExamService {
 
         Exam exam = new Exam(Ids.newId(), code, request.name().trim(), kindItem.id(),
                 scopeChoice.scope(), timing, duration, maxScore,
-                profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
+                review ? "LINEAR" : profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
         exam.setBuildMode(buildMode);
-        exam.applyScoringProfile(subjectPart ? null
+        exam.applyScoringProfile(review ? maxScore : subjectPart ? null
                         : scopedReferenceMax(profile, scopeChoice.scope(), maxScore),
-                subjectPart ? "RAW" : profile.getPracticeScoring());
+                review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring());
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
                 duration, maxScore, actor, now);
@@ -656,13 +670,15 @@ public class ExamService {
                         : subjectPart ? doc.parts().getFirst().durationMinutes()
                         : template != null && template.getDurationMinutes() != null
                                 ? template.getDurationMinutes() : null;
-                BigDecimal maxScore = subjectPart ? doc.parts().getFirst().maxPoints()
+                boolean review = "REVIEW".equals(mode);
+                BigDecimal maxScore = review ? request.maxScore()
+                        : subjectPart ? doc.parts().getFirst().maxPoints()
                         : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
-                exam.applyScoringProfile(subjectPart ? null
+                exam.applyScoringProfile(review ? maxScore : subjectPart ? null
                                 : scopedReferenceMax(profile, choice.scope(),
                                         request.maxScore() != null ? request.maxScore() : maxScore),
-                        subjectPart ? "RAW" : profile.getPracticeScoring());
+                        review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
@@ -702,13 +718,17 @@ public class ExamService {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
         // A LINEAR exam whose scale equals its reference (BE spec D11: max_score bằng reference_max) keeps them
-        // equal when only the scale is edited. Values that already differ, a null reference, an explicit
-        // referenceMax in the request and RAW scoring are left alone.
+        // equal when only the scale is edited; a review exam that has no scale yet takes the entered one as both.
+        // Values that already differ, a null reference elsewhere, an explicit referenceMax in the request and
+        // RAW scoring are left alone.
         String effectiveScoring = request.practiceScoring() == null ? exam.getPracticeScoring()
                 : request.practiceScoring();
+        boolean reviewWithoutScale = "REVIEW".equals(exam.getBuildMode()) && scaleBefore == null
+                && referenceBefore == null;
         boolean referenceFollowsScale = request.maxScore() != null && request.referenceMax() == null
-                && "LINEAR".equals(effectiveScoring) && scaleBefore != null && referenceBefore != null
-                && scaleBefore.compareTo(referenceBefore) == 0;
+                && "LINEAR".equals(effectiveScoring)
+                && (reviewWithoutScale || scaleBefore != null && referenceBefore != null
+                        && scaleBefore.compareTo(referenceBefore) == 0);
         if (request.practiceScoring() != null || request.referenceMax() != null || referenceFollowsScale) {
             String previousScoring = exam.getPracticeScoring();
             String scoring = request.practiceScoring() == null ? previousScoring : request.practiceScoring();
@@ -822,14 +842,22 @@ public class ExamService {
                 template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
                 subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
         exam.setBuildMode(template.getBuildMode());
-        // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the maximum
-        // score and reference of a new exam made from that template, administrator overrides included.
+        // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the scoring values
+        // of a new exam made from that template, administrator overrides included: a review is LINEAR with no
+        // scale, a standard exam takes the template or profile scale and the profile scoring.
         boolean scoringReset = false;
-        if (!Objects.equals(previousMode, template.getBuildMode()) && "LINEAR".equals(exam.getPracticeScoring())) {
+        if (!Objects.equals(previousMode, template.getBuildMode())) {
             ExamKindProfile profile = profileRepository.findById(exam.getKindItemId()).orElse(null);
-            if (profile != null && "LINEAR".equals(profile.getPracticeScoring())) {
-                BigDecimal base = template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
-                exam.applyScoringProfile(scopedReferenceMax(profile, exam.getScope(), base), exam.getPracticeScoring());
+            if ("REVIEW".equals(template.getBuildMode())) {
+                exam.applyScoringProfile(null, "LINEAR");
+                exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
+                        exam.getDurationMinutes(), null, actor, now);
+                scoringReset = true;
+            } else if (profile != null) {
+                BigDecimal base = subjectPart ? doc.parts().getFirst().maxPoints()
+                        : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
+                exam.applyScoringProfile(subjectPart ? null : scopedReferenceMax(profile, exam.getScope(), base),
+                        subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
                         exam.getDurationMinutes(), base, actor, now);
                 scoringReset = true;

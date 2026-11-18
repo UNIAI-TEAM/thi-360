@@ -6,10 +6,8 @@ import { useTranslations } from "next-intl";
 import { type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
 import { applyTopicTotal } from "../allocation";
-import { roundForDisplay } from "../display-number";
 import { emptyMatrix, isSetBlock, type MatrixAxes } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
-import { reviewPointsPerQuestion, reviewScale, type ReviewScoring } from "../review-points";
 import { effectiveScope } from "../subject-matrix";
 import type { AvailableQuestionsQuery, ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, resizeSets } from "./block-form";
@@ -32,8 +30,6 @@ export interface ReviewSubjectPanelProps {
   onChange: (update: (section: ExamSection) => ExamSection) => void;
   /** Số câu bước 1 đặt cho bài ôn: ô Số lượng phải khớp. */
   step1Count: number;
-  /** Thang của bài: điểm mỗi câu là thang chia số lượng (không có ô nhập điểm ở màn này). */
-  scoring: ReviewScoring;
   headerAction?: ReactNode;
   /** Lỗi 422 của chỉ tiêu chủ đề (H20): màn này không có bảng chỉ tiêu, nên báo ngay trong panel. */
   topicError?: TopicQuotaServerError;
@@ -44,7 +40,7 @@ export interface ReviewSubjectPanelProps {
  * dạng câu, số lượng. Số câu, thời lượng và thang điểm lấy từ bước 1. Phân bố khối lớp, độ khó và câu chùm đóng sẵn: mở
  * ra thì như ở bài thường.
  */
-export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, scoring, headerAction, topicError = null }: ReviewSubjectPanelProps) {
+export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, headerAction, topicError = null }: ReviewSubjectPanelProps) {
   const t = useTranslations("exams.reviewExam");
   const tContent = useTranslations("content");
   const { section } = context;
@@ -105,8 +101,6 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
     ...QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE").map((type) => ({ value: type, label: tContent(`questionType.${type}`) })),
   ];
   const mismatch = count !== step1Count;
-  const pointsEach = block.questionType === null && block.requiredPointsPerQuestion === null ? null : reviewPointsPerQuestion(scoring, count);
-  const scale = reviewScale(scoring);
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -144,14 +138,6 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
           {(controlProps) => <BlockNumberInput {...controlProps} value={count} onValueChange={setCount} />}
         </FormField>
       </div>
-
-      {pointsEach !== null && (
-        <p className="text-caption text-text-muted">
-          {scale === null
-            ? t("pointsEachFixed", { points: roundForDisplay(pointsEach) })
-            : t("pointsEach", { points: roundForDisplay(pointsEach), scale: roundForDisplay(scale), count })}
-        </p>
-      )}
 
       <details className="group rounded-md border border-border">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">

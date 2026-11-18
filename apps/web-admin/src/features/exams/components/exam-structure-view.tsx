@@ -18,7 +18,6 @@ import type { MatrixAxes } from "../matrix";
 import { useExam, useExamStructure, useExamStructureSummary, useExamTemplates, useUpdateExamStructure } from "../queries";
 import { useRunExamCheck } from "../review-queries";
 import { ExamsApiError } from "../review-api";
-import { withReviewPoints } from "../review-points";
 import type { ExamCheckResult, RunExamCheckRequest } from "../review-types";
 import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamStructure, ExamTemplate } from "../types";
 import { BlockEditor } from "./block-editor";
@@ -220,9 +219,7 @@ function StructureEditor({
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
   const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
-  // Bài ôn: điểm mỗi câu luôn là thang chia số câu (`withReviewPoints`); bản lưu, tổng và "chưa lưu" đều theo bản này.
-  const savedDraft = useMemo(() => (reviewMode ? withReviewPoints(draft, exam) : draft), [draft, exam, reviewMode]);
-  const draftJson = JSON.stringify(savedDraft);
+  const draftJson = JSON.stringify(draft);
   const dirty = draftJson !== baseline || JSON.stringify(quotas) !== quotaBaseline;
   // Dữ liệu mới từ máy chủ (sau khi lưu, hoặc lane khác làm mới) chỉ thay bản nháp khi không còn gì chưa lưu.
   if (syncKey !== syncedKey) {
@@ -291,8 +288,8 @@ function StructureEditor({
   const shared = exam.timing === "SHARED";
   const issues = useMemo(() => validateDraft(draft, axes, { timing: exam.timing }), [draft, axes, exam.timing]);
   const totals = useMemo(
-    () => draftTotals(savedDraft, { sharedDuration: shared ? exam.durationMinutes : null, combinations: structure.combinations ?? [] }),
-    [savedDraft, shared, exam.durationMinutes, structure.combinations],
+    () => draftTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null, combinations: structure.combinations ?? [] }),
+    [draft, shared, exam.durationMinutes, structure.combinations],
   );
   const issueText = useStructureIssueText(draft, names);
 
@@ -342,7 +339,7 @@ function StructureEditor({
       return;
     }
     save.mutate(
-      { parts: savedDraft, examQuotas: quotas, expectedRevision: exam.revision },
+      { parts: draft, examQuotas: quotas, expectedRevision: exam.revision },
       {
         onSuccess: () => {
           setBaseline(draftJson);
@@ -634,7 +631,6 @@ function StructureEditor({
               reference={reference}
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               step1Count={sectionContext.part.questionCount}
-              scoring={exam}
               headerAction={checkAction}
               topicError={topicError}
             />

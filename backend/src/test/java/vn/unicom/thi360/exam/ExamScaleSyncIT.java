@@ -56,14 +56,59 @@ class ExamScaleSyncIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void linearWithoutReferenceStaysWithoutReference() throws Exception {
-        JsonNode review = create("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
-                + "\"buildMode\":\"REVIEW\",\"durationMinutes\":45");
+    void reviewWithoutScaleTakesTheEnteredScaleAsBothMaximums() throws Exception {
+        for (String kind : new String[] {"VACT", "HSA"}) {
+            JsonNode review = create("{\"kind\":\"" + kind + "\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
+                    + "\"buildMode\":\"REVIEW\",\"durationMinutes\":45");
+            assertThat(review.path("maxScore").isNull()).as(kind).isTrue();
+            assertThat(review.path("referenceMax").isNull()).as(kind).isTrue();
+            assertThat(review.path("practiceScoring").asText()).as(kind).isEqualTo("LINEAR");
+            JsonNode edited = patchExam(review, "{\"maxScore\":40");
+            assertThat(edited.path("maxScore").decimalValue()).as(kind).isEqualByComparingTo("40");
+            assertThat(edited.path("referenceMax").decimalValue()).as(kind).isEqualByComparingTo("40");
+            JsonNode again = patchExam(edited, "{\"maxScore\":25");
+            assertThat(again.path("maxScore").decimalValue()).as(kind).isEqualByComparingTo("25");
+            assertThat(again.path("referenceMax").decimalValue()).as(kind).isEqualByComparingTo("25");
+        }
+    }
+
+    @Test
+    void loadingATemplateAcrossStandardAndReviewResetsTheScaleToFreshCreateValues() throws Exception {
+        JsonNode exam = create("{\"kind\":\"HSA\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\"");
+        String standardTemplate = exam.path("templateCode").asText();
+        assertThat(exam.path("buildMode").asText()).isEqualTo("STANDARD");
+        assertThat(exam.path("practiceScoring").asText()).isEqualTo("RAW");
+        JsonNode review = loadTemplate(exam, "HSA_REVIEW");
+        assertThat(review.path("buildMode").asText()).isEqualTo("REVIEW");
+        assertThat(review.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(review.path("maxScore").isNull()).isTrue();
         assertThat(review.path("referenceMax").isNull()).isTrue();
-        JsonNode edited = patchExam(review, "{\"maxScore\":40");
-        assertThat(edited.path("maxScore").decimalValue()).isEqualByComparingTo("40");
-        assertThat(edited.path("practiceScoring").asText()).isEqualTo("LINEAR");
-        assertThat(edited.path("referenceMax").isNull()).isTrue();
+        JsonNode scaled = patchExam(review, "{\"maxScore\":40");
+        assertThat(scaled.path("referenceMax").decimalValue()).isEqualByComparingTo("40");
+        JsonNode back = loadTemplate(scaled, standardTemplate);
+        assertThat(back.path("buildMode").asText()).isEqualTo("STANDARD");
+        assertThat(back.path("practiceScoring").asText()).isEqualTo("RAW");
+        assertThat(back.path("maxScore")).isEqualTo(exam.path("maxScore"));
+        assertThat(back.path("referenceMax")).isEqualTo(exam.path("referenceMax"));
+    }
+
+    private JsonNode loadTemplate(JsonNode exam, String templateCode) throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        String id = exam.path("id").asText();
+        long revision = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).path("revision").asLong();
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"" + templateCode + "\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+        return mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
     }
 
     @Test
