@@ -37,14 +37,16 @@ public class ExamCheckResultStore {
         }
         jdbc.update("INSERT INTO exam.exam_check_run (id, exam_id, exam_revision, structure_hash, config_snapshot, "
                         + "profile_revision, catalog_revision, input_fingerprint, source_revisions, result, witness, "
-                        + "checked_at, duration_ms) VALUES (?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?::jsonb, ?::jsonb, "
-                        + "?::jsonb, ?, ?) ON CONFLICT (exam_id) DO UPDATE SET id = EXCLUDED.id, "
+                        + "checked_at, duration_ms) VALUES (?, ?, ?, ?, "
+                        + ExamCheckValidity.storedConfig("?::jsonb", "?")
+                        + ", ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, ?, ?) ON CONFLICT (exam_id) DO UPDATE SET id = EXCLUDED.id, "
                         + "exam_revision = EXCLUDED.exam_revision, structure_hash = EXCLUDED.structure_hash, "
                         + "config_snapshot = EXCLUDED.config_snapshot, profile_revision = EXCLUDED.profile_revision, "
                         + "catalog_revision = EXCLUDED.catalog_revision, input_fingerprint = EXCLUDED.input_fingerprint, "
                         + "source_revisions = EXCLUDED.source_revisions, result = EXCLUDED.result, "
                         + "witness = EXCLUDED.witness, checked_at = EXCLUDED.checked_at, duration_ms = EXCLUDED.duration_ms",
                 Ids.newId(), input.examId(), input.examRevision(), input.structureHash(), json(input.configSnapshot()),
+                input.examId(),
                 input.profileRevision(), input.catalogRevision(), input.fingerprint(), json(input.sourceRevisions()),
                 json(result), json(witness), Timestamp.from(checkedAt), durationMs);
         return true;

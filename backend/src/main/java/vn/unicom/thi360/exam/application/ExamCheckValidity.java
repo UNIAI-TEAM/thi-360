@@ -34,6 +34,48 @@ public class ExamCheckValidity {
 
     public record Assessment(String status, String invalidReason) { }
 
+    /**
+     * SQL for the template policy of the exam aliased {@code e}: only the non-default flags, {@code '{}'} when the
+     * exam has the default policy. {@code unpublishable}: the standard default SUBJECT template of its kind and
+     * subject has {@code publishable = false}; {@code fixedCounts}: the template it was loaded from has
+     * {@code fixed_counts = true}. A saved check records the policy only when it is not the default, so checks
+     * saved before the flags existed keep their meaning.
+     */
+    static String currentPolicy(String e) {
+        return "jsonb_strip_nulls(jsonb_build_object("
+                + "'unpublishable', CASE WHEN EXISTS (SELECT 1 FROM exam.exam_template pt"
+                + " JOIN catalog.catalog_item pk ON pk.id = " + e + ".kind_item_id"
+                + " JOIN catalog.catalog_item ps ON ps.id = " + e + ".subject_item_id"
+                + " WHERE pt.kind_code = pk.code AND pt.scope = 'SUBJECT' AND pt.subject_code = ps.code"
+                + " AND pt.part_code IS NULL AND pt.active AND pt.is_default AND pt.build_mode = 'STANDARD'"
+                + " AND NOT pt.publishable) THEN true END, "
+                + "'fixedCounts', CASE WHEN EXISTS (SELECT 1 FROM exam.exam_template ft"
+                + " WHERE ft.code = " + e + ".template_code AND ft.fixed_counts) THEN true END))";
+    }
+
+    /** SQL boolean: the saved config of run {@code r} still equals the exam's config and template policy. */
+    static String configMatches(String r, String e) {
+        return "((" + r + ".config_snapshot - 'templatePolicy') = jsonb_build_object("
+                + "'kindItemId', " + e + ".kind_item_id, 'scope', " + e + ".scope, 'partCode', " + e + ".part_code, "
+                + "'subjectItemId', " + e + ".subject_item_id, 'templateCode', " + e + ".template_code, "
+                + "'structureYear', " + e + ".structure_year, 'matrixYear', " + e + ".matrix_year, "
+                + "'yearsConfirmed', " + e + ".years_confirmed, "
+                + "'timing', " + e + ".timing, 'durationMinutes', " + e + ".duration_minutes, "
+                + "'maxScore', " + e + ".max_score, 'referenceMax', " + e + ".reference_max, "
+                + "'practiceScoring', " + e + ".practice_scoring) "
+                + "AND COALESCE(" + r + ".config_snapshot -> 'templatePolicy', '{}'::jsonb) = " + currentPolicy(e) + ")";
+    }
+
+    /**
+     * SQL jsonb to store for the exam whose id is bound to {@code examIdParameter}: the config parameter plus
+     * {@code templatePolicy} when the policy is not the default.
+     */
+    static String storedConfig(String configParameter, String examIdParameter) {
+        return configParameter + " || (SELECT CASE WHEN " + currentPolicy("e") + " = '{}'::jsonb THEN '{}'::jsonb"
+                + " ELSE jsonb_build_object('templatePolicy', " + currentPolicy("e") + ") END"
+                + " FROM exam.exam e WHERE e.id = " + examIdParameter + ")";
+    }
+
     @Transactional(readOnly = true)
     public Map<UUID, String> statuses(Collection<UUID> examIds) {
         Map<UUID, String> statuses = new HashMap<>();
@@ -49,12 +91,7 @@ public class ExamCheckValidity {
                 + "s.structure_hash AS current_hash, r.structure_hash AS saved_hash, "
                 + "r.profile_revision, p.revision AS current_profile_revision, "
                 + "r.catalog_revision, r.source_revisions::text AS source_revisions, "
-                + "r.config_snapshot = jsonb_build_object("
-                + "'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, "
-                + "'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, "
-                + "'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, "
-                + "'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, "
-                + "'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring) AS config_matches "
+                + configMatches("r", "e") + " AS config_matches "
                 + "FROM exam.exam e LEFT JOIN exam.exam_structure s ON s.exam_id = e.id "
                 + "LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
                 + "LEFT JOIN exam.exam_check_run r ON r.exam_id = e.id WHERE e.id IN (" + placeholders + ")";
