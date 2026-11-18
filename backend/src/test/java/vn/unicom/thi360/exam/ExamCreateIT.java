@@ -504,6 +504,31 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void duplicatedDraftWithNewPartIdsAndSameShapeKeepsItsEdits() throws Exception {
+        String id = createMathDraft();
+        editThirdPartCount(id, 5);
+        var original = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String duplicateId = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/duplicate", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Copy\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).path("id").asText();
+        var copy = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", duplicateId)
+                .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(copy.path("parts").size()).isEqualTo(original.path("parts").size());
+        for (int i = 0; i < copy.path("parts").size(); i++) {
+            org.assertj.core.api.Assertions.assertThat(copy.path("parts").get(i).path("id").asText())
+                    .isNotEqualTo(original.path("parts").get(i).path("id").asText());
+        }
+        var reloaded = reloadMath(duplicateId, "KEEP_EDITED");
+        org.assertj.core.api.Assertions.assertThat(
+                reloaded.path("parts").get(2).path("sections").get(0).path("questionCount").asInt()).isEqualTo(5);
+        org.assertj.core.api.Assertions.assertThat(templateLoadFlag(duplicateId)).isEqualTo("false");
+    }
+
+    @Test
     void templateWithoutStoredIdsKeepsTheIdBasedReload() throws Exception {
         String id = createMathDraft();
         editThirdPartCount(id, 5);
@@ -517,6 +542,115 @@ class ExamCreateIT extends AbstractIntegrationTest {
         var reloaded = reloadMath(id, "KEEP_EDITED");
         org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(2).path("sections").get(0).path("questionCount").asInt()).isEqualTo(5);
         org.assertj.core.api.Assertions.assertThat(templateLoadFlag(id)).isEqualTo("false");
+    }
+
+    @Test
+    void scopedLinearExamsAreCheckedAgainstTheirOwnMaximum() throws Exception {
+        String[][] cases = {
+                {"\"scope\":\"PART\",\"partCode\":\"LOGIC\"", "120"},
+                {"\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\"", "300"},
+                {"\"scope\":\"FULL\"", "1200"}};
+        for (String[] c : cases) {
+            var created = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams")
+                            .with(asUser(Permissions.EXAM_MODIFY))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"kind\":\"VACT\"," + c[0] + ",\"durationMinutes\":60,\"name\":\"Draft\",\"code\":\"T-"
+                                    + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+            org.assertj.core.api.Assertions.assertThat(created.path("maxScore").decimalValue()).as(c[0])
+                    .isEqualByComparingTo(c[1]);
+            org.assertj.core.api.Assertions.assertThat(created.path("referenceMax").decimalValue()).as(c[0])
+                    .isEqualByComparingTo(c[1]);
+            org.assertj.core.api.Assertions.assertThat(created.path("practiceScoring").asText()).as(c[0]).isEqualTo("LINEAR");
+        }
+        // A maximum entered by the administrator is the scoped reference as well.
+        var entered = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"PART\",\"partCode\":\"LOGIC\",\"maxScore\":150,"
+                                + "\"durationMinutes\":60,\"name\":\"Draft\",\"code\":\"T-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(entered.path("referenceMax").decimalValue()).isEqualByComparingTo("150");
+    }
+
+    @Test
+    void changingScopeReloadsTheScopedReferenceMaximum() throws Exception {
+        var exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"T-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String url = "/api/v1/admin/exams/" + exam.path("id").asText();
+        long revision = exam.path("revision").asLong();
+        String[][] steps = {
+                {"\"scope\":\"PART\",\"partCode\":\"LOGIC\"", "120"},
+                {"\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\"", "300"},
+                {"\"scope\":\"FULL\"", "1200"}};
+        for (String[] step : steps) {
+            var changed = mapper.readTree(mockMvc.perform(patch(url).with(asUser(Permissions.EXAM_MODIFY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{" + step[0] + ",\"partCode\":" + (step[0].contains("LOGIC") ? "\"LOGIC\"" : "null")
+                                    + ",\"durationMinutes\":60,\"confirmReplace\":true,\"expectedRevision\":" + revision + "}"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            org.assertj.core.api.Assertions.assertThat(changed.path("referenceMax").decimalValue()).as(step[0])
+                    .isEqualByComparingTo(step[1]);
+            org.assertj.core.api.Assertions.assertThat(changed.path("practiceScoring").asText()).isEqualTo("LINEAR");
+            revision = changed.path("revision").asLong();
+        }
+    }
+
+    @Test
+    void scopedVactChecksReportRealPointMismatchesOnly() throws Exception {
+        var exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"PART\",\"partCode\":\"LOGIC\",\"durationMinutes\":60,"
+                                + "\"name\":\"Draft\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String id = exam.path("id").asText();
+        org.assertj.core.api.Assertions.assertThat(checkCodes(id)).doesNotContain("POINTS_TOTAL_MISMATCH");
+        var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) structure.path("parts").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0).path("blocks").get(0))
+                .put("requiredPointsPerQuestion", 11);
+        var request = mapper.createObjectNode().put("expectedRevision", structure.path("revision").asLong());
+        request.set("parts", parts);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        org.assertj.core.api.Assertions.assertThat(checkCodes(id)).contains("POINTS_TOTAL_MISMATCH");
+    }
+
+    @Test
+    void vactReviewKeepsTheProfileReferenceBecauseItHasNoMaximum() throws Exception {
+        var review = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
+                                + "\"buildMode\":\"REVIEW\",\"durationMinutes\":45,\"name\":\"Review\",\"code\":\"T-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(review.path("maxScore").isNull()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(review.path("referenceMax").decimalValue()).isEqualByComparingTo("1200");
+        // The empty review frame has no points to total, so the kept 1,200 scale produces no mismatch.
+        org.assertj.core.api.Assertions.assertThat(checkCodes(review.path("id").asText()))
+                .doesNotContain("POINTS_TOTAL_MISMATCH");
+    }
+
+    private java.util.Set<String> checkCodes(String id) throws Exception {
+        var result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", id)
+                        .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var codes = new java.util.TreeSet<String>();
+        for (var group : result.path("groups")) {
+            for (var issue : group.path("issues")) codes.add(issue.path("code").asText());
+        }
+        return codes;
     }
 
     private static void removeIds(com.fasterxml.jackson.databind.JsonNode node) {

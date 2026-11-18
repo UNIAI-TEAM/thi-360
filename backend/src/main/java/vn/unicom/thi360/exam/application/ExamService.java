@@ -518,7 +518,8 @@ public class ExamService {
                 scopeChoice.scope(), timing, duration, maxScore,
                 profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
         exam.setBuildMode(buildMode);
-        exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+        exam.applyScoringProfile(subjectPart ? null
+                        : scopedReferenceMax(profile, scopeChoice.scope(), maxScore),
                 subjectPart ? "RAW" : profile.getPracticeScoring());
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
@@ -664,7 +665,8 @@ public class ExamService {
                 BigDecimal maxScore = subjectPart ? doc.parts().getFirst().maxPoints()
                         : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
-                exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+                exam.applyScoringProfile(subjectPart ? null
+                                : scopedReferenceMax(profile, choice.scope(), maxScore),
                         subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
@@ -819,6 +821,18 @@ public class ExamService {
                 .build());
         return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
+    }
+
+    /**
+     * Reference scale of the practice scoring. A scoped exam that scores LINEAR is checked against its own
+     * maximum (V-ACT: 10 points per question), so a part or subject does not inherit the 1,200-point full
+     * scale; a FULL exam, or one without a computed maximum, keeps the profile scale.
+     */
+    private static BigDecimal scopedReferenceMax(ExamKindProfile profile, String scope, BigDecimal maxScore) {
+        if ("LINEAR".equals(profile.getPracticeScoring()) && !"FULL".equals(scope) && maxScore != null) {
+            return maxScore;
+        }
+        return profile.getReferenceMax();
     }
 
     /**
