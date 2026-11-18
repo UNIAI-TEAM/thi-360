@@ -119,7 +119,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped }: ExamPrevie
   }, [t, tContent, format, lookup, paper, assigned]);
 
   if (compliance.length === 0 && dropped.length === 0) return null;
-  const deviations = compliance.filter((row) => complianceLevel(row) !== "OK").length;
+  const deviations = compliance.filter((row) => complianceLevel(row) !== "OK");
+  const blocking = deviations.some((row) => complianceLevel(row) === "REQUIRED_DEVIATION");
 
   return (
     <section aria-labelledby="preview-compliance-title" className="flex flex-col gap-3">
@@ -128,10 +129,10 @@ export function ExamPreviewCompliance({ paper, compliance, dropped }: ExamPrevie
           {t("title")}
         </h3>
         {compliance.length > 0 &&
-          (deviations === 0 ? (
+          (deviations.length === 0 ? (
             <StatusChip tone="success">{t("allPassed")}</StatusChip>
           ) : (
-            <StatusChip tone="warning">{t("deviations", { count: deviations })}</StatusChip>
+            <StatusChip tone={blocking ? "danger" : "warning"}>{t("deviations", { count: deviations.length })}</StatusChip>
           ))}
       </div>
       {dropped.length > 0 && (

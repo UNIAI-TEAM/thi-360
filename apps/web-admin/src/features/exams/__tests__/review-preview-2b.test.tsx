@@ -190,6 +190,18 @@ describe("bảng Yêu cầu / Thực tế", () => {
     expect(screen.getByText("2 dòng lệch")).toBeInTheDocument();
   });
 
+  it("chip tổng đầu bảng: Bắt buộc lệch là lỗi (danger), chỉ Tham khảo lệch là cảnh báo (warning)", async () => {
+    renderTable([
+      row({ criterion: "GRADE:GRADE_12", required: 5, actual: 4 }),
+      row({ criterion: "DIFFICULTY:APPLICATION", required: 3, actual: 1, enforcement: "REFERENCE" }),
+    ]);
+    renderTable([row({ criterion: "DIFFICULTY:RECOGNITION", required: 3, actual: 5, enforcement: "REFERENCE" })]);
+
+    expect((await screen.findByText("2 dòng lệch")).closest("[data-tone]")).toHaveAttribute("data-tone", "danger");
+    expect(screen.getByText("1 dòng lệch").closest("[data-tone]")).toHaveAttribute("data-tone", "warning");
+  });
+
+
   it("chỉ tiêu chủ đề nêu các câu được gán; thực tế nhiều hơn 'ít nhất' vẫn đạt", async () => {
     renderTable([row({ criterion: "TOPIC:t1", scope: "SECTION:s1", required: 1, actual: 2 })]);
 
