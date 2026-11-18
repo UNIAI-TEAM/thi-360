@@ -369,7 +369,20 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             softly.assertThat(result.path("status").asText()).as("%s: %s", code, codes(result)).isEqualTo("VALID");
             Set<String> expected = Set.of("TEST-SPT-01", "TEST-THPTQG-02").contains(code)
                     ? Set.of("MANUAL_GRADING_REQUIRED") : Set.of();
-            softly.assertThat(codes(result)).as(code).isEqualTo(expected);
+            if ("TEST-VACT-01".equals(code)) {
+                // VACT_FULL distribution tables are all REFERENCE (spec 2B 5.1): the ANH section's
+                // block matrices ("Điền khuyết", "Phát hiện lỗi sai", "Diễn đạt tương đương",
+                // "Đọc hiểu – bài đọc 1/2") and the section matrices are advisory, so the solver's
+                // witness may or may not hit them. Accept any WARNING DISTRIBUTION_DEVIATION.
+                softly.assertThat(codes(result)).as(code).containsOnly("DISTRIBUTION_DEVIATION");
+                softly.assertThat(result.path("groups").findValues("issues").stream()
+                        .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                        .filter(issue -> "DISTRIBUTION_DEVIATION".equals(issue.path("code").asText()))
+                        .map(issue -> issue.path("severity").asText()))
+                        .as(code).containsOnly("WARNING");
+            } else {
+                softly.assertThat(codes(result)).as(code).isEqualTo(expected);
+            }
         }
 
         JsonNode bca = check("TEST-BCA-01");
