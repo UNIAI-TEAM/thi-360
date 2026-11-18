@@ -199,6 +199,85 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isGone()).andExpect(jsonPath("$.code").value("PREVIEW_EXPIRED"));
     }
+
+    @Test
+    void hsaEnglishReferenceGradeAppearsInCompliance() throws Exception {
+        UUID subjectId = jdbc.queryForObject("select id from catalog.catalog_item where group_id=? and code_normalized='anh'",
+                UUID.class, SUBJECT_GROUP);
+        UUID questionId = question(new Subject(subjectId, "ANH"), "SINGLE_CHOICE", "english", false);
+        jdbc.update("update questionbank.question set grade_item_id='00000000-0000-7000-8200-000000000303', points=123.4567 where id=?", questionId);
+        UUID examId = exam("""
+                [{"id":"english-part","order":1,"name":"English","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"english","subjectCode":"ANH","questionCount":1,
+                    "matrix":{"mode":"SEPARATE","unit":"COUNT","gradeEnforcement":"REFERENCE","basis":"QUESTION",
+                              "byGrade":[{"code":"G12","value":1}]},
+                    "blocks":[{"id":"english-group","questionType":"SINGLE_CHOICE","questionCount":1,
+                               "requiredPointsPerQuestion":123.4567}]}]}]
+                """);
+        jdbc.update("update exam.exam set kind_item_id=(select id from catalog.catalog_item where code_normalized='hsa' and group_id='00000000-0000-7000-8100-000000000001') where id=?", examId);
+        JsonNode result = preview(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}");
+        assertThat(result.path("compliance")).anyMatch(row -> "GRADE:G12".equals(row.path("criterion").asText())
+                && "REFERENCE".equals(row.path("enforcement").asText())
+                && row.path("required").asInt() == 1 && row.path("actual").asInt() == 1);
+    }
+
+    @Test
+    void previewReturnsAuthoredAndShuffledOptionOrders() throws Exception {
+        Subject subject = subject();
+        UUID shuffled = question(subject, "SINGLE_CHOICE", "shuffle", false);
+        UUID kept = question(subject, "SINGLE_CHOICE", "keep", false);
+        for (UUID id : List.of(shuffled, kept)) {
+            String body = """
+                    {"type":"SINGLE_CHOICE","shuffleOptions":%s,"options":[
+                      {"id":"a","content":"A"},{"id":"b","content":"B"},{"id":"c","content":"C"},
+                      {"id":"d","content":"D"},{"id":"e","content":"E"},{"id":"f","content":"F"}]}
+                    """.formatted(!id.equals(kept));
+            jdbc.update("update questionbank.question_version set snapshot=jsonb_set(snapshot,'{body}',cast(? as jsonb)) where question_id=? and version_no=1", body, id);
+        }
+        UUID examId = exam("""
+                [{"id":"p","order":1,"name":"Part","questionCount":2,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s","subjectCode":"%s","questionCount":2,
+                    "blocks":[{"id":"g","questionType":"SINGLE_CHOICE","questionCount":2}]}]}]
+                """.formatted(subject.code()));
+        JsonNode items = preview(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":41}")
+                .path("paper").path("parts").get(0).path("blocks").get(0).path("items");
+        for (JsonNode item : items) {
+            JsonNode question = item.path("question");
+            assertThat(question.path("originalOptionOrder")).hasSize(6);
+            assertThat(question.path("originalNumber").isInt()).isTrue();
+            if (kept.toString().equals(question.path("questionId").asText())) {
+                assertThat(question.path("optionOrder")).isEqualTo(question.path("originalOptionOrder"));
+            } else {
+                assertThat(question.path("questionId").asText()).isEqualTo(shuffled.toString());
+                assertThat(question.path("optionOrder")).isNotEqualTo(question.path("originalOptionOrder"));
+            }
+        }
+    }
+
+    @Test
+    void clozePreviewRetainsPassageAndAnswerPositions() throws Exception {
+        Subject subject = subject();
+        UUID id = question(subject, "CLOZE", "reading fill", false);
+        jdbc.update("update questionbank.question set points=2 where id=?", id);
+        String body = """
+                {"type":"CLOZE","passage":"<p>[[a]] and [[b]]</p>","blanks":[
+                  {"id":"a","answers":["one"],"points":1},
+                  {"id":"b","answers":["two"],"points":1}]}
+                """;
+        jdbc.update("update questionbank.question_version set snapshot=jsonb_set(snapshot,'{body}',cast(? as jsonb)) where question_id=? and version_no=1", body, id);
+        UUID examId = exam("""
+                [{"id":"p","order":1,"name":"Part","questionCount":2,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s","subjectCode":"%s","questionCount":2,
+                    "blocks":[{"id":"g","questionType":"CLOZE","questionCount":2,"setCount":1,"setSize":2}]}]}]
+                """.formatted(subject.code()));
+        JsonNode paper = preview(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}").path("paper");
+        JsonNode question = paper.path("parts").get(0).path("blocks").get(0).path("items").get(0).path("question");
+        assertThat(paper.path("totalQuestions").asInt()).isEqualTo(2);
+        assertThat(question.path("body").path("passage").asText()).isEqualTo("<p>[[a]] and [[b]]</p>");
+        assertThat(question.path("body").path("blanks").get(0).path("id").asText()).isEqualTo("a");
+        assertThat(question.path("body").path("blanks").get(1).path("id").asText()).isEqualTo("b");
+    }
+
     @Test
     void previewOfSeededChoiceExposesShuffleOptions() throws Exception {
         UUID seededQuestion = seededPreviewQuestion();
@@ -299,6 +378,16 @@ class ExamPreviewIT extends AbstractIntegrationTest {
             assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=?",
                     Integer.class, UUID.fromString(test[0]))).isZero();
         }
+        mockMvc.perform(post("/api/v1/admin/exams/" + badPart + "/preview")
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.paper").doesNotExist())
+                .andExpect(jsonPath("$.issues[0].code").value("PART_TOTAL_MISMATCH"))
+                .andExpect(jsonPath("$.issues[0].location.partId").value("part"));
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=?",
+                Integer.class, badPart)).isZero();
     }
 
     @Test
@@ -488,7 +577,8 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         UUID actor = UUID.randomUUID();
         jdbc.update("insert into exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by) "
                 + "values (?, ?, 1, cast(? as jsonb), cast(? as jsonb), array['default'], array['default'], ?, 'SERVING', 'PUBLISHED', now(), ?)",
-                UUID.randomUUID(), id, "{\"code\":\"OLD\",\"name\":\"Old exam\",\"scope\":\"FULL\",\"timing\":\"SHARED\",\"durationMinutes\":45,\"practiceScoring\":\"RAW\"}",
+                UUID.randomUUID(), id, "{\"code\":\"OLD\",\"name\":\"Old exam\",\"scope\":\"FULL\",\"timing\":\"SHARED\",\"durationMinutes\":45,\"practiceScoring\":\"RAW\","
+                        + "\"examQuotas\":[{\"id\":\"old-grade\",\"dimension\":\"GRADE\",\"basis\":\"QUESTION\",\"enforcement\":\"REFERENCE\",\"buckets\":[{\"codes\":[\"G12\"],\"count\":1}]}]}",
                 "{\"parts\":" + oldParts + "}", UUID.randomUUID(), actor);
         jdbc.update("update exam.exam set duration_minutes=90, question_count=0 where id=?", id);
         jdbc.update("update exam.exam_structure set parts='{\"parts\":[]}'::jsonb where exam_id=?", id);
@@ -496,12 +586,76 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         assertThat(response.path("version").asInt()).isEqualTo(1);
         assertThat(response.path("paper").path("totalMinutes").asInt()).isEqualTo(45);
         assertThat(response.path("paper").path("parts").get(0).path("blocks").get(0).path("blockId").asText()).isEqualTo("old");
+        assertThat(response.path("compliance")).anyMatch(row -> "EXAM:old-grade:G12".equals(row.path("criterion").asText())
+                && "REFERENCE".equals(row.path("enforcement").asText()) && row.path("required").asInt() == 1);
         String url = "/api/v1/admin/exams/" + id + "/preview";
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pathId\":\"default\",\"seed\":1,\"version\":2}"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("VERSION_NOT_FOUND"));
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pathId\":\"unpublished\",\"seed\":1,\"version\":1}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PATH_NOT_FOUND"));
+    }
+
+    @Test
+    void publishedSectionPreviewRequiresAPathContainingThatSection() throws Exception {
+        Subject allowed = subject();
+        Subject denied = subject();
+        UUID expected = question(allowed, "SINGLE_CHOICE", "published section", false);
+        question(denied, "SINGLE_CHOICE", "unpublished section", false);
+        String parts = """
+                [{"id":"p","order":1,"name":"Choice","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                  "options":[
+                    {"id":"allowed","kind":"SUBJECT","code":"A","sections":[{"id":"s-allowed","subjectCode":"%s",
+                      "questionCount":1,"blocks":[{"id":"ga","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                    {"id":"denied","kind":"SUBJECT","code":"B","sections":[{"id":"s-denied","subjectCode":"%s",
+                      "questionCount":1,"blocks":[{"id":"gb","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}]
+                """.formatted(allowed.code(), denied.code());
+        UUID id = exam(parts);
+        jdbc.update("insert into exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by) "
+                        + "values (?, ?, 1, cast(? as jsonb), cast(? as jsonb), array['allowed'], array['allowed'], ?, 'SERVING', 'PUBLISHED', now(), ?)",
+                UUID.randomUUID(), id, "{\"code\":\"OLD\",\"name\":\"Old\",\"scope\":\"FULL\",\"timing\":\"SHARED\",\"durationMinutes\":45,\"practiceScoring\":\"RAW\"}",
+                "{\"parts\":" + parts + "}", UUID.randomUUID(), UUID.randomUUID());
+        jdbc.update("update exam.exam_structure set parts='{\"parts\":[]}'::jsonb where exam_id=?", id);
+        JsonNode response = preview(id, "{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"s-allowed\"},\"seed\":1,\"version\":1}");
+        assertThat(response.path("paper").path("parts").get(0).path("blocks").get(0)
+                .path("items").get(0).path("question").path("questionId").asText()).isEqualTo(expected.toString());
+        mockMvc.perform(post("/api/v1/admin/exams/" + id + "/preview").with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"s-denied\"},\"seed\":1,\"version\":1}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PATH_NOT_FOUND"));
+    }
+
+    @Test
+    void publishedCombinationUsesSnapshottedSubjectsInsteadOfCurrentCatalog() throws Exception {
+        UUID chemistryId = jdbc.queryForObject("select id from catalog.catalog_item where group_id=? and code_normalized='hoa'",
+                UUID.class, SUBJECT_GROUP);
+        UUID chemistryQuestion = question(new Subject(chemistryId, "HOA"), "SINGLE_CHOICE", "chemistry", false);
+        jdbc.update("update questionbank.question set points=123.4567 where id=?", chemistryQuestion);
+        String parts = """
+                [{"id":"p3","order":1,"name":"Science","questionCount":1,"codeSource":{"source":"GLOBAL_LIST"},
+                  "subjectPool":[
+                    {"id":"physics","subjectCode":"LY","questionCount":1,
+                     "blocks":[{"id":"g-physics","questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":123.4567}]},
+                    {"id":"chemistry","subjectCode":"HOA","questionCount":1,
+                     "blocks":[{"id":"g-chemistry","questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":123.4567}]}]}]
+                """;
+        UUID id = exam(parts);
+        String config = """
+                {"code":"OLD","name":"Old","scope":"FULL","timing":"SHARED","durationMinutes":45,
+                 "practiceScoring":"RAW","combinations":[{"partId":"p3","code":"CA1","name":"CA1",
+                 "subjects":[{"code":"HOA","position":0}]}]}
+                """;
+        jdbc.update("insert into exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by) "
+                        + "values (?, ?, 1, cast(? as jsonb), cast(? as jsonb), array['p3:CA1'], array['p3:CA1'], ?, 'SERVING', 'PUBLISHED', now(), ?)",
+                UUID.randomUUID(), id, config, "{\"parts\":" + parts + "}", UUID.randomUUID(), UUID.randomUUID());
+        JsonNode result = preview(id, "{\"target\":{\"kind\":\"PATH\",\"pathId\":\"p3:CA1\"},\"seed\":1,\"version\":1}");
+        assertThat(result.path("paper").path("parts").get(0).path("blocks").get(0).path("subjectCode").asText()).isEqualTo("HOA");
+        JsonNode section = preview(id, "{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"chemistry\"},\"seed\":1,\"version\":1}");
+        assertThat(section.path("paper").path("totalQuestions").asInt()).isEqualTo(1);
+        mockMvc.perform(post("/api/v1/admin/exams/" + id + "/preview").with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"physics\"},\"seed\":1,\"version\":1}"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PATH_NOT_FOUND"));
     }
 

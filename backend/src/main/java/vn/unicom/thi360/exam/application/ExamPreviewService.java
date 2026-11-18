@@ -52,7 +52,9 @@ public class ExamPreviewService {
                 || !java.util.Objects.equals(request.version(), base.version()))) {
             throw new PreviewExpiredException();
         }
+        boolean sectionRequest = request.target() != null && "SECTION".equals(request.target().kind());
         var snapshot = request.version() == null ? store.load(id)
+                : sectionRequest ? store.loadVersionForSection(id, request.version(), request.target().sectionId())
                 : store.loadVersion(id, request.version(), request.pathId());
         ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
         PreviewSectionTarget.Selection sectionTarget = request.target() != null && "SECTION".equals(request.target().kind())
@@ -74,7 +76,8 @@ public class ExamPreviewService {
         PaperSolver solver = new PaperSolver(limits, clock);
         SolverInputBuilder.SolverInput input;
         try {
-            input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(document, request.pathId()));
+            ExamStructureDocument solverDocument = PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
+            input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(solverDocument, request.pathId()));
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("EXAM_STRUCTURE_INVALID");
         }
@@ -139,18 +142,26 @@ public class ExamPreviewService {
         SolvePath actualPath = regeneration == null || sectionTarget != null ? result.path()
                 : mergeRegeneratedPath(resolved.path(), result.path());
         Map<String, SectionOnPath> sections = pathSections(actualPath);
-        Map<String, SectionOnPath> generatedSections = pathSections(result.path());
         List<CatalogItemView> knowledge = catalog.listGroupItems("KNOWLEDGE");
         PaperBuilder paperBuilder = new PaperBuilder(groups, candidates, versions, sections, knowledge);
         PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
                 document, request.seed(), mapper);
+        if (request.target() != null && sectionTarget == null) {
+            List<PreviewIssue> totals = previewPartTotals(document, paper, request.pathId());
+            if (!totals.isEmpty()) {
+                return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
+                        "FAILED", null, "INVALID", totals, null, null, null);
+            }
+        }
+        List<SectionOnPath> trimmedSections = trimmedSections(result.path(), sectionTarget != null && sectionTarget.trim());
+        if (trimmedSections.size() != solved.dropped().size()) {
+            throw new IllegalStateException("Dropped question section missing");
+        }
         List<PreviewSnapshotStore.Dropped> generatedDropped = new ArrayList<>();
-        for (QuestionPick dropped : solved.dropped()) {
-            String subjectCode = generatedSections.values().stream().filter(section ->
-                    section.groups().stream().anyMatch(group -> input.candidates().candidatesFor(group).stream()
-                            .anyMatch(item -> item.questionId().equals(dropped.questionId()))))
-                    .map(SectionOnPath::subjectCode).findFirst().orElseThrow();
-            generatedDropped.add(new PreviewSnapshotStore.Dropped(dropped, subjectCode));
+        for (int i = 0; i < solved.dropped().size(); i++) {
+            SectionOnPath section = trimmedSections.get(i);
+            generatedDropped.add(new PreviewSnapshotStore.Dropped(solved.dropped().get(i),
+                    section.subjectCode(), section.sectionId()));
         }
         List<PreviewSnapshotStore.Dropped> allDropped = new ArrayList<>();
         if (regeneration != null) allDropped.addAll(regeneration.dropped());
@@ -167,8 +178,7 @@ public class ExamPreviewService {
                     version.snapshot(), candidate.units().getFirst(), item.subjectCode()));
         }
         Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
-                PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
-                        new ArrayList<>(generatedSections.values()), input.candidates()));
+                PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped));
         if (regeneration != null) selectedParts.putAll(regeneration.retained());
         List<Compliance> compliance = PreviewCompliance.evaluate(document, actualPath, groups, candidates, allDropped, knowledge);
         UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
@@ -178,6 +188,45 @@ public class ExamPreviewService {
                 "GENERATED", paper, null, null, previewId, compliance, droppedQuestions);
     }
 
+
+    private List<PreviewIssue> previewPartTotals(ExamStructureDocument document, PreviewPaper paper, String pathId) {
+        Map<String, PreviewPart> parts = new HashMap<>();
+        for (PreviewPart part : paper.parts()) parts.put(part.partId(), part);
+        List<PreviewIssue> issues = new ArrayList<>();
+        for (ExamPart part : document.parts()) {
+            Integer required = part.questionCountRequired() == null ? part.questionCount() : part.questionCountRequired();
+            if (required == null) continue;
+            PreviewPart generated = parts.get(part.id());
+            int actual = generated == null ? 0 : generated.blocks().stream().mapToInt(PreviewBlock::questionCount).sum();
+            if (required == actual) continue;
+            ObjectNode issue = mapper.createObjectNode();
+            issue.put("key", "PART_TOTAL_MISMATCH:" + part.id());
+            issue.put("code", "PART_TOTAL_MISMATCH");
+            issue.put("severity", "ERROR");
+            issue.put("group", "STRUCTURE");
+            issue.put("partId", part.id());
+            issue.put("partName", part.name());
+            issue.put("required", required);
+            issue.put("available", actual);
+            issues.add(previewIssue(issue, pathId));
+        }
+        return issues;
+    }
+
+    private static List<SectionOnPath> trimmedSections(SolvePath path, boolean singleSectionTrim) {
+        if (singleSectionTrim) return List.of(path.sections().getFirst());
+        List<SectionOnPath> sections = new ArrayList<>();
+        for (int i = 0; i < path.choices().size(); i++) {
+            SubjectChoice choice = path.choices().get(i);
+            if (choice.countsByPick().stream().distinct().count() < 2) continue;
+            int fullCount = choice.countsByPick().stream().mapToInt(Integer::intValue).max().orElseThrow();
+            SubjectPick pick = path.picks().get(i).getFirst();
+            for (int j = 0; j < pick.counts().size(); j++) {
+                if (pick.counts().get(j) < fullCount) sections.add(pick.sections().get(j));
+            }
+        }
+        return sections;
+    }
 
     private static Map<String, SectionOnPath> pathSections(SolvePath path) {
         Map<String, SectionOnPath> sections = new LinkedHashMap<>();

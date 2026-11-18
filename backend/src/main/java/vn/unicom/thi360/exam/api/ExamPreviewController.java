@@ -210,6 +210,9 @@ public class ExamPreviewController {
             if (!"SECTION".equals(target.kind()) && !"PATH".equals(target.kind()) && !"EXAM".equals(target.kind())) {
                 throw new ValidationException((String) null);
             }
+            if ("SECTION".equals(target.kind()) && (target.sectionId() == null || target.sectionId().isBlank())) {
+                throw new ValidationException((String) null);
+            }
             String pathId = "PATH".equals(target.kind()) ? target.pathId() : "default";
             if (pathId == null || pathId.isBlank()) throw new ValidationException((String) null);
             long seed = request.seed() == null ? java.util.concurrent.ThreadLocalRandom.current().nextLong() : request.seed();

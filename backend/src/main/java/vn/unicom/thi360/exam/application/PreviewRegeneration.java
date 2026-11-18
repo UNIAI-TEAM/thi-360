@@ -87,6 +87,7 @@ final class PreviewRegeneration {
     private static void expected(PreviewPartIndex index, SectionOnPath section, Map<String, Set<String>> result) {
         String part = index.sectionPart(section.sectionId());
         if (part == null) throw new IllegalStateException("Selected section has no part");
+        if (section.groups().isEmpty()) return;
         Set<String> groups = result.computeIfAbsent(part, ignored -> new HashSet<>());
         section.groups().forEach(group -> groups.add(group.groupId()));
     }

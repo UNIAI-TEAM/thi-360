@@ -12,14 +12,12 @@ import vn.unicom.thi360.exam.domain.QuestionBlock;
 final class PreviewPartIndex {
     private final Map<String, String> sections = new HashMap<>();
     private final Map<String, String> groups = new HashMap<>();
-    private final Map<String, String> options = new HashMap<>();
 
     PreviewPartIndex(ExamStructureDocument document) {
         for (ExamPart part : document.parts()) {
             indexSections(part.id(), part.sections());
             indexSections(part.id(), part.subjectPool());
             for (var option : part.options()) {
-                options.put(option.id(), part.id());
                 indexSections(part.id(), option.sections());
                 indexBlocks(part.id(), option.blocks());
                 if (!option.blocks().isEmpty()) sections.put(option.id() + ":blocks", part.id());
@@ -29,7 +27,6 @@ final class PreviewPartIndex {
 
     String sectionPart(String sectionId) { return sections.get(sectionId); }
     String groupPart(String groupId) { return groups.get(groupId); }
-    String optionPart(String optionId) { return options.get(optionId); }
 
     private void indexSections(String partId, List<ExamSection> values) {
         for (ExamSection section : values) {

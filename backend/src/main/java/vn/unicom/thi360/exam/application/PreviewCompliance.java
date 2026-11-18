@@ -60,7 +60,7 @@ final class PreviewCompliance {
         for (var item : dropped) {
             var candidate = candidates.get(key(item.pick()));
             if (candidate == null || candidate.units().size() != 1) throw new IllegalStateException("Dropped candidate missing");
-            SectionOnPath section = selected.stream().filter(s -> s.subjectCode().equals(item.subjectCode()))
+            SectionOnPath section = selected.stream().filter(s -> s.sectionId().equals(item.sectionId()))
                     .findFirst().orElseThrow();
             String block = droppedBlock(section, witnesses, candidates, blocks);
             add(data, perSection, perBlock,
@@ -162,7 +162,7 @@ final class PreviewCompliance {
             Predicate<Datum> matches = datum -> switch (dimension) {
                 case "GRADE" -> Objects.equals(code, datum.unit().gradeCode());
                 case "DIFFICULTY" -> Objects.equals(code, datum.unit().difficultyCode());
-                default -> datum.unit().competencyCodes() != null && datum.unit().competencyCodes().contains(code);
+                default -> code != null && datum.unit().competencyCodes() != null && datum.unit().competencyCodes().contains(code);
             };
             addRow(result, dimension + ":" + code, scope, required.get(i), enforcement, basis, data, matches);
         }
@@ -170,61 +170,23 @@ final class PreviewCompliance {
 
     private static void topics(List<Compliance> result, String scope, List<TopicQuota> quotas,
             List<Datum> data, Map<java.util.UUID, CatalogItemView> knowledge) {
-        if (quotas.isEmpty()) return;
-        int[] assigned = new int[data.size()];
-        java.util.Arrays.fill(assigned, -1);
-        int[] counts = new int[quotas.size()];
-        boolean[] visited = new boolean[data.size()];
-        for (int i = 0; i < data.size(); i++) {
-            java.util.Arrays.fill(visited, false);
-            assignTopic(i, data, quotas, knowledge, assigned, counts, visited);
-        }
-        for (int q = 0; q < quotas.size(); q++) {
-            TopicQuota quota = quotas.get(q);
+        for (TopicQuota quota : quotas) {
             QuotaBasis basis = quota.basis() == null ? QuotaBasis.QUESTION : quota.basis();
             QuotaEnforcement enforcement = quota.enforcement() == null ? QuotaEnforcement.REQUIRED : quota.enforcement();
-            BigDecimal actual = BigDecimal.ZERO;
-            BigDecimal removed = BigDecimal.ZERO;
-            for (int i = 0; i < data.size(); i++) {
-                if (assigned[i] != q) continue;
-                BigDecimal amount = weight(data.get(i), basis);
-                if (data.get(i).dropped()) removed = removed.add(amount);
-                else actual = actual.add(amount);
-            }
+            Predicate<Datum> matches = datum -> matchesTopic(datum, quota, knowledge);
+            BigDecimal removed = sum(data, basis, datum -> datum.dropped() && matches.test(datum));
+            BigDecimal actual = sum(data, basis, datum -> !datum.dropped() && matches.test(datum));
             result.add(new Compliance("TOPIC:" + quota.id(), scope,
-                    BigDecimal.valueOf(quota.count()).subtract(removed), actual, enforcement.name(), basis.name(),
-                    data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null));
+                    BigDecimal.valueOf(quota.count()).subtract(removed), actual, enforcement.name(),
+                    basis.name() + "_INDEPENDENT", data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null));
         }
-    }
-
-    private static boolean assignTopic(int unit, List<Datum> data, List<TopicQuota> quotas,
-            Map<java.util.UUID, CatalogItemView> knowledge, int[] assigned, int[] counts, boolean[] visited) {
-        if (visited[unit]) return false;
-        visited[unit] = true;
-        for (int q = 0; q < quotas.size(); q++) {
-            TopicQuota quota = quotas.get(q);
-            if (!matchesTopic(data.get(unit), quota, knowledge)) continue;
-            int capacity = Math.max(0, quota.count());
-            if (counts[q] < capacity) {
-                assigned[unit] = q;
-                counts[q]++;
-                return true;
-            }
-            for (int other = 0; other < data.size(); other++) {
-                if (assigned[other] == q && assignTopic(other, data, quotas, knowledge, assigned, counts, visited)) {
-                    assigned[unit] = q;
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static boolean matchesTopic(Datum datum, TopicQuota quota,
             Map<java.util.UUID, CatalogItemView> knowledge) {
-        if ((!quota.gradeCodes().isEmpty() && !quota.gradeCodes().contains(datum.unit().gradeCode()))
-                || (!quota.difficultyCodes().isEmpty() && !quota.difficultyCodes().contains(datum.unit().difficultyCode()))
-                || (!quota.groupIds().isEmpty() && !quota.groupIds().contains(datum.blockId()))) return false;
+        if ((!quota.gradeCodes().isEmpty() && !contains(quota.gradeCodes(), datum.unit().gradeCode()))
+                || (!quota.difficultyCodes().isEmpty() && !contains(quota.difficultyCodes(), datum.unit().difficultyCode()))
+                || (!quota.groupIds().isEmpty() && !contains(quota.groupIds(), datum.blockId()))) return false;
         if (datum.unit().mapidIds() == null) return false;
         for (var node : datum.unit().mapidIds()) {
             for (var root : quota.nodeIds()) {
@@ -244,15 +206,48 @@ final class PreviewCompliance {
                     (quota.subjectCodes().isEmpty() || quota.subjectCodes().contains(datum.subjectCode()))
                     && !quota.excludeSubjectCodes().contains(datum.subjectCode())).toList();
             QuotaBasis basis = quota.basis() == null ? QuotaBasis.QUESTION : quota.basis();
+            List<BigDecimal> percentages = quota.buckets().stream().filter(bucket -> bucket.count() == null)
+                    .map(ExamQuota.Bucket::percent).toList();
+            List<BigDecimal> apportioned = apportionPercentages(percentages, sum(data, basis, ignored -> true));
+            int percentageIndex = 0;
             for (ExamQuota.Bucket bucket : quota.buckets()) {
                 BigDecimal required = bucket.count() != null ? BigDecimal.valueOf(bucket.count())
-                        : sum(data, basis, ignored -> true).multiply(bucket.percent()).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                        : apportioned.get(percentageIndex++);
                 addRow(result, "EXAM:" + quota.id() + ":" + String.join(",", bucket.codes()), "EXAM",
                         required, quota.enforcement() == null ? QuotaEnforcement.REQUIRED : quota.enforcement(), basis, data,
-                        datum -> bucket.codes().contains(quota.dimension() == ExamQuota.Dimension.GRADE
+                        datum -> contains(bucket.codes(), quota.dimension() == ExamQuota.Dimension.GRADE
                                 ? datum.unit().gradeCode() : datum.unit().difficultyCode()));
             }
         }
+    }
+
+    private static boolean contains(List<String> values, String value) {
+        return value != null && values.contains(value);
+    }
+
+    private static List<BigDecimal> apportionPercentages(List<BigDecimal> percentages, BigDecimal total) {
+        if (percentages.isEmpty()) return List.of();
+        List<BigDecimal> fractions = new ArrayList<>(percentages.size());
+        List<BigDecimal> result = new ArrayList<>(percentages.size());
+        BigDecimal sum = BigDecimal.ZERO;
+        int floorTotal = 0;
+        for (BigDecimal percent : percentages) {
+            BigDecimal value = total.multiply(percent).divide(BigDecimal.valueOf(100));
+            BigDecimal floor = value.setScale(0, RoundingMode.FLOOR);
+            fractions.add(value.subtract(floor));
+            result.add(floor);
+            floorTotal += floor.intValueExact();
+            sum = sum.add(value);
+        }
+        List<Integer> order = new ArrayList<>();
+        for (int i = 0; i < percentages.size(); i++) order.add(i);
+        order.sort((a, b) -> fractions.get(b).compareTo(fractions.get(a)));
+        int missing = sum.setScale(0, RoundingMode.HALF_UP).intValueExact() - floorTotal;
+        for (int i = 0; i < missing; i++) {
+            int index = order.get(i);
+            result.set(index, result.get(index).add(BigDecimal.ONE));
+        }
+        return result;
     }
 
     private static List<BigDecimal> requirements(List<BigDecimal> values, MatrixUnit unit, QuotaBasis basis, List<Datum> data) {

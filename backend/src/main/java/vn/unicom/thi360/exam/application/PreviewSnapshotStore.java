@@ -18,7 +18,7 @@ public class PreviewSnapshotStore {
     private static final String KEY_PREFIX = "exam:preview:";
     private static final Duration TTL = Duration.ofMinutes(30);
 
-    public record Dropped(QuestionPick pick, String subjectCode) {}
+    public record Dropped(QuestionPick pick, String subjectCode, String sectionId) {}
 
     public record PartSnapshot(List<GroupWitness> groups, List<QuestionSourcePort.Candidate> candidates,
                                List<QuestionSourcePort.Version> versions, List<Dropped> droppedQuestions) {}

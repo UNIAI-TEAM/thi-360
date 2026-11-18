@@ -44,7 +44,8 @@ public class ExamPreviewStore {
     }
 
     public record Snapshot(UUID id, String code, String timing, Integer durationMinutes,
-                           String practiceScoring, BigDecimal maxScore, JsonNode parts, Exam exam) {}
+                           String practiceScoring, BigDecimal maxScore, JsonNode parts, Exam exam,
+                           JsonNode publishedCombinations) {}
 
     @Transactional(readOnly = true)
     public Snapshot load(UUID id) {
@@ -54,12 +55,21 @@ public class ExamPreviewStore {
         ObjectNode parts = ((ObjectNode) structure.getParts()).deepCopy();
         if (structure.getExamQuotas() != null) parts.set("examQuotas", structure.getExamQuotas().deepCopy());
         return new Snapshot(exam.getId(), exam.getCode(), exam.getTiming(), exam.getDurationMinutes(),
-                exam.getPracticeScoring(), exam.getMaxScore(), parts, exam);
+                exam.getPracticeScoring(), exam.getMaxScore(), parts, exam, null);
     }
 
     /** Reconstruct the checker inputs from the immutable published configuration and structure. */
     @Transactional(readOnly = true)
     public Snapshot loadVersion(UUID id, int version, String pathId) {
+        return loadVersionSnapshot(id, version, pathId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Snapshot loadVersionForSection(UUID id, int version, String sectionId) {
+        return loadVersionSnapshot(id, version, null, sectionId);
+    }
+
+    private Snapshot loadVersionSnapshot(UUID id, int version, String pathId, String sectionId) {
         var rows = jdbc.query("select config::text, parts::text, published_path_ids from exam.exam_version "
                         + "where exam_id = ? and version_no = ?",
                 (rs, n) -> new VersionRow(rs.getString(1), rs.getString(2),
@@ -68,7 +78,11 @@ public class ExamPreviewStore {
         try {
             JsonNode config = mapper.readTree(rows.getFirst().config());
             JsonNode parts = mapper.readTree(rows.getFirst().parts());
-            boolean published = rows.getFirst().paths().contains(pathId);
+            if (parts instanceof ObjectNode object && config.has("examQuotas")) {
+                object.set("examQuotas", config.path("examQuotas").deepCopy());
+            }
+            boolean published = sectionId == null ? rows.getFirst().paths().contains(pathId)
+                    : publishedSection(parts, config, rows.getFirst().paths(), sectionId);
             if (!published) throw new NotFoundException("PATH_NOT_FOUND", "Exam version path not found");
             Integer duration = integer(config, "durationMinutes");
             BigDecimal max = decimal(config, "maxScore");
@@ -76,7 +90,9 @@ public class ExamPreviewStore {
             String scoring = config.path("practiceScoring").asText();
             Exam exam = new Exam(id, config.path("code").asText(), config.path("name").asText(),
                     null, config.path("scope").asText(), timing, duration, max, scoring, Instant.EPOCH, null);
-            exam.changeScope(null, config.path("scope").asText(), text(config, "partCode"), null,
+            String kindItemId = text(config, "kindItemId");
+            exam.changeScope(kindItemId == null ? null : UUID.fromString(kindItemId),
+                    config.path("scope").asText(), text(config, "partCode"), null,
                     integer(config, "structureYear"), integer(config, "matrixYear"),
                     config.path("yearsConfirmed").asBoolean(), text(config, "templateCode"),
                     timing, duration, max, null, Instant.EPOCH);
@@ -84,10 +100,48 @@ public class ExamPreviewStore {
             int questionCount = 0;
             for (JsonNode part : parts.path("parts")) questionCount += part.path("questionCount").asInt();
             exam.applyStructureSummary(questionCount, false, false, 0);
-            return new Snapshot(id, exam.getCode(), timing, duration, scoring, max, parts, exam);
+            return new Snapshot(id, exam.getCode(), timing, duration, scoring, max, parts, exam,
+                    config.path("combinations"));
         } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
             throw new IllegalStateException("Invalid exam version snapshot", ex);
         }
+    }
+
+    private static boolean publishedSection(JsonNode parts, JsonNode config, List<String> paths, String sectionId) {
+        if (paths.isEmpty()) return false;
+        for (JsonNode part : parts.path("parts")) {
+            for (JsonNode section : part.path("sections")) {
+                if (sectionId.equals(section.path("id").asText())) return true;
+            }
+            for (JsonNode option : part.path("options")) {
+                String optionId = option.path("id").asText();
+                for (JsonNode section : option.path("sections")) {
+                    if (sectionId.equals(section.path("id").asText()) && containsOption(paths, optionId)) return true;
+                }
+            }
+            for (JsonNode section : part.path("subjectPool")) {
+                if (!sectionId.equals(section.path("id").asText())) continue;
+                String partId = part.path("id").asText();
+                String subject = section.path("subjectCode").asText();
+                for (JsonNode combination : config.path("combinations")) {
+                    if (!partId.equals(combination.path("partId").asText())
+                            || !containsOption(paths, partId + ":" + combination.path("code").asText())) continue;
+                    for (JsonNode selected : combination.path("subjects")) {
+                        if (subject.equals(selected.path("code").asText())) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsOption(List<String> paths, String optionId) {
+        for (String path : paths) {
+            for (String component : path.split("\\+", -1)) {
+                if (component.equals(optionId)) return true;
+            }
+        }
+        return false;
     }
 
     private record VersionRow(String config, String parts, List<String> paths) {}

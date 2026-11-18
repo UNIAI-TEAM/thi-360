@@ -7,10 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import vn.unicom.thi360.exam.domain.solver.CandidateSource;
 import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
-import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Captures the selected versions and their solver metadata, not mutable current question state. */
@@ -19,7 +17,7 @@ final class PreviewSnapshotAssembler {
             Map<String, GroupWitness> groups,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions,
-            List<PreviewSnapshotStore.Dropped> dropped, List<SectionOnPath> sections, CandidateSource source) {
+            List<PreviewSnapshotStore.Dropped> dropped) {
         Map<String, List<GroupWitness>> groupsByPart = new LinkedHashMap<>();
         for (GroupWitness group : groups.values()) {
             String part = index.groupPart(group.groupId());
@@ -28,7 +26,8 @@ final class PreviewSnapshotAssembler {
         }
         Map<String, List<PreviewSnapshotStore.Dropped>> droppedByPart = new LinkedHashMap<>();
         for (var item : dropped) {
-            String part = findDroppedPart(index, item, sections, source);
+            String part = index.sectionPart(item.sectionId());
+            if (part == null) throw new IllegalStateException("Dropped question has no part");
             droppedByPart.computeIfAbsent(part, ignored -> new ArrayList<>()).add(item);
         }
         Map<String, PreviewSnapshotStore.PartSnapshot> result = new LinkedHashMap<>();
@@ -66,20 +65,6 @@ final class PreviewSnapshotAssembler {
         return Map.copyOf(result);
     }
 
-    private static String findDroppedPart(PreviewPartIndex index, PreviewSnapshotStore.Dropped item,
-            List<SectionOnPath> sections, CandidateSource source) {
-        for (SectionOnPath section : sections) {
-            if (!section.subjectCode().equals(item.subjectCode())) continue;
-            for (var group : section.groups()) {
-                var candidates = source.candidatesFor(group);
-                if (candidates != null && candidates.stream().anyMatch(c -> c.questionId().equals(item.pick().questionId()))) {
-                    String part = index.groupPart(group.groupId());
-                    if (part != null) return part;
-                }
-            }
-        }
-        throw new IllegalStateException("Dropped question has no part");
-    }
 
     private static QuestionSourcePort.VersionKey key(QuestionPick pick) {
         return new QuestionSourcePort.VersionKey(UUID.fromString(pick.questionId()), pick.versionNo());
