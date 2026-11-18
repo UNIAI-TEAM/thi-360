@@ -1,16 +1,19 @@
 "use client";
 
-import { Badge, Button, cn, focusRing } from "@thi360/ui";
+import { Badge, Button, cn, focusRing, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
-import type { ChoiceGroup, ExamPartOption } from "../types";
+import type { ChoiceGroup, ExamPartOption, ExamSectionState } from "../types";
 import { allocateSubjectCounts } from "../subject-choice";
 import type { StructureNames } from "./exam-structure-issues";
+import { SECTION_STATE_TONES } from "./exam-structure-list";
 
 export interface SubjectChoiceOptionsProps {
   option: ExamPartOption;
   names: StructureNames;
   onSelectSection: (sectionId: string) => void;
+  /** Trạng thái kiểm tra theo môn (H2, R-35); `null` hoặc bỏ trống: không hiện cột trạng thái. */
+  sectionStates?: readonly ExamSectionState[] | null;
 }
 
 /** Ba ví dụ chia số câu của B10 (hai môn cùng nhóm, hoặc cả ba môn cùng nhóm tự nhiên). */
@@ -24,8 +27,9 @@ const EXAMPLES: ChoiceGroup[][] = [
  * Phương án "chọn môn" của phần tự chọn (HSA Khoa học, spec D25): một phương án có 5 môn, mỗi môn soạn một lần; học viên
  * chọn 3 môn. Số câu từng môn theo quy tắc chia của B10, chỉ đọc ở đây (không còn 10 tổ hợp KH-n, không sinh tổ hợp).
  */
-export function SubjectChoiceOptions({ option, names, onSelectSection }: SubjectChoiceOptionsProps) {
+export function SubjectChoiceOptions({ option, names, sectionStates, onSelectSection }: SubjectChoiceOptionsProps) {
   const t = useTranslations("exams.subjectChoice");
+  const listT = useTranslations("exams.structure.list");
   const headingId = useId();
   const picks = option.chooseSubjects ?? 0;
   const counts = option.countsByPick ?? [];
@@ -71,12 +75,18 @@ export function SubjectChoiceOptions({ option, names, onSelectSection }: Subject
               <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("subject")}</th>
               <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("group")}</th>
               <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold">{t("groups")}</th>
+              {sectionStates && <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("status")}</th>}
               <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
             </tr>
           </thead>
           <tbody>
             {option.sections.map((section) => {
               const subject = names.subject(section.subjectCode);
+              // Máy chủ đã trả trạng thái nhưng môn chưa có dòng nào: môn chưa thiết lập nhóm lấy câu thì "Chưa hoàn tất".
+              const state = sectionStates
+                ? (sectionStates.find((item) => item.sectionId === section.id)?.state ??
+                  (section.blocks.length === 0 ? "INCOMPLETE" : null))
+                : null;
               return (
                 <tr key={section.id}>
                   <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">{subject}</th>
@@ -84,6 +94,11 @@ export function SubjectChoiceOptions({ option, names, onSelectSection }: Subject
                     {section.choiceGroup ? <Badge className="font-medium">{t(`choiceGroup.${section.choiceGroup}`)}</Badge> : "—"}
                   </td>
                   <td className="border-b border-border px-2 py-2 text-right tabular-nums">{section.blocks.length}</td>
+                  {sectionStates && (
+                    <td className="border-b border-border px-2 py-2">
+                      {state ? <StatusChip tone={SECTION_STATE_TONES[state]}>{listT(`state.${state}`)}</StatusChip> : "—"}
+                    </td>
+                  )}
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("editSubject", { subject })} onClick={() => onSelectSection(section.id)}>
                       {t("edit")}

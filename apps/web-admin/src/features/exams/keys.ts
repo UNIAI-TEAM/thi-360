@@ -7,6 +7,7 @@ export const EXAMS_QUERY_KEYS = {
   list: (query: ListExamsQuery) => ["exams", "list", query] as const,
   detail: (id: string) => ["exams", "detail", id] as const,
   structure: (id: string) => ["exams", "structure", id] as const,
+  structureSummary: (id: string) => ["exams", "structure", id, "summary"] as const,
   templates: () => ["exams", "templates"] as const,
   suggestedCode: (query: SuggestExamCodeQuery) => ["exams", "suggested-code", query] as const,
   available: (query: AvailableQuestionsQuery) => ["exams", "available-questions", query] as const,

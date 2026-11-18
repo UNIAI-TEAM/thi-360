@@ -1,21 +1,25 @@
 "use client";
 
 import { Button, Card, ConfirmDialog, EmptyState, LiveStatus, notify, Skeleton, StatusChip } from "@thi360/ui";
-import { ClipboardCheck, Info, LayoutList, Save, TriangleAlert } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Info, LayoutList, Save, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { yearsNeedConfirmation } from "../check";
-import { examTabHref } from "../editor-tabs";
+import { examTabFromPathname, examTabHref } from "../editor-tabs";
 import { combinationsForKind } from "../create-exam-schema";
-import { type MatrixAxes, structureTotals, validateStructure } from "../matrix";
-import { useExam, useExamStructure, useExamTemplates, useUpdateExamStructure } from "../queries";
+import type { MatrixAxes } from "../matrix";
+import { useExam, useExamStructure, useExamStructureSummary, useExamTemplates, useUpdateExamStructure } from "../queries";
+import { useRunExamCheck } from "../review-queries";
+import type { ExamCheckResult, RunExamCheckRequest } from "../review-types";
 import type { ExamDetail, ExamPart, ExamSection, ExamStructure, ExamTemplate } from "../types";
 import { BlockEditor } from "./block-editor";
 import {
+  selectionScope,
   addBlock,
   addBranch,
   attachCombination,
@@ -23,6 +27,8 @@ import {
   defaultSelection,
   ENGLISH_CODE,
   findBlock,
+  type DraftLocation,
+  draftTotals,
   findSection,
   moveBlock,
   newBlock,
@@ -39,15 +45,22 @@ import {
   updateBlock,
   updatePart,
   updateSection,
+  validateDraft,
 } from "./exam-structure-draft";
-import { issueTarget, optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
-import { ExamStructureOutline } from "./exam-structure-outline";
+import { ExamEditorActions } from "./exam-editor-actions";
+import { optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
+import { describeStructureChanges } from "./exam-structure-changes";
+import { ExamStructureLeaveDialog, type LeaveDestination } from "./exam-structure-leave-dialog";
+import { ExamStructureList } from "./exam-structure-list";
 import { ExamStructurePartPanel } from "./exam-structure-part-panel";
 import { ExamStructureSubjectPanel } from "./exam-structure-subject-panel";
+import { ExamStructureSummaryRegion } from "./exam-structure-summary";
+import { checkIssueTarget } from "./exam-structure-check-result";
 import { StructureVersionPicker } from "./structure-version-picker";
-import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
+import { SubjectChoiceNav } from "./subject-choice-nav";
+import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 
-const SELECTION_PARAMS = { part: "part", section: "section", block: "block" } as const;
+const SELECTION_PARAMS = { part: "part", option: "option", section: "section", block: "block" } as const;
 
 function readSelectionFromUrl(): StructureSelection | null {
   if (typeof window === "undefined") return null;
@@ -57,18 +70,24 @@ function readSelectionFromUrl(): StructureSelection | null {
   const sectionId = params.get(SELECTION_PARAMS.section);
   if (sectionId) return { kind: "section", sectionId };
   const partId = params.get(SELECTION_PARAMS.part);
+  const optionId = params.get(SELECTION_PARAMS.option);
+  if (partId && optionId) return { kind: "option", partId, optionId };
   return partId ? { kind: "part", partId } : null;
 }
 
-/** Ghi mục đang mở vào `?block=` / `?section=` / `?part=` (giữ tham số xem trạng thái của màn) để tải lại hoặc gửi đường dẫn vẫn mở đúng chỗ. */
+/** Ghi mục đang mở vào `?block=` / `?section=` / `?option=&part=` / `?part=` (giữ tham số xem trạng thái của màn) để tải lại hoặc gửi đường dẫn vẫn mở đúng chỗ. */
 function writeSelectionToUrl(selection: StructureSelection): void {
   const url = new URL(window.location.href);
   url.searchParams.delete(SELECTION_PARAMS.block);
   url.searchParams.delete(SELECTION_PARAMS.section);
+  url.searchParams.delete(SELECTION_PARAMS.option);
   url.searchParams.delete(SELECTION_PARAMS.part);
   if (selection.kind === "block") url.searchParams.set(SELECTION_PARAMS.block, selection.blockId);
   else if (selection.kind === "section") url.searchParams.set(SELECTION_PARAMS.section, selection.sectionId);
-  else url.searchParams.set(SELECTION_PARAMS.part, selection.partId);
+  else {
+    url.searchParams.set(SELECTION_PARAMS.part, selection.partId);
+    if (selection.kind === "option") url.searchParams.set(SELECTION_PARAMS.option, selection.optionId);
+  }
   window.history.replaceState(window.history.state, "", url);
 }
 
@@ -87,7 +106,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
 
   if (structureQuery.isPending || referenceQuery.isPending || examQuery.isPending) {
     return (
-      <div role="status" aria-label={common("loading")} className="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div role="status" aria-label={common("loading")} className="grid grid-cols-1 gap-4 lg:grid-cols-[18.75rem_minmax(0,1fr)]">
         <Skeleton className="h-96" />
         <div className="flex flex-col gap-4">
           <Skeleton className="h-24" />
@@ -168,9 +187,14 @@ function StructureEditor({
   template: ExamTemplate | null;
 }) {
   const t = useTranslations("exams.structure");
+  const examsT = useTranslations("exams");
   const format = useFormatter();
+  const router = useRouter();
   const lookup = useReferenceLookup(reference);
   const save = useUpdateExamStructure(exam.id);
+  const check = useRunExamCheck(exam.id);
+  const summaryQuery = useExamStructureSummary(exam.id);
+  const [checkResult, setCheckResult] = useState<ExamCheckResult | null>(null);
 
   const [draft, setDraft] = useState<ExamPart[]>(structure.parts);
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
@@ -193,11 +217,23 @@ function StructureEditor({
   const [liveMessage, setLiveMessage] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const guard = useUnsavedChangesGuard(dirty);
+  const [pendingSelection, setPendingSelection] = useState<StructureSelection | null>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
-  const select = useCallback((next: StructureSelection) => {
+  /** Mở mục không qua hộp thoại: sau chính thao tác của người dùng (thêm, xóa nhóm) hoặc sau khi đã lưu. */
+  const selectNow = useCallback((next: StructureSelection) => {
     setSelection(next);
     writeSelectionToUrl(next);
   }, []);
+  /** Chuyển sang môn hoặc phần khác khi còn thay đổi chưa lưu thì hỏi bằng hộp thoại ba nút (R-05). */
+  const select = (next: StructureSelection) => {
+    if (dirty && current && selectionScope(draft, next) !== selectionScope(draft, current)) {
+      setLeaveError(null);
+      setPendingSelection(next);
+      return;
+    }
+    selectNow(next);
+  };
 
   const axes = useMemo<MatrixAxes>(
     () => ({
@@ -216,10 +252,10 @@ function StructureEditor({
     [lookup, reference],
   );
   const shared = exam.timing === "SHARED";
-  const issues = useMemo(() => validateStructure(draft, axes, { timing: exam.timing }), [draft, axes, exam.timing]);
+  const issues = useMemo(() => validateDraft(draft, axes, { timing: exam.timing }), [draft, axes, exam.timing]);
   const totals = useMemo(
-    () => structureTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null }),
-    [draft, shared, exam.durationMinutes],
+    () => draftTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null, combinations: structure.combinations ?? [] }),
+    [draft, shared, exam.durationMinutes, structure.combinations],
   );
   const issueText = useStructureIssueText(draft, names);
 
@@ -235,43 +271,166 @@ function StructureEditor({
 
   const announce = (message: string) => setLiveMessage(message);
 
-  const handleAddBlock = (partId: string, optionId: string | null, section: ExamSection) => {
+  const handleAddBlock = (location: DraftLocation, section: ExamSection) => {
     const block = newBlock(t("newBlockName", { subject: lookup.subject(section.subjectCode) }));
-    setDraft((parts) => addBlock(parts, { partId, optionId, sectionId: section.id }, block));
-    select({ kind: "block", blockId: block.id });
+    setDraft((parts) => addBlock(parts, location, block));
+    selectNow({ kind: "block", blockId: block.id });
     announce(t("blockAdded", { name: block.name }));
   };
 
-  const runSave = () => {
+  const saveErrorText = (error: unknown) => {
+    // 412: bài đã được người khác sửa (không tự nạp lại để không mất bản nháp); 422: dữ liệu sai kiểu.
+    const status = getErrorStatus(error);
+    return status === 412 ? t("saveConflict") : status === 422 ? t("saveInvalid") : t("saveError");
+  };
+
+  const runSave = (options: { onSaved?: () => void; onFailed?: (message: string) => void } = {}) => {
     save.mutate(
       { parts: draft, expectedRevision: exam.revision },
       {
         onSuccess: () => {
           setBaseline(JSON.stringify(draft));
+          // Lưu làm kết quả kiểm tra cũ hết hiệu lực: các môn đã đổi chuyển thành "Cần kiểm tra lại".
+          setCheckResult(null);
           const message = exam.check.status === "UNCHECKED" ? t("saved") : t("savedRecheck");
           notify.success(message);
           announce(message);
+          options.onSaved?.();
         },
         onError: (error) => {
-          // 412: bài đã được người khác sửa (không tự nạp lại để không mất bản nháp); 422: dữ liệu sai kiểu.
-          const status = getErrorStatus(error);
-          const message = status === 412 ? t("saveConflict") : status === 422 ? t("saveInvalid") : t("saveError");
-          notify.error(message);
+          const message = saveErrorText(error);
+          // Có `onFailed` thì nơi gọi tự hiện lỗi (ví dụ `role="alert"` trong hộp thoại chuyển mục); không toast kẻo trùng.
+          if (!options.onFailed) notify.error(message);
           announce(message);
+          options.onFailed?.(message);
         },
       },
     );
   };
 
+  /** Kiểm tra chạy trên bản đã lưu: còn thay đổi chưa lưu thì lưu trước, lưu lỗi thì không kiểm tra. */
+  const runCheck = (request: Omit<RunExamCheckRequest, "examId">, after?: (result: ExamCheckResult) => void) => {
+    const run = () =>
+      check.mutate(request, {
+        onSuccess: (result) => {
+          setCheckResult(result);
+          announce(t("check.done"));
+          after?.(result);
+        },
+        onError: () => {
+          notify.error(t("check.error"));
+          announce(t("check.error"));
+        },
+      });
+    if (dirty) runSave({ onSaved: run });
+    else run();
+  };
+
+  /** "Tiếp tục": kiểm tra cả bài, rồi sang tab Kiểm tra nếu không có lỗi, hoặc dẫn tới lỗi đầu tiên. */
+  const continueToReview = () =>
+    runCheck({ scope: "EXAM" }, (result) => {
+      const firstError = result.groups.flatMap((group) => group.issues).find((issue) => issue.severity === "ERROR");
+      if (!firstError) {
+        router.push(examTabHref(exam.id, "review"));
+        return;
+      }
+      const target = checkIssueTarget(firstError);
+      if (target) selectNow(target);
+    });
+
+  const leaveOpen = pendingSelection !== null || guard.pendingHref !== null;
+  const stayHere = () => {
+    setPendingSelection(null);
+    setLeaveError(null);
+    guard.stay();
+  };
+  const proceedLeave = () => {
+    const next = pendingSelection;
+    setPendingSelection(null);
+    setLeaveError(null);
+    if (next) selectNow(next);
+    else guard.leave();
+  };
+  const leaveAfterSave = () => runSave({ onSaved: proceedLeave, onFailed: setLeaveError });
+  const leaveAfterDiscard = () => {
+    setDraft(JSON.parse(baseline) as ExamPart[]);
+    proceedLeave();
+  };
+
+  /** Tên môn hoặc phần của một mục để gọi trong hộp thoại chuyển mục; nhóm gọi theo tên nhóm. */
+  const selectionName = (parts: readonly ExamPart[], target: StructureSelection, scope: boolean): string | null => {
+    if (target.kind === "part") return parts.find((part) => part.id === target.partId)?.name ?? null;
+    if (target.kind === "option") {
+      const option = parts.find((part) => part.id === target.partId)?.options.find((item) => item.id === target.optionId);
+      return option ? optionLabel(option, names) : null;
+    }
+    if (target.kind === "section") {
+      const found = findSection(parts, target.sectionId);
+      return found ? lookup.subject(found.section.subjectCode) : null;
+    }
+    const found = findBlock(parts, target.blockId);
+    if (!found) return null;
+    return scope ? lookup.subject(found.section.subjectCode) : found.block.name || t("block.untitled");
+  };
+  const leaveItemName = leaveOpen && current ? selectionName(draft, current, true) : null;
+  const leaveDestination: LeaveDestination = (() => {
+    if (pendingSelection) return { kind: "item", name: selectionName(draft, pendingSelection, false) ?? "" };
+    const href = guard.pendingHref;
+    const base = `/exams/${encodeURIComponent(exam.id)}`;
+    const path = href?.split(/[?#]/)[0] ?? "";
+    if (path !== base && !path.startsWith(`${base}/`)) return { kind: "page" };
+    const tab = examTabFromPathname(path);
+    return tab === "general" ? { kind: "general" } : { kind: "tab", tab: examsT(`editor.tabs.${tab}`) };
+  })();
+  const leaveChanges = useMemo(
+    () => (leaveOpen ? describeStructureChanges(JSON.parse(baseline) as ExamPart[], draft, lookup.subject) : []),
+    [leaveOpen, baseline, draft, lookup],
+  );
+
   const blockContext = current?.kind === "block" ? findBlock(draft, current.blockId) : null;
   const sectionContext = current?.kind === "section" ? findSection(draft, current.sectionId) : null;
-  const selectedPart = current?.kind === "part" ? draft.find((part) => part.id === current.partId) : null;
+  const selectedPart =
+    current?.kind === "part" || current?.kind === "option" ? draft.find((part) => part.id === current.partId) : null;
+  const sectionStates = checkResult?.sectionStates ?? structure.sectionStates ?? null;
+  const summaryLoad = summaryQuery.isPending ? "loading" : summaryQuery.data ? "ready" : "unavailable";
+  const checkSectionId = sectionContext?.section.id ?? blockContext?.section.id ?? null;
+  const checkRequest: Omit<RunExamCheckRequest, "examId"> | null = checkSectionId
+    ? { scope: "SECTION", sectionId: checkSectionId }
+    : selectedPart
+      ? { scope: "PART", partId: selectedPart.id }
+      : null;
+  const checkAction = checkRequest ? (
+    <Button type="button" variant="secondary" size="sm" loading={check.isPending || save.isPending} onClick={() => runCheck(checkRequest)}>
+      <ClipboardCheck />
+      <span>{checkRequest.scope === "SECTION" ? t("check.section") : t("check.part")}</span>
+    </Button>
+  ) : null;
 
   return (
     <div className="@container flex flex-col gap-4">
+      <ExamEditorActions>
+        {dirty && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
+        <Button type="button" variant="secondary" disabled={!dirty || save.isPending} onClick={() => setConfirmDiscard(true)}>
+          {t("discard")}
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => runSave()} loading={save.isPending} disabled={!dirty}>
+          <Save />
+          <span>{t("save")}</span>
+        </Button>
+        <Button type="button" variant="secondary" loading={check.isPending || save.isPending} onClick={() => runCheck({ scope: "EXAM" })}>
+          <ClipboardCheck />
+          <span>{t("check.all")}</span>
+        </Button>
+        <Button type="button" loading={check.isPending || save.isPending} onClick={continueToReview}>
+          <span>{t("check.continue")}</span>
+          <ArrowRight />
+        </Button>
+      </ExamEditorActions>
       <Card padding="md" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <dl aria-label={t("summary.label")} className="flex flex-wrap gap-x-6 gap-y-2 text-body">
+            <SummaryItem label={t("summary.kind")} value={kind?.name ?? exam.kind} />
+            <SummaryItem label={t("summary.scope")} value={examsT(`scope.${exam.scope}`)} />
             <SummaryItem
               label={t("summary.questions")}
               value={
@@ -300,33 +459,10 @@ function StructureEditor({
               }
               warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
             />
-            <SummaryItem
-              label={t("summary.allocated")}
-              value={t("summary.allocatedValue", { allocated: totals.allocated, missing: totals.missing })}
-            />
-            <SummaryItem label={t("summary.issues")} value={format.number(issues.length)} warn={issues.length > 0} />
           </dl>
-          <div className="flex flex-wrap items-center gap-2">
-            {dirty && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!dirty || save.isPending}
-              onClick={() => setConfirmDiscard(true)}
-            >
-              {t("discard")}
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href={examTabHref(exam.id, "review")}>
-                <ClipboardCheck />
-                <span>{t("checkLink")}</span>
-              </Link>
-            </Button>
-            <Button type="button" onClick={runSave} loading={save.isPending} disabled={!dirty}>
-              <Save />
-              <span>{t("save")}</span>
-            </Button>
-          </div>
+          <Button asChild variant="secondary">
+            <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
+          </Button>
         </div>
         <p className="text-caption text-text-muted">
           {exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote")}
@@ -335,10 +471,13 @@ function StructureEditor({
           exam={exam}
           templates={templates}
           dirty={dirty}
+          currentParts={draft}
           onAnnounce={announce}
           onApplied={(parts) => {
             setDraft(parts);
             setBaseline(JSON.stringify(parts));
+            // Phiên bản mới làm kết quả kiểm tra cũ hết hiệu lực: huy hiệu trạng thái tính lại từ đầu.
+            setCheckResult(null);
           }}
         />
         {yearsPending && (
@@ -358,36 +497,31 @@ function StructureEditor({
             <span>{t("expertNote", { note: template.expertNote })}</span>
           </p>
         )}
-        {issues.length > 0 && (
-          <details className="rounded-md border border-warning/40 bg-warning-bg px-3 py-2">
-            <summary className="cursor-pointer text-body font-medium text-warning">
-              {t("issuesSummary", { count: issues.length })}
-            </summary>
-            <ul className="mt-2 flex flex-col gap-1.5">
-              {issues.map((issue, index) => (
-                <li key={index} className="flex flex-wrap items-start justify-between gap-2 text-body text-text">
-                  <span className="min-w-0 flex-1">{issueText(issue)}</span>
-                  <Button type="button" variant="link" size="sm" onClick={() => select(issueTarget(issue))}>
-                    {t("issueGo")}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
         <LiveStatus message={liveMessage} />
       </Card>
 
-      <div className="grid grid-cols-1 items-start gap-4 @5xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <ExamStructureOutline
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[18.75rem_minmax(0,1fr)]">
+        <ExamStructureList
           parts={draft}
+          combinations={structure.combinations ?? []}
+          sectionStates={sectionStates}
           selection={current}
           issues={issues}
           names={names}
           onSelect={select}
-          onAddBlock={handleAddBlock}
         />
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col gap-4">
+          {sectionContext?.option?.kind === "SUBJECT_CHOICE" && (
+            <SubjectChoiceNav
+              option={sectionContext.option}
+              sectionId={sectionContext.section.id}
+              names={names}
+              onOpenOption={() =>
+                select({ kind: "option", partId: sectionContext.part.id, optionId: sectionContext.option!.id })
+              }
+              onOpenSection={(sectionId) => select({ kind: "section", sectionId })}
+            />
+          )}
           {sectionContext ? (
             <ExamStructureSubjectPanel
               key={sectionContext.section.id}
@@ -398,7 +532,8 @@ function StructureEditor({
               reference={reference}
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
-              onAddBlock={() => handleAddBlock(sectionContext.part.id, sectionContext.location.optionId, sectionContext.section)}
+              onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
+              headerAction={checkAction}
             />
           ) : blockContext ? (
             <BlockEditor
@@ -427,9 +562,10 @@ function StructureEditor({
               onRemove={() => {
                 const name = blockContext.block.name;
                 setDraft((parts) => removeBlock(parts, blockContext.block.id));
-                select({ kind: "part", partId: blockContext.part.id });
+                selectNow({ kind: "part", partId: blockContext.part.id });
                 announce(t("blockRemoved", { name }));
               }}
+              headerAction={checkAction}
             />
           ) : selectedPart ? (
             <ExamStructurePartPanel
@@ -472,7 +608,7 @@ function StructureEditor({
               onSectionCount={(optionId, sectionId, questionCount) =>
                 setDraft((parts) => setSectionCount(parts, { partId: selectedPart.id, optionId, sectionId }, questionCount))
               }
-              onAddBlock={(optionId, section) => handleAddBlock(selectedPart.id, optionId, section)}
+              onAddBlock={(optionId, section) => handleAddBlock({ partId: selectedPart.id, optionId, sectionId: section.id }, section)}
               onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
               onAttachCombination={(combination) => {
                 setDraft((parts) => attachCombination(parts, selectedPart.id, combination));
@@ -485,8 +621,21 @@ function StructureEditor({
               }}
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
               onSelectSection={(sectionId) => select({ kind: "section", sectionId })}
+              sectionStates={sectionStates}
+              headerAction={checkAction}
             />
           ) : null}
+          <ExamStructureSummaryRegion
+            summary={summaryQuery.data ?? null}
+            load={summaryLoad}
+            dirty={dirty}
+            local={{ allocated: totals.allocated, total: totals.totalQuestions, missing: totals.missing }}
+            issues={issues}
+            issueText={issueText}
+            checkResult={checkResult}
+            names={names}
+            onSelect={select}
+          />
         </div>
       </div>
 
@@ -502,7 +651,17 @@ function StructureEditor({
           announce(t("discarded"));
         }}
       />
-      <UnsavedChangesDialog guard={guard} />
+      <ExamStructureLeaveDialog
+        open={leaveOpen}
+        saving={save.isPending}
+        error={leaveError}
+        itemName={leaveItemName}
+        destination={leaveDestination}
+        changes={leaveChanges}
+        onSaveAndGo={leaveAfterSave}
+        onDiscard={leaveAfterDiscard}
+        onStay={stayHere}
+      />
     </div>
   );
 }

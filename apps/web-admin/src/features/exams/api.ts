@@ -16,6 +16,7 @@ export const listExams = (query: ListExamsQuery, signal?: AbortSignal): Promise<
 export const getExam = http.getExam;
 export const listExamTemplates = http.listExamTemplates;
 export const getExamStructure = http.getExamStructure;
+export const getExamStructureSummary = http.getExamStructureSummary;
 export const suggestExamCode = http.suggestExamCode;
 export const createExam = http.createExam;
 export const updateExamInfo = http.updateExamInfo;
@@ -36,6 +37,7 @@ export interface ExamsApiDeps {
   getExam: typeof getExam;
   listExamTemplates: typeof listExamTemplates;
   getExamStructure: typeof getExamStructure;
+  getExamStructureSummary: typeof getExamStructureSummary;
   suggestExamCode: typeof suggestExamCode;
   createExam: typeof createExam;
   updateExamInfo: typeof updateExamInfo;
@@ -52,6 +54,7 @@ export const defaultExamsApiDeps: ExamsApiDeps = {
   getExam,
   listExamTemplates,
   getExamStructure,
+  getExamStructureSummary,
   suggestExamCode,
   createExam,
   updateExamInfo,

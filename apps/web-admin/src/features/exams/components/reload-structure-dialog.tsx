@@ -11,12 +11,20 @@ import {
 } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 
-/** Một phần sẽ được nạp lại: tên, số câu, thời lượng (`shared`: bài dùng thời lượng chung; `null`: mẫu chưa ghi). */
-export interface ReloadPartRow {
+/** Một phần của cấu trúc: tên, số câu, thời lượng (`shared`: bài dùng thời lượng chung; `null`: mẫu chưa ghi). */
+export interface ReloadPartSide {
   name: string;
   questionCount: number;
   durationMinutes: number | null;
   shared: boolean;
+}
+
+/**
+ * Một phần sẽ được nạp lại. `before` có mặt (đổi phiên bản cấu trúc): hiện "trước → sau"; `before: null` là phần mới
+ * chưa có trong cấu trúc hiện tại; bỏ trống thì chỉ hiện phần sẽ nạp.
+ */
+export interface ReloadPartRow extends ReloadPartSide {
+  before?: ReloadPartSide | null;
 }
 
 export interface ReloadStructureDialogProps {
@@ -27,6 +35,12 @@ export interface ReloadStructureDialogProps {
   /** Các phần sẽ thay cấu trúc hiện tại (PBI-04 mục 5.3, mục 6: chỉ thay sau khi quản trị viên xác nhận). */
   parts: readonly ReloadPartRow[];
   confirmLabel: string;
+  /** Nhãn nút hủy; bỏ trống dùng "Giữ cấu trúc hiện tại". */
+  cancelLabel?: string;
+  /** Dòng nhỏ trên tiêu đề, ví dụ "Bước 1/2". */
+  step?: string;
+  /** Đoạn cuối dưới danh sách (điều xảy ra với thay đổi chưa lưu và trạng thái kiểm tra). */
+  note?: string;
   loading?: boolean;
   /** Lỗi của lần nạp vừa rồi, hiện ngay trong hộp thoại. */
   error?: string | null;
@@ -44,15 +58,25 @@ export function ReloadStructureDialog({
   description,
   parts,
   confirmLabel,
+  cancelLabel,
+  step,
+  note,
   loading = false,
   error,
   onConfirm,
 }: ReloadStructureDialogProps) {
   const t = useTranslations("exams.reload");
+  const sideMeta = (side: ReloadPartSide) =>
+    side.shared
+      ? t("partMetaShared", { questions: side.questionCount })
+      : side.durationMinutes
+        ? t("partMeta", { questions: side.questionCount, minutes: side.durationMinutes })
+        : t("partMetaNoDuration", { questions: side.questionCount });
   return (
     <Dialog open={open} onOpenChange={(next) => (loading && !next ? undefined : onOpenChange(next))}>
       <DialogContent size="md" closeLabel={t("close")}>
         <DialogHeader>
+          {step && <p className="text-caption font-semibold text-text-muted">{step}</p>}
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
@@ -70,18 +94,20 @@ export function ReloadStructureDialog({
                   <span className="min-w-0 font-medium wrap-break-word text-text">
                     {t("partName", { order: index + 1, name: part.name })}
                   </span>
-                  <span className="text-caption whitespace-nowrap text-text-muted tabular-nums">
-                    {part.shared
-                      ? t("partMetaShared", { questions: part.questionCount })
-                      : part.durationMinutes
-                        ? t("partMeta", { questions: part.questionCount, minutes: part.durationMinutes })
-                        : t("partMetaNoDuration", { questions: part.questionCount })}
+                  <span className="text-caption text-text-muted tabular-nums">
+                    {part.before === undefined
+                      ? sideMeta(part)
+                      : t("partChange", {
+                          before: part.before ? t("partWithMeta", { name: part.before.name, meta: sideMeta(part.before) }) : t("partNone"),
+                          after: sideMeta(part),
+                        })}
                   </span>
                 </li>
               ))}
             </ol>
           )}
         </section>
+        {note && <p className="text-body text-text-secondary">{note}</p>}
         {error && (
           <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-body text-danger">
             {error}
@@ -89,7 +115,7 @@ export function ReloadStructureDialog({
         )}
         <DialogFooter>
           <Button type="button" variant="secondary" disabled={loading} onClick={() => onOpenChange(false)}>
-            {t("cancel")}
+            {cancelLabel ?? t("cancel")}
           </Button>
           <Button type="button" loading={loading} onClick={onConfirm}>
             {confirmLabel}

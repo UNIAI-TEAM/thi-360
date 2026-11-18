@@ -51,6 +51,18 @@ export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsAp
   });
 }
 
+/**
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2). Không thử lại: vùng (d) dùng được khi bảng này lỗi (số tính trên màn hình),
+ * và thử lại làm chậm mọi thao tác ghi đang chờ làm mới nhóm `exams`.
+ */
+export function useExamStructureSummary(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  return useQuery({
+    queryKey: EXAMS_QUERY_KEYS.structureSummary(id),
+    queryFn: () => deps.getExamStructureSummary(id),
+    retry: false,
+  });
+}
+
 export function useSuggestedExamCode(query: SuggestExamCodeQuery, enabled: boolean, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.suggestedCode(query),
