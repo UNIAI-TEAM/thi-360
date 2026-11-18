@@ -157,6 +157,16 @@ class ExamCheckRowLockTests {
     }
 
     @Test
+    void aPartExamDoesNotLockMixedSetChildTypes() throws Exception {
+        templateWith(false, true, false, MIXED);
+        String edited = MIXED.replace("\"answerType\":\"TRUE_FALSE\"", "\"answerType\":\"SINGLE_CHOICE\"");
+        Exam part = scopedExam("PART", "T");
+        var facts = new ExamCheckTemplateFacts(catalog, templates, mapper).of(part);
+        var rules = new ExamCheckRules(mapper, part, document(edited), Map.of(), Map.of(), facts);
+        assertThat(codes(rules.common())).doesNotContain("BLOCK_COUNT_LOCKED");
+    }
+
+    @Test
     void aMixedSetKeepsItsLockWhenOnlyIntervalsOrKnowledgeFiltersAreRewritten() throws Exception {
         assertThat(mixedLocks(MIXED)).isEmpty();
         String split = MIXED.replace("{\"from\":1,\"to\":2,\"answerType\":\"TRUE_FALSE\"}",

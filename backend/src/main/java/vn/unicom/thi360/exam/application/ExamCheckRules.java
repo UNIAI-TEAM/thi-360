@@ -371,7 +371,7 @@ public final class ExamCheckRules {
      * does not matter, and conditions without an answer type (knowledge filters) are not part of it.
      */
     private static List<QuestionType> childTypes(QuestionBlock block) {
-        int size = block.setSize() == null ? 0 : block.setSize();
+        int size = block.setSize() == null ? 0 : Math.clamp(block.setSize(), 0, QuestionSourcePort.MAX_SET_CHILDREN);
         List<QuestionType> types = new ArrayList<>(java.util.Collections.nCopies(size, (QuestionType) null));
         for (ChildCondition condition : block.childConditions()) {
             if (condition.answerType() == null || condition.from() == null || condition.to() == null) continue;
