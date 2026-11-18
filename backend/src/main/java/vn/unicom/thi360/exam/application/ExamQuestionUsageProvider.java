@@ -210,17 +210,22 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         }
     }
 
-    /** One entry per slot index; a null entry is an unconfigured slot that uses the group's own conditions. */
+    /**
+     * Declared slot indices in 1..setCount (first declaration wins), plus one null entry, the group's
+     * own conditions, when any valid index is undeclared. Never sized by the nominal setCount.
+     */
     private static List<vn.unicom.thi360.exam.domain.BlockSlot> effectiveSlots(QuestionBlock block) {
         if (block.slots().isEmpty()) return java.util.Collections.singletonList(null);
         if (block.setCount() == null) return block.slots();
-        List<vn.unicom.thi360.exam.domain.BlockSlot> result = new ArrayList<>(block.setCount());
-        for (int index = 1; index <= block.setCount(); index++) {
-            final int slotIndex = index;
-            result.add(block.slots().stream()
-                    .filter(declared -> declared.index() != null && declared.index() == slotIndex)
-                    .findFirst().orElse(null));
+        int setCount = block.setCount();
+        java.util.Map<Integer, vn.unicom.thi360.exam.domain.BlockSlot> declared = new java.util.LinkedHashMap<>();
+        for (var slot : block.slots()) {
+            if (slot.index() != null && slot.index() >= 1 && slot.index() <= setCount) {
+                declared.putIfAbsent(slot.index(), slot);
+            }
         }
+        List<vn.unicom.thi360.exam.domain.BlockSlot> result = new ArrayList<>(declared.values());
+        if (declared.size() < setCount) result.add(null);
         return result;
     }
 

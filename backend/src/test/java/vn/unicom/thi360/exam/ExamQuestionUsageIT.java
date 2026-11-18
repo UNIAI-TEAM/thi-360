@@ -266,7 +266,10 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                    "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
                   {"id":"all-strict","questionType":"QUESTION_SET","setCount":2,"setSize":2,
                    "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
-                            {"index":2,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]}
+                            {"index":2,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
+                  {"id":"huge","questionType":"QUESTION_SET","setCount":1000000000,"setSize":2,
+                   "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
+                            {"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]}
                 ]}]}]}
                 """.formatted(topic.id());
         var document = new ExamStructureCodec(mapper).read(json);
@@ -279,7 +282,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsString());
                 String blocks = response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks").toString();
-                assertThat(blocks).contains("sparse").doesNotContain("all-strict");
+                assertThat(blocks).contains("sparse", "huge").doesNotContain("all-strict");
             }
         }
     }
