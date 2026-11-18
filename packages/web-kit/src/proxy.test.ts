@@ -543,6 +543,75 @@ describe("proxyApiRequest byte range (UNI-2698)", () => {
     expect(res.headers.get("content-length")).toBe("3");
   });
 
+  it("upstream nén (Content-Encoding khác identity) thì không chuyển tiếp Content-Length", async () => {
+    // Độ dài trên dây mô tả body còn nén; proxy gửi body đã giải mã nên length đó sai.
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: {
+          "content-type": "audio/mpeg",
+          "content-encoding": "gzip",
+          "accept-ranges": "bytes",
+          "content-length": "23",
+        },
+      }),
+    );
+
+    const res200 = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1"),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(res200.status).toBe(200);
+    expect(res200.headers.get("accept-ranges")).toBe("bytes");
+    expect(res200.headers.get("content-length")).toBeNull();
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([10, 20, 30, 40]), {
+        status: 206,
+        headers: {
+          "content-type": "audio/mpeg",
+          "content-encoding": "gzip",
+          "content-range": "bytes 0-3/10",
+          "accept-ranges": "bytes",
+          "content-length": "19",
+        },
+      }),
+    );
+
+    const res206 = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1", {
+        headers: { range: "bytes=0-3" },
+      }),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(res206.status).toBe(206);
+    expect(res206.headers.get("content-range")).toBe("bytes 0-3/10");
+    expect(res206.headers.get("content-length")).toBeNull();
+
+    // Content-Encoding: identity không đổi byte nào — Content-Length vẫn chuyển tiếp.
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: {
+          "content-type": "audio/mpeg",
+          "content-encoding": "identity",
+          "accept-ranges": "bytes",
+          "content-length": "3",
+        },
+      }),
+    );
+
+    const resIdentity = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1"),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(resIdentity.status).toBe(200);
+    expect(resIdentity.headers.get("content-length")).toBe("3");
+  });
+
   it("phản hồi JSON thường không mang Accept-Ranges: Content-Length vẫn bị bỏ như cũ", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ items: [] }), {

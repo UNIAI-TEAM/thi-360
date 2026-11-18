@@ -259,11 +259,21 @@ export async function proxyApiRequest(
   });
   // Content-Length bị bỏ mặc định vì proxy stream body (độ dài không bảo đảm khớp). Chỉ chuyển
   // tiếp khi upstream báo hỗ trợ byte range (206 luôn đủ điều kiện; 200 cần Accept-Ranges: bytes)
-  // để trình duyệt biết độ dài tệp — cần cho tua audio (UNI-2698).
+  // để trình duyệt biết độ dài tệp — cần cho tua audio (UNI-2698). Nếu upstream nén
+  // (Content-Encoding khác identity), fetch có thể đã giải mã body nên độ dài trên dây không còn
+  // đúng cho body proxy gửi đi: không chuyển tiếp Content-Length trong trường hợp đó.
   const upstreamAcceptRanges = upstream.headers.get("accept-ranges");
+  const upstreamContentEncoding = upstream.headers.get("content-encoding");
+  const hasNonIdentityEncoding =
+    upstreamContentEncoding !== null &&
+    upstreamContentEncoding
+      .split(",")
+      .map((token) => token.trim().toLowerCase())
+      .some((token) => token !== "" && token !== "identity");
   if (
-    upstream.status === 206 ||
-    (upstreamAcceptRanges !== null && /(^|,)\s*bytes\s*(,|$)/i.test(upstreamAcceptRanges))
+    !hasNonIdentityEncoding &&
+    (upstream.status === 206 ||
+      (upstreamAcceptRanges !== null && /(^|,)\s*bytes\s*(,|$)/i.test(upstreamAcceptRanges)))
   ) {
     const upstreamContentLength = upstream.headers.get("content-length");
     if (upstreamContentLength !== null) {
