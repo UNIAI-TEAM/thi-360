@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
@@ -29,7 +30,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class HscaVsatExamScopeIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
-
+    @Autowired private JdbcTemplate jdbc;
     // ----------------------------------------------------------------------------------------- row 3 and 6
 
     @Test
@@ -262,19 +263,29 @@ class HscaVsatExamScopeIT extends AbstractIntegrationTest {
 
     @Test
     void anOlderKindPartExamKeepsItsNonPromptTopicQuotas() throws Exception {
-        JsonNode exam = created(create("SP2E", "PART", "P1", "TOAN", 30, null));
-        String id = exam.path("id").asText();
-        JsonNode current = structure(id);
-        ArrayNode parts = current.path("parts").deepCopy();
-        ObjectNode section = (ObjectNode) parts.get(0).path("sections").get(0);
-        section.putArray("topicQuotas").add(mapper.createObjectNode()
-                .put("id", "sp2e-part-quota").put("name", "Chỉ tiêu tham khảo").put("count", 10)
-                .put("basis", "QUESTION").put("enforcement", "REFERENCE"));
-        save(id, current, parts).andExpect(status().isOk());
+        String templateCode = jdbc.queryForObject("""
+                select code from exam.exam_template where kind_code = 'SP2E' and scope = 'SUBJECT'
+                and subject_code = 'TOAN' and build_mode = 'STANDARD' and is_default
+                """, String.class);
+        assertThat(templateCode).isEqualTo("SP2E_MATH_2026");
+        ObjectNode structure = (ObjectNode) mapper.readTree(
+                jdbc.queryForObject("select structure::text from exam.exam_template where code = ?",
+                        String.class, templateCode));
+        ((ObjectNode) structure.path("parts").get(0).path("sections").get(0))
+                .putArray("topicQuotas").add(mapper.createObjectNode()
+                        .put("id", "sp2e-part-quota").put("name", "Chỉ tiêu tham khảo").put("count", 10)
+                        .put("basis", "QUESTION").put("enforcement", "REFERENCE"));
+        jdbc.update("update exam.exam_template set structure = cast(? as jsonb) where code = ?",
+                structure.toString(), templateCode);
 
-        JsonNode quotas = structure(id).path("parts").get(0).path("sections").get(0).path("topicQuotas");
+        JsonNode exam = created(create("SP2E", "PART", "P1", "TOAN", 30, null));
+        JsonNode quotas = structure(exam.path("id").asText())
+                .path("parts").get(0).path("sections").get(0).path("topicQuotas");
         assertThat(quotas).hasSize(1);
-        assertThat(quotas.get(0).path("id").asText()).isEqualTo("sp2e-part-quota");
+        JsonNode quota = quotas.get(0);
+        assertThat(quota.path("id").asText()).isEqualTo("sp2e-part-quota");
+        assertThat(quota.path("basis").asText()).isEqualTo("QUESTION");
+        assertThat(quota.path("count").asInt()).isEqualTo(10);
     }
 
     @Test
