@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -276,6 +278,59 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
         assertThat(result.path("groups").findValuesAsText("code")).contains("PART_POINTS_MISMATCH");
     }
 
+    /**
+     * R3-5 regression: generic PART templates (no subject tag) keep the original reload
+     * behavior — the exam clock and declared scale come from the template, not the edited
+     * overview part row. HSA_PART_MATH (RAW) reloads to the declared 50 even after the
+     * part row was edited to 40.
+     */
+    @Test
+    void nativePartReloadTakesTheDeclaredScale() throws Exception {
+        JsonNode exam = created(createNative("HSA", "TOAN", 75));
+        assertThat(exam.path("templateCode").asText()).isEqualTo("HSA_PART_MATH");
+        String id = exam.path("id").asText();
+        editOverview(id, null, 40);
+        reload(id, "HSA_PART_MATH", "KEEP_EDITED");
+        JsonNode part = structure(id).path("parts").get(0);
+        assertThat(part.path("maxPoints").decimalValue()).isEqualByComparingTo("40");
+        JsonNode detail = detail(id);
+        assertThat(detail.path("practiceScoring").asText()).isEqualTo("RAW");
+        assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("50");
+    }
+
+    /**
+     * R3-5 regression: VACT_PART_LOGIC keeps its original clock behavior — its template
+     * declares no exam-level duration, so the entered clock survives a reload even when
+     * the edited part row carries 0. (The LINEAR max policy is owned by FIX-RELOAD/UNI-2699
+     * and is intentionally not asserted here.)
+     */
+    @Test
+    void nativePartReloadKeepsTheClock() throws Exception {
+        JsonNode exam = created(createNative("VACT", "LOGIC", 45));
+        assertThat(exam.path("templateCode").asText()).isEqualTo("VACT_PART_LOGIC");
+        String id = exam.path("id").asText();
+        editOverview(id, 0, null);
+        reload(id, "VACT_PART_LOGIC", "KEEP_EDITED");
+        assertThat(structure(id).path("parts").get(0).path("durationMinutes").asInt()).isEqualTo(0);
+        assertThat(detail(id).path("durationMinutes").asInt()).isEqualTo(45);
+    }
+
+    /** H41 scope check: only the V-SAT English P2/P3/P4 PART templates carry a subject code. */
+    @Test
+    void onlyVsatEnglishPartTemplatesCarrySubjectCodes() throws Exception {
+        JsonNode list = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        Set<String> tagged = new TreeSet<>();
+        for (JsonNode t : list) {
+            if ("PART".equals(t.path("scope").asText()) && !t.path("subjectCode").asText("").isEmpty()) {
+                tagged.add(t.path("code").asText());
+            }
+        }
+        assertThat(tagged).containsExactlyInAnyOrder("VSAT_PART_ANH_P2", "VSAT_PART_ANH_P3", "VSAT_PART_ANH_P4");
+    }
+
+
     /** Row 12: a part exam of another V-SAT subject is still cut from the subject template. */
     @Test
     void partOfAnotherVsatSubjectIsStillCut() throws Exception {
@@ -362,9 +417,13 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
     }
 
     private void reload(String id, String policy) throws Exception {
+        reload(id, "VSAT_PART_ANH_P3", policy);
+    }
+
+    private void reload(String id, String templateCode, String policy) throws Exception {
         mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
                         .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateCode\":\"VSAT_PART_ANH_P3\",\"confirmReplace\":true,"
+                        .content("{\"templateCode\":\"" + templateCode + "\",\"confirmReplace\":true,"
                                 + "\"overviewPolicy\":\"" + policy + "\",\"expectedRevision\":"
                                 + structure(id).path("revision").asLong() + "}"))
                 .andExpect(status().isOk());
@@ -389,6 +448,18 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
                 .put("code", "B21-" + UUID.randomUUID().toString().substring(0, 8))
                 .put("subjectCode", subject);
         if (partCode != null) body.put("partCode", partCode);
+        if (duration != null) body.put("durationMinutes", duration);
+        return mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .contentType(MediaType.APPLICATION_JSON).content(body.toString()));
+    }
+
+    /** Create a PART exam on a generic (untagged) native template: HSA_PART_MATH, VACT_PART_LOGIC, ... */
+    private ResultActions createNative(String kind, String partCode, Integer duration) throws Exception {
+        ObjectNode body = mapper.createObjectNode().put("kind", kind).put("scope", "PART")
+                .put("name", "BE21 " + kind + " " + partCode)
+                .put("code", "B21-" + UUID.randomUUID().toString().substring(0, 8))
+                .put("partCode", partCode);
         if (duration != null) body.put("durationMinutes", duration);
         return mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                 .header("Idempotency-Key", UUID.randomUUID().toString())

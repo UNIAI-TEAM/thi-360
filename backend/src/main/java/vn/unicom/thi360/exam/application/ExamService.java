@@ -909,14 +909,16 @@ public class ExamService {
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
-        // BE-21 (R2-1, R2-2): a dedicated PART template never derives the exam clock or the exam
-        // scale from the overview part row. The clock is the template's declared exam-level
-        // duration or, when the template declares none, the exam's existing one. Only a RAW exam
-        // takes its scale from the final part-row points (a dedicated template as fallback); a
-        // LINEAR (or other) scoring keeps maxScore/referenceMax untouched. The legacy cut of a
-        // part from a subject template keeps taking both values from that part row.
+        // BE-21 (R2-1, R2-2): a subject-tagged PART template (H41: V-SAT English P2-P4, the
+        // only such templates) never derives the exam clock or the exam scale from the
+        // overview part row. The clock is the template's declared exam-level duration or, when
+        // the template declares none, the exam's existing one. Only a RAW exam takes its scale
+        // from the final part-row points (a dedicated template as fallback); a LINEAR (or
+        // other) scoring keeps maxScore/referenceMax untouched. Generic PART templates keep
+        // the original behavior (clock and declared scale come from the template), and the
+        // legacy cut of a part from a subject template still takes both values from the part row.
         boolean partExam = "PART".equals(exam.getScope());
-        boolean dedicated = partExam && "PART".equals(template.getScope());
+        boolean dedicated = partExam && "PART".equals(template.getScope()) && template.getSubjectCode() != null;
         // H41 (BE-21): a subject that has dedicated PART templates is never reloaded from the
         // subject template, whose single part would satisfy every part code (P1 of V-SAT English).
         if (subjectPart && templateService.hasPartTemplates(template.getKindCode(),
@@ -972,11 +974,11 @@ public class ExamService {
                     messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED));
         }
         Integer loadDuration = dedicated ? firstNonNull(template.getDurationMinutes(), exam.getDurationMinutes())
-                : partExam ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes();
+                : subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes();
         boolean rawScoring = "RAW".equals(exam.getPracticeScoring());
         BigDecimal loadScale = dedicated ? (rawScoring ? firstNonNull(doc.parts().getFirst().maxPoints(),
                 template.getMaxScore()) : null)
-                : partExam ? doc.parts().getFirst().maxPoints() : template.getMaxScore();
+                : subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore();
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), loadDuration, loadScale, actor, now);
         exam.setBuildMode(template.getBuildMode());
@@ -992,10 +994,10 @@ public class ExamService {
                         exam.getDurationMinutes(), null, actor, now);
                 scoringReset = true;
             } else {
-                BigDecimal base = partExam ? doc.parts().getFirst().maxPoints()
+                BigDecimal base = subjectPart ? doc.parts().getFirst().maxPoints()
                         : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
-                exam.applyScoringProfile(partExam ? null : scopedReferenceMax(profile, exam.getScope(), base),
-                        partExam ? "RAW" : profile.getPracticeScoring());
+                exam.applyScoringProfile(subjectPart ? null : scopedReferenceMax(profile, exam.getScope(), base),
+                        subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
                         exam.getDurationMinutes(), base, actor, now);
                 scoringReset = true;
