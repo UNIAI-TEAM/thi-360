@@ -6,6 +6,8 @@ import { useId } from "react";
 export interface BlockRadioOption<T extends string> {
   value: T;
   label: string;
+  /** Câu giải thích dưới nhãn, gắn vào lựa chọn bằng `aria-describedby` (không thành một phần của tên). */
+  hint?: string;
 }
 
 export interface BlockRadioGroupProps<T extends string> {
@@ -28,6 +30,7 @@ export function BlockRadioGroup<T extends string>({ legend, value, options, onCh
       <div className="flex flex-wrap gap-2">
         {options.map((option, index) => {
           const checked = option.value === value;
+          const hintId = option.hint ? `${name}-${option.value}-hint` : undefined;
           return (
             <label
               key={option.value}
@@ -44,9 +47,17 @@ export function BlockRadioGroup<T extends string>({ legend, value, options, onCh
                 checked={checked}
                 onChange={() => onChange(option.value)}
                 data-field={index === 0 ? anchor : undefined}
+                aria-describedby={hintId}
                 className={cn("size-4 shrink-0 accent-primary-fill", focusRing)}
               />
-              <span className={cn("font-semibold whitespace-nowrap", checked ? "text-primary-text" : "text-text")}>{option.label}</span>
+              <span className="flex flex-col py-1.5">
+                <span className={cn("font-semibold", option.hint ? "" : "whitespace-nowrap", checked ? "text-primary-text" : "text-text")}>{option.label}</span>
+                {option.hint && (
+                  <span id={hintId} aria-hidden="true" className="text-caption font-normal text-text-muted">
+                    {option.hint}
+                  </span>
+                )}
+              </span>
             </label>
           );
         })}

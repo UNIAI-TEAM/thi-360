@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, focusRing, IconButton } from "@thi360/ui";
+import { Button, Checkbox, cn, focusRing, IconButton } from "@thi360/ui";
 import { CircleMinus, ListTree } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useState } from "react";
@@ -33,11 +33,27 @@ export interface KnowledgeScopeFieldProps {
    * Mở hộp chọn không đổi `value` (R1-3): hủy giữ nguyên.
    */
   openRequest?: number;
+  /**
+   * Nhóm chùm và phạm vi của môn: ô "Mọi câu con thuộc chủ đề" (`knowledgeScope.everyChildInScope`). Chỉ hiện khi đã chọn
+   * MAPID ở "Theo chủ đề"; Toàn môn không có chủ đề nào để câu con thuộc về. Bỏ trống (nhóm câu đơn): không có ô.
+   */
+  everyChild?: { checked: boolean; onChange: (checked: boolean) => void; anchor?: string };
 }
 
-/** Bỏ các nút MAPID nhưng giữ lọc năng lực (R1-4); không còn gì thì quy về `null`. */
-function withoutNodes(scope: KnowledgeScope | null): KnowledgeScope | null {
-  return scope?.competencyCodes?.length ? { nodeIds: [], competencyCodes: scope.competencyCodes } : null;
+/**
+ * Phạm vi sau khi đặt lại danh sách MAPID: mọi đường làm rỗng `nodeIds` (chọn "Toàn môn", bỏ chip cuối, áp dụng hộp chọn
+ * với 0 mục) đi qua đây. Còn MAPID: giữ nguyên các khóa khác. Hết MAPID: giữ lọc năng lực (R1-4) và quy về `null` khi không
+ * còn gì. Cờ `everyChildInScope` khác nhau theo cấp: phạm vi của môn giữ cờ (đã đặt thì còn qua lưu và tải lại dù ô đang
+ * ẩn); phạm vi của nhóm (`blockLevel`) bỏ cờ, vì máy chủ coi mọi phạm vi nhóm khác `null` là ghi đè phạm vi của môn, nên
+ * `{ nodeIds: [], everyChildInScope }` làm nhóm mất kế thừa.
+ */
+function withNodeIds(scope: KnowledgeScope | null, nodeIds: string[], blockLevel: boolean): KnowledgeScope | null {
+  if (nodeIds.length > 0) return { ...(scope ?? EMPTY_SCOPE), nodeIds };
+  const kept: Omit<KnowledgeScope, "nodeIds"> = {
+    ...(scope?.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
+    ...(!blockLevel && scope?.everyChildInScope !== undefined ? { everyChildInScope: scope.everyChildInScope } : {}),
+  };
+  return Object.keys(kept).length > 0 ? { nodeIds: [], ...kept } : null;
 }
 
 /**
@@ -55,7 +71,9 @@ export function KnowledgeScopeField({
   anchor,
   strand = false,
   openRequest = 0,
+  everyChild,
 }: KnowledgeScopeFieldProps) {
+  const everyChildId = useId();
   const t = useTranslations("exams.scopeField");
   const radioName = useId();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -76,10 +94,12 @@ export function KnowledgeScopeField({
     return { nodeId, code: node?.code ?? nodeId, name: node?.name ?? "", primary: false };
   });
   const inheritedCount = inherited?.scope?.nodeIds.length ?? 0;
+  // Chỉ nhóm truyền `inherited` (phạm vi của môn mà nhóm kế thừa); môn không có.
+  const blockLevel = inherited !== undefined;
 
   const choose = (nextTopic: boolean) => {
     setTopicMode(nextTopic);
-    if (!nextTopic && hasOwn) onChange(withoutNodes(value));
+    if (!nextTopic && hasOwn) onChange(withNodeIds(value, [], blockLevel));
   };
   const options = [
     { key: "all", checked: !topic, label: t("all"), onSelect: () => choose(false) },
@@ -125,7 +145,7 @@ export function KnowledgeScopeField({
                 icon={<CircleMinus />}
                 className="size-8"
                 aria-label={t("remove", { code: ref.code, name: ref.name })}
-                onClick={() => onChange({ ...(value ?? EMPTY_SCOPE), nodeIds: (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId) })}
+                onClick={() => onChange(withNodeIds(value, (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId), blockLevel))}
               />
             </span>
           ))}
@@ -134,6 +154,25 @@ export function KnowledgeScopeField({
             <span>{t("pick")}</span>
           </Button>
           <p className="basis-full text-caption text-text-muted">{t("topicHint")}</p>
+          {everyChild && own.length > 0 && (
+            <div className="flex basis-full items-start gap-2">
+              <Checkbox
+                id={everyChildId}
+                data-field={everyChild.anchor}
+                aria-describedby={`${everyChildId}-hint`}
+                checked={everyChild.checked}
+                onCheckedChange={(checked) => everyChild.onChange(checked === true)}
+              />
+              <div className="flex flex-col">
+                <label htmlFor={everyChildId} className="cursor-pointer text-body font-medium text-text">
+                  {t("everyChild")}
+                </label>
+                <span id={`${everyChildId}-hint`} className="text-caption text-text-muted">
+                  {t("everyChildHint")}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <p className="flex flex-col text-body">
@@ -156,7 +195,7 @@ export function KnowledgeScopeField({
         defaultSubjectCode={subjectCode}
         description={t("pickerDescription", { name })}
         onApply={(refs) => {
-          onChange({ ...(value ?? EMPTY_SCOPE), nodeIds: refs.map((ref) => ref.nodeId) });
+          onChange(withNodeIds(value, refs.map((ref) => ref.nodeId), blockLevel));
           setPickerOpen(false);
         }}
       />

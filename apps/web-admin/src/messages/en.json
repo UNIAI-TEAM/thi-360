@@ -4110,6 +4110,7 @@
         "childConditions": {
           "add": "Add a position condition",
           "empty": "No position conditions yet.",
+          "flexibleNote": "Position conditions cannot be used when you enter the total sub-questions only, because the set size is not fixed.",
           "from": "From sub-question no.",
           "hint": "The sub-question at a position or position range in the set must have at least one chosen MAPID. The system only picks sets with enough matching sub-questions.",
           "issues": {
@@ -4188,6 +4189,16 @@
         },
         "omittedBadge": "Essay – temporarily skipped",
         "positionRange": "{same, select, yes {Question {from, number}} other {Questions {from, number}–{to, number}}}",
+        "setMode": {
+          "legend": "How to declare sets",
+          "note": "Sets are always drawn whole; the group's count is the total number of sub-questions.",
+          "sets": "Declare the number of sets and sub-questions",
+          "setsHint": "Use when the subject experts require a specific number or size of sets.",
+          "total": "Enter the total sub-questions only",
+          "totalField": "Total sub-questions",
+          "totalFieldHint": "Enter a total of sub-questions greater than 0.",
+          "totalHint": "The system picks whole sets whose total is exactly this number."
+        },
         "slots": {
           "caption": "Conditions of {count, plural, one {# set} other {# sets}}",
           "clear": "Clear the conditions of set {index, number}",
@@ -4201,6 +4212,7 @@
             "tags": "Text type (tags)"
           },
           "dropped": "{sets, plural, one {# set is} other {# sets are}} left. The own conditions of set {list} were removed from the draft.",
+          "droppedToTotal": "Switched to entering the total only. The own conditions of set {list} were removed from the draft.",
           "edit": "Edit the conditions of set {index, number}",
           "editLabel": "Edit",
           "editorTitle": "Conditions of set {index, number}",
@@ -4213,6 +4225,11 @@
           "removeMapid": "Remove MAPID {code} {name} of set {index, number}",
           "setName": "Set {index, number}",
           "title": "Conditions of each set"
+        },
+        "summary": {
+          "flexible": "{count, plural, one {# sub-question} other {# sub-questions}} · up to {points, plural, one {# point} other {# points}}",
+          "sets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# sub-question} other {# sub-questions}} = {count, plural, one {# sub-question} other {# sub-questions}} · up to {points, plural, one {# point} other {# points}}",
+          "trueFalse": "{count, plural, one {# question} other {# questions}} · {statements, plural, one {# statement} other {# statements}} · up to {points, plural, one {# point} other {# points}}"
         },
         "switches": {
           "alwaysShuffle": "Questions in the group are always shuffled for each paper; the group keeps its position.",
@@ -5526,6 +5543,8 @@
       "strand": "By knowledge strand",
       "topicEmpty": "No topic chosen yet.",
       "topicHint": "A question matches when it has at least one chosen code. A chosen node also matches questions tagged with its child nodes.",
+      "everyChild": "Every sub-question belongs to the topic",
+      "everyChildHint": "When on, a set with any sub-question outside the topic is rejected. For example, a set of 2 Probability questions and 1 Geometry question is not chosen.",
       "inheritsSection": "By the subject's scope",
       "inheritsCount": "The subject's scope has {count, plural, one {# knowledge item} other {# knowledge items}}",
       "none": "No MAPID limit",
