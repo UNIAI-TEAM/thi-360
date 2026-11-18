@@ -45,6 +45,19 @@ final class TopicAssignments {
         return signature.toString();
     }
 
+    static int eligibilityScore(Prep.SubproblemContext ctx, int g, PathCandidate candidate) {
+        GroupQuota group = ctx.groups().get(g).group();
+        String id = group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
+        List<TopicQuota> section = ctx.sections().get(ctx.sectionOf()[g]).subjectQuota().topicQuotas();
+        List<TopicQuota> own = group.slotParent() == null ? group.topicQuotas() : group.slotParent().topicQuotas();
+        int score = 0;
+        for (CountingUnit unit : candidate.units()) {
+            for (TopicQuota quota : section) if (quota.count() > 0 && quota.matches(id, unit)) score++;
+            for (TopicQuota quota : own) if (quota.count() > 0 && quota.matches(id, unit)) score++;
+        }
+        return score;
+    }
+
     /** Null means the selected units cannot meet all quotas. */
     static Map<Pick, List<TopicAssignment>> assign(Prep.SubproblemContext ctx,
             List<List<Integer>> selected, Runnable deadline) {

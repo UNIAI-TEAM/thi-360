@@ -343,6 +343,24 @@ class SolverInputBuilderTest {
         var valid = builder.build(UUID.randomUUID(), document);
         assertThat(new PaperSolver().solveAll(valid.parts(), valid.candidates(), SolveMode.check()).status())
                 .isEqualTo(SolveStatus.VALID);
+        var percentage = new ExamQuota("percent", "difficulty", ExamQuota.Dimension.DIFFICULTY,
+                List.of(new ExamQuota.Bucket(List.of("EASY"), null, BigDecimal.valueOf(50)),
+                        new ExamQuota.Bucket(List.of("HARD"), null, BigDecimal.valueOf(50))),
+                QuotaBasis.QUESTION, QuotaEnforcement.REQUIRED, List.of("TOAN"), List.of());
+        var percentInput = builder.build(UUID.randomUUID(), new ExamStructureDocument(parts, List.of(percentage)));
+        assertThat(new PaperSolver().solveAll(percentInput.parts(), percentInput.candidates(), SolveMode.check()).status())
+                .isEqualTo(SolveStatus.VALID);
+        secondIsHard.set(false);
+        var reference = new ExamQuota("reference", "difficulty", ExamQuota.Dimension.DIFFICULTY,
+                quota.buckets(), QuotaBasis.QUESTION, QuotaEnforcement.REFERENCE, List.of("TOAN"), List.of());
+        var referenceInput = builder.build(UUID.randomUUID(), new ExamStructureDocument(parts, List.of(reference)));
+        assertThat(new PaperSolver().solveAll(referenceInput.parts(), referenceInput.candidates(), SolveMode.check()).status())
+                .isEqualTo(SolveStatus.VALID);
+        var multiSubject = new ExamQuota("multi", "difficulty", ExamQuota.Dimension.DIFFICULTY,
+                quota.buckets(), QuotaBasis.QUESTION, QuotaEnforcement.REFERENCE, List.of("TOAN", "LY"), List.of());
+        var multiInput = builder.build(UUID.randomUUID(), new ExamStructureDocument(parts, List.of(multiSubject)));
+        assertThat(new PaperSolver().solveAll(multiInput.parts(), multiInput.candidates(), SolveMode.check()).status())
+                .isEqualTo(SolveStatus.VALID);
     }
     @Test
     void builderExpandsRequiredTopicNodesAndIgnoresReferenceTopics() {

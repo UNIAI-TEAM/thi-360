@@ -41,6 +41,7 @@ final class PathSearch {
 
     // lớp đóng góp
     private final List<int[]> classVecs = new ArrayList<>();
+    private final List<String> classTopicSets = new ArrayList<>();
     private final Map<String, Integer> classOf = new HashMap<>();
     private final List<List<int[]>> members = new ArrayList<>(); // members[c] = các (g, i)
     private int[] consumed; // số thành viên đã lấy của từng lớp
@@ -132,12 +133,14 @@ final class PathSearch {
                     continue;
                 }
                 int[] vec = ctx.contrib()[g][i];
-                String signature = Arrays.toString(vec) + TopicAssignments.signature(ctx, g, pool.get(i));
+                String topicSet = TopicAssignments.signature(ctx, g, pool.get(i));
+                String signature = topicSet + Arrays.toString(vec);
                 Integer c = classOf.get(signature);
                 if (c == null) {
                     c = classVecs.size();
                     classOf.put(signature, c);
                     classVecs.add(vec);
+                    classTopicSets.add(topicSet);
                     members.add(new ArrayList<>());
                 }
                 members.get(c).add(new int[]{g, i});
@@ -163,7 +166,8 @@ final class PathSearch {
                     deadlineCheck.run();
                 }
                 if (m[0] != lastG) {
-                    pairs.add(new int[]{m[0], c});
+                    pairs.add(new int[]{m[0], c,
+                            TopicAssignments.eligibilityScore(ctx, m[0], ctx.cands().get(m[0]).get(m[1]))});
                     lastG = m[0];
                 }
             }
@@ -177,6 +181,10 @@ final class PathSearch {
             if (a[0] != b[0]) {
                 return Integer.compare(a[0], b[0]);
             }
+            int byEligibility = Integer.compare(b[2], a[2]);
+            if (byEligibility != 0) return byEligibility;
+            int byTopicSet = classTopicSets.get(a[1]).compareTo(classTopicSets.get(b[1]));
+            if (byTopicSet != 0) return byTopicSet;
             return Integer.compare(a[1], b[1]);
         });
         nPairs = pairs.size();
