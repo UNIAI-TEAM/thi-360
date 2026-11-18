@@ -174,6 +174,7 @@ Bổ sung V-ACT, THPTQG (UNI-2671, kế hoạch `docs/plans/2026-11-18-pbi04-dot
 - BE-13 UNI-2674, PR #100 (`2c0684f2`), 2026-11-18.
 - FE-3a phần thêm UNI-2663, PR #101 (`2f014645`), 2026-11-18.
 - FE-5 UNI-2677, PR #102 (`379549a0`), 2026-11-18.
+- FE-3b UNI-2664, PR #103 (`c5aecbfd`), 2026-11-18.
 
 ### Thứ tự làm
 
