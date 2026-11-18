@@ -255,6 +255,74 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void regenerationExcludesRetainedQuestionsFromOverlappingSources() throws Exception {
+        Subject subject = subject();
+        UUID first = question(subject, "SINGLE_CHOICE", "one", false);
+        UUID second = question(subject, "SINGLE_CHOICE", "two", false);
+        UUID examId = exam("""
+                [{"id":"p1","order":1,"name":"One","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s1","subjectCode":"%s","questionCount":1,
+                    "blocks":[{"id":"g1","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                 {"id":"p2","order":2,"name":"Two","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s2","subjectCode":"%s","questionCount":1,
+                    "blocks":[{"id":"g2","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]
+                """.formatted(subject.code(), subject.code()));
+        JsonNode initial = preview(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}");
+        String retained = initial.path("paper").path("parts").get(0).path("blocks").get(0)
+                .path("items").get(0).path("question").path("questionId").asText();
+        UUID alternative = first.toString().equals(retained) ? second : first;
+        jdbc.update("update questionbank.question set status='DRAFT' where id=?", alternative);
+        int usageBefore = jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'",
+                Integer.class, examId);
+        int auditBefore = jdbc.queryForObject("select count(*) from audit.audit_event where action='EXAM.PREVIEW' and target_id=?",
+                Integer.class, examId.toString());
+        String request = "{\"target\":{\"kind\":\"EXAM\"},\"seed\":5,\"basePreviewId\":\""
+                + initial.path("previewId").asText() + "\",\"regeneratePartIds\":[\"p2\"]}";
+        mockMvc.perform(post("/api/v1/admin/exams/" + examId + "/preview").with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.paper").doesNotExist()).andExpect(jsonPath("$.previewId").doesNotExist());
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'",
+                Integer.class, examId)).isEqualTo(usageBefore);
+        assertThat(jdbc.queryForObject("select count(*) from audit.audit_event where action='EXAM.PREVIEW' and target_id=?",
+                Integer.class, examId.toString())).isEqualTo(auditBefore);
+        jdbc.update("update questionbank.question set status='READY' where id=?", alternative);
+        JsonNode regenerated = preview(examId, request).path("paper").path("parts");
+        String retainedAgain = regenerated.get(0).path("blocks").get(0).path("items").get(0).path("question").path("questionId").asText();
+        String fresh = regenerated.get(1).path("blocks").get(0).path("items").get(0).path("question").path("questionId").asText();
+        assertThat(retainedAgain).isEqualTo(retained);
+        assertThat(fresh).isEqualTo(alternative.toString()).isNotEqualTo(retained);
+    }
+
+    @Test
+    void existingPreviewCannotCrossExamOrVersion() throws Exception {
+        Subject subject = subject();
+        question(subject, "SINGLE_CHOICE", "available", false);
+        String parts = part(subject.code(), "[{\"id\":\"g\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]", "null");
+        UUID examA = exam(parts);
+        UUID examB = exam(parts);
+        jdbc.update("insert into exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by) "
+                        + "values (?, ?, 1, cast(? as jsonb), cast(? as jsonb), array['default'], array['default'], ?, 'SERVING', 'PUBLISHED', now(), ?)",
+                UUID.randomUUID(), examA, "{\"code\":\"OLD\",\"name\":\"Old\",\"scope\":\"FULL\",\"timing\":\"SHARED\"}",
+                "{\"parts\":" + parts + "}", UUID.randomUUID(), UUID.randomUUID());
+        JsonNode initial = preview(examA, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}");
+        String base = "\"target\":{\"kind\":\"EXAM\"},\"seed\":5,\"basePreviewId\":\""
+                + initial.path("previewId").asText() + "\",\"regeneratePartIds\":[\"part\"]";
+        int usageA = jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'", Integer.class, examA);
+        int auditA = jdbc.queryForObject("select count(*) from audit.audit_event where action='EXAM.PREVIEW' and target_id=?", Integer.class, examA.toString());
+        for (String[] attempt : List.of(new String[]{examB.toString(), "{" + base + "}"},
+                new String[]{examA.toString(), "{" + base + ",\"version\":1}"})) {
+            mockMvc.perform(post("/api/v1/admin/exams/" + attempt[0] + "/preview").with(asUser(Permissions.EXAM_VIEW))
+                            .contentType(MediaType.APPLICATION_JSON).content(attempt[1]))
+                    .andExpect(status().isGone()).andExpect(jsonPath("$.code").value("PREVIEW_EXPIRED"));
+        }
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'", Integer.class, examA)).isEqualTo(usageA);
+        assertThat(jdbc.queryForObject("select count(*) from audit.audit_event where action='EXAM.PREVIEW' and target_id=?", Integer.class, examA.toString())).isEqualTo(auditA);
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'", Integer.class, examB)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from audit.audit_event where action='EXAM.PREVIEW' and target_id=?", Integer.class, examB.toString())).isZero();
+    }
+
+    @Test
     void expiredPreviewReturnsGoneAndKeepsPermissionChecks() throws Exception {
         UUID examId = UUID.randomUUID();
         String url = "/api/v1/admin/exams/" + examId + "/preview";
