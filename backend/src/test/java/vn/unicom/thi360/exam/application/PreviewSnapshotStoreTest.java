@@ -40,7 +40,7 @@ class PreviewSnapshotStoreTest {
                 List.of(candidate), List.of(version),
                 List.of(new PreviewSnapshotStore.Dropped(new QuestionPick("dropped", 1), "PHYSICS", "physics-section")),
                 new vn.unicom.thi360.exam.api.ExamPreviewController.PreviewPart(
-                        "part-1", "Part", 1, null, 1, 1, java.math.BigDecimal.ONE, null, List.of()),
+                        "part-1", "Part", 1, null, 1, 1, java.math.BigDecimal.ONE, null, List.of(), List.of()),
                 Map.of("science", List.of(17, 16)));
         var snapshot = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), 2, 42L, Map.of("part-1", part));
 

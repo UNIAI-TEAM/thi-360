@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.exam.application.ExamPreviewService;
+import vn.unicom.thi360.exam.domain.DisplaySegment;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.security.RequirePermission;
@@ -75,6 +76,11 @@ public class ExamPreviewController {
     public record RubricItem(String id, String description, BigDecimal points) {
     }
 
+    /** Tệp đính kèm của câu gốc; phát qua {@code GET /api/v1/admin/question-assets/{id}}. */
+    @Schema(name = "ExamPreviewAttachment")
+    public record PreviewAttachment(String id, String name, String mime) {
+    }
+
     /** Một câu (câu đơn hoặc câu con của bộ) trong đề xem trước. */
     @Schema(name = "ExamPreviewQuestion")
     public record PreviewQuestion(int number, String questionId, String code, Integer version,
@@ -89,7 +95,9 @@ public class ExamPreviewController {
                                   @Schema(types = {"integer", "null"}, description = "Original solver-selected question position")
                                   Integer originalNumber,
                                   @Schema(types = {"array", "null"}, description = "Topic quota IDs assigned to this question")
-                                  List<String> assignedTopicQuotaIds) {
+                                  List<String> assignedTopicQuotaIds,
+                                  @Schema(description = "Attachments of a single question; empty for a child of a set")
+                                  List<PreviewAttachment> attachments) {
     }
 
     /** Một mục trên đề: câu đơn ({@code kind=QUESTION}) hoặc nguyên bộ ({@code kind=SET}). */
@@ -98,7 +106,9 @@ public class ExamPreviewController {
                               Integer version, boolean simulated, String passage,
                               List<PreviewQuestion> children,
                               @Schema(types = {"integer", "null"}, description = "Original solver-selected item position")
-                              Integer originalOrder) {
+                              Integer originalOrder,
+                              @Schema(description = "Attachments of the set's root question; empty for a single question")
+                              List<PreviewAttachment> attachments) {
     }
 
     @Schema(name = "ExamPreviewAllocationCell")
@@ -134,7 +144,9 @@ public class ExamPreviewController {
     public record PreviewPart(String partId, String name, Integer order,
                               Integer durationMinutes, int firstNumber, int lastNumber,
                               BigDecimal points, BigDecimal maxPoints,
-                              List<PreviewBlock> blocks) {
+                              List<PreviewBlock> blocks,
+                              @Schema(description = "Declared display segments of the part; empty when it has none")
+                              List<DisplaySegment> displaySegments) {
     }
 
     @Schema(name = "ExamPreviewCheck")
@@ -177,9 +189,11 @@ public class ExamPreviewController {
                                String partId, String partName, String sectionId, String subjectCode,
                                String blockId, String blockName, String optionId, String gradeCode,
                                String difficultyCode, String dimension, String competencyCode,
-                               String answerType, Integer subjectCount, Integer required,
-                               Integer available, Integer timeLimitSeconds,
-                               List<String> questionCodes, ExamCheckApiModels.Location location) {
+                               String answerType, Integer subjectCount, BigDecimal required,
+                               BigDecimal available, Integer timeLimitSeconds,
+                               List<String> questionCodes, ExamCheckApiModels.Location location,
+                               @Schema(types = {"string", "null"}, description = "Display segment code of DISPLAY_SEGMENT_MISMATCH")
+                               String segmentCode) {
     }
 
     @Schema(name = "ExamPreviewCompliance")

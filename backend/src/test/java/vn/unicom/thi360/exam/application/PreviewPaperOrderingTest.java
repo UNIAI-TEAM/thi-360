@@ -18,10 +18,10 @@ class PreviewPaperOrderingTest {
         PreviewQuestion keep = question("q2", 2, false);
         PreviewQuestion child = question("q3", 3, false);
         List<PreviewItem> items = List.of(item(shuffle), item(keep),
-                new PreviewItem("SET", null, "set", "SET", 1, false, "passage", List.of(child), null));
+                new PreviewItem("SET", null, "set", "SET", 1, false, "passage", List.of(child), null, List.of()));
         var block = new PreviewBlock("g", "Group", "MATH", "SINGLE_CHOICE", false, BigDecimal.ONE,
                 1, 3, 3, null, null, null, List.of(), items);
-        var part = new PreviewPart("p", "Part", 1, 10, 1, 3, BigDecimal.valueOf(3), null, List.of(block));
+        var part = new PreviewPart("p", "Part", 1, 10, 1, 3, BigDecimal.valueOf(3), null, List.of(block), List.of());
         var paper = new PreviewPaper(3, BigDecimal.valueOf(3), 10, true, false, List.of(part), List.of(), List.of(), List.of());
         var document = new ExamStructureDocument(List.of());
 
@@ -45,11 +45,10 @@ class PreviewPaperOrderingTest {
                 """.formatted(shuffle));
         var options = List.of("a", "b", "c", "d", "e", "f").stream()
                 .map(value -> new PreviewOption(value, value, false)).toList();
-        return new PreviewQuestion(number, id, id, 1, "SINGLE_CHOICE", false, id, null, null,
-                null, BigDecimal.ONE, options, null, null, null, body, null, null, null, List.of("topic-" + id));
+        return new PreviewQuestion(number, id, id, 1, "SINGLE_CHOICE", false, id, null, null, null, BigDecimal.ONE, options, null, null, null, body, null, null, null, List.of("topic-" + id), List.of());
     }
 
     private static PreviewItem item(PreviewQuestion question) {
-        return new PreviewItem("QUESTION", question, null, null, null, false, null, null, null);
+        return new PreviewItem("QUESTION", question, null, null, null, false, null, null, null, List.of());
     }
 }
