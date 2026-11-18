@@ -45,9 +45,12 @@ public class ExamCheckTemplateFacts {
         return template(exam, standard, unpublishable);
     }
 
-    /** Structure of the loaded template when it has {@code fixed_counts = true}; null otherwise. */
-    ExamStructureDocument locked(Exam exam) {
-        return template(exam, null, null).lockedTemplate();
+    /**
+     * The facts that mark a section in the section states: every lock of the loaded template (H27, H42, H43) and no
+     * publish ban, so the exam-level ban marks no section.
+     */
+    ExamCheckRules.TemplateFacts forSections(Exam exam) {
+        return template(exam, null, null);
     }
 
     /**

@@ -243,6 +243,66 @@ class ExamCheckRowLockTests {
         return check(exam, document(structure)).result();
     }
 
+    // ---- section states: the locks of rows 1 to 4 mark their section on the structure screen ------------------
+
+    @Test
+    void aChangedLockedRowMarksItsSectionOfASubjectExamAndAPartExamOfTheSameTemplateStaysUnlocked() throws Exception {
+        templateWith(false, true, false, ROWS);
+        String edited = ROWS.replace("\"questionCount\":20", "\"questionCount\":22")
+                .replace("\"MULTIPLE_CHOICE\",\"questionCount\":5", "\"MULTIPLE_CHOICE\",\"questionCount\":3");
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), edited)).containsExactly("s1=INCOMPLETE");
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), ROWS)).containsExactly("s1=NEEDS_CHECK");
+        assertThat(sectionStates(scopedExam("PART", "T"), edited)).containsExactly("s1=NEEDS_CHECK");
+    }
+
+    @Test
+    void anOmittedGroupSwitchedBackOnMarksItsSectionOnlyForATemplateWithTheFlag() throws Exception {
+        // Its own subject, hence its own unit: a lock marks the section and does not spill into the reading one.
+        String writing = WRITING.replace("\"id\":\"s2\",\"subjectCode\":\"VAN\"", "\"id\":\"s2\",\"subjectCode\":\"OTHER\"");
+        // Switched back on with its counts raised to match, so only the template lock can mark the section.
+        String reenabled = writing.replace("\"omitted\":true", "\"omitted\":false")
+                .replace("\"questionCount\":0", "\"questionCount\":1");
+        templateWith(false, false, true, writing);
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), reenabled)).containsExactly("s1=NEEDS_CHECK", "s2=INCOMPLETE");
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), writing)).containsExactly("s1=NEEDS_CHECK", "s2=NEEDS_CHECK");
+        templateWith(false, false, false, writing);
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), reenabled)).containsExactly("s1=NEEDS_CHECK", "s2=NEEDS_CHECK");
+    }
+
+    @Test
+    void aTemplateWithOnlyFixedCountsMarksASectionTotalChangeAndNotAMoveBetweenItsGroups() throws Exception {
+        templateWith(true, false, false, ROWS);
+        String moved = ROWS.replace("\"questionCount\":20", "\"questionCount\":18")
+                .replace("\"MULTIPLE_CHOICE\",\"questionCount\":5", "\"MULTIPLE_CHOICE\",\"questionCount\":7");
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), moved)).containsExactly("s1=NEEDS_CHECK");
+        String shorter = ROWS.replace("\"questionCount\":20", "\"questionCount\":18");
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), shorter)).containsExactly("s1=INCOMPLETE");
+    }
+
+    private void templateWith(boolean fixedCounts, boolean fixedBlockCounts, boolean omittedLocked, String structure) {
+        ExamTemplate template = mock(ExamTemplate.class);
+        when(template.getCode()).thenReturn("T");
+        when(template.isFixedCounts()).thenReturn(fixedCounts);
+        when(template.isFixedBlockCounts()).thenReturn(fixedBlockCounts);
+        when(template.isOmittedLocked()).thenReturn(omittedLocked);
+        when(template.getStructure()).thenReturn(readTree(structure));
+        when(templates.findProvenance("T")).thenReturn(template);
+    }
+
+    private List<String> sectionStates(Exam exam, String structure) throws Exception {
+        var snapshots = mock(ExamCheckSnapshotReader.class);
+        var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash",
+                mapper.createObjectNode());
+        when(snapshots.read(exam.getId())).thenReturn(
+                new ExamCheckSnapshotReader.Snapshot(exam, document(structure), input, null));
+        var states = new ExamCheckUnitStates(snapshots, mock(ExamCheckUnitStore.class),
+                new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)),
+                new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper, source,
+                new ExamCheckTemplateFacts(catalog, templates, mapper));
+        return states.states(exam.getId()).stream().map(state -> state.sectionId() + "=" + state.state()).toList();
+    }
+
     // ---- harness -------------------------------------------------------------------------------------------
 
     private ExamChecker.Evaluation check(Exam exam, ExamStructureDocument document) {
