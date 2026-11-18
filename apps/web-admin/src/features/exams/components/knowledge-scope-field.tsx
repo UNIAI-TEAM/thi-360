@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, focusRing, IconButton } from "@thi360/ui";
+import { Button, Checkbox, cn, focusRing, IconButton } from "@thi360/ui";
 import { CircleMinus, ListTree } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useState } from "react";
@@ -33,6 +33,11 @@ export interface KnowledgeScopeFieldProps {
    * Mở hộp chọn không đổi `value` (R1-3): hủy giữ nguyên.
    */
   openRequest?: number;
+  /**
+   * Chỉ nhóm chùm: ô "Mọi câu con thuộc chủ đề" (`knowledgeScope.everyChildInScope`). Chỉ hiện khi nhóm đã chọn MAPID ở
+   * "Theo chủ đề"; Toàn môn không có chủ đề nào để câu con thuộc về. Bỏ trống: không có ô.
+   */
+  everyChild?: { checked: boolean; onChange: (checked: boolean) => void; anchor?: string };
 }
 
 /** Bỏ các nút MAPID nhưng giữ lọc năng lực (R1-4); không còn gì thì quy về `null`. */
@@ -55,7 +60,9 @@ export function KnowledgeScopeField({
   anchor,
   strand = false,
   openRequest = 0,
+  everyChild,
 }: KnowledgeScopeFieldProps) {
+  const everyChildId = useId();
   const t = useTranslations("exams.scopeField");
   const radioName = useId();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -134,6 +141,25 @@ export function KnowledgeScopeField({
             <span>{t("pick")}</span>
           </Button>
           <p className="basis-full text-caption text-text-muted">{t("topicHint")}</p>
+          {everyChild && own.length > 0 && (
+            <div className="flex basis-full items-start gap-2">
+              <Checkbox
+                id={everyChildId}
+                data-field={everyChild.anchor}
+                aria-describedby={`${everyChildId}-hint`}
+                checked={everyChild.checked}
+                onCheckedChange={(checked) => everyChild.onChange(checked === true)}
+              />
+              <div className="flex flex-col">
+                <label htmlFor={everyChildId} className="cursor-pointer text-body font-medium text-text">
+                  {t("everyChild")}
+                </label>
+                <span id={`${everyChildId}-hint`} className="text-caption text-text-muted">
+                  {t("everyChildHint")}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <p className="flex flex-col text-body">

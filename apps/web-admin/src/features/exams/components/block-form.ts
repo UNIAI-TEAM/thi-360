@@ -77,6 +77,10 @@ export function reconcileBlock(block: QuestionBlock): QuestionBlock {
   if (!isSetBlock(next)) {
     delete next.slots;
     delete next.childConditions;
+    if (next.knowledgeScope?.everyChildInScope !== undefined) {
+      next.knowledgeScope = { ...next.knowledgeScope };
+      delete next.knowledgeScope.everyChildInScope;
+    }
   }
   return next;
 }
@@ -85,6 +89,16 @@ export function reconcileBlock(block: QuestionBlock): QuestionBlock {
 
 export function slotHasCondition(slot: BlockSlot | undefined): boolean {
   return (slot?.tagCodes?.length ?? 0) > 0 || (slot?.knowledgeScope?.nodeIds.length ?? 0) > 0;
+}
+
+/**
+ * Đổi cách khai chùm (H28): sang "chỉ nhập tổng" thì bỏ số chùm, cỡ chùm và điều kiện riêng từng chùm, giữ tổng câu con;
+ * sang "khai số chùm × cỡ" thì dựng 1 chùm cỡ bằng tổng hiện có để người dùng sửa tiếp. Nhóm không bao giờ mang cả hai.
+ */
+export function switchSetMode(block: QuestionBlock, mode: "total" | "sets"): Partial<QuestionBlock> {
+  if (mode === "total") return { setCount: null, setSize: null, slots: undefined };
+  const size = Math.max(block.questionCount ?? 0, 1);
+  return { setCount: 1, setSize: size, questionCount: size };
 }
 
 /** Điều kiện của chùm `index` (từ 1); chùm chưa có phần tử trả về phần tử rỗng. */

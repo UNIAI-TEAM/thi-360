@@ -4188,6 +4188,16 @@
         },
         "omittedBadge": "Tự luận – tạm bỏ qua",
         "positionRange": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+        "setMode": {
+          "legend": "Cách khai chùm",
+          "note": "Hệ thống luôn lấy nguyên chùm; số câu của nhóm là tổng số câu con.",
+          "sets": "Khai số chùm và số câu con",
+          "setsHint": "Dùng khi chuyên môn yêu cầu số chùm hoặc cỡ chùm cụ thể.",
+          "total": "Chỉ nhập tổng câu con",
+          "totalField": "Tổng số câu con",
+          "totalFieldHint": "Nhập tổng số câu con lớn hơn 0.",
+          "totalHint": "Hệ thống tự chọn các chùm nguyên có tổng đúng bằng số này."
+        },
         "slots": {
           "caption": "Điều kiện của {count, number} chùm",
           "clear": "Xóa điều kiện chùm {index, number}",
@@ -4213,6 +4223,11 @@
           "removeMapid": "Bỏ MAPID {code} {name} của chùm {index, number}",
           "setName": "Chùm {index, number}",
           "title": "Điều kiện riêng từng chùm"
+        },
+        "summary": {
+          "flexible": "{count, number} câu con · tối đa {points, number} điểm",
+          "sets": "{sets, number} chùm × {size, number} câu con = {count, number} câu con · tối đa {points, number} điểm",
+          "trueFalse": "{count, number} câu · {statements, number} ý · tối đa {points, number} điểm"
         },
         "switches": {
           "alwaysShuffle": "Câu trong nhóm luôn được đảo theo từng đề; nhóm giữ vị trí.",
@@ -5391,6 +5406,8 @@
       "strand": "Theo mạch kiến thức",
       "topicEmpty": "Chưa chọn chủ đề nào.",
       "topicHint": "Câu khớp khi có ít nhất một mã đã chọn. Nút đã chọn cũng khớp câu gắn nút con của nó.",
+      "everyChild": "Mọi câu con thuộc chủ đề",
+      "everyChildHint": "Bật thì chùm có câu con ngoài chủ đề bị loại. Ví dụ chùm 2 câu Xác suất và 1 câu Hình học không được chọn.",
       "inheritsSection": "Theo phạm vi của môn",
       "inheritsCount": "Phạm vi của môn có {count, number} kiến thức",
       "none": "Không giới hạn MAPID",
