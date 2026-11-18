@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class B10PathRegressionTest {
     @Test
-    void twelveCasesIdentifyOnlyInsufficientSeventeenQuestionSelections() {
+    void everyChoiceContainingInsufficientSubjectFailsAtSeventeen() {
         List<SectionOnPath> sections = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             String code = "S" + i;
@@ -28,9 +28,9 @@ class B10PathRegressionTest {
         SolveOutcome outcome = new PaperSolver().solveAll(List.of(part), source, SolveMode.check());
         assertThat(outcome.status()).isEqualTo(SolveStatus.INVALID);
         assertThat(outcome.stats().pathsEnumerated()).isEqualTo(10);
-        assertThat(outcome.stats().subproblemsSolved()).isLessThanOrEqualTo(10);
+        assertThat(outcome.stats().subproblemsSolved()).isLessThanOrEqualTo(5);
         PathResult result = outcome.results().get(0);
-        assertThat(result.path().picks().get(0)).hasSize(12);
+        assertThat(result.path().picks().get(0)).hasSize(10);
         List<SubjectPick> expected = result.path().picks().get(0).stream().filter(p -> {
             int index = p.subjectCodes().indexOf("S2");
             return index >= 0 && p.counts().get(index) == 17;

@@ -52,7 +52,9 @@ class SubjectMatrixCheckIT extends AbstractIntegrationTest {
         JsonNode science = result.path("paths").get(1);
         assertThat(english.path("result").asText()).isEqualTo("VALID");
         assertThat(science.path("result").asText()).isEqualTo("INVALID");
-        assertThat(science.path("selections")).hasSize(12);
+        assertThat(science.path("selections")).hasSize(10);
+        assertThat(science.path("issues").findValuesAsText("code"))
+                .contains("CELL_SHORTAGE").doesNotContain("PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH");
         assertThat(science.path("issues").findValuesAsText("subjectCode")).contains("LY");
         assertThat(science.path("issues").findValues("subjectCount").stream().anyMatch(value -> value.asInt() == 17)).isTrue();
     }

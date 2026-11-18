@@ -10,8 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,7 +65,8 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
                 .andReturn().getResponse();
         var latestJson = mapper.readTree(latest.getContentAsString());
         assertThat(latestJson.has("sectionStates")).isTrue();
-        assertThat(latestJson.path("sectionStates").isNull()).isTrue();
+        assertThat(latestJson.path("sectionStates").isArray()).isTrue();
+        assertThat(latestJson.path("sectionStates")).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_check_run WHERE exam_id=?", Integer.class, examId)).isEqualTo(1);
         entityManager.flush();
         String audit = jdbc.queryForObject("SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "
@@ -90,55 +89,17 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
         }
     }
 
-    /** BE-5 restores VALID per 2B H3. */
     @Test
-    void seededHsaDevExamChecksOnlyLegacyRemainderIssues() throws Exception {
+    void seededHsaDevExamChecksValid() throws Exception {
         UUID seeded = UUID.fromString("00000000-0000-7000-8700-000000000001");
         String response = mockMvc.perform(post("/api/v1/admin/exams/" + seeded + "/check")
                         .with(asUser(Permissions.EXAM_MODIFY)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         JsonNode result = mapper.readTree(response);
-        assertThat(result.path("status").asText()).isIn("VALID", "INVALID");
-        Set<String> allowed = Set.of("REMAINDER_GROUP_INVALID", "PART_POINTS_MISMATCH",
-                "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE");
-        JsonNode sciencePath = null;
-        String sciencePartId = null;
+        assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("VALID");
+        assertThat(result.path("paths")).isNotEmpty();
         for (JsonNode path : result.path("paths")) {
-            for (JsonNode choice : path.path("choices")) {
-                if ("SUBJECT_CHOICE".equals(choice.path("kind").asText())) {
-                    assertThat(sciencePath).as("only one SUBJECT_CHOICE path").isNull();
-                    sciencePath = path;
-                    sciencePartId = choice.path("partId").asText();
-                }
-            }
-        }
-        assertThat(sciencePath).as("seeded HSA science path").isNotNull();
-        assertThat(sciencePartId).isNotBlank();
-        Set<String> scienceIssueKeys = new HashSet<>();
-        for (JsonNode issueList : sciencePath.findValues("issues")) {
-            for (JsonNode issue : issueList) scienceIssueKeys.add(issue.path("key").asText());
-        }
-        for (JsonNode path : result.path("paths")) {
-            if (path != sciencePath) {
-                for (JsonNode issueList : path.findValues("issues")) {
-                    assertThat(issueList).as("non-science path must not contain issues").isEmpty();
-                }
-            }
-        }
-        for (JsonNode issueList : result.findValues("issues")) {
-            for (JsonNode issue : issueList) {
-                String code = issue.path("code").asText();
-                assertThat(code).isIn(allowed);
-                assertThat(scienceIssueKeys).contains(issue.path("key").asText());
-                if ("POINTS_TOTAL_MISMATCH".equals(code)) {
-                    // Exam-wide totals have no partId; constrain them to the observed H3 overcount.
-                    assertThat(issue.path("partId").isNull()).isTrue();
-                    assertThat(issue.path("required").decimalValue()).isEqualByComparingTo("150");
-                    assertThat(issue.path("available").decimalValue()).isEqualByComparingTo("151");
-                } else {
-                    assertThat(issue.path("partId").asText()).isEqualTo(sciencePartId);
-                }
-            }
+            assertThat(path.path("result").asText()).isEqualTo("VALID");
         }
     }
 

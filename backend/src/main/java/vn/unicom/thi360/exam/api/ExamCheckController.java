@@ -24,12 +24,12 @@ import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.exam.application.ExamCheckCompletion;
 import vn.unicom.thi360.exam.application.ExamCheckOrchestrator;
 import vn.unicom.thi360.exam.application.ExamCheckResultQuery;
+import vn.unicom.thi360.exam.application.ExamCheckScope;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.security.RequirePermission;
-import vn.unicom.thi360.shared.api.NotImplementedException;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 @RestController
@@ -79,15 +79,14 @@ public class ExamCheckController {
     public ResponseEntity<?> check(@PathVariable UUID examId,
             @RequestParam(defaultValue = "false") boolean deep,
             @RequestBody(required = false) CheckRequest request) {
-        if (request != null && request.scope() != null && !"EXAM".equals(request.scope())) {
-            throw new NotImplementedException();
-        }
+        var scope = request == null ? ExamCheckScope.from(null, null, null)
+                : ExamCheckScope.from(request.scope(), request.partId(), request.sectionId());
         var actor = actor();
         String traceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         if (deep) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(new Started(checks.startDeep(examId, actor, traceId)));
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(new Started(checks.startDeep(examId, scope, actor, traceId)));
         }
-        return ResponseEntity.ok(checks.check(examId, actor, traceId));
+        return ResponseEntity.ok(checks.check(examId, scope, actor, traceId));
     }
 
     @GetMapping("/runs/{runId}")

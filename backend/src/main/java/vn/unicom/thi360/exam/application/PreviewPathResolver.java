@@ -30,6 +30,11 @@ final class PreviewPathResolver {
         List<ExamPartOption> choices = new ArrayList<>();
         for (ExamPart part : document.parts().stream().sorted(Comparator.comparing(ExamPart::order,
                 Comparator.nullsLast(Comparator.naturalOrder()))).toList()) {
+            if (part.codeSource() != null) {
+                if (pos >= ids.length || !ids[pos].startsWith(part.id() + ":")) throw missing(pathId);
+                names.add(name(document, part.id(), ids[pos++]));
+                continue;
+            }
             if (part.participation() == null || part.participation().mode() != ParticipationMode.CHOICE) continue;
             Integer count = part.participation().choose();
             if (count == null || count < 1 || count > part.options().size()) continue;
@@ -165,6 +170,10 @@ final class PreviewPathResolver {
 
     private static PathChoice name(ExamStructureDocument document, String partId, String optionId) {
         ExamPart part = document.parts().stream().filter(p -> partId.equals(p.id())).findFirst().orElseThrow();
+        if (part.codeSource() != null && optionId.startsWith(partId + ":")) {
+            String code = optionId.substring(partId.length() + 1);
+            return new PathChoice(partId, optionId, "COMBINATION", code, code);
+        }
         ExamPartOption option = part.options().stream().filter(o -> optionId.equals(o.id())).findFirst().orElseThrow();
         return new PathChoice(partId, optionId, option.kind() == null ? null : option.kind().name(),
                 option.code(), option.name() == null ? option.code() : option.name());

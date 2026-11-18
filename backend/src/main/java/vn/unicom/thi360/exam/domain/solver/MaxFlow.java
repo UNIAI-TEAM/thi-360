@@ -43,6 +43,9 @@ final class MaxFlow {
      * phía tối đa một phân hoạch, và mọi ứng viên usable là câu độc lập một đơn vị.
      */
     boolean applies(Prep.SubproblemContext ctx) {
+        if (TopicAssignments.hasQuotas(ctx)) {
+            return false;
+        }
         // spec 5.4 bước 1: mạng luồng chỉ áp dụng khi môn nằm ở đúng một ExamSection (R2-3) —
         // nhiều section cùng mã phải đi quay lui vì vùng gán chung nhưng chỉ tiêu từng section
         if (ctx.subjectBlocks().length != 1) {
@@ -60,6 +63,9 @@ final class MaxFlow {
         List<Prep.Requirement> reqs = ctx.reqs();
         for (int g = 0; g < ctx.groups().size(); g++) {
             Prep.ResolvedGroup rg = ctx.groups().get(g);
+            if (rg.group().slotParent() != null) {
+                return false;
+            }
             if (rg.group().kind() != GroupQuota.GroupKind.SINGLE) {
                 return false;
             }

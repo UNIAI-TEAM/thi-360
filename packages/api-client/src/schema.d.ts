@@ -2123,7 +2123,6 @@ export interface components {
         /** @description Phạm vi kiến thức có hiệu lực của nhóm */
         AvailableQuestionsKnowledgeScope: {
             competencyCodes?: string[];
-            match?: string;
             nodeIds?: string[];
         };
         /** @description Bộ lọc nguồn câu hỏi của một nhóm */
@@ -3545,7 +3544,7 @@ export interface components {
         ExamCheckCell: {
             difficultyCode?: string;
             gradeCode?: string;
-            /** Format: int32 */
+            /** Format: decimal */
             required?: number;
         };
         ExamCheckChoice: {
@@ -3557,7 +3556,7 @@ export interface components {
         };
         ExamCheckDimension: {
             code?: string;
-            /** Format: int32 */
+            /** Format: decimal */
             required?: number;
         };
         ExamCheckGroup: {
@@ -3672,10 +3671,10 @@ export interface components {
             subjectCode?: string;
         };
         ExamCheckSubjectDimension: {
-            /** Format: int32 */
+            /** Format: decimal */
             achieved?: number;
             code?: string;
-            /** Format: int32 */
+            /** Format: decimal */
             required?: number;
         };
         /** @description Kết quả kiểm tra cấu hình gần nhất của bài thi */
@@ -3697,6 +3696,11 @@ export interface components {
         ExamDetailResponse: {
             /** Format: int32 */
             attemptCount: number;
+            /**
+             * @description STANDARD | REVIEW
+             * @enum {string}
+             */
+            buildMode?: "STANDARD" | "REVIEW";
             check: components["schemas"]["ExamCheckSummary"];
             code: string;
             /** Format: int32 */
@@ -5927,6 +5931,8 @@ export interface components {
             code?: string;
             /** @description Bắt buộc true khi đổi phạm vi sau khi cấu trúc đã sửa; thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM */
             confirmReplace?: boolean;
+            /** @description Xác nhận quy đổi điểm sang LINEAR */
+            confirmScoring?: boolean;
             /** @description Mô tả; chuỗi trống → xóa */
             description?: string;
             /**
@@ -5954,6 +5960,13 @@ export interface components {
             name?: string;
             /** @description Mã phần khi scope = PART */
             partCode?: string;
+            /**
+             * @description RAW | LINEAR
+             * @enum {string}
+             */
+            practiceScoring?: "RAW" | "LINEAR";
+            /** @description Thang điểm quy chiếu khi quy đổi */
+            referenceMax?: number;
             /** @description FULL | PART | SUBJECT; đổi khi đã phát hành → 409 EXAM_SCOPE_LOCKED */
             scope?: string;
             /**

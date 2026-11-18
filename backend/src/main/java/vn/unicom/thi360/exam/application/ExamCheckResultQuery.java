@@ -15,11 +15,14 @@ public class ExamCheckResultQuery {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final ExamCheckValidity validity;
+    private final ExamCheckUnitStates states;
 
-    public ExamCheckResultQuery(JdbcTemplate jdbc, ObjectMapper mapper, ExamCheckValidity validity) {
+    public ExamCheckResultQuery(JdbcTemplate jdbc, ObjectMapper mapper, ExamCheckValidity validity,
+            ExamCheckUnitStates states) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.validity = validity;
+        this.states = states;
     }
 
     @Transactional(readOnly = true)
@@ -37,6 +40,7 @@ public class ExamCheckResultQuery {
             String reason = validity.assess(List.of(examId)).get(examId).invalidReason();
             if (reason == null) result.putNull("invalidReason"); else result.put("invalidReason", reason);
             result.put("stale", reason != null);
+            result.set("sectionStates", mapper.valueToTree(states.states(examId)));
             return result;
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Invalid persisted check result", e);

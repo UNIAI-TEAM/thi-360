@@ -54,6 +54,30 @@ final class ExamCheckAssembler {
                 var current = new java.util.ArrayList<>(commonIssues);
                 current.addAll(pathIssues.apply(path));
                 ObjectNode rendered = presenter.render(path, current);
+                for (var node : rendered.path("issues")) {
+                    ObjectNode issue = (ObjectNode) node;
+                    if (issue.path("subjectCode").isMissingNode() || issue.path("subjectCode").isNull()) continue;
+                    boolean onPath = false;
+                    for (var subject : rendered.path("subjects")) {
+                        if (subject.path("sectionId").asText().equals(issue.path("sectionId").asText())) {
+                            onPath = true;
+                            break;
+                        }
+                    }
+                    if (!onPath) continue;
+                    for (var choice : rendered.path("choices")) {
+                        if (!issue.path("partId").asText().equals(choice.path("partId").asText())) continue;
+                        boolean codeSourced = document.parts().stream().anyMatch(part ->
+                                part.id().equals(choice.path("partId").asText()) && part.codeSource() != null);
+                        if (codeSourced && choice.hasNonNull("code")) {
+                            ArrayNode codes = (ArrayNode) issue.withArray("affectedCodes");
+                            String code = choice.path("code").asText();
+                            boolean present = false;
+                            for (var value : codes) if (code.equals(value.asText())) present = true;
+                            if (!present) codes.add(code);
+                        }
+                    }
+                }
                 paths.add(rendered);
                 if ("VALID".equals(rendered.path("result").asText())) witnesses.add(mapper.valueToTree(path));
                 rendered.path("issues").forEach(issue -> add(all, (ObjectNode) issue));
@@ -81,7 +105,7 @@ final class ExamCheckAssembler {
         result.set("totalPoints", paths.isEmpty() ? mapper.valueToTree(BigDecimal.ZERO) : paths.get(0).path("totalPoints"));
         result.put("printedQuestions", document.parts().stream().mapToInt(ExamCheckAssembler::printedQuestions).sum());
         if (exam.getMaxScore() == null) result.putNull("maxScore"); else result.put("maxScore", exam.getMaxScore());
-        return new ExamChecker.Evaluation(result, witnesses);
+        return new ExamChecker.Evaluation(result, witnesses, List.of());
     }
 
     private static int printedQuestions(ExamPart part) {
@@ -90,6 +114,14 @@ final class ExamCheckAssembler {
     }
 
     private static void add(Map<String, ObjectNode> issues, ObjectNode issue) {
-        issues.putIfAbsent(issue.path("key").asText(), issue);
+        ObjectNode existing = issues.putIfAbsent(issue.path("key").asText(), issue);
+        if (existing != null && existing != issue && issue.path("affectedCodes").isArray()) {
+            ArrayNode codes = existing.withArray("affectedCodes");
+            for (var code : issue.path("affectedCodes")) {
+                boolean present = false;
+                for (var value : codes) if (value.equals(code)) present = true;
+                if (!present) codes.add(code);
+            }
+        }
     }
 }

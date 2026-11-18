@@ -182,12 +182,11 @@ class SubjectMatrixCasesTest {
                 List.of(SolvePart.Choice.of("p1", List.of(choice))), source,
                 SolveMode.check());
         assertThat(outcome.status()).isEqualTo(SolveStatus.INVALID);
-        // ca lỗi = mọi ca CHEM nhận 17: bốn bộ 2-1 có CHEM thuộc nhóm đôi, cộng 2/3 phương án
-        // của bộ toàn NATURAL có CHEM ở nhịp 17. Bộ {CHEM,HIS,GEO} hợp lệ: CHEM là nhóm lẻ → 16.
+        // Every selection containing CHEM fails because all subjects are checked at 17.
         Set<String> expectedFailing = Set.of(
-                "PHYS=17+CHEM=17+HIS=16", "PHYS=17+CHEM=17+GEO=16",
-                "CHEM=17+BIO=17+HIS=16", "CHEM=17+BIO=17+GEO=16",
-                "PHYS=17+CHEM=17+BIO=16", "PHYS=16+CHEM=17+BIO=17");
+                "PHYS=17+CHEM=17+HIS=17", "PHYS=17+CHEM=17+GEO=17",
+                "CHEM=17+BIO=17+HIS=17", "CHEM=17+BIO=17+GEO=17",
+                "PHYS=17+CHEM=17+BIO=17", "CHEM=17+HIS=17+GEO=17");
         Set<String> actualFailing = new HashSet<>();
         Set<String> allResults = new HashSet<>();
         for (PathResult r : outcome.results()) {
@@ -201,15 +200,13 @@ class SubjectMatrixCasesTest {
             }
         }
         assertThat(actualFailing).isEqualTo(expectedFailing);
-        // đúng 12 ca cho 10 bộ ba (bộ toàn NATURAL bung thành 3 phương án)
-        assertThat(allResults).hasSize(12);
-        // tối đa 5 môn × 2 giá trị số câu = 10 bài toán con (B10)
-        assertThat(outcome.stats().subproblemsSolved()).isLessThanOrEqualTo(10);
+        assertThat(allResults).hasSize(10);
+        assertThat(outcome.stats().subproblemsSolved()).isLessThanOrEqualTo(5);
     }
 
     @Test
-    @DisplayName("B10/D25: oracle liệt kê đúng 12 phân bổ HSA từ bảng đặc tả")
-    void oracleHsaTwelveGoldenAllocations() {
+    @DisplayName("Oracle checks all ten HSA subject combinations at seventeen")
+    void oracleHsaFullCountCombinations() {
         List<SectionOnPath> sections = List.of(
                 new SectionOnPath("PHYS", "p", null, SubjectQuota.NONE, List.of(), "NATURAL"),
                 new SectionOnPath("CHEM", "c", null, SubjectQuota.NONE, List.of(), "NATURAL"),
@@ -223,21 +220,17 @@ class SubjectMatrixCasesTest {
                 new vn.unicom.thi360.exam.domain.solver.oracle.BruteForceOracle().combosOf(path)) {
             actual.add(pickKeyOf(combo.get(0)));
         }
-        // Chín bộ ba trộn nhóm: nhóm đôi nhận 17, nhóm lẻ 16; ba môn tự nhiên
-        // cùng nhóm: mỗi môn lần lượt nhận 16.
         Set<String> golden = Set.of(
-                "PHYS=16+CHEM=17+BIO=17",
-                "PHYS=17+CHEM=16+BIO=17",
-                "PHYS=17+CHEM=17+BIO=16",
-                "PHYS=17+CHEM=17+HIS=16",
-                "PHYS=17+CHEM=17+GEO=16",
-                "PHYS=17+BIO=17+HIS=16",
-                "PHYS=17+BIO=17+GEO=16",
-                "PHYS=16+HIS=17+GEO=17",
-                "CHEM=17+BIO=17+HIS=16",
-                "CHEM=17+BIO=17+GEO=16",
-                "CHEM=16+HIS=17+GEO=17",
-                "BIO=16+HIS=17+GEO=17");
+                "PHYS=17+CHEM=17+BIO=17",
+                "PHYS=17+CHEM=17+HIS=17",
+                "PHYS=17+CHEM=17+GEO=17",
+                "PHYS=17+BIO=17+HIS=17",
+                "PHYS=17+BIO=17+GEO=17",
+                "PHYS=17+HIS=17+GEO=17",
+                "CHEM=17+BIO=17+HIS=17",
+                "CHEM=17+BIO=17+GEO=17",
+                "CHEM=17+HIS=17+GEO=17",
+                "BIO=17+HIS=17+GEO=17");
         assertThat(actual).isEqualTo(golden);
     }
 

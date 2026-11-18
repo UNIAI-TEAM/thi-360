@@ -1433,7 +1433,7 @@ INSERT INTO exam.exam (id, code, code_normalized, name, description, instruction
     matrix_year, years_confirmed, timing, duration_minutes, max_score, reference_max,
     practice_scoring, status, check_status, question_count, has_essay,
     has_english_option, combination_count, has_unpublished_changes, revision) VALUES
-  ('64b7e43a-046c-5172-959c-e6ec0552b65c','TEST-ERR-08','test-err-08','TEST · ERR Vật lí thiếu nhóm còn lại','Lỗi: Vật lí thay nhóm còn lại bằng nhóm cố định 11 -> REMAINDER_GROUP_INVALID.',NULL,'00000000-0000-7000-8200-000000000101','PART','SCIENCE',NULL,'HSA_PART_SCIENCE',2026,2026,true,'PER_PART',60,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,true,0,false,0)
+  ('64b7e43a-046c-5172-959c-e6ec0552b65c','TEST-ERR-08','test-err-08','TEST · ERR Vật lí thiếu nhóm còn lại','Vật lí gồm 6 câu chùm và 11 câu đơn; giải đủ 17 câu trước khi bỏ một câu.',NULL,'00000000-0000-7000-8200-000000000101','PART','SCIENCE',NULL,'HSA_PART_SCIENCE',2026,2026,true,'PER_PART',60,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,true,0,false,0)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO exam.exam_structure (exam_id, parts, structure_hash, base_version, updated_by) VALUES
@@ -1465,7 +1465,7 @@ INSERT INTO exam.exam (id, code, code_normalized, name, description, instruction
     matrix_year, years_confirmed, timing, duration_minutes, max_score, reference_max,
     practice_scoring, status, check_status, question_count, has_essay,
     has_english_option, combination_count, has_unpublished_changes, revision) VALUES
-  ('94405696-b674-5484-8fbd-a487eddf07ac','TEST-ERR-09','test-err-09','TEST · ERR Hóa học chỉ tiêu số câu','Lỗi: Hóa học khai chỉ tiêu theo số câu -> SUBJECT_QUOTA_COUNT_VARIES.',NULL,'00000000-0000-7000-8200-000000000101','PART','SCIENCE',NULL,'HSA_PART_SCIENCE',2026,2026,true,'PER_PART',60,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,true,0,false,0)
+  ('94405696-b674-5484-8fbd-a487eddf07ac','TEST-ERR-09','test-err-09','TEST · ERR Hóa học chỉ tiêu số câu','Lỗi: chỉ tiêu Hóa học có tổng 16 câu thay vì 17 câu.',NULL,'00000000-0000-7000-8200-000000000101','PART','SCIENCE',NULL,'HSA_PART_SCIENCE',2026,2026,true,'PER_PART',60,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,true,0,false,0)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO exam.exam_structure (exam_id, parts, structure_hash, base_version, updated_by) VALUES

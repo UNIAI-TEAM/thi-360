@@ -311,80 +311,17 @@ final class OracleSupport {
         return fixed;
     }
 
-    /**
-     * Các phân bổ số câu cho một cách chọn môn, cài đặt độc lập từ B10/D25 và quyết định
-     * "nhóm null tính một nhóm chung" (STATUS BE-5a:23), không dùng bộ gán của bộ giải:
-     *
-     * <ul>
-     *   <li>{@code hi} = max của {@code countsByPick}, {@code lo} = min;
-     *   <li>mọi môn được chọn thuộc một nhóm chung (toàn NATURAL, toàn SOCIAL, hoặc toàn
-     *       null): {@code choose} phương án đối xứng với k bất kỳ — mỗi môn lần lượt nhận
-     *       {@code lo}, còn lại {@code hi};
-     *   <li>trộn NATURAL/SOCIAL: chia B10 — nhóm đông (nhiều môn được chọn hơn) nhận
-     *       {@code hi} mỗi môn, nhóm lẻ nhận {@code lo}; hai nhóm ngang nhau thì không có
-     *       nhóm đông, đầu vào vô nghĩa theo B10;
-     *   <li>trộn null với non-null, hoặc tên nhóm ngoài miền spec (NATURAL/SOCIAL/null):
-     *       đầu vào không hợp lệ → {@link IllegalArgumentException}.
-     * </ul>
-     */
-    static List<List<Integer>> allocationsOf(SubjectChoice choice, List<SectionOnPath> picked) {
-        int k = picked.size();
-        int hi = Integer.MIN_VALUE;
-        int lo = Integer.MAX_VALUE;
-        for (int v : choice.countsByPick()) {
-            hi = Math.max(hi, v);
-            lo = Math.min(lo, v);
-        }
-        long nulls = 0;
-        Map<String, Integer> groupCounts = new LinkedHashMap<>();
-        for (SectionOnPath s : picked) {
-            String g = s.choiceGroup();
-            if (g == null) {
-                nulls++;
-            } else if (!"NATURAL".equals(g) && !"SOCIAL".equals(g)) {
-                throw new IllegalArgumentException("choiceGroup must be NATURAL or SOCIAL");
-            } else {
-                groupCounts.merge(g, 1, Integer::sum);
-            }
-        }
-        if (nulls > 0 && nulls < k) {
-            throw new IllegalArgumentException("choiceGroup must not mix null and non-null");
-        }
-        if (groupCounts.size() == 2) {
-            // trộn hai nhóm: chia B10 — nhóm lẻ nhận lo, nhóm đông nhận hi
-            String minority = null;
-            int minSize = Integer.MAX_VALUE;
-            for (Map.Entry<String, Integer> e : groupCounts.entrySet()) {
-                if (e.getValue() < minSize) {
-                    minSize = e.getValue();
-                    minority = e.getKey();
-                }
-            }
-            if (minSize * 2 == k) {
-                throw new IllegalArgumentException("equal-size groups: no majority per B10");
-            }
-            List<Integer> counts = new ArrayList<>(k);
-            for (SectionOnPath s : picked) {
-                counts.add(s.choiceGroup().equals(minority) ? lo : hi);
-            }
-            return List.of(counts);
-        }
-        // một nhóm chung (toàn NATURAL, toàn SOCIAL, hoặc toàn null): mỗi môn một lượt nhận lo
-        List<List<Integer>> out = new ArrayList<>(k);
-        for (int low = 0; low < k; low++) {
-            List<Integer> counts = new ArrayList<>(k);
-            for (int i = 0; i < k; i++) {
-                counts.add(i == low ? lo : hi);
-            }
-            out.add(counts);
-        }
-        return out;
+
+    /** Check each selected subject at the full count before the paper allocation is trimmed. */
+    static List<List<Integer>> solveAllocationsOf(SubjectChoice choice, List<SectionOnPath> picked) {
+        int full = choice.countsByPick().stream().mapToInt(Integer::intValue).max().orElseThrow();
+        return List.of(java.util.Collections.nCopies(picked.size(), full));
     }
 
     /**
      * Mọi cách chọn {@code choose} môn của phương án, theo thứ tự tổ hợp ổn định (từ điển trên
-     * chỉ số theo thứ tự cấu trúc), mỗi cách chọn sinh một {@link SubjectPick} trên mỗi phân
-     * bổ của {@link #allocationsOf} — cài lại độc lập từ spec, không dùng bộ gán của bộ giải.
+     * chỉ số theo thứ tự cấu trúc), mỗi cách chọn sinh một {@link SubjectPick} với
+     * số câu đầy đủ theo {@link #solveAllocationsOf}.
      */
     static List<SubjectPick> picksOf(SubjectChoice choice) {
         List<SectionOnPath> sections = choice.sections();
@@ -400,7 +337,7 @@ final class OracleSupport {
             for (int i : idx) {
                 picked.add(sections.get(i));
             }
-            for (List<Integer> counts : allocationsOf(choice, picked)) {
+            for (List<Integer> counts : solveAllocationsOf(choice, picked)) {
                 out.add(new SubjectPick(choice.optionId(), picked, counts));
             }
             int p = k - 1;

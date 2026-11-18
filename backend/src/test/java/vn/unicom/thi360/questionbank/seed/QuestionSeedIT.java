@@ -82,7 +82,7 @@ class QuestionSeedIT extends AbstractIntegrationTest {
         for (Map<String, Object> row : rows) {
             String code = (String) row.get("code");
             JsonNode json = mapper.readTree((String) row.get("snapshot"));
-            assertThat(json.findValues("shuffleOptions")).as(code).isEmpty();
+            assertOptionOrdering(json, code);
             QuestionSnapshot snapshot = mapper.treeToValue(json, QuestionSnapshot.class);
             QuestionBody body = snapshot.body();
             assertThat(body).as(code).isNotNull();
@@ -124,6 +124,16 @@ class QuestionSeedIT extends AbstractIntegrationTest {
                 }
             }
         }
+    }
+
+    private static void assertOptionOrdering(JsonNode node, String code) {
+        if (node.isObject() && node.has("shuffleOptions")) {
+            assertThat(code).startsWith("SEED-2B-ORDER-");
+            assertThat(node.path("type").asText()).isIn("SINGLE_CHOICE", "MULTIPLE_CHOICE");
+            assertThat(node.path("shuffleOptions").isBoolean()).isTrue();
+            assertThat(node.path("shuffleOptions").booleanValue()).isFalse();
+        }
+        node.elements().forEachRemaining(child -> assertOptionOrdering(child, code));
     }
 
     private static void assertCleanHtml(JsonNode node, QuestionHtmlSanitizer sanitizer) {

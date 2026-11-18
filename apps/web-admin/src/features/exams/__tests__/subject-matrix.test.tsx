@@ -97,7 +97,7 @@ describe("số đã phân bổ và còn thiếu của môn", () => {
     expect(subjectAllocation(history, AXES, 17)).toMatchObject({ remainder: 7, allocated: 17, missing: 0 });
   });
 
-  it("hai nhóm lấy phần còn lại: không nhóm nào nhận, môn báo còn thiếu như REMAINDER_GROUP_INVALID của kiểm tra (R1-5)", () => {
+  it("hai nhóm lấy phần còn lại: không nhóm nào nhận, môn báo còn thiếu", () => {
     const science = backend.app("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
     const history = science.sections.find((section) => section.subjectCode === "HISTORY")!;
     expect(remainderGroupCount(history.blocks)).toBe(1);

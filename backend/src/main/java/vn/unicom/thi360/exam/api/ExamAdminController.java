@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import vn.unicom.thi360.exam.application.ExamCheckUnitStates;
+import vn.unicom.thi360.exam.application.ExamCheckUnitSummary;
 import vn.unicom.thi360.exam.application.ExamKindService;
 import vn.unicom.thi360.exam.application.ExamService;
 import vn.unicom.thi360.exam.application.ExamTemplateService;
@@ -41,11 +43,14 @@ public class ExamAdminController {
     private final ExamService exams;
     private final ExamKindService kinds;
     private final ExamTemplateService templates;
+    private final ExamCheckUnitStates checkStates;
 
-    public ExamAdminController(ExamService exams, ExamKindService kinds, ExamTemplateService templates) {
+    public ExamAdminController(ExamService exams, ExamKindService kinds, ExamTemplateService templates,
+            ExamCheckUnitStates checkStates) {
         this.exams = exams;
         this.kinds = kinds;
         this.templates = templates;
+        this.checkStates = checkStates;
     }
 
     @GetMapping("/exam-kinds")
@@ -112,10 +117,6 @@ public class ExamAdminController {
     @Operation(summary = "Tạo bài thi nháp")
     public ExamDetailResponse create(@RequestHeader(value = "Idempotency-Key", required = false) String key,
             @Valid @RequestBody CreateExamRequest request) {
-        if (request.overview() != null || (request.buildMode() != null
-                && !"STANDARD".equals(request.buildMode()))) {
-            throw new NotImplementedException();
-        }
         return exams.createExam(key, request);
     }
 
@@ -130,14 +131,16 @@ public class ExamAdminController {
     @RequirePermission(Permissions.EXAM_VIEW)
     @Operation(summary = "Đọc cấu trúc bản làm việc")
     public ExamStructureResponse structure(@PathVariable UUID id) {
-        return exams.getExamStructure(id);
+        var structure = exams.getExamStructure(id);
+        return new ExamStructureResponse(structure.examId(), structure.parts(), structure.revision(),
+                structure.examQuotas(), structure.combinations(), checkStates.states(id));
     }
 
     @GetMapping("/exams/{id}/structure/summary")
     @RequirePermission(Permissions.EXAM_VIEW)
     @Operation(summary = "Tổng hợp cấu trúc bài thi")
     public ExamStructureSummaryResponse structureSummary(@PathVariable UUID id) {
-        throw new NotImplementedException();
+        return ExamCheckUnitSummary.summarize(exams.getExamStructure(id));
     }
 
     @PutMapping("/exams/{id}/overview")
@@ -145,7 +148,7 @@ public class ExamAdminController {
     @Operation(summary = "Cập nhật tổng quan bài thi")
     public ExamDetailResponse updateOverview(@PathVariable UUID id,
             @Valid @RequestBody ExamOverviewRequest request) {
-        throw new NotImplementedException();
+        return exams.updateOverview(id, request);
     }
 
     @PutMapping("/exams/{id}/structure")
@@ -164,9 +167,6 @@ public class ExamAdminController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public ExamDetailResponse loadTemplate(@PathVariable UUID id,
             @Valid @RequestBody LoadExamTemplateRequest request) {
-        if (request.overviewPolicy() != null) {
-            throw new NotImplementedException();
-        }
         exams.loadTemplate(id, request);
         return exams.getExamDetail(id);
     }

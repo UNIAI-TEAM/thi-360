@@ -1,0 +1,126 @@
+package vn.unicom.thi360.exam.domain.solver;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+
+class TrimPolicyTest {
+    @Test
+    void naturalSubjectsAreSolvedAtSeventeenThenTrimmedDeterministically() {
+        List<SectionOnPath> sections = new ArrayList<>();
+        Map<String, List<PathCandidate>> pools = new HashMap<>();
+        for (String subject : List.of("PHY", "CHEM", "BIO")) {
+            GroupQuota singles = GroupQuota.single(subject + "-singles", 14);
+            GroupQuota sets = GroupQuota.set(subject + "-sets", 1, 3, null);
+            var answerQuotas = new SubjectQuota.AnswerQuotas(List.of(
+                    new DimensionQuota("SINGLE_CHOICE", 16),
+                    new DimensionQuota("SHORT_ANSWER", 1)), QuotaUnit.COUNT);
+            sections.add(new SectionOnPath(subject, subject, null,
+                    new SubjectQuota(answerQuotas, null), List.of(singles, sets), "NATURAL"));
+            List<PathCandidate> candidates = new ArrayList<>();
+            for (int i = 0; i < 14; i++) {
+                candidates.add(PathCandidate.standalone(subject + "-q" + i, 1,
+                        "SINGLE_CHOICE", null, null, null));
+            }
+            candidates.add(PathCandidate.standalone(subject + "-fill", 1,
+                    "SHORT_ANSWER", null, null, null));
+            pools.put(singles.groupId(), candidates);
+            pools.put(sets.groupId(), List.of(new PathCandidate(subject + "-set", 1,
+                    subject + "-set", null, List.of(
+                    new CountingUnit(subject + "-child1", "SINGLE_CHOICE", null, null, List.of(), List.of(), null),
+                    new CountingUnit(subject + "-child2", "SINGLE_CHOICE", null, null, List.of(), List.of(), null),
+                    new CountingUnit(subject + "-child3", "SINGLE_CHOICE", null, null, List.of(), List.of(), null)))));
+        }
+        SubjectChoice choice = new SubjectChoice("science", sections, 3, List.of(17, 17, 16));
+        PaperSolver solver = new PaperSolver();
+        CandidateSource source = group -> pools.get(group.groupId());
+        Set<String> trimmedSubjects = new java.util.HashSet<>();
+        for (long seed = 0; seed < 200; seed++) {
+            PathResult result = solver.solvePick(choice, List.of("PHY", "CHEM", "BIO"), seed,
+                    source, Set.of("PHY-q0"));
+            PathResult repeated = solver.solvePick(choice, List.of("PHY", "CHEM", "BIO"), seed,
+                    source, Set.of("PHY-q0"));
+            assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+            assertThat(result.droppedQuestion()).isEqualTo(repeated.droppedQuestion()).isNotNull();
+            assertThat(result.droppedQuestion().questionId()).doesNotContain("-fill", "-set");
+            assertThat(result.witness()).filteredOn(w -> w.resolvedCount() == 16).hasSize(1);
+            trimmedSubjects.add(result.witness().stream().filter(w -> w.resolvedCount() == 16)
+                    .findFirst().orElseThrow().subjectCode());
+            for (SubjectWitness witness : result.witness()) {
+                List<QuestionPick> picks = witness.groups().stream().flatMap(g -> g.picks().stream()).toList();
+                assertThat(picks).extracting(QuestionPick::questionId)
+                        .contains(witness.subjectCode() + "-set", witness.subjectCode() + "-fill")
+                        .doesNotContain("PHY-q0", result.droppedQuestion().questionId());
+                assertThat(picks).hasSize(witness.resolvedCount() - 2);
+            }
+        }
+        assertThat(trimmedSubjects).containsExactlyInAnyOrder("PHY", "CHEM", "BIO");
+    }
+    @Test
+    void excludingSetChildRejectsTheWholeSet() {
+        GroupQuota sets = GroupQuota.set("sets", 1, 2, null);
+        var section = new SectionOnPath("PHY", "phy", null, null, List.of(sets), "NATURAL");
+        var other = new SectionOnPath("CHEM", "chem", null, null, List.of(sets), "NATURAL");
+        var choice = new SubjectChoice("science", List.of(section, other), 1, List.of(2));
+        var blocked = new PathCandidate("blocked", 1, "blocked", null, List.of(
+                new CountingUnit("used-child", "SINGLE_CHOICE", null, null, List.of(), List.of(), null),
+                new CountingUnit("other-child", "SINGLE_CHOICE", null, null, List.of(), List.of(), null)));
+        var alternative = new PathCandidate("alternative", 1, "alternative", null, List.of(
+                new CountingUnit("alt-1", "SINGLE_CHOICE", null, null, List.of(), List.of(), null),
+                new CountingUnit("alt-2", "SINGLE_CHOICE", null, null, List.of(), List.of(), null)));
+        var result = new PaperSolver().solvePick(choice, List.of("PHY"), 1,
+                group -> List.of(blocked, alternative), Set.of("used-child"));
+        assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(result.witness().getFirst().groups().getFirst().picks())
+                .extracting(QuestionPick::questionId).containsExactly("alternative");
+    }
+    @Test
+    void trimPreservesRequiredTopicAndReturnsUpdatedAssignment() {
+        var group = GroupQuota.single("g", 2);
+        var quota = new TopicQuota("topic", List.of("A"), 1, List.of(), List.of(), List.of());
+        var section = new SectionOnPath("PHY", "section", 2,
+                new SubjectQuota(null, null, List.of(quota)), List.of(group));
+        var required = new PathCandidate("required", 1, null, null,
+                List.of(new CountingUnit(null, "SINGLE_CHOICE", null, null, List.of("A"), List.of(), null)));
+        var extra = PathCandidate.standalone("extra", 1, "SINGLE_CHOICE", null, null, null);
+        var witness = new SubjectWitness("PHY", 2, List.of(new GroupWitness("g", List.of(
+                new QuestionPick("required", 1, List.of(new TopicAssignment("SECTION", "section", "topic", 0))),
+                new QuestionPick("extra", 1)))));
+        for (int seed = 0; seed < 20; seed++) {
+            var result = TrimPolicy.trim(section, witness, ignored -> List.of(required, extra), seed);
+            assertThat(result.droppedQuestion().questionId()).isEqualTo("extra");
+            assertThat(result.witness().groups().getFirst().picks().getFirst().topicAssignments())
+                    .containsExactly(new TopicAssignment("SECTION", "section", "topic", 0));
+        }
+    }
+
+    @Test
+    void trimReassignsQuotaToRemainingSetChild() {
+        var singles = GroupQuota.single("singles", 2);
+        var sets = GroupQuota.set("sets", 1, 1, null);
+        var quota = new TopicQuota("topic", List.of("A"), 1, List.of(), List.of(), List.of());
+        var answers = new SubjectQuota.AnswerQuotas(List.of(new DimensionQuota("SINGLE_CHOICE", 2),
+                new DimensionQuota("SHORT_ANSWER", 1)), QuotaUnit.COUNT);
+        var section = new SectionOnPath("PHY", "section", 3,
+                new SubjectQuota(answers, null, List.of(quota)), List.of(singles, sets), "NATURAL");
+        var standalone = new PathCandidate("standalone", 1, null, null,
+                List.of(new CountingUnit(null, "SINGLE_CHOICE", null, null, List.of("A"), List.of(), null)));
+        var fill = PathCandidate.standalone("fill", 1, "SHORT_ANSWER", null, null, null);
+        var set = new PathCandidate("set", 1, "set", null,
+                List.of(new CountingUnit("child", "SINGLE_CHOICE", null, null, List.of("A"), List.of(), null)));
+        var witness = new SubjectWitness("PHY", 3, List.of(
+                new GroupWitness("singles", List.of(new QuestionPick("standalone", 1,
+                        List.of(new TopicAssignment("SECTION", "section", "topic", 0))), new QuestionPick("fill", 1))),
+                new GroupWitness("sets", List.of(new QuestionPick("set", 1)))));
+        var result = TrimPolicy.trim(section, witness,
+                g -> g.groupId().equals("singles") ? List.of(standalone, fill) : List.of(set), 1);
+        assertThat(result.droppedQuestion().questionId()).isEqualTo("standalone");
+        assertThat(result.witness().groups().get(1).picks().getFirst().topicAssignments())
+                .containsExactly(new TopicAssignment("SECTION", "section", "topic", 0));
+    }
+}

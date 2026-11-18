@@ -4204,6 +4204,8 @@
         "partChoose": "{part}: the number of options to choose is {choose, number}; it must be between 1 and {options, number}.",
         "sectionsTotal": "{part}: the subjects add up to {actual, number} questions; the part requires {expected, number}.",
         "blocksTotal": "{section}: the blocks have {actual, number} questions; the subject needs {expected, number}.",
+        "subjectCountExceeds": "{section}: declares {declared, number} questions but the split gives {allocated, number}; it may exceed the split by one at most (HSA 17 − 1).",
+        "subjectTrimImpossible": "{section}: one question must be dropped to reach {allocated, number}, but the subject has no standalone question to drop (sets are never split); the server will reject it.",
         "dimension": {
           "COMBINED": "matrix",
           "GRADE": "by grade",
@@ -4438,8 +4440,6 @@
         "SUBJECT_MATRIX_TOTAL_MISMATCH": "Subject {subject}: the quotas {dimension, select, GRADE {by grade} DIFFICULTY {by difficulty} other {by grade and difficulty}} add up to {available, number} questions; they must add up to the subject's {required, number}.",
         "GROUP_ANSWER_TYPE_MISSING": "Group {block} has no answer type, and subject {subject} sets no answer-type quota.",
         "SUBJECT_CHOICE_COUNTS_INVALID": "{part}: the per-subject counts of the subject choice are invalid (need {required, number}, found {available, number}). There must be one value per chosen subject, adding up to the option's question count, and every subject must belong to the natural or social group so the counts can be split.",
-        "REMAINDER_GROUP_INVALID": "Subject {subject} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed {required, number} questions (found {available, number}).",
-        "SUBJECT_QUOTA_COUNT_VARIES": "Subject {subject} receives {required, number} to {available, number} questions: subject quotas must be set as percentages, not as question counts.",
         "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: the {answerType} quota needs {required, number} questions; {available, number} matching questions are available.",
         "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: not enough source for the subject quota; it needs {required, number} questions{hasBucket, select, yes { at {bucket}} other {}}; {available, number} matching questions are available.",
         "MATRIX_NON_INTEGER": "Block {block} has a quota that is not a whole number.",
@@ -4454,8 +4454,7 @@
         "DIMENSION_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
         "COMPETENCY_SHORTAGE": "Block {block}: there are not enough {competency} source questions for the quota.",
         "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: there are not enough {answerType} source questions for the quota.",
-        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the subject quota.",
-        "REMAINDER_GROUP_INVALID": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}} has a varying question count: it needs exactly one single-question group that takes the remainder, and the fixed groups must not exceed the subject's question count."
+        "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the subject quota."
       }
     },
     "versions": {
@@ -4843,11 +4842,13 @@
       "backToList": "Exam list",
       "formAriaLabel": "Create exam",
       "cancel": "Cancel",
-      "submit": "Create exam and set up question blocks",
+      "submit": "Save and continue",
       "success": "Exam {code} created.",
-      "loadErrorTitle": "Could not load the structure templates",
-      "loadErrorDescription": "Check your connection and try again.",
+      "loadErrorTitle": "Could not load exam kind data",
+      "loadErrorDescription": "The exam kind and subject catalog could not be loaded. Check your connection and try again.",
       "retry": "Try again",
+      "forbiddenTitle": "Missing permission to create exams",
+      "forbiddenDescription": "You need the {permission} permission to create an exam. Contact the system administrator.",
       "sections": {
         "info": "General information",
         "structure": "Initial structure",
@@ -4887,8 +4888,6 @@
       "instructionsLabel": "Exam instructions",
       "instructionsPlaceholder": "For example: how to choose a combination, rules about time",
       "instructionsHint": "Learners read this before they start. It can stay empty in a draft; images are not supported yet.",
-      "templateFull": "{kind} · Whole exam",
-      "templatePart": "{kind} · By part {scope}",
       "cover": {
         "label": "Cover image",
         "hint": "16:9 · PNG, JPG or WebP up to 5 MB · shown in listings and on the intro page. The image is a preview only and is not saved with the exam yet.",
@@ -4981,7 +4980,11 @@
         "pointsValue": "{count, plural, one {# point} other {# points}}",
         "maxScoreUnset": "Set during configuration",
         "partPoints": "Parts: {count, plural, one {# point} other {# points}}",
-        "pathsBranches": "{count, plural, one {# branch} other {# branches}}"
+        "pathsBranches": "{count, plural, one {# branch} other {# branches}}",
+        "kind": "Exam type",
+        "scope": "Scope",
+        "template": "Default template",
+        "noTemplate": "None"
       },
       "fields": {
         "name": "Exam name",
@@ -5001,7 +5004,10 @@
         "maxScore": "Maximum score",
         "partPoints": "Part {order} · points",
         "partSections": "Part {order} · questions per subject",
-        "branch": "Branch {name}"
+        "branch": "Branch {name}",
+        "partCode": "Part",
+        "kind": "Exam type",
+        "scope": "Exam scope"
       },
       "replace": {
         "title": "Reload the {name} template?",
@@ -5014,10 +5020,17 @@
       },
       "errors": {
         "codeTaken": "This exam code is already used. Enter another code.",
+        "codes": {
+          "EXAM_INSTRUCTIONS_UNSAFE": "The exam instructions contain content that is not allowed. Fix it and try again.",
+          "EXAM_KIND_UNKNOWN": "The exam type is not valid. Choose the exam type again.",
+          "EXAM_MAX_SCORE_INVALID": "The maximum score must be greater than 0.",
+          "EXAM_PART_OR_SUBJECT_REQUIRED": "Choose the part or subject of the exam.",
+          "EXAM_SCOPE_NOT_ALLOWED": "This exam type does not allow the chosen scope. Choose another scope.",
+          "EXAM_STRUCTURE_INVALID": "The overview structure is not valid. Check the question counts, durations and points in the table, then try again.",
+          "EXAM_TEMPLATE_MISMATCH": "There is no default template for this choice. Choose another subject or part."
+        },
         "generic": "Could not create the exam. Try again later.",
-        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again.",
-        "structureNotSaved": "Exam {code} was created with the template structure, but the structure you edited could not be saved. Fix the structure on this page and select “Create exam and set up question blocks” to save it again (only the structure is saved again; edit general information in the exam's General tab).",
-        "openCreated": "Open exam {code} to edit it in the Structure tab"
+        "structure": "The initial structure is not valid. Check the questions, durations, points, combinations and branches, then try again."
       },
       "validation": {
         "nameRequired": "Enter the exam name.",
@@ -5072,8 +5085,6 @@
         "PER_PART": "duration per part",
         "SHARED": "one shared duration"
       },
-      "templateSubject": "{kind} {subject} {year}",
-      "templateBlank": "{kind} {subject} (no template)",
       "noSubject": "no subject chosen",
       "subjectField": {
         "subject": "Exam subject",
@@ -5112,6 +5123,82 @@
         "title": "Suggested blocks from the template ({count, plural, one {# question} other {# questions}}, edit in Structure and matrix)",
         "item": "{name}: {count, plural, one {# question} other {# questions}}",
         "essay": "graded by hand"
+      },
+      "step1": {
+        "sections": {
+          "scope": "Exam scope",
+          "scopeDescription": "Choices follow the {kind} exam profile."
+        },
+        "noKindsTitle": "No exam types yet",
+        "noKindsDescription": "The exam type catalog is empty. Add an exam type in the catalog, then come back.",
+        "subject": "Subject",
+        "subjectHint": "{count, plural, one {# subject has} other {# subjects have}} a structure template; a subject without one leaves the overview empty",
+        "subjectBeforePartHint": "Pick the subject first, then a part of that subject",
+        "subjectPlaceholder": "Select a subject",
+        "noTemplate": "{subject} has no structure template. The overview stays empty: enter question counts, durations and points.",
+        "part": "Part",
+        "partHint": "A by-part exam contains only the selected part",
+        "noPart": "This subject has no part to choose yet.",
+        "buildModeLegend": "How to build the exam",
+        "buildModeStandard": "Use the {kind} subject structure",
+        "buildModeStandardHint": "Loads the full subject structure from the default template.",
+        "buildModeReview": "Set up a review exam",
+        "buildModeReviewHint": "One part, one subject: enter the question count, duration and score scale.",
+        "labelFull": "{kind} · Full exam",
+        "labelPart": "{kind} · Part {scope}",
+        "labelSubject": "{kind} · Subject {subject}",
+        "labelReview": "{kind} review exam · {subject}",
+        "noSubject": "no subject yet",
+        "loaded": "Overview loaded: {name}.",
+        "replace": {
+          "title": "Switch to “{name}”?",
+          "description": "The overview reloads from the default template of the new choice. The question counts, durations and points you edited in the table will be lost.",
+          "confirm": "Switch and reload",
+          "cancel": "Keep the old choice"
+        }
+      },
+      "steps": {
+        "ariaLabel": "Create exam steps",
+        "step1": "General information",
+        "step2": "Structure and matrix"
+      },
+      "overview": {
+        "title": "Overview structure",
+        "description": "Numbers come from the default template “{template}”; edit them right on the row. Changing a number here does not reload the template.",
+        "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
+        "versionAtStep2": "Structure version is chosen in step 2",
+        "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
+        "regionLabel": "Exam structure overview table",
+        "loading": "Loading the overview table",
+        "loadError": {
+          "title": "Could not load the overview table.",
+          "description": "You can still create the exam: its structure holds only the parts in the table, with no groups yet."
+        },
+        "col": {
+          "part": "Part or subject",
+          "count": "Questions",
+          "duration": "Duration (min)",
+          "points": "Points"
+        },
+        "cell": {
+          "questionCount": "Questions of {name}",
+          "durationMinutes": "Duration of {name}",
+          "maxPoints": "Points of {name}"
+        },
+        "choiceNote": "(learner picks one option)",
+        "omittedLabel": "skipped for now",
+        "notCounted": "not counted",
+        "sumOfSubjects": "sum of subjects",
+        "total": "Exam total",
+        "sharedDuration": "Shared duration",
+        "minutes": "min",
+        "maxScore": "Maximum score",
+        "points": "points",
+        "errors": {
+          "countInvalid": "The question count must be a positive integer.",
+          "durationInvalid": "The duration must be a positive whole number of minutes.",
+          "pointsInvalid": "Points must be greater than 0."
+        }
       }
     },
     "matrix": {

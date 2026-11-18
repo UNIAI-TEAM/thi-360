@@ -119,12 +119,19 @@ export interface ScoringDefaults {
 export const PRACTICE_SCORINGS = ["RAW", "LINEAR"] as const;
 export type PracticeScoring = (typeof PRACTICE_SCORINGS)[number];
 
+/**
+ * Kiểu xây bài Theo môn (2B H4, 15.1): `STANDARD` — "Dùng cấu trúc môn [kỳ thi]", `REVIEW` — "Tự thiết lập bài ôn"
+ * (mẫu `<KỲ>_REVIEW` rút gọn). Chỉ có khi phạm vi là `SUBJECT`; gửi trong `CreateExamRequest.buildMode`.
+ */
+export const EXAM_BUILD_MODES = ["STANDARD", "REVIEW"] as const;
+export type ExamBuildMode = (typeof EXAM_BUILD_MODES)[number];
+
 /** Một kỳ thi trong danh mục (hồ sơ kỳ thi). */
 export interface ExamKindOption {
   /** Mã ngắn: `HSA`, `QDA`, `BCA`, `VACT`, `SPT`, `SP2E`, `THPTQG`. */
   code: string;
   name: string;
-  /** Phạm vi bài thi kỳ thi cho phép (HSA, QDA: Toàn bài và Theo phần; BCA, V-ACT: Toàn bài; SPT, SP2E, THPTQG: Theo môn). */
+  /** Phạm vi bài thi kỳ thi cho phép (2B 5.1): HSA, QDA FULL+PART; BCA FULL+SUBJECT; V-ACT, THPTQG SUBJECT; SPT, SP2E SUBJECT+PART. */
   scopes: ExamScope[];
   /** `KIND`: một mẫu cho cả kỳ thi; `SUBJECT`: mẫu theo môn (và năm) như SPT, SP2E, THPTQG. */
   templateBy: "KIND" | "SUBJECT";

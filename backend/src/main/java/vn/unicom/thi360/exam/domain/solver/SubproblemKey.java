@@ -6,8 +6,8 @@ import java.util.Objects;
 /**
  * Khóa nhớ của một bài toán con theo môn (spec 5.4): các môn ({@link SectionOnPath}) cùng
  * {@code subjectCode} trên đường đã gộp, cộng số câu đã quyết của bài toán con. Trong một lần
- * kiểm tra, hai cách chọn môn cho cùng một môn với cùng số câu dùng lại kết quả — HSA Khoa học
- * giải tối đa 5 môn × 2 giá trị số câu = 10 bài toán con cho 10 cách chọn.
+ * kiểm tra, các cách chọn môn dùng lại bài toán con ở số câu đầy đủ — HSA Khoa học giải tối đa
+ * 5 bài toán con cho 10 cách chọn.
  *
  * @param subjectCode   mã môn của bài toán con
  * @param sections      các môn cùng {@code subjectCode} trên đường con (đã gộp, mỗi mục một

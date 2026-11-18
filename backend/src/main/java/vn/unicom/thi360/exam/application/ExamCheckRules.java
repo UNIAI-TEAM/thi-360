@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import vn.unicom.thi360.exam.domain.BlockMatrix;
 import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamPart;
@@ -22,9 +24,13 @@ import vn.unicom.thi360.exam.domain.MatrixUnit;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.ParticipationMode;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
+import vn.unicom.thi360.exam.domain.QuotaBasis;
+import vn.unicom.thi360.exam.domain.QuotaEnforcement;
+import vn.unicom.thi360.exam.domain.TopicQuota;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.exam.domain.solver.SubjectPick;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /** Structural and exact-quota checks; source feasibility remains the solver's responsibility. */
@@ -32,17 +38,35 @@ public final class ExamCheckRules {
     private final Exam exam;
     private final ExamStructureDocument document;
     private final ExamCheckIssues issues;
+    private final Map<String, Map<String, List<String>>> combinationsByPart;
+    private final Map<UUID, UUID> topicParents;
     private final Map<String, SectionContext> sections = new LinkedHashMap<>();
     private final Map<String, ExamPartOption> options = new LinkedHashMap<>();
     private final Map<String, ExamPart> parts = new LinkedHashMap<>();
 
     ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document) {
+        this(mapper, exam, document, Map.of());
+    }
+
+    /** Definitions are indexed by part ID, then combination code; values are ordered subject codes. */
+    public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
+                          Map<String, Map<String, List<String>>> combinationsByPart) {
+        this(mapper, exam, document, combinationsByPart, Map.of());
+    }
+
+    /** Topic parents map each knowledge node to its direct parent; roots are absent. */
+    public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
+                          Map<String, Map<String, List<String>>> combinationsByPart,
+                          Map<UUID, UUID> topicParents) {
+        this.topicParents = topicParents;
+        this.combinationsByPart = combinationsByPart;
         this.exam = exam;
         this.document = document;
         this.issues = new ExamCheckIssues(mapper);
         for (ExamPart part : document.parts()) {
             parts.put(part.id(), part);
             for (ExamSection section : part.sections()) sections.put(section.id(), new SectionContext(part, null, section));
+            for (ExamSection section : part.subjectPool()) sections.put(section.id(), new SectionContext(part, null, section));
             for (ExamPartOption option : part.options()) {
                 options.put(option.id(), option);
                 for (ExamSection section : option.sections()) sections.put(section.id(), new SectionContext(part, option.id(), section));
@@ -84,10 +108,52 @@ public final class ExamCheckRules {
             issue.put("required", exam.getStructureYear()); issue.put("available", exam.getMatrixYear()); found.add(issue);
         }
         for (ExamPart part : document.parts()) {
-            if (isChoice(part) && part.options().isEmpty()) found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));
+            if (isChoice(part) && part.codeSource() == null && part.options().isEmpty()) found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));
             if ("SHARED".equals(exam.getTiming()) && part.durationMinutes() != null && part.durationMinutes() != 0) {
                 found.add(issue("SHARED_PART_DURATION", "STRUCTURE", part, null, null));
             }
+        }
+        for (SectionContext context : sections.values()) {
+            for (QuestionBlock block : context.section.blocks()) {
+                String code = Boolean.TRUE.equals(block.omitted()) ? "OMITTED_GROUPS_PRESENT"
+                        : block.questionType() == QuestionType.ESSAY || block.childAnswerType() == QuestionType.ESSAY
+                                ? "MANUAL_GRADING_REQUIRED" : null;
+                if (code != null) {
+                    ObjectNode warning = sectionIssue(code, "STRUCTURE", context, null);
+                    blockContext(warning, block);
+                    warning.put("severity", "WARNING");
+                    found.add(issues.key(warning));
+                }
+            }
+        }
+        return found;
+    }
+
+    /** Find catalog combination subjects absent from the part's code-sourced subject pool. */
+    public List<ObjectNode> combinationIssues() {
+        List<ObjectNode> found = new ArrayList<>();
+        for (ExamPart part : document.parts()) {
+            if (part.codeSource() == null) continue;
+            Map<String, List<String>> combinations = combinationsByPart.getOrDefault(part.id(), Map.of());
+            Set<String> available = new LinkedHashSet<>();
+            part.subjectPool().forEach(section -> available.add(section.subjectCode()));
+            Map<String, ObjectNode> missing = new LinkedHashMap<>();
+            combinations.forEach((code, subjects) -> {
+                for (String subject : subjects) {
+                    if (available.contains(subject)) continue;
+                    ObjectNode failure = missing.computeIfAbsent(subject, ignored -> {
+                        ObjectNode value = issue("COMBINATION_SUBJECT_MISSING", "STRUCTURE", part, null, null);
+                        value.put("subjectCode", subject);
+                        value.put("key", value.path("key").asText() + "|" + subject);
+                        return value;
+                    });
+                    ArrayNode codes = failure.withArray("affectedCodes");
+                    boolean present = false;
+                    for (var value : codes) if (code.equals(value.asText())) present = true;
+                    if (!present) codes.add(code);
+                }
+            });
+            found.addAll(missing.values());
         }
         return found;
     }
@@ -95,8 +161,9 @@ public final class ExamCheckRules {
     /** Detect inputs that the solver's strict value records cannot represent, including old jsonb. */
     List<ObjectNode> unrepresentable() {
         List<ObjectNode> found = new ArrayList<>();
+        found.addAll(combinationIssues());
         for (ExamPart part : document.parts()) {
-            if (isChoice(part) && (part.participation().choose() == null || part.participation().choose() < 1
+            if (isChoice(part) && part.codeSource() == null && (part.participation().choose() == null || part.participation().choose() < 1
                     || part.participation().choose() > part.options().size())) {
                 found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));
             }
@@ -106,11 +173,29 @@ public final class ExamCheckRules {
                 }
                 if (!option.blocks().isEmpty() && option.kind() == OptionKind.SUBJECT
                         && option.blocks().stream().anyMatch(block -> !isSet(block) && block.questionCount() == null)) {
-                    found.add(issue("REMAINDER_GROUP_INVALID", "STRUCTURE", part, option.id(), null));
+                    found.add(issue("SECTION_TOTAL_MISMATCH", "STRUCTURE", part, option.id(), null));
                 }
                 if (option.kind() == OptionKind.SUBJECT_CHOICE) {
                     ObjectNode invalid = choiceIssue(part, option);
                     if (invalid != null) found.add(invalid);
+                    if (invalid == null && option.countsByPick().stream().distinct().count() > 1) {
+                        int fullCount = option.countsByPick().stream().mapToInt(Integer::intValue).max().orElse(0);
+                        for (ExamSection section : option.sections()) {
+                            int count = section.questionCount() == null ? fullCount : section.questionCount();
+                            int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+                            int singles = 0;
+                            for (QuestionBlock block : section.blocks()) {
+                                if (Boolean.TRUE.equals(block.omitted()) || isSet(block)) continue;
+                                singles += block.questionCount() == null ? Math.max(0, count - fixed) : block.questionCount();
+                            }
+                            if (singles < 2) {
+                                ObjectNode failure = issue("SUBJECT_CHOICE_TRIM_IMPOSSIBLE", "STRUCTURE", part, option.id(), section);
+                                failure.put("required", 2);
+                                failure.put("available", singles);
+                                found.add(failure);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -119,8 +204,8 @@ public final class ExamCheckRules {
             if (section.id() == null || section.subjectCode() == null) {
                 found.add(issue("INFO_MISSING", "INFO", context.part, context.optionId, section));
             }
-            long remainders = section.blocks().stream().filter(block -> block.questionCount() == null && !isSet(block)).count();
-            if (remainders > 1) found.add(issue("REMAINDER_GROUP_INVALID", "STRUCTURE", context.part, context.optionId, section));
+            long remainders = section.blocks().stream().filter(block -> !Boolean.TRUE.equals(block.omitted()) && block.questionCount() == null && !isSet(block)).count();
+            if (remainders > 1) found.add(issue("SECTION_TOTAL_MISMATCH", "STRUCTURE", context.part, context.optionId, section));
             if (section.answerQuotas() != null) {
                 Set<QuestionType> answerTypes = new LinkedHashSet<>();
                 for (var value : section.answerQuotas().items()) {
@@ -135,17 +220,179 @@ public final class ExamCheckRules {
                 }
             }
             fractionalMatrix(found, context, null, section.matrix());
+            topicQuotas(found, context, null, section.topicQuotas());
             for (QuestionBlock block : section.blocks()) {
+                if (Boolean.TRUE.equals(block.omitted())) continue;
+                if (block.childConditions().stream().anyMatch(condition -> condition.from() == null || condition.to() == null
+                        || condition.from() < 1 || condition.from() > condition.to()
+                        || condition.to() > QuestionSourcePort.MAX_SET_CHILDREN)) {
+                    ObjectNode invalid = sectionIssue("SECTION_INCOMPLETE", "STRUCTURE", context, null);
+                    blockContext(invalid, block); found.add(issues.key(invalid));
+                }
                 if (block.id() == null) found.add(issue("OPTION_EMPTY", "STRUCTURE", context.part, context.optionId, section));
                 if (isSet(block) && (block.setCount() == null || block.setCount() <= 0
                         || block.setSize() == null || block.setSize() <= 0)) {
                     ObjectNode invalid = sectionIssue("SET_SIZE_MISMATCH", "QUESTION_SET", context, null);
                     blockContext(invalid, block); found.add(issues.key(invalid));
                 }
+                topicQuotas(found, context, block, block.topicQuotas());
                 fractionalMatrix(found, context, block, block.matrix());
             }
         }
         return found;
+    }
+
+    private void topicQuotas(List<ObjectNode> found, SectionContext context, QuestionBlock block,
+                             List<TopicQuota> quotas) {
+        for (TopicQuota quota : quotas) {
+            if (quota.enforcement() != QuotaEnforcement.REFERENCE && quota.basis() != null
+                    && quota.basis() != QuotaBasis.QUESTION) {
+                ObjectNode failure = sectionIssue("REQUIRED_BASIS_UNSUPPORTED", "MATRIX", context, null);
+                if (block != null) blockContext(failure, block);
+                found.add(issues.key(failure));
+            }
+        }
+        for (int i = 0; i < quotas.size(); i++) {
+            for (int j = i + 1; j < quotas.size(); j++) {
+                for (UUID first : quotas.get(i).nodeIds()) for (UUID second : quotas.get(j).nodeIds()) {
+                    if (isAncestor(first, second) || isAncestor(second, first)) {
+                        ObjectNode failure = sectionIssue("TOPIC_QUOTA_NESTED", "MATRIX", context, null);
+                        if (block != null) blockContext(failure, block);
+                        found.add(issues.key(failure));
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isAncestor(UUID ancestor, UUID node) {
+        Set<UUID> visited = new LinkedHashSet<>();
+        UUID current = topicParents.get(node);
+        while (current != null && visited.add(current)) {
+            if (current.equals(ancestor)) return true;
+            current = topicParents.get(current);
+        }
+        return false;
+    }
+    /** Identifies a selected question or group; affected codes must already be restricted to its path. */
+    public record EvidenceLocation(String partId, String sectionId, String subjectCode, String blockId,
+                                   Integer slotIndex, Integer childPosition, String pathId,
+                                   List<String> affectedCodes) { }
+
+    /** Null fact means unavailable, not false. Facts must describe a question in the proved witness. */
+    public record WitnessFact(EvidenceLocation location, String questionCode, Boolean hasAnswerKey,
+                              Boolean hasScoringRule, Boolean attachmentsReadable) { }
+
+    public enum FilterKind { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION }
+
+    /** Counts use the selection unit (individual questions or complete sets), with only this filter removed. */
+    public record FilterEvidence(EvidenceLocation location, FilterKind kind, int required,
+                                 long availableWithoutFilter, long availableWithFilter) { }
+
+    public List<ObjectNode> witnessIssues(List<WitnessFact> facts) {
+        List<ObjectNode> found = new ArrayList<>();
+        for (WitnessFact fact : facts) {
+            if (Boolean.FALSE.equals(fact.hasAnswerKey()) || Boolean.FALSE.equals(fact.hasScoringRule())) {
+                found.add(witnessIssue("QUESTION_NOT_PLAYABLE", fact));
+            }
+            if (Boolean.FALSE.equals(fact.attachmentsReadable())) {
+                found.add(witnessIssue("ATTACHMENT_MISSING", fact));
+            }
+        }
+        return found;
+    }
+
+    public List<ObjectNode> filterIssues(List<FilterEvidence> evidence) {
+        List<ObjectNode> found = new ArrayList<>();
+        for (FilterEvidence item : evidence) {
+            if (item.availableWithoutFilter() < item.required() || item.availableWithFilter() >= item.required()) continue;
+            String code = switch (item.kind()) {
+                case ITEM_SHAPE -> "ITEM_SHAPE_SHORTAGE";
+                case ANSWER_FORMAT -> "ANSWER_FORMAT_SHORTAGE";
+                case CHILD_CONDITION -> "CHILD_CONDITION_SHORTAGE";
+            };
+            ObjectNode failure = evidenceIssue(code, item.location());
+            failure.put("required", item.required());
+            failure.put("available", item.availableWithFilter());
+            found.add(issues.key(failure));
+        }
+        return found;
+    }
+
+    /** Required-vs-available evidence for one declared topic quota (BE-4b supplies counts). */
+    public record TopicQuotaEvidence(EvidenceLocation location, String quotaId, int required,
+                                     long available) { }
+
+    /** One combination's serving content: code, ordered subjects and branch (K13). */
+    public record CombinationContent(String code, List<String> subjectCodes, String branch) {
+        public CombinationContent {
+            subjectCodes = subjectCodes == null ? List.of() : List.copyOf(subjectCodes);
+        }
+    }
+
+    /** Topic quotas the source cannot satisfy (BE-4b wires the counts). */
+    public List<ObjectNode> topicQuotaIssues(List<TopicQuotaEvidence> evidence) {
+        List<ObjectNode> found = new ArrayList<>();
+        for (TopicQuotaEvidence item : evidence) {
+            if (item.available() >= item.required()) continue;
+            ObjectNode failure = evidenceIssue("TOPIC_QUOTA_INFEASIBLE", item.location());
+            failure.put("required", item.required());
+            failure.put("available", item.available());
+            issues.key(failure);
+            if (item.quotaId() != null) failure.put("key", failure.path("key").asText() + "|" + item.quotaId());
+            found.add(failure);
+        }
+        return found;
+    }
+
+    /**
+     * Warn when the combination list a published version was solved against differs from the
+     * catalog's current list by content (code, ordered subjects, branch). BE-9 supplies both lists.
+     */
+    public List<ObjectNode> combinationListIssues(List<CombinationContent> served,
+                                                List<CombinationContent> current) {
+        Map<String, CombinationContent> before = new LinkedHashMap<>();
+        served.forEach(item -> before.put(item.code(), item));
+        Map<String, CombinationContent> after = new LinkedHashMap<>();
+        current.forEach(item -> after.put(item.code(), item));
+        List<String> changed = new ArrayList<>();
+        for (var entry : before.entrySet()) {
+            CombinationContent now = after.get(entry.getKey());
+            if (now == null || !entry.getValue().equals(now)) changed.add(entry.getKey());
+        }
+        for (var entry : after.entrySet()) {
+            if (!before.containsKey(entry.getKey())) changed.add(entry.getKey());
+        }
+        if (changed.isEmpty()) return List.of();
+        ObjectNode warning = issues.create("COMBINATION_LIST_CHANGED", "STRUCTURE", "WARNING");
+        issues.key(warning);
+        ArrayNode codes = warning.withArray("affectedCodes");
+        changed.forEach(codes::add);
+        return List.of(warning);
+    }
+
+    private ObjectNode witnessIssue(String code, WitnessFact fact) {
+        ObjectNode failure = evidenceIssue(code, fact.location());
+        failure.putArray("questionCodes").add(fact.questionCode());
+        issues.key(failure);
+        failure.put("key", failure.path("key").asText() + "|" + fact.questionCode());
+        return failure;
+    }
+
+    private ObjectNode evidenceIssue(String code, EvidenceLocation where) {
+        ObjectNode failure = issues.create(code, "SOURCE", "ERROR");
+        failure.put("partId", where.partId());
+        failure.put("sectionId", where.sectionId());
+        failure.put("subjectCode", where.subjectCode());
+        failure.put("blockId", where.blockId());
+        ObjectNode location = failure.putObject("location");
+        if (where.slotIndex() != null) location.put("slotIndex", where.slotIndex());
+        if (where.childPosition() != null) location.put("childPosition", where.childPosition());
+        if (where.pathId() != null) location.put("pathId", where.pathId());
+        ArrayNode affected = failure.withArray("affectedCodes");
+        if (where.affectedCodes() != null) where.affectedCodes().forEach(affected::add);
+        return failure;
     }
 
     List<ObjectNode> path(PathResult result) {
@@ -219,6 +466,8 @@ public final class ExamCheckRules {
         Map<String, Integer> actualCounts = new LinkedHashMap<>();
         Map<String, BigDecimal> points = new LinkedHashMap<>();
         Set<String> missingPoints = new LinkedHashSet<>();
+        Set<String> partsWithOmitted = new LinkedHashSet<>();
+        Set<String> partsWithActiveBlocks = new LinkedHashSet<>();
         int total = 0;
         for (SectionOnPath section : counted) {
             SectionContext context = sections.get(section.sectionId());
@@ -230,10 +479,19 @@ public final class ExamCheckRules {
             if (subjectChoice) total += count;
             int fixed = context.section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
             for (QuestionBlock block : context.section.blocks()) {
+                if (Boolean.TRUE.equals(block.omitted())) {
+                    partsWithOmitted.add(context.part.id());
+                    continue;
+                }
+                partsWithActiveBlocks.add(context.part.id());
                 int groupCount = isSet(block) || block.questionCount() != null
                         ? fixedCount(block) : Math.max(0, count - fixed);
                 actualCounts.merge(context.part.id(), groupCount, Integer::sum);
                 if (!subjectChoice) total += groupCount;
+                if (groupCount == 0) {
+                    missingPoints.add(context.part.id());
+                    continue;
+                }
                 if (block.requiredPointsPerQuestion() == null) {
                     missingPoints.add(context.part.id());
                     if (exam.getMaxScore() != null) {
@@ -247,10 +505,35 @@ public final class ExamCheckRules {
                 }
             }
         }
+        for (SubjectPick pick : tuple) {
+            ExamPartOption option = options.get(pick.optionId());
+            if (option == null || option.countsByPick() == null) continue;
+            int drop = pick.totalCount() - option.countsByPick().stream().mapToInt(Integer::intValue).sum();
+            if (drop <= 0) continue;
+            SectionContext context = pick.sections().isEmpty() ? null : sections.get(pick.sections().getFirst().sectionId());
+            if (context == null) continue;
+            counts.merge(context.part.id(), -drop, Integer::sum);
+            actualCounts.merge(context.part.id(), -drop, Integer::sum);
+            total -= drop;
+            long natural = pick.sections().stream().filter(section -> "NATURAL".equals(section.choiceGroup())).count();
+            long social = pick.sections().stream().filter(section -> "SOCIAL".equals(section.choiceGroup())).count();
+            String trimmedGroup = natural == 0 || social == 0 ? null : natural < social ? "NATURAL" : "SOCIAL";
+            List<BigDecimal> singlePoints = pick.sections().stream()
+                    .filter(section -> trimmedGroup == null || trimmedGroup.equals(section.choiceGroup()))
+                    .map(section -> sections.get(section.sectionId()))
+                    .filter(Objects::nonNull).flatMap(section -> section.section.blocks().stream())
+                    .filter(block -> !Boolean.TRUE.equals(block.omitted()) && !isSet(block))
+                    .map(QuestionBlock::requiredPointsPerQuestion).filter(Objects::nonNull).distinct().toList();
+            if (singlePoints.size() == 1) {
+                points.merge(context.part.id(), singlePoints.getFirst().multiply(BigDecimal.valueOf(-drop)), BigDecimal::add);
+            }
+        }
         BigDecimal totalPoints = BigDecimal.ZERO;
         for (ExamPart part : document.parts()) {
             int count = counts.getOrDefault(part.id(), 0);
-            if (actualCounts.getOrDefault(part.id(), 0) == 0) {
+            boolean intentionallyOmitted = count == 0 && partsWithOmitted.contains(part.id())
+                    && !partsWithActiveBlocks.contains(part.id());
+            if (actualCounts.getOrDefault(part.id(), 0) == 0 && !intentionallyOmitted) {
                 found.add(issue("PART_EMPTY", "STRUCTURE", part, null, null));
             }
             if (part.questionCount() != null && part.questionCount() != count) {
@@ -287,16 +570,16 @@ public final class ExamCheckRules {
         int min = possible.stream().mapToInt(Integer::intValue).min().orElse(count);
         int max = possible.stream().mapToInt(Integer::intValue).max().orElse(count);
         int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
-        List<QuestionBlock> remaining = section.blocks().stream().filter(block -> block.questionCount() == null).toList();
-        if (remaining.size() > 1 || remaining.stream().anyMatch(ExamCheckRules::isSet)
-                || (!remaining.isEmpty() && fixed > min) || (varies && remaining.isEmpty())) {
-            ObjectNode issue = sectionIssue("REMAINDER_GROUP_INVALID", "STRUCTURE", context, varies ? count : null);
+        List<QuestionBlock> remaining = section.blocks().stream().filter(block -> !Boolean.TRUE.equals(block.omitted()) && block.questionCount() == null && !isSet(block)).toList();
+        if (remaining.size() > 1 || (!remaining.isEmpty() && fixed > min)) {
+            ObjectNode issue = sectionIssue("SECTION_TOTAL_MISMATCH", "STRUCTURE", context, varies ? count : null);
             issue.put("required", min); issue.put("available", fixed); found.add(issues.key(issue));
         } else if (remaining.isEmpty() && fixed != count) {
             ObjectNode issue = sectionIssue("SECTION_TOTAL_MISMATCH", "STRUCTURE", context, varies ? count : null);
             issue.put("required", count); issue.put("available", fixed); found.add(issues.key(issue));
         }
         if (section.answerQuotas() == null) for (QuestionBlock block : section.blocks()) {
+            if (Boolean.TRUE.equals(block.omitted())) continue;
             if (block.questionType() == null && !isSet(block)) {
                 ObjectNode issue = sectionIssue("GROUP_ANSWER_TYPE_MISSING", "STRUCTURE", context, varies ? count : null);
                 blockContext(issue, block); found.add(issues.key(issue));
@@ -304,16 +587,13 @@ public final class ExamCheckRules {
         }
         boolean countVaries = varies && ((section.answerQuotas() != null && section.answerQuotas().unit() == MatrixUnit.COUNT)
                 || (section.matrix() != null && section.matrix().unit() == MatrixUnit.COUNT));
-        if (countVaries) {
-            ObjectNode issue = sectionIssue("SUBJECT_QUOTA_COUNT_VARIES", "MATRIX", context, count);
-            issue.put("required", min); issue.put("available", max); found.add(issues.key(issue));
-        }
         if (section.answerQuotas() != null) {
             values(found, context, null, section.answerQuotas().items().stream().map(value -> value.value()).toList(),
                     section.answerQuotas().unit(), count, null, "ANSWER_QUOTA_TOTAL_MISMATCH", countVaries, varies ? count : null);
         }
         matrix(found, context, null, section.matrix(), count, "SUBJECT_MATRIX_TOTAL_MISMATCH", countVaries, varies ? count : null);
         for (QuestionBlock block : section.blocks()) {
+            if (Boolean.TRUE.equals(block.omitted())) continue;
             int groupCount = block.questionCount() == null ? Math.max(0, count - fixed) : fixedCount(block);
             if (isSet(block) && block.questionCount() != null
                     && (block.setCount() == null || block.setSize() == null || block.setCount() * block.setSize() != block.questionCount())) {
@@ -331,12 +611,12 @@ public final class ExamCheckRules {
         if (matrix == null) return;
         if (matrix.mode() == MatrixMode.COMBINED) {
             values(found, context, block, matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), count,
-                    null, countCode, countVaries, subjectCount);
+                    null, countCode, countVaries || matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE, subjectCount);
         } else {
             values(found, context, block, matrix.byGrade().stream().map(value -> value.value()).toList(), matrix.unit(), count,
-                    "GRADE", countCode, countVaries, subjectCount);
+                    "GRADE", countCode, countVaries || matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE, subjectCount);
             values(found, context, block, matrix.byDifficulty().stream().map(value -> value.value()).toList(), matrix.unit(), count,
-                    "DIFFICULTY", countCode, countVaries, subjectCount);
+                    "DIFFICULTY", countCode, countVaries || matrix.difficultyEnforcement() == QuotaEnforcement.REFERENCE, subjectCount);
         }
         if (!matrix.byCompetency().isEmpty()) values(found, context, block,
                 matrix.byCompetency().stream().map(value -> value.value()).toList(), matrix.unit(), count,
@@ -345,7 +625,8 @@ public final class ExamCheckRules {
 
     private void values(List<ObjectNode> found, SectionContext context, QuestionBlock block, List<BigDecimal> values,
                         MatrixUnit unit, int count, String dimension, String countCode, boolean countVaries, Integer subjectCount) {
-        if (values.stream().anyMatch(ExamCheckRules::notInteger)) return; // handled before solver construction
+        if (values.isEmpty()) return;
+        if (values.stream().anyMatch(Objects::isNull)) return; // handled before solver construction
         BigDecimal minimum = values.stream().min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
         BigDecimal sum = values.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         String code = minimum.signum() < 0 ? "MATRIX_NEGATIVE"
@@ -402,19 +683,33 @@ public final class ExamCheckRules {
 
     private void fractionalMatrix(List<ObjectNode> found, SectionContext context, QuestionBlock block, BlockMatrix matrix) {
         if (matrix == null) return;
+        boolean required = (!matrix.cells().isEmpty() && matrix.gradeEnforcement() == QuotaEnforcement.REQUIRED)
+                || (!matrix.byGrade().isEmpty() && matrix.gradeEnforcement() == QuotaEnforcement.REQUIRED)
+                || (!matrix.byDifficulty().isEmpty() && matrix.difficultyEnforcement() == QuotaEnforcement.REQUIRED)
+                || !matrix.byCompetency().isEmpty();
+        if (matrix.basis() != QuotaBasis.QUESTION && required) {
+            ObjectNode issue = sectionIssue("REQUIRED_BASIS_UNSUPPORTED", "MATRIX", context, null);
+            if (block != null) blockContext(issue, block);
+            found.add(issues.key(issue));
+        }
         if (matrix.mode() == null) {
             ObjectNode issue = sectionIssue("MATRIX_INCOMPLETE", "MATRIX", context, null);
             if (block != null) blockContext(issue, block);
             found.add(issues.key(issue));
         }
-        matrix.cells().forEach(value -> invalidValue(found, context, block, value.value(), null));
-        matrix.byGrade().forEach(value -> invalidValue(found, context, block, value.value(), "GRADE"));
-        matrix.byDifficulty().forEach(value -> invalidValue(found, context, block, value.value(), "DIFFICULTY"));
-        matrix.byCompetency().forEach(value -> invalidValue(found, context, block, value.value(), "COMPETENCY"));
+        boolean pointBasis = matrix.basis() == QuotaBasis.POINTS;
+        matrix.cells().forEach(value -> invalidValue(found, context, block, value.value(), null,
+                pointBasis && matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE));
+        matrix.byGrade().forEach(value -> invalidValue(found, context, block, value.value(), "GRADE",
+                pointBasis && matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE));
+        matrix.byDifficulty().forEach(value -> invalidValue(found, context, block, value.value(), "DIFFICULTY",
+                pointBasis && matrix.difficultyEnforcement() == QuotaEnforcement.REFERENCE));
+        matrix.byCompetency().forEach(value -> invalidValue(found, context, block, value.value(), "COMPETENCY", false));
     }
 
-    private void invalidValue(List<ObjectNode> found, SectionContext context, QuestionBlock block, BigDecimal value, String dimension) {
-        if (notInteger(value)) found.add(nonInteger(context, block, value, dimension));
+    private void invalidValue(List<ObjectNode> found, SectionContext context, QuestionBlock block, BigDecimal value,
+                              String dimension, boolean decimalAllowed) {
+        if (value == null || (!decimalAllowed && notInteger(value))) found.add(nonInteger(context, block, value, dimension));
         else if (value.signum() < 0) found.add(negative(context, block, value, dimension));
     }
 
@@ -455,6 +750,7 @@ public final class ExamCheckRules {
     private static boolean isChoice(ExamPart part) { return part.participation() != null && part.participation().mode() == ParticipationMode.CHOICE; }
     private static boolean isSet(QuestionBlock block) { return block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE; }
     private static int fixedCount(QuestionBlock block) {
+        if (Boolean.TRUE.equals(block.omitted())) return 0;
         if (block.questionCount() != null) return block.questionCount();
         return block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
     }
