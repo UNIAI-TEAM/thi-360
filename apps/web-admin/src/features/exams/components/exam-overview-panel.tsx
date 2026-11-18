@@ -7,7 +7,7 @@ import { useId } from "react";
 import { ratePercent } from "../allocation";
 import { bucketCounts, canRequireQuota, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
 import { sum } from "../matrix";
-import type { ExamPart, ExamQuota } from "../types";
+import type { ExamPart, ExamQuota, StructureCombination } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { EnforcementToggle } from "./enforcement-toggle";
@@ -25,6 +25,8 @@ export interface ExamOverviewPanelProps {
   labels: MatrixLabels;
   /** Lỗi máy chủ của chỉ tiêu cấp bài (422 `EXAM_QUOTA_SCOPE_INVALID`). */
   scopeError?: boolean;
+  /** Mã bài thi của phần theo mã, để lấy một mã làm đường tính điểm và mẫu số. */
+  combinations?: readonly StructureCombination[];
 }
 
 /**
@@ -32,12 +34,12 @@ export interface ExamOverviewPanelProps {
  * bài (R-52, 3.4). Chỉ tiêu của mẫu không thêm, xóa hay đổi tiêu chí được: chỉ sửa được giá trị từng mức và mức Bắt buộc
  * hay Tham khảo. Chỉ tiêu trải nhiều môn khóa nút Bắt buộc (H6).
  */
-export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, names, labels, scopeError = false }: ExamOverviewPanelProps) {
+export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, names, labels, scopeError = false, combinations = [] }: ExamOverviewPanelProps) {
   const t = useTranslations("exams.examQuota");
   const format = useFormatter();
   const pointsId = useId();
   const quotasId = useId();
-  const rows = pointsRows(parts);
+  const rows = pointsRows(parts, combinations);
   const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
   const totalPoints = sum(rows.map((row) => row.totalPoints));
   const essayPoints = sum(rows.map((row) => row.essayPoints));
@@ -107,7 +109,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
           </p>
         )}
         {quotas.map((quota) => {
-          const scope = quotaScope(parts, quota);
+          const scope = quotaScope(parts, quota, combinations);
           const percent = quotaUnitOf(quota) === "PERCENT";
           const counts = bucketCounts(quota, scope.count);
           const label = quota.dimension === "GRADE" ? labels.grade : labels.difficulty;

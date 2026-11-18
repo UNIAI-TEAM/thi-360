@@ -600,6 +600,7 @@ function StructureEditor({
               names={names}
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
               scopeError={quotaScopeError}
+              combinations={structure.combinations ?? []}
             />
           ) : sectionContext && reviewMode && sectionContext.section.blocks.length === 1 ? (
             <ReviewSubjectPanel

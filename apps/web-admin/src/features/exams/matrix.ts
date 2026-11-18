@@ -557,7 +557,7 @@ function subjectChoiceAllocations(option: ExamPart["options"][number]): Map<numb
  *
  * Không có cách chia hợp lệ (cấu hình sai) trả bảng rỗng: người gọi lùi về số câu khai báo để tiêu đề lộ phần thiếu.
  */
-function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
+export function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
   const allocations = subjectChoiceAllocations(option);
   const counts = new Map<number, number>();
   if (allocations.size === 0) return counts;
