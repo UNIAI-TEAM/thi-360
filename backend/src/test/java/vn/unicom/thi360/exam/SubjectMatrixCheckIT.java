@@ -53,18 +53,8 @@ class SubjectMatrixCheckIT extends AbstractIntegrationTest {
         assertThat(english.path("result").asText()).isEqualTo("VALID");
         assertThat(science.path("result").asText()).isEqualTo("INVALID");
         assertThat(science.path("selections")).hasSize(10);
-        // FU-BE4a-1: interim totals count the untrimmed 17 + 17 + 17 until BE-5 applies the TrimPolicy drop.
-        for (JsonNode issue : science.path("issues")) {
-            String code = issue.path("code").asText();
-            if ("PART_TOTAL_MISMATCH".equals(code) || "PATH_TOTAL_MISMATCH".equals(code)) {
-                assertThat(issue.path("required").decimalValue()).isEqualByComparingTo("50");
-                assertThat(issue.path("available").decimalValue()).isEqualByComparingTo("51");
-            } else {
-                assertThat(code).isEqualTo("CELL_SHORTAGE");
-            }
-        }
         assertThat(science.path("issues").findValuesAsText("code"))
-                .contains("PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH");
+                .contains("CELL_SHORTAGE").doesNotContain("PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH");
         assertThat(science.path("issues").findValuesAsText("subjectCode")).contains("LY");
         assertThat(science.path("issues").findValues("subjectCount").stream().anyMatch(value -> value.asInt() == 17)).isTrue();
     }

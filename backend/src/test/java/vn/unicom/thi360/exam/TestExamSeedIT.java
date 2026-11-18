@@ -314,34 +314,24 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
         SoftAssertions softly = new SoftAssertions();
-        List<String> valid = List.of("TEST-HSA-02", "TEST-HSA-03", "TEST-VACT-01", "TEST-SPT-01",
-                "TEST-SP2E-01", "TEST-SP2E-02", "TEST-SP2E-03", "TEST-THPTQG-01",
-                "TEST-THPTQG-02", "TEST-THPTQG-03");
+        List<String> valid = List.of("TEST-HSA-01", "TEST-HSA-02", "TEST-HSA-03", "TEST-HSA-04",
+                "TEST-QDA-01", "TEST-VACT-01", "TEST-SPT-01", "TEST-SP2E-01", "TEST-SP2E-02",
+                "TEST-SP2E-03", "TEST-THPTQG-01", "TEST-THPTQG-02", "TEST-THPTQG-03", "TEST-ERR-08");
         for (String code : valid) {
             JsonNode result = check(code);
             softly.assertThat(result.path("status").asText()).as("%s: %s", code, codes(result)).isEqualTo("VALID");
-            softly.assertThat(result.path("issueCount").asInt()).as(code).isZero();
+            Set<String> expected = Set.of("TEST-SPT-01", "TEST-THPTQG-02").contains(code)
+                    ? Set.of("MANUAL_GRADING_REQUIRED") : Set.of();
+            softly.assertThat(codes(result)).as(code).isEqualTo(expected);
         }
 
-        // FU-BE4a-1: BE-5 subtracts the TrimPolicy drop from SUBJECT_CHOICE totals, restoring VALID for HSA.
-        Set<String> fullCountCheckerIssues = Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
-                "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH");
-        for (String code : List.of("TEST-HSA-01", "TEST-HSA-04")) {
-            JsonNode result = check(code);
-            softly.assertThat(result.path("status").asText()).as(code).isEqualTo("INVALID");
-            softly.assertThat(codes(result)).as(code).isEqualTo(fullCountCheckerIssues);
-        }
-        // FU-BE1-6: BE-4a builds codeSource/subjectPool paths and BE-5 removes OPTION_EMPTY.
-        for (String code : List.of("TEST-QDA-01", "TEST-BCA-01")) {
-            JsonNode result = check(code);
-            softly.assertThat(result.path("status").asText()).as(code).isEqualTo("INVALID");
-            softly.assertThat(codes(result)).as(code).isEqualTo(Set.of("OPTION_EMPTY"));
-        }
+        JsonNode bca = check("TEST-BCA-01");
+        softly.assertThat(bca.path("status").asText()).as("TEST-BCA-01").isEqualTo("VALID");
+        softly.assertThat(codes(bca)).as("TEST-BCA-01").isEqualTo(Set.of("MANUAL_GRADING_REQUIRED"));
 
         Map<String, Set<String>> invalid = new LinkedHashMap<>();
         invalid.put("TEST-ERR-01", Set.of("MATRIX_INCOMPLETE"));
-        // FU-BE1-6: BE-4a/BE-5 restore the points errors after codeSource paths are supported.
-        invalid.put("TEST-ERR-02", Set.of("OPTION_EMPTY"));
+        invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "MANUAL_GRADING_REQUIRED"));
         invalid.put("TEST-ERR-03", Set.of("SET_SHORTAGE"));
         // 40 + 9 = 49 instead of 50; the solver also cannot satisfy the 50-unit matrix.
         invalid.put("TEST-ERR-04", Set.of("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
@@ -349,11 +339,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         // The 35 + 14 quota totals 49 for a 50-question section.
         invalid.put("TEST-ERR-05", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         invalid.put("TEST-ERR-06", Set.of("ANSWER_TYPE_SHORTAGE"));
-        // FU-BE4a-1: these totals still include 17 + 17 + 17 before the SUBJECT_CHOICE trim.
-        invalid.put("TEST-ERR-08", fullCountCheckerIssues);
-        // FU-BE4a-1: these totals also include the untrimmed SUBJECT_CHOICE count; other errors remain.
-        invalid.put("TEST-ERR-09", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
-                "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH", "ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
+        invalid.put("TEST-ERR-09", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         // FU-BE4a-1: full-count totals are interim; the invalid 17 + 17 + 17 option also leaves the part empty.
         invalid.put("TEST-ERR-10", Set.of("SUBJECT_CHOICE_COUNTS_INVALID", "PART_EMPTY",
                 "PART_POINTS_MISMATCH", "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH",
@@ -368,9 +354,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         }
         JsonNode narrow = check("TEST-ERR-07");
         softly.assertThat(narrow.path("status").asText()).as("TEST-ERR-07").isEqualTo("INVALID");
-        // FU-BE4a-1: the total mismatches include the untrimmed SUBJECT_CHOICE count; the shortage remains.
-        Set<String> shortageIssues = Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
-                "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH", "CELL_SHORTAGE");
+        Set<String> shortageIssues = Set.of("CELL_SHORTAGE");
         softly.assertThat(codes(narrow)).as("TEST-ERR-07").isEqualTo(shortageIssues);
         int failures = 0;
         int selections = 0;
@@ -385,10 +369,10 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 }
                 if (geography17) failures++;
                 softly.assertThat(selection.path("result").asText()).as(selection.toString())
-                        .isEqualTo("INVALID");
+                        .isEqualTo(geography17 ? "INVALID" : "VALID");
                 softly.assertThat(selection.path("issues").findValuesAsText("code"))
                         .as(selection.toString()).containsExactlyInAnyOrderElementsOf(
-                                geography17 ? shortageIssues : fullCountCheckerIssues);
+                                geography17 ? shortageIssues : Set.of());
             }
         }
         softly.assertThat(selections).as("TEST-ERR-07 selections").isEqualTo(10);
@@ -408,10 +392,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         assertThat(cell.path("required").asInt(-1)).isEqualTo(12);
         assertThat(cell.path("available").asInt(-1)).isEqualTo(4);
 
-        // BE-5 must reconcile these full-count results with trimmed paper totals.
         JsonNode result = check("TEST-ERR-07");
-        Set<String> shortageIssues = Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
-                "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH", "CELL_SHORTAGE");
+        Set<String> shortageIssues = Set.of("CELL_SHORTAGE");
         assertThat(codes(result)).isEqualTo(shortageIssues);
         JsonNode shortage = result.path("groups").findValues("issues").stream()
                 .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
@@ -424,16 +406,14 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         int failedCount = 0;
         for (JsonNode path : result.path("paths")) {
             for (JsonNode selection : path.path("selections")) {
-                assertThat(selection.path("result").asText()).isEqualTo("INVALID");
                 var issues = selection.path("issues").findValuesAsText("code");
                 Set<String> subjects = new java.util.HashSet<>();
                 for (int i = 0; i < selection.path("subjectCodes").size(); i++) {
                     subjects.add(selection.path("subjectCodes").get(i).asText());
                     assertThat(selection.path("counts").get(i).asInt()).isEqualTo(17);
                 }
-                assertThat(issues).containsExactlyInAnyOrderElementsOf(subjects.contains("DIA") ? shortageIssues
-                        : Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
-                                "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH"));
+                assertThat(selection.path("result").asText()).isEqualTo(subjects.contains("DIA") ? "INVALID" : "VALID");
+                assertThat(issues).containsExactlyInAnyOrderElementsOf(subjects.contains("DIA") ? shortageIssues : Set.of());
                 if (subjects.contains("DIA")) {
                     failedCount++;
                     failed.add(subjects);

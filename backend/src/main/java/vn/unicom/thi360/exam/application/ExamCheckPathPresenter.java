@@ -223,6 +223,29 @@ final class ExamCheckPathPresenter {
                 }
             }
         }
+        if (!tuples.isEmpty()) {
+            for (SubjectPick pick : tuples.getFirst()) {
+                ExamPartOption option = options.get(pick.optionId());
+                if (option == null || option.countsByPick() == null) continue;
+                int drop = pick.totalCount() - option.countsByPick().stream().mapToInt(Integer::intValue).sum();
+                if (drop <= 0) continue;
+                totalQuestions -= drop;
+                long natural = pick.sections().stream().filter(section -> "NATURAL".equals(section.choiceGroup())).count();
+                long social = pick.sections().stream().filter(section -> "SOCIAL".equals(section.choiceGroup())).count();
+                String trimmedGroup = natural == 0 || social == 0 ? null : natural < social ? "NATURAL" : "SOCIAL";
+                List<BigDecimal> singlePoints = pick.sections().stream()
+                        .filter(section -> trimmedGroup == null || trimmedGroup.equals(section.choiceGroup()))
+                        .map(section -> sections.get(section.sectionId())).filter(Objects::nonNull)
+                        .flatMap(info -> info.section.blocks().stream())
+                        .filter(block -> !Boolean.TRUE.equals(block.omitted())
+                                && block.questionType() != vn.unicom.thi360.questionbank.spi.QuestionType.QUESTION_SET
+                                && block.questionType() != vn.unicom.thi360.questionbank.spi.QuestionType.CLOZE)
+                        .map(QuestionBlock::requiredPointsPerQuestion).filter(Objects::nonNull).distinct().toList();
+                if (singlePoints.size() == 1) {
+                    totalPoints = totalPoints.subtract(singlePoints.getFirst().multiply(BigDecimal.valueOf(drop)));
+                }
+            }
+        }
         int minutes = document.parts().stream().mapToInt(part -> part.durationMinutes() == null ? 0 : part.durationMinutes()).sum();
         out.put("totalQuestions", totalQuestions);
         out.put("totalMinutes", "SHARED".equals(exam.getTiming()) && exam.getDurationMinutes() != null ? exam.getDurationMinutes() : minutes);

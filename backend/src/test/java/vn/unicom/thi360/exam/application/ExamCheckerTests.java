@@ -227,6 +227,22 @@ class ExamCheckerTests {
     }
 
     @Test
+    void partContainingOnlyOmittedEssayIsNotAnEmptyDraftPart() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        subject("VAN", 0);
+        String doc = """
+                {"parts":[{"id":"p1","questionCount":1,"sections":[{"id":"s1","subjectCode":"MATH",
+                "questionCount":1,"blocks":[{"id":"b1","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                {"id":"p2","questionCount":0,"sections":[{"id":"s2","subjectCode":"VAN","questionCount":0,
+                "blocks":[{"id":"essay","questionType":"ESSAY","questionCount":1,"omitted":true}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        assertThat(issueCodes(result)).contains("OMITTED_GROUPS_PRESENT").doesNotContain("PART_EMPTY");
+    }
+
+    @Test
     void incompleteChildBoundsAreReportedBeforeConstructingSolverInput() throws Exception {
         Exam exam = exam(1, null, "RAW");
         String doc = """
@@ -237,6 +253,50 @@ class ExamCheckerTests {
         JsonNode result = check(exam, document(doc)).result();
         assertThat(issueCodes(result)).contains("SECTION_INCOMPLETE");
         verify(source, never()).findCandidates(any(), anyInt());
+    }
+
+    @Test
+    void emptyReviewStyleDraftReportsMissingAnswerTypeAndPart() throws Exception {
+        Exam exam = exam(5, null, "RAW");
+        subject("MATH", 0);
+        String doc = """
+                {"parts":[{"id":"p","questionCount":5,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":5,"blocks":[{"id":"b","questionCount":0}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issueCodes(result)).contains("GROUP_ANSWER_TYPE_MISSING", "PART_EMPTY");
+    }
+
+    @Test
+    void codeSourceSubjectShortageListsOnlyCodesContainingThatSubject() throws Exception {
+        Exam exam = exam(2, null, "RAW");
+        subject("PHY", 1);
+        subject("CHEM", 0);
+        subject("BIO", 1);
+        var first = mock(vn.unicom.thi360.catalog.spi.CatalogCombinationView.class);
+        when(first.itemCode()).thenReturn("QD01");
+        when(first.subjectCodes()).thenReturn(List.of("PHY", "CHEM"));
+        var second = mock(vn.unicom.thi360.catalog.spi.CatalogCombinationView.class);
+        when(second.itemCode()).thenReturn("QD02");
+        when(second.subjectCodes()).thenReturn(List.of("CHEM", "BIO"));
+        var third = mock(vn.unicom.thi360.catalog.spi.CatalogCombinationView.class);
+        when(third.itemCode()).thenReturn("QD03");
+        when(third.subjectCodes()).thenReturn(List.of("PHY", "BIO"));
+        when(catalog.listCombinations(null)).thenReturn(List.of(first, second, third));
+        String doc = """
+                {"parts":[{"id":"p","questionCount":2,"codeSource":{"source":"GLOBAL_LIST"},"subjectPool":[
+                {"id":"phy","subjectCode":"PHY","questionCount":1,"blocks":[{"id":"bp","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                {"id":"chem","subjectCode":"CHEM","questionCount":1,"blocks":[{"id":"bc","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                {"id":"bio","subjectCode":"BIO","questionCount":1,"blocks":[{"id":"bb","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        JsonNode issue = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                .filter(value -> "CHEM".equals(value.path("subjectCode").asText()))
+                .findFirst().orElseThrow();
+        assertThat(issue.path("affectedCodes")).extracting(value -> value.asText())
+                .containsExactlyInAnyOrder("QD01", "QD02");
     }
 
     @Test
@@ -382,6 +442,8 @@ class ExamCheckerTests {
         JsonNode path = check(exam, document(doc)).result().path("paths").get(0);
         assertThat(path.path("result").asText()).isEqualTo("INVALID");
         assertThat(path.path("selections")).hasSize(10);
+        assertThat(path.path("totalQuestions").asInt()).isEqualTo(50);
+        assertThat(path.path("totalPoints").decimalValue()).isEqualByComparingTo("50");
         for (JsonNode selection : path.path("selections")) {
             assertThat(selection.path("counts")).hasSize(3);
             for (JsonNode count : selection.path("counts")) assertThat(count.asInt()).isEqualTo(17);
