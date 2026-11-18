@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
-import type { ChoiceNameResolver } from "../check";
+import { blockFilterConfig, findBlockContext, type ChoiceNameResolver } from "../check";
 import { type ChangeLevel, parseChangeWhere } from "../change-where";
 import { roundForDisplay } from "../display-number";
 import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
@@ -89,22 +89,35 @@ const COUNT_ISSUE_CODES: Partial<Record<CheckIssueCode, true>> = {
   SUBJECT_QUOTA_INFEASIBLE: true,
 };
 
-/** Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). */
-export function useIssueText() {
+/** Tên nhiều mã nối bằng "+" (chỉ tiêu cấp bài gộp nhiều khối lớp: `G10+G11`) thành "tên + tên". */
+function joinedNames(value: string | null, nameOf: (code: string) => string): string {
+  return value ? value.split("+").map(nameOf).join(" + ") : "";
+}
+
+/**
+ * Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). Truyền `exam` thì vấn đề
+ * chỉ có `blockId` (lỗi nguồn của bộ giải) lấy tên khối, tên phần và điều kiện lọc của khối từ cấu trúc.
+ */
+export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
   const tContent = useTranslations("content");
+  const tFormat = useTranslations("questions.detail.body.answerFormats");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
   return useCallback(
     (issue: CheckIssue) => {
-      const subject = issue.subjectCode ? lookup.subject(issue.subjectCode) : "";
+      const where = exam ? findBlockContext(exam, issue.blockId) : null;
+      const filter = blockFilterConfig(where?.block);
+      const subjectCode = issue.subjectCode ?? where?.section?.subjectCode ?? null;
+      const blockName = issue.blockName ?? where?.block.name ?? null;
+      const subject = subjectCode ? lookup.subject(subjectCode) : "";
       const codes = issue.questionCodes ?? [];
       const competency = issue.competencyCode
         ? (competencies?.find((item) => item.code === issue.competencyCode)?.name ?? issue.competencyCode)
         : "";
-      const grade = issue.gradeCode ? lookup.grade(issue.gradeCode) : "";
-      const difficulty = issue.difficultyCode ? lookup.difficulty(issue.difficultyCode) : "";
+      const grade = joinedNames(issue.gradeCode, lookup.grade);
+      const difficulty = joinedNames(issue.difficultyCode, lookup.difficulty);
       const level =
         issue.dimension === "GRADE" && issue.gradeCode
           ? grade
@@ -116,30 +129,50 @@ export function useIssueText() {
         issue.code === "DIMENSION_SHORTAGE" || issue.dimension === "GRADE" || issue.dimension === "DIFFICULTY"
           ? level
           : [grade, difficulty].filter(Boolean).join("/");
+      const shape = filter.itemShape;
+      const shapeKind =
+        shape?.leftItems != null && shape.rightItems != null ? "MATCHING" : shape?.statements != null ? "STATEMENTS" : "NONE";
+      const positions = issue.childPosition
+        ? String(issue.childPosition)
+        : filter.childPositions.map((range) => (range.from === range.to ? `${range.from}` : `${range.from}–${range.to}`)).join(", ");
+      const required = issue.required ?? 0;
+      const available = issue.available ?? 0;
       const values = {
-        block: issue.blockName ? `${subject} · ${issue.blockName}` : subject,
+        block: blockName ? `${subject} · ${blockName}` : subject,
         subject,
-        part: issue.partName ?? "",
+        part: issue.partName ?? where?.part.name ?? "",
         grade,
         difficulty,
         level,
         bucket,
         hasBucket: bucket ? "yes" : "no",
         dimension: issue.dimension ?? "NONE",
-        required: roundForDisplay(issue.required ?? 0),
-        available: roundForDisplay(issue.available ?? 0),
+        required: roundForDisplay(required),
+        available: roundForDisplay(available),
+        missing: roundForDisplay(Math.max(0, required - available)),
+        hasCount: issue.required == null || issue.available == null ? "no" : "yes",
         seconds: issue.timeLimitSeconds ?? 0,
         answerType: issue.answerType ? tContent(`questionType.${issue.answerType}`) : "",
         count: issue.subjectCount ?? 0,
         competency,
         codes: codes.slice(0, QUESTION_CODES_SHOWN).join(", ") + (codes.length > QUESTION_CODES_SHOWN ? ", …" : ""),
+        slot: issue.slotIndex ?? 0,
+        hasSlot: issue.slotIndex ? "yes" : "no",
+        shapeKind,
+        left: shape?.leftItems ?? 0,
+        right: shape?.rightItems ?? 0,
+        statements: shape?.statements ?? 0,
+        formats: filter.answerFormats.map((format) => tFormat(format)).join(", "),
+        hasFormats: filter.answerFormats.length > 0 ? "yes" : "no",
+        positions,
+        hasPositions: positions ? "yes" : "no",
       };
       // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
       const noCount = issue.required == null || issue.available == null;
       if (noCount && COUNT_ISSUE_CODES[issue.code]) return tNoCount(issue.code, values);
       return t(issue.code, values);
     },
-    [t, tNoCount, tContent, lookup, competencies],
+    [t, tNoCount, tContent, tFormat, lookup, competencies, exam],
   );
 }
 

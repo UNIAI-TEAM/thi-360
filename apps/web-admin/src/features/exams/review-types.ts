@@ -125,6 +125,23 @@ export const CHECK_ISSUE_CODES = [
   "PART_EMPTY",
   "SHARED_PART_DURATION",
   "ANSWER_QUOTA_DUPLICATE",
+  "ATTACHMENT_MISSING",
+  "COMBINATION_LIST_CHANGED",
+  "COMBINATION_SUBJECT_MISSING",
+  "QUESTION_NOT_PLAYABLE",
+  "REQUIRED_BASIS_UNSUPPORTED",
+  "SECTION_INCOMPLETE",
+  "SUBJECT_CHOICE_TRIM_IMPOSSIBLE",
+  "TOPIC_QUOTA_INFEASIBLE",
+  "TOPIC_QUOTA_NESTED",
+  "ITEM_SHAPE_SHORTAGE",
+  "ANSWER_FORMAT_SHORTAGE",
+  "CHILD_CONDITION_SHORTAGE",
+  "SLOT_SOURCE_SHORTAGE",
+  "DISTRIBUTION_DEVIATION",
+  "EXAM_QUOTA_DEVIATION",
+  "MANUAL_GRADING_REQUIRED",
+  "OMITTED_GROUPS_PRESENT",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
@@ -167,6 +184,10 @@ export interface CheckIssue {
   questionCodes: string[] | null;
   /** Các mã bài thi bị lỗi ảnh hưởng (phần theo mã, R-24); `null` khi lỗi không gắn mã. */
   affectedCodes?: string[] | null;
+  /** Vị trí chùm (từ 1) của lỗi nguồn theo chùm (`SLOT_SOURCE_SHORTAGE`); `null`: lỗi không gắn chùm. */
+  slotIndex?: number | null;
+  /** Vị trí câu con (từ 1) của lỗi điều kiện câu con (`CHILD_CONDITION_SHORTAGE`); `null`: không gắn vị trí. */
+  childPosition?: number | null;
 }
 
 /** Số câu cần của một ô (ma trận kết hợp) sau khi quy đổi tỷ lệ. */

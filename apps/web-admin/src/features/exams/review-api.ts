@@ -451,6 +451,8 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     timeLimitSeconds: issue.timeLimitSeconds ?? null,
     questionCodes: issue.questionCodes ?? null,
     affectedCodes: issue.affectedCodes ?? null,
+    slotIndex: issue.location?.slotIndex ?? null,
+    childPosition: issue.location?.childPosition ?? null,
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
