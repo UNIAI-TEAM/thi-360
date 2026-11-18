@@ -26,6 +26,7 @@ import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.exam.domain.ExamStructureOps;
 import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.ExamTemplate;
@@ -179,6 +180,80 @@ class ExamCheckRowLockTests {
         assertThat(codes(rules(reenabled, null, null).common())).doesNotContain("OMITTED_BLOCK_LOCKED");
         assertThat(codes(rules(WRITING, WRITING, WRITING).common())).doesNotContain("OMITTED_BLOCK_LOCKED",
                 "BLOCK_COUNT_LOCKED");
+    }
+
+    private static final String REENABLED = WRITING.replace("\"omitted\":true", "\"omitted\":false");
+
+    private ExamCheckRules rulesFor(ExamStructureDocument current, String blockLocked, String omittedLocked) throws Exception {
+        return new ExamCheckRules(mapper, exam(1), current, Map.of(), Map.of(),
+                new ExamCheckRules.TemplateFacts(null, null, blockLocked == null ? null : document(blockLocked),
+                        omittedLocked == null ? null : document(omittedLocked)));
+    }
+
+    @Test
+    void aDuplicatedExamWithRegeneratedIdsStillLocksTheReenabledGroupAtItsNewId() throws Exception {
+        ExamStructureDocument copy = ExamStructureOps.regenerateIds(document(REENABLED));
+        var section = copy.parts().get(1).sections().get(0);
+        var block = section.blocks().get(0);
+        assertThat(block.id()).isNotEqualTo("b-write");
+        List<ObjectNode> locked = of(rulesFor(copy, WRITING, WRITING).common(), "OMITTED_BLOCK_LOCKED");
+        assertThat(locked).hasSize(1);
+        assertThat(locked.getFirst().path("blockId").asText()).isEqualTo(block.id());
+        assertThat(locked.getFirst().path("sectionId").asText()).isEqualTo(section.id());
+        assertThat(locked.getFirst().path("partId").asText()).isEqualTo(copy.parts().get(1).id());
+        assertThat(codes(rulesFor(copy, WRITING, WRITING).common())).doesNotContain("BLOCK_COUNT_LOCKED");
+        // Same copy of a template without the flag, and the unedited copy, raise nothing.
+        assertThat(codes(rulesFor(copy, WRITING, null).common())).doesNotContain("OMITTED_BLOCK_LOCKED");
+        assertThat(codes(rulesFor(ExamStructureOps.regenerateIds(document(WRITING)), WRITING, WRITING).common()))
+                .doesNotContain("OMITTED_BLOCK_LOCKED", "BLOCK_COUNT_LOCKED");
+    }
+
+    @Test
+    void aDuplicatedExamWithTheReenabledGroupMarksItsRegeneratedSectionIncomplete() throws Exception {
+        String writing = WRITING.replace("\"id\":\"s2\",\"subjectCode\":\"VAN\"", "\"id\":\"s2\",\"subjectCode\":\"OTHER\"");
+        ExamStructureDocument copy = ExamStructureOps.regenerateIds(document(writing
+                .replace("\"omitted\":true", "\"omitted\":false").replace("\"questionCount\":0", "\"questionCount\":1")));
+        templateWith(false, false, true, writing);
+        String reading = copy.parts().get(0).sections().get(0).id();
+        String reenabled = copy.parts().get(1).sections().get(0).id();
+        assertThat(sectionStates(scopedExam("SUBJECT", "T"), mapper.writeValueAsString(copy)))
+                .containsExactly(reading + "=NEEDS_CHECK", reenabled + "=INCOMPLETE");
+    }
+
+    @Test
+    void aReenabledGroupMovedToAnotherSectionKeepingItsIdIsStillLocked() throws Exception {
+        String moved = """
+                {"parts":[{"id":"p1","name":"Reading","questionCount":21,"sections":[
+                  {"id":"s1","subjectCode":"VAN","questionCount":21,"blocks":[
+                    {"id":"b-read","name":"Read","templateGroupCode":"R","questionType":"SINGLE_CHOICE","questionCount":20},
+                    {"id":"b-write","name":"Write","templateGroupCode":"W","questionType":"ESSAY","questionCount":1,
+                     "requiredPointsPerQuestion":30}]}]},
+                 {"id":"p2","name":"Writing","questionCount":0,"sections":[
+                  {"id":"s2","subjectCode":"VAN","questionCount":0,"blocks":[]}]}]}
+                """;
+        List<ObjectNode> locked = of(rules(moved, WRITING, WRITING).common(), "OMITTED_BLOCK_LOCKED");
+        assertThat(locked).hasSize(1);
+        assertThat(locked.getFirst().path("sectionId").asText()).isEqualTo("s1");
+        assertThat(locked.getFirst().path("blockId").asText()).isEqualTo("b-write");
+        // Neither a spurious row lock at the section it landed in, nor a lock without the flag.
+        assertThat(codes(rules(moved, WRITING, WRITING).common())).doesNotContain("BLOCK_COUNT_LOCKED");
+        assertThat(codes(rules(moved, WRITING, null).common())).doesNotContain("OMITTED_BLOCK_LOCKED");
+    }
+
+    @Test
+    void aGroupCodeSharedByTwoTemplateGroupsIsNeverMatchedByCode() throws Exception {
+        String shared = """
+                {"parts":[{"id":"p1","name":"Reading","questionCount":20,"sections":[
+                  {"id":"s1","subjectCode":"VAN","questionCount":20,"blocks":[
+                    {"id":"b-read","name":"Read","templateGroupCode":"R","questionType":"SINGLE_CHOICE","questionCount":20}]}]},
+                 {"id":"p2","name":"Writing","questionCount":0,"sections":[
+                  {"id":"s2","subjectCode":"VAN","questionCount":0,"blocks":[
+                    {"id":"b-w1","name":"W1","templateGroupCode":"W","questionType":"ESSAY","questionCount":1,"omitted":true},
+                    {"id":"b-w2","name":"W2","templateGroupCode":"W","questionType":"ESSAY","questionCount":1,"omitted":true}]}]}]}
+                """;
+        ExamStructureDocument copy = ExamStructureOps.regenerateIds(document(
+                shared.replaceFirst("\"omitted\":true", "\"omitted\":false")));
+        assertThat(codes(rulesFor(copy, shared, shared).common())).doesNotContain("OMITTED_BLOCK_LOCKED");
     }
 
     // ---- rows 8 and 9: SCALE_INCLUDES_EXCLUDED_PART --------------------------------------------------------
