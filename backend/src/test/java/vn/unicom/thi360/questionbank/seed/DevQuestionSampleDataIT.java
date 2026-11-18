@@ -124,27 +124,53 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
 
     @Test
     @Transactional
-    void aRerunAfterTheOldChildTaggingConvergesToOneLabelPerRoot() throws Exception {
-        // Simulate a database seeded by 6ef80282: every Địa lí set root carried both labels and
-        // children carried them too. Rerunning the repeatable seed must converge to the new
-        // tagging instead of leaving the stale labels behind.
-        jdbc.update("""
-                insert into questionbank.question_tag (question_id, tag_item_id)
-                select q.id, i.id from questionbank.question q
-                cross join catalog.catalog_item i
-                where (q.code like 'SEED-VSAT-DIA-SET-%')
-                  and i.group_id = '00000000-0000-7000-8100-000000000008'
-                  and i.code in ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO')
-                on conflict do nothing
-                """);
+    void anOldHeadDatabaseConvergesOnlyWhereTheSeedStateIsUntouched() throws Exception {
+        installOldHead();
+        UUID bang = tagId("DIA_BANG_SO_LIEU");
+        UUID bieu = tagId("DIA_BIEU_DO");
+        UUID adminTag = tagId("DIA_CAU_KY_NANG");
+        // 003: an admin published version 2 with different tags; 004: published again, same labels.
+        publishVersionTwo("SEED-VSAT-DIA-SET-003", adminTag);
+        publishVersionTwo("SEED-VSAT-DIA-SET-004", bang, bieu);
+        // An unrelated root that happens to hold both labels, and one with its own tag.
+        setTags(id("SEED-VSAT-TOAN-SET-001"), "DIA_BANG_SO_LIEU", "DIA_BIEU_DO");
+        List<Map<String, Object>> untouchedBefore = state("SEED-VSAT-DIA-SET-003%", "SEED-VSAT-DIA-SET-004%",
+                "SEED-VSAT-TOAN-SET-001%", "SEED-VSAT-VAN-POETRY-SET-001%");
+        assertThat(tags("SEED-VSAT-DIA-SET-001")).containsExactlyInAnyOrder(bang, bieu);
+        assertThat(snapshotTags("SEED-VSAT-DIA-SET-002", 1)).containsExactlyInAnyOrder(bang, bieu);
 
-        Connection connection = DataSourceUtils.getConnection(dataSource);
-        ScriptUtils.executeSqlScript(connection, new ClassPathResource(SEED_SCRIPT));
+        runSeed();
 
-        assertDiaSetTagging();
-        for (Sample set : samples("SEED-VSAT-DIA-SET-%")) {
-            assertThat(set.snapshot().path("tagItemIds")).as(set.code()).hasSize(1);
+        // 001 -> DIA_BIEU_DO, 002 -> DIA_BANG_SO_LIEU in both representations, children bare.
+        assertThat(tags("SEED-VSAT-DIA-SET-001")).containsExactly(bieu);
+        assertThat(snapshotTags("SEED-VSAT-DIA-SET-001", 1)).containsExactly(bieu);
+        assertThat(tags("SEED-VSAT-DIA-SET-002")).containsExactly(bang);
+        assertThat(snapshotTags("SEED-VSAT-DIA-SET-002", 1)).containsExactly(bang);
+        for (String root : List.of("SEED-VSAT-DIA-SET-001", "SEED-VSAT-DIA-SET-002")) {
+            List<UUID> children = jdbc.queryForList(
+                    "select id from questionbank.question where parent_id = ? order by position", UUID.class, id(root));
+            assertThat(children).as(root).hasSize(3);
+            for (UUID child : children) {
+                assertThat(jdbc.queryForObject("select count(*) from questionbank.question_tag where question_id = ?",
+                        Integer.class, child)).as(root).isZero();
+                assertThat(jdbc.queryForObject("""
+                        select v.snapshot -> 'tagItemIds' from questionbank.question_version v
+                        where v.question_id = ? and v.version_no = 1
+                        """, String.class, child)).as(root).isEqualTo("[]");
+            }
         }
+        // Edited, published and unrelated rows keep every tag and every version byte for byte.
+        assertThat(state("SEED-VSAT-DIA-SET-003%", "SEED-VSAT-DIA-SET-004%", "SEED-VSAT-TOAN-SET-001%",
+                "SEED-VSAT-VAN-POETRY-SET-001%")).isEqualTo(untouchedBefore);
+        assertThat(tags("SEED-VSAT-DIA-SET-003")).containsExactly(adminTag);
+        assertThat(snapshotTags("SEED-VSAT-DIA-SET-003", 1)).containsExactlyInAnyOrder(bang, bieu);
+        assertThat(tags("SEED-VSAT-DIA-SET-004")).containsExactlyInAnyOrder(bang, bieu);
+        assertThat(tags("SEED-VSAT-TOAN-SET-001")).containsExactlyInAnyOrder(bang, bieu);
+
+        // A second run finds nothing left to correct.
+        List<Map<String, Object>> afterFirst = state("SEED-VSAT-DIA-SET-%", "SEED-VSAT-TOAN-SET-001%");
+        runSeed();
+        assertThat(state("SEED-VSAT-DIA-SET-%", "SEED-VSAT-TOAN-SET-001%")).isEqualTo(afterFirst);
     }
 
     @Test
@@ -365,6 +391,106 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
                   and c.parent_id is not null
                   and c.code like 'SEED-VSAT-DIA-SET-%'
                 """, Integer.class)).isZero();
+    }
+
+    private static final String TAG_GROUP = "00000000-0000-7000-8100-000000000008";
+    private static final List<String> DIA_ROOTS = List.of(
+            "SEED-VSAT-DIA-SET-001", "SEED-VSAT-DIA-SET-002", "SEED-VSAT-DIA-SET-003", "SEED-VSAT-DIA-SET-004");
+
+    private void runSeed() throws Exception {
+        // The script keeps most temp tables until commit; a second run in this transaction needs them gone.
+        jdbc.execute("drop table if exists seed_question_rows, seed_2b_tags, seed_2b_question_tags, seed_2b_knowledge, "
+                + "seed_inserted_questions, seed_inserted_children");
+        Connection connection = DataSourceUtils.getConnection(dataSource);
+        ScriptUtils.executeSqlScript(connection, new ClassPathResource(SEED_SCRIPT));
+    }
+
+    private UUID id(String code) {
+        return jdbc.queryForObject("select id from questionbank.question where code = ?", UUID.class, code);
+    }
+
+    private UUID tagId(String code) {
+        return jdbc.queryForObject("select id from catalog.catalog_item where group_id = ?::uuid and code = ?",
+                UUID.class, TAG_GROUP, code);
+    }
+
+    private List<UUID> tags(String code) {
+        return jdbc.queryForList("select tag_item_id from questionbank.question_tag where question_id = ? order by 1",
+                UUID.class, id(code));
+    }
+
+    private List<UUID> snapshotTags(String code, int versionNo) {
+        return jdbc.queryForList("""
+                select e::uuid from questionbank.question_version v,
+                     jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+                where v.question_id = ? and v.version_no = ? order by 1
+                """, UUID.class, id(code), versionNo);
+    }
+
+    /** Sets the tags of a question in both representations: question_tag and the version-1 snapshot. */
+    private void setTags(UUID question, String... codes) {
+        String in = codes.length == 0 ? "null" : String.join(",", java.util.Collections.nCopies(codes.length, "?"));
+        jdbc.update("delete from questionbank.question_tag where question_id = ?", question);
+        List<Object> insert = new ArrayList<>(List.of(question));
+        insert.addAll(List.of(codes));
+        jdbc.update("""
+                insert into questionbank.question_tag (question_id, tag_item_id)
+                select ?, id from catalog.catalog_item
+                where group_id = '%s' and code in (%s)
+                """.formatted(TAG_GROUP, in), insert.toArray());
+        List<Object> snapshot = new ArrayList<>(List.of((Object[]) codes));
+        snapshot.add(question);
+        jdbc.update("""
+                update questionbank.question_version
+                set snapshot = jsonb_set(snapshot, '{tagItemIds}', coalesce(
+                    (select jsonb_agg(id order by id) from catalog.catalog_item
+                     where group_id = '%s' and code in (%s)), '[]'::jsonb))
+                where question_id = ? and version_no = 1
+                """.formatted(TAG_GROUP, in), snapshot.toArray());
+    }
+
+    /** The database as 6ef80282 left it: roots with both labels, children with one each, in both representations. */
+    private void installOldHead() {
+        for (String root : DIA_ROOTS) {
+            setTags(id(root), "DIA_BANG_SO_LIEU", "DIA_BIEU_DO");
+            List<UUID> children = jdbc.queryForList(
+                    "select id from questionbank.question where parent_id = ? order by position", UUID.class, id(root));
+            assertThat(children).as(root).hasSize(3);
+            setTags(children.get(0), "DIA_BANG_SO_LIEU");
+            setTags(children.get(1), "DIA_BIEU_DO");
+            setTags(children.get(2));
+        }
+    }
+
+    /** An admin publishes version 2 of the root with the given tags; the projection follows the serving version. */
+    private void publishVersionTwo(String code, UUID... tagIds) {
+        UUID question = id(code);
+        String json = "[" + java.util.Arrays.stream(tagIds).sorted().map(tag -> "\"" + tag + "\"")
+                .collect(java.util.stream.Collectors.joining(",")) + "]";
+        jdbc.update("""
+                insert into questionbank.question_version (question_id, version_no, snapshot, ready_at)
+                select question_id, 2, jsonb_set(jsonb_set(snapshot, '{tagItemIds}', ?::jsonb), '{content}',
+                                                 '"<p>edited by an admin</p>"'::jsonb), now()
+                from questionbank.question_version where question_id = ? and version_no = 1
+                """, json, question);
+        jdbc.update("update questionbank.question set current_version_no = 2 where id = ?", question);
+        jdbc.update("delete from questionbank.question_tag where question_id = ?", question);
+        for (UUID tag : tagIds) {
+            jdbc.update("insert into questionbank.question_tag (question_id, tag_item_id) values (?, ?)", question, tag);
+        }
+    }
+
+    /** Every row, tag and version of the questions whose code matches one of the patterns. */
+    private List<Map<String, Object>> state(String... codePatterns) {
+        String where = String.join(" or ", java.util.Collections.nCopies(codePatterns.length, "q.code like ?"));
+        return jdbc.queryForList("""
+                select q.code, q.status, q.parent_id, q.current_version_no, q.working_version_no,
+                       (select string_agg(t.tag_item_id::text, ',' order by t.tag_item_id)
+                        from questionbank.question_tag t where t.question_id = q.id) as tags,
+                       (select string_agg(v.version_no || ':' || v.snapshot::text, '|' order by v.version_no)
+                        from questionbank.question_version v where v.question_id = q.id) as versions
+                from questionbank.question q where %s order by q.code
+                """.formatted(where), (Object[]) codePatterns);
     }
 
     private List<Integer> tableCounts() {

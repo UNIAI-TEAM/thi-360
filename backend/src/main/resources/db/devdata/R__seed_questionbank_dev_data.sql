@@ -1322,6 +1322,7 @@ FROM seed_dot2b_set s
 CROSS JOIN LATERAL unnest(s.tag_codes) t(code)
 JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
 ON CONFLICT DO NOTHING;
+
 -- END BE-19.
 
 -- Parents must exist before their child rows satisfy the self-reference.
@@ -1448,39 +1449,88 @@ FROM seed_question_rows s
 JOIN questionbank.question q ON q.id = s.id
 ON CONFLICT DO NOTHING;
 
--- Địa lí part II roots keep exactly one slot label (ADV:BE-19:3). A rerun over a database that
--- still carries the older tagging (both labels on the roots, one label on children) removes
--- them here and re-adds the root labels below, converging to the new tagging.
-DELETE FROM questionbank.question_tag qt
-USING catalog.catalog_item tag
-WHERE qt.tag_item_id = tag.id
-  AND tag.group_id = '00000000-0000-7000-8100-000000000008'
-  AND tag.code IN ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO')
-  AND EXISTS (SELECT 1 FROM seed_dot2b_set s
-              WHERE s.code LIKE 'SEED-VSAT-DIA-SET-%'
-                AND (qt.question_id = s.id
-                     OR EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
-                                WHERE md5(s.id::text || '-' || pos)::uuid = qt.question_id)));
-
 INSERT INTO questionbank.question_tag (question_id, tag_item_id)
 SELECT t.question_id, t.tag_item_id FROM seed_2b_question_tags t
 WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = t.question_id)
    OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = t.question_id)
-   OR (EXISTS (SELECT 1 FROM seed_dot2b_set s WHERE s.id = t.question_id AND s.code LIKE 'SEED-VSAT-DIA-SET-%')
-       AND EXISTS (SELECT 1 FROM questionbank.question q WHERE q.id = t.question_id))
 ON CONFLICT DO NOTHING;
 
--- Keep version-1 snapshots consistent with question_tag for the same set family.
+-- Địa lí part II roots keep exactly one slot label (ADV:BE-19:3). A database seeded by 6ef80282
+-- still carries both legacy labels on the roots and one each on the first two children. A root
+-- is corrected only when it is provably in that untouched state: published at version 1 and
+-- never edited, exactly both legacy labels on the root in question_tag and in its version-1
+-- snapshot, children carrying only legacy labels, no extra children. Anything else (already
+-- correct, edited, published again, unrelated) is left as it is.
+CREATE TEMP TABLE seed_dia_legacy ON COMMIT DROP AS
+SELECT id FROM catalog.catalog_item
+WHERE group_id = '00000000-0000-7000-8100-000000000008' AND code IN ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO');
+
+CREATE TEMP TABLE seed_dia_fix ON COMMIT DROP AS
+SELECT s.id AS root_id, q.subject_item_id AS subject_id, t.tag_item_id AS target_tag_id
+FROM seed_dot2b_set s
+JOIN questionbank.question q ON q.id = s.id AND q.code = s.code AND q.parent_id IS NULL
+JOIN seed_2b_question_tags t ON t.question_id = s.id
+WHERE s.code LIKE 'SEED-VSAT-DIA-SET-%'
+  AND (SELECT count(*) FROM seed_dia_legacy) = 2
+  AND q.status = 'READY' AND q.deleted_at IS NULL
+  AND q.current_version_no = 1 AND q.working_version_no IS NULL
+  AND NOT EXISTS (SELECT 1 FROM questionbank.question_version v WHERE v.question_id = s.id AND v.version_no <> 1)
+  AND (SELECT count(*) FROM questionbank.question_tag qt WHERE qt.question_id = s.id) = 2
+  AND (SELECT count(*) FROM questionbank.question_tag qt
+       JOIN seed_dia_legacy l ON l.id = qt.tag_item_id WHERE qt.question_id = s.id) = 2
+  AND EXISTS (SELECT 1 FROM questionbank.question_version v
+              WHERE v.question_id = s.id AND v.version_no = 1
+                AND jsonb_typeof(v.snapshot -> 'tagItemIds') = 'array'
+                AND jsonb_array_length(v.snapshot -> 'tagItemIds') = 2
+                AND (SELECT count(*) FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+                     JOIN seed_dia_legacy l ON l.id::text = e) = 2)
+  AND NOT EXISTS (SELECT 1 FROM questionbank.question c
+                  WHERE c.parent_id = s.id
+                    AND NOT EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+                                    WHERE md5(s.id::text || '-' || pos)::uuid = c.id))
+  AND NOT EXISTS (
+      SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+      JOIN questionbank.question c ON c.id = md5(s.id::text || '-' || pos)::uuid
+      WHERE c.parent_id IS DISTINCT FROM s.id
+         OR c.current_version_no IS DISTINCT FROM 1 OR c.working_version_no IS NOT NULL
+         OR EXISTS (SELECT 1 FROM questionbank.question_version v WHERE v.question_id = c.id AND v.version_no <> 1)
+         OR EXISTS (SELECT 1 FROM questionbank.question_tag qt
+                    WHERE qt.question_id = c.id AND qt.tag_item_id NOT IN (SELECT id FROM seed_dia_legacy))
+         OR EXISTS (SELECT 1 FROM questionbank.question_version v
+                    WHERE v.question_id = c.id AND v.version_no = 1
+                      AND (jsonb_typeof(v.snapshot -> 'tagItemIds') IS DISTINCT FROM 'array'
+                           OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+                                      WHERE e NOT IN (SELECT id::text FROM seed_dia_legacy)))));
+
+DELETE FROM questionbank.question_tag qt
+WHERE qt.tag_item_id IN (SELECT id FROM seed_dia_legacy)
+  AND (qt.question_id IN (SELECT root_id FROM seed_dia_fix)
+       OR qt.question_id IN (SELECT c.id FROM questionbank.question c
+                             JOIN seed_dia_fix f ON c.parent_id = f.root_id));
+
+INSERT INTO questionbank.question_tag (question_id, tag_item_id)
+SELECT root_id, target_tag_id FROM seed_dia_fix
+ON CONFLICT DO NOTHING;
+
+-- The v1 snapshot of a corrected root keeps its own tags minus the legacy labels plus the
+-- slot label of this set; child snapshots lose the legacy labels. Nothing is read from question_tag.
 UPDATE questionbank.question_version v
-SET snapshot = jsonb_set(v.snapshot, '{tagItemIds}',
-    COALESCE((SELECT jsonb_agg(qt.tag_item_id ORDER BY qt.tag_item_id)
-              FROM questionbank.question_tag qt WHERE qt.question_id = v.question_id), '[]'::jsonb))
+SET snapshot = jsonb_set(v.snapshot, '{tagItemIds}', COALESCE(
+    (SELECT jsonb_agg(x.u ORDER BY x.u)
+     FROM (SELECT e::uuid AS u FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+           WHERE e::uuid NOT IN (SELECT id FROM seed_dia_legacy)
+           UNION SELECT f.target_tag_id FROM seed_dia_fix f WHERE f.root_id = v.question_id) x),
+    '[]'::jsonb))
+WHERE v.version_no = 1 AND v.question_id IN (SELECT root_id FROM seed_dia_fix);
+
+UPDATE questionbank.question_version v
+SET snapshot = jsonb_set(v.snapshot, '{tagItemIds}', COALESCE(
+    (SELECT jsonb_agg(e::uuid ORDER BY e::uuid) FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+     WHERE e::uuid NOT IN (SELECT id FROM seed_dia_legacy)), '[]'::jsonb))
 WHERE v.version_no = 1
-  AND EXISTS (SELECT 1 FROM seed_dot2b_set s
-              WHERE s.code LIKE 'SEED-VSAT-DIA-SET-%'
-                AND (v.question_id = s.id
-                     OR EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
-                                WHERE md5(s.id::text || '-' || pos)::uuid = v.question_id)));
+  AND v.question_id IN (SELECT c.id FROM questionbank.question c JOIN seed_dia_fix f ON c.parent_id = f.root_id);
+
+DROP TABLE seed_dia_fix, seed_dia_legacy;
 
 DROP TABLE seed_be14_classification;
 
