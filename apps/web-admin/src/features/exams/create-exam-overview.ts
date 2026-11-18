@@ -86,12 +86,13 @@ function sectionCompetency(section: ExamTemplateSection | undefined): string | u
 }
 
 /**
- * Dòng của một môn/tiểu mục trong phần (con của `parentKey`). Điểm của mục: mẫu chia điểm theo phần thì chia điểm
- * của phần theo tỷ lệ số câu của mục (V-ACT: 10 điểm một câu, mục 30/60 của phần 600).
+ * Dòng của một môn/tiểu mục trong phần (con của `parentKey`). Chỉ mẫu `fixedCounts` (V-ACT toàn bài, H27: "Điểm tối
+ * đa bằng số câu nhân 10") mới chia điểm của phần cho mục theo tỷ lệ số câu; mẫu khác không ghi điểm từng môn nên ô
+ * Điểm của dòng môn để trống (hiện "—").
  */
-function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sectionIndex: number): OverviewRow {
+function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sectionIndex: number, locked: boolean): OverviewRow {
   const section = part.sections?.[sectionIndex];
-  const partPoints = part.maxPoints ?? part.points ?? null;
+  const partPoints = locked ? (part.maxPoints ?? part.points ?? null) : null;
   const partCount = part.questionCount ?? null;
   const sectionPoints =
     partPoints !== null && partCount && section?.questionCount
@@ -169,7 +170,7 @@ export function overviewRowsFromTemplate(
     if (sections.length > 1 || (locked && sections.length > 0)) {
       row.group = true;
       sections.forEach((section, sectionIndex) => {
-        rows.push({ ...sectionRow(part, index, sectionIndex), lockedCount: locked });
+        rows.push({ ...sectionRow(part, index, sectionIndex, locked), lockedCount: locked });
         (section.omittedBlocks ?? []).forEach((block, blockIndex) =>
           rows.push(omittedRow(index, sectionIndex, section.subjectCode, block, blockIndex)),
         );

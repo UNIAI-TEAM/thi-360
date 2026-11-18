@@ -479,6 +479,15 @@ const THPTQG_TEMPLATES = [
     ]),
   ]),
 ];
+/** BCA FULL của seed V202611171200: Phần 2 có điểm nhưng mẫu không chia điểm cho từng môn. */
+const BCA_TEMPLATES = [
+  wireTemplate("BCA_FULL", { kindCode: "BCA", scope: "FULL", durationMinutes: 180, maxScore: 100 }, [
+    part(1, "Tự luận Văn", 1, null, [section("LITERATURE", 1)], { maxPoints: 25 }),
+    part(2, "Trắc nghiệm bắt buộc", 65, null, [section("MATH", 35), section("HISTORY", 10), section("ENGLISH", 20)], { maxPoints: 60 }),
+    part(3, "Trắc nghiệm tự chọn", 15, null, [section("PHYSICS", 15)], { maxPoints: 15 }),
+  ]),
+];
+
 
 /** Hồ sơ kỳ thi mới của BE-13 (chưa có trong dữ liệu mẫu): V-ACT ba phạm vi, THPTQG thêm Theo phần, hai môn V-ACT. */
 function patchNewProfiles(reference: ContentReference) {
@@ -583,5 +592,16 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
     expect(screen.queryByText(/tạm bỏ qua trong V1/)).toBeNull();
     await pickSubject(user, "Lịch sử");
     await waitFor(async () => expect(await partLabels()).toHaveLength(2));
+  }, 20_000);
+
+  it("BCA toàn bài: ô Điểm của dòng môn để trống (—), điểm chỉ theo phần (mẫu không ghi điểm từng môn)", async () => {
+    const user = await renderWithTemplates(BCA_TEMPLATES);
+    await pickKind(user, "BCA");
+    await screen.findByText("Trắc nghiệm bắt buộc");
+    expect(screen.getByRole("columnheader", { name: "Điểm" })).toBeInTheDocument();
+    for (const subject of ["Toán", "Lịch sử", "Tiếng Anh"]) {
+      const row = screen.getAllByText(subject).map((el) => el.closest("tr")).find((tr) => tr !== null)!;
+      expect(within(row).getAllByRole("cell").at(-1)!.textContent).toBe("—");
+    }
   }, 20_000);
 });
