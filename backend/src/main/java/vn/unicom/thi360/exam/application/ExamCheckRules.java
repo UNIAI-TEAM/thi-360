@@ -317,6 +317,58 @@ public final class ExamCheckRules {
         return found;
     }
 
+    /** Required-vs-available evidence for one declared topic quota (BE-4b supplies counts). */
+    public record TopicQuotaEvidence(EvidenceLocation location, String quotaId, int required,
+                                     long available) { }
+
+    /** One combination's serving content: code, ordered subjects and branch (K13). */
+    public record CombinationContent(String code, List<String> subjectCodes, String branch) {
+        public CombinationContent {
+            subjectCodes = subjectCodes == null ? List.of() : List.copyOf(subjectCodes);
+        }
+    }
+
+    /** Topic quotas the source cannot satisfy (BE-4b wires the counts). */
+    public List<ObjectNode> topicQuotaIssues(List<TopicQuotaEvidence> evidence) {
+        List<ObjectNode> found = new ArrayList<>();
+        for (TopicQuotaEvidence item : evidence) {
+            if (item.available() >= item.required()) continue;
+            ObjectNode failure = evidenceIssue("TOPIC_QUOTA_INFEASIBLE", item.location());
+            failure.put("required", item.required());
+            failure.put("available", item.available());
+            issues.key(failure);
+            if (item.quotaId() != null) failure.put("key", failure.path("key").asText() + "|" + item.quotaId());
+            found.add(failure);
+        }
+        return found;
+    }
+
+    /**
+     * Warn when the combination list a published version was solved against differs from the
+     * catalog's current list by content (code, ordered subjects, branch). BE-9 supplies both lists.
+     */
+    public List<ObjectNode> combinationListIssues(List<CombinationContent> served,
+                                                List<CombinationContent> current) {
+        Map<String, CombinationContent> before = new LinkedHashMap<>();
+        served.forEach(item -> before.put(item.code(), item));
+        Map<String, CombinationContent> after = new LinkedHashMap<>();
+        current.forEach(item -> after.put(item.code(), item));
+        List<String> changed = new ArrayList<>();
+        for (var entry : before.entrySet()) {
+            CombinationContent now = after.get(entry.getKey());
+            if (now == null || !entry.getValue().equals(now)) changed.add(entry.getKey());
+        }
+        for (var entry : after.entrySet()) {
+            if (!before.containsKey(entry.getKey())) changed.add(entry.getKey());
+        }
+        if (changed.isEmpty()) return List.of();
+        ObjectNode warning = issues.create("COMBINATION_LIST_CHANGED", "STRUCTURE", "WARNING");
+        issues.key(warning);
+        ArrayNode codes = warning.withArray("affectedCodes");
+        changed.forEach(codes::add);
+        return List.of(warning);
+    }
+
     private ObjectNode witnessIssue(String code, WitnessFact fact) {
         ObjectNode failure = evidenceIssue(code, fact.location());
         failure.putArray("questionCodes").add(fact.questionCode());
