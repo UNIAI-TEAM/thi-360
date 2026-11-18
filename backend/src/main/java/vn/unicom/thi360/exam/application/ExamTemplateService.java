@@ -116,6 +116,8 @@ public class ExamTemplateService {
                 t.isActive(),
                 structure,
                 t.isPublishable(),
-                t.isFixedCounts());
+                t.isFixedCounts(),
+                t.isFixedBlockCounts(),
+                t.isOmittedLocked());
     }
 }

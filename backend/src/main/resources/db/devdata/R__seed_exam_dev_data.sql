@@ -19,7 +19,10 @@ INSERT INTO exam.exam_kind_profile (exam_item_id, scopes, template_by, timing, m
   ('00000000-0000-7000-8400-000000000104','{FULL,PART,SUBJECT}','KIND','SHARED',NULL,1200,'LINEAR',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000105','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000106','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8400-000000000107','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0)
+  ('00000000-0000-7000-8400-000000000107','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
+  -- UNI-2688 (H36): thang lấy từ mẫu vì khác nhau theo môn nên max_score trống; H-SCA chọn nhiều PARTIAL tạm theo Q-32.
+  ('00000000-0000-7000-8400-000000000108','{SUBJECT,PART}','SUBJECT','SHARED',NULL,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'PARTIAL',0),
+  ('00000000-0000-7000-8400-000000000109','{SUBJECT,PART}','SUBJECT','SHARED',NULL,NULL,'RAW',$${"method":"COUNT_TABLE","table":[1,2,3,6],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0)
 ON CONFLICT (exam_item_id) DO NOTHING;
 
 -- Đợt 2B 5.1: phạm vi theo kỳ thi; sửa cả hồ sơ đã seed trước đây.

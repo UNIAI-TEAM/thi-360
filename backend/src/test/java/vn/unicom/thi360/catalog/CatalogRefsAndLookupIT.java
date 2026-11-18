@@ -289,7 +289,7 @@ class CatalogRefsAndLookupIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "EXAM").with(asStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code",
-                        containsInAnyOrder("HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG")));
+                        containsInAnyOrder("HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG", "HSCA", "VSAT")));
 
         mockMvc.perform(get("/api/v1/catalog/options").param("group", "SUBJECT").with(asStudent()))
                 .andExpect(status().isOk())

@@ -45,6 +45,14 @@ public record ExamTemplateResponse(
         boolean publishable,
         @Schema(description = "Mẫu khóa số câu từng phần/mục (kiểm tra báo STRUCTURE_COUNT_LOCKED)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        boolean fixedCounts
+        boolean fixedCounts,
+        @Schema(description = "Mẫu khóa dạng, số câu, số chùm, cỡ chùm từng nhóm của bài phạm vi SUBJECT "
+                + "(kiểm tra báo BLOCK_COUNT_LOCKED); bài PART và bài ôn từ cùng mẫu không bị khóa",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean fixedBlockCounts,
+        @Schema(description = "Nhóm đã lược của mẫu (phần viết) không bật lại được "
+                + "(kiểm tra báo OMITTED_BLOCK_LOCKED); tạo bài PART chỉ gồm nhóm đã lược bị từ chối",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean omittedLocked
 ) {
 }
