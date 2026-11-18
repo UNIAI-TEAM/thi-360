@@ -112,6 +112,66 @@ class ExamCheckerTests {
         assertThat(issueCodes(result.result())).contains("ANSWER_QUOTA_TOTAL_MISMATCH");
     }
 
+
+    @Test
+    void flexibleSetsAvoidSizeMismatchAndImpossibleTotalReportsSetShortage() throws Exception {
+        Exam exam = exam(5, null, "RAW");
+        subject("MATH", 0);
+        UUID root = UUID.randomUUID();
+        List<Unit> children = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            children.add(new Unit(UUID.randomUUID(), null, QuestionType.SINGLE_CHOICE,
+                    "G", "D", List.of(), List.of(), BigDecimal.ONE, null, "C" + i));
+        }
+        candidates.put(subjects.get("MATH"), List.of(new Candidate(root, 1, root, children, null, null)));
+        String doc = """
+                {"parts":[{"id":"p","questionCount":5,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":5,"blocks":[{"id":"b","questionType":"QUESTION_SET","questionCount":5}]}]}]}
+                """;
+        var result = check(exam, document(doc)).result();
+        assertThat(issueCodes(result)).doesNotContain("SET_SIZE_MISMATCH").contains("SET_SHORTAGE");
+        assertThat(result.path("paths").get(0).path("issues").findValuesAsText("blockId")).contains("b");
+    }
+
+    @Test
+    void flexibleSetsAreValidWithRequiredSectionDimensions() throws Exception {
+        Exam exam = exam(18, null, "RAW");
+        subject("MATH", 0);
+        List<Candidate> sets = new ArrayList<>();
+        for (int size : List.of(3, 4, 5, 3, 4, 5)) {
+            UUID root = UUID.randomUUID();
+            List<Unit> children = new ArrayList<>();
+            for (int i = 0; i < size; i++) {
+                children.add(new Unit(UUID.randomUUID(), null, QuestionType.SINGLE_CHOICE,
+                        "G", "D", List.of(), List.of(), BigDecimal.ONE, null, "C" + i));
+            }
+            sets.add(new Candidate(root, 1, root, children, null, null));
+        }
+        candidates.put(subjects.get("MATH"), sets);
+        String doc = """
+                {"parts":[{"id":"p","questionCount":18,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":18,"matrix":{"mode":"SEPARATE","unit":"COUNT",
+                "gradeEnforcement":"REQUIRED","difficultyEnforcement":"REQUIRED",
+                "byGrade":[{"code":"G","value":18}],"byDifficulty":[{"code":"D","value":18}]},
+                "blocks":[{"id":"b","questionType":"QUESTION_SET","questionCount":18}]}]}]}
+                """;
+        var checked = check(exam, document(doc));
+        assertThat(checked.result().path("status").asText()).isEqualTo("VALID");
+        assertThat(checked.witness()).hasSize(1);
+    }
+
+    @Test
+    void incompleteOrMismatchedSetDimensionsStillReportMismatch() throws Exception {
+        Exam exam = exam(5, null, "RAW");
+        subject("MATH", 0);
+        for (String dimensions : List.of("\"setCount\":1", "\"setCount\":2,\"setSize\":3")) {
+            String doc = """
+                    {"parts":[{"id":"p","questionCount":5,"sections":[{"id":"s","subjectCode":"MATH",
+                    "questionCount":5,"blocks":[{"id":"b","questionType":"QUESTION_SET","questionCount":5,%s}]}]}]}
+                    """.formatted(dimensions);
+            assertThat(issueCodes(check(exam, document(doc)).result())).contains("SET_SIZE_MISMATCH");
+        }
+    }
     @Test
     void unrepresentableOptionDoesNotHideValidAlternative() throws Exception {
         Exam exam = exam(1, null, "RAW");

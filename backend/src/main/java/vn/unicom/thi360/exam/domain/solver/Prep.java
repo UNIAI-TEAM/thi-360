@@ -531,8 +531,12 @@ final class Prep {
         if (us.isEmpty()) {
             return false;
         }
-        if (group.kind() == GroupQuota.GroupKind.SET) {
-            if (us.size() != group.setSize()) {
+        if (group.kind() != GroupQuota.GroupKind.SINGLE) {
+            if (group.kind() == GroupQuota.GroupKind.FLEXIBLE_SET
+                    && (c.setId() == null || us.size() > group.questionCount())) {
+                return false;
+            }
+            if (group.kind() == GroupQuota.GroupKind.SET && us.size() != group.setSize()) {
                 return false;
             }
             if (group.childAnswerType() != null) {

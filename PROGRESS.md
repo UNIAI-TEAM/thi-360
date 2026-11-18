@@ -157,6 +157,8 @@
       - 2026-11-18 05:30 (UTC+7): BE-11 (UNI-2672, PR #94) merge: cờ mẫu `publishable`, `fixed_counts`, `TopicQuota.percent`, `KnowledgeScope.everyChildInScope`. Advisor chạy lại backend 451 test, xanh. Mở đường cho BE-12, BE-13, FE-5.
       - 2026-11-18 06:20 (UTC+7): BE-9 (UNI-2660, PR #95) merge: công bố chụp danh sách tổ hợp, đường theo phần, cảnh báo `COMBINATION_LIST_CHANGED`, ba mã thiếu nguồn, SP2E 2026 = 10 điểm. Advisor chạy lại backend 472 test, xanh. Mở đường cho PR của BE-12 và BE-15.
       - 2026-11-18 06:42 (UTC+7): FE-3a (UNI-2663, PR #97) merge phần gốc 7 điểm: vùng sửa nhóm, điều kiện, slots, phạm vi kiến thức. Advisor chạy lại typecheck, lint, sinh api-client đều sạch; 4 test web quá hạn 5 giây khi chạy cả bộ trên Windows, chạy riêng đạt 3/3 lần, cloud đạt 1695/1695. Phần thêm 1 điểm chờ BE-12.
+      - 2026-11-18 06:56 (UTC+7): BE-14 (UNI-2675, PR #96) merge: sáu nhãn D9 và câu hỏi mẫu THPTQG, V-ACT trong dữ liệu dev. Advisor chạy lại 38 test backend bị ảnh hưởng, xanh; cloud 650 test đạt. Sáu mã nhãn còn chờ BA xác nhận.
+      - 2026-11-18 07:49 (UTC+7): BE-12 (UNI-2673, PR #98) merge: chùm cỡ linh hoạt trong bộ giải, `everyChildInScope`, miễn `SET_SIZE_MISMATCH` cho chùm linh hoạt. Advisor chạy lại backend 508 test, xanh; api-client sinh lại không đổi. Đề 120 câu giải trong 29 ms trên cloud.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)

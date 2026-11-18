@@ -363,7 +363,7 @@ public final class WitnessValidator {
         int units = picked.stream().mapToInt(OracleSupport::unitCount).sum();
         sectionUnits.merge(section, units, Integer::sum);
         switch (group.kind()) {
-            case SINGLE -> {
+            case SINGLE, FLEXIBLE_SET -> {
                 if (units != required) {
                     out.add(new Violation("GROUP_COUNT_MISMATCH", group.groupId() + " has "
                             + units + " units, requires " + required));
