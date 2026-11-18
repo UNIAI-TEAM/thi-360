@@ -174,16 +174,24 @@ final class PreviewCompliance {
             };
             addRow(result, dimension + ":" + code, scope, required.get(i), enforcement, basis, data, matches);
         }
-        if (basis == QuotaBasis.PROMPT && enforcement == QuotaEnforcement.REFERENCE && !values.isEmpty()
-                && !"COMPETENCY".equals(dimension)) {
-            // H44: a command is counted by the label of its question; a question without the label is one row apart.
-            Predicate<Datum> unlabeled = datum -> "GRADE".equals(dimension)
-                    ? datum.unit().gradeCode() == null : datum.unit().difficultyCode() == null;
-            BigDecimal actual = sum(data, basis, datum -> !datum.dropped() && unlabeled.test(datum));
-            if (actual.signum() > 0) {
-                result.add(new Compliance(dimension + ":UNCLASSIFIED", scope, null, actual, enforcement.name(),
-                        basis.name(), "UNCLASSIFIED"));
-            }
+        if (!values.isEmpty() && !"COMPETENCY".equals(dimension)) {
+            unclassified(result, scope, dimension, enforcement, basis, data);
+        }
+    }
+
+    /**
+     * H44: a PROMPT reference counts a command by the label of its question, so a question without the label is one
+     * row apart (required null, note UNCLASSIFIED), not part of any bucket. Dropped questions are not counted.
+     */
+    private static void unclassified(List<Compliance> result, String scope, String dimension,
+            QuotaEnforcement enforcement, QuotaBasis basis, List<Datum> data) {
+        if (basis != QuotaBasis.PROMPT || enforcement != QuotaEnforcement.REFERENCE) return;
+        Predicate<Datum> unlabeled = datum -> "GRADE".equals(dimension)
+                ? datum.unit().gradeCode() == null : datum.unit().difficultyCode() == null;
+        BigDecimal actual = sum(data, basis, datum -> !datum.dropped() && unlabeled.test(datum));
+        if (actual.signum() > 0) {
+            result.add(new Compliance(dimension + ":UNCLASSIFIED", scope, null, actual, enforcement.name(),
+                    basis.name(), "UNCLASSIFIED"));
         }
     }
 
@@ -244,6 +252,10 @@ final class PreviewCompliance {
                         required, quota.enforcement() == null ? QuotaEnforcement.REQUIRED : quota.enforcement(), basis, data,
                         datum -> contains(bucket.codes(), quota.dimension() == ExamQuota.Dimension.GRADE
                                 ? datum.unit().gradeCode() : datum.unit().difficultyCode()));
+            }
+            if (!quota.buckets().isEmpty()) {
+                unclassified(result, "EXAM", quota.dimension().name(),
+                        quota.enforcement() == null ? QuotaEnforcement.REQUIRED : quota.enforcement(), basis, data);
             }
         }
     }
