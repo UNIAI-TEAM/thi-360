@@ -155,6 +155,7 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
       const values = {
         block: blockName ? `${subject} · ${blockName}` : subject,
         subject,
+        part: issue.partName ?? where?.part.name ?? "",
         place: (blockName ? `${subject} · ${blockName}` : subject) || (issue.partName ?? where?.part.name ?? ""),
         grade,
         difficulty,
