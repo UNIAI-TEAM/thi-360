@@ -41,6 +41,7 @@ final class PathSearch {
 
     // lớp đóng góp
     private final List<int[]> classVecs = new ArrayList<>();
+    private final List<String> classTopicSets = new ArrayList<>();
     private final Map<String, Integer> classOf = new HashMap<>();
     private final List<List<int[]>> members = new ArrayList<>(); // members[c] = các (g, i)
     private int[] consumed; // số thành viên đã lấy của từng lớp
@@ -106,6 +107,17 @@ final class PathSearch {
         return picked;
     }
 
+    private List<List<Integer>> selectedIndices() {
+        List<List<Integer>> selected = new ArrayList<>(ctx.groups().size());
+        for (int g = 0; g < ctx.groups().size(); g++) selected.add(new ArrayList<>());
+        for (int p = 0; p < nPairs; p++) {
+            if (chosen[p] != null) {
+                for (int[] member : chosen[p]) selected.get(pairGroup[p]).add(member[1]);
+            }
+        }
+        return selected;
+    }
+
     // ---------------------------------------------------------------- lớp đóng góp
 
     /** Gom ứng viên usable thành lớp theo vector đóng góp; thành viên = (nhóm, chỉ số ứng viên). */
@@ -121,11 +133,14 @@ final class PathSearch {
                     continue;
                 }
                 int[] vec = ctx.contrib()[g][i];
-                Integer c = classOf.get(Arrays.toString(vec));
+                String topicSet = TopicAssignments.signature(ctx, g, pool.get(i));
+                String signature = topicSet + Arrays.toString(vec);
+                Integer c = classOf.get(signature);
                 if (c == null) {
                     c = classVecs.size();
-                    classOf.put(Arrays.toString(vec), c);
+                    classOf.put(signature, c);
                     classVecs.add(vec);
+                    classTopicSets.add(topicSet);
                     members.add(new ArrayList<>());
                 }
                 members.get(c).add(new int[]{g, i});
@@ -151,7 +166,8 @@ final class PathSearch {
                     deadlineCheck.run();
                 }
                 if (m[0] != lastG) {
-                    pairs.add(new int[]{m[0], c});
+                    pairs.add(new int[]{m[0], c,
+                            TopicAssignments.eligibilityScore(ctx, m[0], ctx.cands().get(m[0]).get(m[1]))});
                     lastG = m[0];
                 }
             }
@@ -165,6 +181,10 @@ final class PathSearch {
             if (a[0] != b[0]) {
                 return Integer.compare(a[0], b[0]);
             }
+            int byEligibility = Integer.compare(b[2], a[2]);
+            if (byEligibility != 0) return byEligibility;
+            int byTopicSet = classTopicSets.get(a[1]).compareTo(classTopicSets.get(b[1]));
+            if (byTopicSet != 0) return byTopicSet;
             return Integer.compare(a[1], b[1]);
         });
         nPairs = pairs.size();
@@ -378,6 +398,10 @@ final class PathSearch {
                 if (v != 0) {
                     return;
                 }
+            }
+            if (TopicAssignments.hasQuotas(ctx)
+                    && TopicAssignments.assign(ctx, selectedIndices(), deadlineCheck) == null) {
+                return;
             }
             terminalOk = true;
             stack.clear();

@@ -1,10 +1,14 @@
 package vn.unicom.thi360.exam.domain.solver;
 
-/**
- * Một câu được chọn vào đề chứng minh: id câu và số phiên bản đang phục vụ.
- *
- * @param questionId id câu (id bộ với bộ câu hỏi / Điền khuyết)
- * @param versionNo  số phiên bản được chọn
- */
-public record QuestionPick(String questionId, int versionNo) {
+import java.util.List;
+
+/** A selected question and its per-counting-unit topic assignments. */
+public record QuestionPick(String questionId, int versionNo, List<TopicAssignment> topicAssignments) {
+    public QuestionPick {
+        topicAssignments = topicAssignments == null ? List.of() : List.copyOf(topicAssignments);
+    }
+
+    public QuestionPick(String questionId, int versionNo) {
+        this(questionId, versionNo, List.of());
+    }
 }

@@ -39,6 +39,7 @@ public final class TrimPolicy {
                 && section.subjectQuota().answerQuotas() != null && fillCount == 1;
         List<QuestionPick> eligible = new ArrayList<>();
         List<QuestionPick> preferred = new ArrayList<>();
+        Map<QuestionPick, Map<TopicAssignments.Pick, List<TopicAssignment>>> reassigned = new HashMap<>();
         for (GroupWitness group : witness.groups()) {
             GroupQuota quota = groups.get(group.groupId());
             for (QuestionPick pick : group.picks()) {
@@ -47,22 +48,35 @@ public final class TrimPolicy {
                 CountingUnit unit = candidate.units().getFirst();
                 if (preserveFill && "SHORT_ANSWER".equals(unit.answerType())) continue;
                 eligible.add(pick);
-                if (!contributesRequiredTopic(quota, unit)) preferred.add(pick);
+                Map<TopicAssignments.Pick, List<TopicAssignment>> assignment =
+                        TopicAssignments.reassign(section, witness, selected, pick);
+                if (!contributesRequiredTopic(quota, unit) && assignment != null) {
+                    preferred.add(pick);
+                    reassigned.put(pick, assignment);
+                }
             }
         }
         List<QuestionPick> choices = preferred.isEmpty() ? eligible : preferred;
         if (choices.isEmpty()) return null;
         QuestionPick dropped = choices.get(new Random(seed).nextInt(choices.size()));
         List<GroupWitness> trimmed = new ArrayList<>();
-        for (GroupWitness group : witness.groups()) {
-            trimmed.add(new GroupWitness(group.groupId(), group.picks().stream()
-                    .filter(pick -> !pick.equals(dropped)).toList()));
+        Map<TopicAssignments.Pick, List<TopicAssignment>> assignment = reassigned.get(dropped);
+        for (int g = 0; g < witness.groups().size(); g++) {
+            GroupWitness group = witness.groups().get(g);
+            List<QuestionPick> picks = new ArrayList<>();
+            for (int i = 0; i < group.picks().size(); i++) {
+                QuestionPick pick = group.picks().get(i);
+                if (pick.equals(dropped)) continue;
+                picks.add(assignment == null ? pick : new QuestionPick(pick.questionId(), pick.versionNo(),
+                        assignment.getOrDefault(new TopicAssignments.Pick(g, i), List.of())));
+            }
+            trimmed.add(new GroupWitness(group.groupId(), picks));
         }
         return new Result(new SubjectWitness(witness.subjectCode(), witness.resolvedCount() - 1,
                 trimmed), dropped);
     }
 
-    /** UNI-2649 BE-4b extends this check with assigned required topic quotas. */
+    /** Existing MAPID minimum quotas also influence the preferred drop. */
     private static boolean contributesRequiredTopic(GroupQuota group, CountingUnit unit) {
         return group.mapidGroups().stream().anyMatch(q -> q.quota() > 0
                 && unit.mapidIds().stream().anyMatch(q.nodeIds()::contains));
