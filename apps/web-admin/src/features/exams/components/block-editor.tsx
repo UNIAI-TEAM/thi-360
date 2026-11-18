@@ -709,19 +709,17 @@ function BlockRowInfo({ block, section, partTotal, rowsLocked, lockId, available
     <div className="flex flex-col gap-3">
       {audio && (
         <div className="flex flex-wrap items-center gap-2">
-          <StatusChip tone={audio === "REQUIRED" ? "info" : "neutral"}>
-            {audio === "REQUIRED" ? <Headphones aria-hidden className="size-3.5" /> : <HeadphoneOff aria-hidden className="size-3.5" />}
-            {t(`audio.${audio}`)}
-          </StatusChip>
+          {audio === "REQUIRED" ? <Headphones aria-hidden className="size-4 text-info" /> : <HeadphoneOff aria-hidden className="size-4 text-text-muted" />}
+          <StatusChip tone={audio === "REQUIRED" ? "info" : "neutral"}>{t(`audio.${audio}`)}</StatusChip>
           <span className="text-caption text-text-muted">{t("audioNote")}</span>
         </div>
       )}
       {rowsLocked && (
         <div className="flex flex-col gap-1.5">
-          <StatusChip tone="neutral" className="w-fit">
-            <Lock aria-hidden className="size-3.5" />
-            {t("locked")}
-          </StatusChip>
+          <span className="inline-flex items-center gap-1.5">
+            <Lock aria-hidden className="size-4 text-text-muted" />
+            <StatusChip tone="neutral">{t("locked")}</StatusChip>
+          </span>
           <p id={lockId} className="text-body text-text-secondary">
             {t("lockedReason")}
           </p>

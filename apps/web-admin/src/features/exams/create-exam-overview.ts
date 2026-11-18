@@ -1,6 +1,6 @@
-import type { ItemShape, QuestionType } from "@/features/content/types";
+import type { QuestionType } from "@/features/content/types";
 import { isAllOmittedPart } from "./omitted-part";
-import type { ExamOverviewRow, ExamTemplate, ExamTemplateBlock, ExamTemplateSection, ExamTiming } from "./types";
+import type { ExamOverviewRow, ExamTemplate, ExamTemplateBlock, ExamTemplateSection, ExamTiming, ItemShape } from "./types";
 
 /**
  * "Bảng tổng quan" của bước 1 (2B 15.1): một dòng cho mỗi phần của mẫu và, khi phần cố định có nhiều môn (BCA Phần 2,

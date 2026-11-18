@@ -46,7 +46,7 @@ const part = (blocks: QuestionBlock[]): ExamPart => ({
   questionCount: 20,
   questionCountOnPaper: 20,
   questionCountRequired: 20,
-  participation: { mode: "ALL" },
+  participation: { mode: "ALL", choose: null },
   mode: "FIXED",
   sections: [section(blocks)],
   options: [],
