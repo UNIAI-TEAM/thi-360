@@ -1470,6 +1470,9 @@ JOIN questionbank.question_asset a ON a.id = sa.asset_id
 WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = sa.question_id)
 ON CONFLICT DO NOTHING;
 
+-- Dropped here so the script can run twice in one transaction, as SampleQuestionCoverageIT does.
+DROP TABLE seed_dot2b_cells, seed_dot2b_single, seed_dot2b_set, seed_dot2b_asset;
+
 DROP FUNCTION pg_temp.seed_plain(text, jsonb), pg_temp.seed_leaf_text(jsonb), pg_temp.seed_text(text),
     pg_temp.seed_options(text, integer, text[]), pg_temp.seed_single(text, integer),
     pg_temp.seed_multiple(text, integer), pg_temp.seed_true_false(text), pg_temp.seed_matching(text);
