@@ -265,7 +265,8 @@ function ExamGeneralForm({
       subjectCode: getValues("subjectCode"),
       buildMode: getValues("buildMode"),
     };
-    const scope = resolveScope(templates, kinds, reference.subjects, current, change);
+    // Thông tin chung không có ô chọn chế độ dựng; máy chủ giữ `exam.buildMode` khi phạm vi mới là Theo môn, còn lại STANDARD.
+    const scope = resolveScope(templates, kinds, reference.subjects, current, { ...change, buildMode: exam.buildMode });
     const dirty = { shouldDirty: true } as const;
     setValue("kind", scope.kind, dirty);
     setValue("scope", scope.scope, dirty);
