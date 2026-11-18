@@ -125,6 +125,32 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
         assertThat(allowedCodeSourceIssue("BCA_FULL", parts, issue)).isFalse();
     }
 
+    @Test
+    void hsaScienceTrimExceptionRejectsExtraMismatchAndWrongSelection() throws Exception {
+        JsonNode parts = mapper.readTree("""
+                [{"id":"science","questionCount":50,"options":[
+                  {"kind":"SUBJECT_CHOICE","chooseSubjects":3,"countsByPick":[17,17,16],
+                   "sections":[{"id":"a","questionCount":17},{"id":"b","questionCount":17},
+                               {"id":"c","questionCount":17},{"id":"d","questionCount":17}]}]}]
+                """);
+        ObjectNode issue = (ObjectNode) mapper.readTree("""
+                {"code":"PART_TOTAL_MISMATCH","partId":"science","required":50,"available":51,
+                 "selection":[{"sectionId":"a","count":17},{"sectionId":"b","count":17},
+                              {"sectionId":"c","count":17}]}
+                """);
+        assertThat(allowedHsaScienceIssue("HSA_PART_SCIENCE", parts, issue)).isTrue();
+        issue.put("available", 52);
+        assertThat(allowedHsaScienceIssue("HSA_PART_SCIENCE", parts, issue)).isFalse();
+        issue.put("available", 51).put("code", "PATH_TOTAL_MISMATCH").putNull("partId");
+        assertThat(allowedHsaScienceIssue("HSA_PART_SCIENCE", parts, issue)).isTrue();
+        issue.put("available", 52);
+        assertThat(allowedHsaScienceIssue("HSA_PART_SCIENCE", parts, issue)).isFalse();
+        issue.put("available", 51);
+        ((ObjectNode) issue.path("selection").get(2)).put("sectionId", "a");
+        assertThat(allowedHsaScienceIssue("HSA_PART_SCIENCE", parts, issue)).isFalse();
+        assertThat(allowedHsaScienceIssue("OTHER", parts, issue)).isFalse();
+    }
+
     private void checkTemplate(Map<String, Object> template, Set<String> failures) throws Exception {
             String code = (String) template.get("code");
             assertThat(template.get("active")).as("%s must be loadable", code).isEqualTo(true);
@@ -197,8 +223,11 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
     }
 
     private boolean allowedHsaScienceIssue(String code, JsonNode parts, JsonNode issue) {
-        if (!HSA_SCIENCE_TEMPLATES.contains(code)
-                || !Set.of("REMAINDER_GROUP_INVALID", "SUBJECT_QUOTA_COUNT_VARIES").contains(issue.path("code").asText())) return false;
+        if (!HSA_SCIENCE_TEMPLATES.contains(code)) return false;
+        if (Set.of("PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH").contains(issue.path("code").asText())) {
+            return allowedHsaTrimMismatch(parts, issue);
+        }
+        if (!Set.of("REMAINDER_GROUP_INVALID", "SUBJECT_QUOTA_COUNT_VARIES").contains(issue.path("code").asText())) return false;
         for (JsonNode part : parts) {
             if (!part.path("id").asText().equals(issue.path("partId").asText())) continue;
             for (JsonNode option : part.path("options")) {
@@ -208,6 +237,45 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
                     if (section.path("id").asText().equals(issue.path("sectionId").asText())
                             && Set.of("LY", "HOA", "SINH", "SU", "DIA").contains(section.path("subjectCode").asText())) return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    // FU-BE7-3 / H3: the legacy checker counts three 17-question matrices before the 17/17/16 trim.
+    private boolean allowedHsaTrimMismatch(JsonNode parts, JsonNode issue) {
+        if (!issue.path("required").isIntegralNumber() || !issue.path("available").isIntegralNumber()
+                || !issue.path("selection").isArray()) return false;
+        String issueCode = issue.path("code").asText();
+        int pathTotal = 0;
+        for (JsonNode part : parts) {
+            if (!part.path("questionCount").isIntegralNumber()) return false;
+            pathTotal += part.path("questionCount").asInt();
+        }
+        for (JsonNode part : parts) {
+            for (JsonNode option : part.path("options")) {
+                JsonNode counts = option.path("countsByPick");
+                if (!"SUBJECT_CHOICE".equals(option.path("kind").asText())
+                        || option.path("chooseSubjects").asInt() != 3 || counts.size() != 3
+                        || counts.get(0).asInt() != 17 || counts.get(1).asInt() != 17 || counts.get(2).asInt() != 16
+                        || part.path("questionCount").asInt() != 50 || issue.path("selection").size() != 3) continue;
+                if ("PART_TOTAL_MISMATCH".equals(issueCode)
+                        && (!part.path("id").asText().equals(issue.path("partId").asText())
+                            || issue.path("required").asInt() != 50)) continue;
+                if ("PATH_TOTAL_MISMATCH".equals(issueCode)
+                        && (!issue.path("partId").isNull() || issue.path("required").asInt() != pathTotal)) continue;
+                Set<String> selected = new LinkedHashSet<>();
+                for (JsonNode selection : issue.path("selection")) {
+                    String id = selection.path("sectionId").asText();
+                    if (selection.path("count").asInt(-1) != 17 || !selected.add(id)) return false;
+                    boolean found = false;
+                    for (JsonNode section : option.path("sections")) {
+                        if (id.equals(section.path("id").asText()) && section.path("questionCount").asInt(-1) == 17) found = true;
+                    }
+                    if (!found) return false;
+                }
+                long trimmed = 3 * 17L - (counts.get(0).asLong() + counts.get(1).asLong() + counts.get(2).asLong());
+                return issue.path("available").asLong() - issue.path("required").asLong() == trimmed;
             }
         }
         return false;
