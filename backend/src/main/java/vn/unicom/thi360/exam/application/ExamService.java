@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -53,8 +54,10 @@ import vn.unicom.thi360.exam.domain.ExamStatus;
 import vn.unicom.thi360.exam.domain.ExamStructure;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
+import vn.unicom.thi360.exam.domain.ExamStructureInvalidException;
 import vn.unicom.thi360.exam.domain.ExamStructureOps;
 import vn.unicom.thi360.exam.domain.ExamStructureValidator;
+import vn.unicom.thi360.exam.domain.QuotaBasis;
 import vn.unicom.thi360.exam.domain.ExamTemplate;
 import vn.unicom.thi360.exam.domain.KnowledgeScope;
 import vn.unicom.thi360.exam.domain.OptionKind;
@@ -470,7 +473,7 @@ public class ExamService {
                 doc = reviewSubject(doc, scopeChoice.subjectCode());
             }
             if (subjectPart) {
-                doc = selectSubjectPart(doc, scopeChoice.partCode());
+                doc = selectSubjectPart(doc, scopeChoice.partCode(), template);
             }
             ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
             templateCode = template.getCode();
@@ -577,6 +580,12 @@ public class ExamService {
         return ExamStructureOps.assignMissingIds(new ExamStructureDocument(parts));
     }
 
+    /**
+     * Chọn một phần của mẫu môn. Chỉ tiêu theo lệnh ({@code PROMPT}) là tổng của cả môn nên không đi theo
+     * phần: bỏ khỏi mọi section của phần được chọn, còn chỉ tiêu các basis khác giữ nguyên (UNI-2690; số lệnh
+     * theo mạch sẽ có phần khi FU-VSAT-STRAND-SCOPE xong bản đồ). Cắt bên ngoài và đường so mẫu cùng đi qua
+     * phương thức hai tham số này nên hai phía luôn giống nhau.
+     */
     private ExamStructureDocument selectSubjectPart(ExamStructureDocument doc, String partCode) {
         List<ExamPart> parts = doc.parts().stream()
                 .filter(p -> p.order() != null && ("P" + p.order()).equals(partCode))
@@ -585,7 +594,72 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
                     messages.get(ExamErrorCodes.PART_NOT_FOUND));
         }
-        return new ExamStructureDocument(parts);
+        return new ExamStructureDocument(parts.stream().map(this::withoutPromptQuotas).toList());
+    }
+
+    private ExamPart withoutPromptQuotas(ExamPart part) {
+        List<ExamPartOption> options = part.options().stream()
+                .map(this::withoutPromptQuotas).toList();
+        List<ExamSection> sections = part.sections().stream()
+                .map(this::withoutPromptQuotas).toList();
+        List<ExamSection> subjectPool = part.subjectPool().stream()
+                .map(this::withoutPromptQuotas).toList();
+        if (options.equals(part.options()) && sections.equals(part.sections())
+                && subjectPool.equals(part.subjectPool())) {
+            return part;
+        }
+        return new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(),
+                part.questionCount(), part.questionCountOnPaper(), part.questionCountRequired(),
+                part.participation(), part.maxPoints(), sections, options, subjectPool,
+                part.codeSource(), part.displaySegments());
+    }
+
+    private ExamPartOption withoutPromptQuotas(ExamPartOption option) {
+        List<ExamSection> sections = option.sections().stream()
+                .map(this::withoutPromptQuotas).toList();
+        if (sections.equals(option.sections())) {
+            return option;
+        }
+        return new ExamPartOption(option.id(), option.kind(), option.code(), option.name(),
+                option.chooseSubjects(), option.countsByPick(), sections, option.blocks(),
+                option.expertConfirmed());
+    }
+
+    private ExamSection withoutPromptQuotas(ExamSection section) {
+        if (section.topicQuotas().stream().noneMatch(q -> q.basis() == QuotaBasis.PROMPT)) {
+            return section;
+        }
+        return new ExamSection(section.id(), section.subjectCode(), section.questionCount(),
+                section.knowledgeScope(), section.answerQuotas(), section.matrix(),
+                section.choiceGroup(), section.blocks(),
+                section.topicQuotas().stream()
+                        .filter(q -> q.basis() != QuotaBasis.PROMPT).toList(),
+                section.audioRequirement());
+    }
+
+    /**
+     * Cuts one part from a subject template. A template with {@code omitted_locked} (H43, H49) has no part exam
+     * for a part made only of omitted groups: the writing parts of H-SCA and V-SAT Ngữ văn are stored for reference.
+     */
+    private ExamStructureDocument selectSubjectPart(ExamStructureDocument doc, String partCode,
+            ExamTemplate template) {
+        ExamStructureDocument selected = selectSubjectPart(doc, partCode);
+        if (template.isOmittedLocked() && onlyOmittedBlocks(selected.parts().getFirst())) {
+            throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                    messages.get(ExamErrorCodes.PART_NOT_FOUND));
+        }
+        return selected;
+    }
+
+    private static boolean onlyOmittedBlocks(ExamPart part) {
+        List<QuestionBlock> blocks = new ArrayList<>();
+        Stream.concat(part.sections().stream(), part.subjectPool().stream())
+                .forEach(section -> blocks.addAll(section.blocks()));
+        for (ExamPartOption option : part.options()) {
+            blocks.addAll(option.blocks());
+            option.sections().forEach(section -> blocks.addAll(section.blocks()));
+        }
+        return !blocks.isEmpty() && blocks.stream().allMatch(block -> Boolean.TRUE.equals(block.omitted()));
     }
 
     private ExamStructureDocument reviewSubject(ExamStructureDocument doc, String subjectCode) {
@@ -668,7 +742,7 @@ public class ExamService {
                         ? ExamStructureOps.assignMissingIds(codec().read(template.getStructure()))
                         : new ExamStructureDocument(List.of());
                 if (template != null && "REVIEW".equals(mode)) doc = reviewSubject(doc, choice.subjectCode());
-                if (subjectPart) doc = selectSubjectPart(doc, choice.partCode());
+                if (subjectPart) doc = selectSubjectPart(doc, choice.partCode(), template);
                 ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
@@ -812,7 +886,7 @@ public class ExamService {
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
         if (subjectPart) {
-            doc = selectSubjectPart(doc, exam.getPartCode());
+            doc = selectSubjectPart(doc, exam.getPartCode(), template);
         }
         if ("REVIEW".equals(template.getBuildMode())) {
             doc = reviewSubject(doc, subjectCodeOf(exam.getSubjectItemId()));
@@ -946,6 +1020,7 @@ public class ExamService {
 
         ExamStructureDocument incoming = ExamStructureOps.assignMissingIds(
                 new ExamStructureDocument(request.parts(), request.examQuotas()));
+        rejectSegmentsOutsideSubject(exam, incoming.parts());
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument storedDoc = stored == null ? null : readStoredStructure(stored);
         String beforeHash = stored == null ? null : stored.getStructureHash();
@@ -978,6 +1053,30 @@ public class ExamService {
                 .build());
         return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
+    }
+
+    /**
+     * Spec H40 rule 4: a PART exam and a review exam carry no display segments (a segment divides a whole subject
+     * paper). Every offending segment is reported at its own field.
+     */
+    private static void rejectSegmentsOutsideSubject(Exam exam, List<ExamPart> parts) {
+        if (!"PART".equals(exam.getScope()) && !"REVIEW".equals(exam.getBuildMode())) {
+            return;
+        }
+        List<ExamStructureInvalidException.Detail> details = new ArrayList<>();
+        for (int i = 0; i < parts.size(); i++) {
+            ExamPart part = parts.get(i);
+            int segments = part == null ? 0 : part.displaySegments().size();
+            for (int j = 0; j < segments; j++) {
+                String field = "parts[" + i + "].displaySegments[" + j + "]";
+                details.add(new ExamStructureInvalidException.Detail(field, "SEGMENT_NOT_ALLOWED",
+                        "SEGMENT_NOT_ALLOWED", List.of()));
+            }
+        }
+        if (!details.isEmpty()) {
+            throw new ExamStructureInvalidException("display segments are not allowed on a part or review exam",
+                    details);
+        }
     }
 
     /** POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. */
@@ -1296,8 +1395,7 @@ public class ExamService {
         String subjectCode = subjectCodeOf(exam.getSubjectItemId());
         if (!Objects.equals(kindCode, template.getKindCode())
                 || (!Objects.equals(exam.getScope(), template.getScope())
-                        && !("PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope())
-                        && ("SP2E".equals(kindCode) || "SPT".equals(kindCode) || "THPTQG".equals(kindCode))))
+                        && !partOfSubjectTemplate(exam, template))
                 || (template.getPartCode() != null
                         && !Objects.equals(exam.getPartCode(), template.getPartCode()))
                 || (template.getSubjectCode() != null
@@ -1305,6 +1403,13 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
                     messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
         }
+    }
+
+    /** A PART exam reloads the SUBJECT template of every kind whose profile finds templates by subject (H36). */
+    private boolean partOfSubjectTemplate(Exam exam, ExamTemplate template) {
+        return "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope())
+                && profileRepository.findById(exam.getKindItemId())
+                        .map(profile -> "SUBJECT".equals(profile.getTemplateBy())).orElse(false);
     }
 
     private ExamDetailResponse toDetail(Exam exam, ExamStructureDocument doc) {

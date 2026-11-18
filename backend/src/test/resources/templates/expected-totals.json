@@ -417,6 +417,116 @@
     "buildMode": "STANDARD",
     "isDefault": true
   },
+  "HSCA_SUBJECT_TOAN": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TOAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "HSCA_SUBJECT_TOAN_SAMPLE": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TOAN",
+    "buildMode": "STANDARD",
+    "isDefault": false
+  },
+  "HSCA_SUBJECT_LY": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "LY",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "HSCA_SUBJECT_LY_SAMPLE": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "LY",
+    "buildMode": "STANDARD",
+    "isDefault": false
+  },
+  "HSCA_SUBJECT_HOA": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "HOA",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "HSCA_SUBJECT_HOA_SAMPLE": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "HOA",
+    "buildMode": "STANDARD",
+    "isDefault": false
+  },
+  "HSCA_SUBJECT_SINH": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SINH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "HSCA_SUBJECT_SINH_SAMPLE": {
+    "questions": 40,
+    "maxPoints": 10,
+    "durationMinutes": 90,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SINH",
+    "buildMode": "STANDARD",
+    "isDefault": false
+  },
+  "HSCA_SUBJECT_VAN": {
+    "questions": 20,
+    "maxPoints": 20,
+    "durationMinutes": null,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "VAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "HSCA_SUBJECT_ANH": {
+    "questions": 75,
+    "maxPoints": 75,
+    "durationMinutes": null,
+    "examKind": "HSCA",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "ANH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
   "SP2E_MATH_2025": {
     "questions": 22,
     "maxPoints": 10,
@@ -933,5 +1043,93 @@
     "subjectCode": "TOAN",
     "buildMode": "STANDARD",
     "isDefault": true
+  },
+  "VSAT_SUBJECT_TOAN": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 90,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "TOAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_SUBJECT_LY": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 60,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "LY",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_SUBJECT_HOA": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 60,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "HOA",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_SUBJECT_SINH": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 60,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SINH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_SUBJECT_SU": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 60,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "SU",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_SUBJECT_DIA": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 60,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "DIA",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_SUBJECT_VAN": {
+    "questions": 20,
+    "maxPoints": 120,
+    "durationMinutes": null,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "VAN",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_SUBJECT_HOA_50": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 50,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "HOA",
+    "buildMode": "STANDARD",
+    "isDefault": false
   }
 }

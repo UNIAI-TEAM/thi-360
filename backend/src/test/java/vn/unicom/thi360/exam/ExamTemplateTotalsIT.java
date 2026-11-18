@@ -677,4 +677,66 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT active FROM exam.exam_template WHERE code = 'HSA_PART_ENGLISH'",
                 Boolean.class)).isFalse();
     }
+
+    /**
+     * The audio, typed child and option-count conditions a template declares (spec H38, H39, R-131) are readable and
+     * consistent in every stored template: a section's audio requirement is one of the three values, an option count
+     * belongs to a choice question or to a set of choice children, and typed child conditions of a mixed set tile the
+     * positions 1 to setSize without a uniform child type.
+     */
+    @Test
+    void declaredAudioChildTypeAndOptionConditionsAreConsistentInEveryTemplate() throws Exception {
+        var rows = jdbc.queryForList("SELECT code, structure::text AS document FROM exam.exam_template "
+                + "WHERE build_mode = 'STANDARD' ORDER BY code");
+        int audioSections = 0;
+        int optionBlocks = 0;
+        for (var row : rows) {
+            String code = (String) row.get("code");
+            List<JsonNode> sections = new ArrayList<>();
+            collectSections(mapper.readTree((String) row.get("document")), sections);
+            for (JsonNode section : sections) {
+                if (section.hasNonNull("audioRequirement")) {
+                    audioSections++;
+                    assertThat(section.get("audioRequirement").asText()).as(code)
+                            .isIn("ANY", "REQUIRED", "FORBIDDEN");
+                }
+                for (JsonNode block : section.path("blocks")) {
+                    String type = block.path("questionType").asText("");
+                    if (block.path("itemShape").hasNonNull("options")) {
+                        optionBlocks++;
+                        assertThat(block.path("itemShape").get("options").asInt()).as(code).isPositive();
+                        boolean choice = type.equals("SINGLE_CHOICE") || type.equals("MULTIPLE_CHOICE");
+                        boolean choiceSet = type.equals("QUESTION_SET") && (block.path("childAnswerType").asText("")
+                                .endsWith("_CHOICE") || block.path("childConditions").size() > 0);
+                        assertThat(choice || choiceSet).as("%s %s options need a choice question", code,
+                                block.path("name").asText()).isTrue();
+                    }
+                    List<JsonNode> typed = new ArrayList<>();
+                    block.path("childConditions").forEach(condition -> {
+                        if (condition.hasNonNull("answerType")) typed.add(condition);
+                    });
+                    if (typed.isEmpty()) continue;
+                    assertThat(type).as(code).isEqualTo("QUESTION_SET");
+                    assertThat(block.hasNonNull("childAnswerType")).as(code + " mixed set").isFalse();
+                    int next = 1;
+                    for (JsonNode condition : typed) {
+                        assertThat(condition.path("from").asInt()).as(code).isEqualTo(next);
+                        next = condition.path("to").asInt() + 1;
+                    }
+                    assertThat(next - 1).as(code).isEqualTo(block.path("setSize").asInt());
+                }
+            }
+        }
+        assertThat(audioSections).as("H-SCA English declares an audio requirement per part").isGreaterThanOrEqualTo(2);
+        assertThat(optionBlocks).as("H-SCA declares four-option blocks").isPositive();
+    }
+
+    private void collectSections(JsonNode node, List<JsonNode> sections) {
+        if (node.isObject()) {
+            if (node.has("blocks")) sections.add(node);
+            node.elements().forEachRemaining(child -> collectSections(child, sections));
+        } else if (node.isArray()) {
+            node.forEach(child -> collectSections(child, sections));
+        }
+    }
 }
