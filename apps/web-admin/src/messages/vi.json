@@ -4069,11 +4069,11 @@
         "name": "Tên nhóm",
         "backToSection": "Về màn môn",
         "fromTemplate": "Nhóm do mẫu khởi tạo ({code}).",
-        "questionType": "Dạng trả lời",
+        "questionType": "Loại câu hỏi",
         "typeLocked": "Điền sẵn theo mẫu, không đổi được.",
         "typeOpen": "Theo chỉ tiêu dạng trả lời của môn",
         "typeOpenHint": "Các câu của nhóm lấp phần chỉ tiêu dạng trả lời còn thiếu của môn.",
-        "childAnswerType": "Dạng của câu con",
+        "childAnswerType": "Loại câu hỏi của câu con",
         "childAnswerTypeHint": "Câu con trừ vào chỉ tiêu dạng trả lời của môn theo dạng này.",
         "childAnswerTypeAny": "Không giới hạn dạng",
         "questionCount": "Số câu cần lấy",
@@ -4085,9 +4085,6 @@
         "setSize": "Số câu con mỗi chùm",
         "setHint": "Nhóm lấy {count, number} câu con",
         "setWholeNote": "Hệ thống luôn lấy nguyên chùm; số câu của nhóm là số chùm × số câu con mỗi chùm.",
-        "points": "Điểm mỗi câu yêu cầu",
-        "pointsOpenHint": "Không bắt buộc. Để trống thì câu nào cũng vào nguồn, điểm lấy từ phiên bản câu.",
-        "pointsTotal": "Chỉ câu có đúng {points, number} điểm vào nguồn; nhóm có {total, number} điểm.",
         "ownMatrix": "Ma trận lớp và độ khó riêng của nhóm",
         "ownMatrixNone": "Chưa khai (tùy chọn)",
         "ownMatrixSet": "Đã khai",
@@ -4108,6 +4105,135 @@
         "manualGrading": "Chấm tay",
         "competencies": "Năng lực",
         "competenciesHint": "Chỉ lấy câu gắn một trong các năng lực đã chọn. Không chọn năng lực nào: lấy mọi năng lực của môn."
+      },
+      "blockForm": {
+        "childConditions": {
+          "add": "Thêm điều kiện theo vị trí",
+          "empty": "Chưa có điều kiện theo vị trí.",
+          "from": "Từ câu con số",
+          "hint": "Câu con ở vị trí hoặc dải vị trí trong chùm phải có ít nhất một MAPID đã chọn. Hệ thống chỉ chọn chùm có đủ câu con khớp.",
+          "issues": {
+            "FROM_MIN": "Vị trí bắt đầu phải từ 1.",
+            "NO_MAPID": "Chọn ít nhất một MAPID.",
+            "OUT_OF_SET": "Vị trí vượt số câu con mỗi chùm ({size, number}).",
+            "RANGE_ORDER": "Vị trí kết thúc phải lớn hơn hoặc bằng vị trí bắt đầu."
+          },
+          "mapidLabel": "MAPID:",
+          "pickMapid": "Chọn MAPID",
+          "pickerDescription": "{name}: chọn được Chương, Bài hoặc Kiến thức.",
+          "remove": "Bỏ {name}",
+          "removeMapid": "Bỏ MAPID {code} {name}",
+          "rowName": "Điều kiện vị trí {index, number}",
+          "title": "Điều kiện theo vị trí câu con",
+          "to": "Đến câu con số"
+        },
+        "conditions": {
+          "add": "Thêm điều kiện",
+          "added": "Đã thêm",
+          "answerFormats": {
+            "format": {
+              "CHEM_EQUATION": "Phương trình hóa học",
+              "CHEM_FORMULA": "Công thức hóa học",
+              "DECIMAL": "Số thập phân",
+              "FRACTION": "Phân số",
+              "INTEGER": "Số nguyên",
+              "TEXT": "Văn bản"
+            },
+            "legend": "Định dạng đáp án",
+            "note": "Khớp một trong các định dạng. Câu chưa đặt định dạng không vào nhóm có điều kiện này."
+          },
+          "empty": "Chưa thêm điều kiện nào.",
+          "groupName": "nhóm",
+          "hint": "Mọi câu của nhóm phải thỏa các điều kiện.",
+          "itemShape": {
+            "leftItems": "Số ý trái",
+            "noteMatching": "Câu Ghép đôi phải có đúng số ý trái và số lựa chọn phải đã nhập.",
+            "noteTrueFalse": "Câu Đúng/Sai phải có đúng số ý đã nhập.",
+            "required": "Nhập số lớn hơn 0.",
+            "rightItems": "Số lựa chọn phải",
+            "statements": "Số ý"
+          },
+          "kind": {
+            "ANSWER_FORMATS": "Định dạng đáp án",
+            "ITEM_SHAPE": "Hình dạng câu",
+            "MAPID": "Kiến thức (MAPID)",
+            "POINTS": "Điểm mỗi câu",
+            "TAGS": "Nhãn hoặc loại văn bản"
+          },
+          "kindHint": {
+            "ANSWER_FORMATS": "Chỉ cho nhóm có câu Trả lời ngắn",
+            "ITEM_SHAPE": "Số ý Đúng/Sai; số ý trái và lựa chọn phải của Ghép đôi",
+            "MAPID": "Chọn nhiều, khớp một trong các mã",
+            "POINTS": "Chỉ nhận câu có đúng số điểm này",
+            "TAGS": "Chọn nhiều, khớp một trong các nhãn"
+          },
+          "menuLabel": "Loại điều kiện",
+          "points": {
+            "label": "Điểm mỗi câu",
+            "openHint": "Không bắt buộc. Để trống thì câu nào cũng vào nguồn, điểm lấy từ phiên bản câu.",
+            "total": "Chỉ nhận câu có đúng {points, number} điểm trong ngân hàng; nhóm có {total, number} điểm."
+          },
+          "remove": "Bỏ điều kiện {kind}",
+          "removeLabel": "Bỏ điều kiện",
+          "title": "Điều kiện của nhóm",
+          "unavailable": {
+            "ANSWER_FORMATS": "Chỉ cho nhóm có câu Trả lời ngắn",
+            "ITEM_SHAPE": "Chỉ cho nhóm Đúng/Sai hoặc Ghép đôi"
+          }
+        },
+        "mode": {
+          "legend": "Cách lấy",
+          "set": "Câu chùm",
+          "single": "Câu đơn"
+        },
+        "omittedBadge": "Tự luận – tạm bỏ qua",
+        "positionRange": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+        "slots": {
+          "caption": "Điều kiện của {count, number} chùm",
+          "clear": "Xóa điều kiện chùm {index, number}",
+          "clearLabel": "Xóa",
+          "close": "Đóng",
+          "closeEdit": "Đóng phần sửa chùm {index, number}",
+          "columns": {
+            "actions": "Thao tác",
+            "mapid": "Kiến thức (MAPID)",
+            "set": "Chùm",
+            "tags": "Loại văn bản (nhãn)"
+          },
+          "dropped": "Số chùm còn {sets, number}. Điều kiện riêng của chùm {list} đã bị bỏ khỏi bản nháp.",
+          "edit": "Sửa điều kiện chùm {index, number}",
+          "editLabel": "Sửa",
+          "editorTitle": "Điều kiện chùm {index, number}",
+          "hint": "Chùm không đặt gì thì dùng điều kiện của nhóm. Nhãn khớp một trong các nhãn.",
+          "inheritsGroup": "Theo điều kiện của nhóm",
+          "mapidCount": "{count, number} kiến thức",
+          "mapidLabel": "Kiến thức (MAPID):",
+          "pickMapid": "Chọn MAPID",
+          "pickerDescription": "Điều kiện riêng của chùm {index, number}: chọn được Chương, Bài hoặc Kiến thức.",
+          "removeMapid": "Bỏ MAPID {code} {name} của chùm {index, number}",
+          "setName": "Chùm {index, number}",
+          "title": "Điều kiện riêng từng chùm"
+        },
+        "switches": {
+          "alwaysShuffle": "Câu trong nhóm luôn được đảo theo từng đề; nhóm giữ vị trí.",
+          "alwaysShuffleSet": "Câu và chùm trong nhóm luôn được đảo; câu con giữ thứ tự.",
+          "omitted": {
+            "description": "Nhóm không vào đề, không tính vào tổng câu và điểm tối đa, không bị kiểm tra nguồn. Tắt để đưa nhóm vào đề và chấm tay.",
+            "label": "Tạm bỏ qua"
+          },
+          "shuffle": {
+            "description": "Chùm đã chọn đổi vị trí trong nhóm theo từng đề. Câu con trong chùm giữ thứ tự. Chỉ nhóm 5 của Văn HSA và Văn QDA có công tắc này.",
+            "label": "Đảo thứ tự các chùm"
+          }
+        },
+        "tags": {
+          "matchAny": "Khớp một trong các nhãn: câu có ít nhất một nhãn đã chọn đều được.",
+          "none": "Không có nhãn khớp.",
+          "remove": "Bỏ nhãn {tag} của {name}",
+          "search": "Tìm nhãn",
+          "searchLabel": "Tìm nhãn của {name}",
+          "selected": "Nhãn đã chọn của {name}"
+        }
       },
       "subject": {
         "title": "Môn {subject}",
@@ -5273,14 +5399,17 @@
       "competencyHeader": "Năng lực"
     },
     "scopeField": {
-      "legend": "Phạm vi kiến thức (MAPID)",
+      "legend": "Phạm vi kiến thức",
+      "all": "Toàn môn",
+      "topic": "Theo chủ đề",
+      "strand": "Theo mạch kiến thức",
+      "topicEmpty": "Chưa chọn chủ đề nào.",
+      "topicHint": "Câu khớp khi có ít nhất một mã đã chọn. Nút đã chọn cũng khớp câu gắn nút con của nó.",
       "inheritsSection": "Theo phạm vi của môn",
       "inheritsCount": "Phạm vi của môn có {count, number} kiến thức",
       "none": "Không giới hạn MAPID",
-      "setOwn": "Đặt phạm vi riêng",
       "pick": "Chọn kiến thức",
       "remove": "Bỏ kiến thức {code} {name}",
-      "useSection": "Dùng phạm vi của môn",
       "pickerDescription": "Phạm vi của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó."
     },
     "subjectChoice": {

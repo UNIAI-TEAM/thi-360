@@ -151,6 +151,43 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
     templateGroupCode: nullable(block.templateGroupCode),
     answerTypeLocked: block.answerTypeLocked ?? false,
     ...(expectedScoring ? { expectedScoring } : {}),
+    ...(block.shuffleUnits !== undefined ? { shuffleUnits: block.shuffleUnits } : {}),
+    ...(block.shuffleEditable !== undefined ? { shuffleEditable: block.shuffleEditable } : {}),
+    ...(block.omitted !== undefined ? { omitted: block.omitted } : {}),
+    ...(block.slots?.length
+      ? {
+          slots: block.slots.map((slot) => {
+            const knowledgeScope = mapScope(slot.knowledgeScope);
+            return {
+              index: slot.index ?? 0,
+              ...(knowledgeScope ? { knowledgeScope } : {}),
+              ...(slot.tagCodes?.length ? { tagCodes: slot.tagCodes } : {}),
+            };
+          }),
+        }
+      : {}),
+    ...(block.childConditions?.length
+      ? {
+          childConditions: block.childConditions.map((condition) => ({
+            from: condition.from ?? 0,
+            to: condition.to ?? 0,
+            nodeIds: condition.nodeIds ?? [],
+          })),
+        }
+      : {}),
+    ...(block.itemShape
+      ? {
+          itemShape: {
+            ...(block.itemShape.statements !== undefined ? { statements: block.itemShape.statements } : {}),
+            ...(block.itemShape.leftItems !== undefined ? { leftItems: block.itemShape.leftItems } : {}),
+            ...(block.itemShape.rightItems !== undefined ? { rightItems: block.itemShape.rightItems } : {}),
+          },
+        }
+      : {}),
+    ...(block.answerFormats?.length ? { answerFormats: block.answerFormats } : {}),
+    ...(block.positionRange
+      ? { positionRange: { from: block.positionRange.from ?? 0, to: block.positionRange.to ?? 0 } }
+      : {}),
   };
 }
 
@@ -223,7 +260,8 @@ export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
     if (value && typeof value === "object") {
       return Object.fromEntries(
         Object.entries(value as Record<string, unknown>)
-          .filter(([, item]) => item !== null && item !== undefined)
+          // `positionRange` do máy chủ tính (2B 3.3), không gửi lại.
+          .filter(([key, item]) => item !== null && item !== undefined && key !== "positionRange")
           .map(([key, item]) => [key, strip(item)]),
       );
     }

@@ -85,6 +85,31 @@ export interface KnowledgeScope {
   competencyCodes?: string[];
 }
 
+/** Điều kiện riêng của một chùm (`index` từ 1 đến số chùm); `tagCodes` khớp một trong các nhãn (H22). */
+export interface BlockSlot {
+  index: number;
+  knowledgeScope?: KnowledgeScope | null;
+  tagCodes?: string[];
+}
+
+/** Câu con ở vị trí `from`–`to` của chùm (đánh số từ 1) phải có ít nhất một MAPID trong `nodeIds`. */
+export interface ChildCondition {
+  from: number;
+  to: number;
+  nodeIds: string[];
+}
+
+export interface ItemShape {
+  statements?: number;
+  leftItems?: number;
+  rightItems?: number;
+}
+
+export interface PositionRange {
+  from: number;
+  to: number;
+}
+
 export type MatrixMode = "COMBINED" | "SEPARATE";
 export type MatrixUnit = "COUNT" | "PERCENT";
 
@@ -152,6 +177,22 @@ export interface QuestionBlock {
    * tắc khác khối. Bỏ trống: không so.
    */
   expectedScoring?: BlockExpectedScoring;
+  /** Đảo đơn vị (câu độc lập hoặc nguyên chùm) trong nhóm theo từng đề (K4); bỏ trống: `true`. */
+  shuffleUnits?: boolean;
+  /** Mẫu đặt: chỉ nhóm có `true` hiện công tắc "Đảo thứ tự các chùm" (Văn HSA, Văn QDA nhóm 5). */
+  shuffleEditable?: boolean;
+  /** Nhóm Tự luận tạm bỏ qua (K1): không vào đề, không tính câu và điểm. Chỉ nhóm `ESSAY`. */
+  omitted?: boolean;
+  /** Nhóm chùm: điều kiện riêng của từng chùm (R-34); chùm không có phần tử dùng điều kiện của nhóm. */
+  slots?: BlockSlot[];
+  /** Nhóm chùm: điều kiện MAPID theo vị trí câu con (H13). */
+  childConditions?: ChildCondition[];
+  /** Hình dạng câu: số ý Đúng/Sai, số ý trái và lựa chọn phải của Ghép đôi (R-60, R-88). */
+  itemShape?: ItemShape | null;
+  /** Nhóm Trả lời ngắn: định dạng đáp án nhận vào (H11); rỗng: không lọc. */
+  answerFormats?: string[];
+  /** Chỉ có ở phản hồi, do hệ thống tính: dải số thứ tự câu của nhóm trong phần (R-90). Không gửi lại. */
+  positionRange?: PositionRange | null;
 }
 
 export interface BlockExpectedScoring {
@@ -623,6 +664,12 @@ export interface AvailableQuestionsQuery {
   competencyCodes?: string[];
   /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */
   requiredPointsPerQuestion?: number | null;
+  /** Hình dạng câu (Đúng/Sai, Ghép đôi); bỏ trống: không lọc. */
+  itemShape?: ItemShape | null;
+  /** Nhóm Trả lời ngắn: các định dạng đáp án nhận vào (H11); rỗng: không lọc. */
+  answerFormats?: string[];
+  /** Nhóm chùm: điều kiện MAPID theo vị trí câu con (H13). `slots` của khối không có trường trong hợp đồng đếm. */
+  childConditions?: ChildCondition[];
 }
 
 /** Đếm nguồn cho cả môn: hợp nguồn của các nhóm trong môn, mỗi câu đếm một lần. */

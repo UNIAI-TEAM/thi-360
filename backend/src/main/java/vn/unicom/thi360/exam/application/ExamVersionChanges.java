@@ -32,6 +32,7 @@ public final class ExamVersionChanges {
             }
             for (String name : names) {
                 if ("resolvedQuotas".equals(name)) continue;
+                if ("paths".equals(name) && path.startsWith("parts/parts/")) continue;
                 compare(before.get(name), after.get(name), path + "/" + name, blockId, out);
             }
             return;

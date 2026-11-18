@@ -196,7 +196,7 @@ describe("Cấu trúc: phần thi", () => {
     const user = userEvent.setup();
     const blockId = backend.app("ex-hsa-f-001").parts[0]!.sections[0]!.blocks[0]!.id;
     openStructure("ex-hsa-f-001", `?block=${blockId}`);
-    const points = await screen.findByRole("textbox", { name: /Điểm mỗi câu yêu cầu/ });
+    const points = await screen.findByRole("textbox", { name: "Điểm mỗi câu" });
     await user.clear(points);
     expect(screen.getByText(/Không bắt buộc\. Để trống thì câu nào cũng vào nguồn/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));

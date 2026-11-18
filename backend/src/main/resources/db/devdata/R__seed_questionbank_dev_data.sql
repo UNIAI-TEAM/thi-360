@@ -78,6 +78,12 @@ CREATE TEMP TABLE seed_inserted_questions (
 
 CREATE TEMP TABLE seed_inserted_children (id uuid PRIMARY KEY) ON COMMIT DROP;
 
+CREATE TEMP TABLE seed_be14_classification (
+    question_id uuid PRIMARY KEY,
+    competency_code text NOT NULL,
+    tag_code text
+) ON COMMIT DROP;
+
 -- HSA Mathematics: each grade x level x answer-type cell has 12 independent
 -- questions, giving ample headroom for the 35/15 answer and 3/20/27 grade quotas.
 INSERT INTO seed_question_rows
@@ -655,6 +661,56 @@ SELECT child_id, 'SEED-2B-CASE-SET-' || n || '-' || pos, 'SINGLE_CHOICE',
        subject_id, grade_id, level_id, NULL, 0.25, '<p>Case child</p>', body, id, pos
 FROM children;
 
+-- BEGIN BE-9 ECON_LAW SP2E: six true/false questions and two three-child case sets.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-be9-econ-tf-' || n)::uuid, 'SEED-BE9-ECON-TF-' || n,
+       'TRUE_FALSE', subject.id, grade.id, level.id, NULL, 0.8,
+       '<p>Practice statement exercise</p>',
+       jsonb_build_object('type', 'TRUE_FALSE', 'scoringMethod', 'PER_STATEMENT',
+           'statements', jsonb_build_array(
+               jsonb_build_object('id', 'a', 'content', '<p>Practice statement A</p>', 'answer', true, 'points', 0.2),
+               jsonb_build_object('id', 'b', 'content', '<p>Practice statement B</p>', 'answer', false, 'points', 0.2),
+               jsonb_build_object('id', 'c', 'content', '<p>Practice statement C</p>', 'answer', true, 'points', 0.2),
+               jsonb_build_object('id', 'd', 'content', '<p>Practice statement D</p>', 'answer', false, 'points', 0.2))),
+       NULL, NULL
+FROM generate_series(1, 6) n
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'ECON_LAW'
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH';
+
+WITH sets AS (
+    SELECT subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id, n,
+           md5('thi360-be9-econ-case-' || n)::uuid AS id
+    FROM generate_series(1, 2) n
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'ECON_LAW'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+), children AS (
+    SELECT s.*, pos, md5('thi360-be9-econ-case-child-' || n || '-' || pos)::uuid AS child_id,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>Practice answer A</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Practice answer B</p>', 'correct', false))) AS body
+    FROM sets s CROSS JOIN generate_series(0, 2) pos
+), parents AS (
+    SELECT s.id, 'SEED-BE9-ECON-CASE-' || s.n AS code, 'QUESTION_SET' AS type,
+           s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id,
+           0.6::numeric AS points, '<p>Practice case</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Practice case context</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
+                   'content', '<p>Practice case question</p>', 'body', c.body, 'points', 0.2,
+                   'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM sets s JOIN children c ON c.id = s.id
+    GROUP BY s.id, s.n, s.subject_id, s.grade_id, s.level_id
+)
+INSERT INTO seed_question_rows
+SELECT * FROM parents
+UNION ALL
+SELECT child_id, 'SEED-BE9-ECON-CASE-' || n || '-' || pos, 'SINGLE_CHOICE',
+       subject_id, grade_id, level_id, NULL, 0.2, '<p>Practice case question</p>', body, id, pos
+FROM children;
+-- END BE-9 ECON_LAW SP2E.
+
 INSERT INTO seed_question_rows
 SELECT md5('thi360-2b-general-matching-' || subject.code || '-' || n)::uuid,
        'SEED-2B-MATCHING-GENERAL-' || subject.code || '-' || n,
@@ -852,6 +908,122 @@ JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-0000000
 WHERE starts_with(q.code, 'SEED-2B-SCIENCE-SU-')
 ON CONFLICT DO NOTHING;
 
+-- D9 provisional codes: reconcile with R__seed_catalog_dev_data.sql for BA review.
+
+WITH singles AS (
+SELECT spec.*, tag.code AS tag_code, n, subject.id AS subject_id,
+       grade.id AS grade_id, level.id AS level_id,
+       md5('thi360-be14-single-' || spec.competency || '-' || COALESCE(spec.declared_tag, 'NONE') || '-' || n)::uuid AS id
+FROM (VALUES
+    ('VIETNAMESE', 'VACT-NN-TV', NULL, 10::numeric, 30),
+    ('ANH', 'VACT-NN-TA', 'ANH_HOAN_THANH_CAU', 10::numeric, 5),
+    ('ANH', 'VACT-NN-TA', 'ANH_PHAT_HIEN_LOI', 10::numeric, 5),
+    ('ANH', 'VACT-NN-TA', 'ANH_DIEN_DAT_TUONG_DUONG', 10::numeric, 5),
+    ('TOAN', 'VACT-TOAN', NULL, 10::numeric, 12),
+    ('ANH', 'THPT', 'ANH_SAP_XEP_HOI_THOAI', 0.25::numeric, 5)
+) spec(subject, competency, declared_tag, points, quantity)
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+    AND tag.code_normalized = lower(spec.declared_tag)
+CROSS JOIN LATERAL generate_series(1, spec.quantity) n
+), classified AS (
+    INSERT INTO seed_be14_classification
+    SELECT id, competency, tag_code FROM singles
+)
+INSERT INTO seed_question_rows
+SELECT id,
+       'SEED-BE14-' || competency || '-' || COALESCE(declared_tag, 'NONE') || '-' || n,
+       'SINGLE_CHOICE', subject_id, grade_id, level_id, NULL, points,
+       '<p>Sample ' || subject || ' question ' || n || ': choose the fitting answer.</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+           jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                             jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
+       NULL, NULL
+FROM singles;
+
+-- Whole passages are separate roots; child points are the filterable score.
+WITH sets AS (
+    SELECT spec.*, tag.code AS tag_code, n, subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id,
+           md5('thi360-be14-set-' || spec.competency || '-' || COALESCE(spec.declared_tag, 'NONE') || '-' || spec.child_count || '-' || n)::uuid AS id,
+           'SEED-BE14-' || spec.competency || '-' || COALESCE(spec.declared_tag, 'NONE') || '-' || spec.child_count || '-' || n AS code
+    FROM (VALUES
+        ('ANH', 'THPT', 'ANH_DOC_DIEN', 0.25::numeric, 6, 2),
+        ('ANH', 'THPT', 'ANH_DOC_DIEN_CAU', 0.25::numeric, 5, 1),
+        ('ANH', 'THPT', 'ANH_DOC_HIEU', 0.25::numeric, 8, 1),
+        ('ANH', 'THPT', 'ANH_DOC_HIEU', 0.25::numeric, 10, 1),
+        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', 10::numeric, 7, 1),
+        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', 10::numeric, 8, 1),
+        ('TOAN', 'VACT-TOAN', NULL, 10::numeric, 3, 6),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_SAP_XEP_DIEU_KIEN', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_XEP_HANG', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_BANG_SO_LIEU', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_BIEU_DO', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-SL', NULL, 10::numeric, 3, 6)
+    ) spec(subject, competency, declared_tag, points, child_count, quantity)
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+    LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+        AND tag.code_normalized = lower(spec.declared_tag)
+    CROSS JOIN LATERAL generate_series(1, spec.quantity) n
+), children AS (
+    SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS child_body
+    FROM sets s CROSS JOIN LATERAL generate_series(0, s.child_count - 1) pos
+), classified AS (
+    INSERT INTO seed_be14_classification
+    SELECT id, competency, tag_code FROM sets
+    UNION ALL
+    SELECT child_id, competency, tag_code FROM children
+), parents AS (
+    SELECT s.id, s.code, 'QUESTION_SET' AS type, s.subject_id, s.grade_id, s.level_id,
+           NULL::uuid AS task_type_id, s.points * s.child_count AS points,
+           '<p>Sample set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET',
+               'passage', '<p>Sample context for ' || s.subject || ' set ' || s.n || '.</p>',
+               'children', jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
+                   'content', '<p>Sample child</p>', 'body', c.child_body, 'points', s.points,
+                   'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM sets s JOIN children c ON c.id = s.id
+    GROUP BY s.id, s.code, s.subject, s.n, s.subject_id, s.grade_id, s.level_id, s.points, s.child_count
+)
+INSERT INTO seed_question_rows
+SELECT * FROM parents
+UNION ALL
+SELECT child_id, code || '-' || pos, 'SINGLE_CHOICE', subject_id, grade_id, level_id, NULL,
+       points, '<p>Sample child</p>', child_body, id, pos FROM children;
+
+INSERT INTO seed_question_rows
+SELECT md5('thi360-be14-tf-' || subject.code || '-' || n)::uuid,
+       'SEED-BE14-THPT-TF-' || subject.code || '-' || n, 'TRUE_FALSE',
+       subject.id, grade.id, level.id, NULL, 1, '<p>Sample true or false ' || n || '.</p>',
+       jsonb_build_object('type', 'TRUE_FALSE', 'scoringMethod', 'COUNT_TABLE',
+           'scoreTable', jsonb_build_array(0.1, 0.25, 0.5, 1),
+           'statements', jsonb_build_array(
+               jsonb_build_object('id', 'a', 'content', '<p>First</p>', 'answer', true),
+               jsonb_build_object('id', 'b', 'content', '<p>Second</p>', 'answer', false),
+               jsonb_build_object('id', 'c', 'content', '<p>Third</p>', 'answer', true),
+               jsonb_build_object('id', 'd', 'content', '<p>Fourth</p>', 'answer', false))),
+       NULL, NULL
+FROM catalog.catalog_item subject
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+CROSS JOIN generate_series(1, 4) n
+WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
+  AND subject.code IN ('TOAN', 'LY', 'HOA', 'SINH', 'DIA', 'SU', 'ECON_LAW', 'TECH_INDUSTRY', 'TECH_AGRICULTURE');
+
+INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
+SELECT m.question_id, tag.id
+FROM seed_be14_classification m
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+    AND tag.code = m.tag_code
+ON CONFLICT DO NOTHING;
+
 -- Parents must exist before their child rows satisfy the self-reference.
 WITH prepared AS (
     SELECT s.*,
@@ -869,8 +1041,14 @@ WITH prepared AS (
                        || repeat(' Right one', jsonb_array_length(body->'right'))
                    ELSE regexp_replace(content, '<[^>]+>', '', 'g') || ' Left one Left two Right one Right two' END
                WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
-               WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
+               WHEN 'TRUE_FALSE' THEN CASE WHEN code LIKE 'SEED-BE9-ECON-TF-%'
+                   THEN regexp_replace(content, '<[^>]+>', '', 'g')
+                       || ' Practice statement A Practice statement B Practice statement C Practice statement D'
+                   ELSE regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth' END
                WHEN 'QUESTION_SET' THEN CASE
+                   WHEN code LIKE 'SEED-BE14-%'
+                       THEN 'Sample set ' || regexp_replace(body->>'passage', '<[^>]+>', '', 'g')
+                           || repeat(' Sample child One Two', jsonb_array_length(body->'children'))
                    WHEN code LIKE 'SEED-2B-LITERATURE-%' OR code LIKE 'SEED-2B-ENGLISH-SET-%'
                        OR code LIKE 'SEED-2B-GENERIC-READING-%'
                        THEN 'Reading set ' || regexp_replace(body->>'passage', '<[^>]+>', '', 'g')
@@ -881,6 +1059,11 @@ WITH prepared AS (
                        THEN 'Science set Science context Science child One Two Science child One Two Science child One Two'
                    WHEN code LIKE 'SEED-2B-CASE-SET-%'
                        THEN 'Case set Case context Case child One Two Case child One Two Case child One Two'
+                   WHEN code LIKE 'SEED-BE9-ECON-CASE-%'
+                       THEN regexp_replace(content, '<[^>]+>', '', 'g')
+                           || ' ' || regexp_replace(body->>'passage', '<[^>]+>', '', 'g')
+                           || repeat(' Practice case question Practice answer A Practice answer B',
+                                     jsonb_array_length(body->'children'))
                    WHEN code LIKE 'SEED-READING-%'
                        THEN 'Reading set Reading context Reading child One Two Reading child One Two'
                    WHEN code LIKE 'SEED-HSA-MATH-SET-%'
@@ -914,9 +1097,12 @@ INSERT INTO questionbank.question
      content_text, search_text)
 SELECT id, code, type, 'READY', parent_id, position, subject_id, grade_id, level_id, task_type_id,
        points, 1, NULL,
-       regexp_replace(content, '<[^>]+>', '', 'g') || CASE type WHEN 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END,
+       regexp_replace(content, '<[^>]+>', '', 'g') ||
+           CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
+                WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END,
        lower(code || ' ' || regexp_replace(content, '<[^>]+>', '', 'g') ||
-             CASE type WHEN 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END)
+             CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
+                  WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END)
 FROM seed_question_rows WHERE parent_id IS NOT NULL
 ON CONFLICT DO NOTHING RETURNING id
 )
@@ -928,10 +1114,21 @@ WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = k.question_id
    OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = k.question_id)
 ON CONFLICT DO NOTHING;
 
+-- Classify only rows inserted in this run; rerunning the seed must not overwrite
+-- edits or serving versions of existing questions.
+UPDATE questionbank.question q
+SET competency_item_id = c.id
+FROM seed_be14_classification m
+JOIN catalog.catalog_item c ON c.group_id = '00000000-0000-7000-8100-00000000000a'
+    AND c.code = m.competency_code AND c.status = 1
+WHERE q.id = m.question_id
+  AND (EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = q.id)
+       OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = q.id));
+
 INSERT INTO questionbank.question_version (question_id, version_no, snapshot, ready_at)
 SELECT s.id, 1, jsonb_build_object(
     'subjectItemId', s.subject_id, 'gradeItemId', s.grade_id, 'levelItemId', s.level_id,
-    'taskTypeItemId', s.task_type_id, 'competencyItemId', NULL, 'points', s.points,
+    'taskTypeItemId', s.task_type_id, 'competencyItemId', q.competency_item_id, 'points', s.points,
     'knowledge', COALESCE((SELECT jsonb_agg(jsonb_build_object('itemId', k.knowledge_item_id, 'primary', true))
                            FROM seed_2b_knowledge k WHERE k.question_id = s.id), '[]'::jsonb),
     'tagItemIds', COALESCE(
@@ -948,3 +1145,5 @@ SELECT t.question_id, t.tag_item_id FROM seed_2b_question_tags t
 WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = t.question_id)
    OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = t.question_id)
 ON CONFLICT DO NOTHING;
+
+DROP TABLE seed_be14_classification;
