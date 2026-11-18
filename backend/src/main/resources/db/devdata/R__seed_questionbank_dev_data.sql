@@ -655,6 +655,56 @@ SELECT child_id, 'SEED-2B-CASE-SET-' || n || '-' || pos, 'SINGLE_CHOICE',
        subject_id, grade_id, level_id, NULL, 0.25, '<p>Case child</p>', body, id, pos
 FROM children;
 
+-- BEGIN BE-9 ECON_LAW SP2E: six true/false questions and two three-child case sets.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-be9-econ-tf-' || n)::uuid, 'SEED-BE9-ECON-TF-' || n,
+       'TRUE_FALSE', subject.id, grade.id, level.id, NULL, 0.8,
+       '<p>Practice statement exercise</p>',
+       jsonb_build_object('type', 'TRUE_FALSE', 'scoringMethod', 'PER_STATEMENT',
+           'statements', jsonb_build_array(
+               jsonb_build_object('id', 'a', 'content', '<p>Practice statement A</p>', 'answer', true, 'points', 0.2),
+               jsonb_build_object('id', 'b', 'content', '<p>Practice statement B</p>', 'answer', false, 'points', 0.2),
+               jsonb_build_object('id', 'c', 'content', '<p>Practice statement C</p>', 'answer', true, 'points', 0.2),
+               jsonb_build_object('id', 'd', 'content', '<p>Practice statement D</p>', 'answer', false, 'points', 0.2))),
+       NULL, NULL
+FROM generate_series(1, 6) n
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'ECON_LAW'
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH';
+
+WITH sets AS (
+    SELECT subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id, n,
+           md5('thi360-be9-econ-case-' || n)::uuid AS id
+    FROM generate_series(1, 2) n
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'ECON_LAW'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+), children AS (
+    SELECT s.*, pos, md5('thi360-be9-econ-case-child-' || n || '-' || pos)::uuid AS child_id,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>Practice answer A</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Practice answer B</p>', 'correct', false))) AS body
+    FROM sets s CROSS JOIN generate_series(0, 2) pos
+), parents AS (
+    SELECT s.id, 'SEED-BE9-ECON-CASE-' || s.n AS code, 'QUESTION_SET' AS type,
+           s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id,
+           0.6::numeric AS points, '<p>Practice case</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Practice case context</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
+                   'content', '<p>Practice case question</p>', 'body', c.body, 'points', 0.2,
+                   'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM sets s JOIN children c ON c.id = s.id
+    GROUP BY s.id, s.n, s.subject_id, s.grade_id, s.level_id
+)
+INSERT INTO seed_question_rows
+SELECT * FROM parents
+UNION ALL
+SELECT child_id, 'SEED-BE9-ECON-CASE-' || n || '-' || pos, 'SINGLE_CHOICE',
+       subject_id, grade_id, level_id, NULL, 0.2, '<p>Practice case question</p>', body, id, pos
+FROM children;
+-- END BE-9 ECON_LAW SP2E.
+
 INSERT INTO seed_question_rows
 SELECT md5('thi360-2b-general-matching-' || subject.code || '-' || n)::uuid,
        'SEED-2B-MATCHING-GENERAL-' || subject.code || '-' || n,
