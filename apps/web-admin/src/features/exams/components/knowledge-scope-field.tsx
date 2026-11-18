@@ -41,13 +41,17 @@ export interface KnowledgeScopeFieldProps {
 }
 
 /**
- * Bỏ các nút MAPID nhưng giữ lọc năng lực (R1-4) và cờ `everyChildInScope` (đã đặt thì còn qua lưu và tải lại dù ô đang
- * ẩn vì không còn MAPID); không còn gì thì quy về `null`.
+ * Phạm vi sau khi đặt lại danh sách MAPID: mọi đường làm rỗng `nodeIds` (chọn "Toàn môn", bỏ chip cuối, áp dụng hộp chọn
+ * với 0 mục) đi qua đây. Còn MAPID: giữ nguyên các khóa khác. Hết MAPID: giữ lọc năng lực (R1-4) và quy về `null` khi không
+ * còn gì. Cờ `everyChildInScope` khác nhau theo cấp: phạm vi của môn giữ cờ (đã đặt thì còn qua lưu và tải lại dù ô đang
+ * ẩn); phạm vi của nhóm (`blockLevel`) bỏ cờ, vì máy chủ coi mọi phạm vi nhóm khác `null` là ghi đè phạm vi của môn, nên
+ * `{ nodeIds: [], everyChildInScope }` làm nhóm mất kế thừa.
  */
-function withoutNodes(scope: KnowledgeScope | null): KnowledgeScope | null {
+function withNodeIds(scope: KnowledgeScope | null, nodeIds: string[], blockLevel: boolean): KnowledgeScope | null {
+  if (nodeIds.length > 0) return { ...(scope ?? EMPTY_SCOPE), nodeIds };
   const kept: Omit<KnowledgeScope, "nodeIds"> = {
     ...(scope?.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
-    ...(scope?.everyChildInScope !== undefined ? { everyChildInScope: scope.everyChildInScope } : {}),
+    ...(!blockLevel && scope?.everyChildInScope !== undefined ? { everyChildInScope: scope.everyChildInScope } : {}),
   };
   return Object.keys(kept).length > 0 ? { nodeIds: [], ...kept } : null;
 }
@@ -90,10 +94,12 @@ export function KnowledgeScopeField({
     return { nodeId, code: node?.code ?? nodeId, name: node?.name ?? "", primary: false };
   });
   const inheritedCount = inherited?.scope?.nodeIds.length ?? 0;
+  // Chỉ nhóm truyền `inherited` (phạm vi của môn mà nhóm kế thừa); môn không có.
+  const blockLevel = inherited !== undefined;
 
   const choose = (nextTopic: boolean) => {
     setTopicMode(nextTopic);
-    if (!nextTopic && hasOwn) onChange(withoutNodes(value));
+    if (!nextTopic && hasOwn) onChange(withNodeIds(value, [], blockLevel));
   };
   const options = [
     { key: "all", checked: !topic, label: t("all"), onSelect: () => choose(false) },
@@ -139,7 +145,7 @@ export function KnowledgeScopeField({
                 icon={<CircleMinus />}
                 className="size-8"
                 aria-label={t("remove", { code: ref.code, name: ref.name })}
-                onClick={() => onChange({ ...(value ?? EMPTY_SCOPE), nodeIds: (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId) })}
+                onClick={() => onChange(withNodeIds(value, (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId), blockLevel))}
               />
             </span>
           ))}
@@ -189,7 +195,7 @@ export function KnowledgeScopeField({
         defaultSubjectCode={subjectCode}
         description={t("pickerDescription", { name })}
         onApply={(refs) => {
-          onChange({ ...(value ?? EMPTY_SCOPE), nodeIds: refs.map((ref) => ref.nodeId) });
+          onChange(withNodeIds(value, refs.map((ref) => ref.nodeId), blockLevel));
           setPickerOpen(false);
         }}
       />

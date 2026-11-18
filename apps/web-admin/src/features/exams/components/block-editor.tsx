@@ -185,7 +185,7 @@ export function BlockEditor({
     // Sang "chỉ nhập tổng" bỏ điều kiện riêng từng chùm (máy chủ từ chối `slots` không có số chùm): báo như khi đổi số chùm.
     setDroppedSlots(mode === "total" ? droppedSlotIndexes(block.slots, 0) : []);
   };
-  // Cờ nằm trong `knowledgeScope` và được giữ khi hết MAPID hay chọn "Toàn môn" (R1-06); chỉ `reconcileBlock` bỏ khi thành câu đơn.
+  // Cờ nằm trong `knowledgeScope` của nhóm: hết MAPID riêng (bỏ chip cuối, "Toàn môn", áp dụng 0 mục) thì `KnowledgeScopeField` bỏ cờ và nhóm kế thừa môn (`null`); `reconcileBlock` bỏ cờ khi thành câu đơn.
   const setEveryChild = (checked: boolean) => {
     const scope: KnowledgeScope = { ...(block.knowledgeScope ?? { nodeIds: [] }) };
     delete scope.everyChildInScope;

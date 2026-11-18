@@ -7,6 +7,7 @@ import { renderWithProviders } from "@/test/render";
 import type { ContentReference } from "@/features/content/types";
 import { mapBlock, toApiParts } from "../api-mapping";
 import { BlockEditor } from "../components/block-editor";
+import { effectiveScope } from "../subject-matrix";
 import type { ExamPart, ExamSection, QuestionBlock } from "../types";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -49,15 +50,15 @@ function makeBlock(patch: Partial<QuestionBlock> = {}): QuestionBlock {
   };
 }
 
-function renderEditor(initial: QuestionBlock, options: { templateCode?: string } = {}) {
+function renderEditor(initial: QuestionBlock, options: { templateCode?: string; section?: ExamSection; subjectCode?: string } = {}) {
   const latest = { block: initial };
   function Harness() {
     const [block, setBlock] = useState(initial);
     return (
       <BlockEditor
         block={block}
-        section={SECTION}
-        subjectCode="TOAN"
+        section={options.section ?? SECTION}
+        subjectCode={options.subjectCode ?? "TOAN"}
         locationText="Phần 2 · Toán học · nhóm 2 / 2"
         position={1}
         siblingCount={1}
@@ -225,51 +226,88 @@ describe("ô Mọi câu con thuộc chủ đề", () => {
   });
 });
 
-describe("cờ Mọi câu con thuộc chủ đề được giữ khi không còn MAPID", () => {
+describe("phạm vi riêng của chùm: hết MAPID thì kế thừa môn, không gửi cờ", () => {
   const nodeId = reference.knowledgeTree[0]!.children![0]!.id;
-  const flagged = { nodeIds: [nodeId], everyChildInScope: true };
-  const kept = { nodeIds: [], everyChildInScope: true };
+  const SECTION_SCOPE = { nodeIds: ["kn-0D2"] };
+  const REVIEW_SECTION: ExamSection = { ...SECTION, knowledgeScope: SECTION_SCOPE };
+  const review = { templateCode: "VACT_REVIEW", section: REVIEW_SECTION };
 
-  function reloaded(block: QuestionBlock) {
+  function sentScope(block: QuestionBlock) {
     const part = { id: "p1", sections: [{ ...SECTION, blocks: [block] }] } as unknown as ExamPart;
-    const sent = toApiParts([part]) as unknown as { sections: { blocks: Parameters<typeof mapBlock>[0][] }[] }[];
-    return mapBlock(sent[0]!.sections[0]!.blocks[0]!);
+    const sent = toApiParts([part]) as unknown as { sections: { blocks: { knowledgeScope?: unknown }[] }[] }[];
+    return sent[0]!.sections[0]!.blocks[0]!.knowledgeScope;
   }
+  const scopeBox = () => screen.getByText("Phạm vi kiến thức").closest("fieldset")!;
+  const removeLastChip = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: /^Bỏ kiến thức 0D1 / }));
+  const toWholeSubject = (user: ReturnType<typeof userEvent.setup>) => user.click(within(scopeBox()).getByRole("radio", { name: "Toàn môn" }));
+  async function applyEmptyPicker(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(within(scopeBox()).getByRole("button", { name: "Chọn kiến thức" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /^Bỏ 0D1 / }));
+    await user.click(within(dialog).getByRole("button", { name: "Áp dụng (0)" }));
+  }
+  const paths = [
+    ["bỏ chip MAPID cuối cùng", removeLastChip],
+    ["chọn Toàn môn", toWholeSubject],
+    ["áp dụng hộp chọn với 0 mục", applyEmptyPicker],
+  ] as const;
 
-  it("bỏ chip MAPID cuối cùng: cờ true còn trong dữ liệu, ô ẩn, lưu rồi tải lại vẫn true", async () => {
+  it.each(paths)("chùm VACT_REVIEW có MAPID và cờ true, %s: lưu knowledgeScope null và dùng phạm vi của môn", async (_name, act) => {
     const user = userEvent.setup();
-    const latest = renderEditor(makeBlock({ knowledgeScope: flagged }));
+    const latest = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId], everyChildInScope: true } }), review);
     expect(screen.getByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).toBeChecked();
-    await user.click(screen.getByRole("button", { name: /^Bỏ kiến thức 0D1 / }));
-    expect(latest.block.knowledgeScope).toEqual(kept);
+    await act(user);
+    expect(latest.block.knowledgeScope).toBeNull();
+    expect(sentScope(latest.block)).toBeUndefined();
+    expect(effectiveScope(latest.block, REVIEW_SECTION)).toEqual(SECTION_SCOPE);
     expect(screen.queryByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).not.toBeInTheDocument();
-    expect(reloaded(latest.block).knowledgeScope).toEqual(kept);
   });
 
-  it("chọn Toàn môn: cờ true còn trong dữ liệu, lưu rồi tải lại vẫn true", async () => {
+  it.each(paths)("chùm VACT_REVIEW có MAPID và cờ false, %s: cũng lưu null", async (_name, act) => {
     const user = userEvent.setup();
-    const latest = renderEditor(makeBlock({ knowledgeScope: flagged }));
-    const scope = screen.getByText("Phạm vi kiến thức").closest("fieldset")!;
-    await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
-    expect(latest.block.knowledgeScope).toEqual(kept);
-    expect(reloaded(latest.block).knowledgeScope).toEqual(kept);
+    const latest = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId], everyChildInScope: false } }), review);
+    await act(user);
+    expect(latest.block.knowledgeScope).toBeNull();
+    expect(sentScope(latest.block)).toBeUndefined();
   });
 
-  it("nhóm chùm không cờ: Toàn môn vẫn về null như trước", async () => {
+  it.each(paths)("chùm không có cờ, %s: lưu null, không còn {nodeIds: []}", async (_name, act) => {
     const user = userEvent.setup();
     const latest = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId] } }));
-    const scope = screen.getByText("Phạm vi kiến thức").closest("fieldset")!;
-    await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
+    await act(user);
     expect(latest.block.knowledgeScope).toBeNull();
+    expect(sentScope(latest.block)).toBeUndefined();
+  });
+
+  it.each(paths)("chùm có competencyCodes, %s: giữ năng lực, bỏ cờ", async (_name, act) => {
+    const user = userEvent.setup();
+    const latest = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId], competencyCodes: ["NL1"], everyChildInScope: true } }), review);
+    await act(user);
+    expect(latest.block.knowledgeScope).toEqual({ nodeIds: [], competencyCodes: ["NL1"] });
+    expect(sentScope(latest.block)).toEqual({ nodeIds: [], competencyCodes: ["NL1"] });
+  });
+
+  it("về null rồi chọn lại MAPID trên bài VACT_REVIEW: ô hiện bật và lưu true", async () => {
+    const user = userEvent.setup();
+    const latest = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId], everyChildInScope: true } }), { ...review, subjectCode: "MATH" });
+    await removeLastChip(user);
+    expect(latest.block.knowledgeScope).toBeNull();
+    await user.click(within(scopeBox()).getByRole("button", { name: "Chọn kiến thức" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(await within(dialog).findByRole("checkbox", { name: /Mệnh đề và tập hợp/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Áp dụng (1)" }));
+    expect(screen.getByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).toBeChecked();
+    expect(latest.block.knowledgeScope).toEqual({ nodeIds: [nodeId], everyChildInScope: true });
+    expect(sentScope(latest.block)).toEqual({ nodeIds: [nodeId], everyChildInScope: true });
   });
 
   it("chùm thành câu đơn: bỏ cờ; hết MAPID thì phạm vi về null", async () => {
     const user = userEvent.setup();
-    const withNodes = renderEditor(makeBlock({ knowledgeScope: flagged }));
+    const withNodes = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId], everyChildInScope: true } }));
     await user.click(screen.getByRole("radio", { name: "Câu đơn" }));
     expect(withNodes.block.knowledgeScope).toEqual({ nodeIds: [nodeId] });
     cleanup();
-    const withoutNodes = renderEditor(makeBlock({ knowledgeScope: kept }));
+    const withoutNodes = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [], everyChildInScope: true } }));
     await user.click(screen.getByRole("radio", { name: "Câu đơn" }));
     expect(withoutNodes.block.knowledgeScope).toBeNull();
   });
