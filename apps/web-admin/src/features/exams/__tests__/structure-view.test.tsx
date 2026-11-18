@@ -82,14 +82,16 @@ describe("Cấu trúc và ma trận", () => {
 
 describe("Thông tin chung", () => {
   it("bài đã công bố khóa kỳ thi và hình thức; đổi tên rồi Lưu", async () => {
-    const user = userEvent.setup();
+    // Không chờ giữa các thao tác: bản chờ mặc định cộng dồn theo từng ký tự và làm ca này sát hạn 5 giây khi chạy cả bộ.
+    const user = userEvent.setup({ delay: null });
     window.history.replaceState(null, "", "/exams/ex-qda-f-001");
     renderWithProviders(<ExamGeneralView examId="ex-qda-f-001" />);
     const name = await screen.findByRole("textbox", { name: /Tên bài thi/ });
     expect(screen.getByRole("radio", { name: /HSA/ })).toBeDisabled();
     expect(screen.getByText("Tiếng Anh + 2 tổ hợp")).toBeInTheDocument();
     await user.clear(name);
-    await user.type(name, "QDA FULL · Đề luyện 1 (sửa)");
+    // Dán một lần thay cho gõ từng ký tự: một lần render của biểu mẫu thay vì hơn hai mươi lần.
+    await user.paste("QDA FULL · Đề luyện 1 (sửa)");
     await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
     await waitFor(() => expect(backend.app("ex-qda-f-001").name).toBe("QDA FULL · Đề luyện 1 (sửa)"));
     const facts = screen.getByRole("heading", { name: "Tình trạng" }).closest("div")!;
