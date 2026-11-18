@@ -99,8 +99,13 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
                 assertThat(child.path("type").asText()).as(set.code() + "#" + i).isEqualTo(expectedType);
                 assertThat(child.path("body").path("type").asText()).isEqualTo(expectedType);
                 if ("TRUE_FALSE".equals(expectedType)) {
-                    assertThat(child.path("body").path("statements")).hasSize(4);
-                    assertThat(decimals(child.path("body").path("scoreTable")).get(3)).isEqualByComparingTo("6");
+                    JsonNode body = child.path("body");
+                    assertThat(body.path("statements")).as(set.code() + "#" + i).hasSize(4);
+                    assertThat(body.path("scoringMethod").asText()).as(set.code() + "#" + i).isEqualTo("COUNT_TABLE");
+                    assertThat(decimals(body.path("scoreTable"))).as(set.code() + "#" + i)
+                            .usingElementComparator(BigDecimal::compareTo)
+                            .containsExactly(new BigDecimal("1"), new BigDecimal("2"), new BigDecimal("3"),
+                                    new BigDecimal("6"));
                 }
             }
             assertThat(set.points()).as(set.code()).isEqualByComparingTo(
@@ -108,6 +113,15 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
         }
         // Spec 5.2: positions 1-2 of the shared reading carry 12 points, positions 3-8 carry 36.
         assertThat(samples("SEED-VSAT-ANH-MIXED-SET-%")).hasSize(3);
+        // The physical child rows (what the source reads), not only the copy nested in the root.
+        List<String> physical = jdbc.queryForList("""
+                select v.snapshot -> 'body' ->> 'scoringMethod' || ':' || (v.snapshot -> 'body' -> 'scoreTable')::text
+                from questionbank.question c
+                join questionbank.question p on p.id = c.parent_id and p.code like 'SEED-VSAT-ANH-MIXED-SET-%'
+                join questionbank.question_version v on v.question_id = c.id and v.version_no = c.current_version_no
+                where c.position < 2
+                """, String.class);
+        assertThat(physical).hasSize(3 * 2).containsOnly("COUNT_TABLE:[1, 2, 3, 6]");
         assertThat(samples("SEED-VSAT-ANH-CHOICE-SET-%")).hasSize(3);
     }
 
