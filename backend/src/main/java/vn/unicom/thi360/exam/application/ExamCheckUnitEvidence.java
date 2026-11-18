@@ -13,6 +13,7 @@ import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SubjectWitness;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Reads proof-paper snapshots in a batch and reports only facts the snapshots establish. */
@@ -20,8 +21,20 @@ final class ExamCheckUnitEvidence {
     private ExamCheckUnitEvidence() { }
     private record BlockLocation(String partId, String sectionId, String subjectCode, String blockId) { }
 
+    /** A fact and the subject witness (one unit's proof) whose group and question it describes. */
+    record OwnedFact(ExamCheckRules.WitnessFact fact, SubjectWitness witness) { }
+
     static Map<Long, List<ExamCheckRules.WitnessFact>> witnessFacts(QuestionSourcePort source,
-            ExamStructureDocument document, List<PathResult> paths,
+            QuestionAttachmentPort attachments, ExamStructureDocument document, List<PathResult> paths,
+            Map<String, Map<String, List<String>>> combinationsByPart) {
+        Map<Long, List<ExamCheckRules.WitnessFact>> result = new LinkedHashMap<>();
+        ownedWitnessFacts(source, attachments, document, paths, combinationsByPart).forEach((path, owned) ->
+                result.put(path, owned.stream().map(OwnedFact::fact).toList()));
+        return result;
+    }
+
+    static Map<Long, List<OwnedFact>> ownedWitnessFacts(QuestionSourcePort source,
+            QuestionAttachmentPort attachments, ExamStructureDocument document, List<PathResult> paths,
             Map<String, Map<String, List<String>>> combinationsByPart) {
         Map<String, BlockLocation> locations = new LinkedHashMap<>();
         for (ExamPart part : document.parts()) {
@@ -42,9 +55,10 @@ final class ExamCheckUnitEvidence {
         if (keys.isEmpty()) return Map.of();
         Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions = new LinkedHashMap<>();
         for (var version : source.loadVersions(List.copyOf(keys))) versions.put(version.key(), version);
-        Map<Long, List<ExamCheckRules.WitnessFact>> result = new LinkedHashMap<>();
+        Map<QuestionSourcePort.VersionKey, Boolean> readable = readable(attachments, versions);
+        Map<Long, List<OwnedFact>> result = new LinkedHashMap<>();
         for (PathResult path : paths) {
-            List<ExamCheckRules.WitnessFact> facts = new ArrayList<>();
+            List<OwnedFact> facts = new ArrayList<>();
             String pathId = path.path().chosen().isEmpty() ? "default"
                     : String.join("+", path.path().chosen().stream().map(choice -> choice.optionId()).toList());
             for (SubjectWitness witness : witnesses(path)) for (var group : witness.groups()) {
@@ -72,7 +86,9 @@ final class ExamCheckUnitEvidence {
                     var key = new QuestionSourcePort.VersionKey(UUID.fromString(pick.questionId()), pick.versionNo());
                     var version = versions.get(key);
                     if (version == null || version.snapshot() == null || version.code() == null) continue;
-                    addFacts(facts, where, version.code(), version.snapshot().path("body"), null, version.childCodes());
+                    List<ExamCheckRules.WitnessFact> made = new ArrayList<>();
+                    addFacts(made, where, version.code(), version.snapshot().path("body"), readable.get(key), version.childCodes());
+                    for (var fact : made) facts.add(new OwnedFact(fact, witness));
                 }
             }
             result.put(path.path().pathIndex(), List.copyOf(facts));
@@ -92,6 +108,25 @@ final class ExamCheckUnitEvidence {
         for (var selection : path.selections()) result.addAll(selection.witness());
         return result;
     }
+    /**
+     * True when every attachment of the root version is in the storage, false when one is missing; versions
+     * without attachments are absent (null fact). Only versions whose snapshot lists attachments reach the port, so an
+     * exam without attachments never touches the storage. A storage failure is not caught here (H48).
+     */
+    private static Map<QuestionSourcePort.VersionKey, Boolean> readable(QuestionAttachmentPort port,
+            Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions) {
+        List<QuestionSourcePort.VersionKey> withFiles = new ArrayList<>();
+        for (var version : versions.values()) {
+            if (version.snapshot() != null && version.snapshot().path("attachmentIds").size() > 0) withFiles.add(version.key());
+        }
+        if (withFiles.isEmpty()) return Map.of();
+        Map<QuestionSourcePort.VersionKey, Boolean> result = new LinkedHashMap<>();
+        port.attachments(withFiles, true).forEach((key, files) -> {
+            if (!files.isEmpty()) result.put(key, files.stream().allMatch(file -> Boolean.TRUE.equals(file.readable())));
+        });
+        return result;
+    }
+
 
 
     private static void addFacts(List<ExamCheckRules.WitnessFact> out, ExamCheckRules.EvidenceLocation where,
@@ -103,6 +138,8 @@ final class ExamCheckUnitEvidence {
                 out.add(new ExamCheckRules.WitnessFact(where, code, false, null, attachments));
                 return;
             }
+            // The files sit on the root question, so the set gets one fact of its own; the children carry none.
+            if (attachments != null) out.add(new ExamCheckRules.WitnessFact(where, code, null, null, attachments));
             int position = 0;
             for (JsonNode child : children) {
                 position++;

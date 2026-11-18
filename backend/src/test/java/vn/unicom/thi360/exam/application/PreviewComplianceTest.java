@@ -192,6 +192,52 @@ class PreviewComplianceTest {
                 new Compliance("EXAM:grades:G12", "EXAM", BigDecimal.ZERO, BigDecimal.ZERO, "REFERENCE", "QUESTION", null));
     }
 
+    @Test
+    void anExamLevelPromptReferenceQuotaKeepsUnlabeledCommandsOfItsSubjectsInOneRowApart() {
+        var document = codec.read("""
+                {"parts":[{"id":"part","sections":[
+                  {"id":"math","subjectCode":"MATH","questionCount":2,
+                   "blocks":[{"id":"gm","questionType":"SINGLE_CHOICE","questionCount":2}]},
+                  {"id":"english","subjectCode":"EN","questionCount":1,
+                   "blocks":[{"id":"ge","questionType":"SINGLE_CHOICE","questionCount":1}]}]}],
+                 "examQuotas":[
+                  {"id":"grades","dimension":"GRADE","basis":"PROMPT","enforcement":"REFERENCE","subjectCodes":["MATH"],
+                   "buckets":[{"codes":["G10"],"count":1}]},
+                  {"id":"levels","dimension":"DIFFICULTY","basis":"PROMPT","enforcement":"REFERENCE","excludeSubjectCodes":["EN"],
+                   "buckets":[{"codes":["EASY"],"count":1}]},
+                  {"id":"counted","dimension":"GRADE","basis":"QUESTION","enforcement":"REFERENCE",
+                   "buckets":[{"codes":["G10"],"count":1}]},
+                  {"id":"required","dimension":"GRADE","basis":"PROMPT","enforcement":"REQUIRED",
+                   "buckets":[{"codes":["G10"],"count":1}]}]}
+                """);
+        UUID labeled = UUID.randomUUID();
+        UUID unlabeled = UUID.randomUUID();
+        UUID otherSubject = UUID.randomUUID();
+        var section = new SectionOnPath("MATH", "math", 2, null, List.of(GroupQuota.single("gm", 2)));
+        var english = new SectionOnPath("EN", "english", 1, null, List.of(GroupQuota.single("ge", 1)));
+        List<Compliance> rows = PreviewCompliance.evaluate(document, SolvePath.of(0, List.of(section, english)),
+                Map.of("gm", new GroupWitness("gm", List.of(new QuestionPick(labeled.toString(), 1),
+                                new QuestionPick(unlabeled.toString(), 1))),
+                        "ge", new GroupWitness("ge", List.of(new QuestionPick(otherSubject.toString(), 1)))),
+                Map.of(new QuestionSourcePort.VersionKey(labeled, 1), commands(labeled, "G10", 3),
+                        new QuestionSourcePort.VersionKey(unlabeled, 1), commands(unlabeled, null, 4),
+                        new QuestionSourcePort.VersionKey(otherSubject, 1), commands(otherSubject, null, 5)),
+                List.of(), List.of());
+        // Only the MATH commands are counted; the English question is outside both quota scopes.
+        assertThat(rows).filteredOn(row -> row.criterion().endsWith(":UNCLASSIFIED")).containsExactly(
+                new Compliance("GRADE:UNCLASSIFIED", "EXAM", null, BigDecimal.valueOf(4), "REFERENCE", "PROMPT", "UNCLASSIFIED"),
+                new Compliance("DIFFICULTY:UNCLASSIFIED", "EXAM", null, BigDecimal.valueOf(4), "REFERENCE", "PROMPT", "UNCLASSIFIED"));
+        assertThat(rows).contains(new Compliance("EXAM:grades:G10", "EXAM", BigDecimal.ONE, BigDecimal.valueOf(3),
+                "REFERENCE", "PROMPT", null));
+    }
+
+    private static QuestionSourcePort.Candidate commands(UUID id, String grade, int commands) {
+        var unit = new QuestionSourcePort.Unit(id, id.toString(), QuestionType.TRUE_FALSE, grade,
+                grade == null ? null : "EASY", List.of(), List.of(), BigDecimal.ONE, null, null,
+                commands, commands, null, null, null, false);
+        return new QuestionSourcePort.Candidate(id, 1, null, List.of(unit), null, null);
+    }
+
     private static QuestionSourcePort.Candidate candidate(UUID id, String grade, List<UUID> nodes) {
         var unit = new QuestionSourcePort.Unit(id, id.toString(), QuestionType.SINGLE_CHOICE, grade,
                 "EASY", nodes, List.of(), BigDecimal.ONE);
