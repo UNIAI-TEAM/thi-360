@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
-import vn.unicom.thi360.shared.api.FieldError;
 
 /** Type-level checks for PUT structure; completeness and feasibility belong to BE-5b. */
 public final class ExamStructureValidator {
@@ -281,9 +280,7 @@ public final class ExamStructureValidator {
 
     private static void validateTopicQuotas(List<TopicQuota> quotas, String field, int max) {
         if (quotas.size() > max) {
-            throw new BusinessRuleException("EXAM_STRUCTURE_INVALID",
-                    "topic quota limit exceeded",
-                    List.of(new FieldError("topicQuotas", "MAX_TOPIC_QUOTAS", "Too many topic quotas")));
+            reject("topic quota limit exceeded", "topicQuotas", "MAX_TOPIC_QUOTAS", "MAX_TOPIC_QUOTAS");
         }
         Set<String> ids = new HashSet<>();
         for (TopicQuota quota : quotas) {
@@ -294,10 +291,8 @@ public final class ExamStructureValidator {
             }
             if (quota.percent() != null
                     && (quota.percent().signum() < 0 || quota.percent().compareTo(ONE_HUNDRED) > 0)) {
-                throw new BusinessRuleException("EXAM_STRUCTURE_INVALID",
-                        "topic quota percent must be between 0 and 100",
-                        List.of(new FieldError(field, "PERCENT_OUT_OF_RANGE",
-                                "Topic quota percent must be between 0 and 100")));
+                reject("topic quota percent must be between 0 and 100", field, "PERCENT_OUT_OF_RANGE",
+                        "PERCENT_OUT_OF_RANGE");
             }
         }
     }
@@ -355,39 +350,36 @@ public final class ExamStructureValidator {
                     || segment.fromPosition() > segment.toPosition()
                     || segment.commandCount() == null || segment.commandCount() < 0
                     || segment.maxPoints() == null || segment.maxPoints().signum() < 0) {
-                segmentInvalid(field, "SEGMENT_INVALID", "Display segment is incomplete or duplicated");
+                reject("display segment is incomplete or duplicated", field, "SEGMENT_INVALID", "SEGMENT_INVALID");
             }
             if (segment.fromPosition() > next) {
-                segmentInvalid(field, "SEGMENT_GAP", "Display segments leave a gap before position "
-                        + segment.fromPosition());
+                reject("display segments leave a gap", field, "SEGMENT_GAP", "SEGMENT_GAP",
+                        String.valueOf(segment.fromPosition()));
             }
             if (segment.fromPosition() < next) {
-                segmentInvalid(field, "SEGMENT_OVERLAP", "Display segments overlap at position "
-                        + segment.fromPosition());
+                reject("display segments overlap", field, "SEGMENT_OVERLAP", "SEGMENT_OVERLAP",
+                        String.valueOf(segment.fromPosition()));
             }
             next = segment.toPosition() + 1;
             total = total.add(segment.maxPoints());
         }
         String last = base + "[" + (segments.size() - 1) + "]";
         if (part.questionCount() == null) {
-            segmentInvalid(last, "SEGMENT_COVERAGE", "Display segments need the part questionCount");
+            reject("display segments need the part questionCount", last, "SEGMENT_COVERAGE",
+                    "SEGMENT_COVERAGE_TOTAL_MISSING");
         }
         if (next - 1 != part.questionCount()) {
-            segmentInvalid(last, "SEGMENT_COVERAGE", "Display segments cover " + (next - 1)
-                    + " questions but the part has " + part.questionCount());
+            reject("display segments do not cover the part", last, "SEGMENT_COVERAGE", "SEGMENT_COVERAGE",
+                    String.valueOf(next - 1), String.valueOf(part.questionCount()));
         }
         if (part.maxPoints() == null) {
-            segmentInvalid(last, "SEGMENT_POINTS", "Display segments need the part maxPoints");
+            reject("display segments need the part maxPoints", last, "SEGMENT_POINTS",
+                    "SEGMENT_POINTS_TOTAL_MISSING");
         }
         if (total.compareTo(part.maxPoints()) != 0) {
-            segmentInvalid(last, "SEGMENT_POINTS", "Display segment points sum to " + total.toPlainString()
-                    + " but the part has " + part.maxPoints().toPlainString());
+            reject("display segment points do not sum to the part points", last, "SEGMENT_POINTS", "SEGMENT_POINTS",
+                    total.toPlainString(), part.maxPoints().toPlainString());
         }
-    }
-
-    private static void segmentInvalid(String field, String code, String message) {
-        throw new BusinessRuleException("EXAM_STRUCTURE_INVALID", message,
-                List.of(new FieldError(field, code, message)));
     }
 
     /**
@@ -535,7 +527,14 @@ public final class ExamStructureValidator {
         }
     }
 
-    private static void invalid(String field, String message) {
-        throw new BusinessRuleException("EXAM_STRUCTURE_INVALID", message);
+    /** Generic field rejection; the English {@code reason} is for logs and tests, the client gets a bundle message. */
+    private static void invalid(String field, String reason) {
+        reject(reason, field, "STRUCTURE_FIELD_INVALID", "STRUCTURE_FIELD_INVALID", field);
+    }
+
+    /** Throws the 422; {@code messageKey} and {@code args} are resolved in the request locale at the API boundary. */
+    private static void reject(String reason, String field, String code, String messageKey, String... args) {
+        throw new ExamStructureInvalidException(reason,
+                List.of(new ExamStructureInvalidException.Detail(field, code, messageKey, List.of(args))));
     }
 }
