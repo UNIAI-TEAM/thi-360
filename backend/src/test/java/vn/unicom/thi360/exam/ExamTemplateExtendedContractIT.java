@@ -121,6 +121,31 @@ class ExamTemplateExtendedContractIT extends AbstractIntegrationTest {
         assertThat(tags).containsExactlyInAnyOrder("DIA_BANG_SO_LIEU", "DIA_BIEU_DO");
     }
 
+    @Test
+    void eachFlagReachesTheTemplateListResponseIndependently() throws Exception {
+        insertFlaggedTemplate("FLAG_FIXED_ONLY", true, false);
+        insertFlaggedTemplate("FLAG_OMITTED_ONLY", false, true);
+        insertFlaggedTemplate("FLAG_BOTH", true, true);
+
+        var templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        Map<String, List<Boolean>> flags = new java.util.HashMap<>();
+        for (var template : templates) {
+            flags.put(template.path("code").asText(), List.of(template.path("fixedBlockCounts").asBoolean(),
+                    template.path("omittedLocked").asBoolean()));
+        }
+        assertThat(flags.get("FLAG_FIXED_ONLY")).containsExactly(true, false);
+        assertThat(flags.get("FLAG_OMITTED_ONLY")).containsExactly(false, true);
+        assertThat(flags.get("FLAG_BOTH")).containsExactly(true, true);
+    }
+
+    private void insertFlaggedTemplate(String code, boolean fixedBlockCounts, boolean omittedLocked) {
+        insertTemplate(code, "PART", "P2", "ANH");
+        jdbc.update("UPDATE exam.exam_template SET fixed_block_counts = ?, omitted_locked = ? WHERE code = ?",
+                fixedBlockCounts, omittedLocked, code);
+    }
+
     private void insertTemplate(String code, String scope, String partCode, String subjectCode) {
         jdbc.update("""
                 INSERT INTO exam.exam_template (code, kind_code, scope, part_code, subject_code, timing, structure,
