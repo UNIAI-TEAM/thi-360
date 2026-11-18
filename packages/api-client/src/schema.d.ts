@@ -2888,8 +2888,11 @@ export interface components {
             oldPassword: string;
         };
         ChildCondition: {
+            /** @enum {string} */
+            answerType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
             /** Format: int32 */
             from?: number;
+            itemShape?: components["schemas"]["ItemShape"];
             nodeIds?: string[];
             /** Format: int32 */
             to?: number;
@@ -3427,6 +3430,17 @@ export interface components {
             /** @description Có thể xóa mềm tài khoản hay không */
             deletable: boolean;
         };
+        DisplaySegment: {
+            code?: string;
+            /** Format: int32 */
+            commandCount?: number;
+            /** Format: int32 */
+            fromPosition?: number;
+            maxPoints?: number;
+            name?: string;
+            /** Format: int32 */
+            toPosition?: number;
+        };
         Draft: {
             acceptedAnswers?: string[];
             /** @enum {string} */
@@ -3839,6 +3853,7 @@ export interface components {
         };
         ExamPart: {
             codeSource?: components["schemas"]["CodeSource"];
+            displaySegments?: components["schemas"]["DisplaySegment"][];
             /** Format: int32 */
             durationMinutes?: number;
             id?: string;
@@ -4175,6 +4190,8 @@ export interface components {
         };
         ExamSection: {
             answerQuotas?: components["schemas"]["AnswerQuotas"];
+            /** @enum {string} */
+            audioRequirement?: "ANY" | "REQUIRED" | "FORBIDDEN";
             blocks?: components["schemas"]["QuestionBlock"][];
             /** @enum {string} */
             choiceGroup?: "NATURAL" | "SOCIAL";
@@ -4305,6 +4322,8 @@ export interface components {
             durationMinutes?: number;
             /** @description Ghi chú của chuyên gia khi dựng mẫu */
             expertNote?: string;
+            /** @description Mẫu khóa dạng, số câu, số chùm, cỡ chùm từng nhóm của bài phạm vi SUBJECT (kiểm tra báo BLOCK_COUNT_LOCKED); bài PART và bài ôn từ cùng mẫu không bị khóa */
+            fixedBlockCounts: boolean;
             /** @description Mẫu khóa số câu từng phần/mục (kiểm tra báo STRUCTURE_COUNT_LOCKED) */
             fixedCounts: boolean;
             /** @description Phiên bản mặc định */
@@ -4320,6 +4339,8 @@ export interface components {
             matrixYear?: number;
             /** @description Thang điểm */
             maxScore?: number;
+            /** @description Nhóm đã lược của mẫu (phần viết) không bật lại được (kiểm tra báo OMITTED_BLOCK_LOCKED); tạo bài PART chỉ gồm nhóm đã lược bị từ chối */
+            omittedLocked: boolean;
             /** @description Mã phần khi scope = PART */
             partCode?: string;
             /** @description Mẫu cho phép công bố bài (false: chỉ lưu nháp) */
@@ -4614,6 +4635,8 @@ export interface components {
         ItemShape: {
             /** Format: int32 */
             leftItems?: number;
+            /** Format: int32 */
+            options?: number;
             /** Format: int32 */
             rightItems?: number;
             /** Format: int32 */
