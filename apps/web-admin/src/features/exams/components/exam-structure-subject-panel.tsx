@@ -47,6 +47,8 @@ export interface SubjectPanelProps {
   /** Chỉ tiêu cấp bài của bài, để liệt kê phân bố tham khảo của riêng môn này. */
   examQuotas?: readonly ExamQuota[];
   onExamQuotas?: (examQuotas: ExamQuota[]) => void;
+  /** Mã kỳ thi: HSA Tiếng Anh khối lớp luôn chờ chuyên gia xác nhận. */
+  examKind?: string | null;
 }
 
 /**
@@ -72,6 +74,7 @@ export function ExamStructureSubjectPanel({
   onConfirmCount,
   examQuotas = [],
   onExamQuotas,
+  examKind = null,
 }: SubjectPanelProps) {
   const t = useTranslations("exams.structure.subject");
   const tContent = useTranslations("content");
@@ -168,7 +171,7 @@ export function ExamStructureSubjectPanel({
     }));
     onConfirmCount?.(sectionCount);
   };
-  const references = referenceEntries(section, examQuotas);
+  const references = referenceEntries(section, examQuotas, examKind);
   const copyReference = (entry: ReferenceEntry) => {
     if (entry.kind !== "quota") return;
     onChange((current) => ({ ...current, matrix: referenceToMatrix(current, entry.quota, axes) }));

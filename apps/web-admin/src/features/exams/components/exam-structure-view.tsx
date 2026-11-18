@@ -632,6 +632,7 @@ function StructureEditor({
               onConfirmCount={(count) => setConfirmedCounts((counts) => ({ ...counts, [sectionContext.section.id]: count }))}
               examQuotas={quotas}
               onExamQuotas={setQuotas}
+              examKind={exam.kind}
             />
           ) : blockContext ? (
             <BlockEditor

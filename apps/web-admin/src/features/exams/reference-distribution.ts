@@ -25,7 +25,7 @@ export type ReferenceReason =
   | "IN_MATRIX";
 
 export type ReferenceEntry =
-  | { kind: "quota"; key: string; quota: ExamQuota; use: ReferenceReason | null; apply: ReferenceReason | null }
+  | { kind: "quota"; key: string; quota: ExamQuota; use: ReferenceReason | null; apply: ReferenceReason | null; expertPending: boolean }
   | {
       kind: "matrix";
       key: string;
@@ -35,6 +35,7 @@ export type ReferenceEntry =
       basis: "QUESTION" | "PROMPT" | "POINTS";
       use: ReferenceReason | null;
       apply: ReferenceReason | null;
+      expertPending: boolean;
     };
 
 function quotaHasValues(quota: ExamQuota): boolean {
@@ -48,8 +49,16 @@ function otherDimensionConflicts(matrix: BlockMatrix | null, dimension: "GRADE" 
   return sum(other.map((item) => item.value)) > 0 || matrix.cells.some((cell) => cell.value > 0);
 }
 
+/**
+ * Phân bố khối lớp của HSA Tiếng Anh luôn chờ chuyên gia xác nhận (ADV:FE-3b:2): chip hiện cả khi đã có số (30/70); hai nút
+ * chỉ khóa khi chưa có số.
+ */
+function awaitsExpert(examKind: string | null, subjectCode: string, dimension: "GRADE" | "DIFFICULTY"): boolean {
+  return examKind === "HSA" && subjectCode === "ANH" && dimension === "GRADE";
+}
+
 /** Các phân bố tham khảo của môn (chỉ tiêu cấp bài một môn, chiều `REFERENCE` của ma trận môn). */
-export function referenceEntries(section: ExamSection, examQuotas: readonly ExamQuota[]): ReferenceEntry[] {
+export function referenceEntries(section: ExamSection, examQuotas: readonly ExamQuota[], examKind: string | null = null): ReferenceEntry[] {
   const entries: ReferenceEntry[] = [];
   for (const quota of examQuotas) {
     if (quota.enforcement !== "REFERENCE" || quota.subjectCodes?.length !== 1 || quota.subjectCodes[0] !== section.subjectCode) continue;
@@ -61,6 +70,7 @@ export function referenceEntries(section: ExamSection, examQuotas: readonly Exam
       quota,
       use: !has ? "NO_VALUES" : merged ? "MERGED_BUCKETS" : otherDimensionConflicts(section.matrix, quota.dimension, quotaUnitOf(quota)) ? "UNIT_CONFLICT" : null,
       apply: has ? null : "NO_VALUES",
+      expertPending: awaitsExpert(examKind, section.subjectCode, quota.dimension),
     });
   }
   const matrix = section.matrix;
@@ -84,6 +94,7 @@ export function referenceEntries(section: ExamSection, examQuotas: readonly Exam
         basis,
         use: basis !== "QUESTION" ? "BASIS" : "IN_MATRIX",
         apply: basis !== "QUESTION" ? "BASIS" : has ? null : "NO_VALUES",
+        expertPending: awaitsExpert(examKind, section.subjectCode, item.dimension),
       });
     }
   }

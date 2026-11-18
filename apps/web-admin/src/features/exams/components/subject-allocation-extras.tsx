@@ -114,7 +114,7 @@ export function ReferenceDistributions({
                 <span className="text-body font-semibold text-text">{title}</span>
                 <StatusChip tone="info">{t("referenceChip")}</StatusChip>
                 <span className="text-caption text-text-muted">{t("basis", { unit: t(`basis${basis}`) })}</span>
-                {noValues && <StatusChip tone="warning">{t("expertPending")}</StatusChip>}
+                {(noValues || entry.expertPending) && <StatusChip tone="warning">{t("expertPending")}</StatusChip>}
               </div>
               <p className="text-body text-text-secondary">{noValues ? t("noValues") : parts.join(" · ")}</p>
               <div className="flex flex-wrap gap-2">
