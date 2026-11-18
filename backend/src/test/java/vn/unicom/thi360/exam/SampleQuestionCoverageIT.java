@@ -300,6 +300,19 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         inspect(quota, null, "quota", failures, checked);
         assertThat(failures).anyMatch(s -> s.contains("quota") && s.contains("0 units"));
         failures.clear();
+        JsonNode flexible = mapper.readTree("""
+                {"subjectCode":"LY","questionCount":18,
+                 "knowledgeScope":{"nodeIds":["00000000-0000-0000-0000-000000000001"]},
+                 "blocks":[{"name":"flexible","questionType":"QUESTION_SET","questionCount":18,
+                            "childAnswerType":"SINGLE_CHOICE"}]}
+                """);
+        inspect(flexible, null, "flexible", failures, checked);
+        assertThat(failures).anyMatch(s -> s.contains("flexible") && s.contains("cannot make exactly 18"));
+        failures.clear();
+        assertThat(composable(List.of(), 18)).isFalse();
+        assertThat(composable(List.of(5, 5, 5), 18)).isFalse();
+        assertThat(composable(List.of(5, 5, 4, 4, 5), 18)).isTrue();
+        assertThat(composable(List.of(18), 18)).isTrue();
         JsonNode slot = mapper.readTree("""
                 {"subjectCode":"LY","questionCount":3,
                  "knowledgeScope":{"nodeIds":["00000000-0000-0000-0000-000000000001"]},
@@ -335,7 +348,8 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                     if (block.path("omitted").asBoolean(false)) continue;
                     String type = text(block, "questionType", null);
                     boolean set = "QUESTION_SET".equals(type) || "CLOZE".equals(type);
-                    if (set) fixed += block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
+                    if (flexibleSet(block)) fixed += block.path("questionCount").asInt(0);
+                    else if (set) fixed += block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
                     else if (block.hasNonNull("questionCount")) fixed += block.path("questionCount").asInt();
                 }
                 Integer count = currentChoiceCount != null ? currentChoiceCount : integer(node, "questionCount");
@@ -345,7 +359,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                     String type = text(block, "questionType", null);
                     boolean set = "QUESTION_SET".equals(type) || "CLOZE".equals(type);
                     Integer units = integer(block, "questionCount");
-                    if (set) units = block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
+                    if (set && !flexibleSet(block)) units = block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
                     if (units == null && count == null) {
                         failures.add(template + " / " + currentSubject + ": unresolved remainder");
                     } else {
@@ -362,6 +376,24 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 }
             });
         }
+    }
+
+    /** A question-set block that fixes only its question count; any mix of whole sets may fill it. */
+    private static boolean flexibleSet(JsonNode block) {
+        return "QUESTION_SET".equals(text(block, "questionType", null))
+                && block.path("setCount").asInt(0) == 0 && block.path("setSize").asInt(0) == 0;
+    }
+
+    /** True when some subset of the whole sets (each used once) holds exactly {@code target} questions. */
+    private static boolean composable(List<Integer> sizes, int target) {
+        boolean[] reachable = new boolean[target + 1];
+        reachable[0] = true;
+        for (int size : sizes) {
+            for (int total = target; total >= size; total--) {
+                reachable[total] |= reachable[total - size];
+            }
+        }
+        return reachable[target];
     }
 
     private void checkBlock(String template, String subject, JsonNode section, JsonNode block,
@@ -385,7 +417,12 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         if (setSize > 0) candidates = candidates.stream().filter(c -> c.units().size() == setSize).toList();
         int neededSets = block.path("setCount").asInt(0);
         long units = candidates.stream().mapToLong(c -> c.units().size()).sum();
-        if (candidates.size() < neededSets || units < neededUnits) {
+        if (flexibleSet(block)
+                && !composable(candidates.stream().map(c -> c.units().size()).toList(), neededUnits)) {
+            failures.add(label + ": whole sets of sizes " + candidates.stream().map(c -> c.units().size()).sorted().toList()
+                    + " cannot make exactly " + neededUnits + " units, found " + candidates.size()
+                    + " candidates / " + units + " units");
+        } else if (candidates.size() < neededSets || units < neededUnits) {
             failures.add(label + ": need " + neededSets + " sets / " + neededUnits + " units, found "
                     + candidates.size() + " candidates / " + units + " units");
         }

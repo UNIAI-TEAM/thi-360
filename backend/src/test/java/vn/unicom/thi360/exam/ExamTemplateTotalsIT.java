@@ -125,9 +125,15 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
                         : entry.getKey().equals("MATH") ? "3" : "1.5";
                 assertThat(parts.get(i).path("maxPoints").decimalValue()).as(code)
                         .isEqualByComparingTo(expectedPoints);
+                // Every part is answered in full and shares the subject clock.
+                assertThat(parts.get(i).path("participation").path("mode").asText()).as(code).isEqualTo("ALL");
+                assertThat(parts.get(i).path("questionCountOnPaper").asInt()).as(code).isEqualTo(entry.getValue().get(i));
+                assertThat(parts.get(i).path("questionCountRequired").asInt()).as(code).isEqualTo(entry.getValue().get(i));
+                assertThat(parts.get(i).hasNonNull("durationMinutes")).as("%s part %d duration", code, i).isFalse();
             }
             JsonNode tf = parts.get(1).path("sections").get(0).path("blocks").get(0);
             assertThat(tf.path("itemShape").path("statements").asInt()).as(code).isEqualTo(4);
+            assertThat(tf.path("expectedScoring").path("trueFalseMethod").asText()).as(code).isEqualTo("COUNT_TABLE");
             assertThat(tf.path("expectedScoring").path("trueFalseTable").toString()).as(code)
                     .isEqualTo("[0.1,0.25,0.5,1]");
         }
@@ -185,6 +191,12 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             assertMatrix(matrix.path("byDifficulty"), List.of("NB", "TH", "VD"),
                     List.of(values[0], values[1], values[2]));
         }
+        for (int i : new int[]{0, 2, 3, 4}) {
+            JsonNode matrix = sections.get(i).path("matrix");
+            assertThat(matrix.path("difficultyEnforcement").asText()).as("section %d", i).isEqualTo("REFERENCE");
+            assertThat(matrix.path("unit").asText()).as("section %d", i).isEqualTo("COUNT");
+        }
+        assertThat(sections.get(2).path("matrix").path("gradeEnforcement").asText()).isEqualTo("REFERENCE");
         assertMatrix(vietnamese.path("matrix").path("byDifficulty"), List.of("NB", "TH", "VD"), List.of(6, 17, 7));
         assertMatrix(sections.get(2).path("matrix").path("byGrade"), List.of("G10", "G11", "G12", "GRADE_MIXED"), List.of(12, 9, 8, 1));
         assertMatrix(sections.get(2).path("matrix").path("byDifficulty"), List.of("NB", "TH", "VD"), List.of(4, 10, 16));

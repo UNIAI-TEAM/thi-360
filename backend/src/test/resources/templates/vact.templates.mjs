@@ -58,7 +58,7 @@ function add(code, scope, partCode, subjectCode, parts, questions, {full=false}=
   const template = {code, kindCode:'VACT', scope, partCode, subjectCode, structureYear:null, matrixYear:null,
     timing:'SHARED', durationMinutes:full?150:null, maxScore, fixedCounts:full,
     expertNote:full?'Điểm luyện tập tạm tính 10 điểm mỗi câu; kỳ thi thật dùng IRT.':null,
-    label:`V-ACT – ${parts[0].name}`, summary:`${questions} câu, thang ${maxScore} điểm.`,
+    label:full?'V-ACT – Đầy đủ cấu trúc':`V-ACT – ${parts[0].name}`, summary:`${questions} câu, thang ${maxScore} điểm.`,
     buildMode:'STANDARD', isDefault:true, existing:full, expected:{questions, maxPoints:maxScore},
     structure:{parts:structuredClone(parts)}};
   assignGroups(template, ({block}) => block.templateGroupCode);

@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,12 +19,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 @Transactional
 class ExamCreateIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private EntityManager entityManager;
+    @Autowired private QuestionSourcePort questionSource;
 
     @Test
     void allKindsAllowedScopes() throws Exception {
@@ -239,14 +243,55 @@ class ExamCreateIT extends AbstractIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(issues.getFirst().path("available").asInt()).isZero();
     }
 
+    /** The pool the solver filters for block 6: eligible units exist, but only in sets smaller than 10. */
     private void assertThatShortReadingPool(UUID node) {
-        Integer children = jdbc.queryForObject("""
-                SELECT count(*) FROM questionbank.question child
-                JOIN questionbank.question parent ON parent.id=child.parent_id
-                JOIN questionbank.question_knowledge k ON k.question_id=parent.id
-                WHERE k.knowledge_item_id=? AND parent.code LIKE 'TESTQ-ANH-READ-S%'
-                """, Integer.class, node);
-        org.assertj.core.api.Assertions.assertThat(children).isGreaterThan(10);
+        UUID english = jdbc.queryForObject("""
+                SELECT id FROM catalog.catalog_item
+                WHERE group_id = '00000000-0000-7000-8100-000000000002' AND code = 'ANH' AND status = 1
+                """, UUID.class);
+        var filter = new QuestionSourcePort.Filter(english, List.of(List.of(node)), List.of(),
+                QuestionType.QUESTION_SET, null, QuestionType.SINGLE_CHOICE, List.of("ANH_DOC_HIEU"), List.of(),
+                new java.math.BigDecimal("0.25"), null, List.of(), List.of());
+        var candidates = questionSource.findCandidates(filter, 100_000);
+        org.assertj.core.api.Assertions.assertThat(candidates).isNotEmpty();
+        org.assertj.core.api.Assertions.assertThat(candidates.stream().mapToInt(c -> c.units().size()).sum())
+                .isGreaterThan(10);
+        org.assertj.core.api.Assertions.assertThat(candidates).allMatch(c -> c.units().size() < 10);
+    }
+
+    @Test
+    void reloadingAThptqgPartTemplateKeepsOnlyThatPartAndItsDuration() throws Exception {
+        String created = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"THPTQG\",\"scope\":\"PART\",\"partCode\":\"P3\",\"subjectCode\":\"DIA\","
+                                + "\"durationMinutes\":30,\"name\":\"Part\",\"code\":\"T-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(created).path("id").asText();
+        long revision = revisionOf(id);
+        var reloaded = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"THPTQG_GEOGRAPHY_2025\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").size()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(0).path("order").asInt()).isEqualTo(3);
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(0).path("questionCount").asInt()).isEqualTo(6);
+        mockMvc.perform(get("/api/v1/admin/exams/{id}", id).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.durationMinutes").value(30))
+                .andExpect(jsonPath("$.questionCount").value(6))
+                .andExpect(jsonPath("$.maxScore").value(1.5));
+        long next = revisionOf(id);
+        for (String other : new String[]{"THPTQG_PHYSICS_2025", "VACT_FULL"}) {
+            mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                            .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"templateCode\":\"" + other + "\",\"confirmReplace\":true,"
+                                    + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + next + "}"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("EXAM_TEMPLATE_MISMATCH"));
+        }
     }
 
     @Test

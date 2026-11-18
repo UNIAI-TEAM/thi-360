@@ -255,7 +255,7 @@ UPDATE exam.exam_template SET
   duration_minutes = 150,
   max_score = 1200,
   expert_note = 'Điểm luyện tập tạm tính 10 điểm mỗi câu; kỳ thi thật dùng IRT.',
-  label = 'V-ACT – Sử dụng ngôn ngữ',
+  label = 'V-ACT – Đầy đủ cấu trúc',
   summary = '120 câu, thang 1200 điểm.',
   build_mode = 'STANDARD',
   is_default = true,
