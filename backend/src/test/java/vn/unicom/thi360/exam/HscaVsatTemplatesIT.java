@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +19,7 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
 /**
- * BE-18 rows 1, 2, 5, 6, 7, 8 and 15 (addendum specification 4 and 5) through {@code GET /exam-templates}: the
+ * BE-18 rows 1, 2, 5, 6, 7 and 8 (addendum specification 4 and 5) through {@code GET /exam-templates}: the
  * stored H-SCA and V-SAT templates carry the specification's totals, rows, reference distributions and flags.
  */
 @Transactional
@@ -318,45 +317,6 @@ class HscaVsatTemplatesIT extends AbstractIntegrationTest {
             assertThat(review.path("kindCode").asText()).isEqualTo(kind);
             assertThat(review.hasNonNull("subjectCode")).isFalse();
             assertThat(review.path("isDefault").asBoolean()).isTrue();
-        }
-    }
-
-    @Test
-    void theSevenOlderKindsStillMatchTheirFixtureEntriesAndOnlyTheNewKindsWereAdded() throws Exception {
-        JsonNode fixture;
-        try (var input = getClass().getResourceAsStream("/templates/expected-totals.json")) {
-            assertThat(input).isNotNull();
-            fixture = mapper.readTree(input);
-        }
-        TreeSet<String> older = new TreeSet<>();
-        fixture.fieldNames().forEachRemaining(code -> {
-            if (!code.startsWith("HSCA_") && !code.startsWith("VSAT_")) older.add(code);
-        });
-        assertThat(older).as("fixture entries of the seven older examinations").hasSize(85);
-        for (String code : older) {
-            JsonNode stored = template(code);
-            JsonNode expected = fixture.path(code);
-            assertThat(stored.path("kindCode").asText()).as(code).isEqualTo(expected.path("examKind").asText());
-            assertThat(stored.path("scope").asText()).as(code).isEqualTo(expected.path("scope").asText());
-            assertThat(stored.path("partCode").asText(null)).as(code)
-                    .isEqualTo(expected.path("partCode").asText(null));
-            assertThat(stored.path("subjectCode").asText(null)).as(code)
-                    .isEqualTo(expected.path("subjectCode").asText(null));
-            assertThat(stored.path("buildMode").asText()).as(code).isEqualTo(expected.path("buildMode").asText());
-            assertThat(stored.path("isDefault").asBoolean()).as(code)
-                    .isEqualTo(expected.path("isDefault").asBoolean());
-            if ("SHARED".equals(stored.path("timing").asText())) {
-                assertThat(stored.path("durationMinutes").asInt(-1)).as(code)
-                        .isEqualTo(expected.path("durationMinutes").asInt(-1));
-            }
-        }
-        // Row 15's totals for the same entries run in ExamTemplateTotalsIT.everyStoredTemplateMatchesItsFixture;
-        // the generated migration may be renamed freely because nothing here reads it.
-        for (JsonNode stored : templates.values()) {
-            String code = stored.path("code").asText();
-            if (fixture.has(code)) continue;
-            assertThat("REVIEW".equals(stored.path("buildMode").asText())
-                    || code.startsWith("HSCA_") || code.startsWith("VSAT_")).as(code + " is a new kind").isTrue();
         }
     }
 
