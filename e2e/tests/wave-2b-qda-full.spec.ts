@@ -26,16 +26,53 @@ import {
 test.setTimeout(SCENARIO_TIMEOUT_MS);
 
 /**
- * Sáu môn của kho phần 3 theo mẫu QDA_FULL: số câu của mục (Lý, Hóa, Sinh, Sử, Địa 25 câu; Tiếng Anh 50 câu) và việc mẫu có
- * khai chỉ tiêu khối lớp (`matrix.byGrade`, bắt buộc) hay không: năm môn khai, chỉ Tiếng Anh không khai.
+ * Một dòng của bảng "Các nhóm lấy câu" theo mẫu QDA_FULL: tên nhóm (ô tiêu đề dòng), số câu của nhóm và, với nhóm chùm,
+ * số chùm × số câu con (ô "Số câu" ghi "1 chùm × 3 câu con = 3 câu").
+ */
+interface GroupRow {
+  name: string;
+  questions: number;
+  sets?: { count: number; size: number };
+}
+
+/** Lý, Hóa, Sinh: 21 câu trắc nghiệm độc lập, 1 chùm × 3 câu con, 1 câu trả lời ngắn. */
+const SCIENCE_GROUPS: GroupRow[] = [
+  { name: "Trắc nghiệm độc lập", questions: 21 },
+  { name: "Chùm", questions: 3, sets: { count: 1, size: 3 } },
+  { name: "Trả lời ngắn", questions: 1 },
+];
+
+/** Sử, Địa: 22 câu trắc nghiệm độc lập, 1 chùm × 3 câu con. */
+const SOCIAL_GROUPS: GroupRow[] = [
+  { name: "Trắc nghiệm độc lập", questions: 22 },
+  { name: "Chùm", questions: 3, sets: { count: 1, size: 3 } },
+];
+
+/** Tiếng Anh: mười nhóm, từ "Hoàn thành câu" đến "Suy luận", tổng 50 câu. */
+const ENGLISH_GROUPS: GroupRow[] = [
+  { name: "Hoàn thành câu", questions: 10 },
+  { name: "Đồng nghĩa hoặc trái nghĩa", questions: 4 },
+  { name: "Hội thoại", questions: 4 },
+  { name: "Thông báo", questions: 4 },
+  { name: "Viết lại câu", questions: 4 },
+  { name: "Kết hợp câu", questions: 4 },
+  { name: "Đọc điền", questions: 5, sets: { count: 1, size: 5 } },
+  { name: "Đọc hiểu 1", questions: 5, sets: { count: 1, size: 5 } },
+  { name: "Đọc hiểu 2", questions: 5, sets: { count: 1, size: 5 } },
+  { name: "Suy luận", questions: 5 },
+];
+
+/**
+ * Sáu môn của kho phần 3 theo mẫu QDA_FULL: số câu của mục (Lý, Hóa, Sinh, Sử, Địa 25 câu; Tiếng Anh 50 câu), các nhóm lấy
+ * câu của mục và việc mẫu có khai chỉ tiêu khối lớp (`matrix.byGrade`, bắt buộc) hay không: năm môn khai, chỉ Tiếng Anh không khai.
  */
 const PART3_SUBJECTS = [
-  { code: "LY", count: 25, matrix: true },
-  { code: "HOA", count: 25, matrix: true },
-  { code: "SINH", count: 25, matrix: true },
-  { code: "SU", count: 25, matrix: true },
-  { code: "DIA", count: 25, matrix: true },
-  { code: "ANH", count: 50, matrix: false },
+  { code: "LY", count: 25, matrix: true, groups: SCIENCE_GROUPS },
+  { code: "HOA", count: 25, matrix: true, groups: SCIENCE_GROUPS },
+  { code: "SINH", count: 25, matrix: true, groups: SCIENCE_GROUPS },
+  { code: "SU", count: 25, matrix: true, groups: SOCIAL_GROUPS },
+  { code: "DIA", count: 25, matrix: true, groups: SOCIAL_GROUPS },
+  { code: "ANH", count: 50, matrix: false, groups: ENGLISH_GROUPS },
 ] as const;
 
 /**
@@ -62,14 +99,14 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   expect(pool.map((section) => section.subjectCode).sort()).toEqual(["ANH", "DIA", "HOA", "LY", "SINH", "SU"]);
 
   const nav = page.getByRole("navigation", { name: "Cấu trúc" });
-  for (const { code, count, matrix } of PART3_SUBJECTS) {
+  for (const { code, count, matrix, groups } of PART3_SUBJECTS) {
     const name = SUBJECT_NAME[code]!;
     const section = pool.find((item) => item.subjectCode === code)!;
     expect(Boolean(section.matrix), `mẫu QDA_FULL: môn ${name} khai chỉ tiêu khối lớp`).toBe(matrix);
     await nav.getByRole("button", { name: new RegExp(`^${name}`) }).click();
     await expect(page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
     await expect(page.getByRole("textbox", { name: /^Số câu của mục/ }), `môn ${name}`).toHaveValue(String(count));
-    // Mẫu không khai chỉ tiêu dạng trả lời: màn nói rõ; một nhóm trắc nghiệm lấy hết số câu của môn.
+    // Mẫu không khai chỉ tiêu dạng trả lời: màn nói rõ cho cả sáu môn.
     await expect(page.getByText("Môn không kiểm soát số câu theo dạng trả lời."), `môn ${name}`).toBeVisible();
     if (matrix) {
       // Môn khai chỉ tiêu khối lớp (và độ khó nếu có): khối "Khối lớp và độ khó" hiện ma trận với đúng số của mẫu.
@@ -93,8 +130,8 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
         ).toHaveValue(String(item.value));
       }
       await expect(gradeTable.getByRole("textbox", { name: /^Liên lớp · số câu/ }), `môn ${name}: liên lớp`).toHaveValue(mixedValue);
-      // Độ khó: chỉ Hóa và Sử khai; các số khác 0 trên màn là đúng các số của mẫu.
-      const difficultyValues = (section.matrix!.byDifficulty ?? []).map((item) => String(item.value)).sort();
+      // Độ khó: chỉ Hóa và Sử khai; các số khác 0 trên màn là đúng các số khác 0 của mẫu (ô không khai hiện 0).
+      const difficultyValues = (section.matrix!.byDifficulty ?? []).map((item) => String(item.value)).filter((value) => value !== "0").sort();
       const difficultyInputs = region.getByRole("table", { name: "Theo độ khó" }).getByRole("textbox");
       const shown = (await difficultyInputs.evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).filter(
         (value) => value !== "0",
@@ -105,10 +142,24 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
       await expect(page.getByRole("heading", { name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
       await expect(page.getByRole("region", { name: "Ma trận phân bổ" }), `môn ${name}`).toHaveCount(0);
     }
-    await expect(
-      page.getByRole("region", { name: `Các nhóm lấy câu của ${name}` }).getByRole("row", { name: new RegExp(`${count} câu`) }),
-      `môn ${name}`,
-    ).toBeVisible();
+    // Nhóm lấy câu: mẫu khai đúng các nhóm trên (tên, số câu), tổng bằng số câu của mục; màn có đúng từng dòng và không thừa dòng.
+    expect(
+      (section.blocks ?? []).map((block) => [block.name, block.questionCount]),
+      `mẫu QDA_FULL: nhóm lấy câu của ${name}`,
+    ).toEqual(groups.map((group) => [group.name, group.questions]));
+    expect(groups.reduce((total, group) => total + group.questions, 0), `môn ${name}: tổng số câu của các nhóm`).toBe(count);
+    const groupTable = page.getByRole("region", { name: `Các nhóm lấy câu của ${name}` }).getByRole("table", { name: `Các nhóm lấy câu của ${name}` });
+    // Một dòng tiêu đề cột và mỗi nhóm một dòng.
+    await expect(groupTable.getByRole("row"), `môn ${name}: số dòng nhóm`).toHaveCount(groups.length + 1);
+    for (const group of groups) {
+      const row = groupTable.getByRole("row").filter({ has: page.getByRole("rowheader", { name: group.name, exact: true }) });
+      const questionsText = group.sets
+        ? `${group.sets.count} chùm × ${group.sets.size} câu con = ${group.questions} câu`
+        : `${group.questions} câu`;
+      // Các ô của dòng theo thứ tự: Dạng trả lời, Số câu, Tỷ lệ, Phạm vi nguồn, Thao tác.
+      await expect(row.getByRole("cell").nth(1), `môn ${name}: nhóm ${group.name}, số câu`).toHaveText(questionsText);
+      await expect(row.getByRole("cell").nth(2), `môn ${name}: nhóm ${group.name}, tỷ lệ`).toHaveText(`${Math.round((group.questions * 100) / count)}%`);
+    }
   }
 
   // Sửa một giá trị của môn Vật lí (tên nhóm lấy câu) rồi lưu.
@@ -147,8 +198,10 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   expect(check.paths).toHaveLength(5);
   expect(check.paths.every((path) => path.result === "VALID")).toBe(true);
   await expectValidPaths(page, 5, 5);
+  // Tab Kiểm tra: "Môn đã kiểm tra 8/8" (Toán, Văn và sáu môn của kho); máy chủ ghi cả tám môn ở trạng thái đã kiểm tra.
+  await expect(page.getByText("8/8", { exact: true })).toBeVisible();
   const allStates = (await getStructure(admin, id)).sectionStates ?? [];
-  expect(allStates).toHaveLength(allSections(await getStructure(admin, id)).length);
+  expect(allStates.map((state) => state.subjectCode).sort()).toEqual(["ANH", "DIA", "HOA", "LY", "SINH", "SU", "TOAN", "VAN"]);
   expect(allStates.filter((state) => state.state !== "CHECKED")).toEqual([]);
 
   // 4. Sinh thử QĐ02 (Hóa học – Sinh học) ở tab Đề xem trước.
