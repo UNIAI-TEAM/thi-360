@@ -9,11 +9,13 @@ import {
   groupCounts,
   splitEvenly,
   structureTotals,
+  sum,
   validateBlock,
   validateStructure,
   type MatrixAxes,
 } from "../matrix";
 import { effectiveScope } from "../subject-matrix";
+import { pointsRows } from "../exam-overview";
 import type { BlockMatrix, ExamPart, ExamSection, QuestionBlock } from "../types";
 import { EXAMS_FIXTURE } from "./exam-fixture";
 
@@ -181,6 +183,50 @@ describe("tổng điểm của cấu trúc (G1)", () => {
     const part = exam.parts.find((item) => item.mode === "CHOICE")!;
     part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
     expect(structureTotals(exam.parts).totalPoints).toBe(150);
+  });
+});
+
+describe("nhóm tạm bỏ qua không vào tổng (R3-02, 2B 3.3)", () => {
+  /** Phần cố định một môn của đề HSA mẫu. */
+  const fixedPart = () => {
+    const part = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!.parts[0]!);
+    part.mode = "FIXED";
+    part.options = [];
+    return part;
+  };
+
+  it("nhóm Đọc hiểu 30 câu 6 điểm + nhóm Viết bị bỏ qua: tổng 6 điểm, 30 câu, khớp bảng điểm tổng quan", () => {
+    const part = fixedPart();
+    part.questionCount = 30;
+    const section = part.sections[0]!;
+    section.questionCount = 30;
+    section.blocks = [
+      block({}, { id: "reading", questionCount: 30, requiredPointsPerQuestion: 0.2 }),
+      block({}, { id: "writing", questionType: "ESSAY", questionCount: 10, omitted: true }),
+    ];
+    part.sections = [section];
+    const totals = structureTotals([part]);
+    const rows = pointsRows([part]);
+    expect(totals).toMatchObject({ totalPoints: 6, allocated: 30, totalQuestions: 30, missing: 0 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ count: 30, totalPoints: 6 });
+    expect(sum(rows.map((row) => row.totalPoints))).toBe(totals.totalPoints);
+  });
+
+  it("nhóm lấy phần còn lại đứng sau nhóm bị bỏ qua vẫn nhận trọn phần chênh của môn", () => {
+    const part = fixedPart();
+    part.questionCount = 30;
+    const section = part.sections[0]!;
+    section.questionCount = 30;
+    section.blocks = [
+      block({}, { id: "writing", questionType: "ESSAY", questionCount: 10, omitted: true }),
+      block({}, { id: "rest", questionCount: null, requiredPointsPerQuestion: 0.2 }),
+    ];
+    part.sections = [section];
+    const totals = structureTotals([part]);
+    const rows = pointsRows([part]);
+    expect(totals.totalPoints).toBe(6);
+    expect(rows[0]).toMatchObject({ count: 30, totalPoints: 6 });
   });
 });
 

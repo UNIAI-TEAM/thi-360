@@ -19,6 +19,8 @@ export interface ExamStructureListProps {
   issues: readonly StructureIssue[];
   names: StructureNames;
   onSelect: (selection: StructureSelection) => void;
+  /** Hiện mục "Tổng quan bài" (điểm theo môn, chỉ tiêu cấp bài) ở đầu danh sách. */
+  showOverview?: boolean;
 }
 
 /** Màu huy hiệu trạng thái môn (H2, spec 7.3); chữ luôn đi kèm (DESIGN.md mục 8). */
@@ -41,6 +43,7 @@ export function ExamStructureList({
   issues,
   names,
   onSelect,
+  showOverview = false,
 }: ExamStructureListProps) {
   const t = useTranslations("exams.structure.list");
   const titleId = useId();
@@ -152,8 +155,8 @@ export function ExamStructureList({
           </span>
         )}
         {!choice && option.expertConfirmed === false && (
-          <span className="inline-flex items-center gap-1 text-caption font-normal text-warning">
-            <TriangleAlert aria-hidden className="size-3.5" />
+          <span className="inline-flex items-center gap-1 text-caption font-normal">
+            <TriangleAlert aria-hidden className="size-3.5 text-warning" />
             {t("expertPending")}
           </span>
         )}
@@ -195,6 +198,13 @@ export function ExamStructureList({
           onKeyDown={onKeyDown}
           className="scroll-shadows-y flex min-h-0 flex-col gap-3 overflow-y-auto p-2"
         >
+          {showOverview && (
+            <li className="flex flex-col gap-1">
+              <ListItemButton current={selection?.kind === "exam"} onClick={() => onSelect({ kind: "exam" })} strong>
+                {t("overview")}
+              </ListItemButton>
+            </li>
+          )}
           {parts.map((part) => (
             <li key={part.id} className="flex flex-col gap-1">
               <ListItemButton
@@ -274,8 +284,8 @@ function ListItemButton({
       <span className={cn("min-w-0 flex-1 break-words", strong ? "font-semibold" : "font-medium")}>{children}</span>
       {meta && <span className="shrink-0 text-caption text-text-muted">{meta}</span>}
       {warning && (
-        <span className="inline-flex shrink-0 items-center gap-1 text-caption text-warning">
-          <TriangleAlert aria-hidden className="size-3.5" />
+        <span className="inline-flex shrink-0 items-center gap-1 text-caption">
+          <TriangleAlert aria-hidden className="size-3.5 text-warning" />
           <span className="sr-only">{warning}</span>
         </span>
       )}
