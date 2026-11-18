@@ -632,7 +632,7 @@ function GroupList({
     return source === "SECTION" ? t("scopeSection") : t("scopeNone");
   };
   const sumQuestions = section.blocks.reduce((sumSoFar, block) => sumSoFar + questionsOf(block), 0);
-  const headCell = "border-b border-border bg-subtle px-2 py-2 font-semibold";
+  const headCell = "border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap";
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -662,14 +662,14 @@ function GroupList({
             <thead>
               <tr className="text-left text-caption text-text-muted">
                 <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold whitespace-nowrap">{t("name")}</th>
-                <th scope="col" className={cn(headCell, "whitespace-nowrap")}>{t("type")}</th>
+                <th scope="col" className={headCell}>{t("type")}</th>
                 {audio && <th scope="col" className={headCell}>{t("audioHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "quantityHeader" : "countHeader")}</th>
                 {audio && <th scope="col" className={cn(headCell, "text-right")}>{t("totalHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "shareHeader" : "rateHeader")}</th>
                 {audio && <th scope="col" className={headCell}>{t("availableHeader")}</th>}
-                <th scope="col" className={cn(headCell, "max-w-40")}>{t("scope")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
+                <th scope="col" className={headCell}>{t("scope")}</th>
+                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold whitespace-nowrap"><span className="sr-only">{t("actions")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -695,14 +695,14 @@ function GroupList({
                     </td>
                   )}
                   <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{audio ? quantityText(block) : countText(block)}</td>
-                  {audio && <td className="border-b border-border px-2 py-2 text-right font-semibold tabular-nums text-text">{format.number(questionsOf(block))}</td>}
+                  {audio && <td className="border-b border-border px-2 py-2 text-right font-semibold whitespace-nowrap tabular-nums text-text">{format.number(questionsOf(block))}</td>}
                   <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{rateText(block)}</td>
                   {audio && (
                     <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text-secondary">
                       <AvailableSource block={block} section={section} />
                     </td>
                   )}
-                  <td className="max-w-40 border-b border-border px-2 py-2 text-text-secondary">{scopeText(block)}</td>
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text-secondary">{scopeText(block)}</td>
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name || t("untitled") })} onClick={() => onSelectBlock(block.id)}>
                       {t("open")}

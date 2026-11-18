@@ -178,13 +178,22 @@ describe("bảng nhóm của môn thuộc phần Nghe (F1)", () => {
     expect(within(table()).getByText("3 sets × 4 sub-questions")).toBeInTheDocument();
   });
 
-  it("N3 · tên nhóm và dạng trả lời không xuống dòng từng chữ; bảng vẫn nằm trong vùng cuộn có dòng nhắc", () => {
+  it("N3/N5 · tên nhóm, dạng trả lời, phạm vi nguồn và tiêu đề cột số không xuống dòng; bảng vẫn nằm trong vùng cuộn có dòng nhắc", () => {
     renderPanel(section("REQUIRED"));
     const row = rowOf("Dòng 2 · Hội thoại 4 câu");
     expect(row.querySelector("th")).toHaveClass("whitespace-nowrap");
-    expect(row.querySelectorAll("td")[0]).toHaveClass("whitespace-nowrap");
-    expect(within(table()).getByRole("columnheader", { name: "Nhóm" })).toHaveClass("whitespace-nowrap");
-    expect(within(table()).getByRole("columnheader", { name: "Dạng trả lời" })).toHaveClass("whitespace-nowrap");
+    const cells = Array.from(row.querySelectorAll("td"));
+    expect(cells.length).toBeGreaterThanOrEqual(7);
+    for (const cell of cells.slice(0, -1)) {
+      if (cell.querySelector("button")) continue;
+      expect(cell).toHaveClass("whitespace-nowrap");
+    }
+    for (const header of within(table()).getAllByRole("columnheader")) {
+      if (!header.textContent) continue;
+      expect(header, header.textContent).toHaveClass("whitespace-nowrap");
+      expect(header, header.textContent).not.toHaveClass("max-w-40");
+    }
+    expect(row.querySelector("td.max-w-40")).toBeNull();
     const region = screen.getByRole("region", { name: /^Các nhóm lấy câu/ });
     expect(region).toHaveAttribute("tabindex", "0");
     expect(region).toContainElement(table());
