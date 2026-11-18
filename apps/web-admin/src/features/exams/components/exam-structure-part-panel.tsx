@@ -173,28 +173,30 @@ export function ExamStructurePartPanel({
       </div>
       {shared && <p className="text-caption text-text-muted">{t("sharedHint")}</p>}
 
-      <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
-        <h3 className="text-title font-semibold text-text">{t("participation.title")}</h3>
-        {part.mode !== "CHOICE" ? (
-          <p className="text-body text-text">{t("participation.all")}</p>
-        ) : onlySubjectChoice ? (
-          // Phương án duy nhất là chọn môn (HSA Khoa học): luật chọn k môn nằm ở thẻ phương án, không lặp ô k ở đây (R1-10).
-          <p className="text-body text-text">{t("participation.subjectChoice")}</p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2 text-body text-text">
-            <span>{t("participation.choosePrefix")}</span>
-            <BlockNumberInput
-              className="h-9 w-20"
-              value={part.participation.choose ?? 1}
-              aria-invalid={chooseInvalid ? true : undefined}
-              aria-label={t("participation.chooseAria")}
-              onValueChange={onChoose}
-            />
-            <span>{t("participation.chooseSuffix", { count: part.options.length })}</span>
-          </div>
-        )}
-        {!onlySubjectChoice && <p className="text-caption text-text-muted">{t("participation.hint")}</p>}
-      </section>
+      {!part.codeSource && (
+        <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
+          <h3 className="text-title font-semibold text-text">{t("participation.title")}</h3>
+          {part.mode !== "CHOICE" ? (
+            <p className="text-body text-text">{t("participation.all")}</p>
+          ) : onlySubjectChoice ? (
+            // Phương án duy nhất là chọn môn (HSA Khoa học): luật chọn k môn nằm ở thẻ phương án, không lặp ô k ở đây (R1-10).
+            <p className="text-body text-text">{t("participation.subjectChoice")}</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 text-body text-text">
+              <span>{t("participation.choosePrefix")}</span>
+              <BlockNumberInput
+                className="h-9 w-20"
+                value={part.participation.choose ?? 1}
+                aria-invalid={chooseInvalid ? true : undefined}
+                aria-label={t("participation.chooseAria")}
+                onValueChange={onChoose}
+              />
+              <span>{t("participation.chooseSuffix", { count: part.options.length })}</span>
+            </div>
+          )}
+          {!onlySubjectChoice && <p className="text-caption text-text-muted">{t("participation.hint")}</p>}
+        </section>
+      )}
 
       {partIssues.length > 0 && (
         <ul className="flex flex-col gap-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2">
@@ -207,27 +209,26 @@ export function ExamStructurePartPanel({
         </ul>
       )}
 
-      {part.mode === "FIXED" ? (
-        part.codeSource ? (
-          <CodedPartPanel
-            part={part}
-            names={names}
-            axes={axes}
-            combinations={structureCombinations}
-            sectionStates={sectionStates}
-            onSelectSection={onSelectSection}
-            onAddSubject={onAddSubject}
-          />
-        ) : (
-          <SectionsTable
-            part={part}
-            names={names}
-            countLocked={countLocked}
-            onSectionCount={onSectionCount}
-            onAddBlock={onAddBlock}
-            onSelectSection={onSelectSection}
-          />
-        )
+      {part.codeSource ? (
+        // Phần theo mã (R-24, D12): luôn là bảng môn và mã, kể cả khi `participation.mode` là CHOICE (dữ liệu cũ, seed, di trú).
+        <CodedPartPanel
+          part={part}
+          names={names}
+          axes={axes}
+          combinations={structureCombinations}
+          sectionStates={sectionStates}
+          onSelectSection={onSelectSection}
+          onAddSubject={onAddSubject}
+        />
+      ) : part.mode === "FIXED" ? (
+        <SectionsTable
+          part={part}
+          names={names}
+          countLocked={countLocked}
+          onSectionCount={onSectionCount}
+          onAddBlock={onAddBlock}
+          onSelectSection={onSelectSection}
+        />
       ) : (
         <>
           {part.sections.length > 0 && (

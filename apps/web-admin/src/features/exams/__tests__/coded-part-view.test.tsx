@@ -1,0 +1,46 @@
+import { screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/test/render";
+import { ExamStructureView } from "../components/exam-structure-view";
+import { codedExam, QDA_COMBINATIONS, QDA_PARTS } from "./coded-fixtures";
+import { ExamsBackend } from "./fake-exams-backend";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
+
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
+
+let backend: ExamsBackend;
+
+beforeEach(() => {
+  routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
+});
+
+function openPart(examId: string, partId: string) {
+  window.history.replaceState(null, "", `/exams/${examId}/structure?part=${partId}`);
+  return renderWithProviders(<ExamStructureView examId={examId} />);
+}
+
+describe("Phần theo mã mở được khi quy tắc tham gia là CHOICE (R1-01)", () => {
+  it("QDA phần 3 (CHOICE như dữ liệu seed và di trú): hiện bảng môn của phần, mã và vị trí câu", async () => {
+    expect(QDA_PARTS[2]!.mode).toBe("CHOICE");
+    expect(QDA_PARTS[2]!.participation.mode).toBe("CHOICE");
+    const exam = codedExam("QDA");
+    backend.seedExam(exam).seedStructureExtras(exam.id, { combinations: QDA_COMBINATIONS });
+    openPart(exam.id, "qda-3");
+
+    const subjects = await screen.findByRole("table", { name: /Các môn của Part 3/ });
+    expect(within(subjects).getAllByRole("row")).toHaveLength(1 + QDA_PARTS[2]!.subjectPool!.length);
+    expect(within(subjects).getAllByRole("button", { name: /Thiết lập môn/ })).toHaveLength(QDA_PARTS[2]!.subjectPool!.length);
+    expect(screen.getByRole("heading", { name: "Mã của kỳ thi (chỉ xem)" })).toBeInTheDocument();
+    expect(screen.getAllByText("QD01").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/trong \d+ phương án/)).not.toBeInTheDocument();
+  });
+});
