@@ -219,7 +219,9 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
                 {"id":"both","questionType":"SINGLE_CHOICE","questionCount":3,"itemShape":{"options":4}}""");
         var issue = findIssue(result, "AUDIO_SHORTAGE");
         assertThat(issue.path("blockId").asText()).isEqualTo("both");
+        assertThat(issue.path("required").isNumber()).isTrue();
         assertThat(issue.path("required").asInt()).isEqualTo(3);
+        assertThat(issue.path("available").isNumber()).isTrue();
         assertThat(issue.path("available").asLong()).isZero();
         // Neither the option count nor a generic shortage may be reported at this block.
         var atBlock = result.path("groups").findValues("issues").stream()

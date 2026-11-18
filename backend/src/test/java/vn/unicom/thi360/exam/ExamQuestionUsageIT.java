@@ -417,6 +417,22 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         assertUsageBlocks(five, List.of("free-options"), List.of("four-options"));
     }
 
+    /** R2-1: a block restricted to INTEGER answers does not list a DECIMAL short answer. */
+    @Test
+    void usageAndRetireImpactApplyAnswerFormats() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID integer = usageQuestion(subject, "SHORT_ANSWER",
+                "{\"type\":\"SHORT_ANSWER\",\"answerFormat\":\"INTEGER\",\"answers\":[\"1\"]}", false);
+        UUID decimal = usageQuestion(subject, "SHORT_ANSWER",
+                "{\"type\":\"SHORT_ANSWER\",\"answerFormat\":\"DECIMAL\",\"answers\":[\"1.2\"]}", false);
+        usageExam(subject, """
+                [{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"integer-only","questionType":"SHORT_ANSWER","answerFormats":["INTEGER"]},
+                  {"id":"any-format","questionType":"SHORT_ANSWER"}]}]""");
+        assertUsageBlocks(integer, List.of("integer-only", "any-format"), List.of());
+        assertUsageBlocks(decimal, List.of("any-format"), List.of("integer-only"));
+    }
+
     /** R1-6: a set failing a positional child condition is not listed, nor are its children. */
     @Test
     void usageAndRetireImpactApplyPositionalChildConditions() throws Exception {
