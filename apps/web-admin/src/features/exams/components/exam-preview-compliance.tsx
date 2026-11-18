@@ -144,6 +144,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           caption={scope(row)}
           status={result(row)}
           meta={[
+            { label: t("columns.level"), value: level(row) },
             { label: t("columns.required"), value: required(row) },
             { label: t("columns.actual"), value: actual(row) },
             { label: t("columns.difference"), value: difference(row) },

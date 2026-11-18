@@ -1,7 +1,8 @@
 import { cleanup, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import vi_ from "@/messages/vi.json";
+import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { renderWithProviders } from "@/test/render";
 import { issueStructureHref } from "../check";
 import { ExamPreviewCompliance } from "../components/exam-preview-compliance";
@@ -188,6 +189,34 @@ describe("cột Chênh lệch của bảng đối chiếu", () => {
     expect(within(table).getByText("Difference")).toBeInTheDocument();
     expect(within(table).getByText("at least 3")).toBeInTheDocument();
     expect(within(table).getByText("\u22122")).toBeInTheDocument();
+  });
+});
+
+describe("bảng đối chiếu ở dạng thẻ (390)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("thẻ giữ dòng 'Mức · đơn vị' đầu tiên cạnh Yêu cầu, Thực tế, Chênh lệch", async () => {
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    const paper = paperOf([blockOf([{ kind: "QUESTION", question: question(1) }])]);
+
+    renderWithProviders(
+      <ExamPreviewCompliance
+        paper={paper}
+        compliance={[
+          row({ criterion: "GRADE:GRADE_12", required: 12, actual: 10 }),
+          row({ criterion: "GRADE:GRADE_11", required: 2, actual: 1.5, enforcement: "REFERENCE", basis: "POINTS" }),
+        ]}
+        dropped={[]}
+      />,
+    );
+
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    const required = await screen.findByText("Bắt buộc · câu");
+    expect(required.closest("p")?.textContent).toMatch(/^Mức · đơn vị: Bắt buộc · câu · Yêu cầu: 12 · Thực tế: 10 · Chênh lệch: \u22122$/);
+    expect(screen.getByText("Tham khảo · điểm")).toBeInTheDocument();
   });
 });
 
