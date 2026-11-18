@@ -162,6 +162,7 @@
       - 2026-11-18 16:00 (UTC+7): FE-4 (UNI-2665, PR #99) merge phần gốc: tab Kiểm tra và Xem trước ở bước 2, câu riêng cho 17 mã vấn đề 2B, E2E sinh thử QĐ02. Advisor chạy lại typecheck, lint và 1.778 test web trên kết quả merge, xanh; api-client sinh lại không đổi. Phần bổ sung V-ACT và THPTQG (1 điểm) làm sau BE-15.
       - 2026-11-18 16:33 (UTC+7): BE-13 (UNI-2674, PR #100) merge: mẫu THPTQG tách phần, V-ACT đầy đủ, 7 mẫu phạm vi riêng và `VACT_REVIEW`, migration `V202611181305`. Đổi giữa bài chuẩn và bài ôn bằng nạp mẫu sẽ đặt lại điểm tối đa và mốc điểm. Advisor chạy lại 527 test backend trên kết quả merge, xanh.
       - 2026-11-18 16:41 (UTC+7): FE-3a phần thêm (UNI-2663, PR #101) merge: chùm cỡ linh hoạt, ô "Mọi câu con thuộc chủ đề" ở mục và nhóm chùm, dòng tổng nhóm Đúng/Sai. Advisor chạy lại typecheck, lint và test web trên kết quả merge: 1.811/1.813; hai test quá thời gian 5 giây trên Windows (`insert-table`, `structure-view`) chạy riêng đạt 3/3 lần.
+      - 2026-11-18 17:43 (UTC+7): FE-5 (UNI-2677, PR #102) merge: bước 1 của web quản trị cho V-ACT và THPTQG, gồm chọn phần, chọn môn, bảng V-ACT toàn bài chỉ đọc và thông báo Ngữ văn. Advisor chạy lại typecheck, lint, sinh API client và test web trên kết quả merge: 1.829/1.829.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)

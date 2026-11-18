@@ -490,6 +490,8 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     label: nullable(response.label),
     summary: nullable(response.summary),
     expertNote: nullable(response.expertNote),
+    publishable: nullable(response.publishable),
+    fixedCounts: nullable(response.fixedCounts),
     parts: mapParts(document.parts).map((part, index) => templatePart(part, index, document.parts?.[index])),
   };
 }

@@ -5159,7 +5159,11 @@
         "MATH": "Math",
         "LITERATURE": "Literature",
         "SCIENCE": "Science",
-        "ENGLISH": "English"
+        "ENGLISH": "English",
+        "LANGUAGE": "Language use",
+        "THINKING": "Scientific thinking",
+        "LOGIC": "Logic and data analysis",
+        "REASONING": "Scientific reasoning"
       },
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Introduce the exam's content and goals",
@@ -5417,6 +5421,12 @@
         "part": "Part",
         "partHint": "A by-part exam contains only the selected part",
         "noPart": "This subject has no part to choose yet.",
+        "notPublishableNotice": "The whole {subject} subject is essay-based – skipped for now in V1",
+        "notPublishableDraft": "This exam is draft-only: it cannot be published and is not added to sold exam sets.",
+        "durationRequiredBase": "Enter the exam duration.",
+        "durationRequiredPart": "Duration missing. By-part exams have no default duration.",
+        "durationRequiredReview": "Duration missing. Review exams have no default duration.",
+        "durationRequiredCustom": "Duration missing. Custom {kind} exams have no default duration.",
         "buildModeLegend": "How to build the exam",
         "buildModeStandard": "Use the {kind} subject structure",
         "buildModeStandardHint": "Loads the full subject structure from the default template.",
@@ -5456,13 +5466,17 @@
           "part": "Part or subject",
           "count": "Questions",
           "duration": "Duration (min)",
-          "points": "Points"
+          "points": "Points",
+          "percentPart": "Share of part",
+          "percentExam": "Share of exam",
+          "percentExamCustom": "Share of the exam"
         },
         "cell": {
           "questionCount": "Questions of {name}",
           "durationMinutes": "Duration of {name}",
           "maxPoints": "Points of {name}"
         },
+        "lockedCounts": "Question counts locked by template",
         "choiceNote": "(learner picks one option)",
         "omittedLabel": "skipped for now",
         "notCounted": "not counted",
