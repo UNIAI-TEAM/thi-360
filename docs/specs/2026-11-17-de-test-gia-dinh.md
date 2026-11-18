@@ -14,7 +14,7 @@ Mọi bảng ghi nguồn bên dưới. Đường dẫn tính từ `backend/src/m
 | `migration/exam/V202611180456__exam_review_templates.sql` | `<KỲ>_REVIEW` cho HSA, QDA, BCA, SP2E, SPT |
 | `migration/exam/V202611181116__exam_template_flags.sql` | cột `publishable`, `fixed_counts` |
 | `migration/exam/V202611181234__correct_sp2e_2026_points.sql` | điểm SP2E Anh, Sử, GDKTPL 2026 |
-| `migration/exam/V202611181305__exam_templates_thptqg_vact.sql` | THPTQG (13 mẫu môn và `THPTQG_REVIEW`), V-ACT (8 mẫu và `VACT_REVIEW`) |
+| `migration/exam/V202611181305__exam_templates_thptqg_vact.sql` | THPTQG (12 mẫu môn và `THPTQG_REVIEW`), V-ACT (8 mẫu và `VACT_REVIEW`) |
 | `devdata/R__seed_test_exam_data.sql` | 27 bài `TEST-*` và 1.695 câu `TESTQ-*` (sinh bằng `scripts/generate_test_exam_seed.py`) |
 | `devdata/R__seed_questionbank_dev_data.sql` | câu hỏi mẫu có nhãn, MAPID, năng lực cho mọi mẫu mới (UNI-2653, UNI-2675) |
 | `backend/src/test/java/vn/unicom/thi360/exam/TestExamSeedIT.java`, `ExamTemplateFlagsCheckIT.java`, `ExamTemplatePolicyValidityIT.java` | kết quả kiểm tra mong đợi của từng bài `TEST-*` |
@@ -85,8 +85,8 @@ Nguồn: `V202611180652`, `V202611161802` (phần 3 và danh sách mã). Mẫu t
 | Phần | Nội dung |
 |---|---|
 | 1 · Toán, 80 phút, 50 điểm | Chỉ tiêu MĐ 35 / TLN 15; lớp 5/15/30 (`REQUIRED`); không khai độ khó. Nhóm `QDA_TOAN_SINGLE` MĐ 32, chùm `QDA_TOAN_CONTEXT` 1×3, `QDA_TOAN_SINGLE` TLN 15 (định dạng đáp án `INTEGER`, `DECIMAL`, `FRACTION`). Điểm 1 |
-| 2 · Ngôn ngữ – Văn học, 55 phút, 50 điểm | 5 nhóm: `QDA_VAN_ODD_WORD` 5, `QDA_VAN_WORD_PAIR` 5, `QDA_VAN_WORD_USAGE` 5, `QDA_VAN_PASSAGE_SINGLE` 10, `QDA_VAN_PASSAGE` chùm 5×5 có 5 `slots` (như HSA). Điểm 1 |
-| 3 · Khoa học hoặc Tiếng Anh, 60 phút, 50 điểm | `codeSource` = `GLOBAL_LIST`, danh sách mã `QD01`–`QD05` lấy từ Global List (5 phương án), `subjectPool` 5 môn × 25 câu (Lí, Hóa, Sinh: MĐ 21 + chùm 1×3 + TLN 1; Sử, Địa: MĐ 22 + chùm 1×3) và Tiếng Anh 50 câu, 10 nhóm có nhãn: `QDA_ANH_SENTENCE` 10, `QDA_ANH_SYN_ANT` 4 (hai nhãn đồng nghĩa, trái nghĩa), `QDA_ANH_DIALOGUE` 4, `QDA_ANH_NOTICE` 4, `QDA_ANH_REWRITE` 4, `QDA_ANH_COMBINE` 4, `QDA_ANH_CLOZE` chùm 1×5, `QDA_ANH_READING` 1×5, `QDA_ANH_READING_2` 1×5, `QDA_ANH_INFERENCE` 5 |
+| 2 · Ngôn ngữ – Văn học, 55 phút, 50 điểm | 5 nhóm theo thứ tự: `QDA_VAN_ODD_WORD` 5 (`VAN_TU_KHAC_NHOM`), `QDA_VAN_WORD_PAIR` 5 (`VAN_CAP_TU_DIEN`), `QDA_VAN_WORD_USAGE` 5 (`VAN_TU_SAI`), `QDA_VAN_PASSAGE_SINGLE` 10 (`VAN_NGU_LIEU_MOT_CAU`), `QDA_VAN_PASSAGE` chùm 5×5 (câu con MĐ) có 5 `slots` theo nhãn **khác HSA**: `VAN_THONG_TIN_NGHI_LUAN`, `VAN_NGHI_LUAN`, `VAN_THO`, `VAN_THIEU_NHI`, `VAN_TRUYEN`, `shuffleEditable = true`. Chỉ `VAN_THO` trùng với năm nhãn của HSA; không dùng nhãn HSA để dựng ngữ liệu QDA. Điểm 1 |
+| 3 · Khoa học hoặc Tiếng Anh, 60 phút, 50 điểm | `codeSource` = `GLOBAL_LIST`, danh sách mã `QD01`–`QD05` lấy từ Global List (5 phương án), `subjectPool` 5 môn × 25 câu (Lí, Hóa, Sinh: MĐ 21 + chùm 1×3 + TLN 1; Sử, Địa: MĐ 22 + chùm 1×3) và Tiếng Anh 50 câu, 10 nhóm có nhãn: `QDA_ANH_SENTENCE` 10 (`ANH_HOAN_THANH_CAU`), `QDA_ANH_SYN_ANT` 4 (hai nhãn `ANH_DONG_NGHIA`, `ANH_TRAI_NGHIA`), `QDA_ANH_DIALOGUE` 4 (`ANH_HOI_THOAI`), `QDA_ANH_NOTICE` 4 (`ANH_THONG_BAO`), `QDA_ANH_REWRITE` 4 (`ANH_VIET_LAI_CAU`), `QDA_ANH_COMBINE` 4 (`ANH_KET_HOP_CAU`), `QDA_ANH_CLOZE` chùm 1×5 (`ANH_DOC_DIEN`), `QDA_ANH_READING` 1×5 (`ANH_DOC_HIEU_1`), `QDA_ANH_READING_2` 1×5 (`ANH_DOC_HIEU_2`), `QDA_ANH_INFERENCE` 5 (`ANH_SUY_LUAN`) |
 
 Mã tổ hợp QDA trong danh mục: `QD01` Lí–Hóa, `QD02` Hóa–Sinh, `QD03` Lí–Sinh, `QD04` Sử–Địa, `QD05` Tiếng Anh. Cả năm mã nằm trong `devdata/R__seed_catalog_dev_data.sql`; `R__seed_test_exam_data.sql` chỉ chèn lại `QD05` khi danh mục chưa có.
 
@@ -217,13 +217,13 @@ Số còn lại của mẫu là số BA (không có `expert_note`). Không bịa
 
 ## 4. Bộ đề `TEST-*`
 
-Bộ đề nằm trong `devdata/R__seed_test_exam_data.sql` (id cố định, `ON CONFLICT DO NOTHING`; chạy lại không ghi đè bài đã sửa) và chạy cùng dữ liệu câu mẫu. Mọi bài ở `DRAFT`, `check_status = UNCHECKED`, thang `RAW` (riêng V-ACT `LINEAR`). Kết quả kiểm tra là kết quả mà `TestExamSeedIT` khẳng định, không phải số suy ra.
+Bộ đề nằm trong `devdata/R__seed_test_exam_data.sql` (id cố định, `ON CONFLICT DO NOTHING`; chạy lại không ghi đè bài đã sửa) và chạy cùng dữ liệu câu mẫu. Mọi bài ở `DRAFT`, `check_status = UNCHECKED`, `practice_scoring = RAW`; riêng `TEST-VACT-01` là `LINEAR`. Kết quả kiểm tra là kết quả mà `TestExamSeedIT` khẳng định, không phải số suy ra.
 
-**Quan trọng cho đợt 3.** Chỉ `TEST-THPTQG-01` và `TEST-VACT-01` trùng từng nhóm với mẫu hiện hành. Các bài còn lại giữ cấu trúc "giả định" của ngày 2026-11-17 (trước số BA của `V202611180652`): đúng tổng số câu và điểm, nhưng chia nhóm đơn giản hơn mẫu. Mục 4.4 liệt kê chỗ lệch. Khi cần một bài cấu trúc đúng mẫu BA, tạo bài từ mẫu bằng API, không dùng `TEST-*`.
+**Quan trọng cho đợt 3.** Chỉ `TEST-THPTQG-01` và `TEST-VACT-01` trùng từng nhóm với mẫu hiện hành. Các bài còn lại giữ cấu trúc "giả định" của ngày 2026-11-17 (trước số BA của `V202611180652`): chia nhóm đơn giản hơn mẫu. Phần lớn giữ đúng tổng số câu và điểm của mẫu; ngoại lệ là `TEST-SPT-01` (25 câu, 10 điểm, TL 3 câu tính điểm, so với mẫu `SPT_MATH_2025` 22 câu, 7 điểm, TL `omitted`; xem mục 4.4). Mục 4.4 liệt kê chỗ lệch. Khi cần một bài cấu trúc đúng mẫu BA, tạo bài từ mẫu bằng API, không dùng `TEST-*`.
 
 ### 4.1 Bài hợp lệ
 
-Cột Câu là số câu học viên làm, Điểm là `max_score`. Phút chép từ cột `duration_minutes` của bài.
+Cột Câu là số câu học viên làm, Điểm là cột `max_score` của bài (ghi riêng khi khác). Phút chép từ cột `duration_minutes` của bài.
 
 | Mã | Mẫu (nguồn cấu trúc) | Phạm vi | Timing, phút | Điểm | Câu | Dùng để kiểm | Kết quả |
 |---|---|---|---|---|---|---|---|
@@ -233,7 +233,7 @@ Cột Câu là số câu học viên làm, Điểm là `max_score`. Phút chép 
 | `TEST-HSA-04` | `HSA_PART_SCIENCE` | PART `SCIENCE` | `PER_PART`, 60 | 50 | 50 | `SUBJECT_CHOICE`, tỉ lệ ra 17/17/16; nhánh Tiếng Anh 5 nhóm | VALID |
 | `TEST-QDA-01` | `QDA_FULL` | FULL | `PER_PART`, 195 | 150 | 150 | mã tổ hợp 5 (`QD01`–`QD05`), `codeSource` | VALID |
 | `TEST-BCA-01` | `BCA_FULL` | FULL | `SHARED`, 180 | 100 | 81 | đồng hồ chung, Anh 0,75, TL 25 điểm, 4 mã `CA1`–`CA4` | VALID, kèm cảnh báo `MANUAL_GRADING_REQUIRED` |
-| `TEST-VACT-01` | `VACT_FULL` (giống mẫu) | FULL | `SHARED`, 150 | 1.200 | 120 | 120 câu, `LINEAR`, Logic và Suy luận giải chung một đơn vị kiểm tra | VALID; chỉ được có cảnh báo `DISTRIBUTION_DEVIATION` |
+| `TEST-VACT-01` | `VACT_FULL` (giống mẫu) | FULL | `SHARED`, 150 | `max_score` NULL; `reference_max` 1.200 (mốc quy đổi `LINEAR`); tổng điểm thô 1.200 (120 câu × 10, mẫu `max_score` 1.200) | 120 | 120 câu, `LINEAR`, Logic và Suy luận giải chung một đơn vị kiểm tra | VALID; chỉ được có cảnh báo `DISTRIBUTION_DEVIATION` |
 | `TEST-SPT-01` | `SPT_MATH_2025` | SUBJECT `TOAN` | `PER_PART`, 90 | 10 | 25 | 4 dạng, Tự luận chờ chấm | VALID, kèm `MANUAL_GRADING_REQUIRED` |
 | `TEST-SP2E-01` | `SP2E_MATH_2025` | SUBJECT `TOAN` | `PER_PART`, 90 | 10 | 22 | phiên bản 2025 | VALID |
 | `TEST-SP2E-02` | `SP2E_MATH_2026`, `years_confirmed = true` | SUBJECT `TOAN` | `PER_PART`, 90 | 10 | 40 | đổi phiên bản 2025 → 2026, Nhiều đáp án, chùm 1×5 | VALID |
@@ -294,14 +294,14 @@ Có 1.695 câu `TESTQ-*`: 1.499 `READY`, 98 `DRAFT`, 98 `RETIRED`. Câu Nháp v�
 | Toán | MĐ đơn 1 điểm | 100 | 168 (60 gắn nút `TEST-TOAN-HEP`) | QDA 50; HSA 26; BCA 25 |
 | Toán | TLN 1 điểm | 30 | 50 (10 gắn `TEST-TOAN-HEP`) | HSA 15; BCA 10 |
 | Toán | chùm 3 câu con MĐ 1 điểm | 6 bộ | 12 | HSA 3 bộ |
-| Toán | MĐ 0,25 | 40 | 41 (một câu Lớp 12 × VDC, cho `TEST-ERR-11`) | SP2E 2026: 20 |
+| Toán | MĐ 0,25 | 40 | 41 (bốn câu Lớp 12 × VDC: ba câu theo vòng sinh, một câu `TESTQ-TOAN-MC025-259` chuyển bằng UPDATE, cho `TEST-ERR-11`) | SP2E 2026: 20 |
 | Toán | ĐS 1 điểm (`COUNT_TABLE`) | 8 | 8 | THPTQG, SP2E 2025: 4 |
 | Toán | TLN 0,25 / TLN 0,5 | 20 / 12 | 20 / 12 | SP2E 2026: 10 / THPTQG, SP2E 2025: 6 |
 | Toán | NĐ 0,25 `ALL_OR_NOTHING`; chùm 5 câu con 0,25 | 10; 2 bộ | 10; 2 bộ | SP2E 2026 |
 | Toán | TL 1 điểm (có hướng dẫn chấm); MĐ 10 điểm | 6; 60 | 6; 60 | SPT 3; V-ACT 30 |
 | Ngữ văn | MĐ đơn 1 điểm | 100 | 100 | QDA 50; HSA 10 + 15 |
-| Ngữ văn | chùm 5 câu con MĐ 1 điểm | 10 bộ | 10 | HSA 5 bộ |
-| Ngữ văn | chùm 5 câu con TL 0,8 | 2 bộ | 2 | THPTQG; đúng 2 bộ gắn nhãn `TEST-HIEM` (cho `TEST-ERR-03`) |
+| Ngữ văn | chùm 5 câu con MĐ 1 điểm | 10 bộ | 10 (đúng 2 bộ, `TESTQ-VAN-PASSAGE-S001` và `-S002`, gắn nhãn `TEST-HIEM` cho `TEST-ERR-03`) | HSA 5 bộ |
+| Ngữ văn | chùm 5 câu con TL 0,8 | 2 bộ | 2 | THPTQG; không gắn nhãn |
 | Ngữ văn | TL 25 / TL 2 / TL 4 | 2 / 2 / 2 | 2 / 2 / 2 | BCA Phần I; THPTQG |
 | Tiếng Anh | MĐ đơn 1 điểm | 100 | 100 | QDA 50; HSA 35 |
 | Tiếng Anh | chùm 5 câu con MĐ 1 điểm | 6 bộ | 6 | HSA 3 bộ |
@@ -323,8 +323,9 @@ Số liệu dưới đây là đối chiếu giữa `R__seed_test_exam_data.sql`
 | `TEST-HSA-01`, `-02`, `-03`, `-04` | Toán: MĐ 32 + TLN 15 + chùm 1×3. Văn: 5 nhóm có nhãn, chùm có `slots`. Khoa học: Lí, Hóa, Sinh 13 + chùm 1×3 + TLN 1; Sử, Địa 14 + chùm 1×3; ma trận mỗi môn khác nhau. Anh: 11 nhóm có nhãn | Toán: 41 câu đơn + chùm 3×3. Văn: 10 + 15 + chùm 5×5, không nhãn. Khoa học mỗi môn: chùm 2×3 + 11 câu đơn, ma trận cùng 3/5/9 và 3/7/5/2. Anh: 5 + 5 + 5 + 20 + 3×5, không nhãn. Không có `examQuotas` |
 | `TEST-QDA-01` | Toán 32 + 1×3 + TLN 15; Văn 5 nhóm; Anh 10 nhóm | mỗi phần một nhóm MĐ |
 | `TEST-BCA-01` | Toán 27 + 1×3 + TLN 5; Sử 7 + 1×3; Anh 5 nhóm; `subjectPool` 12 + 1×3 | Toán MĐ 25 + TLN 10; Sử MĐ 10; Anh MĐ 20; `subjectPool` MĐ 15. Cùng tổng 81 câu, 100 điểm |
-| `TEST-SPT-01` | 22 câu, 7 điểm; TL 3 `omitted`; ba phần | 25 câu, 10 điểm; TL 3 tính điểm (cảnh báo chấm tay); một phần 90′ |
-| `TEST-SP2E-01`, `-02`, `-03` | `SHARED`; ba phần; Toán 2026 có nhóm "Dữ liệu tổng hợp" ở Phần II với nhãn; Anh 9 nhóm có nhãn | `PER_PART` với 90′ hoặc 60′ ở một phần duy nhất; Anh có nhóm ĐK (mẫu không dùng ĐK); `TEST-SP2E-02` có `matrix_year` 2025 |
+| `TEST-SPT-01` | 22 câu, 7 điểm (16 + 2 + 4); TL 3 `omitted`; ba phần | 25 câu, 10 điểm (16 + 2 + 4 + 3 câu TL × 1, không `omitted`, cảnh báo chấm tay); một phần 90′ |
+| `TEST-SP2E-01`, `-02` | `SHARED`; ba phần; Toán 2026 có nhóm "Dữ liệu tổng hợp" ở Phần II với nhãn | `PER_PART` với 90′ ở một phần duy nhất; `TEST-SP2E-02` có `matrix_year` 2025 |
+| `TEST-SP2E-03` | `SP2E_ANH_2026`: `SHARED`, một phần 60′, 9 nhóm có nhãn, không có nhóm Điền khuyết | `PER_PART`, 60′ ở một phần duy nhất; MĐ 30 + chùm 2×5 + ĐK 1 câu × 10 vị trí, có nhóm ĐK, không nhãn |
 | `TEST-THPTQG-02` | Đọc hiểu có phân bố độ khó `REFERENCE` 2/2/1, nhóm có `templateGroupCode`, `publishable = false` | không có phân bố độ khó, không `templateGroupCode`; cờ lấy từ mẫu lúc kiểm tra |
 | `TEST-THPTQG-03` | nhóm có `templateGroupCode` | không `templateGroupCode` |
 
