@@ -144,6 +144,83 @@ class ExamStructureExtendedContractIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
     }
 
+    @Test
+    void segmentsWithoutThePartTotalsOrWithABlankHeadingAreRejectedAtTheSegment() throws Exception {
+        JsonNode current = load(EXAM);
+        for (String missing : new String[] {"questionCount", "maxPoints"}) {
+            ArrayNode parts = current.path("parts").deepCopy();
+            ObjectNode part = (ObjectNode) parts.get(0);
+            addSegments(part);
+            part.remove(missing);
+            assertRejectedWithField(current, parts, "parts[0].displaySegments[1]",
+                    "questionCount".equals(missing) ? "SEGMENT_COVERAGE" : "SEGMENT_POINTS");
+        }
+        ArrayNode parts = current.path("parts").deepCopy();
+        ObjectNode part = (ObjectNode) parts.get(0);
+        addSegments(part);
+        ((ObjectNode) part.path("displaySegments").get(0)).put("name", " ");
+        assertRejectedWithField(current, parts, "parts[0].displaySegments[0]", "SEGMENT_INVALID");
+    }
+
+    @Test
+    void aMixedSetCannotAlsoDeclareAUniformChildTypeOrAnIllegalPositionalType() throws Exception {
+        JsonNode current = load(EXAM);
+        ArrayNode parts = current.path("parts").deepCopy();
+        ObjectNode block = mixedSet(new int[][] {{1, 2}, {3, 8}});
+        block.put("childAnswerType", "SINGLE_CHOICE");
+        ((ArrayNode) parts.get(0).path("sections").get(0).path("blocks")).add(block);
+        save(EXAM, current, parts, current.path("examQuotas")).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+
+        for (String illegal : new String[] {"QUESTION_SET", "CLOZE"}) {
+            ArrayNode other = current.path("parts").deepCopy();
+            ObjectNode set = mixedSet(new int[][] {{1, 2}, {3, 8}});
+            ((ObjectNode) set.path("childConditions").get(1)).put("answerType", illegal);
+            ((ArrayNode) other.get(0).path("sections").get(0).path("blocks")).add(set);
+            save(EXAM, current, other, current.path("examQuotas")).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        }
+        assertThat(load(EXAM).path("revision")).isEqualTo(current.path("revision"));
+    }
+
+    @Test
+    void anInvalidNestedShapeOrNegativeOptionsAreRejectedAtTheWriteBoundary() throws Exception {
+        JsonNode current = load(EXAM);
+        for (String shape : new String[] {"nested statements", "nested options", "outer options"}) {
+            ArrayNode parts = current.path("parts").deepCopy();
+            ObjectNode block = mixedSet(new int[][] {{1, 2}, {3, 8}});
+            switch (shape) {
+                case "nested statements" -> ((ObjectNode) block.path("childConditions").get(0).path("itemShape"))
+                        .put("statements", -1);
+                case "nested options" -> ((ObjectNode) block.path("childConditions").get(1).path("itemShape"))
+                        .put("options", -4);
+                default -> ((ObjectNode) block.path("itemShape")).put("options", -1);
+            }
+            ((ArrayNode) parts.get(0).path("sections").get(0).path("blocks")).add(block);
+            save(EXAM, current, parts, current.path("examQuotas")).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        }
+        assertThat(load(EXAM).path("revision")).isEqualTo(current.path("revision"));
+    }
+
+    private void addSegments(ObjectNode part) {
+        int count = part.path("questionCount").asInt();
+        BigDecimal half = part.path("maxPoints").decimalValue().divide(BigDecimal.valueOf(2));
+        int cut = count / 2;
+        part.putArray("displaySegments").add(segment("P1", 1, cut, half)).add(segment("P2", cut + 1, count, half));
+    }
+
+    private void assertRejectedWithField(JsonNode current, ArrayNode parts, String field, String code)
+            throws Exception {
+        ResultActions result = save(EXAM, current, parts, current.path("examQuotas"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        JsonNode body = mapper.readTree(result.andReturn().getResponse().getContentAsString());
+        assertThat(body.path("fieldErrors")).hasSize(1);
+        assertThat(body.path("fieldErrors").get(0).path("field").asText()).isEqualTo(field);
+        assertThat(body.path("fieldErrors").get(0).path("code").asText()).isEqualTo(code);
+    }
+
     private void assertSegments(JsonNode current, String reason, ObjectNode... segments) throws Exception {
         ArrayNode parts = current.path("parts").deepCopy();
         ArrayNode list = ((ObjectNode) parts.get(0)).putArray("displaySegments");

@@ -3431,15 +3431,16 @@ export interface components {
             deletable: boolean;
         };
         DisplaySegment: {
-            code?: string;
+            code: string;
             /** Format: int32 */
-            commandCount?: number;
+            commandCount: number;
             /** Format: int32 */
-            fromPosition?: number;
-            maxPoints?: number;
-            name?: string;
+            fromPosition: number;
+            maxPoints: number;
+            /** @description Tiêu đề hiển thị, không trống */
+            name: string;
             /** Format: int32 */
-            toPosition?: number;
+            toPosition: number;
         };
         Draft: {
             acceptedAnswers?: string[];

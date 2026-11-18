@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.domain;
 
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,6 +14,8 @@ public final class ExamStructureValidator {
     public static final int MAX_PATHS = 200;
     public static final int DEFAULT_MAX_TOPIC_QUOTAS = 8;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+    /** Not legal as a question-set child (QuestionBodyValidator, QUESTION_CHILD_TYPE_NOT_ALLOWED). */
+    private static final Set<QuestionType> NOT_CHILD_TYPES = EnumSet.of(QuestionType.QUESTION_SET, QuestionType.CLOZE);
 
     private ExamStructureValidator() {
     }
@@ -346,6 +349,7 @@ public final class ExamStructureValidator {
             DisplaySegment segment = segments.get(i);
             String field = base + "[" + i + "]";
             if (segment == null || segment.code() == null || segment.code().isBlank()
+                    || segment.name() == null || segment.name().isBlank()
                     || !codes.add(segment.code()) || segment.fromPosition() == null
                     || segment.toPosition() == null || segment.fromPosition() < 1
                     || segment.fromPosition() > segment.toPosition()
@@ -365,11 +369,17 @@ public final class ExamStructureValidator {
             total = total.add(segment.maxPoints());
         }
         String last = base + "[" + (segments.size() - 1) + "]";
-        if (part.questionCount() != null && next - 1 != part.questionCount()) {
+        if (part.questionCount() == null) {
+            segmentInvalid(last, "SEGMENT_COVERAGE", "Display segments need the part questionCount");
+        }
+        if (next - 1 != part.questionCount()) {
             segmentInvalid(last, "SEGMENT_COVERAGE", "Display segments cover " + (next - 1)
                     + " questions but the part has " + part.questionCount());
         }
-        if (part.maxPoints() != null && total.compareTo(part.maxPoints()) != 0) {
+        if (part.maxPoints() == null) {
+            segmentInvalid(last, "SEGMENT_POINTS", "Display segments need the part maxPoints");
+        }
+        if (total.compareTo(part.maxPoints()) != 0) {
             segmentInvalid(last, "SEGMENT_POINTS", "Display segment points sum to " + total.toPlainString()
                     + " but the part has " + part.maxPoints().toPlainString());
         }
@@ -394,6 +404,14 @@ public final class ExamStructureValidator {
         }
         if (block.questionType() != QuestionType.QUESTION_SET || block.setSize() == null) {
             invalid("blocks.childConditions", "typed child conditions require a question set with setSize");
+        }
+        if (block.childAnswerType() != null) {
+            invalid("blocks.childAnswerType", "a mixed set must leave childAnswerType blank");
+        }
+        for (ChildCondition condition : typed) {
+            if (NOT_CHILD_TYPES.contains(condition.answerType())) {
+                invalid("blocks.childConditions.answerType", "answerType is not a legal question set child type");
+            }
         }
         int next = 1;
         for (ChildCondition condition : typed) {

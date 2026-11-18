@@ -100,6 +100,98 @@ class ExamStructureExtendedContractTest {
     }
 
     @Test
+    void segmentsNeedBothPartTotalsAndErrorStaysOnTheLastSegment() {
+        List<DisplaySegment> segments = List.of(segment("P1", 1, 9, "50"), segment("P2", 10, 15, "100"));
+        assertThatThrownBy(() -> ExamStructureValidator.validate(documentWithSegments(segments, null,
+                new BigDecimal("150")))).isInstanceOfSatisfying(BusinessRuleException.class, ex -> {
+                    assertThat(ex.getCode()).isEqualTo("EXAM_STRUCTURE_INVALID");
+                    assertThat(ex.getFieldErrors()).extracting("field", "code")
+                            .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                                    "parts[0].displaySegments[1]", "SEGMENT_COVERAGE"));
+                });
+        assertThatThrownBy(() -> ExamStructureValidator.validate(documentWithSegments(segments, 15, null)))
+                .isInstanceOfSatisfying(BusinessRuleException.class, ex ->
+                        assertThat(ex.getFieldErrors()).extracting("field", "code")
+                                .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                                        "parts[0].displaySegments[1]", "SEGMENT_POINTS")));
+        assertThatThrownBy(() -> ExamStructureValidator.validate(documentWithSegments(segments, null, null)))
+                .isInstanceOf(BusinessRuleException.class);
+        assertThatCode(() -> ExamStructureValidator.validate(documentWithSegments(segments, 15,
+                new BigDecimal("150")))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void unsegmentedPartsDoNotNeedTheTotals() {
+        assertThatCode(() -> ExamStructureValidator.validate(documentWithSegments(List.of(), null, null)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void everySegmentMemberIsRequiredAndTheHeadingMustNotBeBlank() {
+        BigDecimal points = new BigDecimal("150");
+        List<DisplaySegment> invalid = List.of(
+                new DisplaySegment("P1", null, 1, 15, 15, points),
+                new DisplaySegment("P1", " ", 1, 15, 15, points),
+                new DisplaySegment(null, "Heading", 1, 15, 15, points),
+                new DisplaySegment("P1", "Heading", null, 15, 15, points),
+                new DisplaySegment("P1", "Heading", 1, null, 15, points),
+                new DisplaySegment("P1", "Heading", 1, 15, null, points),
+                new DisplaySegment("P1", "Heading", 1, 15, 15, null),
+                new DisplaySegment(null, null, null, null, null, null));
+        for (DisplaySegment segment : invalid) {
+            assertThatThrownBy(() -> ExamStructureValidator.validate(
+                    documentWithSegments(List.of(segment), 15, points)))
+                    .as(segment.toString())
+                    .isInstanceOfSatisfying(BusinessRuleException.class, ex -> {
+                        assertThat(ex.getCode()).isEqualTo("EXAM_STRUCTURE_INVALID");
+                        assertThat(ex.getFieldErrors()).extracting("field", "code")
+                                .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                                        "parts[0].displaySegments[0]", "SEGMENT_INVALID"));
+                    });
+        }
+        assertThatCode(() -> ExamStructureValidator.validate(documentWithSegments(
+                List.of(new DisplaySegment("P1", "Heading", 1, 15, 15, points)), 15, points)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void aUniformChildAnswerTypeCannotComeWithTypedPositionalConditions() {
+        List<ChildCondition> mix = List.of(typed(1, 2, QuestionType.TRUE_FALSE), typed(3, 8, QuestionType.SINGLE_CHOICE));
+        assertRule(documentWith(mixedSet(mix, QuestionType.SINGLE_CHOICE, null)), false);
+        assertRule(documentWith(mixedSet(mix, QuestionType.TRUE_FALSE, null)), false);
+        assertRule(documentWith(mixedSet(mix, null, null)), true);
+        // Old node-only documents keep their uniform type.
+        assertRule(documentWith(mixedSet(List.of(new ChildCondition(1, 2, List.of())),
+                QuestionType.SINGLE_CHOICE, null)), true);
+        assertRule(documentWith(mixedSet(List.of(), QuestionType.SINGLE_CHOICE, null)), true);
+    }
+
+    @Test
+    void positionalAnswerTypeMustBeLegalAsAQuestionSetChild() {
+        for (QuestionType illegal : List.of(QuestionType.QUESTION_SET, QuestionType.CLOZE)) {
+            assertRule(documentWith(mixedSet(List.of(typed(1, 8, illegal)))), false);
+            assertRule(documentWith(mixedSet(List.of(typed(1, 2, QuestionType.TRUE_FALSE), typed(3, 8, illegal)))),
+                    false);
+        }
+        for (QuestionType legal : List.of(QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE,
+                QuestionType.SHORT_ANSWER, QuestionType.TRUE_FALSE, QuestionType.MATCHING, QuestionType.ESSAY)) {
+            assertRule(documentWith(mixedSet(List.of(typed(1, 8, legal)))), true);
+        }
+    }
+
+    @Test
+    void negativeNestedShapeAndNegativeOptionsAreRejected() {
+        ChildCondition validTail = typed(3, 8, QuestionType.SINGLE_CHOICE);
+        for (ItemShape shape : List.of(new ItemShape(-1, null, null, null), new ItemShape(null, -1, null, null),
+                new ItemShape(null, null, -1, null), new ItemShape(null, null, null, -1))) {
+            ChildCondition bad = new ChildCondition(1, 2, List.of(), QuestionType.TRUE_FALSE, shape);
+            assertRule(documentWith(mixedSet(List.of(bad, validTail))), false);
+            assertRule(documentWith(mixedSet(List.of(), null, shape)), false);
+        }
+        assertRule(documentWith(mixedSet(List.of(), null, new ItemShape(null, null, null, 0))), true);
+    }
+
+    @Test
     void promptBasisIsReferenceOnlyForExamAndTopicQuotas() {
         for (QuotaEnforcement enforcement : QuotaEnforcement.values()) {
             boolean ok = enforcement == QuotaEnforcement.REFERENCE;
@@ -163,9 +255,14 @@ class ExamStructureExtendedContractTest {
     }
 
     private static QuestionBlock mixedSet(List<ChildCondition> conditions) {
-        return new QuestionBlock("b", "Bài đọc", QuestionType.QUESTION_SET, null, 1, 8, null, null, null, null,
-                false, null, List.of(), null, true, false, List.of(), conditions, null, List.of(), false,
-                List.of(), null);
+        return mixedSet(conditions, null, null);
+    }
+
+    private static QuestionBlock mixedSet(List<ChildCondition> conditions, QuestionType childAnswerType,
+            ItemShape itemShape) {
+        return new QuestionBlock("b", "Bài đọc", QuestionType.QUESTION_SET, null, 1, 8, null, null,
+                childAnswerType, null, false, null, List.of(), null, true, false, List.of(), conditions, itemShape,
+                List.of(), false, List.of(), null);
     }
 
     private static ExamStructureDocument documentWith(QuestionBlock block) {
@@ -175,9 +272,14 @@ class ExamStructureExtendedContractTest {
     }
 
     private static ExamStructureDocument documentWithSegments(List<DisplaySegment> segments) {
+        return documentWithSegments(segments, 15, new BigDecimal("150"));
+    }
+
+    private static ExamStructureDocument documentWithSegments(List<DisplaySegment> segments, Integer questionCount,
+            BigDecimal maxPoints) {
         ExamSection section = new ExamSection("s", "ANH", 15, null, null, null, null, List.of());
-        return new ExamStructureDocument(List.of(new ExamPart("p", 1, "part", null, 15, null, null, null,
-                new BigDecimal("150"), List.of(section), List.of(), List.of(), null, segments)));
+        return new ExamStructureDocument(List.of(new ExamPart("p", 1, "part", null, questionCount, null, null, null,
+                maxPoints, List.of(section), List.of(), List.of(), null, segments)));
     }
 
     static ExamStructureDocument fullDocument() {
