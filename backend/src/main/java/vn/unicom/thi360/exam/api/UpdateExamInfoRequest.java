@@ -41,6 +41,13 @@ public record UpdateExamInfoRequest(
         @Schema(description = "Thang điểm; phải dương")
         @Positive
         BigDecimal maxScore,
+        @Schema(description = "RAW | LINEAR", allowableValues = {"RAW", "LINEAR"})
+        String practiceScoring,
+        @Schema(description = "Thang điểm quy chiếu khi quy đổi")
+        @Positive
+        BigDecimal referenceMax,
+        @Schema(description = "Xác nhận quy đổi điểm sang LINEAR")
+        Boolean confirmScoring,
         @Schema(description = "Mô tả; chuỗi trống → xóa")
         @Size(max = 4000)
         String description,

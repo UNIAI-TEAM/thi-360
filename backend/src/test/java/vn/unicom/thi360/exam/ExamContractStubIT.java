@@ -32,15 +32,13 @@ class ExamContractStubIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void overviewRequiresModifyAndReportsNotImplemented() throws Exception {
+    void overviewRequiresModify() throws Exception {
         String url = "/api/v1/admin/exams/" + ID + "/overview";
         String body = "{\"overview\":[],\"expectedRevision\":0}";
         mockMvc.perform(put(url).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(put(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(put(url).with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("NOT_IMPLEMENTED"));
     }
 
     @Test

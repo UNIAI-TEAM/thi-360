@@ -41,6 +41,25 @@ public class ExamTemplateService {
                 .orElse(null);
     }
 
+    /** Read recorded provenance even after a template is retired. */
+    @Transactional(readOnly = true)
+    ExamTemplate findProvenance(String templateCode) {
+        if (templateCode == null || templateCode.isBlank()) return null;
+        return templateRepository.findById(templateCode.trim()).orElse(null);
+    }
+
+    /** Select only the configured default; review templates are shared by subjects. */
+    @Transactional(readOnly = true)
+    public ExamTemplate findDefault(String kindCode, String scope, String partCode,
+            String subjectCode, String buildMode) {
+        return templateRepository.findByKindCodeAndScopeAndActiveTrue(kindCode, scope).stream()
+                .filter(t -> t.isDefaultTemplate() && buildMode.equals(t.getBuildMode()))
+                .filter(t -> java.util.Objects.equals(partCode, t.getPartCode()))
+                .filter(t -> java.util.Objects.equals(subjectCode, t.getSubjectCode())
+                        || ("REVIEW".equals(buildMode) && t.getSubjectCode() == null))
+                .findFirst().orElse(null);
+    }
+
     /**
      * Mẫu mới nhất khớp kỳ thi + phạm vi; khi phạm vi PART/SUBJECT khớp thêm phần/môn.
      * Ưu tiên mẫu có {@code structureYear} bằng {@code year} (nếu truyền), sau đó năm lớn nhất.
