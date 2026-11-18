@@ -46,7 +46,7 @@ export function BlockRadioGroup<T extends string>({ legend, value, options, onCh
                 data-field={index === 0 ? anchor : undefined}
                 className={cn("size-4 shrink-0 accent-primary-fill", focusRing)}
               />
-              <span className={cn("font-semibold", checked ? "text-primary-text" : "text-text")}>{option.label}</span>
+              <span className={cn("font-semibold whitespace-nowrap", checked ? "text-primary-text" : "text-text")}>{option.label}</span>
             </label>
           );
         })}

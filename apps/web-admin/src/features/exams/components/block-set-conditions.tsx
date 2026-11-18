@@ -111,7 +111,10 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
                 <th
                   key={column}
                   scope="col"
-                  className="border-b border-border bg-subtle px-3 py-2 text-left text-caption font-semibold whitespace-nowrap text-text-muted"
+                  className={cn(
+                    "border-b border-border bg-subtle px-3 py-2 text-left text-caption font-semibold whitespace-nowrap text-text-muted",
+                    column === "set" && "sticky left-0 z-10",
+                  )}
                 >
                   {t(`columns.${column}`)}
                 </th>
@@ -127,7 +130,13 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
               const nodeCount = slot.knowledgeScope?.nodeIds.length ?? 0;
               return (
                 <tr key={index} className={cn(open && "bg-primary-50")}>
-                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium whitespace-nowrap text-text">
+                  <th
+                    scope="row"
+                    className={cn(
+                      "sticky left-0 z-10 border-b border-border px-3 py-2 text-left font-medium whitespace-nowrap text-text",
+                      open ? "bg-primary-50" : "bg-surface",
+                    )}
+                  >
                     {t("setName", { index })}
                   </th>
                   <td className="border-b border-border px-3 py-2 align-top">
