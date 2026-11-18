@@ -232,6 +232,108 @@ class ExamCheckTemplateRulesTests {
         assertThat(extra.getFirst().path("partId").asText()).isEqualTo("p2");
     }
 
+    // ---- copied sections are matched by content, never by array position ---------------------------------
+
+    private static final String SIGNED_TEMPLATE = """
+            {"parts":[{"id":"p","name":"Thinking","questionCount":30,"sections":[
+              {"id":"s-logic","subjectCode":"SCIENTIFIC_THINKING","questionCount":12,
+               "knowledgeScope":{"competencyCodes":["VACT-TD-LOGIC"]},
+               "matrix":{"mode":"SEPARATE","unit":"COUNT","gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE",
+                         "byDifficulty":[{"code":"NB","value":1},{"code":"TH","value":4},{"code":"VD","value":7}]},
+               "blocks":[{"id":"b-logic","templateGroupCode":"VACT_LOGIC","questionType":"QUESTION_SET",
+                          "childAnswerType":"SINGLE_CHOICE","setCount":4,"setSize":3}]},
+              {"id":"s-reason","subjectCode":"SCIENTIFIC_THINKING","questionCount":18,
+               "knowledgeScope":{"competencyCodes":["VACT-TD-SL"]},
+               "blocks":[{"id":"b-reason","templateGroupCode":"VACT_SCIENCE","questionType":"QUESTION_SET",
+                          "childAnswerType":"SINGLE_CHOICE","setCount":6,"setSize":3}]}
+            ]}]}
+            """;
+
+    /** Duplicate of the signed template (every id regenerated), then edited like a PUT of the working copy. */
+    private ExamStructureDocument duplicateAndEdit(java.util.function.Consumer<ObjectNode> edit) throws Exception {
+        ObjectNode tree = mapper.valueToTree(ExamStructureOps.regenerateIds(document(SIGNED_TEMPLATE)));
+        edit.accept(tree);
+        return mapper.treeToValue(tree, ExamStructureDocument.class);
+    }
+
+    private static ObjectNode sectionOf(ObjectNode tree, String competency) {
+        for (JsonNode section : tree.at("/parts/0/sections")) {
+            if (competency.equals(section.at("/knowledgeScope/competencyCodes/0").asText())) return (ObjectNode) section;
+        }
+        throw new AssertionError(competency);
+    }
+
+    private static void resize(ObjectNode section, int count, int sets) {
+        section.put("questionCount", count);
+        ((ObjectNode) section.at("/blocks/0")).put("setCount", sets);
+    }
+
+    private static void swapOrder(ObjectNode tree) {
+        ArrayNode sections = (ArrayNode) tree.at("/parts/0/sections");
+        JsonNode first = sections.remove(0);
+        sections.add(first);
+    }
+
+    private List<ObjectNode> signedLocks(ExamStructureDocument copy) throws Exception {
+        return of(rulesWith(copy, SIGNED_TEMPLATE).common(), "STRUCTURE_COUNT_LOCKED");
+    }
+
+    @Test
+    void reorderedCopyWithSwappedCountsIsLockedAtTheCopiedLogicSection() throws Exception {
+        String[] logicId = new String[1];
+        ExamStructureDocument copy = duplicateAndEdit(tree -> {
+            resize(sectionOf(tree, "VACT-TD-LOGIC"), 18, 6);
+            resize(sectionOf(tree, "VACT-TD-SL"), 12, 4);
+            logicId[0] = sectionOf(tree, "VACT-TD-LOGIC").path("id").asText();
+            swapOrder(tree);
+        });
+        List<ObjectNode> locked = signedLocks(copy);
+        assertThat(locked).isNotEmpty();
+        ObjectNode atLogic = locked.stream().filter(issue -> logicId[0].equals(issue.path("sectionId").asText(null)))
+                .findFirst().orElseThrow(() -> new AssertionError("no lock at the copied Logic section: " + locked));
+        assertThat(atLogic.path("location").path("sectionId").asText()).isEqualTo(logicId[0]);
+        assertThat(atLogic.path("required").asInt()).isEqualTo(12);
+        assertThat(atLogic.path("available").asInt()).isEqualTo(18);
+    }
+
+    @Test
+    void copiesThatKeepEveryCountHaveNoLockWhateverTheOrder() throws Exception {
+        assertThat(signedLocks(duplicateAndEdit(tree -> { }))).isEmpty();
+        assertThat(signedLocks(duplicateAndEdit(ExamCheckTemplateRulesTests::swapOrder))).isEmpty();
+    }
+
+    @Test
+    void removingTheCompetencyFilterOfALockedSectionIsLocked() throws Exception {
+        ExamStructureDocument copy = duplicateAndEdit(tree ->
+                ((ObjectNode) sectionOf(tree, "VACT-TD-LOGIC")).remove("knowledgeScope"));
+        assertThat(signedLocks(copy)).isNotEmpty();
+    }
+
+    @Test
+    void changingTheDifficultySplitInsideACopiedLockedSectionIsAllowed() throws Exception {
+        ExamStructureDocument copy = duplicateAndEdit(tree -> {
+            ArrayNode values = (ArrayNode) sectionOf(tree, "VACT-TD-LOGIC").at("/matrix/byDifficulty");
+            ((ObjectNode) values.get(0)).put("value", 2);
+            ((ObjectNode) values.get(2)).put("value", 6);
+            swapOrder(tree);
+        });
+        assertThat(signedLocks(copy)).isEmpty();
+    }
+
+    @Test
+    void identicalSignaturesWithCountsThatCannotBeMatchedCloseTheCheck() throws Exception {
+        ObjectNode template = (ObjectNode) mapper.readTree(SIGNED_TEMPLATE);
+        for (JsonNode section : template.at("/parts/0/sections")) ((ObjectNode) section).remove("knowledgeScope");
+        for (JsonNode section : template.at("/parts/0/sections")) ((ObjectNode) section.at("/blocks/0")).remove("templateGroupCode");
+        ObjectNode tree = mapper.valueToTree(ExamStructureOps.regenerateIds(mapper.treeToValue(template, ExamStructureDocument.class)));
+        resize((ObjectNode) tree.at("/parts/0/sections/0"), 15, 5);
+        resize((ObjectNode) tree.at("/parts/0/sections/1"), 15, 5);
+        List<ObjectNode> locked = of(new ExamCheckRules(mapper, exam(30), mapper.treeToValue(tree, ExamStructureDocument.class),
+                Map.of(), Map.of(), new ExamCheckRules.TemplateFacts(null, mapper.treeToValue(template, ExamStructureDocument.class)))
+                .common(), "STRUCTURE_COUNT_LOCKED");
+        assertThat(locked).isNotEmpty();
+    }
+
     private static final String REMAINDER_TEMPLATE = """
             {"parts":[{"id":"p","name":"Vietnamese","questionCount":30,"sections":[
               {"id":"s-vn","subjectCode":"VIETNAMESE","questionCount":30,
