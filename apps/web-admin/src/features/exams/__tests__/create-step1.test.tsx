@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContentReference } from "@/features/content/types";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
@@ -12,15 +13,15 @@ import { examDetailWire } from "./fake-exams-server";
 const referenceMock = vi.hoisted(() => ({
   error: null as Error | null,
   /** Sửa danh mục trước khi trả (hồ sơ kỳ thi mới của BE-13 chưa có trong dữ liệu mẫu). */
-  patch: null as ((reference: ContentReference) => void) | null,
+  patch: null as ((reference: ContentReference, locale: string) => void) | null,
 }));
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
   const { getContentReferenceFixture } = await import("@/test/fixtures/content-reference");
-  const getContentReference = async () => {
+  const getContentReference = async (locale?: "vi" | "en") => {
     if (referenceMock.error) throw referenceMock.error;
-    const reference = await getContentReferenceFixture();
-    referenceMock.patch?.(reference);
+    const reference = await getContentReferenceFixture(locale);
+    referenceMock.patch?.(reference, locale ?? "vi");
     return reference;
   };
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
@@ -490,22 +491,26 @@ const BCA_TEMPLATES = [
 
 
 /** Hồ sơ kỳ thi mới của BE-13 (chưa có trong dữ liệu mẫu): V-ACT ba phạm vi, THPTQG thêm Theo phần, hai môn V-ACT. */
-function patchNewProfiles(reference: ContentReference) {
+function patchNewProfiles(reference: ContentReference, locale: string) {
   reference.examKinds.find((kind) => kind.code === "VACT")!.scopes = ["FULL", "PART", "SUBJECT"];
   reference.examKinds.find((kind) => kind.code === "THPTQG")!.scopes = ["SUBJECT", "PART"];
-  reference.subjects.push({ ...reference.subjects[0]!, code: "ANH", name: "Tiếng Anh" }, { ...reference.subjects[0]!, code: "TOAN", name: "Toán học" });
+  const en = locale === "en";
+  reference.subjects.push(
+    { ...reference.subjects[0]!, code: "ANH", name: en ? "English" : "Tiếng Anh" },
+    { ...reference.subjects[0]!, code: "TOAN", name: en ? "Mathematics" : "Toán học" },
+  );
 }
 
 /** Trang với mẫu máy chủ giả đưa vào; POST /exams trả 201 để thấy bài vẫn tạo được. */
-async function renderWithTemplates(templates: Wire[]) {
+async function renderWithTemplates(templates: Wire[], locale: "vi" | "en" = "vi") {
   referenceMock.patch = patchNewProfiles;
   backend = new ExamsBackend();
   backend.server.on("GET", TEMPLATES_PATH, { status: 200, body: templates });
   backend.server.on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() });
   backend.install();
   const user = userEvent.setup();
-  renderWithProviders(<CreateExamPage />);
-  await screen.findByRole("form", { name: "Tạo bài thi" });
+  renderWithProviders(<CreateExamPage />, locale === "en" ? { locale, messages: en } : {});
+  await screen.findByRole("form", { name: locale === "en" ? "Create exam" : "Tạo bài thi" });
   return user;
 }
 const chooseScope = (name: RegExp) => screen.getByRole("radio", { name });
@@ -572,6 +577,68 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
     expect(duration).toHaveAccessibleDescription(error.textContent!);
     expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
   }, 20_000);
+
+  describe("tên phần và dòng V-ACT theo ngôn ngữ (FE5-V1-01)", () => {
+    // Tên của mẫu V-ACT thật là tiếng Việt; chữ hiện ra phải lấy từ danh mục (môn, năng lực) và bốn thông điệp phần.
+    const VI_NAMES = /Sử dụng ngôn ngữ|Tư duy khoa học|Logic và phân tích|Suy luận khoa học|Toán học|Tiếng Việt|Tiếng Anh/;
+    const pickKindEn = async (user: UserEvent) => {
+      await user.click(screen.getByRole("combobox", { name: /^Exam type/ }));
+      await user.click(await screen.findByRole("option", { name: /\(V-ACT\)$/ }));
+    };
+    /** Chữ của bảng tổng quan: ô tên dòng cùng nhãn truy cập của mọi ô số trong bảng. */
+    const tableText = (table: HTMLElement) => [
+      ...Array.from(table.querySelectorAll("tbody tr")).map((row) => row.querySelector("td")?.textContent ?? ""),
+      ...Array.from(table.querySelectorAll("[aria-label]")).map((node) => node.getAttribute("aria-label") ?? ""),
+    ];
+
+    it("tiếng Anh, toàn bài: dòng phần, dòng tiểu mục và nhãn truy cập không còn tên tiếng Việt", async () => {
+      const user = await renderWithTemplates(VACT_TEMPLATES, "en");
+      await pickKindEn(user);
+      const table = (await screen.findByRole("region", { name: "Exam structure overview table" })).querySelector("table")!;
+      await within(table).findByRole("textbox", { name: "Points of Language use" });
+      const text = tableText(table);
+      for (const name of ["Language use", "Mathematics", "Scientific thinking", "Vietnamese", "English", "Logic and data analysis", "Scientific reasoning"]) {
+        expect(text.some((entry) => entry.includes(name)), name).toBe(true);
+      }
+      expect(text.filter((entry) => VI_NAMES.test(entry))).toEqual([]);
+    }, 20_000);
+
+    it("tiếng Anh, Theo phần: thẻ phần, dòng phần và tiểu mục không còn tên tiếng Việt", async () => {
+      const user = await renderWithTemplates(VACT_TEMPLATES, "en");
+      await pickKindEn(user);
+      await user.click(screen.getByRole("radio", { name: /^By part/ }));
+      const cards = within(await screen.findByRole("group", { name: /^Part/ })).getAllByRole("radio").map((radio) => radio.closest("label")?.textContent);
+      expect(cards).toEqual(["Language use", "Scientific thinking", "Logic and data analysis", "Scientific reasoning"]);
+      const table = screen.getByRole("region", { name: "Exam structure overview table" }).querySelector("table")!;
+      await within(table).findByRole("textbox", { name: "Points of Language use" });
+      expect(tableText(table).filter((entry) => VI_NAMES.test(entry))).toEqual([]);
+      await user.click(screen.getByRole("radio", { name: "Logic and data analysis" }));
+      await within(table).findByRole("textbox", { name: "Points of Logic and data analysis" });
+      expect(tableText(table).filter((entry) => VI_NAMES.test(entry))).toEqual([]);
+    }, 20_000);
+
+    it("tiếng Anh, Theo môn: dòng phần của môn lấy tên môn từ danh mục", async () => {
+      const user = await renderWithTemplates(VACT_TEMPLATES, "en");
+      await pickKindEn(user);
+      await user.click(screen.getByRole("radio", { name: /^By subject/ }));
+      await user.click(screen.getByRole("combobox", { name: /^Subject/ }));
+      await user.click(await screen.findByRole("option", { name: "Mathematics" }));
+      const table = screen.getByRole("region", { name: "Exam structure overview table" }).querySelector("table")!;
+      await within(table).findByRole("textbox", { name: "Questions of Mathematics" });
+      expect(tableText(table).filter((entry) => VI_NAMES.test(entry))).toEqual([]);
+    }, 20_000);
+
+    it("tiếng Việt giữ tên tiếng Việt ở dòng phần, tiểu mục và nhãn truy cập", async () => {
+      const user = await renderWithTemplates(VACT_TEMPLATES);
+      await pickKind(user, "V-ACT");
+      const table = (await screen.findByRole("region", { name: "Bảng cấu trúc tổng quan của bài thi" })).querySelector("table")!;
+      await within(table).findByRole("textbox", { name: "Điểm của Sử dụng ngôn ngữ" });
+      const text = tableText(table);
+      for (const name of ["Sử dụng ngôn ngữ", "Toán học", "Tư duy khoa học", "Tiếng Việt", "Tiếng Anh", "Logic và phân tích số liệu", "Suy luận khoa học"]) {
+        expect(text.some((entry) => entry.includes(name)), name).toBe(true);
+      }
+    }, 20_000);
+  });
 
   it("THPTQG Ngữ văn: báo toàn bộ môn là tự luận, bài nháp vẫn tạo được", async () => {
     const user = await renderWithTemplates(THPTQG_TEMPLATES);

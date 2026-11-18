@@ -32,8 +32,11 @@ export interface ExamOverviewTableProps {
   issues: ReadonlyMap<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>;
   /** Tra tên môn từ `subjectCode` cho dòng môn thụt vào. */
   subjectName: (code: string) => string;
-  /** Tên hiển thị của dòng tiểu mục (V-ACT: Logic, Suy luận tách theo năng lực); mặc định `subjectName`. */
-  sectionLabel?: (row: OverviewRow) => string;
+  /**
+   * Tên hiển thị của dòng phần hoặc tiểu mục theo ngôn ngữ đang chọn (V-ACT: tên phần, môn, Logic, Suy luận tách theo
+   * năng lực); `undefined` thì dòng tiểu mục dùng `subjectName`, dòng phần dùng tên của mẫu.
+   */
+  rowLabel?: (row: OverviewRow) => string | undefined;
   /** Ô thời lượng chung ở cuối bảng; bỏ trống khi `timing = PER_PART`. */
   sharedDuration?: OverviewNumberField;
   /** Ô điểm tối đa của bài khi bảng không có cột Điểm (không có mẫu chia điểm theo phần). */
@@ -132,7 +135,7 @@ export function ExamOverviewTable({
   onCellChange,
   issues,
   subjectName,
-  sectionLabel,
+  rowLabel,
   sharedDuration,
   maxScore,
 }: ExamOverviewTableProps) {
@@ -142,7 +145,7 @@ export function ExamOverviewTable({
   const showDuration = timing === "PER_PART";
   const byKey = new Map(rows.map((row) => [row.key, row]));
   const label = (row: OverviewRow) =>
-    row.kind === "section" ? (sectionLabel?.(row) ?? subjectName(row.subjectCode)) : row.label;
+    rowLabel?.(row) ?? (row.kind === "section" ? subjectName(row.subjectCode) : row.label);
   const countOf = (row: OverviewRow): number | null => {
     const text = row.questionCount.trim();
     if (!text) return null;

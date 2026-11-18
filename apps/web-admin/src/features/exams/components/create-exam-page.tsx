@@ -49,6 +49,7 @@ import {
   type OverviewRow,
   overviewTotals,
   rowsDifferFromTemplate,
+  sectionCompetency,
   updateRowCell,
   validateOverview,
 } from "../create-exam-overview";
@@ -183,6 +184,11 @@ const formatScore = (value: number | null): string => (value == null ? "" : Stri
  * (R-109: không hiện mã thô). Năng lực không thuộc bảng này rơi về tên môn của mục.
  */
 const VACT_COMPETENCY_PART: Record<string, string> = { "VACT-TD-LOGIC": "LOGIC", "VACT-TD-SL": "REASONING" };
+/** Phần nhiều tiểu mục của V-ACT: mã năng lực các mục cùng tiền tố thì phần lấy tên thông điệp (Sử dụng ngôn ngữ, Tư duy khoa học). */
+const VACT_COMPETENCY_GROUP: Array<[prefix: string, part: string]> = [
+  ["VACT-NN-", "LANGUAGE"],
+  ["VACT-TD-", "THINKING"],
+];
 
 interface CreateExamFormProps {
   /** Mẫu cấu trúc; rỗng khi chưa tải được (`templatesStatus` khác `ready`). */
@@ -292,10 +298,37 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const vact = selection.kind === "VACT";
   const showPartPercent = lockedCounts && vact && (template?.parts.length ?? 0) > 1;
   const showPercents = showPartPercent || (vact && selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
-  /** Dòng tiểu mục V-ACT: mục cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn. */
-  const sectionLabel = useCallback(
-    (row: OverviewRow) => partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode),
-    [partNames],
+  /**
+   * Tên dòng V-ACT theo ngôn ngữ đang chọn, dựng từ mã năng lực và mã môn (không lấy tên tiếng Việt lưu trong mẫu): mục
+   * cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn trong danh mục. Dòng phần một mục
+   * lấy tên của mục đó; phần nhiều mục lấy tên nhóm năng lực. Không có khóa thì để `undefined`: giữ tên của mẫu.
+   */
+  const rowLabel = useCallback(
+    (row: OverviewRow): string | undefined => {
+      if (row.kind === "section") {
+        return partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode);
+      }
+      if (!vact || row.kind !== "part") return undefined;
+      const sections = template?.parts[Number(row.key.slice(2))]?.sections ?? [];
+      const subjectOf = (code: string) => {
+        const name = lookup.subject(code);
+        return name === code ? undefined : name;
+      };
+      if (sections.length === 1) {
+        const only = sections[0]!;
+        const competency = sectionCompetency(only);
+        return (competency && VACT_COMPETENCY_PART[competency] && partNames.partName(VACT_COMPETENCY_PART[competency])) || subjectOf(only.subjectCode);
+      }
+      const groups = new Set(
+        sections.map((section) => {
+          const competency = sectionCompetency(section) ?? "";
+          return VACT_COMPETENCY_GROUP.find(([prefix]) => competency.startsWith(prefix))?.[1];
+        }),
+      );
+      const [group] = groups;
+      return groups.size === 1 && group ? partNames.partName(group) : undefined;
+    },
+    [partNames, lookup, vact, template],
   );
   // H35: bài riêng của V-ACT, bài theo phần và bài ôn của THPTQG không có thời lượng mặc định (mẫu để trống) — lỗi
   // đặt ở ô thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung.
@@ -430,7 +463,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     const row = rows.find((item) => item.key === issue.rowKey);
     return {
       path: `${issue.rowKey}.${issue.field}`,
-      field: row ? `${row.kind === "section" ? subjectName(row.subjectCode) : row.label}` : tOverview("total"),
+      field: row ? (rowLabel(row) ?? (row.kind === "section" ? subjectName(row.subjectCode) : row.label)) : tOverview("total"),
       message: issueText(issue),
     };
   });
@@ -671,7 +704,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 onCellChange={onCellChange}
                 issues={cellIssues}
                 subjectName={subjectName}
-                sectionLabel={sectionLabel}
+                rowLabel={rowLabel}
                 sharedDuration={{
                   value: sharedText,
                   error: formState.errors.sharedDuration ? durationError : undefined,

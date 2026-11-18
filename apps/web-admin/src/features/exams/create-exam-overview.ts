@@ -78,7 +78,7 @@ function partRow(part: ExamTemplate["parts"][number], index: number): OverviewRo
 }
 
 /** Năng lực đầu tiên của mục: phạm vi của mục, không thì của nhóm đầu (V-ACT hai mục cùng môn SCIENTIFIC_THINKING). */
-function sectionCompetency(section: ExamTemplateSection | undefined): string | undefined {
+export function sectionCompetency(section: ExamTemplateSection | undefined): string | undefined {
   return (
     section?.knowledgeScope?.competencyCodes?.[0] ??
     section?.blocks?.find((block) => block.knowledgeScope?.competencyCodes?.length)?.knowledgeScope?.competencyCodes?.[0]
