@@ -1084,3 +1084,5 @@ SELECT t.question_id, t.tag_item_id FROM seed_2b_question_tags t
 WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = t.question_id)
    OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = t.question_id)
 ON CONFLICT DO NOTHING;
+
+DROP TABLE seed_be14_classification;
