@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.exam.application.SolverInputBuilder;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
+import vn.unicom.thi360.exam.domain.solver.PathCandidate;
 import vn.unicom.thi360.exam.domain.solver.SolvePart;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -308,6 +309,130 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
                 default -> 4 + 4 + 5 + 4;
             });
         }
+    }
+
+    /**
+     * R1-1/R1-2: the HTTP count query maps childConditions[].answerType, childConditions[].itemShape
+     * and itemShape.options onto the source filter. Discriminating fixtures: every total below is
+     * the exact set of matching units, so a mapping that dropped a field returns a different total.
+     * Each total must also equal the units the solver receives for the same group.
+     */
+    @Test
+    void countEndpointHonoursChildAnswerTypeChildItemShapeAndOptionCount() throws Exception {
+        var subject = subject();
+        set(subject, mixed(TF4), false);                          // 8: TF4 x2 + SC4 x6
+        set(subject, mixed(TF3), false);                          // 8: TF3 x2 + SC4 x6
+        set(subject, List.of(new Child("SINGLE_CHOICE", SC4),
+                new Child("SINGLE_CHOICE", SC5),
+                new Child("SINGLE_CHOICE", SC4)), false);         // 3
+        set(subject, List.of(new Child("TRUE_FALSE", TF3),
+                new Child("TRUE_FALSE", TF3),
+                new Child("SINGLE_CHOICE", SC4),
+                new Child("SINGLE_CHOICE", SC5),
+                new Child("SINGLE_CHOICE", SC4),
+                new Child("SINGLE_CHOICE", SC4)), false);         // 6
+        set(subject, singles(4), false);                          // 4: the only set whose every child has four options
+        // Type-only positions 1-2 accept every set whose first two children are true/false.
+        String typeOnly = "\"childConditions\":[{\"from\":1,\"to\":2,\"answerType\":\"TRUE_FALSE\"}]";
+        assertCount(subject, "\"questionType\":\"QUESTION_SET\"," + typeOnly, 8 + 8 + 6);
+        assertSolverUnits(subject, "{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":1,"
+                + "\"setCount\":1,\"setSize\":8," + typeOnly + "}", 8 + 8 + 6);
+        // Type plus shape at the same positions: only the four-statement sets survive.
+        String typeAndShape = "\"childConditions\":[{\"from\":1,\"to\":2,\"answerType\":\"TRUE_FALSE\","
+                + "\"itemShape\":{\"statements\":4}}]";
+        assertCount(subject, "\"questionType\":\"QUESTION_SET\"," + typeAndShape, 8);
+        assertSolverUnits(subject, "{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":1,"
+                + "\"setCount\":1,\"setSize\":8," + typeAndShape + "}", 8);
+        String threeStatements = typeAndShape.replace("\"statements\":4", "\"statements\":3");
+        assertCount(subject, "\"questionType\":\"QUESTION_SET\"," + threeStatements, 8 + 6);
+        // Shape without a type at position 4: the sets whose fourth child has four options survive.
+        // The five-option fourth child (set 4) and the three-child set are rejected.
+        String shapeOnly = "\"childConditions\":[{\"from\":4,\"to\":4,"
+                + "\"itemShape\":{\"options\":4}}]";
+        assertCount(subject, "\"questionType\":\"QUESTION_SET\"," + shapeOnly, 8 + 8 + 4);
+        assertSolverUnits(subject, "{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":1,"
+                + "\"setCount\":1,\"setSize\":8," + shapeOnly + "}", 8 + 8 + 4);
+        // The group's own itemShape applies to every child of a set: only the all-four-option set matches.
+        assertCount(subject, "\"questionType\":\"QUESTION_SET\",\"itemShape\":{\"options\":4}", 4);
+        assertSolverUnits(subject, "{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":1,"
+                + "\"setCount\":1,\"setSize\":4,\"itemShape\":{\"options\":4}}", 4);
+        assertCount(subject, "\"questionType\":\"QUESTION_SET\",\"itemShape\":{\"options\":5}", 0);
+    }
+
+    /** R1-1: option count on a single question, sent through the HTTP count query. */
+    @Test
+    void countEndpointHonoursItemShapeOptionsOnSingles() throws Exception {
+        var subject = subject();
+        single(subject, SC4, 1);
+        single(subject, SC4, 1);
+        single(subject, SC5, 1);
+        assertCount(subject, "\"questionType\":\"SINGLE_CHOICE\",\"itemShape\":{\"options\":4}", 2);
+        assertSolverUnits(subject, "{\"id\":\"b\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1,"
+                + "\"itemShape\":{\"options\":4}}", 2);
+        assertCount(subject, "\"questionType\":\"SINGLE_CHOICE\",\"itemShape\":{\"options\":5}", 1);
+    }
+
+    /** R1-1: count-subject unions overlapping group sources; each unit is counted once. */
+    @Test
+    void countSubjectUnionsOverlappingGroupSources() throws Exception {
+        var subject = subject();
+        set(subject, singles(4), false);                          // 4 units, matches groups A and B
+        set(subject, singles(3), false);                          // 3 units, matches groups A and B
+        set(subject, List.of(new Child("SINGLE_CHOICE", SC4),
+                new Child("SINGLE_CHOICE", SC5),
+                new Child("SINGLE_CHOICE", SC4)), false);         // 3: type matches A, shape fails B
+        set(subject, mixed(TF4), false);                          // 8, matches no group
+        single(subject, SC4, 1);
+        single(subject, SC4, 1);                                  // 2 units, group C only
+        String groups = "["
+                + "{\"subjectCode\":\"" + subject.code() + "\",\"questionType\":\"QUESTION_SET\","
+                + " \"childConditions\":[{\"from\":1,\"to\":3,\"answerType\":\"SINGLE_CHOICE\"}]},"
+                + "{\"subjectCode\":\"" + subject.code() + "\",\"questionType\":\"QUESTION_SET\","
+                + " \"itemShape\":{\"options\":4}},"
+                + "{\"subjectCode\":\"" + subject.code() + "\",\"questionType\":\"SINGLE_CHOICE\"}]";
+        var result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/available-questions/count-subject")
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"subjectCode\":\"" + subject.code() + "\",\"groups\":" + groups + "}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(result.path("total").asLong()).isEqualTo(4 + 3 + 3 + 2);
+        assertThat(result.path("commandCount").asLong()).isEqualTo(4 + 3 + 3 + 2);
+        // Parity: the same union is the distinct set of units the solver receives for the groups.
+        var input = builder.build(null, new ExamStructureCodec(mapper).read(document(subject, 1, null,
+                "{\"id\":\"a\",\"questionType\":\"QUESTION_SET\",\"questionCount\":1,\"setCount\":1,"
+                        + "\"setSize\":3,\"childConditions\":[{\"from\":1,\"to\":3,"
+                        + "\"answerType\":\"SINGLE_CHOICE\"}]},"
+                + "{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":1,\"setCount\":1,"
+                        + "\"setSize\":3,\"itemShape\":{\"options\":4}},"
+                + "{\"id\":\"c\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}")));
+        var fixed = (SolvePart.Fixed) input.parts().getFirst();
+        var distinct = new java.util.HashSet<String>();
+        for (var group : fixed.sections().getFirst().groups()) {
+            for (PathCandidate candidate : input.candidates().candidatesFor(group)) {
+                for (var unit : candidate.units()) {
+                    distinct.add(unit.childId() == null ? candidate.questionId() : unit.childId());
+                }
+            }
+        }
+        assertThat(distinct).hasSize(4 + 3 + 3 + 2);
+    }
+
+    private void assertCount(Subject subject, String filter, long expected) throws Exception {
+        var response = mockMvc.perform(post("/api/v1/admin/exams/available-questions/count")
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"subjectCode\":\"" + subject.code() + "\"," + filter + "}"))
+                .andReturn().getResponse();
+        assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(200);
+        assertThat(mapper.readTree(response.getContentAsString()).path("total").asLong())
+                .as(filter).isEqualTo(expected);
+    }
+
+    /** The units {@link SolverInputBuilder} hands the solver for a one-block document. */
+    private void assertSolverUnits(Subject subject, String block, long expected) {
+        var input = builder.build(null, new ExamStructureCodec(mapper).read(document(subject, 1, null, block)));
+        var fixed = (SolvePart.Fixed) input.parts().getFirst();
+        long units = input.candidates().candidatesFor(fixed.sections().getFirst().groups().getFirst())
+                .stream().mapToLong(candidate -> candidate.units().size()).sum();
+        assertThat(units).isEqualTo(expected);
     }
 
     private static String mixedBlock() {
