@@ -3,18 +3,26 @@
 import { Button, cn, focusRing, IconButton } from "@thi360/ui";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { PreviewAttachment } from "../review-types";
 
 /** Nguồn phát: API tải tài nguyên có sẵn (quyền `EXAM_VIEW` đã đủ, spec 6). Cùng gốc với trang nên cookie phiên đi theo. */
 const ASSET_PATH = "/api/v1/admin/question-assets";
 const SEEK_STEP_SECONDS = 5;
 /** Sau khi tua, vị trí thật lệch quá mức này so với đích thì coi là tệp không tua được. */
-const SEEK_TOLERANCE_SECONDS = 2;
+const SEEK_TOLERANCE_SECONDS = 0.3;
 
 /** Chỉ các tệp MIME `audio/*`; tệp đính kèm khác (PDF, ảnh) không có trình phát. */
 export function audioAttachments(attachments: readonly PreviewAttachment[] | undefined): PreviewAttachment[] {
   return (attachments ?? []).filter((attachment) => attachment.mime.toLowerCase().startsWith("audio/"));
+}
+
+/** `seekable` có ít nhất một khoảng thật (end > start) thì tệp tua được; rỗng hay chỉ [[0,0]] là máy chủ không hỗ trợ Range. */
+function seekableRanges(element: HTMLMediaElement): boolean {
+  for (let index = 0; index < element.seekable.length; index += 1) {
+    if (element.seekable.end(index) > element.seekable.start(index)) return true;
+  }
+  return false;
 }
 
 /** Mỗi lần chỉ một trình phát chạy: phát tệp mới thì tệp đang phát tạm dừng. */
@@ -64,8 +72,11 @@ export function PreviewAudioPlayer({
   const [muted, setMuted] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [canSeek, setCanSeek] = useState(true);
+  /** Tệp không tua được (máy chủ thiếu Range): khóa Lùi/Tiến/thanh vị trí, vẫn phát từ đầu. */
+  const [degraded, setDegraded] = useState(false);
+  const [seekFailed, setSeekFailed] = useState(false);
   const [live, setLive] = useState("");
+  const noSeekId = useId();
 
   useEffect(() => {
     const element = audio.current;
@@ -80,7 +91,7 @@ export function PreviewAudioPlayer({
   const readMetadata = (element: HTMLAudioElement) => {
     const known = Number.isFinite(element.duration) && element.duration > 0;
     if (known) setDuration(element.duration);
-    setCanSeek(element.seekable.length > 0);
+    setDegraded(seekFailed || !Number.isFinite(element.duration) || !seekableRanges(element));
     setStatus((value) => (value === "error" ? value : "ready"));
   };
 
@@ -99,7 +110,7 @@ export function PreviewAudioPlayer({
 
   const seek = (next: number) => {
     const element = audio.current;
-    if (!element || !canSeek) return;
+    if (!element || degraded) return;
     const target = Math.max(0, Math.min(duration, next));
     seekTarget.current = target;
     element.currentTime = target;
@@ -108,17 +119,23 @@ export function PreviewAudioPlayer({
 
   const retry = () => {
     setStatus("loading");
-    setCanSeek(true);
+    setDegraded(false);
+    setSeekFailed(false);
     audio.current?.load();
   };
 
   const group = t("group", { name });
-  const spoken = t("spoken", {
-    currentMinutes: parts(current).minutes,
-    currentSeconds: parts(current).seconds,
-    totalMinutes: parts(duration).minutes,
-    totalSeconds: parts(duration).seconds,
-  });
+  const elapsed = parts(current);
+  const total = parts(duration);
+  const spoken =
+    duration > 0
+      ? t("spoken", {
+          currentMinutes: elapsed.minutes,
+          currentSeconds: elapsed.seconds,
+          totalMinutes: total.minutes,
+          totalSeconds: total.seconds,
+        })
+      : t("spokenNoTotal", { currentMinutes: elapsed.minutes, currentSeconds: elapsed.seconds });
 
   return (
     <div role="group" aria-label={group} aria-busy={status === "loading"} className="flex flex-col gap-2">
@@ -135,7 +152,8 @@ export function PreviewAudioPlayer({
           const target = seekTarget.current;
           seekTarget.current = null;
           if (target !== null && Math.abs(event.currentTarget.currentTime - target) > SEEK_TOLERANCE_SECONDS) {
-            setCanSeek(false);
+            setSeekFailed(true);
+            setDegraded(true);
             setCurrent(event.currentTarget.currentTime);
           }
         }}
@@ -181,10 +199,22 @@ export function PreviewAudioPlayer({
             onClick={toggle}
             className="rounded-full bg-primary-fill text-on-primary hover:bg-primary-fill-hover"
           />
-          <Button variant="secondary" size="lg" disabled={!canSeek} onClick={() => seek(current - SEEK_STEP_SECONDS)}>
+          <Button
+            variant="secondary"
+            size="lg"
+            disabled={degraded}
+            aria-describedby={degraded ? noSeekId : undefined}
+            onClick={() => seek(current - SEEK_STEP_SECONDS)}
+          >
             {t("back")}
           </Button>
-          <Button variant="secondary" size="lg" disabled={!canSeek} onClick={() => seek(current + SEEK_STEP_SECONDS)}>
+          <Button
+            variant="secondary"
+            size="lg"
+            disabled={degraded}
+            aria-describedby={degraded ? noSeekId : undefined}
+            onClick={() => seek(current + SEEK_STEP_SECONDS)}
+          >
             {t("forward")}
           </Button>
           <input
@@ -193,13 +223,16 @@ export function PreviewAudioPlayer({
             max={Math.max(duration, 1)}
             step={SEEK_STEP_SECONDS}
             value={Math.min(current, Math.max(duration, 1))}
-            disabled={!canSeek || duration <= 0}
+            disabled={degraded || duration <= 0}
             aria-label={t("position")}
             aria-valuetext={spoken}
+            aria-describedby={degraded ? noSeekId : undefined}
             onChange={(event) => seek(Number(event.target.value))}
             className={cn("h-11 min-w-36 flex-[1_1_12rem] cursor-pointer accent-primary-600 disabled:cursor-not-allowed disabled:opacity-60", focusRing)}
           />
-          <span className="shrink-0 text-body text-text-secondary tabular-nums">{`${clock(current)} / ${clock(duration)}`}</span>
+          <span className="shrink-0 text-body text-text-secondary tabular-nums">
+            {duration > 0 ? `${clock(current)} / ${clock(duration)}` : `${clock(current)} / --:--`}
+          </span>
           <IconButton
             size="lg"
             aria-label={muted ? t("unmute", { name }) : t("mute", { name })}
@@ -214,7 +247,11 @@ export function PreviewAudioPlayer({
             {attachment.name}
           </span>
           {status === "loading" && <span className="basis-full text-caption text-text-muted">{t("loading")}</span>}
-          {!canSeek && status !== "loading" && <span className="basis-full text-caption text-text-muted">{t("noSeek")}</span>}
+          {degraded && status !== "loading" && (
+            <span id={noSeekId} className="basis-full text-caption text-text-muted">
+              {t("noSeek")}
+            </span>
+          )}
         </div>
       )}
     </div>

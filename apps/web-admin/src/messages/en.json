@@ -4960,6 +4960,7 @@
         "position": "Playback position",
         "retry": "Try again",
         "spoken": "{currentMinutes, number} minutes {currentSeconds, number} seconds of {totalMinutes, number} minutes {totalSeconds, number} seconds",
+        "spokenNoTotal": "{currentMinutes, number} minutes {currentSeconds, number} seconds",
         "unmute": "Unmute · {name}"
       },
       "simulatedPassage": "Passage of a simulated set (part of the bank not loaded into the sample data).",

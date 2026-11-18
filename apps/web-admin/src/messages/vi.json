@@ -4960,6 +4960,7 @@
         "position": "Vị trí phát",
         "retry": "Thử lại",
         "spoken": "{currentMinutes, number} phút {currentSeconds, number} giây trên {totalMinutes, number} phút {totalSeconds, number} giây",
+        "spokenNoTotal": "{currentMinutes, number} phút {currentSeconds, number} giây",
         "unmute": "Bật tiếng · {name}"
       },
       "simulatedPassage": "Ngữ liệu của bộ mô phỏng (phần ngân hàng chưa nạp vào dữ liệu mẫu).",
