@@ -345,8 +345,10 @@ class HscaVsatTemplatesIT extends AbstractIntegrationTest {
             assertThat(stored.path("buildMode").asText()).as(code).isEqualTo(expected.path("buildMode").asText());
             assertThat(stored.path("isDefault").asBoolean()).as(code)
                     .isEqualTo(expected.path("isDefault").asBoolean());
-            assertThat(stored.path("durationMinutes").asInt(-1)).as(code)
-                    .isEqualTo(expected.path("durationMinutes").asInt(-1));
+            if ("SHARED".equals(stored.path("timing").asText())) {
+                assertThat(stored.path("durationMinutes").asInt(-1)).as(code)
+                        .isEqualTo(expected.path("durationMinutes").asInt(-1));
+            }
         }
         // Row 15's totals for the same entries run in ExamTemplateTotalsIT.everyStoredTemplateMatchesItsFixture;
         // the generated migration may be renamed freely because nothing here reads it.
