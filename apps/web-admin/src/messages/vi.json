@@ -4863,7 +4863,9 @@
       "VACT": "V-ACT",
       "SPT": "SPT",
       "SP2E": "SP2E",
-      "THPTQG": "THPTQG"
+      "THPTQG": "THPTQG",
+      "HSCA": "H-SCA",
+      "VSAT": "V-SAT"
     },
     "scope": {
       "FULL": "Toàn bài",
@@ -5455,8 +5457,7 @@
         "noPart": "Môn này chưa có phần nào để chọn.",
         "notPublishableNotice": "Toàn bộ môn {subject} là tự luận – tạm bỏ qua trong V1",
         "notPublishableDraft": "Bài này chỉ lưu nháp, không công bố được và không đưa vào bộ đề bán.",
-        "durationRequiredBase": "Chưa nhập thời lượng của bài.",
-        "durationRequiredPart": "Chưa nhập thời lượng. Bài theo phần không có thời lượng mặc định.",
+        "durationRequiredPart": "Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.",
         "durationRequiredReview": "Chưa nhập thời lượng. Bài ôn không có thời lượng mặc định.",
         "durationRequiredCustom": "Chưa nhập thời lượng. Bài riêng của {kind} không có thời lượng mặc định.",
         "buildModeLegend": "Cách dựng bài",
@@ -5475,7 +5476,19 @@
           "description": "Bảng tổng quan nạp lại theo mẫu mặc định của lựa chọn mới. Số câu, thời lượng, điểm bạn đã sửa trong bảng sẽ mất.",
           "confirm": "Đổi và nạp lại",
           "cancel": "Giữ lựa chọn cũ"
-        }
+        },
+        "scopeWhole": "Cả môn",
+        "scopeWholeHint": "Toàn bộ cấu trúc của môn",
+        "scopeByPart": "Theo phần",
+        "scopeByPartHint": "Chọn một phần, tự nhập thời lượng",
+        "skillListening": "Nghe",
+        "skillReading": "Đọc",
+        "skillBoth": "Nghe và Đọc",
+        "skillListeningHint": "{count, number} câu · chỉ lấy câu có audio",
+        "skillReadingHint": "{count, number} câu · chỉ lấy câu không có audio",
+        "skillBothHint": "{count, number} câu · cả hai phần",
+        "omittedPartNotice": "Phần viết chưa có trong V1 nên không chọn được.",
+        "dedicatedPartsNotice": "{subject} chỉ luyện riêng được các phần trong danh sách. Các phần còn lại không có bài riêng."
       },
       "steps": {
         "ariaLabel": "Các bước tạo bài thi",
@@ -5509,6 +5522,7 @@
           "maxPoints": "Điểm của {name}"
         },
         "lockedCounts": "Mẫu đã khóa số câu",
+        "lockedBlockCountsNote": "Bài cả môn giữ nguyên dạng và số lượng từng dòng theo mẫu. Muốn đổi số lượng, chọn phạm vi Theo phần.",
         "choiceNote": "(học viên chọn một lựa chọn)",
         "omittedLabel": "tạm bỏ qua",
         "notCounted": "không tính",

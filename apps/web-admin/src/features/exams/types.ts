@@ -18,11 +18,11 @@ export type { ExamBuildMode, ExamScope, ExamTiming, PracticeScoring } from "@/fe
  */
 
 /**
- * Mã kỳ thi trong danh mục (`ContentReference.examKinds`): HSA, QDA, BCA, VACT, SPT, SP2E, THPTQG. Là chuỗi vì danh
- * mục quyết định; `EXAM_KINDS` là danh sách của dữ liệu mẫu.
+ * Mã kỳ thi trong danh mục (`ContentReference.examKinds`): HSA, QDA, BCA, VACT, SPT, SP2E, THPTQG, HSCA, VSAT. Là chuỗi vì
+ * danh mục quyết định; `EXAM_KINDS` là danh sách dự phòng khi danh mục chưa tải.
  */
 export type ExamKind = string;
-export const EXAM_KINDS = ["HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG"] as const;
+export const EXAM_KINDS = ["HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG", "HSCA", "VSAT"] as const;
 /** `PUBLISHED`: đang phục vụ một phiên bản; `DISCONTINUED`: ngừng bán, học viên đã mua vẫn làm được. */
 export type ExamStatus = "DRAFT" | "PUBLISHED" | "DISCONTINUED";
 /** Kết quả kiểm tra cấu hình gần nhất; `NEEDS_RECHECK`: nguồn câu hỏi đã đổi sau lần kiểm tra. */

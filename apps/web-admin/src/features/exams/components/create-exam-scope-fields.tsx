@@ -12,11 +12,8 @@ import {
   subjectPartOptions,
   templateCountBySubject,
 } from "../create-exam-schema";
-import type { ExamBuildMode, ExamTemplate } from "../types";
-import { ChoiceCardGroup, ScopeField, useKindLabel, usePartNames } from "./create-exam-fields";
 
 /**
- * Kỳ thi, phạm vi, môn, phần và cách dựng bài của bước 1 (2B 15.1, H4, K8):
  * - phạm vi chỉ gồm các phạm vi hồ sơ kỳ thi cho phép (`ScopeField`);
  * - kỳ thi `templateBy = SUBJECT` (SP2E, SPT) chọn môn trước rồi mới chọn phần khi phạm vi là Theo phần;
  * - hai thẻ `build_mode` chỉ hiện khi phạm vi là Theo môn;
@@ -91,56 +88,9 @@ export function CreateExamScopeFields({
     { value: "REVIEW", label: t("buildModeReview"), description: t("buildModeReviewHint") },
   ];
 
-  return (
-    <div className="flex flex-col gap-4">
-      <ScopeField
-        kinds={kinds}
-        kind={selection.kind}
-        value={selection.scope}
         disabled={disabled}
-        onChange={(scope) => onChange({ scope })}
       />
-      {showSubject && (
-        <div data-field="subjectCode" className="flex flex-col gap-3">
-          <FormField
-            label={t("subject")}
-            required
-            hint={subjectFirst ? t("subjectBeforePartHint") : t("subjectHint", { count: counts.size })}
-            error={errors.subjectCode}
-          >
-            {(controlProps) => (
-              <Select
-                {...controlProps}
-                name="subjectCode"
-                value={selection.subjectCode || undefined}
-                disabled={disabled}
-                placeholder={t("subjectPlaceholder")}
-                onValueChange={(subjectCode) => onChange({ subjectCode })}
-                options={subjectOptions}
-              />
-            )}
-          </FormField>
-          {Boolean(selection.subjectCode) && notPublishable && (
-            <p
-              role="status"
-              className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2.5 text-body text-text-secondary"
-            >
-              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-              <span className="flex flex-col gap-0.5">
-                <span>{t("notPublishableNotice", { subject: subjectName })}</span>
-                <span className="text-caption">{t("notPublishableDraft")}</span>
-              </span>
-            </p>
-          )}
-          {Boolean(selection.subjectCode) && noTemplate && !subjectFirst && (
-            <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-body text-text-secondary">
-              <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
-              {t("noTemplate", { subject: subjectName })}
-            </p>
-          )}
-        </div>
       )}
-      {selection.scope === "PART" && (
         <div data-field="partCode" className="flex flex-col gap-1">
           {partOptions.length > 0 ? (
             <ChoiceCardGroup
@@ -150,7 +100,6 @@ export function CreateExamScopeFields({
               required
               disabled={disabled}
               // V-ACT và THPTQG theo bản vẽ 2B dùng thẻ; các kỳ thi cũ giữ nút viên thuốc của ma trận.
-              variant={selection.kind === "VACT" || selection.kind === "THPTQG" ? "card" : "pill"}
               hint={t("partHint")}
               options={partOptions}
               onChange={(partCode) => onChange({ partCode })}

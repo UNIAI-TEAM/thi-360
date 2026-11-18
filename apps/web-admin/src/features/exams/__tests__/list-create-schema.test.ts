@@ -520,9 +520,15 @@ describe("V-ACT và THPTQG: phạm vi mới và thời lượng bài theo phần
     expect(resolveScope(VACT_TEMPLATES, VACT_KINDS, SUBJECTS, current, { scope: "SUBJECT" })).toMatchObject({ scope: "SUBJECT", subjectCode: "VIETNAMESE" });
   });
 
-  it("THPTQG Theo phần: thời lượng không lấy từ mẫu môn mà do người nhập (H35)", () => {
+  it("THPTQG Theo phần: mẫu môn dùng một đồng hồ chung thì thời lượng không lấy từ mẫu môn mà do người nhập (H35)", () => {
+    // Mẫu THPTQG thật: một đồng hồ chung cho cả môn, phần không ghi thời lượng riêng.
+    const sharedClock = FIXTURE_TEMPLATES.map((template) =>
+      template.kind === "THPTQG"
+        ? { ...template, timing: "SHARED" as const, durationMinutes: 90, parts: template.parts.map((part) => ({ ...part, durationMinutes: null })) }
+        : template,
+    );
     const selection: ScopeSelection = { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode: "MATH" };
-    const template = scopeTemplate(FIXTURE_TEMPLATES, KINDS, selection)!;
+    const template = scopeTemplate(sharedClock, KINDS, selection)!;
     expect(template).toMatchObject({ timing: "SHARED", durationMinutes: null });
     expect(scopeDefaults(template, kindOption("THPTQG"), "PART")).toMatchObject({ timing: "SHARED", sharedDuration: 0 });
   });
