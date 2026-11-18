@@ -156,6 +156,31 @@ describe("ô Mọi câu con thuộc chủ đề", () => {
     await user.click(box);
     expect(latest.block.knowledgeScope).toEqual({ nodeIds: ["N1"], everyChildInScope: false });
   });
+
+  it("nhóm chùm của bài VACT_REVIEW có MAPID mà chưa có cờ: mở nhóm là lưu true, không cần bấm ô", () => {
+    const latest = renderEditor(makeBlock({ knowledgeScope: scoped }), { templateCode: "VACT_REVIEW" });
+    expect(screen.getByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).toBeChecked();
+    expect(latest.block.knowledgeScope).toEqual({ nodeIds: ["N1"], everyChildInScope: true });
+    const part = { id: "p1", sections: [{ ...SECTION, blocks: [latest.block] }] } as unknown as ExamPart;
+    const sent = toApiParts([part]) as unknown as { sections: { blocks: { knowledgeScope: unknown }[] }[] }[];
+    expect(sent[0]!.sections[0]!.blocks[0]!.knowledgeScope).toEqual({ nodeIds: ["N1"], everyChildInScope: true });
+  });
+
+  it("bài VACT_REVIEW: nhóm câu đơn có MAPID đổi sang Câu chùm thì lưu everyChildInScope = true", async () => {
+    const user = userEvent.setup();
+    const single = makeBlock({ questionType: "SINGLE_CHOICE", setCount: null, setSize: null, questionCount: 4, knowledgeScope: scoped });
+    const review = renderEditor(single, { templateCode: "VACT_REVIEW" });
+    expect(review.block.knowledgeScope).toEqual(scoped);
+    await user.click(screen.getByRole("radio", { name: "Câu chùm" }));
+    expect(review.block.knowledgeScope).toEqual({ nodeIds: ["N1"], everyChildInScope: true });
+    expect(screen.getByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).toBeChecked();
+  });
+
+  it("bài không phải VACT_REVIEW: nhóm chùm có MAPID chưa có cờ hiện ô tắt và không gửi cờ", () => {
+    const latest = renderEditor(makeBlock({ knowledgeScope: scoped }));
+    expect(screen.getByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).not.toBeChecked();
+    expect(latest.block.knowledgeScope).toEqual(scoped);
+  });
 });
 
 describe("dòng tổng của nhóm Đúng/Sai", () => {

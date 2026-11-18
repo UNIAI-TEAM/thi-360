@@ -3,7 +3,7 @@
 import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select } from "@thi360/ui";
 import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
 import {
   QUESTION_TYPES,
   type CompetencyOption,
@@ -17,7 +17,7 @@ import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock 
 import { useAvailableQuestions } from "../queries";
 import { effectiveScope } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
-import { applyBlockPatch, resizeSets, switchSetMode } from "./block-form";
+import { applyBlockPatch, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
 import { blockFieldAnchor, type BlockField } from "./block-form-fields";
 import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
@@ -136,7 +136,19 @@ export function BlockEditor({
   const countError = issues.some((issue) => issue.code === "COUNT_NOT_POSITIVE") ? t("errors.countPositive") : undefined;
   const setIssue = issues.find((issue) => issue.code === "SET_SIZE_MISMATCH");
 
-  const update = (patch: Partial<QuestionBlock>) => onChange(applyBlockPatch(block, patch));
+  // Giá trị bật sẵn của bài ôn là dữ liệu, không chỉ hiển thị: mọi thay đổi của nhóm đi qua đây.
+  const update = (patch: Partial<QuestionBlock>) => {
+    const next = applyBlockPatch(block, patch);
+    onChange(everyChildDefault ? withEveryChildDefault(next) : next);
+  };
+  // Nhóm đã lưu từ trước chưa có cờ: ghi `true` một lần khi mở nhóm để lưu và đếm nguồn dùng giá trị đang hiện.
+  const normaliseOnOpen = useEffectEvent(() => {
+    const next = everyChildDefault ? withEveryChildDefault(block) : block;
+    if (next !== block) onChange(next);
+  });
+  useEffect(() => {
+    normaliseOnOpen();
+  }, [block.id]);
   const setType = (questionType: QuestionType | null) => {
     // Đổi dạng thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
     const expectedScoring = expectedScoringFor(questionType, scoringDefaults, blockPointsEach(block));
@@ -450,7 +462,7 @@ export function BlockEditor({
         everyChild={
           isSet
             ? {
-                checked: block.knowledgeScope?.everyChildInScope ?? everyChildDefault,
+                checked: block.knowledgeScope?.everyChildInScope ?? false,
                 onChange: setEveryChild,
                 anchor: anchor("everyChildInScope"),
               }

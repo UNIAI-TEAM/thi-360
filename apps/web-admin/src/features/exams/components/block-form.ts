@@ -85,6 +85,16 @@ export function reconcileBlock(block: QuestionBlock): QuestionBlock {
   return next;
 }
 
+/**
+ * Bài ôn V-ACT bật sẵn "Mọi câu con thuộc chủ đề" (R-120): nhóm chùm có MAPID riêng mà chưa có cờ thì ghi `true` vào dữ
+ * liệu, để lưu và đếm nguồn dùng đúng giá trị màn đang hiện. Đã có cờ (kể cả `false` do người dùng bỏ chọn): giữ nguyên.
+ */
+export function withEveryChildDefault(block: QuestionBlock): QuestionBlock {
+  const scope = block.knowledgeScope;
+  if (!isSetBlock(block) || !scope || scope.nodeIds.length === 0 || scope.everyChildInScope !== undefined) return block;
+  return { ...block, knowledgeScope: { ...scope, everyChildInScope: true } };
+}
+
 // ---------------------------------------------------------------- điều kiện riêng từng chùm
 
 export function slotHasCondition(slot: BlockSlot | undefined): boolean {
