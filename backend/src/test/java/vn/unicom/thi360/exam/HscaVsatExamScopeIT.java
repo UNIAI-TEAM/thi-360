@@ -262,7 +262,7 @@ class HscaVsatExamScopeIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void anOlderKindPartExamKeepsItsNonPromptTopicQuotas() throws Exception {
+    void anOlderKindPartExamKeepsItsQuestionTopicQuotaAndDropsAPromptOneInTheSameSection() throws Exception {
         String templateCode = jdbc.queryForObject("""
                 select code from exam.exam_template where kind_code = 'SP2E' and scope = 'SUBJECT'
                 and subject_code = 'TOAN' and build_mode = 'STANDARD' and is_default
@@ -272,9 +272,13 @@ class HscaVsatExamScopeIT extends AbstractIntegrationTest {
                 jdbc.queryForObject("select structure::text from exam.exam_template where code = ?",
                         String.class, templateCode));
         ((ObjectNode) structure.path("parts").get(0).path("sections").get(0))
-                .putArray("topicQuotas").add(mapper.createObjectNode()
+                .putArray("topicQuotas")
+                .add(mapper.createObjectNode()
                         .put("id", "sp2e-part-quota").put("name", "Chỉ tiêu tham khảo").put("count", 10)
-                        .put("basis", "QUESTION").put("enforcement", "REFERENCE"));
+                        .put("basis", "QUESTION").put("enforcement", "REFERENCE"))
+                .add(mapper.createObjectNode()
+                        .put("id", "sp2e-part-prompt-quota").put("name", "Chỉ tiêu theo lệnh hỏi").put("count", 7)
+                        .put("basis", "PROMPT").put("enforcement", "REFERENCE"));
         jdbc.update("update exam.exam_template set structure = cast(? as jsonb) where code = ?",
                 structure.toString(), templateCode);
 
