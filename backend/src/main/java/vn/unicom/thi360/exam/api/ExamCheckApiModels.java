@@ -28,9 +28,9 @@ public final class ExamCheckApiModels {
     @Schema(name = "ExamCheckChoice")
     public record Choice(String partId, String optionId, String kind, String code, String name) { }
     @Schema(name = "ExamCheckDimension")
-    public record Dimension(String code, int required) { }
+    public record Dimension(String code, @Schema(format = "decimal") BigDecimal required) { }
     @Schema(name = "ExamCheckCell")
-    public record Cell(String gradeCode, String difficultyCode, int required) { }
+    public record Cell(String gradeCode, String difficultyCode, @Schema(format = "decimal") BigDecimal required) { }
     @Schema(name = "ExamCheckRequirement")
     public record Requirement(String mode, List<Cell> cells, List<Dimension> byGrade,
                               List<Dimension> byDifficulty, List<Dimension> byCompetency) { }
@@ -42,7 +42,8 @@ public final class ExamCheckApiModels {
     @Schema(name = "ExamCheckAnswerQuota")
     public record AnswerQuota(String answerType, int required, Integer achieved) { }
     @Schema(name = "ExamCheckSubjectDimension")
-    public record SubjectDimension(String code, int required, Integer achieved) { }
+    public record SubjectDimension(String code, @Schema(format = "decimal") BigDecimal required,
+                                   @Schema(format = "decimal") BigDecimal achieved) { }
     @Schema(name = "ExamCheckSubject")
     public record Subject(String sectionId, String subjectCode, String optionId, Integer questionCount,
                           List<AnswerQuota> answerQuotas, List<SubjectDimension> byGrade,
