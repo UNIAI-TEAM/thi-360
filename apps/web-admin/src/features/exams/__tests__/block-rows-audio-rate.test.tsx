@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -174,6 +174,16 @@ describe("mẫu khóa dòng (R-135)", () => {
     expect(screen.getByRole("button", { name: /^Xóa nhóm/ })).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByRole("radio", { name: "Số lượng" })).toBeNull();
     expect(screen.getByText(/Nguồn câu, phạm vi kiến thức và chỉ tiêu trong dòng vẫn sửa được/)).toBeInTheDocument();
+  });
+
+  it("F2 · ô số khóa có nền và chữ của ô bị khóa, ô sửa được thì không", () => {
+    renderEditor(block(), { rowsLocked: true });
+    const locked = screen.getByRole("textbox", { name: "Số chùm" });
+    expect(locked).toHaveClass("bg-subtle", "text-text-muted");
+    expect(locked).toHaveAttribute("readonly");
+    cleanup();
+    renderEditor(block());
+    expect(screen.getByRole("textbox", { name: "Số chùm" })).not.toHaveClass("bg-subtle");
   });
 });
 

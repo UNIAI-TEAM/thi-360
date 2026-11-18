@@ -20,6 +20,7 @@ import {
 import { blockFieldAnchor } from "./block-form-fields";
 import { BlockNumberInput } from "./block-number-input";
 import { BlockTagPicker } from "./block-tag-picker";
+import { LOCKED_FIELD } from "./locked-field";
 import { ScrollableTable } from "./scrollable-table";
 
 export interface BlockSetConditionsProps {
@@ -301,11 +302,11 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
                 {t("from")}
-                <BlockNumberInput value={condition.from} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} aria-invalid={issue === "FROM_MIN" || issue === "RANGE_ORDER" ? true : undefined} onValueChange={(from) => patch(index, { from })} />
+                <BlockNumberInput value={condition.from} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} className={frozen(condition) ? LOCKED_FIELD : undefined} aria-invalid={issue === "FROM_MIN" || issue === "RANGE_ORDER" ? true : undefined} onValueChange={(from) => patch(index, { from })} />
               </label>
               <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
                 {t("to")}
-                <BlockNumberInput value={condition.to} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} aria-invalid={issue === "RANGE_ORDER" || issue === "OUT_OF_SET" ? true : undefined} onValueChange={(to) => patch(index, { to })} />
+                <BlockNumberInput value={condition.to} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} className={frozen(condition) ? LOCKED_FIELD : undefined} aria-invalid={issue === "RANGE_ORDER" || issue === "OUT_OF_SET" ? true : undefined} onValueChange={(to) => patch(index, { to })} />
               </label>
               <div className="w-56">
                 <FormField label={t("answerType")}>
@@ -330,6 +331,7 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
                     value={condition.itemShape?.statements ?? 0}
                     readOnly={locked}
                     aria-readonly={locked || undefined}
+                    className={locked ? LOCKED_FIELD : undefined}
                     onValueChange={(statements) => setShape(index, statements > 0 ? { statements } : {})}
                   />
                 </label>
@@ -341,6 +343,7 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
                     value={condition.itemShape?.options ?? 0}
                     readOnly={locked}
                     aria-readonly={locked || undefined}
+                    className={locked ? LOCKED_FIELD : undefined}
                     onValueChange={(options) => setShape(index, options > 0 ? { options } : {})}
                   />
                 </label>
@@ -352,6 +355,7 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
                     value={condition.itemShape?.leftItems ?? 0}
                     readOnly={locked}
                     aria-readonly={locked || undefined}
+                    className={locked ? LOCKED_FIELD : undefined}
                     onValueChange={(leftItems) => {
                       const shape: ItemShape = { ...condition.itemShape };
                       if (leftItems > 0) shape.leftItems = leftItems;

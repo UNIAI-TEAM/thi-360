@@ -17,6 +17,7 @@ import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { LOCKED_FIELD } from "./locked-field";
 import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
@@ -274,7 +275,7 @@ export function ExamStructureSubjectPanel({
             {(controlProps) =>
               countLocked || !onCount ? (
                 <span className="flex items-center gap-2">
-                  <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className="w-24 tabular-nums" />
+                  <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
                   {countLocked && (
                     <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
                       <Lock aria-hidden className="size-3.5" />

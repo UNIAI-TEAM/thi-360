@@ -27,6 +27,7 @@ import { BlockNumberInput, parseNumberText } from "./block-number-input";
 import { BlockRadioGroup } from "./block-radio-group";
 import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { BlockSetConditions } from "./block-set-conditions";
+import { LOCKED_FIELD } from "./locked-field";
 import { BlockSwitches } from "./block-switches";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
@@ -132,6 +133,7 @@ export function BlockEditor({
       ? {
           readOnly: true,
           "aria-readonly": true as const,
+          className: LOCKED_FIELD,
           ...(rowsLocked ? { "aria-describedby": [controlProps["aria-describedby"], lockId].filter(Boolean).join(" ") } : {}),
         }
       : {};

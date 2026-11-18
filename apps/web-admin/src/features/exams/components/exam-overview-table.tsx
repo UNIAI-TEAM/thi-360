@@ -6,6 +6,7 @@ import { useId } from "react";
 import type { ExamTiming } from "../types";
 import type { OverviewBlockInfo, OverviewRow } from "../create-exam-overview";
 import { overviewTotals } from "../create-exam-overview";
+import { LOCKED_FIELD } from "./locked-field";
 import { ScrollableTable } from "./scrollable-table";
 
 export interface OverviewNumberField {
@@ -78,7 +79,7 @@ function NumberCell({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         aria-label={t(`cell.${field}`, { name: row.label })}
-        className={cn(cellInput, locked && "bg-subtle text-text-muted")}
+        className={cn(cellInput, locked && LOCKED_FIELD)}
         onChange={(event) => onCellChange(row.key, field, event.target.value)}
       />
       {error && (
