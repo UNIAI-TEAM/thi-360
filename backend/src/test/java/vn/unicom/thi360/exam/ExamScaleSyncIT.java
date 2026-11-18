@@ -138,6 +138,50 @@ class ExamScaleSyncIT extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString());
     }
 
+    @Test
+    void aReviewCannotBeSwitchedToRawScoring() throws Exception {
+        JsonNode review = create("{\"kind\":\"HSA\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                + "\"buildMode\":\"REVIEW\",\"maxScore\":40");
+        assertThat(review.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        patchRejected(review, "{\"practiceScoring\":\"RAW\"");
+        assertReviewKept(review.path("id").asText());
+        // Also when the same request changes the scope but stays a review (SUBJECT keeps the build mode).
+        patchRejected(review, "{\"subjectCode\":\"ANH\",\"practiceScoring\":\"RAW\",\"confirmReplace\":true");
+        assertReviewKept(review.path("id").asText());
+    }
+
+    @Test
+    void rawStaysAllowedWhenTheRequestMakesTheExamStandard() throws Exception {
+        JsonNode review = create("{\"kind\":\"HSA\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                + "\"buildMode\":\"REVIEW\",\"maxScore\":40");
+        JsonNode standard = patchExam(review, "{\"scope\":\"FULL\",\"practiceScoring\":\"RAW\","
+                + "\"confirmReplace\":true");
+        assertThat(standard.path("buildMode").asText()).isEqualTo("STANDARD");
+        assertThat(standard.path("practiceScoring").asText()).isEqualTo("RAW");
+    }
+
+    private void assertReviewKept(String id) throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        JsonNode kept = detail(id);
+        assertThat(kept.path("buildMode").asText()).isEqualTo("REVIEW");
+        assertThat(kept.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(kept.path("maxScore").decimalValue()).isEqualByComparingTo("40");
+        assertThat(kept.path("referenceMax").decimalValue()).isEqualByComparingTo("40");
+    }
+
+    /** PATCH with the current revision that must be refused as an invalid request; {@code fields} is unterminated. */
+    private void patchRejected(JsonNode exam, String fields) throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        String id = exam.path("id").asText();
+        mockMvc.perform(patch("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content(fields + ",\"expectedRevision\":" + detail(id).path("revision").asLong() + "}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+    }
+
     private JsonNode loadTemplate(JsonNode exam, String templateCode) throws Exception {
         entityManager.flush();
         entityManager.clear();

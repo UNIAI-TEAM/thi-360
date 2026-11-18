@@ -649,6 +649,7 @@ public class ExamService {
                 ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
                 ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
                 String mode = "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD";
+                rejectRawReview(request.practiceScoring(), mode);
                 boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
                 ExamTemplate template = subjectPart
                         ? templateService.findDefault(kindItem.code(), "SUBJECT", null, choice.subjectCode(), mode)
@@ -691,6 +692,9 @@ public class ExamService {
                         actor, now);
                 writeStructure(exam, doc, false, actor, now);
             }
+        }
+        if (!scopeChanged) {
+            rejectRawReview(request.practiceScoring(), exam.getBuildMode());
         }
 
         String code = exam.getCode();
@@ -1377,6 +1381,16 @@ public class ExamService {
         return catalogLookup.findActiveItem(EXAM_GROUP, kindCode.trim())
                 .orElseThrow(() -> new BusinessRuleException(ExamErrorCodes.KIND_UNKNOWN,
                         messages.get(ExamErrorCodes.KIND_UNKNOWN)));
+    }
+
+    /**
+     * A review scores LINEAR against its own raw maximum (BE spec D11) and its check never requires a fixed raw
+     * total, so an explicit RAW scoring is refused for a review; a standard exam keeps the override.
+     */
+    private static void rejectRawReview(String requestedScoring, String buildMode) {
+        if ("RAW".equals(requestedScoring) && "REVIEW".equals(buildMode)) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
     }
 
     private void requireSharedDuration(String timing, Integer duration) {
