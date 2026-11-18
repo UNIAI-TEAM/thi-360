@@ -65,7 +65,7 @@ public final class ExamStructureOps {
         return new ExamPart(id(part.id(), regenerate), part.order(), part.name(),
                 part.durationMinutes(), part.questionCount(), part.questionCountOnPaper(),
                 part.questionCountRequired(), part.participation(), part.maxPoints(), sections, options,
-                subjectPool, part.codeSource());
+                subjectPool, part.codeSource(), part.displaySegments());
     }
 
     private static ExamSection mapSection(ExamSection s, boolean regenerate, Map<String, String> blockIds) {
@@ -78,7 +78,7 @@ public final class ExamStructureOps {
         }
         return new ExamSection(id(s.id(), regenerate), s.subjectCode(), s.questionCount(),
                 s.knowledgeScope(), s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks,
-                mapTopicQuotas(s.topicQuotas(), blockIds));
+                mapTopicQuotas(s.topicQuotas(), blockIds), s.audioRequirement());
     }
 
 
@@ -170,7 +170,7 @@ public final class ExamStructureOps {
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(),
                     part.questionCount(), part.questionCountOnPaper(), part.questionCountRequired(),
                     part.participation(), part.maxPoints(), sections, options, subjectPool,
-                    part.codeSource()));
+                    part.codeSource(), part.displaySegments()));
         }
         return new ExamStructureDocument(parts, incoming.examQuotas());
     }
@@ -181,7 +181,8 @@ public final class ExamStructureOps {
             blocks.add(b == null ? null : restoreBlock(b, storedBlocks, templateOwned));
         }
         return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
-                s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks, s.topicQuotas());
+                s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks, s.topicQuotas(),
+                s.audioRequirement());
     }
 
     private static void index(ExamStructureDocument doc, Map<String, QuestionBlock> blocks) {

@@ -47,6 +47,9 @@ public final class ExamStructureValidator {
             validatePart(part, ids, maxTopicQuotas, fixedSubjects);
         }
         validateExamQuotas(document.examQuotas());
+        for (int i = 0; i < document.parts().size(); i++) {
+            validateDisplaySegments(document.parts().get(i), i);
+        }
         long paths = pathCount(document.parts());
         if (paths > MAX_PATHS) {
             throw new BusinessRuleException("EXAM_PATH_LIMIT_EXCEEDED");
@@ -203,6 +206,7 @@ public final class ExamStructureValidator {
             nonNegative(block.itemShape().statements(), "blocks.itemShape.statements");
             nonNegative(block.itemShape().leftItems(), "blocks.itemShape.leftItems");
             nonNegative(block.itemShape().rightItems(), "blocks.itemShape.rightItems");
+            nonNegative(block.itemShape().options(), "blocks.itemShape.options");
         }
         for (ChildCondition condition : block.childConditions()) {
             if (condition == null || condition.from() != null && condition.from() < 1
@@ -210,7 +214,14 @@ public final class ExamStructureValidator {
                     || condition.from() != null && condition.to() != null && condition.from() > condition.to()) {
                 invalid("blocks.childConditions", "child positions must form a positive range");
             }
+            if (condition.itemShape() != null) {
+                nonNegative(condition.itemShape().statements(), "blocks.childConditions.itemShape.statements");
+                nonNegative(condition.itemShape().leftItems(), "blocks.childConditions.itemShape.leftItems");
+                nonNegative(condition.itemShape().rightItems(), "blocks.childConditions.itemShape.rightItems");
+                nonNegative(condition.itemShape().options(), "blocks.childConditions.itemShape.options");
+            }
         }
+        validateTypedChildConditions(block);
         if (!block.slots().isEmpty()) {
             if (block.setCount() == null || (block.questionType() != QuestionType.QUESTION_SET
                     && block.questionType() != QuestionType.CLOZE)) {
@@ -275,7 +286,7 @@ public final class ExamStructureValidator {
         for (TopicQuota quota : quotas) {
             if (quota == null || quota.id() == null || !ids.add(quota.id())
                     || quota.count() == null || quota.count() < 0
-                    || quota.basis() != null && quota.basis() != QuotaBasis.QUESTION) {
+                    || quota.basis() != null && !basisAllowed(quota.basis(), quota.enforcement())) {
                 invalid(field, "topic quota is invalid");
             }
             if (quota.percent() != null
@@ -288,10 +299,19 @@ public final class ExamStructureValidator {
         }
     }
 
+    /**
+     * Chỉ tiêu theo câu ({@code QUESTION}) luôn hợp lệ; theo lệnh ({@code PROMPT}) chỉ ở mức đối chiếu
+     * (spec H44, D19). Thiếu {@code enforcement} tính là {@code REQUIRED}.
+     */
+    private static boolean basisAllowed(QuotaBasis basis, QuotaEnforcement enforcement) {
+        return basis == QuotaBasis.QUESTION
+                || basis == QuotaBasis.PROMPT && enforcement == QuotaEnforcement.REFERENCE;
+    }
+
     private static void validateExamQuotas(List<ExamQuota> quotas) {
         for (ExamQuota quota : quotas) {
-            if (quota == null || quota.dimension() == null || quota.basis() != QuotaBasis.QUESTION
-                    || quota.enforcement() == null) {
+            if (quota == null || quota.dimension() == null || quota.enforcement() == null
+                    || !basisAllowed(quota.basis(), quota.enforcement())) {
                 invalid("examQuotas", "exam quota is invalid");
             }
             if (quota.enforcement() == QuotaEnforcement.REQUIRED
@@ -306,6 +326,86 @@ public final class ExamStructureValidator {
                     invalid("examQuotas", "exam quota bucket is invalid");
                 }
             }
+        }
+    }
+
+    /**
+     * Phân đoạn hiển thị (spec H40): nối nhau phủ kín câu 1 đến {@code questionCount}, không hở, không chồng;
+     * tổng điểm bằng {@code maxPoints} của phần. Lỗi chỉ tới phân đoạn.
+     */
+    private static void validateDisplaySegments(ExamPart part, int partIndex) {
+        List<DisplaySegment> segments = part.displaySegments();
+        if (segments.isEmpty()) {
+            return;
+        }
+        String base = "parts[" + partIndex + "].displaySegments";
+        Set<String> codes = new HashSet<>();
+        int next = 1;
+        BigDecimal total = BigDecimal.ZERO;
+        for (int i = 0; i < segments.size(); i++) {
+            DisplaySegment segment = segments.get(i);
+            String field = base + "[" + i + "]";
+            if (segment == null || segment.code() == null || segment.code().isBlank()
+                    || !codes.add(segment.code()) || segment.fromPosition() == null
+                    || segment.toPosition() == null || segment.fromPosition() < 1
+                    || segment.fromPosition() > segment.toPosition()
+                    || segment.commandCount() == null || segment.commandCount() < 0
+                    || segment.maxPoints() == null || segment.maxPoints().signum() < 0) {
+                segmentInvalid(field, "SEGMENT_INVALID", "Display segment is incomplete or duplicated");
+            }
+            if (segment.fromPosition() > next) {
+                segmentInvalid(field, "SEGMENT_GAP", "Display segments leave a gap before position "
+                        + segment.fromPosition());
+            }
+            if (segment.fromPosition() < next) {
+                segmentInvalid(field, "SEGMENT_OVERLAP", "Display segments overlap at position "
+                        + segment.fromPosition());
+            }
+            next = segment.toPosition() + 1;
+            total = total.add(segment.maxPoints());
+        }
+        String last = base + "[" + (segments.size() - 1) + "]";
+        if (part.questionCount() != null && next - 1 != part.questionCount()) {
+            segmentInvalid(last, "SEGMENT_COVERAGE", "Display segments cover " + (next - 1)
+                    + " questions but the part has " + part.questionCount());
+        }
+        if (part.maxPoints() != null && total.compareTo(part.maxPoints()) != 0) {
+            segmentInvalid(last, "SEGMENT_POINTS", "Display segment points sum to " + total.toPlainString()
+                    + " but the part has " + part.maxPoints().toPlainString());
+        }
+    }
+
+    private static void segmentInvalid(String field, String code, String message) {
+        throw new BusinessRuleException("EXAM_STRUCTURE_INVALID", message,
+                List.of(new FieldError(field, code, message)));
+    }
+
+    /**
+     * Chùm trộn dạng (spec H39): các điều kiện có {@code answerType} phải phủ kín vị trí 1 đến
+     * {@code setSize}, không chồng nhau. Điều kiện chỉ có {@code nodeIds} không tham gia.
+     */
+    private static void validateTypedChildConditions(QuestionBlock block) {
+        List<ChildCondition> typed = block.childConditions().stream()
+                .filter(condition -> condition.answerType() != null)
+                .sorted(java.util.Comparator.comparing(condition -> condition.from() == null ? 0 : condition.from()))
+                .toList();
+        if (typed.isEmpty()) {
+            return;
+        }
+        if (block.questionType() != QuestionType.QUESTION_SET || block.setSize() == null) {
+            invalid("blocks.childConditions", "typed child conditions require a question set with setSize");
+        }
+        int next = 1;
+        for (ChildCondition condition : typed) {
+            if (condition.from() == null || condition.to() == null || condition.from() != next) {
+                invalid("blocks.childConditions", "typed child conditions must cover positions 1 to setSize "
+                        + "without gaps or overlaps");
+            }
+            next = condition.to() + 1;
+        }
+        if (next - 1 != block.setSize()) {
+            invalid("blocks.childConditions", "typed child conditions must cover positions 1 to setSize "
+                    + "without gaps or overlaps");
         }
     }
 
