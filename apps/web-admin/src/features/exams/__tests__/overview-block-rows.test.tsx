@@ -1,5 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { ExamOverviewTable, type ExamOverviewTableProps } from "../components/exam-overview-table";
 import { overviewDiff, overviewRowsFromTemplate, overviewTotals, rowsDifferFromTemplate, type OverviewRow } from "../create-exam-overview";
@@ -143,5 +144,39 @@ describe("ô thời lượng nằm trên bảng (dòng 13, 14, 15)", () => {
     renderTable(overviewRowsFromTemplate(VSAT_MATH, "SUBJECT"));
     expect(screen.getByText("Bảng cuộn ngang: vuốt để xem các cột còn lại.")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Bảng cấu trúc tổng quan của bài thi" })).toHaveAttribute("tabindex", "0");
+  });
+});
+
+describe("ghi chú dưới bảng: nơi sửa số câu của từng dòng", () => {
+  const NOTE = "Số câu của từng dòng sửa ở bước 2.";
+
+  it("có dòng lấy câu và mẫu chưa khóa: hiện ghi chú sửa ở bước 2", () => {
+    renderTable(overviewRowsFromTemplate({ ...VSAT_MATH, fixedBlockCounts: false }, "SUBJECT"));
+    expect(screen.getByText(NOTE)).toBeInTheDocument();
+  });
+
+  it("mẫu khóa dòng lấy câu: không hiện ghi chú", () => {
+    renderTable(overviewRowsFromTemplate(VSAT_MATH, "SUBJECT"));
+    expect(screen.queryByText(NOTE)).toBeNull();
+  });
+
+  it("kỳ thi cũ không có dòng lấy câu: không hiện ghi chú", () => {
+    renderTable(overviewRowsFromTemplate(template("THPTQG", [[block("Một đáp án", { questionCount: 12 })]]), "SUBJECT"));
+    expect(screen.queryByText(NOTE)).toBeNull();
+  });
+
+  it("tiếng Anh", () => {
+    renderWithProviders(
+      <ExamOverviewTable
+        rows={overviewRowsFromTemplate({ ...VSAT_MATH, fixedBlockCounts: false }, "SUBJECT")}
+        timing="SHARED"
+        showPoints={false}
+        onCellChange={vi.fn()}
+        issues={new Map()}
+        subjectName={(code) => code}
+      />,
+      { locale: "en", messages: en },
+    );
+    expect(screen.getByText("Edit the question count of each row in step 2.")).toBeInTheDocument();
   });
 });

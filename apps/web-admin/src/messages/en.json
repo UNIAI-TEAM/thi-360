@@ -5644,6 +5644,7 @@
         "lockedBlockCountsNote": "A whole-subject exam keeps the type and quantity of every row from the template. To change quantities, choose the By part scope.",
         "blockUnit": "{sets, number} sets × {size, number} sub-questions",
         "scrollHint": "The table scrolls sideways: swipe to see the other columns.",
+        "blockRowsNote": "Edit the question count of each row in step 2.",
         "choiceNote": "(learner picks one option)",
         "omittedLabel": "skipped for now",
         "notCounted": "not counted",

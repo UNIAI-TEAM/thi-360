@@ -368,6 +368,9 @@ export function ExamOverviewTable({
           </tfoot>
         </table>
       </div>
+      {blockMode && !rows.some((row) => row.kind === "part" && row.lockedCount) && (
+        <p className="border-t border-border px-3 py-2 text-caption text-text-muted">{t("blockRowsNote")}</p>
+      )}
       {maxScore && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" />}
     </div>
   );

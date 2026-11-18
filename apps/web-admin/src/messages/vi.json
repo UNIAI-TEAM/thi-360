@@ -5644,6 +5644,7 @@
         "lockedBlockCountsNote": "Bài cả môn giữ nguyên dạng và số lượng từng dòng theo mẫu. Muốn đổi số lượng, chọn phạm vi Theo phần.",
         "blockUnit": "{sets, number} chùm × {size, number} câu con",
         "scrollHint": "Bảng cuộn ngang: vuốt để xem các cột còn lại.",
+        "blockRowsNote": "Số câu của từng dòng sửa ở bước 2.",
         "choiceNote": "(học viên chọn một lựa chọn)",
         "omittedLabel": "tạm bỏ qua",
         "notCounted": "không tính",
