@@ -94,6 +94,66 @@ class ExamApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void topicPercentAndScopeFlagSurviveStructureSave() throws Exception {
+        var structure = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var parts = structure.path("parts").deepCopy();
+        var section = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0);
+        var quota = mapper.createObjectNode();
+        quota.put("id", "percent-save");
+        quota.put("count", 1);
+        quota.put("percent", 12.5);
+        section.putArray("topicQuotas").add(quota);
+        section.putObject("knowledgeScope").putArray("nodeIds");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) section.path("knowledgeScope"))
+                .put("everyChildInScope", true);
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", structure.path("revision").asLong());
+        mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+        var saved = mapper.readTree(mockMvc.perform(get(EXAM + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var savedSection = saved.path("parts").get(0).path("sections").get(0);
+        assertThat(savedSection.path("topicQuotas").get(0).path("percent").decimalValue())
+                .isEqualByComparingTo("12.5");
+        assertThat(savedSection.path("knowledgeScope").path("everyChildInScope").asBoolean()).isTrue();
+    }
+
+    @Test
+    void outOfRangeTopicPercentReturnsFieldErrors() throws Exception {
+        var structure = mapper.readTree(mockMvc.perform(get(EXAM + "/structure")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        for (int percent : List.of(-1, 101)) {
+            for (boolean blockLevel : List.of(false, true)) {
+                var parts = structure.path("parts").deepCopy();
+                var section = parts.get(0).path("sections").get(0);
+                var target = (com.fasterxml.jackson.databind.node.ObjectNode)
+                        (blockLevel ? section.path("blocks").get(0) : section);
+                var quota = mapper.createObjectNode();
+                quota.put("id", "percent-test");
+                quota.put("count", 1);
+                quota.put("percent", percent);
+                target.putArray("topicQuotas").add(quota);
+                var request = mapper.createObjectNode();
+                request.set("parts", parts);
+                request.put("expectedRevision", structure.path("revision").asLong());
+                mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                                .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                        .andExpect(status().isUnprocessableEntity())
+                        .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"))
+                        .andExpect(jsonPath("$.fieldErrors[0].field")
+                                .value(blockLevel ? "blocks.topicQuotas" : "sections.topicQuotas"));
+            }
+        }
+    }
+
+    @Test
     void staleRevisionIsRejected() throws Exception {
         mockMvc.perform(put(EXAM + "/structure").with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)

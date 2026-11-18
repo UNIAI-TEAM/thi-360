@@ -118,7 +118,8 @@ public final class ExamStructureOps {
         }
         return quotas.stream().map(q -> new TopicQuota(q.id(), q.name(), q.nodeIds(), q.count(),
                 q.basis(), q.enforcement(), q.gradeCodes(), q.difficultyCodes(),
-                q.groupIds().stream().map(groupId -> blockIds.getOrDefault(groupId, groupId)).toList()))
+                q.groupIds().stream().map(groupId -> blockIds.getOrDefault(groupId, groupId)).toList(),
+                q.percent()))
                 .toList();
     }
 
