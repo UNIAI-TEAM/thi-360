@@ -387,6 +387,10 @@ export interface ExamTemplate {
   summary?: string | null;
   /** Điều cần chuyên gia xác nhận trước khi bán (ví dụ HSA chia 17–17–16), hiện cạnh mẫu; `null` khi không có. */
   expertNote?: string | null;
+  /** `false` (BE-11, H26): bài từ mẫu chỉ lưu nháp, không công bố (THPTQG Ngữ văn); `null`/thiếu: công bố được. */
+  publishable?: boolean | null;
+  /** `true` (BE-11, H27): mẫu khóa số câu của phần và tiểu mục (V-ACT toàn bài); `null`/thiếu: sửa được. */
+  fixedCounts?: boolean | null;
   parts: ExamTemplatePart[];
 }
 

@@ -1,4 +1,4 @@
-import type { ExamOverviewRow, ExamTemplate, ExamTiming } from "./types";
+import type { ExamOverviewRow, ExamTemplate, ExamTemplateSection, ExamTiming } from "./types";
 
 /**
  * "Bảng tổng quan" của bước 1 (2B 15.1): một dòng cho mỗi phần của mẫu và, khi phần cố định có nhiều môn (BCA Phần 2,
@@ -12,11 +12,15 @@ export type OverviewRowKind = "part" | "section" | "omitted";
 export interface OverviewRow {
   /** Khóa ổn định cho React và cho `onRowChange`: `p:<partId|index>` hoặc `p:<…>/s:<sectionId|subject>`. */
   key: string;
+  /** Dòng môn/tiểu mục: khóa của dòng phần cha (để tính tỷ lệ trong phần); dòng phần để trống. */
+  parentKey?: string;
   kind: OverviewRowKind;
   /** Tên hiển thị: tên phần, hoặc mã môn (giao diện đổi thành tên môn qua danh mục). */
   label: string;
   /** Môn của dòng môn (để giao diện tra tên); dòng phần để trống. */
   subjectCode: string;
+  /** Năng lực đầu tiên của mục (V-ACT: hai mục cùng môn SCIENTIFIC_THINKING tách tên theo năng lực). */
+  competencyCode?: string;
   /** Khóa so khớp gửi máy chủ. */
   partId?: string;
   partCode?: string;
@@ -31,6 +35,8 @@ export interface OverviewRow {
   choice: boolean;
   /** Dòng phần có dòng môn con: số câu của phần là tổng các môn, không nhập ở dòng phần. */
   group: boolean;
+  /** Mẫu `fixedCounts` (H27): ô số câu chỉ đọc — V-ACT toàn bài khóa số câu từng tiểu mục. */
+  lockedCount: boolean;
 }
 
 export interface OverviewTotals {
@@ -38,6 +44,7 @@ export interface OverviewTotals {
   durationMinutes: number | null;
   maxPoints: number | null;
 }
+
 
 const numberOrNull = (text: string): number | null => {
   const trimmed = text.trim();
@@ -66,32 +73,55 @@ function partRow(part: ExamTemplate["parts"][number], index: number): OverviewRo
     base,
     choice: part.mode === "CHOICE",
     group: false,
+    lockedCount: false,
   };
 }
 
-/** Dòng của một môn trong phần cố định nhiều môn (con của `parentKey`). */
-function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sectionIndex: number): OverviewRow {
+/** Năng lực đầu tiên của mục: phạm vi của mục, không thì của nhóm đầu (V-ACT hai mục cùng môn SCIENTIFIC_THINKING). */
+export function sectionCompetency(section: ExamTemplateSection | undefined): string | undefined {
+  return (
+    section?.knowledgeScope?.competencyCodes?.[0] ??
+    section?.blocks?.find((block) => block.knowledgeScope?.competencyCodes?.length)?.knowledgeScope?.competencyCodes?.[0]
+  );
+}
+
+/**
+ * Dòng của một môn/tiểu mục trong phần (con của `parentKey`). Chỉ mẫu `fixedCounts` (V-ACT toàn bài, H27: "Điểm tối
+ * đa bằng số câu nhân 10") mới chia điểm của phần cho mục theo tỷ lệ số câu; mẫu khác không ghi điểm từng môn nên ô
+ * Điểm của dòng môn để trống (hiện "—").
+ */
+function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sectionIndex: number, locked: boolean): OverviewRow {
   const section = part.sections?.[sectionIndex];
+  const partPoints = locked ? (part.maxPoints ?? part.points ?? null) : null;
+  const partCount = part.questionCount ?? null;
+  const sectionPoints =
+    partPoints !== null && partCount && section?.questionCount
+      ? Math.round((partPoints * section.questionCount * 100) / partCount) / 100
+      : null;
   const base = {
     questionCount: section?.questionCount ?? null,
     durationMinutes: null,
-    maxPoints: null,
+    maxPoints: sectionPoints,
   };
   return {
     key: `p:${partIndex}/s:${sectionIndex}`,
+    parentKey: `p:${partIndex}`,
     kind: "section",
     label: section?.subjectCode ?? "",
     subjectCode: section?.subjectCode ?? "",
+    competencyCode: sectionCompetency(section),
     sectionId: section?.sectionId || undefined,
     partId: part.partId || undefined,
     questionCount: formatNumber(base.questionCount),
     durationMinutes: "",
-    maxPoints: "",
+    maxPoints: formatNumber(base.maxPoints),
     base,
     choice: false,
     group: false,
+    lockedCount: false,
   };
 }
+
 
 /** Nhóm tạm bỏ qua của môn (SPT Toán: Tự luận): hiện mờ, chỉ đọc, không tính vào tổng và không vào `overview`. */
 function omittedRow(
@@ -103,6 +133,7 @@ function omittedRow(
 ): OverviewRow {
   return {
     key: `p:${partIndex}/s:${sectionIndex}/o:${blockIndex}`,
+    parentKey: `p:${partIndex}`,
     kind: "omitted",
     label: block.name,
     subjectCode,
@@ -112,13 +143,15 @@ function omittedRow(
     base: { questionCount: block.questionCount, durationMinutes: null, maxPoints: null },
     choice: false,
     group: false,
+    lockedCount: false,
   };
 }
 
 /**
  * Dòng tổng quan của mẫu đã chọn. `scope = PART` gắn `partCode` của bài vào dòng phần (khóa so khớp của mẫu theo
  * phần). Phần cố định nhiều môn thêm dòng môn ngay sau dòng phần; dòng phần khi đó chỉ là dòng nhóm (tổng môn), ô
- * số câu của phần không sửa — sửa ở dòng môn.
+ * số câu của phần không sửa — sửa ở dòng môn. Mẫu `fixedCounts` (H27, V-ACT toàn bài) hiện dòng cho mọi tiểu mục
+ * và khóa ô số câu của phần lẫn mục.
  */
 export function overviewRowsFromTemplate(
   template: ExamTemplate | undefined | null,
@@ -126,16 +159,18 @@ export function overviewRowsFromTemplate(
   partCode = "",
 ): OverviewRow[] {
   if (!template) return [];
+  const locked = template.fixedCounts === true;
   const rows: OverviewRow[] = [];
   template.parts.forEach((part, index) => {
     const row = partRow(part, index);
     if (scope === "PART") row.partCode = partCode || undefined;
+    row.lockedCount = locked;
     rows.push(row);
     const sections = part.mode === "FIXED" ? (part.sections ?? []) : [];
-    if (sections.length > 1) {
+    if (sections.length > 1 || (locked && sections.length > 0)) {
       row.group = true;
       sections.forEach((section, sectionIndex) => {
-        rows.push(sectionRow(part, index, sectionIndex));
+        rows.push({ ...sectionRow(part, index, sectionIndex, locked), lockedCount: locked });
         (section.omittedBlocks ?? []).forEach((block, blockIndex) =>
           rows.push(omittedRow(index, sectionIndex, section.subjectCode, block, blockIndex)),
         );
@@ -170,6 +205,7 @@ export function overviewRowsEmpty(scope: "FULL" | "PART" | "SUBJECT", subjectCod
       base: { questionCount: null, durationMinutes: null, maxPoints: null },
       choice: false,
       group: false,
+      lockedCount: false,
     },
   ];
 }

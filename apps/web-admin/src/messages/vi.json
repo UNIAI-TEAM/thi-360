@@ -5168,7 +5168,11 @@
         "MATH": "Toán",
         "LITERATURE": "Văn",
         "SCIENCE": "Khoa học",
-        "ENGLISH": "Tiếng Anh"
+        "ENGLISH": "Tiếng Anh",
+        "LANGUAGE": "Sử dụng ngôn ngữ",
+        "THINKING": "Tư duy khoa học",
+        "LOGIC": "Logic và phân tích số liệu",
+        "REASONING": "Suy luận khoa học"
       },
       "descriptionLabel": "Mô tả",
       "descriptionPlaceholder": "Giới thiệu nội dung và mục tiêu bài thi",
@@ -5426,6 +5430,12 @@
         "part": "Phần thi",
         "partHint": "Bài Theo phần chỉ gồm phần được chọn",
         "noPart": "Môn này chưa có phần nào để chọn.",
+        "notPublishableNotice": "Toàn bộ môn {subject} là tự luận – tạm bỏ qua trong V1",
+        "notPublishableDraft": "Bài này chỉ lưu nháp, không công bố được và không đưa vào bộ đề bán.",
+        "durationRequiredBase": "Chưa nhập thời lượng của bài.",
+        "durationRequiredPart": "Chưa nhập thời lượng. Bài theo phần không có thời lượng mặc định.",
+        "durationRequiredReview": "Chưa nhập thời lượng. Bài ôn không có thời lượng mặc định.",
+        "durationRequiredCustom": "Chưa nhập thời lượng. Bài riêng của {kind} không có thời lượng mặc định.",
         "buildModeLegend": "Cách dựng bài",
         "buildModeStandard": "Dùng cấu trúc môn {kind}",
         "buildModeStandardHint": "Nạp cấu trúc đầy đủ của môn theo mẫu mặc định.",
@@ -5465,13 +5475,17 @@
           "part": "Phần hoặc môn",
           "count": "Số câu",
           "duration": "Thời lượng (phút)",
-          "points": "Điểm"
+          "points": "Điểm",
+          "percentPart": "Tỷ lệ trong phần",
+          "percentExam": "Tỷ lệ toàn bài",
+          "percentExamCustom": "Tỷ lệ trong bài"
         },
         "cell": {
           "questionCount": "Số câu của {name}",
           "durationMinutes": "Thời lượng của {name}",
           "maxPoints": "Điểm của {name}"
         },
+        "lockedCounts": "Mẫu đã khóa số câu",
         "choiceNote": "(học viên chọn một lựa chọn)",
         "omittedLabel": "tạm bỏ qua",
         "notCounted": "không tính",

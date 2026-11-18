@@ -12,8 +12,10 @@ import {
   latestTemplate,
   matchingTemplates,
   partsEdited,
+  partCodesForKind,
   resolveScope,
   scopeDefaults,
+  scopeTemplate,
   type ScopeSelection,
   scopesForKind,
   summarizeParts,
@@ -482,5 +484,32 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
       pointsByPart: false,
     });
     expect(scopeDefaults(undefined, kindOption("QDA"), "PART").maxScore).toBeNull();
+  });
+});
+
+describe("V-ACT và THPTQG: phạm vi mới và thời lượng bài theo phần (UNI-2677)", () => {
+  const VACT_KINDS = KINDS.map((kind) => (kind.code === "VACT" ? { ...kind, scopes: ["FULL", "PART", "SUBJECT"] as ExamScope[] } : kind));
+  const base = FIXTURE_TEMPLATES.find((template) => template.code === "HSA_SINGLE")!;
+  const vactPart = (partCode: string) => ({ ...base, code: `VACT_PART_${partCode}`, kind: "VACT", scope: "PART" as const, partCode, subjectCode: null });
+  const vactSubject = (subjectCode: string) => ({ ...base, code: `VACT_SUBJECT_${subjectCode}`, kind: "VACT", scope: "SUBJECT" as const, partCode: null, subjectCode });
+  const VACT_TEMPLATES = [vactPart("LANGUAGE"), vactPart("THINKING"), vactPart("LOGIC"), vactPart("REASONING"), vactSubject("VIETNAMESE"), vactSubject("TOAN")];
+
+  it("V-ACT Theo phần: bốn mã phần theo thứ tự mẫu; Theo môn chỉ chào môn có mẫu theo môn", () => {
+    expect(partCodesForKind(VACT_TEMPLATES, VACT_KINDS, "VACT")).toEqual(["LANGUAGE", "THINKING", "LOGIC", "REASONING"]);
+    const current: ScopeSelection = { kind: "VACT", scope: "FULL", partCode: "", subjectCode: "" };
+    expect(resolveScope(VACT_TEMPLATES, VACT_KINDS, SUBJECTS, current, { scope: "PART" })).toMatchObject({ scope: "PART", partCode: "LANGUAGE" });
+    expect(resolveScope(VACT_TEMPLATES, VACT_KINDS, SUBJECTS, current, { scope: "SUBJECT" })).toMatchObject({ scope: "SUBJECT", subjectCode: "VIETNAMESE" });
+  });
+
+  it("THPTQG Theo phần: thời lượng không lấy từ mẫu môn mà do người nhập (H35)", () => {
+    const selection: ScopeSelection = { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode: "MATH" };
+    const template = scopeTemplate(FIXTURE_TEMPLATES, KINDS, selection)!;
+    expect(template).toMatchObject({ timing: "SHARED", durationMinutes: null });
+    expect(scopeDefaults(template, kindOption("THPTQG"), "PART")).toMatchObject({ timing: "SHARED", sharedDuration: 0 });
+  });
+
+  it("SP2E Theo phần vẫn lấy thời lượng của mẫu môn (H35 chỉ áp cho THPTQG)", () => {
+    const selection: ScopeSelection = { kind: "SP2E", scope: "PART", partCode: "P1", subjectCode: "MATH" };
+    expect(scopeTemplate(FIXTURE_TEMPLATES, KINDS, selection)).toMatchObject({ timing: "PER_PART", durationMinutes: 90 });
   });
 });
