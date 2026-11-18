@@ -16,10 +16,12 @@ import vn.unicom.thi360.shared.ids.Ids;
 public class ExamCheckResultStore {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
+    private final ExamCheckValidity validity;
 
-    public ExamCheckResultStore(JdbcTemplate jdbc, ObjectMapper mapper) {
+    public ExamCheckResultStore(JdbcTemplate jdbc, ObjectMapper mapper, ExamCheckValidity validity) {
         this.jdbc = jdbc;
         this.mapper = mapper;
+        this.validity = validity;
     }
 
     public record Input(UUID examId, long examRevision, String structureHash, JsonNode configSnapshot,
@@ -38,7 +40,7 @@ public class ExamCheckResultStore {
         jdbc.update("INSERT INTO exam.exam_check_run (id, exam_id, exam_revision, structure_hash, config_snapshot, "
                         + "profile_revision, catalog_revision, input_fingerprint, source_revisions, result, witness, "
                         + "checked_at, duration_ms) VALUES (?, ?, ?, ?, "
-                        + ExamCheckValidity.storedConfig("?::jsonb", "?")
+                        + validity.storedConfig("?::jsonb", "?")
                         + ", ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, ?, ?) ON CONFLICT (exam_id) DO UPDATE SET id = EXCLUDED.id, "
                         + "exam_revision = EXCLUDED.exam_revision, structure_hash = EXCLUDED.structure_hash, "
                         + "config_snapshot = EXCLUDED.config_snapshot, profile_revision = EXCLUDED.profile_revision, "

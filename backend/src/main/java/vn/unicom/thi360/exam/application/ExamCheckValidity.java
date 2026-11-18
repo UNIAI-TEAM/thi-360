@@ -14,6 +14,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
@@ -40,21 +41,43 @@ public class ExamCheckValidity {
      * subject has {@code publishable = false}; {@code fixedCounts}: the template it was loaded from has
      * {@code fixed_counts = true}. A saved check records the policy only when it is not the default, so checks
      * saved before the flags existed keep their meaning.
+     * <p>
+     * Templates identify a kind and a subject by code and exams by catalog item id. The catalog tables are not read
+     * here: the (few) unpublishable templates are read once, their codes are resolved to item ids through
+     * {@link CatalogLookup}, and the exam's own ids are compared with those literals.
      */
-    static String currentPolicy(String e) {
+    String currentPolicy(String e) {
         return "jsonb_strip_nulls(jsonb_build_object("
-                + "'unpublishable', CASE WHEN EXISTS (SELECT 1 FROM exam.exam_template pt"
-                + " JOIN catalog.catalog_item pk ON pk.id = " + e + ".kind_item_id"
-                + " JOIN catalog.catalog_item ps ON ps.id = " + e + ".subject_item_id"
-                + " WHERE pt.kind_code = pk.code AND pt.scope = 'SUBJECT' AND pt.subject_code = ps.code"
-                + " AND pt.part_code IS NULL AND pt.active AND pt.is_default AND pt.build_mode = 'STANDARD'"
-                + " AND NOT pt.publishable) THEN true END, "
+                + "'unpublishable', " + unpublishable(e) + ", "
                 + "'fixedCounts', CASE WHEN EXISTS (SELECT 1 FROM exam.exam_template ft"
                 + " WHERE ft.code = " + e + ".template_code AND ft.fixed_counts) THEN true END))";
     }
 
+    private String unpublishable(String e) {
+        List<String[]> codes = jdbc.query("SELECT DISTINCT kind_code, subject_code FROM exam.exam_template"
+                + " WHERE scope = 'SUBJECT' AND part_code IS NULL AND active AND is_default"
+                + " AND build_mode = 'STANDARD' AND NOT publishable AND subject_code IS NOT NULL",
+                (rs, row) -> new String[] {rs.getString("kind_code"), rs.getString("subject_code")});
+        if (codes.isEmpty()) return "CAST(NULL AS boolean)";
+        Map<String, UUID> kinds = idsByCode("EXAM");
+        Map<String, UUID> subjects = idsByCode("SUBJECT");
+        // UUID text only: no user input reaches this SQL.
+        String pairs = codes.stream()
+                .filter(pair -> kinds.containsKey(pair[0]) && subjects.containsKey(pair[1]))
+                .map(pair -> "('" + kinds.get(pair[0]) + "'::uuid, '" + subjects.get(pair[1]) + "'::uuid)")
+                .collect(java.util.stream.Collectors.joining(", "));
+        if (pairs.isEmpty()) return "CAST(NULL AS boolean)";
+        return "CASE WHEN (" + e + ".kind_item_id, " + e + ".subject_item_id) IN (VALUES " + pairs + ") THEN true END";
+    }
+
+    private Map<String, UUID> idsByCode(String group) {
+        Map<String, UUID> ids = new HashMap<>();
+        for (CatalogItemView item : catalog.listGroupItems(group)) ids.putIfAbsent(item.code(), item.id());
+        return ids;
+    }
+
     /** SQL boolean: the saved config of run {@code r} still equals the exam's config and template policy. */
-    static String configMatches(String r, String e) {
+    String configMatches(String r, String e) {
         return "((" + r + ".config_snapshot - 'templatePolicy') = jsonb_build_object("
                 + "'kindItemId', " + e + ".kind_item_id, 'scope', " + e + ".scope, 'partCode', " + e + ".part_code, "
                 + "'subjectItemId', " + e + ".subject_item_id, 'templateCode', " + e + ".template_code, "
@@ -70,9 +93,10 @@ public class ExamCheckValidity {
      * SQL jsonb to store for the exam whose id is bound to {@code examIdParameter}: the config parameter plus
      * {@code templatePolicy} when the policy is not the default.
      */
-    static String storedConfig(String configParameter, String examIdParameter) {
-        return configParameter + " || (SELECT CASE WHEN " + currentPolicy("e") + " = '{}'::jsonb THEN '{}'::jsonb"
-                + " ELSE jsonb_build_object('templatePolicy', " + currentPolicy("e") + ") END"
+    String storedConfig(String configParameter, String examIdParameter) {
+        String policy = currentPolicy("e");
+        return configParameter + " || (SELECT CASE WHEN " + policy + " = '{}'::jsonb THEN '{}'::jsonb"
+                + " ELSE jsonb_build_object('templatePolicy', " + policy + ") END"
                 + " FROM exam.exam e WHERE e.id = " + examIdParameter + ")";
     }
 

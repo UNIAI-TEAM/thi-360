@@ -216,7 +216,7 @@ public class ExamService {
                     + " WHEN es.structure_hash IS NULL"
                     + " OR es.structure_hash IS DISTINCT FROM cr.structure_hash"
                     + " THEN 'NEEDS_RECHECK'"
-                    + " WHEN NOT " + ExamCheckValidity.configMatches("cr", "e")
+                    + " WHEN NOT " + checkValidity.configMatches("cr", "e")
                     + " OR cr.profile_revision IS DISTINCT FROM kp.revision"
                     + " OR cr.catalog_revision IS DISTINCT FROM ?"
                     + " THEN 'NEEDS_RECHECK'"
