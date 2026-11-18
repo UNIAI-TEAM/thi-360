@@ -110,6 +110,9 @@ export function latestTemplate(templates: readonly ExamTemplate[], selection: Sc
   return matches.find((template) => template.isDefault) ?? matches[0];
 }
 
+/** Kỳ thi mà bài Theo phần không có thời lượng mặc định (H35): quản trị viên nhập khi tạo. */
+const DURATION_ENTERED_KIND = "THPTQG";
+
 /**
  * Mẫu nạp cho bảng tổng quan của bước 1. Bài Theo phần của kỳ thi chọn môn trước (SP2E, SPT) không có mẫu Theo phần:
  * lấy mẫu Theo môn mặc định của môn, thu về đúng phần đã chọn (`P<thứ tự>`) và thang điểm của phần. Các trường hợp khác
@@ -126,7 +129,10 @@ export function scopeTemplate(
   const base = latestTemplate(templates, { ...selection, scope: "SUBJECT", partCode: "", buildMode: "STANDARD" });
   if (!base) return undefined;
   const parts = base.parts.filter((part, index) => subjectPartCode(part.order ?? index + 1) === selection.partCode);
-  return { ...base, parts, maxScore: parts[0]?.maxPoints ?? parts[0]?.points ?? base.maxScore };
+  const shape = { parts, maxScore: parts[0]?.maxPoints ?? parts[0]?.points ?? base.maxScore };
+  // H35: bài theo phần của THPTQG tự nhập thời lượng chung — thời lượng và `timing` không lấy từ mẫu môn.
+  if (selection.kind === DURATION_ENTERED_KIND) return { ...base, ...shape, timing: "SHARED", durationMinutes: null };
+  return { ...base, ...shape };
 }
 
 /** Số mẫu Theo môn của từng môn trong kỳ thi (để ô chọn môn nêu môn nào có mẫu). */
