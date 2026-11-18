@@ -295,6 +295,43 @@ export function KindField({
 }
 
 /**
+ * Kỳ thi dạng ô chọn của bản vẽ TaoBaiThi2B (bước 1, khối Thông tin chung): một mục cho mỗi kỳ thi của danh mục, tên
+ * đầy đủ từ danh mục. Gợi ý dưới ô nêu cách lấy mẫu và cách tính thời lượng của kỳ thi đang chọn (như `KindField`).
+ */
+export function KindSelect({
+  kinds,
+  value,
+  onChange,
+}: {
+  kinds: readonly ExamKindOption[];
+  value: ExamKind;
+  onChange: (kind: ExamKind) => void;
+}) {
+  const t = useTranslations("exams.create");
+  const kindLabel = useKindLabel();
+  const current = kindOptionFor(kinds, value);
+  const hint = current
+    ? t(current.templateBy === "SUBJECT" ? "kindHintSubject" : "kindHintKind", {
+        kind: kindLabel(current.code),
+        timing: t(`timingMode.${current.timing}`),
+      })
+    : undefined;
+  return (
+    <FormField label={t("kind")} required hint={hint}>
+      {(controlProps) => (
+        <Select
+          {...controlProps}
+          name="kind"
+          value={value || undefined}
+          onValueChange={onChange}
+          options={kinds.map((kind) => ({ value: kind.code, label: kind.name }))}
+        />
+      )}
+    </FormField>
+  );
+}
+
+/**
  * Phạm vi bài thi (Toàn bài, Theo phần, Theo môn) theo `scopes` của kỳ thi. Kỳ thi chỉ có một phạm vi thì không cần
  * chọn: hiện một dòng nêu phạm vi thay cho nhóm radio một lựa chọn.
  */

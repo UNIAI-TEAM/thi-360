@@ -502,7 +502,9 @@ class ExamStructureIT extends AbstractIntegrationTest {
         assertThat(savedBlock.path("templateGroupCode").isMissingNode()).isTrue();
         assertThat(savedBlock.path("answerTypeLocked").asBoolean()).isFalse();
         assertThat(savedBlock.path("shuffle").isMissingNode()).isTrue();
-        JsonNode savedExtra = savedSection.path("blocks").get(2);
+        JsonNode savedExtra = java.util.stream.StreamSupport.stream(savedSection.path("blocks").spliterator(), false)
+                .filter(item -> "Additional block".equals(item.path("name").asText()))
+                .findFirst().orElseThrow();
         assertThat(savedExtra.path("name").asText()).isEqualTo("Additional block");
         assertThat(savedExtra.path("templateGroupCode").isMissingNode()).isTrue();
         assertThat(savedExtra.path("answerTypeLocked").asBoolean()).isFalse();

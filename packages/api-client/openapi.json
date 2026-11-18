@@ -3363,6 +3363,11 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "buildMode" : {
+            "description" : "STANDARD | REVIEW",
+            "enum" : [ "STANDARD", "REVIEW" ],
+            "type" : "string"
+          },
           "check" : {
             "$ref" : "#/components/schemas/ExamCheckSummary"
           },
@@ -8014,6 +8019,10 @@
             "description" : "Bắt buộc true khi đổi phạm vi sau khi cấu trúc đã sửa; thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM",
             "type" : "boolean"
           },
+          "confirmScoring" : {
+            "description" : "Xác nhận quy đổi điểm sang LINEAR",
+            "type" : "boolean"
+          },
           "description" : {
             "description" : "Mô tả; chuỗi trống → xóa",
             "maxLength" : 4000,
@@ -8062,6 +8071,15 @@
             "maxLength" : 30,
             "minLength" : 0,
             "type" : "string"
+          },
+          "practiceScoring" : {
+            "description" : "RAW | LINEAR",
+            "enum" : [ "RAW", "LINEAR" ],
+            "type" : "string"
+          },
+          "referenceMax" : {
+            "description" : "Thang điểm quy chiếu khi quy đổi",
+            "type" : "number"
           },
           "scope" : {
             "description" : "FULL | PART | SUBJECT; đổi khi đã phát hành → 409 EXAM_SCOPE_LOCKED",
