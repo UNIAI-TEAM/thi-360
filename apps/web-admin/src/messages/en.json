@@ -4505,6 +4505,49 @@
           "issue": "Issue"
         }
       },
+      "findings": {
+        "affected": "Affected codes:",
+        "blocked": "Cannot publish yet: {count, plural, one {# error blocks} other {# errors block}} publishing.",
+        "codeGroup": "Code {code}",
+        "counters": {
+          "errors": "Errors",
+          "sections": "Subjects checked",
+          "sectionsValue": "{checked, number}/{total, number}",
+          "unconfirmed": "Unconfirmed",
+          "warnings": "Warnings"
+        },
+        "countersLabel": "Issue counts",
+        "errorsTitle": "Errors · block publishing ({count, number})",
+        "groupBy": {
+          "code": "Code",
+          "label": "Group by",
+          "subject": "Subject"
+        },
+        "location": "Location: {where}",
+        "noCode": "Not tied to a code",
+        "noWarnings": "No warnings.",
+        "none": "–",
+        "open": "Open the problem",
+        "openAria": "Open the problem: {issue}",
+        "openHint": "Select Open the problem to go to the exact place in the Structure step.",
+        "partsTitle": "By code and part",
+        "passed": "Ready to publish. No blocking errors.",
+        "title": "Errors and warnings",
+        "unconfirmedHeadline": "Not conclusive: {count, plural, one {# issue} other {# issues}} could not be confirmed within the processing limit.",
+        "unconfirmedTitle": "Unconfirmed ({count, number})",
+        "unitCode": "Code {code}",
+        "unitColumns": {
+          "errors": "Errors",
+          "name": "Part or code",
+          "state": "Status",
+          "subjects": "Subjects in order",
+          "warnings": "Warnings"
+        },
+        "unitsTitle": "Status of each subject",
+        "warningsNote": "{count, plural, one {# warning does} other {# warnings do}} not block publishing.",
+        "warningsTitle": "Warnings · do not block publishing ({count, number})",
+        "wholeExam": "Whole exam"
+      },
       "groups": {
         "title": "Check groups",
         "passed": "Passed",
@@ -4590,7 +4633,24 @@
         "PART_EMPTY": "{part} has no questions yet.",
         "SHARED_PART_DURATION": "{part}: the exam uses a shared timer, so a part must not set its own duration.",
         "ANSWER_QUOTA_DUPLICATE": "Subject {subject}: the {answerType} answer type appears twice in the answer-type quotas.",
-        "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
+        "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows.",
+        "ANSWER_FORMAT_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} questions} other {does not have enough questions}} {hasFormats, select, yes {with answer format {formats}} other {with the required answer format}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
+        "ATTACHMENT_MISSING": "Block {block}: question {codes} has an attachment that cannot be read.",
+        "CHILD_CONDITION_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} sets} other {does not have enough sets}} whose child question matches the topic{hasPositions, select, yes { at position {positions}} other { at the required position}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
+        "COMBINATION_LIST_CHANGED": "The code list in the global catalog differs from the snapshot of the serving version. Check again, then publish a new version.",
+        "COMBINATION_SUBJECT_MISSING": "{part}: subject {subject} has no matrix in the part's subject list.",
+        "DISTRIBUTION_DEVIATION": "{block}: the reference distribution{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
+        "EXAM_QUOTA_DEVIATION": "The reference exam quota{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
+        "ITEM_SHAPE_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} questions} other {does not have enough questions}} {shapeKind, select, MATCHING {with a matching structure of {left, number} left items – {right, number} right options} STATEMENTS {with exactly {statements, number} statements} other {of the required shape}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
+        "MANUAL_GRADING_REQUIRED": "Block {block} has essay questions: its points are only available after manual grading.",
+        "OMITTED_GROUPS_PRESENT": "Block {block} is temporarily skipped: the exam's maximum score already excludes it.",
+        "QUESTION_NOT_PLAYABLE": "Block {block}: question {codes} is missing an answer key or a scoring rule, or refers to a resource that no longer exists.",
+        "REQUIRED_BASIS_UNSUPPORTED": "{block}: a required distribution counts questions only; the question-part or point units are for reference distributions.",
+        "SECTION_INCOMPLETE": "Subject {subject} is not fully configured.",
+        "SLOT_SOURCE_SHORTAGE": "Block {block}{hasSlot, select, yes {, set {slot, number}} other {}}: not enough source for the set's own conditions{hasCount, select, yes { (needs {required, number}, has {available, number})} other {}}.",
+        "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Subject {subject}: fewer than 2 single questions, so one cannot be dropped for a 16-question paper.",
+        "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {the topic quota needs at least {required, number} questions, the bank has only {available, number}, {missing, number} short} other {the bank does not have enough for the topic quota}}.",
+        "TOPIC_QUOTA_NESTED": "{block}: quotas are set on both a parent topic and a child topic at the same level; keep the quota on one level only."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -4808,7 +4868,7 @@
       "pathOptionInvalid": "{path} (cannot generate)",
       "pathOptionUnconfirmed": "{path} (unconfirmed)",
       "generate": "Generate preview paper",
-      "regenerate": "Generate again",
+      "regenerate": "Generate a new trial paper",
       "runStatus": "Run {run, number} · {time}",
       "runStatusFailed": "Run {run, number} · {time} · no paper",
       "live": {
@@ -4820,7 +4880,7 @@
       "errorTitle": "Something went wrong while generating",
       "retry": "Try again",
       "idleTitle": "No paper generated yet",
-      "idleDescription": "Pick a choice path, then select Generate preview paper.",
+      "idleDescription": "Pick a trial scope, then select Generate preview paper.",
       "noPathsTitle": "No choice path yet",
       "noPathsDescription": "Add parts and question blocks on the Structure and matrix page before generating a paper.",
       "failInvalidTitle": "Cannot generate a paper for {path}",
@@ -4873,7 +4933,7 @@
         },
         "remaining": "{picked, number} of {choose, number} subjects picked. Pick all {choose, number} to generate a paper.",
         "split": "Questions per subject: {list}.",
-        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Regenerate to try another split.",
+        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Generate a new trial paper to try another split.",
         "full": "All {choose, number} subjects picked. Clear one to switch to another subject."
       },
       "subjectQuotas": {
@@ -4926,7 +4986,82 @@
       "manualGrading": "Manual grading",
       "rubricTitle": "Rubric",
       "rubricEmpty": "This question has no rubric yet.",
-      "rubricItem": "{description}: {points, plural, one {# point} other {# points}}"
+      "rubricItem": "{description}: {points, plural, one {# point} other {# points}}",
+      "clozePosition": "Question {number, number} → blank ({blank, number}) · {type}",
+      "compliance": {
+        "actualAssigned": "{value} · assigned to question {numbers}",
+        "allPassed": "All criteria met",
+        "columns": {
+          "actual": "Actual",
+          "criterion": "Criterion",
+          "level": "Level · unit",
+          "required": "Required",
+          "result": "Result",
+          "scope": "Scope"
+        },
+        "criterion": {
+          "ANSWER_TYPE": "Type {name}",
+          "CELL": "{grade} × {difficulty}",
+          "COMPETENCY": "Competency {name}",
+          "DIFFICULTY": "Difficulty {name}",
+          "EXAM": "Exam quota {names}",
+          "GRADE": "Grade {name}",
+          "TOPIC": "Topic quota"
+        },
+        "deviations": "{count, plural, one {# row deviates} other {# rows deviate}}",
+        "droppedQuestion": "Dropped question {code} · {type}, {grade}, {difficulty}.",
+        "enforcement": {
+          "REFERENCE": "Reference",
+          "REQUIRED": "Required"
+        },
+        "legend": "A Reference row that deviates is only a warning and does not block. A Required row that fails means no paper is generated, and no short paper is returned.",
+        "level": "{enforcement} · {unit}",
+        "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
+        "result": {
+          "OK": "Met",
+          "REFERENCE_DEVIATION": "Deviates · reference",
+          "REQUIRED_DEVIATION": "Deviates · required"
+        },
+        "scope": {
+          "EXAM": "Whole exam"
+        },
+        "tableLabel": "Required and actual values of the trial paper",
+        "title": "Required / Actual",
+        "unit": {
+          "POINTS": "points",
+          "PROMPT": "prompts",
+          "QUESTION": "questions"
+        }
+      },
+      "expired": {
+        "description": "A trial paper is kept for {minutes, number} minutes, so the code can no longer be changed on this paper.",
+        "title": "The trial paper has expired"
+      },
+      "keep": {
+        "change": "Change code, regenerate {parts}",
+        "note": "The trial paper uses {from}. Switching to {to} keeps {kept} (questions {keptFirst, number}–{keptLast, number}) and only regenerates {regenerated} (questions {regeneratedFirst, number}–{regeneratedLast, number}). Generate a new trial paper regenerates the whole exam with a new seed."
+      },
+      "order": {
+        "showOriginal": "Show original order",
+        "showShuffled": "Show shuffled order"
+      },
+      "originalOrderNote": "Showing the original order: questions as the solver picked them, options as authored. The real paper uses the order shuffled by the seed.",
+      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · kept for {minutes, number} minutes · questions are logged as preview, no attempt is used",
+      "resultTitle": "Trial paper · {label}",
+      "scope": {
+        "count": "Questions in the subject",
+        "countOption": "{count, number} questions{full, select, yes {} other { (1 dropped)}}",
+        "examBlocked": "This exam has a code choice: pick one code.",
+        "kind": {
+          "EXAM": "Whole exam",
+          "PATH": "One code or branch",
+          "SECTION": "One subject"
+        },
+        "label": "Trial scope",
+        "section": "Subject",
+        "sectionOption": "{subject} · {part}",
+        "sectionWithCount": "{name} · {count, number} questions"
+      }
     },
     "publish": {
       "close": "Close",

@@ -110,7 +110,7 @@ describe("review-api nhanh that", () => {
   it("xem truoc: 422 PREVIEW_SUBJECTS_INVALID mang ma loi de man hinh dich", async () => {
     respondWith({ status: 422, body: { code: "PREVIEW_SUBJECTS_INVALID", message: "x" } });
 
-    const error = await generatePreview({ examId: EXAM, pathId: "p", seed: 1 }).catch((caught: unknown) => caught);
+    const error = await generatePreview({ examId: EXAM, target: { kind: "PATH", pathId: "p" }, seed: 1 }).catch((caught: unknown) => caught);
 
     expect(errorCodeOf(error)).toBe("PREVIEW_SUBJECTS_INVALID");
   });
