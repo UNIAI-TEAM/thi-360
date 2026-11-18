@@ -10,33 +10,25 @@ import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.domain.QuestionAssetProbeTests;
-import vn.unicom.thi360.shared.storage.ObjectStorage;
 
 /**
  * IT byte-range của {@code GET /api/v1/admin/question-assets/{id}} (UNI-2698): nội dung
  * trả về là {@code Resource} nên Spring MVC tự phục vụ range — 200 kèm
  * {@code Accept-Ranges: bytes} và {@code Content-Length} đầy đủ khi không có {@code Range};
  * 206 kèm {@code Content-Range}/{@code Content-Length} của vùng byte khi range hợp lệ;
- * 416 kèm {@code Content-Range: bytes *\/total} khi range vượt cuối hoặc không parse được.
+ * 416 kèm {@code Content-Range: bytes *\/total} và body rỗng khi range vượt cuối hoặc
+ * không parse được.
  * Quyền giữ nguyên: 401 chưa đăng nhập, 403 khi thiếu cả {@code QUESTION.VIEW|EXAM.VIEW},
  * {@code EXAM.VIEW} một mình vẫn tải được (206 khi có range), 404 khi id không có.
  */
 class QuestionAssetDownloadRangeIT extends AbstractIntegrationTest {
 
     private static final String BASE = "/api/v1/admin/question-assets";
-
-    @Autowired
-    private JdbcTemplate jdbc;
-
-    @Autowired
-    private ObjectStorage objectStorage;
 
     private byte[] png;
     private UUID imageId;
@@ -121,7 +113,12 @@ class QuestionAssetDownloadRangeIT extends AbstractIntegrationTest {
                         .header("Range", "bytes=" + (png.length + 100) + "-")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isRequestedRangeNotSatisfiable())
-                .andExpect(header().string("Content-Range", "bytes */" + png.length));
+                .andExpect(header().string("Content-Range", "bytes */" + png.length))
+                .andExpect(result -> {
+                    String contentLength = result.getResponse().getHeader("Content-Length");
+                    assertThat(contentLength == null ? "0" : contentLength).isEqualTo("0");
+                    assertThat(result.getResponse().getContentAsByteArray()).isEmpty();
+                });
     }
 
     @Test
@@ -130,7 +127,12 @@ class QuestionAssetDownloadRangeIT extends AbstractIntegrationTest {
                         .header("Range", "garbage-not-a-range")
                         .with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isRequestedRangeNotSatisfiable())
-                .andExpect(header().string("Content-Range", "bytes */" + png.length));
+                .andExpect(header().string("Content-Range", "bytes */" + png.length))
+                .andExpect(result -> {
+                    String contentLength = result.getResponse().getHeader("Content-Length");
+                    assertThat(contentLength == null ? "0" : contentLength).isEqualTo("0");
+                    assertThat(result.getResponse().getContentAsByteArray()).isEmpty();
+                });
     }
 
     // ------------------------------------------------------------- hàng 5: quyền với Range
