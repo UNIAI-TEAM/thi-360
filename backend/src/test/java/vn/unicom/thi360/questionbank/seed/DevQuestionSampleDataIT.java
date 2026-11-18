@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -108,6 +109,42 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
         // Spec 5.2: positions 1-2 of the shared reading carry 12 points, positions 3-8 carry 36.
         assertThat(samples("SEED-VSAT-ANH-MIXED-SET-%")).hasSize(3);
         assertThat(samples("SEED-VSAT-ANH-CHOICE-SET-%")).hasSize(3);
+    }
+
+    @Test
+    void vsatGeographySetsCarryOneSlotLabelOnTheRootOnly() throws Exception {
+        List<Sample> sets = samples("SEED-VSAT-DIA-SET-%");
+        assertThat(sets).hasSize(4);
+        for (Sample set : sets) {
+            // The version-1 snapshot agrees with question_tag: one label on the root.
+            assertThat(set.snapshot().path("tagItemIds")).as(set.code()).hasSize(1);
+        }
+        assertDiaSetTagging();
+    }
+
+    @Test
+    @Transactional
+    void aRerunAfterTheOldChildTaggingConvergesToOneLabelPerRoot() throws Exception {
+        // Simulate a database seeded by 6ef80282: every Địa lí set root carried both labels and
+        // children carried them too. Rerunning the repeatable seed must converge to the new
+        // tagging instead of leaving the stale labels behind.
+        jdbc.update("""
+                insert into questionbank.question_tag (question_id, tag_item_id)
+                select q.id, i.id from questionbank.question q
+                cross join catalog.catalog_item i
+                where (q.code like 'SEED-VSAT-DIA-SET-%')
+                  and i.group_id = '00000000-0000-7000-8100-000000000008'
+                  and i.code in ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO')
+                on conflict do nothing
+                """);
+
+        Connection connection = DataSourceUtils.getConnection(dataSource);
+        ScriptUtils.executeSqlScript(connection, new ClassPathResource(SEED_SCRIPT));
+
+        assertDiaSetTagging();
+        for (Sample set : samples("SEED-VSAT-DIA-SET-%")) {
+            assertThat(set.snapshot().path("tagItemIds")).as(set.code()).hasSize(1);
+        }
     }
 
     @Test
@@ -298,6 +335,36 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
         List<BigDecimal> values = new ArrayList<>();
         array.forEach(node -> values.add(node.decimalValue()));
         return values;
+    }
+
+    private void assertDiaSetTagging() {
+        Map<String, List<String>> byTag = jdbc.query("""
+                select i.code as tag, q.code as question
+                from questionbank.question_tag qt
+                join catalog.catalog_item i on i.id = qt.tag_item_id
+                join questionbank.question q on q.id = qt.question_id
+                where i.code in ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO')
+                  and q.code like 'SEED-VSAT-DIA-SET-%'
+                """, rs -> {
+            Map<String, List<String>> map = new HashMap<>();
+            while (rs.next()) {
+                map.computeIfAbsent(rs.getString("tag"), k -> new ArrayList<>())
+                        .add(rs.getString("question"));
+            }
+            return map;
+        });
+        assertThat(byTag.getOrDefault("DIA_BANG_SO_LIEU", List.of()))
+                .containsExactlyInAnyOrder("SEED-VSAT-DIA-SET-002", "SEED-VSAT-DIA-SET-004");
+        assertThat(byTag.getOrDefault("DIA_BIEU_DO", List.of()))
+                .containsExactlyInAnyOrder("SEED-VSAT-DIA-SET-001", "SEED-VSAT-DIA-SET-003");
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question_tag qt
+                join catalog.catalog_item i on i.id = qt.tag_item_id
+                join questionbank.question c on c.id = qt.question_id
+                where i.code in ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO')
+                  and c.parent_id is not null
+                  and c.code like 'SEED-VSAT-DIA-SET-%'
+                """, Integer.class)).isZero();
     }
 
     private List<Integer> tableCounts() {

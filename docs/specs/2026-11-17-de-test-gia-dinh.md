@@ -262,7 +262,7 @@ Nằm trong `R__seed_questionbank_dev_data.sql`, mã câu `SEED-HSCA-*` và `SEE
 | | Ghép hợp, 4 mục mỗi bên, 1,5 điểm mỗi cặp | 10 câu đơn (6 điểm mỗi câu) | 5 |
 | Toán, Lí, Hóa, Sinh, Sử, Địa | Trả lời ngắn, 6 điểm | 10 câu đơn | 5 |
 | | Phần II, chùm 3 câu con chọn một, 6 điểm mỗi câu con | 4 bộ | 2 |
-| Địa lí | Phần II hai vị trí theo nhãn | bộ gắn `DIA_BANG_SO_LIEU`, `DIA_BIEU_DO` ở câu gốc; câu con 1 gắn bảng số liệu, câu con 2 gắn biểu đồ | 2 |
+| Địa lí | Phần II hai vị trí theo nhãn | 4 bộ: 2 bộ gốc gắn `DIA_BANG_SO_LIEU`, 2 bộ gốc gắn `DIA_BIEU_DO`; câu con không nhãn | 2 mỗi nhãn |
 | Ngữ văn I–III | Phần II, chùm 3 câu con | 3 bộ `VAN_THO`, 3 bộ `VAN_TRUYEN` | 1 mỗi nhãn |
 | Tiếng Anh | Bài đọc dùng chung câu 8–15 | 3 bộ 8 câu con: vị trí 1–2 Đúng/Sai bốn ý, vị trí 3–8 chọn một, 6 điểm mỗi câu con | 1 |
 | | Phần II theo phần | 3 bộ 6 câu con chọn một, 6 điểm | 1 |

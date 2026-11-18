@@ -1127,8 +1127,7 @@ CREATE TEMP TABLE seed_dot2b_set (
     child_count integer NOT NULL,
     child_points numeric(8,4) NOT NULL,
     mixed boolean NOT NULL,
-    tag_codes text[],
-    child_tag_codes text[]
+    tag_codes text[]
 ) ON COMMIT DROP;
 
 -- Listening files: one audio/mpeg attachment per question root (children never carry files).
@@ -1200,17 +1199,17 @@ FROM generate_series(1, 3) n;
 -- one point each, Q-39), English listening (4 and 5 children, audio on the root) and reading
 -- (ten children, no audio). Children are single choice with four options.
 INSERT INTO seed_dot2b_set (id, code, subject_code, grade_code, level_code, label, passage, child_count, child_points,
-                            mixed, tag_codes, child_tag_codes)
+                            mixed, tag_codes)
 SELECT md5('thi360-hsca-' || s.code || '-set-' || n)::uuid, 'SEED-HSCA-' || s.code || '-SET-' || lpad(n::text, 3, '0'),
        s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
        'H-SCA ' || s.code || ' set ' || n, '<p>H-SCA ' || s.code || ' context ' || n || '</p>', 5, 0.25, false,
-       NULL::text[], NULL::text[]
+       NULL::text[]
 FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH']) AS s(code) CROSS JOIN generate_series(1, 4) n
 UNION ALL
 SELECT md5('thi360-hsca-literature-' || f.stem || '-' || n)::uuid, 'SEED-HSCA-VAN-' || f.stem || '-' || lpad(n::text, 3, '0'),
        'VAN', 'G12', 'TH', 'H-SCA literature ' || f.stem || ' set ' || n,
        '<p>H-SCA literature ' || f.stem || ' text ' || n || '</p>', f.child_count, 1, false,
-       ARRAY[f.tag], NULL::text[]
+       ARRAY[f.tag]
 FROM (VALUES ('INFO', 'VAN_THONG_TIN', 5), ('ARGUMENT', 'VAN_NGHI_LUAN', 7), ('POETRY', 'VAN_THO', 8))
      f(stem, tag, child_count)
 CROSS JOIN generate_series(1, 3) n
@@ -1218,42 +1217,42 @@ UNION ALL
 SELECT md5('thi360-hsca-en-listen-' || f.kind || '-' || n)::uuid,
        'SEED-HSCA-ANH-LISTEN-' || upper(f.kind) || '-' || lpad(n::text, 2, '0'), 'ANH', 'G12', 'TH',
        'H-SCA English listening ' || f.kind || ' ' || n, '<p>H-SCA English listening ' || f.kind || ' script ' || n || '</p>',
-       f.child_count, 1, false, NULL::text[], NULL::text[]
+       f.child_count, 1, false, NULL::text[]
 FROM (VALUES ('set4', 4), ('set5', 5)) f(kind, child_count) CROSS JOIN generate_series(1, 4) n
 UNION ALL
 SELECT md5('thi360-hsca-en-reading-set-' || n)::uuid, 'SEED-HSCA-ANH-READING-SET-' || lpad(n::text, 2, '0'), 'ANH', 'G12', 'TH',
        'H-SCA English reading set ' || n, '<p>H-SCA English reading passage ' || n || '</p>', 10, 1, false,
-       NULL::text[], NULL::text[]
+       NULL::text[]
 FROM generate_series(1, 6) n;
 
 -- V-SAT sets: part 2 of six subjects (two sets of three children are needed; four are seeded),
--- literature part 2 (poetry and prose), geography part 2 with a data-table and a chart position,
--- English single-choice set of six, English mixed set of eight (positions 1-2 true/false).
+-- literature part 2 (poetry and prose), English single-choice set of six, English mixed set of
+-- eight (positions 1-2 true/false). Slot matching is by root tag (ADV:BE-19:3): the four Địa lí
+-- roots carry one label each, two DIA_BANG_SO_LIEU and two DIA_BIEU_DO; children carry none.
 INSERT INTO seed_dot2b_set (id, code, subject_code, grade_code, level_code, label, passage, child_count, child_points,
-                            mixed, tag_codes, child_tag_codes)
+                            mixed, tag_codes)
 SELECT md5('thi360-vsat-' || s.code || '-set-' || n)::uuid, 'SEED-VSAT-' || s.code || '-SET-' || lpad(n::text, 3, '0'),
        s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
        'V-SAT ' || s.code || ' set ' || n, '<p>V-SAT ' || s.code || ' context ' || n || '</p>', 3, 6, false,
-       CASE WHEN s.code = 'DIA' THEN ARRAY['DIA_BANG_SO_LIEU', 'DIA_BIEU_DO'] END,
-       CASE WHEN s.code = 'DIA' THEN ARRAY['DIA_BANG_SO_LIEU', 'DIA_BIEU_DO', NULL] END
+       CASE WHEN s.code = 'DIA' THEN ARRAY[(ARRAY['DIA_BANG_SO_LIEU', 'DIA_BIEU_DO'])[1 + n % 2]] END
 FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH', 'SU', 'DIA']) AS s(code) CROSS JOIN generate_series(1, 4) n
 UNION ALL
 SELECT md5('thi360-vsat-literature-' || f.stem || '-' || n)::uuid, 'SEED-VSAT-VAN-' || f.stem || '-SET-' || lpad(n::text, 3, '0'),
        'VAN', (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
        'V-SAT literature ' || f.stem || ' set ' || n, '<p>V-SAT literature ' || f.stem || ' text ' || n || '</p>', 3, 6, false,
-       ARRAY[f.tag], NULL::text[]
+       ARRAY[f.tag]
 FROM (VALUES ('POETRY', 'VAN_THO'), ('PROSE', 'VAN_TRUYEN')) f(stem, tag) CROSS JOIN generate_series(1, 3) n
 UNION ALL
 SELECT md5('thi360-vsat-ANH-choice-set-' || n)::uuid, 'SEED-VSAT-ANH-CHOICE-SET-' || lpad(n::text, 2, '0'), 'ANH',
        (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
        'V-SAT English choice set ' || n, '<p>V-SAT English choice passage ' || n || '</p>', 6, 6, false,
-       NULL::text[], NULL::text[]
+       NULL::text[]
 FROM generate_series(1, 3) n
 UNION ALL
 SELECT md5('thi360-vsat-ANH-mixed-set-' || n)::uuid, 'SEED-VSAT-ANH-MIXED-SET-' || lpad(n::text, 2, '0'), 'ANH',
        (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
        'V-SAT English shared reading set ' || n, '<p>V-SAT English shared reading passage ' || n || '</p>', 8, 6, true,
-       NULL::text[], NULL::text[]
+       NULL::text[]
 FROM generate_series(1, 3) n;
 
 INSERT INTO seed_dot2b_asset (asset_id, question_id, object_key, file_name, size, sha256)
@@ -1321,11 +1320,6 @@ INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
 SELECT s.id, tag.id
 FROM seed_dot2b_set s
 CROSS JOIN LATERAL unnest(s.tag_codes) t(code)
-JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
-UNION
-SELECT md5(s.id::text || '-' || (t.ord - 1))::uuid, tag.id
-FROM seed_dot2b_set s
-CROSS JOIN LATERAL unnest(s.child_tag_codes) WITH ORDINALITY t(code, ord)
 JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
 ON CONFLICT DO NOTHING;
 -- END BE-19.
@@ -1454,11 +1448,39 @@ FROM seed_question_rows s
 JOIN questionbank.question q ON q.id = s.id
 ON CONFLICT DO NOTHING;
 
+-- Địa lí part II roots keep exactly one slot label (ADV:BE-19:3). A rerun over a database that
+-- still carries the older tagging (both labels on the roots, one label on children) removes
+-- them here and re-adds the root labels below, converging to the new tagging.
+DELETE FROM questionbank.question_tag qt
+USING catalog.catalog_item tag
+WHERE qt.tag_item_id = tag.id
+  AND tag.group_id = '00000000-0000-7000-8100-000000000008'
+  AND tag.code IN ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO')
+  AND EXISTS (SELECT 1 FROM seed_dot2b_set s
+              WHERE s.code LIKE 'SEED-VSAT-DIA-SET-%'
+                AND (qt.question_id = s.id
+                     OR EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+                                WHERE md5(s.id::text || '-' || pos)::uuid = qt.question_id)));
+
 INSERT INTO questionbank.question_tag (question_id, tag_item_id)
 SELECT t.question_id, t.tag_item_id FROM seed_2b_question_tags t
 WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = t.question_id)
    OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = t.question_id)
+   OR (EXISTS (SELECT 1 FROM seed_dot2b_set s WHERE s.id = t.question_id AND s.code LIKE 'SEED-VSAT-DIA-SET-%')
+       AND EXISTS (SELECT 1 FROM questionbank.question q WHERE q.id = t.question_id))
 ON CONFLICT DO NOTHING;
+
+-- Keep version-1 snapshots consistent with question_tag for the same set family.
+UPDATE questionbank.question_version v
+SET snapshot = jsonb_set(v.snapshot, '{tagItemIds}',
+    COALESCE((SELECT jsonb_agg(qt.tag_item_id ORDER BY qt.tag_item_id)
+              FROM questionbank.question_tag qt WHERE qt.question_id = v.question_id), '[]'::jsonb))
+WHERE v.version_no = 1
+  AND EXISTS (SELECT 1 FROM seed_dot2b_set s
+              WHERE s.code LIKE 'SEED-VSAT-DIA-SET-%'
+                AND (v.question_id = s.id
+                     OR EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+                                WHERE md5(s.id::text || '-' || pos)::uuid = v.question_id)));
 
 DROP TABLE seed_be14_classification;
 
