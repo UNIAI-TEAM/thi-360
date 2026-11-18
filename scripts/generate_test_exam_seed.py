@@ -102,13 +102,12 @@ def blk(bid, name, qtype, qcount=None, sets=None, size=None, task=None,
         qcount = sets * size
     return {"id": bid, "name": name, "questionType": qtype, "questionCount": qcount,
             "setCount": sets, "setSize": size, "knowledgeScope": scope, "matrix": matrix,
-            "taskTypeCode": task, "childAnswerType": child, "templateGroupCode": group,
+            "childAnswerType": child, "templateGroupCode": group,
             "answerTypeLocked": locked, "requiredPointsPerQuestion": rppq,
             "tagCodes": tags, "expectedScoring": expected}
 
-def scope_nodes(node_ids, match="ANY"):
-    return {"nodeIds": node_ids, "match": match, "includeDescendants": True,
-            "competencyCodes": []}
+def scope_nodes(node_ids):
+    return {"nodeIds": node_ids, "competencyCodes": []}
 
 def section(sid, subject, qcount, blocks, scope=None, quotas=None, matrix=None,
             choice=None):

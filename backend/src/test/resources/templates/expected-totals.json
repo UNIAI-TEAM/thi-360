@@ -1,4 +1,15 @@
 {
+  "QDA_PART_MATH": {
+    "questions": 50,
+    "maxPoints": 50,
+    "durationMinutes": 80,
+    "examKind": "QDA",
+    "scope": "PART",
+    "partCode": "TOAN",
+    "subjectCode": null,
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
   "HSA_FULL": {
     "questions": 150,
     "maxPoints": 150,

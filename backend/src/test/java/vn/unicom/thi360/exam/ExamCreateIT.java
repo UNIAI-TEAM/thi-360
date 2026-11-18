@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -84,7 +85,7 @@ class ExamCreateIT extends AbstractIntegrationTest {
         };
         for (String[] c : cases) {
             String body = "{\"kind\":\"" + c[0] + "\",\"scope\":\"" + c[1] + "\"," + c[2]
-                    + ",\"durationMinutes\":30,\"name\":\"Draft\",\"code\":\"T-" + UUID.randomUUID() + "\"}";
+                    + ",\"durationMinutes\":30,\"name\":\"Draft\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}";
             var result = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON).content(body))
@@ -108,7 +109,7 @@ class ExamCreateIT extends AbstractIntegrationTest {
             mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{" + selection + ",\"name\":\"Draft\",\"code\":\"T-" + UUID.randomUUID() + "\"}"))
+                            .content("{" + selection + ",\"name\":\"Draft\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.fieldErrors[0].field").value("durationMinutes"))
                     .andExpect(jsonPath("$.fieldErrors[0].code").value("EXAM_DURATION_REQUIRED"));
@@ -121,8 +122,127 @@ class ExamCreateIT extends AbstractIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"kind\":\"THPTQG\",\"scope\":\"SUBJECT\",\"subjectCode\":\"DIA\","
-                                + "\"buildMode\":\"REVIEW\",\"name\":\"Review\",\"code\":\"T-" + UUID.randomUUID() + "\"}"))
+                                + "\"buildMode\":\"REVIEW\",\"name\":\"Review\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").value("THPTQG_REVIEW"));
+    }
+
+    @Test
+    void vactReviewEnablesAllChildrenInScope() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
+                                + "\"buildMode\":\"REVIEW\",\"name\":\"Review\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").value("VACT_REVIEW"))
+                .andExpect(jsonPath("$.parts[0].sections[0].knowledgeScope.everyChildInScope").value(true));
+    }
+
+    @Test
+    void thptqgEnglishStructurePresentsSequentialBlockRanges() throws Exception {
+        String created = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"THPTQG\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
+                                + "\"name\":\"English\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(created).path("id").asText();
+        var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var blocks = structure.path("parts").get(0).path("sections").get(0).path("blocks");
+        org.assertj.core.api.Assertions.assertThat(blocks.size()).isEqualTo(6);
+        int[] starts = {1, 7, 13, 18, 23, 31};
+        int[] ends = {6, 12, 17, 22, 30, 40};
+        for (int i = 0; i < starts.length; i++) {
+            org.assertj.core.api.Assertions.assertThat(blocks.get(i).path("positionRange").path("from").asInt()).isEqualTo(starts[i]);
+            org.assertj.core.api.Assertions.assertThat(blocks.get(i).path("positionRange").path("to").asInt()).isEqualTo(ends[i]);
+            org.assertj.core.api.Assertions.assertThat(blocks.get(i).path("requiredPointsPerQuestion").decimalValue())
+                    .isEqualByComparingTo("0.25");
+        }
+        String[][] tags = {{"ANH_DOC_DIEN"}, {"ANH_DOC_DIEN"},
+                {"ANH_SAP_XEP_HOI_THOAI", "ANH_SAP_XEP_DOAN"},
+                {"ANH_DOC_DIEN_CAU"}, {"ANH_DOC_HIEU"}, {"ANH_DOC_HIEU"}};
+        for (int i = 0; i < tags.length; i++) {
+            var actual = new java.util.ArrayList<String>();
+            blocks.get(i).path("tagCodes").forEach(tag -> actual.add(tag.asText()));
+            org.assertj.core.api.Assertions.assertThat(actual).containsExactly(tags[i]);
+            if (i != 2) {
+                org.assertj.core.api.Assertions.assertThat(blocks.get(i).path("childAnswerType").asText())
+                        .isEqualTo("SINGLE_CHOICE");
+            }
+        }
+    }
+
+    @Test
+    void thptqgEnglishLastBlockRejectsManyShortReadingSets() throws Exception {
+        UUID node = jdbc.queryForObject("SELECT id FROM catalog.catalog_item WHERE code='TEST-TOAN-HEP'", UUID.class);
+        jdbc.update("""
+                INSERT INTO catalog.catalog_item_ref (item_id, ref_item_id)
+                SELECT ?, id FROM catalog.catalog_item WHERE code='ANH'
+                  AND group_id='00000000-0000-7000-8100-000000000002'
+                ON CONFLICT DO NOTHING
+                """, node);
+        jdbc.update("""
+                INSERT INTO questionbank.question_knowledge (question_id, knowledge_item_id, is_primary)
+                SELECT id, ?, false FROM questionbank.question
+                WHERE code LIKE 'TESTQ-ANH-READ-S%' AND parent_id IS NULL AND status='READY'
+                ON CONFLICT DO NOTHING
+                """, node);
+        jdbc.update("""
+                INSERT INTO questionbank.question_tag (question_id, tag_item_id)
+                SELECT q.id, tag.id FROM questionbank.question q
+                JOIN catalog.catalog_item tag ON tag.code='ANH_DOC_HIEU'
+                WHERE q.code LIKE 'TESTQ-ANH-READ-S%' AND q.parent_id IS NULL AND q.status='READY'
+                ON CONFLICT DO NOTHING
+                """);
+        jdbc.update("""
+                UPDATE questionbank.question SET points=0.25
+                WHERE parent_id IN (SELECT id FROM questionbank.question
+                    WHERE code LIKE 'TESTQ-ANH-READ-S%' AND parent_id IS NULL AND status='READY')
+                """);
+        assertThatShortReadingPool(node);
+        String created = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"THPTQG\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
+                                + "\"name\":\"English\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        UUID id = UUID.fromString(mapper.readTree(created).path("id").asText());
+        var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) structure.path("parts").deepCopy();
+        var block = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0).path("blocks").get(5);
+        String blockId = block.path("id").asText();
+        var scope = block.putObject("knowledgeScope");
+        scope.putArray("nodeIds").add(node.toString());
+        scope.putArray("competencyCodes");
+        var request = mapper.createObjectNode().put("expectedRevision", structure.path("revision").asLong());
+        request.set("parts", parts);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        var result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", id)
+                        .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        var issues = result.path("groups").findValues("issues").stream()
+                .flatMap(array -> java.util.stream.StreamSupport.stream(array.spliterator(), false))
+                .filter(issue -> "SET_SHORTAGE".equals(issue.path("code").asText())
+                        && blockId.equals(issue.path("blockId").asText())).toList();
+        org.assertj.core.api.Assertions.assertThat(issues).hasSize(1);
+        org.assertj.core.api.Assertions.assertThat(issues.getFirst().path("required").asInt()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(issues.getFirst().path("available").asInt()).isZero();
+    }
+
+    private void assertThatShortReadingPool(UUID node) {
+        Integer children = jdbc.queryForObject("""
+                SELECT count(*) FROM questionbank.question child
+                JOIN questionbank.question parent ON parent.id=child.parent_id
+                JOIN questionbank.question_knowledge k ON k.question_id=parent.id
+                WHERE k.knowledge_item_id=? AND parent.code LIKE 'TESTQ-ANH-READ-S%'
+                """, Integer.class, node);
+        org.assertj.core.api.Assertions.assertThat(children).isGreaterThan(10);
     }
 
     @Test

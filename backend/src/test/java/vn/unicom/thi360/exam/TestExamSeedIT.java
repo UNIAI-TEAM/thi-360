@@ -82,6 +82,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             JsonNode parts = mapper.readTree(structure);
             assertThat(parts.findValues("groupOrder")).isEmpty();
             assertThat(parts.findValues("shuffle")).isEmpty();
+            assertThat(parts.findValues("taskTypeCode")).isEmpty();
+            assertThat(parts.findValues("includeDescendants")).isEmpty();
+            assertThat(parts.findValues("match")).isEmpty();
         }
     }
 

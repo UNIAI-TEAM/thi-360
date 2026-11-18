@@ -96,6 +96,95 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             assertThat(duration).as("%s duration", code).isEqualTo(expectedDuration);
         }
     }
+
+    @Test
+    void thptqgSplitSubjectsUseRequiredPartsAndTrueFalseScoring() throws Exception {
+        Map<String, List<Integer>> counts = Map.ofEntries(
+                Map.entry("MATH", List.of(12, 4, 6)),
+                Map.entry("PHYSICS", List.of(18, 4, 6)), Map.entry("CHEMISTRY", List.of(18, 4, 6)),
+                Map.entry("BIOLOGY", List.of(18, 4, 6)), Map.entry("GEOGRAPHY", List.of(18, 4, 6)),
+                Map.entry("HISTORY", List.of(24, 4)), Map.entry("ECON_LAW", List.of(24, 4)),
+                Map.entry("TECH_INDUSTRY", List.of(24, 4)), Map.entry("TECH_AGRICULTURE", List.of(24, 4)));
+        for (var entry : counts.entrySet()) {
+            String code = "THPTQG_" + entry.getKey() + "_2025";
+            var row = jdbc.queryForMap("SELECT timing, duration_minutes, structure::text AS doc FROM exam.exam_template WHERE code=?", code);
+            assertThat(row.get("timing")).as(code).isEqualTo("SHARED");
+            assertThat(row.get("duration_minutes")).as(code).isEqualTo(entry.getKey().equals("MATH") ? 90 : 50);
+            JsonNode parts = mapper.readTree((String) row.get("doc")).path("parts");
+            assertThat(parts.size()).as(code).isEqualTo(entry.getValue().size());
+            for (int i = 0; i < parts.size(); i++) {
+                assertThat(parts.get(i).path("questionCount").asInt()).as(code).isEqualTo(entry.getValue().get(i));
+                String expectedPoints = i == 1 ? "4" : i == 0
+                        ? entry.getValue().get(0) == 12 ? "3" : entry.getValue().get(0) == 18 ? "4.5" : "6"
+                        : entry.getKey().equals("MATH") ? "3" : "1.5";
+                assertThat(parts.get(i).path("maxPoints").decimalValue()).as(code)
+                        .isEqualByComparingTo(expectedPoints);
+            }
+            JsonNode tf = parts.get(1).path("sections").get(0).path("blocks").get(0);
+            assertThat(tf.path("itemShape").path("statements").asInt()).as(code).isEqualTo(4);
+            assertThat(tf.path("expectedScoring").path("trueFalseTable").toString()).as(code)
+                    .isEqualTo("[0.1,0.25,0.5,1]");
+        }
+    }
+
+    @Test
+    void thptqgLiteratureIsNotPublishableAndHasReferenceReadingMatrix() throws Exception {
+        var row = jdbc.queryForMap("SELECT publishable, structure::text AS doc FROM exam.exam_template WHERE code='THPTQG_LITERATURE_2025'");
+        assertThat(row.get("publishable")).isEqualTo(false);
+        JsonNode matrix = mapper.readTree((String) row.get("doc")).path("parts").get(0)
+                .path("sections").get(0).path("blocks").get(0).path("matrix");
+        assertThat(matrix.path("difficultyEnforcement").asText()).isEqualTo("REFERENCE");
+        assertMatrix(matrix.path("byDifficulty"), List.of("NB", "TH", "VD"), List.of(2, 2, 1));
+    }
+
+    @Test
+    void vactFullContainsFiveSectionsAndReferenceDistributions() throws Exception {
+        var row = jdbc.queryForMap("SELECT fixed_counts, timing, duration_minutes, max_score, structure::text AS doc FROM exam.exam_template WHERE code='VACT_FULL'");
+        assertThat(row.get("fixed_counts")).isEqualTo(true);
+        assertThat(row.get("timing")).isEqualTo("SHARED");
+        assertThat(row.get("duration_minutes")).isEqualTo(150);
+        assertThat((BigDecimal) row.get("max_score")).isEqualByComparingTo("1200");
+        JsonNode parts = mapper.readTree((String) row.get("doc")).path("parts");
+        assertThat(parts.size()).isEqualTo(3);
+        assertThat(parts.get(0).path("questionCount").asInt()).isEqualTo(60);
+        assertThat(parts.get(1).path("questionCount").asInt()).isEqualTo(30);
+        assertThat(parts.get(2).path("questionCount").asInt()).isEqualTo(30);
+        List<JsonNode> sections = new ArrayList<>();
+        for (JsonNode part : parts) part.path("sections").forEach(sections::add);
+        assertThat(sections).hasSize(5);
+        assertThat(sections.stream().map(s -> s.path("questionCount").asInt()).toList())
+                .containsExactly(30, 30, 30, 12, 18);
+        assertThat(sections.stream().map(s -> s.path("subjectCode").asText()).toList())
+                .containsExactly("VIETNAMESE", "ANH", "TOAN", "SCIENTIFIC_THINKING", "SCIENTIFIC_THINKING");
+        JsonNode vietnamese = sections.get(0);
+        assertThat(vietnamese.path("topicQuotas").size()).isEqualTo(8);
+        for (JsonNode quota : vietnamese.path("topicQuotas")) {
+            assertThat(quota.path("enforcement").asText()).isEqualTo("REFERENCE");
+            assertThat(quota.path("nodeIds").isEmpty()).isTrue();
+        }
+        int[] quotaCounts = {5, 2, 1, 7, 4, 3, 5, 3};
+        String[] quotaLevels = {"NB", "TH", "NB", "TH", "VD", "TH", "TH", "VD"};
+        for (int i = 0; i < quotaCounts.length; i++) {
+            JsonNode quota = vietnamese.path("topicQuotas").get(i);
+            assertThat(quota.path("count").asInt()).isEqualTo(quotaCounts[i]);
+            assertThat(quota.path("difficultyCodes").get(0).asText()).isEqualTo(quotaLevels[i]);
+        }
+        JsonNode englishBlocks = sections.get(1).path("blocks");
+        int[][] englishDifficulties = {{3, 2, 0}, {0, 5, 0}, {0, 1, 4}, {1, 4, 2}, {2, 4, 2}};
+        assertThat(englishBlocks.size()).isEqualTo(5);
+        for (int i = 0; i < englishDifficulties.length; i++) {
+            JsonNode matrix = englishBlocks.get(i).path("matrix");
+            assertThat(matrix.path("difficultyEnforcement").asText()).isEqualTo("REFERENCE");
+            int[] values = englishDifficulties[i];
+            assertMatrix(matrix.path("byDifficulty"), List.of("NB", "TH", "VD"),
+                    List.of(values[0], values[1], values[2]));
+        }
+        assertMatrix(vietnamese.path("matrix").path("byDifficulty"), List.of("NB", "TH", "VD"), List.of(6, 17, 7));
+        assertMatrix(sections.get(2).path("matrix").path("byGrade"), List.of("G10", "G11", "G12", "GRADE_MIXED"), List.of(12, 9, 8, 1));
+        assertMatrix(sections.get(2).path("matrix").path("byDifficulty"), List.of("NB", "TH", "VD"), List.of(4, 10, 16));
+        assertMatrix(sections.get(3).path("matrix").path("byDifficulty"), List.of("NB", "TH", "VD"), List.of(1, 4, 7));
+        assertMatrix(sections.get(4).path("matrix").path("byDifficulty"), List.of("NB", "TH", "VD"), List.of(4, 9, 5));
+    }
     @Test
     void hsaScienceChoicesUseFixedSeventeenQuestionMatrices() throws Exception {
         Map<String, List<Integer>> grades = Map.of(
