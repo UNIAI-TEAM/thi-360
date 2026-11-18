@@ -74,8 +74,10 @@ export function pointsRows(parts: readonly ExamPart[], combinations: readonly St
   const rows: PointsRow[] = [];
   for (const part of parts) {
     for (const { section, count } of pathOf(part, combinations, () => true)) {
-      const perGroup = count === null ? section.blocks.map(countOf) : groupCounts(section, count);
-      const taken = section.blocks.flatMap((block, index) => (block.omitted ? [] : [{ block, count: perGroup[index] ?? 0 }]));
+      // Nhóm tạm bỏ qua không tham gia chia: lọc trước `groupCounts` để nhóm bỏ qua không lấy mất phần số câu của môn (R2-06).
+      const active = section.blocks.filter((block) => !block.omitted);
+      const perGroup = count === null ? active.map(countOf) : groupCounts({ ...section, blocks: active }, count);
+      const taken = active.map((block, index) => ({ block, count: perGroup[index] ?? 0 }));
       const eachValues = new Set(taken.map((item) => blockPointsEach(item.block)));
       rows.push({
         key: `${part.id}-${section.id}`,

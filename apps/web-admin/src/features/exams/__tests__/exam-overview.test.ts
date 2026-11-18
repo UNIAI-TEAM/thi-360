@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pointsRows, quotaScope, type PointsRow } from "../exam-overview";
 import { sum } from "../matrix";
 import type { ExamDetail, ExamPart } from "../types";
+import type { ExamSection } from "../types";
 import { QDA_COMBINATIONS, QDA_PARTS } from "./coded-fixtures";
 import { EXAMS_FIXTURE } from "./exam-fixture";
 
@@ -77,5 +78,23 @@ describe("Tổng quan bài tính một đường hợp lệ của mỗi phần (
     expect(physics.blocks.map((block) => block.questionCount)).toEqual([10, null]);
     const rows = pointsRows([{ ...part, options: [sciencePath] }]);
     expect(rows[0]).toMatchObject({ subjectCode: "PHYSICS", count: 16 });
+  });
+});
+
+describe("Nhóm tạm bỏ qua không lấy phần số câu của môn (R2-06)", () => {
+  it("nhóm Tự luận 10 câu bị bỏ qua đứng trước nhóm 30 câu của môn 30 câu: môn vẫn tính 30 câu, không phải 20", () => {
+    const base = sample("ex-hsa-f-001").parts[0]!;
+    const template = base.sections[0]!.blocks[0]!;
+    const section: ExamSection = {
+      ...base.sections[0]!,
+      questionCount: 30,
+      blocks: [
+        { ...template, id: "essay", questionType: "ESSAY", questionCount: 10, omitted: true },
+        { ...template, id: "choice", questionType: "SINGLE_CHOICE", questionCount: 30 },
+      ],
+    };
+    const rows = pointsRows([{ ...base, mode: "FIXED", options: [], sections: [section] }]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ count: 30, essayPoints: 0 });
   });
 });
