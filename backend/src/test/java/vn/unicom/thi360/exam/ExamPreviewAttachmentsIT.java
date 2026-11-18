@@ -117,6 +117,81 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
         assertThat(points.path("location").path("partId").asText()).isEqualTo("part");
     }
 
+    private static final String EXAM_BODY = "{\"target\":{\"kind\":\"EXAM\"},\"seed\":7}";
+    private static final String LEGACY_BODY = "{\"pathId\":\"default\",\"seed\":7}";
+
+    private static String sectionBody(String sectionId, int count) {
+        return "{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"" + sectionId + "\",\"sectionQuestionCount\":" + count
+                + "},\"seed\":7}";
+    }
+
+    @Test
+    void aSegmentMismatchFailsEveryRequestShapeThatGeneratesTheWholePart() throws Exception {
+        subject();
+        single(List.of());
+        set(List.of());
+        String segments = """
+                [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":2,"commandCount":3,"maxPoints":2},
+                 {"code":"P2","name":"Phần II","fromPosition":3,"toPosition":3,"commandCount":1,"maxPoints":4}]""";
+        UUID exam = exam(part(segments));
+        // The same one-section paper, asked as an explicit EXAM, a legacy pathId/seed and a section that is the whole part.
+        for (String body : List.of(EXAM_BODY, LEGACY_BODY, sectionBody("section", 3))) {
+            JsonNode result = previewResult(exam, body);
+            assertThat(result.path("status").asText()).as(body).isEqualTo("FAILED");
+            assertThat(result.path("issues")).as(body).hasSize(2);
+            JsonNode commands = result.path("issues").get(0);
+            assertThat(commands.path("code").asText()).isEqualTo("DISPLAY_SEGMENT_MISMATCH");
+            assertThat(commands.path("partId").asText()).isEqualTo("part");
+            assertThat(commands.path("segmentCode").asText()).isEqualTo("P1");
+            assertThat(commands.path("dimension").asText()).isEqualTo("COMMANDS");
+            assertThat(commands.path("required").decimalValue()).isEqualByComparingTo("3");
+            assertThat(commands.path("available").decimalValue()).isEqualByComparingTo("2");
+            JsonNode points = result.path("issues").get(1);
+            assertThat(points.path("segmentCode").asText()).isEqualTo("P2");
+            assertThat(points.path("dimension").asText()).isEqualTo("POINTS");
+            assertThat(points.path("required").decimalValue()).isEqualByComparingTo("4");
+            assertThat(points.path("available").decimalValue()).isEqualByComparingTo("1");
+        }
+    }
+
+    @Test
+    void correctSegmentsAreReturnedByEveryRequestShapeThatGeneratesTheWholePart() throws Exception {
+        subject();
+        single(List.of());
+        set(List.of());
+        String segments = """
+                [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":2,"commandCount":2,"maxPoints":2},
+                 {"code":"P2","name":"Phần II","fromPosition":3,"toPosition":3,"commandCount":1,"maxPoints":1}]""";
+        UUID exam = exam(part(segments));
+        for (String body : List.of(EXAM_BODY, LEGACY_BODY, sectionBody("section", 3))) {
+            JsonNode result = previewResult(exam, body);
+            assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("GENERATED");
+            JsonNode returned = result.path("paper").path("parts").get(0).path("displaySegments");
+            assertThat(returned).as(body).extracting(node -> node.path("code").asText()).containsExactly("P1", "P2");
+        }
+    }
+
+    @Test
+    void aSectionOfAMultiSectionPartIsAPartialProjectionThatNeitherReturnsNorValidatesTheFullPartSegments() throws Exception {
+        subject();
+        single(List.of());
+        set(List.of());
+        String segments = """
+                [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":1,"commandCount":1,"maxPoints":1},
+                 {"code":"P2","name":"Phần II","fromPosition":2,"toPosition":3,"commandCount":2,"maxPoints":2}]""";
+        UUID exam = exam(twoSectionPart(segments));
+        JsonNode whole = previewResult(exam, EXAM_BODY);
+        assertThat(whole.path("status").asText()).as(whole.toString()).isEqualTo("GENERATED");
+        assertThat(whole.path("paper").path("parts").get(0).path("displaySegments")).hasSize(2);
+        // Alone, the second section holds numbers 1 and 2, so P2 (positions 2 to 3) could never match: no validation.
+        JsonNode partial = previewResult(exam, sectionBody("second", 2));
+        assertThat(partial.path("status").asText()).as(partial.toString()).isEqualTo("GENERATED");
+        JsonNode returned = partial.path("paper").path("parts").get(0);
+        assertThat(returned.path("lastNumber").asInt()).isEqualTo(2);
+        assertThat(returned.path("displaySegments").isArray()).isTrue();
+        assertThat(returned.path("displaySegments")).isEmpty();
+    }
+
     // ---- fixtures ------------------------------------------------------------------------------------------
 
     private void subject() {
@@ -179,6 +254,19 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
                 """.formatted(displaySegments, subjectCode);
     }
 
+    /** One part of two sections: a single question, then a set of two. */
+    private String twoSectionPart(String displaySegments) {
+        return """
+                [{"id":"part","order":1,"name":"Part","questionCount":3,"displaySegments":%s,
+                  "participation":{"mode":"ALL"},"sections":[
+                  {"id":"first","subjectCode":"%s","questionCount":1,
+                   "blocks":[{"id":"single","name":"Single","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                  {"id":"second","subjectCode":"%s","questionCount":2,
+                   "blocks":[{"id":"set","name":"Set","questionType":"QUESTION_SET","questionCount":2,"setCount":1,"setSize":2,"childAnswerType":"SINGLE_CHOICE"}]}],
+                  "options":[]}]
+                """.formatted(displaySegments, subjectCode, subjectCode);
+    }
+
     private UUID exam(String parts) {
         UUID id = UUID.randomUUID();
         jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, question_count) values (?, ?, ?, 'Preview', 'FULL', 'SHARED', 3)",
@@ -189,9 +277,12 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
     }
 
     private JsonNode previewResult(UUID exam, long seed) throws Exception {
+        return previewResult(exam, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":" + seed + "}");
+    }
+
+    private JsonNode previewResult(UUID exam, String body) throws Exception {
         return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/preview")
-                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":" + seed + "}"))
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }
 

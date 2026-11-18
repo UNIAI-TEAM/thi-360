@@ -64,7 +64,9 @@ public class ExamPreviewService {
         PreviewSectionTarget.Selection sectionTarget = request.target() != null && "SECTION".equals(request.target().kind())
                 ? PreviewSectionTarget.select(document, request.target().sectionId(), request.target().sectionQuestionCount())
                 : null;
-        if (sectionTarget != null) document = sectionTarget.document();
+        if (sectionTarget != null) {
+            document = segmentsOfWholePartOnly(document, sectionTarget.document(), request.target().sectionId());
+        }
         var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
         ExamStructureDocument validationDocument = request.version() == null ? document
                 : PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
@@ -172,13 +174,16 @@ public class ExamPreviewService {
                 withFiles.isEmpty() ? Map.of() : attachmentPort.attachments(withFiles, false));
         PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
                 document, request.seed(), mapper, regeneration == null ? Map.of() : regeneration.retained());
+        // H40 rule 3 holds for every complete segmented part, whatever the request shape (explicit target, legacy
+        // pathId/seed, a section that is the whole part). A partial projection carries no segments, see above.
+        List<PreviewIssue> totals = new ArrayList<>();
         if (request.target() != null && sectionTarget == null) {
-            List<PreviewIssue> totals = new ArrayList<>(previewPartTotals(document, paper, request.pathId()));
-            totals.addAll(previewSegmentTotals(paper, paperBuilder.unitFacts(), request.pathId()));
-            if (!totals.isEmpty()) {
-                return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                        "FAILED", null, "INVALID", totals, null, null, null);
-            }
+            totals.addAll(previewPartTotals(document, paper, request.pathId()));
+        }
+        totals.addAll(previewSegmentTotals(paper, paperBuilder.unitFacts(), request.pathId()));
+        if (!totals.isEmpty()) {
+            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
+                    "FAILED", null, "INVALID", totals, null, null, null);
         }
         List<SectionOnPath> trimmedSections = trimmedSections(result.path(), sectionTarget != null && sectionTarget.trim());
         if (trimmedSections.size() != solved.dropped().size()) {
@@ -240,6 +245,26 @@ public class ExamPreviewService {
             issues.add(previewIssue(issue, pathId));
         }
         return issues;
+    }
+
+    /**
+     * A section projected out of its part declares the part's display segments only when it is the whole part:
+     * their positions count from the first number of the part, so next to other sections they would neither be
+     * complete nor comparable. Then the segments are dropped from the projection, neither returned nor validated.
+     */
+    private static ExamStructureDocument segmentsOfWholePartOnly(ExamStructureDocument source,
+            ExamStructureDocument projected, String sectionId) {
+        for (ExamPart part : source.parts()) {
+            if (part.sections().stream().noneMatch(section -> sectionId.equals(section.id()))) continue;
+            if (part.sections().size() == 1 && part.options().isEmpty() && part.subjectPool().isEmpty()) return projected;
+        }
+        List<ExamPart> parts = new ArrayList<>();
+        for (ExamPart part : projected.parts()) {
+            parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
+                    part.questionCountOnPaper(), part.questionCountRequired(), part.participation(), part.maxPoints(),
+                    part.sections(), part.options(), part.subjectPool(), part.codeSource(), List.of()));
+        }
+        return new ExamStructureDocument(parts, projected.examQuotas());
     }
 
     /**
