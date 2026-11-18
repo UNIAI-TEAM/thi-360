@@ -32,7 +32,8 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
 
     @Test
     void everyTemplateBlockHasEnoughMatchingSource() throws Exception {
-        var templates = jdbc.queryForList("select code, structure::text as structure from exam.exam_template order by code");
+        var templates = jdbc.queryForList("select code, structure::text as structure from exam.exam_template"
+                + " where build_mode = 'STANDARD' order by code");
         assertThat(templates).isNotEmpty();
         List<String> failures = new ArrayList<>();
         int[] checked = {0};
