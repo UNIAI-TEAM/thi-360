@@ -1,9 +1,9 @@
 "use client";
 
 import { Badge, Button, cn, focusRing } from "@thi360/ui";
-import { Check, PenLine, X } from "lucide-react";
+import { Check, ListOrdered, PenLine, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RichTextView } from "@/components/rich-text";
 import type { PreviewBlock, PreviewItem, PreviewPaper, PreviewQuestion } from "../review-types";
 import { useLookup } from "./exam-review-shared";
@@ -12,8 +12,13 @@ import { useLookup } from "./exam-review-shared";
 const VISIBLE_ITEMS = 3;
 const OPTION_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
-/** Đề đã sinh: phần › khối › câu theo đúng thứ tự thực tế, kèm đáp án và lời giải (chế độ quản trị). */
-export function ExamPreviewPaper({ paper }: { paper: PreviewPaper }) {
+/** Số câu hiện trên đề: số đã đảo của đề thật, hoặc vị trí gốc khi xem thứ tự gốc (K12). */
+function displayNumber(question: PreviewQuestion, original: boolean): number {
+  return original ? (question.originalNumber ?? question.number) : question.number;
+}
+
+/** Đề đã sinh: phần › khối › câu theo đúng thứ tự thực tế, kèm đáp án và lời giải (chế độ quản trị). `original`: thứ tự gốc (K12). */
+export function ExamPreviewPaper({ paper, original = false }: { paper: PreviewPaper; original?: boolean }) {
   const t = useTranslations("exams.preview");
   return (
     <div className="flex flex-col gap-6">
@@ -25,6 +30,12 @@ export function ExamPreviewPaper({ paper }: { paper: PreviewPaper }) {
           shared: paper.sharedDuration ? "yes" : "no",
         })}
       </p>
+      {original && (
+        <p className="flex items-start gap-2 rounded-md border border-border bg-subtle px-3 py-2 text-body text-text-secondary">
+          <ListOrdered aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t("originalOrderNote")}
+        </p>
+      )}
       {paper.hasManualGrading && (
         <p className="flex items-start gap-2 rounded-md border border-border bg-subtle px-3 py-2 text-body text-text-secondary">
           <PenLine aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -50,7 +61,7 @@ export function ExamPreviewPaper({ paper }: { paper: PreviewPaper }) {
             </span>
           </h3>
           {part.blocks.map((block) => (
-            <PreviewBlockView key={block.blockId} block={block} />
+            <PreviewBlockView key={block.blockId} block={block} original={original} />
           ))}
         </section>
       ))}
@@ -58,13 +69,20 @@ export function ExamPreviewPaper({ paper }: { paper: PreviewPaper }) {
   );
 }
 
-function PreviewBlockView({ block }: { block: PreviewBlock }) {
+function PreviewBlockView({ block, original }: { block: PreviewBlock; original: boolean }) {
   const t = useTranslations("exams.preview");
   const lookup = useLookup();
   const [expanded, setExpanded] = useState(false);
   const name = `${lookup.subject(block.subjectCode)} · ${block.blockName}`;
-  const visible = expanded ? block.items : block.items.slice(0, VISIBLE_ITEMS);
-  const hidden = block.items.length - visible.length;
+  const items = useMemo(
+    () =>
+      original
+        ? [...block.items].sort((a, b) => (a.originalOrder ?? Number.MAX_SAFE_INTEGER) - (b.originalOrder ?? Number.MAX_SAFE_INTEGER))
+        : block.items,
+    [block.items, original],
+  );
+  const visible = expanded ? items : items.slice(0, VISIBLE_ITEMS);
+  const hidden = items.length - visible.length;
   const range =
     block.setCount !== null && block.setSize !== null
       ? t("blockRangeSets", { sets: block.setCount, size: block.setSize, first: block.firstNumber, last: block.lastNumber })
@@ -82,7 +100,7 @@ function PreviewBlockView({ block }: { block: PreviewBlock }) {
       <ol id={listId} className="flex flex-col gap-3">
         {visible.map((item, index) => (
           <li key={item.kind === "SET" ? item.setId : item.question.questionId}>
-            <PreviewItemView item={item} setIndex={index + 1} />
+            <PreviewItemView item={item} setIndex={index + 1} original={original} cloze={block.questionType === "CLOZE"} />
           </li>
         ))}
       </ol>
@@ -98,9 +116,21 @@ function PreviewBlockView({ block }: { block: PreviewBlock }) {
   );
 }
 
-function PreviewItemView({ item, setIndex }: { item: PreviewItem; setIndex: number }) {
+function PreviewItemView({
+  item,
+  setIndex,
+  original,
+  cloze,
+}: {
+  item: PreviewItem;
+  setIndex: number;
+  original: boolean;
+  cloze: boolean;
+}) {
   const t = useTranslations("exams.preview");
-  if (item.kind === "QUESTION") return <QuestionArticle question={item.question} />;
+  if (item.kind === "QUESTION") return <QuestionArticle question={item.question} original={original} />;
+  // Bài đọc điền: chỗ trống của ngữ liệu mang số của câu con đầu, câu con thứ n ứng với chỗ trống thứ n (spec 3.4).
+  const blankStart = cloze && item.children[0] ? displayNumber(item.children[0], original) : undefined;
   const headingId = `preview-set-${item.setId}`;
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-3">
@@ -112,7 +142,7 @@ function PreviewItemView({ item, setIndex }: { item: PreviewItem; setIndex: numb
       </div>
       {item.passage ? (
         <blockquote className="rounded-md border-s-4 border-border bg-subtle px-3 py-2 text-body text-text">
-          <RichTextView html={item.passage} blankNumberStart={item.blankNumberStart} />
+          <RichTextView html={item.passage} blankNumberStart={blankStart ?? item.blankNumberStart} />
         </blockquote>
       ) : (
         <p className="text-body text-text-muted italic">{t("simulatedPassage")}</p>
@@ -120,7 +150,12 @@ function PreviewItemView({ item, setIndex }: { item: PreviewItem; setIndex: numb
       <ol className="flex flex-col gap-2">
         {item.children.map((child) => (
           <li key={child.questionId}>
-            <QuestionArticle question={child} compact />
+            <QuestionArticle
+              question={child}
+              compact
+              original={original}
+              blank={blankStart === undefined ? undefined : blankStart + item.children.indexOf(child)}
+            />
           </li>
         ))}
       </ol>
@@ -128,19 +163,38 @@ function PreviewItemView({ item, setIndex }: { item: PreviewItem; setIndex: numb
   );
 }
 
-function QuestionArticle({ question, compact = false }: { question: PreviewQuestion; compact?: boolean }) {
+function QuestionArticle({
+  question,
+  compact = false,
+  original = false,
+  blank,
+}: {
+  question: PreviewQuestion;
+  compact?: boolean;
+  original?: boolean;
+  /** Số hiện ở chỗ trống của ngữ liệu mà câu con này điền (bài đọc điền); bỏ trống với câu thường. */
+  blank?: number;
+}) {
   const t = useTranslations("exams.preview");
   const types = useTranslations("content.questionType");
   const lookup = useLookup();
   const headingId = `preview-q-${question.questionId}`;
   const isTrueFalse = question.type === "TRUE_FALSE";
   const Heading = compact ? "h6" : "h5";
+  const number = displayNumber(question, original);
+  // Xem thứ tự gốc: phương án theo thứ tự lúc soạn (`originalOptionOrder`); không có thì giữ thứ tự đang hiện.
+  const options =
+    original && question.options && question.originalOptionOrder
+      ? [...question.options].sort(
+          (a, b) => (question.originalOptionOrder ?? []).indexOf(a.id) - (question.originalOptionOrder ?? []).indexOf(b.id),
+        )
+      : question.options;
 
   return (
     <article aria-labelledby={headingId} className={compact ? "flex flex-col gap-2" : "flex flex-col gap-2 rounded-md border border-border p-3"}>
       <div className="flex flex-wrap items-center gap-2">
         <Heading id={headingId} className="font-semibold text-text">
-          {t("questionNumber", { number: question.number })}
+          {t("questionNumber", { number })}
         </Heading>
         <Badge>{question.version !== null ? `${question.code} · v${question.version}` : question.code}</Badge>
         <Badge>{types(question.type)}</Badge>
@@ -150,14 +204,19 @@ function QuestionArticle({ question, compact = false }: { question: PreviewQuest
           <Badge className="whitespace-normal wrap-anywhere">{`${question.knowledge.code} · ${question.knowledge.name}`}</Badge>
         )}
       </div>
+      {blank !== undefined && (
+        <p className="text-caption text-text-muted">
+          {t("clozePosition", { number, blank, type: types(question.type) })}
+        </p>
+      )}
       {question.simulated ? (
         <p className="text-body text-text-muted italic">{t("simulatedQuestion")}</p>
       ) : (
         <RichTextView html={question.content ?? ""} className="text-body text-text" />
       )}
-      {question.options && (
+      {options && (
         <ol className="flex flex-col gap-1.5">
-          {question.options.map((option, index) => {
+          {options.map((option, index) => {
             const marked = isTrueFalse || option.correct;
             return (
               <li

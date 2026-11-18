@@ -353,10 +353,18 @@ export interface PreviewQuestion {
   rubric: Array<{ id: string; description: string; points: number }> | null;
   /** Phần thân đủ để dựng Điền khuyết, Ghép đôi, Đúng/Sai; có đáp án vì là chế độ quản trị. `null` với câu mô phỏng. */
   body: QuestionBody | null;
+  /** Vị trí gốc của câu (thứ tự bộ giải chọn, trước khi `PaperOrdering` đảo bằng hạt giống); `null` khi máy chủ không gửi. */
+  originalNumber: number | null;
+  /** Thứ tự phương án của đề thật (đã đảo bằng hạt giống); `null`: câu không đảo phương án (`shuffleOptions = false` hoặc dạng không có phương án). */
+  optionOrder: string[] | null;
+  /** Thứ tự phương án lúc soạn câu (K12); `null` khi không đảo. */
+  originalOptionOrder: string[] | null;
+  /** Chỉ tiêu chủ đề mà câu được gán vào (`TOPIC:<id>` của `compliance`); rỗng khi không gán. */
+  assignedTopicQuotaIds: string[];
 }
 
 export type PreviewItem =
-  | { kind: "QUESTION"; question: PreviewQuestion }
+  | { kind: "QUESTION"; question: PreviewQuestion; originalOrder?: number | null }
   | {
       kind: "SET";
       setId: string;
@@ -367,6 +375,8 @@ export type PreviewItem =
       /** Số bắt đầu đánh chỗ trống của ngữ liệu (spec UNI-2638 mục 3.4, 5); thiếu: 1. */
       blankNumberStart?: number;
       children: PreviewQuestion[];
+      /** Vị trí gốc của mục trong khối (thứ tự bộ giải chọn); `null` hoặc bỏ trống khi máy chủ không gửi. */
+      originalOrder?: number | null;
     };
 
 export interface PreviewAllocationCell {
@@ -469,8 +479,44 @@ interface PreviewBase {
   generatedAt: string;
 }
 
+/** Một dòng bảng Yêu cầu / Thực tế của đề đã sinh (2B mục 8): mọi tiêu chí kể cả tham khảo. */
+export interface PreviewCompliance {
+  /** `ANSWER_TYPE:<dạng>`, `CELL:<lớp>:<độ khó>`, `GRADE:<mã>`, `DIFFICULTY:<mã>`, `COMPETENCY:<mã>`, `TOPIC:<id chỉ tiêu>`, `EXAM:<id>:<mã,mã>`. */
+  criterion: string;
+  /** `SECTION:<id môn>`, `BLOCK:<id khối>` hoặc `EXAM`. */
+  scope: string;
+  /** Số yêu cầu; câu của đề 16 câu đã trừ phần đóng góp của câu bỏ. */
+  required: number;
+  actual: number;
+  enforcement: "REQUIRED" | "REFERENCE";
+  basis: "QUESTION" | "PROMPT" | "POINTS";
+  /** Chỉ tiêu chủ đề tham khảo đếm độc lập (không gán câu vào chỉ tiêu). */
+  independent: boolean;
+  /** Ghi chú của máy chủ (`dropped N`: đã bỏ N câu của chỉ tiêu 17 câu); `null` khi không có. */
+  note: string | null;
+}
+
+/** Phạm vi sinh thử (2B mục 8): một môn, một đường (mã, nhánh, bộ ba môn), hoặc cả bài không có lựa chọn. */
+export type PreviewTarget =
+  | {
+      kind: "SECTION";
+      sectionId: string;
+      /** Môn của `SUBJECT_CHOICE` nhận 17 hoặc 16 câu (16 thì áp `TrimPolicy`); môn khác bỏ trống. */
+      sectionQuestionCount?: number;
+    }
+  | { kind: "PATH"; pathId: string; subjectCodes?: string[] }
+  | { kind: "EXAM" };
+
 export type PreviewResult =
-  | (PreviewBase & { status: "GENERATED"; paper: PreviewPaper })
+  | (PreviewBase & {
+      status: "GENERATED";
+      paper: PreviewPaper;
+      /** Mã của đề thử, giữ 30 phút; `null` khi máy chủ không lưu. Gửi lại làm `basePreviewId` để giữ phần đã sinh. */
+      previewId: string | null;
+      compliance: PreviewCompliance[];
+      /** Câu đã bỏ của môn 16 câu (HSA Khoa học); rỗng khi không bỏ câu nào. */
+      droppedQuestions: PreviewQuestion[];
+    })
   | (PreviewBase & { status: "FAILED"; reason: "INVALID" | "UNCONFIRMED"; issues: CheckIssue[] });
 
 /* ---------- Phiên bản và công bố ---------- */
@@ -544,14 +590,15 @@ export interface RunExamCheckRequest {
 
 export interface GeneratePreviewRequest {
   examId: string;
-  pathId: string;
+  target: PreviewTarget;
   seed: number;
   version?: number | null;
   /**
-   * Đường có `SUBJECT_CHOICE`: đúng `chooseSubjects` môn thuộc phương án muốn xem; thiếu hoặc sai thì 422
-   * `PREVIEW_SUBJECTS_INVALID`.
+   * Đề thử đã sinh để giữ các phần không sinh lại (R-15, BCA đổi mã). Gửi cùng `regeneratePartIds`; hết hạn thì 410
+   * `PREVIEW_EXPIRED`.
    */
-  subjectCodes?: string[];
+  basePreviewId?: string;
+  regeneratePartIds?: string[];
 }
 
 export interface PublishExamRequest {

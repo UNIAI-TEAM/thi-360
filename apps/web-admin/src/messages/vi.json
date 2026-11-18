@@ -4725,7 +4725,7 @@
       "pathOptionInvalid": "{path} (không sinh được)",
       "pathOptionUnconfirmed": "{path} (chưa xác nhận được)",
       "generate": "Sinh đề xem trước",
-      "regenerate": "Sinh lại",
+      "regenerate": "Sinh đề thử mới",
       "runStatus": "Lần sinh thứ {run, number} · {time}",
       "runStatusFailed": "Lần sinh thứ {run, number} · {time} · không có đề",
       "live": {
@@ -4737,7 +4737,7 @@
       "errorTitle": "Có lỗi khi sinh đề",
       "retry": "Thử lại",
       "idleTitle": "Chưa sinh đề",
-      "idleDescription": "Chọn đường lựa chọn rồi bấm Sinh đề xem trước.",
+      "idleDescription": "Chọn phạm vi sinh thử rồi bấm Sinh đề xem trước.",
       "noPathsTitle": "Chưa có đường lựa chọn",
       "noPathsDescription": "Thêm phần thi và khối câu hỏi ở trang Cấu trúc và ma trận trước khi sinh đề.",
       "failInvalidTitle": "Không sinh được đề cho {path}",
@@ -4790,7 +4790,7 @@
         },
         "remaining": "Đã chọn {picked, number} / {choose, number} môn. Chọn đủ {choose, number} môn để sinh đề.",
         "split": "Số câu từng môn: {list}.",
-        "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh lại để thử cách chia khác.",
+        "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh đề thử mới để thử cách chia khác.",
         "full": "Đã chọn đủ {choose, number} môn. Bỏ chọn một môn để đổi sang môn khác."
       },
       "subjectQuotas": {
@@ -4843,7 +4843,82 @@
       "manualGrading": "Chấm tay",
       "rubricTitle": "Tiêu chí chấm",
       "rubricEmpty": "Câu chưa có tiêu chí chấm.",
-      "rubricItem": "{description}: {points, number} điểm"
+      "rubricItem": "{description}: {points, number} điểm",
+      "clozePosition": "Câu {number, number} → chỗ trống ({blank, number}) · {type}",
+      "compliance": {
+        "actualAssigned": "{value} · gán câu {numbers}",
+        "allPassed": "Đạt mọi tiêu chí",
+        "columns": {
+          "actual": "Thực tế",
+          "criterion": "Tiêu chí",
+          "level": "Mức · đơn vị",
+          "required": "Yêu cầu",
+          "result": "Kết quả",
+          "scope": "Phạm vi"
+        },
+        "criterion": {
+          "ANSWER_TYPE": "Dạng {name}",
+          "CELL": "{grade} × {difficulty}",
+          "COMPETENCY": "Năng lực {name}",
+          "DIFFICULTY": "Độ khó {name}",
+          "EXAM": "Chỉ tiêu cấp bài {names}",
+          "GRADE": "Khối lớp {name}",
+          "TOPIC": "Chỉ tiêu chủ đề"
+        },
+        "deviations": "{count, number} dòng lệch",
+        "droppedQuestion": "Đã bỏ câu {code} · {type}, {grade}, {difficulty}.",
+        "enforcement": {
+          "REFERENCE": "Tham khảo",
+          "REQUIRED": "Bắt buộc"
+        },
+        "legend": "Dòng Tham khảo lệch chỉ là cảnh báo, không chặn. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
+        "level": "{enforcement} · {unit}",
+        "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
+        "result": {
+          "OK": "Đạt",
+          "REFERENCE_DEVIATION": "Lệch · tham khảo",
+          "REQUIRED_DEVIATION": "Lệch · bắt buộc"
+        },
+        "scope": {
+          "EXAM": "Cả bài"
+        },
+        "tableLabel": "Yêu cầu và thực tế của đề thử",
+        "title": "Yêu cầu / Thực tế",
+        "unit": {
+          "POINTS": "điểm",
+          "PROMPT": "lệnh hỏi",
+          "QUESTION": "câu"
+        }
+      },
+      "expired": {
+        "description": "Đề thử chỉ giữ {minutes, number} phút nên không đổi mã trên đề này được nữa.",
+        "title": "Đề thử đã hết hạn"
+      },
+      "keep": {
+        "change": "Đổi mã, sinh lại {parts}",
+        "note": "Đề thử đang dùng {from}. Đổi sang {to} giữ nguyên {kept} (câu {keptFirst, number}–{keptLast, number}), chỉ sinh lại {regenerated} (câu {regeneratedFirst, number}–{regeneratedLast, number}). Sinh đề thử mới sinh lại cả bài với hạt giống mới."
+      },
+      "order": {
+        "showOriginal": "Xem thứ tự gốc",
+        "showShuffled": "Xem thứ tự đã đảo"
+      },
+      "originalOrderNote": "Đang xem thứ tự gốc: câu theo thứ tự bộ giải chọn, phương án theo thứ tự lúc soạn. Đề thật dùng thứ tự đã đảo bằng hạt giống.",
+      "resultMeta": "{questions, number} câu · hạt giống {seed} · giữ trong {minutes, number} phút · câu ghi sổ xem trước, không trừ lượt",
+      "resultTitle": "Đề thử · {label}",
+      "scope": {
+        "count": "Số câu của môn",
+        "countOption": "{count, number} câu{full, select, yes {} other { (bỏ 1 câu)}}",
+        "examBlocked": "Bài có phần chọn mã: hãy chọn một mã.",
+        "kind": {
+          "EXAM": "Cả bài",
+          "PATH": "Một mã hoặc nhánh",
+          "SECTION": "Một môn"
+        },
+        "label": "Phạm vi sinh thử",
+        "section": "Môn",
+        "sectionOption": "{subject} · {part}",
+        "sectionWithCount": "{name} · {count, number} câu"
+      }
     },
     "publish": {
       "close": "Đóng",

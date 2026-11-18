@@ -4725,7 +4725,7 @@
       "pathOptionInvalid": "{path} (cannot generate)",
       "pathOptionUnconfirmed": "{path} (unconfirmed)",
       "generate": "Generate preview paper",
-      "regenerate": "Generate again",
+      "regenerate": "Generate a new trial paper",
       "runStatus": "Run {run, number} · {time}",
       "runStatusFailed": "Run {run, number} · {time} · no paper",
       "live": {
@@ -4737,7 +4737,7 @@
       "errorTitle": "Something went wrong while generating",
       "retry": "Try again",
       "idleTitle": "No paper generated yet",
-      "idleDescription": "Pick a choice path, then select Generate preview paper.",
+      "idleDescription": "Pick a trial scope, then select Generate preview paper.",
       "noPathsTitle": "No choice path yet",
       "noPathsDescription": "Add parts and question blocks on the Structure and matrix page before generating a paper.",
       "failInvalidTitle": "Cannot generate a paper for {path}",
@@ -4790,7 +4790,7 @@
         },
         "remaining": "{picked, number} of {choose, number} subjects picked. Pick all {choose, number} to generate a paper.",
         "split": "Questions per subject: {list}.",
-        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Regenerate to try another split.",
+        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Generate a new trial paper to try another split.",
         "full": "All {choose, number} subjects picked. Clear one to switch to another subject."
       },
       "subjectQuotas": {
@@ -4843,7 +4843,82 @@
       "manualGrading": "Manual grading",
       "rubricTitle": "Rubric",
       "rubricEmpty": "This question has no rubric yet.",
-      "rubricItem": "{description}: {points, plural, one {# point} other {# points}}"
+      "rubricItem": "{description}: {points, plural, one {# point} other {# points}}",
+      "clozePosition": "Question {number, number} → blank ({blank, number}) · {type}",
+      "compliance": {
+        "actualAssigned": "{value} · assigned to question {numbers}",
+        "allPassed": "All criteria met",
+        "columns": {
+          "actual": "Actual",
+          "criterion": "Criterion",
+          "level": "Level · unit",
+          "required": "Required",
+          "result": "Result",
+          "scope": "Scope"
+        },
+        "criterion": {
+          "ANSWER_TYPE": "Type {name}",
+          "CELL": "{grade} × {difficulty}",
+          "COMPETENCY": "Competency {name}",
+          "DIFFICULTY": "Difficulty {name}",
+          "EXAM": "Exam quota {names}",
+          "GRADE": "Grade {name}",
+          "TOPIC": "Topic quota"
+        },
+        "deviations": "{count, plural, one {# row deviates} other {# rows deviate}}",
+        "droppedQuestion": "Dropped question {code} · {type}, {grade}, {difficulty}.",
+        "enforcement": {
+          "REFERENCE": "Reference",
+          "REQUIRED": "Required"
+        },
+        "legend": "A Reference row that deviates is only a warning and does not block. A Required row that fails means no paper is generated, and no short paper is returned.",
+        "level": "{enforcement} · {unit}",
+        "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
+        "result": {
+          "OK": "Met",
+          "REFERENCE_DEVIATION": "Deviates · reference",
+          "REQUIRED_DEVIATION": "Deviates · required"
+        },
+        "scope": {
+          "EXAM": "Whole exam"
+        },
+        "tableLabel": "Required and actual values of the trial paper",
+        "title": "Required / Actual",
+        "unit": {
+          "POINTS": "points",
+          "PROMPT": "prompts",
+          "QUESTION": "questions"
+        }
+      },
+      "expired": {
+        "description": "A trial paper is kept for {minutes, number} minutes, so the code can no longer be changed on this paper.",
+        "title": "The trial paper has expired"
+      },
+      "keep": {
+        "change": "Change code, regenerate {parts}",
+        "note": "The trial paper uses {from}. Switching to {to} keeps {kept} (questions {keptFirst, number}–{keptLast, number}) and only regenerates {regenerated} (questions {regeneratedFirst, number}–{regeneratedLast, number}). Generate a new trial paper regenerates the whole exam with a new seed."
+      },
+      "order": {
+        "showOriginal": "Show original order",
+        "showShuffled": "Show shuffled order"
+      },
+      "originalOrderNote": "Showing the original order: questions as the solver picked them, options as authored. The real paper uses the order shuffled by the seed.",
+      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · kept for {minutes, number} minutes · questions are logged as preview, no attempt is used",
+      "resultTitle": "Trial paper · {label}",
+      "scope": {
+        "count": "Questions in the subject",
+        "countOption": "{count, number} questions{full, select, yes {} other { (1 dropped)}}",
+        "examBlocked": "This exam has a code choice: pick one code.",
+        "kind": {
+          "EXAM": "Whole exam",
+          "PATH": "One code or branch",
+          "SECTION": "One subject"
+        },
+        "label": "Trial scope",
+        "section": "Subject",
+        "sectionOption": "{subject} · {part}",
+        "sectionWithCount": "{name} · {count, number} questions"
+      }
     },
     "publish": {
       "close": "Close",

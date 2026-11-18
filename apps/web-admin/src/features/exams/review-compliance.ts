@@ -1,0 +1,76 @@
+import type { PreviewCompliance, PreviewPaper } from "./review-types";
+
+/** Sai lệch số thập phân nhỏ hơn mức này coi là bằng nhau (điểm và số câu máy chủ tính bằng BigDecimal). */
+const EPSILON = 1e-9;
+
+export type ComplianceLevel = "OK" | "REFERENCE_DEVIATION" | "REQUIRED_DEVIATION";
+
+export type CriterionRef =
+  | { kind: "ANSWER_TYPE" | "GRADE" | "DIFFICULTY" | "COMPETENCY" | "TOPIC"; code: string }
+  | { kind: "CELL"; gradeCode: string; difficultyCode: string }
+  | { kind: "EXAM"; quotaId: string; codes: string[] }
+  | { kind: "UNKNOWN"; raw: string };
+
+/** Tiêu chí của một dòng (`ANSWER_TYPE:SINGLE_CHOICE`, `CELL:G12:VD`, `EXAM:<id>:G10,G11`, ...). */
+export function parseCriterion(raw: string): CriterionRef {
+  const [kind = "", first = "", second = ""] = raw.split(":");
+  switch (kind) {
+    case "ANSWER_TYPE":
+    case "GRADE":
+    case "DIFFICULTY":
+    case "COMPETENCY":
+    case "TOPIC":
+      return { kind, code: [first, second].filter(Boolean).join(":") };
+    case "CELL":
+      return { kind, gradeCode: first, difficultyCode: second };
+    case "EXAM":
+      return { kind, quotaId: first, codes: second ? second.split(",") : [] };
+    default:
+      return { kind: "UNKNOWN", raw };
+  }
+}
+
+export type ScopeRef = { kind: "SECTION" | "BLOCK"; id: string } | { kind: "EXAM" };
+
+/** Phạm vi của một dòng: `SECTION:<id môn>`, `BLOCK:<id khối>` hoặc `EXAM`. */
+export function parseScope(raw: string): ScopeRef {
+  const separator = raw.indexOf(":");
+  const kind = separator < 0 ? raw : raw.slice(0, separator);
+  if (kind === "SECTION" || kind === "BLOCK") return { kind, id: raw.slice(separator + 1) };
+  return { kind: "EXAM" };
+}
+
+/**
+ * Mức lệch của một dòng. Chỉ tiêu chủ đề là "ít nhất" (K6): thực tế nhiều hơn yêu cầu vẫn đạt, chỉ thiếu mới lệch. Dòng
+ * Bắt buộc lệch là lỗi, dòng Tham khảo lệch là cảnh báo không chặn.
+ */
+export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
+  const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
+  const deviates = atLeast ? row.actual < row.required - EPSILON : Math.abs(row.actual - row.required) > EPSILON;
+  if (!deviates) return "OK";
+  return row.enforcement === "REQUIRED" ? "REQUIRED_DEVIATION" : "REFERENCE_DEVIATION";
+}
+
+/** Số câu đã bỏ ghi trong `note` của máy chủ (`dropped 1`); 0 khi không bỏ câu nào. */
+export function droppedCount(note: string | null): number {
+  const match = /^dropped (\d+)$/.exec(note ?? "");
+  return match ? Number(match[1]) : 0;
+}
+
+/** Số câu (theo số hiện trên đề) được gán vào từng chỉ tiêu chủ đề: khóa là id chỉ tiêu, như `TOPIC:<id>` của bảng. */
+export function topicAssignments(paper: PreviewPaper): Map<string, number[]> {
+  const assigned = new Map<string, number[]>();
+  const add = (number: number, quotaIds: readonly string[]) => {
+    for (const id of quotaIds) assigned.set(id, [...(assigned.get(id) ?? []), number]);
+  };
+  for (const part of paper.parts) {
+    for (const block of part.blocks) {
+      for (const item of block.items) {
+        if (item.kind === "QUESTION") add(item.question.number, item.question.assignedTopicQuotaIds);
+        else item.children.forEach((child) => add(child.number, child.assignedTopicQuotaIds));
+      }
+    }
+  }
+  for (const numbers of assigned.values()) numbers.sort((a, b) => a - b);
+  return assigned;
+}
