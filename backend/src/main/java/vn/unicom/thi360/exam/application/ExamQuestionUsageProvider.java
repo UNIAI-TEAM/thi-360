@@ -181,7 +181,7 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, answers,
                 block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                 scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
-                null, null, null);
+                null, null, null, scope == null ? null : scope.everyChildInScope());
         boolean included = matches.computeIfAbsent(filter,
                 key -> source.matching(key, List.of(questionId)).contains(questionId));
         if (included) {

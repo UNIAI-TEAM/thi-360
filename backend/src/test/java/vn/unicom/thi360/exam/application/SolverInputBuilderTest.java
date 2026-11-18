@@ -43,7 +43,7 @@ class SolverInputBuilderTest {
         when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of(parentNode, childNode));
         when(catalog.findActiveItem("SUBJECT", "TOAN")).thenReturn(Optional.of(subject));
         when(source.findCandidates(any(), eq(8))).thenReturn(List.of());
-        var scope = new KnowledgeScope(List.of(root), List.of("C1"));
+        var scope = new KnowledgeScope(List.of(root), List.of("C1"), true);
         var matrix = new BlockMatrix(MatrixMode.COMBINED, MatrixUnit.PERCENT,
                 List.of(new MatrixCell("G10", "NB", BigDecimal.valueOf(100))),
                 List.of(), List.of(), List.of(new MatrixDimensionValue("C1", BigDecimal.valueOf(100))));
@@ -68,6 +68,7 @@ class SolverInputBuilderTest {
         assertThat(filter.getValue().knowledgeGroups().getFirst()).containsExactlyInAnyOrder(root, child);
         assertThat(filter.getValue().tagCodes()).containsExactly("TAG");
         assertThat(filter.getValue().competencyCodes()).containsExactly("C1");
+        assertThat(filter.getValue().everyChildInScope()).isTrue();
     }
 
     @Test

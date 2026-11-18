@@ -230,7 +230,7 @@ public class SolverInputBuilder {
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                             shape, block.answerFormats().stream().map(AnswerFormat::valueOf).toList(), conditions,
-                            slotTags, slotScopes, slotCompetencies));
+                            slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope()));
                     groups.add(group);
                 }
             }
@@ -263,8 +263,11 @@ public class SolverInputBuilder {
             }
         }
         // expectedScoring is NOT a source filter: SCORING_MISMATCH is a warning, it never blocks solve/preview.
-        return new GroupQuota(block.id(), set ? GroupQuota.GroupKind.SET : GroupQuota.GroupKind.SINGLE,
-                set ? null : block.questionCount(), set || block.questionType() == null ? null : block.questionType().name(),
+        boolean flexibleSet = set && block.setCount() == null && block.setSize() == null;
+        return new GroupQuota(block.id(), flexibleSet ? GroupQuota.GroupKind.FLEXIBLE_SET
+                        : set ? GroupQuota.GroupKind.SET : GroupQuota.GroupKind.SINGLE,
+                !set || flexibleSet ? block.questionCount() : null,
+                set || block.questionType() == null ? null : block.questionType().name(),
                 set ? block.setCount() : null, set ? block.setSize() : null,
                 set && block.childAnswerType() != null ? block.childAnswerType().name() : null,
                 matrix(block.matrix()), competencies, List.of(), block.requiredPointsPerQuestion(), null,
@@ -334,6 +337,9 @@ public class SolverInputBuilder {
     private static int fixedBlockCount(QuestionBlock block) {
         if (Boolean.TRUE.equals(block.omitted())) return 0;
         if (block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE) {
+            if (block.setCount() == null && block.setSize() == null && block.questionCount() != null) {
+                return block.questionCount();
+            }
             if (block.setCount() == null || block.setSize() == null) throw new IllegalArgumentException("Set size is missing");
             return Math.multiplyExact(block.setCount(), block.setSize());
         }

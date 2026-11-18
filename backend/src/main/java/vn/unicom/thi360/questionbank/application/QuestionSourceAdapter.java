@@ -362,6 +362,19 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
             }
         }
         addKnowledgeGroup(parts, params, p + "knowledge", f.knowledgeGroups());
+        if (Boolean.TRUE.equals(f.everyChildInScope()) && f.knowledgeGroups() != null
+                && !f.knowledgeGroups().isEmpty()) {
+            List<UUID> nodes = f.knowledgeGroups().stream().flatMap(List::stream).distinct().toList();
+            if (nodes.isEmpty()) {
+                parts.add("false");
+            } else {
+                params.addValue(p + "everyChildKnowledge", nodes);
+                parts.add("(q.type <> 'QUESTION_SET' or not exists (select 1 from questionbank.question c "
+                        + "where c.parent_id=q.id and c.deleted_at is null and not exists "
+                        + "(select 1 from questionbank.question_knowledge ck where ck.question_id=c.id "
+                        + "and ck.knowledge_item_id in (:" + p + "everyChildKnowledge))))");
+            }
+        }
         if (f.additionalKnowledgeGroups() != null) {
             for (int j = 0; j < f.additionalKnowledgeGroups().size(); j++) {
                 addKnowledgeGroup(parts, params, p + "extraKnowledge" + j + "_",
