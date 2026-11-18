@@ -4129,6 +4129,7 @@
             "OUT_OF_SET": "Vị trí vượt số câu con mỗi chùm ({size, number}).",
             "RANGE_ORDER": "Vị trí kết thúc phải lớn hơn hoặc bằng vị trí bắt đầu."
           },
+          "leftItemsLabel": "Số vế trái",
           "mapidLabel": "MAPID:",
           "optionsLabel": "Số phương án",
           "pickMapid": "Chọn MAPID",

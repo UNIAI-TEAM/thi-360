@@ -255,4 +255,21 @@ describe("chùm trộn dạng (R-132)", () => {
     }
     expect(within(open).getByRole("button", { name: "Bỏ Điều kiện vị trí 2" })).not.toHaveAttribute("aria-disabled");
   });
+
+  it("R1-9 · vị trí Ghép đôi nhập được số vế trái, bảng vị trí tính lệnh hỏi theo số vế", async () => {
+    const user = userEvent.setup();
+    const matching = block({
+      setCount: 1,
+      setSize: 2,
+      questionCount: 2,
+      positionRange: { from: 8, to: 9 },
+      childConditions: [{ from: 1, to: 2, nodeIds: [], answerType: "MATCHING" }],
+    });
+    renderEditor(matching);
+    const table = screen.getByRole("table", { name: "Loại câu hỏi theo vị trí trong chùm" });
+    const commands = () => Array.from(within(table).getAllByRole("row")[1]!.querySelectorAll("th,td"), (cell) => cell.textContent)[4];
+    expect(commands()).toBe("2");
+    await user.type(screen.getByRole("textbox", { name: "Số vế trái" }), "4");
+    expect(commands()).toBe("8");
+  });
 });

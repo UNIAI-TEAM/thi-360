@@ -4129,6 +4129,7 @@
             "OUT_OF_SET": "The position goes beyond the sub-questions per set ({size, number}).",
             "RANGE_ORDER": "The end position must be greater than or equal to the start position."
           },
+          "leftItemsLabel": "Left items",
           "mapidLabel": "MAPID:",
           "optionsLabel": "Options",
           "pickMapid": "Choose MAPID",

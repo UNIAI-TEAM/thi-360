@@ -344,6 +344,22 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
                   />
                 </label>
               )}
+              {condition.answerType === "MATCHING" && (
+                <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
+                  {t("leftItemsLabel")}
+                  <BlockNumberInput
+                    value={condition.itemShape?.leftItems ?? 0}
+                    readOnly={locked}
+                    aria-readonly={locked || undefined}
+                    onValueChange={(leftItems) => {
+                      const shape: ItemShape = { ...condition.itemShape };
+                      if (leftItems > 0) shape.leftItems = leftItems;
+                      else delete shape.leftItems;
+                      setShape(index, shape);
+                    }}
+                  />
+                </label>
+              )}
               <div className="ml-auto">
                 <IconButton
                   icon={<Trash2 />}
