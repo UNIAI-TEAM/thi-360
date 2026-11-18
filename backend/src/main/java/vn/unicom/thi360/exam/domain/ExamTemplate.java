@@ -49,7 +49,7 @@ public class ExamTemplate {
     @Column(nullable = false)
     private boolean active;
     @Column(nullable = false)
-    private boolean publishable;
+    private boolean publishable = true;
     @Column(name = "fixed_counts", nullable = false)
     private boolean fixedCounts;
 
