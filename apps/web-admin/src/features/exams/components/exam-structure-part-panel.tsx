@@ -1,29 +1,34 @@
 "use client";
 
 import { Button, Card, cn, focusRing, FormField, Input } from "@thi360/ui";
-import { Plus, TriangleAlert } from "lucide-react";
+import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
-import type { CombinationOption } from "@/features/content/types";
-import { countOf, sectionsPoints, sum, type StructureIssue } from "../matrix";
-import type { ExamPart, ExamSectionState, ExamSection, ExamTiming } from "../types";
+import { countOf, type MatrixAxes, sectionsPoints, sum, type StructureIssue } from "../matrix";
+import type { ExamPart, ExamSectionState, ExamSection, ExamTiming, StructureCombination } from "../types";
 import { BlockNumberInput } from "./block-number-input";
-import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
+import type { MatrixLabels } from "./block-matrix-editor";
+import { CodedPartPanel } from "./coded-part-panel";
 import { OptionalNumberInput } from "./create-exam-fields";
+import { PartOptions, type PartOptionsProps } from "./part-options";
 import { SubjectChoiceOptions } from "./subject-choice-options";
 import type { StructureNames } from "./exam-structure-issues";
 
 export interface PartPanelProps
-  extends Pick<
-    CombinationOptionsProps,
-    "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"
-  > {
+  extends Pick<PartOptionsProps, "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"> {
   part: ExamPart;
   /** `SHARED`: phần không có ô thời lượng, bài dùng thời lượng chung `sharedMinutes`. */
   timing: ExamTiming;
   sharedMinutes: number;
   names: StructureNames;
-  combinations: readonly CombinationOption[];
+  /** Mã của kỳ thi thuộc các phần theo mã (đọc từ Global List, chỉ xem). */
+  structureCombinations: readonly StructureCombination[];
+  axes: MatrixAxes;
+  labels: MatrixLabels;
+  /** Mẫu khóa số câu từng mục (H27): ô số câu của mục chỉ đọc. */
+  countLocked?: boolean;
+  /** Thêm môn còn thiếu của một mã vào danh sách môn của phần theo mã (D12). */
+  onAddSubject: (subjectCode: string) => void;
   issues: readonly StructureIssue[];
   issueText: (issue: StructureIssue) => string;
   onChange: (update: (part: ExamPart) => ExamPart) => void;
@@ -31,7 +36,6 @@ export interface PartPanelProps
   onSectionCount: (optionId: string | null, sectionId: string, questionCount: number) => void;
   onAddBlock: (optionId: string | null, section: ExamSection) => void;
   onToggleEnglish: (enabled: boolean) => void;
-  onAttachCombination: (combination: CombinationOption) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
   /** Trạng thái kiểm tra theo môn (H2); `null` hoặc bỏ trống: không hiện cột trạng thái. */
@@ -54,7 +58,11 @@ export function ExamStructurePartPanel({
   timing,
   sharedMinutes,
   names,
-  combinations,
+  structureCombinations,
+  axes,
+  labels,
+  countLocked = false,
+  onAddSubject,
   issues,
   issueText,
   onChange,
@@ -62,7 +70,6 @@ export function ExamStructurePartPanel({
   onSectionCount,
   onAddBlock,
   onToggleEnglish,
-  onAttachCombination,
   onRemoveOption,
   onSelectBlock,
   onSelectSection,
@@ -201,13 +208,26 @@ export function ExamStructurePartPanel({
       )}
 
       {part.mode === "FIXED" ? (
-        <SectionsTable
-          part={part}
-          names={names}
-          onSectionCount={onSectionCount}
-          onAddBlock={onAddBlock}
-          onSelectSection={onSelectSection}
-        />
+        part.codeSource ? (
+          <CodedPartPanel
+            part={part}
+            names={names}
+            axes={axes}
+            combinations={structureCombinations}
+            sectionStates={sectionStates}
+            onSelectSection={onSelectSection}
+            onAddSubject={onAddSubject}
+          />
+        ) : (
+          <SectionsTable
+            part={part}
+            names={names}
+            countLocked={countLocked}
+            onSectionCount={onSectionCount}
+            onAddBlock={onAddBlock}
+            onSelectSection={onSelectSection}
+          />
+        )
       ) : (
         <>
           {part.sections.length > 0 && (
@@ -215,6 +235,7 @@ export function ExamStructurePartPanel({
               part={part}
               names={names}
               common
+              countLocked={countLocked}
               onSectionCount={onSectionCount}
               onAddBlock={onAddBlock}
               onSelectSection={onSelectSection}
@@ -227,19 +248,19 @@ export function ExamStructurePartPanel({
                 key={option.id}
                 option={option}
                 names={names}
+                axes={axes}
+                labels={labels}
                 sectionStates={sectionStates}
                 onSelectSection={onSelectSection}
               />
             ))}
-          <CombinationOptions
+          <PartOptions
             part={part}
-            combinations={combinations}
             names={names}
             issues={issues}
             showEnglish={showEnglish}
             branchSubjects={branchSubjects}
             onToggleEnglish={onToggleEnglish}
-            onAttach={onAttachCombination}
             onAddBranch={onAddBranch}
             onConfirm={onConfirm}
             onRemove={onRemoveOption}
@@ -257,6 +278,7 @@ function SectionsTable({
   part,
   names,
   common = false,
+  countLocked = false,
   onSectionCount,
   onAddBlock,
   onSelectSection,
@@ -264,6 +286,7 @@ function SectionsTable({
   part: ExamPart;
   names: StructureNames;
   common?: boolean;
+  countLocked?: boolean;
   onSectionCount: PartPanelProps["onSectionCount"];
   onAddBlock: PartPanelProps["onAddBlock"];
   onSelectSection: PartPanelProps["onSelectSection"];
@@ -321,8 +344,12 @@ function SectionsTable({
                     </span>
                   </th>
                   <td className="border-b border-border px-2 py-2 text-right">
-                    {single ? (
-                      <span>{section.questionCount ?? 0}</span>
+                    {single || countLocked ? (
+                      <span className="inline-flex items-center justify-end gap-1.5">
+                        {countLocked && <Lock aria-hidden className="size-3.5 text-text-muted" />}
+                        <span>{section.questionCount ?? 0}</span>
+                        {countLocked && <span className="sr-only">{t("countLocked")}</span>}
+                      </span>
                     ) : (
                       <BlockNumberInput
                         className="ml-auto h-9 w-20"
