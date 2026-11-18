@@ -94,7 +94,7 @@ function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   return {
     nodeIds: scope.nodeIds ?? [],
     ...(scope.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
-    ...(scope.everyChildInScope !== undefined ? { everyChildInScope: scope.everyChildInScope } : {}),
+    ...(scope.everyChildInScope !== undefined && scope.everyChildInScope !== null ? { everyChildInScope: scope.everyChildInScope } : {}),
   };
 }
 

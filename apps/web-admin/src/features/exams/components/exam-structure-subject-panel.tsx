@@ -142,6 +142,14 @@ export function ExamStructureSubjectPanel({
   const matrixVaries = section.matrix?.unit === "COUNT" && varies;
 
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));
+  // Ô "Mọi câu con thuộc chủ đề" của phạm vi môn (mẫu VACT_REVIEW bật sẵn ở máy chủ): chùm kế thừa phạm vi này khi
+  // chưa chọn MAPID riêng. Không có giá trị mặc định ở màn; tắt thì bỏ cờ (thiếu cờ là tắt).
+  const setEveryChild = (checked: boolean) =>
+    onChange((current) => {
+      const scope: KnowledgeScope = { ...(current.knowledgeScope ?? { nodeIds: [] }) };
+      delete scope.everyChildInScope;
+      return { ...current, knowledgeScope: checked ? { ...scope, everyChildInScope: true } : scope };
+    });
 
   const sectionCount = section.questionCount;
   const topicQuotas = section.topicQuotas ?? [];
@@ -482,6 +490,7 @@ export function ExamStructureSubjectPanel({
           reference={reference}
           subjectCode={section.subjectCode}
           name={subjectName}
+          everyChild={{ checked: section.knowledgeScope?.everyChildInScope ?? false, onChange: setEveryChild }}
         />
 
         <ReferenceDistributions entries={references} labels={labels} subjectName={subjectName} onUse={copyReference} onApply={applyReference} />

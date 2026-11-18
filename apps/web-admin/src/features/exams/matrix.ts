@@ -196,6 +196,14 @@ export function isSetBlock(block: Pick<QuestionBlock, "questionType">): boolean 
   return block.questionType === "QUESTION_SET" || block.questionType === "CLOZE";
 }
 
+/**
+ * Chùm cỡ linh hoạt (H28): nhóm Bộ câu hỏi chỉ khai tổng câu con (`questionCount`), để trống cả `setCount` và `setSize`;
+ * bộ giải chọn các chùm nguyên có tổng đúng bằng số đó. Chế độ suy ra từ dữ liệu, không lưu riêng.
+ */
+export function isFlexibleSet(block: Pick<QuestionBlock, "questionType" | "setCount" | "setSize">): boolean {
+  return block.questionType === "QUESTION_SET" && block.setCount === null && block.setSize === null;
+}
+
 export function computeAllocation(
   block: { questionCount: number | null; matrix: BlockMatrix | null },
   axes: MatrixAxes,
@@ -385,7 +393,7 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
   if (block.questionCount !== null && (!Number.isInteger(block.questionCount) || block.questionCount <= 0)) {
     issues.push({ code: "COUNT_NOT_POSITIVE" });
   }
-  if (isSetBlock(block) && block.questionCount !== null) {
+  if (isSetBlock(block) && block.questionCount !== null && !isFlexibleSet(block)) {
     const expected = (block.setCount ?? 0) * (block.setSize ?? 0);
     if (expected !== block.questionCount) {
       issues.push({ code: "SET_SIZE_MISMATCH", expected, actual: block.questionCount });

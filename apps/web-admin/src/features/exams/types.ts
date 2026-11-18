@@ -83,7 +83,7 @@ export interface KnowledgeScope {
   nodeIds: string[];
   /** Lọc thêm theo năng lực (V-ACT); bỏ trống hoặc rỗng: không lọc. */
   competencyCodes?: string[];
-  /** Nhóm chùm: bật thì mọi câu con của chùm phải thuộc chủ đề đã chọn (H29); bỏ trống: `false`. */
+  /** Nhóm chùm: bật thì chùm có câu con ngoài phạm vi MAPID bị loại; chỉ có nghĩa khi `nodeIds` không rỗng. */
   everyChildInScope?: boolean;
 }
 
