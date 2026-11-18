@@ -146,10 +146,12 @@ async function postExam(request: CreateExamRequest): Promise<ExamDetail> {
       scope: request.scope,
       partCode: request.partCode ?? undefined,
       subjectCode: request.subjectCode ?? undefined,
+      buildMode: request.buildMode ?? undefined,
       description: request.description ?? undefined,
       instructions: request.instructions ?? undefined,
       durationMinutes: request.durationMinutes ?? undefined,
       maxScore: request.maxScore ?? undefined,
+      ...(request.overview?.length ? { overview: request.overview } : {}),
     },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);

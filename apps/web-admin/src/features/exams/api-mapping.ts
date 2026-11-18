@@ -312,6 +312,7 @@ function templateBlock(block: QuestionBlock): ExamTemplateBlock {
 
 function templateSection(section: ExamSection): ExamTemplateSection {
   return {
+    sectionId: section.id || null,
     subjectCode: section.subjectCode,
     questionCount: section.questionCount,
     blocks: section.blocks.map(templateBlock),
@@ -350,15 +351,24 @@ function templateOption(option: ExamPartOption): TemplateOption {
   };
 }
 
-function templatePart(part: ExamPart): ExamTemplatePart {
+function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined): ExamTemplatePart {
+  const sections = part.sections.map((section, sectionIndex) => {
+    const omittedBlocks = (raw?.sections?.[sectionIndex]?.blocks ?? [])
+      .filter((block) => block.omitted)
+      .map((block) => ({ name: block.name ?? "", questionCount: nullable(block.questionCount) }));
+    return { ...templateSection(section), ...(omittedBlocks.length ? { omittedBlocks } : {}) };
+  });
   return {
+    partId: part.id || null,
+    order: part.order ?? index + 1,
     name: part.name,
     questionCount: part.questionCount,
     durationMinutes: part.durationMinutes,
     mode: part.mode,
     subjectCode: null,
     points: part.maxPoints ?? null,
-    ...(part.sections.length ? { sections: part.sections.map(templateSection) } : {}),
+    maxPoints: part.maxPoints ?? null,
+    ...(sections.length ? { sections } : {}),
     ...(part.mode === "CHOICE" ? { options: part.options.map(templateOption) } : {}),
   };
 }
@@ -370,7 +380,7 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     code: response.code,
     kind: response.kindCode,
     scope: response.scope as ExamScope,
-    name: "",
+    name: response.label ?? "",
     partCode: nullable(response.partCode),
     subjectCode: nullable(response.subjectCode),
     structureYear: nullable(response.structureYear),
@@ -378,7 +388,11 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     timing: response.timing as ExamTiming,
     durationMinutes: nullable(response.durationMinutes),
     maxScore: nullable(response.maxScore),
+    buildMode: nullable(response.buildMode) as ExamTemplate["buildMode"],
+    isDefault: nullable(response.isDefault),
+    label: nullable(response.label),
+    summary: nullable(response.summary),
     expertNote: nullable(response.expertNote),
-    parts: mapParts(document.parts).map(templatePart),
+    parts: mapParts(document.parts).map((part, index) => templatePart(part, index, document.parts?.[index])),
   };
 }

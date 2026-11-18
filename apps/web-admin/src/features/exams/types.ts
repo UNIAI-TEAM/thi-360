@@ -1,4 +1,5 @@
 import type {
+  ExamBuildMode,
   ExamScope,
   ExamTiming,
   MultipleChoiceRule,
@@ -9,7 +10,7 @@ import type {
 } from "@/features/content/types";
 import type { ApiPage } from "@/lib/api/page";
 
-export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
+export type { ExamBuildMode, ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
 /**
  * Bài thi và ma trận đề (PBI-04), dữ liệu mẫu. Ma trận nằm trong bài thi (UniNote PBI-04).
@@ -320,12 +321,27 @@ export interface ExamTemplate {
   /** Thời lượng chung khi `timing = SHARED`, hoặc tổng thời lượng để hiển thị; `null` khi tài liệu chưa ghi. */
   durationMinutes: number | null;
   maxScore: number | null;
+  /**
+   * Nhóm mẫu của kỳ thi `templateBy = SUBJECT` (2B 15.1): `STANDARD` — "Dùng cấu trúc môn", `REVIEW` — "Tự thiết
+   * lập bài ôn" (rút gọn). Kỳ thi khác để trống.
+   */
+  buildMode?: ExamBuildMode | null;
+  /** Mẫu nạp mặc định của bộ (kỳ thi, phạm vi, môn/phần, `buildMode`, năm mới nhất); `null`: không đánh dấu. */
+  isDefault?: boolean | null;
+  /** Nhãn ngắn BE gửi kèm; `null`: giao diện tự dựng tên (`useTemplateLabel`). */
+  label?: string | null;
+  /** Tóm tắt mẫu của BE (ví dụ "150 câu · 195 phút"); `null`: giao diện tự tính. */
+  summary?: string | null;
   /** Điều cần chuyên gia xác nhận trước khi bán (ví dụ HSA chia 17–17–16), hiện cạnh mẫu; `null` khi không có. */
   expertNote?: string | null;
   parts: ExamTemplatePart[];
 }
 
 export interface ExamTemplatePart {
+  /** Id ổn định của phần trong mẫu khi BE gán (đối chiếu `overview`); `null`: so khớp theo `order`. */
+  partId?: string | null;
+  /** Thứ tự phần trong mẫu (1..n); `null` khi tài liệu cũ chưa ghi. */
+  order?: number | null;
   name: string;
   /** Số câu học viên làm trong phần. */
   questionCount: number;
@@ -335,6 +351,8 @@ export interface ExamTemplatePart {
   /** Môn của phần cố định một môn; phần tự chọn, phần nhiều môn và mẫu Theo phần để `null`. */
   subjectCode?: string | null;
   points?: number | null;
+  /** Bí danh của `points` theo dòng `ExamOverviewRow.maxPoints` (2B 15.1); cùng giá trị khi BE đã gửi. */
+  maxPoints?: number | null;
   /**
    * Các môn của phần cố định nhiều môn (BCA Phần 2: Toán 35, Lịch sử 10, Tiếng Anh 20) hoặc phần chung của phần tự
    * chọn (THPTQG Tin học).
@@ -360,6 +378,10 @@ export interface ExamTemplatePart {
  * QDA, BCA, V-ACT, SPT, SP2E, THPTQG giữ cấu trúc cũ, môn không có chỉ tiêu (D26).
  */
 export interface ExamTemplateSection {
+  /** Id ổn định của môn trong mẫu khi BE gán (đối chiếu `overview`); `null`: so khớp theo `subjectCode`. */
+  sectionId?: string | null;
+  /** Nhóm tạm bỏ qua của mẫu (SPT Toán: Tự luận, 2B 3.3): hiện mờ ở bảng tổng quan, không tính vào tổng. */
+  omittedBlocks?: Array<{ name: string; questionCount: number | null }>;
   subjectCode: string;
   /** `null` trong `SUBJECT_CHOICE`. */
   questionCount: number | null;
@@ -412,12 +434,22 @@ export interface CreateExamRequest {
   partCode?: string | null;
   /** Bắt buộc khi `scope = SUBJECT`. */
   subjectCode?: string | null;
+  /**
+   * Kiểu xây bài Theo môn (2B H4, 15.1): `STANDARD` — dùng cấu trúc môn của kỳ thi, `REVIEW` — tự thiết lập bài ôn
+   * (mẫu rút gọn). Chỉ gửi khi `scope = SUBJECT`.
+   */
+  buildMode?: ExamBuildMode | null;
   description: string | null;
   /** Hướng dẫn làm bài; được để trống khi lưu nháp. */
   instructions?: string | null;
   /** Thời lượng chung khi `timing = SHARED`. */
   durationMinutes?: number | null;
   maxScore?: number | null;
+  /**
+   * Dòng "Bảng tổng quan" khác mẫu mặc định (2B 15.1): máy chủ nạp mẫu mặc định rồi ghi đè số câu, thời lượng, điểm theo
+   * các dòng này. Bỏ trống: giữ nguyên số của mẫu.
+   */
+  overview?: ExamOverviewRow[];
   /** Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi. Bỏ trống thì nạp nguyên mẫu mới nhất. */
   parts?: CreateExamPartInput[];
   /**
@@ -425,6 +457,21 @@ export interface CreateExamRequest {
    * không POST lại (sẽ trùng mã), nên các chỉnh sửa cấu trúc trên trang không mất (N2-4).
    */
   existing?: ExamDetail;
+}
+
+/**
+ * Một dòng chỉnh trong "Bảng tổng quan" (2B 15.1): chỉ phần tử khác giá trị của mẫu đã nạp được gửi, so khớp theo
+ * `partId` (mẫu cũ không gán id thì theo `partCode` của phần thứ `order`) hoặc `sectionId`/`subjectCode` (dòng môn).
+ * `questionCount` là số câu của phần (dòng phần) hoặc của môn (dòng môn); `durationMinutes`/`maxPoints` ghi đè mẫu.
+ */
+export interface ExamOverviewRow {
+  partId?: string;
+  partCode?: string;
+  sectionId?: string;
+  subjectCode?: string;
+  questionCount?: number;
+  durationMinutes?: number;
+  maxPoints?: number;
 }
 
 /**
