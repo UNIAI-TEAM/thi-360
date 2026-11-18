@@ -12,12 +12,14 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
 @Transactional
 class ExamTemplateCheckIT extends AbstractIntegrationTest {
+    @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper mapper;
 
     @Test
@@ -34,7 +36,9 @@ class ExamTemplateCheckIT extends AbstractIntegrationTest {
 
     @Test
     void sp2eLiteratureWarnsForOmittedWritingButNotManualGrading() throws Exception {
-        JsonNode result = check(create("SP2E", "SUBJECT", "VAN", "STANDARD", "SP2E_VAN_OLD"));
+        String base = create("SP2E", "SUBJECT", "VAN", "STANDARD", "SP2E_VAN_OLD");
+        retireReady("VAN", "QUESTION_SET");
+        JsonNode result = check(base);
         var slotIssues = result.path("groups").findValues("issues").stream()
                 .flatMap(list -> java.util.stream.StreamSupport.stream(list.spliterator(), false))
                 .filter(issue -> "SLOT_SOURCE_SHORTAGE".equals(issue.path("code").asText())).toList();
@@ -46,7 +50,9 @@ class ExamTemplateCheckIT extends AbstractIntegrationTest {
 
     @Test
     void qdaSubjectFailuresNameAffectedCodes() throws Exception {
-        JsonNode result = check(create("QDA", "FULL", null, "STANDARD", "QDA_FULL"));
+        String base = create("QDA", "FULL", null, "STANDARD", "QDA_FULL");
+        retireReady("ANH", "SINGLE_CHOICE", "QUESTION_SET");
+        JsonNode result = check(base);
         var issues = result.path("groups").findValues("issues").stream()
                 .flatMap(list -> java.util.stream.StreamSupport.stream(list.spliterator(), false))
                 .filter(issue -> "ANH".equals(issue.path("subjectCode").asText()))
@@ -71,6 +77,20 @@ class ExamTemplateCheckIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(load.toString()))
                 .andExpect(status().isOk());
         return base;
+    }
+
+    /** Retires every serving candidate of the given subject/types so the check proves a real shortage. */
+    private void retireReady(String subject, String... types) {
+        String placeholders = String.join(", ", java.util.Collections.nCopies(types.length, "?"));
+        var args = new java.util.ArrayList<Object>();
+        args.addAll(java.util.Arrays.asList(types));
+        args.add(subject);
+        jdbc.update("""
+                update questionbank.question q set status = 'RETIRED'
+                where q.parent_id is null and q.deleted_at is null and q.status = 'READY' and q.type in ("""
+                + placeholders + ") and q.subject_item_id = (select i.id from catalog.catalog_item i"
+                + " join catalog.catalog_group g on g.id = i.group_id"
+                + " where g.code = 'SUBJECT' and i.code = ?)", args.toArray());
     }
 
     private JsonNode check(String base) throws Exception {

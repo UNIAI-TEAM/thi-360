@@ -27,7 +27,7 @@ class ExamBcaTemplateCheckIT extends AbstractIntegrationTest {
 
     @Test
     void bcaFullProvesWithReferenceWarningAndIsolatesPronunciationShortage() throws Exception {
-        UUID pronunciation = bank();
+        bank();
         ObjectNode create = mapper.createObjectNode().put("kind", "BCA").put("scope", "FULL")
                 .put("buildMode", "STANDARD").put("name", "BCA acceptance")
                 .put("code", "BCA-T-" + UUID.randomUUID().toString().substring(0, 8)).put("durationMinutes", 180);
@@ -49,7 +49,19 @@ class ExamBcaTemplateCheckIT extends AbstractIntegrationTest {
                 """));
         mockMvc.perform(put(base + "/structure").with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content(update.toString())).andExpect(status().isOk());
-        transition(pronunciation, "retire");
+        var pronunciation = jdbc.queryForList("""
+                select q.id from questionbank.question q
+                where q.parent_id is null and q.deleted_at is null and q.status = 'READY'
+                    and q.type = 'SINGLE_CHOICE' and q.points = 0.75
+                    and q.subject_item_id = (select i.id from catalog.catalog_item i
+                        join catalog.catalog_group g on g.id = i.group_id
+                        where g.code = 'SUBJECT' and i.code = 'ANH')
+                    and exists (select 1 from questionbank.question_tag t
+                        where t.question_id = q.id and t.tag_item_id = (select i.id from catalog.catalog_item i
+                            join catalog.catalog_group g on g.id = i.group_id
+                            where g.code = 'QUESTION_TAG' and i.code = 'ANH_PHAT_AM'))
+                """, UUID.class);
+        for (UUID id : pronunciation) transition(id, "retire");
         JsonNode missing = check(base);
         var sourceErrors = StreamSupport.stream(missing.path("groups").spliterator(), false)
                 .filter(group -> "SOURCE".equals(group.path("group").asText()))
@@ -58,7 +70,7 @@ class ExamBcaTemplateCheckIT extends AbstractIntegrationTest {
         String pronunciationBlock = structure.path("parts").get(1).path("sections").get(2).path("blocks").get(0).path("id").asText();
         assertThat(sourceErrors).isNotEmpty().allSatisfy(issue ->
                 assertThat(issue.path("blockId").asText()).isEqualTo(pronunciationBlock));
-        transition(pronunciation, "ready");
+        for (UUID id : pronunciation) transition(id, "ready");
         JsonNode result = check(base);
         assertThat(result.path("status").asText()).isEqualTo("VALID");
         assertThat(result.path("groups").findValuesAsText("code"))
@@ -74,14 +86,14 @@ class ExamBcaTemplateCheckIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    private UUID bank() throws Exception {
+    private void bank() throws Exception {
         question("VAN", "G12", "ESSAY", 1, new BigDecimal("25"), "VAN_NGHI_LUAN_XA_HOI");
         singles("TOAN", "G10", 4); singles("TOAN", "G11", 7); singles("TOAN", "G12", 16);
         for (int i = 0; i < 5; i++) question("TOAN", "G12", "SHORT_ANSWER", 1, BigDecimal.ONE, null);
         question("TOAN", "G12", "QUESTION_SET", 3, BigDecimal.ONE, null);
         singles("SU", "G10", 1); singles("SU", "G11", 2); singles("SU", "G12", 4);
         question("SU", "G12", "QUESTION_SET", 3, BigDecimal.ONE, "SU_TU_LIEU_LICH_SU");
-        UUID pronunciation = question("ANH", "G12", "SINGLE_CHOICE", 1, new BigDecimal("0.75"), "ANH_PHAT_AM");
+        question("ANH", "G12", "SINGLE_CHOICE", 1, new BigDecimal("0.75"), "ANH_PHAT_AM");
         question("ANH", "G12", "SINGLE_CHOICE", 1, new BigDecimal("0.75"), "ANH_TRONG_AM");
         for (int i = 0; i < 8; i++) question("ANH", "G12", "SINGLE_CHOICE", 1, new BigDecimal("0.75"), "ANH_TU_VUNG_NGU_PHAP");
         question("ANH", "G12", "QUESTION_SET", 5, new BigDecimal("0.75"), "ANH_DOC_DIEN");
@@ -93,9 +105,7 @@ class ExamBcaTemplateCheckIT extends AbstractIntegrationTest {
             singles(subject, "G12", 12 - g10 - g11);
             question(subject, "G12", "QUESTION_SET", 3, BigDecimal.ONE, null);
         }
-        return pronunciation;
     }
-
     private void singles(String subject, String grade, int count) throws Exception {
         for (int i = 0; i < count; i++) question(subject, grade, "SINGLE_CHOICE", 1, BigDecimal.ONE, null);
     }
