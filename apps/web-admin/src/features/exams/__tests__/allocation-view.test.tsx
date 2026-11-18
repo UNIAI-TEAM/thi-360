@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -151,6 +151,16 @@ describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ topicQuotas: TopicQuota[] }> }> };
     expect(sent.parts[0]!.sections[0]!.topicQuotas[0]).toMatchObject({ count: 2, percent: 10 });
+  });
+
+  it("R2-07: sau Áp dụng số mới hoặc Giữ số cũ tiêu điểm về ô Số câu của mục, không rơi về thân trang", async () => {
+    for (const action of ["Áp dụng số mới", "Giữ số cũ"]) {
+      boot({ section: section() });
+      const user = await changeTotal();
+      await user.click(await screen.findByRole("button", { name: action }));
+      await waitFor(() => expect(screen.getByRole("textbox", { name: "Số câu của mục" })).toHaveFocus());
+      cleanup();
+    }
   });
 
   it("R1-25: chỉ tiêu dạng trả lời nhập theo tỷ lệ cũng hiện trong thông báo; Giữ số cũ đổi sang số câu của tổng 30", async () => {

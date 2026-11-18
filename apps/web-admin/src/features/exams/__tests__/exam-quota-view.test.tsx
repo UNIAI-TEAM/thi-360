@@ -125,3 +125,21 @@ describe("Chỉ tiêu cấp bài khi đổi phiên bản cấu trúc (R1-10)", (
     });
   }, 20_000);
 });
+
+describe("Chỉ tiêu cấp bài tính theo đơn vị không phải câu khóa mức Bắt buộc (R2-04)", () => {
+  it("chỉ tiêu tính theo điểm: nút Bắt buộc bị khóa kèm lý do, chỉ còn Tham khảo", async () => {
+    boot({ examQuotas: [{ ...gradeQuota(), basis: "POINTS" }] });
+    open();
+    const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
+    expect(within(section).getByRole("radio", { name: "Bắt buộc" })).toBeDisabled();
+    expect(within(section).getByRole("radio", { name: "Tham khảo" })).toBeChecked();
+    expect(within(section).getByText(/Phân bố bắt buộc phải tính theo câu/)).toBeInTheDocument();
+  });
+
+  it("đối chứng: chỉ tiêu tính theo câu chọn được Bắt buộc", async () => {
+    boot({ examQuotas: [gradeQuota()] });
+    open();
+    const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
+    expect(within(section).getByRole("radio", { name: "Bắt buộc" })).toBeEnabled();
+  });
+});
