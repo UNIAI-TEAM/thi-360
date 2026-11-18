@@ -11,6 +11,7 @@ import {
   type QuestionType,
   type ScoringDefaults,
 } from "@/features/content/types";
+import { applyTopicTotal } from "../allocation";
 import type { MatrixAxes } from "../matrix";
 import { blockPointsEach, emptyMatrix, isSetBlock, validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
@@ -132,7 +133,17 @@ export function BlockEditor({
   const countError = issues.some((issue) => issue.code === "COUNT_NOT_POSITIVE") ? t("errors.countPositive") : undefined;
   const setIssue = issues.find((issue) => issue.code === "SET_SIZE_MISMATCH");
 
-  const update = (patch: Partial<QuestionBlock>) => onChange(applyBlockPatch(block, patch));
+  // Tổng của nhóm đổi thì số câu của chỉ tiêu chủ đề nhập theo tỷ lệ tính lại ngay theo tổng mới (R1-03): bảng nằm cạnh ô số
+  // câu nên không cần hỏi như ở môn (R-122 dòng 6), và `count` gửi đi luôn khớp số bảng đang hiện (H30).
+  const update = (patch: Partial<QuestionBlock>) => {
+    const next = applyBlockPatch(block, patch);
+    const percentRows = next.topicQuotas?.some((quota) => quota.percent !== undefined && quota.percent !== null) ?? false;
+    onChange(
+      next.questionCount !== null && next.questionCount !== block.questionCount && percentRows
+        ? { ...next, topicQuotas: applyTopicTotal(next.topicQuotas ?? [], next.questionCount) }
+        : next,
+    );
+  };
   const setType = (questionType: QuestionType | null) => {
     // Đổi dạng thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
     const expectedScoring = expectedScoringFor(questionType, scoringDefaults, blockPointsEach(block));

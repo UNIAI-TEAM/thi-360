@@ -1,5 +1,5 @@
 import { apportionByPercent, type MatrixAxes, sectionGroups, sum, validateMatrix } from "./matrix";
-import type { ExamPart, QuotaBasis, QuotaEnforcement, TopicQuota } from "./types";
+import type { ExamPart, ExamSection, QuotaBasis, QuotaEnforcement, TopicQuota } from "./types";
 
 /**
  * Phép tính thuần của bảng phân bổ (2B 15.3, spec bổ sung R-118, R-121, R-122, R-123): quy đổi tỷ lệ ↔ số câu, dòng
@@ -185,17 +185,37 @@ export function enforcementOf(value: QuotaEnforcement | undefined): QuotaEnforce
 // ---------------------------------------------------------------- chặn lưu
 
 export interface SaveBlocker {
-  kind: "MATRIX_PERCENT" | "TOPIC_MAX" | "TOPIC_PERCENT";
+  kind: "MATRIX_PERCENT" | "TOPIC_MAX" | "TOPIC_PERCENT" | "TOTAL_CHANGE";
   sectionId: string;
   /** Có khi lỗi nằm ở nhóm; `null` khi ở môn. */
   blockId: string | null;
 }
 
+/** Môn có bảng nhập theo tỷ lệ (ma trận, chỉ tiêu chủ đề hoặc chỉ tiêu dạng trả lời): đổi tổng số câu thì số câu của các bảng này đổi theo. */
+export function hasPercentTables(section: ExamSection): boolean {
+  return (
+    section.matrix?.unit === "PERCENT" ||
+    section.answerQuotas?.unit === "PERCENT" ||
+    (section.topicQuotas ?? []).some((quota) => quota.percent !== undefined && quota.percent !== null)
+  );
+}
+
+/** Tổng của môn đã đổi so với số đã xác nhận mà người dùng chưa chọn "Áp dụng số mới" hay "Giữ số cũ" (R-122 dòng 6). */
+export function totalChangePending(section: ExamSection, confirmedCount: number | null): boolean {
+  return section.questionCount !== null && confirmedCount !== null && section.questionCount !== confirmedCount && hasPercentTables(section);
+}
+
 /**
  * Lỗi người dùng phải sửa ở bảng trước khi lưu (R-118 dòng 5): bảng phân bổ toàn bộ số câu nhập theo tỷ lệ mà tổng khác
  * 100%, chỉ tiêu chủ đề có tỷ lệ ngoài 0–100 hoặc quá 8 chỉ tiêu một cấp (H20). Máy chủ vẫn là nơi kiểm tra cuối.
+ * `confirmedCount` (số câu đã lưu hoặc đã xác nhận của môn): khi có, môn đổi tổng mà chưa xác nhận cũng chặn lưu, kẻo lưu số câu
+ * chỉ tiêu cũ (R-122 dòng 6).
  */
-export function saveBlockers(parts: readonly ExamPart[], axes: MatrixAxes): SaveBlocker[] {
+export function saveBlockers(
+  parts: readonly ExamPart[],
+  axes: MatrixAxes,
+  confirmedCount?: (sectionId: string) => number | null,
+): SaveBlocker[] {
   const blockers: SaveBlocker[] = [];
   const topicIssue = (quotas: readonly TopicQuota[] | undefined, sectionId: string, blockId: string | null) => {
     if ((quotas?.length ?? 0) > MAX_TOPIC_QUOTAS) blockers.push({ kind: "TOPIC_MAX", sectionId, blockId });
@@ -204,6 +224,9 @@ export function saveBlockers(parts: readonly ExamPart[], axes: MatrixAxes): Save
   for (const part of parts) {
     const sections = part.codeSource ? (part.subjectPool ?? []) : sectionGroups(part).flatMap((group) => group.sections);
     for (const section of sections) {
+      if (confirmedCount && totalChangePending(section, confirmedCount(section.id))) {
+        blockers.push({ kind: "TOTAL_CHANGE", sectionId: section.id, blockId: null });
+      }
       if (validateMatrix(section.matrix, section.questionCount, axes).some((issue) => issue.code === "PERCENT_TOTAL")) {
         blockers.push({ kind: "MATRIX_PERCENT", sectionId: section.id, blockId: null });
       }

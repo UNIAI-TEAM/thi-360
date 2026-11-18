@@ -315,9 +315,10 @@ function StructureEditor({
 
   const runSave = (options: { onSaved?: () => void; onFailed?: (message: string) => void } = {}) => {
     // Bảng phân bổ còn lỗi người dùng phải sửa (tổng tỷ lệ khác 100%, quá 8 chỉ tiêu): mở đúng chỗ, không gửi lên máy chủ.
-    const blocker = saveBlockers(draft, axes)[0];
+    const blocker = saveBlockers(draft, axes, (sectionId) => confirmedCounts[sectionId] ?? savedCountOf(sectionId))[0];
     if (blocker) {
-      const message = t("allocationBlocked");
+      const found = blocker.kind === "TOTAL_CHANGE" ? findSection(draft, blocker.sectionId) : null;
+      const message = found ? t("totalChangeBlocked", { subject: lookup.subject(found.section.subjectCode) }) : t("allocationBlocked");
       selectNow(blocker.blockId ? { kind: "block", blockId: blocker.blockId } : { kind: "section", sectionId: blocker.sectionId });
       if (!options.onFailed) notify.error(message);
       announce(message);

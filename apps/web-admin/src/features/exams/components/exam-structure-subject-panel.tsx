@@ -3,9 +3,9 @@
 import { Badge, Button, Card, cn, focusRing, FormField, IconButton, Input, Select, StatusChip } from "@thi360/ui";
 import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
-import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor } from "../allocation";
+import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor, totalChangePending } from "../allocation";
 import { apportionByPercent, computeAllocation, convertMatrixUnit, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
@@ -21,6 +21,13 @@ import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table
 
 /** Dạng trả lời khai được ở chỉ tiêu cấp môn: mọi dạng trừ Bộ câu hỏi (đếm theo câu con, D22). */
 const QUOTA_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET");
+
+/** Chỉ tiêu dạng trả lời nhập theo tỷ lệ quy về số câu của tổng `total` (phần dư lớn nhất); nhập theo số câu giữ nguyên. */
+function toCountQuotas(quotas: AnswerQuotas | null, total: number): AnswerQuotas | null {
+  if (quotas?.unit !== "PERCENT") return quotas;
+  const counts = apportionByPercent(quotas.items.map((item) => item.value), total).results;
+  return { unit: "COUNT", items: quotas.items.map((item, index) => ({ ...item, value: counts[index] ?? 0 })) };
+}
 
 export interface SubjectPanelProps {
   context: SectionContext;
@@ -138,8 +145,7 @@ export function ExamStructureSubjectPanel({
 
   const sectionCount = section.questionCount;
   const topicQuotas = section.topicQuotas ?? [];
-  const hasPercentTables = section.matrix?.unit === "PERCENT" || topicQuotas.some((quota) => quota.percent !== undefined && quota.percent !== null);
-  const totalChanged = sectionCount !== null && confirmedCount !== null && sectionCount !== confirmedCount && hasPercentTables;
+  const totalChanged = totalChangePending(section, confirmedCount);
   const noticeLines: string[] = [];
   if (totalChanged && sectionCount !== null) {
     const grade = (code: string) => labels.grade(code);
@@ -149,6 +155,10 @@ export function ExamStructureSubjectPanel({
       noticeLines.push(t("totalChange.grades", { values: axes.grades.map((code, index) => `${grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
       noticeLines.push(t("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
     }
+    if (quotas?.unit === "PERCENT") {
+      const next = apportionByPercent(quotas.items.map((item) => item.value), sectionCount).results;
+      noticeLines.push(t("totalChange.answerTypes", { values: quotas.items.map((item, index) => `${typeLabel(item.answerType)} ${next[index] ?? 0}`).join(" · ") }));
+    }
     if (topicQuotas.some((quota) => quota.percent !== undefined && quota.percent !== null)) {
       noticeLines.push(
         t("totalChange.topics", {
@@ -157,19 +167,25 @@ export function ExamStructureSubjectPanel({
       );
     }
   }
+  // Hai nút của thông báo biến mất khi bấm: đưa tiêu điểm về ô số câu để người dùng bàn phím không mất chỗ (R1-26).
+  const countRef = useRef<HTMLDivElement>(null);
+  const focusCount = () => requestAnimationFrame(() => countRef.current?.querySelector("input")?.focus());
   const applyNewTotal = () => {
     if (sectionCount === null) return;
     onChange((current) => ({ ...current, topicQuotas: applyTopicTotal(current.topicQuotas ?? [], sectionCount) }));
     onConfirmCount?.(sectionCount);
+    focusCount();
   };
   const keepOldTotal = () => {
     if (sectionCount === null || confirmedCount === null) return;
     onChange((current) => ({
       ...current,
       matrix: current.matrix?.unit === "PERCENT" ? convertMatrixUnit(current.matrix, "COUNT", confirmedCount, axes) : current.matrix,
+      answerQuotas: toCountQuotas(current.answerQuotas, confirmedCount),
       topicQuotas: convertTopicEntry(applyTopicTotal(current.topicQuotas ?? [], confirmedCount), "COUNT", confirmedCount),
     }));
     onConfirmCount?.(sectionCount);
+    focusCount();
   };
   const references = referenceEntries(section, examQuotas, examKind);
   const copyReference = (entry: ReferenceEntry) => {
@@ -238,7 +254,7 @@ export function ExamStructureSubjectPanel({
       </div>
 
       {sectionCount !== null && (
-        <div className="flex max-w-md flex-col gap-1.5">
+        <div ref={countRef} className="flex max-w-md flex-col gap-1.5">
           <FormField
             label={t("countField.label")}
             hint={countLocked ? t("countField.lockedHint") : t("countField.hint")}

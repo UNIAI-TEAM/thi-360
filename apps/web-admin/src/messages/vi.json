@@ -3902,6 +3902,7 @@
       "blockAdded": "Đã thêm nhóm {name}.",
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
       "allocationBlocked": "Chưa lưu được: bảng phân bổ còn lỗi. Sửa ở bảng rồi lưu lại.",
+      "totalChangeBlocked": "Chưa lưu được: tổng số câu của môn {subject} đã đổi. Chọn Áp dụng số mới hoặc Giữ số cũ ở môn này rồi lưu lại.",
       "overviewSummary": "{count, number} câu · {minutes, number} phút{shared, select, yes { chung} other {}} · {points} điểm",
       "subjectAdded": "Đã thêm môn {subject} vào phần. Lưu để áp dụng.",
       "combinationRemoved": "Đã gỡ tổ hợp {code}. Lưu để áp dụng.",
@@ -4264,6 +4265,7 @@
         "totalChange": {
           "grades": "Khối lớp: {values}",
           "difficulties": "Độ khó: {values}",
+          "answerTypes": "Dạng trả lời: {values}",
           "topics": "Chủ đề: {values}",
           "untitled": "Chưa đặt tên"
         },

@@ -136,6 +136,64 @@ describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
     expect(sent.parts[0]!.sections[0]!.topicQuotas[0]).toMatchObject({ count: 3 });
     expect(sent.parts[0]!.sections[0]!.topicQuotas[0]!.percent).toBeUndefined();
   });
+
+  it("R1-02: Lưu khi chưa chọn Áp dụng hay Giữ: không gửi, mở môn, thông báo còn đó; chọn xong thì gửi count 2", async () => {
+    const server = boot({ section: section() });
+    const user = await changeTotal();
+    await screen.findByRole("alert");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
+    expect(await screen.findByText(/tổng số câu của môn .* đã đổi/)).toBeInTheDocument();
+    expect(screen.getByText(/Tổng đổi thành 20 câu/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ topicQuotas: TopicQuota[] }> }> };
+    expect(sent.parts[0]!.sections[0]!.topicQuotas[0]).toMatchObject({ count: 2, percent: 10 });
+  });
+
+  it("R1-25: chỉ tiêu dạng trả lời nhập theo tỷ lệ cũng hiện trong thông báo; Giữ số cũ đổi sang số câu của tổng 30", async () => {
+    const server = boot({
+      section: { answerQuotas: { unit: "PERCENT", items: [{ answerType: "SINGLE_CHOICE", value: 50 }, { answerType: "TRUE_FALSE", value: 50 }] } },
+    });
+    const user = await changeTotal();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Dạng trả lời: .* 10 · .* 10/);
+    await user.click(screen.getByRole("button", { name: "Giữ số cũ" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ answerQuotas: { unit: string; items: Array<{ value: number }> } }> }> };
+    expect(sent.parts[0]!.sections[0]!.answerQuotas).toMatchObject({ unit: "COUNT", items: [{ value: 15 }, { value: 15 }] });
+  });
+});
+
+describe("R1-03: đổi tổng của nhóm tính lại chỉ tiêu chủ đề theo tỷ lệ", () => {
+  it("nhóm 30 → 20 với chỉ tiêu 10%: bảng hiện 2 câu và lưu count 2, percent 10", async () => {
+    const server = boot({
+      section: {
+        blocks: [
+          {
+            id: "blk-1",
+            name: "Choice",
+            questionType: "SINGLE_CHOICE",
+            questionCount: 30,
+            requiredPointsPerQuestion: 1,
+            topicQuotas: [{ id: "t1", name: "Xác suất", nodeIds: [], count: 3, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" }],
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    open("?block=blk-1");
+    const count = await screen.findByRole("textbox", { name: /^Số câu cần lấy/ });
+    await user.clear(count);
+    await user.type(count, "20");
+    expect(await screen.findByText("2 câu")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ blocks: Array<{ topicQuotas: TopicQuota[] }> }> }> };
+    expect(sent.parts[0]!.sections[0]!.blocks[0]!.topicQuotas[0]).toMatchObject({ count: 2, percent: 10 });
+  });
 });
 
 describe("Row 8: Đủ nguồn theo ma trận (R-122)", () => {
