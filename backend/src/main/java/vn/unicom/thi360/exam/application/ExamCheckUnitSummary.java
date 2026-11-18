@@ -70,18 +70,54 @@ public final class ExamCheckUnitSummary {
     }
 
     private static Row section(String partId, ExamSection section) {
-        List<Row> blocks = section.blocks().stream().map(block -> block(partId, section.id(), block)).toList();
+        Integer remainder = remainderCount(section);
+        List<Row> blocks = section.blocks().stream()
+                .map(block -> block(partId, section.id(), block, isRemainder(block) ? remainder : null)).toList();
         return row(partId, section.id(), null, section.subjectCode(), section.questionCount(),
                 sum(blocks), null, null, blocks);
     }
 
-    private static Row block(String partId, String sectionId, QuestionBlock block) {
+    private static boolean isSet(QuestionBlock block) {
+        return block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE;
+    }
+
+    /** A "take the remainder" group: neither omitted nor a set, and without its own question count. */
+    private static boolean isRemainder(QuestionBlock block) {
+        return !Boolean.TRUE.equals(block.omitted()) && !isSet(block) && block.questionCount() == null;
+    }
+
+    /** Explicit count of a group: omitted is 0; null when the configuration does not determine it. */
+    private static Integer fixedCount(QuestionBlock block) {
+        if (Boolean.TRUE.equals(block.omitted())) return 0;
+        if (isSet(block) && (block.setCount() != null || block.setSize() != null)) {
+            return multiply(block.setCount(), block.setSize());
+        }
+        return block.questionCount();
+    }
+
+    /**
+     * Count of the single remainder group of a section: the section count minus the fixed counts of the other
+     * groups (same rule as ExamCheckRules). Null when there are two or more remainder groups, the section has no
+     * count, another group's count is unknown, or the result is negative.
+     */
+    private static Integer remainderCount(ExamSection section) {
+        if (section.questionCount() == null || section.blocks().stream().filter(ExamCheckUnitSummary::isRemainder)
+                .count() != 1) return null;
+        int fixed = 0;
+        for (QuestionBlock other : section.blocks()) {
+            if (isRemainder(other)) continue;
+            Integer count = fixedCount(other);
+            if (count == null) return null;
+            fixed = Math.addExact(fixed, count);
+        }
+        int left = section.questionCount() - fixed;
+        return left < 0 ? null : Integer.valueOf(left);
+    }
+
+    private static Row block(String partId, String sectionId, QuestionBlock block, Integer remainder) {
         boolean omitted = Boolean.TRUE.equals(block.omitted());
-        boolean set = block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE;
-        Integer count = omitted ? 0 : set
-                ? block.setCount() == null && block.setSize() == null
-                    ? block.questionCount() : multiply(block.setCount(), block.setSize())
-                : block.questionCount();
+        boolean set = isSet(block);
+        Integer count = remainder != null ? remainder : fixedCount(block);
         QuestionType answer = set && block.questionType() == QuestionType.QUESTION_SET
                 ? block.childAnswerType() : block.questionType();
         Integer commands = answer == null && !omitted ? null : count;
@@ -92,8 +128,9 @@ public final class ExamCheckUnitSummary {
         }
         BigDecimal points = omitted ? BigDecimal.ZERO : count == null || block.requiredPointsPerQuestion() == null
                 ? null : block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count));
-        Integer essays = answer == null && !omitted ? null : answer == QuestionType.ESSAY ? count : 0;
-        Integer objective = answer == null && !omitted ? null : answer == QuestionType.ESSAY ? 0 : count;
+        Integer none = 0;
+        Integer essays = answer == null && !omitted ? null : answer == QuestionType.ESSAY ? count : none;
+        Integer objective = answer == null && !omitted ? null : answer == QuestionType.ESSAY ? none : count;
         Totals totals = new Totals(count, commands, points, essays, objective);
         return row(partId, sectionId, block.id(), block.name(), count, totals,
                 set ? block.setCount() : null, set ? count : null, List.of());

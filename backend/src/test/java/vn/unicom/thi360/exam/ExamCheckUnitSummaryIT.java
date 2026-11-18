@@ -42,4 +42,88 @@ class ExamCheckUnitSummaryIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.parts[0].difference").value(10));
         verifyNoInteractions(checker);
     }
+
+    @Test
+    void freshReviewExamWithRemainderGroupReportsSectionCountForGroup() throws Exception {
+        UUID id = insertExam("""
+                {"parts":[{"id":"p","name":"Review","questionCount":10,"sections":[
+                  {"id":"s","subjectCode":"TOAN","questionCount":10,"blocks":[
+                    {"id":"b","questionType":"SINGLE_CHOICE","questionCount":null,
+                     "requiredPointsPerQuestion":1}]}]}]}
+                """);
+        mockMvc.perform(get(summaryUrl(id)).with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].allocated").value(10))
+                .andExpect(jsonPath("$.parts[0].children[0].allocated").value(10))
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].allocated").value(10))
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].maxPoints").value(10));
+    }
+
+    @Test
+    void remainderGroupTakesSectionCountMinusFixedGroups() throws Exception {
+        UUID id = insertExam(section(50, """
+                {"id":"fixed","questionType":"SINGLE_CHOICE","questionCount":30,"requiredPointsPerQuestion":1},
+                {"id":"rest","questionType":"SINGLE_CHOICE","questionCount":null,"requiredPointsPerQuestion":2}
+                """));
+        mockMvc.perform(get(summaryUrl(id)).with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].allocated").value(30))
+                .andExpect(jsonPath("$.parts[0].children[0].children[1].allocated").value(20))
+                .andExpect(jsonPath("$.parts[0].children[0].children[1].maxPoints").value(40))
+                .andExpect(jsonPath("$.parts[0].children[0].allocated").value(50));
+    }
+
+    @Test
+    void twoRemainderGroupsInOneSectionAreUnknownNotAnError() throws Exception {
+        UUID id = insertExam(section(50, """
+                {"id":"a","questionType":"SINGLE_CHOICE","questionCount":null},
+                {"id":"b","questionType":"SINGLE_CHOICE","questionCount":null}
+                """));
+        mockMvc.perform(get(summaryUrl(id)).with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].allocated").doesNotExist())
+                .andExpect(jsonPath("$.parts[0].children[0].children[1].allocated").doesNotExist())
+                .andExpect(jsonPath("$.parts[0].children[0].allocated").doesNotExist());
+    }
+
+    @Test
+    void fixedGroupsOverSectionCountLeaveRemainderUnknown() throws Exception {
+        UUID id = insertExam(section(50, """
+                {"id":"fixed","questionType":"SINGLE_CHOICE","questionCount":60},
+                {"id":"rest","questionType":"SINGLE_CHOICE","questionCount":null}
+                """));
+        mockMvc.perform(get(summaryUrl(id)).with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].allocated").value(60))
+                .andExpect(jsonPath("$.parts[0].children[0].children[1].allocated").doesNotExist());
+    }
+
+    @Test
+    void omittedGroupCountsZeroAndDoesNotShiftRemainder() throws Exception {
+        UUID id = insertExam(section(50, """
+                {"id":"skipped","questionType":"SINGLE_CHOICE","questionCount":7,"omitted":true},
+                {"id":"fixed","questionType":"SINGLE_CHOICE","questionCount":30},
+                {"id":"rest","questionType":"SINGLE_CHOICE","questionCount":null}
+                """));
+        mockMvc.perform(get(summaryUrl(id)).with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].allocated").value(0))
+                .andExpect(jsonPath("$.parts[0].children[0].children[1].allocated").value(30))
+                .andExpect(jsonPath("$.parts[0].children[0].children[2].allocated").value(20))
+                .andExpect(jsonPath("$.parts[0].children[0].allocated").value(50));
+    }
+
+    private static String section(int count, String blocks) {
+        return "{\"parts\":[{\"id\":\"p\",\"name\":\"Part\",\"questionCount\":" + count + ",\"sections\":["
+                + "{\"id\":\"s\",\"subjectCode\":\"TOAN\",\"questionCount\":" + count + ",\"blocks\":[" + blocks
+                + "]}]}]}";
+    }
+
+    private UUID insertExam(String parts) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing) "
+                + "VALUES (?,?,?,'Summary','FULL','SHARED')", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'test')",
+                id, parts);
+        return id;
+    }
+
+    private static String summaryUrl(UUID id) {
+        return "/api/v1/admin/exams/" + id + "/structure/summary";
+    }
 }
