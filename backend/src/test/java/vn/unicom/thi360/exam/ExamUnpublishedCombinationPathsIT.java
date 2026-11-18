@@ -81,6 +81,33 @@ class ExamUnpublishedCombinationPathsIT extends AbstractIntegrationTest {
         System.out.println("F6 templates with codeSource: " + covered);
     }
 
+    @Test
+    void overLimitLivePathProductListsNoPublishablePaths() throws Exception {
+        String base = create("QDA", "FULL", null, null, "STANDARD");
+        JsonNode before = json(get(base + "/structure").with(asUser(Permissions.EXAM_VIEW)), 200);
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) before.path("parts").deepCopy();
+        // 7 x 6 stored choices x the 5 catalog combinations of the code-sourced part = 210 paths, just over the
+        // default 200. The structure validator counts only stored options (42 <= 200), so the PUT is accepted.
+        for (int p = 0; p < 2; p++) {
+            var extra = parts.addObject().put("id", "extra" + p).put("name", "Extra " + p);
+            extra.putObject("participation").put("mode", "CHOICE").put("choose", 1);
+            var options = extra.putArray("options");
+            for (int i = 1; i <= (p == 0 ? 7 : 6); i++) {
+                options.addObject().put("id", "x" + p + "-" + i).put("kind", "BRANCH").put("code", "X" + p + i);
+            }
+        }
+        var request = mapper.createObjectNode().put("expectedRevision", before.path("revision").asLong());
+        request.set("parts", parts);
+        json(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(base + "/structure")
+                .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                .content(request.toString()), 200);
+        JsonNode check = check(base);
+        // The solver reports PATH_LIMIT_EXCEEDED as an uncertain OVERLAP issue and lists no paths.
+        assertThat(check.toString()).contains("OVERLAP_UNCONFIRMED");
+        assertThat(ids(check)).isEmpty();
+        assertThat(unpublishedIds(base)).isEmpty();
+    }
+
     private String create(String kind, String scope, String partCode, String subjectCode, String buildMode)
             throws Exception {
         var request = mapper.createObjectNode().put("kind", kind).put("scope", scope).put("buildMode", buildMode)
