@@ -6,7 +6,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Tag;
@@ -22,7 +25,8 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class ExamAudioPerfIT extends AbstractIntegrationTest {
     private static final UUID SUBJECT_GROUP = UUID.fromString("00000000-0000-7000-8100-000000000002");
-    private static final String SC4 = "{\"type\":\"SINGLE_CHOICE\",\"options\":[{},{},{},{}]}";
+    private static final String SC4 = "{\"type\":\"SINGLE_CHOICE\",\"options\":["
+            + "{\"id\":\"a\",\"correct\":true},{\"id\":\"b\"},{\"id\":\"c\"},{\"id\":\"d\"}]}";
 
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
@@ -73,8 +77,43 @@ class ExamAudioPerfIT extends AbstractIntegrationTest {
         long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
         System.out.println("PERF BE-17 audio-filtered 75-question check ms=" + elapsed
                 + " status=" + result.path("status").asText() + " codes=" + result.path("groups").findValuesAsText("code"));
-        assertThat(result.path("groups").findValuesAsText("code")).doesNotContain("AUDIO_SHORTAGE");
+
+        // The solve must have completed: a VALID verdict with the proof witness, not a fast failure.
+        assertThat(result.path("groups").findValuesAsText("code")).isEmpty();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        Map<String, List<UUID>> picks = CheckWitnessPicks.byBlock(jdbc, mapper, exam);
+        assertThat(picks.keySet()).containsExactlyInAnyOrder("single", "sets4", "sets5", "sets10");
+        assertThat(picks.get("single")).hasSize(8).doesNotHaveDuplicates();
+        assertThat(picks.get("sets4")).hasSize(3).doesNotHaveDuplicates();
+        assertThat(picks.get("sets5")).hasSize(3).doesNotHaveDuplicates();
+        assertThat(picks.get("sets10")).hasSize(4).doesNotHaveDuplicates();
+        long listeningQuestions = questions(picks.get("single")) + questions(picks.get("sets4"))
+                + questions(picks.get("sets5"));
+        long readingQuestions = questions(picks.get("sets10"));
+        assertThat(listeningQuestions).isEqualTo(35);
+        assertThat(readingQuestions).isEqualTo(40);
+        // The audio filters were applied to what was selected, not only to the counts.
+        for (String block : List.of("single", "sets4", "sets5")) {
+            assertThat(picks.get(block)).allMatch(this::hasAudio);
+        }
+        assertThat(picks.get("sets10")).noneMatch(this::hasAudio);
         assertThat(elapsed).isLessThan(30_000);
+    }
+
+    /** Questions a selection counts: one per single, one per child of a set. */
+    private long questions(List<UUID> roots) {
+        long total = 0;
+        for (UUID root : roots) {
+            Long children = jdbc.queryForObject("SELECT count(*) FROM questionbank.question WHERE parent_id = ?",
+                    Long.class, root);
+            total += children == 0 ? 1 : children;
+        }
+        return total;
+    }
+
+    private boolean hasAudio(UUID root) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT jsonb_array_length(snapshot -> 'attachmentIds') > 0 "
+                + "FROM questionbank.question_version WHERE question_id = ? AND version_no = 1", Boolean.class, root));
     }
 
     private void single(UUID subject, UUID attachment) {
@@ -87,12 +126,21 @@ class ExamAudioPerfIT extends AbstractIntegrationTest {
 
     private void set(UUID subject, int size, UUID attachment) {
         UUID root = UUID.randomUUID();
+        List<UUID> children = new ArrayList<>();
+        var body = new StringBuilder("{\"type\":\"QUESTION_SET\",\"children\":[");
+        for (int position = 0; position < size; position++) {
+            UUID child = UUID.randomUUID();
+            children.add(child);
+            body.append(position == 0 ? "" : ",").append("{\"id\":\"").append(child).append("\",\"body\":")
+                    .append(SC4).append('}');
+        }
+        body.append("]}");
         jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
                 + "VALUES (?,?,'QUESTION_SET','READY',?,1,1)", root, "S-" + root, subject);
         jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)",
-                root, snapshot("{\"type\":\"QUESTION_SET\",\"children\":[]}", attachment));
+                root, snapshot(body.toString(), attachment));
         for (int position = 0; position < size; position++) {
-            UUID child = UUID.randomUUID();
+            UUID child = children.get(position);
             jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,points) "
                     + "VALUES (?,?,'SINGLE_CHOICE','READY',?,?,1)", child, "C-" + child, root, position);
             jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) "

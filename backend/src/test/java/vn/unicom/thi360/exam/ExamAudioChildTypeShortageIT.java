@@ -36,8 +36,8 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
     private static final UUID SUBJECT_GROUP = UUID.fromString("00000000-0000-7000-8100-000000000002");
     private static final String SC4 = choice(4);
     private static final String SC5 = choice(5);
-    private static final String TF4 = "{\"type\":\"TRUE_FALSE\",\"statements\":[{},{},{},{}]}";
-    private static final String TF3 = "{\"type\":\"TRUE_FALSE\",\"statements\":[{},{},{}]}";
+    private static final String TF4 = trueFalse(4);
+    private static final String TF3 = trueFalse(3);
     private static final String MIXED_CONDITIONS = """
             "childConditions":[
               {"from":1,"to":2,"answerType":"TRUE_FALSE","itemShape":{"statements":4}},
@@ -52,8 +52,24 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
 
     private static String choice(int options) {
         var body = new StringBuilder("{\"type\":\"SINGLE_CHOICE\",\"options\":[");
-        for (int i = 0; i < options; i++) body.append(i == 0 ? "" : ",").append("{\"id\":\"o").append(i).append("\"}");
+        for (int i = 0; i < options; i++) {
+            body.append(i == 0 ? "" : ",").append("{\"id\":\"o").append(i).append("\"")
+                    .append(i == 0 ? ",\"correct\":true" : "").append("}");
+        }
         return body.append("]}").toString();
+    }
+
+    /** A playable true/false question: every statement has an answer and the scoring method is set. */
+    private static String trueFalse(int statements) {
+        return "{\"type\":\"TRUE_FALSE\",\"scoringMethod\":\"PER_STATEMENT\",\"statements\":["
+                + String.join(",", java.util.Collections.nCopies(statements, "{\"answer\":true}")) + "]}";
+    }
+
+    /** Last exam created by {@link #check}: the witness of its check run proves what was selected. */
+    private UUID lastExam;
+
+    private List<UUID> picksAt(String blockId) {
+        return CheckWitnessPicks.byBlock(jdbc, mapper, lastExam).getOrDefault(blockId, List.of());
     }
 
     private Subject subject() {
@@ -91,12 +107,21 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
 
     private UUID set(Subject subject, List<Child> children, boolean withAudio) {
         UUID root = UUID.randomUUID();
+        List<UUID> ids = new ArrayList<>();
+        var body = new StringBuilder("{\"type\":\"QUESTION_SET\",\"children\":[");
+        for (int position = 0; position < children.size(); position++) {
+            UUID child = UUID.randomUUID();
+            ids.add(child);
+            body.append(position == 0 ? "" : ",").append("{\"id\":\"").append(child).append("\",\"body\":")
+                    .append(children.get(position).body()).append('}');
+        }
+        body.append("]}");
         jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
                 + "VALUES (?,?,'QUESTION_SET','READY',?,1,1)", root, "S-" + root, subject.id());
         jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)",
-                root, snapshot("{\"type\":\"QUESTION_SET\",\"children\":[]}", withAudio ? audio() : null));
+                root, snapshot(body.toString(), withAudio ? audio() : null));
         for (int position = 0; position < children.size(); position++) {
-            UUID child = UUID.randomUUID();
+            UUID child = ids.get(position);
             jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,points) "
                     + "VALUES (?,?,?,'READY',?,?,1)", child, "C-" + child, children.get(position).type(), root, position);
             jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)",
@@ -231,13 +256,15 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
         assertThat(codes(result)).doesNotContain("SET_SHORTAGE", "SOURCE_SHORTAGE");
     }
 
-    /** Row 8 through the check: the matching mixed set leaves no shortage at all. */
+    /** Row 8 through the check: the matching mixed set is selected and the check is valid. */
     @Test
     void row8MatchingMixedSetLeavesNoShortage() throws Exception {
         var subject = subject();
-        set(subject, mixed(TF4), false);
+        UUID matching = set(subject, mixed(TF4), false);
         var result = check(subject, 8, null, mixedBlock());
-        assertThat(codes(result)).doesNotContain("CHILD_CONDITION_SHORTAGE", "SET_SHORTAGE", "SOURCE_SHORTAGE");
+        assertThat(codes(result)).isEmpty();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        assertThat(picksAt("mixed")).containsExactly(matching);
     }
 
     /** Row 11: four options requested; the 5-option questions are rejected. */
@@ -257,15 +284,18 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
         assertThat(codes(result)).doesNotContain("SOURCE_SHORTAGE", "CELL_SHORTAGE");
     }
 
-    /** Row 11: with enough 4-option questions the filter is not blamed. */
+    /** Row 11: with enough 4-option questions the check is valid and selects exactly those. */
     @Test
     void row11EnoughFourOptionQuestionsReportNothing() throws Exception {
         var subject = subject();
-        for (int i = 0; i < 3; i++) single(subject, SC4, 1);
+        var fourOptions = new ArrayList<UUID>();
+        for (int i = 0; i < 3; i++) fourOptions.add(single(subject, SC4, 1));
         single(subject, SC5, 1);
         var result = check(subject, 3, null, """
                 {"id":"four","questionType":"SINGLE_CHOICE","questionCount":3,"itemShape":{"options":4}}""");
-        assertThat(codes(result)).doesNotContain("ITEM_SHAPE_SHORTAGE", "SOURCE_SHORTAGE", "CELL_SHORTAGE");
+        assertThat(codes(result)).isEmpty();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        assertThat(picksAt("four")).containsExactlyInAnyOrderElementsOf(fourOptions);
     }
 
     /** Row 12: enough questions, but each is worth 1 point and the template needs 6. */
@@ -491,6 +521,7 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
 
     private JsonNode check(Subject subject, int count, String audio, String block) throws Exception {
         UUID id = UUID.randomUUID();
+        lastExam = id;
         jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) "
                 + "VALUES (?,?,?,'Audio','FULL','SHARED',?)", id, id.toString(), id.toString(), count);
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'audio')",
