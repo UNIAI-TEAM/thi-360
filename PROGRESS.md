@@ -148,6 +148,7 @@
       - 2026-11-18 00:22 (UTC+7): BE-7 (UNI-2659, PR #86) merge: mẫu cấu trúc theo số liệu BA (HSA, QDA, BCA mọi phạm vi; SP2E 2026 và đề minh họa cũ; SPT V1; giữ V-ACT, THPTQG), migration `V202611180652`. Advisor chạy lại backend 332 test, xanh. Ngoại lệ bộ kiểm tra (FU-BE1-6, FU-BE7-2, FU-BE7-3) chờ BE-5 gỡ.
       - 2026-11-18 00:38 (UTC+7): FE-1 (UNI-2661, PR #87) merge: bước 1 tạo bài trên web admin (phạm vi theo kỳ thi, môn rồi phần P<n>, kiểu xây bài, bảng tổng quan theo id phần/mục của mẫu, xác nhận nạp lại). Advisor chạy lại typecheck, lint, vitest web admin 1614 test, xanh (1 timeout không liên quan, chạy riêng đạt).
       - 2026-11-18 01:29 (UTC+7): BE-4b (UNI-2655, PR #88) merge: bộ giải chỉ tiêu chủ đề, chỉ tiêu cấp bài một môn (gộp qua phần), cắt 17 − 1 giữ chủ đề bắt buộc; ca 8 chỉ tiêu chạy 21 ms trên cloud. Advisor chạy lại backend 347 test, xanh.
+      - 2026-11-18 01:39 (UTC+7): BE-10 (UNI-2653, PR #89) merge: dữ liệu câu hỏi mẫu đủ nguồn cho 78 mẫu STANDARD của BE-7. Advisor chạy lại backend 746 test, xanh.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
