@@ -9,7 +9,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { examQuotaBlockers, saveBlockers } from "../allocation";
+import { examQuotaBlockers, rendersReviewPanel, saveBlockers } from "../allocation";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { examTabFromPathname, examTabHref } from "../editor-tabs";
@@ -125,7 +125,8 @@ export function ExamStructureView({ examId }: { examId: string }) {
     );
   }
 
-  if (structureQuery.isError || referenceQuery.isError || examQuery.isError || templatesQuery.isError) {
+  // Lần làm mới nền lỗi khi dữ liệu đã có trong bộ nhớ đệm không được gỡ trình sửa (mất bản nháp chưa lưu, R2-02).
+  if (structureQuery.isError || referenceQuery.isError || examQuery.isError || (templatesQuery.isError && templatesQuery.data === undefined)) {
     return (
       <Card>
         <EmptyState
@@ -318,7 +319,7 @@ function StructureEditor({
 
   const runSave = (options: { onSaved?: () => void; onFailed?: (message: string) => void } = {}) => {
     // Bảng phân bổ còn lỗi người dùng phải sửa (tổng tỷ lệ khác 100%, quá 8 chỉ tiêu): mở đúng chỗ, không gửi lên máy chủ.
-    const blocker = saveBlockers(draft, axes, (sectionId) => confirmedCounts[sectionId] ?? savedCountOf(sectionId))[0];
+    const blocker = saveBlockers(draft, axes, (sectionId) => confirmedCounts[sectionId] ?? savedCountOf(sectionId), reviewMode)[0];
     const quotaBlocked = blocker ? false : examQuotaBlockers(quotas).length > 0;
     if (blocker || quotaBlocked) {
       const found = blocker?.kind === "TOTAL_CHANGE" ? findSection(draft, blocker.sectionId) : null;
@@ -612,7 +613,7 @@ function StructureEditor({
               scopeError={quotaScopeError}
               combinations={structure.combinations ?? []}
             />
-          ) : sectionContext && reviewMode && sectionContext.section.blocks.length === 1 ? (
+          ) : sectionContext && rendersReviewPanel(sectionContext.section, reviewMode) ? (
             <ReviewSubjectPanel
               key={sectionContext.section.id}
               context={sectionContext}

@@ -5,6 +5,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
+import { applyTopicTotal } from "../allocation";
 import { emptyMatrix, isSetBlock, type MatrixAxes } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
 import { effectiveScope } from "../subject-matrix";
@@ -65,10 +66,17 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
   const isSet = isSetBlock(block);
   const updateBlock = (patch: Partial<QuestionBlock>) =>
     onChange((current) => ({ ...current, blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, patch) : item)) }));
+  // Số câu và ma trận nằm cùng một màn, không có hộp "Áp dụng số mới / Giữ số cũ": đổi tổng là xác nhận luôn, chỉ tiêu chủ đề
+  // nhập theo tỷ lệ tính lại theo tổng mới như ở nhóm thường (R2-01, R1-03).
+  const retotal = (current: ExamSection, total: number) =>
+    current.topicQuotas?.some((quota) => quota.percent !== undefined && quota.percent !== null)
+      ? { topicQuotas: applyTopicTotal(current.topicQuotas, total) }
+      : {};
   const setCount = (next: number) => {
     // Số lượng của bài ôn là số câu của cả mục: nhóm duy nhất và môn cùng đổi.
     onChange((current) => ({
       ...current,
+      ...retotal(current, next),
       questionCount: next,
       blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, { questionCount: next }) : item)),
     }));
@@ -79,6 +87,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
     const { patch } = resizeSets(block, setCount, setSize);
     onChange((current) => ({
       ...current,
+      ...retotal(current, setCount * setSize),
       questionCount: setCount * setSize,
       blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, patch) : item)),
     }));

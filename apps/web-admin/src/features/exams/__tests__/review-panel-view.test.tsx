@@ -1,10 +1,13 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ContentApi from "@/features/content/api";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
+import referenceFixture from "@/test/fixtures/content-reference.json";
+import type { ContentReference } from "@/features/content/types";
 import { ExamStructureView } from "../components/exam-structure-view";
+import { EXAMS_QUERY_KEYS } from "../keys";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -15,6 +18,7 @@ vi.mock("@/features/content/api", async (importOriginal) => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 const STRUCTURE = `${EXAM_PATH}/structure`;
+const reference = referenceFixture as unknown as ContentReference;
 
 const reviewTemplate = {
   code: "T_REVIEW",
@@ -37,16 +41,35 @@ interface SentBlock {
   setSize?: number | null;
   slots?: Array<{ index: number; tagCodes?: string[] }>;
 }
+interface SentSection {
+  questionCount: number | null;
+  blocks: SentBlock[];
+  matrix?: { unit: string } | null;
+  topicQuotas?: Array<{ count: number; percent?: number }>;
+  knowledgeScope?: { nodeIds: string[] } | null;
+}
 interface Sent {
-  parts: Array<{ questionCount: number; sections: Array<{ questionCount: number | null; blocks: SentBlock[] }> }>;
+  parts: Array<{ questionCount: number; sections: SentSection[] }>;
 }
 
+const percentMatrix = {
+  mode: "SEPARATE",
+  unit: "PERCENT",
+  byGrade: [{ code: "GRADE_12", value: 100 }],
+  byDifficulty: [
+    { code: "RECOGNITION", value: 25 },
+    { code: "COMPREHENSION", value: 50 },
+    { code: "APPLICATION", value: 25 },
+    { code: "HIGH_APPLICATION", value: 0 },
+  ],
+};
+
 /** Bài ôn: một phần 10 câu, một môn, một nhóm; `block` ghi đè trường của nhóm. */
-function boot(block: Record<string, unknown> = {}, templatesStatus = 200) {
+function boot(block: Record<string, unknown> = {}, templatesStatus = 200, section: Record<string, unknown> = {}) {
   const base = FIXED_PART.sections![0] as object;
   const part = {
     ...FIXED_PART,
-    sections: [{ ...base, blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 10, requiredPointsPerQuestion: 1, ...block }] }],
+    sections: [{ ...base, blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 10, requiredPointsPerQuestion: 1, ...block }], ...section }],
   };
   return new FakeServer()
     .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_REVIEW" }) })
@@ -121,5 +144,115 @@ describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
     expect(block).toMatchObject({ setCount: 2, setSize: 2, questionCount: 4 });
     expect(block.slots?.map((slot) => slot.index)).toEqual([1, 2]);
     expect(block.slots?.[0]?.tagCodes).toEqual(["X"]);
+  });
+});
+
+describe("Bài ôn: đổi số câu khi bảng nhập theo tỷ lệ (R2-01)", () => {
+  const topic = { id: "t1", name: "Xác suất", nodeIds: [], count: 1, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" };
+
+  it("ma trận theo tỷ lệ và chỉ tiêu chủ đề 10%: đổi Số lượng 10 → 20 rồi Lưu gửi ngay, số câu chỉ tiêu tính lại theo 20", async () => {
+    const server = boot({}, 200, { matrix: percentMatrix, topicQuotas: [topic] });
+    const user = userEvent.setup();
+    open();
+    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
+    await user.clear(count);
+    await user.type(count, "20");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const section = sentOf(server).parts[0]!.sections[0]!;
+    expect(section.questionCount).toBe(20);
+    expect(section.matrix?.unit).toBe("PERCENT");
+    expect(section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
+  });
+
+  it("đổi số chùm cũng không bị chặn: số câu và chỉ tiêu chủ đề tính lại theo số chùm × số câu con", async () => {
+    const server = boot({ questionType: "QUESTION_SET", setCount: 2, setSize: 5, questionCount: 10 }, 200, { matrix: percentMatrix, topicQuotas: [topic] });
+    const user = userEvent.setup();
+    open();
+    const sets = await screen.findByRole("textbox", { name: /^Số chùm/ });
+    await user.clear(sets);
+    await user.type(sets, "4");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const section = sentOf(server).parts[0]!.sections[0]!;
+    expect(section.questionCount).toBe(20);
+    expect(section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
+  });
+
+  it("đối chứng: bài ôn có hai nhóm vẽ màn môn thường, vẫn hỏi Áp dụng số mới hay Giữ số cũ trước khi lưu", async () => {
+    const group = (id: string) => ({ id, name: id, questionType: "SINGLE_CHOICE", questionCount: 5, requiredPointsPerQuestion: 1 });
+    const server = boot({}, 200, { blocks: [group("blk-1"), group("blk-2")], matrix: percentMatrix, topicQuotas: [topic] });
+    const user = userEvent.setup();
+    open();
+    const count = await screen.findByRole("textbox", { name: "Số câu của mục" });
+    await user.clear(count);
+    await user.type(count, "20");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tổng đổi thành 20 câu (trước đó 10 câu)");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    expect(sentOf(server).parts[0]!.sections[0]!.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
+  });
+});
+
+describe("Bài ôn: tải mẫu và phạm vi (R2-03, R2-05, R2-02)", () => {
+  it("R2-03: mẫu còn đang tải thì chưa có nút Lưu và chưa có màn đầy đủ; tải xong mới hiện màn bài ôn", async () => {
+    const server = boot();
+    server.hold("GET", "/api/v1/admin/exam-templates");
+    open();
+    expect(await screen.findByRole("status", { name: "Đang tải" })).toBeInTheDocument();
+    await waitFor(() => expect(server.calls("GET", "/api/v1/admin/exam-templates")).toHaveLength(1));
+    expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
+    server.release("GET", "/api/v1/admin/exam-templates");
+    expect(await screen.findByRole("combobox", { name: "Dạng câu" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
+  });
+
+  it("R2-02: làm mới nền mẫu lỗi khi mẫu đã có thì giữ trình sửa và bản nháp chưa lưu, không hiện thẻ lỗi", async () => {
+    const server = boot();
+    const user = userEvent.setup();
+    const { client } = open();
+    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
+    await user.clear(count);
+    await user.type(count, "12");
+    // Từ lần gọi sau mẫu trả 500.
+    server.on("GET", "/api/v1/admin/exam-templates", { status: 500, body: { code: "BOOM" } });
+    await client.refetchQueries({ queryKey: EXAMS_QUERY_KEYS.templates() }).catch(() => undefined);
+    await waitFor(() => expect(server.calls("GET", "/api/v1/admin/exam-templates").length).toBeGreaterThan(1));
+    expect(screen.queryByRole("button", { name: "Thử lại" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveValue("12");
+  });
+
+  it("R2-05: bỏ phạm vi MAPID của môn ở màn bài ôn rồi lưu: bản gửi không còn nút MAPID nào", async () => {
+    const nodeId = reference.knowledgeTree[0]!.id;
+    const server = boot({}, 200, { knowledgeScope: { nodeIds: [nodeId] } });
+    const user = userEvent.setup();
+    open();
+    const scope = (await screen.findByText("Phạm vi kiến thức")).closest("fieldset")!;
+    expect(within(scope).getByRole("radio", { name: "Theo chủ đề" })).toBeChecked();
+    await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    expect(sentOf(server).parts[0]!.sections[0]!.knowledgeScope ?? null).toBeNull();
+  });
+
+  it("R2-05: chọn MAPID cho môn ở màn bài ôn rồi lưu: bản gửi mang các nút đã chọn", async () => {
+    const server = boot();
+    const user = userEvent.setup();
+    open();
+    const scope = (await screen.findByText("Phạm vi kiến thức")).closest("fieldset")!;
+    await user.click(within(scope).getByRole("radio", { name: "Theo chủ đề" }));
+    await user.click(within(scope).getByRole("button", { name: "Chọn kiến thức" }));
+    const dialog = await screen.findByRole("dialog");
+    const boxes = await within(dialog).findAllByRole("checkbox");
+    await user.click(boxes.find((box) => !(box as HTMLInputElement).disabled) ?? boxes[0]!);
+    await user.click(within(dialog).getByRole("button", { name: /^Áp dụng/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    expect(sentOf(server).parts[0]!.sections[0]!.knowledgeScope?.nodeIds.length).toBeGreaterThan(0);
   });
 });

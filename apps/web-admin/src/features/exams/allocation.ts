@@ -200,6 +200,14 @@ export function hasPercentTables(section: ExamSection): boolean {
   );
 }
 
+/**
+ * Môn mà màn Cấu trúc vẽ bằng `ReviewSubjectPanel` (bài ôn, một nhóm): ô Số lượng và ma trận nằm cùng một màn, không có hộp
+ * xác nhận tổng đổi (R-122 dòng 6). Màn và `saveBlockers` dùng cùng điều kiện này để không chặn lưu ở màn không có nút xác nhận.
+ */
+export function rendersReviewPanel(section: ExamSection, reviewMode: boolean): boolean {
+  return reviewMode && section.blocks.length === 1;
+}
+
 /** Tổng của môn đã đổi so với số đã xác nhận mà người dùng chưa chọn "Áp dụng số mới" hay "Giữ số cũ" (R-122 dòng 6). */
 export function totalChangePending(section: ExamSection, confirmedCount: number | null): boolean {
   return section.questionCount !== null && confirmedCount !== null && section.questionCount !== confirmedCount && hasPercentTables(section);
@@ -209,12 +217,13 @@ export function totalChangePending(section: ExamSection, confirmedCount: number 
  * Lỗi người dùng phải sửa ở bảng trước khi lưu (R-118 dòng 5): bảng phân bổ toàn bộ số câu nhập theo tỷ lệ mà tổng khác
  * 100%, chỉ tiêu chủ đề có tỷ lệ ngoài 0–100 hoặc quá 8 chỉ tiêu một cấp (H20). Máy chủ vẫn là nơi kiểm tra cuối.
  * `confirmedCount` (số câu đã lưu hoặc đã xác nhận của môn): khi có, môn đổi tổng mà chưa xác nhận cũng chặn lưu, kẻo lưu số câu
- * chỉ tiêu cũ (R-122 dòng 6).
+ * chỉ tiêu cũ (R-122 dòng 6); bỏ qua môn của `ReviewSubjectPanel` khi `reviewMode` (`rendersReviewPanel`).
  */
 export function saveBlockers(
   parts: readonly ExamPart[],
   axes: MatrixAxes,
   confirmedCount?: (sectionId: string) => number | null,
+  reviewMode = false,
 ): SaveBlocker[] {
   const blockers: SaveBlocker[] = [];
   const topicIssue = (quotas: readonly TopicQuota[] | undefined, sectionId: string, blockId: string | null) => {
@@ -224,7 +233,7 @@ export function saveBlockers(
   for (const part of parts) {
     const sections = part.codeSource ? (part.subjectPool ?? []) : sectionGroups(part).flatMap((group) => group.sections);
     for (const section of sections) {
-      if (confirmedCount && totalChangePending(section, confirmedCount(section.id))) {
+      if (confirmedCount && !rendersReviewPanel(section, reviewMode) && totalChangePending(section, confirmedCount(section.id))) {
         blockers.push({ kind: "TOTAL_CHANGE", sectionId: section.id, blockId: null });
       }
       if (validateMatrix(section.matrix, section.questionCount, axes).some((issue) => issue.code === "PERCENT_TOTAL")) {
