@@ -228,6 +228,71 @@ describe("nhóm tạm bỏ qua không vào tổng (R3-02, 2B 3.3)", () => {
     expect(totals.totalPoints).toBe(6);
     expect(rows[0]).toMatchObject({ count: 30, totalPoints: 6 });
   });
+
+  /** Hình thật của SP2E Ngữ văn (K15): Phần II · Viết chỉ có nhóm Viết bài tạm bỏ qua, nên số câu của phần và môn là 0. */
+  const sp2eVanParts = () => {
+    const reading = fixedPart();
+    reading.id = "P1";
+    reading.questionCount = 30;
+    reading.questionCountOnPaper = 30;
+    reading.questionCountRequired = 30;
+    reading.sections = [
+      { ...reading.sections[0]!, id: "S1", questionCount: 30, blocks: [block({}, { id: "b1", questionCount: 30, requiredPointsPerQuestion: 0.2, matrix: null })] },
+    ];
+    const writing = fixedPart();
+    writing.id = "P2";
+    writing.questionCount = 0;
+    writing.questionCountOnPaper = 0;
+    writing.questionCountRequired = 0;
+    writing.sections = [
+      { ...writing.sections[0]!, id: "S2", questionCount: 0, blocks: [block({}, { id: "b5", questionType: "ESSAY", questionCount: 1, omitted: true, matrix: null })] },
+    ];
+    return { reading, writing };
+  };
+
+  it("phần chỉ có nhóm bỏ qua: không báo số câu phần không dương, không báo tổng nhóm lệch số câu của môn", () => {
+    const { reading, writing } = sp2eVanParts();
+    expect(validateStructure([reading, writing], AXES)).toEqual([]);
+  });
+
+  it("phần có cả nhóm thường lẫn nhóm bỏ qua vẫn bị kiểm như trước", () => {
+    const { writing } = sp2eVanParts();
+    writing.sections[0]!.blocks.push(block({}, { id: "normal", questionCount: 2 }));
+    const codes = validateStructure([writing], AXES).map((issue) => issue.code);
+    expect(codes).toContain("PART_COUNT_NOT_POSITIVE");
+    expect(codes).toContain("BLOCKS_TOTAL");
+  });
+
+  /** Hình thật của SPT_MATH_2025 Phần III · Trả lời ngắn: 4 câu 1 điểm + nhóm Tự luận tạm bỏ qua (3 câu, không điểm). */
+  const sptMathPart3 = () => {
+    const { writing: part } = sp2eVanParts();
+    part.id = "P3";
+    part.questionCount = 4;
+    part.questionCountOnPaper = 4;
+    part.questionCountRequired = 4;
+    part.maxPoints = 1;
+    part.sections = [
+      {
+        ...part.sections[0]!,
+        questionCount: 4,
+        blocks: [
+          block({}, { id: "short", questionCount: 4, requiredPointsPerQuestion: 0.25, matrix: null }),
+          block({}, { id: "essay", questionType: "ESSAY", questionCount: 3, requiredPointsPerQuestion: null, omitted: true, matrix: null }),
+        ],
+      },
+    ];
+    return part;
+  };
+
+  it("phần có nhóm thường và nhóm bỏ qua (SPT): nhóm bỏ qua không vào tổng nhóm và điểm của phần", () => {
+    expect(validateStructure([sptMathPart3()], AXES)).toEqual([]);
+  });
+
+  it("phần SPT: nhóm thường vẫn được so với số câu của môn và điểm của phần", () => {
+    const part = sptMathPart3();
+    part.sections[0]!.blocks[0]!.questionCount = 5;
+    expect(validateStructure([part], AXES).map((issue) => issue.code)).toEqual(["PART_POINTS", "BLOCKS_TOTAL"]);
+  });
 });
 
 describe("HSA 17 − 1 (H3)", () => {

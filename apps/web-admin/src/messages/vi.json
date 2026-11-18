@@ -3917,6 +3917,8 @@
         "minutes": "{count, number} phút",
         "points": "Tổng điểm",
         "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
+        "scale": "Thang điểm",
+        "scaleValue": "{scale, number} điểm",
         "sharedMinutes": "{count, number} phút, chung cả bài",
         "pointsOfScale": "{points} / {scale} điểm"
       },

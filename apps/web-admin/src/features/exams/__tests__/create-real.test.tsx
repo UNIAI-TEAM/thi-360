@@ -9,11 +9,18 @@ import { EXAM_ID, examDetailWire, FakeServer } from "./fake-exams-server";
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu để dựng màn.
-vi.mock(import("@/features/content/api"), async (importOriginal) => ({
-  ...(await importOriginal()),
-  getContentReference,
-  defaultContentApiDeps: { getContentReference },
-}));
+// Danh mục thật của V-ACT có Theo môn (bổ sung V-ACT, D8); bản mẫu cũ chỉ có FULL: test bài ôn V-ACT mở thêm phạm vi.
+const catalogue = vi.hoisted(() => ({ vactScopes: null as string[] | null }));
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const reference: typeof getContentReference = async (...args) => {
+    const data = await getContentReference(...args);
+    if (catalogue.vactScopes) {
+      data.examKinds = data.examKinds.map((kind) => (kind.code === "VACT" ? { ...kind, scopes: catalogue.vactScopes as typeof kind.scopes } : kind));
+    }
+    return data;
+  };
+  return { ...(await importOriginal()), getContentReference: reference, defaultContentApiDeps: { getContentReference: reference } };
+});
 
 const EXAMS_PATH = "/api/v1/admin/exams";
 const TEMPLATES_PATH = "/api/v1/admin/exam-templates";
@@ -89,8 +96,9 @@ const SP2E_LIT_2026 = template("SP2E_LITERATURE_2026", { kindCode: "SP2E", subje
 const SP2E_LIT_OLD = template("SP2E_LITERATURE_2025", { kindCode: "SP2E", subjectCode: "LITERATURE", structureYear: 2025, isDefault: true }, [
   part(1, "Văn đề minh họa cũ", 20, 80, [section("LITERATURE", 20)]),
 ]);
-const SPT_REVIEW = template("SPT_REVIEW", { kindCode: "SPT", subjectCode: "MATH", buildMode: "REVIEW", structureYear: 2025, timing: "PER_PART", maxScore: 10 }, [
-  part(1, "Bài ôn", 10, 15, [section("MATH", 10)]),
+// Hình thật của mẫu bài ôn: không ghi môn (`subjectCode` null), dùng chung cho mọi môn; phần có id.
+const SPT_REVIEW = template("SPT_REVIEW", { kindCode: "SPT", subjectCode: null, buildMode: "REVIEW", structureYear: 2025, timing: "PER_PART", maxScore: null }, [
+  part(1, "Bài ôn", 10, 15, [section("MATH", 10)], { id: "SPT_REVIEW_PART" }),
 ]);
 
 const ALL_TEMPLATES = [HSA_FULL, BCA_FULL, SPT_MATH, SPT_REVIEW, SP2E_GEO_SUBJECT, SP2E_LIT_2026, SP2E_LIT_OLD];
@@ -198,17 +206,127 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
     expect(await screen.findByRole("radio", { name: /Dùng cấu trúc môn SPT/ })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: /Tự thiết lập bài ôn/ }));
     expect(await screen.findByText("Bài ôn")).toBeInTheDocument();
+    // Mẫu bài ôn khớp môn bất kỳ: không báo "không có mẫu", dòng phần mang partId của mẫu.
+    expect(screen.queryByText(/Không có mẫu/)).toBeNull();
+    const count = screen.getByRole("textbox", { name: /^Số câu của/ });
+    await user.clear(count);
+    await user.type(count, "8");
     await user.type(name(), "SPT ôn Toán");
     await user.click(submit());
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ kind: "SPT", scope: "SUBJECT", subjectCode: "MATH", buildMode: "REVIEW" });
+    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({
+      kind: "SPT",
+      scope: "SUBJECT",
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      overview: [{ partId: "SPT_REVIEW_PART", questionCount: 8 }],
+    });
   }, 20_000);
 
-  it("ô Môn chỉ chào môn có mẫu; Theo phần của SPT chỉ chào môn mà mẫu Theo môn STANDARD có phần (không tính bài ôn)", async () => {
-    const SPT_PHYSICS_REVIEW = template("SPT_PHYSICS_REVIEW", { kindCode: "SPT", subjectCode: "PHYSICS", buildMode: "REVIEW", structureYear: 2025, maxScore: 10 }, [
-      part(1, "Bài ôn", 10, 15, [section("PHYSICS", 10)]),
+  it("bài ôn HSA: số câu, thời lượng và thang người dùng nhập đi cùng partId của mẫu HSA_REVIEW", async () => {
+    const HSA_MATH = template("HSA_MATH", { kindCode: "HSA", subjectCode: "MATH", structureYear: 2025, maxScore: 150 }, [part(1, "Toán", 50, 75, [section("MATH", 50)])]);
+    const HSA_REVIEW = template("HSA_REVIEW", { kindCode: "HSA", subjectCode: null, buildMode: "REVIEW", maxScore: null }, [
+      part(1, "Bài ôn", null as unknown as number, null, [section("MATH", 0)], { id: "HSA_REVIEW_PART" }),
     ]);
-    createServer([...ALL_TEMPLATES, SPT_PHYSICS_REVIEW]).install();
+    const server = createServer([...ALL_TEMPLATES, HSA_MATH, HSA_REVIEW]).on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
+    await user.click(await screen.findByRole("radio", { name: /Tự thiết lập bài ôn/ }));
+    expect(screen.queryByText(/Không có mẫu/)).toBeNull();
+    await user.type(await screen.findByRole("textbox", { name: /^Số câu của/ }), "10");
+    await user.type(screen.getByRole("textbox", { name: /^Thời lượng của/ }), "20");
+    const scale = screen.getByRole("textbox", { name: /^Điểm tối đa/ });
+    await user.clear(scale);
+    await user.type(scale, "100");
+    await user.type(name(), "HSA ôn Toán");
+    await user.click(submit());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({
+      kind: "HSA",
+      scope: "SUBJECT",
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      maxScore: 100,
+      overview: [{ partId: "HSA_REVIEW_PART", questionCount: 10, durationMinutes: 20 }],
+    });
+  }, 20_000);
+
+  describe("bài ôn: thang chỉ có khi người dùng nhập (F2, ADV:FIX-QA:3)", () => {
+    const HSA_MATH = template("HSA_MATH", { kindCode: "HSA", subjectCode: "MATH", structureYear: 2025, maxScore: 150 }, [part(1, "Toán", 50, 75, [section("MATH", 50)])]);
+    const HSA_REVIEW = template("HSA_REVIEW", { kindCode: "HSA", subjectCode: null, buildMode: "REVIEW", maxScore: null }, [
+      part(1, "Bài ôn", null as unknown as number, null, [section("MATH", 0)], { id: "HSA_REVIEW_PART" }),
+    ]);
+    const VACT_MATH = template("VACT_SUBJECT_TOAN", { kindCode: "VACT", subjectCode: "MATH", timing: "PER_PART", maxScore: 300 }, [part(1, "Toán", 30, 60, [section("MATH", 30)])]);
+    const VACT_REVIEW = template("VACT_REVIEW", { kindCode: "VACT", subjectCode: null, buildMode: "REVIEW", timing: "SHARED", durationMinutes: null, maxScore: null }, [
+      part(1, "Bài ôn", null as unknown as number, null, [section("MATH", 0)], { id: "VACT_REVIEW_PART" }),
+    ]);
+    const SERVER_TEMPLATES = [HSA_MATH, HSA_REVIEW, VACT_MATH, VACT_REVIEW];
+
+    async function fillReview(user: UserEvent, scale: string | null) {
+      await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
+      await user.click(await screen.findByRole("radio", { name: /Tự thiết lập bài ôn/ }));
+      await user.type(await screen.findByRole("textbox", { name: /^Số câu của/ }), "10");
+      // Mẫu SHARED (V-ACT) chỉ có thời lượng chung; mẫu PER_PART có thời lượng từng dòng.
+      const shared = screen.queryByRole("textbox", { name: /^Thời lượng chung/ });
+      await user.type(shared ?? screen.getByRole("textbox", { name: /^Thời lượng của/ }), "20");
+      const field = screen.getByRole("textbox", { name: /^Điểm tối đa/ });
+      expect(field).toHaveValue("");
+      if (scale !== null) await user.type(field, scale);
+      await user.type(name(), "Bài ôn");
+      await user.click(submit());
+      await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    }
+
+    it("HSA không nhập thang: ô thang để trống, bài ôn gửi không maxScore, không điểm mỗi câu; về lại Dùng cấu trúc môn thì thang 150", async () => {
+      const server = createServer(SERVER_TEMPLATES).on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
+      const user = await renderPage();
+      await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
+      expect(await screen.findByRole("textbox", { name: /^Điểm tối đa/ })).toHaveValue("150");
+      // Qua bài ôn thang để trống, về lại Dùng cấu trúc môn thì thang 150 của mẫu môn (ADV:BE-13:5).
+      await user.click(await screen.findByRole("radio", { name: /Tự thiết lập bài ôn/ }));
+      expect(screen.getByRole("textbox", { name: /^Điểm tối đa/ })).toHaveValue("");
+      await user.click(screen.getByRole("radio", { name: /Dùng cấu trúc môn/ }));
+      expect(screen.getByRole("textbox", { name: /^Điểm tối đa/ })).toHaveValue("150");
+      await fillReview(user, null);
+      const body = server.calls("POST", EXAMS_PATH)[0]!.body as Wire;
+      expect(body).toMatchObject({ kind: "HSA", scope: "SUBJECT", buildMode: "REVIEW", overview: [{ partId: "HSA_REVIEW_PART", questionCount: 10, durationMinutes: 20 }] });
+      expect(body.maxScore ?? null).toBeNull();
+      expect(JSON.stringify(body)).not.toContain("requiredPointsPerQuestion");
+    }, 30_000);
+
+    it("HSA nhập thang 100: gửi maxScore 100, không điểm mỗi câu", async () => {
+      const server = createServer(SERVER_TEMPLATES).on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
+      const user = await renderPage();
+      await fillReview(user, "100");
+      const body = server.calls("POST", EXAMS_PATH)[0]!.body as Wire;
+      expect(body).toMatchObject({ buildMode: "REVIEW", maxScore: 100, overview: [{ partId: "HSA_REVIEW_PART", questionCount: 10, durationMinutes: 20 }] });
+      expect(JSON.stringify(body)).not.toContain("requiredPointsPerQuestion");
+    }, 30_000);
+
+    it.each([
+      ["không nhập thang", null],
+      ["nhập thang 300", "300"],
+    ])("V-ACT %s: không lấy thang tối đa của kỳ thi, chỉ gửi thang đã nhập", async (_label, scale) => {
+      catalogue.vactScopes = ["FULL", "PART", "SUBJECT"];
+      try {
+        const server = createServer(SERVER_TEMPLATES).on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
+        const user = await renderPage();
+        await pickKind(user, "V-ACT");
+        await fillReview(user, scale);
+        const body = server.calls("POST", EXAMS_PATH)[0]!.body as Wire;
+        expect(body).toMatchObject({ kind: "VACT", buildMode: "REVIEW", durationMinutes: 20 });
+        expect(body.maxScore ?? null).toBe(scale === null ? null : Number(scale));
+        expect(JSON.stringify(body)).not.toContain("requiredPointsPerQuestion");
+      } finally {
+        catalogue.vactScopes = null;
+      }
+    }, 30_000);
+  });
+
+  it("ô Môn chỉ chào môn có mẫu; Theo phần của SPT chỉ chào môn mà mẫu Theo môn STANDARD có phần (không tính bài ôn)", async () => {
+    // Vật lí có mẫu Theo môn nhưng chưa có phần: chào ở Theo môn, không chào ở Theo phần. Mẫu bài ôn (không ghi môn) không tính.
+    const SPT_PHYSICS = template("SPT_PHYSICS_V1", { kindCode: "SPT", subjectCode: "PHYSICS", structureYear: 2025, maxScore: 10 }, []);
+    createServer([...ALL_TEMPLATES, SPT_PHYSICS]).install();
     const user = await renderPage();
     await pickKind(user, "SPT");
     const subjects = async () => {

@@ -791,7 +791,7 @@ export function ExamInfoFields({
                   maxScore={scoreField.value}
                   onMaxScoreChange={scoreField.onChange}
                   maxScoreError={errors.maxScore?.message}
-                  maxScoreOptional={kind?.maxScore === null}
+                  maxScoreOptional={kind?.maxScore === null || (values.scope === "SUBJECT" && values.buildMode === "REVIEW")}
                 />
               )}
             />

@@ -96,8 +96,8 @@ public class ExamBlockRefProjector {
             return;
         }
         KnowledgeScope sectionScope = section == null ? null : section.knowledgeScope();
-        KnowledgeScope scope = block.knowledgeScope() != null ? block.knowledgeScope() : sectionScope;
-        boolean inherited = block.knowledgeScope() == null;
+        KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(), sectionScope);
+        boolean inherited = EffectiveKnowledgeScope.inheritsNodes(block.knowledgeScope());
         String subjectCode = section != null ? section.subjectCode()
                 : option == null ? null : option.subjectCode();
         rows.add(new ExamBlockRef(

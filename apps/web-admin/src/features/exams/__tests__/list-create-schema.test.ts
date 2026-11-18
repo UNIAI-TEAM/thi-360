@@ -22,7 +22,7 @@ import {
   toCreateExamRequest,
   yearsDiffer,
 } from "../create-exam-schema";
-import type { ExamKind, ExamOverviewRow, ExamScope } from "../types";
+import type { ExamKind, ExamOverviewRow, ExamScope, ExamTemplate } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 
 const MESSAGES: CreateExamSchemaMessages = {
@@ -352,6 +352,25 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     });
     const tooLarge = { ...choice, sections: [{ ...choice.sections[0]!, questionCount: 4 }] };
     expect(errors({ ...base, parts: [informatics[0]!, tooLarge] })).toEqual({ "parts.1.sections": "commonTooLarge 4/4" });
+  });
+
+  it("bài ôn Theo môn khớp mẫu <KỲ>_REVIEW không ghi môn, với mọi môn; bài chuẩn chỉ khớp mẫu của môn", () => {
+    // Hình thật của dữ liệu: mẫu bài ôn không ghi `subjectCode` (null) và dùng chung cho mọi môn.
+    const review = (kind: ExamKind, code: string) =>
+      ({ ...FIXTURE_TEMPLATES[0]!, code, kind, scope: "SUBJECT", subjectCode: null, partCode: null, buildMode: "REVIEW" }) as ExamTemplate;
+    const templates = [...FIXTURE_TEMPLATES, review("SPT", "SPT_REVIEW"), review("HSA", "HSA_REVIEW")];
+    const select = (kind: ExamKind, subjectCode: string, buildMode: "STANDARD" | "REVIEW"): ScopeSelection => ({
+      kind,
+      scope: "SUBJECT",
+      partCode: "",
+      subjectCode,
+      buildMode,
+    });
+    for (const subject of ["MATH", "PHYSICS"]) {
+      expect(matchingTemplates(templates, select("SPT", subject, "REVIEW")).map((item) => item.code)).toEqual(["SPT_REVIEW"]);
+      expect(latestTemplate(templates, select("HSA", subject, "REVIEW"))?.code).toBe("HSA_REVIEW");
+    }
+    expect(matchingTemplates(templates, select("SPT", "MATH", "STANDARD")).map((item) => item.code)).toEqual(["SPT_MATH_2025"]);
   });
 
   it("SP2E Toán: mẫu theo năm, mới nhất trước; năm cấu trúc 2026 khác năm ma trận 2025 thì gửi xác nhận", () => {

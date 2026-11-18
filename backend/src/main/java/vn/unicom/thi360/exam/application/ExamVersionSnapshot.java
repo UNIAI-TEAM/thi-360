@@ -10,6 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.domain.solver.LargestRemainderApportioner;
 
@@ -19,6 +20,12 @@ final class ExamVersionSnapshot {
     private final LargestRemainderApportioner apportioner = new LargestRemainderApportioner();
 
     ExamVersionSnapshot(ObjectMapper mapper) { this.mapper = mapper; }
+
+    /** Whether a catalog combination belongs to a codeSource part; shared by the snapshot and the version list. */
+    static boolean inBranch(JsonNode part, CatalogCombinationView definition) {
+        String branch = part.path("codeSource").path("branch").asText(null);
+        return branch == null || (definition.branch() != null && branch.equals(definition.branch().name()));
+    }
 
     ObjectNode combinations(JsonNode document, Set<String> selectedPaths, UUID kindId, CatalogLookup catalog) {
         ObjectNode result = mapper.createObjectNode();
@@ -32,10 +39,9 @@ final class ExamVersionSnapshot {
         for (JsonNode part : document.path("parts")) {
             if (!part.hasNonNull("codeSource")) continue;
             String partId = part.path("id").asText();
-            String branch = part.path("codeSource").path("branch").asText(null);
             for (var definition : definitions) {
                 if (!selected.contains(partId + ":" + definition.itemCode())) continue;
-                if (branch != null && (definition.branch() == null || !branch.equals(definition.branch().name()))) continue;
+                if (!inBranch(part, definition)) continue;
                 ObjectNode item = combinations.addObject();
                 item.put("partId", partId);
                 item.put("code", definition.itemCode());

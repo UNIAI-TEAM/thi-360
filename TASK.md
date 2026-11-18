@@ -133,7 +133,7 @@ Sub-issue theo plan A5 (17 task, 100 điểm):
 | BE-10 | UNI-2653 | 3 | 2 | FE-3a | UNI-2663 | 8 | 3 |
 | BE-4a | UNI-2654 | 6 | 2 | FE-3b | UNI-2664 | 9 | 4 |
 | BE-4b | UNI-2655 | 4 | 3 | FE-4 | UNI-2665 | 7 | 3 |
-| BE-5 | UNI-2656 | 10 | 3 | QA | UNI-2666 | 7 | 5 |
+| BE-5 | UNI-2656 | 10 | 3 | QA | UNI-2666 | 9 | 5 |
 | BE-8 | UNI-2657 | 5 | 3 | | | | |
 | BE-6 | UNI-2658 | 5 | 2 | | | | |
 | BE-7 | UNI-2659 | 6 | 2 | | | | |
@@ -149,6 +149,21 @@ Bổ sung V-ACT, THPTQG (UNI-2671, kế hoạch `docs/plans/2026-11-18-pbi04-dot
 | BE-15 | UNI-2676 | 3 | Kiểm tra: chặn công bố, khóa số câu, chờ mapping |
 | FE-5 | UNI-2677 | 3 | Web admin: bước 1 cho V-ACT, THPTQG |
 | G2b | UNI-2678 | 0 | Bản vẽ bổ sung (cổng thiết kế) |
+
+Bổ sung H-SCA, V-SAT (UNI-2687, kế hoạch `docs/plans/2026-11-18-pbi04-dot-2b-bo-sung-hsca-vsat.md`). Tổng đợt tăng từ 127 lên 160 điểm.
+
+| Task | Issue | Điểm | Nội dung |
+|---|---|---|---|
+| BE-16 | UNI-2688 | 3 | Hợp đồng mở rộng, mã kỳ thi, nhãn |
+| BE-17 | UNI-2689 | 4 | Nguồn câu: audio, dạng câu con, số phương án, chiều điểm |
+| BE-18 | UNI-2690 | 6 | Mẫu H-SCA, V-SAT, hồ sơ, phạm vi |
+| BE-19 | UNI-2691 | 3 | Dữ liệu câu mẫu, có audio |
+| BE-20 | UNI-2692 | 3 | Kiểm tra: khóa dòng, tệp audio, thang, đối chiếu theo lệnh |
+| BE-21 | UNI-2693 | 3 | Tiếng Anh V-SAT: bài đọc dùng chung |
+| FE-6 | UNI-2694 | 3 | Web admin: bước 1 cho H-SCA, V-SAT |
+| FE-7 | UNI-2695 | 4 | Web admin: bước 2, audio, khóa dòng, ví dụ chấm |
+| FE-8 | UNI-2696 | 2 | Web admin: kiểm tra và sinh thử |
+| G2c | UNI-2697 | 0 | Bản vẽ bổ sung (cổng thiết kế) |
 
 Đã merge vào `integration/dot-2b` (issue chuyển `in_review`, chờ người duyệt):
 
@@ -177,6 +192,8 @@ Bổ sung V-ACT, THPTQG (UNI-2671, kế hoạch `docs/plans/2026-11-18-pbi04-dot
 - FE-3b UNI-2664, PR #103 (`c5aecbfd`), 2026-11-18.
 - BE-15 UNI-2676, PR #104 (`5660ae73`), 2026-11-18.
 - FE-4 phần thêm UNI-2665, PR #105 (`fed64900`), 2026-11-18.
+- FIX-QA UNI-2686, PR #106 (`b82b3bb0`), 2026-11-18.
+- G2c UNI-2697, PR #107 (`2a7dfbd1`), 2026-11-18.
 
 ### Thứ tự làm
 
