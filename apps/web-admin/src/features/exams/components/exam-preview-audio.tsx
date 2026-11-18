@@ -251,7 +251,7 @@ export function PreviewAudioPlayer({
             aria-describedby={degraded ? noSeekId : undefined}
             data-seek=""
             onChange={(event) => seek(Number(event.target.value))}
-            className={cn("h-11 min-w-36 flex-[1_1_12rem] cursor-pointer accent-primary-600 disabled:cursor-not-allowed disabled:opacity-60", focusRing)}
+            className={cn("h-11 min-w-36 flex-[1_1_12rem] cursor-pointer accent-primary-fill disabled:cursor-not-allowed disabled:opacity-60", focusRing)}
           />
           <span className="shrink-0 text-body text-text-secondary tabular-nums">
             {duration > 0 ? `${clock(current)} / ${clock(duration)}` : `${clock(current)} / --:--`}

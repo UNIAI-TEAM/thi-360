@@ -356,6 +356,14 @@ describe("trình phát audio trong đề xem trước", () => {
     expect(element.currentTime).toBeCloseTo(5.05, 5);
   });
 
+  it("thanh vị trí dùng accent-primary-fill như các điều khiển gốc khác", async () => {
+    renderPaper(listening);
+    const player = await screen.findByRole("group", { name: "Trình phát audio · câu 1" });
+    loaded(audioOf(player));
+
+    expect(within(player).getByRole("slider", { name: "Vị trí phát" })).toHaveClass("accent-primary-fill");
+  });
+
   it("bản en: chế độ chỉ phát từ đầu báo bằng tiếng Anh và kèm lý do ở điều khiển bị khóa", async () => {
     renderPaper(listening, "en");
     const player = await screen.findByRole("group", { name: "Audio player · question 1" });
