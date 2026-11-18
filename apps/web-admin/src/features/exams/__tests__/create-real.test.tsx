@@ -257,7 +257,7 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
       part(1, "Bài ôn", null as unknown as number, null, [section("MATH", 0)], { id: "HSA_REVIEW_PART" }),
     ]);
     const VACT_MATH = template("VACT_SUBJECT_TOAN", { kindCode: "VACT", subjectCode: "MATH", timing: "PER_PART", maxScore: 300 }, [part(1, "Toán", 30, 60, [section("MATH", 30)])]);
-    const VACT_REVIEW = template("VACT_REVIEW", { kindCode: "VACT", subjectCode: null, buildMode: "REVIEW", timing: "PER_PART", maxScore: null }, [
+    const VACT_REVIEW = template("VACT_REVIEW", { kindCode: "VACT", subjectCode: null, buildMode: "REVIEW", timing: "SHARED", durationMinutes: null, maxScore: null }, [
       part(1, "Bài ôn", null as unknown as number, null, [section("MATH", 0)], { id: "VACT_REVIEW_PART" }),
     ]);
     const SERVER_TEMPLATES = [HSA_MATH, HSA_REVIEW, VACT_MATH, VACT_REVIEW];
@@ -266,7 +266,9 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
       await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
       await user.click(await screen.findByRole("radio", { name: /Tự thiết lập bài ôn/ }));
       await user.type(await screen.findByRole("textbox", { name: /^Số câu của/ }), "10");
-      await user.type(screen.getByRole("textbox", { name: /^Thời lượng của/ }), "20");
+      // Mẫu SHARED (V-ACT) chỉ có thời lượng chung; mẫu PER_PART có thời lượng từng dòng.
+      const shared = screen.queryByRole("textbox", { name: /^Thời lượng chung/ });
+      await user.type(shared ?? screen.getByRole("textbox", { name: /^Thời lượng của/ }), "20");
       const field = screen.getByRole("textbox", { name: /^Điểm tối đa/ });
       expect(field).toHaveValue("");
       if (scale !== null) await user.type(field, scale);
@@ -307,7 +309,7 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
         await pickKind(user, "V-ACT");
         await fillReview(user, scale);
         const body = server.calls("POST", EXAMS_PATH)[0]!.body as Wire;
-        expect(body).toMatchObject({ kind: "VACT", buildMode: "REVIEW" });
+        expect(body).toMatchObject({ kind: "VACT", buildMode: "REVIEW", durationMinutes: 20 });
         expect(body.maxScore ?? null).toBe(scale === null ? null : Number(scale));
         expect(JSON.stringify(body)).not.toContain("requiredPointsPerQuestion");
       } finally {
