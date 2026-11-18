@@ -128,6 +128,34 @@ class VsatEnglishTemplatesIT extends AbstractIntegrationTest {
         }
     }
 
+    /**
+     * R1-6: the reference difficulty buckets target NB/TH/VD 21/39/7 and the strand quotas target
+     * Đọc hiểu 42, Giao tiếp qua văn bản 4, Ngữ pháp và từ vựng 21 (specification 5.3).
+     */
+    @Test
+    void fullTemplateQuotaTargets() {
+        JsonNode template = template(FULL);
+        JsonNode difficulty = template.path("structure").path("examQuotas").get(0);
+        assertThat(difficulty.path("dimension").asText()).isEqualTo("DIFFICULTY");
+        assertThat(difficulty.path("subjectCodes").toPrettyString())
+                .as("difficulty quota subject scope").isEqualTo("[ \"ANH\" ]");
+        List<String> buckets = new ArrayList<>();
+        for (JsonNode bucket : difficulty.path("buckets")) {
+            for (JsonNode code : bucket.path("codes")) {
+                buckets.add(code.asText() + "=" + bucket.path("count").asInt());
+            }
+        }
+        assertThat(buckets).containsExactlyInAnyOrder("NB=21", "TH=39", "VD=7");
+        List<String> strands = new ArrayList<>();
+        for (JsonNode quota : template.path("structure").path("parts").get(0)
+                .path("sections").get(0).path("topicQuotas")) {
+            assertThat(quota.path("basis").asText()).isEqualTo("PROMPT");
+            strands.add(quota.path("name").asText() + "=" + quota.path("count").asInt());
+        }
+        assertThat(strands).containsExactly("Đọc hiểu=42", "Giao tiếp qua văn bản=4",
+                "Ngữ pháp và từ vựng=21");
+    }
+
     /** Rows 7-9 template side: the three dedicated PART templates carry subject ANH. */
     @Test
     void partTemplatesExistWithSubjectCode() {

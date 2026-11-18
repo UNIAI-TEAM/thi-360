@@ -77,18 +77,17 @@ class VsatEnglishPreviewIT extends AbstractIntegrationTest {
         assertThat(sets).hasSize(1);
         assertThat(sets.get(0).path("passage").asText()).isNotBlank();
         JsonNode children = sets.get(0).path("children");
+        // R1-4: the children are emitted in order, numbered 8 through 15 with their assigned types.
         assertThat(children).hasSize(8);
+        List<String> numbers = new ArrayList<>();
+        List<String> types = new ArrayList<>();
         for (JsonNode child : children) {
-            int number = child.path("number").asInt();
-            if (number == 8 || number == 9) {
-                assertThat(child.path("type").asText()).as("question %d", number)
-                        .isEqualTo("TRUE_FALSE");
-            } else {
-                assertThat(number).as("question %d", number).isBetween(10, 15);
-                assertThat(child.path("type").asText()).as("question %d", number)
-                        .isEqualTo("SINGLE_CHOICE");
-            }
+            numbers.add(child.path("number").asText());
+            types.add(child.path("type").asText());
         }
+        assertThat(numbers).containsExactly("8", "9", "10", "11", "12", "13", "14", "15");
+        assertThat(types).containsExactly("TRUE_FALSE", "TRUE_FALSE", "SINGLE_CHOICE",
+                "SINGLE_CHOICE", "SINGLE_CHOICE", "SINGLE_CHOICE", "SINGLE_CHOICE", "SINGLE_CHOICE");
     }
 
     private ResultActions create(String scope, String partCode) throws Exception {

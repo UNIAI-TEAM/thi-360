@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
@@ -99,9 +100,11 @@ class VsatEnglishSourceShortageIT extends AbstractIntegrationTest {
                 WHERE group_id = '00000000-0000-7000-8100-000000000002' AND code = 'ANH'
                 """, UUID.class);
         UUID root = UUID.randomUUID();
+        List<UUID> childIds = java.util.stream.IntStream.range(0, 8)
+                .mapToObj(i -> UUID.randomUUID()).toList();
         var children = new StringBuilder();
         for (int i = 0; i < 8; i++) {
-            children.append(i == 0 ? "" : ",").append("{\"id\":\"").append(UUID.randomUUID())
+            children.append(i == 0 ? "" : ",").append("{\"id\":\"").append(childIds.get(i))
                     .append("\",\"body\":").append(SC4).append('}');
         }
         jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,"
@@ -111,7 +114,7 @@ class VsatEnglishSourceShortageIT extends AbstractIntegrationTest {
                         + "VALUES (?,1,?::jsonb)", root,
                 "{\"body\":{\"type\":\"QUESTION_SET\",\"children\":[" + children + "]}}");
         for (int i = 0; i < 8; i++) {
-            UUID child = UUID.randomUUID();
+            UUID child = childIds.get(i);
             jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,"
                             + "subject_item_id,points) VALUES (?,?,?,'READY',?,?,?,6)",
                     child, "B21-8SC-C-" + i + "-" + child, "SINGLE_CHOICE", root, i, english);

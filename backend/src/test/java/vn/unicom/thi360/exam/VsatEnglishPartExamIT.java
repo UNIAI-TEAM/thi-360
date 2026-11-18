@@ -112,11 +112,14 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
         // The scope was rejected: the exam is still the 25-question subject paper.
         assertThat(structure(id).path("parts").get(0).path("questionCount").asInt()).isEqualTo(25);
         // The same PATCH to an existing part code succeeds through the dedicated template.
-        mockMvc.perform(patch("/api/v1/admin/exams/{id}", id).with(asUser(Permissions.EXAM_MODIFY))
+        JsonNode patched = mapper.readTree(mockMvc.perform(patch("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"scope\":\"PART\",\"partCode\":\"P2\",\"durationMinutes\":30,"
                                 + "\"expectedRevision\":" + revision + "}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(patched.path("templateCode").asText()).isEqualTo("VSAT_PART_ANH_P2");
+        assertThat(patched.path("maxScore").decimalValue()).isEqualByComparingTo("36");
         JsonNode changed = structure(id);
         assertThat(changed.path("parts")).hasSize(1);
         assertThat(changed.path("parts").get(0).path("questionCount").asInt()).isEqualTo(6);
