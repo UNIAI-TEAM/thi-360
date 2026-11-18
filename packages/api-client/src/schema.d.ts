@@ -2101,8 +2101,11 @@ export interface components {
             value?: number;
         };
         AvailableQuestionsChildCondition: {
+            /** @enum {string} */
+            answerType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
             /** Format: int32 */
             from?: number;
+            itemShape?: components["schemas"]["AvailableQuestionsItemShape"];
             nodeIds?: string[];
             /** Format: int32 */
             to?: number;
@@ -2115,6 +2118,8 @@ export interface components {
         AvailableQuestionsItemShape: {
             /** Format: int32 */
             leftItems?: number;
+            /** Format: int32 */
+            options?: number;
             /** Format: int32 */
             rightItems?: number;
             /** Format: int32 */
@@ -2130,6 +2135,8 @@ export interface components {
         AvailableQuestionsQuery: {
             answerFormats?: ("INTEGER" | "DECIMAL" | "FRACTION" | "TEXT" | "CHEM_FORMULA" | "CHEM_EQUATION")[];
             answerTypes?: ("SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY")[];
+            /** @enum {string} */
+            audioRequirement?: "ANY" | "REQUIRED" | "FORBIDDEN";
             /** @enum {string} */
             childAnswerType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
             childConditions?: components["schemas"]["AvailableQuestionsChildCondition"][];
