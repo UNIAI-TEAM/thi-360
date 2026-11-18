@@ -66,6 +66,7 @@ export function PreviewAudioPlayer({
 }) {
   const t = useTranslations("exams.preview.audio");
   const audio = useRef<HTMLAudioElement>(null);
+  const playButton = useRef<HTMLButtonElement>(null);
   const seekTarget = useRef<number | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -77,6 +78,24 @@ export function PreviewAudioPlayer({
   const [seekFailed, setSeekFailed] = useState(false);
   const [live, setLive] = useState("");
   const noSeekId = useId();
+
+  const wasDegraded = useRef(false);
+
+  /**
+   * Chuyển sang "chỉ phát từ đầu": đọc lý do qua vùng trạng thái, và nếu focus đang ở một điều khiển tua sắp bị
+   * `disabled` thì đưa focus về Phát/Tạm dừng — `disabled` làm nút rơi khỏi thứ tự Tab, focus trôi về `<body>`.
+   */
+  useEffect(() => {
+    if (!degraded) {
+      wasDegraded.current = false;
+      return;
+    }
+    if (wasDegraded.current) return;
+    wasDegraded.current = true;
+    setLive(t("noSeek"));
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && "seek" in active.dataset) playButton.current?.focus();
+  }, [degraded, t]);
 
   useEffect(() => {
     const element = audio.current;
@@ -193,6 +212,7 @@ export function PreviewAudioPlayer({
       {status !== "error" && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-subtle px-3 py-2.5">
           <IconButton
+            ref={playButton}
             size="lg"
             aria-label={isPlaying ? t("pause", { name }) : t("play", { name })}
             icon={isPlaying ? <Pause /> : <Play />}
@@ -203,6 +223,7 @@ export function PreviewAudioPlayer({
             variant="secondary"
             size="lg"
             disabled={degraded}
+            data-seek=""
             aria-describedby={degraded ? noSeekId : undefined}
             onClick={() => seek(current - SEEK_STEP_SECONDS)}
           >
@@ -211,8 +232,9 @@ export function PreviewAudioPlayer({
           <Button
             variant="secondary"
             size="lg"
-            disabled={degraded}
+            data-seek=""
             aria-describedby={degraded ? noSeekId : undefined}
+            disabled={degraded}
             onClick={() => seek(current + SEEK_STEP_SECONDS)}
           >
             {t("forward")}
@@ -227,6 +249,7 @@ export function PreviewAudioPlayer({
             aria-label={t("position")}
             aria-valuetext={spoken}
             aria-describedby={degraded ? noSeekId : undefined}
+            data-seek=""
             onChange={(event) => seek(Number(event.target.value))}
             className={cn("h-11 min-w-36 flex-[1_1_12rem] cursor-pointer accent-primary-600 disabled:cursor-not-allowed disabled:opacity-60", focusRing)}
           />

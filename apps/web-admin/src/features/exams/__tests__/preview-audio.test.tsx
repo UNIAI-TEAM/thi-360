@@ -249,7 +249,7 @@ describe("trình phát audio trong đề xem trước", () => {
     const player = await screen.findByRole("group", { name: "Trình phát audio · câu 1" });
     loaded(audioOf(player), 100, false);
 
-    expect(within(player).getByText("Tệp này chỉ phát từ đầu")).toBeInTheDocument();
+    expect(within(player).getAllByText("Tệp này chỉ phát từ đầu")).toHaveLength(2);
     expect(within(player).getByRole("slider", { name: "Vị trí phát" })).toBeDisabled();
     expect(within(player).getByRole("button", { name: "Lùi 5 giây" })).toBeDisabled();
     expect(within(player).getByRole("button", { name: "Tiến 5 giây" })).toBeDisabled();
@@ -263,7 +263,7 @@ describe("trình phát audio trong đề xem trước", () => {
     const player = await screen.findByRole("group", { name: "Trình phát audio · câu 1" });
     loaded(audioOf(player), 2.088, [[0, 0]]);
 
-    expect(within(player).getByText("Tệp này chỉ phát từ đầu")).toBeInTheDocument();
+    expect(within(player).getAllByText("Tệp này chỉ phát từ đầu")).toHaveLength(2);
     const back = within(player).getByRole("button", { name: "Lùi 5 giây" });
     const forward = within(player).getByRole("button", { name: "Tiến 5 giây" });
     const slider = within(player).getByRole("slider", { name: "Vị trí phát" });
@@ -281,7 +281,7 @@ describe("trình phát audio trong đề xem trước", () => {
     const player = await screen.findByRole("group", { name: "Trình phát audio · câu 1" });
     loaded(audioOf(player), Infinity, [[0, Infinity]]);
 
-    expect(within(player).getByText("Tệp này chỉ phát từ đầu")).toBeInTheDocument();
+    expect(within(player).getAllByText("Tệp này chỉ phát từ đầu")).toHaveLength(2);
     expect(within(player).getByText("0:00 / --:--")).toBeInTheDocument();
     expect(within(player).queryByText(/Infinity|NaN/)).not.toBeInTheDocument();
     expect(within(player).getByRole("slider", { name: "Vị trí phát" })).toHaveAttribute("aria-valuetext", "0 phút 0 giây");
@@ -300,10 +300,42 @@ describe("trình phát audio trong đề xem trước", () => {
     positions.set(element, 4);
     fireEvent.seeked(element);
 
-    expect(within(player).getByText("Tệp này chỉ phát từ đầu")).toBeInTheDocument();
+    expect(within(player).getAllByText("Tệp này chỉ phát từ đầu")).toHaveLength(2);
     expect(within(player).getByRole("slider", { name: "Vị trí phát" })).toBeDisabled();
     expect(within(player).getByRole("button", { name: "Tiến 5 giây" })).toBeDisabled();
     expect(within(player).getByRole("button", { name: "Lùi 5 giây" })).toBeDisabled();
+  });
+
+  it("chuyển sang chỉ phát từ đầu khi focus đang ở điều khiển tua: focus về Phát, vùng trạng thái đọc lý do", () => {
+    renderPaper(listening);
+    const player = screen.getByRole("group", { name: "Trình phát audio · câu 1" });
+    const element = audioOf(player);
+    loaded(element, 100);
+
+    const forward = within(player).getByRole("button", { name: "Tiến 5 giây" });
+    forward.focus();
+    fireEvent.click(forward);
+    positions.set(element, 4);
+    fireEvent.seeked(element);
+
+    expect(within(player).getByRole("button", { name: "Phát audio · câu 1" })).toHaveFocus();
+    expect(within(player).getByRole("status")).toHaveTextContent("Tệp này chỉ phát từ đầu");
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("chuyển sang chỉ phát từ đầu khi focus ở nút khác: không đổi chỗ focus", () => {
+    renderPaper(listening);
+    const player = screen.getByRole("group", { name: "Trình phát audio · câu 1" });
+    const element = audioOf(player);
+    loaded(element, 100);
+
+    const mute = within(player).getByRole("button", { name: "Tắt tiếng · câu 1" });
+    mute.focus();
+    fireEvent.click(within(player).getByRole("button", { name: "Tiến 5 giây" }));
+    positions.set(element, 4);
+    fireEvent.seeked(element);
+
+    expect(mute).toHaveFocus();
   });
 
   it("máy chủ tua đúng: không báo chỉ phát từ đầu, thanh vị trí dùng được, Tiến cộng 5 giây", async () => {
@@ -329,7 +361,7 @@ describe("trình phát audio trong đề xem trước", () => {
     const player = await screen.findByRole("group", { name: "Audio player · question 1" });
     loaded(audioOf(player), Infinity, [[0, Infinity]]);
 
-    expect(within(player).getByText("This file can only be played from the start")).toBeInTheDocument();
+    expect(within(player).getAllByText("This file can only be played from the start")).toHaveLength(2);
     expect(within(player).getByRole("button", { name: "Forward 5 seconds" })).toHaveAccessibleDescription(
       "This file can only be played from the start",
     );
