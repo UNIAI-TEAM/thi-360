@@ -3,14 +3,19 @@
 import { Badge, Button, cn, focusRing, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
-import type { ChoiceGroup, ExamPartOption, ExamSectionState } from "../types";
+import { sectionHow } from "../coded-part";
+import { computeAllocation, type MatrixAxes } from "../matrix";
+import type { ChoiceGroup, ExamPartOption, ExamSection, ExamSectionState } from "../types";
 import { allocateSubjectCounts } from "../subject-choice";
+import type { MatrixLabels } from "./block-matrix-editor";
 import type { StructureNames } from "./exam-structure-issues";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
 
 export interface SubjectChoiceOptionsProps {
   option: ExamPartOption;
   names: StructureNames;
+  axes: MatrixAxes;
+  labels: MatrixLabels;
   onSelectSection: (sectionId: string) => void;
   /** Trạng thái kiểm tra theo môn (H2, R-35); `null` hoặc bỏ trống: không hiện cột trạng thái. */
   sectionStates?: readonly ExamSectionState[] | null;
@@ -27,7 +32,7 @@ const EXAMPLES: ChoiceGroup[][] = [
  * Phương án "chọn môn" của phần tự chọn (HSA Khoa học, spec D25): một phương án có 5 môn, mỗi môn soạn một lần; học viên
  * chọn 3 môn. Số câu từng môn theo quy tắc chia của B10, chỉ đọc ở đây (không còn 10 tổ hợp KH-n, không sinh tổ hợp).
  */
-export function SubjectChoiceOptions({ option, names, sectionStates, onSelectSection }: SubjectChoiceOptionsProps) {
+export function SubjectChoiceOptions({ option, names, axes, labels, sectionStates, onSelectSection }: SubjectChoiceOptionsProps) {
   const t = useTranslations("exams.subjectChoice");
   const listT = useTranslations("exams.structure.list");
   const headingId = useId();
@@ -40,6 +45,11 @@ export function SubjectChoiceOptions({ option, names, sectionStates, onSelectSec
       ? EXAMPLES.map((groups) => ({ groups, cases: allocateSubjectCounts(groups, counts) })).filter((item) => item.cases.length > 0)
       : [];
 
+  /** Ma trận lớp, độ khó của môn đã quy ra số câu ("5/6/6"); `—` khi môn chưa khai ma trận. */
+  const distribution = (section: ExamSection, key: "byGrade" | "byDifficulty") => {
+    if (!section.matrix) return "—";
+    return computeAllocation({ questionCount: section.questionCount ?? 0, matrix: section.matrix }, axes)[key].join("/");
+  };
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-4">
       <div className="flex flex-col gap-0.5">
@@ -74,6 +84,9 @@ export function SubjectChoiceOptions({ option, names, sectionStates, onSelectSec
             <tr className="text-left text-caption text-text-muted">
               <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("subject")}</th>
               <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("group")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold">{t("count")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{axes.grades.map(labels.grade).join("/")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{axes.difficulties.map(labels.difficulty).join("/")}</th>
               <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold">{t("groups")}</th>
               {sectionStates && <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("status")}</th>}
               <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
@@ -93,7 +106,23 @@ export function SubjectChoiceOptions({ option, names, sectionStates, onSelectSec
                   <td className="border-b border-border px-2 py-2">
                     {section.choiceGroup ? <Badge className="font-medium">{t(`choiceGroup.${section.choiceGroup}`)}</Badge> : "—"}
                   </td>
-                  <td className="border-b border-border px-2 py-2 text-right tabular-nums">{section.blocks.length}</td>
+                  <td className="border-b border-border px-2 py-2 text-right tabular-nums">{section.questionCount ?? "—"}</td>
+                  <td className="border-b border-border px-2 py-2 tabular-nums">{distribution(section, "byGrade")}</td>
+                  <td className="border-b border-border px-2 py-2 tabular-nums">{distribution(section, "byDifficulty")}</td>
+                  <td className="border-b border-border px-2 py-2 text-right tabular-nums">
+                    {section.blocks.length}
+                    <span className="block text-caption font-normal text-text-muted">
+                      {section.blocks.length === 0
+                        ? t("noGroups")
+                        : sectionHow(section)
+                            .map((how) =>
+                              how.kind === "set"
+                                ? t("howSet", { sets: how.sets, size: how.size })
+                                : t("howSingle", { count: how.count }),
+                            )
+                            .join(", ")}
+                    </span>
+                  </td>
                   {sectionStates && (
                     <td className="border-b border-border px-2 py-2">
                       {state ? <StatusChip tone={SECTION_STATE_TONES[state]}>{listT(`state.${state}`)}</StatusChip> : "—"}

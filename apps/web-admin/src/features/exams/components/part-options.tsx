@@ -1,19 +1,12 @@
 "use client";
 
 import {
-  Badge,
   Button,
   CardList,
   CardListItem,
   Checkbox,
   cn,
   ConfirmDialog,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   focusRing,
   IconButton,
   Label,
@@ -24,7 +17,6 @@ import {
 import { CircleMinus, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
-import type { CombinationOption } from "@/features/content/types";
 import { countOf, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamPartOption } from "../types";
 import { BlockNumberInput } from "./block-number-input";
@@ -32,17 +24,15 @@ import { BranchDialog } from "./exam-structure-branch-dialog";
 import { ENGLISH_CODE, firstBlockId, optionQuestionCount } from "./exam-structure-draft";
 import type { StructureNames } from "./exam-structure-issues";
 
-export interface CombinationOptionsProps {
+export interface PartOptionsProps {
   part: ExamPart;
-  combinations: readonly CombinationOption[];
   names: StructureNames;
   issues: readonly StructureIssue[];
-  /** Hiện ô bật nhánh Tiếng Anh (HSA, QDA); kỳ thi có lựa chọn gắn sẵn trong mẫu (BCA, THPTQG) thì không. */
+  /** Hiện ô bật nhánh Tiếng Anh (HSA); kỳ thi có lựa chọn gắn sẵn trong mẫu (THPTQG) thì không. */
   showEnglish: boolean;
   /** Môn chọn được khi thêm nhánh nội dung. */
   branchSubjects: ReadonlyArray<{ code: string; name: string }>;
   onToggleEnglish: (enabled: boolean) => void;
-  onAttach: (combination: CombinationOption) => void;
   onAddBranch: (branch: { name: string; subjectCode: string }) => void;
   onConfirm: (optionId: string) => void;
   onRemove: (optionId: string) => void;
@@ -59,46 +49,35 @@ function optionIssueCount(issues: readonly StructureIssue[], optionId: string): 
 }
 
 /**
- * Phần tự chọn (bản vẽ `BaiThiToHop`, UniNote PBI-04 mục 5.3): nhánh Tiếng Anh, nhánh nội dung (THPTQG Tin học, học
- * viên làm phần chung cộng một nhánh) và các tổ hợp gắn vào phần, số câu từng môn theo thứ tự (mặc định chia 17–17–16),
- * tổng phải bằng số câu của phần. Số câu chia tự động chờ chuyên gia xác nhận trước khi công bố. Gắn, sinh, gỡ lựa chọn
- * ở đây; khối của từng môn sửa ở cột Cấu trúc.
+ * Lựa chọn của phần tự chọn không theo mã: nhánh Tiếng Anh và nhánh nội dung (THPTQG Tin học, học viên làm phần chung
+ * cộng một nhánh), số câu từng môn theo thứ tự, tổng phải bằng số câu của phần. Phần theo mã (QDA, BCA) không còn thao
+ * tác chọn mã hay gán môn cho mã: dùng `CodedPartPanel`. Khối của từng môn sửa ở cột Cấu trúc.
  */
-export function CombinationOptions({
+export function PartOptions({
   part,
-  combinations,
   names,
   issues,
   showEnglish,
   branchSubjects,
   onToggleEnglish,
-  onAttach,
   onAddBranch,
   onConfirm,
   onRemove,
   onSectionCount,
   onEditBlocks,
-}: CombinationOptionsProps) {
+}: PartOptionsProps) {
   const t = useTranslations("exams.combinations");
   const headingId = useId();
   const englishId = useId();
   const englishHintId = useId();
-  const [attachOpen, setAttachOpen] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
   const [removing, setRemoving] = useState<ExamPartOption | null>(null);
 
   const english = part.options.find((option) => option.kind === "SUBJECT" && option.code === ENGLISH_CODE);
-  const attached = part.options.filter((option) => option.kind === "COMBINATION");
   const branches = part.options.filter((option) => option.kind === "BRANCH");
-  const available = combinations.filter((combination) => !attached.some((option) => option.code === combination.code));
   const commonCount = sum(part.sections.map(countOf));
   const branchMode = branches.length > 0 || part.sections.length > 0;
-  // Phần có phương án chọn môn (HSA Khoa học) không dùng tổ hợp KH-n: không hiện nhóm tổ hợp và quy tắc của tổ hợp.
-  const hasSubjectChoice = part.options.some((option) => option.kind === "SUBJECT_CHOICE");
-  const showCombinations = !hasSubjectChoice && (combinations.length > 0 || attached.length > 0);
-
-  const label = (option: ExamPartOption) =>
-    option.kind === "BRANCH" ? (option.name ?? option.code) : option.code;
+  const label = (option: ExamPartOption) => (option.kind === "BRANCH" ? (option.name ?? option.code) : option.code);
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
@@ -168,52 +147,6 @@ export function CombinationOptions({
         />
       )}
 
-      {showCombinations && (
-        <OptionGroup
-          title={t("combinationsTitle", { count: attached.length })}
-          caption={t("tableCaption")}
-          empty={t("empty")}
-          options={attached}
-          part={part}
-          commonCount={commonCount}
-          issues={issues}
-          label={label}
-          caption2={(option) => option.name ?? names.combination(option.code)}
-          temporary={(option) => Boolean(option.name)}
-          actions={
-            <Button type="button" variant="secondary" size="sm" aria-haspopup="dialog" onClick={() => setAttachOpen(true)}>
-              <Plus />
-              <span>{t("attach")}</span>
-            </Button>
-          }
-          onConfirm={onConfirm}
-          onRemove={setRemoving}
-          onSectionCount={onSectionCount}
-          onEditBlocks={onEditBlocks}
-          names={names}
-        />
-      )}
-
-      {!hasSubjectChoice && (
-        <ul className="ml-5 list-disc space-y-1 text-caption text-text-muted">
-          <li>{t("rules.total")}</li>
-          <li>{t("rules.fixed")}</li>
-          <li>{t("rules.expert")}</li>
-          <li>{t("rules.newCodes")}</li>
-        </ul>
-      )}
-
-      <CombinationAttachDialog
-        open={attachOpen}
-        onOpenChange={setAttachOpen}
-        available={available}
-        names={names}
-        questionCount={optionQuestionCount(part)}
-        onAttach={(combination) => {
-          onAttach(combination);
-          setAttachOpen(false);
-        }}
-      />
       <BranchDialog
         open={branchOpen}
         onOpenChange={setBranchOpen}
@@ -305,7 +238,7 @@ function EditBlocksButton({
   );
 }
 
-/** Bảng (thẻ khi khung hẹp) các lựa chọn cùng loại: tổ hợp hoặc nhánh nội dung, số câu từng môn, trạng thái, thao tác. */
+/** Bảng (thẻ khi khung hẹp) các nhánh nội dung: số câu từng môn, trạng thái, thao tác. */
 function OptionGroup({
   title,
   caption,
@@ -317,7 +250,6 @@ function OptionGroup({
   names,
   label,
   caption2,
-  temporary = () => false,
   actions,
   onConfirm,
   onRemove,
@@ -334,7 +266,6 @@ function OptionGroup({
   names: StructureNames;
   label: (option: ExamPartOption) => string;
   caption2: (option: ExamPartOption) => string;
-  temporary?: (option: ExamPartOption) => boolean;
   actions: ReactNode;
   onConfirm: (optionId: string) => void;
   onRemove: (option: ExamPartOption) => void;
@@ -381,10 +312,7 @@ function OptionGroup({
   );
   const titleCell = (option: ExamPartOption) => (
     <>
-      <span className="flex flex-wrap items-center gap-1.5 font-semibold text-text">
-        {label(option)}
-        {temporary(option) && <Badge>{t("temporaryCode")}</Badge>}
-      </span>
+      <span className="flex flex-wrap items-center gap-1.5 font-semibold text-text">{label(option)}</span>
       <span className="block min-w-36 text-caption font-normal text-text-muted">{caption2(option)}</span>
     </>
   );
@@ -470,114 +398,5 @@ function OptionGroup({
         )}
       </div>
     </div>
-  );
-}
-
-/** "Gắn tổ hợp" (chưa có bản vẽ): chọn một mã tổ hợp chưa gắn từ danh mục Tổ hợp của Cấu hình chung. */
-export function CombinationAttachDialog({
-  open,
-  onOpenChange,
-  available,
-  names,
-  questionCount,
-  onAttach,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  available: readonly CombinationOption[];
-  names: StructureNames;
-  questionCount: number;
-  onAttach: (combination: CombinationOption) => void;
-}) {
-  const t = useTranslations("exams.combinations.attachDialog");
-  const [selected, setSelected] = useState<string>("");
-  const [error, setError] = useState(false);
-  const legendId = useId();
-  const errorId = useId();
-  const choice = available.find((combination) => combination.code === selected);
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) {
-          setSelected("");
-          setError(false);
-        }
-        onOpenChange(next);
-      }}
-    >
-      <DialogContent size="md" closeLabel={t("cancel")}>
-        <DialogHeader>
-          <DialogTitle>{t("title")}</DialogTitle>
-          <DialogDescription>{t("description", { count: questionCount })}</DialogDescription>
-        </DialogHeader>
-        {available.length === 0 ? (
-          <p className="text-body text-text-muted">{t("empty")}</p>
-        ) : (
-          <fieldset
-            className="flex flex-col gap-2"
-            aria-describedby={error ? errorId : undefined}
-            aria-invalid={error || undefined}
-          >
-            <legend id={legendId} className="mb-1 text-field-label font-medium text-text-secondary">
-              {t("legend")}
-            </legend>
-            {available.map((combination) => (
-              <label
-                key={combination.code}
-                className={cn(
-                  "flex cursor-pointer items-start gap-3 rounded-md border p-3",
-                  selected === combination.code ? "border-primary-text bg-primary-50" : "border-border",
-                )}
-              >
-                <input
-                  type="radio"
-                  name="combination"
-                  value={combination.code}
-                  checked={selected === combination.code}
-                  onChange={() => {
-                    setSelected(combination.code);
-                    setError(false);
-                  }}
-                  className={cn("mt-0.5 size-4 shrink-0 accent-primary-fill", focusRing)}
-                />
-                <span className="flex flex-col gap-0.5">
-                  <span className="font-semibold text-text">{combination.code}</span>
-                  <span className="text-caption text-text-muted">
-                    {combination.subjectCodes.map((code) => names.subject(code)).join(" – ")}
-                  </span>
-                </span>
-              </label>
-            ))}
-            {error && (
-              <p id={errorId} role="alert" className="text-caption text-danger">
-                {t("required")}
-              </p>
-            )}
-          </fieldset>
-        )}
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-            {t("cancel")}
-          </Button>
-          {available.length > 0 && (
-            <Button
-              type="button"
-              onClick={() => {
-                if (!choice) {
-                  setError(true);
-                  return;
-                }
-                setSelected("");
-                onAttach(choice);
-              }}
-            >
-              {t("submit")}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
