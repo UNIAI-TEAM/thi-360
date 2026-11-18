@@ -4211,6 +4211,7 @@
             "tags": "Text type (tags)"
           },
           "dropped": "{sets, plural, one {# set is} other {# sets are}} left. The own conditions of set {list} were removed from the draft.",
+          "droppedToTotal": "Switched to entering the total only. The own conditions of set {list} were removed from the draft.",
           "edit": "Edit the conditions of set {index, number}",
           "editLabel": "Edit",
           "editorTitle": "Conditions of set {index, number}",

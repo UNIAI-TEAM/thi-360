@@ -123,6 +123,26 @@ describe("chùm cỡ linh hoạt", () => {
     expect(screen.getByRole("radio", { name: "Chỉ nhập tổng câu con" })).toBeChecked();
     expect(screen.getByRole("textbox", { name: /^Tổng số câu con/ })).toHaveValue("18");
   });
+
+  it("chuyển sang 'Chỉ nhập tổng câu con' khi chùm có điều kiện riêng: bỏ slots và báo chùm bị bỏ", async () => {
+    const user = userEvent.setup();
+    const latest = renderEditor(
+      makeBlock({ setCount: 3, setSize: 2, questionCount: 6, slots: [{ index: 1, tagCodes: ["REVIEW"] }, { index: 2 }, { index: 3, tagCodes: ["GRAPH"] }] }),
+    );
+    expect(screen.queryByText(/đã bị bỏ khỏi bản nháp/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Chỉ nhập tổng câu con" }));
+    expect(latest.block).not.toHaveProperty("slots");
+    expect(screen.getByText(/Điều kiện riêng của chùm 1, 3 đã bị bỏ khỏi bản nháp/)).toHaveAttribute("role", "status");
+    await user.click(screen.getByRole("radio", { name: "Khai số chùm và số câu con" }));
+    expect(screen.queryByText(/đã bị bỏ khỏi bản nháp/)).not.toBeInTheDocument();
+  });
+
+  it("chuyển sang 'Chỉ nhập tổng câu con' khi chùm chưa có điều kiện riêng: không có thông báo", async () => {
+    const user = userEvent.setup();
+    renderEditor(makeBlock());
+    await user.click(screen.getByRole("radio", { name: "Chỉ nhập tổng câu con" }));
+    expect(screen.queryByText(/đã bị bỏ khỏi bản nháp/)).not.toBeInTheDocument();
+  });
 });
 
 describe("ô Mọi câu con thuộc chủ đề", () => {

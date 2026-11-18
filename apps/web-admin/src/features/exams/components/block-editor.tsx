@@ -17,7 +17,7 @@ import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock 
 import { useAvailableQuestions } from "../queries";
 import { effectiveScope } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
-import { applyBlockPatch, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
+import { applyBlockPatch, droppedSlotIndexes, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
 import { blockFieldAnchor, type BlockField } from "./block-form-fields";
 import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
@@ -182,7 +182,8 @@ export function BlockEditor({
   const setSetMode = (mode: "total" | "sets") => {
     if ((mode === "total") === flexible) return;
     update(switchSetMode(block, mode));
-    setDroppedSlots([]);
+    // Sang "chỉ nhập tổng" bỏ điều kiện riêng từng chùm (máy chủ từ chối `slots` không có số chùm): báo như khi đổi số chùm.
+    setDroppedSlots(mode === "total" ? droppedSlotIndexes(block.slots, 0) : []);
   };
   const setScope = (knowledgeScope: KnowledgeScope | null) => {
     if (!isSet || !knowledgeScope) return update({ knowledgeScope });
@@ -443,7 +444,9 @@ export function BlockEditor({
       {summaryText && <p className="text-label font-semibold text-text tabular-nums">{summaryText}</p>}
       {droppedSlots.length > 0 && (
         <p role="status" className="rounded-md border border-info/30 bg-info-bg px-3 py-2 text-body text-info">
-          {tForm("slots.dropped", { sets: block.setCount ?? 0, list: droppedSlots.join(", ") })}
+          {flexible
+            ? tForm("slots.droppedToTotal", { list: droppedSlots.join(", ") })
+            : tForm("slots.dropped", { sets: block.setCount ?? 0, list: droppedSlots.join(", ") })}
         </p>
       )}
 

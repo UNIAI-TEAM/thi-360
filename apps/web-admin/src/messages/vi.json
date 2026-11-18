@@ -4211,6 +4211,7 @@
             "tags": "Loại văn bản (nhãn)"
           },
           "dropped": "Số chùm còn {sets, number}. Điều kiện riêng của chùm {list} đã bị bỏ khỏi bản nháp.",
+          "droppedToTotal": "Đã chuyển sang chỉ nhập tổng câu con. Điều kiện riêng của chùm {list} đã bị bỏ khỏi bản nháp.",
           "edit": "Sửa điều kiện chùm {index, number}",
           "editLabel": "Sửa",
           "editorTitle": "Điều kiện chùm {index, number}",
