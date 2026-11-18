@@ -66,9 +66,8 @@ class ExamApiIT extends AbstractIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_CODE_TAKEN"));
-        String invalidScopeBody = body.replace("\"FULL\"", "\"SUBJECT\"")
-                .replace("\"name\":\"Draft\"", "\"subjectCode\":\"TOAN\",\"name\":\"Draft\"")
-                .replace(code, code + "X");
+        // THPTQG has no FULL scope; V-ACT SUBJECT is now allowed.
+        String invalidScopeBody = body.replace("\"VACT\"", "\"THPTQG\"").replace(code, code + "X");
         mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
