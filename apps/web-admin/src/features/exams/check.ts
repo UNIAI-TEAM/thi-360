@@ -1,3 +1,4 @@
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import type { CheckIssue, ExamCheckResult, ExamPathRef, PathChoice } from "./review-types";
 import type { ExamDetail, ExamPart, ExamSection, ExamSectionState, QuestionBlock, StructureCombination } from "./types";
 
@@ -146,20 +147,28 @@ export interface IssueGroup {
   issues: CheckIssue[];
 }
 
+/** So mã và tên không phân biệt hoa thường và Đ/đ với D/d: mã `QD02` mở đầu tên `QĐ02 · Hóa học – Sinh học`. */
+function foldCode(value: string): string {
+  return value.replace(/\u0110/g, "D").replace(/\u0111/g, "d").toLowerCase();
+}
+
 /**
- * Nhãn một mã tổ hợp trong tên đường: `QD02 · Hóa học – Sinh học`. Tên lấy theo ngôn ngữ từ cấu trúc (`nameVi` / `nameEn`,
- * ngôn ngữ kia làm dự phòng), không có thì tên trong kết quả kiểm tra. Tên trống, trùng mã (kết quả kiểm tra đặt tên = mã)
- * hoặc đã mở đầu bằng mã không được lặp mã.
+ * Nhãn MỘT mã tổ hợp, nơi duy nhất ghép tên đường (`usePathLabel` gọi qua đây): `QĐ02 · Hóa học – Sinh học` (vi),
+ * `QD02 · Chemistry – Biology` (en). `locale` là giá trị `useLocale()` của next-intl (`en-GB` cho tiếng Anh). Tên theo
+ * ngôn ngữ lấy từ cấu trúc (`nameVi` / `nameEn`, không lấy tên ngôn ngữ kia), không có thì `fallback` (tên trong kết quả
+ * kiểm tra hoặc danh mục, đã theo ngôn ngữ giao diện), không có nữa thì chính mã. Tên trống hoặc trùng mã chỉ in mã; tên
+ * đã mở đầu bằng mã (so sau khi đổi Đ -> D, không phân biệt hoa thường) giữ nguyên, không in lặp mã.
  */
 export function combinationLabel(
   code: string,
   names: { combination?: StructureCombination; locale: string; fallback?: string | null },
 ): string {
   const { combination, locale, fallback } = names;
-  const localized = locale === "en" ? [combination?.nameEn, combination?.nameVi] : [combination?.nameVi, combination?.nameEn];
-  const name = [...localized, fallback].map((item) => item?.trim()).find((item) => item && item.toLowerCase() !== code.toLowerCase());
+  const localized = normalizeUiLocale(locale) === "en" ? combination?.nameEn : combination?.nameVi;
+  const foldedCode = foldCode(code);
+  const name = [localized, fallback].map((item) => item?.trim()).find((item) => item && foldCode(item) !== foldedCode);
   if (!name) return code;
-  return name.toLowerCase().startsWith(code.toLowerCase()) ? name : `${code} · ${name}`;
+  return foldCode(name).startsWith(foldedCode) ? name : `${code} · ${name}`;
 }
 
 /**

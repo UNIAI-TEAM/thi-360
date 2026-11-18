@@ -768,10 +768,6 @@ function BlocksSection({
   const pathLabel = usePathLabel(exam.id);
   const defaultTab = (result.paths.find((path) => path.result !== "VALID") ?? result.paths[0])?.pathId ?? "";
   const active = value && result.paths.some((path) => path.pathId === value) ? value : defaultTab;
-  const tabLabel = (path: PathCheck) =>
-    path.choices.length
-      ? path.choices.map((choice) => (choice.kind === "COMBINATION" ? choice.code : choice.name)).join(" + ")
-      : t("path.single");
 
   return (
     <section aria-labelledby="review-blocks-title" className="flex flex-col gap-3">
@@ -791,7 +787,7 @@ function BlocksSection({
           {result.paths.map((path) => (
             <TabsTrigger key={path.pathId} value={path.pathId} className="gap-1.5">
               {path.result !== "VALID" && <PathResultIcon result={path.result} className="size-3.5 shrink-0" />}
-              {tabLabel(path)}
+              {pathLabel(path)}
               {path.result !== "VALID" && <span className="sr-only">{`: ${t(`result.${path.result}`)}`}</span>}
             </TabsTrigger>
           ))}
