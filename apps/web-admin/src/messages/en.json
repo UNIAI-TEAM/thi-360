@@ -4110,6 +4110,7 @@
         "childConditions": {
           "add": "Add a position condition",
           "empty": "No position conditions yet.",
+          "flexibleNote": "Position conditions cannot be used when you enter the total sub-questions only, because the set size is not fixed.",
           "from": "From sub-question no.",
           "hint": "The sub-question at a position or position range in the set must have at least one chosen MAPID. The system only picks sets with enough matching sub-questions.",
           "issues": {

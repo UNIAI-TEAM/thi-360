@@ -143,6 +143,28 @@ describe("chùm cỡ linh hoạt", () => {
     await user.click(screen.getByRole("radio", { name: "Chỉ nhập tổng câu con" }));
     expect(screen.queryByText(/đã bị bỏ khỏi bản nháp/)).not.toBeInTheDocument();
   });
+
+  it("chuyển sang 'Chỉ nhập tổng câu con' bỏ điều kiện theo vị trí câu con, ẩn bảng điều kiện đó và ghi lý do; chuyển lại thì bảng hiện trở lại", async () => {
+    const user = userEvent.setup();
+    const latest = renderEditor(makeBlock({ childConditions: [{ from: 1, to: 2, nodeIds: ["N1"] }] }));
+    expect(screen.getByRole("region", { name: "Điều kiện theo vị trí câu con" })).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Chỉ nhập tổng câu con" }));
+    expect(latest.block).not.toHaveProperty("childConditions");
+    expect(screen.queryByRole("region", { name: "Điều kiện theo vị trí câu con" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Điều kiện theo vị trí câu con không dùng được khi chỉ nhập tổng câu con/)).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Khai số chùm và số câu con" }));
+    expect(screen.getByRole("region", { name: "Điều kiện theo vị trí câu con" })).toBeInTheDocument();
+    expect(screen.queryByText(/không dùng được khi chỉ nhập tổng câu con/)).not.toBeInTheDocument();
+  });
+
+  it("nhóm tải từ máy chủ ở chế độ tổng đã có điều kiện theo vị trí: ẩn bảng nhưng không tự xóa khi lưu", async () => {
+    const user = userEvent.setup();
+    const stored = [{ from: 1, to: 2, nodeIds: ["N1"] }];
+    const latest = renderEditor(makeBlock({ setCount: null, setSize: null, childConditions: stored }));
+    expect(screen.queryByRole("region", { name: "Điều kiện theo vị trí câu con" })).not.toBeInTheDocument();
+    await typeInto(user, /^Tổng số câu con/, "12");
+    expect(latest.block).toMatchObject({ questionCount: 12, childConditions: stored });
+  });
 });
 
 describe("ô Mọi câu con thuộc chủ đề", () => {

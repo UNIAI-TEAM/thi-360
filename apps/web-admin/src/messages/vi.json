@@ -4110,6 +4110,7 @@
         "childConditions": {
           "add": "Thêm điều kiện theo vị trí",
           "empty": "Chưa có điều kiện theo vị trí.",
+          "flexibleNote": "Điều kiện theo vị trí câu con không dùng được khi chỉ nhập tổng câu con, vì cỡ chùm không cố định.",
           "from": "Từ câu con số",
           "hint": "Câu con ở vị trí hoặc dải vị trí trong chùm phải có ít nhất một MAPID đã chọn. Hệ thống chỉ chọn chùm có đủ câu con khớp.",
           "issues": {
