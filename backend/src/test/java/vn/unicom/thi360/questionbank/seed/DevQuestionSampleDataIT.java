@@ -174,6 +174,24 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
     }
 
     @Test
+    @Transactional
+    void aCorrectedOldHeadRaisesTheSubjectSourceRevisionOnceOnly() throws Exception {
+        installOldHead();
+        long before = totalRevision();
+        long subjectBefore = subjectRevision("SEED-VSAT-DIA-SET-001");
+
+        runSeed();
+
+        // The four READY roots left a root-tag filter: their subject moves by four, no other subject does.
+        assertThat(subjectRevision("SEED-VSAT-DIA-SET-001")).isEqualTo(subjectBefore + 4);
+        assertThat(totalRevision()).isEqualTo(before + 4);
+
+        long afterFirst = totalRevision();
+        runSeed();
+        assertThat(totalRevision()).isEqualTo(afterFirst);
+    }
+
+    @Test
     void hscaPartTwoSetsOfEachScienceSubjectHaveFiveChildrenAtAQuarterPoint() throws Exception {
         for (String subject : List.of("TOAN", "LY", "HOA", "SINH")) {
             List<Sample> sets = samples("SEED-HSCA-" + subject + "-SET-%");
@@ -491,6 +509,18 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
                         from questionbank.question_version v where v.question_id = q.id) as versions
                 from questionbank.question q where %s order by q.code
                 """.formatted(where), (Object[]) codePatterns);
+    }
+
+    private long totalRevision() {
+        return jdbc.queryForObject("select coalesce(sum(revision), 0) from questionbank.question_source_revision",
+                Long.class);
+    }
+
+    private long subjectRevision(String rootCode) {
+        return jdbc.queryForObject("""
+                select coalesce((select revision from questionbank.question_source_revision
+                                 where subject_item_id = (select subject_item_id from questionbank.question where code = ?)), 0)
+                """, Long.class, rootCode);
     }
 
     private List<Integer> tableCounts() {

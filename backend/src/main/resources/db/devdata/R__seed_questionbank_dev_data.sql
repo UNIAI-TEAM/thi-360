@@ -1530,6 +1530,13 @@ SET snapshot = jsonb_set(v.snapshot, '{tagItemIds}', COALESCE(
 WHERE v.version_no = 1
   AND v.question_id IN (SELECT c.id FROM questionbank.question c JOIN seed_dia_fix f ON c.parent_id = f.root_id);
 
+-- The READY source of these subjects changed (roots left a root-tag filter), so cached proofs
+-- must be invalidated in the same transaction; a rerun finds no root to correct and bumps nothing.
+INSERT INTO questionbank.question_source_revision (subject_item_id, revision)
+SELECT subject_id, count(*) FROM seed_dia_fix GROUP BY subject_id
+ON CONFLICT (subject_item_id) DO UPDATE
+SET revision = questionbank.question_source_revision.revision + EXCLUDED.revision;
+
 DROP TABLE seed_dia_fix, seed_dia_legacy;
 
 DROP TABLE seed_be14_classification;
