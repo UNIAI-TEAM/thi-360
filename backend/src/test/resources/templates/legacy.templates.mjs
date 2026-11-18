@@ -1,4 +1,4 @@
-// Preserve the existing V-ACT and THPTQG figures while assigning stable IDs and labels.
+// Preserve the older SP2E assumption while assigning stable IDs and labels.
 import {assignGroups} from './groups.mjs';
 
 import {readFileSync} from 'node:fs';
@@ -22,7 +22,6 @@ function legacyStructure(code) {
   return structure;
 }
 const source=[];
-source.push({code:'VACT_FULL',kindCode:'VACT',scope:'FULL',partCode:null,subjectCode:null,structureYear:null,matrixYear:null,timing:'SHARED',durationMinutes:150,maxScore:1200,expertNote:'Điểm luyện tập tạm tính 10 điểm mỗi câu; kỳ thi thật dùng IRT.',label:'V-ACT – Đầy đủ cấu trúc',summary:'120 câu trong 150 phút, thang 1.200 điểm.',buildMode:'STANDARD',isDefault:true,existing:true,expected:{questions:120,maxPoints:1200},structure:legacyStructure('VACT_FULL')});
 // Keep the already-seeded 2025 assumption as a non-default alternative; it is not the 40-question 2026 structure.
 const math=legacyStructure('SP2E_MATH_2025');
 const blocks=math.parts[0].sections[0].blocks;
@@ -30,12 +29,12 @@ math.parts=blocks.map((block,i)=>({name:['Phần I · Trắc nghiệm','Phần I
 source.push({code:'SP2E_MATH_2025',kindCode:'SP2E',scope:'SUBJECT',partCode:null,subjectCode:'TOAN',structureYear:2025,matrixYear:2025,timing:'SHARED',durationMinutes:90,maxScore:10,expertNote:'Cấu trúc 12–4–6 và điểm là giả định, chờ chuyên gia xác nhận.',label:'SP2E – Toán – Cấu trúc giả định 2025',summary:'22 câu trong 90 phút: trắc nghiệm, đúng/sai và trả lời ngắn.',buildMode:'STANDARD',isDefault:false,existing:true,expected:{questions:22,maxPoints:10},structure:math});
 // Blocks preserved from the earlier seeds had templateGroupCode null; every
 // block now gets a stable <KIND>_<SUBJECT>_<GROUP> code.
-const legacyGroup={'Trắc nghiệm chọn một':'SINGLE','Trắc nghiệm':'SINGLE','Đúng/Sai':'TF','Đúng/Sai chung':'TF_COMMON','Đúng/Sai Khoa học máy tính':'TF_CS','Đúng/Sai Tin học ứng dụng':'TF_ICT','Trả lời ngắn':'SHORT','Đọc hiểu':'READING','Viết đoạn văn (khoảng 200 chữ)':'PARA','Viết bài văn (khoảng 600 chữ)':'ESSAY','Tiếng Việt':'VN','Tiếng Anh':'EN','Toán học':'MATH','Logic, phân tích số liệu':'LOGIC','Suy luận khoa học':'SCIENCE'};
+const legacyGroup={'Trắc nghiệm chọn một':'SINGLE','Trắc nghiệm':'SINGLE','Đúng/Sai':'TF','Đúng/Sai chung':'TF_COMMON','Đúng/Sai Khoa học máy tính':'TF_CS','Đúng/Sai Tin học ứng dụng':'TF_ICT','Trả lời ngắn':'SHORT','Đọc hiểu':'READING','Viết đoạn văn (khoảng 200 chữ)':'PARA','Viết bài văn (khoảng 600 chữ)':'ESSAY'};
 for (const template of source) {
   assignGroups(template, ({block,subjectCode}) => {
     const suffix=legacyGroup[block.name];
     if(!suffix) return null;
-    return template.kindCode==='VACT'?`VACT_${suffix}`:`${template.kindCode}_${subjectCode}_${suffix}`;
+    return `${template.kindCode}_${subjectCode}_${suffix}`;
   });
 }
 export default source;
