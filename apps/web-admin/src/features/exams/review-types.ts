@@ -193,8 +193,8 @@ export interface CheckIssue {
   optionId: string | null;
   gradeCode: string | null;
   difficultyCode: string | null;
-  /** Chiều của chỉ tiêu hoặc của số bị khóa: lớp, độ khó, năng lực (`GRADE`…); `COMMANDS`/`POINTS` của `DISPLAY_SEGMENT_MISMATCH` (BE-20); `COUNT`/`SET_COUNT`/`SET_SIZE`/`QUESTION_TYPE` của `BLOCK_COUNT_LOCKED`. */
-  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | "COUNT" | "SET_COUNT" | "SET_SIZE" | "QUESTION_TYPE" | "COMMANDS" | "POINTS" | null;
+  /** Chiều của chỉ tiêu hoặc của số bị khóa: lớp, độ khó, năng lực (`GRADE`…); `COMMANDS`/`POINTS` của `DISPLAY_SEGMENT_MISMATCH` (BE-20); `COUNT`/`SET_COUNT`/`SET_SIZE`/`TYPE` của `BLOCK_COUNT_LOCKED`. */
+  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | "COUNT" | "SET_COUNT" | "SET_SIZE" | "TYPE" | "COMMANDS" | "POINTS" | null;
   /** Năng lực của chỉ tiêu (chiều năng lực, V-ACT). */
   competencyCode: string | null;
   /** Dạng trả lời của chỉ tiêu cấp môn (`ANSWER_TYPE_SHORTAGE`). */

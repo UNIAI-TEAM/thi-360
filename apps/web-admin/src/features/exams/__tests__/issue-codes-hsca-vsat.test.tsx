@@ -195,11 +195,43 @@ describe("mã kiểm tra mới có câu chữ vi và en", () => {
     expect(await textOf(locked("COUNT"))).toBe("Khối Toán · Dong 2: mẫu khóa số câu của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
     expect(await textOf(locked("SET_COUNT"))).toBe("Khối Toán · Dong 2: mẫu khóa số chùm của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
     expect(await textOf(locked("SET_SIZE"))).toBe("Khối Toán · Dong 2: mẫu khóa số câu mỗi chùm; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
-    expect(await textOf(locked("QUESTION_TYPE"))).toBe("Khối Toán · Dong 2: mẫu khóa dạng của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("TYPE"))).toBe("Khối Toán · Dong 2: mẫu khóa dạng của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
     expect(await textOf(locked("COUNT", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa số câu của dòng. Đưa dòng về đúng như mẫu.");
     expect(await textOf(locked("SET_COUNT", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa số chùm của dòng. Đưa dòng về đúng như mẫu.");
     expect(await textOf(locked("SET_SIZE", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa số câu mỗi chùm. Đưa dòng về đúng như mẫu.");
-    expect(await textOf(locked("QUESTION_TYPE", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa dạng của dòng. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("TYPE", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa dạng của dòng. Đưa dòng về đúng như mẫu.");
+  });
+
+  it("BLOCK_COUNT_LOCKED: chiều lạ (kể cả QUESTION_TYPE cũ và CHILD_TYPE tương lai) về câu chung, không in mã", async () => {
+    const wireIssue = (dimension: string) => ({
+      code: "BLOCK_COUNT_LOCKED",
+      severity: "ERROR",
+      group: "STRUCTURE",
+      subjectCode: "TOAN",
+      blockName: "Dong 2",
+      dimension,
+      required: 20,
+      available: 22,
+    });
+
+    for (const dimension of ["CHILD_TYPE", "QUESTION_TYPE"]) {
+      new FakeServer()
+        .on("GET", `${EXAM_PATH}/check`, {
+          status: 200,
+          body: { ...checkResultWire("INVALID"), paths: [{ pathId: "default", result: "INVALID", issues: [wireIssue(dimension)] }] },
+        })
+        .install();
+
+      const issue = (await getExamCheck({ examId: EXAM_ID }))?.paths[0]?.issues[0];
+
+      expect(issue?.dimension).toBeNull();
+      const vi = await textOf(issue as CheckIssue);
+      const en = await textOf(issue as CheckIssue, "en");
+
+      expect(vi).toBe("Khối Toán · Dong 2: mẫu khóa dạng và số lượng của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
+      expect(en).toBe("Block Mathematics · Dong 2: the template locks the row's type and counts; the template keeps 20, the row has 22. Set the row back to the template.");
+      for (const text of [vi, en]) expect(text).not.toContain(dimension);
+    }
   });
 
   it("en: cùng nội dung bằng tiếng Anh", async () => {
@@ -215,7 +247,7 @@ describe("mã kiểm tra mới có câu chữ vi và en", () => {
     expect(await textOf(issueOf({ code: "BLOCK_COUNT_LOCKED", dimension: "SET_COUNT", required: 20, available: 22 }), "en")).toBe(
       "Block Mathematics · Dong 2: the template locks the row's set count; the template keeps 20, the row has 22. Set the row back to the template.",
     );
-    expect(await textOf(issueOf({ code: "BLOCK_COUNT_LOCKED", dimension: "QUESTION_TYPE" }), "en")).toBe(
+    expect(await textOf(issueOf({ code: "BLOCK_COUNT_LOCKED", dimension: "TYPE" }), "en")).toBe(
       "Block Mathematics · Dong 2: the template locks the row's question type. Set the row back to the template.",
     );
     expect(

@@ -420,7 +420,7 @@ const ISSUE_DIMENSIONS: Record<string, true> = {
   COUNT: true,
   SET_COUNT: true,
   SET_SIZE: true,
-  QUESTION_TYPE: true,
+  TYPE: true,
   COMMANDS: true,
   POINTS: true,
 };
