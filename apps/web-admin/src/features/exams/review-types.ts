@@ -150,6 +150,7 @@ export const CHECK_ISSUE_CODES = [
   "BLOCK_COUNT_LOCKED",
   "OMITTED_BLOCK_LOCKED",
   "SCALE_INCLUDES_EXCLUDED_PART",
+  "DISPLAY_SEGMENT_MISMATCH",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
@@ -192,7 +193,8 @@ export interface CheckIssue {
   optionId: string | null;
   gradeCode: string | null;
   difficultyCode: string | null;
-  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | null;
+  /** Chiều của chỉ tiêu hoặc của số bị khóa: lớp, độ khó, năng lực (`GRADE`…); `COMMANDS`/`POINTS` của `DISPLAY_SEGMENT_MISMATCH` (BE-20); `COUNT`/`SET_COUNT`/`SET_SIZE`/`QUESTION_TYPE` của `BLOCK_COUNT_LOCKED`. */
+  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | "COUNT" | "SET_COUNT" | "SET_SIZE" | "QUESTION_TYPE" | "COMMANDS" | "POINTS" | null;
   /** Năng lực của chỉ tiêu (chiều năng lực, V-ACT). */
   competencyCode: string | null;
   /** Dạng trả lời của chỉ tiêu cấp môn (`ANSWER_TYPE_SHORTAGE`). */
@@ -212,6 +214,8 @@ export interface CheckIssue {
   slotIndex?: number | null;
   /** Vị trí câu con (từ 1) của lỗi điều kiện câu con (`CHILD_CONDITION_SHORTAGE`); `null`: không gắn vị trí. */
   childPosition?: number | null;
+  /** Phân đoạn hiển thị của `DISPLAY_SEGMENT_MISMATCH` (BE-20); tên tra theo `displaySegments` của phần, không in mã. Viết tay đến khi BE-20 sinh lại client. */
+  segmentCode?: string | null;
 }
 
 /** Số câu cần của một ô (ma trận kết hợp) sau khi quy đổi tỷ lệ. */

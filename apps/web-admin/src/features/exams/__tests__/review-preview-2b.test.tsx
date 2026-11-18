@@ -770,4 +770,38 @@ describe("sinh thử không được", () => {
     expect(await screen.findByText(/Môn .+ chưa hoàn tất cấu hình\./)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Đến dòng ma trận/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/structure?section=sec-math`);
   });
+
+  it("DISPLAY_SEGMENT_MISMATCH: hiện trong danh sách lỗi với điểm thập phân, không in mã phân đoạn, và mở đúng phần", async () => {
+    const user = userEvent.setup();
+    const failed = {
+      examId: EXAM_ID,
+      status: "FAILED",
+      reason: "INVALID",
+      seed: 1,
+      generatedAt: "2026-11-17T01:00:00Z",
+      path: { pathId: "default", choices: [] },
+      issues: [
+        {
+          key: "seg",
+          code: "DISPLAY_SEGMENT_MISMATCH",
+          severity: "ERROR",
+          group: "DISPLAY",
+          partName: "Part 1",
+          dimension: "POINTS",
+          segmentCode: "SEG_RAW_CODE",
+          required: 12.5,
+          available: 10.25,
+          location: { partId: "part-1" },
+        },
+      ],
+    };
+    const server = new FakeServer().on("POST", PREVIEW_PATH, { status: 200, body: failed });
+    renderPanel(server, mapExamDetail(examDetailWire()));
+
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+
+    expect(await screen.findByText("Part 1: một phân đoạn có 10,25 điểm trong khi khai báo 12,5 điểm.")).toBeInTheDocument();
+    expect(screen.queryByText(/SEG_RAW_CODE/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Đến dòng ma trận/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/structure?part=part-1`);
+  });
 });

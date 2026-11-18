@@ -25,13 +25,14 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
   return { ...(await importOriginal()), getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
-/** Năm mã kiểm tra của phần bổ sung H-SCA, V-SAT (spec mục 6). */
+/** Mã kiểm tra của phần bổ sung H-SCA, V-SAT (spec mục 6) và mã phân đoạn của BE-20. */
 const NEW_CODES = [
   "AUDIO_SHORTAGE",
   "POINTS_SHORTAGE",
   "BLOCK_COUNT_LOCKED",
   "OMITTED_BLOCK_LOCKED",
   "SCALE_INCLUDES_EXCLUDED_PART",
+  "DISPLAY_SEGMENT_MISMATCH",
 ] as const satisfies readonly CheckIssueCode[];
 
 function issueOf(overrides: Partial<CheckIssue>): CheckIssue {
@@ -61,20 +62,25 @@ function issueOf(overrides: Partial<CheckIssue>): CheckIssue {
   };
 }
 
-function IssueLine({ issue }: { issue: CheckIssue }) {
-  const issueText = useIssueText();
+function IssueLine({ issue, exam }: { issue: CheckIssue; exam?: Parameters<typeof useIssueText>[0] }) {
+  const issueText = useIssueText(exam);
   // Câu chỉ hiện sau khi danh mục tải xong, để tên môn là tên theo ngôn ngữ, không phải mã.
   return useContentReference().isSuccess ? <p data-testid="line">{issueText(issue)}</p> : null;
 }
 
-async function textOf(issue: CheckIssue, language: "vi" | "en" = "vi") {
-  const { unmount } = renderWithProviders(<IssueLine issue={issue} />, language === "en" ? { locale: "en", messages: en } : undefined);
+async function textOf(issue: CheckIssue, language: "vi" | "en" = "vi", exam?: Parameters<typeof useIssueText>[0]) {
+  const { unmount } = renderWithProviders(<IssueLine issue={issue} exam={exam} />, language === "en" ? { locale: "en", messages: en } : undefined);
   const text = (await screen.findByTestId("line")).textContent ?? "";
   unmount();
   return text;
 }
 
-describe("năm mã kiểm tra mới có câu chữ vi và en", () => {
+/** Cấu trúc tối thiểu có `displaySegments` của phần (BE-20), để `useIssueText` tra tên phân đoạn theo `segmentCode`. */
+const SEGMENT_EXAM = {
+  parts: [{ id: "part-1", name: "Phần Tiếng Anh", displaySegments: [{ code: "P2", name: "Phần II" }] }],
+} as unknown as Parameters<typeof useIssueText>[0];
+
+describe("mã kiểm tra mới có câu chữ vi và en", () => {
   it("web biết cả năm mã, mỗi mã một lần, và giữ nguyên khi đọc từ máy chủ", async () => {
     for (const code of NEW_CODES) expect(CHECK_ISSUE_CODES.filter((item) => item === code)).toHaveLength(1);
     const issues = NEW_CODES.map((code) => ({ code, severity: "ERROR", group: "SOURCE" }));
@@ -90,6 +96,30 @@ describe("năm mã kiểm tra mới có câu chữ vi và en", () => {
     expect(result?.paths[0]?.issues.map((issue) => issue.code)).toEqual([...NEW_CODES]);
   });
 
+  it("giữ segmentCode và chiều của DISPLAY_SEGMENT_MISMATCH, partId lấy theo location khi cần", async () => {
+    new FakeServer()
+      .on("GET", `${EXAM_PATH}/check`, {
+        status: 200,
+        body: {
+          ...checkResultWire("INVALID"),
+          paths: [
+            {
+              pathId: "default",
+              result: "INVALID",
+              issues: [
+                { key: "s1", code: "DISPLAY_SEGMENT_MISMATCH", severity: "ERROR", group: "DISPLAY", dimension: "POINTS", segmentCode: "P2", required: 12.5, available: 10, location: { partId: "part-9" } },
+              ],
+            },
+          ],
+        },
+      })
+      .install();
+
+    const issue = (await getExamCheck({ examId: EXAM_ID }))?.paths[0]?.issues[0];
+
+    expect(issue).toMatchObject({ code: "DISPLAY_SEGMENT_MISMATCH", partId: "part-9", dimension: "POINTS", segmentCode: "P2", required: 12.5, available: 10 });
+  });
+
   it("vi: nêu khối và số cần, số có; không rơi về INFO_MISSING", async () => {
     expect(await textOf(issueOf({ code: "AUDIO_SHORTAGE", required: 3, available: 2 }))).toBe(
       "Khối Toán · Dong 2: nguồn có audio chưa đủ cho dòng: cần 3, hiện ghép được 2.",
@@ -98,8 +128,22 @@ describe("năm mã kiểm tra mới có câu chữ vi và en", () => {
       "Khối Toán · Dong 2: nguồn đúng điểm mỗi câu của dòng chưa đủ: cần 5, hiện chỉ có 2 đúng điểm.",
     );
     expect(await textOf(issueOf({ code: "BLOCK_COUNT_LOCKED", group: "STRUCTURE", required: 20, available: 22 }))).toBe(
-      "Khối Toán · Dong 2: mẫu đã khóa dạng, số câu và số chùm của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.",
+      "Khối Toán · Dong 2: mẫu khóa dạng và số lượng của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.",
     );
+    expect(
+      await textOf(
+        issueOf({ code: "DISPLAY_SEGMENT_MISMATCH", group: "DISPLAY", blockName: null, subjectCode: null, partId: "part-1", partName: "Phần Tiếng Anh", dimension: "COMMANDS", segmentCode: "P2", required: 4, available: 3 }),
+        "vi",
+        SEGMENT_EXAM,
+      ),
+    ).toBe("Phần Tiếng Anh: phân đoạn Phần II có 3 lệnh trong khi khai báo 4 lệnh.");
+    expect(
+      await textOf(
+        issueOf({ code: "DISPLAY_SEGMENT_MISMATCH", group: "DISPLAY", blockName: null, subjectCode: null, partId: "part-1", partName: "Phần Tiếng Anh", dimension: "POINTS", segmentCode: "P2", required: 12.5, available: 10 }),
+        "vi",
+        SEGMENT_EXAM,
+      ),
+    ).toBe("Phần Tiếng Anh: phân đoạn Phần II có 10 điểm trong khi khai báo 12,5 điểm.");
     expect(await textOf(issueOf({ code: "OMITTED_BLOCK_LOCKED", group: "STRUCTURE" }))).toBe(
       "Khối Toán · Dong 2: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
     );
@@ -116,6 +160,28 @@ describe("năm mã kiểm tra mới có câu chữ vi và en", () => {
     expect(text).toBe("Thang đang là 150, tổng điểm của bài là 110. Chênh 30 điểm, đúng bằng điểm của phần đã lược Viet. Đặt thang 110.");
   });
 
+  it("DISPLAY_SEGMENT_MISMATCH: không tra được tên phân đoạn thì nói chung, không in mã", async () => {
+    const unknownSegment = issueOf({ code: "DISPLAY_SEGMENT_MISMATCH", group: "DISPLAY", blockName: null, subjectCode: null, partId: "part-1", partName: "Phần Tiếng Anh", dimension: "COMMANDS", segmentCode: "P9", required: 4, available: 3 });
+
+    expect(await textOf(unknownSegment, "vi", SEGMENT_EXAM)).toBe("Phần Tiếng Anh: một phân đoạn có 3 lệnh trong khi khai báo 4 lệnh.");
+    expect(await textOf({ ...unknownSegment, segmentCode: null }, "vi", SEGMENT_EXAM)).toBe("Phần Tiếng Anh: một phân đoạn có 3 lệnh trong khi khai báo 4 lệnh.");
+    expect(await textOf(unknownSegment)).toBe("Phần Tiếng Anh: một phân đoạn có 3 lệnh trong khi khai báo 4 lệnh.");
+  });
+
+  it("BLOCK_COUNT_LOCKED nêu đúng đại lượng bị khóa, kể cả khi máy chủ không trả số", async () => {
+    const locked = (dimension: CheckIssue["dimension"], required: number | null = 20, available: number | null = 22) =>
+      issueOf({ code: "BLOCK_COUNT_LOCKED", group: "STRUCTURE", dimension, required, available });
+
+    expect(await textOf(locked("COUNT"))).toBe("Khối Toán · Dong 2: mẫu khóa số câu của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("SET_COUNT"))).toBe("Khối Toán · Dong 2: mẫu khóa số chùm của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("SET_SIZE"))).toBe("Khối Toán · Dong 2: mẫu khóa số câu mỗi chùm; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("QUESTION_TYPE"))).toBe("Khối Toán · Dong 2: mẫu khóa dạng của dòng; mẫu giữ 20, hiện có 22. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("COUNT", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa số câu của dòng. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("SET_COUNT", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa số chùm của dòng. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("SET_SIZE", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa số câu mỗi chùm. Đưa dòng về đúng như mẫu.");
+    expect(await textOf(locked("QUESTION_TYPE", null, null))).toBe("Khối Toán · Dong 2: mẫu khóa dạng của dòng. Đưa dòng về đúng như mẫu.");
+  });
+
   it("en: cùng nội dung bằng tiếng Anh", async () => {
     expect(await textOf(issueOf({ code: "AUDIO_SHORTAGE", required: 3, available: 2 }), "en")).toBe(
       "Block Mathematics · Dong 2: not enough source with audio for the row: needs 3, only 2 can be assembled.",
@@ -124,8 +190,32 @@ describe("năm mã kiểm tra mới có câu chữ vi và en", () => {
       "Block Mathematics · Dong 2: not enough source with the row's points per question: needs 5, only 2 have the right points.",
     );
     expect(await textOf(issueOf({ code: "BLOCK_COUNT_LOCKED", required: 20, available: 22 }), "en")).toBe(
-      "Block Mathematics · Dong 2: the template locks the type, question count and set count of the row; the template keeps 20, the row has 22. Set the row back to the template.",
+      "Block Mathematics · Dong 2: the template locks the row's type and counts; the template keeps 20, the row has 22. Set the row back to the template.",
     );
+    expect(await textOf(issueOf({ code: "BLOCK_COUNT_LOCKED", dimension: "SET_COUNT", required: 20, available: 22 }), "en")).toBe(
+      "Block Mathematics · Dong 2: the template locks the row's set count; the template keeps 20, the row has 22. Set the row back to the template.",
+    );
+    expect(await textOf(issueOf({ code: "BLOCK_COUNT_LOCKED", dimension: "QUESTION_TYPE" }), "en")).toBe(
+      "Block Mathematics · Dong 2: the template locks the row's question type. Set the row back to the template.",
+    );
+    expect(
+      await textOf(
+        issueOf({ code: "DISPLAY_SEGMENT_MISMATCH", group: "DISPLAY", blockName: null, subjectCode: null, partId: "part-1", partName: "English", dimension: "POINTS", segmentCode: "P2", required: 12.5, available: 10 }),
+        "en",
+        {
+          parts: [{ id: "part-1", name: "English", displaySegments: [{ code: "P2", name: "Part II" }] }],
+        } as unknown as Parameters<typeof useIssueText>[0],
+      ),
+    ).toBe("English: segment Part II has 10 points while 12.5 are declared.");
+    expect(
+      await textOf(
+        issueOf({ code: "DISPLAY_SEGMENT_MISMATCH", group: "DISPLAY", blockName: null, subjectCode: null, partId: "part-1", partName: "English", dimension: "COMMANDS", segmentCode: "P2", required: 4, available: 3 }),
+        "en",
+        {
+          parts: [{ id: "part-1", name: "English", displaySegments: [{ code: "P2", name: "Part II" }] }],
+        } as unknown as Parameters<typeof useIssueText>[0],
+      ),
+    ).toBe("English: segment Part II has 3 commands while 4 are declared.");
     expect(await textOf(issueOf({ code: "OMITTED_BLOCK_LOCKED" }), "en")).toBe(
       "Block Mathematics · Dong 2: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
     );
@@ -170,6 +260,7 @@ describe("bấm vào lỗi của mã mới dẫn tới đúng dòng ở bước 
       wireIssue("AUDIO_SHORTAGE", { group: "SOURCE", partId: "part-1", sectionId: "sec-1", blockId: "blk-1", blockName: "Choice", required: 3, available: 2 }),
       wireIssue("BLOCK_COUNT_LOCKED", { partId: "part-1", sectionId: "sec-1", blockId: "blk-1", blockName: "Choice", required: 20, available: 22 }),
       wireIssue("SCALE_INCLUDES_EXCLUDED_PART", { group: "POINTS", partId: "part-1", partName: "Viet", subjectCode: undefined, required: 150, available: 120, excludedPoints: 30 }),
+      wireIssue("DISPLAY_SEGMENT_MISMATCH", { group: "DISPLAY", partName: "Tiếng Anh", subjectCode: undefined, segmentCode: "P1", dimension: "COMMANDS", required: 4, available: 3, location: { partId: "part-1" } }),
     ];
     const body = {
       ...checkResultWire("INVALID"),
@@ -185,7 +276,8 @@ describe("bấm vào lỗi của mã mới dẫn tới đúng dòng ở bước 
     expect(await errors.findByText(/nguồn có audio chưa đủ cho dòng: cần 3, hiện ghép được 2/)).toBeInTheDocument();
     const structure = `/exams/${EXAM_ID}/structure`;
     expect(errors.getByRole("link", { name: /nguồn có audio chưa đủ/ })).toHaveAttribute("href", `${structure}?block=blk-1`);
-    expect(errors.getByRole("link", { name: /mẫu đã khóa dạng/ })).toHaveAttribute("href", `${structure}?block=blk-1`);
+    expect(errors.getByRole("link", { name: /mẫu khóa/ })).toHaveAttribute("href", `${structure}?block=blk-1`);
     expect(errors.getByRole("link", { name: /Thang đang là 150/ })).toHaveAttribute("href", `${structure}?part=part-1`);
+    expect(errors.getByRole("link", { name: /một phân đoạn có 3 lệnh/ })).toHaveAttribute("href", `${structure}?part=part-1`);
   });
 });

@@ -113,7 +113,7 @@ function joinedNames(value: string | null, nameOf: (code: string) => string): st
  * Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). Truyền `exam` thì vấn đề
  * chỉ có `blockId` (lỗi nguồn của bộ giải) lấy tên khối, tên phần và điều kiện lọc của khối từ cấu trúc.
  */
-export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
+export function useIssueText(exam?: { parts: (ExamPart & { displaySegments?: readonly { code: string; name: string }[] })[] }) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
   const tContent = useTranslations("content");
@@ -153,6 +153,10 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
       const place = (blockName ? `${subject} · ${blockName}` : subject) || (issue.partName ?? where?.part.name ?? "");
       const required = issue.required ?? 0;
       const available = issue.available ?? 0;
+      // Phân đoạn của DISPLAY_SEGMENT_MISMATCH: tên từ `displaySegments` của phần (BE-20; FE-6 giữ trường trên cấu trúc), không in mã.
+      const segment = issue.segmentCode
+        ? ((exam?.parts.find((part) => part.id === issue.partId)?.displaySegments ?? []).find((item) => item.code === issue.segmentCode)?.name ?? "")
+        : "";
       const values = {
         block: blockName ? `${subject} · ${blockName}` : subject,
         subject,
@@ -186,6 +190,8 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
         hasFormats: filter.answerFormats.length > 0 ? "yes" : "no",
         positions,
         hasPositions: positions ? "yes" : "no",
+        segment,
+        hasSegment: segment ? "yes" : "no",
       };
       // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
       const noCount = issue.required == null || issue.available == null;

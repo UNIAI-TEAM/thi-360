@@ -337,8 +337,8 @@ type ApiCheckPath = Schema["ExamCheckPath"];
 type ApiCheckBlock = Schema["ExamCheckBlock"];
 type ApiCheckSubject = Schema["ExamCheckSubject"];
 type ApiCheckSelection = Schema["ExamCheckSelection"];
-/** Trường của vấn đề mà `packages/api-client` chưa có (BE-20): điểm của phần đã lược; bỏ khi client đã sinh lại. */
-type WireIssueExtras = { excludedPoints?: number };
+/** Trường của vấn đề mà `packages/api-client` chưa có (BE-20): điểm của phần đã lược, phân đoạn lệch; bỏ khi client đã sinh lại. */
+type WireIssueExtras = { excludedPoints?: number; segmentCode?: string };
 type ApiCheckIssue = Schema["ExamCheckIssue"] & WireIssueExtras;
 type ApiCheckGroup = Schema["ExamCheckGroup"];
 type ApiCheckChoice = Schema["ExamCheckChoice"];
@@ -412,6 +412,19 @@ const PREVIEW_CHECK_CODES: Record<string, true> = {
   TOTAL_POINTS: true,
 };
 const VERSION_STATES: Record<string, true> = { WORKING: true, SERVING: true, RETIRED: true };
+/** Chiều của vấn đề mà máy chủ gửi (`dimension`): chỉ tiêu ma trận, số bị khóa của mẫu, phân đoạn lệch (BE-20). */
+const ISSUE_DIMENSIONS: Record<string, true> = {
+  GRADE: true,
+  DIFFICULTY: true,
+  COMPETENCY: true,
+  COUNT: true,
+  SET_COUNT: true,
+  SET_SIZE: true,
+  QUESTION_TYPE: true,
+  COMMANDS: true,
+  POINTS: true,
+};
+
 
 function isCheckResult(data: object): data is ApiCheckResult {
   return "status" in data;
@@ -433,7 +446,7 @@ function issueKey(issue: Omit<CheckIssue, "key">): string {
     issue.optionId ?? "",
     issue.gradeCode ?? "",
     issue.difficultyCode ?? "",
-    issue.dimension ?? "",
+    issue.segmentCode ?? "",
     issue.competencyCode ?? "",
     issue.answerType ?? "",
     issue.subjectCount ?? "",
@@ -457,10 +470,7 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     optionId: issue.optionId ?? null,
     gradeCode: issue.gradeCode ?? null,
     difficultyCode: issue.difficultyCode ?? null,
-    dimension:
-      issue.dimension === "GRADE" || issue.dimension === "DIFFICULTY" || issue.dimension === "COMPETENCY"
-        ? issue.dimension
-        : null,
+    dimension: issue.dimension !== undefined && ISSUE_DIMENSIONS[issue.dimension] ? (issue.dimension as CheckIssue["dimension"]) : null,
     competencyCode: issue.competencyCode ?? null,
     answerType: questionTypeOf(issue.answerType),
     subjectCount: issue.subjectCount ?? null,
@@ -472,6 +482,7 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     affectedCodes: issue.affectedCodes ?? null,
     slotIndex: issue.location?.slotIndex ?? null,
     childPosition: issue.location?.childPosition ?? null,
+    segmentCode: issue.segmentCode ?? null,
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
