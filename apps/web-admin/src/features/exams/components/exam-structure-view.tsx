@@ -21,6 +21,7 @@ import { ExamsApiError } from "../review-api";
 import type { ExamCheckResult, RunExamCheckRequest } from "../review-types";
 import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamStructure, ExamTemplate } from "../types";
 import { BlockEditor } from "./block-editor";
+import { blockCountsLocked } from "./block-form";
 import type { TopicQuotaServerError } from "./topic-quota-table";
 import {
   selectionScope,
@@ -199,6 +200,8 @@ function StructureEditor({
 }) {
   /** Bài ôn (R-22): màn rút gọn, một phần, một môn, một nhóm. */
   const reviewMode = template?.buildMode === "REVIEW";
+  // H42, R-135: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT`; bài `PART` và bài ôn từ cùng mẫu vẫn sửa được.
+  const countLocked = template?.fixedCounts === true || blockCountsLocked(template, exam.scope, reviewMode);
   // Bài ôn mới tạo có nhóm duy nhất chưa khai số câu: điền số câu bước 1 để màn, tổng và nội dung lưu cùng một số (V-01b).
   const structure = useMemo(
     () => (reviewMode ? { ...loadedStructure, parts: fillReviewCounts(loadedStructure.parts) } : loadedStructure),
@@ -653,7 +656,7 @@ function StructureEditor({
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
               onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
               headerAction={checkAction}
-              countLocked={template?.fixedCounts === true}
+              countLocked={countLocked}
               onCount={(count) => setDraft((parts) => setSectionCount(parts, sectionContext.location, count))}
               sourceVerified={sourceVerified(sectionContext.section)}
               topicError={topicError}
@@ -707,7 +710,7 @@ function StructureEditor({
               structureCombinations={structure.combinations ?? []}
               axes={axes}
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              countLocked={template?.fixedCounts === true}
+              countLocked={countLocked}
               onAddSubject={(subjectCode) => {
                 setDraft((parts) => addPoolSection(parts, selectedPart.id, subjectCode));
                 announce(t("subjectAdded", { subject: lookup.subject(subjectCode) }));

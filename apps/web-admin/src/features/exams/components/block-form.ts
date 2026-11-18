@@ -1,6 +1,6 @@
 import { isSetBlock } from "../matrix";
 import type { QuestionType } from "@/features/content/types";
-import type { BlockSlot, ChildCondition, ItemShape, QuestionBlock } from "../types";
+import type { BlockSlot, ChildCondition, ExamScope, ExamTemplate, ItemShape, QuestionBlock } from "../types";
 
 /**
  * Logic thuần của biểu mẫu nhóm (2B 3.3, 15.3): điều kiện của nhóm, điều kiện riêng từng chùm (`slots`), điều kiện theo
@@ -51,13 +51,28 @@ export function conditionState(block: QuestionBlock, kind: ConditionKind, pendin
   }
 }
 
-/** Số ý trái/phải hoặc số ý Đúng/Sai phù hợp với loại câu: bỏ trường của loại kia. */
+/** Loại câu mà hình dạng câu còn có nghĩa khi lưu: Đúng/Sai (số ý), Ghép đôi (ý trái, lựa chọn phải), câu chọn (số phương án, R-131). */
+function shapeKept(type: QuestionType | null): boolean {
+  return shapeApplies(type) || type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE";
+}
+
+/** Giữ trường hình dạng hợp với loại câu: số ý Đúng/Sai, số ý trái/phải Ghép đôi, số phương án câu chọn; bỏ trường của loại kia. */
 function shapeFor(type: QuestionType | null, shape: ItemShape): ItemShape | undefined {
   const next: ItemShape =
     type === "TRUE_FALSE"
       ? { ...(shape.statements !== undefined ? { statements: shape.statements } : {}) }
-      : { ...(shape.leftItems !== undefined ? { leftItems: shape.leftItems } : {}), ...(shape.rightItems !== undefined ? { rightItems: shape.rightItems } : {}) };
+      : type === "MATCHING"
+        ? { ...(shape.leftItems !== undefined ? { leftItems: shape.leftItems } : {}), ...(shape.rightItems !== undefined ? { rightItems: shape.rightItems } : {}) }
+        : { ...(shape.options !== undefined ? { options: shape.options } : {}) };
   return Object.keys(next).length > 0 ? next : undefined;
+}
+
+/**
+ * Mẫu khóa dòng (H42, R-135): chỉ bài phạm vi `SUBJECT` từ mẫu `fixedBlockCounts` mà không phải bài ôn. Bài `PART` và bài ôn
+ * cùng mẫu vẫn sửa được số lượng.
+ */
+export function blockCountsLocked(template: Pick<ExamTemplate, "fixedBlockCounts"> | null | undefined, scope: ExamScope, reviewMode: boolean): boolean {
+  return template?.fixedBlockCounts === true && scope === "SUBJECT" && !reviewMode;
 }
 
 /**
@@ -68,7 +83,7 @@ export function reconcileBlock(block: QuestionBlock): QuestionBlock {
   const type = sourceType(block);
   const next: QuestionBlock = { ...block };
   if (next.itemShape) {
-    const shape = shapeApplies(type) ? shapeFor(type, next.itemShape) : undefined;
+    const shape = shapeKept(type) ? shapeFor(type, next.itemShape) : undefined;
     if (shape) next.itemShape = shape;
     else delete next.itemShape;
   }
