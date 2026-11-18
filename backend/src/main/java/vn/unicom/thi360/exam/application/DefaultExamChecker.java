@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
@@ -32,18 +33,21 @@ public class DefaultExamChecker implements ExamChecker {
     private final SolverLimits limits;
     private final Clock clock;
     private final ObjectMapper mapper;
+    private final CatalogLookup catalog;
 
     public DefaultExamChecker(SolverInputBuilder builder, SolverLimits limits,
-                              Clock clock, ObjectMapper mapper) {
+                              Clock clock, ObjectMapper mapper, CatalogLookup catalog) {
         this.builder = builder;
         this.limits = limits;
         this.clock = clock;
         this.mapper = mapper;
+        this.catalog = catalog;
     }
 
     @Override
     public Evaluation check(ExamCheckSnapshotReader.Snapshot snapshot, Instant deadline, Duration budget) {
-        var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure());
+        var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure(),
+                ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), snapshot.structure()));
         List<ObjectNode> common = new ArrayList<>(rules.common());
         List<ObjectNode> invalid = rules.unrepresentable();
         var assembler = new ExamCheckAssembler(mapper, clock, limits);

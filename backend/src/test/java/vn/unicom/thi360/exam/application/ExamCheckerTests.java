@@ -413,7 +413,7 @@ class ExamCheckerTests {
         doAnswer(invocation -> candidates.getOrDefault(
                 ((QuestionSourcePort.Filter) invocation.getArgument(0)).subjectId(), List.of()))
                 .when(source).findCandidates(any(), anyInt());
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper);
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog);
         return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, null),
                 clock.instant().plusSeconds(30), Duration.ofSeconds(30));
     }

@@ -48,7 +48,8 @@ public class ExamPreviewService {
                 : store.loadVersion(id, request.version(), request.pathId());
         ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
         var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
-        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document).unrepresentable()
+        var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), document);
+        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document, combinations).unrepresentable()
                 .stream().filter(issue -> {
                     String optionId = issue.path("optionId").asText(null);
                     return optionId == null || selectedIds.contains(optionId);
