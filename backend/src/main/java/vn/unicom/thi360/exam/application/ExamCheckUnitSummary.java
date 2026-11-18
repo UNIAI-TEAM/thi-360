@@ -7,9 +7,11 @@ import java.util.Objects;
 import vn.unicom.thi360.exam.api.ExamStructureResponse;
 import vn.unicom.thi360.exam.api.ExamStructureSummaryResponse;
 import vn.unicom.thi360.exam.api.ExamStructureSummaryResponse.Row;
+import vn.unicom.thi360.exam.domain.ChildCondition;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamSection;
+import vn.unicom.thi360.exam.domain.ItemShape;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.ParticipationMode;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
@@ -126,6 +128,11 @@ public final class ExamCheckUnitSummary {
                     ? block.itemShape().statements() : block.itemShape().leftItems();
             commands = multiply(count, perQuestion);
         }
+        if (!omitted && commands == null && block.questionType() == QuestionType.QUESTION_SET) {
+            // Chùm trộn dạng (H39, spec 5.2 rule 5): the answer type lives on the typed child
+            // conditions, so the command count is the per-position sum over one set.
+            commands = multiply(block.setCount(), typedSetCommands(block));
+        }
         BigDecimal points = omitted ? BigDecimal.ZERO : count == null || block.requiredPointsPerQuestion() == null
                 ? null : block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count));
         Integer none = 0;
@@ -145,6 +152,42 @@ public final class ExamCheckUnitSummary {
 
     private static Integer multiply(Integer left, Integer right) {
         return left == null || right == null ? null : Math.multiplyExact(left, right);
+    }
+
+    /**
+     * Commands of one set under typed child conditions (H39): every covered position contributes the
+     * commands of its condition's answer type ({@code TRUE_FALSE} and {@code MATCHING} count their
+     * items, every other type counts one). Null when a position is uncovered, a range is invalid or a
+     * needed item shape is missing, since the declared commands are then undetermined.
+     */
+    private static Integer typedSetCommands(QuestionBlock block) {
+        if (block.setSize() == null) {
+            return null;
+        }
+        int sum = 0;
+        for (ChildCondition condition : block.childConditions()) {
+            if (condition.answerType() == null || condition.from() == null || condition.to() == null
+                    || condition.from() < 1 || condition.to() > block.setSize()
+                    || condition.from() > condition.to()) {
+                continue;
+            }
+            Integer perChild = perChildCommands(condition.answerType(), condition.itemShape());
+            if (perChild == null) {
+                return null;
+            }
+            sum = Math.addExact(sum, Math.multiplyExact(condition.to() - condition.from() + 1, perChild));
+        }
+        return sum == 0 ? null : sum;
+    }
+
+    private static Integer perChildCommands(QuestionType answerType, ItemShape shape) {
+        if (answerType == QuestionType.TRUE_FALSE) {
+            return shape == null ? null : shape.statements();
+        }
+        if (answerType == QuestionType.MATCHING) {
+            return shape == null ? null : shape.leftItems();
+        }
+        return 1;
     }
 
     private static Totals sum(List<Row> rows) {
