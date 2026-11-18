@@ -31,10 +31,11 @@ public class ExamCheckUnitStates {
     private final CatalogLookup catalog;
     private final ObjectMapper mapper;
     private final QuestionSourcePort source;
+    private final ExamCheckTemplateFacts templateFacts;
 
     public ExamCheckUnitStates(ExamCheckSnapshotReader snapshots, ExamCheckUnitStore store,
             ExamCheckUnitFingerprint fingerprints, SolverInputBuilder builder, SolverLimits limits,
-            CatalogLookup catalog, ObjectMapper mapper, QuestionSourcePort source) {
+            CatalogLookup catalog, ObjectMapper mapper, QuestionSourcePort source, ExamCheckTemplateFacts templateFacts) {
         this.snapshots = snapshots;
         this.store = store;
         this.fingerprints = fingerprints;
@@ -43,6 +44,7 @@ public class ExamCheckUnitStates {
         this.catalog = catalog;
         this.mapper = mapper;
         this.source = source;
+        this.templateFacts = templateFacts;
     }
 
     @Transactional(readOnly = true)
@@ -50,8 +52,10 @@ public class ExamCheckUnitStates {
         var snapshot = snapshots.read(examId);
         var document = snapshot.structure();
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), document);
+        // Only the locked-count template facts feed sections; the exam-level publish ban marks no section.
         var rules = new ExamCheckRules(mapper, snapshot.exam(), document, combinations,
-                ExamCheckUnitCombinations.topicParents(catalog, document));
+                ExamCheckUnitCombinations.topicParents(catalog, document),
+                new ExamCheckRules.TemplateFacts(null, templateFacts.locked(snapshot.exam())));
         Set<String> incomplete = new HashSet<>();
         Set<String> invalidParts = new HashSet<>();
         Set<String> invalidOptions = new HashSet<>();
@@ -74,6 +78,7 @@ public class ExamCheckUnitStates {
                 if (issue.hasNonNull("subjectCode")) invalidPartSubjects.add(issue.path("subjectCode").asText());
             }
         }
+        rules.templateIssues().forEach(issue -> markIncomplete(incomplete, issue));
         for (var part : document.parts()) {
             if (invalidParts.contains(part.id())) {
                 invalidPartSubjects.addAll(ExamCheckDraftInputs.subjects(part));
