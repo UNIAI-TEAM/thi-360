@@ -148,6 +148,18 @@ function omittedRow(
 }
 
 /**
+ * Phần mà mọi nhóm đều tạm bỏ qua (SP2E Ngữ văn Phần II · Viết, K7, K15): số câu của phần là 0 theo thiết kế, nên không có
+ * ô nào để nhập. Phần có cả nhóm thường lẫn nhóm tạm bỏ qua không thuộc loại này.
+ */
+function isAllOmitted(part: ExamTemplate["parts"][number]): boolean {
+  const sections = part.sections ?? [];
+  return (
+    sections.length > 0 &&
+    sections.every((section) => (section.omittedBlocks?.length ?? 0) > 0 && section.omittedBlocks?.length === section.blocks?.length)
+  );
+}
+
+/**
  * Dòng tổng quan của mẫu đã chọn. `scope = PART` gắn `partCode` của bài vào dòng phần (khóa so khớp của mẫu theo
  * phần). Phần cố định nhiều môn thêm dòng môn ngay sau dòng phần; dòng phần khi đó chỉ là dòng nhóm (tổng môn), ô
  * số câu của phần không sửa — sửa ở dòng môn. Mẫu `fixedCounts` (H27, V-ACT toàn bài) hiện dòng cho mọi tiểu mục
@@ -162,6 +174,12 @@ export function overviewRowsFromTemplate(
   const locked = template.fixedCounts === true;
   const rows: OverviewRow[] = [];
   template.parts.forEach((part, index) => {
+    if (isAllOmitted(part)) {
+      // Chỉ đọc như nhóm tạm bỏ qua: không kiểm tra, không vào tổng, không vào `overview`.
+      const omittedCount = (part.sections ?? []).reduce((total, section) => total + (section.omittedBlocks ?? []).reduce((sum, block) => sum + (block.questionCount ?? 0), 0), 0);
+      rows.push(omittedRow(index, 0, part.sections?.[0]?.subjectCode ?? "", { name: part.name, questionCount: omittedCount }, 0));
+      return;
+    }
     const row = partRow(part, index);
     if (scope === "PART") row.partCode = partCode || undefined;
     row.lockedCount = locked;
