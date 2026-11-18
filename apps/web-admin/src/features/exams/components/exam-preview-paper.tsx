@@ -199,7 +199,9 @@ function QuestionArticle({
           {t("questionNumber", { number })}
         </Heading>
         {/* R-112: điểm tối đa của câu (chip thông tin, như bản vẽ `SinhThuVact2B`). */}
-        <StatusChip tone="info">{t("questionPoints", { points: format.number(question.points, DISPLAY_NUMBER_FORMAT) })}</StatusChip>
+        <StatusChip tone="info">
+          {t("questionPoints", { points: format.number(question.points, DISPLAY_NUMBER_FORMAT), value: question.points })}
+        </StatusChip>
         <Badge>{question.version !== null ? `${question.code} · v${question.version}` : question.code}</Badge>
         <Badge>{types(question.type)}</Badge>
         <Badge>{lookup.grade(question.gradeCode)}</Badge>

@@ -4910,7 +4910,7 @@
       "setHeading": "Set {index, number} · {count, plural, one {# consecutive question} other {# consecutive questions}}",
       "simulatedPassage": "Passage of a simulated set (part of the bank not loaded into the sample data).",
       "questionNumber": "Question {number, number}",
-      "questionPoints": "Max {points} points",
+      "questionPoints": "Max {points} {value, plural, one {point} other {points}}",
       "simulatedQuestion": "Question from the simulated source: this part of the bank is not loaded into the sample data and has no content.",
       "correct": "Correct answer",
       "trueLabel": "True",
@@ -4998,11 +4998,11 @@
         "columns": {
           "actual": "Actual",
           "criterion": "Criterion",
+          "difference": "Difference",
           "level": "Level · unit",
           "required": "Required",
           "result": "Result",
-          "scope": "Scope",
-          "difference": "Difference"
+          "scope": "Scope"
         },
         "criterion": {
           "ANSWER_TYPE": "Type {name}",

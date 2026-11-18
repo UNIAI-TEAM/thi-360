@@ -4998,11 +4998,11 @@
         "columns": {
           "actual": "Thực tế",
           "criterion": "Tiêu chí",
+          "difference": "Chênh lệch",
           "level": "Mức · đơn vị",
           "required": "Yêu cầu",
           "result": "Kết quả",
-          "scope": "Phạm vi",
-          "difference": "Chênh lệch"
+          "scope": "Phạm vi"
         },
         "criterion": {
           "ANSWER_TYPE": "Dạng {name}",

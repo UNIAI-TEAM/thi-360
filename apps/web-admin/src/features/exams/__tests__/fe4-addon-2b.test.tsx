@@ -235,6 +235,23 @@ describe("điểm tối đa của từng câu trên đề thử", () => {
 
     expect(await screen.findByText("Max 0.25 points")).toBeInTheDocument();
   });
+
+  it("bản en chia số ít/số nhiều: 1 điểm là 'point', 0.5 và 0.25 là 'points'", async () => {
+    const paper = paperOf([
+      blockOf(
+        [
+          { kind: "QUESTION", question: question(1, { points: 1 }) },
+          { kind: "QUESTION", question: question(2, { points: 0.5 }) },
+        ],
+        { lastNumber: 2, questionCount: 2 },
+      ),
+    ]);
+
+    renderWithProviders(<ExamPreviewPaper paper={paper} />, { locale: "en", messages: en });
+
+    expect(await screen.findByText("Max 1 point")).toBeInTheDocument();
+    expect(screen.getByText("Max 0.5 points")).toBeInTheDocument();
+  });
 });
 
 /* ---------- Dòng REFERENCE chờ mapping (H31) ---------- */
