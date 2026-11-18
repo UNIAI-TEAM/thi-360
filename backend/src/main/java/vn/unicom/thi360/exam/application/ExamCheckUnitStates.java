@@ -64,7 +64,15 @@ public class ExamCheckUnitStates {
             }
         }
         for (var part : document.parts()) {
-            if (invalidParts.contains(part.id())) invalidPartSubjects.addAll(ExamCheckDraftInputs.subjects(part));
+            if (invalidParts.contains(part.id())) {
+                invalidPartSubjects.addAll(ExamCheckDraftInputs.subjects(part));
+                part.sections().forEach(section -> incomplete.add(section.id()));
+                part.subjectPool().forEach(section -> incomplete.add(section.id()));
+                for (var option : part.options()) {
+                    option.sections().forEach(section -> incomplete.add(section.id()));
+                    if (!option.blocks().isEmpty()) incomplete.add(option.id() + ":blocks");
+                }
+            }
         }
         for (var part : document.parts()) for (var option : part.options()) {
             if (invalidOptions.contains(option.id())) {

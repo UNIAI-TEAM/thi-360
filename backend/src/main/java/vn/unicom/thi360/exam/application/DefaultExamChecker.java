@@ -209,7 +209,7 @@ public class DefaultExamChecker implements ExamChecker {
         return false;
     }
 
-    private static boolean optionSharesSubjectOnPath(ExamStructureDocument document, String optionId,
+    static boolean optionSharesSubjectOnPath(ExamStructureDocument document, String optionId,
                                                       Set<String> requested, Set<String> subjects) {
         for (ExamPart part : document.parts()) for (ExamPartOption option : part.options()) {
             if (!optionId.equals(option.id())) continue;
