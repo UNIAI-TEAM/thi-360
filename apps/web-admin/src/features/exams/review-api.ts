@@ -48,6 +48,7 @@ import type {
   RunExamCheckRequest,
   StartDeepCheckResponse,
   SubjectCheck,
+  TopicQuotaIndex,
 } from "./review-types";
 import { CHECK_GROUPS, CHECK_ISSUE_CODES } from "./review-types";
 import type {
@@ -209,6 +210,45 @@ async function generatePreviewReal({
   return mapPreviewResult(examId, data);
 }
 
+/**
+ * Chỉ tiêu chủ đề của bài theo id (R-122, H31): đọc phản hồi cấu trúc thô vì `types.ts` chưa nâng `topicQuotas`
+ * (FE-3b). Dòng `REFERENCE` có `nodeIds` rỗng đang chờ mapping; bảng đối chiếu ghi "Chưa có dữ liệu đối chiếu".
+ */
+async function getTopicQuotaIndexReal(examId: string): Promise<TopicQuotaIndex> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}/structure", {
+    params: { path: { id: examId } },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  const index: TopicQuotaIndex = new Map();
+  const addQuotas = (items: readonly (Schema["ExamSection"] | Schema["QuestionBlock"])[] | undefined) => {
+    for (const item of items ?? []) {
+      for (const quota of item.topicQuotas ?? []) {
+        if (!quota.id) continue;
+        index.set(quota.id, {
+          name: quota.name ?? "",
+          enforcement: quota.enforcement === "REFERENCE" ? "REFERENCE" : "REQUIRED",
+          nodeIds: quota.nodeIds ?? [],
+          difficultyCodes: quota.difficultyCodes ?? [],
+        });
+      }
+    }
+  };
+  const addSection = (section: Schema["ExamSection"]) => {
+    addQuotas([section]);
+    addQuotas(section.blocks ?? []);
+  };
+  for (const part of data.parts ?? []) {
+    (part.sections ?? []).forEach(addSection);
+    (part.subjectPool ?? []).forEach(addSection);
+    for (const option of part.options ?? []) {
+      (option.sections ?? []).forEach(addSection);
+      addQuotas(option.blocks ?? []);
+    }
+  }
+  return index;
+}
+
 /* ---------- Phiên bản và công bố ---------- */
 
 async function listExamVersionsReal({ examId }: { examId: string }): Promise<ExamVersionList> {
@@ -298,6 +338,7 @@ export const runExamCheck = runExamCheckReal;
 export const startDeepCheck = startDeepCheckReal;
 export const getCheckRun = getCheckRunReal;
 export const generatePreview = generatePreviewReal;
+export const getTopicQuotaIndex = getTopicQuotaIndexReal;
 export const listExamVersions = listExamVersionsReal;
 export const getExamVersion = getExamVersionReal;
 export const publishExam = publishExamReal;

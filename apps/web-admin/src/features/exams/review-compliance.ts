@@ -1,5 +1,5 @@
 import type { ContentReference } from "@/features/content/types";
-import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "./review-types";
+import type { PreviewCompliance, PreviewPaper, PreviewQuestion, TopicQuotaIndex } from "./review-types";
 
 /** Sai lệch số thập phân nhỏ hơn mức này coi là bằng nhau (điểm và số câu máy chủ tính bằng BigDecimal). */
 const EPSILON = 1e-9;
@@ -50,6 +50,23 @@ export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
   const deviates = atLeast ? row.actual < row.required - EPSILON : Math.abs(row.actual - row.required) > EPSILON;
   if (!deviates) return "OK";
   return row.enforcement === "REQUIRED" ? "REQUIRED_DEVIATION" : "REFERENCE_DEVIATION";
+}
+
+/** Chênh lệch = Thực tế − Yêu cầu (R-124); chênh lệch nhỏ hơn `EPSILON` coi là 0 như quy tắc lệch ở trên. */
+export function complianceDifference(row: PreviewCompliance): number {
+  const difference = row.actual - row.required;
+  return Math.abs(difference) > EPSILON ? difference : 0;
+}
+
+/**
+ * Dòng chỉ tiêu chủ đề `REFERENCE` chưa gắn MAPID (H31): chờ mapping nên không có dữ liệu đối chiếu và không tính là
+ * lệch; chỉ tiêu của dòng tra theo id (`TOPIC:<id>`) trong cấu trúc bài. `undefined` khi chưa tải được cấu trúc.
+ */
+export function topicQuotaPending(row: PreviewCompliance, quotas: TopicQuotaIndex | undefined): boolean {
+  const ref = parseCriterion(row.criterion);
+  if (ref.kind !== "TOPIC" || row.enforcement !== "REFERENCE") return false;
+  const quota = quotas?.get(ref.code);
+  return quota !== undefined && quota.enforcement === "REFERENCE" && quota.nodeIds.length === 0;
 }
 
 /** Số câu đã bỏ ghi trong `note` của máy chủ (`dropped 1`); 0 khi không bỏ câu nào. */

@@ -4984,7 +4984,8 @@
           "level": "Level · unit",
           "required": "Required",
           "result": "Result",
-          "scope": "Scope"
+          "scope": "Scope",
+          "difference": "Difference"
         },
         "criterion": {
           "ANSWER_TYPE": "Type {name}",
@@ -4993,7 +4994,8 @@
           "DIFFICULTY": "Difficulty {name}",
           "EXAM": "Exam quota {names}",
           "GRADE": "Grade {name}",
-          "TOPIC": "Topic quota"
+          "TOPIC": "Topic quota",
+          "TOPIC_NAMED": "{name}"
         },
         "deviations": "{count, plural, one {# row deviates} other {# rows deviate}}",
         "droppedQuestion": "Dropped question {code} · {type}, {grade}, {difficulty}.",
@@ -5001,11 +5003,14 @@
           "REFERENCE": "Reference",
           "REQUIRED": "Required"
         },
-        "legend": "A Reference row that deviates is only a warning and does not block. A Required row that fails means no paper is generated, and no short paper is returned.",
+        "legend": "Difference is Actual minus Required. Topic quotas are “at least”, so a higher actual still passes. A deviating Reference row is only a warning and does not block; a pending-mapping row cannot be compared yet. A Required row that fails means no paper is generated.",
         "level": "{enforcement} · {unit}",
+        "pendingNoData": "No reference data yet",
+        "requiredAtLeast": "at least {value}",
         "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
         "result": {
           "OK": "Met",
+          "PENDING": "Awaiting mapping",
           "REFERENCE_DEVIATION": "Deviates · reference",
           "REQUIRED_DEVIATION": "Deviates · required"
         },
@@ -5013,7 +5018,7 @@
           "EXAM": "Whole exam"
         },
         "tableLabel": "Required and actual values of the trial paper",
-        "title": "Required / Actual",
+        "title": "Required / Actual / Difference",
         "unit": {
           "POINTS": "points",
           "PROMPT": "prompts",

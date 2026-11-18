@@ -4984,7 +4984,8 @@
           "level": "Mức · đơn vị",
           "required": "Yêu cầu",
           "result": "Kết quả",
-          "scope": "Phạm vi"
+          "scope": "Phạm vi",
+          "difference": "Chênh lệch"
         },
         "criterion": {
           "ANSWER_TYPE": "Dạng {name}",
@@ -4993,7 +4994,8 @@
           "DIFFICULTY": "Độ khó {name}",
           "EXAM": "Chỉ tiêu cấp bài {names}",
           "GRADE": "Khối lớp {name}",
-          "TOPIC": "Chỉ tiêu chủ đề"
+          "TOPIC": "Chỉ tiêu chủ đề",
+          "TOPIC_NAMED": "{name}"
         },
         "deviations": "{count, number} dòng lệch",
         "droppedQuestion": "Đã bỏ câu {code} · {type}, {grade}, {difficulty}.",
@@ -5001,11 +5003,14 @@
           "REFERENCE": "Tham khảo",
           "REQUIRED": "Bắt buộc"
         },
-        "legend": "Dòng Tham khảo lệch chỉ là cảnh báo, không chặn. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
+        "legend": "Chênh lệch bằng Thực tế trừ Yêu cầu. Chỉ tiêu chủ đề là “ít nhất”, nên thực tế nhiều hơn yêu cầu vẫn đạt. Dòng Tham khảo lệch chỉ là cảnh báo, không chặn; dòng chờ mapping chưa đối chiếu được. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
         "level": "{enforcement} · {unit}",
+        "pendingNoData": "Chưa có dữ liệu đối chiếu",
+        "requiredAtLeast": "ít nhất {value}",
         "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
         "result": {
           "OK": "Đạt",
+          "PENDING": "Chờ mapping",
           "REFERENCE_DEVIATION": "Lệch · tham khảo",
           "REQUIRED_DEVIATION": "Lệch · bắt buộc"
         },
@@ -5013,7 +5018,7 @@
           "EXAM": "Cả bài"
         },
         "tableLabel": "Yêu cầu và thực tế của đề thử",
-        "title": "Yêu cầu / Thực tế",
+        "title": "Yêu cầu / Thực tế / Chênh lệch",
         "unit": {
           "POINTS": "điểm",
           "PROMPT": "lệnh hỏi",

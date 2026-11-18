@@ -149,6 +149,20 @@ export const CHECK_ISSUE_CODES = [
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
 /**
+ * Chỉ tiêu chủ đề của cấu trúc bài, tra theo id (`TOPIC:<id>` của `PreviewCompliance.criterion`): dùng nhận biết dòng
+ * `REFERENCE` chưa gắn MAPID (`nodeIds` rỗng, H31) và tên dòng để hiện.
+ */
+export interface TopicQuotaRef {
+  name: string;
+  enforcement: "REQUIRED" | "REFERENCE";
+  nodeIds: string[];
+  difficultyCodes: string[];
+}
+
+/** Chỉ tiêu chủ đề của bài theo id: đọc từ phản hồi cấu trúc thô (môn, nhóm, môn của lựa chọn). */
+export type TopicQuotaIndex = Map<string, TopicQuotaRef>;
+
+/**
  * Mức của vấn đề. `ERROR`: lỗi xác định (Không hợp lệ). `UNCONFIRMED`: chưa tìm được phương án trong giới hạn xử lý.
  * `WARNING`: cần xem lại nhưng không chặn công bố (câu nguồn có quy tắc chấm khác khối).
  */
