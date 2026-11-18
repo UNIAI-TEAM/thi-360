@@ -247,6 +247,8 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
 export function toWireTemplate(template: ExamTemplate): WireTemplate {
   return {
     active: true,
+    publishable: true,
+    fixedCounts: false,
     buildMode: "STANDARD",
     isDefault: true,
     code: template.code,
