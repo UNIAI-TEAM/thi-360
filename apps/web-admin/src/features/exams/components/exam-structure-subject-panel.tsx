@@ -5,12 +5,13 @@ import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
+import type { AudioCountQuery } from "../api.http";
 import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor, totalChangePending } from "../allocation";
 import { apportionByPercent, computeAllocation, convertMatrixUnit, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
 import { effectiveScope, effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
-import type { AnswerQuotas, AvailableQuestionsQuery, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
+import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
@@ -97,7 +98,7 @@ export function ExamStructureSubjectPanel({
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
     groups: section.blocks.map(
-      (block): AvailableQuestionsQuery => ({
+      (block): AudioCountQuery => ({
         subjectCode: section.subjectCode,
         questionType: block.questionType,
         answerTypes: block.questionType === null ? quotaTypes : [],
@@ -108,6 +109,8 @@ export function ExamStructureSubjectPanel({
         itemShape: block.itemShape,
         answerFormats: block.answerFormats,
         childConditions: block.childConditions,
+        // R-130, R-142: môn của phần Nghe chỉ đếm câu có audio, phần Đọc chỉ đếm câu không audio. `ANY` và bỏ trống: không gửi.
+        ...(section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? { audioRequirement: section.audioRequirement } : {}),
       }),
     ),
   });

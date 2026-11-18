@@ -5,11 +5,12 @@ import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
+import type { AudioCountQuery } from "../api.http";
 import { applyTopicTotal } from "../allocation";
 import { emptyMatrix, isSetBlock, type MatrixAxes } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
 import { effectiveScope } from "../subject-matrix";
-import type { AvailableQuestionsQuery, ExamSection, KnowledgeScope, QuestionBlock } from "../types";
+import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, resizeSets } from "./block-form";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
@@ -49,7 +50,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
     groups: section.blocks.map(
-      (item): AvailableQuestionsQuery => ({
+      (item): AudioCountQuery => ({
         subjectCode: section.subjectCode,
         questionType: item.questionType,
         answerTypes: item.questionType === null ? quotaTypes : [],
@@ -60,6 +61,8 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
         itemShape: item.itemShape,
         answerFormats: item.answerFormats,
         childConditions: item.childConditions,
+        // R-130, R-142: môn của phần Nghe chỉ đếm câu có audio, phần Đọc chỉ đếm câu không audio. `ANY` và bỏ trống: không gửi.
+        ...(section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? { audioRequirement: section.audioRequirement } : {}),
       }),
     ),
   });
