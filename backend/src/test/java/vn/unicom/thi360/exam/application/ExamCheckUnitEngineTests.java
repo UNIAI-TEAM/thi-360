@@ -98,6 +98,10 @@ class ExamCheckUnitEngineTests {
         var shared = check(checker, exam, sharedDraft, input, clock, ExamCheckScope.from("SECTION", null, "physics"));
         assertThat(shared.result().path("status").asText()).isEqualTo("INVALID");
         assertThat(shared.result().toString()).contains("SECTION_INCOMPLETE");
+        assertThat(shared.units()).singleElement().satisfies(unit -> {
+            assertThat(unit.outcome()).isEqualTo("INVALID");
+            assertThat(unit.sectionIds()).containsExactlyInAnyOrder("physics", "chemistry");
+        });
         when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, sharedDraft, input));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("INCOMPLETE", "INCOMPLETE");
@@ -113,6 +117,55 @@ class ExamCheckUnitEngineTests {
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "CHECKED");
         verify(engine, times(0)).solveUnit(any(), any(), any());
+    }
+
+    @Test
+    void malformedExclusiveOptionDoesNotInvalidateOtherOptionOfSameSubject() {
+        var mapper = new ObjectMapper();
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var store = mock(ExamCheckUnitStore.class);
+        UUID subject = UUID.randomUUID();
+        var subjectItem = item(subject);
+        when(catalog.findActiveItem("SUBJECT", "LY")).thenReturn(Optional.of(subjectItem));
+        var question = new QuestionSourcePort.Unit(subject, null, QuestionType.SINGLE_CHOICE,
+                null, null, List.of(), List.of(), BigDecimal.ONE);
+        when(source.findCandidates(any(), anyInt())).thenReturn(List.of(
+                new QuestionSourcePort.Candidate(subject, 1, null, List.of(question), null, null)));
+        var limits = SolverLimits.defaults();
+        var clock = Clock.systemUTC();
+        var fingerprints = new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper));
+        var builder = new SolverInputBuilder(catalog, source, limits);
+        var engine = new ExamCheckUnitEngine(store, fingerprints, catalog, mapper, limits, clock);
+        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine);
+        var exam = new Exam(UUID.randomUUID(), "UNIT", "Unit", null, "FULL", "SHARED", null,
+                null, "RAW", clock.instant(), UUID.randomUUID());
+        exam.applyStructureSummary(1, false, false, 0);
+        var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, 0, "hash", mapper.createObjectNode());
+        var codec = new ExamStructureCodec(mapper);
+        var document = codec.read("""
+                {"parts":[{"id":"p","name":"Part","questionCount":1,
+                  "participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"id":"good","kind":"SUBJECT","code":"LY","sections":[
+                      {"id":"good-section","subjectCode":"LY","questionCount":1,"blocks":[
+                        {"id":"good-block","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                    {"id":"bad","kind":"SUBJECT_CHOICE","code":"LY","sections":[
+                      {"id":"bad-section","subjectCode":"LY","questionCount":1,"blocks":[
+                        {"id":"bad-block","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}]}
+                """);
+        when(store.load(exam.getId())).thenReturn(Map.of());
+        var checked = check(checker, exam, document, input, clock,
+                ExamCheckScope.from("SECTION", null, "good-section"));
+        assertThat(checked.result().path("status").asText()).isEqualTo("VALID");
+        assertThat(checked.units()).singleElement().satisfies(unit -> assertThat(unit.outcome()).isEqualTo("VALID"));
+        when(store.load(exam.getId())).thenReturn(checked.units().stream()
+                .collect(Collectors.toMap(ExamCheckUnitStore.Unit::key, unit -> unit)));
+        var snapshots = mock(ExamCheckSnapshotReader.class);
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input));
+        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper);
+        assertThat(states.states(exam.getId())).extracting(state -> state.state())
+                .containsExactly("CHECKED", "INCOMPLETE");
     }
 
     private static CatalogItemView item(UUID id) {

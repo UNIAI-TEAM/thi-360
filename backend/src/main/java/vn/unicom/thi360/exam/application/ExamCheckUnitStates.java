@@ -51,9 +51,13 @@ public class ExamCheckUnitStates {
                 ExamCheckUnitCombinations.topicParents(catalog, document));
         Set<String> incomplete = new HashSet<>();
         Set<String> invalidParts = new HashSet<>();
+        Set<String> invalidOptions = new HashSet<>();
         Set<String> invalidPartSubjects = new HashSet<>();
         for (ObjectNode issue : rules.unrepresentable()) {
             markIncomplete(incomplete, issue);
+            if (!issue.hasNonNull("sectionId") && issue.hasNonNull("optionId")) {
+                invalidOptions.add(issue.path("optionId").asText());
+            }
             if (!issue.hasNonNull("sectionId") && !issue.hasNonNull("optionId") && issue.hasNonNull("partId")) {
                 invalidParts.add(issue.path("partId").asText());
                 if (issue.hasNonNull("subjectCode")) invalidPartSubjects.add(issue.path("subjectCode").asText());
@@ -62,11 +66,18 @@ public class ExamCheckUnitStates {
         for (var part : document.parts()) {
             if (invalidParts.contains(part.id())) invalidPartSubjects.addAll(ExamCheckDraftInputs.subjects(part));
         }
+        for (var part : document.parts()) for (var option : part.options()) {
+            if (invalidOptions.contains(option.id())) {
+                option.sections().forEach(section -> incomplete.add(section.id()));
+                if (!option.blocks().isEmpty()) incomplete.add(option.id() + ":blocks");
+            }
+        }
         Map<String, String> status = new LinkedHashMap<>();
         ExamCheckUnitPlanner.Plan plan = null;
         try {
             var input = builder.build(snapshot.exam().getKindItemId(), ExamCheckDraftInputs.withoutParts(
-                    ExamCheckDraftInputs.maskSections(document, incomplete), invalidParts));
+                    DefaultExamChecker.maskInvalidOptions(ExamCheckDraftInputs.maskSections(document, incomplete),
+                            invalidOptions), invalidParts));
             plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
         } catch (IllegalArgumentException | ExamCheckUnitPlanner.TooManyPaths
                 | ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {

@@ -69,9 +69,7 @@ public class DefaultExamChecker implements ExamChecker {
         }
         if (commonInvalid || scope.kind() != ExamCheckScope.Kind.EXAM && !invalid.isEmpty()) {
             common.addAll(invalid);
-            return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
-                    new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
-                    deadline, budget, common, rules::path);
+            return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
         }
         Map<Long, List<ObjectNode>> witnessIssues = new LinkedHashMap<>();
         Function<PathResult, List<ObjectNode>> pathIssues = path -> {
@@ -113,11 +111,9 @@ public class DefaultExamChecker implements ExamChecker {
                     maskedSections.add(sectionId);
                 } else if (optionId != null) {
                     if (optionContains(snapshot.structure(), optionId, requested)
-                            || optionSharesSubject(snapshot.structure(), optionId, requestedSubjects)) {
+                            || optionSharesSubjectOnPath(snapshot.structure(), optionId, requested, requestedSubjects)) {
                         common.add(issue);
-                        return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
-                                new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
-                                deadline, budget, common, rules::path);
+                        return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
                     }
                     maskedOptions.add(optionId);
                 } else {
@@ -128,9 +124,7 @@ public class DefaultExamChecker implements ExamChecker {
                             || requestedSubjects.contains(issue.path("subjectCode").asText(null));
                     if (part == null || scope.kind() == ExamCheckScope.Kind.PART && partId.equals(scope.targetId()) || sameSubject) {
                         common.add(issue);
-                        return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
-                                new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
-                                deadline, budget, common, rules::path);
+                        return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
                     }
                     ignoredParts.add(partId);
                 }
@@ -153,9 +147,11 @@ public class DefaultExamChecker implements ExamChecker {
                         selected.contains(issue.path("sectionId").asText(null))).toList();
                 if (!related.isEmpty()) {
                     common.addAll(related);
-                    return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
+                    var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), null,
                             new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
                             deadline, budget, common, rules::path);
+                    return new Evaluation(evaluation.result(), evaluation.witness(),
+                            units.invalidUnits(snapshot, input, scope, related));
                 }
             } catch (ExamCheckUnitPlanner.TooManyPaths | ExamCheckUnitPlanner.TooManyChoiceSubjects ignored) {
                 // The unit engine reports the solver limit without attempting these units.
@@ -167,6 +163,34 @@ public class DefaultExamChecker implements ExamChecker {
                 .forEach((path, facts) -> witnessIssues.put(path, rules.witnessIssues(facts)));
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
         return new Evaluation(evaluation.result(), evaluation.witness(), markWitnessFailures(computed.changed(), witnessIssues));
+    }
+
+    private Evaluation invalidResult(ExamCheckSnapshotReader.Snapshot snapshot, ExamCheckScope scope,
+            List<ObjectNode> allInvalid, List<ObjectNode> common, ExamCheckAssembler assembler,
+            ExamCheckRules rules, Instant deadline, Duration budget) {
+        var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), null,
+                new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
+                deadline, budget, common, rules::path);
+        if (scope.kind() == ExamCheckScope.Kind.EXAM) return evaluation;
+        Set<String> sections = new java.util.HashSet<>();
+        Set<String> options = new java.util.HashSet<>();
+        Set<String> parts = new java.util.HashSet<>();
+        for (var issue : allInvalid) {
+            if (issue.hasNonNull("sectionId")) sections.add(issue.path("sectionId").asText());
+            else if (issue.hasNonNull("optionId")) options.add(issue.path("optionId").asText());
+            else if (issue.hasNonNull("partId")) parts.add(issue.path("partId").asText());
+        }
+        var document = ExamCheckDraftInputs.withoutParts(
+                maskInvalidOptions(ExamCheckDraftInputs.maskSections(snapshot.structure(), sections), options), parts);
+        try {
+            var input = builder.build(snapshot.exam().getKindItemId(), document);
+            return new Evaluation(evaluation.result(), evaluation.witness(),
+                    units.invalidUnits(snapshot, input, scope, common));
+        } catch (IllegalArgumentException | ExamCheckUnitPlanner.TooManyPaths
+                | ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {
+            // A draft without a representable unit is reflected directly by structural section states.
+            return evaluation;
+        }
     }
 
     private static boolean inScope(ObjectNode issue, ExamCheckScope scope, Set<String> sections) {
@@ -185,11 +209,25 @@ public class DefaultExamChecker implements ExamChecker {
         return false;
     }
 
-    private static boolean optionSharesSubject(ExamStructureDocument document, String optionId, Set<String> subjects) {
+    private static boolean optionSharesSubjectOnPath(ExamStructureDocument document, String optionId,
+                                                      Set<String> requested, Set<String> subjects) {
         for (ExamPart part : document.parts()) for (ExamPartOption option : part.options()) {
             if (!optionId.equals(option.id())) continue;
-            return subjects.contains(option.code()) || option.sections().stream()
+            boolean sharesSubject = subjects.contains(option.code()) || option.sections().stream()
                     .anyMatch(section -> subjects.contains(section.subjectCode()));
+            if (!sharesSubject) return false;
+            if (part.participation() != null
+                    && part.participation().mode() == vn.unicom.thi360.exam.domain.ParticipationMode.CHOICE
+                    && Integer.valueOf(1).equals(part.participation().choose())) {
+                for (ExamPartOption alternative : part.options()) {
+                    if (alternative.id().equals(optionId)) continue;
+                    if (requested.contains(alternative.id() + ":blocks")
+                            || alternative.sections().stream().anyMatch(section -> requested.contains(section.id()))) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
         return false;
     }
@@ -214,7 +252,7 @@ public class DefaultExamChecker implements ExamChecker {
     }
 
     /** Keep each invalid option's path identifiable while solving unrelated valid options normally. */
-    private static ExamStructureDocument maskInvalidOptions(ExamStructureDocument document, Set<String> invalid) {
+    static ExamStructureDocument maskInvalidOptions(ExamStructureDocument document, Set<String> invalid) {
         if (invalid.isEmpty()) return document;
         List<ExamPart> parts = new ArrayList<>(document.parts().size());
         for (ExamPart part : document.parts()) {

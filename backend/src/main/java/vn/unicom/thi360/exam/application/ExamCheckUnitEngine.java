@@ -158,6 +158,42 @@ public class ExamCheckUnitEngine {
                 new SolveStats(plan.paths().stream().mapToLong(path -> path.tuples().size()).sum(), solved, reused)), changed);
     }
 
+    List<ExamCheckUnitStore.Unit> invalidUnits(ExamCheckSnapshotReader.Snapshot snapshot,
+            SolverInputBuilder.SolverInput input, ExamCheckScope scope, List<ObjectNode> issues) {
+        var plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
+        var requested = scope.sections(snapshot.structure());
+        var sourceSections = sections(snapshot.structure());
+        var inputInfo = snapshot.persistenceInput();
+        var config = ExamCheckFingerprint.Config.from(snapshot.exam());
+        List<ExamCheckUnitStore.Unit> changed = new ArrayList<>();
+        for (var unit : plan.units()) {
+            if (unit.key().sectionIds().stream().noneMatch(requested::contains)) continue;
+            var relevant = issues.stream().filter(issue -> {
+                if (issue.hasNonNull("sectionId")) {
+                    return unit.key().sectionIds().contains(issue.path("sectionId").asText());
+                }
+                if (issue.hasNonNull("optionId")) return true;
+                if (!issue.hasNonNull("partId")) return true;
+                String partId = issue.path("partId").asText();
+                return snapshot.structure().parts().stream().filter(part -> partId.equals(part.id()))
+                        .anyMatch(part -> ExamCheckDraftInputs.subjects(part).contains(unit.key().subjectCode()));
+            }).toList();
+            if (relevant.isEmpty()) continue;
+            var originals = unit.key().sectionIds().stream().map(sourceSections::get).toList();
+            var identity = fingerprints.calculate(unit.key().subjectCode(), originals,
+                    snapshot.structure().examQuotas(), config, inputInfo.profileRevision(),
+                    inputInfo.catalogRevision(), unit.sections());
+            UUID subject = catalog.findActiveItem("SUBJECT", unit.key().subjectCode())
+                    .map(item -> item.id()).orElse(null);
+            long revision = subject == null ? 0 : inputInfo.sourceRevisions().path(subject.toString()).asLong(0);
+            var findings = mapper.createArrayNode();
+            relevant.forEach(findings::add);
+            changed.add(new ExamCheckUnitStore.Unit(identity.key(), identity.sectionIds(),
+                    identity.fingerprint(), revision, "INVALID", findings, null, clock.instant(), 0));
+        }
+        return changed;
+    }
+
     /** Public for an integration spy; no candidates or results are retained between calls. */
     public SolveOutcome solveUnit(List<SectionOnPath> sections, CandidateSource candidates, SolverLimits bounded) {
         return new PaperSolver(bounded, clock).solveAll(List.of(new SolvePart.Fixed("unit", sections)), candidates, SolveMode.check());

@@ -36,8 +36,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     @Test
     void onlyChangedSubjectIsSolvedAgain() throws Exception {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing) "
-                + "VALUES (?,?,?,'Unit reuse','FULL','SHARED')", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
+                + "VALUES (?,?,?,'Unit reuse','FULL','SHARED',3)", id, id.toString(), id.toString());
         jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
                 {"parts":[{"id":"p","name":"Part","questionCount":3,"sections":[
                   {"id":"physics","subjectCode":"LY","questionCount":1,"blocks":[
@@ -261,6 +261,66 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         for (var state : after.path("sectionStates")) {
             assertThat(state.path("state").asText()).isEqualTo("NEEDS_CHECK");
         }
+    }
+
+    @Test
+    void invalidScopedSectionPersistsItsJointUnit() throws Exception {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
+                + "VALUES (?,?,?,'Incomplete unit','FULL','SHARED',2)", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
+                {"parts":[{"id":"p","name":"Part","questionCount":2,"sections":[
+                  {"id":"a","subjectCode":"LY","questionCount":1,"blocks":[
+                    {"id":"ba","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                  {"id":"b","subjectCode":"LY","questionCount":1,"blocks":[
+                    {"id":"bb","questionType":"SINGLE_CHOICE","questionCount":1,
+                     "childConditions":[{"to":1}]}]}]}]}
+                """);
+        String base = "/api/v1/admin/exams/" + id;
+        mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scope\":\"SECTION\",\"sectionId\":\"a\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("INVALID"));
+        assertThat(jdbc.queryForObject("SELECT outcome FROM exam.exam_check_unit WHERE exam_id=?",
+                String.class, id)).isEqualTo("INVALID");
+        assertThat(jdbc.queryForObject("SELECT cardinality(section_ids) FROM exam.exam_check_unit WHERE exam_id=?",
+                Integer.class, id)).isEqualTo(2);
+        var result = mapper.readTree(mockMvc.perform(get(base + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(result.path("sectionStates")).allSatisfy(state ->
+                assertThat(state.path("state").asText()).isEqualTo("INCOMPLETE"));
+    }
+
+    @Test
+    void malformedMutuallyExclusiveOptionDoesNotInvalidateCheckedAlternative() throws Exception {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
+                + "VALUES (?,?,?,'Exclusive options','FULL','SHARED',1)", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
+                {"parts":[{"id":"p","name":"Part","questionCount":1,
+                  "participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"id":"good","kind":"SUBJECT","code":"LY","sections":[
+                      {"id":"good-section","subjectCode":"LY","questionCount":1,"blocks":[
+                        {"id":"good-block","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                    {"id":"bad","kind":"SUBJECT_CHOICE","code":"LY","sections":[
+                      {"id":"bad-section","subjectCode":"LY","questionCount":1,"blocks":[
+                        {"id":"bad-block","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}]}
+                """);
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "good-block", "p", "good-section", PHYSICS);
+        String base = "/api/v1/admin/exams/" + id;
+        mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scope\":\"SECTION\",\"sectionId\":\"good-section\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("VALID"));
+        mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scope\":\"SECTION\",\"sectionId\":\"bad-section\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("INVALID"));
+        var result = mapper.readTree(mockMvc.perform(get(base + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(result.path("sectionStates").get(0).path("state").asText()).isEqualTo("CHECKED");
+        assertThat(result.path("sectionStates").get(1).path("state").asText()).isEqualTo("INCOMPLETE");
     }
 
     private void assertStates(String url, String physics, String chemistry, String biology) throws Exception {
