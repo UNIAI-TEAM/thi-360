@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, focusRing, FormField, IconButton, Select } from "@thi360/ui";
+import { Button, cn, FormField, IconButton, Select } from "@thi360/ui";
 import { CircleMinus, ListTree, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useState, type ReactNode } from "react";
@@ -116,7 +116,7 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
 
   return (
     <ConditionSection title={t("title")} hint={t("hint")}>
-      <div role="region" tabIndex={0} aria-labelledby={tagTitle} className={cn("max-w-full overflow-x-auto rounded-md border border-border", focusRing)}>
+      <ScrollableTable labelledBy={tagTitle} className="rounded-md border border-border">
         <table className="w-full border-separate border-spacing-0 text-body">
           <caption id={tagTitle} className="sr-only">
             {t("caption", { count: setCount })}
@@ -199,7 +199,7 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollableTable>
 
       {editing !== null && current && (
         <div className="flex flex-col gap-3 rounded-md border border-border bg-subtle/40 p-3" role="group" aria-label={t("editorTitle", { index: editing })}>

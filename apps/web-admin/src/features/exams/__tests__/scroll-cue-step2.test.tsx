@@ -133,4 +133,12 @@ describe("bảng cuộn ngang của bước 2 (F3)", () => {
     );
     expectScrollRegion("Loại câu hỏi theo vị trí trong chùm");
   });
+
+  it("N1 · bảng Điều kiện của N chùm có dòng nhắc cuộn", () => {
+    const set = block({ questionType: "QUESTION_SET", setCount: 2, setSize: 2, questionCount: 4 });
+    renderWithProviders(
+      <BlockSetConditions block={set} reference={reference as unknown as ContentReference} subjectCode="TOAN" onChange={() => {}} commandCount={null} locked={false} />,
+    );
+    expectScrollRegion("Điều kiện của 2 chùm");
+  });
 });
