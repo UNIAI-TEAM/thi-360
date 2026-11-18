@@ -5,7 +5,7 @@ import { useContentReference } from "@/features/content/queries";
 import en from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
-import { mapExamDetail } from "../api-mapping";
+import { mapExamDetail, mapPart } from "../api-mapping";
 import { ExamReviewCheck } from "../components/exam-review-check";
 import { useIssueText } from "../components/exam-review-shared";
 import { getExamCheck } from "../review-api";
@@ -166,6 +166,26 @@ describe("mã kiểm tra mới có câu chữ vi và en", () => {
     expect(await textOf(unknownSegment, "vi", SEGMENT_EXAM)).toBe("Phần Tiếng Anh: một phân đoạn có 3 lệnh trong khi khai báo 4 lệnh.");
     expect(await textOf({ ...unknownSegment, segmentCode: null }, "vi", SEGMENT_EXAM)).toBe("Phần Tiếng Anh: một phân đoạn có 3 lệnh trong khi khai báo 4 lệnh.");
     expect(await textOf(unknownSegment)).toBe("Phần Tiếng Anh: một phân đoạn có 3 lệnh trong khi khai báo 4 lệnh.");
+  });
+  it("displaySegments của máy chủ qua mapPart: câu in tên phân đoạn, không phải câu chung", async () => {
+    const part = mapPart(
+      {
+        id: "part-1",
+        name: "Phần Tiếng Anh",
+        participation: { mode: "ALL" },
+        displaySegments: [{ code: "P2", name: "Phần II", fromPosition: 6, toPosition: 12, commandCount: 4, maxPoints: 12.5 }],
+      },
+      0,
+    );
+
+    const text = await textOf(
+      issueOf({ code: "DISPLAY_SEGMENT_MISMATCH", group: "DISPLAY", blockName: null, subjectCode: null, partId: "part-1", partName: "Phần Tiếng Anh", dimension: "COMMANDS", segmentCode: "P2", required: 4, available: 3 }),
+      "vi",
+      { parts: [part] },
+    );
+
+    expect(part.displaySegments?.[0]?.name).toBe("Phần II");
+    expect(text).toBe("Phần Tiếng Anh: phân đoạn Phần II có 3 lệnh trong khi khai báo 4 lệnh.");
   });
 
   it("BLOCK_COUNT_LOCKED nêu đúng đại lượng bị khóa, kể cả khi máy chủ không trả số", async () => {

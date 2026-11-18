@@ -113,7 +113,7 @@ function joinedNames(value: string | null, nameOf: (code: string) => string): st
  * Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). Truyền `exam` thì vấn đề
  * chỉ có `blockId` (lỗi nguồn của bộ giải) lấy tên khối, tên phần và điều kiện lọc của khối từ cấu trúc.
  */
-export function useIssueText(exam?: { parts: (ExamPart & { displaySegments?: readonly { code: string; name: string }[] })[] }) {
+export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
   const tContent = useTranslations("content");
