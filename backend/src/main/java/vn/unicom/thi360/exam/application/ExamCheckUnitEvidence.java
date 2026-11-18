@@ -146,6 +146,7 @@ final class ExamCheckUnitEvidence {
                 answer = left.isArray() && !left.isEmpty() && pairs.isArray() && pairs.size() == left.size();
                 scoring = answer;
             }
+            case "ESSAY" -> { /* Manual grading does not require an automatic answer key. */ }
             default -> answer = false;
         }
         out.add(new ExamCheckRules.WitnessFact(where, code, answer, scoring, attachments));

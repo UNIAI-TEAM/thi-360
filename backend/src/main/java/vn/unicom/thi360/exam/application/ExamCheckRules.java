@@ -485,6 +485,10 @@ public final class ExamCheckRules {
                         ? fixedCount(block) : Math.max(0, count - fixed);
                 actualCounts.merge(context.part.id(), groupCount, Integer::sum);
                 if (!subjectChoice) total += groupCount;
+                if (groupCount == 0) {
+                    missingPoints.add(context.part.id());
+                    continue;
+                }
                 if (block.requiredPointsPerQuestion() == null) {
                     missingPoints.add(context.part.id());
                     if (exam.getMaxScore() != null) {
