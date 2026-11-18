@@ -174,6 +174,8 @@
       - 2026-11-18 20:18 (UTC+7): BE-19 (UNI-2691, PR #111) merge: dữ liệu câu mẫu H-SCA, V-SAT theo đặc tả 4.1 đến 4.3, 5.1, 5.2, 18 file MP3 tổng hợp và trình nạp tệp cho dev, test. Hàng 5 chờ BE-20 hoặc QA.
       - 2026-11-18 21:13 (UTC+7): BE-20 (UNI-2692, PR #113) merge: kiểm tra khóa dòng, dòng lược bị khóa, tệp audio thiếu trên kho, thang điểm có phần bị loại, đối chiếu theo lệnh, tệp đính kèm và phân đoạn hiển thị khi sinh thử. Hàng 5 của BE-19 đã chứng minh trong lane này.
       - 2026-11-18 21:32 (UTC+7): BE-18 (UNI-2690, PR #112) merge: mẫu H-SCA, V-SAT, hồ sơ kỳ thi, tạo bài theo phạm vi, chặn phân đoạn hiển thị trên bài theo phần và bài ôn. Cặp kiểm tra khóa dòng đạt trên code đã có BE-20, BE-21 đưa test này vào repo.
+      - 2026-11-18 21:58 (UTC+7): FE-7 (UNI-2695, PR #114) merge: bước 2 tạo bài H-SCA, V-SAT gồm nhãn audio, bảng nhóm theo phần, khóa dòng, điều kiện chùm trộn dạng, ví dụ chấm, bảng mạch đối chiếu. Hàng 6 chờ BE-21, QA chạy lại trên máy chủ thật.
+      - 2026-11-18 23:32 (UTC+7): FIX-AUDIO (UNI-2698, PR #115) merge: tệp đính kèm câu hỏi hỗ trợ HTTP Range, proxy web chuyển tiếp Range và phản hồi 206, để trình phát audio tua được.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)

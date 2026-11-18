@@ -27,7 +27,6 @@ import type {
   ExamStructureSummary,
   ExamTemplate,
   ListExamsQuery,
-  SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
   UpdateExamStructureRequest,
@@ -249,11 +248,23 @@ export async function duplicateExam(id: string, request: DuplicateExamRequest): 
 type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery"];
 
 /**
+ * Bộ lọc đếm của một dòng: bộ lọc nhóm kèm điều kiện audio của phần (H38, R-130). Kiểu của trường `audioRequirement`
+ * lấy từ hợp đồng sinh ra (BE-17), không viết tay.
+ */
+export type AudioCountQuery = AvailableQuestionsQuery & Pick<ApiAvailableQuestionsQuery, "audioRequirement">;
+
+/** Đếm cả môn: mỗi nhóm kèm điều kiện audio của phần chứa nó. */
+export interface AudioSubjectCountQuery {
+  subjectCode: string;
+  groups: AudioCountQuery[];
+}
+
+/**
  * Thân `POST .../available-questions/count*`: gửi mọi điều kiện của khối mà hợp đồng nhận (hình dạng câu, định dạng
  * đáp án, điều kiện theo vị trí câu con...). `slots` của khối không có trường trong `AvailableQuestionsQuery` nên không
  * gửi; trường không đặt bị bỏ khỏi thân thay vì gửi `null`/rỗng.
  */
-function toCountBody(query: AvailableQuestionsQuery): ApiAvailableQuestionsQuery {
+function toCountBody(query: AudioCountQuery): ApiAvailableQuestionsQuery {
   return {
     subjectCode: query.subjectCode,
     questionType: query.questionType ?? undefined,
@@ -270,10 +281,12 @@ function toCountBody(query: AvailableQuestionsQuery): ApiAvailableQuestionsQuery
       ? (query.answerFormats as ApiAvailableQuestionsQuery["answerFormats"])
       : undefined,
     childConditions: query.childConditions?.length ? query.childConditions : undefined,
+    // `ANY` và bỏ trống: không lọc audio, không gửi trường.
+    audioRequirement: query.audioRequirement === "REQUIRED" || query.audioRequirement === "FORBIDDEN" ? query.audioRequirement : undefined,
   };
 }
 
-export async function countAvailableQuestions(query: AvailableQuestionsQuery): Promise<AvailableQuestionCounts> {
+export async function countAvailableQuestions(query: AudioCountQuery): Promise<AvailableQuestionCounts> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count", {
     body: toCountBody(query),
@@ -283,7 +296,7 @@ export async function countAvailableQuestions(query: AvailableQuestionsQuery): P
 }
 
 export async function countSubjectAvailableQuestions(
-  query: SubjectAvailableQuestionsQuery,
+  query: AudioSubjectCountQuery,
 ): Promise<AvailableQuestionCounts> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count-subject", {

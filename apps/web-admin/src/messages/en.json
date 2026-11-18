@@ -3903,6 +3903,7 @@
       "blockRemoved": "Removed group {name}. Save to apply.",
       "allocationBlocked": "Not saved: an allocation table still has an error. Fix it in the table and save again.",
       "totalChangeBlocked": "Not saved: the question count of {subject} changed. Choose Apply new numbers or Keep old numbers for this subject, then save again.",
+      "rateBlocked": "Not saved: a row entered by percentage does not give whole sets. Fix the percentage in that row and save again.",
       "overviewSummary": "{count, number} questions · {minutes, number} min{shared, select, yes { shared} other {}} · {points} points",
       "subjectAdded": "Added subject {subject} to the part. Save to apply.",
       "combinationRemoved": "Removed combination {code}. Save to apply.",
@@ -4075,7 +4076,7 @@
         "untitled": "Untitled",
         "name": "Group name",
         "backToSection": "Back to the subject",
-        "fromTemplate": "Group created from the template ({code}).",
+        "fromTemplate": "Group created from the template.",
         "questionType": "Question type",
         "typeLocked": "Filled in by the template; it cannot be changed.",
         "typeOpen": "By the subject's answer-type targets",
@@ -4116,6 +4117,8 @@
       "blockForm": {
         "childConditions": {
           "add": "Add a position condition",
+          "answerType": "Sub-question type",
+          "answerTypeAny": "Any type",
           "empty": "No position conditions yet.",
           "flexibleNote": "Position conditions cannot be used when you enter the total sub-questions only, because the set size is not fixed.",
           "from": "From sub-question no.",
@@ -4126,12 +4129,15 @@
             "OUT_OF_SET": "The position goes beyond the sub-questions per set ({size, number}).",
             "RANGE_ORDER": "The end position must be greater than or equal to the start position."
           },
+          "leftItemsLabel": "Left items",
           "mapidLabel": "MAPID:",
+          "optionsLabel": "Options",
           "pickMapid": "Choose MAPID",
           "pickerDescription": "{name}: chapters, lessons or knowledge items can be chosen.",
           "remove": "Remove {name}",
           "removeMapid": "Remove MAPID {code} {name}",
           "rowName": "Position condition {index, number}",
+          "statementsLabel": "Statements",
           "title": "Conditions by sub-question position",
           "to": "To sub-question no."
         },
@@ -4196,6 +4202,56 @@
         },
         "omittedBadge": "Essay – temporarily skipped",
         "positionRange": "{same, select, yes {Question {from, number}} other {Questions {from, number}–{to, number}}}",
+        "positions": {
+          "columns": {
+            "commands": "Prompts",
+            "onPaper": "On the paper",
+            "points": "Points",
+            "position": "Sub-question position",
+            "shape": "Shape",
+            "type": "Question type"
+          },
+          "onPaper": "{same, select, yes {Question {from, number}} other {Questions {from, number}–{to, number}}}",
+          "perSetNote": "The table above is for one set; the total covers all {sets, number} sets.",
+          "position": "{same, select, yes {Position {from, number}} other {Positions {from, number}–{to, number}}}",
+          "shape": {
+            "any": "Any",
+            "options": "{count, number} options",
+            "statements": "{count, number} statements each"
+          },
+          "title": "Question type by position in the set",
+          "total": "{questions, number} questions · {commands, number} prompts · {points, number} points",
+          "totalNoCommands": "{questions, number} questions · {points, number} points"
+        },
+        "rows": {
+          "audio": {
+            "FORBIDDEN": "No audio",
+            "REQUIRED": "Has audio"
+          },
+          "audioNote": "The audio condition is set per part and cannot be changed on a row.",
+          "available": "Available source: {count, number} questions {audio, select, REQUIRED {with audio} other {without audio}}",
+          "entry": {
+            "count": "Quantity",
+            "legend": "Enter by",
+            "rate": "Percentage"
+          },
+          "locked": "Template locks this row",
+          "lockedHint": "The row's question source, knowledge scope and quotas can still be edited.",
+          "lockedReason": "A whole-subject exam keeps the type and quantity of each row from the template. To change them, create a by-part exam from the same template.",
+          "rate": {
+            "errors": {
+              "format": "Enter the percentage as a number with at most two decimals.",
+              "sets": "{rate}% gives {count, number} questions, which is not divisible by the set size of {size, number} sub-questions. Choose {low, number} or {high, number} questions.",
+              "setsFromZero": "{rate}% gives {count, number} questions, fewer than one set of {size, number} sub-questions. Choose {high, number} questions.",
+              "setsTitle": "Cannot form whole sets.",
+              "title": "Invalid percentage.",
+              "zero": "This percentage gives 0 questions. Enter a percentage above 0."
+            },
+            "label": "Share of the part (%)",
+            "result": "Gives {count, number} questions."
+          },
+          "share": "{count, number} questions · {rate}% of the part"
+        },
         "setMode": {
           "legend": "How to declare sets",
           "note": "Sets are always drawn whole; the group's count is the total number of sub-questions.",
@@ -4258,6 +4314,65 @@
           "searchLabel": "Search tags of {name}",
           "selected": "Chosen tags of {name}"
         }
+      },
+      "scoringExamples": {
+        "description": "For reference only: how this exam scores. This block has no input fields.",
+        "hsca": {
+          "caption": "H-SCA · scoring by question type",
+          "childNote": "Sub-questions in a set are scored by their own type. Points are added first and rounded in the final result.",
+          "colBlank": "Blank",
+          "colCorrect": "Correct",
+          "colPartial": "Partly correct",
+          "colType": "Question type",
+          "colWrong": "Wrong",
+          "notApplicable": "Not applicable",
+          "pendingBody": "Partly correct means choosing correct options but not all of them, and no wrong option. Any wrong option scores 0.",
+          "pendingTitle": "The multiple-answer scoring rule awaits BA confirmation"
+        },
+        "title": "Scoring examples",
+        "vsat": {
+          "clozeExample": "4 of 5 blanks correct scores {part}/{total}",
+          "clozeName": "Fill in the blanks (English)",
+          "clozeRule": "Each correct blank scores {points} points",
+          "colExample": "Example",
+          "colMatching": "Correct pairs",
+          "colPoints": "Points of the question",
+          "colRule": "Rule",
+          "colTrueFalse": "Correct statements",
+          "colType": "Question type",
+          "contrastDifferent": "The same number correct scores differently in the two types. True/False follows the table; Matching gives {perPair} points per pair.",
+          "contrastSame": "At this level both types score the same.",
+          "current": "Viewing",
+          "matchingCaption": "Matching · up to {max} points",
+          "othersCaption": "Other types",
+          "pick": "{n}/4",
+          "picksLegend": "Correct statements in the question",
+          "picksLegendMatching": "Correct pairs",
+          "rowPairs": "{n}/4 pairs",
+          "rowStatements": "{n}/4 statements",
+          "shortExample": "Follows the question's answer format and rounding requirement",
+          "shortRule": "A matching answer scores {points} points",
+          "singleExample": "2 of 3 sub-questions correct scores {part}/{total}",
+          "singleRule": "Each correct question scores {points} points",
+          "status": "{n}/4 correct: True/False {trueFalse} points, Matching {matching} points",
+          "statusMatching": "{n}/4 pairs correct: {points} points",
+          "statusTrueFalse": "{n}/4 statements correct: {points} points",
+          "trueFalseCaption": "True/False · up to {max} points"
+        }
+      },
+      "strand": {
+        "caption": "Reference strands of {subject} by prompt",
+        "colCommands": "Prompts",
+        "colStatus": "Status",
+        "colStrand": "Strand",
+        "denominator": "Denominator: {subject}, whole subject · {total, number} prompts",
+        "difficulty": "Difficulty by prompt: {list}.",
+        "mapped": "Mapped",
+        "note": "Prompt counts are for reference only. Required quotas are set per question.",
+        "pending": "Awaiting mapping",
+        "reference": "Reference",
+        "title": "Reference strands by prompt",
+        "total": "Total"
       },
       "subject": {
         "title": "Subject {subject}",
@@ -4344,6 +4459,18 @@
           "countHeader": "Questions",
           "rateHeader": "Share",
           "rate": "{value}%",
+          "audioHeader": "Audio label",
+          "availableCount": "{count, plural, one {# question} other {# questions}}",
+          "availableError": "Could not count the source",
+          "availableHeader": "Available source",
+          "availableLoading": "Counting…",
+          "partSummary": "Part {part}{known, select, yes { · {count, plural, one {# question} other {# questions}}} other {}}",
+          "partTotal": "Part {part} total",
+          "quantityHeader": "Quantity",
+          "quantitySets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# sub-question} other {# sub-questions}}",
+          "quantitySingle": "{count, plural, one {# single question} other {# single questions}}",
+          "shareHeader": "Share of the part",
+          "totalHeader": "Total questions",
           "scope": "Source scope",
           "actions": "Actions",
           "untitled": "Untitled",
@@ -5555,6 +5682,9 @@
           "points": "Points",
           "percentPart": "Share of part",
           "percentExam": "Share of exam",
+          "blockPoints": "Max points",
+          "commands": "Prompts",
+          "partRows": "Part and source rows",
           "percentExamCustom": "Share of the exam"
         },
         "cell": {
@@ -5564,6 +5694,9 @@
         },
         "lockedCounts": "Question counts locked by template",
         "lockedBlockCountsNote": "A whole-subject exam keeps the type and quantity of every row from the template. To change quantities, choose the By part scope.",
+        "blockUnit": "{sets, number} sets × {size, number} sub-questions",
+        "scrollHint": "The table scrolls sideways: swipe to see the other columns.",
+        "blockRowsNote": "Edit the question count of each row in step 2.",
         "choiceNote": "(learner picks one option)",
         "omittedLabel": "skipped for now",
         "notCounted": "not counted",

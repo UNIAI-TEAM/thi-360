@@ -5,17 +5,21 @@ import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
+import type { AudioCountQuery } from "../api.http";
 import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor, totalChangePending } from "../allocation";
 import { apportionByPercent, computeAllocation, convertMatrixUnit, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
-import { useSubjectAvailableQuestions } from "../queries";
+import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
 import { effectiveScope, effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
-import type { AnswerQuotas, AvailableQuestionsQuery, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
+import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { LOCKED_FIELD } from "./locked-field";
+import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
+import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
@@ -97,7 +101,7 @@ export function ExamStructureSubjectPanel({
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
     groups: section.blocks.map(
-      (block): AvailableQuestionsQuery => ({
+      (block): AudioCountQuery => ({
         subjectCode: section.subjectCode,
         questionType: block.questionType,
         answerTypes: block.questionType === null ? quotaTypes : [],
@@ -108,6 +112,8 @@ export function ExamStructureSubjectPanel({
         itemShape: block.itemShape,
         answerFormats: block.answerFormats,
         childConditions: block.childConditions,
+        // R-130, R-142: môn của phần Nghe chỉ đếm câu có audio, phần Đọc chỉ đếm câu không audio. `ANY` và bỏ trống: không gửi.
+        ...(section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? { audioRequirement: section.audioRequirement } : {}),
       }),
     ),
   });
@@ -270,7 +276,7 @@ export function ExamStructureSubjectPanel({
             {(controlProps) =>
               countLocked || !onCount ? (
                 <span className="flex items-center gap-2">
-                  <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className="w-24 tabular-nums" />
+                  <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
                   {countLocked && (
                     <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
                       <Lock aria-hidden className="size-3.5" />
@@ -509,7 +515,16 @@ export function ExamStructureSubjectPanel({
         />
       </section>
 
-      <GroupList section={section} subjectName={subjectName} total={allocation.count} allocationRemainder={allocation.remainder} onSelectBlock={onSelectBlock} onAddBlock={onAddBlock} />
+      <GroupList
+        section={section}
+        subjectName={subjectName}
+        partName={context.part.name}
+        partTotal={context.part.questionCount}
+        total={allocation.count}
+        allocationRemainder={allocation.remainder}
+        onSelectBlock={onSelectBlock}
+        onAddBlock={onAddBlock}
+      />
     </Card>
   );
 }
@@ -545,10 +560,24 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
   );
 }
 
-/** Danh sách nhóm lấy câu của môn (khởi tạo từ mẫu): dạng trả lời, số câu, phạm vi nguồn; mở nhóm để sửa. */
+/** Nguồn khả dụng của một dòng của phần có audio: cùng bộ lọc và cùng truy vấn với vùng sửa nhóm (R-130). */
+function AvailableSource({ block, section }: { block: QuestionBlock; section: ExamSection }) {
+  const t = useTranslations("exams.structure.subject.groups");
+  const query = useAvailableQuestions(blockAvailableInput(block, section, section.subjectCode));
+  if (query.isError) return <span className="text-text-muted">{t("availableError")}</span>;
+  if (!query.data) return <span className="text-text-muted">{t("availableLoading")}</span>;
+  return <>{t("availableCount", { count: query.data.total })}</>;
+}
+
+/**
+ * Danh sách nhóm lấy câu của môn (khởi tạo từ mẫu): dạng trả lời, số câu, phạm vi nguồn; mở nhóm để sửa. Môn của phần có
+ * điều kiện audio (bản vẽ `NhomAudio2B`) thêm nhãn audio, số lượng, tổng câu, tỷ lệ trong phần, nguồn khả dụng và dòng tổng.
+ */
 function GroupList({
   section,
   subjectName,
+  partName,
+  partTotal,
   total,
   allocationRemainder,
   onSelectBlock,
@@ -556,6 +585,9 @@ function GroupList({
 }: {
   section: ExamSection;
   subjectName: string;
+  partName: string;
+  /** Số câu của phần chứa môn: mẫu số của "Tỷ lệ trong phần", cùng số với vùng sửa nhóm. */
+  partTotal: number | null;
   total: number | null;
   allocationRemainder: number | null;
   onSelectBlock: (blockId: string) => void;
@@ -563,12 +595,13 @@ function GroupList({
 }) {
   const t = useTranslations("exams.structure.subject.groups");
   const tContent = useTranslations("content");
+  const tRows = useTranslations("exams.structure.blockForm.rows");
   const headingId = useId();
   const format = useFormatter();
-  const rateText = (block: QuestionBlock) => {
-    const rate = total === null ? null : ratePercent(block.questionCount ?? allocationRemainder ?? 0, total);
-    return rate === null ? "—" : t("rate", { value: format.number(rate, { maximumFractionDigits: 1 }) });
-  };
+  const audio = sectionAudio(section);
+  const percentText = (rate: number | null) => (rate === null ? "—" : t("rate", { value: format.number(rate, { maximumFractionDigits: 1 }) }));
+  const questionsOf = (block: QuestionBlock) => block.questionCount ?? allocationRemainder ?? 0;
+  const rateText = (block: QuestionBlock) => percentText(audio ? blockShare(questionsOf(block), partTotal) : total === null ? null : ratePercent(questionsOf(block), total));
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
 
   const typeText = (block: QuestionBlock) => {
@@ -587,11 +620,19 @@ function GroupList({
     }
     return t("count", { count: block.questionCount });
   };
+  /** Cột "Số lượng": cách lấy (số chùm × cỡ chùm hoặc số câu đơn); tổng câu của dòng ở cột "Tổng câu". */
+  const quantityText = (block: QuestionBlock) => {
+    if (block.questionCount === null) return countText(block);
+    if (isSetBlock(block)) return block.setCount && block.setSize ? t("quantitySets", { sets: block.setCount, size: block.setSize }) : t("count", { count: block.questionCount });
+    return t("quantitySingle", { count: block.questionCount });
+  };
   const scopeText = (block: QuestionBlock) => {
     const source = effectiveScopeSource(block, section);
     if (source === "GROUP") return t("scopeOwn", { count: block.knowledgeScope?.nodeIds.length ?? 0 });
     return source === "SECTION" ? t("scopeSection") : t("scopeNone");
   };
+  const sumQuestions = section.blocks.reduce((sumSoFar, block) => sumSoFar + questionsOf(block), 0);
+  const headCell = "border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap";
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -602,30 +643,42 @@ function GroupList({
           <span>{t("add")}</span>
         </Button>
       </div>
+      {audio && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-label font-semibold text-text tabular-nums">
+            {t("partSummary", { part: partName, known: partTotal !== null && partTotal > 0 ? "yes" : "no", count: partTotal ?? 0 })}
+          </p>
+          <AudioChip audio={audio} />
+          <span className="text-caption text-text-muted">{tRows("audioNote")}</span>
+        </div>
+      )}
       {remainderGroups > 1 && <p className="text-caption text-danger">{t("remainderConflict", { count: remainderGroups })}</p>}
       {section.blocks.length === 0 ? (
         <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
-        <div role="region" tabIndex={0} aria-label={t("caption", { subject: subjectName })} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
+        <ScrollableTable label={t("caption", { subject: subjectName })} className="rounded-md border border-border">
           <table className="w-full border-separate border-spacing-0 text-body">
             <caption className="sr-only">{t("caption", { subject: subjectName })}</caption>
             <thead>
               <tr className="text-left text-caption text-text-muted">
-                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("name")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("type")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("countHeader")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("rateHeader")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("scope")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
+                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold whitespace-nowrap">{t("name")}</th>
+                <th scope="col" className={headCell}>{t("type")}</th>
+                {audio && <th scope="col" className={headCell}>{t("audioHeader")}</th>}
+                <th scope="col" className={headCell}>{t(audio ? "quantityHeader" : "countHeader")}</th>
+                {audio && <th scope="col" className={cn(headCell, "text-right")}>{t("totalHeader")}</th>}
+                <th scope="col" className={headCell}>{t(audio ? "shareHeader" : "rateHeader")}</th>
+                {audio && <th scope="col" className={headCell}>{t("availableHeader")}</th>}
+                <th scope="col" className={headCell}>{t("scope")}</th>
+                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold whitespace-nowrap"><span className="sr-only">{t("actions")}</span></th>
               </tr>
             </thead>
             <tbody>
               {section.blocks.map((block) => (
                 <tr key={block.id}>
-                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
+                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium whitespace-nowrap text-text">
                     {block.name || t("untitled")}
                   </th>
-                  <td className="border-b border-border px-2 py-2 text-text">
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text">
                     <span className="inline-flex items-center gap-1.5">
                       {typeText(block)}
                       {block.answerTypeLocked && (
@@ -636,9 +689,20 @@ function GroupList({
                       )}
                     </span>
                   </td>
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{countText(block)}</td>
+                  {audio && (
+                    <td className="border-b border-border px-2 py-2 whitespace-nowrap">
+                      <AudioChip audio={audio} />
+                    </td>
+                  )}
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{audio ? quantityText(block) : countText(block)}</td>
+                  {audio && <td className="border-b border-border px-2 py-2 text-right font-semibold whitespace-nowrap tabular-nums text-text">{format.number(questionsOf(block))}</td>}
                   <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{rateText(block)}</td>
-                  <td className="border-b border-border px-2 py-2 text-text-secondary">{scopeText(block)}</td>
+                  {audio && (
+                    <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text-secondary">
+                      <AvailableSource block={block} section={section} />
+                    </td>
+                  )}
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text-secondary">{scopeText(block)}</td>
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name || t("untitled") })} onClick={() => onSelectBlock(block.id)}>
                       {t("open")}
@@ -647,8 +711,18 @@ function GroupList({
                 </tr>
               ))}
             </tbody>
+            {audio && (
+              <tfoot>
+                <tr className="bg-subtle font-bold tabular-nums text-text">
+                  <th scope="row" colSpan={4} className="px-3 py-2.5 text-left">{t("partTotal", { part: partName })}</th>
+                  <td className="px-2 py-2.5 text-right">{format.number(sumQuestions)}</td>
+                  <td className="px-2 py-2.5 whitespace-nowrap">{percentText(blockShare(sumQuestions, partTotal))}</td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
+            )}
           </table>
-        </div>
+        </ScrollableTable>
       )}
     </section>
   );

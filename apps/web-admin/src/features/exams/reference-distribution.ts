@@ -1,6 +1,6 @@
 import { quotaUnitOf } from "./exam-overview";
 import { convertMatrixMode, dimensionValues, emptyMatrix, type MatrixAxes, sum, toDimension } from "./matrix";
-import type { BlockMatrix, ExamQuota, ExamSection, MatrixUnit } from "./types";
+import type { BlockMatrix, ExamQuota, ExamScope, ExamSection, MatrixUnit, TopicQuota } from "./types";
 
 /**
  * Phân bố tham khảo của một môn và hai nút chuyển (2B 15.3, H6, H7): "Dùng ma trận tham khảo" chép số của phân bố tham
@@ -133,4 +133,56 @@ export function referenceToMatrix(section: ExamSection, quota: ExamQuota, axes: 
     [otherEnforcementKey]: otherHasValues ? base[otherEnforcementKey] : "REFERENCE",
     [grade ? "gradeEnforcement" : "difficultyEnforcement"]: "REQUIRED",
   };
+}
+
+// ---------------------------------------------------------------- mạch đối chiếu theo lệnh (V-SAT, spec 5.3, H44)
+
+export interface StrandRow {
+  id: string;
+  name: string;
+  commands: number;
+  /** Chưa gắn MAPID nào: trạng thái "Chờ mapping" (H31). */
+  pending: boolean;
+}
+
+export interface StrandTable {
+  rows: StrandRow[];
+  /** Tổng số lệnh của các mạch: mẫu số của bảng. */
+  total: number;
+  /** Độ khó theo lệnh của môn (đối chiếu), theo thứ tự khai; rỗng khi không có. */
+  difficulty: Array<{ code: string; value: number }>;
+}
+
+function isStrandQuota(quota: TopicQuota): boolean {
+  return quota.basis === "PROMPT" && quota.enforcement === "REFERENCE";
+}
+
+function promptDifficulty(section: ExamSection, examQuotas: readonly ExamQuota[]): StrandTable["difficulty"] {
+  const quota = examQuotas.find(
+    (item) =>
+      item.basis === "PROMPT" &&
+      item.dimension === "DIFFICULTY" &&
+      (item.subjectCodes?.length ? item.subjectCodes.includes(section.subjectCode) : true) &&
+      !item.excludeSubjectCodes?.includes(section.subjectCode),
+  );
+  const fromQuota = (quota?.buckets ?? []).flatMap((bucket) => {
+    const value = bucket.count ?? 0;
+    return bucket.codes.length === 1 && value > 0 ? [{ code: bucket.codes[0]!, value }] : [];
+  });
+  if (fromQuota.length > 0) return fromQuota;
+  const matrix = section.matrix;
+  return matrix?.basis === "PROMPT" ? matrix.byDifficulty.filter((item) => item.value > 0) : [];
+}
+
+/**
+ * Bảng "Mạch đối chiếu theo lệnh" của một môn (V-SAT Ngữ văn, Địa lí, Tiếng Anh, bản vẽ `BaiDocDungChung2B`): các chỉ tiêu chủ
+ * đề cấp môn đặt theo lệnh (`basis = PROMPT`, chỉ ở mức `REFERENCE`). Chỉ bài cả môn có bảng này (ADV:BE-18:1): bài `PART` hay
+ * môn không có mạch trả `null` để màn không vẽ gì, không báo lỗi, không khung rỗng.
+ */
+export function strandTable(section: ExamSection, examQuotas: readonly ExamQuota[], examScope: ExamScope): StrandTable | null {
+  if (examScope !== "SUBJECT") return null;
+  const strands = (section.topicQuotas ?? []).filter(isStrandQuota);
+  if (strands.length === 0) return null;
+  const rows = strands.map((quota) => ({ id: quota.id, name: quota.name, commands: quota.count, pending: quota.nodeIds.length === 0 }));
+  return { rows, total: rows.reduce((acc, row) => acc + row.commands, 0), difficulty: promptDifficulty(section, examQuotas) };
 }
