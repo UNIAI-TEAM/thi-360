@@ -1,6 +1,10 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,9 +21,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 
 /**
@@ -32,7 +38,7 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
     private static final String SINGLE = "{\"type\":\"SINGLE_CHOICE\",\"options\":[{\"id\":\"a\",\"correct\":true},{\"id\":\"b\",\"correct\":false}]}";
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
-    @Autowired ObjectStorage storage;
+    @MockitoSpyBean ObjectStorage storage;
 
     private final List<String> stored = new ArrayList<>();
 
@@ -52,6 +58,11 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
         JsonNode healthy = check(exam);
         assertThat(codes(healthy)).doesNotContain("ATTACHMENT_MISSING");
         assertThat(healthy.path("status").asText()).isEqualTo("VALID");
+        assertThat(healthy.path("sectionStates").get(0).path("state").asText()).isEqualTo("CHECKED");
+        var before = unit(exam, "s");
+        JsonNode unchanged = check(exam);
+        assertThat(unchanged.path("sectionStates").get(0).path("state").asText()).isEqualTo("CHECKED");
+        assertThat(unit(exam, "s")).isEqualTo(before);
 
         String lostKey = jdbc.queryForObject("SELECT a.object_key FROM questionbank.question q JOIN questionbank.question_version v "
                 + "ON v.question_id = q.id JOIN questionbank.question_asset a ON a.id = (v.snapshot->'attachmentIds'->>0)::uuid "
@@ -67,6 +78,13 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
         assertThat(issue.path("questionCodes")).extracting(JsonNode::asText).containsExactly(lostCode);
         assertThat(issue.path("questionCodes")).extracting(JsonNode::asText).doesNotContain(presentCode);
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(result.path("paths").get(0).path("result").asText()).isEqualTo("INVALID");
+        assertThat(result.path("sectionStates").get(0).path("state").asText()).isEqualTo("INCOMPLETE");
+        var failed = unit(exam, "s");
+        assertThat(failed.get("outcome")).isEqualTo("INVALID");
+        for (String field : List.of("input_fingerprint", "source_revision", "witness", "checked_at", "duration_ms")) {
+            assertThat(failed.get(field)).as(field).isEqualTo(before.get(field));
+        }
 
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, exam);
         String publish = mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
@@ -74,6 +92,11 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
                         .content("{\"expectedRevision\":" + revision + ",\"pathIds\":[\"default\"]}"))
                 .andExpect(status().is4xxClientError()).andReturn().getResponse().getContentAsString();
         assertThat(publish).contains("PATH_NOT_VALID");
+        storage.put(lostKey, "mp3!".getBytes(StandardCharsets.UTF_8), "audio/mpeg");
+        JsonNode restored = check(exam);
+        assertThat(restored.path("status").asText()).isEqualTo("VALID");
+        assertThat(restored.path("sectionStates").get(0).path("state").asText()).isEqualTo("CHECKED");
+        assertThat(codes(restored)).doesNotContain("ATTACHMENT_MISSING");
     }
 
     @Test
@@ -110,6 +133,63 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
         JsonNode result = check(exam(subject, 2, "{\"id\":\"b\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":2}"));
         assertThat(codes(result)).doesNotContain("ATTACHMENT_MISSING");
         assertThat(result.path("status").asText()).isEqualTo("VALID");
+        verify(storage, never()).exists(anyString());
+    }
+
+    @Test
+    void storageOutageDoesNotPersistAResultOrMissingAttachmentIssue() throws Exception {
+        UUID subject = subject();
+        UUID file = asset(true);
+        single(subject, file);
+        UUID exam = exam(subject, 1, "{\"id\":\"b\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}");
+        assertThat(check(exam).path("status").asText()).isEqualTo("VALID");
+        var before = unit(exam, "s");
+        String previous = jdbc.queryForObject("select result::text from exam.exam_check_run where exam_id=?", String.class, exam);
+        String key = jdbc.queryForObject("select object_key from questionbank.question_asset where id=?", String.class, file);
+        doThrow(new ExternalServiceException("INTERNAL_ERROR")).when(storage).exists(key);
+        mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/check").with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isBadGateway());
+        assertThat(unit(exam, "s")).isEqualTo(before);
+        assertThat(jdbc.queryForObject("select result::text from exam.exam_check_run where exam_id=?", String.class, exam))
+                .isEqualTo(previous).doesNotContain("ATTACHMENT_MISSING");
+    }
+
+    @Test
+    void scopedCheckOnlyUpdatesTheAffectedReusedUnit() throws Exception {
+        UUID firstSubject = subject();
+        UUID secondSubject = subject();
+        UUID file = asset(true);
+        single(firstSubject, file);
+        single(secondSubject, null);
+        UUID exam = exam(firstSubject, 1, "{\"id\":\"b\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}");
+        String secondCode = jdbc.queryForObject("select code from catalog.catalog_item where id=?", String.class, secondSubject);
+        String second = "{\"id\":\"s2\",\"subjectCode\":\"" + secondCode
+                + "\",\"questionCount\":1,\"blocks\":[{\"id\":\"b2\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]}";
+        jdbc.update("update exam.exam_structure set parts=jsonb_set(parts,'{parts,0,sections}',"
+                + "(parts #> '{parts,0,sections}') || ?::jsonb) where exam_id=?", "[" + second + "]", exam);
+        jdbc.update("update exam.exam_structure set parts=jsonb_set(parts,'{parts,0,questionCount}','2'::jsonb) where exam_id=?", exam);
+        jdbc.update("update exam.exam set question_count=2 where id=?", exam);
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), exam, "b2", "p", "s2", secondSubject);
+        assertThat(check(exam).path("status").asText()).isEqualTo("VALID");
+        var unaffected = unit(exam, "s2");
+        String key = jdbc.queryForObject("select object_key from questionbank.question_asset where id=?", String.class, file);
+        storage.delete(key);
+        JsonNode scoped = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/check")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scope\":\"SECTION\",\"sectionId\":\"s\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(scoped.path("status").asText()).isEqualTo("INVALID");
+        assertThat(codes(scoped)).contains("ATTACHMENT_MISSING");
+        assertThat(unit(exam, "s").get("outcome")).isEqualTo("INVALID");
+        assertThat(scoped.path("sectionStates").get(0).path("state").asText()).isEqualTo("INCOMPLETE");
+        assertThat(scoped.path("sectionStates").get(1).path("state").asText()).isEqualTo("CHECKED");
+        assertThat(unit(exam, "s2")).isEqualTo(unaffected);
+    }
+
+    private java.util.Map<String, Object> unit(UUID exam, String section) {
+        return jdbc.queryForMap("select outcome,input_fingerprint,source_revision,witness::text as witness,checked_at,duration_ms "
+                + "from exam.exam_check_unit where exam_id=? and ?=any(section_ids)", exam, section);
     }
 
     // ---- fixtures ------------------------------------------------------------------------------------------

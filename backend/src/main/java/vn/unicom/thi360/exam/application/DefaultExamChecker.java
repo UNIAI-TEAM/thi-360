@@ -240,7 +240,8 @@ public class DefaultExamChecker implements ExamChecker {
             }
         }
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
-        return new Evaluation(evaluation.result(), evaluation.witness(), markWitnessFailures(computed.changed(), witnessIssues));
+        return new Evaluation(evaluation.result(), evaluation.witness(),
+                markWitnessFailures(computed.changed(), computed.reused(), witnessIssues));
     }
 
     private static List<ExamCheckRules.FilterEvidence> filterEvidence(PathResult result, ExamStructureDocument document,
@@ -430,22 +431,30 @@ public class DefaultExamChecker implements ExamChecker {
     }
 
     private List<ExamCheckUnitStore.Unit> markWitnessFailures(List<ExamCheckUnitStore.Unit> changed,
-            Map<Long, List<ObjectNode>> byPath) {
-        List<ExamCheckUnitStore.Unit> result = new ArrayList<>(changed.size());
+            List<ExamCheckUnitStore.Unit> reused, Map<Long, List<ObjectNode>> byPath) {
+        List<ExamCheckUnitStore.Unit> result = new ArrayList<>(changed.size() + reused.size());
         for (var unit : changed) {
-            var issues = unit.issues().deepCopy();
-            boolean invalid = false;
-            for (var pathIssues : byPath.values()) for (var issue : pathIssues) {
-                if (unit.sectionIds().contains(issue.path("sectionId").asText())
-                        && "ERROR".equals(issue.path("severity").asText())) {
-                    ((com.fasterxml.jackson.databind.node.ArrayNode) issues).add(issue);
-                    invalid = true;
-                }
-            }
-            result.add(invalid ? new ExamCheckUnitStore.Unit(unit.key(), unit.sectionIds(), unit.fingerprint(),
-                    unit.sourceRevision(), "INVALID", issues, unit.witness(), unit.checkedAt(), unit.durationMs()) : unit);
+            result.add(withWitnessFailures(unit, byPath));
+        }
+        for (var unit : reused) {
+            var updated = withWitnessFailures(unit, byPath);
+            if (updated != unit) result.add(updated);
         }
         return result;
+    }
+
+    private ExamCheckUnitStore.Unit withWitnessFailures(ExamCheckUnitStore.Unit unit,
+            Map<Long, List<ObjectNode>> byPath) {
+        com.fasterxml.jackson.databind.node.ArrayNode issues = null;
+        for (var pathIssues : byPath.values()) for (var issue : pathIssues) {
+            if (unit.sectionIds().contains(issue.path("sectionId").asText())
+                    && "ERROR".equals(issue.path("severity").asText())) {
+                if (issues == null) issues = (com.fasterxml.jackson.databind.node.ArrayNode) unit.issues().deepCopy();
+                issues.add(issue);
+            }
+        }
+        return issues != null ? new ExamCheckUnitStore.Unit(unit.key(), unit.sectionIds(), unit.fingerprint(),
+                unit.sourceRevision(), "INVALID", issues, unit.witness(), unit.checkedAt(), unit.durationMs()) : unit;
     }
 
     /** Keep each invalid option's path identifiable while solving unrelated valid options normally. */
