@@ -129,12 +129,12 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     };
 
     const columns: ColumnDef<PreviewCompliance>[] = [
-      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-40 font-semibold text-text">{criterion(row.original)}</span> },
-      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-40">{scope(row.original)}</span> },
-      { id: "level", header: t("columns.level"), cell: ({ row }) => <span className="whitespace-nowrap">{level(row.original)}</span> },
-      { id: "required", header: t("columns.required"), cell: ({ row }) => <span className="block min-w-24 text-right">{required(row.original)}</span> },
-      { id: "actual", header: t("columns.actual"), cell: ({ row }) => <span className="block min-w-24 text-right">{actual(row.original)}</span> },
-      { id: "difference", header: t("columns.difference"), cell: ({ row }) => <span className="block min-w-24 text-right">{difference(row.original)}</span> },
+      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-32 font-semibold text-text">{criterion(row.original)}</span> },
+      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-32">{scope(row.original)}</span> },
+      { id: "level", header: t("columns.level"), cell: ({ row }) => <span>{level(row.original)}</span> },
+      { id: "required", header: t("columns.required"), cell: ({ row }) => <span className="block min-w-16 text-right">{required(row.original)}</span> },
+      { id: "actual", header: t("columns.actual"), cell: ({ row }) => <span className="block min-w-16 text-right">{actual(row.original)}</span> },
+      { id: "difference", header: t("columns.difference"), cell: ({ row }) => <span className="block min-w-16 text-right">{difference(row.original)}</span> },
       { id: "result", header: t("columns.result"), cell: ({ row }) => result(row.original) },
     ];
     const cards: TableCards<PreviewCompliance> = {
