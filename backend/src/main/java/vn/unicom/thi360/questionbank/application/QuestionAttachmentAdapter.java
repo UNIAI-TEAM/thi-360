@@ -11,12 +11,15 @@ import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 
-/** Reads the attachments of root versions from their snapshots and, on request, checks the object storage (H48). */
+/**
+ * Reads the attachments of root versions from their snapshots and, on request, checks the object storage (H48).
+ * The metadata is one query that ends before the storage is asked; the adapter does not start a method-wide
+ * transaction, so the checker (which runs without an enclosing transaction) does not hold a connection on storage calls.
+ */
 @Service
 public class QuestionAttachmentAdapter implements QuestionAttachmentPort {
     record Row(VersionKey key, UUID assetId, String name, String mime, String objectKey) { }
@@ -30,7 +33,6 @@ public class QuestionAttachmentAdapter implements QuestionAttachmentPort {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Map<VersionKey, List<Attachment>> attachments(Collection<VersionKey> versions, boolean verifyStorage) {
         if (versions.isEmpty()) return Map.of();
         var params = new MapSqlParameterSource();

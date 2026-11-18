@@ -14,10 +14,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 
@@ -25,6 +33,8 @@ class QuestionAttachmentAdapterTests {
     /** Storage that records every call and fails like S3ObjectStorage.exists does when the connection is lost. */
     private static final class FakeStorage implements ObjectStorage {
         final List<String> asked = new ArrayList<>();
+        /** Whether a database transaction was active at each storage call. */
+        final List<Boolean> inTransaction = new ArrayList<>();
         final boolean down;
         final List<String> present;
 
@@ -40,6 +50,7 @@ class QuestionAttachmentAdapterTests {
         @Override
         public boolean exists(String key) {
             asked.add(key);
+            inTransaction.add(TransactionSynchronizationManager.isActualTransactionActive());
             if (down) throw new ExternalServiceException("INTERNAL_ERROR");
             return present.contains(key);
         }
@@ -87,5 +98,28 @@ class QuestionAttachmentAdapterTests {
         var jdbc = mock(NamedParameterJdbcTemplate.class);
         assertThat(new QuestionAttachmentAdapter(jdbc, storage).attachments(List.of(), true)).isEmpty();
         verify(jdbc, never()).query(anyString(), any(SqlParameterSource.class), any(RowMapper.class));
+    }
+
+    /** A transaction manager that only tracks whether a transaction is open, as the real one binds it to the thread. */
+    private static final class TrackingTransactionManager extends AbstractPlatformTransactionManager {
+        @Override protected Object doGetTransaction() { return new Object(); }
+        @Override protected void doBegin(Object transaction, TransactionDefinition definition) { }
+        @Override protected void doCommit(DefaultTransactionStatus status) { }
+        @Override protected void doRollback(DefaultTransactionStatus status) { }
+    }
+
+    @Test
+    void storageIsAskedOutsideAnyTransactionEvenThroughTheTransactionalProxy() {
+        var key = new VersionKey(UUID.randomUUID(), 1);
+        var storage = new FakeStorage(false, "questions/a", "questions/b");
+        var adapter = new QuestionAttachmentAdapter(rows(row(key, "a.mp3", "questions/a"), row(key, "b.mp3", "questions/b")),
+                storage);
+        // The way Spring applies the @Transactional of a bean: any transaction opened for the call is bound to the thread.
+        var proxy = new ProxyFactory(adapter);
+        proxy.addAdvice(new TransactionInterceptor(new TrackingTransactionManager(), new AnnotationTransactionAttributeSource()));
+        var result = ((QuestionAttachmentPort) proxy.getProxy()).attachments(List.of(key), true);
+        assertThat(storage.asked).containsExactly("questions/a", "questions/b");
+        assertThat(storage.inTransaction).containsExactly(false, false);
+        assertThat(result.get(key)).extracting(a -> a.readable()).containsExactly(true, true);
     }
 }
