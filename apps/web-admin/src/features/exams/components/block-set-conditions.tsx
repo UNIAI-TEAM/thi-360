@@ -7,6 +7,7 @@ import { useId, useMemo, useState, type ReactNode } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
+import { isFlexibleSet } from "../matrix";
 import type { BlockSlot, ChildCondition, QuestionBlock } from "../types";
 import {
   childConditionIssue,
@@ -38,9 +39,12 @@ function useKnowledgeRefs(reference: ContentReference | undefined) {
 
 /**
  * Điều kiện của nhóm chùm (2B 3.3): điều kiện riêng từng chùm (`slots`: nhãn, MAPID) và điều kiện MAPID theo vị trí câu
- * con (`childConditions`). Chùm không đặt gì dùng điều kiện của nhóm.
+ * con (`childConditions`). Chùm không đặt gì dùng điều kiện của nhóm. Chùm cỡ linh hoạt (chỉ nhập tổng câu con) không
+ * có cỡ chùm cố định nên không có hai bảng này; một dòng ghi lý do.
  */
 export function BlockSetConditions({ block, reference, subjectCode, onChange }: BlockSetConditionsProps) {
+  const t = useTranslations("exams.structure.blockForm.childConditions");
+  if (isFlexibleSet(block)) return <p className="text-caption text-text-muted">{t("flexibleNote")}</p>;
   return (
     <>
       <SlotsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} />
