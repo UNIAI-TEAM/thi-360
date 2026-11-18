@@ -4069,7 +4069,7 @@
         "name": "Group name",
         "backToSection": "Back to the subject",
         "fromTemplate": "Group created from the template ({code}).",
-        "questionType": "Answer type",
+        "questionType": "Question type",
         "typeLocked": "Filled in by the template; it cannot be changed.",
         "typeOpen": "By the subject's answer-type targets",
         "typeOpenHint": "The group's questions fill the answer-type targets the subject still lacks.",
@@ -4085,9 +4085,6 @@
         "setSize": "Sub-questions per set",
         "setHint": "The group draws {count, plural, one {# sub-question} other {# sub-questions}}",
         "setWholeNote": "Sets are always drawn whole; the group's count is sets × sub-questions per set.",
-        "points": "Required points per question",
-        "pointsOpenHint": "Optional. Leave empty to accept any question; points come from the question version.",
-        "pointsTotal": "Only questions worth exactly {points, plural, one {# point} other {# points}} enter the source; the group is worth {total, plural, one {# point} other {# points}}.",
         "ownMatrix": "The group's own grade and difficulty matrix",
         "ownMatrixNone": "Not set (optional)",
         "ownMatrixSet": "Set",
@@ -4108,6 +4105,135 @@
         "manualGrading": "Manual grading",
         "competencies": "Competencies",
         "competenciesHint": "Only draw questions tagged with one of the selected competencies. None selected: any competency of the subject."
+      },
+      "blockForm": {
+        "childConditions": {
+          "add": "Add a position condition",
+          "empty": "No position conditions yet.",
+          "from": "From sub-question no.",
+          "hint": "The sub-question at a position or position range in the set must have at least one chosen MAPID. The system only picks sets with enough matching sub-questions.",
+          "issues": {
+            "FROM_MIN": "The start position must be 1 or more.",
+            "NO_MAPID": "Choose at least one MAPID.",
+            "OUT_OF_SET": "The position goes beyond the sub-questions per set ({size, number}).",
+            "RANGE_ORDER": "The end position must be greater than or equal to the start position."
+          },
+          "mapidLabel": "MAPID:",
+          "pickMapid": "Choose MAPID",
+          "pickerDescription": "{name}: chapters, lessons or knowledge items can be chosen.",
+          "remove": "Remove {name}",
+          "removeMapid": "Remove MAPID {code} {name}",
+          "rowName": "Position condition {index, number}",
+          "title": "Conditions by sub-question position",
+          "to": "To sub-question no."
+        },
+        "conditions": {
+          "add": "Add a condition",
+          "added": "Already added",
+          "answerFormats": {
+            "format": {
+              "CHEM_EQUATION": "Chemical equation",
+              "CHEM_FORMULA": "Chemical formula",
+              "DECIMAL": "Decimal number",
+              "FRACTION": "Fraction",
+              "INTEGER": "Integer",
+              "TEXT": "Text"
+            },
+            "legend": "Answer format",
+            "note": "Matches any one of the formats. Questions without a format are not drawn into a group with this condition."
+          },
+          "empty": "No conditions added yet.",
+          "groupName": "group",
+          "hint": "Every question of the group must meet the conditions.",
+          "itemShape": {
+            "leftItems": "Left items",
+            "noteMatching": "A Matching question must have exactly the number of left items and right choices entered.",
+            "noteTrueFalse": "A True/False question must have exactly the number of statements entered.",
+            "required": "Enter a number greater than 0.",
+            "rightItems": "Right choices",
+            "statements": "Statements"
+          },
+          "kind": {
+            "ANSWER_FORMATS": "Answer format",
+            "ITEM_SHAPE": "Question shape",
+            "MAPID": "Knowledge (MAPID)",
+            "POINTS": "Points per question",
+            "TAGS": "Tags or text type"
+          },
+          "kindHint": {
+            "ANSWER_FORMATS": "Only for groups with Short answer questions",
+            "ITEM_SHAPE": "True/False statements; left items and right choices of Matching",
+            "MAPID": "Choose several; matches any one of the codes",
+            "POINTS": "Only accepts questions worth exactly this many points",
+            "TAGS": "Choose several; matches any one of the tags"
+          },
+          "menuLabel": "Condition type",
+          "points": {
+            "label": "Points per question",
+            "openHint": "Optional. Leave empty to accept any question; points come from the question version.",
+            "total": "Only questions worth exactly {points, plural, one {# point} other {# points}} in the bank are accepted; the group is worth {total, plural, one {# point} other {# points}}."
+          },
+          "remove": "Remove the {kind} condition",
+          "removeLabel": "Remove condition",
+          "title": "Group conditions",
+          "unavailable": {
+            "ANSWER_FORMATS": "Only for groups with Short answer questions",
+            "ITEM_SHAPE": "Only for True/False or Matching groups"
+          }
+        },
+        "mode": {
+          "legend": "How to draw",
+          "set": "Question sets",
+          "single": "Single questions"
+        },
+        "omittedBadge": "Essay – temporarily skipped",
+        "positionRange": "{same, select, yes {Question {from, number}} other {Questions {from, number}–{to, number}}}",
+        "slots": {
+          "caption": "Conditions of {count, plural, one {# set} other {# sets}}",
+          "clear": "Clear the conditions of set {index, number}",
+          "clearLabel": "Clear",
+          "close": "Close",
+          "closeEdit": "Close the editor of set {index, number}",
+          "columns": {
+            "actions": "Actions",
+            "mapid": "Knowledge (MAPID)",
+            "set": "Set",
+            "tags": "Text type (tags)"
+          },
+          "dropped": "{sets, plural, one {# set is} other {# sets are}} left. The own conditions of set {list} were removed from the draft.",
+          "edit": "Edit the conditions of set {index, number}",
+          "editLabel": "Edit",
+          "editorTitle": "Conditions of set {index, number}",
+          "hint": "A set with no condition uses the group's conditions. Tags match any one of the tags.",
+          "inheritsGroup": "By the group's conditions",
+          "mapidCount": "{count, plural, one {# knowledge item} other {# knowledge items}}",
+          "mapidLabel": "Knowledge (MAPID):",
+          "pickMapid": "Choose MAPID",
+          "pickerDescription": "Own conditions of set {index, number}: chapters, lessons or knowledge items can be chosen.",
+          "removeMapid": "Remove MAPID {code} {name} of set {index, number}",
+          "setName": "Set {index, number}",
+          "title": "Conditions of each set"
+        },
+        "switches": {
+          "alwaysShuffle": "Questions in the group are always shuffled for each paper; the group keeps its position.",
+          "alwaysShuffleSet": "Questions and sets in the group are always shuffled; sub-questions keep their order.",
+          "omitted": {
+            "description": "The group does not enter the paper, the question total or the maximum score, and is not source-checked. Turn off to put the group in the paper and grade it by hand.",
+            "label": "Temporarily skip"
+          },
+          "shuffle": {
+            "description": "Chosen sets change position within the group for each paper. Sub-questions inside a set keep their order. Only group 5 of HSA Literature and QDA Literature has this switch.",
+            "label": "Shuffle the order of the sets"
+          }
+        },
+        "tags": {
+          "matchAny": "Matches any one of the tags: a question with at least one chosen tag is accepted.",
+          "none": "No tag matches.",
+          "remove": "Remove tag {tag} of {name}",
+          "search": "Search tags",
+          "searchLabel": "Search tags of {name}",
+          "selected": "Chosen tags of {name}"
+        }
       },
       "subject": {
         "title": "Subject {subject}",
@@ -4362,6 +4488,49 @@
           "issue": "Issue"
         }
       },
+      "findings": {
+        "affected": "Affected codes:",
+        "blocked": "Cannot publish yet: {count, plural, one {# error blocks} other {# errors block}} publishing.",
+        "codeGroup": "Code {code}",
+        "counters": {
+          "errors": "Errors",
+          "sections": "Subjects checked",
+          "sectionsValue": "{checked, number}/{total, number}",
+          "unconfirmed": "Unconfirmed",
+          "warnings": "Warnings"
+        },
+        "countersLabel": "Issue counts",
+        "errorsTitle": "Errors · block publishing ({count, number})",
+        "groupBy": {
+          "code": "Code",
+          "label": "Group by",
+          "subject": "Subject"
+        },
+        "location": "Location: {where}",
+        "noCode": "Not tied to a code",
+        "noWarnings": "No warnings.",
+        "none": "–",
+        "open": "Open the problem",
+        "openAria": "Open the problem: {issue}",
+        "openHint": "Select Open the problem to go to the exact place in the Structure step.",
+        "partsTitle": "By code and part",
+        "passed": "Ready to publish. No blocking errors.",
+        "title": "Errors and warnings",
+        "unconfirmedHeadline": "Not conclusive: {count, plural, one {# issue} other {# issues}} could not be confirmed within the processing limit.",
+        "unconfirmedTitle": "Unconfirmed ({count, number})",
+        "unitCode": "Code {code}",
+        "unitColumns": {
+          "errors": "Errors",
+          "name": "Part or code",
+          "state": "Status",
+          "subjects": "Subjects in order",
+          "warnings": "Warnings"
+        },
+        "unitsTitle": "Status of each subject",
+        "warningsNote": "{count, plural, one {# warning does} other {# warnings do}} not block publishing.",
+        "warningsTitle": "Warnings · do not block publishing ({count, number})",
+        "wholeExam": "Whole exam"
+      },
       "groups": {
         "title": "Check groups",
         "passed": "Passed",
@@ -4447,7 +4616,24 @@
         "PART_EMPTY": "{part} has no questions yet.",
         "SHARED_PART_DURATION": "{part}: the exam uses a shared timer, so a part must not set its own duration.",
         "ANSWER_QUOTA_DUPLICATE": "Subject {subject}: the {answerType} answer type appears twice in the answer-type quotas.",
-        "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows."
+        "PREVIEW_SUBJECTS_INVALID": "Previewing a path with a subject choice needs exactly the number of subjects the option allows.",
+        "ANSWER_FORMAT_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} questions} other {does not have enough questions}} {hasFormats, select, yes {with answer format {formats}} other {with the required answer format}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
+        "ATTACHMENT_MISSING": "Block {block}: question {codes} has an attachment that cannot be read.",
+        "CHILD_CONDITION_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} sets} other {does not have enough sets}} whose child question matches the topic{hasPositions, select, yes { at position {positions}} other { at the required position}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
+        "COMBINATION_LIST_CHANGED": "The code list in the global catalog differs from the snapshot of the serving version. Check again, then publish a new version.",
+        "COMBINATION_SUBJECT_MISSING": "{part}: subject {subject} has no matrix in the part's subject list.",
+        "DISTRIBUTION_DEVIATION": "{block}: the reference distribution{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
+        "EXAM_QUOTA_DEVIATION": "The reference exam quota{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
+        "ITEM_SHAPE_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} questions} other {does not have enough questions}} {shapeKind, select, MATCHING {with a matching structure of {left, number} left items – {right, number} right options} STATEMENTS {with exactly {statements, number} statements} other {of the required shape}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
+        "MANUAL_GRADING_REQUIRED": "Block {block} has essay questions: its points are only available after manual grading.",
+        "OMITTED_GROUPS_PRESENT": "Block {block} is temporarily skipped: the exam's maximum score already excludes it.",
+        "QUESTION_NOT_PLAYABLE": "Block {block}: question {codes} is missing an answer key or a scoring rule, or refers to a resource that no longer exists.",
+        "REQUIRED_BASIS_UNSUPPORTED": "{block}: a required distribution counts questions only; the question-part or point units are for reference distributions.",
+        "SECTION_INCOMPLETE": "Subject {subject} is not fully configured.",
+        "SLOT_SOURCE_SHORTAGE": "Block {block}{hasSlot, select, yes {, set {slot, number}} other {}}: not enough source for the set's own conditions{hasCount, select, yes { (needs {required, number}, has {available, number})} other {}}.",
+        "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Subject {subject}: fewer than 2 single questions, so one cannot be dropped for a 16-question paper.",
+        "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {the topic quota needs at least {required, number} questions, the bank has only {available, number}, {missing, number} short} other {the bank does not have enough for the topic quota}}.",
+        "TOPIC_QUOTA_NESTED": "{block}: quotas are set on both a parent topic and a child topic at the same level; keep the quota on one level only."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -4665,7 +4851,7 @@
       "pathOptionInvalid": "{path} (cannot generate)",
       "pathOptionUnconfirmed": "{path} (unconfirmed)",
       "generate": "Generate preview paper",
-      "regenerate": "Generate again",
+      "regenerate": "Generate a new trial paper",
       "runStatus": "Run {run, number} · {time}",
       "runStatusFailed": "Run {run, number} · {time} · no paper",
       "live": {
@@ -4677,7 +4863,7 @@
       "errorTitle": "Something went wrong while generating",
       "retry": "Try again",
       "idleTitle": "No paper generated yet",
-      "idleDescription": "Pick a choice path, then select Generate preview paper.",
+      "idleDescription": "Pick a trial scope, then select Generate preview paper.",
       "noPathsTitle": "No choice path yet",
       "noPathsDescription": "Add parts and question blocks on the Structure and matrix page before generating a paper.",
       "failInvalidTitle": "Cannot generate a paper for {path}",
@@ -4730,7 +4916,7 @@
         },
         "remaining": "{picked, number} of {choose, number} subjects picked. Pick all {choose, number} to generate a paper.",
         "split": "Questions per subject: {list}.",
-        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Regenerate to try another split.",
+        "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Generate a new trial paper to try another split.",
         "full": "All {choose, number} subjects picked. Clear one to switch to another subject."
       },
       "subjectQuotas": {
@@ -4783,7 +4969,82 @@
       "manualGrading": "Manual grading",
       "rubricTitle": "Rubric",
       "rubricEmpty": "This question has no rubric yet.",
-      "rubricItem": "{description}: {points, plural, one {# point} other {# points}}"
+      "rubricItem": "{description}: {points, plural, one {# point} other {# points}}",
+      "clozePosition": "Question {number, number} → blank ({blank, number}) · {type}",
+      "compliance": {
+        "actualAssigned": "{value} · assigned to question {numbers}",
+        "allPassed": "All criteria met",
+        "columns": {
+          "actual": "Actual",
+          "criterion": "Criterion",
+          "level": "Level · unit",
+          "required": "Required",
+          "result": "Result",
+          "scope": "Scope"
+        },
+        "criterion": {
+          "ANSWER_TYPE": "Type {name}",
+          "CELL": "{grade} × {difficulty}",
+          "COMPETENCY": "Competency {name}",
+          "DIFFICULTY": "Difficulty {name}",
+          "EXAM": "Exam quota {names}",
+          "GRADE": "Grade {name}",
+          "TOPIC": "Topic quota"
+        },
+        "deviations": "{count, plural, one {# row deviates} other {# rows deviate}}",
+        "droppedQuestion": "Dropped question {code} · {type}, {grade}, {difficulty}.",
+        "enforcement": {
+          "REFERENCE": "Reference",
+          "REQUIRED": "Required"
+        },
+        "legend": "A Reference row that deviates is only a warning and does not block. A Required row that fails means no paper is generated, and no short paper is returned.",
+        "level": "{enforcement} · {unit}",
+        "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
+        "result": {
+          "OK": "Met",
+          "REFERENCE_DEVIATION": "Deviates · reference",
+          "REQUIRED_DEVIATION": "Deviates · required"
+        },
+        "scope": {
+          "EXAM": "Whole exam"
+        },
+        "tableLabel": "Required and actual values of the trial paper",
+        "title": "Required / Actual",
+        "unit": {
+          "POINTS": "points",
+          "PROMPT": "prompts",
+          "QUESTION": "questions"
+        }
+      },
+      "expired": {
+        "description": "A trial paper is kept for {minutes, number} minutes, so the code can no longer be changed on this paper.",
+        "title": "The trial paper has expired"
+      },
+      "keep": {
+        "change": "Change code, regenerate {parts}",
+        "note": "The trial paper uses {from}. Switching to {to} keeps {kept} (questions {keptFirst, number}–{keptLast, number}) and only regenerates {regenerated} (questions {regeneratedFirst, number}–{regeneratedLast, number}). Generate a new trial paper regenerates the whole exam with a new seed."
+      },
+      "order": {
+        "showOriginal": "Show original order",
+        "showShuffled": "Show shuffled order"
+      },
+      "originalOrderNote": "Showing the original order: questions as the solver picked them, options as authored. The real paper uses the order shuffled by the seed.",
+      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · kept for {minutes, number} minutes · questions are logged as preview, no attempt is used",
+      "resultTitle": "Trial paper · {label}",
+      "scope": {
+        "count": "Questions in the subject",
+        "countOption": "{count, number} questions{full, select, yes {} other { (1 dropped)}}",
+        "examBlocked": "This exam has a code choice: pick one code.",
+        "kind": {
+          "EXAM": "Whole exam",
+          "PATH": "One code or branch",
+          "SECTION": "One subject"
+        },
+        "label": "Trial scope",
+        "section": "Subject",
+        "sectionOption": "{subject} · {part}",
+        "sectionWithCount": "{name} · {count, number} questions"
+      }
     },
     "publish": {
       "close": "Close",
@@ -5259,14 +5520,17 @@
       "competencyHeader": "Competency"
     },
     "scopeField": {
-      "legend": "Knowledge scope (MAPID)",
+      "legend": "Knowledge scope",
+      "all": "Whole subject",
+      "topic": "By topic",
+      "strand": "By knowledge strand",
+      "topicEmpty": "No topic chosen yet.",
+      "topicHint": "A question matches when it has at least one chosen code. A chosen node also matches questions tagged with its child nodes.",
       "inheritsSection": "By the subject's scope",
       "inheritsCount": "The subject's scope has {count, plural, one {# knowledge item} other {# knowledge items}}",
       "none": "No MAPID limit",
-      "setOwn": "Set own scope",
       "pick": "Choose knowledge",
       "remove": "Remove knowledge {code} {name}",
-      "useSection": "Use the subject's scope",
       "pickerDescription": "Scope of {name}: chapters, lessons or knowledge items can be chosen. A chosen node also matches questions tagged with its child nodes."
     },
     "subjectChoice": {

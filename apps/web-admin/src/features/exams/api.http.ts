@@ -1,3 +1,4 @@
+import type { components } from "@thi360/api-client";
 import { getContentReference } from "@/features/content/api";
 import { createBrowserApiClient } from "@/lib/api/client";
 import {
@@ -238,7 +239,14 @@ export async function duplicateExam(id: string, request: DuplicateExamRequest): 
   return mapExamDetail(data);
 }
 
-function toCountBody(query: AvailableQuestionsQuery) {
+type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery"];
+
+/**
+ * Thân `POST .../available-questions/count*`: gửi mọi điều kiện của khối mà hợp đồng nhận (hình dạng câu, định dạng
+ * đáp án, điều kiện theo vị trí câu con...). `slots` của khối không có trường trong `AvailableQuestionsQuery` nên không
+ * gửi; trường không đặt bị bỏ khỏi thân thay vì gửi `null`/rỗng.
+ */
+function toCountBody(query: AvailableQuestionsQuery): ApiAvailableQuestionsQuery {
   return {
     subjectCode: query.subjectCode,
     questionType: query.questionType ?? undefined,
@@ -250,6 +258,11 @@ function toCountBody(query: AvailableQuestionsQuery) {
     tagCodes: query.tagCodes?.length ? query.tagCodes : undefined,
     competencyCodes: query.competencyCodes?.length ? query.competencyCodes : undefined,
     requiredPointsPerQuestion: query.requiredPointsPerQuestion ?? undefined,
+    itemShape: query.itemShape ?? undefined,
+    answerFormats: query.answerFormats?.length
+      ? (query.answerFormats as ApiAvailableQuestionsQuery["answerFormats"])
+      : undefined,
+    childConditions: query.childConditions?.length ? query.childConditions : undefined,
   };
 }
 

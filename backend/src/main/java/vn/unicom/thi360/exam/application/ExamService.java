@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -511,7 +512,8 @@ public class ExamService {
                 scopeChoice.scope(), timing, duration, maxScore,
                 profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
         exam.setBuildMode(buildMode);
-        exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+        exam.applyScoringProfile(subjectPart ? null
+                        : scopedReferenceMax(profile, scopeChoice.scope(), maxScore),
                 subjectPart ? "RAW" : profile.getPracticeScoring());
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
@@ -657,7 +659,9 @@ public class ExamService {
                 BigDecimal maxScore = subjectPart ? doc.parts().getFirst().maxPoints()
                         : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
-                exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+                exam.applyScoringProfile(subjectPart ? null
+                                : scopedReferenceMax(profile, choice.scope(),
+                                        request.maxScore() != null ? request.maxScore() : maxScore),
                         subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
@@ -696,11 +700,13 @@ public class ExamService {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
         if (request.practiceScoring() != null || request.referenceMax() != null) {
-            String scoring = request.practiceScoring() == null
-                    ? exam.getPracticeScoring() : request.practiceScoring();
+            String previousScoring = exam.getPracticeScoring();
+            String scoring = request.practiceScoring() == null ? previousScoring : request.practiceScoring();
+            // The default reference of 10 applies only when scoring becomes LINEAR; an exam that was already
+            // LINEAR without a reference (e.g. a V-ACT review) keeps none.
             BigDecimal referenceMax = request.referenceMax() != null ? request.referenceMax()
                     : exam.getReferenceMax() != null ? exam.getReferenceMax()
-                    : "LINEAR".equals(scoring) ? BigDecimal.TEN : null;
+                    : "LINEAR".equals(scoring) && !"LINEAR".equals(previousScoring) ? BigDecimal.TEN : null;
             exam.applyScoringProfile(referenceMax, scoring);
         }
         exam.markStructureChanged(actor, now);
@@ -774,6 +780,7 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
                     messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
         }
+        boolean topologyReplaced = false;
         if (previous != null && structure != null) {
             ExamStructureDocument baseline = codec().read(previous.getStructure());
             if ("REVIEW".equals(previous.getBuildMode())) {
@@ -783,7 +790,9 @@ public class ExamService {
                 baseline = selectSubjectPart(baseline, exam.getPartCode());
             }
             ExamStructureDocument current = readStoredStructure(structure);
-            List<ExamOverview.Change> changes = ExamOverview.changes(current, baseline);
+            topologyReplaced = hasIncompatibleTopology(current, baseline);
+            List<ExamOverview.Change> changes = topologyReplaced
+                    ? List.of() : ExamOverview.changes(current, baseline);
             if (!changes.isEmpty() && request.overviewPolicy() == null) {
                 throw new ConflictException(ExamErrorCodes.OVERVIEW_CONFIRM,
                         messages.get(ExamErrorCodes.OVERVIEW_CONFIRM), List.of(
@@ -792,23 +801,79 @@ public class ExamService {
                                 new FieldError("overview.template", "TEMPLATE",
                                         objectMapper.valueToTree(ExamOverview.rows(doc)).toString())));
             }
-            if ("KEEP_EDITED".equals(request.overviewPolicy())) {
+            if (!topologyReplaced && "KEEP_EDITED".equals(request.overviewPolicy())) {
                 doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(doc, changes));
             }
         }
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        String previousMode = exam.getBuildMode();
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
                 subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
         exam.setBuildMode(template.getBuildMode());
+        // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the maximum
+        // score and reference of a new exam made from that template, administrator overrides included.
+        boolean scoringReset = false;
+        if (!Objects.equals(previousMode, template.getBuildMode()) && "LINEAR".equals(exam.getPracticeScoring())) {
+            ExamKindProfile profile = profileRepository.findById(exam.getKindItemId()).orElse(null);
+            if (profile != null && "LINEAR".equals(profile.getPracticeScoring())) {
+                BigDecimal base = template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
+                exam.applyScoringProfile(scopedReferenceMax(profile, exam.getScope(), base), exam.getPracticeScoring());
+                exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
+                        exam.getDurationMinutes(), base, actor, now);
+                scoringReset = true;
+            }
+        }
         writeStructure(exam, doc, false, actor, now);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.TEMPLATE_LOAD")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
-                .after(Map.of("templateCode", template.getCode()))
+                .after(Map.of("templateCode", template.getCode(), "topologyReplaced", topologyReplaced,
+                        "scoringReset", scoringReset))
                 .build());
         return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
+    }
+
+    /**
+     * Reference scale of the practice scoring. A scoped exam that scores LINEAR is checked against its own
+     * maximum (V-ACT: 10 points per question), so a part or subject does not inherit the 1,200-point full
+     * scale. When such an exam has no computed maximum (a review frame, whose size the administrator
+     * chooses) it has no reference scale either (null), and the check skips the total comparison.
+     * A FULL exam keeps the profile scale.
+     */
+    private static BigDecimal scopedReferenceMax(ExamKindProfile profile, String scope, BigDecimal maxScore) {
+        if ("LINEAR".equals(profile.getPracticeScoring()) && !"FULL".equals(scope)) {
+            return maxScore;
+        }
+        return profile.getReferenceMax();
+    }
+
+    /**
+     * A draft whose parts share no id with the template's stored baseline and whose part count differs
+     * has a different topology (e.g. one whole-subject part before the split); its values must not be
+     * transferred onto the new parts. Any missing id (ids assigned at read time may be random) or a
+     * single shared part id keeps the id/order-based comparison. The part-count condition keeps
+     * duplicated drafts, whose ids are all new but whose shape is unchanged, on that comparison.
+     */
+    private static boolean hasIncompatibleTopology(ExamStructureDocument current, ExamStructureDocument baseline) {
+        if (current.parts().isEmpty() || baseline.parts().isEmpty()
+                || current.parts().size() == baseline.parts().size()) {
+            return false;
+        }
+        Set<String> baselineIds = new HashSet<>();
+        for (ExamPart part : baseline.parts()) {
+            if (part.id() == null) {
+                return false;
+            }
+            baselineIds.add(part.id());
+        }
+        for (ExamPart part : current.parts()) {
+            if (part.id() == null || baselineIds.contains(part.id())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** PUT /exams/{id}/structure — thay toàn bộ cấu trúc bản làm việc. */
@@ -1173,7 +1238,7 @@ public class ExamService {
         if (!Objects.equals(kindCode, template.getKindCode())
                 || (!Objects.equals(exam.getScope(), template.getScope())
                         && !("PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope())
-                        && ("SP2E".equals(kindCode) || "SPT".equals(kindCode))))
+                        && ("SP2E".equals(kindCode) || "SPT".equals(kindCode) || "THPTQG".equals(kindCode))))
                 || (template.getPartCode() != null
                         && !Objects.equals(exam.getPartCode(), template.getPartCode()))
                 || (template.getSubjectCode() != null

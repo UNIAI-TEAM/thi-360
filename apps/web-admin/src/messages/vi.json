@@ -4069,11 +4069,11 @@
         "name": "Tên nhóm",
         "backToSection": "Về màn môn",
         "fromTemplate": "Nhóm do mẫu khởi tạo ({code}).",
-        "questionType": "Dạng trả lời",
+        "questionType": "Loại câu hỏi",
         "typeLocked": "Điền sẵn theo mẫu, không đổi được.",
         "typeOpen": "Theo chỉ tiêu dạng trả lời của môn",
         "typeOpenHint": "Các câu của nhóm lấp phần chỉ tiêu dạng trả lời còn thiếu của môn.",
-        "childAnswerType": "Dạng của câu con",
+        "childAnswerType": "Loại câu hỏi của câu con",
         "childAnswerTypeHint": "Câu con trừ vào chỉ tiêu dạng trả lời của môn theo dạng này.",
         "childAnswerTypeAny": "Không giới hạn dạng",
         "questionCount": "Số câu cần lấy",
@@ -4085,9 +4085,6 @@
         "setSize": "Số câu con mỗi chùm",
         "setHint": "Nhóm lấy {count, number} câu con",
         "setWholeNote": "Hệ thống luôn lấy nguyên chùm; số câu của nhóm là số chùm × số câu con mỗi chùm.",
-        "points": "Điểm mỗi câu yêu cầu",
-        "pointsOpenHint": "Không bắt buộc. Để trống thì câu nào cũng vào nguồn, điểm lấy từ phiên bản câu.",
-        "pointsTotal": "Chỉ câu có đúng {points, number} điểm vào nguồn; nhóm có {total, number} điểm.",
         "ownMatrix": "Ma trận lớp và độ khó riêng của nhóm",
         "ownMatrixNone": "Chưa khai (tùy chọn)",
         "ownMatrixSet": "Đã khai",
@@ -4108,6 +4105,135 @@
         "manualGrading": "Chấm tay",
         "competencies": "Năng lực",
         "competenciesHint": "Chỉ lấy câu gắn một trong các năng lực đã chọn. Không chọn năng lực nào: lấy mọi năng lực của môn."
+      },
+      "blockForm": {
+        "childConditions": {
+          "add": "Thêm điều kiện theo vị trí",
+          "empty": "Chưa có điều kiện theo vị trí.",
+          "from": "Từ câu con số",
+          "hint": "Câu con ở vị trí hoặc dải vị trí trong chùm phải có ít nhất một MAPID đã chọn. Hệ thống chỉ chọn chùm có đủ câu con khớp.",
+          "issues": {
+            "FROM_MIN": "Vị trí bắt đầu phải từ 1.",
+            "NO_MAPID": "Chọn ít nhất một MAPID.",
+            "OUT_OF_SET": "Vị trí vượt số câu con mỗi chùm ({size, number}).",
+            "RANGE_ORDER": "Vị trí kết thúc phải lớn hơn hoặc bằng vị trí bắt đầu."
+          },
+          "mapidLabel": "MAPID:",
+          "pickMapid": "Chọn MAPID",
+          "pickerDescription": "{name}: chọn được Chương, Bài hoặc Kiến thức.",
+          "remove": "Bỏ {name}",
+          "removeMapid": "Bỏ MAPID {code} {name}",
+          "rowName": "Điều kiện vị trí {index, number}",
+          "title": "Điều kiện theo vị trí câu con",
+          "to": "Đến câu con số"
+        },
+        "conditions": {
+          "add": "Thêm điều kiện",
+          "added": "Đã thêm",
+          "answerFormats": {
+            "format": {
+              "CHEM_EQUATION": "Phương trình hóa học",
+              "CHEM_FORMULA": "Công thức hóa học",
+              "DECIMAL": "Số thập phân",
+              "FRACTION": "Phân số",
+              "INTEGER": "Số nguyên",
+              "TEXT": "Văn bản"
+            },
+            "legend": "Định dạng đáp án",
+            "note": "Khớp một trong các định dạng. Câu chưa đặt định dạng không vào nhóm có điều kiện này."
+          },
+          "empty": "Chưa thêm điều kiện nào.",
+          "groupName": "nhóm",
+          "hint": "Mọi câu của nhóm phải thỏa các điều kiện.",
+          "itemShape": {
+            "leftItems": "Số ý trái",
+            "noteMatching": "Câu Ghép đôi phải có đúng số ý trái và số lựa chọn phải đã nhập.",
+            "noteTrueFalse": "Câu Đúng/Sai phải có đúng số ý đã nhập.",
+            "required": "Nhập số lớn hơn 0.",
+            "rightItems": "Số lựa chọn phải",
+            "statements": "Số ý"
+          },
+          "kind": {
+            "ANSWER_FORMATS": "Định dạng đáp án",
+            "ITEM_SHAPE": "Hình dạng câu",
+            "MAPID": "Kiến thức (MAPID)",
+            "POINTS": "Điểm mỗi câu",
+            "TAGS": "Nhãn hoặc loại văn bản"
+          },
+          "kindHint": {
+            "ANSWER_FORMATS": "Chỉ cho nhóm có câu Trả lời ngắn",
+            "ITEM_SHAPE": "Số ý Đúng/Sai; số ý trái và lựa chọn phải của Ghép đôi",
+            "MAPID": "Chọn nhiều, khớp một trong các mã",
+            "POINTS": "Chỉ nhận câu có đúng số điểm này",
+            "TAGS": "Chọn nhiều, khớp một trong các nhãn"
+          },
+          "menuLabel": "Loại điều kiện",
+          "points": {
+            "label": "Điểm mỗi câu",
+            "openHint": "Không bắt buộc. Để trống thì câu nào cũng vào nguồn, điểm lấy từ phiên bản câu.",
+            "total": "Chỉ nhận câu có đúng {points, number} điểm trong ngân hàng; nhóm có {total, number} điểm."
+          },
+          "remove": "Bỏ điều kiện {kind}",
+          "removeLabel": "Bỏ điều kiện",
+          "title": "Điều kiện của nhóm",
+          "unavailable": {
+            "ANSWER_FORMATS": "Chỉ cho nhóm có câu Trả lời ngắn",
+            "ITEM_SHAPE": "Chỉ cho nhóm Đúng/Sai hoặc Ghép đôi"
+          }
+        },
+        "mode": {
+          "legend": "Cách lấy",
+          "set": "Câu chùm",
+          "single": "Câu đơn"
+        },
+        "omittedBadge": "Tự luận – tạm bỏ qua",
+        "positionRange": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+        "slots": {
+          "caption": "Điều kiện của {count, number} chùm",
+          "clear": "Xóa điều kiện chùm {index, number}",
+          "clearLabel": "Xóa",
+          "close": "Đóng",
+          "closeEdit": "Đóng phần sửa chùm {index, number}",
+          "columns": {
+            "actions": "Thao tác",
+            "mapid": "Kiến thức (MAPID)",
+            "set": "Chùm",
+            "tags": "Loại văn bản (nhãn)"
+          },
+          "dropped": "Số chùm còn {sets, number}. Điều kiện riêng của chùm {list} đã bị bỏ khỏi bản nháp.",
+          "edit": "Sửa điều kiện chùm {index, number}",
+          "editLabel": "Sửa",
+          "editorTitle": "Điều kiện chùm {index, number}",
+          "hint": "Chùm không đặt gì thì dùng điều kiện của nhóm. Nhãn khớp một trong các nhãn.",
+          "inheritsGroup": "Theo điều kiện của nhóm",
+          "mapidCount": "{count, number} kiến thức",
+          "mapidLabel": "Kiến thức (MAPID):",
+          "pickMapid": "Chọn MAPID",
+          "pickerDescription": "Điều kiện riêng của chùm {index, number}: chọn được Chương, Bài hoặc Kiến thức.",
+          "removeMapid": "Bỏ MAPID {code} {name} của chùm {index, number}",
+          "setName": "Chùm {index, number}",
+          "title": "Điều kiện riêng từng chùm"
+        },
+        "switches": {
+          "alwaysShuffle": "Câu trong nhóm luôn được đảo theo từng đề; nhóm giữ vị trí.",
+          "alwaysShuffleSet": "Câu và chùm trong nhóm luôn được đảo; câu con giữ thứ tự.",
+          "omitted": {
+            "description": "Nhóm không vào đề, không tính vào tổng câu và điểm tối đa, không bị kiểm tra nguồn. Tắt để đưa nhóm vào đề và chấm tay.",
+            "label": "Tạm bỏ qua"
+          },
+          "shuffle": {
+            "description": "Chùm đã chọn đổi vị trí trong nhóm theo từng đề. Câu con trong chùm giữ thứ tự. Chỉ nhóm 5 của Văn HSA và Văn QDA có công tắc này.",
+            "label": "Đảo thứ tự các chùm"
+          }
+        },
+        "tags": {
+          "matchAny": "Khớp một trong các nhãn: câu có ít nhất một nhãn đã chọn đều được.",
+          "none": "Không có nhãn khớp.",
+          "remove": "Bỏ nhãn {tag} của {name}",
+          "search": "Tìm nhãn",
+          "searchLabel": "Tìm nhãn của {name}",
+          "selected": "Nhãn đã chọn của {name}"
+        }
       },
       "subject": {
         "title": "Môn {subject}",
@@ -4362,6 +4488,49 @@
           "issue": "Vấn đề"
         }
       },
+      "findings": {
+        "affected": "Mã bị ảnh hưởng:",
+        "blocked": "Chưa công bố được: {count, number} lỗi chặn công bố.",
+        "codeGroup": "Mã {code}",
+        "counters": {
+          "errors": "Lỗi",
+          "sections": "Môn đã kiểm tra",
+          "sectionsValue": "{checked, number}/{total, number}",
+          "unconfirmed": "Chưa xác nhận",
+          "warnings": "Cảnh báo"
+        },
+        "countersLabel": "Số lượng vấn đề",
+        "errorsTitle": "Lỗi · chặn công bố ({count, number})",
+        "groupBy": {
+          "code": "Mã",
+          "label": "Nhóm theo",
+          "subject": "Môn"
+        },
+        "location": "Vị trí: {where}",
+        "noCode": "Không gắn mã",
+        "noWarnings": "Không có cảnh báo.",
+        "none": "–",
+        "open": "Mở chỗ lỗi",
+        "openAria": "Mở chỗ lỗi: {issue}",
+        "openHint": "Bấm Mở chỗ lỗi để tới đúng chỗ ở bước Cấu trúc.",
+        "partsTitle": "Theo mã và phần",
+        "passed": "Công bố được. Không có lỗi chặn.",
+        "title": "Lỗi và cảnh báo",
+        "unconfirmedHeadline": "Chưa kết luận được: {count, number} vấn đề chưa xác nhận trong giới hạn xử lý.",
+        "unconfirmedTitle": "Chưa xác nhận được ({count, number})",
+        "unitCode": "Mã {code}",
+        "unitColumns": {
+          "errors": "Lỗi",
+          "name": "Phần hoặc mã",
+          "state": "Trạng thái",
+          "subjects": "Môn theo thứ tự",
+          "warnings": "Cảnh báo"
+        },
+        "unitsTitle": "Trạng thái từng môn",
+        "warningsNote": "{count, number} cảnh báo không chặn công bố.",
+        "warningsTitle": "Cảnh báo · không chặn công bố ({count, number})",
+        "wholeExam": "Cả bài"
+      },
       "groups": {
         "title": "Các nhóm kiểm tra",
         "passed": "Đạt",
@@ -4447,7 +4616,24 @@
         "PART_EMPTY": "{part} chưa có câu hỏi nào.",
         "SHARED_PART_DURATION": "{part}: bài thi tính thời gian chung nên phần thi không đặt thời lượng riêng.",
         "ANSWER_QUOTA_DUPLICATE": "Môn {subject}: dạng {answerType} bị khai hai lần trong chỉ tiêu dạng trả lời.",
-        "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
+        "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án.",
+        "ANSWER_FORMAT_SHORTAGE": "Khối {block}: ngân hàng {hasCount, select, yes {chỉ có {available, number} câu} other {chưa đủ câu}} {hasFormats, select, yes {có định dạng đáp án {formats}} other {đúng định dạng đáp án yêu cầu}}{hasCount, select, yes {, khối cần {required, number} câu} other {}}.",
+        "ATTACHMENT_MISSING": "Khối {block}: câu {codes} có tệp đính kèm không đọc được.",
+        "CHILD_CONDITION_SHORTAGE": "Khối {block}: ngân hàng {hasCount, select, yes {chỉ có {available, number} chùm} other {chưa đủ chùm}} có câu con đúng chủ đề{hasPositions, select, yes { ở vị trí {positions}} other { ở vị trí yêu cầu}}{hasCount, select, yes {, khối cần {required, number} chùm} other {}}.",
+        "COMBINATION_LIST_CHANGED": "Danh sách mã của danh mục toàn cục đã khác bản chụp của phiên bản đang phục vụ. Kiểm tra lại rồi công bố bản mới.",
+        "COMBINATION_SUBJECT_MISSING": "{part}: môn {subject} chưa có ma trận trong danh sách môn của phần.",
+        "DISTRIBUTION_DEVIATION": "{block}: phân bố tham khảo{hasBucket, select, yes { {bucket}} other {}} lệch chỉ tiêu: tham khảo {required, number}, thực tế {available, number}.",
+        "EXAM_QUOTA_DEVIATION": "Chỉ tiêu cấp bài tham khảo{hasBucket, select, yes { {bucket}} other {}} lệch: tham khảo {required, number}, thực tế {available, number}.",
+        "ITEM_SHAPE_SHORTAGE": "Khối {block}: ngân hàng {hasCount, select, yes {chỉ có {available, number} câu} other {chưa đủ câu}} {shapeKind, select, MATCHING {ghép đôi đủ cấu trúc {left, number} ý trái – {right, number} lựa chọn phải} STATEMENTS {có đủ {statements, number} ý} other {đúng hình dạng yêu cầu}}{hasCount, select, yes {, khối cần {required, number} câu} other {}}.",
+        "MANUAL_GRADING_REQUIRED": "Khối {block} có câu tự luận: điểm phần này chỉ có sau khi chấm tay.",
+        "OMITTED_GROUPS_PRESENT": "Khối {block} đang tạm bỏ qua: điểm tối đa của bài đã trừ phần này.",
+        "QUESTION_NOT_PLAYABLE": "Khối {block}: câu {codes} thiếu đáp án, thiếu quy tắc chấm hoặc tham chiếu tài nguyên không còn.",
+        "REQUIRED_BASIS_UNSUPPORTED": "{block}: phân bố bắt buộc chỉ tính theo số câu; đơn vị lệnh hỏi hoặc điểm chỉ dùng làm phân bố tham khảo.",
+        "SECTION_INCOMPLETE": "Môn {subject} chưa hoàn tất cấu hình.",
+        "SLOT_SOURCE_SHORTAGE": "Khối {block}{hasSlot, select, yes {, chùm {slot, number}} other {}}: chưa đủ nguồn cho điều kiện riêng của chùm{hasCount, select, yes { (cần {required, number} câu, hiện có {available, number} câu)} other {}}.",
+        "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Môn {subject}: có ít hơn 2 câu đơn nên không bỏ được 1 câu khi sinh đề 16 câu.",
+        "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {chỉ tiêu chủ đề cần ít nhất {required, number} câu, nguồn hiện chỉ có {available, number} câu, còn thiếu {missing, number} câu} other {nguồn chưa đủ cho chỉ tiêu chủ đề}}.",
+        "TOPIC_QUOTA_NESTED": "{block}: có chỉ tiêu ở cả chủ đề cha và chủ đề con cùng cấp; chỉ giữ chỉ tiêu ở một cấp."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -4665,7 +4851,7 @@
       "pathOptionInvalid": "{path} (không sinh được)",
       "pathOptionUnconfirmed": "{path} (chưa xác nhận được)",
       "generate": "Sinh đề xem trước",
-      "regenerate": "Sinh lại",
+      "regenerate": "Sinh đề thử mới",
       "runStatus": "Lần sinh thứ {run, number} · {time}",
       "runStatusFailed": "Lần sinh thứ {run, number} · {time} · không có đề",
       "live": {
@@ -4677,7 +4863,7 @@
       "errorTitle": "Có lỗi khi sinh đề",
       "retry": "Thử lại",
       "idleTitle": "Chưa sinh đề",
-      "idleDescription": "Chọn đường lựa chọn rồi bấm Sinh đề xem trước.",
+      "idleDescription": "Chọn phạm vi sinh thử rồi bấm Sinh đề xem trước.",
       "noPathsTitle": "Chưa có đường lựa chọn",
       "noPathsDescription": "Thêm phần thi và khối câu hỏi ở trang Cấu trúc và ma trận trước khi sinh đề.",
       "failInvalidTitle": "Không sinh được đề cho {path}",
@@ -4730,7 +4916,7 @@
         },
         "remaining": "Đã chọn {picked, number} / {choose, number} môn. Chọn đủ {choose, number} môn để sinh đề.",
         "split": "Số câu từng môn: {list}.",
-        "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh lại để thử cách chia khác.",
+        "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh đề thử mới để thử cách chia khác.",
         "full": "Đã chọn đủ {choose, number} môn. Bỏ chọn một môn để đổi sang môn khác."
       },
       "subjectQuotas": {
@@ -4783,7 +4969,82 @@
       "manualGrading": "Chấm tay",
       "rubricTitle": "Tiêu chí chấm",
       "rubricEmpty": "Câu chưa có tiêu chí chấm.",
-      "rubricItem": "{description}: {points, number} điểm"
+      "rubricItem": "{description}: {points, number} điểm",
+      "clozePosition": "Câu {number, number} → chỗ trống ({blank, number}) · {type}",
+      "compliance": {
+        "actualAssigned": "{value} · gán câu {numbers}",
+        "allPassed": "Đạt mọi tiêu chí",
+        "columns": {
+          "actual": "Thực tế",
+          "criterion": "Tiêu chí",
+          "level": "Mức · đơn vị",
+          "required": "Yêu cầu",
+          "result": "Kết quả",
+          "scope": "Phạm vi"
+        },
+        "criterion": {
+          "ANSWER_TYPE": "Dạng {name}",
+          "CELL": "{grade} × {difficulty}",
+          "COMPETENCY": "Năng lực {name}",
+          "DIFFICULTY": "Độ khó {name}",
+          "EXAM": "Chỉ tiêu cấp bài {names}",
+          "GRADE": "Khối lớp {name}",
+          "TOPIC": "Chỉ tiêu chủ đề"
+        },
+        "deviations": "{count, number} dòng lệch",
+        "droppedQuestion": "Đã bỏ câu {code} · {type}, {grade}, {difficulty}.",
+        "enforcement": {
+          "REFERENCE": "Tham khảo",
+          "REQUIRED": "Bắt buộc"
+        },
+        "legend": "Dòng Tham khảo lệch chỉ là cảnh báo, không chặn. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
+        "level": "{enforcement} · {unit}",
+        "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
+        "result": {
+          "OK": "Đạt",
+          "REFERENCE_DEVIATION": "Lệch · tham khảo",
+          "REQUIRED_DEVIATION": "Lệch · bắt buộc"
+        },
+        "scope": {
+          "EXAM": "Cả bài"
+        },
+        "tableLabel": "Yêu cầu và thực tế của đề thử",
+        "title": "Yêu cầu / Thực tế",
+        "unit": {
+          "POINTS": "điểm",
+          "PROMPT": "lệnh hỏi",
+          "QUESTION": "câu"
+        }
+      },
+      "expired": {
+        "description": "Đề thử chỉ giữ {minutes, number} phút nên không đổi mã trên đề này được nữa.",
+        "title": "Đề thử đã hết hạn"
+      },
+      "keep": {
+        "change": "Đổi mã, sinh lại {parts}",
+        "note": "Đề thử đang dùng {from}. Đổi sang {to} giữ nguyên {kept} (câu {keptFirst, number}–{keptLast, number}), chỉ sinh lại {regenerated} (câu {regeneratedFirst, number}–{regeneratedLast, number}). Sinh đề thử mới sinh lại cả bài với hạt giống mới."
+      },
+      "order": {
+        "showOriginal": "Xem thứ tự gốc",
+        "showShuffled": "Xem thứ tự đã đảo"
+      },
+      "originalOrderNote": "Đang xem thứ tự gốc: câu theo thứ tự bộ giải chọn, phương án theo thứ tự lúc soạn. Đề thật dùng thứ tự đã đảo bằng hạt giống.",
+      "resultMeta": "{questions, number} câu · hạt giống {seed} · giữ trong {minutes, number} phút · câu ghi sổ xem trước, không trừ lượt",
+      "resultTitle": "Đề thử · {label}",
+      "scope": {
+        "count": "Số câu của môn",
+        "countOption": "{count, number} câu{full, select, yes {} other { (bỏ 1 câu)}}",
+        "examBlocked": "Bài có phần chọn mã: hãy chọn một mã.",
+        "kind": {
+          "EXAM": "Cả bài",
+          "PATH": "Một mã hoặc nhánh",
+          "SECTION": "Một môn"
+        },
+        "label": "Phạm vi sinh thử",
+        "section": "Môn",
+        "sectionOption": "{subject} · {part}",
+        "sectionWithCount": "{name} · {count, number} câu"
+      }
     },
     "publish": {
       "close": "Đóng",
@@ -5259,14 +5520,17 @@
       "competencyHeader": "Năng lực"
     },
     "scopeField": {
-      "legend": "Phạm vi kiến thức (MAPID)",
+      "legend": "Phạm vi kiến thức",
+      "all": "Toàn môn",
+      "topic": "Theo chủ đề",
+      "strand": "Theo mạch kiến thức",
+      "topicEmpty": "Chưa chọn chủ đề nào.",
+      "topicHint": "Câu khớp khi có ít nhất một mã đã chọn. Nút đã chọn cũng khớp câu gắn nút con của nó.",
       "inheritsSection": "Theo phạm vi của môn",
       "inheritsCount": "Phạm vi của môn có {count, number} kiến thức",
       "none": "Không giới hạn MAPID",
-      "setOwn": "Đặt phạm vi riêng",
       "pick": "Chọn kiến thức",
       "remove": "Bỏ kiến thức {code} {name}",
-      "useSection": "Dùng phạm vi của môn",
       "pickerDescription": "Phạm vi của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó."
     },
     "subjectChoice": {

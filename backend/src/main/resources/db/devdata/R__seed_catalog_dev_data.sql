@@ -350,6 +350,34 @@ SELECT m.id, g.id, m.code, lower(m.code),
 FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000008'
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
+-- D9 provisional codes: reconcile with R__seed_questionbank_dev_data.sql for BA review.
+WITH seed(ordinal, code, name_vi, name_en) AS (
+    VALUES
+      (41, 'ANH_PHAT_HIEN_LOI', 'Phát hiện lỗi sai', 'Error identification'),
+      (42, 'ANH_DIEN_DAT_TUONG_DUONG', 'Diễn đạt tương đương', 'Equivalent expression'),
+      (43, 'TD_SAP_XEP_DIEU_KIEN', 'Sắp xếp điều kiện', 'Conditional arrangement'),
+      (44, 'TD_XEP_HANG', 'Xếp hạng', 'Ranking'),
+      (45, 'TD_BANG_SO_LIEU', 'Bảng số liệu', 'Data table'),
+      (46, 'TD_BIEU_DO', 'Biểu đồ', 'Chart')
+), missing AS (
+    SELECT s.*, row_number() OVER (ORDER BY ordinal) AS allocation,
+           ('00000000-0000-7000-8601-' || lpad(s.ordinal::text, 12, '0'))::uuid AS id
+    FROM seed s
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = '00000000-0000-7000-8100-000000000008'
+          AND i.code_normalized = lower(s.code)
+    )
+)
+INSERT INTO catalog.catalog_item
+        (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, depth, path)
+    SELECT m.id, g.id, m.code, lower(m.code),
+           GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+           m.name_vi, m.name_en, '[MẪU] Nhãn phân loại câu hỏi', m.ordinal - 1, 1, false, 1,
+           '/' || m.id::text || '/'
+FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000008'
+ON CONFLICT (group_id, code_normalized) DO NOTHING;
+
 -- Sync lại last_value cho mọi nhóm sau khi seed đợt 2
 UPDATE catalog.catalog_group g
 SET last_value = GREATEST(

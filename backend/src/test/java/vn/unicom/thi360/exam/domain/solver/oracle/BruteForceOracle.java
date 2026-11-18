@@ -434,7 +434,7 @@ public final class BruteForceOracle {
                 }
             }
             List<Assignment> out = new ArrayList<>();
-            if (req == 0 && group.kind() == GroupQuota.GroupKind.SINGLE) {
+            if (req == 0 && group.kind() != GroupQuota.GroupKind.SET) {
                 out.add(new Assignment(List.of()));
                 return out;
             }
@@ -448,7 +448,7 @@ public final class BruteForceOracle {
             if (out.size() > 65_536) {
                 throw new IllegalStateException("pick-set enumeration over budget");
             }
-            if (group.kind() == GroupQuota.GroupKind.SINGLE) {
+            if (group.kind() != GroupQuota.GroupKind.SET) {
                 if (taken == req) {
                     Assignment a = new Assignment(List.copyOf(chosen));
                     if (satisfiesGroupQuotas(group, a)) {
@@ -468,7 +468,7 @@ public final class BruteForceOracle {
             }
             PathCandidate c = eligible.get(idx);
             int units = OracleSupport.unitCount(c);
-            boolean fits = group.kind() == GroupQuota.GroupKind.SINGLE
+            boolean fits = group.kind() != GroupQuota.GroupKind.SET
                     ? taken + units <= req
                     : taken + 1 <= group.setCount();
             if (fits) {
@@ -477,7 +477,7 @@ public final class BruteForceOracle {
                     usedIds.addAll(ids);
                     chosen.addLast(c);
                     enumerate(group, eligible, idx + 1, req,
-                            taken + (group.kind() == GroupQuota.GroupKind.SINGLE ? units : 1),
+                            taken + (group.kind() != GroupQuota.GroupKind.SET ? units : 1),
                             usedIds, chosen, out);
                     chosen.removeLast();
                     ids.forEach(usedIds::remove);

@@ -236,9 +236,10 @@ final class OracleSupport {
                 }
                 yield true;
             }
-            case SET -> {
-                // Chùm: đúng kích thước, mọi câu con đúng dạng khi nhóm giới hạn (spec 5.2).
-                if (candidate.setId() == null || unitCount(candidate) != group.setSize()) {
+            case SET, FLEXIBLE_SET -> {
+                if (candidate.setId() == null
+                        || (group.kind() == GroupQuota.GroupKind.SET && unitCount(candidate) != group.setSize())
+                        || (group.kind() == GroupQuota.GroupKind.FLEXIBLE_SET && unitCount(candidate) > group.questionCount())) {
                     yield false;
                 }
                 if (group.childAnswerType() != null) {

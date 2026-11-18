@@ -101,11 +101,19 @@ class ExamTemplateIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(templates).isNotEmpty();
+        var codes = new java.util.HashSet<String>();
         for (var template : templates) {
-            assertThat(template.path("publishable").asBoolean()).isTrue();
-            assertThat(template.path("fixedCounts").isBoolean()).isTrue();
-            assertThat(template.path("fixedCounts").asBoolean()).isFalse();
+            String code = template.path("code").asText();
+            codes.add(code);
+            assertThat(template.path("publishable").isBoolean()).as(code).isTrue();
+            assertThat(template.path("fixedCounts").isBoolean()).as(code).isTrue();
+            // The literature draft cannot be published yet, and only the full V-ACT exam fixes its counts.
+            assertThat(template.path("publishable").asBoolean()).as(code + " publishable")
+                    .isEqualTo(!code.equals("THPTQG_LITERATURE_2025"));
+            assertThat(template.path("fixedCounts").asBoolean()).as(code + " fixedCounts")
+                    .isEqualTo(code.equals("VACT_FULL"));
         }
+        assertThat(codes).contains("THPTQG_LITERATURE_2025", "VACT_FULL", "VACT_PART_LOGIC", "HSA_FULL");
     }
 
 

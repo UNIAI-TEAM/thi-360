@@ -507,7 +507,8 @@ public final class ExamCheckRules {
                     blockContext(invalid, block); found.add(issues.key(invalid));
                 }
                 if (block.id() == null) found.add(issue("OPTION_EMPTY", "STRUCTURE", context.part, context.optionId, section));
-                if (isSet(block) && (block.setCount() == null || block.setCount() <= 0
+                if (isSet(block) && !(block.questionCount() != null && block.setCount() == null && block.setSize() == null)
+                        && (block.setCount() == null || block.setCount() <= 0
                         || block.setSize() == null || block.setSize() <= 0)) {
                     ObjectNode invalid = sectionIssue("SET_SIZE_MISMATCH", "QUESTION_SET", context, null);
                     blockContext(invalid, block); found.add(issues.key(invalid));
@@ -880,6 +881,7 @@ public final class ExamCheckRules {
             if (Boolean.TRUE.equals(block.omitted())) continue;
             int groupCount = block.questionCount() == null ? Math.max(0, count - fixed) : fixedCount(block);
             if (isSet(block) && block.questionCount() != null
+                    && !(block.setCount() == null && block.setSize() == null)
                     && (block.setCount() == null || block.setSize() == null || block.setCount() * block.setSize() != block.questionCount())) {
                 ObjectNode issue = sectionIssue("SET_SIZE_MISMATCH", "QUESTION_SET", context, varies ? count : null);
                 blockContext(issue, block); issue.put("required", block.questionCount());

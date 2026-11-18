@@ -178,18 +178,55 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         List<QuestionType> answers = block.questionType() == null && section != null && section.answerQuotas() != null
                 ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(Objects::nonNull).toList()
                 : List.of();
-        var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, answers,
-                block.questionType(), null, block.childAnswerType(), block.tagCodes(),
-                scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
-                null, null, null);
-        boolean included = matches.computeIfAbsent(filter,
-                key -> source.matching(key, List.of(questionId)).contains(questionId));
+        var slots = effectiveSlots(block);
+        boolean included = slots.stream().anyMatch(slot -> {
+            KnowledgeScope slotScope = slot == null ? null : slot.knowledgeScope();
+            List<List<List<UUID>>> slotGroups = slotScope == null || slotScope.nodeIds().isEmpty()
+                    ? List.of() : List.of(slotScope.nodeIds().stream().map(id ->
+                            descendants.computeIfAbsent(id, key -> {
+                                CatalogItemView root = knowledgeById.get(key);
+                                if (root == null) return List.of();
+                                return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                                        .map(CatalogItemView::id).toList();
+                            })).toList());
+            var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, answers,
+                    block.questionType(), null, block.childAnswerType(), block.tagCodes(),
+                    scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
+                    null, null, null,
+                    slot == null || slot.tagCodes().isEmpty() ? List.of() : List.of(slot.tagCodes()),
+                    slotGroups,
+                    slotScope == null || slotScope.competencyCodes().isEmpty()
+                            ? List.of() : List.of(slotScope.competencyCodes()),
+                    scope == null ? null : scope.everyChildInScope(),
+                    slotGroups.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slotScope.everyChildInScope())));
+            return matches.computeIfAbsent(filter,
+                    key -> source.matching(key, List.of(questionId)).contains(questionId));
+        });
         if (included) {
             result.add(new ExamUsageRef(exam.getId(), exam.getCode(), exam.getName(), exam.getStatus(),
                     part.id(), part.name(), option == null ? null : option.id(),
                     option == null ? null : option.code(), option == null ? null : option.name(),
                     section == null ? null : section.id(), block.id(), block.name()));
         }
+    }
+
+    /**
+     * Declared slot indices in 1..setCount (first declaration wins), plus one null entry, the group's
+     * own conditions, when any valid index is undeclared. Never sized by the nominal setCount.
+     */
+    private static List<vn.unicom.thi360.exam.domain.BlockSlot> effectiveSlots(QuestionBlock block) {
+        if (block.slots().isEmpty()) return java.util.Collections.singletonList(null);
+        if (block.setCount() == null) return block.slots();
+        int setCount = block.setCount();
+        java.util.Map<Integer, vn.unicom.thi360.exam.domain.BlockSlot> declared = new java.util.LinkedHashMap<>();
+        for (var slot : block.slots()) {
+            if (slot.index() != null && slot.index() >= 1 && slot.index() <= setCount) {
+                declared.putIfAbsent(slot.index(), slot);
+            }
+        }
+        List<vn.unicom.thi360.exam.domain.BlockSlot> result = new ArrayList<>(declared.values());
+        if (declared.size() < setCount) result.add(null);
+        return result;
     }
 
     private record VersionKey(UUID examId, int version) {}
