@@ -289,7 +289,7 @@ public class SolverInputBuilder {
                             block.id() + ":slot:" + index, GroupQuota.GroupKind.SET, null, null,
                             1, parent.setSize(), parent.childAnswerType(), null, List.of(), List.of(),
                             parent.requiredPointsPerUnit(), null, shared);
-                    KnowledgeScope scope = block.knowledgeScope() != null ? block.knowledgeScope() : section.knowledgeScope();
+                    KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(), section.knowledgeScope());
                     List<List<UUID>> subtrees = expandScope(scope, knowledge, knowledgeById, descendants);
                     List<List<List<UUID>>> slotScopes = slot == null || slot.knowledgeScope() == null
                             || slot.knowledgeScope().nodeIds().isEmpty() ? List.of()
