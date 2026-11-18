@@ -105,6 +105,19 @@ class HscaVsatTemplatesIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void hscaScienceMultipleChoiceBlocksExpectPartialScoring() {
+        for (String subject : HSCA_SCIENCES) {
+            for (String code : List.of("HSCA_SUBJECT_" + subject, "HSCA_SUBJECT_" + subject + "_SAMPLE")) {
+                List<JsonNode> multipleChoice = blocks(template(code)).stream()
+                        .filter(b -> "MULTIPLE_CHOICE".equals(b.path("questionType").asText())).toList();
+                assertThat(multipleChoice).as(code + " multiple-choice blocks").hasSize(1);
+                assertThat(multipleChoice.get(0).path("expectedScoring").path("multipleChoiceRule").asText())
+                        .as(code + " D17").isEqualTo("PARTIAL");
+            }
+        }
+    }
+
+    @Test
     void hscaLiteratureIsTwentyQuestionsInThreeSetsAndKeepsTheWritingPartsOmittedAndLocked() {
         JsonNode template = template("HSCA_SUBJECT_VAN");
         assertThat(totals(template).questions).isEqualTo(20);

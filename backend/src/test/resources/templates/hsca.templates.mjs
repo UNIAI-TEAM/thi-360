@@ -64,7 +64,8 @@ for (const [subject, name] of Object.entries(SUBJECTS)) {
     const parts = [
       part('Phần 1 · Trắc nghiệm', [section(subject, [
         single('Trắc nghiệm chọn một', 20, .25, `HSCA_${subject}_SINGLE`, matrixOf(0)),
-        block('Trắc nghiệm chọn nhiều', 'MULTIPLE_CHOICE', 5, .25, `HSCA_${subject}_MULTI`, matrixOf(1))
+        block('Trắc nghiệm chọn nhiều', 'MULTIPLE_CHOICE', 5, .25, `HSCA_${subject}_MULTI`,
+          {...matrixOf(1), expectedScoring: {multipleChoiceRule: 'PARTIAL'}})
       ])]),
       part('Phần 2 · Dữ liệu tổng hợp', [section(subject, [
         block('Chùm dữ liệu tổng hợp', 'QUESTION_SET', 5, .25, `HSCA_${subject}_DATA_SET`, matrixOf(2))
