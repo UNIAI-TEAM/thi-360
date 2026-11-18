@@ -34,7 +34,7 @@ class ExamCheckCompletionIT extends AbstractIntegrationTest {
                         + "VALUES (?, ?, ?, 'Deep completion test', 'FULL', 'SHARED')",
                 examId, examId.toString(), examId.toString());
         jdbc.update("INSERT INTO exam.exam_structure (exam_id, parts, structure_hash) VALUES (?, '{\"parts\":[]}'::jsonb, 'hash')", examId);
-        var start = jobs.startOrGet(examId, actorId);
+        var start = jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null));
         var empty = mapper.createObjectNode();
         var input = new ExamCheckResultStore.Input(examId, 0, "hash", empty, 1L, 1L,
                 "fingerprint", empty);
@@ -62,7 +62,7 @@ class ExamCheckCompletionIT extends AbstractIntegrationTest {
         jdbc.update("INSERT INTO exam.exam (id, code, code_normalized, name, scope, timing) "
                         + "VALUES (?, ?, ?, 'Abandoned completion test', 'FULL', 'SHARED')",
                 examId, examId.toString(), examId.toString());
-        var start = jobs.startOrGet(examId, actorId);
+        var start = jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null));
         assertThat(jobs.fail(start.runId(), "CHECK_RUN_ABANDONED")).isTrue();
         var empty = mapper.createObjectNode();
         var input = new ExamCheckResultStore.Input(examId, 0, "hash", empty, 1L, 1L,
@@ -86,7 +86,7 @@ class ExamCheckCompletionIT extends AbstractIntegrationTest {
         jdbc.update("INSERT INTO exam.exam (id, code, code_normalized, name, scope, timing) "
                         + "VALUES (?, ?, ?, 'Late completion test', 'FULL', 'SHARED')",
                 examId, examId.toString(), examId.toString());
-        var start = jobs.startOrGet(examId, actorId);
+        var start = jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null));
         jdbc.update("UPDATE exam.exam_check_job SET started_at=now()-interval '151 seconds' WHERE id=?", start.runId());
         var empty = mapper.createObjectNode();
         var input = new ExamCheckResultStore.Input(examId, 0, "hash", empty, 1L, 1L, "fingerprint", empty);

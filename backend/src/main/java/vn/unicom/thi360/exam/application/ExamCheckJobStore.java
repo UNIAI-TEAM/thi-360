@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.ids.Ids;
 
@@ -33,24 +34,31 @@ public class ExamCheckJobStore {
 
     /** Locking the exam serializes claim, abandonment, and creation across API instances. */
     @Transactional
-    public Start startOrGet(UUID examId, UUID actorId) {
+    public Start startOrGet(UUID examId, UUID actorId, ExamCheckScope scope) {
         List<UUID> exam = jdbc.queryForList("SELECT id FROM exam.exam WHERE id = ? FOR UPDATE", UUID.class, examId);
         if (exam.isEmpty()) {
             throw new NotFoundException("Exam not found");
         }
         Instant now = clock.instant();
         List<UUID> abandoned = abandon(examId, null, now);
-        List<UUID> running = jdbc.queryForList(
-                "SELECT id FROM exam.exam_check_job WHERE exam_id = ? AND state = 'RUNNING'",
-                UUID.class, examId);
+        var running = jdbc.query(
+                "SELECT id, check_scope, target_id FROM exam.exam_check_job WHERE exam_id = ? AND state = 'RUNNING'",
+                (rs, row) -> new RunningJob(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3)), examId);
         if (!running.isEmpty()) {
-            return new Start(running.getFirst(), false, abandoned);
+            RunningJob job = running.getFirst();
+            if (!job.scope().equals(scope.kind().name()) || !java.util.Objects.equals(job.targetId(), scope.targetId())) {
+                throw new ConflictException("CHECK_RUN_SCOPE_CONFLICT");
+            }
+            return new Start(job.id(), false, abandoned);
         }
         UUID id = Ids.newId();
-        jdbc.update("INSERT INTO exam.exam_check_job (id, exam_id, state, started_by, started_at) "
-                + "VALUES (?, ?, 'RUNNING', ?, ?)", id, examId, actorId, Timestamp.from(now));
+        jdbc.update("INSERT INTO exam.exam_check_job (id, exam_id, state, started_by, started_at, check_scope, target_id) "
+                + "VALUES (?, ?, 'RUNNING', ?, ?, ?, ?)", id, examId, actorId, Timestamp.from(now),
+                scope.kind().name(), scope.targetId());
         return new Start(id, true, abandoned);
     }
+
+    private record RunningJob(UUID id, String scope, String targetId) { }
 
     @Transactional
     public Job get(UUID examId, UUID runId) {

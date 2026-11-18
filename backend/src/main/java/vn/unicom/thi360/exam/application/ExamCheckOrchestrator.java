@@ -52,7 +52,7 @@ public class ExamCheckOrchestrator {
     public UUID startDeep(UUID examId, ExamCheckScope scope, ExamCheckCompletion.Actor actor, String traceId) {
         if (scope.kind() != ExamCheckScope.Kind.EXAM) scope.sections(snapshots.read(examId).structure());
         Instant started = clock.instant();
-        ExamCheckJobStore.Start start = commands.start(examId, actor, traceId);
+        ExamCheckJobStore.Start start = commands.start(examId, scope, actor, traceId);
         if (start.created()) {
             try {
                 executor.execute(() -> runDeep(examId, start.runId(), scope, actor, traceId, started));
