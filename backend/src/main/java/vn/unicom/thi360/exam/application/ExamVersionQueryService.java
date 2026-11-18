@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.api.ExamVersionChange;
 import vn.unicom.thi360.exam.api.ExamVersionList;
@@ -60,7 +61,8 @@ public class ExamVersionQueryService {
                 changes = ExamVersionChanges.between(oldConfig, json(base.parts()),
                         comparisonConfig(oldConfig, config, parts, base.servingPaths()), parts);
             }
-            List<ExamVersionPath> unpublished = enumerate(parts.path("parts")).stream()
+            UUID kind = config.hasNonNull("kindItemId") ? UUID.fromString(config.path("kindItemId").asText()) : null;
+            List<ExamVersionPath> unpublished = enumerate(parts.path("parts"), kind).stream()
                     .filter(path -> !alreadyPublished.contains(path.pathId())).toList();
             working = new ExamVersionList.WorkingCopy(exam.updatedBy(), exam.updatedAt(),
                     exam.servingVersion(), null, exam.check(), unpublished);
@@ -171,7 +173,8 @@ public class ExamVersionQueryService {
         }
     }
 
-    private static List<ExamVersionPath> enumerate(JsonNode parts) {
+    private List<ExamVersionPath> enumerate(JsonNode parts, UUID kind) {
+        List<CatalogCombinationView> definitions = null;
         List<List<ExamVersionPath.Choice>> combinations = new ArrayList<>();
         combinations.add(new ArrayList<>());
         List<JsonNode> orderedParts = new ArrayList<>();
@@ -180,12 +183,26 @@ public class ExamVersionQueryService {
                 part -> part.path("order").isNumber() ? part.path("order").intValue() : null,
                 java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())));
         for (JsonNode part : orderedParts) {
-            if (!"CHOICE".equals(part.path("participation").path("mode").asText())) continue;
-            int choose = part.path("participation").path("choose").asInt();
+            boolean codeSource = part.hasNonNull("codeSource");
+            if (!codeSource && !"CHOICE".equals(part.path("participation").path("mode").asText())) continue;
+            String partId = part.path("id").asText();
             List<ExamVersionPath.Choice> options = new ArrayList<>();
-            for (JsonNode option : part.path("options")) {
-                options.add(new ExamVersionPath.Choice(part.path("id").asText(), option.path("id").asText(),
-                        option.path("kind").asText(null), option.path("code").asText(null), option.path("name").asText(null)));
+            int choose;
+            if (codeSource) {
+                // Same expansion as the solver and ExamVersionSnapshot.combinations: one choice per catalog combination.
+                choose = 1;
+                if (definitions == null) definitions = catalog.listCombinations(kind);
+                for (CatalogCombinationView definition : definitions) {
+                    if (!ExamVersionSnapshot.inBranch(part, definition)) continue;
+                    options.add(new ExamVersionPath.Choice(partId, partId + ":" + definition.itemCode(), "COMBINATION",
+                            definition.itemCode(), definition.itemNameVi()));
+                }
+            } else {
+                choose = part.path("participation").path("choose").asInt();
+                for (JsonNode option : part.path("options")) {
+                    options.add(new ExamVersionPath.Choice(partId, option.path("id").asText(),
+                            option.path("kind").asText(null), option.path("code").asText(null), option.path("name").asText(null)));
+                }
             }
             List<List<ExamVersionPath.Choice>> picks = new ArrayList<>();
             choose(options, choose, 0, new ArrayList<>(), picks);
