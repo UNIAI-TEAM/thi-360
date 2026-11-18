@@ -54,10 +54,10 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             "HSA", "FULL,PART,SUBJECT",
             "QDA", "FULL,PART,SUBJECT",
             "BCA", "FULL,PART,SUBJECT",
-            "VACT", "FULL",
+            "VACT", "FULL,PART,SUBJECT",
             "SPT", "SUBJECT,PART",
             "SP2E", "SUBJECT,PART",
-            "THPTQG", "SUBJECT");
+            "THPTQG", "SUBJECT,PART");
 
     @Test
     void seededHsaMathContextHasKnownChildAnswerType() throws Exception {
@@ -309,6 +309,22 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             var choice = (SolvePart.Choice) input.parts().get(2);
             assertThat(choice.options()).as(entry.getKey()).hasSize(entry.getValue());
         }
+    }
+
+    @Test
+    void vactFullChecksLogicAndReasoningTogether() throws Exception {
+        JsonNode result = check("TEST-VACT-01");
+        assertThat(result.path("status").asText()).as("V-ACT issues: %s", codes(result)).isEqualTo("VALID");
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM exam.exam_check_unit u
+                JOIN exam.exam e ON e.id = u.exam_id
+                JOIN exam.exam_structure s ON s.exam_id = e.id
+                WHERE e.code = 'TEST-VACT-01'
+                  AND u.section_ids @> ARRAY[
+                    s.parts #>> '{parts,2,sections,0,id}',
+                    s.parts #>> '{parts,2,sections,1,id}']::text[]
+                  AND cardinality(u.section_ids) = 2
+                """, Integer.class)).isEqualTo(1);
     }
 
     @Test

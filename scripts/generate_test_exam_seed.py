@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""FU/be-seed (UNI-2634): phát sinh migration và devdata cho đề test giả định.
+"""FU/be-seed (UNI-2634): phát sinh devdata cho đề test giả định.
 
 Nguồn: docs/specs/2026-11-17-de-test-gia-dinh.md (số liệu "giả định" của mục 2-3).
 Chạy từ gốc repo:  python scripts/generate_test_exam_seed.py
 Phát sinh:
-  - backend/src/main/resources/db/migration/exam/V202611171200__assumed_templates_fill.sql
+  - Đọc cấu trúc mới từ migration mẫu THPTQG/V-ACT đã sinh.
   - backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql
 Không ghi groupOrder/shuffle (slice be-api bỏ các trường này).
 """
 
 import hashlib
 import json
+import re
 import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MIG_EXAM = ROOT / "backend/src/main/resources/db/migration/exam/V202611171200__assumed_templates_fill.sql"
+TEMPLATE_MIGRATION = ROOT / "backend/src/main/resources/db/migration/exam/V202611181305__exam_templates_thptqg_vact.sql"
 SEED = ROOT / "backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql"
 
 NS = uuid.UUID("00000000-0000-7000-8000-000000000000")
@@ -1223,6 +1224,31 @@ EXAMS = [
              description="Lỗi: cấu trúc 2026, ma trận 2025, chưa xác nhận -> YEARS_UNCONFIRMED."),
 ]
 
+def generated_template(code):
+    """Read the exact IDs and structure applied by the generated template migration."""
+    sql = TEMPLATE_MIGRATION.read_text(encoding="utf-8")
+    match = re.search(r"structure = '((?:''|[^'])*)'::jsonb\nWHERE code = "
+                      + re.escape(sql_quote(code)) + r";", sql)
+    if not match:
+        raise ValueError(f"Template not found in generated migration: {code}")
+    return json.loads(match.group(1).replace("''", "'"))
+
+
+for exam in EXAMS:
+    if exam["code"] == "TEST-VACT-01":
+        exam["doc"] = generated_template("VACT_FULL")
+    elif exam["code"] in {"TEST-THPTQG-01", "TEST-ERR-01", "TEST-ERR-11", "TEST-ERR-12"}:
+        old_blocks = exam["doc"]["parts"][0]["sections"][0]["blocks"]
+        exam["doc"] = generated_template("THPTQG_MATH_2025")
+        exam["timing"] = "SHARED"
+        for index, old in enumerate(old_blocks):
+            block = exam["doc"]["parts"][index]["sections"][0]["blocks"][0]
+            if old.get("matrix") is not None:
+                block["matrix"] = old["matrix"]
+            if old.get("requiredPointsPerQuestion") is None:
+                block["requiredPointsPerQuestion"] = None
+
+
 COMBO_ITEM = {"QD01": "00000000-0000-7000-8400-000000000709",
               "QD02": "00000000-0000-7000-8400-000000000710",
               "QD03": "00000000-0000-7000-8400-000000000711",
@@ -1241,7 +1267,7 @@ def emit_exam(exam):
     qc = sum(p["questionCount"] or 0 for p in exam["doc"]["parts"])
     has_essay = json.dumps(exam["doc"], ensure_ascii=False).find('"ESSAY"') >= 0
     has_eng = '"ANH"' in json.dumps(exam["doc"])
-    combos = {o["code"] for p in exam["doc"]["parts"] for o in p["options"]
+    combos = {o["code"] for p in exam["doc"]["parts"] for o in p.get("options", [])
               if o["kind"] == "COMBINATION"}
     cols = (f"'{eid}','{code}','{code.lower()}',{sql_quote(exam['name'])},"
             f"{sql_quote(exam['description'])},NULL,'{KIND[exam['kind']]}','{exam['scope']}',"
@@ -1273,19 +1299,19 @@ def emit_exam(exam):
     # block refs
     rows = []
     for p in exam["doc"]["parts"]:
-        for s in p["sections"]:
+        for s in p.get("sections", []):
             for b in s["blocks"]:
                 rows.append(ref_row(eid, p, None, s, b))
-        for o in p["options"]:
-            for s in o["sections"]:
-                for b in s["blocks"]:
+        for o in p.get("options", []):
+            for s in o.get("sections", []):
+                for b in s.get("blocks", []):
                     rows.append(ref_row(eid, p, o, s, b))
-            for b in o["blocks"]:
+            for b in o.get("blocks", []):
                 rows.append(ref_row(eid, p, o, None, b))
     if rows:
         out.append("INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,")
         out.append("    option_code, section_id, subject_item_id, question_type, answer_types,")
-        out.append("    task_type_item_id, knowledge_item_ids, knowledge_mode, knowledge_inherited,")
+        out.append("    knowledge_item_ids, knowledge_mode, knowledge_inherited,")
         out.append("    tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES")
         out.append(",\n".join(rows) + "\nON CONFLICT (id) DO NOTHING;")
         out.append("")
@@ -1303,26 +1329,22 @@ def ref_row(eid, p, o, s, b):
     if not answer_types and s and s.get("answerQuotas"):
         answer_types = {i["answerType"] for i in s["answerQuotas"]["items"]}
     know_ids = (scope or {}).get("nodeIds") or None
-    tag_ids = [TASK_TAG_IDS.get(t, t) for t in (b.get("tagCodes") or [])]
-    tag_ids = [t for t in tag_ids if t]
+    tag_codes = b.get("tagCodes") or []
+    tag_refs = [sql_quote(TASK_TAG_IDS[t]) if t in TASK_TAG_IDS else
+                f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_TAG}' AND code={sql_quote(t)})"
+                for t in tag_codes]
     combo = COMBO_ITEM.get(o["code"]) if o and o["kind"] == "COMBINATION" else None
     combo_ref = (f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_COMBO}' AND code_normalized='qd05')"
                  if combo == COMBO_QD05 else sql_quote(combo) if combo else "NULL")
-    task = b.get("taskTypeCode")
-    if task == "SENTENCE_COMPLETION":
-        task_ref = f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_TASK}' AND code_normalized='sentence_completion')"
-    else:
-        task_ref = sql_quote(TASK[task]) if task else "NULL"
     return (f"('{uid('ref', eid, b['id'])}','{eid}',NULL,'{b['id']}','{p['id']}',"
             f"{sql_quote(o['code']) if o else 'NULL'},{sql_quote(s['id']) if s else 'NULL'},"
             f"{sql_quote(SUBJECT[subject_code]) if subject_code else 'NULL'},"
             f"{sql_quote(b['questionType']) if b.get('questionType') else 'NULL'},"
             f"{pg_array(sorted(answer_types)) if answer_types else 'NULL'},"
-            f"{task_ref},"
             f"{pg_array(know_ids) if know_ids else 'NULL'},"
             f"{sql_quote(scope['match']) if scope and scope.get('match') else 'NULL'},"
             f"{'true' if not b.get('knowledgeScope') else 'false'},"
-            f"{pg_array(tag_ids) if tag_ids else 'NULL'},NULL,"
+            f"{'ARRAY[' + ','.join(tag_refs) + ']::uuid[]' if tag_refs else 'NULL'},NULL,"
             f"{b['requiredPointsPerQuestion'] if b.get('requiredPointsPerQuestion') is not None else 'NULL'},"
             f"{combo_ref})")
 
@@ -1331,10 +1353,9 @@ TASK_TAG_IDS = {"TEST-HIEM": TAG_HIEM}
 
 
 def main():
-    MIG_EXAM.write_text(emit_catalog_migration() + "\n" + emit_template_migration(), encoding="utf-8")
     SEED.write_text(emit_seed(), encoding="utf-8")
     n_q = len(QUESTIONS) + sum(len(s["children"]) + 1 for s in SETS)
-    print(f"wrote {MIG_EXAM.name}, {SEED.name}; questions={n_q}, exams={len(EXAMS)}")
+    print(f"wrote {SEED.name}; questions={n_q}, exams={len(EXAMS)}")
 
 
 if __name__ == "__main__":
