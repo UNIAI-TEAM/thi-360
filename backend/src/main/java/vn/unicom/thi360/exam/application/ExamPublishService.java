@@ -62,8 +62,9 @@ public class ExamPublishService {
     }
 
     private ExamPublishResponse publishOnce(UUID examId, ExamPublishRequest request) {
-        var rows = jdbc.query("SELECT revision, has_unpublished_changes, name FROM exam.exam WHERE id = ? FOR UPDATE",
-                (rs, n) -> new ExamRow(rs.getLong(1), rs.getBoolean(2), rs.getString(3)), examId);
+        var rows = jdbc.query("SELECT revision, name, kind_item_id, timing, duration_minutes FROM exam.exam WHERE id = ? FOR UPDATE",
+                (rs, n) -> new ExamRow(rs.getLong(1), rs.getString(2), rs.getObject(3, UUID.class),
+                        rs.getString(4), rs.getObject(5, Integer.class)), examId);
         if (rows.isEmpty()) throw new NotFoundException("Exam not found");
         ExamRow exam = rows.getFirst();
         if (exam.revision() != request.expectedRevision()) throw new VersionConflictException(ExamErrorCodes.REVISION_CONFLICT, null);
@@ -117,18 +118,25 @@ public class ExamPublishService {
         var snapshot = new ExamVersionSnapshot(mapper);
         JsonNode document = json(structure);
         String quotas = snapshot.resolvedQuotas(document, selected).toString();
-        UUID kindId = jdbc.queryForObject("SELECT kind_item_id FROM exam.exam WHERE id = ?", UUID.class, examId);
+        UUID kindId = exam.kindId();
         var extra = snapshot.combinations(document, selected, kindId, catalog);
         extra.set("omittedGroups", snapshot.omittedGroups(document));
         extra.set("examQuotas", json(jdbc.queryForObject("SELECT exam_quotas::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId)));
         String extraConfig = extra.toString();
-        String snapshotParts = snapshot.parts(document, check.result(), selected).toString();
+        String snapshotParts = snapshot.parts(document, check.result(), selected, exam.timing(), exam.durationMinutes()).toString();
         String configSql = "jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), 'resolvedQuotas', ?::jsonb)";
         Set<Integer> matchingVersions = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT v.version_no FROM exam.exam_version v JOIN exam.exam e ON e.id = v.exam_id "
                 + "JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
-                + "WHERE (v.config - 'resolvedQuotas') = ((" + configSql + " || ?::jsonb) - 'resolvedQuotas') AND v.parts = ?::jsonb AND e.id = ?",
-                Integer.class, quotas, extraConfig, snapshotParts, examId));
+                + "WHERE (v.config - 'resolvedQuotas' - 'combinations') = "
+                + "((" + configSql + " || ?::jsonb) - 'resolvedQuotas' - 'combinations') "
+                + "AND jsonb_set(v.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
+                + "FROM jsonb_array_elements(v.parts->'parts') WITH ORDINALITY p(value, ordinality)), '[]'::jsonb)) = s.parts "
+                + "AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(?::jsonb->'combinations') c "
+                + "WHERE EXISTS (SELECT 1 FROM unnest(v.serving_path_ids) path "
+                + "WHERE ((c->>'partId') || ':' || (c->>'code')) = ANY(string_to_array(path, '+'))) "
+                + "AND NOT (COALESCE(v.config->'combinations','[]'::jsonb) @> jsonb_build_array(c))) AND e.id = ?",
+                Integer.class, quotas, extraConfig, extraConfig, examId));
         Set<String> alreadyServing = new LinkedHashSet<>();
         for (VersionPaths old : versions) {
             if (matchingVersions.contains(old.version())) alreadyServing.addAll(old.paths());
@@ -169,11 +177,21 @@ public class ExamPublishService {
         if (inserted != 1) throw new IllegalStateException("Exam structure missing");
         jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id) "
                 + "SELECT gen_random_uuid(), exam_id, ?, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL", version, examId);
+        String allCombinations = snapshot.combinations(document, allPaths, kindId, catalog).toString();
         Set<String> published = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT DISTINCT unnest(old.serving_path_ids) FROM exam.exam_version old "
                 + "JOIN exam.exam_version current ON current.exam_id = old.exam_id AND current.version_no = ? "
-                + "WHERE old.exam_id = ? AND (old.config - 'resolvedQuotas') = (current.config - 'resolvedQuotas') AND old.parts = current.parts",
-                String.class, version, examId));
+                + "WHERE old.exam_id = ? AND (old.config - 'resolvedQuotas' - 'combinations') = "
+                + "(current.config - 'resolvedQuotas' - 'combinations') "
+                + "AND jsonb_set(old.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
+                + "FROM jsonb_array_elements(old.parts->'parts') WITH ORDINALITY p(value, ordinality)), '[]'::jsonb)) = "
+                + "jsonb_set(current.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
+                + "FROM jsonb_array_elements(current.parts->'parts') WITH ORDINALITY p(value, ordinality)), '[]'::jsonb)) "
+                + "AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(old.config->'combinations','[]'::jsonb)) c "
+                + "WHERE EXISTS (SELECT 1 FROM unnest(old.serving_path_ids) path "
+                + "WHERE ((c->>'partId') || ':' || (c->>'code')) = ANY(string_to_array(path, '+'))) "
+                + "AND NOT (?::jsonb->'combinations' @> jsonb_build_array(c)))",
+                String.class, version, examId, allCombinations));
         jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED', serving_version = ?, has_unpublished_changes = ?, updated_at = ?, updated_by = ?, revision = revision + 1 WHERE id = ?",
                 version, !published.containsAll(allPaths), java.sql.Timestamp.from(now), actor, examId);
         audit.record(AuditEvent.success("EXAM", "EXAM.PUBLISH", "exam", examId.toString(), exam.name(),
@@ -208,7 +226,7 @@ public class ExamPublishService {
         }
     }
 
-    private record ExamRow(long revision, boolean changed, String name) { }
+    private record ExamRow(long revision, String name, UUID kindId, String timing, Integer durationMinutes) { }
     private record CheckRow(UUID id, JsonNode result, JsonNode witness) { }
     private record VersionPaths(int version, List<String> paths) { }
 }

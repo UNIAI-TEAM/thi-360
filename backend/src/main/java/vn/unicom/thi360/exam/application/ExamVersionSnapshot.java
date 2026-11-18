@@ -54,8 +54,20 @@ final class ExamVersionSnapshot {
         return result;
     }
 
-    ObjectNode parts(JsonNode document, JsonNode checkResult, Set<String> selectedPaths) {
+    ObjectNode parts(JsonNode document, JsonNode checkResult, Set<String> selectedPaths,
+                     String timing, Integer durationMinutes) {
         ObjectNode snapshot = document.deepCopy();
+        Integer totalMinutes = durationMinutes;
+        if ("PER_PART".equals(timing)) {
+            totalMinutes = 0;
+            for (JsonNode part : document.path("parts")) {
+                if (!part.path("durationMinutes").isIntegralNumber()) {
+                    totalMinutes = null;
+                    break;
+                }
+                totalMinutes += part.path("durationMinutes").intValue();
+            }
+        }
         for (JsonNode part : snapshot.path("parts")) {
             ArrayNode paths = ((ObjectNode) part).putArray("paths");
             for (JsonNode checked : checkResult.path("paths")) {
@@ -67,8 +79,8 @@ final class ExamVersionSnapshot {
                         ? mapper.nullNode() : checked.path("totalQuestions"));
                 path.set("maxPoints", checked.path("totalPoints").isMissingNode()
                         ? mapper.nullNode() : checked.path("totalPoints"));
-                path.set("durationMinutes", checked.path("totalMinutes").isMissingNode()
-                        ? mapper.nullNode() : checked.path("totalMinutes"));
+                if (totalMinutes == null) path.putNull("durationMinutes");
+                else path.put("durationMinutes", totalMinutes);
             }
         }
         return snapshot;

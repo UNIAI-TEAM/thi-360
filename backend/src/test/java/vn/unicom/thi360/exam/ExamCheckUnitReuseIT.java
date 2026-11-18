@@ -28,6 +28,9 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     private static final UUID PHYSICS = UUID.fromString("00000000-0000-7000-8200-000000000204");
     private static final UUID CHEMISTRY = UUID.fromString("00000000-0000-7000-8200-000000000205");
     private static final UUID BIOLOGY = UUID.fromString("00000000-0000-7000-8200-000000000206");
+    private static final String REFERENCE_QUOTA = "[{\"id\":\"ref\",\"name\":\"Grade\",\"dimension\":\"GRADE\","
+            + "\"basis\":\"QUESTION\",\"enforcement\":\"REFERENCE\",\"subjectCodes\":[\"LY\"],"
+            + "\"buckets\":[{\"codes\":[\"G10\"],\"count\":1}]}]";
     @Autowired private JdbcTemplate jdbc;
     @Autowired private EntityManager entities;
     @Autowired private ObjectMapper mapper;
@@ -250,18 +253,37 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         assertThat(checked.path("paths").toString()).contains("codes:QD06");
         assertThat(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id)).isEqualTo(before);
         assertThat(jdbc.queryForObject("SELECT parts::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id)).isEqualTo(oldParts);
-        mockMvc.perform(post(base + "/preview").with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+        jdbc.update("UPDATE exam.exam_structure SET exam_quotas='[]'::jsonb WHERE exam_id=?", id);
+        var preview = mapper.readTree(mockMvc.perform(post(base + "/preview").with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"target\":{\"kind\":\"PATH\",\"pathId\":\"codes:QD01\"},\"seed\":1,\"version\":1}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GENERATED"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GENERATED"))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(preview.path("compliance")).anyMatch(row -> "EXAM:ref:G10".equals(row.path("criterion").asText()));
+        jdbc.update("UPDATE exam.exam_structure SET exam_quotas=?::jsonb WHERE exam_id=?", REFERENCE_QUOTA, id);
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pathIds\":[\"codes:QD06\"],\"expectedRevision\":" + revision + "}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
+        assertThat(jdbc.queryForObject("SELECT has_unpublished_changes FROM exam.exam WHERE id=?", Boolean.class, id)).isFalse();
         var config = mapper.readTree(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=2", String.class, id));
         assertThat(config.path("combinations").findValuesAsText("code")).contains("QD06");
         assertThat(mapper.readTree(before).path("combinations").findValuesAsText("code")).doesNotContain("QD06");
         assertThat(config.path("examQuotas").isArray()).isTrue();
+        entities.clear();
+        assertThat(checkCodes(base).path("groups").findValuesAsText("code")).doesNotContain("COMBINATION_LIST_CHANGED");
+    }
+
+    @Test
+    void alreadyServingSubsetCannotBePublishedAgainUnchanged() throws Exception {
+        String base = publishCodeFixture();
+        UUID id = UUID.fromString(base.substring(base.lastIndexOf('/') + 1));
+        checkCodes(base);
+        long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
+        mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pathIds\":[\"codes:QD01\"],\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOTHING_TO_PUBLISH"));
     }
 
     @Test
@@ -335,6 +357,7 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
                    {"id":"anh","subjectCode":"ANH","questionCount":2,"blocks":[{"id":"banh","questionType":"SINGLE_CHOICE","questionCount":2}]}
                   ]}]}
                 """);
+        jdbc.update("UPDATE exam.exam_structure SET exam_quotas=?::jsonb WHERE exam_id=?", REFERENCE_QUOTA, id);
         for (String[] ref : new String[][] {{"ly", "204"}, {"hoa", "205"}, {"sinh", "206"},
                 {"su", "207"}, {"dia", "208"}, {"anh", "203"}}) {
             jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",

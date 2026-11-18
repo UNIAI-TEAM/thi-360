@@ -73,16 +73,36 @@ public class ExamCheckSnapshotReader {
                 hash, mapper.valueToTree(sourceRevisions));
         JsonNode servingCombinations = null;
         if (exam.getServingVersion() != null) {
-            var rows = jdbc.query("SELECT config->'combinations' FROM exam.exam_version WHERE exam_id = ? AND version_no = ? AND state = 'SERVING'",
-                    (rs, n) -> rs.getString(1), examId, exam.getServingVersion());
-            if (!rows.isEmpty() && rows.getFirst() != null) {
-                try {
-                    servingCombinations = mapper.readTree(rows.getFirst());
-                } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
-                    throw new IllegalStateException("Invalid exam version combination snapshot", ex);
+            var rows = jdbc.query("SELECT config->'combinations', serving_path_ids FROM exam.exam_version "
+                            + "WHERE exam_id = ? AND state = 'SERVING' ORDER BY version_no",
+                    (rs, n) -> new ServingRow(rs.getString(1), (String[]) rs.getArray(2).getArray()), examId);
+            if (!rows.isEmpty() && rows.stream().allMatch(row -> row.combinations() != null)) {
+                var combined = mapper.createArrayNode();
+                boolean complete = true;
+                for (var row : rows) {
+                    try {
+                        JsonNode entries = mapper.readTree(row.combinations());
+                        if (entries.isNull()) {
+                            complete = false;
+                            break;
+                        }
+                        if (!entries.isArray()) throw new IllegalStateException("Invalid exam version combination snapshot");
+                        Set<String> options = new java.util.HashSet<>();
+                        for (String path : row.paths()) options.addAll(java.util.List.of(path.split("\\+")));
+                        for (JsonNode entry : entries) {
+                            if (options.contains(entry.path("partId").asText() + ":" + entry.path("code").asText())) {
+                                combined.add(entry);
+                            }
+                        }
+                    } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+                        throw new IllegalStateException("Invalid exam version combination snapshot", ex);
+                    }
                 }
+                if (complete) servingCombinations = combined;
             }
         }
         return new Snapshot(exam, document, input, servingCombinations);
     }
+
+    private record ServingRow(String combinations, String[] paths) { }
 }

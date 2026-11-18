@@ -77,7 +77,16 @@ public class DefaultExamChecker implements ExamChecker {
                 if (relevant) current.add(new ExamCheckRules.CombinationContent(definition.itemCode(),
                         definition.subjectCodes(), definition.branch() == null ? null : definition.branch().name()));
             }
-            common.addAll(rules.combinationListIssues(served, current));
+            Map<String, ExamCheckRules.CombinationContent> currentByCode = new LinkedHashMap<>();
+            current.forEach(item -> currentByCode.put(item.code(), item));
+            Map<String, ExamCheckRules.CombinationContent> servedByCode = new LinkedHashMap<>();
+            for (var item : served) {
+                var prior = servedByCode.get(item.code());
+                if (prior == null || java.util.Objects.equals(prior, currentByCode.get(item.code()))) {
+                    servedByCode.put(item.code(), item);
+                }
+            }
+            common.addAll(rules.combinationListIssues(List.copyOf(servedByCode.values()), current));
         }
         List<ObjectNode> allInvalid = rules.unrepresentable();
         List<ObjectNode> invalid = allInvalid.stream()
