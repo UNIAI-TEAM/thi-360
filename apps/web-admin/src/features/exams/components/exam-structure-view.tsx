@@ -10,6 +10,7 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
+import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { examTabFromPathname, examTabHref } from "../editor-tabs";
@@ -64,6 +65,7 @@ import { checkIssueTarget } from "./exam-structure-check-result";
 import { StructureVersionPicker } from "./structure-version-picker";
 import { SubjectChoiceNav } from "./subject-choice-nav";
 import { ReviewSubjectPanel } from "./review-subject-panel";
+import { ScoringExamples, StrandReference } from "./scoring-examples";
 import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 
 const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block" } as const;
@@ -777,6 +779,16 @@ function StructureEditor({
               topicError={topicError}
             />
           ) : null}
+          {sectionContext && !rendersReviewPanel(sectionContext.section, reviewMode) && (
+            <StrandReference
+              table={strandTable(sectionContext.section, quotas, exam.scope)}
+              subjectName={lookup.subject(sectionContext.section.subjectCode)}
+              difficultyName={lookup.difficulty}
+            />
+          )}
+          {current?.kind !== "exam" && !reviewMode && (
+            <ScoringExamples kind={exam.kind} part={(sectionContext ?? blockContext)?.part ?? selectedPart ?? null} />
+          )}
           <ExamStructureSummaryRegion
             summary={reviewMode && JSON.stringify(loadedStructure.parts) !== JSON.stringify(structure.parts) ? null : (summaryQuery.data ?? null)}
             load={summaryLoad}

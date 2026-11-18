@@ -4313,6 +4313,64 @@
           "selected": "Nhãn đã chọn của {name}"
         }
       },
+      "scoringExamples": {
+        "title": "Ví dụ chấm",
+        "description": "Chỉ để đối chiếu cách chấm của kỳ thi. Khối này không có ô nhập.",
+        "hsca": {
+          "caption": "H-SCA · cách chấm theo dạng câu",
+          "childNote": "Câu con trong chùm chấm theo dạng của từng câu con. Cộng điểm trước, làm tròn ở kết quả cuối.",
+          "colBlank": "Bỏ trống",
+          "colCorrect": "Đúng",
+          "colPartial": "Đúng một phần",
+          "colType": "Dạng câu",
+          "colWrong": "Sai",
+          "notApplicable": "Không áp dụng",
+          "pendingBody": "Đúng một phần là chọn đúng nhưng chưa đủ và không chọn phương án sai. Có phương án sai thì được 0 điểm.",
+          "pendingTitle": "Luật chấm câu nhiều đáp án chờ BA xác nhận"
+        },
+        "vsat": {
+          "clozeExample": "Đúng 4/5 vị trí được {part}/{total}",
+          "clozeName": "Điền khuyết (Tiếng Anh)",
+          "clozeRule": "Mỗi vị trí đúng được {points} điểm",
+          "colExample": "Ví dụ",
+          "colMatching": "Số cặp đúng",
+          "colPoints": "Điểm của câu",
+          "colRule": "Quy tắc",
+          "colTrueFalse": "Số ý đúng",
+          "colType": "Dạng câu",
+          "contrastDifferent": "Cùng số ý đúng nhưng hai dạng được số điểm khác nhau. Đúng/Sai tính theo bảng, Ghép đôi tính {perPair} điểm mỗi cặp.",
+          "contrastSame": "Ở mức này hai dạng được cùng số điểm.",
+          "current": "Đang xem",
+          "matchingCaption": "Ghép đôi · tối đa {max} điểm",
+          "othersCaption": "Các dạng còn lại",
+          "pick": "{n}/4",
+          "picksLegend": "Số ý đúng trong câu",
+          "rowPairs": "{n}/4 cặp",
+          "rowStatements": "{n}/4 ý",
+          "shortExample": "Theo định dạng và yêu cầu làm tròn của câu",
+          "shortRule": "Khớp đáp án được {points} điểm",
+          "singleExample": "Đúng 2/3 câu trong chùm được {part}/{total}",
+          "singleRule": "Mỗi câu đúng được {points} điểm",
+          "status": "Đúng {n}/4: Đúng/Sai {trueFalse} điểm, Ghép đôi {matching} điểm",
+          "statusMatching": "Đúng {n}/4 cặp: {points} điểm",
+          "statusTrueFalse": "Đúng {n}/4 ý: {points} điểm",
+          "trueFalseCaption": "Đúng/Sai · tối đa {max} điểm"
+        }
+      },
+      "strand": {
+        "title": "Mạch đối chiếu theo lệnh",
+        "caption": "Mạch đối chiếu của {subject} theo lệnh",
+        "colCommands": "Số lệnh",
+        "colStatus": "Trạng thái",
+        "colStrand": "Mạch",
+        "denominator": "Mẫu số: {subject} cả môn · {total, number} lệnh",
+        "difficulty": "Độ khó theo lệnh: {list}.",
+        "mapped": "Đã gắn mã",
+        "note": "Số theo lệnh chỉ để đối chiếu. Chỉ tiêu bắt buộc đặt theo câu.",
+        "pending": "Chờ mapping",
+        "reference": "Tham khảo",
+        "total": "Tổng"
+      },
       "subject": {
         "title": "Môn {subject}",
         "choiceGroup": {

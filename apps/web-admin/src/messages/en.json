@@ -4313,6 +4313,64 @@
           "selected": "Chosen tags of {name}"
         }
       },
+      "scoringExamples": {
+        "title": "Scoring examples",
+        "description": "For reference only: how this exam scores. This block has no input fields.",
+        "hsca": {
+          "caption": "H-SCA · scoring by question type",
+          "childNote": "Sub-questions in a set are scored by their own type. Points are added first and rounded in the final result.",
+          "colBlank": "Blank",
+          "colCorrect": "Correct",
+          "colPartial": "Partly correct",
+          "colType": "Question type",
+          "colWrong": "Wrong",
+          "notApplicable": "Not applicable",
+          "pendingBody": "Partly correct means choosing correct options but not all of them, and no wrong option. Any wrong option scores 0.",
+          "pendingTitle": "The multiple-answer scoring rule awaits BA confirmation"
+        },
+        "vsat": {
+          "clozeExample": "4 of 5 blanks correct scores {part}/{total}",
+          "clozeName": "Fill in the blanks (English)",
+          "clozeRule": "Each correct blank scores {points} points",
+          "colExample": "Example",
+          "colMatching": "Correct pairs",
+          "colPoints": "Points of the question",
+          "colRule": "Rule",
+          "colTrueFalse": "Correct statements",
+          "colType": "Question type",
+          "contrastDifferent": "The same number correct scores differently in the two types. True/False follows the table; Matching gives {perPair} points per pair.",
+          "contrastSame": "At this level both types score the same.",
+          "current": "Viewing",
+          "matchingCaption": "Matching · up to {max} points",
+          "othersCaption": "Other types",
+          "pick": "{n}/4",
+          "picksLegend": "Correct statements in the question",
+          "rowPairs": "{n}/4 pairs",
+          "rowStatements": "{n}/4 statements",
+          "shortExample": "Follows the question's answer format and rounding requirement",
+          "shortRule": "A matching answer scores {points} points",
+          "singleExample": "2 of 3 sub-questions correct scores {part}/{total}",
+          "singleRule": "Each correct question scores {points} points",
+          "status": "{n}/4 correct: True/False {trueFalse} points, Matching {matching} points",
+          "statusMatching": "{n}/4 pairs correct: {points} points",
+          "statusTrueFalse": "{n}/4 statements correct: {points} points",
+          "trueFalseCaption": "True/False · up to {max} points"
+        }
+      },
+      "strand": {
+        "title": "Reference strands by prompt",
+        "caption": "Reference strands of {subject} by prompt",
+        "colCommands": "Prompts",
+        "colStatus": "Status",
+        "colStrand": "Strand",
+        "denominator": "Denominator: {subject}, whole subject · {total, number} prompts",
+        "difficulty": "Difficulty by prompt: {list}.",
+        "mapped": "Mapped",
+        "note": "Prompt counts are for reference only. Required quotas are set per question.",
+        "pending": "Awaiting mapping",
+        "reference": "Reference",
+        "total": "Total"
+      },
       "subject": {
         "title": "Subject {subject}",
         "choiceGroup": {
