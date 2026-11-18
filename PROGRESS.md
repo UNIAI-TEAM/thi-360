@@ -160,6 +160,7 @@
       - 2026-11-18 06:56 (UTC+7): BE-14 (UNI-2675, PR #96) merge: sáu nhãn D9 và câu hỏi mẫu THPTQG, V-ACT trong dữ liệu dev. Advisor chạy lại 38 test backend bị ảnh hưởng, xanh; cloud 650 test đạt. Sáu mã nhãn còn chờ BA xác nhận.
       - 2026-11-18 07:49 (UTC+7): BE-12 (UNI-2673, PR #98) merge: chùm cỡ linh hoạt trong bộ giải, `everyChildInScope`, miễn `SET_SIZE_MISMATCH` cho chùm linh hoạt. Advisor chạy lại backend 508 test, xanh; api-client sinh lại không đổi. Đề 120 câu giải trong 29 ms trên cloud.
       - 2026-11-18 16:00 (UTC+7): FE-4 (UNI-2665, PR #99) merge phần gốc: tab Kiểm tra và Xem trước ở bước 2, câu riêng cho 17 mã vấn đề 2B, E2E sinh thử QĐ02. Advisor chạy lại typecheck, lint và 1.778 test web trên kết quả merge, xanh; api-client sinh lại không đổi. Phần bổ sung V-ACT và THPTQG (1 điểm) làm sau BE-15.
+      - 2026-11-18 16:33 (UTC+7): BE-13 (UNI-2674, PR #100) merge: mẫu THPTQG tách phần, V-ACT đầy đủ, 7 mẫu phạm vi riêng và `VACT_REVIEW`, migration `V202611181305`. Đổi giữa bài chuẩn và bài ôn bằng nạp mẫu sẽ đặt lại điểm tối đa và mốc điểm. Advisor chạy lại 527 test backend trên kết quả merge, xanh.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
