@@ -1,5 +1,5 @@
 import { apportionByPercent, type MatrixAxes, sectionGroups, sum, validateMatrix } from "./matrix";
-import type { ExamPart, ExamSection, QuotaBasis, QuotaEnforcement, TopicQuota } from "./types";
+import type { ExamPart, ExamQuota, ExamSection, QuotaBasis, QuotaEnforcement, TopicQuota } from "./types";
 
 /**
  * Phép tính thuần của bảng phân bổ (2B 15.3, spec bổ sung R-118, R-121, R-122, R-123): quy đổi tỷ lệ ↔ số câu, dòng
@@ -240,4 +240,16 @@ export function saveBlockers(
     }
   }
   return blockers;
+}
+
+/**
+ * Chỉ tiêu cấp bài nhập theo tỷ lệ mà tổng các mức khác 100% (R-118 dòng 5): báo ở khối chỉ tiêu cấp bài và không lưu. Bản
+ * tham khảo chưa có số nào (chờ chuyên gia xác nhận) chưa khai nên không chặn.
+ */
+export function examQuotaBlockers(quotas: readonly ExamQuota[]): ExamQuota[] {
+  return quotas.filter((quota) => {
+    if (!quota.buckets.some((bucket) => bucket.percent !== undefined && bucket.percent !== null)) return false;
+    const percents = quota.buckets.map((bucket) => bucket.percent ?? 0);
+    return !percentTotalValid(percents) && !(quota.enforcement === "REFERENCE" && sum(percents) === 0);
+  });
 }

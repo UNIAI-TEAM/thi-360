@@ -3,7 +3,7 @@
 import { Button, Card, cn, focusRing, FormField, Input } from "@thi360/ui";
 import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { countOf, type MatrixAxes, sectionsPoints, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamSectionState, ExamSection, ExamTiming, StructureCombination } from "../types";
 import { BlockNumberInput } from "./block-number-input";
@@ -133,9 +133,13 @@ export function ExamStructurePartPanel({
           hint={t("questionCountOnPaperHint")}
           error={paperInvalid ? t("paperInvalid") : undefined}
         >
-          {(controlProps) => (
-            <BlockNumberInput {...controlProps} value={part.questionCountOnPaper} onValueChange={onOnPaper} />
-          )}
+          {(controlProps) =>
+            countLocked ? (
+              <LockedCount {...controlProps} value={part.questionCountOnPaper} />
+            ) : (
+              <BlockNumberInput {...controlProps} value={part.questionCountOnPaper} onValueChange={onOnPaper} />
+            )
+          }
         </FormField>
         <FormField
           label={t("questionCount")}
@@ -143,9 +147,13 @@ export function ExamStructurePartPanel({
           hint={t("questionCountHint")}
           error={countInvalid ? t("countInvalid") : undefined}
         >
-          {(controlProps) => (
-            <BlockNumberInput {...controlProps} value={part.questionCount} onValueChange={onQuestionCount} />
-          )}
+          {(controlProps) =>
+            countLocked ? (
+              <LockedCount {...controlProps} value={part.questionCount} />
+            ) : (
+              <BlockNumberInput {...controlProps} value={part.questionCount} onValueChange={onQuestionCount} />
+            )
+          }
         </FormField>
         {shared ? (
           <div className="flex flex-col gap-1.5">
@@ -402,5 +410,19 @@ function SectionsTable({
         </table>
       </div>
     </section>
+  );
+}
+
+/** Số câu của phần khi mẫu khóa số câu (H27): chỉ đọc kèm biểu tượng khóa, như ô số câu của mục. */
+function LockedCount({ value, ...controlProps }: { value: number } & Omit<ComponentProps<typeof Input>, "value">) {
+  const t = useTranslations("exams.structure.part");
+  return (
+    <span className="flex items-center gap-2">
+      <Input {...controlProps} value={String(value)} readOnly aria-readonly="true" className="w-24 tabular-nums" />
+      <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
+        <Lock aria-hidden className="size-3.5" />
+        {t("countLocked")}
+      </span>
+    </span>
   );
 }

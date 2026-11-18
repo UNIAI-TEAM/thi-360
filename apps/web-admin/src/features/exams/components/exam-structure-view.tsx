@@ -9,7 +9,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { saveBlockers } from "../allocation";
+import { examQuotaBlockers, saveBlockers } from "../allocation";
 import { yearsNeedConfirmation } from "../check";
 import { examTabFromPathname, examTabHref } from "../editor-tabs";
 import { addPoolSection } from "../coded-part";
@@ -316,10 +316,12 @@ function StructureEditor({
   const runSave = (options: { onSaved?: () => void; onFailed?: (message: string) => void } = {}) => {
     // Bảng phân bổ còn lỗi người dùng phải sửa (tổng tỷ lệ khác 100%, quá 8 chỉ tiêu): mở đúng chỗ, không gửi lên máy chủ.
     const blocker = saveBlockers(draft, axes, (sectionId) => confirmedCounts[sectionId] ?? savedCountOf(sectionId))[0];
-    if (blocker) {
-      const found = blocker.kind === "TOTAL_CHANGE" ? findSection(draft, blocker.sectionId) : null;
+    const quotaBlocked = blocker ? false : examQuotaBlockers(quotas).length > 0;
+    if (blocker || quotaBlocked) {
+      const found = blocker?.kind === "TOTAL_CHANGE" ? findSection(draft, blocker.sectionId) : null;
       const message = found ? t("totalChangeBlocked", { subject: lookup.subject(found.section.subjectCode) }) : t("allocationBlocked");
-      selectNow(blocker.blockId ? { kind: "block", blockId: blocker.blockId } : { kind: "section", sectionId: blocker.sectionId });
+      if (!blocker) selectNow({ kind: "exam" });
+      else selectNow(blocker.blockId ? { kind: "block", blockId: blocker.blockId } : { kind: "section", sectionId: blocker.sectionId });
       if (!options.onFailed) notify.error(message);
       announce(message);
       options.onFailed?.(message);
@@ -538,6 +540,11 @@ function StructureEditor({
           onApplied={(parts) => {
             setDraft(parts);
             setBaseline(JSON.stringify(parts));
+            // Chỉ tiêu cấp bài đang sửa thuộc mẫu cũ: bỏ để lần tải lại cấu trúc kế tiếp đưa chỉ tiêu của mẫu mới vào, không
+            // để lần lưu sau ghi đè `examQuotas` của mẫu mới (R1-10).
+            setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
+            setConfirmedCounts({});
+            setTopicFailure(null);
             // Phiên bản mới làm kết quả kiểm tra cũ hết hiệu lực: huy hiệu trạng thái tính lại từ đầu.
             setCheckResult(null);
           }}

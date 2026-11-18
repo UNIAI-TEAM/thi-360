@@ -263,6 +263,22 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     const count = await screen.findByRole("textbox", { name: "Số câu của mục" });
     expect(count).not.toHaveAttribute("readonly");
   });
+
+  it("R1-11: mẫu khóa số câu thì ô số câu của phần và số câu trên đề cũng chỉ đọc; mẫu không khóa thì sửa được", async () => {
+    boot({ template: template(true) });
+    const locked = open("?part=part-1");
+    for (const name of [/^Số câu trên đề/, /^Số câu phải làm/]) {
+      expect(await screen.findByRole("textbox", { name })).toHaveAttribute("readonly");
+    }
+    expect(screen.getAllByText("Mẫu đã khóa số câu").length).toBeGreaterThanOrEqual(2);
+    locked.unmount();
+
+    boot({ template: template(false) });
+    open("?part=part-1");
+    for (const name of [/^Số câu trên đề/, /^Số câu phải làm/]) {
+      expect(await screen.findByRole("textbox", { name })).not.toHaveAttribute("readonly");
+    }
+  });
 });
 
 function Harness({ initial, total = 30, children }: { initial: TopicQuota[]; total?: number; children?: never }) {

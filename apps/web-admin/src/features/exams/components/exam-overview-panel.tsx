@@ -164,7 +164,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                 })}
               </ul>
               {mismatch && (
-                <p className="flex items-start gap-1.5 text-caption text-warning">
+                <p role={percent ? "alert" : undefined} className={cn("flex items-start gap-1.5 text-caption", percent ? "text-danger" : "text-warning")}>
                   <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
                   {percent ? t("percentMismatch", { total: number(total) }) : t("countMismatch", { total: number(total), count: scope.count })}
                 </p>

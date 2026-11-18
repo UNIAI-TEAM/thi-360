@@ -119,6 +119,7 @@ export function referenceToMatrix(section: ExamSection, quota: ExamQuota, axes: 
   });
   const otherCodes = grade ? axes.difficulties : axes.grades;
   const otherKey = grade ? "byDifficulty" : "byGrade";
+  const otherEnforcementKey = grade ? "difficultyEnforcement" : "gradeEnforcement";
   const otherHasValues = sum(dimensionValues(base[otherKey], otherCodes)) > 0;
   return {
     ...base,
@@ -126,6 +127,9 @@ export function referenceToMatrix(section: ExamSection, quota: ExamQuota, axes: 
     basis: "QUESTION",
     [grade ? "byGrade" : "byDifficulty"]: toDimension(values, codes),
     [otherKey]: otherHasValues ? base[otherKey] : [],
+    // Chiều kia chưa có số thì để ở mức Tham khảo (chưa khai, `validateMatrix` bỏ qua): môn không có ma trận riêng mà chép
+    // một chiều sẽ không bị chặn lưu vì chiều người dùng chưa đụng tới (R1-08).
+    [otherEnforcementKey]: otherHasValues ? base[otherEnforcementKey] : "REFERENCE",
     [grade ? "gradeEnforcement" : "difficultyEnforcement"]: "REQUIRED",
   };
 }
