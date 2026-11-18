@@ -56,7 +56,16 @@ public record GroupQuota(
         List<MapidGroupQuota> mapidGroups,
         BigDecimal requiredPointsPerUnit,
         String expectedScoringRule,
-        SlotParentQuota slotParent) {
+        SlotParentQuota slotParent,
+        List<TopicQuota> topicQuotas) {
+
+    public GroupQuota(String groupId, GroupKind kind, Integer questionCount, String answerType,
+            Integer setCount, Integer setSize, String childAnswerType, MatrixQuota matrix,
+            List<CompetencyQuota> competencies, List<MapidGroupQuota> mapidGroups,
+            BigDecimal requiredPointsPerUnit, String expectedScoringRule, SlotParentQuota slotParent) {
+        this(groupId, kind, questionCount, answerType, setCount, setSize, childAnswerType, matrix,
+                competencies, mapidGroups, requiredPointsPerUnit, expectedScoringRule, slotParent, List.of());
+    }
 
     /** A group without shared slot-parent quotas. */
     public GroupQuota(String groupId, GroupKind kind, Integer questionCount, String answerType,
@@ -105,6 +114,7 @@ public record GroupQuota(
         }
         competencies = competencies == null ? List.of() : List.copyOf(competencies);
         mapidGroups = mapidGroups == null ? List.of() : List.copyOf(mapidGroups);
+        topicQuotas = topicQuotas == null ? List.of() : List.copyOf(topicQuotas);
         Set<String> seen = new HashSet<>();
         QuotaUnit competencyUnit = competencies.isEmpty() ? null : competencies.getFirst().unit();
         for (CompetencyQuota c : competencies) {
