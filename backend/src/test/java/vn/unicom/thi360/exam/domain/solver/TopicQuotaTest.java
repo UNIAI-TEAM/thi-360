@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam.domain.solver;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class TopicQuotaTest {
@@ -109,6 +110,73 @@ class TopicQuotaTest {
     }
 
 
+
+    @Test
+    void failedMemoKeepsScopedTopicSupplyAcrossGroups() {
+        // BE4B-R1-01: hai nhóm cùng mẫu bit chủ đề nhưng khác mức tối thiểu, dùng chung nguồn
+        // ứng viên; nhóm sau không có chỉ tiêu. Nhánh g1={a,b} thất bại vì g2 chỉ còn một A;
+        // nghiệm duy nhất g1={a,n}, g2={b,c} phải không bị memo của trạng thái thất bại cắt.
+        var g1 = groupWithTopics("g1", 2, new TopicQuota("q1", List.of("A"), 1,
+                List.of(), List.of(), List.of()));
+        var g2 = groupWithTopics("g2", 2, new TopicQuota("q2", List.of("A"), 2,
+                List.of(), List.of(), List.of()));
+        var g3 = GroupQuota.single("g3", 1);
+        var section = SolverTestFixtures.section("MATH", 5, g1, g2, g3);
+        List<PathCandidate> shared = List.of(candidate("a", "A"), candidate("b", "A"),
+                candidate("c", "A"), candidate("n"));
+        var source = SolverTestFixtures.source(Map.of(
+                "g1", shared, "g2", shared, "g3", List.of(candidate("z"))));
+        for (SolveMode mode : List.of(SolveMode.check(), SolveMode.generate(7),
+                SolveMode.generate(42))) {
+            var result = solver.solvePath(SolverTestFixtures.path(section), source, mode);
+            assertThat(result.status()).as("mode %s", mode).isEqualTo(SolveStatus.VALID);
+            var groups = result.witness().getFirst().groups();
+            assertThat(groups.stream().flatMap(g -> g.picks().stream())
+                    .map(QuestionPick::questionId)).containsExactlyInAnyOrder(
+                            "a", "b", "c", "n", "z");
+            assertThat(groups.get(0).picks().stream()
+                    .flatMap(p -> p.topicAssignments().stream())
+                    .filter(a -> a.quotaId().equals("q1"))).hasSize(1);
+            assertThat(groups.get(1).picks().stream()
+                    .flatMap(p -> p.topicAssignments().stream())
+                    .filter(a -> a.quotaId().equals("q2"))).hasSize(2);
+        }
+    }
+
+    @Test
+    void failedMemoKeepsScopedTopicSupplyAcrossSections() {
+        // BE4B-R1-01: hai section cùng môn (một bài toán con), cùng mẫu bit chủ đề cấp section
+        // nhưng khác mức tối thiểu — phản ví dụ tương đương qua ranh giới section.
+        var s1 = new SectionOnPath("MATH", "s1", 2,
+                new SubjectQuota(null, null, List.of(new TopicQuota("s1q", List.of("A"), 1,
+                        List.of(), List.of(), List.of()))),
+                List.of(GroupQuota.single("g1", 2)));
+        var s2 = new SectionOnPath("MATH", "s2", 3,
+                new SubjectQuota(null, null, List.of(new TopicQuota("s2q", List.of("A"), 2,
+                        List.of(), List.of(), List.of()))),
+                List.of(GroupQuota.single("g2", 2), GroupQuota.single("h2", 1)));
+        List<PathCandidate> shared = List.of(candidate("a", "A"), candidate("b", "A"),
+                candidate("c", "A"), candidate("n"));
+        var source = SolverTestFixtures.source(Map.of(
+                "g1", shared, "g2", shared, "h2", List.of(candidate("z"))));
+        var result = solver.solvePath(SolverTestFixtures.path(s1, s2), source, SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.VALID);
+        var groups = result.witness().getFirst().groups();
+        assertThat(groups.stream().flatMap(g -> g.picks().stream())
+                .map(QuestionPick::questionId)).containsExactlyInAnyOrder(
+                        "a", "b", "c", "n", "z");
+        assertThat(groups.get(0).picks().stream()
+                .flatMap(p -> p.topicAssignments().stream())
+                .filter(a -> a.quotaId().equals("s1q"))).hasSize(1);
+        assertThat(groups.get(1).picks().stream()
+                .flatMap(p -> p.topicAssignments().stream())
+                .filter(a -> a.quotaId().equals("s2q"))).hasSize(2);
+    }
+
+    private static GroupQuota groupWithTopics(String id, int count, TopicQuota... quotas) {
+        return new GroupQuota(id, GroupQuota.GroupKind.SINGLE, count, null, null, null, null,
+                null, List.of(), List.of(), null, null, null, List.of(quotas));
+    }
     private static TopicQuota quota(String id, String node) {
         return new TopicQuota(id, List.of(node), 1, List.of(), List.of(), List.of());
     }

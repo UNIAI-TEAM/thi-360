@@ -27,18 +27,29 @@ final class TopicAssignments {
         return false;
     }
 
+    /**
+     * Chữ ký lớp đóng góp theo chủ đề của một ứng viên trong nhóm g (BE4B-R1-01): định danh phạm
+     * vi (section + phạm vi chủ đề riêng của nhóm, tức id nhóm hoặc nhóm cha của slot) cộng với
+     * mẫu bit khớp từng chỉ tiêu trên từng đơn vị. Hai phạm vi khác nhau phải khác lớp kể cả khi
+     * mẫu bit giống nhau, vì nguồn tính vào chỉ tiêu tối thiểu của mỗi phạm vi là riêng — nếu
+     * gộp, trạng thái thất bại của một cách phân phối giữa các phạm vi sẽ cắt nhầm cách phân phối
+     * khác có cùng tập khóa đã chọn. {@code assign()} cũng dùng cùng cặp phạm vi này để gom đơn
+     * vị vào từng scope.
+     */
     static String signature(Prep.SubproblemContext ctx, int g, PathCandidate candidate) {
         GroupQuota group = ctx.groups().get(g).group();
         String id = group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
-        List<TopicQuota> section = ctx.sections().get(ctx.sectionOf()[g]).subjectQuota().topicQuotas();
+        SectionOnPath section = ctx.sections().get(ctx.sectionOf()[g]);
+        List<TopicQuota> sectionQuotas = section.subjectQuota().topicQuotas();
         List<TopicQuota> own = group.slotParent() == null ? group.topicQuotas() : group.slotParent().topicQuotas();
         StringBuilder signature = new StringBuilder();
+        signature.append(section.sectionId()).append('@').append(id);
         for (CountingUnit unit : candidate.units()) {
             signature.append('|');
-            for (TopicQuota quota : section) signature.append(quota.matches(id, unit) ? '1' : '0');
+            for (TopicQuota quota : sectionQuotas) signature.append(quota.matches(id, unit) ? '1' : '0');
             signature.append('/');
             for (TopicQuota quota : own) signature.append(quota.matches(id, unit) ? '1' : '0');
-            if (!ctx.sections().get(ctx.sectionOf()[g]).subjectQuota().examQuotas().isEmpty()) {
+            if (!section.subjectQuota().examQuotas().isEmpty()) {
                 signature.append(':').append(unit.gradeCode()).append(':').append(unit.difficultyCode());
             }
         }
