@@ -337,7 +337,7 @@ export function ExamStructureSubjectPanel({
                   { value: "PERCENT", label: t("unitPercent") },
                 ]}
               />
-              <div role="region" tabIndex={0} aria-label={t("answerTypes.title")} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+              <div role="region" tabIndex={0} aria-label={t("answerTypes.title")} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
                 <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
                   <caption className="sr-only">{t("answerTypes.caption", { subject: subjectName })}</caption>
                   <thead>
@@ -519,7 +519,7 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
   const t = useTranslations("exams.structure.subject.matrix");
   if (!rows) return null;
   return (
-    <div role="region" tabIndex={0} aria-label={title} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+    <div role="region" tabIndex={0} aria-label={title} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
       <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
         <caption className="sr-only">{title}</caption>
         <thead>
@@ -606,7 +606,7 @@ function GroupList({
       {section.blocks.length === 0 ? (
         <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
-        <div role="region" tabIndex={0} aria-label={t("caption", { subject: subjectName })} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+        <div role="region" tabIndex={0} aria-label={t("caption", { subject: subjectName })} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
           <table className="w-full border-separate border-spacing-0 text-body">
             <caption className="sr-only">{t("caption", { subject: subjectName })}</caption>
             <thead>

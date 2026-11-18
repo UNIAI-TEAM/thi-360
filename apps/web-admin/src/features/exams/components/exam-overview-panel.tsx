@@ -64,7 +64,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
         <h3 id={pointsId} className="text-title font-semibold text-text">
           {t("pointsTitle")}
         </h3>
-        <div role="region" tabIndex={0} aria-label={t("pointsTitle")} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+        <div role="region" tabIndex={0} aria-label={t("pointsTitle")} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
           <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
             <caption className="sr-only">{t("pointsCaption")}</caption>
             <thead>

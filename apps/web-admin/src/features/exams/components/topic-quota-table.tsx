@@ -143,7 +143,7 @@ export function TopicQuotaTable({
       {quotas.length === 0 ? (
         <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
-        <div role="region" tabIndex={0} aria-label={t("caption", { level: levelName })} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+        <div role="region" tabIndex={0} aria-label={t("caption", { level: levelName })} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
           <table className="w-full min-w-176 border-separate border-spacing-0 text-body tabular-nums">
             <caption className="sr-only">{t("caption", { level: levelName })}</caption>
             <thead>
@@ -154,7 +154,7 @@ export function TopicQuotaTable({
                 <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("gradeLimit")}</th>
                 <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("difficultyLimit")}</th>
                 <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("level")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
+                <th scope="col" className="sticky right-0 z-1 border-b border-l border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -285,7 +285,7 @@ export function TopicQuotaTable({
                         onChange={(enforcement) => patch(quota.id, { enforcement })}
                       />
                     </td>
-                    <td className="border-b border-border px-3 py-1 text-right align-top">
+                    <td className="sticky right-0 z-1 border-b border-l border-border bg-surface px-3 py-1 text-right align-top">
                       {!readOnly && (
                         <IconButton
                           icon={<CircleMinus />}

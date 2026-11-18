@@ -69,17 +69,17 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
         {pool.length === 0 ? (
           <p className="text-body text-text-muted">{t("empty")}</p>
         ) : (
-          <div role="region" tabIndex={0} aria-label={t("subjectsCaption", { part: part.name })} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+          <div role="region" tabIndex={0} aria-label={t("subjectsCaption", { part: part.name })} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
             <table className="w-full min-w-168 border-separate border-spacing-0 text-body">
               <caption className="sr-only">{t("subjectsCaption", { part: part.name })}</caption>
               <thead>
                 <tr className="text-left text-caption text-text-muted">
-                  <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("subject")}</th>
-                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold">{t("count")}</th>
+                  <th scope="col" className="min-w-28 border-b border-border bg-subtle px-3 py-2 font-semibold">{t("subject")}</th>
+                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold whitespace-nowrap">{t("count")}</th>
                   <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("how")}</th>
                   <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("usedIn")}</th>
                   <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("status")}</th>
-                  <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
+                  <th scope="col" className="sticky right-0 z-1 border-b border-l border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -89,7 +89,7 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
                   const matrix = matrixText(section);
                   return (
                     <tr key={section.id}>
-                      <th scope="row" className="border-b border-border px-3 py-2 text-left align-top font-medium text-text">{subject}</th>
+                      <th scope="row" className="min-w-28 border-b border-border px-3 py-2 text-left align-top font-medium text-text">{subject}</th>
                       <td className="border-b border-border px-2 py-2 text-right align-top tabular-nums text-text">{section.questionCount === null ? "—" : format.number(section.questionCount, DISPLAY_NUMBER_FORMAT)}</td>
                       <td className="border-b border-border px-2 py-2 align-top text-text">
                         {how.length === 0 ? <span className="text-text-muted">{t("noBlocks")}</span> : how.map(howText).join(", ")}
@@ -97,7 +97,7 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
                       </td>
                       <td className="border-b border-border px-2 py-2 align-top text-text-secondary">{codesUsing(section.subjectCode, combinations).join(", ") || "—"}</td>
                       <td className="border-b border-border px-2 py-2 align-top">{chip(stateOf(section))}</td>
-                      <td className="border-b border-border px-3 py-1 text-right align-top">
+                      <td className="sticky right-0 z-1 border-b border-l border-border bg-surface px-3 py-1 text-right align-top">
                         <Button type="button" variant="secondary" size="sm" aria-label={t("setupAria", { subject })} onClick={() => onSelectSection(section.id)}>
                           {t("setup")}
                         </Button>

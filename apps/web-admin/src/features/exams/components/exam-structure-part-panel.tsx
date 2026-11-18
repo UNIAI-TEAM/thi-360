@@ -317,7 +317,7 @@ function SectionsTable({
       <h3 className="text-title font-semibold text-text">{title}</h3>
       {single && <p className="text-caption text-text-muted">{t("singleSectionHint")}</p>}
       {common && <p className="text-caption text-text-muted">{t("commonHint")}</p>}
-      <div role="region" tabIndex={0} aria-label={title} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+      <div role="region" tabIndex={0} aria-label={title} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
         <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
           <caption className="sr-only">
             {common ? t("commonCaption", { name: part.name }) : t("sectionsCaption", { name: part.name })}

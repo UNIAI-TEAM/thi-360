@@ -99,7 +99,7 @@ export function ExamStructureSummaryRegion({
           role="region"
           tabIndex={0}
           aria-label={t("caption")}
-          className={cn("overflow-x-auto rounded-md border border-border", focusRingInset)}
+          className={cn("relative overflow-x-auto rounded-md border border-border", focusRingInset)}
         >
           <table className="w-full min-w-120 border-separate border-spacing-0 text-body tabular-nums">
             <caption className="sr-only">{t("caption")}</caption>

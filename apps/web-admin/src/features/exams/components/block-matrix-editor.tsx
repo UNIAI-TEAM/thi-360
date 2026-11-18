@@ -565,7 +565,7 @@ function MatrixTable({
       role="region"
       tabIndex={0}
       aria-labelledby={captionId}
-      className={cn("max-w-full overflow-x-auto rounded-md border border-border", focusRing)}
+      className={cn("relative max-w-full overflow-x-auto rounded-md border border-border", focusRing)}
     >
       <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
         <caption
@@ -588,7 +588,7 @@ function HeadCell({ children, sticky = false, last = false }: { children: ReactN
         "border-b border-border bg-subtle px-2 py-2 text-right text-caption font-semibold whitespace-nowrap text-text-muted",
         sticky && "sticky left-0 z-1 text-left",
         // Cột Tổng luôn nằm trong khung và có đệm phải: không dính mép thẻ, không bị cuộn ngang che (V1-05).
-        last && "sticky right-0 z-1 border-l pr-3",
+        last && "sticky right-0 z-1 border-l pr-4",
       )}
     >
       {children}
@@ -617,7 +617,7 @@ function TotalCell({ children, strong = false, last = false }: { children: React
       className={cn(
         "border-b border-border px-2 py-1.5 text-right whitespace-nowrap",
         strong && "font-semibold",
-        last && "sticky right-0 z-1 border-l bg-surface pr-3",
+        last && "sticky right-0 z-1 border-l bg-surface pr-4",
       )}
     >
       <output>{children}</output>

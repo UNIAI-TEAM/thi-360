@@ -348,7 +348,7 @@ function OptionGroup({
             ))}
           </CardList>
         ) : (
-          <div role="region" tabIndex={0} aria-label={caption} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+          <div role="region" tabIndex={0} aria-label={caption} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
             <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
               <caption className="sr-only">{caption}</caption>
               <thead>
