@@ -145,6 +145,11 @@ export const CHECK_ISSUE_CODES = [
   "TEMPLATE_NOT_PUBLISHABLE",
   "STRUCTURE_COUNT_LOCKED",
   "TOPIC_QUOTA_MAPPING_MISSING",
+  "AUDIO_SHORTAGE",
+  "POINTS_SHORTAGE",
+  "BLOCK_COUNT_LOCKED",
+  "OMITTED_BLOCK_LOCKED",
+  "SCALE_INCLUDES_EXCLUDED_PART",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
@@ -349,6 +354,28 @@ export interface PreviewOption {
   correct: boolean;
 }
 
+/**
+ * Tệp đính kèm của câu gốc trong đề xem trước (spec 6): chỉ biết mã, tên và MIME. Nguồn phát là
+ * `GET /api/v1/admin/question-assets/{id}`. Viết tay đến khi BE-20 sinh lại `packages/api-client`.
+ */
+export interface PreviewAttachment {
+  id: string;
+  name: string;
+  mime: string;
+}
+
+/** Phân đoạn hiển thị của một phần (Phần I–IV của Tiếng Anh V-SAT, H40): chỉ để hiện tiêu đề, không đổi số câu. */
+export interface PreviewDisplaySegment {
+  code: string;
+  name: string;
+  /** Số thứ tự câu trong phần, tính từ 1, hai đầu cùng nằm trong phân đoạn. */
+  fromPosition: number;
+  toPosition: number;
+  /** Số lệnh và điểm khai báo của phân đoạn (máy chủ so với đề thật, lệch thì báo lỗi tại phần). */
+  commandCount: number;
+  maxPoints: number;
+}
+
 /** Một câu (câu đơn hoặc câu con của bộ) trong đề xem trước. `simulated`: câu của nguồn mô phỏng, không có nội dung. */
 export interface PreviewQuestion {
   number: number;
@@ -378,6 +405,8 @@ export interface PreviewQuestion {
   originalOptionOrder: string[] | null;
   /** Chỉ tiêu chủ đề mà câu được gán vào (`TOPIC:<id>` của `compliance`); rỗng khi không gán. */
   assignedTopicQuotaIds: string[];
+  /** Tệp đính kèm của câu đơn; câu con không có tệp riêng (tệp nằm ở câu gốc của bộ). Máy chủ cũ không gửi: bỏ trống. */
+  attachments?: PreviewAttachment[];
 }
 
 export type PreviewItem =
@@ -394,6 +423,8 @@ export type PreviewItem =
       children: PreviewQuestion[];
       /** Vị trí gốc của mục trong khối (thứ tự bộ giải chọn); `null` hoặc bỏ trống khi máy chủ không gửi. */
       originalOrder?: number | null;
+      /** Tệp đính kèm của câu gốc của bộ (audio dùng chung cho cả bộ); bỏ trống khi máy chủ không gửi. */
+      attachments?: PreviewAttachment[];
     };
 
 export interface PreviewAllocationCell {
@@ -436,6 +467,8 @@ export interface PreviewPart {
   points: number;
   /** Điểm quy định của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
   maxPoints: number | null;
+  /** Phân đoạn hiển thị Phần I–IV; bỏ trống khi phần không có (mọi bài trừ Tiếng Anh V-SAT FULL). */
+  displaySegments?: PreviewDisplaySegment[];
   blocks: PreviewBlock[];
 }
 

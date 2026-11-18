@@ -32,10 +32,12 @@ import type {
   PathChoice,
   PathSelectionCheck,
   PreviewAllocationCell,
+  PreviewAttachment,
   PreviewBlock,
   PreviewCheck,
   PreviewCheckCode,
   PreviewCompliance,
+  PreviewDisplaySegment,
   PreviewItem,
   PreviewPaper,
   PreviewPart,
@@ -346,11 +348,23 @@ type ApiVersionChange = Schema["ExamVersionChange"];
 type ApiWorkingCopy = Schema["ExamVersionWorkingCopy"];
 type ApiPreviewResult = Schema["ExamPreviewResult"];
 type ApiPreviewPaper = Schema["ExamPreviewPaper"];
-type ApiPreviewPart = Schema["ExamPreviewPart"];
+/** Trường của đề xem trước mà `packages/api-client` chưa có (spec 6, BE-20); bỏ khi client đã sinh lại. */
+type WireAttachments = { attachments?: Array<{ id?: string; name?: string; mime?: string }> };
+type WireDisplaySegments = {
+  displaySegments?: Array<{
+    code?: string;
+    name?: string;
+    fromPosition?: number;
+    toPosition?: number;
+    commandCount?: number;
+    maxPoints?: number;
+  }>;
+};
+type ApiPreviewPart = Schema["ExamPreviewPart"] & WireDisplaySegments;
 type ApiPreviewBlock = Schema["ExamPreviewBlock"];
 type ApiPreviewBlockRequirement = Schema["ExamPreviewBlockRequirement"];
-type ApiPreviewItem = Schema["ExamPreviewItem"];
-type ApiPreviewQuestion = Schema["ExamPreviewQuestion"];
+type ApiPreviewItem = Schema["ExamPreviewItem"] & WireAttachments;
+type ApiPreviewQuestion = Schema["ExamPreviewQuestion"] & WireAttachments;
 type ApiPreviewCheck = Schema["ExamPreviewCheck"];
 type ApiPreviewSubjectAllocation = Schema["ExamPreviewSubjectAllocation"];
 type ApiPreviewKnowledgeStat = Schema["ExamPreviewKnowledgeStat"];
@@ -609,6 +623,25 @@ function mapPreviewCheck(check: ApiPreviewCheck): PreviewCheck {
   };
 }
 
+function mapAttachments(attachments: WireAttachments["attachments"]): PreviewAttachment[] {
+  return (attachments ?? []).map((attachment) => ({
+    id: attachment.id ?? "",
+    name: attachment.name ?? "",
+    mime: attachment.mime ?? "",
+  }));
+}
+
+function mapDisplaySegments(segments: WireDisplaySegments["displaySegments"]): PreviewDisplaySegment[] {
+  return (segments ?? []).map((segment) => ({
+    code: segment.code ?? "",
+    name: segment.name ?? "",
+    fromPosition: segment.fromPosition ?? 0,
+    toPosition: segment.toPosition ?? 0,
+    commandCount: segment.commandCount ?? 0,
+    maxPoints: segment.maxPoints ?? 0,
+  }));
+}
+
 function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
   return {
     number: question.number ?? 0,
@@ -650,6 +683,7 @@ function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
     optionOrder: question.optionOrder ?? null,
     originalOptionOrder: question.originalOptionOrder ?? null,
     assignedTopicQuotaIds: question.assignedTopicQuotaIds ?? [],
+    attachments: mapAttachments(question.attachments),
   };
 }
 
@@ -664,6 +698,7 @@ function mapPreviewItem(item: ApiPreviewItem): PreviewItem {
       passage: item.passage ?? null,
       children: (item.children ?? []).map(mapPreviewQuestion),
       originalOrder: item.originalOrder ?? null,
+      attachments: mapAttachments(item.attachments),
     };
   }
   return { kind: "QUESTION", question: mapPreviewQuestion(item.question ?? {}), originalOrder: item.originalOrder ?? null };
@@ -709,6 +744,7 @@ function mapPreviewPart(part: ApiPreviewPart): PreviewPart {
     lastNumber: part.lastNumber ?? 0,
     points: part.points ?? 0,
     maxPoints: part.maxPoints ?? null,
+    displaySegments: mapDisplaySegments(part.displaySegments),
     blocks: (part.blocks ?? []).map(mapPreviewBlock),
   };
 }
