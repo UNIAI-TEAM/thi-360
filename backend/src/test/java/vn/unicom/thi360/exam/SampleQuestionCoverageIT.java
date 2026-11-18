@@ -313,6 +313,11 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         assertThat(composable(List.of(5, 5, 5), 18)).isFalse();
         assertThat(composable(List.of(5, 5, 4, 4, 5), 18)).isTrue();
         assertThat(composable(List.of(18), 18)).isTrue();
+        // Over capacity (20 >= 18 units, four sets) but no combination of whole 5-child sets makes 18.
+        assertThat(capacityFailure(List.of(5, 5, 5, 5), true, 0, 18))
+                .contains("cannot make exactly 18").contains("20 units");
+        assertThat(composable(List.of(5, 5, 5, 5), 18)).isFalse();
+        assertThat(capacityFailure(List.of(5, 5, 4, 4, 5), true, 0, 18)).isNull();
         JsonNode slot = mapper.readTree("""
                 {"subjectCode":"LY","questionCount":3,
                  "knowledgeScope":{"nodeIds":["00000000-0000-0000-0000-000000000001"]},
@@ -384,6 +389,21 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 && block.path("setCount").asInt(0) == 0 && block.path("setSize").asInt(0) == 0;
     }
 
+    /** Null when the candidate set sizes can fill the block; otherwise the shortage description. */
+    private static String capacityFailure(List<Integer> sizes, boolean flexible, int neededSets, int neededUnits) {
+        long units = sizes.stream().mapToLong(Integer::longValue).sum();
+        if (flexible && !composable(sizes, neededUnits)) {
+            return "whole sets of sizes " + sizes.stream().sorted().toList()
+                    + " cannot make exactly " + neededUnits + " units, found " + sizes.size()
+                    + " candidates / " + units + " units";
+        }
+        if (sizes.size() < neededSets || units < neededUnits) {
+            return "need " + neededSets + " sets / " + neededUnits + " units, found "
+                    + sizes.size() + " candidates / " + units + " units";
+        }
+        return null;
+    }
+
     /** True when some subset of the whole sets (each used once) holds exactly {@code target} questions. */
     private static boolean composable(List<Integer> sizes, int target) {
         boolean[] reachable = new boolean[target + 1];
@@ -416,16 +436,9 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         int setSize = block.path("setSize").asInt(0);
         if (setSize > 0) candidates = candidates.stream().filter(c -> c.units().size() == setSize).toList();
         int neededSets = block.path("setCount").asInt(0);
-        long units = candidates.stream().mapToLong(c -> c.units().size()).sum();
-        if (flexibleSet(block)
-                && !composable(candidates.stream().map(c -> c.units().size()).toList(), neededUnits)) {
-            failures.add(label + ": whole sets of sizes " + candidates.stream().map(c -> c.units().size()).sorted().toList()
-                    + " cannot make exactly " + neededUnits + " units, found " + candidates.size()
-                    + " candidates / " + units + " units");
-        } else if (candidates.size() < neededSets || units < neededUnits) {
-            failures.add(label + ": need " + neededSets + " sets / " + neededUnits + " units, found "
-                    + candidates.size() + " candidates / " + units + " units");
-        }
+        String shortage = capacityFailure(candidates.stream().map(c -> c.units().size()).toList(),
+                flexibleSet(block), neededSets, neededUnits);
+        if (shortage != null) failures.add(label + ": " + shortage);
         if (block.path("slots").isArray() && !block.path("slots").isEmpty()) {
             Set<UUID> eligible = new HashSet<>();
             candidates.forEach(c -> eligible.add(c.questionId()));
