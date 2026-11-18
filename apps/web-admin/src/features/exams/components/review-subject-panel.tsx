@@ -14,6 +14,8 @@ import { applyBlockPatch, resizeSets } from "./block-form";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import type { SectionContext } from "./exam-structure-draft";
+import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
+import type { TopicQuotaServerError } from "./topic-quota-table";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
 
 /** Giá trị của ô dạng câu "Bất kỳ" (nhóm lấy theo chỉ tiêu dạng trả lời của môn, `questionType = null`). */
@@ -29,6 +31,8 @@ export interface ReviewSubjectPanelProps {
   /** Số câu bước 1 đặt cho bài ôn: ô Số lượng phải khớp. */
   step1Count: number;
   headerAction?: ReactNode;
+  /** Lỗi 422 của chỉ tiêu chủ đề (H20): màn này không có bảng chỉ tiêu, nên báo ngay trong panel. */
+  topicError?: TopicQuotaServerError;
 }
 
 /**
@@ -36,7 +40,7 @@ export interface ReviewSubjectPanelProps {
  * dạng câu, số lượng. Số câu, thời lượng và thang điểm lấy từ bước 1. Phân bố khối lớp, độ khó và câu chùm đóng sẵn: mở
  * ra thì như ở bài thường.
  */
-export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, headerAction }: ReviewSubjectPanelProps) {
+export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, headerAction, topicError = null }: ReviewSubjectPanelProps) {
   const t = useTranslations("exams.reviewExam");
   const tContent = useTranslations("content");
   const { section } = context;
@@ -107,6 +111,8 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
         </div>
         {headerAction}
       </div>
+
+      <TopicQuotaElsewhereAlert error={topicError} />
 
       <KnowledgeScopeField
         value={section.knowledgeScope}

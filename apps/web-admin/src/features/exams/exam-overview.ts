@@ -49,6 +49,15 @@ function pathOf(part: ExamPart, combinations: readonly StructureCombination[], p
   ];
 }
 
+/**
+ * Phần có lựa chọn mà bảng điểm chỉ tính một đường (`pathOf` lấy lựa chọn đầu tiên): phần tự chọn nhiều phương án, phương án
+ * chọn môn, hoặc phần theo mã có nhiều mã. Màn ghi một dòng chú thích để người xem không tưởng thiếu môn của các lựa chọn còn lại.
+ */
+export function hasChoicePath(part: ExamPart, combinations: readonly StructureCombination[] = []): boolean {
+  if (part.codeSource) return combinations.filter((item) => item.partId === part.id || item.partId === null).length > 1;
+  return part.mode === "CHOICE" && (part.options.length > 1 || part.options.some((option) => option.kind === "SUBJECT_CHOICE"));
+}
+
 export interface PointsRow {
   key: string;
   partName: string;

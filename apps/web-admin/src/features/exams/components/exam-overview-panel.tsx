@@ -6,13 +6,15 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import { ratePercent } from "../allocation";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
-import { bucketCounts, canRequireQuota, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
+import { bucketCounts, canRequireQuota, hasChoicePath, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
 import { sum } from "../matrix";
 import type { ExamPart, ExamQuota, StructureCombination } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { EnforcementToggle } from "./enforcement-toggle";
 import type { StructureNames } from "./exam-structure-issues";
+import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
+import type { TopicQuotaServerError } from "./topic-quota-table";
 
 export interface ExamOverviewPanelProps {
   /** Tên bài, đứng sau "Tổng quan bài". */
@@ -26,6 +28,8 @@ export interface ExamOverviewPanelProps {
   labels: MatrixLabels;
   /** Lỗi máy chủ của chỉ tiêu cấp bài (422 `EXAM_QUOTA_SCOPE_INVALID`). */
   scopeError?: boolean;
+  /** Lỗi 422 của chỉ tiêu chủ đề (H20): hiện ở khối chỉ tiêu cấp bài (hoặc đầu panel khi bài không có chỉ tiêu cấp bài). */
+  topicError?: TopicQuotaServerError;
   /** Mã bài thi của phần theo mã, để lấy một mã làm đường tính điểm và mẫu số. */
   combinations?: readonly StructureCombination[];
 }
@@ -35,7 +39,7 @@ export interface ExamOverviewPanelProps {
  * bài (R-52, 3.4). Chỉ tiêu của mẫu không thêm, xóa hay đổi tiêu chí được: chỉ sửa được giá trị từng mức và mức Bắt buộc
  * hay Tham khảo. Chỉ tiêu trải nhiều môn khóa nút Bắt buộc (H6).
  */
-export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, names, labels, scopeError = false, combinations = [] }: ExamOverviewPanelProps) {
+export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, names, labels, scopeError = false, topicError = null, combinations = [] }: ExamOverviewPanelProps) {
   const t = useTranslations("exams.examQuota");
   const format = useFormatter();
   const pointsId = useId();
@@ -54,6 +58,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
         <h2 className="text-h3 font-bold wrap-break-word text-text">{t("title", { name: examName })}</h2>
         <p className="text-caption text-text-muted">{summary}</p>
       </div>
+      {quotas.length === 0 && <TopicQuotaElsewhereAlert error={topicError} />}
 
       <section aria-labelledby={pointsId} className="flex flex-col gap-2">
         <h3 id={pointsId} className="text-title font-semibold text-text">
@@ -94,6 +99,9 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
             </tfoot>
           </table>
         </div>
+        {rows.length > 0 && parts.some((part) => hasChoicePath(part, combinations)) && (
+          <p className="text-caption text-text-muted">{t("choiceCaption")}</p>
+        )}
       </section>
 
       <section aria-labelledby={quotasId} className="flex flex-col gap-3">
@@ -103,6 +111,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
           </h3>
           <p className="text-caption text-text-muted">{quotas.length > 0 ? t("quotasHint") : t("none")}</p>
         </div>
+        {quotas.length > 0 && <TopicQuotaElsewhereAlert error={topicError} />}
         {scopeError && (
           <p role="alert" className="flex items-start gap-1.5 text-body text-danger">
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />

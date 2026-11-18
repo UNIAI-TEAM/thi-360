@@ -224,9 +224,11 @@ function StructureEditor({
       setQuotaBaseline(JSON.stringify(structure.examQuotas ?? []));
     }
   }
-  // Lỗi 422 của khối chỉ tiêu chủ đề (H20) chỉ hiện khi bản nháp còn đúng như lúc lưu lỗi; sửa gì thì lỗi này không còn đúng.
+  // Lỗi 422 của khối chỉ tiêu chủ đề (H20) chỉ hiện khi bản nháp (cả chỉ tiêu cấp bài) còn đúng như lúc lưu lỗi; sửa gì thì lỗi này
+  // không còn đúng.
+  const draftSnapshot = `${draftJson}\n${JSON.stringify(quotas)}`;
   const [topicFailure, setTopicFailure] = useState<{ code: TopicQuotaServerError; snapshot: string } | null>(null);
-  const topicError = topicFailure && topicFailure.snapshot === draftJson ? topicFailure.code : null;
+  const topicError = topicFailure && topicFailure.snapshot === draftSnapshot ? topicFailure.code : null;
   // Lỗi 422 `EXAM_QUOTA_SCOPE_INVALID` của chỉ tiêu cấp bài: hiện ở khối chỉ tiêu cấp bài khi danh sách còn như lúc lưu lỗi.
   const [quotaScopeFailure, setQuotaScopeFailure] = useState<string | null>(null);
   const quotaScopeError = quotaScopeFailure !== null && quotaScopeFailure === JSON.stringify(quotas);
@@ -350,7 +352,7 @@ function StructureEditor({
           // 422 của khối chỉ tiêu chủ đề hiện ngay ở khối đó (H20), không chỉ ở thông báo nổi: mở nhóm, môn đang quá hạn mức.
           const topic = (error instanceof ExamsApiError ? error.fieldErrors : []).find((item) => /topicQuotas/.test(item.field));
           if (topic) {
-            setTopicFailure({ code: topic.code === "PERCENT_OUT_OF_RANGE" ? "PERCENT_OUT_OF_RANGE" : "MAX_TOPIC_QUOTAS", snapshot: draftJson });
+            setTopicFailure({ code: topic.code === "PERCENT_OUT_OF_RANGE" ? "PERCENT_OUT_OF_RANGE" : "MAX_TOPIC_QUOTAS", snapshot: draftSnapshot });
             const over = saveBlockers(draft, axes).find((item) => item.kind === "TOPIC_MAX");
             if (over) selectNow(over.blockId ? { kind: "block", blockId: over.blockId } : { kind: "section", sectionId: over.sectionId });
           }
@@ -611,6 +613,7 @@ function StructureEditor({
               names={names}
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
               scopeError={quotaScopeError}
+              topicError={topicError}
               combinations={structure.combinations ?? []}
             />
           ) : sectionContext && rendersReviewPanel(sectionContext.section, reviewMode) ? (
@@ -624,6 +627,7 @@ function StructureEditor({
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               step1Count={sectionContext.part.questionCount}
               headerAction={checkAction}
+              topicError={topicError}
             />
           ) : sectionContext ? (
             <ExamStructureSubjectPanel
@@ -740,6 +744,7 @@ function StructureEditor({
               onSelectSection={(sectionId) => select({ kind: "section", sectionId })}
               sectionStates={sectionStates}
               headerAction={checkAction}
+              topicError={topicError}
             />
           ) : null}
           <ExamStructureSummaryRegion

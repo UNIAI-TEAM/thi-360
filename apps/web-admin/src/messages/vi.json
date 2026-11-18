@@ -5529,6 +5529,7 @@
       "title": "Tổng quan bài · {name}",
       "pointsTitle": "Điểm theo môn",
       "pointsCaption": "Số câu, điểm mỗi câu và tổng điểm theo môn",
+      "choiceCaption": "Phần có nhiều lựa chọn: bảng tính theo lựa chọn đầu tiên.",
       "subject": "Môn",
       "count": "Số câu",
       "each": "Điểm mỗi câu",
@@ -5627,6 +5628,8 @@
       "over": "Đã phân bổ {allocated, number}/{count, number} · Vượt {over, number} câu. Giảm số câu của chỉ tiêu cho khớp {count, number} câu.",
       "maxError": "Chưa lưu được. Mỗi môn hoặc mỗi nhóm có tối đa {max, number} chỉ tiêu chủ đề. {known, select, yes {{level} đang có {count, number}. } other {}}Bỏ bớt một chỉ tiêu rồi lưu lại.",
       "percentRange": "Tỷ lệ của chỉ tiêu phải từ 0 đến 100%.",
+      "elsewhereMax": "Chưa lưu được. Mỗi môn hoặc mỗi nhóm có tối đa {max, number} chỉ tiêu chủ đề. Mở môn hoặc nhóm có chỉ tiêu chủ đề, bỏ bớt chỉ tiêu rồi lưu lại.",
+      "elsewherePercent": "Chưa lưu được. Tỷ lệ của chỉ tiêu chủ đề phải từ 0 đến 100%. Mở môn hoặc nhóm có chỉ tiêu chủ đề để sửa.",
       "pendingRequired": "Dòng {names} là Bắt buộc nhưng chưa gắn MAPID. Bài vẫn lưu nháp được. Gắn mã rồi mới kiểm tra đạt, sinh thử và công bố được.",
       "hint": "Mỗi chỉ tiêu có ít nhất số câu đã ghi. Câu thuộc Phần còn lại vẫn có thể là câu của chủ đề đó. Một câu chỉ tính vào một chỉ tiêu chủ đề cùng cấp, và vẫn tính vào lớp, độ khó, dạng trả lời.",
       "pickerDescription": "Chọn chủ đề (MAPID) cho chỉ tiêu của {level}"

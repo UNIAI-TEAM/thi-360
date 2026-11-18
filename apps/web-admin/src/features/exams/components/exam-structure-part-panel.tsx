@@ -13,6 +13,8 @@ import { OptionalNumberInput } from "./create-exam-fields";
 import { PartOptions, type PartOptionsProps } from "./part-options";
 import { SubjectChoiceOptions } from "./subject-choice-options";
 import type { StructureNames } from "./exam-structure-issues";
+import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
+import type { TopicQuotaServerError } from "./topic-quota-table";
 
 export interface PartPanelProps
   extends Pick<PartOptionsProps, "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"> {
@@ -47,6 +49,8 @@ export interface PartPanelProps
   onChoose: (choose: number) => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra phần"). */
   headerAction?: ReactNode;
+  /** Lỗi 422 của chỉ tiêu chủ đề (H20): panel của phần không có bảng chỉ tiêu, nên báo ngay trong panel. */
+  topicError?: TopicQuotaServerError;
 }
 
 /**
@@ -82,6 +86,7 @@ export function ExamStructurePartPanel({
   onAddBranch,
   onConfirm,
   headerAction,
+  topicError = null,
 }: PartPanelProps) {
   const t = useTranslations("exams.structure.part");
   const partIssues = issues.filter((issue) => issue.code !== "BLOCK");
@@ -111,6 +116,8 @@ export function ExamStructurePartPanel({
         </div>
         {headerAction}
       </div>
+
+      <TopicQuotaElsewhereAlert error={topicError} />
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(11rem,100%),1fr))] gap-4">
         <FormField label={t("name")} required error={part.name.trim() ? undefined : t("nameRequired")} className="col-span-full sm:col-span-2">
