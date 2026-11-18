@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · phân bổ V-ACT hai cột (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45);--sh:rgba(17,24,28,.10)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6);--sh:rgba(0,0,0,.40)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tab{position:relative}
+[aria-current="page"].tab::after{content:"";position:absolute;inset:auto 8px 0;border-bottom:2px solid currentColor}
+input,select,textarea,button{font:inherit}
+input,select{color-scheme:light}.th.dark input,.th.dark select{color-scheme:dark}
+progress{appearance:none;display:block;width:100%;height:8px;border:0 solid;border-radius:9999px;overflow:clip;background:var(--sb)}
+progress::-webkit-progress-bar{background:transparent}
+progress::-webkit-progress-value{background:var(--bar,var(--pf));border-radius:9999px}
+progress::-moz-progress-bar{background:var(--bar,var(--pf));border-radius:9999px}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; min-height: 3300px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · V-ACT toàn bài › Phần 2 · Toán học › Phân bổ trong mục</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div><h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Toán học · 30 câu</h1><p style="margin: 2px 0 0; color: var(--tx3)">Bảng Bắt buộc là điều kiện khi sinh đề. Bảng Tham khảo chỉ để đối chiếu khi sinh thử.</p></div>
+      <button type="button" onClick="{{runCheck}}" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra môn</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; align-items: start">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="sec-count" style="font-weight: 600">Số câu của mục</label>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><input id="sec-count" readonly aria-readonly="true" aria-describedby="sec-lock" value="30" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sb); color: var(--tx2); text-align: right"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--ntb); color: var(--nt)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Mẫu đã khóa số câu</span></div>
+        <span id="sec-lock" style="font-size: 12.5px; color: var(--tx3)">Mẫu V-ACT toàn bài giữ nguyên số câu của từng tiểu mục. Phân bổ bên trong mục vẫn sửa được.</span>
+      </div>
+      <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; font-variant-numeric: tabular-nums">
+        <div><dt style="font-size: 12.5px; color: var(--tx3)">Tỷ lệ trong phần</dt><dd style="margin: 0; font-weight: 600">100%</dd></div>
+        <div><dt style="font-size: 12.5px; color: var(--tx3)">Tỷ lệ toàn bài</dt><dd style="margin: 0; font-weight: 600">25%</dd></div>
+      </dl>
+    </div>
+
+    <div style="border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+      <div style="padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; background: var(--thd); border-bottom: 1px solid var(--bd)"><h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Cấu trúc câu</h2><span style="font-size: 12.5px; color: var(--tx3)">Mẫu số: 30 câu của Toán học</span></div>
+      <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums">
+        <caption class="sr-only">Cấu trúc câu của Toán học</caption>
+        <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Nhóm</th><th scope="col" style="padding: 8px; width: 150px">Số câu</th><th scope="col" style="padding: 8px 14px; width: 120px">Tỷ lệ</th></tr></thead>
+        <tbody>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Nhóm 1 · Câu đơn</th><td style="padding: 8px"><input aria-label="Số câu · Nhóm 1" inputmode="numeric" value="{{single}}" onChange="{{setSingle}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right"></td><td style="padding: 8px 14px">{{singleRate}}</td></tr>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Nhóm 2 · Câu con trong chùm dữ kiện</th><td style="padding: 8px"><input aria-label="Số câu · Nhóm 2" inputmode="numeric" value="{{child}}" onChange="{{setChild}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right"></td><td style="padding: 8px 14px">{{childRate}}</td></tr>
+        </tbody>
+      </table>
+      <div style="padding: 12px 14px; border-top: 1px solid var(--bd); display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between">
+          <strong id="alloc-t" role="status" style="{{allocStyle}}">{{allocText}}</strong>
+          <sc-if value="{{checked}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--okb); color: var(--ok)">Đủ nguồn theo ma trận</span></sc-if>
+        </div>
+        <progress aria-labelledby="alloc-t" max="30" value="{{allocBar}}" style="{{barStyle}}"></progress>
+        <sc-if value="{{hasMsg}}" hint-placeholder-val="{{false}}"><div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)">{{msg}}</div></sc-if>
+      </div>
+    </div>
+
+    <div style="border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+      <div style="padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; background: var(--thd); border-bottom: 1px solid var(--bd)">
+        <div><h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Phân bổ theo chủ đề</h2><span style="font-size: 12.5px; color: var(--tx3)">1/8 chỉ tiêu · mẫu số: 30 câu của Toán học</span></div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+          <span id="tm" style="font-size: 12.5px; color: var(--tx3)">Nhập theo</span>
+          <div role="radiogroup" aria-labelledby="tm" style="display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sb); gap: 2px">
+            <button type="button" role="radio" aria-checked="{{tCountOn}}" onClick="{{tByCount}}" style="{{tCountSeg}}">Số câu</button>
+            <button type="button" role="radio" aria-checked="{{tPctOn}}" onClick="{{tByPct}}" style="{{tPctSeg}}">Tỷ lệ</button>
+          </div>
+          <button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--p100); color: var(--pt); font-weight: 600; cursor: pointer">+ Thêm chỉ tiêu chủ đề</button>
+        </div>
+      </div>
+      <div role="region" tabindex="0" aria-labelledby="cap-topic" style="overflow-x: auto">
+        <table style="width: 100%; min-width: 860px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+          <caption id="cap-topic" class="sr-only">Phân bổ theo chủ đề của Toán học</caption>
+          <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Chủ đề (MAPID)</th><th scope="col" style="padding: 8px">Số câu</th><th scope="col" style="padding: 8px">Tỷ lệ</th><th scope="col" style="padding: 8px">Mức</th><th scope="col" style="padding: 8px 14px">Gắn mã</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid var(--bd)">
+              <th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Xác suất</th>
+              <td style="padding: 8px">
+                <sc-if value="{{tIsCount}}" hint-placeholder-val="{{true}}"><span style="display: inline-flex; align-items: center; gap: 6px">ít nhất <input aria-label="Số câu ít nhất · Xác suất" inputmode="numeric" value="{{topicCount}}" onChange="{{setTopicCount}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right"> câu</span></sc-if>
+                <sc-if value="{{tIsPct}}" hint-placeholder-val="{{false}}"><span>ít nhất <strong>{{tCount}}</strong> câu</span></sc-if>
+              </td>
+              <td style="padding: 8px">
+                <sc-if value="{{tIsCount}}" hint-placeholder-val="{{true}}"><span>{{tRate}}</span></sc-if>
+                <sc-if value="{{tIsPct}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 6px"><input aria-label="Tỷ lệ · Xác suất" inputmode="decimal" value="{{topicPct}}" onChange="{{setTopicPct}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right">%</span></sc-if>
+              </td>
+              <td style="padding: 8px">
+                <div role="radiogroup" aria-label="Mức của dòng Xác suất" style="display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sb); gap: 2px">
+                  <button type="button" role="radio" aria-checked="{{lvReqOn}}" onClick="{{lvReq}}" style="{{lvReqSeg}}">Bắt buộc</button>
+                  <button type="button" role="radio" aria-checked="{{lvRefOn}}" onClick="{{lvRef}}" style="{{lvRefSeg}}">Tham khảo</button>
+                </div>
+              </td>
+              <td style="padding: 8px 14px">
+                <sc-if value="{{unmapped}}" hint-placeholder-val="{{true}}"><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--wnb); color: var(--wn)">Chờ mapping</span><button type="button" onClick="{{attach}}" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Gắn MAPID</button></div></sc-if>
+                <sc-if value="{{mapped}}" hint-placeholder-val="{{false}}"><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 9999px; border: 1px solid var(--p200); background: var(--p50); color: var(--p800); font-weight: 500">Xác suất</span><button type="button" onClick="{{attach}}" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Gỡ mã</button></div></sc-if>
+                <sc-if value="{{refEmpty}}" hint-placeholder-val="{{false}}"><div style="margin-top: 6px; font-size: 12.5px; color: var(--tx3)">Chưa có dữ liệu đối chiếu</div></sc-if>
+              </td>
+            </tr>
+            <tr style="border-top: 1px solid var(--bd); color: var(--tx2)">
+              <th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Phần còn lại</th>
+              <td style="padding: 8px">{{tRest}} câu</td>
+              <td style="padding: 8px">{{tRestRate}}</td>
+              <td style="padding: 8px">—</td>
+              <td style="padding: 8px 14px; font-size: 12.5px; color: var(--tx3)">Hệ thống tự tính, không lưu</td>
+            </tr>
+            <tr style="border-top: 1px solid var(--bd); background: var(--sb); font-weight: 700"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Tổng</th><td style="padding: 8px">{{tSum}}/30 câu</td><td style="padding: 8px">{{tSumRate}}</td><td style="padding: 8px"></td><td style="padding: 8px 14px"></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <sc-if value="{{tOver}}" hint-placeholder-val="{{false}}"><p role="alert" style="margin: 0; padding: 10px 14px; border-top: 1px solid var(--erbd); background: var(--erb); color: var(--tx2)"><strong style="color: var(--er)">{{tOverText}}</strong></p></sc-if>
+      <sc-if value="{{reqEmpty}}" hint-placeholder-val="{{true}}"><p role="alert" style="margin: 0; padding: 10px 14px; border-top: 1px solid var(--erbd); background: var(--erb); color: var(--tx2)"><strong style="color: var(--er)">Dòng Xác suất là Bắt buộc nhưng chưa gắn MAPID.</strong> Bài vẫn lưu nháp được. Gắn mã rồi mới kiểm tra đạt, sinh thử và công bố được.</p></sc-if>
+      <p style="margin: 0; padding: 10px 14px; border-top: 1px solid var(--bd); color: var(--tx3)">Xác suất có ít nhất {{tCount}} câu. Câu thuộc Phần còn lại vẫn có thể là câu Xác suất.</p>
+    </div>
+
+    <sc-for list="{{tables}}" as="t" hint-placeholder-count="2">
+      <div style="border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+        <div style="padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; background: var(--thd); border-bottom: 1px solid var(--bd)">
+          <div><h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">{{t.title}}</h2><span style="font-size: 12.5px; color: var(--tx3)">Mẫu số: 30 câu của Toán học</span></div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+            <div role="radiogroup" aria-label="Mức của {{t.title}}" style="display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sb); gap: 2px">
+              <button type="button" role="radio" aria-checked="{{t.reqOn}}" onClick="{{t.setReq}}" style="{{t.reqSeg}}">Bắt buộc</button>
+              <button type="button" role="radio" aria-checked="{{t.refOn}}" onClick="{{t.setRef}}" style="{{t.refSeg}}">Tham khảo</button>
+            </div>
+            <span style="font-size: 12.5px; color: var(--tx3)">Nhập theo</span>
+            <div role="radiogroup" aria-label="Cách nhập của {{t.title}}" style="display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sb); gap: 2px">
+              <button type="button" role="radio" aria-checked="{{t.countOn}}" onClick="{{t.byCount}}" style="{{t.countSeg}}">Số câu</button>
+              <button type="button" role="radio" aria-checked="{{t.pctOn}}" onClick="{{t.byPct}}" style="{{t.pctSeg}}">Tỷ lệ</button>
+            </div>
+          </div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums">
+          <caption class="sr-only">{{t.title}} của Toán học</caption>
+          <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Mức</th><th scope="col" style="padding: 8px; width: 170px">Số câu</th><th scope="col" style="padding: 8px 14px; width: 300px">Tỷ lệ</th></tr></thead>
+          <tbody>
+            <sc-for list="{{t.rows}}" as="r" hint-placeholder-count="3">
+              <tr style="border-top: 1px solid var(--bd)">
+                <th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">{{r.k}}</th>
+                <td style="padding: 8px">
+                  <sc-if value="{{r.isCount}}" hint-placeholder-val="{{true}}"><input aria-label="Số câu · {{r.k}}" inputmode="numeric" value="{{r.cnt}}" onChange="{{r.setCnt}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right"></sc-if>
+                  <sc-if value="{{r.isPct}}" hint-placeholder-val="{{false}}"><span>{{r.calc}} câu</span></sc-if>
+                </td>
+                <td style="padding: 8px 14px">
+                  <sc-if value="{{r.isCount}}" hint-placeholder-val="{{true}}"><span>{{r.rate}}</span></sc-if>
+                  <sc-if value="{{r.isPct}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 6px"><input aria-label="Tỷ lệ · {{r.k}}" inputmode="decimal" value="{{r.p}}" onChange="{{r.setPct}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right">% <span style="font-size: 12.5px; color: var(--tx3)">Thực lấy {{r.rate}}</span></span></sc-if>
+                </td>
+              </tr>
+            </sc-for>
+            <tr style="border-top: 1px solid var(--bd); background: var(--sb); font-weight: 700"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Tổng</th><td style="padding: 8px">{{t.sum}}/30 câu</td><td style="padding: 8px 14px">{{t.sumRate}}</td></tr>
+          </tbody>
+        </table>
+        <sc-if value="{{t.hasNote}}" hint-placeholder-val="{{false}}"><p role="alert" style="margin: 0; padding: 10px 14px; border-top: 1px solid var(--erbd); background: var(--erb); color: var(--tx2)">{{t.note}}</p></sc-if>
+      </div>
+    </sc-for>
+    <p style="margin: 0; color: var(--tx3)">Số câu quy đổi từ tỷ lệ lấy phần nguyên trước, câu còn dư chia cho dòng có phần thập phân lớn nhất; bằng nhau thì ưu tiên dòng đứng trước.</p>
+  </section>
+
+  <section aria-labelledby="h-tv" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div><h2 id="h-tv" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Tiếng Việt · bảng tham khảo theo mạch kiến thức</h2><p style="margin: 2px 0 0; color: var(--tx3)">Mẫu nạp sẵn 8 dòng ở mức Tham khảo, chưa gắn mã. Dòng Tham khảo chưa gắn mã không chặn kiểm tra và sinh thử.</p></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end">
+        <button type="button" aria-disabled="true" aria-describedby="tv-max" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sb); color: var(--tx3); font-weight: 600; cursor: not-allowed">+ Thêm chỉ tiêu chủ đề</button>
+        <span id="tv-max" style="font-size: 12.5px; color: var(--tx3)">Đã đủ 8/8 chỉ tiêu của mục</span>
+      </div>
+    </div>
+    <div role="region" tabindex="0" aria-labelledby="cap-tv" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+      <table style="width: 100%; min-width: 900px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+        <caption id="cap-tv" class="sr-only">Chỉ tiêu tham khảo của Tiếng Việt trên 30 câu</caption>
+        <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Mạch kiến thức · độ khó</th><th scope="col" style="padding: 8px; text-align: right">Số câu</th><th scope="col" style="padding: 8px; text-align: right">Tỷ lệ</th><th scope="col" style="padding: 8px">Mức</th><th scope="col" style="padding: 8px">Gắn mã</th><th scope="col" style="padding: 8px 14px">Đối chiếu khi sinh thử</th></tr></thead>
+        <tbody>
+          <sc-for list="{{tv}}" as="r" hint-placeholder-count="8">
+            <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">{{r.k}}</th><td style="padding: 8px; text-align: right; white-space: nowrap">ít nhất {{r.n}}</td><td style="padding: 8px; text-align: right">{{r.rate}}</td><td style="padding: 8px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--wnb); color: var(--wn)">Tham khảo</span></td><td style="padding: 8px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--wnb); color: var(--wn)">Chờ mapping</span></td><td style="padding: 8px 14px; color: var(--tx3)">Chưa có dữ liệu đối chiếu</td></tr>
+          </sc-for>
+          <tr style="border-top: 1px solid var(--bd); background: var(--sb); font-weight: 700"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Tổng</th><td style="padding: 8px; text-align: right; white-space: nowrap">30/30 câu</td><td style="padding: 8px; text-align: right">100%</td><td style="padding: 8px"></td><td style="padding: 8px"></td><td style="padding: 8px 14px"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 18px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bảng ở cấp nhóm · Suy luận khoa học, sáu dòng 3 câu: mẫu số là 18 câu của nhóm, tổng lấy từ số câu gốc</h3>
+      <div role="region" tabindex="0" aria-label="Bảng cấp nhóm của Suy luận khoa học" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+        <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums">
+          <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Lĩnh vực tư liệu</th><th scope="col" style="padding: 8px; text-align: right">Số câu</th><th scope="col" style="padding: 8px 14px; text-align: right">Tỷ lệ</th></tr></thead>
+          <tbody>
+            <sc-for list="{{fields}}" as="f" hint-placeholder-count="6"><tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">{{f.k}}</th><td style="padding: 8px; text-align: right">ít nhất 3</td><td style="padding: 8px 14px; text-align: right">16,7%</td></tr></sc-for>
+            <tr style="border-top: 1px solid var(--bd); background: var(--sb); font-weight: 700"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Tổng</th><td style="padding: 8px; text-align: right">18/18 câu</td><td style="padding: 8px 14px; text-align: right">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; align-items: start">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bảng phân bổ toàn bộ số câu, tổng tỷ lệ khác 100%</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được.</strong> Tổng tỷ lệ đang là 90%. Bảng này phân bổ toàn bộ số câu nên tổng phải bằng 100%.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Phân bổ vượt số câu của mục</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Đã phân bổ 32/30 · Vượt 2 câu.</strong> Giảm số câu của nhóm cho khớp 30 câu.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bài riêng đổi tổng từ 30 xuống 20 · bảng nhập theo tỷ lệ chờ xác nhận</h3>
+        <div role="status" style="border: 1px solid var(--wnbd); background: var(--wnb); border-radius: 10px; padding: 10px 12px; color: var(--tx2); display: flex; flex-direction: column; gap: 8px">
+          <span>Tổng đổi thành 20 câu. Số câu mới: Nhận biết 5 · Thông hiểu 10 · Vận dụng 5.</span>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--p100); color: var(--pt); font-weight: 600; cursor: pointer">Áp dụng số mới</button><button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Giữ số cũ</button></div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bài riêng đổi tổng từ 30 xuống 20 · bảng nhập theo số câu giữ số cũ</h3>
+        <div role="status" style="border: 1px solid var(--wnbd); background: var(--wnb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)">Lớp 10: 12 · Lớp 11: 9 · Lớp 12: 8 · Liên lớp: 1. <strong style="color: var(--wn)">Đã phân bổ 30/20 · Vượt 10 câu.</strong></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Sau khi kiểm tra môn đạt</h3>
+        <div role="status" style="border: 1px solid var(--okbd); background: var(--okb); border-radius: 10px; padding: 10px 12px; color: var(--tx2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><strong style="color: var(--ok)">Đã phân bổ 30/30</strong><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--okb); color: var(--ok)">Đủ nguồn theo ma trận</span></div>
+        <span style="font-size: 12.5px; color: var(--tx3)">Trước khi kiểm tra đạt thì không hiện nhãn này, kể cả khi đã phân bổ đủ 30/30.</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bài riêng của V-ACT · mẫu không khóa số câu</h3>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><label for="free-count" style="font-weight: 600">Số câu của mục</label><input id="free-count" inputmode="numeric" value="30" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right"></div>
+        <span style="font-size: 12.5px; color: var(--tx3)">Ô sửa được, không có nhãn khóa.</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">THPTQG · Địa lí · Phần III, 6 câu</h3>
+        <div style="border: 1px solid var(--bd); border-radius: 10px; padding: 10px 12px; color: var(--tx2); font-variant-numeric: tabular-nums">Kỹ năng biểu đồ – bảng số liệu: <strong>ít nhất 2 câu</strong> · 33,3% · Phần còn lại 4 câu · 66,7%</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đã gắn mã cho dòng đang chờ</h3>
+        <div role="status" style="border: 1px solid var(--okbd); background: var(--okb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)">Đã gắn MAPID cho dòng Xác suất. Số câu và các bảng lớp, độ khó giữ nguyên. Hãy kiểm tra lại môn.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đang tải phân bổ</h3>
+        <div aria-busy="true" style="display: flex; flex-direction: column; gap: 6px"><div style="height: 40px; border-radius: 10px; background: var(--sb)"></div><div style="height: 40px; border-radius: 10px; background: var(--sb); width: 70%"></div><span class="sr-only">Đang tải</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Không lưu được</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được phân bổ.</strong> Số đã nhập vẫn còn trên màn. <button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Thử lại</button></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Thiếu quyền sửa bài thi</h3>
+        <p style="margin: 0; color: var(--tx2)">Bạn chỉ có quyền xem. Mọi ô phân bổ ở chế độ chỉ đọc, không có nút Gắn MAPID và Thêm chỉ tiêu.</p>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":3300}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { single: '12', child: '15', checked: false, msg: '', tMode: 'COUNT', topicCount: '3', topicPct: '10', level: 'REQ', mapped: false,
+diff: { mode: 'PCT', lvl: 'REF', cnt: ['8', '15', '7'], pct: ['25', '50', '25'], src: false },
+grade: { mode: 'COUNT', lvl: 'REF', cnt: ['12', '9', '8', '1'], pct: ['40', '30', '26,7', '3,3'], src: true } };
+}
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+seg(on) { return 'min-height: 32px; padding: 0 12px; border: 0; border-radius: 8px; cursor: pointer; font-weight: ' + (on ? '600; background: var(--sf); color: var(--pt); box-shadow: 0 1px 4px var(--sh)' : '500; background: transparent; color: var(--tx2)'); }
+num(x) { const n = parseFloat(String(x).replace(',', '.')); return isNaN(n) ? 0 : n; }
+vn(x) { return String(Math.round(x * 100) / 100).replace('.', ','); }
+pct(n, d) { return d ? this.vn(Math.round(n / d * 1000) / 10) + '%' : '0%'; }
+lr(p, t) {
+const raw = p.map((x) => x * t / 100);
+const out = raw.map((r) => Math.floor(r + 1e-9));
+let left = Math.round(raw.reduce((a, b) => a + b, 0)) - out.reduce((a, b) => a + b, 0);
+const ord = raw.map((r, i) => ({ i, f: Math.round((r - Math.floor(r + 1e-9)) * 1e6) })).sort((a, b) => b.f - a.f || a.i - b.i);
+for (let k = 0; k < ord.length && left > 0; k++, left--) out[ord[k].i]++;
+return out;
+}
+alloc(sum, total) {
+if (sum === total) return { text: 'Đã phân bổ ' + sum + '/' + total, tone: 'ok' };
+if (sum < total) return { text: 'Đã phân bổ ' + sum + '/' + total + ' · Còn thiếu ' + (total - sum) + ' câu', tone: 'wn' };
+return { text: 'Đã phân bổ ' + sum + '/' + total + ' · Vượt ' + (sum - total) + ' câu', tone: 'er' };
+}
+dist(key, title, labels) {
+const t = this.state[key];
+const isPct = t.mode === 'PCT';
+const pcts = t.pct.map((x) => this.num(x));
+const counts = isPct && !t.src ? this.lr(pcts, 30) : t.cnt.map((x) => Math.round(this.num(x)));
+const sum = counts.reduce((a, b) => a + b, 0);
+const pctSum = Math.round(pcts.reduce((a, b) => a + b, 0) * 10) / 10;
+const put = (patch) => this.setState({ [key]: Object.assign({}, this.state[key], patch), checked: false, msg: '' });
+const edit = (field, i) => (e) => { const next = this.state[key][field].slice(); next[i] = e.target.value; put(field === 'pct' ? { pct: next, src: false } : { cnt: next }); };
+const badPct = isPct && !t.src && pctSum !== 100;
+const a = this.alloc(sum, 30);
+return { title, reqOn: t.lvl === 'REQ' ? 'true' : 'false', refOn: t.lvl === 'REF' ? 'true' : 'false', reqSeg: this.seg(t.lvl === 'REQ'), refSeg: this.seg(t.lvl === 'REF'), setReq: () => put({ lvl: 'REQ' }), setRef: () => put({ lvl: 'REF' }),
+countOn: isPct ? 'false' : 'true', pctOn: isPct ? 'true' : 'false', countSeg: this.seg(!isPct), pctSeg: this.seg(isPct),
+byCount: () => { if (isPct) put({ mode: 'COUNT', cnt: counts.map(String) }); },
+byPct: () => { if (!isPct) put({ mode: 'PCT', pct: counts.map((c) => this.vn(Math.round(c / 30 * 1000) / 10)), cnt: counts.map(String), src: true }); },
+rows: labels.map((k, i) => ({ k, isCount: !isPct, isPct, cnt: t.cnt[i], p: t.pct[i], calc: counts[i], rate: this.pct(counts[i], 30), setCnt: edit('cnt', i), setPct: edit('pct', i) })),
+sum, sumRate: isPct ? (t.src ? '100%' : this.vn(pctSum) + '%') : this.pct(sum, 30),
+hasNote: badPct || (!isPct && sum !== 30),
+note: badPct ? 'Chưa lưu được. Tổng tỷ lệ đang là ' + this.vn(pctSum) + '%. Bảng này phân bổ toàn bộ số câu nên tổng phải bằng 100%.' : a.text + '.' };
+}
+renderVals() {
+const s = this.state;
+const single = Math.round(this.num(s.single));
+const child = Math.round(this.num(s.child));
+const sum = single + child;
+const a = this.alloc(sum, 30);
+const color = { ok: '--ok', wn: '--wn', er: '--er' }[a.tone];
+const reset = { checked: false, msg: '' };
+const isPct = s.tMode === 'PCT';
+const p = this.num(s.topicPct);
+const tCount = isPct ? this.lr([p, Math.max(100 - p, 0)], 30)[0] : Math.round(this.num(s.topicCount));
+const tRest = Math.max(30 - tCount, 0);
+const runCheck = () => {
+if (sum !== 30) return this.setState({ checked: false, msg: 'Chưa kiểm tra được. ' + a.text + '.' });
+if (s.level === 'REQ' && !s.mapped) return this.setState({ checked: false, msg: 'Chưa đạt. Dòng Xác suất là Bắt buộc nhưng chưa gắn MAPID.' });
+this.setState({ checked: true, msg: '' });
+};
+const tv = [['Chính tả, từ vựng và ngữ nghĩa · Nhận biết', 5], ['Chính tả, từ vựng và ngữ nghĩa · Thông hiểu', 2], ['Thể loại, thi pháp và lí luận văn học · Nhận biết', 1], ['Thể loại, thi pháp và lí luận văn học · Thông hiểu', 7], ['Thể loại, thi pháp và lí luận văn học · Vận dụng', 4], ['Ngữ pháp, liên kết và logic diễn đạt · Thông hiểu', 3], ['Đọc hiểu văn bản, nội dung và lập luận · Thông hiểu', 5], ['Đọc hiểu văn bản, nội dung và lập luận · Vận dụng', 3]]
+.map((r) => ({ k: r[0], n: r[1], rate: this.pct(r[1], 30) }));
+return {
+theme: this.props.dark ? 'dark' : '',
+single: s.single, child: s.child, setSingle: (e) => this.setState(Object.assign({ single: e.target.value }, reset)), setChild: (e) => this.setState(Object.assign({ child: e.target.value }, reset)),
+singleRate: this.pct(single, 30), childRate: this.pct(child, 30),
+allocText: a.text, allocStyle: 'color: var(' + color + '); font-weight: 600', allocBar: String(Math.min(sum, 30)), barStyle: '--bar: var(' + color + ')',
+checked: s.checked, hasMsg: !!s.msg, msg: s.msg, runCheck,
+tCountOn: isPct ? 'false' : 'true', tPctOn: isPct ? 'true' : 'false', tCountSeg: this.seg(!isPct), tPctSeg: this.seg(isPct), tIsCount: !isPct, tIsPct: isPct,
+tByCount: () => this.setState({ tMode: 'COUNT', topicCount: String(tCount) }), tByPct: () => this.setState({ tMode: 'PCT', topicPct: this.vn(Math.round(tCount / 30 * 1000) / 10) }),
+topicCount: s.topicCount, topicPct: s.topicPct, setTopicCount: (e) => this.setState({ topicCount: e.target.value }), setTopicPct: (e) => this.setState({ topicPct: e.target.value }),
+tOver: tCount > 30, tOverText: this.alloc(tCount, 30).text + '.', tCount, tRate: this.pct(tCount, 30), tRest, tRestRate: this.pct(tRest, 30), tSum: Math.max(tCount + tRest, tCount), tSumRate: this.pct(tCount + tRest, 30),
+lvReqOn: s.level === 'REQ' ? 'true' : 'false', lvRefOn: s.level === 'REF' ? 'true' : 'false', lvReqSeg: this.seg(s.level === 'REQ'), lvRefSeg: this.seg(s.level === 'REF'),
+lvReq: () => this.setState(Object.assign({ level: 'REQ' }, reset)), lvRef: () => this.setState(Object.assign({ level: 'REF' }, reset)),
+mapped: s.mapped, unmapped: !s.mapped, attach: () => this.setState(Object.assign({ mapped: !s.mapped }, reset)),
+reqEmpty: s.level === 'REQ' && !s.mapped, refEmpty: s.level === 'REF' && !s.mapped,
+tables: [this.dist('grade', 'Phân bố khối lớp', ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Liên lớp']), this.dist('diff', 'Phân bố độ khó', ['Nhận biết', 'Thông hiểu', 'Vận dụng'])],
+tv, fields: ['Hóa học', 'Vật lí', 'Sinh học', 'Địa lí', 'Lịch sử', 'Kinh tế'].map((k) => ({ k }))
+};
+}
+}
+</script>
+</body>
+</html>

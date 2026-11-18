@@ -3,7 +3,7 @@
 import { Badge, Button, Card, cn, focusRing, IconButton, Select, StatusChip } from "@thi360/ui";
 import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
 import { apportionByPercent, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
@@ -27,6 +27,8 @@ export interface SubjectPanelProps {
   onChange: (update: (section: ExamSection) => ExamSection) => void;
   onSelectBlock: (blockId: string) => void;
   onAddBlock: () => void;
+  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
+  headerAction?: ReactNode;
 }
 
 /**
@@ -43,6 +45,7 @@ export function ExamStructureSubjectPanel({
   onChange,
   onSelectBlock,
   onAddBlock,
+  headerAction,
 }: SubjectPanelProps) {
   const t = useTranslations("exams.structure.subject");
   const tContent = useTranslations("content");
@@ -117,23 +120,26 @@ export function ExamStructureSubjectPanel({
                 : t("countFixed", { count: cases[0] ?? 0 })}
           </p>
         </div>
-        <p role="status" className="flex flex-wrap items-center gap-2 text-body">
-          <span className="text-text-muted">{t("allocated")}</span>
-          <span className="font-semibold text-text tabular-nums">
-            {allocation.count === null
-              ? t("allocatedUnknown", { allocated: allocation.allocated })
-              : t("allocatedValue", { allocated: allocation.allocated, count: allocation.count })}
-          </span>
-          {allocation.missing !== null && (
-            <StatusChip tone={allocation.missing === 0 ? "success" : "warning"}>
-              {allocation.missing === 0
-                ? t("matches")
-                : allocation.missing > 0
-                  ? t("missing", { count: allocation.missing })
-                  : t("over", { count: -allocation.missing })}
-            </StatusChip>
-          )}
-        </p>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <p role="status" className="flex flex-wrap items-center gap-2 text-body">
+            <span className="text-text-muted">{t("allocated")}</span>
+            <span className="font-semibold text-text tabular-nums">
+              {allocation.count === null
+                ? t("allocatedUnknown", { allocated: allocation.allocated })
+                : t("allocatedValue", { allocated: allocation.allocated, count: allocation.count })}
+            </span>
+            {allocation.missing !== null && (
+              <StatusChip tone={allocation.missing === 0 ? "success" : "warning"}>
+                {allocation.missing === 0
+                  ? t("matches")
+                  : allocation.missing > 0
+                    ? t("missing", { count: allocation.missing })
+                    : t("over", { count: -allocation.missing })}
+              </StatusChip>
+            )}
+          </p>
+          {headerAction}
+        </div>
       </div>
 
       {varies && (

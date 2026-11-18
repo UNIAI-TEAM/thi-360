@@ -109,6 +109,32 @@ describe("câu mô tả vấn đề thiếu nguồn khi máy chủ điền hoặ
     expect(text.textContent).toMatch(/Block Mathematics · Khối A \(Grade 12\/VDC\): there are not enough/);
     expect(text.textContent).not.toMatch(/needs 0|0 matching/);
   });
+
+  it("cần 2,5 và có 1,25 (thập phân của BE-5) hiện '2,5' và '1,25' theo dấu phẩy của vi", async () => {
+    renderWithProviders(<IssueLine issue={issueOf({ required: 2.5, available: 1.25 })} />);
+
+    const text = await screen.findByText(/cần 2,5 câu/);
+    expect(text.textContent).toMatch(/cần 2,5 câu, hiện có 1,25 câu phù hợp\.$/);
+  });
+
+  it("tối đa 2 chữ số thập phân, không đệm số 0: 1,2345 → 1,23 và 3,0 → 3", async () => {
+    renderWithProviders(
+      <IssueLine issue={issueOf({ code: "PART_POINTS_MISMATCH", partName: "Phần 1", required: 3, available: 1.2345 })} />,
+    );
+
+    const text = await screen.findByText(/các khối có tổng/);
+    expect(text.textContent).toBe("Phần 1: các khối có tổng 1,23 điểm, phần cần 3 điểm.");
+  });
+
+  it("bản en dùng dấu chấm: 2.5 và 1.25", async () => {
+    renderWithProviders(<IssueLine issue={issueOf({ required: 2.5, available: 1.25 })} />, {
+      locale: "en",
+      messages: en,
+    });
+
+    const text = await screen.findByText(/needs 2\.5/);
+    expect(text.textContent).toMatch(/needs 2\.5 .*1\.25 matching/);
+  });
 });
 
 const SCIENCE_PATH: ExamPathRef = {

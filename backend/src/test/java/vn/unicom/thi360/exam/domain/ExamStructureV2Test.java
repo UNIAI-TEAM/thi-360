@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -85,6 +86,52 @@ class ExamStructureV2Test {
                 "{\"parts\":[{\"id\":\"p\",\"options\":[{\"id\":\"o\",\"kind\":\"COMBINATION\",\"code\":\"X\"}]}]}")) {
             assertInvalid(codec.read(json));
         }
+    }
+
+    @Test
+    void topicPercentRangeReportsSectionAndBlockFields() {
+        for (String value : List.of("-1", "101")) {
+            var quota = new TopicQuota("q", "topic", List.of(), 1, QuotaBasis.QUESTION,
+                    QuotaEnforcement.REQUIRED, List.of(), List.of(), List.of(), new BigDecimal(value));
+            var section = new ExamSection("s", "MATH", 2, null, null, null, null, List.of(), List.of(quota));
+            assertThatThrownBy(() -> ExamStructureValidator.validate(new ExamStructureDocument(List.of(part(section)))))
+                    .isInstanceOfSatisfying(BusinessRuleException.class, ex -> {
+                        assertThat(ex.getCode()).isEqualTo("EXAM_STRUCTURE_INVALID");
+                        assertThat(ex.getFieldErrors()).extracting("field").containsExactly("sections.topicQuotas");
+                    });
+            assertThatThrownBy(() -> ExamStructureValidator.validate(document(block(QuestionType.QUESTION_SET,
+                    false, List.of(), List.of(quota)))))
+                    .isInstanceOfSatisfying(BusinessRuleException.class, ex -> {
+                        assertThat(ex.getCode()).isEqualTo("EXAM_STRUCTURE_INVALID");
+                        assertThat(ex.getFieldErrors()).extracting("field").containsExactly("blocks.topicQuotas");
+                    });
+        }
+    }
+
+    @Test
+    void newFieldsSurviveIdRegenerationAndOldDocumentsRemainUnchanged() {
+        var quota = new TopicQuota("q", "topic", List.of(), 1, QuotaBasis.QUESTION,
+                QuotaEnforcement.REQUIRED, List.of(), List.of(), List.of("b"), new BigDecimal("12.5"));
+        var scope = new KnowledgeScope(List.of(), List.of(), true);
+        var section = new ExamSection("s", "MATH", 2, scope, null, null, null,
+                List.of(block(QuestionType.QUESTION_SET, false, List.of(), List.of(quota))), List.of(quota));
+        var original = new ExamStructureDocument(List.of(part(section)));
+        var regenerated = ExamStructureOps.regenerateIds(codec.read(codec.writeString(original)));
+        var savedSection = codec.read(codec.writeString(regenerated)).parts().getFirst().sections().getFirst();
+        assertThat(savedSection.knowledgeScope().everyChildInScope()).isTrue();
+        assertThat(savedSection.topicQuotas().getFirst().percent()).isEqualByComparingTo("12.5");
+        assertThat(savedSection.blocks().getFirst().topicQuotas().getFirst().percent()).isEqualByComparingTo("12.5");
+        assertThat(savedSection.topicQuotas().getFirst().groupIds())
+                .containsExactly(savedSection.blocks().getFirst().id());
+
+        var oldScope = new KnowledgeScope(List.of(), List.of());
+        var oldQuota = new TopicQuota("q", "topic", List.of(), 1, QuotaBasis.QUESTION,
+                QuotaEnforcement.REQUIRED, List.of(), List.of(), List.of());
+        var oldSection = new ExamSection("s", "MATH", 2, oldScope, null, null, null, List.of(), List.of(oldQuota));
+        String oldJson = codec.writeString(new ExamStructureDocument(List.of(part(oldSection))));
+        assertThat(codec.writeString(codec.read(oldJson))).isEqualTo(oldJson)
+                .doesNotContain("everyChildInScope", "percent");
+        assertThat(oldScope).isNotEqualTo(scope);
     }
 
     private static QuestionBlock block(QuestionType type, boolean omitted, List<BlockSlot> slots,

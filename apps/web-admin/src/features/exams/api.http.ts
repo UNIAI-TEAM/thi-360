@@ -6,6 +6,8 @@ import {
   mapExamSummary,
   mapExamTemplate,
   mapParts,
+  mapSectionStates,
+  mapStructureSummary,
   toApiParts,
 } from "./api-mapping";
 import { partsFromInput } from "./create-parts";
@@ -19,6 +21,7 @@ import type {
   ExamDetail,
   ExamListPage,
   ExamStructure,
+  ExamStructureSummary,
   ExamTemplate,
   ListExamsQuery,
   SubjectAvailableQuestionsQuery,
@@ -86,7 +89,34 @@ export async function getExamStructure(id: string): Promise<ExamStructure> {
     params: { path: { id } },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
-  return { examId: data.examId, revision: data.revision, parts: mapParts(data.parts) };
+  return {
+    examId: data.examId,
+    revision: data.revision,
+    parts: mapParts(data.parts),
+    combinations: (data.combinations ?? []).map((item) => ({
+      code: item.code ?? "",
+      examCode: item.examCode ?? null,
+      partId: item.partId ?? null,
+      subjectCodes: item.subjectCodes ?? [],
+      missingSubjects: item.missingSubjects ?? [],
+      nameVi: item.nameVi ?? null,
+      nameEn: item.nameEn ?? null,
+    })),
+    sectionStates: mapSectionStates(data.sectionStates),
+  };
+}
+
+/**
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2, BE-5): cây phần → môn → nhóm, dàn phẳng theo thứ tự đó. Lỗi máy chủ ném lên
+ * để vùng (d) báo "chưa có tổng hợp" và dùng số tính trên màn hình.
+ */
+export async function getExamStructureSummary(id: string): Promise<ExamStructureSummary> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}/structure/summary", {
+    params: { path: { id } },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapStructureSummary(data);
 }
 
 export async function suggestExamCode(query: SuggestExamCodeQuery): Promise<string> {
@@ -190,6 +220,7 @@ export async function applyExamTemplate(id: string, request: ApplyExamTemplateRe
     body: {
       templateCode: request.templateCode,
       confirmReplace: request.confirmReplace,
+      overviewPolicy: request.overviewPolicy ?? undefined,
       expectedRevision: request.expectedRevision,
     },
   });

@@ -95,6 +95,19 @@ class ExamTemplateIT extends AbstractIntegrationTest {
         assertThat(hsa.path("isDefault").asBoolean()).isTrue();
     }
 
+    @Test
+    void existingTemplatesExposeDefaultPublishAndCountFlags() throws Exception {
+        var templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(templates).isNotEmpty();
+        for (var template : templates) {
+            assertThat(template.path("publishable").asBoolean()).isTrue();
+            assertThat(template.path("fixedCounts").isBoolean()).isTrue();
+            assertThat(template.path("fixedCounts").asBoolean()).isFalse();
+        }
+    }
+
 
     @Test
     void templatesRequireExamView() throws Exception {

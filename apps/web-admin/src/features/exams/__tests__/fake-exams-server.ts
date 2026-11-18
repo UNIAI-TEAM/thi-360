@@ -45,6 +45,24 @@ export class FakeServer {
   calls(method: string, path: string): Recorded[] {
     return this.requests.filter((request) => request.method === method && request.url.pathname === path);
   }
+  private readonly held = new Map<string, { promise: Promise<void>; release: () => void }>();
+
+  /**
+   * Giữ các yêu cầu `method path` ở lại (đã ghi nhận) cho tới khi `release()` được gọi; dùng để bắt thao tác
+   * thứ hai trong lúc yêu cầu đầu còn treo (ví dụ double click nút Kiểm tra khi PUT chưa xong).
+   */
+  hold(method: string, path: string): this {
+    const { promise, resolve } = Promise.withResolvers<void>();
+    this.held.set(`${method} ${path}`, { promise, release: resolve });
+    return this;
+  }
+
+  /** Trả các yêu cầu đang giữ của `method path` (không `hold` thì không làm gì). */
+  release(method: string, path: string): void {
+    const key = `${method} ${path}`;
+    this.held.get(key)?.release();
+    this.held.delete(key);
+  }
 
   install(): this {
     vi.stubGlobal(
@@ -58,6 +76,7 @@ export class FakeServer {
           body: text ? (JSON.parse(text) as unknown) : undefined,
         };
         this.requests.push(recorded);
+        await this.held.get(`${recorded.method} ${recorded.url.pathname}`)?.promise;
         const route = this.routes.find(
           (candidate) => candidate.method === recorded.method && candidate.pattern.test(recorded.url.pathname),
         );

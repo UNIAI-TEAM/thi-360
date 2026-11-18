@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -286,6 +287,50 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         assertThat(issue.path("location").path("sectionId").asText()).isEqualTo("math");
         assertThat(issue.path("required").asInt()).isEqualTo(1);
         assertThat(issue.path("available").asInt()).isZero();
+    }
+
+    @Test
+    void changingOnlyEveryChildInScopeMarksPartAndUnitChanged() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID math = UUID.fromString("00000000-0000-7000-8200-000000000201");
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,kind_item_id,scope,timing,question_count) "
+                + "VALUES (?,?,?,'Scope change',?,'FULL','SHARED',1)", id, id.toString(), id.toString(),
+                UUID.fromString("00000000-0000-7000-8200-000000000101"));
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
+                {"parts":[{"id":"p","name":"Part","questionCount":1,"sections":[
+                  {"id":"math","subjectCode":"TOAN","questionCount":1,
+                   "knowledgeScope":{"nodeIds":[],"competencyCodes":[]},"blocks":[
+                    {"id":"b","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """);
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "b", "p", "math", math);
+        String url = "/api/v1/admin/exams/" + id;
+        mockMvc.perform(post(url + "/check").with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("VALID"));
+        var before = mapper.readTree(mockMvc.perform(get(url + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(before.path("sectionStates").get(0).path("state").asText()).isEqualTo("CHECKED");
+        var parts = before.path("parts").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0)
+                .path("knowledgeScope")).put("everyChildInScope", true);
+        var request = mapper.createObjectNode();
+        request.set("parts", parts);
+        request.put("expectedRevision", before.path("revision").asLong());
+        mockMvc.perform(put(url + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        entities.flush();
+        var audit = mapper.readTree(jdbc.queryForObject(
+                "SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "
+                        + "AND payload->>'action'='EXAM.STRUCTURE_UPDATE' AND payload->>'targetId'=?",
+                String.class, id.toString()));
+        assertThat(audit.path("after").path("changedPartIds").toString()).contains("p");
+        entities.clear();
+        var after = mapper.readTree(mockMvc.perform(get(url + "/structure").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after.path("sectionStates").get(0).path("state").asText()).isEqualTo("NEEDS_CHECK");
+        assertThat(after.path("parts").get(0).path("sections").get(0)
+                .path("knowledgeScope").path("everyChildInScope").asBoolean()).isTrue();
     }
 
     @Test

@@ -114,6 +114,8 @@ public class ExamTemplateService {
                 t.getMaxScore(),
                 t.getExpertNote(),
                 t.isActive(),
-                structure);
+                structure,
+                t.isPublishable(),
+                t.isFixedCounts());
     }
 }

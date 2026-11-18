@@ -4304,6 +4304,8 @@ export interface components {
             durationMinutes?: number;
             /** @description Ghi chú của chuyên gia khi dựng mẫu */
             expertNote?: string;
+            /** @description Mẫu khóa số câu từng phần/mục (kiểm tra báo STRUCTURE_COUNT_LOCKED) */
+            fixedCounts: boolean;
             /** @description Phiên bản mặc định */
             isDefault: boolean;
             /** @description Mã kỳ thi áp dụng */
@@ -4319,6 +4321,8 @@ export interface components {
             maxScore?: number;
             /** @description Mã phần khi scope = PART */
             partCode?: string;
+            /** @description Mẫu cho phép công bố bài (false: chỉ lưu nháp) */
+            publishable: boolean;
             /** @description FULL | PART | SUBJECT */
             scope: string;
             /** @description Tài liệu cấu trúc nguyên bản {parts: [...]} (id để null — client sinh) */
@@ -4649,6 +4653,7 @@ export interface components {
         };
         KnowledgeScope: {
             competencyCodes?: string[];
+            everyChildInScope?: boolean;
             nodeIds?: string[];
         };
         /** @description Một dòng sổ đã dùng */
@@ -5748,6 +5753,7 @@ export interface components {
             id?: string;
             name?: string;
             nodeIds?: string[];
+            percent?: number;
         };
         /** @description Yêu cầu chuyển học viên sang lớp học khác */
         TransferClassMemberRequest: {
