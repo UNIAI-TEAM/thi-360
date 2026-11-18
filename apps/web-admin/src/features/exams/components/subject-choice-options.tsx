@@ -1,9 +1,10 @@
 "use client";
 
 import { Badge, Button, cn, focusRing, StatusChip } from "@thi360/ui";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import { sectionHow } from "../coded-part";
+import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { computeAllocation, type MatrixAxes } from "../matrix";
 import type { ChoiceGroup, ExamPartOption, ExamSection, ExamSectionState } from "../types";
 import { allocateSubjectCounts } from "../subject-choice";
@@ -34,6 +35,7 @@ const EXAMPLES: ChoiceGroup[][] = [
  */
 export function SubjectChoiceOptions({ option, names, axes, labels, sectionStates, onSelectSection }: SubjectChoiceOptionsProps) {
   const t = useTranslations("exams.subjectChoice");
+  const format = useFormatter();
   const listT = useTranslations("exams.structure.list");
   const headingId = useId();
   const picks = option.chooseSubjects ?? 0;
@@ -106,7 +108,7 @@ export function SubjectChoiceOptions({ option, names, axes, labels, sectionState
                   <td className="border-b border-border px-2 py-2">
                     {section.choiceGroup ? <Badge className="font-medium">{t(`choiceGroup.${section.choiceGroup}`)}</Badge> : "—"}
                   </td>
-                  <td className="border-b border-border px-2 py-2 text-right tabular-nums">{section.questionCount ?? "—"}</td>
+                  <td className="border-b border-border px-2 py-2 text-right tabular-nums">{section.questionCount === null ? "—" : format.number(section.questionCount, DISPLAY_NUMBER_FORMAT)}</td>
                   <td className="border-b border-border px-2 py-2 tabular-nums">{distribution(section, "byGrade")}</td>
                   <td className="border-b border-border px-2 py-2 tabular-nums">{distribution(section, "byDifficulty")}</td>
                   <td className="border-b border-border px-2 py-2 text-right tabular-nums">
@@ -117,8 +119,8 @@ export function SubjectChoiceOptions({ option, names, axes, labels, sectionState
                         : sectionHow(section)
                             .map((how) =>
                               how.kind === "set"
-                                ? t("howSet", { sets: how.sets, size: how.size })
-                                : t("howSingle", { count: how.count }),
+                                ? t("howSet", { sets: roundForDisplay(how.sets), size: roundForDisplay(how.size) })
+                                : t("howSingle", { count: roundForDisplay(how.count) }),
                             )
                             .join(", ")}
                     </span>

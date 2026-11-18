@@ -68,8 +68,9 @@ export function referenceEntries(section: ExamSection, examQuotas: readonly Exam
       kind: "quota",
       key: `quota-${quota.id}`,
       quota,
-      use: !has ? "NO_VALUES" : merged ? "MERGED_BUCKETS" : otherDimensionConflicts(section.matrix, quota.dimension, quotaUnitOf(quota)) ? "UNIT_CONFLICT" : null,
-      apply: has ? null : "NO_VALUES",
+      use: !has ? "NO_VALUES" : quota.basis !== "QUESTION" ? "BASIS" : merged ? "MERGED_BUCKETS" : otherDimensionConflicts(section.matrix, quota.dimension, quotaUnitOf(quota)) ? "UNIT_CONFLICT" : null,
+      // Phân bố bắt buộc chỉ nhận đơn vị câu (H7): bản tham khảo tính theo lệnh hỏi hoặc điểm không đặt Bắt buộc được (R1-12).
+      apply: quota.basis !== "QUESTION" ? "BASIS" : has ? null : "NO_VALUES",
       expertPending: awaitsExpert(examKind, section.subjectCode, quota.dimension),
     });
   }

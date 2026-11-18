@@ -3,7 +3,7 @@
 import { Button, Checkbox, cn, focusRing, IconButton, Input, StatusChip } from "@thi360/ui";
 import { CircleMinus, ListTree, Plus, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
@@ -85,6 +85,12 @@ export function TopicQuotaTable({
     setEntry(next);
     onChange(convertTopicEntry(quotas, next, total));
   };
+  // Dòng bị xóa kéo theo nút đang giữ tiêu điểm: đưa tiêu điểm về nút "Thêm chỉ tiêu chủ đề" của bảng (R1-26).
+  const rootRef = useRef<HTMLElement>(null);
+  const remove = (quotaId: string) => {
+    onChange(quotas.filter((item) => item.id !== quotaId));
+    requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>("[data-topic-add]")?.focus());
+  };
   const add = () => {
     const base = newTopicQuota(draftId("tq"));
     onChange([...quotas, percentMode ? { ...base, percent: exactPercent(base.count, total) } : base]);
@@ -99,7 +105,7 @@ export function TopicQuotaTable({
   const percentErrors = quotas.some((quota) => (quota.percent ?? 0) > 100) || serverError === "PERCENT_OUT_OF_RANGE";
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-4">
+    <section ref={rootRef} aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h4 id={headingId} className="text-label font-semibold text-text">
@@ -125,7 +131,7 @@ export function TopicQuotaTable({
                 ]}
               />
             )}
-            <Button type="button" variant="secondary" size="sm" disabled={full} onClick={add}>
+            <Button type="button" variant="secondary" size="sm" disabled={full} onClick={add} data-topic-add="">
               <Plus />
               <span>{t("add")}</span>
             </Button>
@@ -285,7 +291,7 @@ export function TopicQuotaTable({
                           icon={<CircleMinus />}
                           tone="danger"
                           aria-label={t("removeAria", { name: label })}
-                          onClick={() => onChange(quotas.filter((item) => item.id !== quota.id))}
+                          onClick={() => remove(quota.id)}
                         />
                       )}
                     </td>

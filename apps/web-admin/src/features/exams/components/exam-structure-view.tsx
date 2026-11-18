@@ -109,10 +109,11 @@ export function ExamStructureView({ examId }: { examId: string }) {
   const structureQuery = useExamStructure(examId);
   const examQuery = useExam(examId);
   const referenceQuery = useContentReference();
-  // Mẫu cấu trúc chỉ để hiện ghi chú chuyên môn và biết phần tự chọn có nhánh Tiếng Anh; không chặn trang khi lỗi.
+  // Mẫu cấu trúc quyết định `fixedCounts` (khóa số câu) và bài ôn (màn rút gọn): chưa tải xong hoặc lỗi thì chưa cho sửa, kẻo
+  // người dùng sửa số câu bị khóa hoặc thấy màn đầy đủ của bài ôn rồi bị máy chủ từ chối (R1-27).
   const templatesQuery = useExamTemplates();
 
-  if (structureQuery.isPending || referenceQuery.isPending || examQuery.isPending) {
+  if (structureQuery.isPending || referenceQuery.isPending || examQuery.isPending || templatesQuery.isPending) {
     return (
       <div role="status" aria-label={common("loading")} className="grid grid-cols-1 gap-4 lg:grid-cols-[18.75rem_minmax(0,1fr)]">
         <Skeleton className="h-96" />
@@ -124,7 +125,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
     );
   }
 
-  if (structureQuery.isError || referenceQuery.isError || examQuery.isError) {
+  if (structureQuery.isError || referenceQuery.isError || examQuery.isError || templatesQuery.isError) {
     return (
       <Card>
         <EmptyState
@@ -139,6 +140,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
                 void structureQuery.refetch();
                 void referenceQuery.refetch();
                 void examQuery.refetch();
+                void templatesQuery.refetch();
               }}
             >
               {common("retry")}

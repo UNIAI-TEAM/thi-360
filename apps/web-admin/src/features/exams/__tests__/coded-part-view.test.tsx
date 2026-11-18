@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
@@ -56,5 +57,20 @@ describe("Phần theo mã mở được khi quy tắc tham gia là CHOICE (R1-01
     const row = within(subjects).getByRole("row", { name: /Vật lí/ });
     expect(row).toHaveTextContent("7,13");
     expect(row).not.toHaveTextContent("7,125");
+  });
+
+  it("R1-22: thêm môn còn thiếu thì cảnh báo và nút biến mất ngay, môn vào bảng, không đợi lưu", async () => {
+    const user = userEvent.setup();
+    const exam = codedExam("QDA");
+    const missing = { ...QDA_COMBINATIONS[0]!, code: "QD06", examCode: "QD06", subjectCodes: ["PHYSICS", "INFORMATICS"], missingSubjects: ["INFORMATICS"] };
+    backend.seedExam(exam).seedStructureExtras(exam.id, { combinations: [...QDA_COMBINATIONS, missing] });
+    openPart(exam.id, "qda-3");
+
+    const add = await screen.findByRole("button", { name: /^Thêm môn/ });
+    const before = within(await screen.findByRole("table", { name: /Các môn của Part 3/ })).getAllByRole("row").length;
+    await user.click(add);
+    expect(screen.queryByRole("button", { name: /^Thêm môn/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Mã QD06 thiếu môn/)).not.toBeInTheDocument();
+    expect(within(screen.getByRole("table", { name: /Các môn của Part 3/ })).getAllByRole("row")).toHaveLength(before + 1);
   });
 });

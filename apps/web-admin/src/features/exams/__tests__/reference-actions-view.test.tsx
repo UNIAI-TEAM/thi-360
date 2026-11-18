@@ -6,7 +6,7 @@ import { getContentReferenceFixture as getContentReference } from "@/test/fixtur
 import { renderWithProviders } from "@/test/render";
 import { saveBlockers } from "../allocation";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { referenceToMatrix } from "../reference-distribution";
+import { referenceEntries, referenceToMatrix } from "../reference-distribution";
 import type { ExamQuota, ExamSection } from "../types";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
@@ -120,6 +120,14 @@ describe("Nút của phân bố tham khảo ghi đúng vào bản lưu (R1-19, R
     expect(matrix).toMatchObject({ byGrade: [], gradeEnforcement: "REFERENCE", difficultyEnforcement: "REQUIRED" });
     const part = { ...FIXED_PART, id: "p", mode: "FIXED", sections: [{ ...section, matrix }], options: [] } as unknown as Parameters<typeof saveBlockers>[0][number];
     expect(saveBlockers([part], axes)).toEqual([]);
+  });
+
+  it("R1-12: chỉ tiêu một môn tính theo lệnh hỏi hoặc điểm không được dùng ma trận hay đặt Bắt buộc (H7)", () => {
+    const section = { id: "s", subjectCode: "MATH", questionCount: 30, knowledgeScope: null, answerQuotas: null, matrix: null, choiceGroup: null, blocks: [] } as ExamSection;
+    const [entry] = referenceEntries(section, [{ ...difficultyQuota(), basis: "PROMPT" }]);
+    expect(entry).toMatchObject({ kind: "quota", use: "BASIS", apply: "BASIS" });
+    const [question] = referenceEntries(section, [difficultyQuota()]);
+    expect(question).toMatchObject({ use: null, apply: null });
   });
 
   it("R1-08: bấm Dùng ma trận tham khảo trên môn không có ma trận rồi Lưu: máy chủ nhận bản lưu, không bị chặn 'allocationBlocked'", async () => {

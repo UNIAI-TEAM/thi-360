@@ -9,7 +9,7 @@ import { emptyMatrix, isSetBlock, type MatrixAxes } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
 import { effectiveScope } from "../subject-matrix";
 import type { AvailableQuestionsQuery, ExamSection, KnowledgeScope, QuestionBlock } from "../types";
-import { applyBlockPatch } from "./block-form";
+import { applyBlockPatch, resizeSets } from "./block-form";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import type { SectionContext } from "./exam-structure-draft";
@@ -74,6 +74,15 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
     }));
   };
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));
+  // Đổi số chùm hoặc số câu con: điều kiện của chùm vượt số chùm mới bị bỏ như ở nhóm thường (R1-30).
+  const setSets = (setCount: number, setSize: number) => {
+    const { patch } = resizeSets(block, setCount, setSize);
+    onChange((current) => ({
+      ...current,
+      questionCount: setCount * setSize,
+      blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, patch) : item)),
+    }));
+  };
   const typeOptions = [
     { value: ANY_TYPE, label: t("typeAny") },
     ...QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE").map((type) => ({ value: type, label: tContent(`questionType.${type}`) })),
@@ -162,14 +171,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
                   <BlockNumberInput
                     {...controlProps}
                     value={block.setCount ?? 1}
-                    onValueChange={(next) => {
-                      const setSize = block.setSize ?? 1;
-                      onChange((current) => ({
-                        ...current,
-                        questionCount: next * setSize,
-                        blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, { setCount: next, questionCount: next * setSize }) : item)),
-                      }));
-                    }}
+                    onValueChange={(next) => setSets(next, block.setSize ?? 1)}
                   />
                 )}
               </FormField>
@@ -178,14 +180,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
                   <BlockNumberInput
                     {...controlProps}
                     value={block.setSize ?? 1}
-                    onValueChange={(next) => {
-                      const sets = block.setCount ?? 1;
-                      onChange((current) => ({
-                        ...current,
-                        questionCount: sets * next,
-                        blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, { setSize: next, questionCount: sets * next }) : item)),
-                      }));
-                    }}
+                    onValueChange={(next) => setSets(block.setCount ?? 1, next)}
                   />
                 )}
               </FormField>

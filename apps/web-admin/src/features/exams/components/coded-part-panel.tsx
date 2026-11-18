@@ -2,11 +2,11 @@
 
 import { Button, cn, focusRing, StatusChip } from "@thi360/ui";
 import { ChevronRight, Plus, TriangleAlert } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useId } from "react";
 import { codePositions, codesUsing, type HowPart, sectionHow, sectionStateOf, type SectionStateName, worstState } from "../coded-part";
-import { roundForDisplay } from "../display-number";
+import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { computeAllocation, type MatrixAxes, sum } from "../matrix";
 import type { ExamPart, ExamSection, ExamSectionState, StructureCombination } from "../types";
 import type { StructureNames } from "./exam-structure-issues";
@@ -32,6 +32,7 @@ export interface CodedPartPanelProps {
  */
 export function CodedPartPanel({ part, names, axes, combinations, sectionStates, onSelectSection, onAddSubject }: CodedPartPanelProps) {
   const t = useTranslations("exams.codedPart");
+  const format = useFormatter();
   const listT = useTranslations("exams.structure.list");
   const tContent = useTranslations("content");
   const subjectsId = useId();
@@ -52,7 +53,9 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
     if (sum(allocation.byGrade) === 0 && sum(allocation.byDifficulty) === 0) return null;
     return t("matrix", { grades: allocation.byGrade.join("/"), difficulties: allocation.byDifficulty.join("/") });
   };
-  const missing = Array.from(new Set(codes.flatMap((item) => item.missingSubjects)));
+  // Môn máy chủ báo thiếu nhưng đã thêm vào danh sách môn của bản nháp thì không còn thiếu (R1-22), không đợi lưu rồi tải lại.
+  const missingOf = (item: StructureCombination) => item.missingSubjects.filter((subjectCode) => !pool.some((section) => section.subjectCode === subjectCode));
+  const missing = Array.from(new Set(codes.flatMap(missingOf)));
 
   return (
     <div className="flex flex-col gap-5">
@@ -87,7 +90,7 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
                   return (
                     <tr key={section.id}>
                       <th scope="row" className="border-b border-border px-3 py-2 text-left align-top font-medium text-text">{subject}</th>
-                      <td className="border-b border-border px-2 py-2 text-right align-top tabular-nums text-text">{section.questionCount ?? "—"}</td>
+                      <td className="border-b border-border px-2 py-2 text-right align-top tabular-nums text-text">{section.questionCount === null ? "—" : format.number(section.questionCount, DISPLAY_NUMBER_FORMAT)}</td>
                       <td className="border-b border-border px-2 py-2 align-top text-text">
                         {how.length === 0 ? <span className="text-text-muted">{t("noBlocks")}</span> : how.map(howText).join(", ")}
                         {matrix && <span className="block text-caption text-text-muted">{matrix}</span>}
@@ -111,9 +114,9 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
       {missing.length > 0 && (
         <ul className="flex flex-col gap-2 rounded-md border border-danger/40 bg-danger-bg px-3 py-2">
           {codes
-            .filter((item) => item.missingSubjects.length > 0)
+            .filter((item) => missingOf(item).length > 0)
             .flatMap((item) =>
-              item.missingSubjects.map((subjectCode) => (
+              missingOf(item).map((subjectCode) => (
                 <li key={`${item.code}-${subjectCode}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-danger">
                   <TriangleAlert aria-hidden className="size-4 shrink-0" />
                   <span>{t("missingSubject", { code: item.examCode ?? item.code, subject: names.subject(subjectCode) })}</span>
@@ -142,7 +145,7 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
           <ul className="flex flex-col gap-2">
             {codes.map((item) => {
               const poolSections = item.subjectCodes.map((subjectCode) => pool.find((section) => section.subjectCode === subjectCode));
-              const state = item.missingSubjects.length > 0 ? "INCOMPLETE" : worstState(poolSections.map((section) => (section ? stateOf(section) : "INCOMPLETE")));
+              const state = missingOf(item).length > 0 ? "INCOMPLETE" : worstState(poolSections.map((section) => (section ? stateOf(section) : "INCOMPLETE")));
               const positions = codePositions(item, pool);
               return (
                 <li key={item.code} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border px-3 py-2">

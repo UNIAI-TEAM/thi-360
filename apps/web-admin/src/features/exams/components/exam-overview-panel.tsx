@@ -130,6 +130,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                   legend={quota.name}
                   name={`quota-${quota.id}-enforcement`}
                   value={quota.enforcement}
+                  basis={quota.basis}
                   lockRequiredReason={canRequireQuota(quota) ? undefined : t("multiSubjectLocked")}
                   onChange={(enforcement) => patch(quota.id, (current) => ({ ...current, enforcement }))}
                 />

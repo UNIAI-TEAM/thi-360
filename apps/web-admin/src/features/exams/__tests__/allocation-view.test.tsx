@@ -168,9 +168,10 @@ describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
 });
 
 describe("R1-03: đổi tổng của nhóm tính lại chỉ tiêu chủ đề theo tỷ lệ", () => {
-  it("nhóm 30 → 20 với chỉ tiêu 10%: bảng hiện 2 câu và lưu count 2, percent 10", async () => {
+  it("R1-28: môn 50 câu, nhóm 30 → 20 với chỉ tiêu 10%: tính trên tổng của nhóm (3 → 2 câu), lưu count 2, percent 10", async () => {
     const server = boot({
       section: {
+        questionCount: 50,
         blocks: [
           {
             id: "blk-1",
@@ -186,6 +187,7 @@ describe("R1-03: đổi tổng của nhóm tính lại chỉ tiêu chủ đề t
     const user = userEvent.setup();
     open("?block=blk-1");
     const count = await screen.findByRole("textbox", { name: /^Số câu cần lấy/ });
+    expect(screen.getByText("3 câu")).toBeInTheDocument();
     await user.clear(count);
     await user.type(count, "20");
     expect(await screen.findByText("2 câu")).toBeInTheDocument();
@@ -281,7 +283,7 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
   });
 });
 
-function Harness({ initial, total = 30, children }: { initial: TopicQuota[]; total?: number; children?: never }) {
+function Harness({ initial, total = 30 }: { initial: TopicQuota[]; total?: number }) {
   const [quotas, setQuotas] = useState(initial);
   return (
     <>
@@ -318,6 +320,16 @@ describe("Làm tròn chỉ tiêu chủ đề (ADV:FE-3b:2)", () => {
     const rest = screen.getByRole("row", { name: /Phần còn lại/ });
     expect(rest).toHaveTextContent("0 câu");
     expect(rest).not.toHaveTextContent("-");
+  });
+});
+
+describe("Xóa dòng chỉ tiêu chủ đề giữ tiêu điểm trong bảng (R1-26)", () => {
+  it("bấm xóa dòng thì tiêu điểm chuyển sang nút Thêm chỉ tiêu chủ đề, không rơi về thân trang", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Harness initial={[quota({ id: "a", name: "A" }), quota({ id: "b", name: "B" })]} />);
+    await user.click(screen.getByRole("button", { name: "Xóa chỉ tiêu A" }));
+    expect(stateOf().map((row) => row.id)).toEqual(["b"]);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Thêm chỉ tiêu chủ đề" })).toHaveFocus());
   });
 });
 
