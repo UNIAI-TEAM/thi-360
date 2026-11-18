@@ -169,6 +169,8 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
         available: roundForDisplay(available),
         missing: roundForDisplay(Math.max(0, required - available)),
         hasCount: issue.required == null || issue.available == null ? "no" : "yes",
+        excluded: roundForDisplay(issue.excludedPoints ?? 0),
+        hasExcluded: issue.required == null || issue.available == null || issue.excludedPoints == null ? "no" : "yes",
         seconds: issue.timeLimitSeconds ?? 0,
         answerType: issue.answerType ? tContent(`questionType.${issue.answerType}`) : "",
         count: issue.subjectCount ?? 0,

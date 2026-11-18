@@ -201,6 +201,8 @@ export interface CheckIssue {
   subjectCount: number | null;
   required: number | null;
   available: number | null;
+  /** Điểm của phần đã lược (`SCALE_INCLUDES_EXCLUDED_PART`: thang − tổng điểm); `null` ở mã khác hoặc máy chủ cũ. Viết tay đến khi BE-20 sinh lại client. */
+  excludedPoints?: number | null;
   timeLimitSeconds: number | null;
   /** Mã câu nguồn liên quan (quy tắc chấm khác khối, thiếu tiêu chí chấm); `null` khi không áp dụng. */
   questionCodes: string[] | null;
@@ -535,8 +537,8 @@ export interface PreviewCompliance {
   criterion: string;
   /** `SECTION:<id môn>`, `BLOCK:<id khối>` hoặc `EXAM`. */
   scope: string;
-  /** Số yêu cầu; câu của đề 16 câu đã trừ phần đóng góp của câu bỏ. */
-  required: number;
+  /** Số yêu cầu; câu của đề 16 câu đã trừ phần đóng góp của câu bỏ. `null` ở dòng "Chưa phân loại" (không có yêu cầu để so). */
+  required: number | null;
   actual: number;
   enforcement: "REQUIRED" | "REFERENCE";
   basis: "QUESTION" | "PROMPT" | "POINTS";

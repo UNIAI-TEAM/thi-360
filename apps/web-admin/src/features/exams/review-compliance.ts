@@ -44,14 +44,15 @@ export function parseScope(raw: string): ScopeRef {
 
 /**
  * Mã của dòng "Chưa phân loại" ở bảng đối chiếu theo lệnh (D19, H44): câu thiếu nhãn khối lớp hoặc độ khó dồn vào dòng
- * `GRADE:UNCLASSIFIED` hoặc `DIFFICULTY:UNCLASSIFIED`. Mã trống cũng được coi là chưa phân loại.
+ * `GRADE:UNCLASSIFIED` hoặc `DIFFICULTY:UNCLASSIFIED`. Máy chủ chỉ gửi dòng này khi có lệnh thiếu nhãn (`actual > 0`),
+ * `required` là `null` và `note` là `UNCLASSIFIED`.
  */
 export const UNCLASSIFIED_CODE = "UNCLASSIFIED";
 
 /** Dòng "Chưa phân loại": không có yêu cầu để so, chỉ báo số lệnh còn thiếu nhãn. */
 export function isUnclassifiedRow(row: PreviewCompliance): boolean {
   const ref = parseCriterion(row.criterion);
-  return (ref.kind === "GRADE" || ref.kind === "DIFFICULTY") && (ref.code === UNCLASSIFIED_CODE || ref.code === "");
+  return (ref.kind === "GRADE" || ref.kind === "DIFFICULTY") && ref.code === UNCLASSIFIED_CODE;
 }
 
 export interface CommandDenominator {
@@ -73,10 +74,10 @@ export function commandDenominators(rows: readonly PreviewCompliance[]): Command
     if (ref.kind !== "GRADE" && ref.kind !== "DIFFICULTY") continue;
     const entry = byScope.get(row.scope) ?? { grade: 0, difficulty: 0, hasGrade: false };
     if (ref.kind === "GRADE") {
-      entry.grade += row.required;
+      entry.grade += row.required ?? 0;
       entry.hasGrade = true;
     } else {
-      entry.difficulty += row.required;
+      entry.difficulty += row.required ?? 0;
     }
     byScope.set(row.scope, entry);
   }
@@ -90,14 +91,15 @@ export function commandDenominators(rows: readonly PreviewCompliance[]): Command
 export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
   if (isUnclassifiedRow(row)) return "OK";
   const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
-  const deviates = atLeast ? row.actual < row.required - EPSILON : Math.abs(row.actual - row.required) > EPSILON;
+  const required = row.required ?? 0;
+  const deviates = atLeast ? row.actual < required - EPSILON : Math.abs(row.actual - required) > EPSILON;
   if (!deviates) return "OK";
   return row.enforcement === "REQUIRED" ? "REQUIRED_DEVIATION" : "REFERENCE_DEVIATION";
 }
 
 /** Chênh lệch = Thực tế − Yêu cầu (R-124); chênh lệch nhỏ hơn `EPSILON` coi là 0 như quy tắc lệch ở trên. */
 export function complianceDifference(row: PreviewCompliance): number {
-  const difference = row.actual - row.required;
+  const difference = row.actual - (row.required ?? 0);
   return Math.abs(difference) > EPSILON ? difference : 0;
 }
 

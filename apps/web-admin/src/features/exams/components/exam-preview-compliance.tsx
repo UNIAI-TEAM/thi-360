@@ -107,7 +107,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     const level = (row: PreviewCompliance) =>
       t("level", { enforcement: t(`enforcement.${row.enforcement}`), unit: t(`unit.${row.basis}`) });
     const required = (row: PreviewCompliance) => {
-      if (isUnclassifiedRow(row)) return t("requiredNone");
+      if (isUnclassifiedRow(row) || row.required === null) return t("requiredNone");
       const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
       const removed = droppedCount(row.note);
       const value = removed > 0 ? t("requiredDropped", { value: number(row.required), count: removed }) : number(row.required);

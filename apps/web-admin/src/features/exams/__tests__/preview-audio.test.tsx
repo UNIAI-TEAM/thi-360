@@ -289,7 +289,10 @@ describe("đọc tệp đính kèm và phân đoạn từ API sinh thử", () =>
           seed: 1,
           generatedAt: "2026-11-18T00:00:00Z",
           path: { pathId: "default", choices: [] },
-          compliance: [],
+          compliance: [
+            { criterion: "GRADE:UNCLASSIFIED", scope: "SECTION:sec-1", required: null, actual: 3, enforcement: "REFERENCE", basis: "PROMPT", note: "UNCLASSIFIED" },
+            { criterion: "GRADE:GRADE_12", scope: "SECTION:sec-1", required: 50, actual: 47, enforcement: "REFERENCE", basis: "PROMPT" },
+          ],
           paper: {
             parts: [
               {
@@ -315,6 +318,8 @@ describe("đọc tệp đính kèm và phân đoạn từ API sinh thử", () =>
     const result = await generatePreview({ examId: EXAM_ID, target: { kind: "EXAM" }, seed: 1 });
 
     if (result.status !== "GENERATED") throw new Error("expected GENERATED");
+    expect(result.compliance.map((row) => row.required)).toEqual([null, 50]);
+    expect(result.compliance[0]).toMatchObject({ criterion: "GRADE:UNCLASSIFIED", actual: 3, note: "UNCLASSIFIED" });
     const [first, second] = result.paper.parts;
     expect(first?.displaySegments).toEqual([
       { code: "P1", name: "Part I", fromPosition: 1, toPosition: 2, commandCount: 8, maxPoints: 12 },

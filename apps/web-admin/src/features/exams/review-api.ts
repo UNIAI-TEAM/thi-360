@@ -337,7 +337,9 @@ type ApiCheckPath = Schema["ExamCheckPath"];
 type ApiCheckBlock = Schema["ExamCheckBlock"];
 type ApiCheckSubject = Schema["ExamCheckSubject"];
 type ApiCheckSelection = Schema["ExamCheckSelection"];
-type ApiCheckIssue = Schema["ExamCheckIssue"];
+/** Trường của vấn đề mà `packages/api-client` chưa có (BE-20): điểm của phần đã lược; bỏ khi client đã sinh lại. */
+type WireIssueExtras = { excludedPoints?: number };
+type ApiCheckIssue = Schema["ExamCheckIssue"] & WireIssueExtras;
 type ApiCheckGroup = Schema["ExamCheckGroup"];
 type ApiCheckChoice = Schema["ExamCheckChoice"];
 type ApiCheckRequirement = Schema["ExamCheckRequirement"];
@@ -464,6 +466,7 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     subjectCount: issue.subjectCount ?? null,
     required: issue.required ?? null,
     available: issue.available ?? null,
+    excludedPoints: issue.excludedPoints ?? null,
     timeLimitSeconds: issue.timeLimitSeconds ?? null,
     questionCodes: issue.questionCodes ?? null,
     affectedCodes: issue.affectedCodes ?? null,
@@ -809,7 +812,7 @@ function mapCompliance(row: Schema["ExamPreviewCompliance"]): PreviewCompliance 
   return {
     criterion: row.criterion ?? "",
     scope: row.scope ?? "",
-    required: row.required ?? 0,
+    required: row.required ?? null,
     actual: row.actual ?? 0,
     enforcement: row.enforcement === "REFERENCE" ? "REFERENCE" : "REQUIRED",
     basis: basis.startsWith("POINTS") ? "POINTS" : basis.startsWith("PROMPT") ? "PROMPT" : "QUESTION",

@@ -4681,7 +4681,7 @@
         "POINTS_SHORTAGE": "Khối {block}: nguồn đúng điểm mỗi câu của dòng chưa đủ{hasCount, select, yes {: cần {required, number}, hiện chỉ có {available, number} đúng điểm} other {}}.",
         "BLOCK_COUNT_LOCKED": "Khối {block}: mẫu đã khóa dạng, số câu và số chùm của dòng{hasCount, select, yes {; mẫu giữ {required, number}, hiện có {available, number}} other {}}. Đưa dòng về đúng như mẫu.",
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
-        "SCALE_INCLUDES_EXCLUDED_PART": "{hasCount, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {missing, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}"
+        "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}"
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",

@@ -18,7 +18,7 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
-const row = (criterion: string, required: number, actual: number, over: Partial<PreviewCompliance> = {}): PreviewCompliance => ({
+const row = (criterion: string, required: number | null, actual: number, over: Partial<PreviewCompliance> = {}): PreviewCompliance => ({
   criterion,
   scope: "SECTION:sec-math",
   required,
@@ -35,11 +35,11 @@ const COMMAND_ROWS: PreviewCompliance[] = [
   row("GRADE:GRADE_10", 0, 0),
   row("GRADE:GRADE_11", 17, 16),
   row("GRADE:GRADE_12", 50, 47),
-  row("GRADE:UNCLASSIFIED", 0, 4),
+  row("GRADE:UNCLASSIFIED", null, 4, { note: "UNCLASSIFIED" }),
   row("DIFFICULTY:RECOGNITION", 13, 13),
   row("DIFFICULTY:COMPREHENSION", 35, 33),
   row("DIFFICULTY:APPLICATION", 19, 17),
-  row("DIFFICULTY:UNCLASSIFIED", 0, 4),
+  row("DIFFICULTY:UNCLASSIFIED", null, 4, { note: "UNCLASSIFIED" }),
 ];
 
 const paper: PreviewPaper = {
@@ -102,11 +102,11 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
     expect(complianceLevel(COMMAND_ROWS[3]!)).toBe("OK");
   });
 
-  it("dòng Chưa phân loại không có câu thiếu nhãn thì đạt", async () => {
-    renderTable([row("GRADE:GRADE_12", 67, 67), row("GRADE:UNCLASSIFIED", 0, 0)]);
+  it("không có lệnh thiếu nhãn thì máy chủ không gửi dòng Chưa phân loại và bảng đạt", async () => {
+    renderTable([row("GRADE:GRADE_12", 67, 67)]);
 
     const table = await screen.findByRole("table", { name: "Yêu cầu và thực tế của đề thử" });
-    expect(within(table).queryByText("Thiếu nhãn")).not.toBeInTheDocument();
+    expect(within(table).queryByText("Chưa phân loại")).not.toBeInTheDocument();
     expect(await screen.findByText("Đạt mọi tiêu chí")).toBeInTheDocument();
   });
 
@@ -127,9 +127,10 @@ describe("mẫu số theo lệnh", () => {
     expect(commandDenominators([row("GRADE:GRADE_12", 5, 5, { basis: "QUESTION" }), row("GRADE:GRADE_11", 5, 5, { enforcement: "REQUIRED" })])).toEqual([]);
   });
 
-  it("mã Chưa phân loại: mã UNCLASSIFIED hoặc mã trống ở khối lớp, độ khó", () => {
-    expect(isUnclassifiedRow(row("GRADE:UNCLASSIFIED", 0, 1))).toBe(true);
-    expect(isUnclassifiedRow(row("DIFFICULTY:", 0, 1))).toBe(true);
+  it("mã Chưa phân loại: chỉ mã UNCLASSIFIED của khối lớp hoặc độ khó", () => {
+    expect(isUnclassifiedRow(row("GRADE:UNCLASSIFIED", null, 1))).toBe(true);
+    expect(isUnclassifiedRow(row("DIFFICULTY:UNCLASSIFIED", null, 1))).toBe(true);
+    expect(isUnclassifiedRow(row("DIFFICULTY:", 1, 1))).toBe(false);
     expect(isUnclassifiedRow(row("GRADE:GRADE_12", 1, 1))).toBe(false);
     expect(isUnclassifiedRow(row("TOPIC:UNCLASSIFIED", 1, 1))).toBe(false);
   });

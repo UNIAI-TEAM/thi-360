@@ -104,8 +104,16 @@ describe("năm mã kiểm tra mới có câu chữ vi và en", () => {
       "Khối Toán · Dong 2: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
     );
     expect(
-      await textOf(issueOf({ code: "SCALE_INCLUDES_EXCLUDED_PART", group: "POINTS", blockName: null, partName: "Viet", required: 150, available: 120 })),
+      await textOf(issueOf({ code: "SCALE_INCLUDES_EXCLUDED_PART", group: "POINTS", blockName: null, partName: "Viet", required: 150, available: 120, excludedPoints: 30 })),
     ).toBe("Thang đang là 150, tổng điểm của bài là 120. Chênh 30 điểm, đúng bằng điểm của phần đã lược Viet. Đặt thang 120.");
+  });
+
+  it("SCALE_INCLUDES_EXCLUDED_PART: số điểm lược lấy từ excludedPoints, không tính thang trừ tổng điểm", async () => {
+    const text = await textOf(
+      issueOf({ code: "SCALE_INCLUDES_EXCLUDED_PART", blockName: null, partName: "Viet", required: 150, available: 110, excludedPoints: 30 }),
+    );
+
+    expect(text).toBe("Thang đang là 150, tổng điểm của bài là 110. Chênh 30 điểm, đúng bằng điểm của phần đã lược Viet. Đặt thang 110.");
   });
 
   it("en: cùng nội dung bằng tiếng Anh", async () => {
@@ -122,7 +130,7 @@ describe("năm mã kiểm tra mới có câu chữ vi và en", () => {
       "Block Mathematics · Dong 2: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
     );
     expect(
-      await textOf(issueOf({ code: "SCALE_INCLUDES_EXCLUDED_PART", blockName: null, partName: "Writing", required: 150, available: 120 }), "en"),
+      await textOf(issueOf({ code: "SCALE_INCLUDES_EXCLUDED_PART", blockName: null, partName: "Writing", required: 150, available: 120, excludedPoints: 30 }), "en"),
     ).toBe(
       "The scale is 150, the total points of the exam are 120. The 30-point difference equals the points of the omitted part Writing. Set the scale to 120.",
     );
@@ -161,7 +169,7 @@ describe("bấm vào lỗi của mã mới dẫn tới đúng dòng ở bước 
     const issues = [
       wireIssue("AUDIO_SHORTAGE", { group: "SOURCE", partId: "part-1", sectionId: "sec-1", blockId: "blk-1", blockName: "Choice", required: 3, available: 2 }),
       wireIssue("BLOCK_COUNT_LOCKED", { partId: "part-1", sectionId: "sec-1", blockId: "blk-1", blockName: "Choice", required: 20, available: 22 }),
-      wireIssue("SCALE_INCLUDES_EXCLUDED_PART", { group: "POINTS", partId: "part-1", partName: "Viet", subjectCode: undefined, required: 150, available: 120 }),
+      wireIssue("SCALE_INCLUDES_EXCLUDED_PART", { group: "POINTS", partId: "part-1", partName: "Viet", subjectCode: undefined, required: 150, available: 120, excludedPoints: 30 }),
     ];
     const body = {
       ...checkResultWire("INVALID"),
