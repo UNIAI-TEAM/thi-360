@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useId } from "react";
 import { codePositions, codesUsing, type HowPart, sectionHow, sectionStateOf, type SectionStateName, worstState } from "../coded-part";
+import { roundForDisplay } from "../display-number";
 import { computeAllocation, type MatrixAxes, sum } from "../matrix";
 import type { ExamPart, ExamSection, ExamSectionState, StructureCombination } from "../types";
 import type { StructureNames } from "./exam-structure-issues";
@@ -43,8 +44,8 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
 
   const howText = (part: HowPart) =>
     part.kind === "set"
-      ? t("howSet", { sets: part.sets, size: part.size })
-      : t("howSingle", { count: part.count, type: part.type ? tContent(`questionType.${part.type}`) : t("howAny") });
+      ? t("howSet", { sets: roundForDisplay(part.sets), size: roundForDisplay(part.size) })
+      : t("howSingle", { count: roundForDisplay(part.count), type: part.type ? tContent(`questionType.${part.type}`) : t("howAny") });
   const matrixText = (section: ExamSection) => {
     if (!section.matrix) return null;
     const allocation = computeAllocation({ questionCount: section.questionCount ?? 0, matrix: section.matrix }, axes);
@@ -156,7 +157,7 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
                   </span>
                   {positions.length > 0 && (
                     <span className="text-caption text-text-muted">
-                      {positions.map((position) => t("position", { subject: names.subject(position.subjectCode), from: position.from, to: position.to })).join(", ")}
+                      {positions.map((position) => t("position", { subject: names.subject(position.subjectCode), from: roundForDisplay(position.from), to: roundForDisplay(position.to) })).join(", ")}
                     </span>
                   )}
                   <span className="ml-auto">{chip(state)}</span>

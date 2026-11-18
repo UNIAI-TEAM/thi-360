@@ -18,6 +18,7 @@ import {
   validateBlock,
 } from "../matrix";
 import { ratePercent } from "../allocation";
+import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { AvailableQuestionCounts, BlockMatrix, MatrixMode, MatrixUnit, QuestionBlock, QuotaBasis, QuotaEnforcement } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
@@ -80,7 +81,7 @@ export function BlockMatrixEditor({
         (issue) => issue.code === "PERCENT_TOTAL" || issue.code === "ALLOCATION_TOTAL" || issue.code === "INVALID_VALUE",
       )
     : [];
-  const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
+  const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
   const questionBasis = (matrix.basis ?? "QUESTION") === "QUESTION";
   const gradeEnforcement: QuotaEnforcement = matrix.gradeEnforcement ?? "REQUIRED";
   const difficultyEnforcement: QuotaEnforcement = matrix.difficultyEnforcement ?? "REQUIRED";
@@ -667,9 +668,7 @@ function ConversionPanel({
     .map((index) =>
       t("remainderCell", {
         cell: cellLabel(index),
-        fraction: format.number((conversion.theoretical[index] ?? 0) - Math.floor((conversion.theoretical[index] ?? 0) + 1e-9), {
-          maximumFractionDigits: 2,
-        }),
+        fraction: format.number((conversion.theoretical[index] ?? 0) - Math.floor((conversion.theoretical[index] ?? 0) + 1e-9), DISPLAY_NUMBER_FORMAT),
       }),
     );
   return (

@@ -385,7 +385,7 @@ function CodeFilter({
   const summary = value.length === 0 ? allLabel : value.map(label).join(", ");
   return (
     <details className="group min-w-32">
-      <summary className={cn("flex min-h-9 cursor-pointer list-none items-center rounded-md border border-border px-2.5 text-label text-text", focusRing)} aria-label={`${name}: ${summary}`}>
+      <summary className={cn("relative flex min-h-9 cursor-pointer list-none items-center rounded-md border border-border px-2.5 text-label text-text", "pointer-coarse:after:absolute pointer-coarse:after:-inset-y-1 pointer-coarse:after:inset-x-0", focusRing)} aria-label={`${name}: ${summary}`}>
         <span className="min-w-0 wrap-anywhere">{summary}</span>
       </summary>
       <ul className="mt-1 flex flex-col gap-0.5 rounded-md border border-border p-1">
@@ -399,7 +399,7 @@ function CodeFilter({
                 disabled={disabled}
                 onCheckedChange={(checked) => onChange(checked === true ? [...value, code] : value.filter((item) => item !== code))}
               />
-              <label htmlFor={checkboxId} className="flex-1 cursor-pointer py-1.5 text-body text-text">
+              <label htmlFor={checkboxId} className="relative flex-1 cursor-pointer py-1.5 text-body text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-y-1.5 pointer-coarse:after:inset-x-0">
                 {label(code)}
               </label>
             </li>

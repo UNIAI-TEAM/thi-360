@@ -11,6 +11,7 @@ import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, saveBlockers } from "../allocation";
 import { yearsNeedConfirmation } from "../check";
+import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { examTabFromPathname, examTabHref } from "../editor-tabs";
 import { addPoolSection } from "../coded-part";
 import type { MatrixAxes } from "../matrix";
@@ -499,16 +500,16 @@ function StructureEditor({
               label={t("summary.questions")}
               value={
                 totals.printedQuestions !== totals.totalQuestions
-                  ? t("summary.questionsPrinted", { count: totals.totalQuestions, printed: totals.printedQuestions })
-                  : format.number(totals.totalQuestions)
+                  ? t("summary.questionsPrinted", { count: roundForDisplay(totals.totalQuestions), printed: roundForDisplay(totals.printedQuestions) })
+                  : format.number(totals.totalQuestions, DISPLAY_NUMBER_FORMAT)
               }
             />
             <SummaryItem
               label={t("summary.duration")}
               value={
                 shared
-                  ? t("summary.sharedMinutes", { count: totals.totalMinutes })
-                  : t("summary.minutes", { count: totals.totalMinutes })
+                  ? t("summary.sharedMinutes", { count: roundForDisplay(totals.totalMinutes) })
+                  : t("summary.minutes", { count: roundForDisplay(totals.totalMinutes) })
               }
             />
             <SummaryItem
@@ -516,10 +517,10 @@ function StructureEditor({
               value={
                 exam.maxScore !== null
                   ? t("summary.pointsOfScale", {
-                      points: format.number(totals.totalPoints, { maximumFractionDigits: 2 }),
-                      scale: format.number(exam.maxScore, { maximumFractionDigits: 2 }),
+                      points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
+                      scale: format.number(exam.maxScore, DISPLAY_NUMBER_FORMAT),
                     })
-                  : format.number(totals.totalPoints, { maximumFractionDigits: 2 })
+                  : format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT)
               }
               warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
             />
@@ -596,10 +597,10 @@ function StructureEditor({
             <ExamOverviewPanel
               examName={exam.name}
               summary={t("overviewSummary", {
-                count: totals.totalQuestions,
-                minutes: totals.totalMinutes,
+                count: roundForDisplay(totals.totalQuestions),
+                minutes: roundForDisplay(totals.totalMinutes),
                 shared: shared ? "yes" : "no",
-                points: format.number(totals.totalPoints, { maximumFractionDigits: 2 }),
+                points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
               })}
               parts={draft}
               quotas={quotas}

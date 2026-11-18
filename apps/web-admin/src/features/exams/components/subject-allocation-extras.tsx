@@ -4,6 +4,7 @@ import { Button, StatusChip } from "@thi360/ui";
 import { Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
+import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { ReferenceEntry, ReferenceReason } from "../reference-distribution";
 import type { MatrixUnit } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
@@ -81,7 +82,7 @@ export function ReferenceDistributions({
   const format = useFormatter();
   const headingId = useId();
   if (entries.length === 0) return null;
-  const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
+  const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
   const unitText = (unit: MatrixUnit, value: number) => (unit === "PERCENT" ? t("percentValue", { value: number(value) }) : number(value));
 
   return (

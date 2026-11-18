@@ -43,7 +43,9 @@ export function EnforcementToggle({ legend, name, value, onChange, basis, lockRe
             <label
               key={option.value}
               className={cn(
-                "flex min-h-8 cursor-pointer items-center gap-2 rounded-sm px-3 text-label font-medium transition-colors duration-150 motion-reduce:transition-none",
+                "relative flex min-h-8 cursor-pointer items-center gap-2 rounded-sm px-3 text-label font-medium transition-colors duration-150 motion-reduce:transition-none",
+                // Màn cảm ứng: vùng bấm 44px bằng phần tử giả, không đổi kích thước nhìn thấy (DESIGN.md 5.1).
+                "pointer-coarse:after:absolute pointer-coarse:after:-inset-y-1.5 pointer-coarse:after:inset-x-0",
                 checked ? "bg-surface font-semibold text-primary-text shadow-sm" : "text-text-secondary hover:text-text",
                 option.locked && !checked && "cursor-not-allowed opacity-60",
               )}

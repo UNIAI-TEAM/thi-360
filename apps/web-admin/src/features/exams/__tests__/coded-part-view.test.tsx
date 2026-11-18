@@ -43,4 +43,18 @@ describe("Phần theo mã mở được khi quy tắc tham gia là CHOICE (R1-01
     expect(screen.getAllByText("QD01").length).toBeGreaterThan(0);
     expect(screen.queryByText(/trong \d+ phương án/)).not.toBeInTheDocument();
   });
+
+  it("R1-13: số câu thập phân của máy chủ vào thông điệp ICU qua roundForDisplay, tối đa 2 chữ số (7,125 → 7,13)", async () => {
+    const exam = codedExam("QDA");
+    const pool = structuredClone(QDA_PARTS[2]!.subjectPool!);
+    pool[0]!.blocks[0]!.questionCount = 7.125;
+    exam.parts = exam.parts.map((part) => (part.id === "qda-3" ? { ...part, subjectPool: pool } : part));
+    backend.seedExam(exam).seedStructureExtras(exam.id, { combinations: QDA_COMBINATIONS });
+    openPart(exam.id, "qda-3");
+
+    const subjects = await screen.findByRole("table", { name: /Các môn của Part 3/ });
+    const row = within(subjects).getByRole("row", { name: /Vật lí/ });
+    expect(row).toHaveTextContent("7,13");
+    expect(row).not.toHaveTextContent("7,125");
+  });
 });

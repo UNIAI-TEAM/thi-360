@@ -5,6 +5,7 @@ import { TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import { ratePercent } from "../allocation";
+import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { bucketCounts, canRequireQuota, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
 import { sum } from "../matrix";
 import type { ExamPart, ExamQuota, StructureCombination } from "../types";
@@ -40,7 +41,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
   const pointsId = useId();
   const quotasId = useId();
   const rows = pointsRows(parts, combinations);
-  const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
+  const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
   const totalPoints = sum(rows.map((row) => row.totalPoints));
   const essayPoints = sum(rows.map((row) => row.essayPoints));
 
@@ -121,7 +122,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <h4 className="text-label font-semibold text-text">{quota.name || t(quota.dimension === "GRADE" ? "gradeName" : "difficultyName")}</h4>
                   <p className="text-caption text-text-muted">
-                    {t("scope", { count: scope.count, subjects: scope.subjectCodes.map(names.subject).join(", ") })}
+                    {t("scope", { count: roundForDisplay(scope.count), subjects: scope.subjectCodes.map(names.subject).join(", ") })}
                     {(quota.excludeSubjectCodes?.length ?? 0) > 0 && ` · ${t("excluding", { subjects: quota.excludeSubjectCodes?.map(names.subject).join(", ") ?? "" })}`}
                   </p>
                 </div>
@@ -157,7 +158,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                         {percent && <span aria-hidden className="text-text-muted">%</span>}
                       </span>
                       <span className="text-caption text-text-muted">
-                        {percent ? t("approx", { count: counts[index] ?? 0 }) : rate === null ? "" : t("realRate", { value: format.number(rate, { maximumFractionDigits: 1 }) })}
+                        {percent ? t("approx", { count: roundForDisplay(counts[index] ?? 0) }) : rate === null ? "" : t("realRate", { value: format.number(rate, { maximumFractionDigits: 1 }) })}
                       </span>
                     </li>
                   );
