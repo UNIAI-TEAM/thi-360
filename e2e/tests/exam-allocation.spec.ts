@@ -56,7 +56,8 @@ test("bài ôn HSA 10 câu: màn rút gọn ba trường", async ({ context, pag
     scope: "SUBJECT",
     subjectCode: "TOAN",
     buildMode: "REVIEW",
-    overview: [{ subjectCode: "TOAN", questionCount: 10 }],
+    // `ExamOverview.apply` khớp hàng theo `partId`; mẫu HSA_REVIEW có một phần `HSA_REVIEW_PART` và số câu của phần chạy xuống môn duy nhất.
+    overview: [{ partId: "HSA_REVIEW_PART", questionCount: 10 }],
     durationMinutes: 15,
   });
 
