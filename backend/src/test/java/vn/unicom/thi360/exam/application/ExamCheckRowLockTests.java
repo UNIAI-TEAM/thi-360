@@ -337,6 +337,19 @@ class ExamCheckRowLockTests {
         assertThat(issueCodes(result)).contains("POINTS_TOTAL_MISMATCH").doesNotContain("SCALE_INCLUDES_EXCLUDED_PART");
     }
 
+    @Test
+    void theScaleRuleNamesTheOmittedPartOnlyWhenTheGapEqualsItsPointsNumerically() throws Exception {
+        // 30.000 against a scale of 150.0: the same numbers with different scales still match.
+        JsonNode equal = checkScale(VSAT_VAN.replace("\"requiredPointsPerQuestion\":30", "\"requiredPointsPerQuestion\":30.000"),
+                true, "150.0");
+        assertThat(issueCodes(equal)).contains("SCALE_INCLUDES_EXCLUDED_PART").doesNotContain("POINTS_TOTAL_MISMATCH");
+        assertThat(issue(equal, "SCALE_INCLUDES_EXCLUDED_PART").path("excludedPoints").decimalValue()).isEqualByComparingTo("30");
+        // 30.0000005 is not the gap of 30 (the tolerance only decides that a mismatch exists): no claim about its cause.
+        JsonNode near = checkScale(VSAT_VAN.replace("\"requiredPointsPerQuestion\":30", "\"requiredPointsPerQuestion\":30.0000005"),
+                true, "150");
+        assertThat(issueCodes(near)).contains("POINTS_TOTAL_MISMATCH").doesNotContain("SCALE_INCLUDES_EXCLUDED_PART");
+    }
+
     private JsonNode checkScale(String structure, boolean omittedLocked, String scale) throws Exception {
         ExamTemplate template = mock(ExamTemplate.class);
         when(template.getCode()).thenReturn("T");

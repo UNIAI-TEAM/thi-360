@@ -520,7 +520,7 @@ public final class ExamCheckRules {
                         : block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
                 excluded = excluded.add(block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count)));
             }
-            if (excluded.signum() > 0 && !differs(excluded, gap)) {
+            if (excluded.signum() > 0 && excluded.compareTo(gap) == 0) {
                 ObjectNode issue = issue("SCALE_INCLUDES_EXCLUDED_PART", "POINTS", part, null, null);
                 issue.put("excludedPoints", excluded);
                 return issue;
