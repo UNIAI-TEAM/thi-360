@@ -1,15 +1,15 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
 import { Card, ListCard, StatusChip, Table, type StatusTone, type TableCards } from "@thi360/ui";
 import { CircleCheck, Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useContentReference } from "@/features/content/queries";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
-import { getTopicQuotaIndex } from "../review-api";
+import { useExamStructure } from "../queries";
 import {
+  buildTopicQuotaIndex,
   competencyName,
   complianceDifference,
   complianceLevel,
@@ -55,12 +55,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
   const lookup = useLookup();
   const reference = useContentReference().data;
   const assigned = useMemo(() => topicAssignments(paper, original), [paper, original]);
-  const quotas = useQuery({
-    queryKey: ["exams", "review", examId ?? "", "topic-quotas"],
-    queryFn: () => getTopicQuotaIndex(examId ?? ""),
-    enabled: Boolean(examId),
-    refetchOnWindowFocus: false,
-  }).data;
+  const structure = useExamStructure(examId ?? "", undefined, Boolean(examId)).data;
+  const quotas = useMemo(() => buildTopicQuotaIndex(structure), [structure]);
   const { columns, cards } = useMemo(() => {
     const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
     const blocks = new Map(paper.parts.flatMap((part) => part.blocks).map((block) => [block.blockId, block]));

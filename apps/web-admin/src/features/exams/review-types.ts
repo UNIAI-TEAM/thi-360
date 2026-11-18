@@ -159,7 +159,7 @@ export interface TopicQuotaRef {
   difficultyCodes: string[];
 }
 
-/** Chỉ tiêu chủ đề của bài theo id: đọc từ phản hồi cấu trúc thô (môn, nhóm, môn của lựa chọn). */
+/** Chỉ tiêu chủ đề của bài theo id: dựng từ cấu trúc đã chuyển đổi bằng `buildTopicQuotaIndex` (môn, khối, nhóm môn, lựa chọn). */
 export type TopicQuotaIndex = Map<string, TopicQuotaRef>;
 
 /**

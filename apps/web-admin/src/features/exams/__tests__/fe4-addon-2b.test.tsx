@@ -8,7 +8,7 @@ import { issueStructureHref } from "../check";
 import { ExamPreviewCompliance } from "../components/exam-preview-compliance";
 import { ExamPreviewPaper } from "../components/exam-preview-paper";
 import { useIssueText } from "../components/exam-review-shared";
-import { complianceDifference, topicQuotaPending } from "../review-compliance";
+import { buildTopicQuotaIndex, complianceDifference, topicQuotaPending } from "../review-compliance";
 import type {
   CheckIssue,
   PreviewBlock,
@@ -19,7 +19,7 @@ import type {
   TopicQuotaIndex,
 } from "../review-types";
 import { useContentReference } from "@/features/content/queries";
-import type { ExamDetail } from "../types";
+import type { ExamDetail, ExamStructure } from "../types";
 import { EXAM_ID, EXAM_PATH, FakeServer } from "./fake-exams-server";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -119,6 +119,54 @@ const quotaIndex = (entries: Array<[string, Partial<{ name: string; enforcement:
       { name: "", enforcement: "REQUIRED", nodeIds: [], difficultyCodes: [], ...quota },
     ]),
   );
+
+const wireQuota = (id: string, over: Record<string, unknown> = {}) => ({
+  id,
+  name: id,
+  nodeIds: [],
+  count: 1,
+  enforcement: "REQUIRED",
+  ...over,
+});
+
+describe("buildTopicQuotaIndex", () => {
+  it("gom chỉ tiêu ở môn, khối, nhóm môn và lựa chọn của mọi phần", () => {
+    const structure = {
+      examId: EXAM_ID,
+      revision: 1,
+      parts: [
+        {
+          sections: [{ topicQuotas: [wireQuota("in-section")], blocks: [{ topicQuotas: [wireQuota("in-block")] }] }],
+          subjectPool: [{ topicQuotas: [wireQuota("in-pool")], blocks: [{ topicQuotas: [wireQuota("in-pool-block")] }] }],
+          options: [
+            {
+              sections: [{ topicQuotas: [wireQuota("in-option-section")], blocks: [] }],
+              blocks: [{ topicQuotas: [wireQuota("in-option-block", { enforcement: "REFERENCE", difficultyCodes: ["VD"] })] }],
+            },
+          ],
+        },
+      ],
+    } as unknown as ExamStructure;
+
+    const index = buildTopicQuotaIndex(structure);
+
+    expect([...index!.keys()].sort()).toEqual([
+      "in-block",
+      "in-option-block",
+      "in-option-section",
+      "in-pool",
+      "in-pool-block",
+      "in-section",
+    ]);
+    expect(index!.get("in-option-block")).toEqual({
+      name: "in-option-block",
+      enforcement: "REFERENCE",
+      nodeIds: [],
+      difficultyCodes: ["VD"],
+    });
+    expect(buildTopicQuotaIndex(undefined)).toBeUndefined();
+  });
+});
 
 const structureWire = (topicQuotas: unknown[]) => ({
   examId: EXAM_ID,

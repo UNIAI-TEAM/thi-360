@@ -1,4 +1,5 @@
 import type { ContentReference } from "@/features/content/types";
+import type { ExamSection, ExamStructure, QuestionBlock } from "./types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion, TopicQuotaIndex } from "./review-types";
 
 /** Sai lệch số thập phân nhỏ hơn mức này coi là bằng nhau (điểm và số câu máy chủ tính bằng BigDecimal). */
@@ -56,6 +57,40 @@ export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
 export function complianceDifference(row: PreviewCompliance): number {
   const difference = row.actual - row.required;
   return Math.abs(difference) > EPSILON ? difference : 0;
+}
+
+/**
+ * Chỉ tiêu chủ đề của cả bài theo id (`TOPIC:<id>`): đi qua mọi môn của phần cố định, nhóm môn của phần theo mã và lựa
+ * chọn, lấy chỉ tiêu ở môn và ở từng khối. `undefined` khi chưa có cấu trúc.
+ */
+export function buildTopicQuotaIndex(structure: ExamStructure | undefined): TopicQuotaIndex | undefined {
+  if (!structure) return undefined;
+  const index: TopicQuotaIndex = new Map();
+  const addQuotas = (items: readonly (ExamSection | QuestionBlock)[] | undefined) => {
+    for (const item of items ?? []) {
+      for (const quota of item.topicQuotas ?? []) {
+        index.set(quota.id, {
+          name: quota.name,
+          enforcement: quota.enforcement,
+          nodeIds: quota.nodeIds,
+          difficultyCodes: quota.difficultyCodes ?? [],
+        });
+      }
+    }
+  };
+  const addSection = (section: ExamSection) => {
+    addQuotas([section]);
+    addQuotas(section.blocks);
+  };
+  for (const part of structure.parts) {
+    part.sections.forEach(addSection);
+    part.subjectPool?.forEach(addSection);
+    for (const option of part.options) {
+      option.sections.forEach(addSection);
+      addQuotas(option.blocks);
+    }
+  }
+  return index;
 }
 
 /**
