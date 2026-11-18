@@ -130,13 +130,25 @@ Sub-issue theo plan A5 (17 task, 100 điểm):
 | BE-1 | UNI-2650 | 10 | 1 | BE-9 | UNI-2660 | 4 | 4 |
 | BE-2 | UNI-2651 | 4 | 1 | FE-1 | UNI-2661 | 6 | 2 |
 | BE-3 | UNI-2652 | 4 | 1 | FE-2 | UNI-2662 | 8 | 2 |
-| BE-10 | UNI-2653 | 3 | 2 | FE-3a | UNI-2663 | 7 | 3 |
-| BE-4a | UNI-2654 | 6 | 2 | FE-3b | UNI-2664 | 6 | 4 |
-| BE-4b | UNI-2655 | 4 | 3 | FE-4 | UNI-2665 | 6 | 3 |
-| BE-5 | UNI-2656 | 10 | 3 | QA | UNI-2666 | 6 | 5 |
+| BE-10 | UNI-2653 | 3 | 2 | FE-3a | UNI-2663 | 8 | 3 |
+| BE-4a | UNI-2654 | 6 | 2 | FE-3b | UNI-2664 | 9 | 4 |
+| BE-4b | UNI-2655 | 4 | 3 | FE-4 | UNI-2665 | 7 | 3 |
+| BE-5 | UNI-2656 | 10 | 3 | QA | UNI-2666 | 7 | 5 |
 | BE-8 | UNI-2657 | 5 | 3 | | | | |
 | BE-6 | UNI-2658 | 5 | 2 | | | | |
 | BE-7 | UNI-2659 | 6 | 2 | | | | |
+
+Bổ sung V-ACT, THPTQG (UNI-2671, kế hoạch `docs/plans/2026-11-18-pbi04-dot-2b-bo-sung-vact-thpt.md`). Tổng đợt tăng từ 100 lên 127 điểm.
+
+| Task | Issue | Điểm | Nội dung |
+|---|---|---|---|
+| BE-11 | UNI-2672 | 2 | Hợp đồng mở rộng: cờ mẫu, `percent`, `everyChildInScope` |
+| BE-12 | UNI-2673 | 5 | Bộ giải: chùm cỡ linh hoạt, mọi câu con thuộc chủ đề |
+| BE-13 | UNI-2674 | 6 | Mẫu THPTQG, V-ACT, phạm vi mới, bài ôn |
+| BE-14 | UNI-2675 | 2 | Nhãn và dữ liệu câu hỏi mẫu |
+| BE-15 | UNI-2676 | 3 | Kiểm tra: chặn công bố, khóa số câu, chờ mapping |
+| FE-5 | UNI-2677 | 3 | Web admin: bước 1 cho V-ACT, THPTQG |
+| G2b | UNI-2678 | 0 | Bản vẽ bổ sung (cổng thiết kế) |
 
 Đã merge vào `integration/dot-2b` (issue chuyển `in_review`, chờ người duyệt):
 
@@ -151,6 +163,7 @@ Sub-issue theo plan A5 (17 task, 100 điểm):
 - BE-10 UNI-2653, PR #89 (`750133d7`), 2026-11-18.
 - BE-8 UNI-2657, PR #90 (`98a42e93`), 2026-11-18.
 - BE-5 UNI-2656, PR #91 (`89c040e9`), 2026-11-18.
+- G2b UNI-2678, PR #92 (`d30122ea`), 2026-11-18.
 
 ### Thứ tự làm
 
