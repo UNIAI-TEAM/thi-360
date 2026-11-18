@@ -245,6 +245,51 @@ class HscaVsatExamScopeIT extends AbstractIntegrationTest {
         assertThat(after.path("parts").get(0).path("displaySegments")).isEmpty();
     }
 
+    // ------------------------------------------------------------ ADV:BE-18:1 điểm 2
+
+    @Test
+    void aVsatPartExamDropsTheStrandQuotasButTheSubjectExamKeepsThem() throws Exception {
+        JsonNode subject = created(create("VSAT", "SUBJECT", null, "DIA", 60, null));
+        JsonNode quotas = structure(subject.path("id").asText())
+                .path("parts").get(0).path("sections").get(0).path("topicQuotas");
+        assertThat(quotas).hasSize(5);
+        assertThat(quotas.findValuesAsText("basis")).containsOnly("PROMPT");
+
+        JsonNode part = created(create("VSAT", "PART", "P1", "DIA", 30, null));
+        assertThat(structure(part.path("id").asText())
+                .path("parts").get(0).path("sections").get(0).path("topicQuotas")).isEmpty();
+    }
+
+    @Test
+    void anOlderKindPartExamKeepsItsNonPromptTopicQuotas() throws Exception {
+        JsonNode exam = created(create("SP2E", "PART", "P1", "TOAN", 30, null));
+        String id = exam.path("id").asText();
+        JsonNode current = structure(id);
+        ArrayNode parts = current.path("parts").deepCopy();
+        ObjectNode section = (ObjectNode) parts.get(0).path("sections").get(0);
+        section.putArray("topicQuotas").add(mapper.createObjectNode()
+                .put("id", "sp2e-part-quota").put("name", "Chỉ tiêu tham khảo").put("count", 10)
+                .put("basis", "QUESTION").put("enforcement", "REFERENCE"));
+        save(id, current, parts).andExpect(status().isOk());
+
+        JsonNode quotas = structure(id).path("parts").get(0).path("sections").get(0).path("topicQuotas");
+        assertThat(quotas).hasSize(1);
+        assertThat(quotas.get(0).path("id").asText()).isEqualTo("sp2e-part-quota");
+    }
+
+    @Test
+    void aVsatPartExamStillSavesItsStructureWithoutStrandQuotas() throws Exception {
+        JsonNode exam = created(create("VSAT", "PART", "P1", "DIA", 30, null));
+        String id = exam.path("id").asText();
+        JsonNode current = structure(id);
+        ArrayNode parts = current.path("parts").deepCopy();
+        ((ObjectNode) parts.get(0)).put("name", "Phần I đã đổi tên");
+        save(id, current, parts).andExpect(status().isOk());
+        assertThat(structure(id).path("parts").get(0).path("name").asText())
+                .isEqualTo("Phần I đã đổi tên");
+    }
+
+
     // ------------------------------------------------------------------------------------------------ helpers
 
     private void addSegments(ObjectNode part) {

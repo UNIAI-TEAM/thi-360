@@ -57,6 +57,7 @@ import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.ExamStructureInvalidException;
 import vn.unicom.thi360.exam.domain.ExamStructureOps;
 import vn.unicom.thi360.exam.domain.ExamStructureValidator;
+import vn.unicom.thi360.exam.domain.QuotaBasis;
 import vn.unicom.thi360.exam.domain.ExamTemplate;
 import vn.unicom.thi360.exam.domain.KnowledgeScope;
 import vn.unicom.thi360.exam.domain.OptionKind;
@@ -579,6 +580,12 @@ public class ExamService {
         return ExamStructureOps.assignMissingIds(new ExamStructureDocument(parts));
     }
 
+    /**
+     * Chọn một phần của mẫu môn. Chỉ tiêu theo lệnh ({@code PROMPT}) là tổng của cả môn nên không đi theo
+     * phần: bỏ khỏi mọi section của phần được chọn, còn chỉ tiêu các basis khác giữ nguyên (UNI-2690; số lệnh
+     * theo mạch sẽ có phần khi FU-VSAT-STRAND-SCOPE xong bản đồ). Cắt bên ngoài và đường so mẫu cùng đi qua
+     * phương thức hai tham số này nên hai phía luôn giống nhau.
+     */
     private ExamStructureDocument selectSubjectPart(ExamStructureDocument doc, String partCode) {
         List<ExamPart> parts = doc.parts().stream()
                 .filter(p -> p.order() != null && ("P" + p.order()).equals(partCode))
@@ -587,7 +594,47 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
                     messages.get(ExamErrorCodes.PART_NOT_FOUND));
         }
-        return new ExamStructureDocument(parts);
+        return new ExamStructureDocument(parts.stream().map(this::withoutPromptQuotas).toList());
+    }
+
+    private ExamPart withoutPromptQuotas(ExamPart part) {
+        List<ExamPartOption> options = part.options().stream()
+                .map(this::withoutPromptQuotas).toList();
+        List<ExamSection> sections = part.sections().stream()
+                .map(this::withoutPromptQuotas).toList();
+        List<ExamSection> subjectPool = part.subjectPool().stream()
+                .map(this::withoutPromptQuotas).toList();
+        if (options.equals(part.options()) && sections.equals(part.sections())
+                && subjectPool.equals(part.subjectPool())) {
+            return part;
+        }
+        return new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(),
+                part.questionCount(), part.questionCountOnPaper(), part.questionCountRequired(),
+                part.participation(), part.maxPoints(), sections, options, subjectPool,
+                part.codeSource(), part.displaySegments());
+    }
+
+    private ExamPartOption withoutPromptQuotas(ExamPartOption option) {
+        List<ExamSection> sections = option.sections().stream()
+                .map(this::withoutPromptQuotas).toList();
+        if (sections.equals(option.sections())) {
+            return option;
+        }
+        return new ExamPartOption(option.id(), option.kind(), option.code(), option.name(),
+                option.chooseSubjects(), option.countsByPick(), sections, option.blocks(),
+                option.expertConfirmed());
+    }
+
+    private ExamSection withoutPromptQuotas(ExamSection section) {
+        if (section.topicQuotas().stream().noneMatch(q -> q.basis() == QuotaBasis.PROMPT)) {
+            return section;
+        }
+        return new ExamSection(section.id(), section.subjectCode(), section.questionCount(),
+                section.knowledgeScope(), section.answerQuotas(), section.matrix(),
+                section.choiceGroup(), section.blocks(),
+                section.topicQuotas().stream()
+                        .filter(q -> q.basis() != QuotaBasis.PROMPT).toList(),
+                section.audioRequirement());
     }
 
     /**
