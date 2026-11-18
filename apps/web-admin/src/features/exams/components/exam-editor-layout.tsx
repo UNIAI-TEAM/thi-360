@@ -5,12 +5,13 @@ import { ArrowLeft, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { EXAM_EDITOR_TABS, examTabFromPathname, examTabHref } from "../editor-tabs";
 import { useExam } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
 import type { ExamDetail } from "../types";
+import { ExamEditorActionsSlot } from "./exam-editor-actions";
 
 /**
  * Khung chung của trang soạn bài thi `/exams/[id]/...`: tiêu đề, chip trạng thái, dải tóm tắt (`<dl>`), thanh
@@ -22,6 +23,7 @@ export function ExamEditorLayout({ examId, children }: { examId: string; childre
   const pathname = usePathname();
   const activeTab = examTabFromPathname(pathname);
   const examQuery = useExam(examId);
+  const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
 
   if (examQuery.isPending) {
     return (
@@ -61,7 +63,7 @@ export function ExamEditorLayout({ examId, children }: { examId: string; childre
   const exam = examQuery.data;
   return (
     <div className="flex flex-col gap-5">
-      <ExamEditorHeader exam={exam} />
+      <ExamEditorHeader exam={exam} actionsRef={setActionsSlot} />
       <NavTabs aria-label={t("editor.tabsLabel")}>
         {EXAM_EDITOR_TABS.map((tab) => (
           <NavTab key={tab} asChild current={tab === activeTab}>
@@ -69,12 +71,14 @@ export function ExamEditorLayout({ examId, children }: { examId: string; childre
           </NavTab>
         ))}
       </NavTabs>
-      <div key={activeTab}>{children}</div>
+      <ExamEditorActionsSlot.Provider value={actionsSlot}>
+        <div key={activeTab}>{children}</div>
+      </ExamEditorActionsSlot.Provider>
     </div>
   );
 }
 
-function ExamEditorHeader({ exam }: { exam: ExamDetail }) {
+function ExamEditorHeader({ exam, actionsRef }: { exam: ExamDetail; actionsRef: (node: HTMLDivElement | null) => void }) {
   const t = useTranslations("exams");
   const format = useFormatter();
   return (
@@ -86,19 +90,22 @@ function ExamEditorHeader({ exam }: { exam: ExamDetail }) {
         <ArrowLeft aria-hidden className="size-4" />
         {t("editor.backToList")}
       </Link>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1 className="min-w-0 text-page-title font-bold wrap-break-word text-text">{exam.name}</h1>
-        <StatusChip tone={EXAM_STATUS_TONE[exam.status]}>
-          {exam.status === "PUBLISHED" && exam.servingVersion !== null
-            ? t("status.servingVersion", { version: exam.servingVersion })
-            : t(`status.${exam.status}`)}
-        </StatusChip>
-        {exam.hasUnpublishedChanges && <StatusChip tone="warning">{t("status.unpublishedChanges")}</StatusChip>}
-        <StatusChip tone={EXAM_CHECK_TONE[exam.check.status]}>
-          {exam.check.status === "INVALID"
-            ? t("checkStatus.issues", { count: exam.check.issueCount })
-            : t(`checkStatus.${exam.check.status}`)}
-        </StatusChip>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="min-w-0 text-page-title font-bold wrap-break-word text-text">{exam.name}</h1>
+          <StatusChip tone={EXAM_STATUS_TONE[exam.status]}>
+            {exam.status === "PUBLISHED" && exam.servingVersion !== null
+              ? t("status.servingVersion", { version: exam.servingVersion })
+              : t(`status.${exam.status}`)}
+          </StatusChip>
+          {exam.hasUnpublishedChanges && <StatusChip tone="warning">{t("status.unpublishedChanges")}</StatusChip>}
+          <StatusChip tone={EXAM_CHECK_TONE[exam.check.status]}>
+            {exam.check.status === "INVALID"
+              ? t("checkStatus.issues", { count: exam.check.issueCount })
+              : t(`checkStatus.${exam.check.status}`)}
+          </StatusChip>
+        </div>
+        <div ref={actionsRef} className="flex flex-wrap items-center justify-end gap-2 empty:hidden" />
       </div>
       <dl className="flex flex-wrap gap-x-6 gap-y-2 text-body">
         <SummaryItem label={t("summary.code")} value={exam.code} />

@@ -222,7 +222,7 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
     expect(screen.getByText(/tự nhiên \+ tự nhiên \+ tự nhiên: 16 \+ 17 \+ 17 hoặc 17 \+ 16 \+ 17 hoặc 17 \+ 17 \+ 16/)).toBeInTheDocument();
 
     const card = screen.getByRole("region", { name: "Khoa học" });
-    expect(within(card).getAllByRole("button", { name: /^Soạn môn / })).toHaveLength(5);
+    expect(within(card).getAllByRole("button", { name: /^Thiết lập môn / })).toHaveLength(5);
     expect(screen.queryByText(/KH-\d/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sinh tổ hợp" })).not.toBeInTheDocument();
     expect(screen.queryByText("Chờ chuyên gia xác nhận")).not.toBeInTheDocument();

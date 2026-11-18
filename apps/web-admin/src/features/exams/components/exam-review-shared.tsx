@@ -8,6 +8,7 @@ import { useCallback, useMemo, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ChoiceNameResolver } from "../check";
 import { type ChangeLevel, parseChangeWhere } from "../change-where";
+import { roundForDisplay } from "../display-number";
 import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
@@ -125,8 +126,8 @@ export function useIssueText() {
         bucket,
         hasBucket: bucket ? "yes" : "no",
         dimension: issue.dimension ?? "NONE",
-        required: issue.required ?? 0,
-        available: issue.available ?? 0,
+        required: roundForDisplay(issue.required ?? 0),
+        available: roundForDisplay(issue.available ?? 0),
         seconds: issue.timeLimitSeconds ?? 0,
         answerType: issue.answerType ? tContent(`questionType.${issue.answerType}`) : "",
         count: issue.subjectCount ?? 0,

@@ -10,12 +10,15 @@ import type {
   ExamPart,
   ExamPartOption,
   ExamSection,
+  ExamSectionState,
   ExamStatus,
   ExamSummary,
   ExamTemplate,
   ExamTemplateBlock,
   ExamTemplatePart,
   ExamTemplateSection,
+  ExamStructureSummary,
+  ExamStructureSummaryRow,
   ExamVersion,
   KnowledgeScope,
   MatrixDimensionValue,
@@ -36,6 +39,53 @@ type ApiMatrix = Schemas["BlockMatrix"];
 type ApiScope = Schemas["KnowledgeScope"];
 
 const nullable = <T>(value: T | null | undefined): T | null => value ?? null;
+
+/** `null` khi máy chủ chưa tính trạng thái môn (BE-5): màn không hiện huy hiệu (khác danh sách rỗng). */
+export function mapSectionStates(
+  states: readonly Schemas["ExamSectionState"][] | null | undefined,
+): ExamSectionState[] | null {
+  if (!states) return null;
+  return states.map((item) => ({
+    partId: item.partId ?? null,
+    sectionId: item.sectionId ?? null,
+    subjectCode: item.subjectCode ?? null,
+    state: item.state === "CHECKED" || item.state === "NEEDS_CHECK" ? item.state : "INCOMPLETE",
+  }));
+}
+
+/**
+ * Hàng của `structure/summary` như BE-5 thật trả: cây phần → môn → nhóm qua `children`. OpenAPI chưa khai `children`
+ * (springdoc bỏ trường tự tham chiếu) nên kiểu sinh chỉ có các trường phẳng; thêm lại ở đây cho đến khi hợp đồng sửa.
+ */
+type ApiSummaryRow = Schemas["ExamStructureSummaryRow"] & { children?: ApiSummaryRow[] | null };
+
+function flattenSummary(rows: readonly ApiSummaryRow[] | null | undefined, into: ExamStructureSummaryRow[]) {
+  for (const row of rows ?? []) {
+    into.push({
+      name: row.name ?? null,
+      partId: row.partId ?? null,
+      sectionId: row.sectionId ?? null,
+      blockId: row.blockId ?? null,
+      target: row.target ?? null,
+      allocated: row.allocated ?? null,
+      difference: row.difference ?? null,
+      essayCount: row.essayCount ?? null,
+      objectiveCount: row.objectiveCount ?? null,
+      setCount: row.setCount ?? null,
+      commandCount: row.commandCount ?? null,
+      childCount: row.childCount ?? null,
+      maxPoints: row.maxPoints ?? null,
+    });
+    flattenSummary(row.children, into);
+  }
+}
+
+/** Dàn cây tổng hợp thành các dòng phẳng theo thứ tự phần → môn → nhóm (bảng ở vùng (d) đọc theo thứ tự này). */
+export function mapStructureSummary(response: { parts?: readonly ApiSummaryRow[] | null }): ExamStructureSummary {
+  const rows: ExamStructureSummaryRow[] = [];
+  flattenSummary(response.parts, rows);
+  return { rows };
+}
 
 function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   if (!scope) return null;
@@ -148,6 +198,14 @@ export function mapPart(part: ApiPart, index: number): ExamPart {
     mode: choice ? "CHOICE" : "FIXED",
     sections: (part.sections ?? []).map(mapSection),
     options: (part.options ?? []).map(mapOption),
+    // Phần theo mã (R-24): môn nằm trong `subjectPool`; bỏ hai trường này thì phần bị coi là phần chọn rỗng và lưu cấu
+    // trúc sẽ xóa môn của phần.
+    ...(part.codeSource
+      ? {
+          codeSource: { source: part.codeSource.source ?? "GLOBAL_LIST", branch: part.codeSource.branch ?? null },
+          subjectPool: (part.subjectPool ?? []).map(mapSection),
+        }
+      : {}),
   };
 }
 
