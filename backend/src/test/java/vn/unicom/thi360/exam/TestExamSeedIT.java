@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -799,15 +800,31 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, block_id, part_id, knowledge_inherited) "
                     + "VALUES (?, ?, ?, ?, true)", UUID.randomUUID(), prior, ref.getBlockId(), ref.getPartId());
         }
-        // A deliberately edited draft: its refs were rewritten with other ids by the projector.
-        jdbc.update("DELETE FROM exam.exam_block_ref WHERE exam_id = ?", edited);
+        // A draft whose structure really changed through the API: a block removed and another block's
+        // points changed. The API rewrote its refs completely, with its own ids and metadata.
+        var apiStructure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", edited)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var editedParts = (com.fasterxml.jackson.databind.node.ArrayNode) apiStructure.path("parts").deepCopy();
+        var blockArrays = editedParts.findValues("blocks");
+        var shrinking = (com.fasterxml.jackson.databind.node.ArrayNode) blockArrays.stream()
+                .filter(array -> array.size() >= 2).findFirst().orElseThrow();
+        String removedBlock = shrinking.get(shrinking.size() - 1).path("id").asText();
+        shrinking.remove(shrinking.size() - 1);
+        var firstBlock = (com.fasterxml.jackson.databind.node.ObjectNode) blockArrays.getFirst().get(0);
+        String changedBlock = firstBlock.path("id").asText();
+        firstBlock.put("requiredPointsPerQuestion", firstBlock.path("requiredPointsPerQuestion").asInt(1) + 3);
+        var update = mapper.createObjectNode().put("expectedRevision", apiStructure.path("revision").asLong());
+        update.set("parts", editedParts);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", edited).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(update.toString()))
+                .andExpect(status().isOk());
         String editedDocument = jdbc.queryForObject(
                 "SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, edited);
-        var editedRefs = projectedRefs(edited, editedDocument);
-        for (var ref : editedRefs) {
-            jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, block_id, part_id, knowledge_inherited) "
-                    + "VALUES (?, ?, ?, ?, true)", UUID.randomUUID(), edited, ref.getBlockId(), ref.getPartId());
-        }
+        assertThat(editedDocument).contains(changedBlock).doesNotContain(removedBlock);
+        var editedProjection = describeRefs(projectedRefs(edited, editedDocument));
+        assertThat(describeSeededRefs(edited)).as("API-written refs are complete").isEqualTo(editedProjection);
+        assertThat(editedProjection).containsKey(changedBlock).doesNotContainKey(removedBlock);
         List<Map<String, Object>> editedBefore = jdbc.queryForList(
                 "SELECT id, block_id FROM exam.exam_block_ref WHERE exam_id = ? ORDER BY block_id", edited);
 
@@ -817,8 +834,12 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForList("SELECT block_id FROM exam.exam_block_ref WHERE exam_id = ? ORDER BY block_id",
                 String.class, prior)).containsExactlyElementsOf(
                         legacyRefs.stream().map(ref -> ref.getBlockId()).sorted().toList());
+        assertThat(jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?",
+                String.class, edited)).as("edited structure is retained").isEqualTo(editedDocument);
         assertThat(jdbc.queryForList("SELECT id, block_id FROM exam.exam_block_ref WHERE exam_id = ? ORDER BY block_id",
                 edited)).isEqualTo(editedBefore);
+        assertThat(describeSeededRefs(edited)).as("projected refs incl. metadata are retained")
+                .isEqualTo(editedProjection);
         for (var exam : jdbc.queryForList("SELECT e.id FROM exam.exam e WHERE e.code LIKE 'TEST-%'", UUID.class)) {
             assertThat(jdbc.queryForObject("""
                     SELECT count(*) FROM exam.exam_block_ref r
