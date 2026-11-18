@@ -626,7 +626,7 @@ public final class ExamCheckRules {
     private void values(List<ObjectNode> found, SectionContext context, QuestionBlock block, List<BigDecimal> values,
                         MatrixUnit unit, int count, String dimension, String countCode, boolean countVaries, Integer subjectCount) {
         if (values.isEmpty()) return;
-        if (values.stream().anyMatch(ExamCheckRules::notInteger)) return; // handled before solver construction
+        if (values.stream().anyMatch(Objects::isNull)) return; // handled before solver construction
         BigDecimal minimum = values.stream().min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
         BigDecimal sum = values.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         String code = minimum.signum() < 0 ? "MATRIX_NEGATIVE"
@@ -697,14 +697,19 @@ public final class ExamCheckRules {
             if (block != null) blockContext(issue, block);
             found.add(issues.key(issue));
         }
-        matrix.cells().forEach(value -> invalidValue(found, context, block, value.value(), null));
-        matrix.byGrade().forEach(value -> invalidValue(found, context, block, value.value(), "GRADE"));
-        matrix.byDifficulty().forEach(value -> invalidValue(found, context, block, value.value(), "DIFFICULTY"));
-        matrix.byCompetency().forEach(value -> invalidValue(found, context, block, value.value(), "COMPETENCY"));
+        boolean pointBasis = matrix.basis() == QuotaBasis.POINTS;
+        matrix.cells().forEach(value -> invalidValue(found, context, block, value.value(), null,
+                pointBasis && matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE));
+        matrix.byGrade().forEach(value -> invalidValue(found, context, block, value.value(), "GRADE",
+                pointBasis && matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE));
+        matrix.byDifficulty().forEach(value -> invalidValue(found, context, block, value.value(), "DIFFICULTY",
+                pointBasis && matrix.difficultyEnforcement() == QuotaEnforcement.REFERENCE));
+        matrix.byCompetency().forEach(value -> invalidValue(found, context, block, value.value(), "COMPETENCY", false));
     }
 
-    private void invalidValue(List<ObjectNode> found, SectionContext context, QuestionBlock block, BigDecimal value, String dimension) {
-        if (notInteger(value)) found.add(nonInteger(context, block, value, dimension));
+    private void invalidValue(List<ObjectNode> found, SectionContext context, QuestionBlock block, BigDecimal value,
+                              String dimension, boolean decimalAllowed) {
+        if (value == null || (!decimalAllowed && notInteger(value))) found.add(nonInteger(context, block, value, dimension));
         else if (value.signum() < 0) found.add(negative(context, block, value, dimension));
     }
 

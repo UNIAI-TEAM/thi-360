@@ -412,24 +412,24 @@ final class ExamCheckPathPresenter {
                     ? QuotaBasis.QUESTION : info.section.matrix().basis();
             ExamCheckDistribution.DimensionCounts actual = paper == null ? null : paper.basis(basis);
             if ("COMBINED".equals(matrix.path("mode").asText())) {
-                Map<String, Integer> gradeTotals = new LinkedHashMap<>(), difficultyTotals = new LinkedHashMap<>();
+                Map<String, BigDecimal> gradeTotals = new LinkedHashMap<>(), difficultyTotals = new LinkedHashMap<>();
                 for (var cell : matrix.path("cells")) {
-                    gradeTotals.merge(cell.path("gradeCode").asText(), cell.path("required").asInt(), Integer::sum);
-                    difficultyTotals.merge(cell.path("difficultyCode").asText(), cell.path("required").asInt(), Integer::sum);
+                    gradeTotals.merge(cell.path("gradeCode").asText(), cell.path("required").decimalValue(), BigDecimal::add);
+                    difficultyTotals.merge(cell.path("difficultyCode").asText(), cell.path("required").decimalValue(), BigDecimal::add);
                 }
-                dimensions(grades, gradeTotals, units, true, complete, actual);
-                dimensions(difficulties, difficultyTotals, units, false, complete, actual);
+                dimensions(grades, gradeTotals, units, true, complete && basis == QuotaBasis.QUESTION, actual);
+                dimensions(difficulties, difficultyTotals, units, false, complete && basis == QuotaBasis.QUESTION, actual);
             } else {
-                Map<String, Integer> gradeTotals = dimensionMap(matrix.path("byGrade"));
-                Map<String, Integer> difficultyTotals = dimensionMap(matrix.path("byDifficulty"));
-                dimensions(grades, gradeTotals, units, true, complete, actual);
-                dimensions(difficulties, difficultyTotals, units, false, complete, actual);
+                Map<String, BigDecimal> gradeTotals = dimensionMap(matrix.path("byGrade"));
+                Map<String, BigDecimal> difficultyTotals = dimensionMap(matrix.path("byDifficulty"));
+                dimensions(grades, gradeTotals, units, true, complete && basis == QuotaBasis.QUESTION, actual);
+                dimensions(difficulties, difficultyTotals, units, false, complete && basis == QuotaBasis.QUESTION, actual);
             }
         }
         return out;
     }
 
-    private void dimensions(ArrayNode out, Map<String, Integer> values, List<CountingUnit> units,
+    private void dimensions(ArrayNode out, Map<String, BigDecimal> values, List<CountingUnit> units,
                             boolean grade, boolean complete, ExamCheckDistribution.DimensionCounts actual) {
         for (var value : values.entrySet()) {
             long have = units.stream().filter(unit -> value.getKey().equals(grade ? unit.gradeCode() : unit.difficultyCode())).count();
@@ -437,14 +437,14 @@ final class ExamCheckPathPresenter {
                     : (grade ? actual.grade() : actual.difficulty()).getOrDefault(value.getKey(), BigDecimal.ZERO);
             ObjectNode item = out.addObject(); item.put("code", value.getKey()); item.put("required", value.getValue());
             if (witness != null) item.put("achieved", witness);
-            else if (complete) item.put("achieved", Math.min(value.getValue(), have));
+            else if (complete) item.put("achieved", value.getValue().min(BigDecimal.valueOf(have)));
             else item.putNull("achieved");
         }
     }
 
-    private static Map<String, Integer> dimensionMap(com.fasterxml.jackson.databind.JsonNode nodes) {
-        Map<String, Integer> values = new LinkedHashMap<>();
-        nodes.forEach(node -> values.put(node.path("code").asText(), node.path("required").asInt()));
+    private static Map<String, BigDecimal> dimensionMap(com.fasterxml.jackson.databind.JsonNode nodes) {
+        Map<String, BigDecimal> values = new LinkedHashMap<>();
+        nodes.forEach(node -> values.put(node.path("code").asText(), node.path("required").decimalValue()));
         return values;
     }
 
@@ -459,9 +459,8 @@ final class ExamCheckPathPresenter {
         ArrayNode cells = out.putArray("cells"), grades = out.putArray("byGrade"),
                 difficulties = out.putArray("byDifficulty"), competencies = out.putArray("byCompetency");
         if (matrix.mode() == MatrixMode.COMBINED) {
-            int[] amounts = matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE
-                    ? ExamCheckDistribution.resolve(matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), total)
-                    : ExamCheckQuantities.resolve(matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), count);
+            BigDecimal[] amounts = amounts(matrix.cells().stream().map(cell -> cell.value()).toList(),
+                    matrix, count, total, matrix.gradeEnforcement());
             if (amounts == null) return null;
             for (int i = 0; i < amounts.length; i++) {
                 var cell = matrix.cells().get(i); ObjectNode value = cells.addObject();
@@ -479,11 +478,18 @@ final class ExamCheckPathPresenter {
                                   BlockMatrix matrix, int count, BigDecimal total, QuotaEnforcement enforcement) {
         if (items.isEmpty()) return;
         var values = items.stream().map(item -> item.value()).toList();
-        int[] amounts = enforcement == QuotaEnforcement.REFERENCE
-                ? ExamCheckDistribution.resolve(values, matrix.unit(), total)
-                : ExamCheckQuantities.resolve(values, matrix.unit(), count);
+        BigDecimal[] amounts = amounts(values, matrix, count, total, enforcement);
         if (amounts == null) return;
         for (int i = 0; i < amounts.length; i++) { ObjectNode value = out.addObject(); value.put("code", items.get(i).code()); value.put("required", amounts[i]); }
+    }
+
+    private static BigDecimal[] amounts(List<BigDecimal> values, BlockMatrix matrix, int count,
+                                        BigDecimal total, QuotaEnforcement enforcement) {
+        if (enforcement == QuotaEnforcement.REFERENCE) {
+            return ExamCheckDistribution.resolve(values, matrix.unit(), total, matrix.basis());
+        }
+        int[] resolved = ExamCheckQuantities.resolve(values, matrix.unit(), count);
+        return resolved == null ? null : java.util.Arrays.stream(resolved).mapToObj(BigDecimal::valueOf).toArray(BigDecimal[]::new);
     }
 
     private static ObjectNode context(ObjectNode issue, SectionInfo info, QuestionBlock block) {

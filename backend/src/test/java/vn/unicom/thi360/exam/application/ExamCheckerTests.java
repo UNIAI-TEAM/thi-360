@@ -225,6 +225,47 @@ class ExamCheckerTests {
     }
 
     @Test
+    void pointReferenceRowsAndWarningsPreserveDecimalValues() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 0);
+        UUID id = UUID.randomUUID();
+        Unit unit = new Unit(id, null, QuestionType.SINGLE_CHOICE, "G12", "D", List.of(), List.of(),
+                new BigDecimal("0.25"));
+        candidates.put(subjects.get("MATH"), List.of(new Candidate(id, 1, null, List.of(unit), null, null)));
+        for (String matrix : List.of(
+                """
+                {"mode":"SEPARATE","unit":"COUNT","basis":"POINTS","gradeEnforcement":"REFERENCE",
+                 "byGrade":[{"code":"G12","value":0.25}]}
+                """,
+                """
+                {"mode":"COMBINED","unit":"COUNT","basis":"POINTS","gradeEnforcement":"REFERENCE",
+                 "difficultyEnforcement":"REFERENCE","cells":[{"gradeCode":"G12","difficultyCode":"D","value":0.25}]}
+                """)) {
+            JsonNode result = check(exam, document(singleStructure(1, null, "\"matrix\":" + matrix + ","))).result();
+            assertThat(result.path("status").asText()).isEqualTo("VALID");
+            assertThat(issueCodes(result)).doesNotContain("DISTRIBUTION_DEVIATION", "MATRIX_NON_INTEGER");
+            JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+            assertThat(row.path("required").decimalValue()).isEqualByComparingTo("0.25");
+            assertThat(row.path("achieved").decimalValue()).isEqualByComparingTo("0.25");
+        }
+        String percent = """
+                "matrix":{"mode":"SEPARATE","unit":"PERCENT","basis":"POINTS","gradeEnforcement":"REFERENCE",
+                "byGrade":[{"code":"G12","value":50},{"code":"G10","value":50}]},
+                """;
+        JsonNode result = check(exam, document(singleStructure(1, null, percent))).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+        assertThat(row.path("required").decimalValue()).isEqualByComparingTo("0.125");
+        assertThat(row.path("achieved").decimalValue()).isEqualByComparingTo("0.25");
+        JsonNode warning = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                .filter(issue -> "DISTRIBUTION_DEVIATION".equals(issue.path("code").asText())
+                        && "G12".equals(issue.path("gradeCode").asText())).findFirst().orElseThrow();
+        assertThat(warning.path("required").decimalValue()).isEqualByComparingTo("0.125");
+        assertThat(warning.path("available").decimalValue()).isEqualByComparingTo("0.25");
+    }
+
+    @Test
     void sharedTimingAndEmptyPartsBlockTheirPaths() throws Exception {
         Exam exam = exam(1, null, "RAW");
         subject("MATH", 1);

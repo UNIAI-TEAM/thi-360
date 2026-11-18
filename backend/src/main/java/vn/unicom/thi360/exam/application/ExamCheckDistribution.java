@@ -252,13 +252,13 @@ final class ExamCheckDistribution {
             if (matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE
                     || matrix.difficultyEnforcement() == QuotaEnforcement.REFERENCE) {
                 List<BigDecimal> values = matrix.cells().stream().map(c -> c.value()).toList();
-                int[] required = resolve(values, matrix.unit(), total);
+                BigDecimal[] required = resolve(values, matrix.unit(), total, basis);
                 if (required == null) return;
                 for (int i = 0; i < required.length; i++) {
                     var cell = matrix.cells().get(i);
                     BigDecimal have = actual.cells().getOrDefault(
                             List.of(String.valueOf(cell.gradeCode()), String.valueOf(cell.difficultyCode())), BigDecimal.ZERO);
-                    if (have.compareTo(BigDecimal.valueOf(required[i])) != 0) {
+                    if (have.compareTo(required[i]) != 0) {
                         found.add(deviation(section, block, evidence, "GRADE",
                                 cell.gradeCode(), cell.difficultyCode(), required[i], have, basis));
                     }
@@ -285,11 +285,11 @@ final class ExamCheckDistribution {
                                   List<String> codes, MatrixUnit unit, Map<String, BigDecimal> actual,
                                   BigDecimal total, QuotaBasis basis) {
         if (values.isEmpty()) return;
-        int[] required = resolve(values, unit, total);
+        BigDecimal[] required = resolve(values, unit, total, basis);
         if (required == null) return;
         for (int i = 0; i < required.length; i++) {
             BigDecimal have = actual.getOrDefault(codes.get(i), BigDecimal.ZERO);
-            if (have.compareTo(BigDecimal.valueOf(required[i])) != 0) {
+            if (have.compareTo(required[i]) != 0) {
                 found.add(deviation(section, block, evidence, dimension, codes.get(i), null,
                         required[i], have, basis));
             }
@@ -307,25 +307,20 @@ final class ExamCheckDistribution {
         QuotaBasis basis = quota.basis() == null ? QuotaBasis.QUESTION : quota.basis();
         DimensionCounts actual = counts(applicable).basis(basis);
         BigDecimal total = actual.total();
-        List<Integer> percents = new ArrayList<>();
-        boolean allPercent = true;
-        for (ExamQuota.Bucket bucket : quota.buckets()) {
-            if (bucket.count() != null) { allPercent = false; continue; }
-            if (bucket.percent() == null) return;
-            try { percents.add(bucket.percent().intValueExact()); }
-            catch (ArithmeticException e) { return; }
-        }
-        int[] required = new int[quota.buckets().size()];
-        if (allPercent && !percents.isEmpty()) {
-            required = APPORTIONER.apportion(percents,
-                    total.setScale(0, RoundingMode.HALF_UP).intValue());
+        if (quota.buckets().isEmpty()) return;
+        BigDecimal[] required = new BigDecimal[quota.buckets().size()];
+        boolean allPercent = quota.buckets().stream().allMatch(bucket -> bucket.count() == null && bucket.percent() != null);
+        if (allPercent && basis != QuotaBasis.POINTS) {
+            List<BigDecimal> percents = quota.buckets().stream().map(ExamQuota.Bucket::percent).toList();
+            required = resolve(percents, MatrixUnit.PERCENT, total, basis);
+            if (required == null) return;
         } else {
             for (int i = 0; i < required.length; i++) {
                 ExamQuota.Bucket bucket = quota.buckets().get(i);
-                if (bucket.count() != null) { required[i] = bucket.count(); continue; }
+                if (bucket.count() != null) { required[i] = BigDecimal.valueOf(bucket.count()); continue; }
                 if (bucket.percent() == null) return;
-                required[i] = bucket.percent().multiply(total)
-                        .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP).intValue();
+                BigDecimal amount = bucket.percent().multiply(total).movePointLeft(2);
+                required[i] = basis == QuotaBasis.POINTS ? amount : amount.setScale(0, RoundingMode.HALF_UP);
             }
         }
         for (int i = 0; i < required.length; i++) {
@@ -333,7 +328,7 @@ final class ExamCheckDistribution {
             BigDecimal have = applicable.stream()
                     .filter(unit -> matches(unit.unit(), quota.dimension(), codes))
                     .map(unit -> weight(unit.unit(), basis)).reduce(BigDecimal.ZERO, BigDecimal::add);
-            if (have.compareTo(BigDecimal.valueOf(required[i])) == 0) continue;
+            if (have.compareTo(required[i]) == 0) continue;
             ObjectNode issue = issues.create("EXAM_QUOTA_DEVIATION", "MATRIX", "WARNING");
             issue.put("dimension", quota.dimension() == null ? null : quota.dimension().name());
             if (quota.dimension() == ExamQuota.Dimension.DIFFICULTY) {
@@ -360,7 +355,7 @@ final class ExamCheckDistribution {
 
     private ObjectNode deviation(ExamSection section, QuestionBlock block, PathEvidence evidence,
                                  String dimension, String gradeCode, String difficultyCode,
-                                 long required, BigDecimal available, QuotaBasis basis) {
+                                 BigDecimal required, BigDecimal available, QuotaBasis basis) {
         ObjectNode issue = issues.create("DISTRIBUTION_DEVIATION", "MATRIX", "WARNING");
         ExamPart part = sectionParts.get(section.id());
         String optionId = sectionOptions.get(section.id());
@@ -414,23 +409,19 @@ final class ExamCheckDistribution {
     }
 
     /** Resolve declared matrix values (COUNT or PERCENT) against the basis total on the paper. */
-    static int[] resolve(List<BigDecimal> values, MatrixUnit unit, BigDecimal total) {
-        if (unit == MatrixUnit.PERCENT) {
-            List<Integer> percents = new ArrayList<>(values.size());
-            for (BigDecimal value : values) {
-                if (value == null) return null;
-                try { percents.add(value.intValueExact()); }
-                catch (ArithmeticException e) { return null; }
-            }
-            return APPORTIONER.apportion(percents, total.setScale(0, RoundingMode.HALF_UP).intValue());
+    static BigDecimal[] resolve(List<BigDecimal> values, MatrixUnit unit, BigDecimal total, QuotaBasis basis) {
+        if (unit == null || values.stream().anyMatch(Objects::isNull)) return null;
+        if (unit != MatrixUnit.PERCENT) return values.toArray(BigDecimal[]::new);
+        if (basis == QuotaBasis.POINTS) {
+            return values.stream().map(value -> value.multiply(total).movePointLeft(2)).toArray(BigDecimal[]::new);
         }
-        int[] out = new int[values.size()];
-        for (int i = 0; i < values.size(); i++) {
-            if (values.get(i) == null) return null;
-            try { out[i] = values.get(i).intValueExact(); }
+        List<Integer> percents = new ArrayList<>(values.size());
+        for (BigDecimal value : values) {
+            try { percents.add(value.intValueExact()); }
             catch (ArithmeticException e) { return null; }
         }
-        return out;
+        int[] counts = APPORTIONER.apportion(percents, total.intValueExact());
+        return java.util.Arrays.stream(counts).mapToObj(BigDecimal::valueOf).toArray(BigDecimal[]::new);
     }
 
     private static List<List<SubjectPick>> tuples(List<List<SubjectPick>> picks) {
