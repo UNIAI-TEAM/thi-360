@@ -73,7 +73,10 @@ class CatalogSeedUpgradeIT {
                     ('00000000-0000-7000-8200-000000000203', '00000000-0000-7000-8100-000000000002', 'ANH', 'anh', 3, 'Anh', 2, 1, false, 1, '/00000000-0000-7000-8200-000000000203/'),
                     ('ffbd8a8b-e696-54c4-b87f-fd2e3033f0fe', '00000000-0000-7000-8100-000000000007', 'QD05', 'qd05', 9, 'QD05', 17, 1, false, 1, '/ffbd8a8b-e696-54c4-b87f-fd2e3033f0fe/'),
                     ('6710590e-fa21-5bc6-9c00-3db3e7b4675f', '00000000-0000-7000-8100-000000000008', 'TEST-HIEM', 'test-hiem', 1, 'Test', 0, 1, false, 1, '/6710590e-fa21-5bc6-9c00-3db3e7b4675f/'),
-                    ('11111111-1111-4111-8111-111111111111', '00000000-0000-7000-8100-000000000008', 'USER-TAG', 'user-tag', 2, 'User', 1, 1, false, 1, '/11111111-1111-4111-8111-111111111111/')
+                    ('11111111-1111-4111-8111-111111111111', '00000000-0000-7000-8100-000000000008', 'USER-TAG', 'user-tag', 2, 'User', 1, 1, false, 1, '/11111111-1111-4111-8111-111111111111/'),
+                    ('11111111-1111-4111-8111-111111111112', '00000000-0000-7000-8100-000000000008', 'NONE', 'none', 3, 'None', 2, 1, false, 1, '/11111111-1111-4111-8111-111111111112/'),
+                    ('11111111-1111-4111-8111-111111111113', '00000000-0000-7000-8100-000000000008', 'VACT-TOAN', 'vact-toan', 4, 'VACT Toan', 3, 1, false, 1, '/11111111-1111-4111-8111-111111111113/'),
+                    ('11111111-1111-4111-8111-111111111114', '00000000-0000-7000-8100-00000000000a', 'VACT', 'vact', 6, 'VACT', 5, 1, false, 1, '/11111111-1111-4111-8111-111111111114/')
                     """);
                 db.execute("""
                     INSERT INTO catalog.combination_version (id, item_id, version_no, exam_item_id, source_note, is_current)
@@ -113,5 +116,26 @@ class CatalogSeedUpgradeIT {
                         .content("{\"code\":\"AFTER-UPGRADE\",\"nameVi\":\"After upgrade\"}"))
                 .andExpect(status().isCreated()).andReturn();
         assertThat(mapper.readTree(result.getResponse().getContentAsString()).get("value").asInt()).isGreaterThan(highWater);
+    }
+
+    @Test
+    void overlappingExistingCatalogCodesDoNotClassifyNewSamples() {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question q
+                join questionbank.question_tag t on t.question_id = q.id
+                join catalog.catalog_item tag on tag.id = t.tag_item_id
+                where q.code like 'SEED-BE14-%' and tag.code in ('NONE', 'VACT-TOAN')
+                """, Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question q
+                join catalog.catalog_item c on c.id = q.competency_item_id
+                where q.code like 'SEED-BE14-VACT-TOAN-NONE-%'
+                  and c.code = 'VACT-TOAN'
+                """, Integer.class)).isGreaterThanOrEqualTo(12);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question q
+                join catalog.catalog_item c on c.id = q.competency_item_id
+                where q.code like 'SEED-BE14-%' and c.code = 'VACT'
+                """, Integer.class)).isZero();
     }
 }
