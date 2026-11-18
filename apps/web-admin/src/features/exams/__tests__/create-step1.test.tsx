@@ -1,19 +1,27 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ContentReference } from "@/features/content/types";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, templateUuid } from "./fake-exams-backend";
+import { examDetailWire } from "./fake-exams-server";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
-const referenceMock = vi.hoisted(() => ({ error: null as Error | null }));
+const referenceMock = vi.hoisted(() => ({
+  error: null as Error | null,
+  /** Sửa danh mục trước khi trả (hồ sơ kỳ thi mới của BE-13 chưa có trong dữ liệu mẫu). */
+  patch: null as ((reference: ContentReference) => void) | null,
+}));
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
   const { getContentReferenceFixture } = await import("@/test/fixtures/content-reference");
   const getContentReference = async () => {
     if (referenceMock.error) throw referenceMock.error;
-    return getContentReferenceFixture();
+    const reference = await getContentReferenceFixture();
+    referenceMock.patch?.(reference);
+    return reference;
   };
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
@@ -38,6 +46,7 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/exams/new");
   routerMock.push.mockReset();
   referenceMock.error = null;
+  referenceMock.patch = null;
   backend = new ExamsBackend();
   backend.install();
 });
@@ -380,4 +389,199 @@ describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi
     await renderPage();
     expect(screen.getAllByText("Hướng dẫn làm bài").length).toBeGreaterThan(0);
   });
+});
+
+/* ------------------------------------------------ V-ACT, THPTQG (FE-5, UNI-2677) ------------------------------ */
+
+type Wire = Record<string, unknown>;
+const block = (name: string, count: number, extra: Wire = {}) => ({ id: null, name, questionType: "SINGLE_CHOICE", questionCount: count, ...extra });
+const section = (subjectCode: string, count: number, extra: Wire = {}, blocks: Wire[] = [block("Trắc nghiệm", count)]) => ({
+  id: null,
+  subjectCode,
+  questionCount: count,
+  blocks,
+  ...extra,
+});
+const competency = (code: string) => ({ knowledgeScope: { competencyCodes: [code] } });
+const part = (order: number, name: string, count: number, minutes: number | null, sections: Wire[], extra: Wire = {}) => ({
+  id: null,
+  order,
+  name,
+  durationMinutes: minutes,
+  questionCount: count,
+  participation: { mode: "ALL" },
+  mode: "FIXED",
+  sections,
+  ...extra,
+});
+const wireTemplate = (code: string, fields: Wire, parts: Wire[]): Wire => ({
+  active: true,
+  scope: "SUBJECT",
+  timing: "SHARED",
+  buildMode: "STANDARD",
+  isDefault: true,
+  publishable: true,
+  fixedCounts: false,
+  ...fields,
+  code,
+  structure: { parts },
+});
+
+const VIETNAMESE = section("VIETNAMESE", 30, competency("VACT-NN-TV"));
+const ENGLISH = section("ANH", 30, competency("VACT-NN-TA"));
+const MATH = section("TOAN", 30, competency("VACT-TOAN"));
+const LOGIC = section("SCIENTIFIC_THINKING", 12, competency("VACT-TD-LOGIC"));
+const REASONING = section("SCIENTIFIC_THINKING", 18, competency("VACT-TD-SL"));
+const PRIVATE = { timing: "SHARED", durationMinutes: null, fixedCounts: false };
+const VACT_TEMPLATES = [
+  wireTemplate("VACT_FULL", { kindCode: "VACT", scope: "FULL", durationMinutes: 150, maxScore: 1200, fixedCounts: true }, [
+    part(1, "Sử dụng ngôn ngữ", 60, null, [VIETNAMESE, ENGLISH], { maxPoints: 600 }),
+    part(2, "Toán học", 30, null, [MATH], { maxPoints: 300 }),
+    part(3, "Tư duy khoa học", 30, null, [LOGIC, REASONING], { maxPoints: 300 }),
+  ]),
+  wireTemplate("VACT_PART_LANGUAGE", { kindCode: "VACT", scope: "PART", partCode: "LANGUAGE", maxScore: 600, ...PRIVATE }, [
+    part(1, "Sử dụng ngôn ngữ", 60, null, [VIETNAMESE, ENGLISH], { maxPoints: 600 }),
+  ]),
+  wireTemplate("VACT_PART_THINKING", { kindCode: "VACT", scope: "PART", partCode: "THINKING", maxScore: 300, ...PRIVATE }, [
+    part(1, "Tư duy khoa học", 30, null, [LOGIC, REASONING], { maxPoints: 300 }),
+  ]),
+  wireTemplate("VACT_PART_LOGIC", { kindCode: "VACT", scope: "PART", partCode: "LOGIC", maxScore: 120, ...PRIVATE }, [
+    part(1, "Logic và phân tích số liệu", 12, null, [LOGIC], { maxPoints: 120 }),
+  ]),
+  wireTemplate("VACT_PART_REASONING", { kindCode: "VACT", scope: "PART", partCode: "REASONING", maxScore: 180, ...PRIVATE }, [
+    part(1, "Suy luận khoa học", 18, null, [REASONING], { maxPoints: 180 }),
+  ]),
+  wireTemplate("VACT_SUBJECT_VIETNAMESE", { kindCode: "VACT", subjectCode: "VIETNAMESE", maxScore: 300, ...PRIVATE }, [
+    part(1, "Tiếng Việt", 30, null, [VIETNAMESE], { maxPoints: 300 }),
+  ]),
+  wireTemplate("VACT_SUBJECT_ANH", { kindCode: "VACT", subjectCode: "ANH", maxScore: 300, ...PRIVATE }, [
+    part(1, "Tiếng Anh", 30, null, [ENGLISH], { maxPoints: 300 }),
+  ]),
+  wireTemplate("VACT_SUBJECT_TOAN", { kindCode: "VACT", subjectCode: "TOAN", maxScore: 300, ...PRIVATE }, [
+    part(1, "Toán học", 30, null, [MATH], { maxPoints: 300 }),
+  ]),
+];
+
+const THPT_SUBJECT = { kindCode: "THPTQG", timing: "PER_PART", maxScore: 10 };
+const THPTQG_TEMPLATES = [
+  wireTemplate("THPTQG_MATH", { ...THPT_SUBJECT, subjectCode: "MATH" }, [
+    part(1, "Phần I", 12, 20, [section("MATH", 12)]),
+    part(2, "Phần II", 4, 20, [section("MATH", 4)]),
+    part(3, "Phần III", 6, 20, [section("MATH", 6)]),
+  ]),
+  wireTemplate("THPTQG_HISTORY", { ...THPT_SUBJECT, subjectCode: "HISTORY" }, [
+    part(1, "Phần I", 24, 25, [section("HISTORY", 24)]),
+    part(2, "Phần II", 4, 25, [section("HISTORY", 4)]),
+  ]),
+  wireTemplate("THPTQG_LITERATURE", { ...THPT_SUBJECT, subjectCode: "LITERATURE", publishable: false }, [
+    part(1, "Ngữ văn", 3, 120, [
+      section("LITERATURE", 3, {}, [block("Tự luận", 3, { questionType: "ESSAY", omitted: true })]),
+    ]),
+  ]),
+];
+
+/** Hồ sơ kỳ thi mới của BE-13 (chưa có trong dữ liệu mẫu): V-ACT ba phạm vi, THPTQG thêm Theo phần, hai môn V-ACT. */
+function patchNewProfiles(reference: ContentReference) {
+  reference.examKinds.find((kind) => kind.code === "VACT")!.scopes = ["FULL", "PART", "SUBJECT"];
+  reference.examKinds.find((kind) => kind.code === "THPTQG")!.scopes = ["SUBJECT", "PART"];
+  reference.subjects.push({ ...reference.subjects[0]!, code: "ANH", name: "Tiếng Anh" }, { ...reference.subjects[0]!, code: "TOAN", name: "Toán học" });
+}
+
+/** Trang với mẫu máy chủ giả đưa vào; POST /exams trả 201 để thấy bài vẫn tạo được. */
+async function renderWithTemplates(templates: Wire[]) {
+  referenceMock.patch = patchNewProfiles;
+  backend = new ExamsBackend();
+  backend.server.on("GET", TEMPLATES_PATH, { status: 200, body: templates });
+  backend.server.on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() });
+  backend.install();
+  const user = userEvent.setup();
+  renderWithProviders(<CreateExamPage />);
+  await screen.findByRole("form", { name: "Tạo bài thi" });
+  return user;
+}
+const chooseScope = (name: RegExp) => screen.getByRole("radio", { name });
+const partLabels = async () =>
+  within(await screen.findByRole("group", { name: /^Phần thi/ }))
+    .getAllByRole("radio")
+    .map((radio) => radio.closest("label")?.textContent);
+const pickSubject = async (user: UserEvent, label: string) => {
+  await user.click(screen.getByRole("combobox", { name: /^Môn/ }));
+  await user.click(await screen.findByRole("option", { name: label }));
+};
+
+describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
+  it("V-ACT Theo phần: bốn phần có tên, không hiện mã thô", async () => {
+    const user = await renderWithTemplates(VACT_TEMPLATES);
+    await pickKind(user, "V-ACT");
+    await user.click(chooseScope(/^Theo phần/));
+    expect(await partLabels()).toEqual(["Sử dụng ngôn ngữ", "Tư duy khoa học", "Logic và phân tích số liệu", "Suy luận khoa học"]);
+    for (const code of ["LANGUAGE", "THINKING", "LOGIC", "REASONING"]) expect(screen.queryByText(code)).toBeNull();
+  }, 20_000);
+
+  it("V-ACT Theo môn: Tiếng Việt, Tiếng Anh, Toán học", async () => {
+    const user = await renderWithTemplates(VACT_TEMPLATES);
+    await pickKind(user, "V-ACT");
+    await user.click(chooseScope(/^Theo môn/));
+    await user.click(screen.getByRole("combobox", { name: /^Môn/ }));
+    const names = (await screen.findAllByRole("option")).map((option) => option.textContent);
+    expect(names).toEqual(["Tiếng Việt", "Tiếng Anh", "Toán học"]);
+  }, 20_000);
+
+  it("V-ACT toàn bài: ô số câu của 5 tiểu mục chỉ đọc; tỷ lệ trong phần 50/50/100/40/60%, toàn bài 25/25/25/10/15%", async () => {
+    const user = await renderWithTemplates(VACT_TEMPLATES);
+    await pickKind(user, "V-ACT");
+    const EXPECTED: Array<[name: string, inPart: string, inExam: string]> = [
+      ["Tiếng Việt", "50%", "25%"],
+      ["Tiếng Anh", "50%", "25%"],
+      ["Toán học", "100%", "25%"],
+      ["Logic và phân tích số liệu", "40%", "10%"],
+      ["Suy luận khoa học", "60%", "15%"],
+    ];
+    expect(await screen.findByRole("columnheader", { name: "Tỷ lệ trong phần" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Tỷ lệ toàn bài" })).toBeInTheDocument();
+    for (const [label, inPart, inExam] of EXPECTED) {
+      const input = await screen.findByRole("textbox", { name: `Số câu của ${label}` });
+      expect(input).toHaveAttribute("readonly");
+      const cells = within(input.closest("tr")!).getAllByRole("cell");
+      expect([cells[2]!.textContent, cells[3]!.textContent]).toEqual([inPart, inExam]);
+    }
+  }, 20_000);
+
+  it("bài riêng V-ACT: số câu sửa được; để trống thời lượng báo lỗi ở ô thời lượng và không gửi yêu cầu tạo", async () => {
+    const user = await renderWithTemplates(VACT_TEMPLATES);
+    await pickKind(user, "V-ACT");
+    await user.click(chooseScope(/^Theo phần/));
+    const count = (await screen.findAllByRole("textbox", { name: /^Số câu của/ }))[0]!;
+    expect(count).not.toHaveAttribute("readonly");
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "V-ACT ngôn ngữ");
+    await user.click(submitButton());
+    const error = await screen.findByText(/Chưa nhập thời lượng\. Bài riêng của .+ không có thời lượng mặc định\./);
+    const duration = screen.getByRole("textbox", { name: "Thời lượng chung" });
+    expect(duration).toHaveAttribute("aria-invalid", "true");
+    expect(duration).toHaveAccessibleDescription(error.textContent!);
+    expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
+  }, 20_000);
+
+  it("THPTQG Ngữ văn: báo toàn bộ môn là tự luận, bài nháp vẫn tạo được", async () => {
+    const user = await renderWithTemplates(THPTQG_TEMPLATES);
+    await pickKind(user, "THPTQG");
+    await pickSubject(user, "Ngữ văn");
+    expect(await screen.findByText("Toàn bộ môn Ngữ văn là tự luận – tạm bỏ qua trong V1.")).toBeInTheDocument();
+    expect(screen.getByText(/chỉ lưu nháp, không công bố được/)).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "THPTQG Ngữ văn nháp");
+    await user.click(submitButton());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    expect(backend.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ kind: "THPTQG", scope: "SUBJECT", subjectCode: "LITERATURE" });
+  }, 20_000);
+
+  it("THPTQG Theo phần: chọn môn rồi chọn phần; Toán có 3 phần, Lịch sử 2 phần; môn khác không có thông báo Ngữ văn", async () => {
+    const user = await renderWithTemplates(THPTQG_TEMPLATES);
+    await pickKind(user, "THPTQG");
+    await user.click(chooseScope(/^Theo phần/));
+    await pickSubject(user, "Toán");
+    expect(await partLabels()).toHaveLength(3);
+    expect(screen.queryByText(/tạm bỏ qua trong V1/)).toBeNull();
+    await pickSubject(user, "Lịch sử");
+    await waitFor(async () => expect(await partLabels()).toHaveLength(2));
+  }, 20_000);
 });

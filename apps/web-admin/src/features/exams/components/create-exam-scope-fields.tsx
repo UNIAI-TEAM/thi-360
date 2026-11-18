@@ -1,7 +1,7 @@
 "use client";
 
 import { FormField, Select } from "@thi360/ui";
-import { Info } from "lucide-react";
+import { Info, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { CatalogOption, ExamKindOption } from "@/features/content/types";
 import {
@@ -72,6 +72,16 @@ export function CreateExamScopeFields({
     offers.size === 0 ||
     !latestTemplate(templates, { kind: selection.kind, scope: "SUBJECT", partCode: "", subjectCode: selection.subjectCode, buildMode: selection.buildMode ?? "STANDARD" });
   const subjectName = subjects.find((subject) => subject.code === selection.subjectCode)?.name ?? selection.subjectCode;
+  // Môn mà mẫu mặc định STANDARD không công bố được (H26, THPTQG Ngữ văn): báo rõ bài chỉ lưu nháp, tạo vẫn được.
+  const notPublishable =
+    Boolean(selection.subjectCode) &&
+    latestTemplate(templates, {
+      kind: selection.kind,
+      scope: "SUBJECT",
+      partCode: "",
+      subjectCode: selection.subjectCode,
+      buildMode: "STANDARD",
+    })?.publishable === false;
   const buildModes: Array<{ value: ExamBuildMode; label: string; description: string }> = [
     {
       value: "STANDARD",
@@ -110,6 +120,15 @@ export function CreateExamScopeFields({
               />
             )}
           </FormField>
+          {Boolean(selection.subjectCode) && notPublishable && (
+            <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2.5 text-body text-text-secondary">
+              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+              <span className="flex flex-col gap-0.5">
+                <span>{t("notPublishableNotice", { subject: subjectName })}</span>
+                <span className="text-caption">{t("notPublishableDraft")}</span>
+              </span>
+            </p>
+          )}
           {Boolean(selection.subjectCode) && noTemplate && !subjectFirst && (
             <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-body text-text-secondary">
               <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
@@ -127,7 +146,6 @@ export function CreateExamScopeFields({
               value={selection.partCode}
               required
               disabled={disabled}
-              variant="pill"
               hint={t("partHint")}
               options={partOptions}
               onChange={(partCode) => onChange({ partCode })}

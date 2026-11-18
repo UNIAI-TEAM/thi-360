@@ -178,6 +178,12 @@ const parseNumber = (text: string): number => {
 const formatShared = (value: number): string => (value ? String(value) : "");
 const formatScore = (value: number | null): string => (value == null ? "" : String(value));
 
+/**
+ * Tiểu mục V-ACT phân biệt bằng năng lực: hai mục cùng môn SCIENTIFIC_THINKING (H24) lấy tên theo mã năng lực
+ * (R-109: không hiện mã thô). Năng lực không thuộc bảng này rơi về tên môn của mục.
+ */
+const VACT_COMPETENCY_PART: Record<string, string> = { "VACT-TD-LOGIC": "LOGIC", "VACT-TD-SL": "REASONING" };
+
 interface CreateExamFormProps {
   /** Mẫu cấu trúc; rỗng khi chưa tải được (`templatesStatus` khác `ready`). */
   templates: readonly ExamTemplate[];
@@ -279,6 +285,28 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     [template, kinds, selection],
   );
   const showPoints = defaults.pointsByPart;
+  // H27: mẫu khóa số câu (V-ACT toàn bài) — ô số câu chỉ đọc, cột tỷ lệ hiện; bài riêng có tiểu mục hiện cột tỷ
+  // lệ toàn bài; cột "trong phần" chỉ khi mẫu nhiều phần (R-118, R-123).
+  const lockedCounts = template?.fixedCounts === true;
+  const showPartPercent = lockedCounts && (template?.parts.length ?? 0) > 1;
+  const showPercents =
+    showPartPercent ||
+    (selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
+  /** Dòng tiểu mục V-ACT: mục cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn. */
+  const sectionLabel = useCallback(
+    (row: OverviewRow) => partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode),
+    [partNames],
+  );
+  // H35: bài riêng của V-ACT, bài theo phần và bài ôn của THPTQG không có thời lượng mặc định (mẫu để trống) — lỗi
+  // đặt ở ô thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung.
+  const durationError = (() => {
+    const generic = formState.errors.sharedDuration?.message;
+    if (!generic || defaults.sharedDuration > 0) return generic;
+    if (selection.kind === "VACT" && selection.scope !== "FULL") return tStep("durationRequiredCustom", { kind: kindLabel(selection.kind) });
+    if (selection.kind !== "THPTQG") return generic;
+    if (selection.scope === "SUBJECT" && selection.buildMode === "REVIEW") return tStep("durationRequiredReview");
+    return tStep(selection.scope === "PART" ? "durationRequiredPart" : "durationRequiredBase");
+  })();
   // Mã gợi ý theo kỳ thi, phạm vi, phần hoặc môn; người dùng đã sửa mã thì giữ mã của họ.
   const suggestion = useSuggestedExamCode(
     {
@@ -605,6 +633,12 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
           >
             <TemplateNotes template={template} name={templateName(template) ?? undefined} />
             <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
+            {lockedCounts && (
+              <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
+                <Lock aria-hidden className="size-3.5" />
+                {tOverview("lockedCounts")}
+              </p>
+            )}
             {templatesStatus === "error" && (
               <div
                 role="alert"
@@ -631,12 +665,15 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 rows={rows}
                 timing={values.timing}
                 showPoints={showPoints}
+                showPercents={showPercents}
+                showPartPercent={showPartPercent}
                 onCellChange={onCellChange}
                 issues={cellIssues}
                 subjectName={subjectName}
+                sectionLabel={sectionLabel}
                 sharedDuration={{
                   value: sharedText,
-                  error: formState.errors.sharedDuration?.message,
+                  error: formState.errors.sharedDuration ? durationError : undefined,
                   onChange: (text) => {
                     setSharedText(text);
                     setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
