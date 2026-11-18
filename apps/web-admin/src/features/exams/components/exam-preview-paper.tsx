@@ -219,12 +219,13 @@ function PreviewItemView({
   const setLast = setNumbers[setNumbers.length - 1] ?? 0;
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <h5 id={headingId} className="font-semibold text-text">
           {t("setHeading", { index: setIndex, count: item.children.length })}
         </h5>
-        <Badge>{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
+        {/* "Có audio" đứng ngay sau số câu như bản vẽ `SinhThuAudio2B` (V-8). */}
         {audioAttachments(item.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
+        <Badge className="whitespace-normal wrap-anywhere">{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
       </div>
       <PreviewAudioList attachments={item.attachments} name={t("audio.forSet", { first: setFirst, last: setLast })} />
       {item.passage ? (
@@ -280,22 +281,24 @@ function QuestionArticle({
 
   return (
     <article aria-labelledby={headingId} className={compact ? "flex flex-col gap-2" : "flex flex-col gap-2 rounded-md border border-border p-3"}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <Heading id={headingId} className="font-semibold text-text">
           {t("questionNumber", { number })}
         </Heading>
+        {/* "Có audio" đứng ngay sau số câu như bản vẽ `SinhThuAudio2B` (V-8). */}
+        {audioAttachments(question.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
         {/* R-112: điểm tối đa của câu (chip thông tin, như bản vẽ `SinhThuVact2B`). */}
         <StatusChip tone="info">
           {t("questionPoints", { points: format.number(question.points, DISPLAY_NUMBER_FORMAT), value: question.points })}
         </StatusChip>
-        <Badge>{question.version !== null ? `${question.code} · v${question.version}` : question.code}</Badge>
+        {/* Mã câu dài được xuống dòng (V-7): hàng đã wrap, chip không giữ nowrap. */}
+        <Badge className="whitespace-normal wrap-anywhere">{question.version !== null ? `${question.code} · v${question.version}` : question.code}</Badge>
         <Badge>{types(question.type)}</Badge>
         <Badge>{lookup.grade(question.gradeCode)}</Badge>
         <Badge>{lookup.difficulty(question.difficultyCode)}</Badge>
         {question.knowledge && (
           <Badge className="whitespace-normal wrap-anywhere">{`${question.knowledge.code} · ${question.knowledge.name}`}</Badge>
         )}
-        {audioAttachments(question.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
       </div>
       <PreviewAudioList attachments={question.attachments} name={t("audio.forQuestion", { number })} />
       {blank !== undefined && (

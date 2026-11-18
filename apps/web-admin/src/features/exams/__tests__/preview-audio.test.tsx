@@ -414,3 +414,40 @@ describe("đọc tệp đính kèm và phân đoạn từ API sinh thử", () =>
     expect(setItem?.kind === "SET" && setItem.children[0]?.attachments).toEqual([]);
   });
 });
+
+describe("hàng tiêu đề câu trong đề thử (V-7, V-8)", () => {
+  it("chip 'Có audio' đứng ngay sau số câu, trước chip điểm và mã câu; chùm đặt chip ngay sau tên bộ", () => {
+    renderPaper(listening);
+
+    const questionRow = screen.getByRole("heading", { name: "Câu 1" }).parentElement;
+    expect(questionRow?.children[1]).toHaveTextContent("Có audio");
+    expect(questionRow?.children[2]).toHaveTextContent(/điểm/);
+
+    const setRow = screen.getByRole("heading", { name: "Bộ 1 · 3 câu liền nhau" }).parentElement;
+    expect(setRow?.children[1]).toHaveTextContent("Có audio");
+    expect(setRow?.children[2]).toHaveTextContent("SET-s1");
+  });
+
+  it("mã dài của câu và của chùm được xuống dòng trong hàng tiêu đề wrap, không tràn ngang ở khung hẹp", () => {
+    const longCode = "SEED-TASK-READING_COMPREHENSION-G11-NB-46";
+    renderPaper(
+      paperOf([
+        partOf({
+          blocks: [
+            block({
+              items: [single(question(1, { code: longCode })), set("s1", [question(2)], { code: `SET-${longCode}` })],
+            }),
+          ],
+        }),
+      ]),
+    );
+
+    const code = screen.getByText(`${longCode} · v1`);
+    expect(code).toHaveClass("whitespace-normal", "wrap-anywhere");
+    expect(code.parentElement).toHaveClass("flex-wrap", "min-w-0");
+
+    const setCode = screen.getByText(`SET-${longCode} · v1`);
+    expect(setCode).toHaveClass("whitespace-normal", "wrap-anywhere");
+    expect(setCode.parentElement).toHaveClass("flex-wrap", "min-w-0");
+  });
+});
