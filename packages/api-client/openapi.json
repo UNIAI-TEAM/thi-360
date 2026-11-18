@@ -4888,6 +4888,10 @@
             "description" : "Ghi chú của chuyên gia khi dựng mẫu",
             "type" : "string"
           },
+          "fixedCounts" : {
+            "description" : "Mẫu khóa số câu từng phần/mục (kiểm tra báo STRUCTURE_COUNT_LOCKED)",
+            "type" : "boolean"
+          },
           "isDefault" : {
             "description" : "Phiên bản mặc định",
             "type" : "boolean"
@@ -4912,6 +4916,10 @@
           "partCode" : {
             "description" : "Mã phần khi scope = PART",
             "type" : "string"
+          },
+          "publishable" : {
+            "description" : "Mẫu cho phép công bố bài (false: chỉ lưu nháp)",
+            "type" : "boolean"
           },
           "scope" : {
             "description" : "FULL | PART | SUBJECT",
@@ -4939,7 +4947,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "active", "buildMode", "code", "isDefault", "kindCode", "scope", "structure", "timing" ],
+        "required" : [ "active", "buildMode", "code", "fixedCounts", "isDefault", "kindCode", "publishable", "scope", "structure", "timing" ],
         "type" : "object"
       },
       "ExamVersionChange" : {
@@ -5530,6 +5538,9 @@
               "type" : "string"
             },
             "type" : "array"
+          },
+          "everyChildInScope" : {
+            "type" : "boolean"
           },
           "nodeIds" : {
             "items" : {
@@ -7677,6 +7688,9 @@
               "type" : "string"
             },
             "type" : "array"
+          },
+          "percent" : {
+            "type" : "number"
           }
         },
         "type" : "object"

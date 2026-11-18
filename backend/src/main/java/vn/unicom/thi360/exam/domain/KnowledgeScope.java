@@ -17,13 +17,21 @@ import java.util.UUID;
 public final class KnowledgeScope {
     private final List<UUID> nodeIds;
     private final List<String> competencyCodes;
+    private final Boolean everyChildInScope;
     private final Map<String, JsonNode> legacyFields = new LinkedHashMap<>();
+
+    /** Hàm dựng cũ (2 tham số) — giữ cho mã gọi hiện có; everyChildInScope để trống. */
+    public KnowledgeScope(List<UUID> nodeIds, List<String> competencyCodes) {
+        this(nodeIds, competencyCodes, null);
+    }
 
     @JsonCreator
     public KnowledgeScope(@JsonProperty("nodeIds") List<UUID> nodeIds,
-            @JsonProperty("competencyCodes") List<String> competencyCodes) {
+            @JsonProperty("competencyCodes") List<String> competencyCodes,
+            @JsonProperty("everyChildInScope") Boolean everyChildInScope) {
         this.nodeIds = nodeIds == null ? List.of() : List.copyOf(nodeIds);
         this.competencyCodes = competencyCodes == null ? List.of() : List.copyOf(competencyCodes);
+        this.everyChildInScope = everyChildInScope;
     }
 
     @JsonProperty("nodeIds")
@@ -34,6 +42,11 @@ public final class KnowledgeScope {
     @JsonProperty("competencyCodes")
     public List<String> competencyCodes() {
         return competencyCodes;
+    }
+
+    @JsonProperty("everyChildInScope")
+    public Boolean everyChildInScope() {
+        return everyChildInScope;
     }
 
     @JsonAnySetter
@@ -63,11 +76,12 @@ public final class KnowledgeScope {
         }
         return nodeIds.equals(that.nodeIds)
                 && competencyCodes.equals(that.competencyCodes)
+                && java.util.Objects.equals(everyChildInScope, that.everyChildInScope)
                 && legacyFields.equals(that.legacyFields);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(nodeIds, competencyCodes, legacyFields);
+        return java.util.Objects.hash(nodeIds, competencyCodes, everyChildInScope, legacyFields);
     }
 }

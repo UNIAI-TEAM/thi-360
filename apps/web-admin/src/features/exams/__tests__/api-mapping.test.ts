@@ -9,6 +9,8 @@ const block = { id: null, name: "Trac nghiem", questionType: "SINGLE_CHOICE", qu
 function template(parts: unknown[]): Template {
   return {
     active: true,
+    publishable: true,
+    fixedCounts: false,
     buildMode: "STANDARD",
     isDefault: true,
     code: "BCA_FULL",

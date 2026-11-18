@@ -278,6 +278,13 @@ public final class ExamStructureValidator {
                     || quota.basis() != null && quota.basis() != QuotaBasis.QUESTION) {
                 invalid(field, "topic quota is invalid");
             }
+            if (quota.percent() != null
+                    && (quota.percent().signum() < 0 || quota.percent().compareTo(ONE_HUNDRED) > 0)) {
+                throw new BusinessRuleException("EXAM_STRUCTURE_INVALID",
+                        "topic quota percent must be between 0 and 100",
+                        List.of(new FieldError(field, "PERCENT_OUT_OF_RANGE",
+                                "Topic quota percent must be between 0 and 100")));
+            }
         }
     }
 

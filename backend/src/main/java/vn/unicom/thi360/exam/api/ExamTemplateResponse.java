@@ -40,6 +40,11 @@ public record ExamTemplateResponse(
         boolean active,
         @Schema(description = "Tài liệu cấu trúc nguyên bản {parts: [...]} (id để null — client sinh)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        JsonNode structure
+        JsonNode structure,
+        @Schema(description = "Mẫu cho phép công bố bài (false: chỉ lưu nháp)", requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean publishable,
+        @Schema(description = "Mẫu khóa số câu từng phần/mục (kiểm tra báo STRUCTURE_COUNT_LOCKED)",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean fixedCounts
 ) {
 }

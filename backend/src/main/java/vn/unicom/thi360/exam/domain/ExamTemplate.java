@@ -48,6 +48,10 @@ public class ExamTemplate {
     private JsonNode structure;
     @Column(nullable = false)
     private boolean active;
+    @Column(nullable = false)
+    private boolean publishable = true;
+    @Column(name = "fixed_counts", nullable = false)
+    private boolean fixedCounts;
 
     protected ExamTemplate() {
     }
@@ -87,4 +91,6 @@ public class ExamTemplate {
     public boolean isDefaultTemplate() { return defaultTemplate; }
     public JsonNode getStructure() { return structure; }
     public boolean isActive() { return active; }
+    public boolean isPublishable() { return publishable; }
+    public boolean isFixedCounts() { return fixedCounts; }
 }
