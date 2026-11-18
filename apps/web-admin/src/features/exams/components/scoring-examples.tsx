@@ -60,6 +60,8 @@ export function scoringTypes(part: ExamPart): Map<QuestionType, number | null> {
 }
 
 const H_SCA_TYPES: readonly QuestionType[] = ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER"];
+/** Dạng câu V-SAT có ví dụ chấm: hai bảng Đúng/Sai, Ghép đôi và bảng "Các dạng còn lại". */
+const V_SAT_TYPES: readonly QuestionType[] = ["TRUE_FALSE", "MATCHING", "SINGLE_CHOICE", "SHORT_ANSWER", "CLOZE"];
 
 export interface ScoringExamplesProps {
   /** Mã kỳ thi của bài: chỉ `HSCA`, `VSAT` có khối này; kỳ thi khác không hiện gì. */
@@ -73,6 +75,8 @@ export function ScoringExamples({ kind, part }: ScoringExamplesProps) {
   const headingId = useId();
   if ((kind !== "HSCA" && kind !== "VSAT") || !part) return null;
   const types = scoringTypes(part);
+  // Phần không có dạng nào có ví dụ (V-SAT Ngữ văn chỉ có Tự luận, H-SCA không có câu chọn, trả lời ngắn): không vẽ khung rỗng.
+  if (!(kind === "VSAT" ? V_SAT_TYPES : H_SCA_TYPES).some((type) => types.has(type))) return null;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 sm:p-6">
       <div>
@@ -90,7 +94,7 @@ function ExampleTable({ caption, children }: { caption: string; children: ReactN
   const captionId = useId();
   return (
     <div role="region" tabIndex={0} aria-labelledby={captionId} className={cn("max-w-full overflow-x-auto rounded-lg border border-border", focusRing)}>
-      <table className="w-full min-w-[22rem] border-separate border-spacing-0 text-body tabular-nums">
+      <table className="w-full min-w-[22rem] border-separate border-spacing-0 text-body tabular-nums [&_tbody_tr:last-child>*]:border-b-0">
         <caption id={captionId} className="px-3.5 py-3 text-left text-title font-bold text-text">
           {caption}
         </caption>
@@ -101,7 +105,7 @@ function ExampleTable({ caption, children }: { caption: string; children: ReactN
 }
 
 const HEAD = "border-b border-border bg-subtle px-3.5 py-2 text-caption font-semibold text-text-muted";
-const CELL = "border-b border-border px-3.5 py-2.5 last-of-type:border-b-0";
+const CELL = "border-b border-border px-3.5 py-2.5";
 
 function VsatExamples({ types }: { types: Map<QuestionType, number | null> }) {
   const t = useTranslations("exams.structure.scoringExamples.vsat");
@@ -241,7 +245,6 @@ function HscaExamples({ types }: { types: Map<QuestionType, number | null> }) {
   const format = useFormatter();
   const number = (value: number) => format.number(value, { maximumFractionDigits: 4 });
   const rows = H_SCA_TYPES.filter((type) => types.has(type));
-  if (rows.length === 0) return null;
   const hasPartial = rows.includes("MULTIPLE_CHOICE");
   const notApplicable = <span className="text-text-muted">{t("notApplicable")}</span>;
 
@@ -259,13 +262,14 @@ function HscaExamples({ types }: { types: Map<QuestionType, number | null> }) {
         </thead>
         <tbody>
           {rows.map((type) => {
-            const points = types.get(type) ?? 1;
+            // Điểm mỗi câu của dòng chưa khai thì không có số để minh họa: hiện "—", không tự đặt mặc định.
+            const points = types.get(type) ?? null;
             const partial = type === "MULTIPLE_CHOICE";
             return (
               <tr key={type} className={partial ? "bg-warning-bg" : undefined}>
                 <th scope="row" className={cn(CELL, "text-left font-semibold")}>{tContent(`questionType.${type}`)}</th>
-                <td className={cn(CELL, "text-right")}>{number(points)}</td>
-                <td className={cn(CELL, "text-right", partial && "font-bold")}>{partial ? number(points / 2) : notApplicable}</td>
+                <td className={cn(CELL, "text-right")}>{points === null ? "—" : number(points)}</td>
+                <td className={cn(CELL, "text-right", partial && "font-bold")}>{!partial ? notApplicable : points === null ? "—" : number(points / 2)}</td>
                 <td className={cn(CELL, "text-right")}>0</td>
                 <td className={cn(CELL, "text-right")}>0</td>
               </tr>

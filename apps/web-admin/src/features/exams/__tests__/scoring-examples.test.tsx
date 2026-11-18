@@ -125,6 +125,24 @@ describe("ví dụ chấm H-SCA (R-140)", () => {
     expect(screen.queryByRole("note")).toBeNull();
     expect(screen.getByRole("rowheader", { name: "Một đáp án" }).closest("tr")).toHaveTextContent("1");
   });
+
+  it("R1-8 · khối chưa khai điểm mỗi câu: ô điểm hiện —, không tự đặt 1 điểm", () => {
+    renderWithProviders(
+      <ScoringExamples
+        kind="HSCA"
+        part={part([block({ questionType: "MULTIPLE_CHOICE", requiredPointsPerQuestion: null })])}
+      />,
+    );
+    const row = screen.getByRole("rowheader", { name: "Nhiều đáp án" }).closest("tr")!;
+    expect(Array.from(row.querySelectorAll("td"), (cell) => cell.textContent)).toEqual(["—", "—", "0", "0"]);
+  });
+
+  it("R1-6 · phần không có dạng nào có ví dụ: không có khung, tiêu đề hay mô tả", () => {
+    const essayOnly = part([block({ questionType: "ESSAY" })]);
+    expect(renderWithProviders(<ScoringExamples kind="VSAT" part={essayOnly} />).container).toBeEmptyDOMElement();
+    const noChoice = part([block({ questionType: "MATCHING" })]);
+    expect(renderWithProviders(<ScoringExamples kind="HSCA" part={noChoice} />).container).toBeEmptyDOMElement();
+  });
 });
 
 describe("kỳ thi khác", () => {
