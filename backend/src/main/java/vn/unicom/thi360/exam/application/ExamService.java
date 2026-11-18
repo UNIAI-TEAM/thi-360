@@ -826,10 +826,12 @@ public class ExamService {
     /**
      * Reference scale of the practice scoring. A scoped exam that scores LINEAR is checked against its own
      * maximum (V-ACT: 10 points per question), so a part or subject does not inherit the 1,200-point full
-     * scale; a FULL exam, or one without a computed maximum, keeps the profile scale.
+     * scale. When such an exam has no computed maximum (a review frame, whose size the administrator
+     * chooses) it has no reference scale either (null), and the check skips the total comparison.
+     * A FULL exam keeps the profile scale.
      */
     private static BigDecimal scopedReferenceMax(ExamKindProfile profile, String scope, BigDecimal maxScore) {
-        if ("LINEAR".equals(profile.getPracticeScoring()) && !"FULL".equals(scope) && maxScore != null) {
+        if ("LINEAR".equals(profile.getPracticeScoring()) && !"FULL".equals(scope)) {
             return maxScore;
         }
         return profile.getReferenceMax();

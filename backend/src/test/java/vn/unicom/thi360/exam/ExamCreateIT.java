@@ -627,7 +627,7 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void vactReviewKeepsTheProfileReferenceBecauseItHasNoMaximum() throws Exception {
+    void vactReviewHasNoReferenceMaximumBecauseItHasNoMaximum() throws Exception {
         var review = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -636,10 +636,37 @@ class ExamCreateIT extends AbstractIntegrationTest {
                                 + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         org.assertj.core.api.Assertions.assertThat(review.path("maxScore").isNull()).isTrue();
-        org.assertj.core.api.Assertions.assertThat(review.path("referenceMax").decimalValue()).isEqualByComparingTo("1200");
-        // The empty review frame has no points to total, so the kept 1,200 scale produces no mismatch.
+        org.assertj.core.api.Assertions.assertThat(review.path("referenceMax").isNull()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(review.path("practiceScoring").asText()).isEqualTo("LINEAR");
         org.assertj.core.api.Assertions.assertThat(checkCodes(review.path("id").asText()))
                 .doesNotContain("POINTS_TOTAL_MISMATCH");
+    }
+
+    @Test
+    void filledVactReviewWithTenPointQuestionsHasNoPointsTotalMismatch() throws Exception {
+        var review = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
+                                + "\"buildMode\":\"REVIEW\",\"durationMinutes\":45,\"name\":\"Review\",\"code\":\"T-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String id = review.path("id").asText();
+        var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) structure.path("parts").deepCopy();
+        var section = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0);
+        section.put("questionCount", 10);
+        var block = (com.fasterxml.jackson.databind.node.ObjectNode) section.path("blocks").get(0);
+        block.put("questionType", "SINGLE_CHOICE").put("questionCount", 10).put("requiredPointsPerQuestion", 10);
+        var request = mapper.createObjectNode().put("expectedRevision", structure.path("revision").asLong());
+        request.set("parts", parts);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        // 10 questions x 10 points = 100, which is not the 1,200 full scale.
+        org.assertj.core.api.Assertions.assertThat(checkCodes(id)).doesNotContain("POINTS_TOTAL_MISMATCH");
     }
 
     private java.util.Set<String> checkCodes(String id) throws Exception {
