@@ -106,4 +106,71 @@ class ExamCheckUnitSummaryTests {
         assertThat(part.difference()).isZero();
         assertThat(part.children()).hasSize(2);
     }
+    /**
+     * R1-2: an out-of-range command count is reported as undetermined (null) instead of throwing —
+     * per typed range, per block multiplication and in the aggregate.
+     */
+    @Test
+    void unrepresentableCommandCountsAreUndetermined() {
+        var perRange = codec.read("""
+                {"parts":[{"id":"p","questionCount":2147483647,"sections":[
+                  {"id":"s","subjectCode":"ANH","questionCount":2147483647,"blocks":[
+                    {"id":"set","questionType":"QUESTION_SET","setCount":1,"setSize":2147483647,
+                     "requiredPointsPerQuestion":6,"childConditions":[
+                      {"from":1,"to":2147483647,"answerType":"TRUE_FALSE","itemShape":{"statements":4}}]}]}]}]}
+                """);
+        var set = ExamCheckUnitSummary.summarize(new ExamStructureResponse(UUID.randomUUID(),
+                perRange.parts(), 1)).parts().getFirst().children().getFirst().children().getFirst();
+        assertThat(set.allocated()).isEqualTo(2147483647);
+        assertThat(set.commandCount()).isNull();
+
+        var perBlock = codec.read("""
+                {"parts":[{"id":"p","sections":[
+                  {"id":"s","subjectCode":"ANH","blocks":[
+                    {"id":"set","questionType":"QUESTION_SET","setCount":2147483647,"setSize":2,
+                     "requiredPointsPerQuestion":1,"childConditions":[
+                      {"from":1,"to":2,"answerType":"SINGLE_CHOICE"}]}]}]}]}
+                """);
+        var block = ExamCheckUnitSummary.summarize(new ExamStructureResponse(UUID.randomUUID(),
+                perBlock.parts(), 1)).parts().getFirst().children().getFirst().children().getFirst();
+        assertThat(block.allocated()).isNull();
+        assertThat(block.commandCount()).isNull();
+
+        var aggregate = codec.read("""
+                {"parts":[{"id":"p","sections":[
+                  {"id":"s","subjectCode":"ANH","questionCount":2147483646,"blocks":[
+                    {"id":"a","questionType":"SINGLE_CHOICE","questionCount":2147483646,
+                     "requiredPointsPerQuestion":1},
+                    {"id":"b","questionType":"TRUE_FALSE","questionCount":2147483646,
+                     "itemShape":{"statements":4},"requiredPointsPerQuestion":1}]}]}]}
+                """);
+        var part = ExamCheckUnitSummary.summarize(new ExamStructureResponse(UUID.randomUUID(),
+                aggregate.parts(), 1)).parts().getFirst();
+        assertThat(part.allocated()).isNull();
+        assertThat(part.commandCount()).isNull();
+        assertThat(part.children().getFirst().children().getFirst().commandCount())
+                .isEqualTo(2147483646);
+    }
+
+    /**
+     * R1-7: two mixed sets whose typed children hold a four-item MATCHING range and a choice range
+     * produce 2 × (4 + 1) = 10 commands in both the block and the part total.
+     */
+    @Test
+    void mixedSetsMultiplyTypedChildrenBySetCount() {
+        var document = codec.read("""
+                {"parts":[{"id":"p","questionCount":4,"sections":[
+                  {"id":"s","subjectCode":"ANH","questionCount":4,"blocks":[
+                    {"id":"set","questionType":"QUESTION_SET","setCount":2,"setSize":2,
+                     "requiredPointsPerQuestion":6,"childConditions":[
+                      {"from":1,"to":1,"answerType":"MATCHING","itemShape":{"leftItems":4}},
+                      {"from":2,"to":2,"answerType":"SINGLE_CHOICE"}]}]}]}]}
+                """);
+        var part = ExamCheckUnitSummary.summarize(new ExamStructureResponse(UUID.randomUUID(),
+                document.parts(), 1)).parts().getFirst();
+        var block = part.children().getFirst().children().getFirst();
+        assertThat(block.allocated()).isEqualTo(4);
+        assertThat(block.commandCount()).isEqualTo(10);
+        assertThat(part.commandCount()).isEqualTo(10);
+    }
 }

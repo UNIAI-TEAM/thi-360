@@ -105,15 +105,16 @@ public final class ExamCheckUnitSummary {
     private static Integer remainderCount(ExamSection section) {
         if (section.questionCount() == null || section.blocks().stream().filter(ExamCheckUnitSummary::isRemainder)
                 .count() != 1) return null;
-        int fixed = 0;
+        long fixed = 0;
         for (QuestionBlock other : section.blocks()) {
             if (isRemainder(other)) continue;
             Integer count = fixedCount(other);
             if (count == null) return null;
-            fixed = Math.addExact(fixed, count);
+            fixed += count;
+            if (fixed > Integer.MAX_VALUE) return null;
         }
-        int left = section.questionCount() - fixed;
-        return left < 0 ? null : Integer.valueOf(left);
+        long left = section.questionCount() - fixed;
+        return left < 0 || left > Integer.MAX_VALUE ? null : Integer.valueOf((int) left);
     }
 
     private static Row block(String partId, String sectionId, QuestionBlock block, Integer remainder) {
@@ -145,13 +146,18 @@ public final class ExamCheckUnitSummary {
 
     private static Row row(String part, String section, String block, String name, Integer target,
             Totals totals, Integer setCount, Integer childCount, List<Row> children) {
-        Integer difference = target == null || totals.count() == null ? null : totals.count() - target;
-        return new Row(part, section, block, name, target, totals.count(), difference, setCount, childCount,
+        Long difference = target == null || totals.count() == null ? null
+                : (long) totals.count() - target;
+        Integer differenceInt = difference == null || difference < Integer.MIN_VALUE
+                || difference > Integer.MAX_VALUE ? null : difference.intValue();
+        return new Row(part, section, block, name, target, totals.count(), differenceInt, setCount, childCount,
                 totals.commands(), totals.points(), totals.essays(), totals.objective(), children);
     }
 
     private static Integer multiply(Integer left, Integer right) {
-        return left == null || right == null ? null : Math.multiplyExact(left, right);
+        if (left == null || right == null) return null;
+        long result = (long) left * right;
+        return result < Integer.MIN_VALUE || result > Integer.MAX_VALUE ? null : (int) result;
     }
 
     /**
@@ -164,7 +170,7 @@ public final class ExamCheckUnitSummary {
         if (block.setSize() == null) {
             return null;
         }
-        int sum = 0;
+        long sum = 0;
         for (ChildCondition condition : block.childConditions()) {
             if (condition.answerType() == null || condition.from() == null || condition.to() == null
                     || condition.from() < 1 || condition.to() > block.setSize()
@@ -175,9 +181,11 @@ public final class ExamCheckUnitSummary {
             if (perChild == null) {
                 return null;
             }
-            sum = Math.addExact(sum, Math.multiplyExact(condition.to() - condition.from() + 1, perChild));
+            // Long arithmetic keeps an unrepresentable command count undetermined instead of throwing.
+            sum += (long) (condition.to() - condition.from() + 1) * perChild;
+            if (sum > Integer.MAX_VALUE) return null;
         }
-        return sum == 0 ? null : sum;
+        return sum == 0 ? null : (int) sum;
     }
 
     private static Integer perChildCommands(QuestionType answerType, ItemShape shape) {
@@ -215,17 +223,20 @@ public final class ExamCheckUnitSummary {
         if (option.chooseSubjects() == null || option.countsByPick() == null
                 || option.countsByPick().size() != option.chooseSubjects()
                 || option.countsByPick().stream().anyMatch(Objects::isNull)) return Totals.UNKNOWN;
-        int maximum = option.countsByPick().stream().mapToInt(Integer::intValue).max().orElse(0);
-        if (rows.stream().anyMatch(row -> !Objects.equals(row.target(), maximum))) return Totals.UNKNOWN;
+        long maximum = option.countsByPick().stream().mapToInt(Integer::intValue).max().orElse(0);
+        if (rows.stream().anyMatch(row -> !Objects.equals(row.target(), (int) maximum))) return Totals.UNKNOWN;
         Totals selected = choices(rows.stream().map(row -> new Totals(row.allocated(), row.commandCount(),
                 row.maxPoints(), row.essayCount(), row.objectiveCount())).toList(), option.chooseSubjects());
-        int dropped = Math.subtractExact(Math.multiplyExact(maximum, option.chooseSubjects()),
-                option.countsByPick().stream().mapToInt(Integer::intValue).sum());
+        long dropped = maximum * option.chooseSubjects()
+                - option.countsByPick().stream().mapToLong(Integer::longValue).sum();
         if (dropped == 0) return selected;
-        Integer count = selected.count() == null ? null : selected.count() - dropped;
+        if (selected.count() == null) return Totals.UNKNOWN;
+        long count = selected.count() - dropped;
+        Integer countInt = count < Integer.MIN_VALUE || count > Integer.MAX_VALUE
+                ? null : (int) count;
         // A dropped single may carry multiple commands or different points: those values
         // cannot be inferred from the configured counts alone.
-        return new Totals(count, null, null, null, null);
+        return new Totals(countInt, null, null, null, null);
     }
 
     private record Totals(Integer count, Integer commands, BigDecimal points, Integer essays, Integer objective) {
@@ -241,7 +252,11 @@ public final class ExamCheckUnitSummary {
                     points != null && other.points != null && points.compareTo(other.points) == 0 ? points : null,
                     equal(essays, other.essays), equal(objective, other.objective));
         }
-        private static Integer addInt(Integer a, Integer b) { return a == null || b == null ? null : Math.addExact(a, b); }
+        private static Integer addInt(Integer a, Integer b) {
+            if (a == null || b == null) return null;
+            long sum = (long) a + b;
+            return sum < Integer.MIN_VALUE || sum > Integer.MAX_VALUE ? null : (int) sum;
+        }
         private static Integer equal(Integer a, Integer b) { return Objects.equals(a, b) ? a : null; }
     }
 }
