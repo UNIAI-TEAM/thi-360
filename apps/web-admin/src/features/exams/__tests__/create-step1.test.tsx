@@ -571,11 +571,39 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
     expect(count).not.toHaveAttribute("readonly");
     await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "V-ACT ngôn ngữ");
     await user.click(submitButton());
-    const error = await screen.findByText(/Chưa nhập thời lượng\. Bài riêng của .+ không có thời lượng mặc định\./);
+    const error = await screen.findByText(/Chưa nhập thời lượng\. Bài riêng của .+ không có thời lượng mặc định\./, { selector: "p" });
     const duration = screen.getByRole("textbox", { name: "Thời lượng chung" });
     expect(duration).toHaveAttribute("aria-invalid", "true");
     expect(duration).toHaveAccessibleDescription(error.textContent!);
     expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
+  }, 20_000);
+
+  it("bài riêng V-ACT để trống thời lượng: danh sách Cần xử lý hiện đúng câu của ô thời lượng (FE5-V1-03)", async () => {
+    const user = await renderWithTemplates(VACT_TEMPLATES);
+    await pickKind(user, "V-ACT");
+    await user.click(chooseScope(/^Theo phần/));
+    await screen.findAllByRole("textbox", { name: /^Số câu của/ });
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "V-ACT ngôn ngữ");
+    await user.click(submitButton());
+    const message = "Chưa nhập thời lượng. Bài riêng của V-ACT không có thời lượng mặc định.";
+    await screen.findByText(message, { selector: "p" });
+    expect(screen.getByRole("textbox", { name: "Thời lượng chung" })).toHaveAccessibleDescription(message);
+    expect(within(summary()).getByText("Cần xử lý")).toBeInTheDocument();
+    expect(within(summary()).getAllByText(message)).toHaveLength(1);
+    expect(within(summary()).queryByText(/phải là số phút nguyên dương/)).toBeNull();
+  }, 20_000);
+
+  it("English: the To fix list shows the duration field's message, not the generic one (FE5-V1-03)", async () => {
+    const user = await renderWithTemplates(VACT_TEMPLATES, "en");
+    await user.click(screen.getByRole("combobox", { name: /^Exam type/ }));
+    await user.click(await screen.findByRole("option", { name: /\(V-ACT\)$/ }));
+    await user.click(screen.getByRole("radio", { name: /^By part/ }));
+    await screen.findAllByRole("textbox", { name: /^Questions of/ });
+    await user.type(screen.getByRole("textbox", { name: /^Exam name/ }), "V-ACT language");
+    await user.click(screen.getAllByRole("button", { name: "Save and continue" })[0]!);
+    const message = "Duration missing. Custom V-ACT exams have no default duration.";
+    await screen.findByText(message, { selector: "p" });
+    expect(within(screen.getByRole("region", { name: "Summary" })).getAllByText(message)).toHaveLength(1);
   }, 20_000);
 
   describe("tên phần và dòng V-ACT theo ngôn ngữ (FE5-V1-01)", () => {

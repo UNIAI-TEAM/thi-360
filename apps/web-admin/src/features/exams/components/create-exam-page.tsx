@@ -457,7 +457,9 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   const fieldLabel = (path: string) => (t.has(`fields.${path}`) ? t(`fields.${path}`) : path);
   const formIssues: CreateExamIssue[] = Object.entries(formState.errors).flatMap(([path, error]) =>
-    error?.message ? [{ path, field: fieldLabel(path), message: String(error.message) }] : [],
+    error?.message
+      ? [{ path, field: fieldLabel(path), message: path === "sharedDuration" ? (durationError ?? String(error.message)) : String(error.message) }]
+      : [],
   );
   const rowIssueItems: CreateExamIssue[] = overviewIssues.map((issue) => {
     const row = rows.find((item) => item.key === issue.rowKey);
