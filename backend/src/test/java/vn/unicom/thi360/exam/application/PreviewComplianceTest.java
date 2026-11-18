@@ -15,6 +15,7 @@ import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
 import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.exam.domain.solver.SolvePath;
+import vn.unicom.thi360.exam.domain.solver.TopicAssignment;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
@@ -96,19 +97,23 @@ class PreviewComplianceTest {
     }
 
     @Test
-    void overlappingTopicQuotasReportIndependentCounts() {
+    void overlappingRequiredTopicQuotasUseAssignmentsWhileReferenceIsIndependent() {
         UUID a = UUID.randomUUID();
         UUID b = UUID.randomUUID();
         var document = codec.read("""
                 {"parts":[{"id":"part","sections":[{"id":"math","subjectCode":"MATH","questionCount":3,
                   "topicQuotas":[{"id":"a","nodeIds":["%s"],"count":1},
-                                 {"id":"b","nodeIds":["%s"],"count":1}],
+                                 {"id":"b","nodeIds":["%s"],"count":1},
+                                 {"id":"reference","nodeIds":["%s"],"count":1,"enforcement":"REFERENCE"}],
                   "blocks":[{"id":"group","questionType":"SINGLE_CHOICE","questionCount":3}]}]}]}
-                """.formatted(a, b));
+                """.formatted(a, b, a));
         UUID both = UUID.randomUUID();
         UUID onlyA = UUID.randomUUID();
         UUID anotherA = UUID.randomUUID();
-        var picks = List.of(new QuestionPick(both.toString(), 1), new QuestionPick(onlyA.toString(), 1),
+        var picks = List.of(new QuestionPick(both.toString(), 1,
+                        List.of(new TopicAssignment("SECTION", "math", "b", 0))),
+                new QuestionPick(onlyA.toString(), 1,
+                        List.of(new TopicAssignment("SECTION", "math", "a", 0))),
                 new QuestionPick(anotherA.toString(), 1));
         var section = new SectionOnPath("MATH", "math", 3, null, List.of(GroupQuota.single("group", 3)));
         List<Compliance> rows = PreviewCompliance.evaluate(document, SolvePath.of(0, List.of(section)),
@@ -118,8 +123,32 @@ class PreviewComplianceTest {
                         new QuestionSourcePort.VersionKey(anotherA, 1), candidate(anotherA, "G12", List.of(a))),
                 List.of(), List.of());
         assertThat(rows).contains(
-                new Compliance("TOPIC:a", "SECTION:math", BigDecimal.ONE, BigDecimal.valueOf(3), "REQUIRED", "QUESTION_INDEPENDENT", null),
-                new Compliance("TOPIC:b", "SECTION:math", BigDecimal.ONE, BigDecimal.ONE, "REQUIRED", "QUESTION_INDEPENDENT", null));
+                new Compliance("TOPIC:a", "SECTION:math", BigDecimal.ONE, BigDecimal.ONE, "REQUIRED", "QUESTION", null),
+                new Compliance("TOPIC:b", "SECTION:math", BigDecimal.ONE, BigDecimal.ONE, "REQUIRED", "QUESTION", null),
+                new Compliance("TOPIC:reference", "SECTION:math", BigDecimal.ONE, BigDecimal.valueOf(3), "REFERENCE", "QUESTION_INDEPENDENT", null));
+    }
+
+    @Test
+    void droppedTopicUsesOriginalAssignmentAndRetainedUsesReassignment() {
+        UUID node = UUID.randomUUID();
+        UUID kept = UUID.randomUUID();
+        UUID removed = UUID.randomUUID();
+        var document = codec.read("""
+                {"parts":[{"id":"part","sections":[{"id":"science","subjectCode":"PHY","questionCount":2,
+                  "topicQuotas":[{"id":"topic","nodeIds":["%s"],"count":1}],
+                  "blocks":[{"id":"group","questionType":"SINGLE_CHOICE","questionCount":2}]}]}]}
+                """.formatted(node));
+        var assignment = new TopicAssignment("SECTION", "science", "topic", 0);
+        var keptPick = new QuestionPick(kept.toString(), 1, List.of(assignment));
+        var droppedPick = new QuestionPick(removed.toString(), 1, List.of(assignment));
+        var section = new SectionOnPath("PHY", "science", 1, null, List.of(GroupQuota.single("group", 2)));
+        var rows = PreviewCompliance.evaluate(document, SolvePath.of(0, List.of(section)),
+                Map.of("group", new GroupWitness("group", List.of(keptPick))),
+                Map.of(new QuestionSourcePort.VersionKey(kept, 1), candidate(kept, "G12", List.of(node)),
+                        new QuestionSourcePort.VersionKey(removed, 1), candidate(removed, "G12", List.of(node))),
+                List.of(new PreviewSnapshotStore.Dropped(droppedPick, "PHY", "science")), List.of());
+        assertThat(rows).contains(new Compliance("TOPIC:topic", "SECTION:science", BigDecimal.ZERO,
+                BigDecimal.ONE, "REQUIRED", "QUESTION", "dropped 1"));
     }
 
     @Test
@@ -137,7 +166,7 @@ class PreviewComplianceTest {
                 Map.of(new QuestionSourcePort.VersionKey(question, 1), candidate(question, null, List.of(node))),
                 List.of(), List.of());
         assertThat(rows).contains(new Compliance("TOPIC:a", "SECTION:math", BigDecimal.ONE, BigDecimal.ZERO,
-                "REQUIRED", "QUESTION_INDEPENDENT", null));
+                "REQUIRED", "QUESTION", null));
     }
 
     @Test

@@ -18,12 +18,14 @@ import vn.unicom.thi360.exam.domain.solver.QuestionPick;
 import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.SubjectPick;
+import vn.unicom.thi360.exam.domain.solver.TopicAssignment;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Reports configured quotas against the retained counting units of one generated paper. */
 final class PreviewCompliance {
     private record Datum(String sectionId, String subjectCode, String blockId,
-                         QuestionSourcePort.Unit unit, boolean dropped) {}
+                         QuestionSourcePort.Unit unit, boolean dropped,
+                         List<TopicAssignment> assignments, int unitIndex) {}
 
     static List<Compliance> evaluate(ExamStructureDocument document, SolvePath path,
             Map<String, GroupWitness> witnesses,
@@ -56,8 +58,10 @@ final class PreviewCompliance {
                 for (QuestionPick pick : witness.picks()) {
                     var candidate = candidates.get(key(pick));
                     if (candidate == null) throw new IllegalStateException("Selected candidate missing");
-                    for (var unit : candidate.units()) add(data, perSection, perBlock,
-                            new Datum(section.sectionId(), section.subjectCode(), blockId, unit, false));
+                    for (int i = 0; i < candidate.units().size(); i++) {
+                        add(data, perSection, perBlock, new Datum(section.sectionId(), section.subjectCode(),
+                                blockId, candidate.units().get(i), false, pick.topicAssignments(), i));
+                    }
                 }
             }
         }
@@ -67,8 +71,8 @@ final class PreviewCompliance {
             SectionOnPath section = selected.stream().filter(s -> s.sectionId().equals(item.sectionId()))
                     .findFirst().orElseThrow();
             String block = droppedBlock(section, witnesses, candidates, blocks);
-            add(data, perSection, perBlock,
-                    new Datum(section.sectionId(), section.subjectCode(), block, candidate.units().getFirst(), true));
+            add(data, perSection, perBlock, new Datum(section.sectionId(), section.subjectCode(), block,
+                    candidate.units().getFirst(), true, item.pick().topicAssignments(), 0));
         }
         List<Compliance> result = new ArrayList<>();
         Map<java.util.UUID, CatalogItemView> knowledgeById = new HashMap<>();
@@ -177,12 +181,20 @@ final class PreviewCompliance {
         for (TopicQuota quota : quotas) {
             QuotaBasis basis = quota.basis() == null ? QuotaBasis.QUESTION : quota.basis();
             QuotaEnforcement enforcement = quota.enforcement() == null ? QuotaEnforcement.REQUIRED : quota.enforcement();
-            Predicate<Datum> matches = datum -> matchesTopic(datum, quota, knowledge);
+            boolean assigned = enforcement == QuotaEnforcement.REQUIRED;
+            String[] scopeParts = scope.split(":", 2);
+            String level = "BLOCK".equals(scopeParts[0]) ? "GROUP" : scopeParts[0];
+            Predicate<Datum> matches = assigned
+                    ? datum -> datum.assignments().stream().anyMatch(a -> a.unitIndex() == datum.unitIndex()
+                            && level.equals(a.level()) && scopeParts[1].equals(a.scopeId())
+                            && quota.id().equals(a.quotaId()))
+                    : datum -> matchesTopic(datum, quota, knowledge);
             BigDecimal removed = sum(data, basis, datum -> datum.dropped() && matches.test(datum));
             BigDecimal actual = sum(data, basis, datum -> !datum.dropped() && matches.test(datum));
             result.add(new Compliance("TOPIC:" + quota.id(), scope,
                     BigDecimal.valueOf(quota.count()).subtract(removed), actual, enforcement.name(),
-                    basis.name() + "_INDEPENDENT", data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null));
+                    basis.name() + (assigned ? "" : "_INDEPENDENT"),
+                    data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null));
         }
     }
 
