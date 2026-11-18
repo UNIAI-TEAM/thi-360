@@ -18,6 +18,7 @@ import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Computes section states from current structure and the saved unit fingerprints. */
 @Service
@@ -29,10 +30,11 @@ public class ExamCheckUnitStates {
     private final SolverLimits limits;
     private final CatalogLookup catalog;
     private final ObjectMapper mapper;
+    private final QuestionSourcePort source;
 
     public ExamCheckUnitStates(ExamCheckSnapshotReader snapshots, ExamCheckUnitStore store,
             ExamCheckUnitFingerprint fingerprints, SolverInputBuilder builder, SolverLimits limits,
-            CatalogLookup catalog, ObjectMapper mapper) {
+            CatalogLookup catalog, ObjectMapper mapper, QuestionSourcePort source) {
         this.snapshots = snapshots;
         this.store = store;
         this.fingerprints = fingerprints;
@@ -40,6 +42,7 @@ public class ExamCheckUnitStates {
         this.limits = limits;
         this.catalog = catalog;
         this.mapper = mapper;
+        this.source = source;
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +56,15 @@ public class ExamCheckUnitStates {
         Set<String> invalidParts = new HashSet<>();
         Set<String> invalidOptions = new HashSet<>();
         Set<String> invalidPartSubjects = new HashSet<>();
+        Map<String, Set<String>> missingCodes = new LinkedHashMap<>();
         for (ObjectNode issue : rules.unrepresentable()) {
+            if ("COMBINATION_SUBJECT_MISSING".equals(issue.path("code").asText())) {
+                String partId = issue.path("partId").asText();
+                for (var code : issue.path("affectedCodes")) {
+                    missingCodes.computeIfAbsent(partId, ignored -> new java.util.LinkedHashSet<>()).add(code.asText());
+                }
+                continue;
+            }
             markIncomplete(incomplete, issue);
             if (!issue.hasNonNull("sectionId") && issue.hasNonNull("optionId")) {
                 invalidOptions.add(issue.path("optionId").asText());
@@ -83,9 +94,11 @@ public class ExamCheckUnitStates {
         Map<String, String> status = new LinkedHashMap<>();
         ExamCheckUnitPlanner.Plan plan = null;
         try {
-            var input = builder.build(snapshot.exam().getKindItemId(), ExamCheckDraftInputs.withoutParts(
+            var solverDocument = ExamCheckDraftInputs.withoutParts(
                     DefaultExamChecker.maskInvalidOptions(ExamCheckDraftInputs.maskSections(document, incomplete),
-                            invalidOptions), invalidParts));
+                            invalidOptions), invalidParts);
+            var input = missingCodes.isEmpty() ? builder.build(snapshot.exam().getKindItemId(), solverDocument)
+                    : DefaultExamChecker.buildWithMissingCodes(snapshot, solverDocument, missingCodes, catalog, source, limits);
             plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
         } catch (IllegalArgumentException | ExamCheckUnitPlanner.TooManyPaths
                 | ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {

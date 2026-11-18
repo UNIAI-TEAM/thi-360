@@ -248,6 +248,7 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         assertThat(good.path("result").asText()).isEqualTo("VALID");
         assertThat(bad.path("result").asText()).isEqualTo("INVALID");
         assertThat(bad.path("issues").toString()).contains("COMBINATION_SUBJECT_MISSING", "QD01");
+        assertThat(result.path("sectionStates").get(0).path("state").asText()).isEqualTo("CHECKED");
         assertThat(jdbc.queryForObject("SELECT witness::text FROM exam.exam_check_run WHERE exam_id=?",
                 String.class, id)).contains("QD05");
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);

@@ -157,7 +157,7 @@ public class DefaultExamChecker implements ExamChecker {
                 ignoredParts);
         SolverInputBuilder.SolverInput input = missingCodes.isEmpty()
                 ? builder.build(snapshot.exam().getKindItemId(), solverDocument)
-                : buildWithMissingCodes(snapshot, solverDocument, missingCodes);
+                : buildWithMissingCodes(snapshot, solverDocument, missingCodes, catalog, source, limits);
         if (!maskedSections.isEmpty()) {
             try {
                 var plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
@@ -197,8 +197,9 @@ public class DefaultExamChecker implements ExamChecker {
         return new Evaluation(evaluation.result(), evaluation.witness(), markWitnessFailures(computed.changed(), witnessIssues));
     }
 
-    private SolverInputBuilder.SolverInput buildWithMissingCodes(ExamCheckSnapshotReader.Snapshot snapshot,
-            ExamStructureDocument document, Map<String, Set<String>> missingCodes) {
+    static SolverInputBuilder.SolverInput buildWithMissingCodes(ExamCheckSnapshotReader.Snapshot snapshot,
+            ExamStructureDocument document, Map<String, Set<String>> missingCodes, CatalogLookup catalog,
+            QuestionSourcePort source, SolverLimits limits) {
         List<Set<String>> exclusions = document.parts().stream()
                 .sorted(java.util.Comparator.comparing(ExamPart::order,
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))

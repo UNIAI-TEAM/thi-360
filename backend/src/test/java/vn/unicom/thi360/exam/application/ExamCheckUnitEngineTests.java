@@ -89,7 +89,7 @@ class ExamCheckUnitEngineTests {
         when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, unrelatedDraft, input));
         var states = new ExamCheckUnitStates(snapshots, store,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)),
-                new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper);
+                new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper, source);
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "INCOMPLETE");
 
@@ -175,6 +175,12 @@ class ExamCheckUnitEngineTests {
         assertThat(badPath.path("issues").toString()).contains("COMBINATION_SUBJECT_MISSING", "BAD");
         assertThat(checked.witness().toString()).contains("p:GOOD").doesNotContain("p:BAD");
         assertThat(checked.units()).singleElement().satisfies(unit -> assertThat(unit.outcome()).isEqualTo("VALID"));
+        when(store.load(exam.getId())).thenReturn(checked.units().stream()
+                .collect(Collectors.toMap(ExamCheckUnitStore.Unit::key, unit -> unit)));
+        var snapshots = mock(ExamCheckSnapshotReader.class);
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input));
+        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source);
+        assertThat(states.states(exam.getId())).extracting(state -> state.state()).containsExactly("CHECKED");
     }
 
     @Test
@@ -255,7 +261,7 @@ class ExamCheckUnitEngineTests {
         assertThat(partCheck.units()).isEmpty();
         var snapshots = mock(ExamCheckSnapshotReader.class);
         when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input));
-        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper);
+        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source);
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "INCOMPLETE");
     }
