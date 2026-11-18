@@ -350,8 +350,9 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     if (selection.kind === "VACT" && selection.scope !== "FULL") return tStep("durationRequiredCustom", { kind: kindLabel(selection.kind) });
     if (selection.scope === "PART") return tStep("durationRequiredPart");
     if (selection.scope === "SUBJECT" && selection.buildMode === "REVIEW") return tStep("durationRequiredReview");
-    // F-1: bài cả môn từ mẫu để trống thời lượng (V-SAT Ngữ văn) — câu của bản vẽ, không phải câu số dương chung.
-    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null) return tStep("durationRequiredSubject");
+    // F-1: bài cả môn từ mẫu để trống thời lượng (V-SAT Ngữ văn) và ô còn trống — câu của bản vẽ. Giá trị đã gõ mà sai
+    // (chữ, 0, số âm, số thập phân) giữ câu số dương chung.
+    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null && sharedText.trim() === "") return tStep("durationRequiredSubject");
     return generic;
   })();
   // G2c "Trạng thái khác": gợi ý dưới ô thời lượng theo nguồn của giá trị — mẫu điền sẵn, bài theo phần tự nhập
@@ -359,7 +360,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const durationHint = (() => {
     if (values.timing !== "SHARED") return null;
     if (defaults.sharedDuration > 0) return tStep("durationHintPrefilled");
-    if (selection.scope === "PART") return tStep("durationHintPartCut");
+    if (selection.scope === "PART" && template) return tStep("durationHintPartCut");
     if (selection.scope === "SUBJECT" && template && template.durationMinutes === null) return tStep("durationHintEmpty");
     return null;
   })();

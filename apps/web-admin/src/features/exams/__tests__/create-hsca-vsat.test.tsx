@@ -148,9 +148,9 @@ beforeEach(() => {
   referenceMock.patch = patchProfiles;
 });
 
-async function renderPage(locale: "vi" | "en" = "vi") {
+async function renderPage(locale: "vi" | "en" = "vi", templates: Wire[] = TEMPLATES) {
   backend = new ExamsBackend();
-  backend.server.on("GET", TEMPLATES_PATH, { status: 200, body: TEMPLATES });
+  backend.server.on("GET", TEMPLATES_PATH, { status: 200, body: templates });
   backend.server.on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() });
   backend.install();
   const user = userEvent.setup();
@@ -369,6 +369,30 @@ describe("bước 1 cho H-SCA, V-SAT: thời lượng theo mẫu và phạm vi",
     await chooseScope(user, /^Theo phần/);
     await waitFor(() => expect(sharedDuration()).toHaveValue(""));
     await screen.findByText("Bài theo phần không lấy thời lượng của cả môn.");
+  }, 30_000);
+
+  it("F-1 chỉ khi ô còn trống: V-SAT Ngữ văn cả môn gõ chữ thì báo câu số phút nguyên dương chung", async () => {
+    const user = await renderPage();
+    await pickKind(user, "VSAT");
+    await pickSubject(user, "Ngữ văn");
+    await waitFor(() => expect(sharedDuration()).toHaveValue(""));
+    await user.type(nameInput(), "V-SAT Văn chữ");
+    await user.type(sharedDuration(), "abc");
+    await user.click(submitButton());
+    const message = "Thời lượng chung phải là số phút nguyên dương.";
+    await screen.findByText(message, { selector: "p" });
+    expect(sharedDuration()).toHaveAccessibleDescription(message);
+    expect(screen.queryByText("Chưa nhập thời lượng. Môn này không có thời lượng mặc định.")).toBeNull();
+    expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
+  }, 30_000);
+
+  it("gợi ý \"Bài theo phần không lấy thời lượng của cả môn\" không hiện khi không có mẫu khớp", async () => {
+    const user = await renderPage("vi", []);
+    await pickKind(user, "VSAT");
+    await pickSubject(user, "Toán");
+    await chooseScope(user, /^Theo phần/);
+    await screen.findByText(/Không có mẫu mặc định cho lựa chọn này/);
+    expect(screen.queryByText("Bài theo phần không lấy thời lượng của cả môn.")).toBeNull();
   }, 30_000);
 
   it("F-1/F-2 tiếng Anh: gợi ý và câu lỗi thời lượng có bản dịch", async () => {
