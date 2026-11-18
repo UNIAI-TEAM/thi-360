@@ -109,9 +109,10 @@ public class SolverInputBuilder {
             if (!filter.childConditions().isEmpty()) dimensions.add(FilterDimension.CHILD_CONDITION);
             if (dimensions.isEmpty()) return List.of();
             var filtered = source.findCandidates(filter, fetchLimit);
-            long available = eligibleCount(group, filtered);
             // If the source was truncated, it cannot establish the exact shortfall.
-            if (filtered.size() >= fetchLimit || available >= required) return List.of();
+            if (filtered.size() >= fetchLimit) return List.of();
+            long available = eligibleUnits(group, filtered, required);
+            if (available >= required) return List.of();
             List<FilterCount> counts = new ArrayList<>();
             for (var dimension : dimensions) {
                 var relaxed = new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(),
@@ -120,29 +121,62 @@ public class SolverInputBuilder {
                         dimension == FilterDimension.ITEM_SHAPE ? null : filter.itemShape(),
                         dimension == FilterDimension.ANSWER_FORMAT ? List.of() : filter.answerFormats(),
                         dimension == FilterDimension.CHILD_CONDITION ? List.of() : filter.childConditions(),
-                        filter.additionalTagGroups(), filter.additionalKnowledgeGroups(), filter.additionalCompetencyGroups());
-                long without = eligibleCount(group, source.findCandidates(relaxed, fetchLimit));
+                        filter.additionalTagGroups(), filter.additionalKnowledgeGroups(),
+                        filter.additionalCompetencyGroups(), filter.everyChildInScope(),
+                        filter.additionalEveryChildInScope());
+                long without = eligibleUnits(group, source.findCandidates(relaxed, fetchLimit), required);
                 if (without >= required) counts.add(new FilterCount(dimension, required, without, available));
             }
             return List.copyOf(counts);
         }
 
-        private static long eligibleCount(GroupQuota group, List<QuestionSourcePort.Candidate> candidates) {
-            return candidates.stream().filter(candidate -> {
-                var units = candidate.units();
-                if (units.isEmpty()) return false;
-                if (group.kind() == GroupQuota.GroupKind.SET && units.size() != group.setSize()) return false;
-                if (group.kind() == GroupQuota.GroupKind.SINGLE && units.size() != 1) return false;
-                if (group.expectedScoringRule() != null
-                        && !group.expectedScoringRule().equals(candidate.scoringRule())) return false;
-                for (var unit : units) {
-                    if (group.childAnswerType() != null && !group.childAnswerType().equals(unit.answerType().name())) return false;
-                    if (group.answerType() != null && !group.answerType().equals(unit.answerType().name())) return false;
-                    if (group.requiredPointsPerUnit() != null && (unit.points() == null
-                            || group.requiredPointsPerUnit().compareTo(unit.points()) != 0)) return false;
+        /**
+         * Eligible supply in the units the checker compares: candidate roots for SINGLE and SET
+         * groups, counting units for FLEXIBLE_SET. A flexible pool only counts the largest subset
+         * sum of whole set sizes up to {@code required}, so a shortage is attributed to a filter
+         * only when the relaxed pool can actually compose the target.
+         */
+        private static long eligibleUnits(GroupQuota group, List<QuestionSourcePort.Candidate> candidates,
+                int required) {
+            if (group.kind() != GroupQuota.GroupKind.FLEXIBLE_SET) {
+                return candidates.stream().filter(candidate -> eligible(group, candidate)).count();
+            }
+            long supply = 0;
+            for (var candidate : candidates) {
+                if (eligible(group, candidate)) supply += candidate.units().size();
+            }
+            if (supply == 0) return 0;
+            // The target can never be composed beyond the supply, so bound the state by it.
+            int limit = (int) Math.min(required, supply);
+            boolean[] reachable = new boolean[limit + 1];
+            reachable[0] = true;
+            for (var candidate : candidates) {
+                if (!eligible(group, candidate)) continue;
+                int size = candidate.units().size();
+                for (int sum = limit; sum >= size; sum--) {
+                    reachable[sum] |= reachable[sum - size];
                 }
-                return true;
-            }).count();
+            }
+            for (int sum = limit; sum > 0; sum--) {
+                if (reachable[sum]) return sum;
+            }
+            return 0;
+        }
+
+        private static boolean eligible(GroupQuota group, QuestionSourcePort.Candidate candidate) {
+            var units = candidate.units();
+            if (units.isEmpty()) return false;
+            if (group.kind() == GroupQuota.GroupKind.SET && units.size() != group.setSize()) return false;
+            if (group.kind() == GroupQuota.GroupKind.SINGLE && units.size() != 1) return false;
+            if (group.expectedScoringRule() != null
+                    && !group.expectedScoringRule().equals(candidate.scoringRule())) return false;
+            for (var unit : units) {
+                if (group.childAnswerType() != null && !group.childAnswerType().equals(unit.answerType().name())) return false;
+                if (group.answerType() != null && !group.answerType().equals(unit.answerType().name())) return false;
+                if (group.requiredPointsPerUnit() != null && (unit.points() == null
+                        || group.requiredPointsPerUnit().compareTo(unit.points()) != 0)) return false;
+            }
+            return true;
         }
     }
 
@@ -280,7 +314,8 @@ public class SolverInputBuilder {
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                             shape, block.answerFormats().stream().map(AnswerFormat::valueOf).toList(), conditions,
-                            slotTags, slotScopes, slotCompetencies));
+                            slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
+                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope()))));
                     groups.add(group);
                 }
             }
@@ -313,8 +348,11 @@ public class SolverInputBuilder {
             }
         }
         // expectedScoring is NOT a source filter: SCORING_MISMATCH is a warning, it never blocks solve/preview.
-        return new GroupQuota(block.id(), set ? GroupQuota.GroupKind.SET : GroupQuota.GroupKind.SINGLE,
-                set ? null : block.questionCount(), set || block.questionType() == null ? null : block.questionType().name(),
+        boolean flexibleSet = set && block.setCount() == null && block.setSize() == null;
+        return new GroupQuota(block.id(), flexibleSet ? GroupQuota.GroupKind.FLEXIBLE_SET
+                        : set ? GroupQuota.GroupKind.SET : GroupQuota.GroupKind.SINGLE,
+                !set || flexibleSet ? block.questionCount() : null,
+                set || block.questionType() == null ? null : block.questionType().name(),
                 set ? block.setCount() : null, set ? block.setSize() : null,
                 set && block.childAnswerType() != null ? block.childAnswerType().name() : null,
                 matrix(block.matrix()), competencies, List.of(), block.requiredPointsPerQuestion(), null,
@@ -384,6 +422,9 @@ public class SolverInputBuilder {
     private static int fixedBlockCount(QuestionBlock block) {
         if (Boolean.TRUE.equals(block.omitted())) return 0;
         if (block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE) {
+            if (block.setCount() == null && block.setSize() == null && block.questionCount() != null) {
+                return block.questionCount();
+            }
             if (block.setCount() == null || block.setSize() == null) throw new IllegalArgumentException("Set size is missing");
             return Math.multiplyExact(block.setCount(), block.setSize());
         }

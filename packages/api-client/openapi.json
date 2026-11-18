@@ -355,6 +355,9 @@
             },
             "type" : "array"
           },
+          "everyChildInScope" : {
+            "type" : "boolean"
+          },
           "nodeIds" : {
             "items" : {
               "format" : "uuid",

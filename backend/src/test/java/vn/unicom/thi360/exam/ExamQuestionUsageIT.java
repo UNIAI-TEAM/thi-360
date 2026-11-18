@@ -182,6 +182,111 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                 Boolean.class, question)).isTrue();
     }
 
+    @Test
+    void strictSlotScopesApplyToUsageAndRetireImpactForRootsAndChildren() throws Exception {
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        var topic = knowledge.stream().filter(a -> knowledge.stream().anyMatch(b ->
+                !b.path().startsWith(a.path()) && !a.path().startsWith(b.path()))).findFirst().orElseThrow();
+        var other = knowledge.stream().filter(item -> !item.path().startsWith(topic.path())
+                && !topic.path().startsWith(item.path())).findFirst().orElseThrow();
+        UUID subject = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        UUID mixed = UUID.randomUUID();
+        UUID clean = UUID.randomUUID();
+        UUID mixedA = UUID.randomUUID();
+        UUID mixedB = UUID.randomUUID();
+        UUID cleanA = UUID.randomUUID();
+        UUID cleanB = UUID.randomUUID();
+        for (UUID root : List.of(mixed, clean)) {
+            jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?,'QUESTION_SET','READY',?,1)",
+                    root, "SCOPE-" + root, subject);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", root);
+        }
+        for (UUID child : List.of(mixedA, mixedB, cleanA, cleanB)) {
+            UUID root = List.of(mixedA, mixedB).contains(child) ? mixed : clean;
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?,'SINGLE_CHOICE','READY',?,?,1)",
+                    child, "SCOPE-" + child, root, List.of(mixedB, cleanB).contains(child) ? 1 : 0);
+            jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)",
+                    child, child.equals(mixedB) ? other.id() : topic.id());
+        }
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,has_unpublished_changes) values (?,?,?,'Scope exam','FULL','SHARED',true)",
+                exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","sections":[{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"strict-slot","questionType":"QUESTION_SET","slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
+                  {"id":"strict-parent","questionType":"QUESTION_SET","knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
+                  {"id":"legacy","questionType":"QUESTION_SET","slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"]}}]},
+                  {"id":"any-slot","questionType":"QUESTION_SET","slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},{"index":2}]}
+                ]}]}]}
+                """.formatted(topic.id());
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(),
+                new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null)));
+        for (UUID question : List.of(mixed, mixedA, mixedB, clean, cleanA, cleanB)) {
+            boolean allInScope = List.of(clean, cleanA, cleanB).contains(question);
+            for (String endpoint : List.of("usage", "retire-impact")) {
+                var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                        .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString());
+                String blocks = response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks").toString();
+                assertThat(blocks).contains("legacy", "any-slot");
+                if (allInScope) assertThat(blocks).contains("strict-slot", "strict-parent");
+                else assertThat(blocks).doesNotContain("strict-slot", "strict-parent");
+            }
+        }
+    }
+
+    @Test
+    void unconfiguredSlotIndexUsesTheGroupConditionsForUsageAndRetireImpact() throws Exception {
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        var topic = knowledge.stream().filter(a -> knowledge.stream().anyMatch(b ->
+                !b.path().startsWith(a.path()) && !a.path().startsWith(b.path()))).findFirst().orElseThrow();
+        var other = knowledge.stream().filter(item -> !item.path().startsWith(topic.path())
+                && !topic.path().startsWith(item.path())).findFirst().orElseThrow();
+        UUID subject = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        UUID mixed = UUID.randomUUID();
+        UUID mixedA = UUID.randomUUID();
+        UUID mixedB = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?,'QUESTION_SET','READY',?,1)",
+                mixed, "SPARSE-" + mixed, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", mixed);
+        for (UUID child : List.of(mixedA, mixedB)) {
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?,'SINGLE_CHOICE','READY',?,?,1)",
+                    child, "SPARSE-" + child, mixed, child.equals(mixedB) ? 1 : 0);
+            jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)",
+                    child, child.equals(mixedB) ? other.id() : topic.id());
+        }
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,has_unpublished_changes) values (?,?,?,'Sparse slots','FULL','SHARED',true)",
+                exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","sections":[{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"sparse","questionType":"QUESTION_SET","setCount":2,"setSize":2,
+                   "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
+                  {"id":"all-strict","questionType":"QUESTION_SET","setCount":2,"setSize":2,
+                   "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
+                            {"index":2,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
+                  {"id":"huge","questionType":"QUESTION_SET","setCount":1000000000,"setSize":2,
+                   "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
+                            {"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]}
+                ]}]}]}
+                """.formatted(topic.id());
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(),
+                new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null)));
+        for (UUID question : List.of(mixed, mixedA, mixedB)) {
+            for (String endpoint : List.of("usage", "retire-impact")) {
+                var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                        .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString());
+                String blocks = response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks").toString();
+                assertThat(blocks).contains("sparse", "huge").doesNotContain("all-strict");
+            }
+        }
+    }
+
     private void publish(UUID exam, UUID subject, UUID witness, List<String> selected) throws Exception {
         entityManager.clear();
         var examEntity = exams.findById(exam).orElseThrow();
