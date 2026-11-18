@@ -211,6 +211,25 @@ class ExamScaleSyncIT extends AbstractIntegrationTest {
         assertThat(edited.path("referenceMax")).isEqualTo(exam.path("referenceMax"));
     }
 
+    @Test
+    void convertingRawToLinearKeepsTheStoredReference() throws Exception {
+        JsonNode exam = create("{\"kind\":\"HSA\",\"scope\":\"FULL\"");
+        assertThat(exam.path("practiceScoring").asText()).isEqualTo("RAW");
+        // A RAW exam whose scale equals its reference: reachable by sending the reference alone.
+        JsonNode equal = patchExam(exam, "{\"referenceMax\":" + exam.path("maxScore").decimalValue().toPlainString());
+        assertThat(equal.path("referenceMax").decimalValue())
+                .isEqualByComparingTo(equal.path("maxScore").decimalValue());
+        JsonNode converted = patchExam(equal, "{\"practiceScoring\":\"LINEAR\",\"confirmScoring\":true,"
+                + "\"maxScore\":120");
+        assertThat(converted.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(converted.path("maxScore").decimalValue()).isEqualByComparingTo("120");
+        assertThat(converted.path("referenceMax").decimalValue())
+                .isEqualByComparingTo(equal.path("referenceMax").decimalValue());
+        // Once the exam is LINEAR with scale equal to reference, a later scale edit moves both.
+        JsonNode synced = patchExam(patchExam(converted, "{\"referenceMax\":120"), "{\"maxScore\":90");
+        assertThat(synced.path("referenceMax").decimalValue()).isEqualByComparingTo("90");
+    }
+
     private JsonNode create(String head) throws Exception {
         return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())

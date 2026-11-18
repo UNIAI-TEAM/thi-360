@@ -723,14 +723,16 @@ public class ExamService {
         }
         // A LINEAR exam whose scale equals its reference (BE spec D11: max_score bằng reference_max) keeps them
         // equal when only the scale is edited; a review exam that has no scale yet takes the entered one as both.
-        // Values that already differ, a null reference elsewhere, an explicit referenceMax in the request and
-        // RAW scoring are left alone.
+        // The exam must already be LINEAR as stored (after any scope or template reset, before this patch): a
+        // RAW to LINEAR conversion keeps the stored reference. Values that already differ, a null reference
+        // elsewhere, an explicit referenceMax in the request and RAW scoring are left alone.
+        boolean storedLinear = "LINEAR".equals(exam.getPracticeScoring());
         String effectiveScoring = request.practiceScoring() == null ? exam.getPracticeScoring()
                 : request.practiceScoring();
         boolean reviewWithoutScale = "REVIEW".equals(exam.getBuildMode()) && scaleBefore == null
                 && referenceBefore == null;
         boolean referenceFollowsScale = request.maxScore() != null && request.referenceMax() == null
-                && "LINEAR".equals(effectiveScoring)
+                && storedLinear && "LINEAR".equals(effectiveScoring)
                 && (reviewWithoutScale || scaleBefore != null && referenceBefore != null
                         && scaleBefore.compareTo(referenceBefore) == 0);
         if (request.practiceScoring() != null || request.referenceMax() != null || referenceFollowsScale) {
