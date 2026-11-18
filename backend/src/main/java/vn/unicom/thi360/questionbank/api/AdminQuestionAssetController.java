@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -26,9 +28,10 @@ import vn.unicom.thi360.shared.security.RequirePermission;
 
 /**
  * API tài nguyên câu hỏi (spec 4.5): {@code POST} nhận {@code kind=IMAGE|ATTACHMENT}
- * (quyền {@code QUESTION.MODIFY}), {@code GET} phát nội dung với {@code nosniff} và
  * {@code Content-Disposition} {@code inline} cho ảnh / {@code attachment} cho tệp đính kèm,
  * quyền một-trong {@code QUESTION.VIEW, EXAM.VIEW} (xem trước đề chỉ cần EXAM.VIEW).
+ * Nội dung trả về là {@link Resource} để Spring MVC tự xử lý byte range
+ * ({@code 206 Partial Content}, {@code Accept-Ranges: bytes}) cho tua audio/video.
  * Giới hạn cỡ 5/20 MB (413), tần suất 60 tệp/10 phút/người (429), loại theo chữ ký byte.
  */
 @Tag(name = "Admin Question Assets", description = "Ảnh và tệp đính kèm của ngân hàng câu hỏi")
@@ -57,7 +60,7 @@ public class AdminQuestionAssetController {
     @GetMapping("/{id}")
     @RequirePermission(anyOf = {Permissions.QUESTION_VIEW, Permissions.EXAM_VIEW})
     @Operation(summary = "Phục vụ nội dung tài nguyên (inline cho ảnh, attachment cho tệp)")
-    public ResponseEntity<byte[]> download(@PathVariable UUID id) {
+    public ResponseEntity<Resource> download(@PathVariable UUID id) {
         DownloadedAsset downloaded = assetService.download(id);
         QuestionAssetKind kind = downloaded.asset().getKind();
         ContentDisposition disposition = ContentDisposition
@@ -68,7 +71,8 @@ public class AdminQuestionAssetController {
                 .contentType(MediaType.parseMediaType(downloaded.asset().getMime()))
                 .header("X-Content-Type-Options", "nosniff")
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentLength(downloaded.content().length)
-                .body(downloaded.content());
+                // Không đặt Content-Length: Spring tự tính cho 200 (độ dài tệp) và cho
+                // 206 (độ dài vùng byte); đặt tay sẽ khiến 206 mang độ dài cả tệp.
+                .body(new ByteArrayResource(downloaded.content()));
     }
 }
