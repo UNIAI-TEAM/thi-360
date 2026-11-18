@@ -54,7 +54,7 @@ function NumberCell({
   row: OverviewRow;
   field: "questionCount" | "durationMinutes" | "maxPoints";
   error: string | undefined;
-  /** Mẫu `fixedCounts` (H27): ô chỉ đọc — không cho sửa, không tham gia tab. */
+  /** Mẫu `fixedCounts` (H27): ô chỉ đọc — không cho sửa; vẫn trong thứ tự tab như bản vẽ (`readonly aria-readonly`). */
   locked?: boolean;
   onCellChange: ExamOverviewTableProps["onCellChange"];
 }) {
@@ -66,7 +66,6 @@ function NumberCell({
         {...NUMERIC}
         value={row[field]}
         readOnly={locked}
-        tabIndex={locked ? -1 : undefined}
         aria-readonly={locked || undefined}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
