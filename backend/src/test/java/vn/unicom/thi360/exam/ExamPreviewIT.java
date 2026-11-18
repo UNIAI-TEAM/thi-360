@@ -126,6 +126,23 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void emptyExamTargetFailsWithoutUsageOrAudit() throws Exception {
+        UUID examId = exam("[]");
+        mockMvc.perform(post("/api/v1/admin/exams/" + examId + "/preview")
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.issues[0].location.pathId").value("default"))
+                .andExpect(jsonPath("$.paper").doesNotExist())
+                .andExpect(jsonPath("$.previewId").doesNotExist());
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question_usage_ledger where exam_id=? and kind='PREVIEW'",
+                Integer.class, examId)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from audit.audit_event where action='EXAM.PREVIEW' and target_id=?",
+                Integer.class, examId.toString())).isZero();
+    }
+
+    @Test
     void switchingBcaCombinationRegeneratesOnlyThirdPart() throws Exception {
         Subject first = subject();
         Subject second = subject();

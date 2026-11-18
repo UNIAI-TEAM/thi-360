@@ -83,6 +83,19 @@ public class ExamPreviewService {
         }
         var resolved = PreviewPathResolver.resolve(document, input.parts(), request.pathId(),
                 request.subjectCodes(), request.seed(), solver.allocator());
+        boolean hasSelectedGroups = resolved.path().sections().stream().anyMatch(section -> !section.groups().isEmpty())
+                || resolved.path().picks().stream().flatMap(List::stream)
+                        .flatMap(pick -> pick.resolvedSections().stream())
+                        .anyMatch(section -> !section.groups().isEmpty());
+        if (!hasSelectedGroups && request.target() != null) {
+            ObjectNode issue = mapper.createObjectNode();
+            issue.put("key", "INFO_MISSING");
+            issue.put("code", "INFO_MISSING");
+            issue.put("severity", "ERROR");
+            issue.put("group", "STRUCTURE");
+            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
+                    "FAILED", null, "INVALID", List.of(previewIssue(issue, request.pathId())), null, null, null);
+        }
         if (request.target() == null) {
             PathResult selectedPath = new PathResult(resolved.path(), SolveStatus.VALID, null, null,
                     null, List.of(), List.of(), null);
