@@ -1057,9 +1057,10 @@ ON CONFLICT DO NOTHING;
 -- edits or serving versions of existing questions.
 UPDATE questionbank.question q
 SET competency_item_id = c.id
-FROM catalog.catalog_item c
-WHERE c.group_id = '00000000-0000-7000-8100-00000000000a'
-  AND starts_with(q.code, 'SEED-BE14-' || c.code || '-')
+FROM seed_be14_classification m
+JOIN catalog.catalog_item c ON c.group_id = '00000000-0000-7000-8100-00000000000a'
+    AND c.code = m.competency_code AND c.status = 1
+WHERE q.id = m.question_id
   AND (EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = q.id)
        OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = q.id));
 
