@@ -435,6 +435,7 @@ function issueKey(issue: Omit<CheckIssue, "key">): string {
     issue.optionId ?? "",
     issue.gradeCode ?? "",
     issue.difficultyCode ?? "",
+    issue.dimension ?? "",
     issue.segmentCode ?? "",
     issue.competencyCode ?? "",
     issue.answerType ?? "",
@@ -442,7 +443,7 @@ function issueKey(issue: Omit<CheckIssue, "key">): string {
   ].join("|");
 }
 
-function mapIssue(issue: ApiIssue): CheckIssue {
+export function mapIssue(issue: ApiIssue): CheckIssue {
   const mapped: Omit<CheckIssue, "key"> = {
     code: issue.code !== undefined && ISSUE_CODES[issue.code] ? (issue.code as CheckIssueCode) : "INFO_MISSING",
     severity:
