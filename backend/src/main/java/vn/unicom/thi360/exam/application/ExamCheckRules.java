@@ -173,7 +173,7 @@ public final class ExamCheckRules {
     private List<ObjectNode> lockedCountIssues(ExamStructureDocument locked) {
         List<ObjectNode> found = new ArrayList<>();
         for (Slot<ExamPart> slot : pair(locked.parts(), document.parts(), ExamPart::id,
-                ExamCheckRules::partSignature, part -> part.questionCount() == null ? 0 : part.questionCount())) {
+                ExamCheckRules::partSignature, null, part -> part.questionCount() == null ? 0 : part.questionCount())) {
             if (slot.current() == null) {
                 ObjectNode failure = issue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", null, null, null);
                 failure.put("required", slot.locked().questionCount());
@@ -196,7 +196,7 @@ public final class ExamCheckRules {
         boolean changed = lockedSections(found, part, null, base.sections(), part.sections());
         changed |= lockedSections(found, part, null, base.subjectPool(), part.subjectPool());
         for (Slot<ExamPartOption> slot : pair(base.options(), part.options(), ExamPartOption::id,
-                ExamCheckRules::optionSignature, option -> 0)) {
+                ExamCheckRules::optionSignature, null, option -> 0)) {
             if (slot.current() == null) {
                 changed |= lockedSections(found, part, slot.locked().id(), slot.locked().sections(), List.of());
             } else {
@@ -217,6 +217,7 @@ public final class ExamCheckRules {
                                    List<ExamSection> expected, List<ExamSection> actual) {
         boolean changed = false;
         for (Slot<ExamSection> slot : pair(expected, actual, ExamSection::id, ExamCheckRules::sectionSignature,
+                ExamCheckRules::sectionLooseKey,
                 section -> section.questionCount() != null ? section.questionCount() : groupTotal(section))) {
             ExamSection original = slot.locked();
             ExamSection section = slot.current();
@@ -233,6 +234,11 @@ public final class ExamCheckRules {
                     failure = sectionIssue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", context, null);
                     failure.put("required", 0);
                     failure.put("available", section.questionCount() != null ? section.questionCount() : Integer.valueOf(groupTotal(section)));
+                } else if (slot.loose()) {
+                    // Same slot by subject and template group, but its competencies no longer identify the template section.
+                    failure = sectionIssue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", context, null);
+                    failure.put("required", original.questionCount() != null ? original.questionCount() : Integer.valueOf(groupTotal(original)));
+                    failure.put("available", 0);
                 } else {
                     boolean declared = !Objects.equals(section.questionCount(), original.questionCount());
                     int actualTotal = groupTotal(section);
@@ -260,18 +266,23 @@ public final class ExamCheckRules {
         return remainder && section.questionCount() != null ? Math.max(fixed, section.questionCount()) : fixed;
     }
 
-    /** A template element and the element of the exam that corresponds to it; either side is null when unmatched. */
-    private record Slot<T>(T locked, T current, int index) {
+    /**
+     * A template element and the element of the exam that corresponds to it; either side is null when unmatched.
+     * {@code loose} marks a pair matched only by the coarser key: its identity changed, its counts are not comparable.
+     */
+    private record Slot<T>(T locked, T current, int index, boolean loose) {
         String name(String id) { return id == null || id.isBlank() ? "#" + index : id; }
     }
 
     /**
      * Pairs by id first, then by content signature among the elements not claimed by an id. Elements of one
-     * signature pair by equal count; if one of each is left they pair as a count change. Everything else becomes a
-     * one-sided slot. No position is ever used.
+     * signature pair by equal count; if one of each is left they pair as a count change. Elements still open pair
+     * loosely when exactly one of each shares the coarser key (if given). Everything else becomes a one-sided slot.
+     * No position is ever used.
      */
     private static <T> List<Slot<T>> pair(List<T> locked, List<T> current, Function<T, String> id,
-                                          Function<T, String> signature, ToIntFunction<T> count) {
+                                          Function<T, String> signature, Function<T, String> looseKey,
+                                          ToIntFunction<T> count) {
         Map<String, Integer> byId = new HashMap<>();
         for (int i = 0; i < current.size(); i++) {
             String key = id.apply(current.get(i));
@@ -279,6 +290,7 @@ public final class ExamCheckRules {
         }
         Set<Integer> claimed = new LinkedHashSet<>();
         Integer[] match = new Integer[locked.size()];
+        boolean[] loose = new boolean[locked.size()];
         for (int i = 0; i < locked.size(); i++) {
             String key = id.apply(locked.get(i));
             Integer found = key == null ? null : byId.get(key);
@@ -310,20 +322,37 @@ public final class ExamCheckRules {
                 claimed.add(open.getFirst());
             }
         }
+        if (looseKey != null) {
+            Map<String, List<Integer>> looseLocked = new LinkedHashMap<>();
+            for (int i = 0; i < locked.size(); i++) {
+                if (match[i] == null) looseLocked.computeIfAbsent(looseKey.apply(locked.get(i)), key -> new ArrayList<>()).add(i);
+            }
+            for (Map.Entry<String, List<Integer>> group : looseLocked.entrySet()) {
+                List<Integer> open = new ArrayList<>();
+                for (int i = 0; i < current.size(); i++) {
+                    if (!claimed.contains(i) && group.getKey().equals(looseKey.apply(current.get(i)))) open.add(i);
+                }
+                if (group.getValue().size() == 1 && open.size() == 1) {
+                    match[group.getValue().getFirst()] = open.getFirst();
+                    loose[group.getValue().getFirst()] = true;
+                    claimed.add(open.getFirst());
+                }
+            }
+        }
         List<Slot<T>> result = new ArrayList<>();
         for (int i = 0; i < locked.size(); i++) {
-            result.add(new Slot<>(locked.get(i), match[i] == null ? null : current.get(match[i]), i));
+            result.add(new Slot<>(locked.get(i), match[i] == null ? null : current.get(match[i]), i, loose[i]));
         }
         for (int i = 0; i < current.size(); i++) {
-            if (!claimed.contains(i)) result.add(new Slot<>(null, current.get(i), i));
+            if (!claimed.contains(i)) result.add(new Slot<>(null, current.get(i), i, false));
         }
         return result;
     }
 
     /**
-     * What a locked section is, independent of its id, order and counts: its subject plus every competency code,
-     * template group code and tag filter of the section, its groups and their slots. Difficulty, grade and topic
-     * settings are left out because users may tune them inside a locked section.
+     * What a locked section is, independent of its id, order and counts: its subject plus its competency codes (section,
+     * group and slot scopes) and the template group codes of its groups. Tag refinements, difficulty, grade and topic
+     * settings are left out: administrators and users may tune them inside a locked section (H27).
      */
     static String sectionSignature(ExamSection section) {
         Set<String> codes = new java.util.TreeSet<>();
@@ -332,34 +361,49 @@ public final class ExamCheckRules {
             if (Boolean.TRUE.equals(block.omitted())) continue;
             if (block.templateGroupCode() != null) codes.add("g:" + block.templateGroupCode());
             scopeCodes(codes, block.knowledgeScope());
-            block.tagCodes().forEach(tag -> codes.add("t:" + tag));
-            block.slots().forEach(slot -> {
-                scopeCodes(codes, slot.knowledgeScope());
-                slot.tagCodes().forEach(tag -> codes.add("t:" + tag));
-            });
+            block.slots().forEach(slot -> scopeCodes(codes, slot.knowledgeScope()));
         }
         return section.subjectCode() + "|" + codes;
+    }
+
+    /**
+     * Coarser key of a section: subject plus template group codes, without competencies. Pairs a section whose
+     * competency filter was edited with its template section when that correspondence is unique in its parent.
+     */
+    private static String sectionLooseKey(ExamSection section) {
+        Set<String> groups = new java.util.TreeSet<>();
+        for (QuestionBlock block : section.blocks()) {
+            if (!Boolean.TRUE.equals(block.omitted()) && block.templateGroupCode() != null) groups.add(block.templateGroupCode());
+        }
+        return section.subjectCode() + "|" + groups;
     }
 
     private static void scopeCodes(Set<String> codes, vn.unicom.thi360.exam.domain.KnowledgeScope scope) {
         if (scope != null) scope.competencyCodes().forEach(code -> codes.add("c:" + code));
     }
 
-    /** A part is its sections (and its options with theirs) as content signatures. */
+    /**
+     * A part is identified by its own code source, the subjects of its sections, subject pool and options, and the
+     * kind and code of its options; never by the content of those sections, so a section-local edit stays local.
+     */
     static String partSignature(ExamPart part) {
-        List<String> parts = new ArrayList<>();
-        part.sections().forEach(section -> parts.add("s:" + sectionSignature(section)));
-        part.subjectPool().forEach(section -> parts.add("p:" + sectionSignature(section)));
-        part.options().forEach(option -> parts.add("o:" + optionSignature(option)));
-        java.util.Collections.sort(parts);
-        return String.valueOf(parts);
+        Set<String> subjects = new java.util.TreeSet<>();
+        part.sections().forEach(section -> subjects.add(String.valueOf(section.subjectCode())));
+        part.subjectPool().forEach(section -> subjects.add("p:" + section.subjectCode()));
+        List<String> options = new ArrayList<>();
+        for (ExamPartOption option : part.options()) {
+            options.add(optionSignature(option));
+        }
+        java.util.Collections.sort(options);
+        String source = part.codeSource() == null ? "-" : part.codeSource().source() + "/" + part.codeSource().branch();
+        return source + "|" + subjects + "|" + options;
     }
 
+    /** An option is its kind, its code and the subjects of its sections. */
     private static String optionSignature(ExamPartOption option) {
-        List<String> parts = new ArrayList<>();
-        option.sections().forEach(section -> parts.add(sectionSignature(section)));
-        java.util.Collections.sort(parts);
-        return option.kind() + "|" + option.code() + "|" + parts;
+        Set<String> subjects = new java.util.TreeSet<>();
+        option.sections().forEach(section -> subjects.add(String.valueOf(section.subjectCode())));
+        return option.kind() + "|" + option.code() + "|" + subjects;
     }
 
     /** Find catalog combination subjects absent from the part's code-sourced subject pool. */

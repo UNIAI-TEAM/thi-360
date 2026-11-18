@@ -303,10 +303,60 @@ class ExamCheckTemplateRulesTests {
     }
 
     @Test
-    void removingTheCompetencyFilterOfALockedSectionIsLocked() throws Exception {
-        ExamStructureDocument copy = duplicateAndEdit(tree ->
-                ((ObjectNode) sectionOf(tree, "VACT-TD-LOGIC")).remove("knowledgeScope"));
-        assertThat(signedLocks(copy)).isNotEmpty();
+    void removingTheCompetencyFilterOfALockedSectionIsLockedAtThatSection() throws Exception {
+        String[] logicId = new String[1];
+        ExamStructureDocument copy = duplicateAndEdit(tree -> {
+            ObjectNode logic = sectionOf(tree, "VACT-TD-LOGIC");
+            logicId[0] = logic.path("id").asText();
+            logic.remove("knowledgeScope");
+        });
+        List<ObjectNode> locked = signedLocks(copy);
+        assertThat(locked).hasSize(1);
+        assertThat(locked.getFirst().path("sectionId").asText()).isEqualTo(logicId[0]);
+        assertThat(locked.getFirst().path("location").path("sectionId").asText()).isEqualTo(logicId[0]);
+        assertThat(locked.getFirst().path("required").asInt()).isEqualTo(12);
+        assertThat(locked.getFirst().path("available").asInt()).isZero();
+    }
+
+    private static void addTag(ObjectNode tree) {
+        ((ObjectNode) sectionOf(tree, "VACT-TD-LOGIC").at("/blocks/0")).putArray("tagCodes").add("TD_XEP_HANG");
+    }
+
+    @Test
+    void aTagRefinementOfALogicGroupIsNotPartOfTheSectionIdentity() throws Exception {
+        // Tag first, then duplicate: the tagged document is the template, the copy has fresh ids.
+        ObjectNode tagged = (ObjectNode) mapper.readTree(SIGNED_TEMPLATE);
+        addTag(tagged);
+        String taggedTemplate = tagged.toString();
+        ExamStructureDocument duplicate = ExamStructureOps.regenerateIds(document(taggedTemplate));
+        assertThat(of(rulesWith(duplicate, taggedTemplate).common(), "STRUCTURE_COUNT_LOCKED")).isEmpty();
+        ObjectNode reordered = mapper.valueToTree(duplicate);
+        swapOrder(reordered);
+        assertThat(of(rulesWith(mapper.treeToValue(reordered, ExamStructureDocument.class), taggedTemplate).common(),
+                "STRUCTURE_COUNT_LOCKED")).isEmpty();
+        // Duplicate first, then tag the copy.
+        assertThat(signedLocks(duplicateAndEdit(ExamCheckTemplateRulesTests::addTag))).isEmpty();
+        assertThat(signedLocks(duplicateAndEdit(tree -> { addTag(tree); swapOrder(tree); }))).isEmpty();
+        // The tag does not hide a real count change.
+        ExamStructureDocument resized = duplicateAndEdit(tree -> {
+            addTag(tree);
+            resize(sectionOf(tree, "VACT-TD-LOGIC"), 9, 3);
+        });
+        List<ObjectNode> locked = signedLocks(resized);
+        assertThat(locked).hasSize(1);
+        assertThat(locked.getFirst().path("required").asInt()).isEqualTo(12);
+        assertThat(locked.getFirst().path("available").asInt()).isEqualTo(9);
+    }
+
+    @Test
+    void aSectionLocalMismatchDoesNotUnpairTheOtherSectionsOfThePart() throws Exception {
+        ExamStructureDocument copy = duplicateAndEdit(tree -> {
+            sectionOf(tree, "VACT-TD-LOGIC").remove("knowledgeScope");
+            resize(sectionOf(tree, "VACT-TD-SL"), 15, 5);
+        });
+        List<ObjectNode> locked = signedLocks(copy);
+        assertThat(locked).hasSize(2);
+        assertThat(locked).allSatisfy(issue -> assertThat(issue.path("sectionId").isTextual()).isTrue());
     }
 
     @Test
@@ -440,6 +490,31 @@ class ExamCheckTemplateRulesTests {
         ExamStructureDocument untouched = document(LOCKED_TEMPLATE);
         JsonNode control = check(exam, untouched, ExamCheckScope.from("SECTION", null, "s-reason")).result();
         assertThat(issueCodes(control)).doesNotContain("STRUCTURE_COUNT_LOCKED");
+    }
+
+    @Test
+    void competencyRemovedFromALogicCopyIsLocatedReportedByTheReasoningScopeAndIncompleteInTheStates() throws Exception {
+        Exam exam = fullExam("VACT_FULL");
+        ExamTemplate loaded = template(true, true, SIGNED_TEMPLATE);
+        when(templates.findProvenance("VACT_FULL")).thenReturn(loaded);
+        subject("SCIENTIFIC_THINKING", 30);
+        String[] ids = new String[2];
+        ExamStructureDocument copy = duplicateAndEdit(tree -> {
+            ObjectNode logic = sectionOf(tree, "VACT-TD-LOGIC");
+            ids[0] = logic.path("id").asText();
+            ids[1] = sectionOf(tree, "VACT-TD-SL").path("id").asText();
+            logic.remove("knowledgeScope");
+        });
+
+        JsonNode whole = check(exam, copy).result();
+        assertThat(whole.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issue(whole, "STRUCTURE_COUNT_LOCKED").path("location").path("sectionId").asText()).isEqualTo(ids[0]);
+
+        JsonNode sibling = check(exam, copy, ExamCheckScope.from("SECTION", null, ids[1])).result();
+        assertThat(sibling.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issue(sibling, "STRUCTURE_COUNT_LOCKED").path("location").path("sectionId").asText()).isEqualTo(ids[0]);
+
+        assertThat(sectionStates(exam, copy)).contains(ids[0] + "=INCOMPLETE");
     }
 
     private List<String> sectionStates(Exam exam, ExamStructureDocument document) {
