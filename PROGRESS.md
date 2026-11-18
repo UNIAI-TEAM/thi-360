@@ -156,6 +156,7 @@
       - 2026-11-18 04:49 (UTC+7): FE-2 (UNI-2662, PR #93) merge: khung bước 2 bốn vùng, hộp thoại ba nút, đổi phiên bản cấu trúc. Advisor chạy lại typecheck, lint, vitest 1.662/1.664; hai test hết giờ khi chạy cả bộ, chạy riêng đạt. Mở FE-3a, FE-4.
       - 2026-11-18 05:30 (UTC+7): BE-11 (UNI-2672, PR #94) merge: cờ mẫu `publishable`, `fixed_counts`, `TopicQuota.percent`, `KnowledgeScope.everyChildInScope`. Advisor chạy lại backend 451 test, xanh. Mở đường cho BE-12, BE-13, FE-5.
       - 2026-11-18 06:20 (UTC+7): BE-9 (UNI-2660, PR #95) merge: công bố chụp danh sách tổ hợp, đường theo phần, cảnh báo `COMBINATION_LIST_CHANGED`, ba mã thiếu nguồn, SP2E 2026 = 10 điểm. Advisor chạy lại backend 472 test, xanh. Mở đường cho PR của BE-12 và BE-15.
+      - 2026-11-18 06:42 (UTC+7): FE-3a (UNI-2663, PR #97) merge phần gốc 7 điểm: vùng sửa nhóm, điều kiện, slots, phạm vi kiến thức. Advisor chạy lại typecheck, lint, sinh api-client đều sạch; 4 test web quá hạn 5 giây khi chạy cả bộ trên Windows, chạy riêng đạt 3/3 lần, cloud đạt 1695/1695. Phần thêm 1 điểm chờ BE-12.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
