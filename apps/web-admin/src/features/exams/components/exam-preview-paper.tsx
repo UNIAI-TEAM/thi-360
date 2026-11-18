@@ -6,7 +6,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { RichTextView } from "@/components/rich-text";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
-import type { PreviewBlock, PreviewItem, PreviewPaper, PreviewQuestion } from "../review-types";
+import type { PreviewBlock, PreviewDisplaySegment, PreviewItem, PreviewPaper, PreviewPart, PreviewQuestion } from "../review-types";
+import { audioAttachments, PreviewAudioList } from "./exam-preview-audio";
 import { useLookup } from "./exam-review-shared";
 
 /** Số mục (câu hoặc bộ) hiện sẵn của mỗi khối; phần còn lại mở bằng "Hiện tất cả". */
@@ -16,6 +17,54 @@ const OPTION_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 /** Số câu hiện trên đề: số đã đảo của đề thật, hoặc vị trí gốc khi xem thứ tự gốc (K12). */
 function displayNumber(question: PreviewQuestion, original: boolean): number {
   return original ? (question.originalNumber ?? question.number) : question.number;
+}
+
+export interface SegmentSlice {
+  segment: PreviewDisplaySegment;
+  blocks: PreviewBlock[];
+}
+
+/**
+ * Chia các khối của một phần theo `displaySegments` (H40): câu nằm ở phân đoạn có dải chứa vị trí của câu (số trên đề
+ * trừ số đầu của phần cộng 1). Bộ bị ranh giới cắt giữa chừng xuất hiện ở cả hai phân đoạn, mỗi nơi chỉ giữ câu con của
+ * mình, nên ngữ liệu hiện ở cả hai. Không đổi số câu. `null` khi phần không có phân đoạn: hiện như trước.
+ */
+export function sliceBySegments(part: PreviewPart, original: boolean): SegmentSlice[] | null {
+  const segments = part.displaySegments;
+  if (!segments || segments.length === 0) return null;
+  return [...segments]
+    .sort((a, b) => a.fromPosition - b.fromPosition)
+    .map((segment) => {
+      const inside = (question: PreviewQuestion) => {
+        const position = displayNumber(question, original) - part.firstNumber + 1;
+        return position >= segment.fromPosition && position <= segment.toPosition;
+      };
+      const blocks = part.blocks.flatMap((block): PreviewBlock[] => {
+        const items = block.items.flatMap((item): PreviewItem[] => {
+          if (item.kind === "QUESTION") return inside(item.question) ? [item] : [];
+          const children = item.children.filter(inside);
+          if (children.length === 0) return [];
+          return [children.length === item.children.length ? item : { ...item, children }];
+        });
+        if (items.length === 0) return [];
+        if (items.length === block.items.length && items.every((item, index) => item === block.items[index])) return [block];
+        const numbers = items.flatMap((item) =>
+          (item.kind === "QUESTION" ? [item.question] : item.children).map((question) => displayNumber(question, original)),
+        );
+        return [
+          {
+            ...block,
+            items,
+            firstNumber: Math.min(...numbers),
+            lastNumber: Math.max(...numbers),
+            questionCount: numbers.length,
+            setCount: null,
+            setSize: null,
+          },
+        ];
+      });
+      return { segment, blocks };
+    });
 }
 
 /** Đề đã sinh: phần › khối › câu theo đúng thứ tự thực tế, kèm đáp án và lời giải (chế độ quản trị). `original`: thứ tự gốc (K12). */
@@ -61,16 +110,45 @@ export function ExamPreviewPaper({ paper, original = false }: { paper: PreviewPa
                 : t("partPoints", { points: part.points })}
             </span>
           </h3>
-          {part.blocks.map((block) => (
-            <PreviewBlockView key={block.blockId} block={block} original={original} />
-          ))}
+          <PreviewPartBody part={part} original={original} />
         </section>
       ))}
     </div>
   );
 }
 
-function PreviewBlockView({ block, original }: { block: PreviewBlock; original: boolean }) {
+function PreviewPartBody({ part, original }: { part: PreviewPart; original: boolean }) {
+  const t = useTranslations("exams.preview");
+  const format = useFormatter();
+  const slices = useMemo(() => sliceBySegments(part, original), [part, original]);
+  if (slices === null) {
+    return part.blocks.map((block) => <PreviewBlockView key={block.blockId} block={block} original={original} />);
+  }
+  return slices.map(({ segment, blocks }) => {
+    const headingId = `preview-segment-${part.partId}-${segment.code}`;
+    return (
+      <section key={segment.code} aria-labelledby={headingId} className="flex flex-col gap-3">
+        <h4 id={headingId} className="text-label font-semibold text-text">
+          {segment.name}{" "}
+          <span className="font-normal text-text-muted">
+            ·{" "}
+            {t("segmentRange", {
+              first: part.firstNumber + segment.fromPosition - 1,
+              last: part.firstNumber + segment.toPosition - 1,
+              commands: segment.commandCount,
+              points: format.number(segment.maxPoints, DISPLAY_NUMBER_FORMAT),
+            })}
+          </span>
+        </h4>
+        {blocks.map((block) => (
+          <PreviewBlockView key={block.blockId} block={block} original={original} scope={segment.code} />
+        ))}
+      </section>
+    );
+  });
+}
+
+function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock; original: boolean; scope?: string }) {
   const t = useTranslations("exams.preview");
   const lookup = useLookup();
   const [expanded, setExpanded] = useState(false);
@@ -88,7 +166,7 @@ function PreviewBlockView({ block, original }: { block: PreviewBlock; original: 
     block.setCount !== null && block.setSize !== null
       ? t("blockRangeSets", { sets: block.setCount, size: block.setSize, first: block.firstNumber, last: block.lastNumber })
       : t("blockRange", { first: block.firstNumber, last: block.lastNumber, count: block.questionCount });
-  const listId = `preview-block-${block.blockId}`;
+  const listId = `preview-block-${scope}${block.blockId}`;
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
@@ -101,7 +179,7 @@ function PreviewBlockView({ block, original }: { block: PreviewBlock; original: 
       <ol id={listId} className="flex flex-col gap-3">
         {visible.map((item, index) => (
           <li key={item.kind === "SET" ? item.setId : item.question.questionId}>
-            <PreviewItemView item={item} setIndex={index + 1} original={original} cloze={block.questionType === "CLOZE"} />
+            <PreviewItemView item={item} setIndex={index + 1} original={original} cloze={block.questionType === "CLOZE"} scope={scope} />
           </li>
         ))}
       </ol>
@@ -122,17 +200,23 @@ function PreviewItemView({
   setIndex,
   original,
   cloze,
+  scope,
 }: {
   item: PreviewItem;
   setIndex: number;
   original: boolean;
   cloze: boolean;
+  /** Mã phân đoạn chứa mục: bộ bị cắt hiện ở hai phân đoạn nên mã nhận dạng phải khác nhau. */
+  scope: string;
 }) {
   const t = useTranslations("exams.preview");
   if (item.kind === "QUESTION") return <QuestionArticle question={item.question} original={original} />;
   // Bài đọc điền: chỗ trống của ngữ liệu mang số của câu con đầu, câu con thứ n ứng với chỗ trống thứ n (spec 3.4).
   const blankStart = cloze && item.children[0] ? displayNumber(item.children[0], original) : undefined;
-  const headingId = `preview-set-${item.setId}`;
+  const headingId = `preview-set-${scope}${item.setId}`;
+  const setNumbers = item.children.map((child) => displayNumber(child, original));
+  const setFirst = setNumbers[0] ?? 0;
+  const setLast = setNumbers[setNumbers.length - 1] ?? 0;
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -140,7 +224,9 @@ function PreviewItemView({
           {t("setHeading", { index: setIndex, count: item.children.length })}
         </h5>
         <Badge>{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
+        {audioAttachments(item.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
       </div>
+      <PreviewAudioList attachments={item.attachments} name={t("audio.forSet", { first: setFirst, last: setLast })} />
       {item.passage ? (
         <blockquote className="rounded-md border-s-4 border-border bg-subtle px-3 py-2 text-body text-text">
           <RichTextView html={item.passage} blankNumberStart={blankStart ?? item.blankNumberStart} />
@@ -209,7 +295,9 @@ function QuestionArticle({
         {question.knowledge && (
           <Badge className="whitespace-normal wrap-anywhere">{`${question.knowledge.code} · ${question.knowledge.name}`}</Badge>
         )}
+        {audioAttachments(question.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
       </div>
+      <PreviewAudioList attachments={question.attachments} name={t("audio.forQuestion", { number })} />
       {blank !== undefined && (
         <p className="text-caption text-text-muted">
           {t("clozePosition", { number, blank, type: types(question.type) })}
