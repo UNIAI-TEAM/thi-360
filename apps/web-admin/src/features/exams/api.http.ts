@@ -27,7 +27,6 @@ import type {
   ExamStructureSummary,
   ExamTemplate,
   ListExamsQuery,
-  SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
   UpdateExamStructureRequest,
@@ -254,6 +253,12 @@ type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery
  */
 export type AudioCountQuery = AvailableQuestionsQuery & Pick<ApiAvailableQuestionsQuery, "audioRequirement">;
 
+/** Đếm cả môn: mỗi nhóm kèm điều kiện audio của phần chứa nó. */
+export interface AudioSubjectCountQuery {
+  subjectCode: string;
+  groups: AudioCountQuery[];
+}
+
 /**
  * Thân `POST .../available-questions/count*`: gửi mọi điều kiện của khối mà hợp đồng nhận (hình dạng câu, định dạng
  * đáp án, điều kiện theo vị trí câu con...). `slots` của khối không có trường trong `AvailableQuestionsQuery` nên không
@@ -291,7 +296,7 @@ export async function countAvailableQuestions(query: AudioCountQuery): Promise<A
 }
 
 export async function countSubjectAvailableQuestions(
-  query: SubjectAvailableQuestionsQuery,
+  query: AudioSubjectCountQuery,
 ): Promise<AvailableQuestionCounts> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count-subject", {
