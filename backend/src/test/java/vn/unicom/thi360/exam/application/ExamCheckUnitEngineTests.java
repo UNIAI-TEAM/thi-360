@@ -128,6 +128,35 @@ class ExamCheckUnitEngineTests {
     }
 
     @Test
+    void emptyPartCheckReportsItsLocation() {
+        var mapper = new ObjectMapper();
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var store = mock(ExamCheckUnitStore.class);
+        var limits = SolverLimits.defaults();
+        var clock = Clock.systemUTC();
+        var builder = new SolverInputBuilder(catalog, source, limits);
+        var fingerprints = new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper));
+        var engine = new ExamCheckUnitEngine(store, fingerprints, catalog, mapper, limits, clock);
+        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine);
+        var exam = new Exam(UUID.randomUUID(), "EMPTY", "Empty", null, "FULL", "SHARED", null,
+                null, "RAW", clock.instant(), UUID.randomUUID());
+        var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, 0, "hash", mapper.createObjectNode());
+        var document = new ExamStructureCodec(mapper).read(
+                "{\"parts\":[{\"id\":\"empty\",\"name\":\"Empty\",\"questionCount\":1}]}");
+
+        var checked = check(checker, exam, document, input, clock, ExamCheckScope.from("PART", "empty", null));
+        assertThat(checked.result().path("status").asText()).isEqualTo("INVALID");
+        var issues = checked.result().path("groups").findValues("issues").stream()
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.spliterator(), false))
+                .filter(issue -> "PART_EMPTY".equals(issue.path("code").asText())).toList();
+        assertThat(issues).singleElement().satisfies(issue ->
+                assertThat(issue.path("location").path("partId").asText()).isEqualTo("empty"));
+        assertThat(checked.units()).isEmpty();
+    }
+
+    @Test
     void malformedExclusiveOptionDoesNotInvalidateOtherOptionOfSameSubject() {
         var mapper = new ObjectMapper();
         var catalog = mock(CatalogLookup.class);

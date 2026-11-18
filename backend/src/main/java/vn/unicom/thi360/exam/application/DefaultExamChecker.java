@@ -60,6 +60,18 @@ public class DefaultExamChecker implements ExamChecker {
         List<ObjectNode> invalid = allInvalid.stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList();
         var assembler = new ExamCheckAssembler(mapper, clock, limits);
+        if (scope.kind() == ExamCheckScope.Kind.PART && requested.isEmpty()) {
+            ExamPart part = snapshot.structure().parts().stream()
+                    .filter(candidate -> scope.targetId().equals(candidate.id())).findFirst().orElseThrow();
+            if (part.codeSource() == null && part.options().isEmpty()) {
+                var issueFactory = new ExamCheckIssues(mapper);
+                var empty = issueFactory.create("PART_EMPTY", "STRUCTURE", "ERROR");
+                empty.put("partId", part.id());
+                empty.put("partName", part.name());
+                common.add(issueFactory.key(empty));
+                return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
+            }
+        }
         Map<String, List<ObjectNode>> invalidOptions = new LinkedHashMap<>();
         boolean commonInvalid = false;
         for (ObjectNode issue : invalid) {

@@ -264,6 +264,27 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void checkingEmptyPartReturnsLocatedIssueWithoutWholeExamRun() throws Exception {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
+                + "VALUES (?,?,?,'Empty part','FULL','SHARED',1)", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')",
+                id, "{\"parts\":[{\"id\":\"empty\",\"name\":\"Empty\",\"questionCount\":1}]}");
+        var result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + id + "/check")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scope\":\"PART\",\"partId\":\"empty\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("INVALID"))
+                .andReturn().getResponse().getContentAsString());
+        var structure = result.path("groups").findValues("issues").stream()
+                .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                .filter(issue -> "PART_EMPTY".equals(issue.path("code").asText())).toList();
+        assertThat(structure).singleElement().satisfies(issue ->
+                assertThat(issue.path("location").path("partId").asText()).isEqualTo("empty"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_check_run WHERE exam_id=?",
+                Integer.class, id)).isZero();
+    }
+
+    @Test
     void invalidScopedSectionPersistsItsJointUnit() throws Exception {
         UUID id = UUID.randomUUID();
         jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
