@@ -5625,7 +5625,7 @@
       "over": "Allocated {allocated, number}/{count, number} · {over, number} over. Reduce the targets to fit {count, number} questions.",
       "maxError": "Not saved. Each subject or group has at most {max, number} topic targets. {known, select, yes {{level} has {count, number}. } other {}}Remove a target and save again.",
       "percentRange": "A target's percentage must be between 0 and 100%.",
-      "pendingRequired": "{count, plural, one {Row {names} is Required but has no MAPID.} other {Rows {names} are Required but have no MAPID.}} The exam can still be saved as a draft. Attach a code before the check can pass, a trial paper can be generated or it can be published.",
+      "pendingRequired": "Required rows without a MAPID: {names}. The exam can still be saved as a draft. Attach a code before the check can pass, a trial paper can be generated or it can be published.",
       "hint": "Each target takes at least the number of questions shown. Questions in the Remainder can still belong to that topic. A question counts toward one topic target at the same level, and still counts toward grade, difficulty and answer type.",
       "pickerDescription": "Choose the topic (MAPID) for a target of {level}"
     },

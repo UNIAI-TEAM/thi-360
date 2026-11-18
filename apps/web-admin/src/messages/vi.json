@@ -5625,7 +5625,7 @@
       "over": "Đã phân bổ {allocated, number}/{count, number} · Vượt {over, number} câu. Giảm số câu của chỉ tiêu cho khớp {count, number} câu.",
       "maxError": "Chưa lưu được. Mỗi môn hoặc mỗi nhóm có tối đa {max, number} chỉ tiêu chủ đề. {known, select, yes {{level} đang có {count, number}. } other {}}Bỏ bớt một chỉ tiêu rồi lưu lại.",
       "percentRange": "Tỷ lệ của chỉ tiêu phải từ 0 đến 100%.",
-      "pendingRequired": "{count, plural, one {Dòng {names} là Bắt buộc nhưng chưa gắn MAPID.} other {Các dòng {names} là Bắt buộc nhưng chưa gắn MAPID.}} Bài vẫn lưu nháp được. Gắn mã rồi mới kiểm tra đạt, sinh thử và công bố được.",
+      "pendingRequired": "Dòng {names} là Bắt buộc nhưng chưa gắn MAPID. Bài vẫn lưu nháp được. Gắn mã rồi mới kiểm tra đạt, sinh thử và công bố được.",
       "hint": "Mỗi chỉ tiêu có ít nhất số câu đã ghi. Câu thuộc Phần còn lại vẫn có thể là câu của chủ đề đó. Một câu chỉ tính vào một chỉ tiêu chủ đề cùng cấp, và vẫn tính vào lớp, độ khó, dạng trả lời.",
       "pickerDescription": "Chọn chủ đề (MAPID) cho chỉ tiêu của {level}"
     },
