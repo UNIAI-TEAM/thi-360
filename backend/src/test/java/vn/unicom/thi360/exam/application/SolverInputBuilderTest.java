@@ -10,7 +10,9 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -394,5 +396,101 @@ class SolverInputBuilderTest {
             assertThat(q.difficultyCodes()).containsExactly("HARD");
             assertThat(q.groupIds()).containsExactly("g");
         });
+    }
+
+    @Test
+    void requiredGradeExamQuotaGroupsBucketsAcrossBucket() {
+        // BE4B-R1-03: chỉ tiêu cấp bài REQUIRED theo chiều GRADE với bucket gộp G10+G11
+        // được solver thực thi; chứng minh phân phối theo nhóm bucket, không chỉ VALID.
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(UUID.randomUUID());
+        when(catalog.findActiveItem("SUBJECT", "TOAN")).thenReturn(Optional.of(subject));
+        Map<UUID, String> idToGrade = new HashMap<>();
+        var grades = new java.util.concurrent.atomic.AtomicReference<List<String>>(List.of());
+        when(source.findCandidates(any(), eq(20001))).thenAnswer(
+                call -> candidatesWithGrades(grades.get(), idToGrade));
+        var block = new QuestionBlock("b", "B", QuestionType.SINGLE_CHOICE, 3, null, null,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(), null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "TOAN", 3, null, null, null, null, List.of(block));
+        var part = new ExamPart("p", 1, "Part", null, 1, 1, 1, null, null,
+                List.of(section), List.of());
+        var grade = new ExamQuota("g", "grade", ExamQuota.Dimension.GRADE,
+                List.of(new ExamQuota.Bucket(List.of("G10", "G11"), 1, null),
+                        new ExamQuota.Bucket(List.of("G12"), 2, null)),
+                QuotaBasis.QUESTION, QuotaEnforcement.REQUIRED, List.of("TOAN"), List.of());
+        var builder = new SolverInputBuilder(catalog, source, SolverLimits.defaults());
+        var document = new ExamStructureDocument(List.of(part), List.of(grade));
+
+        grades.set(List.of("G12", "G12", "G12", "G12"));
+        var first = builder.build(UUID.randomUUID(), document);
+        var invalid = new PaperSolver().solveAll(first.parts(), first.candidates(), SolveMode.check());
+        assertThat(invalid.status()).isEqualTo(SolveStatus.INVALID);
+
+        grades.set(List.of("G11", "G12", "G12", "G12"));
+        var second = builder.build(UUID.randomUUID(), document);
+        var valid = new PaperSolver().solveAll(second.parts(), second.candidates(), SolveMode.check());
+        assertThat(valid.status()).as("result=%s", valid.results()).isEqualTo(SolveStatus.VALID);
+        var picks = valid.results().getFirst().witness().getFirst().groups().getFirst().picks();
+        Map<String, Long> byBucket = picks.stream().collect(java.util.stream.Collectors.groupingBy(
+                p -> "G12".equals(idToGrade.get(UUID.fromString(p.questionId()))) ? "G12" : "G10+G11",
+                java.util.stream.Collectors.counting()));
+        assertThat(byBucket).containsEntry("G12", 2L).containsEntry("G10+G11", 1L);
+    }
+
+    @Test
+    void requiredExamQuotaPercentUsesLargestRemainderWithDeclaredOrderTie() {
+        // BE4B-R1-03: tổng không nguyên quy bằng phần dư lớn nhất; hòa phần dư thì bucket khai
+        // trước được cộng (34/33/33 × 3 câu → sàn 1/0/0, dư 2 cho hai bucket hòa đầu → 1/1/1).
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(UUID.randomUUID());
+        when(catalog.findActiveItem("SUBJECT", "TOAN")).thenReturn(Optional.of(subject));
+        Map<UUID, String> idToGrade = new HashMap<>();
+        var grades = new java.util.concurrent.atomic.AtomicReference<List<String>>(List.of());
+        when(source.findCandidates(any(), eq(20001))).thenAnswer(
+                call -> candidatesWithGrades(grades.get(), idToGrade));
+        var block = new QuestionBlock("b", "B", QuestionType.SINGLE_CHOICE, 3, null, null,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(), null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "TOAN", 3, null, null, null, null, List.of(block));
+        var part = new ExamPart("p", 1, "Part", null, 1, 1, 1, null, null,
+                List.of(section), List.of());
+        var percent = new ExamQuota("pct", "grade", ExamQuota.Dimension.GRADE,
+                List.of(new ExamQuota.Bucket(List.of("G10"), null, BigDecimal.valueOf(34)),
+                        new ExamQuota.Bucket(List.of("G11"), null, BigDecimal.valueOf(33)),
+                        new ExamQuota.Bucket(List.of("G12"), null, BigDecimal.valueOf(33))),
+                QuotaBasis.QUESTION, QuotaEnforcement.REQUIRED, List.of("TOAN"), List.of());
+        var builder = new SolverInputBuilder(catalog, source, SolverLimits.defaults());
+        var document = new ExamStructureDocument(List.of(part), List.of(percent));
+
+        grades.set(List.of("G11", "G11", "G12", "G12"));
+        var first = builder.build(UUID.randomUUID(), document);
+        var invalid = new PaperSolver().solveAll(first.parts(), first.candidates(), SolveMode.check());
+        assertThat(invalid.status()).isEqualTo(SolveStatus.INVALID);
+
+        grades.set(List.of("G10", "G11", "G12", "G12"));
+        var second = builder.build(UUID.randomUUID(), document);
+        var valid = new PaperSolver().solveAll(second.parts(), second.candidates(), SolveMode.check());
+        assertThat(valid.status()).isEqualTo(SolveStatus.VALID);
+        var picks = valid.results().getFirst().witness().getFirst().groups().getFirst().picks();
+        assertThat(picks.stream().map(p -> idToGrade.get(UUID.fromString(p.questionId()))).sorted()
+                .toList()).containsExactly("G10", "G11", "G12");
+    }
+
+    private static List<QuestionSourcePort.Candidate> candidatesWithGrades(List<String> grades,
+            Map<UUID, String> idToGrade) {
+        var out = new java.util.ArrayList<QuestionSourcePort.Candidate>();
+        for (String grade : grades) {
+            UUID id = UUID.randomUUID();
+            idToGrade.put(id, grade);
+            var unit = new QuestionSourcePort.Unit(id, null, QuestionType.SINGLE_CHOICE,
+                    grade, "HARD", List.of(), List.of(), BigDecimal.ONE);
+            out.add(new QuestionSourcePort.Candidate(id, 1, null, List.of(unit), null, null));
+        }
+        return List.copyOf(out);
     }
 }
