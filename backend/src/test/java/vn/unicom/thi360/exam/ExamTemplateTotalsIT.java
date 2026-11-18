@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.ArrayList;
@@ -15,9 +16,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
@@ -26,6 +31,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class ExamTemplateTotalsIT extends AbstractIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper mapper;
+    @Autowired private DataSource dataSource;
 
     @Test
     void everyStoredTemplateMatchesItsFixture() throws Exception {
@@ -632,5 +638,31 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
         } else if (node.isArray()) {
             node.forEach(child -> collectBlocks(child, blocks));
         }
+    }
+
+    @Test
+    void thptqgVactMigrationOnlyTouchesItsOwnTemplates() throws Exception {
+        String migration = "db/migration/exam/V202611181305__exam_templates_thptqg_vact.sql";
+        String sql;
+        try (var input = new ClassPathResource(migration).getInputStream()) {
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        var codes = new java.util.TreeSet<String>();
+        var matcher = java.util.regex.Pattern
+                .compile("(?m)^WHERE code = '([A-Z0-9_]+)';|^VALUES \\('([A-Z0-9_]+)'").matcher(sql);
+        while (matcher.find()) codes.add(matcher.group(1) != null ? matcher.group(1) : matcher.group(2));
+        assertThat(codes).isNotEmpty().allMatch(code -> code.startsWith("THPTQG_") || code.startsWith("VACT_"));
+        assertThat(codes).contains("THPTQG_MATH_2025", "THPTQG_REVIEW", "VACT_FULL", "VACT_REVIEW", "VACT_PART_LOGIC");
+
+        // An unrelated template that an administrator deactivated and relabelled survives the migration.
+        jdbc.update("UPDATE exam.exam_template SET active = false, label = 'kept' WHERE code = 'HSA_PART_ENGLISH'");
+        var before = jdbc.queryForList("SELECT * FROM exam.exam_template WHERE code <> ALL (?) ORDER BY code",
+                (Object) codes.toArray(String[]::new));
+        ScriptUtils.executeSqlScript(DataSourceUtils.getConnection(dataSource), new ClassPathResource(migration));
+        var after = jdbc.queryForList("SELECT * FROM exam.exam_template WHERE code <> ALL (?) ORDER BY code",
+                (Object) codes.toArray(String[]::new));
+        assertThat(after).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT active FROM exam.exam_template WHERE code = 'HSA_PART_ENGLISH'",
+                Boolean.class)).isFalse();
     }
 }

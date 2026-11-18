@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class ExamCreateIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private EntityManager entityManager;
 
     @Test
     void allKindsAllowedScopes() throws Exception {
@@ -388,5 +391,147 @@ class ExamCreateIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(request.replace("UNKNOWN", "TOAN")))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EXAM_PART_OR_SUBJECT_REQUIRED"));
+    }
+
+    @Test
+    void reloadingTheSplitMathTemplateReplacesAWholeSubjectDraft() throws Exception {
+        String id = createMathDraft();
+        // Put the draft back into its pre-split shape: one whole-subject part of 22 questions in 90 minutes.
+        String legacy;
+        try (var stream = getClass().getResourceAsStream("/db/migration/exam/V202611180652__exam_templates_ba_numbers.sql")) {
+            String sql = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            String statement = sql.substring(0, sql.indexOf("WHERE code = 'THPTQG_MATH_2025'"));
+            statement = statement.substring(statement.lastIndexOf("structure = '") + "structure = '".length());
+            legacy = statement.substring(0, statement.lastIndexOf("'::jsonb")).replace("''", "'");
+        }
+        var legacyParts = mapper.readTree(legacy).path("parts");
+        org.assertj.core.api.Assertions.assertThat(legacyParts.size()).isEqualTo(1);
+        storeStructure(id, legacy);
+        jdbc.update("UPDATE exam.exam SET timing = 'PER_PART', question_count = 22 WHERE id = CAST(? AS uuid)", id);
+        var reloaded = reloadMath(id, "KEEP_EDITED");
+        var parts = reloaded.path("parts");
+        org.assertj.core.api.Assertions.assertThat(parts.size()).isEqualTo(3);
+        int[] counts = {12, 4, 6};
+        for (int i = 0; i < counts.length; i++) {
+            org.assertj.core.api.Assertions.assertThat(parts.get(i).path("questionCount").asInt()).isEqualTo(counts[i]);
+            org.assertj.core.api.Assertions.assertThat(parts.get(i).path("sections").get(0).path("questionCount").asInt())
+                    .isEqualTo(counts[i]);
+            org.assertj.core.api.Assertions.assertThat(parts.get(i).hasNonNull("durationMinutes")).isFalse();
+            org.assertj.core.api.Assertions.assertThat(parts.get(i).path("id").asText())
+                    .isNotEqualTo(legacyParts.get(0).path("id").asText());
+        }
+        mockMvc.perform(get("/api/v1/admin/exams/{id}", id).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.timing").value("SHARED"))
+                .andExpect(jsonPath("$.durationMinutes").value(90))
+                .andExpect(jsonPath("$.questionCount").value(22));
+        org.assertj.core.api.Assertions.assertThat(templateLoadFlag(id)).isEqualTo("true");
+    }
+
+    @Test
+    void sameTopologyReloadKeepsGenuineEdits() throws Exception {
+        String id = createMathDraft();
+        editThirdPartCount(id, 5);
+        long revision = revisionOf(id);
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"THPTQG_MATH_2025\",\"confirmReplace\":true,"
+                                + "\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_OVERVIEW_CONFIRM"));
+        var reloaded = reloadMath(id, "KEEP_EDITED");
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(2).path("sections").get(0).path("questionCount").asInt()).isEqualTo(5);
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(0).path("questionCount").asInt()).isEqualTo(12);
+        org.assertj.core.api.Assertions.assertThat(templateLoadFlag(id)).isEqualTo("false");
+    }
+
+    @Test
+    void oneSharedPartIdKeepsTheIdBasedReload() throws Exception {
+        String id = createMathDraft();
+        var document = mapper.readTree(jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_structure WHERE exam_id = CAST(? AS uuid)", String.class, id));
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) document.path("parts");
+        // A different shape (one part instead of three) that still shares the first part id with the template.
+        parts.remove(2);
+        parts.remove(1);
+        storeStructure(id, document.toString());
+        reloadMath(id, "KEEP_EDITED");
+        org.assertj.core.api.Assertions.assertThat(templateLoadFlag(id)).isEqualTo("false");
+    }
+
+    @Test
+    void templateWithoutStoredIdsKeepsTheIdBasedReload() throws Exception {
+        String id = createMathDraft();
+        editThirdPartCount(id, 5);
+        var template = mapper.readTree(jdbc.queryForObject(
+                "SELECT structure::text FROM exam.exam_template WHERE code = 'THPTQG_MATH_2025'", String.class));
+        removeIds(template);
+        jdbc.update("UPDATE exam.exam_template SET structure = CAST(? AS jsonb) WHERE code = 'THPTQG_MATH_2025'",
+                template.toString());
+        entityManager.flush();
+        entityManager.clear();
+        var reloaded = reloadMath(id, "KEEP_EDITED");
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(2).path("sections").get(0).path("questionCount").asInt()).isEqualTo(5);
+        org.assertj.core.api.Assertions.assertThat(templateLoadFlag(id)).isEqualTo("false");
+    }
+
+    private static void removeIds(com.fasterxml.jackson.databind.JsonNode node) {
+        if (node.isObject()) {
+            ((com.fasterxml.jackson.databind.node.ObjectNode) node).remove("id");
+        }
+        node.forEach(ExamCreateIT::removeIds);
+    }
+
+    private String createMathDraft() throws Exception {
+        String created = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"THPTQG\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                                + "\"name\":\"Math\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return mapper.readTree(created).path("id").asText();
+    }
+
+    private void storeStructure(String id, String document) {
+        jdbc.update("UPDATE exam.exam_structure SET parts = CAST(? AS jsonb) WHERE exam_id = CAST(? AS uuid)",
+                document, id);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private long revisionOf(String id) throws Exception {
+        return mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).path("revision").asLong();
+    }
+
+    private void editThirdPartCount(String id, int count) throws Exception {
+        var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var third = structure.path("parts").get(2);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/overview", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(java.util.Map.of(
+                                "expectedRevision", structure.path("revision").asLong(),
+                                "overview", java.util.List.of(java.util.Map.of(
+                                        "partId", third.path("id").asText(),
+                                        "sectionId", third.path("sections").get(0).path("id").asText(),
+                                        "questionCount", count))))))
+                .andExpect(status().isOk());
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode reloadMath(String id, String policy) throws Exception {
+        return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"THPTQG_MATH_2025\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"" + policy + "\",\"expectedRevision\":" + revisionOf(id) + "}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    private String templateLoadFlag(String id) {
+        entityManager.flush();
+        return jdbc.queryForObject("SELECT payload->'after'->>'topologyReplaced' FROM shared.outbox_event "
+                + "WHERE topic='audit' AND payload->>'action'='EXAM.TEMPLATE_LOAD' AND payload->>'targetId'=?",
+                String.class, id);
     }
 }

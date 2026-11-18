@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -780,6 +781,7 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
                     messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
         }
+        boolean topologyReplaced = false;
         if (previous != null && structure != null) {
             ExamStructureDocument baseline = codec().read(previous.getStructure());
             if ("REVIEW".equals(previous.getBuildMode())) {
@@ -789,7 +791,9 @@ public class ExamService {
                 baseline = selectSubjectPart(baseline, exam.getPartCode());
             }
             ExamStructureDocument current = readStoredStructure(structure);
-            List<ExamOverview.Change> changes = ExamOverview.changes(current, baseline);
+            topologyReplaced = hasIncompatibleTopology(current, baseline);
+            List<ExamOverview.Change> changes = topologyReplaced
+                    ? List.of() : ExamOverview.changes(current, baseline);
             if (!changes.isEmpty() && request.overviewPolicy() == null) {
                 throw new ConflictException(ExamErrorCodes.OVERVIEW_CONFIRM,
                         messages.get(ExamErrorCodes.OVERVIEW_CONFIRM), List.of(
@@ -798,7 +802,7 @@ public class ExamService {
                                 new FieldError("overview.template", "TEMPLATE",
                                         objectMapper.valueToTree(ExamOverview.rows(doc)).toString())));
             }
-            if ("KEEP_EDITED".equals(request.overviewPolicy())) {
+            if (!topologyReplaced && "KEEP_EDITED".equals(request.overviewPolicy())) {
                 doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(doc, changes));
             }
         }
@@ -811,10 +815,37 @@ public class ExamService {
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.TEMPLATE_LOAD")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
-                .after(Map.of("templateCode", template.getCode()))
+                .after(Map.of("templateCode", template.getCode(), "topologyReplaced", topologyReplaced))
                 .build());
         return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
+    }
+
+    /**
+     * A draft whose parts share no id with the template's stored baseline and whose part count differs
+     * has a different topology (e.g. one whole-subject part before the split); its values must not be
+     * transferred onto the new parts. Any missing id (ids assigned at read time may be random) or a
+     * single shared part id keeps the id/order-based comparison. The part-count condition keeps
+     * duplicated drafts, whose ids are all new but whose shape is unchanged, on that comparison.
+     */
+    private static boolean hasIncompatibleTopology(ExamStructureDocument current, ExamStructureDocument baseline) {
+        if (current.parts().isEmpty() || baseline.parts().isEmpty()
+                || current.parts().size() == baseline.parts().size()) {
+            return false;
+        }
+        Set<String> baselineIds = new HashSet<>();
+        for (ExamPart part : baseline.parts()) {
+            if (part.id() == null) {
+                return false;
+            }
+            baselineIds.add(part.id());
+        }
+        for (ExamPart part : current.parts()) {
+            if (part.id() == null || baselineIds.contains(part.id())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** PUT /exams/{id}/structure — thay toàn bộ cấu trúc bản làm việc. */

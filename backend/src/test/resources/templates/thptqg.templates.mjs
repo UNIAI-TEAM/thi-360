@@ -49,7 +49,7 @@ const groupNames={
 };
 const source=entries.map(([suffix,subject,name,questions,duration])=>{
   const code=`THPTQG_${suffix}_2025`;
-  let structure;
+  let structure, idVersion;
   if(subject==='VAN' || subject==='INFORMATICS') {
     structure=preservedStructure(code);
     if(subject==='VAN') structure.parts[0].sections[0].blocks[0].matrix={
@@ -68,13 +68,15 @@ const source=entries.map(([suffix,subject,name,questions,duration])=>{
       part('Phần II · Đúng/Sai',subject,[block('Đúng/Sai','TRUE_FALSE',4,1,{itemShape:{statements:4},expectedScoring:{trueFalseMethod:'COUNT_TABLE',trueFalseTable:[0.1,0.25,0.5,1]}})],4)];
     if(short) parts.push(part('Phần III · Trả lời ngắn',subject,[block('Trả lời ngắn','SHORT_ANSWER',6,math?.5:.25)],math?3:1.5));
     structure={parts};
+    // The earlier one-part structure must never match these parts by id when a draft is reloaded.
+    idVersion='split-parts';
   }
   const template={code,kindCode:'THPTQG',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:2025,matrixYear:2025,
     timing:['VAN','ANH'].includes(subject)?'PER_PART':'SHARED',durationMinutes:duration,maxScore:10,
     expertNote:subject==='VAN'?'Đọc hiểu là một chùm 5 câu tự luận, tổng 4 điểm; điểm từng câu theo hướng dẫn chấm.':null,
     label:`THPTQG – ${name} – Cấu trúc 2025`,summary:`${questions} câu, ${duration} phút, thang 10 điểm.`,
     buildMode:'STANDARD',isDefault:true,existing:true,expected:{questions,maxPoints:10},structure,
-    ...(subject==='VAN'?{publishable:false}:{})};
+    ...(subject==='VAN'?{publishable:false}:{}),...(idVersion?{idVersion}:{})};
   assignGroups(template,({block,subjectCode})=>groupNames[block.name]?`THPTQG_${subjectCode}_${groupNames[block.name]}`:null);
   return template;
 });
