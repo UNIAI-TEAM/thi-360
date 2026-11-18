@@ -3544,7 +3544,7 @@ export interface components {
         ExamCheckCell: {
             difficultyCode?: string;
             gradeCode?: string;
-            /** Format: int32 */
+            /** Format: decimal */
             required?: number;
         };
         ExamCheckChoice: {
@@ -3556,7 +3556,7 @@ export interface components {
         };
         ExamCheckDimension: {
             code?: string;
-            /** Format: int32 */
+            /** Format: decimal */
             required?: number;
         };
         ExamCheckGroup: {
@@ -3671,10 +3671,10 @@ export interface components {
             subjectCode?: string;
         };
         ExamCheckSubjectDimension: {
-            /** Format: int32 */
+            /** Format: decimal */
             achieved?: number;
             code?: string;
-            /** Format: int32 */
+            /** Format: decimal */
             required?: number;
         };
         /** @description Kết quả kiểm tra cấu hình gần nhất của bài thi */

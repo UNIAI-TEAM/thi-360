@@ -38,7 +38,7 @@ class ExamDeepCheckIT extends AbstractIntegrationTest {
     static class GatedCheckerConfiguration {
         @Bean Gate gate() { return new Gate(); }
         @Bean @Primary ExamChecker gatedChecker(DefaultExamChecker delegate, Gate gate) {
-            return (snapshot, deadline, budget) -> {
+            return (snapshot, deadline, budget, scope) -> {
                 if (snapshot.exam().getId().equals(gate.examId)) {
                     gate.entered.countDown();
                     try {
@@ -48,7 +48,7 @@ class ExamDeepCheckIT extends AbstractIntegrationTest {
                         throw new IllegalStateException(e);
                     }
                 }
-                return delegate.check(snapshot, deadline, budget);
+                return delegate.check(snapshot, deadline, budget, scope);
             };
         }
     }
@@ -101,6 +101,40 @@ class ExamDeepCheckIT extends AbstractIntegrationTest {
         assertThat(event.path("traceId").asText()).isEqualTo("deep-check-trace");
         assertThat(event.path("actorId").asText()).isEqualTo(jdbc.queryForObject(
                 "SELECT started_by::text FROM exam.exam_check_job WHERE id=?", String.class, runId));
+    }
+
+    @Test
+    void differentDeepScopesConflictAndExamCanRunAfterScopedCompletion() throws Exception {
+        jdbc.update("UPDATE exam.exam_structure SET parts=?::jsonb WHERE exam_id=?", """
+                {"parts":[{"id":"p","name":"Part","sections":[
+                  {"id":"a","subjectCode":"LY","questionCount":1,"blocks":[]},
+                  {"id":"b","subjectCode":"HOA","questionCount":1,"blocks":[]}]}]}
+                """, examId);
+        String scoped = "{\"scope\":\"SECTION\",\"sectionId\":\"a\"}";
+        var first = mapper.readTree(mockMvc.perform(post(url).param("deep", "true")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType("application/json").content(scoped))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
+        UUID runId = UUID.fromString(first.path("runId").asText());
+        assertThat(gate.entered.await(10, TimeUnit.SECONDS)).isTrue();
+        var repeated = mapper.readTree(mockMvc.perform(post(url).param("deep", "true")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType("application/json").content(scoped))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
+        assertThat(repeated.path("runId").asText()).isEqualTo(runId.toString());
+        mockMvc.perform(post(url).param("deep", "true").with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_RUN_SCOPE_CONFLICT"));
+        mockMvc.perform(post(url).param("deep", "true").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType("application/json").content("{\"scope\":\"SECTION\",\"sectionId\":\"b\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_RUN_SCOPE_CONFLICT"));
+        gate.release.countDown();
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertThat(state(runId)).isEqualTo("DONE"));
+        var examRun = mapper.readTree(mockMvc.perform(post(url).param("deep", "true")
+                        .with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
+        UUID examRunId = UUID.fromString(examRun.path("runId").asText());
+        assertThat(examRunId).isNotEqualTo(runId);
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertThat(state(examRunId)).isEqualTo("DONE"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_check_run WHERE exam_id=?",
+                Integer.class, examId)).isEqualTo(1);
     }
 
     @Test

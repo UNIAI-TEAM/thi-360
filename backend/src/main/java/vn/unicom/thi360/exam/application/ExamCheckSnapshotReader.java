@@ -54,6 +54,9 @@ public class ExamCheckSnapshotReader {
         ExamStructure structure = structures.findById(examId)
                 .orElseThrow(() -> new NotFoundException("Exam structure not found"));
         JsonNode parts = structure.getParts().deepCopy();
+        var codec = new ExamStructureCodec(mapper);
+        var document = new ExamStructureDocument(codec.read(parts).parts(),
+                codec.readQuotas(structure.getExamQuotas()));
         Set<UUID> subjectIds = references.findByExamIdAndVersionNo(examId, null).stream()
                 .map(ref -> ref.getSubjectItemId()).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
         Map<UUID, Long> sourceRevisions = source.sourceRevisions(subjectIds);
@@ -61,10 +64,10 @@ public class ExamCheckSnapshotReader {
                 : profiles.findById(exam.getKindItemId()).map(profile -> profile.getRevision()).orElse(null);
         long catalogRevision = catalog.revision();
         var config = ExamCheckFingerprint.Config.from(exam);
-        String hash = fingerprint.calculate(parts, config, profileRevision, catalogRevision);
+        String hash = fingerprint.calculate(codec.write(document), config, profileRevision, catalogRevision);
         ExamCheckResultStore.Input input = new ExamCheckResultStore.Input(examId, exam.getRevision(),
                 structure.getStructureHash(), mapper.valueToTree(config), profileRevision, catalogRevision,
                 hash, mapper.valueToTree(sourceRevisions));
-        return new Snapshot(exam, new ExamStructureCodec(mapper).read(parts), input);
+        return new Snapshot(exam, document, input);
     }
 }

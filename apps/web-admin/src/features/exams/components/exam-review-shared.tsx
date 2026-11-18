@@ -86,7 +86,6 @@ const COUNT_ISSUE_CODES: Partial<Record<CheckIssueCode, true>> = {
   COMPETENCY_SHORTAGE: true,
   ANSWER_TYPE_SHORTAGE: true,
   SUBJECT_QUOTA_INFEASIBLE: true,
-  REMAINDER_GROUP_INVALID: true,
 };
 
 /** Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). */

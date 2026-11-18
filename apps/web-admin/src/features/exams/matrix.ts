@@ -381,7 +381,7 @@ const PERCENT_TOLERANCE = 1e-6;
 /** Kiểm tra một khối với số câu của nó (UniNote PBI-04 mục 6.2, 7.3). */
 export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssue[] {
   const issues: BlockIssue[] = [];
-  // `questionCount = null`: nhóm "lấy phần còn lại" của môn, số câu do môn quyết định (REMAINDER_GROUP_INVALID).
+  // `questionCount = null`: nhóm "lấy phần còn lại" của môn, số câu do môn quyết định.
   if (block.questionCount !== null && (!Number.isInteger(block.questionCount) || block.questionCount <= 0)) {
     issues.push({ code: "COUNT_NOT_POSITIVE" });
   }
@@ -469,7 +469,7 @@ export function countOf(item: { questionCount: number | null }): number {
 /**
  * Số câu từng nhóm khi môn nhận `count` câu và phần câu thừa chưa bỏ được (`excess` > 0 nghĩa là không có câu đơn nào
  * để bỏ): nhóm câu đơn `questionCount = null` ("lấy phần còn lại", dữ liệu trước H3) nhận phần chênh giữa số câu của
- * môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được (báo `REMAINDER_GROUP_INVALID`). Tổng nhóm cố
+ * môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được. Tổng nhóm cố
  * định vượt `count` (môn `SUBJECT_CHOICE` khai 17 nhưng nhận 16, H3) thì bỏ câu từ cuối, chỉ ở nhóm câu đơn; chùm giữ
  * nguyên, cùng nguyên tắc với `TrimPolicy` của máy chủ.
  *

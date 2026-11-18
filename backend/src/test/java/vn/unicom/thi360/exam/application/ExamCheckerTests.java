@@ -85,7 +85,6 @@ class ExamCheckerTests {
         assertThat(issueCodes(result)).contains("SCORING_MISMATCH");
         assertThat(result.path("paths").get(0).path("issues").findValues("questionCodes").getFirst().get(0).asText())
                 .isEqualTo("Q-SERVING");
-        verify(source, never()).loadVersions(any());
     }
 
     @Test
@@ -170,6 +169,103 @@ class ExamCheckerTests {
     }
 
     @Test
+    void referenceMatricesComparePromptAndPointsAgainstTheProof() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 0);
+        UUID id = UUID.randomUUID();
+        Unit unit = new Unit(id, null, QuestionType.TRUE_FALSE, "G12", "D", List.of(), List.of(),
+                new BigDecimal("2"), null, "TF", 4, 4, null, null, null, false);
+        candidates.put(subjects.get("MATH"), List.of(new Candidate(id, 1, null, List.of(unit), null, null)));
+        for (String basis : List.of("PROMPT", "POINTS")) {
+            int amount = basis.equals("PROMPT") ? 4 : 2;
+            for (int required : List.of(amount, amount + 1)) {
+                String matrix = """
+                        "matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"%s",
+                        "gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE",
+                        "byGrade":[{"code":"G12","value":%d}]},
+                        """.formatted(basis, required);
+                String doc = singleStructure(1, null, matrix).replace("SINGLE_CHOICE", "TRUE_FALSE");
+                JsonNode result = check(exam, document(doc)).result();
+                assertThat(result.path("status").asText()).isEqualTo("VALID");
+                assertThat(issueCodes(result)).doesNotContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
+                if (required == amount) assertThat(issueCodes(result)).doesNotContain("DISTRIBUTION_DEVIATION");
+                else assertThat(issueCodes(result)).contains("DISTRIBUTION_DEVIATION");
+                JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+                assertThat(row.path("required").asInt()).isEqualTo(required);
+                assertThat(row.path("achieved").asInt()).isEqualTo(amount);
+            }
+        }
+    }
+
+    @Test
+    void provedZeroReferenceBucketDoesNotUseTheSourcePool() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 0);
+        UUID g10 = UUID.randomUUID(), g12 = UUID.randomUUID();
+        candidates.put(subjects.get("MATH"), List.of(
+                new Candidate(g10, 1, null, List.of(new Unit(g10, null, QuestionType.SINGLE_CHOICE,
+                        "G10", "D10", List.of(), List.of(), BigDecimal.ONE)), null, null),
+                new Candidate(g12, 1, null, List.of(new Unit(g12, null, QuestionType.SINGLE_CHOICE,
+                        "G12", "D12", List.of(), List.of(), BigDecimal.ONE)), null, null)));
+        String matrix = """
+                "matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION",
+                "gradeEnforcement":"REFERENCE","difficultyEnforcement":"REQUIRED",
+                "byGrade":[{"code":"G10","value":1}],"byDifficulty":[{"code":"D12","value":1}]},
+                """;
+        JsonNode result = check(exam, document(singleStructure(1, null, matrix))).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+        assertThat(row.path("code").asText()).isEqualTo("G10");
+        assertThat(row.path("required").asInt()).isEqualTo(1);
+        assertThat(row.path("achieved").asInt()).isZero();
+        JsonNode warning = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                .filter(issue -> "DISTRIBUTION_DEVIATION".equals(issue.path("code").asText())).findFirst().orElseThrow();
+        assertThat(warning.path("available").asInt()).isZero();
+    }
+
+    @Test
+    void pointReferenceRowsAndWarningsPreserveDecimalValues() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 0);
+        UUID id = UUID.randomUUID();
+        Unit unit = new Unit(id, null, QuestionType.SINGLE_CHOICE, "G12", "D", List.of(), List.of(),
+                new BigDecimal("0.25"));
+        candidates.put(subjects.get("MATH"), List.of(new Candidate(id, 1, null, List.of(unit), null, null)));
+        for (String matrix : List.of(
+                """
+                {"mode":"SEPARATE","unit":"COUNT","basis":"POINTS","gradeEnforcement":"REFERENCE",
+                 "byGrade":[{"code":"G12","value":0.25}]}
+                """,
+                """
+                {"mode":"COMBINED","unit":"COUNT","basis":"POINTS","gradeEnforcement":"REFERENCE",
+                 "difficultyEnforcement":"REFERENCE","cells":[{"gradeCode":"G12","difficultyCode":"D","value":0.25}]}
+                """)) {
+            JsonNode result = check(exam, document(singleStructure(1, null, "\"matrix\":" + matrix + ","))).result();
+            assertThat(result.path("status").asText()).isEqualTo("VALID");
+            assertThat(issueCodes(result)).doesNotContain("DISTRIBUTION_DEVIATION", "MATRIX_NON_INTEGER");
+            JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+            assertThat(row.path("required").decimalValue()).isEqualByComparingTo("0.25");
+            assertThat(row.path("achieved").decimalValue()).isEqualByComparingTo("0.25");
+        }
+        String percent = """
+                "matrix":{"mode":"SEPARATE","unit":"PERCENT","basis":"POINTS","gradeEnforcement":"REFERENCE",
+                "byGrade":[{"code":"G12","value":50},{"code":"G10","value":50}]},
+                """;
+        JsonNode result = check(exam, document(singleStructure(1, null, percent))).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+        assertThat(row.path("required").decimalValue()).isEqualByComparingTo("0.125");
+        assertThat(row.path("achieved").decimalValue()).isEqualByComparingTo("0.25");
+        JsonNode warning = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                .filter(issue -> "DISTRIBUTION_DEVIATION".equals(issue.path("code").asText())
+                        && "G12".equals(issue.path("gradeCode").asText())).findFirst().orElseThrow();
+        assertThat(warning.path("required").decimalValue()).isEqualByComparingTo("0.125");
+        assertThat(warning.path("available").decimalValue()).isEqualByComparingTo("0.25");
+    }
+
+    @Test
     void sharedTimingAndEmptyPartsBlockTheirPaths() throws Exception {
         Exam exam = exam(1, null, "RAW");
         subject("MATH", 1);
@@ -204,7 +300,119 @@ class ExamCheckerTests {
                 """;
         JsonNode result = check(exam, document(doc)).result();
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
-        assertThat(issueCodes(result)).contains("REMAINDER_GROUP_INVALID");
+        assertThat(issueCodes(result)).contains("SECTION_TOTAL_MISMATCH");
+    }
+
+    @Test
+    void omittedEssayIsReportedWithoutAffectingTotalsOrRequiringManualGrading() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        String doc = """
+                {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":1,"blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1},
+                {"id":"essay","questionType":"ESSAY","questionCount":1,"omitted":true}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        assertThat(issueCodes(result)).contains("OMITTED_GROUPS_PRESENT").doesNotContain("MANUAL_GRADING_REQUIRED");
+        JsonNode issue = result.path("groups").findValues("issues").stream()
+                .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                .filter(value -> "OMITTED_GROUPS_PRESENT".equals(value.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(issue.path("location").path("blockId").asText()).isEqualTo("essay");
+    }
+
+    @Test
+    void partContainingOnlyOmittedEssayIsNotAnEmptyDraftPart() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 1);
+        subject("VAN", 0);
+        String doc = """
+                {"parts":[{"id":"p1","questionCount":1,"sections":[{"id":"s1","subjectCode":"MATH",
+                "questionCount":1,"blocks":[{"id":"b1","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                {"id":"p2","questionCount":0,"sections":[{"id":"s2","subjectCode":"VAN","questionCount":0,
+                "blocks":[{"id":"essay","questionType":"ESSAY","questionCount":1,"omitted":true}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        assertThat(issueCodes(result)).contains("OMITTED_GROUPS_PRESENT").doesNotContain("PART_EMPTY");
+    }
+
+    @Test
+    void incompleteChildBoundsAreReportedBeforeConstructingSolverInput() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        String doc = """
+                {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":1,"blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1,
+                "childConditions":[{"from":1}]}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(issueCodes(result)).contains("SECTION_INCOMPLETE");
+        verify(source, never()).findCandidates(any(), anyInt());
+    }
+
+    @Test
+    void invalidChildRangesAreLocatedBeforeConstructingSolverInput() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        for (String range : List.of("{\"from\":1,\"to\":21}", "{\"from\":0,\"to\":1}", "{\"from\":2,\"to\":1}")) {
+            String doc = """
+                    {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                    "questionCount":1,"blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1,
+                    "childConditions":[%s]}]}]}]}
+                    """.formatted(range);
+            JsonNode result = check(exam, document(doc)).result();
+            JsonNode issue = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                    .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                    .filter(value -> "SECTION_INCOMPLETE".equals(value.path("code").asText())).findFirst().orElseThrow();
+            assertThat(issue.path("location").path("partId").asText()).isEqualTo("p");
+            assertThat(issue.path("location").path("sectionId").asText()).isEqualTo("s");
+            assertThat(issue.path("location").path("blockId").asText()).isEqualTo("b");
+        }
+        verify(source, never()).findCandidates(any(), anyInt());
+    }
+
+    @Test
+    void emptyReviewStyleDraftReportsMissingAnswerTypeAndPart() throws Exception {
+        Exam exam = exam(5, null, "RAW");
+        subject("MATH", 0);
+        String doc = """
+                {"parts":[{"id":"p","questionCount":5,"sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":5,"blocks":[{"id":"b","questionCount":0}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issueCodes(result)).contains("GROUP_ANSWER_TYPE_MISSING", "PART_EMPTY");
+    }
+
+    @Test
+    void codeSourceSubjectShortageListsOnlyCodesContainingThatSubject() throws Exception {
+        Exam exam = exam(2, null, "RAW");
+        subject("PHY", 1);
+        subject("CHEM", 0);
+        subject("BIO", 1);
+        var first = mock(vn.unicom.thi360.catalog.spi.CatalogCombinationView.class);
+        when(first.itemCode()).thenReturn("QD01");
+        when(first.subjectCodes()).thenReturn(List.of("PHY", "CHEM"));
+        var second = mock(vn.unicom.thi360.catalog.spi.CatalogCombinationView.class);
+        when(second.itemCode()).thenReturn("QD02");
+        when(second.subjectCodes()).thenReturn(List.of("CHEM", "BIO"));
+        var third = mock(vn.unicom.thi360.catalog.spi.CatalogCombinationView.class);
+        when(third.itemCode()).thenReturn("QD03");
+        when(third.subjectCodes()).thenReturn(List.of("PHY", "BIO"));
+        when(catalog.listCombinations(null)).thenReturn(List.of(first, second, third));
+        String doc = """
+                {"parts":[{"id":"p","questionCount":2,"codeSource":{"source":"GLOBAL_LIST"},"subjectPool":[
+                {"id":"phy","subjectCode":"PHY","questionCount":1,"blocks":[{"id":"bp","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                {"id":"chem","subjectCode":"CHEM","questionCount":1,"blocks":[{"id":"bc","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                {"id":"bio","subjectCode":"BIO","questionCount":1,"blocks":[{"id":"bb","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """;
+        JsonNode result = check(exam, document(doc)).result();
+        JsonNode issue = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                .filter(value -> "CHEM".equals(value.path("subjectCode").asText()))
+                .findFirst().orElseThrow();
+        assertThat(issue.path("affectedCodes")).extracting(value -> value.asText())
+                .containsExactlyInAnyOrder("QD01", "QD02");
     }
 
     @Test
@@ -347,24 +555,27 @@ class ExamCheckerTests {
                 "options":[{"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":3,
                 "countsByPick":[17,17,16],"sections":[%s]}]}]}
                 """.formatted(String.join(",", sections));
-        // FU-BE4a-1: BE-5 subtracts the TrimPolicy drop from SUBJECT_CHOICE totals, restoring VALID for HSA.
         JsonNode path = check(exam, document(doc)).result().path("paths").get(0);
         assertThat(path.path("result").asText()).isEqualTo("INVALID");
         assertThat(path.path("selections")).hasSize(10);
-        // FU-BE4a-1: full-count totals are interim until BE-5 applies the TrimPolicy drop.
+        assertThat(path.path("totalQuestions").asInt()).isEqualTo(50);
+        assertThat(path.path("totalPoints").decimalValue()).isEqualByComparingTo("50");
         for (JsonNode selection : path.path("selections")) {
-            assertThat(selection.path("result").asText()).isEqualTo("INVALID");
             assertThat(selection.path("counts")).hasSize(3);
             for (JsonNode count : selection.path("counts")) assertThat(count.asInt()).isEqualTo(17);
             int social = 0;
             for (JsonNode code : selection.path("subjectCodes")) {
                 if (List.of("D", "E").contains(code.asText())) social++;
             }
-            JsonNode points = java.util.stream.StreamSupport.stream(selection.path("issues").spliterator(), false)
-                    .filter(issue -> "POINTS_TOTAL_MISMATCH".equals(issue.path("code").asText()))
-                    .findFirst().orElseThrow();
-            // FU-BE4a-1: this includes 17 + 17 + 17 before the SUBJECT_CHOICE trim.
-            assertThat(points.path("available").asInt()).isEqualTo(51 + 17 * social);
+            if (social == 0) {
+                assertThat(selection.path("result").asText()).isEqualTo("VALID");
+            } else {
+                assertThat(selection.path("result").asText()).isEqualTo("INVALID");
+                JsonNode points = java.util.stream.StreamSupport.stream(selection.path("issues").spliterator(), false)
+                        .filter(issue -> "POINTS_TOTAL_MISMATCH".equals(issue.path("code").asText()))
+                        .findFirst().orElseThrow();
+                assertThat(points.path("available").asInt()).isEqualTo(50 + 17 * social - (social == 1 ? 1 : 0));
+            }
         }
     }
 
@@ -380,9 +591,15 @@ class ExamCheckerTests {
         doAnswer(invocation -> candidates.getOrDefault(
                 ((QuestionSourcePort.Filter) invocation.getArgument(0)).subjectId(), List.of()))
                 .when(source).findCandidates(any(), anyInt());
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper);
-        return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, null),
-                clock.instant().plusSeconds(30), Duration.ofSeconds(30));
+        var unitStore = mock(ExamCheckUnitStore.class);
+        when(unitStore.load(exam.getId())).thenReturn(java.util.Map.of());
+        var unitEngine = new ExamCheckUnitEngine(unitStore,
+                new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock);
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, unitEngine);
+        var input = new ExamCheckResultStore.Input(exam.getId(), exam.getRevision() == null ? 0 : exam.getRevision(), "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash", mapper.createObjectNode());
+        return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input),
+                clock.instant().plusSeconds(30), Duration.ofSeconds(30), ExamCheckScope.from(null, null, null));
     }
 
     private Exam exam(int count, BigDecimal max, String scoring) {

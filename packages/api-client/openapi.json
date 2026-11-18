@@ -2921,8 +2921,8 @@
             "type" : "string"
           },
           "required" : {
-            "format" : "int32",
-            "type" : "integer"
+            "format" : "decimal",
+            "type" : "number"
           }
         },
         "type" : "object"
@@ -2953,8 +2953,8 @@
             "type" : "string"
           },
           "required" : {
-            "format" : "int32",
-            "type" : "integer"
+            "format" : "decimal",
+            "type" : "number"
           }
         },
         "type" : "object"
@@ -3322,15 +3322,15 @@
       "ExamCheckSubjectDimension" : {
         "properties" : {
           "achieved" : {
-            "format" : "int32",
-            "type" : "integer"
+            "format" : "decimal",
+            "type" : "number"
           },
           "code" : {
             "type" : "string"
           },
           "required" : {
-            "format" : "int32",
-            "type" : "integer"
+            "format" : "decimal",
+            "type" : "number"
           }
         },
         "type" : "object"
