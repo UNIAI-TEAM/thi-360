@@ -909,6 +909,13 @@ public class ExamService {
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
+        // BE-21 (R1-1): the RAW metadata policy of a part exam (scale and part-row duration from the
+        // final part overview) is separate from cutting the structure out of a subject template; it
+        // applies to dedicated PART templates as well. A dedicated template's own values are the
+        // fallback when the part row declares none (an entered scale/duration survives when the
+        // template carries no value at all).
+        boolean partExam = "PART".equals(exam.getScope());
+        boolean dedicated = partExam && "PART".equals(template.getScope());
         // H41 (BE-21): a subject that has dedicated PART templates is never reloaded from the
         // subject template, whose single part would satisfy every part code (P1 of V-SAT English).
         if (subjectPart && templateService.hasPartTemplates(template.getKindCode(),
@@ -963,9 +970,12 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.SCOPE_NOT_ALLOWED,
                     messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED));
         }
+        Integer loadDuration = partExam ? firstNonNull(doc.parts().getFirst().durationMinutes(),
+                dedicated ? template.getDurationMinutes() : null) : template.getDurationMinutes();
+        BigDecimal loadScale = partExam ? firstNonNull(doc.parts().getFirst().maxPoints(),
+                dedicated ? template.getMaxScore() : null) : template.getMaxScore();
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
-                template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
-                subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
+                template.getTiming(), loadDuration, loadScale, actor, now);
         exam.setBuildMode(template.getBuildMode());
         // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the scoring values
         // of a new exam made from that template, administrator overrides included: a review is LINEAR with no
@@ -979,10 +989,10 @@ public class ExamService {
                         exam.getDurationMinutes(), null, actor, now);
                 scoringReset = true;
             } else {
-                BigDecimal base = subjectPart ? doc.parts().getFirst().maxPoints()
+                BigDecimal base = partExam ? loadScale
                         : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
-                exam.applyScoringProfile(subjectPart ? null : scopedReferenceMax(profile, exam.getScope(), base),
-                        subjectPart ? "RAW" : profile.getPracticeScoring());
+                exam.applyScoringProfile(partExam ? null : scopedReferenceMax(profile, exam.getScope(), base),
+                        partExam ? "RAW" : profile.getPracticeScoring());
                 exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
                         exam.getDurationMinutes(), base, actor, now);
                 scoringReset = true;
@@ -1524,6 +1534,10 @@ public class ExamService {
         return catalogLookup.findActiveItem(EXAM_GROUP, kindCode.trim())
                 .orElseThrow(() -> new BusinessRuleException(ExamErrorCodes.KIND_UNKNOWN,
                         messages.get(ExamErrorCodes.KIND_UNKNOWN)));
+    }
+
+    private static <T> T firstNonNull(T first, T fallback) {
+        return first != null ? first : fallback;
     }
 
     /**

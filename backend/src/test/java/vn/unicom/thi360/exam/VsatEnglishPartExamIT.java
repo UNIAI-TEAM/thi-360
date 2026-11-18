@@ -152,6 +152,40 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    /**
+     * R1-1: reloading a dedicated PART template derives the RAW scale and duration from the final
+     * part overview for both policies — the dedicated template declares neither value. USE_TEMPLATE
+     * resets the scale to the part's 30 points; KEEP_EDITED applies the edited overview (here the
+     * part duration, whose SHARED_PART_DURATION finding is the expected check result) and the scale
+     * still comes from the final part row, not from the stale override.
+     */
+    @Test
+    void dedicatedTemplateReloadDerivesScaleFromTheFinalPartOverview() throws Exception {
+        JsonNode exam = created(create("PART", "P3", "ANH", 30));
+        String id = exam.path("id").asText();
+        patchMaxScore(id, 25);
+        reload(id, "USE_TEMPLATE");
+        assertThat(structure(id).path("parts").get(0).path("maxPoints").decimalValue())
+                .isEqualByComparingTo("30");
+        JsonNode detail = detail(id);
+        assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("30");
+        assertThat(detail.path("durationMinutes").asInt()).isEqualTo(30);
+        assertThat(check(id).path("status").asText()).isEqualTo("VALID");
+
+        editOverviewDuration(id, 30);
+        patchMaxScore(id, 25);
+        reload(id, "KEEP_EDITED");
+        JsonNode part = structure(id).path("parts").get(0);
+        assertThat(part.path("maxPoints").decimalValue()).isEqualByComparingTo("30");
+        assertThat(part.path("durationMinutes").asInt()).isEqualTo(30);
+        detail = detail(id);
+        assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("30");
+        assertThat(detail.path("durationMinutes").asInt()).isEqualTo(30);
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(result.path("groups").findValuesAsText("code")).contains("SHARED_PART_DURATION");
+    }
+
     /** Row 12: a part exam of another V-SAT subject is still cut from the subject template. */
     @Test
     void partOfAnotherVsatSubjectIsStillCut() throws Exception {
@@ -213,6 +247,47 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
         JsonNode subject = created(create("SUBJECT", null, "ANH", 60));
         assertThat(structure(subject.path("id").asText()).path("parts").get(0)
                 .path("sections").get(0).path("topicQuotas")).hasSize(3);
+    }
+
+    private void editOverviewDuration(String id, int minutes) throws Exception {
+        JsonNode current = structure(id);
+        String partId = current.path("parts").get(0).path("id").asText();
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/overview", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + current.path("revision").asLong()
+                                + ",\"overview\":[{\"partId\":\"" + partId
+                                + "\",\"durationMinutes\":" + minutes + "}]}"))
+                .andExpect(status().isOk());
+    }
+
+
+    private void patchMaxScore(String id, int maxScore) throws Exception {
+        mockMvc.perform(patch("/api/v1/admin/exams/{id}", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + detail(id).path("revision").asLong()
+                                + ",\"maxScore\":" + maxScore + "}"))
+                .andExpect(status().isOk());
+    }
+
+    private void reload(String id, String policy) throws Exception {
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"VSAT_PART_ANH_P3\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"" + policy + "\",\"expectedRevision\":"
+                                + structure(id).path("revision").asLong() + "}"))
+                .andExpect(status().isOk());
+    }
+
+    private JsonNode detail(String id) throws Exception {
+        return mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    private JsonNode check(String id) throws Exception {
+        return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", id)
+                        .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
     }
 
     private ResultActions create(String scope, String partCode, String subject, Integer duration)
