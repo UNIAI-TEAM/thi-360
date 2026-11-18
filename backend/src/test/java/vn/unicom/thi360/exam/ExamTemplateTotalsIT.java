@@ -359,10 +359,10 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
                 "SP2E_LY_2026", new int[]{28, 60, 100},
                 "SP2E_HOA_2026", new int[]{28, 60, 100},
                 "SP2E_SINH_2026", new int[]{28, 60, 100},
-                "SP2E_SU_2026", new int[]{32, 60, 125},
+                "SP2E_SU_2026", new int[]{32, 60, 100},
                 "SP2E_DIA_2026", new int[]{28, 60, 100},
-                "SP2E_ANH_2026", new int[]{50, 60, 125},
-                "SP2E_ECON_LAW_2026", new int[]{32, 60, 125});
+                "SP2E_ANH_2026", new int[]{50, 60, 100},
+                "SP2E_ECON_LAW_2026", new int[]{32, 60, 100});
         for (var entry : expected.entrySet()) {
             var row = jdbc.queryForMap("select duration_minutes, structure::text as document from exam.exam_template where code = ?", entry.getKey());
             assertThat(row.get("duration_minutes")).as("%s duration", entry.getKey()).isEqualTo(entry.getValue()[1]);
@@ -370,6 +370,22 @@ class ExamTemplateTotalsIT extends AbstractIntegrationTest {
             assertThat(actual.questions()).as("%s questions", entry.getKey()).isEqualTo(entry.getValue()[0]);
             assertThat(actual.points()).as("%s raw points", entry.getKey())
                     .isEqualByComparingTo(BigDecimal.valueOf(entry.getValue()[2], 1));
+        }
+    }
+
+    @Test
+    void sp2e2026HistoryAndEconomicsUsePerStatementScoring() throws Exception {
+        for (String code : List.of("SP2E_SU_2026", "SP2E_ECON_LAW_2026")) {
+            var row = jdbc.queryForMap("SELECT expert_note, structure::text AS document FROM exam.exam_template WHERE code=?", code);
+            assertThat(row.get("expert_note")).isNotNull();
+            JsonNode parts = mapper.readTree((String) row.get("document")).path("parts");
+            JsonNode block = parts.get(1).path("sections").get(0).path("blocks").get(0);
+            assertThat(block.path("questionCount").asInt()).isEqualTo(6);
+            assertThat(block.path("itemShape").path("statements").asInt()).isEqualTo(4);
+            assertThat(block.path("requiredPointsPerQuestion").decimalValue()).isEqualByComparingTo("0.8");
+            assertThat(block.path("expectedScoring").path("trueFalseMethod").asText()).isEqualTo("PER_STATEMENT");
+            assertThat(parts.get(0).path("maxPoints").decimalValue()).isEqualByComparingTo("5.2");
+            assertThat(parts.get(1).path("maxPoints").decimalValue()).isEqualByComparingTo("4.8");
         }
     }
 

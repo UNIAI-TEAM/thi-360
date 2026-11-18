@@ -45,4 +45,32 @@ class ExamVersionSnapshotTest {
         assertThat(structure.at("/parts/0/options/1/sections/0/answerQuotas/items/0/value").longValue())
                 .isEqualTo(2147483648L);
     }
+
+    @Test
+    void partTotalsUseSelectedSubjectChoiceAndTrimOneQuestion() throws Exception {
+        var mapper = new ObjectMapper();
+        var structure = mapper.readTree("""
+                {"parts":[{"id":"fixed","durationMinutes":10,"sections":[{"id":"a"}]},
+                  {"id":"choice-part","durationMinutes":20,"options":[{"id":"choice","countsByPick":[17,17,16],
+                    "sections":[{"id":"s1"},{"id":"s2"},{"id":"s3"}]}]}]}
+                """);
+        var check = mapper.readTree("{\"paths\":[{\"pathId\":\"choice\"}]}");
+        var witness = mapper.readTree("""
+                [{"path":{"chosen":[{"optionId":"choice"}],
+                  "sections":[{"sectionId":"a","questionCount":1,"groups":[
+                    {"kind":"SINGLE","questionCount":1,"requiredPointsPerUnit":2}]}],
+                  "picks":[[{"optionId":"choice","counts":[17,17,17],"sections":[
+                    {"sectionId":"s1","choiceGroup":"NATURAL","groups":[{"kind":"SINGLE","questionCount":null,"requiredPointsPerUnit":1}]},
+                    {"sectionId":"s2","choiceGroup":"NATURAL","groups":[{"kind":"SINGLE","questionCount":null,"requiredPointsPerUnit":1}]},
+                    {"sectionId":"s3","choiceGroup":"SOCIAL","groups":[{"kind":"SINGLE","questionCount":null,"requiredPointsPerUnit":1}]}
+                  ]}]]}}]
+                """);
+        var result = new ExamVersionSnapshot(mapper).parts(structure, check, witness, Set.of("choice"), "PER_PART", null);
+        assertThat(result.at("/parts/0/paths/0/questionCount").asInt()).isEqualTo(1);
+        assertThat(result.at("/parts/0/paths/0/maxPoints").decimalValue()).isEqualByComparingTo("2");
+        assertThat(result.at("/parts/0/paths/0/durationMinutes").asInt()).isEqualTo(10);
+        assertThat(result.at("/parts/1/paths/0/questionCount").asInt()).isEqualTo(50);
+        assertThat(result.at("/parts/1/paths/0/maxPoints").decimalValue()).isEqualByComparingTo("50");
+        assertThat(result.at("/parts/1/paths/0/durationMinutes").asInt()).isEqualTo(20);
+    }
 }

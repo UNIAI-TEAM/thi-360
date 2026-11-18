@@ -59,6 +59,7 @@ class ExamPublishIdempotencyIT extends AbstractIntegrationTest {
         assertThat(results.save(input, result, 0, Instant.now(), 1, outcome, witnesses)).isTrue();
     }
 
+
     @Test
     void changingChoiceCountsDoesNotAlterThePublishedSnapshot() throws Exception {
         UUID question = UUID.randomUUID();
