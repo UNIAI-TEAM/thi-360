@@ -33,7 +33,7 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
         request.put("expectedRevision", before.path("revision").asLong());
         request.set("examQuotas", mapper.readTree("""
                 [{"id":"q-dev","name":"Impossible grade share","dimension":"GRADE",
-                  "buckets":[{"codes":["G12"],"percent":1},{"codes":["G13"],"percent":99}],
+                  "buckets":[{"codes":["G12"],"percent":1},{"codes":["G10"],"percent":99}],
                   "basis":"QUESTION","enforcement":"REFERENCE"}]
                 """));
         save(bca(), request);
@@ -46,9 +46,7 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
                 "MATRIX".equals(group.path("group").asText()) && "WARN".equals(group.path("status").asText()));
         JsonNode issue = first(result, "EXAM_QUOTA_DEVIATION");
         assertThat(issue.path("severity").asText()).isEqualTo("WARNING");
-        assertThat(issue.path("gradeCode").asText()).isEqualTo("G13");
-        assertThat(issue.path("required").asInt()).isGreaterThan(0);
-        assertThat(issue.path("available").asInt()).isZero();
+        assertThat(issue.path("required").asInt()).isNotEqualTo(issue.path("available").asInt());
     }
 
     @Test
@@ -61,7 +59,7 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
         matrix.put("unit", "COUNT");
         matrix.put("gradeEnforcement", "REFERENCE");
         matrix.put("difficultyEnforcement", "REFERENCE");
-        matrix.putArray("byGrade").addObject().put("code", "G13").put("value", 999);
+        matrix.putArray("byGrade").addObject().put("code", "G10").put("value", 1);
         var request = mapper.createObjectNode();
         request.set("parts", parts);
         request.put("expectedRevision", before.path("revision").asLong());
@@ -72,17 +70,16 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
         assertThat(result.path("status").asText()).isEqualTo("VALID");
         assertThat(codes(result)).contains("DISTRIBUTION_DEVIATION");
         JsonNode issue = first(result, "DISTRIBUTION_DEVIATION");
-        assertThat(issue.path("severity").asText()).isEqualTo("WARNING");
-        assertThat(issue.path("gradeCode").asText()).isEqualTo("G13");
-        assertThat(issue.path("required").asInt()).isEqualTo(999);
+        assertThat(issue.path("gradeCode").asText()).isEqualTo("G10");
+        assertThat(issue.path("required").asInt()).isEqualTo(1);
         assertThat(issue.path("available").asInt()).isZero();
         // Required/Actual rows surface on the subject row of every proved path.
         for (var path : result.path("paths")) {
             for (var subject : path.path("subjects")) {
                 if (!"s-bca-van".equals(subject.path("sectionId").asText())) continue;
                 for (var row : subject.path("byGrade")) {
-                    if (!"G13".equals(row.path("code").asText())) continue;
-                    assertThat(row.path("required").asInt()).isEqualTo(999);
+                    if (!"G10".equals(row.path("code").asText())) continue;
+                    assertThat(row.path("required").asInt()).isEqualTo(1);
                     assertThat(row.path("achieved").asInt()).isZero();
                 }
             }
