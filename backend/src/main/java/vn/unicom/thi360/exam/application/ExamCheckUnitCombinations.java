@@ -28,4 +28,22 @@ final class ExamCheckUnitCombinations {
         }
         return result;
     }
+
+    static Map<UUID, UUID> topicParents(CatalogLookup catalog, ExamStructureDocument document) {
+        boolean hasPairs = document.parts().stream().anyMatch(part ->
+                hasTopicPairs(part.sections()) || hasTopicPairs(part.subjectPool())
+                || part.options().stream().anyMatch(option -> hasTopicPairs(option.sections())
+                        || option.blocks().stream().anyMatch(block -> block.topicQuotas().size() > 1)));
+        if (!hasPairs) return Map.of();
+        Map<UUID, UUID> parents = new LinkedHashMap<>();
+        for (var node : catalog.listGroupItems("KNOWLEDGE")) {
+            if (node.parentId() != null) parents.put(node.id(), node.parentId());
+        }
+        return parents;
+    }
+
+    private static boolean hasTopicPairs(List<vn.unicom.thi360.exam.domain.ExamSection> sections) {
+        return sections.stream().anyMatch(section -> section.topicQuotas().size() > 1
+                || section.blocks().stream().anyMatch(block -> block.topicQuotas().size() > 1));
+    }
 }

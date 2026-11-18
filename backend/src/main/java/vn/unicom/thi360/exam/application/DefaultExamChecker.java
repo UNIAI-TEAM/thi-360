@@ -25,6 +25,7 @@ import vn.unicom.thi360.exam.domain.solver.SolveReason;
 import vn.unicom.thi360.exam.domain.solver.SolveStats;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Runs exact configuration checks and the shared solver without holding a database transaction. */
 @Service
@@ -34,20 +35,23 @@ public class DefaultExamChecker implements ExamChecker {
     private final Clock clock;
     private final ObjectMapper mapper;
     private final CatalogLookup catalog;
+    private final QuestionSourcePort source;
 
     public DefaultExamChecker(SolverInputBuilder builder, SolverLimits limits,
-                              Clock clock, ObjectMapper mapper, CatalogLookup catalog) {
+                              Clock clock, ObjectMapper mapper, CatalogLookup catalog, QuestionSourcePort source) {
         this.builder = builder;
         this.limits = limits;
         this.clock = clock;
         this.mapper = mapper;
         this.catalog = catalog;
+        this.source = source;
     }
 
     @Override
     public Evaluation check(ExamCheckSnapshotReader.Snapshot snapshot, Instant deadline, Duration budget) {
-        var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure(),
-                ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), snapshot.structure()));
+        var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), snapshot.structure());
+        var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure(), combinations,
+                ExamCheckUnitCombinations.topicParents(catalog, snapshot.structure()));
         List<ObjectNode> common = new ArrayList<>(rules.common());
         List<ObjectNode> invalid = rules.unrepresentable();
         var assembler = new ExamCheckAssembler(mapper, clock, limits);
@@ -64,8 +68,10 @@ public class DefaultExamChecker implements ExamChecker {
                     new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
                     deadline, budget, common, rules::path);
         }
+        Map<Long, List<ObjectNode>> witnessIssues = new LinkedHashMap<>();
         Function<PathResult, List<ObjectNode>> pathIssues = path -> {
             List<ObjectNode> found = new ArrayList<>(rules.path(path));
+            found.addAll(witnessIssues.getOrDefault(path.path().pathIndex(), List.of()));
             path.path().chosen().forEach(choice ->
                     found.addAll(invalidOptions.getOrDefault(choice.optionId(), List.of())));
             return found;
@@ -84,6 +90,8 @@ public class DefaultExamChecker implements ExamChecker {
         SolverLimits bounded = new SolverLimits(limits.maxPaths(), limits.maxCandidatesPerBlock(),
                 remaining, limits.maxChoiceSubjects());
         SolveOutcome outcome = new PaperSolver(bounded, clock).solveAll(input.parts(), input.candidates(), SolveMode.check());
+        ExamCheckUnitEvidence.witnessFacts(source, snapshot.structure(), outcome.results(), combinations)
+                .forEach((path, facts) -> witnessIssues.put(path, rules.witnessIssues(facts)));
         return assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
     }
 
@@ -102,6 +110,6 @@ public class DefaultExamChecker implements ExamChecker {
                     part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
                     part.maxPoints(), part.sections(), options, part.subjectPool(), part.codeSource()));
         }
-        return new ExamStructureDocument(parts);
+        return new ExamStructureDocument(parts, document.examQuotas());
     }
 }

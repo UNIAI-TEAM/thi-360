@@ -49,7 +49,8 @@ public class ExamPreviewService {
         ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
         var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), document);
-        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document, combinations).unrepresentable()
+        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document, combinations,
+                ExamCheckUnitCombinations.topicParents(catalog, document)).unrepresentable()
                 .stream().filter(issue -> {
                     String optionId = issue.path("optionId").asText(null);
                     return optionId == null || selectedIds.contains(optionId);
@@ -141,7 +142,7 @@ public class ExamPreviewService {
                     part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
                     part.maxPoints(), part.sections(), options, part.subjectPool(), part.codeSource()));
         }
-        return new ExamStructureDocument(parts);
+        return new ExamStructureDocument(parts, document.examQuotas());
     }
 
     /**
