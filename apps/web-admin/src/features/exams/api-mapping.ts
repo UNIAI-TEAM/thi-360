@@ -18,6 +18,8 @@ import type {
   ExamTemplateBlock,
   ExamTemplatePart,
   ExamTemplateSection,
+  DisplaySegment,
+  ItemShape,
   ExamStructureSummary,
   ExamStructureSummaryRow,
   ExamVersion,
@@ -184,6 +186,27 @@ function mapExpectedScoring(scoring: Schemas["BlockExpectedScoring"] | null | un
   };
 }
 
+/** Hình dạng câu: chỉ chép trường máy chủ có gửi, kể cả `options` (số phương án, R-131). */
+function mapItemShape(shape: Schemas["ItemShape"]): ItemShape {
+  return {
+    ...(shape.statements !== undefined ? { statements: shape.statements } : {}),
+    ...(shape.leftItems !== undefined ? { leftItems: shape.leftItems } : {}),
+    ...(shape.rightItems !== undefined ? { rightItems: shape.rightItems } : {}),
+    ...(shape.options !== undefined ? { options: shape.options } : {}),
+  };
+}
+
+function mapDisplaySegment(segment: Schemas["DisplaySegment"]): DisplaySegment {
+  return {
+    code: segment.code,
+    name: segment.name,
+    fromPosition: segment.fromPosition,
+    toPosition: segment.toPosition,
+    commandCount: segment.commandCount,
+    maxPoints: segment.maxPoints,
+  };
+}
+
 export function mapBlock(block: ApiBlock): QuestionBlock {
   const expectedScoring = mapExpectedScoring(block.expectedScoring);
   return {
@@ -222,18 +245,12 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
             from: condition.from ?? 0,
             to: condition.to ?? 0,
             nodeIds: condition.nodeIds ?? [],
+            ...(condition.answerType ? { answerType: condition.answerType } : {}),
+            ...(condition.itemShape ? { itemShape: mapItemShape(condition.itemShape) } : {}),
           })),
         }
       : {}),
-    ...(block.itemShape
-      ? {
-          itemShape: {
-            ...(block.itemShape.statements !== undefined ? { statements: block.itemShape.statements } : {}),
-            ...(block.itemShape.leftItems !== undefined ? { leftItems: block.itemShape.leftItems } : {}),
-            ...(block.itemShape.rightItems !== undefined ? { rightItems: block.itemShape.rightItems } : {}),
-          },
-        }
-      : {}),
+    ...(block.itemShape ? { itemShape: mapItemShape(block.itemShape) } : {}),
     ...(block.answerFormats?.length ? { answerFormats: block.answerFormats } : {}),
     ...(block.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(block.topicQuotas) } : {}),
     ...(block.positionRange
@@ -253,6 +270,7 @@ export function mapSection(section: ApiSection): ExamSection {
     choiceGroup: nullable(section.choiceGroup),
     blocks: (section.blocks ?? []).map(mapBlock),
     ...(section.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(section.topicQuotas) } : {}),
+    ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
   };
 }
 
@@ -295,6 +313,7 @@ export function mapPart(part: ApiPart, index: number): ExamPart {
           subjectPool: (part.subjectPool ?? []).map(mapSection),
         }
       : {}),
+    ...(part.displaySegments?.length ? { displaySegments: part.displaySegments.map(mapDisplaySegment) } : {}),
   };
 }
 
@@ -456,6 +475,8 @@ function templateBlock(block: QuestionBlock): ExamTemplateBlock {
     answerTypeLocked: block.answerTypeLocked,
     knowledgeScope: block.knowledgeScope,
     matrix: block.matrix,
+    ...(block.childConditions?.length ? { childConditions: structuredClone(block.childConditions) } : {}),
+    ...(block.itemShape ? { itemShape: { ...block.itemShape } } : {}),
   };
 }
 
@@ -469,6 +490,7 @@ function templateSection(section: ExamSection): ExamTemplateSection {
     answerQuotas: section.answerQuotas,
     matrix: section.matrix,
     choiceGroup: section.choiceGroup,
+    ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
   };
 }
 
@@ -519,6 +541,7 @@ function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined): 
     maxPoints: part.maxPoints ?? null,
     ...(sections.length ? { sections } : {}),
     ...(part.mode === "CHOICE" ? { options: part.options.map(templateOption) } : {}),
+    ...(part.displaySegments?.length ? { displaySegments: structuredClone(part.displaySegments) } : {}),
   };
 }
 
@@ -544,6 +567,8 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     expertNote: nullable(response.expertNote),
     publishable: nullable(response.publishable),
     fixedCounts: nullable(response.fixedCounts),
+    fixedBlockCounts: nullable(response.fixedBlockCounts),
+    omittedLocked: nullable(response.omittedLocked),
     parts: mapParts(document.parts).map((part, index) => templatePart(part, index, document.parts?.[index])),
   };
 }

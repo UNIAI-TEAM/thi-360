@@ -99,12 +99,18 @@ export interface ChildCondition {
   from: number;
   to: number;
   nodeIds: string[];
+  /** Dạng của câu con ở các vị trí này (chùm trộn dạng, H39); bỏ trống: không lọc theo dạng. `nodeIds` được rỗng khi có dạng. */
+  answerType?: QuestionType;
+  /** Hình dạng câu con ở các vị trí này (số ý Đúng/Sai, số phương án); bỏ trống: không lọc. */
+  itemShape?: ItemShape;
 }
 
 export interface ItemShape {
   statements?: number;
   leftItems?: number;
   rightItems?: number;
+  /** Số phương án của câu chọn một (H-SCA: đúng bốn phương án, R-131); bỏ trống: không lọc. */
+  options?: number;
 }
 
 export interface PositionRange {
@@ -284,6 +290,8 @@ export interface ExamSection {
   blocks: QuestionBlock[];
   /** Chỉ tiêu chủ đề của môn (H8). Tối đa 8 chỉ tiêu một cấp (H20). */
   topicQuotas?: TopicQuota[];
+  /** Điều kiện audio của môn (H38): các nhóm trong môn kế thừa. Bỏ trống hoặc `ANY`: không lọc. */
+  audioRequirement?: AudioRequirement;
 }
 
 /**
@@ -359,7 +367,25 @@ export interface ExamPart {
    * `null` khi lấy mọi nhánh); `null`: không theo mã. Giữ nguyên khi gửi lại để lưu cấu trúc không làm mất phần theo mã.
    */
   codeSource?: { source: string; branch: string | null } | null;
+  /**
+   * Phân đoạn hiển thị của phần (Tiếng Anh V-SAT: Phần I–IV trong một phần, H40). Chỉ để hiển thị: không đổi bộ giải,
+   * thứ tự câu hay đánh số. Bài `PART` và bài ôn không có. Giữ nguyên khi gửi lại.
+   */
+  displaySegments?: DisplaySegment[];
 }
+
+/** Một phân đoạn hiển thị: dải số thứ tự câu trong phần (từ 1), số lệnh và điểm khai báo. */
+export interface DisplaySegment {
+  code: string;
+  name: string;
+  fromPosition: number;
+  toPosition: number;
+  commandCount: number;
+  maxPoints: number;
+}
+
+/** Điều kiện audio của môn (H38): `REQUIRED` chỉ lấy câu có tệp âm thanh, `FORBIDDEN` chỉ lấy câu không có. */
+export type AudioRequirement = "ANY" | "REQUIRED" | "FORBIDDEN";
 
 export type ExamVersionState = "WORKING" | "SERVING" | "RETIRED";
 
@@ -444,6 +470,10 @@ export interface ExamTemplate {
   publishable?: boolean | null;
   /** `true` (BE-11, H27): mẫu khóa số câu của phần và tiểu mục (V-ACT toàn bài); `null`/thiếu: sửa được. */
   fixedCounts?: boolean | null;
+  /** `true` (BE-16, H42): bài phạm vi `SUBJECT` từ mẫu giữ nguyên dạng, số câu, số chùm, cỡ chùm từng dòng; `null`/thiếu: sửa được. */
+  fixedBlockCounts?: boolean | null;
+  /** `true` (BE-16, H43): nhóm đã lược của mẫu (phần Viết) không bật lại được; phần chỉ gồm nhóm đã lược không tạo được bài riêng. */
+  omittedLocked?: boolean | null;
   parts: ExamTemplatePart[];
 }
 
@@ -481,6 +511,8 @@ export interface ExamTemplatePart {
   }>;
   /** Khối câu gợi ý theo dạng câu khi phần một môn (THPTQG Toán: 12 chọn một, 4 đúng/sai, 6 trả lời ngắn). */
   blocks?: ExamTemplateBlock[];
+  /** Phân đoạn hiển thị của phần (H40); bỏ trống: không có. */
+  displaySegments?: DisplaySegment[];
 }
 
 /**
@@ -496,6 +528,8 @@ export interface ExamTemplateSection {
   /** `null` trong `SUBJECT_CHOICE`. */
   questionCount: number | null;
   blocks?: ExamTemplateBlock[];
+  /** Điều kiện audio của môn (H38); `ANY` hoặc bỏ trống: không lọc. */
+  audioRequirement?: AudioRequirement;
   knowledgeScope?: KnowledgeScope | null;
   answerQuotas?: AnswerQuotas | null;
   matrix?: BlockMatrix | null;
@@ -529,6 +563,10 @@ export interface ExamTemplateBlock {
   answerTypeLocked?: boolean;
   knowledgeScope?: KnowledgeScope | null;
   matrix?: BlockMatrix | null;
+  /** Nhóm chùm: điều kiện MAPID, dạng và hình dạng theo vị trí câu con (H13, H39). */
+  childConditions?: ChildCondition[];
+  /** Hình dạng câu (số ý Đúng/Sai, số ý Ghép đôi, số phương án). */
+  itemShape?: ItemShape | null;
 }
 
 /**
@@ -778,4 +816,6 @@ export interface CreateExamPartInput {
   blocks?: ExamTemplateBlock[];
   /** Phần tự chọn: nhánh nội dung (THPTQG Tin học), số câu của nhánh bằng số câu của phần trừ phần chung. */
   branches?: Array<{ code: string; name: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
+  /** Phân đoạn hiển thị của phần (H40), chép từ mẫu. */
+  displaySegments?: DisplaySegment[];
 }

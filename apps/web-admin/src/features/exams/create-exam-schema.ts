@@ -437,6 +437,8 @@ export interface CreateSectionValues {
   knowledgeScope?: ExamTemplateSection["knowledgeScope"];
   answerQuotas?: ExamTemplateSection["answerQuotas"];
   matrix?: ExamTemplateSection["matrix"];
+  /** Điều kiện audio của môn trong mẫu (H38). Giữ nguyên khi gửi lên. */
+  audioRequirement?: ExamTemplateSection["audioRequirement"];
 }
 
 /** Phương án chọn môn của mẫu (HSA Khoa học) giữ nguyên từ mẫu; chưa có ô soạn ở trang Tạo bài thi (FE-3c). */
@@ -473,6 +475,8 @@ export interface CreatePartValues {
   branches: CreateBranchValues[];
   /** Khối gợi ý của mẫu cho phần cố định một môn. */
   blocks: ExamTemplateBlock[];
+  /** Phân đoạn hiển thị của mẫu (Tiếng Anh V-SAT, H40). Giữ nguyên khi gửi lên. */
+  displaySegments?: ExamTemplatePart["displaySegments"];
 }
 
 export interface CreateExamFormValues extends ExamInfoFormValues {
@@ -546,12 +550,14 @@ export function createExamSchema(
         knowledgeScope: z.custom<CreateSectionValues["knowledgeScope"]>().optional(),
         answerQuotas: z.custom<CreateSectionValues["answerQuotas"]>().optional(),
         matrix: z.custom<CreateSectionValues["matrix"]>().optional(),
+        audioRequirement: z.enum(["ANY", "REQUIRED", "FORBIDDEN"]).optional(),
       }),
     ),
     branches: z.array(
       z.object({ code: z.string(), name: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) }),
     ),
     blocks: z.array(blockSchema),
+    displaySegments: z.custom<NonNullable<CreatePartValues["displaySegments"]>>().optional(),
   });
   return z
     .object({ ...infoShape(messages, takenCodes), pointsByPart: z.boolean(), parts: z.array(part) })
@@ -685,6 +691,7 @@ function partFromTemplate(part: ExamTemplatePart, combinations: readonly Combina
     durationMinutes: part.durationMinutes ?? 0,
     points: part.points ?? null,
     sections,
+    ...(part.displaySegments?.length ? { displaySegments: structuredClone(part.displaySegments) } : {}),
   });
   if (part.mode === "FIXED") {
     return { ...common, subjectCode: sections.length > 0 ? "" : (part.subjectCode ?? ""), blocks: cloneBlocks(part.blocks) };
@@ -901,6 +908,7 @@ export function partInputsFromValues(
             })),
           }
         : {}),
+      ...(part.displaySegments?.length ? { displaySegments: part.displaySegments } : {}),
     };
   });
 }
