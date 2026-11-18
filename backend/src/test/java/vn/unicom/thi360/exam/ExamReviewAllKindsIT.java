@@ -66,6 +66,36 @@ class ExamReviewAllKindsIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void aScaledReviewWithAPointsFilterIsNotHeldToAFixedRawTotal() throws Exception {
+        Set<UUID> matching = new HashSet<>();
+        for (int i = 0; i < 3; i++) {
+            matching.add(seedQuestion("2.5"));
+        }
+        for (int i = 0; i < 6; i++) {
+            seedQuestion("10");
+        }
+        JsonNode created = createReview("HSA", 3, new BigDecimal("40"));
+        String id = created.path("id").asText();
+        saveBlock(id, new BigDecimal("2.5"));
+        JsonNode check = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", id)
+                        .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        // Raw maximum 3 x 2.5 = 7.5 against the scale 40: a review is never held to a fixed raw total.
+        assertThat(check.path("status").asText()).as("check %s", check.path("groups").findValuesAsText("code"))
+                .isEqualTo("VALID");
+        assertThat(check.path("groups").findValuesAsText("code")).doesNotContain("POINTS_TOTAL_MISMATCH");
+        JsonNode trial = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/preview", id)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":3}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(trial.path("status").asText()).isEqualTo("GENERATED");
+        Set<UUID> drawn = new HashSet<>();
+        trial.path("paper").findValuesAsText("questionId").forEach(value -> drawn.add(UUID.fromString(value)));
+        // The block rate stays a pool filter: the three 2.5-point questions, never the 10-point distractors.
+        assertThat(drawn).isEqualTo(matching);
+    }
+
+    @Test
     void vactReviewKeepsTheScreensDuplicatedDurationOnTheExamOnly() throws Exception {
         JsonNode created = createReview("VACT", 10, null);
         assertThat(created.path("durationMinutes").asInt()).isEqualTo(45);
@@ -207,14 +237,23 @@ class ExamReviewAllKindsIT extends AbstractIntegrationTest {
 
     /** Step 2: only the answer type on the template's single block; no requiredPointsPerQuestion. */
     private void saveBlock(String id) throws Exception {
+        saveBlock(id, null);
+    }
+
+    /** Step 2 with an explicit points filter on the block, when {@code rate} is given. */
+    private void saveBlock(String id, BigDecimal rate) throws Exception {
         JsonNode structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
                         .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
         ArrayNode parts = (ArrayNode) structure.path("parts").deepCopy();
         ObjectNode block = (ObjectNode) parts.get(0).path("sections").get(0).path("blocks").get(0);
         block.put("questionType", "SINGLE_CHOICE");
+        if (rate != null) {
+            block.put("requiredPointsPerQuestion", rate);
+        }
         assertThat(block.has("requiredPointsPerQuestion") && !block.get("requiredPointsPerQuestion").isNull())
-                .as("the screen writes no points per question").isFalse();
+                .as("the screen writes no points per question unless the filter is asked for")
+                .isEqualTo(rate != null);
         ObjectNode request = mapper.createObjectNode().put("expectedRevision", structure.path("revision").asLong());
         request.set("parts", parts);
         mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
@@ -233,5 +272,16 @@ class ExamReviewAllKindsIT extends AbstractIntegrationTest {
                     "{\"content\":\"q\",\"points\":1,\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":["
                             + "{\"id\":\"a\",\"content\":\"A\",\"correct\":true},{\"id\":\"b\",\"content\":\"B\",\"correct\":false}]}}");
         }
+    }
+
+    /** One question worth {@code points}, with the same value in its snapshot. */
+    private UUID seedQuestion(String points) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
+                + "VALUES (?,?,'SINGLE_CHOICE','READY',?,1,?)", id, "RV-" + id, TOAN, new BigDecimal(points));
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", id,
+                "{\"content\":\"q\",\"points\":" + points + ",\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":["
+                        + "{\"id\":\"a\",\"content\":\"A\",\"correct\":true},{\"id\":\"b\",\"content\":\"B\",\"correct\":false}]}}");
+        return id;
     }
 }
