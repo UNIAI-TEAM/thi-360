@@ -54,6 +54,57 @@ class ExamCheckDistributionTests {
     }
 
     @Test
+    void answerTypeActualUsesProvedZeroInsteadOfPoolCount() throws Exception {
+        var document = document("""
+                {"parts":[{"id":"p","name":"Part","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                  "questionCount":1,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"SHORT_ANSWER","value":1}]},
+                  "matrix":{"mode":"SEPARATE","unit":"COUNT","gradeEnforcement":"REFERENCE",
+                    "byGrade":[{"code":"G10","value":1}]},
+                  "blocks":[{"id":"b","questionCount":1}]}]}]}
+                """);
+        UUID pickedId = UUID.randomUUID(), otherId = UUID.randomUUID();
+        var pickedUnit = new QuestionSourcePort.Unit(pickedId, null, QuestionType.SINGLE_CHOICE,
+                "G12", "D", List.of(), List.of(), BigDecimal.ONE);
+        var otherUnit = new QuestionSourcePort.Unit(otherId, null, QuestionType.SHORT_ANSWER,
+                "G10", "D", List.of(), List.of(), BigDecimal.ONE);
+        var pickedCandidate = new QuestionSourcePort.Candidate(pickedId, 1, null, List.of(pickedUnit), null, null);
+        var otherCandidate = new QuestionSourcePort.Candidate(otherId, 1, null, List.of(otherUnit), null, null);
+        var group = new GroupQuota("b", GroupQuota.GroupKind.SINGLE, 1, null,
+                null, null, null, null, List.of(), List.of(), null, null);
+        var section = new SectionOnPath("MATH", "s", 1, null, List.of(group));
+        var witness = new SubjectWitness("MATH", 1, List.of(new GroupWitness("b",
+                List.of(new QuestionPick(pickedId.toString(), 1)))));
+        var result = new PathResult(SolvePath.of(0, List.of(section)), SolveStatus.VALID,
+                null, null, null, List.of(witness), List.of(), null);
+        var candidates = org.mockito.Mockito.mock(SolverInputBuilder.SolverCandidates.class);
+        org.mockito.Mockito.when(candidates.candidatesFor(group)).thenReturn(List.of(
+                vn.unicom.thi360.exam.domain.solver.PathCandidate.standalone(pickedId.toString(), 1,
+                        "SINGLE_CHOICE", "G12", "D", BigDecimal.ONE),
+                vn.unicom.thi360.exam.domain.solver.PathCandidate.standalone(otherId.toString(), 1,
+                        "SHORT_ANSWER", "G10", "D", BigDecimal.ONE)));
+        org.mockito.Mockito.when(candidates.loadedCandidates()).thenReturn(Map.of(
+                new QuestionSourcePort.VersionKey(pickedId, 1), pickedCandidate,
+                new QuestionSourcePort.VersionKey(otherId, 1), otherCandidate));
+        var clock = java.time.Clock.systemUTC();
+        var sources = new ExamCheckSources(candidates, clock, clock.instant().plusSeconds(30), 100);
+        var exam = new Exam(UUID.randomUUID(), "EXAM", "Exam", null, "FULL", "SHARED", 60,
+                null, "RAW", clock.instant(), UUID.randomUUID());
+        var issues = new ExamCheckIssues(mapper);
+        var presenter = new ExamCheckPathPresenter(mapper, exam, document, issues,
+                new ExamCheckSolverIssues(issues, document, 30), sources);
+
+        var rendered = presenter.render(result, List.of());
+        var row = rendered.path("subjects").get(0).path("answerQuotas").get(0);
+        assertThat(row.path("answerType").asText()).isEqualTo("SHORT_ANSWER");
+        assertThat(row.path("required").asInt()).isEqualTo(1);
+        assertThat(row.path("achieved").asInt()).isZero();
+        var warning = StreamSupport.stream(rendered.path("issues").spliterator(), false)
+                .filter(issue -> "DISTRIBUTION_DEVIATION".equals(issue.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(warning.path("available").asInt()).isZero();
+    }
+
+    @Test
     void fractionalPointWeightsRemainExactInReferenceComparisons() throws Exception {
         var document = document("""
                 {"parts":[{"id":"p","sections":[{"id":"s","subjectCode":"MATH",
