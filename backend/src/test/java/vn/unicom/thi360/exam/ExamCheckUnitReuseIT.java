@@ -55,6 +55,12 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
                 UUID.randomUUID(), id, "bb", "p", "biology", BIOLOGY);
         String url = "/api/v1/admin/exams/" + id + "/check";
         String structureUrl = "/api/v1/admin/exams/" + id + "/structure";
+        mockMvc.perform(post(url).header("Origin", "http://localhost:3001")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"scope\":\"SECTION\",\"sectionId\":\"physics\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"scope\":\"SECTION\",\"sectionId\":\"physics\"}"))
+                .andExpect(status().isForbidden());
         assertStates(structureUrl, "NEEDS_CHECK", "NEEDS_CHECK", "NEEDS_CHECK");
         clearInvocations(units);
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())

@@ -101,6 +101,17 @@ class ExamCheckUnitEngineTests {
         when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, sharedDraft, input));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("INCOMPLETE", "INCOMPLETE");
+
+        var otherPart = mapper.valueToTree(document(mapper, false));
+        var brokenPart = ((com.fasterxml.jackson.databind.node.ArrayNode) otherPart.path("parts")).addObject();
+        brokenPart.put("id", "broken-part").put("name", "Broken part");
+        brokenPart.putObject("participation").put("mode", "CHOICE");
+        var separateDraft = new ExamStructureCodec(mapper).read(otherPart.toString());
+        var separate = check(checker, exam, separateDraft, input, clock, ExamCheckScope.from("SECTION", null, "physics"));
+        assertThat(separate.result().path("status").asText()).isEqualTo("VALID");
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, separateDraft, input));
+        assertThat(states.states(exam.getId())).extracting(state -> state.state())
+                .containsExactly("CHECKED", "CHECKED");
         verify(engine, times(0)).solveUnit(any(), any(), any());
     }
 

@@ -96,6 +96,15 @@ public class DefaultExamChecker implements ExamChecker {
         }
         Set<String> maskedSections = new java.util.HashSet<>();
         Set<String> maskedOptions = new java.util.HashSet<>(invalidOptions.keySet());
+        Set<String> ignoredParts = new java.util.HashSet<>();
+        Set<String> requestedSubjects = new java.util.HashSet<>();
+        if (scope.kind() != ExamCheckScope.Kind.EXAM) {
+            var sourceSections = ExamCheckUnitEngine.sections(snapshot.structure());
+            for (String id : requested) {
+                var section = sourceSections.get(id);
+                if (section != null && section.subjectCode() != null) requestedSubjects.add(section.subjectCode());
+            }
+        }
         if (scope.kind() != ExamCheckScope.Kind.EXAM) {
             for (ObjectNode issue : allInvalid) {
                 String sectionId = issue.path("sectionId").asText(null);
@@ -103,7 +112,8 @@ public class DefaultExamChecker implements ExamChecker {
                 if (sectionId != null) {
                     maskedSections.add(sectionId);
                 } else if (optionId != null) {
-                    if (optionContains(snapshot.structure(), optionId, requested)) {
+                    if (optionContains(snapshot.structure(), optionId, requested)
+                            || optionSharesSubject(snapshot.structure(), optionId, requestedSubjects)) {
                         common.add(issue);
                         return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
                                 new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
@@ -111,16 +121,24 @@ public class DefaultExamChecker implements ExamChecker {
                     }
                     maskedOptions.add(optionId);
                 } else {
-                    // A malformed part prevents its paths from being enumerated reliably.
-                    common.add(issue);
-                    return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
-                            new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
-                            deadline, budget, common, rules::path);
+                    String partId = issue.path("partId").asText(null);
+                    var part = snapshot.structure().parts().stream().filter(p -> p.id().equals(partId)).findFirst().orElse(null);
+                    Set<String> subjects = part == null ? Set.of() : ExamCheckDraftInputs.subjects(part);
+                    boolean sameSubject = subjects.stream().anyMatch(requestedSubjects::contains)
+                            || requestedSubjects.contains(issue.path("subjectCode").asText(null));
+                    if (part == null || scope.kind() == ExamCheckScope.Kind.PART && partId.equals(scope.targetId()) || sameSubject) {
+                        common.add(issue);
+                        return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
+                                new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
+                                deadline, budget, common, rules::path);
+                    }
+                    ignoredParts.add(partId);
                 }
             }
         }
-        ExamStructureDocument solverDocument = maskInvalidOptions(
-                ExamCheckDraftInputs.maskSections(snapshot.structure(), maskedSections), maskedOptions);
+        ExamStructureDocument solverDocument = ExamCheckDraftInputs.withoutParts(
+                maskInvalidOptions(ExamCheckDraftInputs.maskSections(snapshot.structure(), maskedSections), maskedOptions),
+                ignoredParts);
         SolverInputBuilder.SolverInput input = builder.build(snapshot.exam().getKindItemId(), solverDocument);
         if (!maskedSections.isEmpty()) {
             try {
@@ -163,6 +181,15 @@ public class DefaultExamChecker implements ExamChecker {
             if (!optionId.equals(option.id())) continue;
             if (requested.contains(option.id() + ":blocks")) return true;
             return option.sections().stream().anyMatch(section -> requested.contains(section.id()));
+        }
+        return false;
+    }
+
+    private static boolean optionSharesSubject(ExamStructureDocument document, String optionId, Set<String> subjects) {
+        for (ExamPart part : document.parts()) for (ExamPartOption option : part.options()) {
+            if (!optionId.equals(option.id())) continue;
+            return subjects.contains(option.code()) || option.sections().stream()
+                    .anyMatch(section -> subjects.contains(section.subjectCode()));
         }
         return false;
     }

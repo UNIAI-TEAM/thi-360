@@ -9,6 +9,23 @@ import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 
 /** Keeps incomplete section identities for path planning, never for solving those units. */
 final class ExamCheckDraftInputs {
+    static ExamStructureDocument withoutParts(ExamStructureDocument document, Set<String> parts) {
+        if (parts.isEmpty()) return document;
+        return new ExamStructureDocument(document.parts().stream()
+                .filter(part -> !parts.contains(part.id())).toList(), document.examQuotas());
+    }
+
+    static Set<String> subjects(ExamPart part) {
+        Set<String> subjects = new java.util.HashSet<>();
+        for (ExamSection section : part.sections()) if (section.subjectCode() != null) subjects.add(section.subjectCode());
+        for (ExamSection section : part.subjectPool()) if (section.subjectCode() != null) subjects.add(section.subjectCode());
+        for (ExamPartOption option : part.options()) {
+            for (ExamSection section : option.sections()) if (section.subjectCode() != null) subjects.add(section.subjectCode());
+            if (!option.blocks().isEmpty() && option.code() != null) subjects.add(option.code());
+        }
+        return subjects;
+    }
+
     private ExamCheckDraftInputs() {}
 
     static ExamStructureDocument maskSections(ExamStructureDocument document, Set<String> invalid) {

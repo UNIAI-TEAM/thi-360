@@ -50,12 +50,23 @@ public class ExamCheckUnitStates {
         var rules = new ExamCheckRules(mapper, snapshot.exam(), document, combinations,
                 ExamCheckUnitCombinations.topicParents(catalog, document));
         Set<String> incomplete = new HashSet<>();
-        for (ObjectNode issue : rules.unrepresentable()) markIncomplete(incomplete, issue);
+        Set<String> invalidParts = new HashSet<>();
+        Set<String> invalidPartSubjects = new HashSet<>();
+        for (ObjectNode issue : rules.unrepresentable()) {
+            markIncomplete(incomplete, issue);
+            if (!issue.hasNonNull("sectionId") && !issue.hasNonNull("optionId") && issue.hasNonNull("partId")) {
+                invalidParts.add(issue.path("partId").asText());
+                if (issue.hasNonNull("subjectCode")) invalidPartSubjects.add(issue.path("subjectCode").asText());
+            }
+        }
+        for (var part : document.parts()) {
+            if (invalidParts.contains(part.id())) invalidPartSubjects.addAll(ExamCheckDraftInputs.subjects(part));
+        }
         Map<String, String> status = new LinkedHashMap<>();
         ExamCheckUnitPlanner.Plan plan = null;
         try {
-            var input = builder.build(snapshot.exam().getKindItemId(),
-                    ExamCheckDraftInputs.maskSections(document, incomplete));
+            var input = builder.build(snapshot.exam().getKindItemId(), ExamCheckDraftInputs.withoutParts(
+                    ExamCheckDraftInputs.maskSections(document, incomplete), invalidParts));
             plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
         } catch (IllegalArgumentException | ExamCheckUnitPlanner.TooManyPaths
                 | ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {
@@ -80,6 +91,7 @@ public class ExamCheckUnitStates {
                 String current = saved == null || !identity.fingerprint().equals(saved.fingerprint())
                         || revision != saved.sourceRevision() || "UNCONFIRMED".equals(saved.outcome())
                         ? "NEEDS_CHECK" : "INVALID".equals(saved.outcome()) ? "INCOMPLETE" : "CHECKED";
+                if (invalidPartSubjects.contains(unit.key().subjectCode())) current = "NEEDS_CHECK";
                 var path = SolvePath.of(0, unit.sections());
                 var structural = new PathResult(path, SolveStatus.VALID, null, null, null, List.of(), List.of(), null);
                 for (ObjectNode issue : rules.path(structural)) markIncomplete(incomplete, issue);
