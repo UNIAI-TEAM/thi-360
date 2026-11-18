@@ -71,6 +71,13 @@ async function renderGeneral(exam = reviewExam()) {
 }
 
 describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có thang nếu người dùng không nhập)", () => {
+  it("ô thang của bài ôn để trống, ghi là tùy chọn, không đánh dấu bắt buộc", async () => {
+    const { scale } = await renderGeneral();
+    expect(scale).toHaveValue("");
+    expect(scale).not.toBeRequired();
+    expect(screen.getByText("Để trống nếu thang điểm đặt lúc thiết lập bài")).toBeInTheDocument();
+  });
+
   it("đổi môn: thang vẫn trống, hộp xác nhận hiện mẫu bài ôn, PATCH gửi maxScore null", async () => {
     const { user, scale } = await renderGeneral();
     await user.click(screen.getByRole("combobox", { name: /^Môn/ }));
