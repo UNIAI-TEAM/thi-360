@@ -39,12 +39,13 @@ public class AvailableQuestionCountController {
                                  Boolean everyChildInScope) {}
 
     @Schema(name = "AvailableQuestionsItemShape")
-    public record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}
+    public record ItemShape(Integer statements, Integer leftItems, Integer rightItems, Integer options) {}
 
     @Schema(name = "AvailableQuestionsChildCondition")
     public record ChildCondition(@Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int from,
                                  @Min(1) @Max(QuestionSourcePort.MAX_SET_CHILDREN) int to,
-                                 List<@NotNull UUID> nodeIds) {
+                                 List<@NotNull UUID> nodeIds, QuestionType answerType,
+                                 @Valid ItemShape itemShape) {
         @AssertTrue
         @JsonIgnore
         @Schema(hidden = true)
@@ -59,7 +60,8 @@ public class AvailableQuestionCountController {
                         @Valid KnowledgeScope knowledgeScope, List<String> tagCodes,
                         List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
                         ItemShape itemShape, List<@NotNull AnswerFormat> answerFormats,
-                        List<@NotNull @Valid ChildCondition> childConditions) {}
+                        List<@NotNull @Valid ChildCondition> childConditions,
+                        QuestionSourcePort.AudioRequirement audioRequirement) {}
 
     @Schema(name = "AvailableQuestionsSubjectQuery", description = "Các nhóm nguồn của một môn")
     public record SubjectQuery(@NotBlank String subjectCode, @NotNull List<@Valid Query> groups) {}
