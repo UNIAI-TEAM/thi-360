@@ -858,9 +858,22 @@ JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-0000000
 WHERE starts_with(q.code, 'SEED-2B-SCIENCE-SU-')
 ON CONFLICT DO NOTHING;
 
--- D9 tags resolve through catalog.seed_tag_slot (written by the catalog seed), so a
--- preserved catalog row with another UUID wins. Generated ids and codes derive from
--- the declared spec keys, never from whether the tag resolved.
+-- Resolve each D9 purpose by code, not by its canonical UUID, so an unrelated
+-- catalog item at that UUID cannot classify a generated question. Keep the
+-- slot in the spec for stable generated IDs and resolve again on each seed run.
+CREATE TEMP TABLE seed_be14_tag_slots (slot uuid PRIMARY KEY, code text NOT NULL) ON COMMIT DROP;
+INSERT INTO seed_be14_tag_slots (slot, code)
+WITH slots(ordinal, code) AS (
+    VALUES
+        (41, 'ANH_PHAT_HIEN_LOI'),
+        (42, 'ANH_DIEN_DAT_TUONG_DUONG'),
+        (43, 'TD_SAP_XEP_DIEU_KIEN'),
+        (44, 'TD_XEP_HANG'),
+        (45, 'TD_BANG_SO_LIEU'),
+        (46, 'TD_BIEU_DO')
+)
+SELECT ('00000000-0000-7000-8601-' || lpad(ordinal::text, 12, '0'))::uuid, code FROM slots;
+
 WITH singles AS (
 SELECT spec.*, tag.code AS tag_code, n, subject.id AS subject_id,
        grade.id AS grade_id, level.id AS level_id,
@@ -876,9 +889,9 @@ FROM (VALUES
 JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
 JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
 JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
-LEFT JOIN catalog.seed_tag_slot slot ON slot.slot = spec.tag_slot::uuid
+LEFT JOIN seed_be14_tag_slots slot ON slot.slot = spec.tag_slot::uuid
 LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
-    AND (tag.code = spec.declared_tag OR tag.id = spec.tag_slot::uuid OR tag.id = slot.item_id)
+    AND tag.code_normalized = lower(COALESCE(spec.declared_tag, slot.code))
 CROSS JOIN LATERAL generate_series(1, spec.quantity) n
 ), classified AS (
     INSERT INTO seed_be14_classification
@@ -917,9 +930,9 @@ WITH sets AS (
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
-    LEFT JOIN catalog.seed_tag_slot slot ON slot.slot = spec.tag_slot::uuid
+    LEFT JOIN seed_be14_tag_slots slot ON slot.slot = spec.tag_slot::uuid
     LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
-        AND (tag.code = spec.declared_tag OR tag.id = spec.tag_slot::uuid OR tag.id = slot.item_id)
+        AND tag.code_normalized = lower(COALESCE(spec.declared_tag, slot.code))
     CROSS JOIN LATERAL generate_series(1, spec.quantity) n
 ), children AS (
     SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
