@@ -58,8 +58,8 @@ final class ExamCheckDistribution {
     }
 
     /** Counts of one dimension on the proof paper, in basis units. */
-    public record DimensionCounts(Map<String, Long> grade, Map<String, Long> difficulty,
-                                  Map<List<String>, Long> cells, Map<String, Long> answerTypes,
+    public record DimensionCounts(Map<String, BigDecimal> grade, Map<String, BigDecimal> difficulty,
+                                  Map<List<String>, BigDecimal> cells, Map<String, BigDecimal> answerTypes,
                                   BigDecimal total) {
         public DimensionCounts {
             grade = grade == null ? Map.of() : Map.copyOf(grade);
@@ -256,9 +256,9 @@ final class ExamCheckDistribution {
                 if (required == null) return;
                 for (int i = 0; i < required.length; i++) {
                     var cell = matrix.cells().get(i);
-                    long have = actual.cells().getOrDefault(
-                            List.of(String.valueOf(cell.gradeCode()), String.valueOf(cell.difficultyCode())), 0L);
-                    if (have != required[i]) {
+                    BigDecimal have = actual.cells().getOrDefault(
+                            List.of(String.valueOf(cell.gradeCode()), String.valueOf(cell.difficultyCode())), BigDecimal.ZERO);
+                    if (have.compareTo(BigDecimal.valueOf(required[i])) != 0) {
                         found.add(deviation(section, block, evidence, "GRADE",
                                 cell.gradeCode(), cell.difficultyCode(), required[i], have, basis));
                     }
@@ -282,14 +282,14 @@ final class ExamCheckDistribution {
 
     private void compareDimension(List<ObjectNode> found, ExamSection section, QuestionBlock block,
                                   PathEvidence evidence, String dimension, List<BigDecimal> values,
-                                  List<String> codes, MatrixUnit unit, Map<String, Long> actual,
+                                  List<String> codes, MatrixUnit unit, Map<String, BigDecimal> actual,
                                   BigDecimal total, QuotaBasis basis) {
         if (values.isEmpty()) return;
         int[] required = resolve(values, unit, total);
         if (required == null) return;
         for (int i = 0; i < required.length; i++) {
-            long have = actual.getOrDefault(codes.get(i), 0L);
-            if (have != required[i]) {
+            BigDecimal have = actual.getOrDefault(codes.get(i), BigDecimal.ZERO);
+            if (have.compareTo(BigDecimal.valueOf(required[i])) != 0) {
                 found.add(deviation(section, block, evidence, dimension, codes.get(i), null,
                         required[i], have, basis));
             }
@@ -330,10 +330,10 @@ final class ExamCheckDistribution {
         }
         for (int i = 0; i < required.length; i++) {
             List<String> codes = quota.buckets().get(i).codes();
-            long have = applicable.stream()
+            BigDecimal have = applicable.stream()
                     .filter(unit -> matches(unit.unit(), quota.dimension(), codes))
-                    .mapToLong(unit -> weight(unit.unit(), basis).longValueExact()).sum();
-            if (have == required[i]) continue;
+                    .map(unit -> weight(unit.unit(), basis)).reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (have.compareTo(BigDecimal.valueOf(required[i])) == 0) continue;
             ObjectNode issue = issues.create("EXAM_QUOTA_DEVIATION", "MATRIX", "WARNING");
             issue.put("dimension", quota.dimension() == null ? null : quota.dimension().name());
             if (quota.dimension() == ExamQuota.Dimension.DIFFICULTY) {
@@ -360,7 +360,7 @@ final class ExamCheckDistribution {
 
     private ObjectNode deviation(ExamSection section, QuestionBlock block, PathEvidence evidence,
                                  String dimension, String gradeCode, String difficultyCode,
-                                 long required, long available, QuotaBasis basis) {
+                                 long required, BigDecimal available, QuotaBasis basis) {
         ObjectNode issue = issues.create("DISTRIBUTION_DEVIATION", "MATRIX", "WARNING");
         ExamPart part = sectionParts.get(section.id());
         String optionId = sectionOptions.get(section.id());
@@ -383,21 +383,21 @@ final class ExamCheckDistribution {
     private static BasisCounts counts(List<PickedUnit> units) {
         Map<QuotaBasis, DimensionCounts> out = new LinkedHashMap<>();
         for (QuotaBasis basis : QuotaBasis.values()) {
-            Map<String, Long> grade = new LinkedHashMap<>();
-            Map<String, Long> difficulty = new LinkedHashMap<>();
-            Map<List<String>, Long> cells = new LinkedHashMap<>();
-            Map<String, Long> answers = new LinkedHashMap<>();
+            Map<String, BigDecimal> grade = new LinkedHashMap<>();
+            Map<String, BigDecimal> difficulty = new LinkedHashMap<>();
+            Map<List<String>, BigDecimal> cells = new LinkedHashMap<>();
+            Map<String, BigDecimal> answers = new LinkedHashMap<>();
             BigDecimal total = BigDecimal.ZERO;
             for (PickedUnit unit : units) {
                 QuestionSourcePort.Unit u = unit.unit();
                 BigDecimal weight = weight(u, basis);
                 total = total.add(weight);
-                if (u.gradeCode() != null) grade.merge(u.gradeCode(), weight.longValueExact(), Long::sum);
-                if (u.difficultyCode() != null) difficulty.merge(u.difficultyCode(), weight.longValueExact(), Long::sum);
+                if (u.gradeCode() != null) grade.merge(u.gradeCode(), weight, BigDecimal::add);
+                if (u.difficultyCode() != null) difficulty.merge(u.difficultyCode(), weight, BigDecimal::add);
                 if (u.gradeCode() != null && u.difficultyCode() != null) {
-                    cells.merge(List.of(u.gradeCode(), u.difficultyCode()), weight.longValueExact(), Long::sum);
+                    cells.merge(List.of(u.gradeCode(), u.difficultyCode()), weight, BigDecimal::add);
                 }
-                if (u.answerType() != null) answers.merge(u.answerType().name(), weight.longValueExact(), Long::sum);
+                if (u.answerType() != null) answers.merge(u.answerType().name(), weight, BigDecimal::add);
             }
             out.put(basis, new DimensionCounts(grade, difficulty, cells, answers, total));
         }

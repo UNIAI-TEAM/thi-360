@@ -49,8 +49,29 @@ class ExamCheckDistributionTests {
         assertThat(issue.path("partId").asText()).isEqualTo("p");
         // Actual rows come from the proof paper, not the source pool.
         var counts = report.sectionActuals().get("s").get(2).basis(vn.unicom.thi360.exam.domain.QuotaBasis.QUESTION);
-        assertThat(counts.grade()).containsEntry("G12", 2L);
+        assertThat(counts.grade().get("G12")).isEqualByComparingTo("2");
         assertThat(counts.total()).isEqualByComparingTo("2");
+    }
+
+    @Test
+    void fractionalPointWeightsRemainExactInReferenceComparisons() throws Exception {
+        var document = document("""
+                {"parts":[{"id":"p","sections":[{"id":"s","subjectCode":"MATH",
+                "questionCount":1,"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"POINTS",
+                "byGrade":[{"code":"G12","value":1}],"gradeEnforcement":"REFERENCE"},
+                "blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """);
+        var path = path("MATH", "s", 1, List.of(pick("q1")));
+        var unit = new QuestionSourcePort.Unit(UUID.randomUUID(), null, QuestionType.SINGLE_CHOICE,
+                "G12", "D", List.of(), List.of(), new BigDecimal("0.75"));
+        var picked = new ExamCheckDistribution.PickedUnit("MATH", "s", 1, true, "b", unit);
+        var report = ExamCheckDistribution.analyze(document,
+                new ExamCheckDistribution.PathEvidence(path, "default", List.of(), List.of(picked)), mapper);
+        assertThat(report.issues()).hasSize(1);
+        assertThat(report.issues().getFirst().path("available").decimalValue()).isEqualByComparingTo("0.75");
+        assertThat(report.sectionActuals().get("s").get(1)
+                .basis(vn.unicom.thi360.exam.domain.QuotaBasis.POINTS).grade().get("G12"))
+                .isEqualByComparingTo("0.75");
     }
 
     @Test

@@ -399,7 +399,7 @@ final class ExamCheckPathPresenter {
             if (values != null) for (int i = 0; i < values.length; i++) {
                 String type = quota.items().get(i).answerType().name();
                 long have = units.stream().filter(unit -> type.equals(unit.answerType())).count();
-                Long witnessHave = paper == null ? null : paper.basis(QuotaBasis.QUESTION).answerTypes().get(type);
+                BigDecimal witnessHave = paper == null ? null : paper.basis(QuotaBasis.QUESTION).answerTypes().get(type);
                 ObjectNode entry = answers.addObject(); entry.put("answerType", type); entry.put("required", values[i]);
                 if (witnessHave != null) entry.put("achieved", witnessHave);
                 else if (complete) entry.put("achieved", Math.min(values[i], have));
@@ -433,7 +433,7 @@ final class ExamCheckPathPresenter {
                             boolean grade, boolean complete, ExamCheckDistribution.DimensionCounts actual) {
         for (var value : values.entrySet()) {
             long have = units.stream().filter(unit -> value.getKey().equals(grade ? unit.gradeCode() : unit.difficultyCode())).count();
-            Long witness = actual == null ? null
+            BigDecimal witness = actual == null ? null
                     : (grade ? actual.grade() : actual.difficulty()).get(value.getKey());
             ObjectNode item = out.addObject(); item.put("code", value.getKey()); item.put("required", value.getValue());
             if (witness != null) item.put("achieved", witness);
