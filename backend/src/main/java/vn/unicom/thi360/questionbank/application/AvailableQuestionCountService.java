@@ -55,14 +55,18 @@ public class AvailableQuestionCountService {
         if (competencies == null && scope != null) competencies = scope.competencyCodes();
         List<QuestionSourcePort.ChildCondition> childConditions = query.childConditions() == null
                 ? null : query.childConditions().stream()
-                .map(c -> new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds())).toList();
-        QuestionSourcePort.ItemShape itemShape = query.itemShape() == null ? null
-                : new QuestionSourcePort.ItemShape(query.itemShape().statements(),
-                        query.itemShape().leftItems(), query.itemShape().rightItems());
+                .map(c -> new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds(), c.answerType(),
+                        itemShape(c.itemShape()))).toList();
         return new QuestionSourcePort.Filter(subjectId, groups, query.answerTypes(), query.questionType(),
                 null, query.childAnswerType(), query.tagCodes(), competencies,
-                query.requiredPointsPerQuestion(), itemShape, query.answerFormats(), childConditions,
-                scope == null ? null : scope.everyChildInScope());
+                query.requiredPointsPerQuestion(), itemShape(query.itemShape()), query.answerFormats(),
+                childConditions, List.of(), List.of(), List.of(),
+                scope == null ? null : scope.everyChildInScope(), List.of(), query.audioRequirement());
+    }
+
+    private static QuestionSourcePort.ItemShape itemShape(AvailableQuestionCountController.ItemShape shape) {
+        return shape == null ? null : new QuestionSourcePort.ItemShape(shape.statements(), shape.leftItems(),
+                shape.rightItems(), shape.options());
     }
 
     private AvailableQuestionCountController.Response response(QuestionSourcePort.Counts counts) {
