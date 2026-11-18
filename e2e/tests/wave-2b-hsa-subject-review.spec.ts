@@ -76,9 +76,12 @@ test.describe("HSA theo môn và bài ôn", () => {
     const admin = await adminApi();
     const exam = await getExam(admin, id);
     expect(exam.templateCode).toBe("HSA_REVIEW");
-    // Bước 1 đã lưu số câu và thời lượng đã nhập.
-    expect([exam.questionCount, exam.durationMinutes]).toEqual([10, 15]);
+    // Bước 1 đã lưu số câu; HSA ôn tính giờ PER_PART nên thời lượng nằm ở phần, durationMinutes cấp đề là null.
+    expect(exam.questionCount).toBe(10);
+    expect((exam as typeof exam & { timing?: string }).timing).toBe("PER_PART");
+    expect(exam.durationMinutes ?? null).toBeNull();
     const skeleton = await getStructure(admin, id);
+    expect(skeleton.parts[0]!.durationMinutes).toBe(15);
     expect(skeleton.parts).toHaveLength(1);
     expect(skeleton.parts[0]!.sections).toHaveLength(1);
     expect(skeleton.parts[0]!.sections![0]!.subjectCode).toBe("TOAN");
