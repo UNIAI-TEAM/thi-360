@@ -146,6 +146,8 @@ export function CreateExamScopeFields({
               value={selection.partCode}
               required
               disabled={disabled}
+              // V-ACT và THPTQG theo bản vẽ 2B dùng thẻ; các kỳ thi cũ giữ nút viên thuốc của ma trận.
+              variant={selection.kind === "VACT" || selection.kind === "THPTQG" ? "card" : "pill"}
               hint={t("partHint")}
               options={partOptions}
               onChange={(partCode) => onChange({ partCode })}
