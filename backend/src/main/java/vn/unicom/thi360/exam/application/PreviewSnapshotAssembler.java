@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import vn.unicom.thi360.exam.api.ExamPreviewController.PreviewPaper;
+import vn.unicom.thi360.exam.api.ExamPreviewController.PreviewPart;
+import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
@@ -17,7 +20,7 @@ final class PreviewSnapshotAssembler {
             Map<String, GroupWitness> groups,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions,
-            List<PreviewSnapshotStore.Dropped> dropped) {
+            List<PreviewSnapshotStore.Dropped> dropped, SolvePath path, PreviewPaper paper) {
         Map<String, List<GroupWitness>> groupsByPart = new LinkedHashMap<>();
         for (GroupWitness group : groups.values()) {
             String part = index.groupPart(group.groupId());
@@ -29,6 +32,18 @@ final class PreviewSnapshotAssembler {
             String part = index.sectionPart(item.sectionId());
             if (part == null) throw new IllegalStateException("Dropped question has no part");
             droppedByPart.computeIfAbsent(part, ignored -> new ArrayList<>()).add(item);
+        }
+        Map<String, PreviewPart> presentations = new LinkedHashMap<>();
+        for (PreviewPart part : paper.parts()) presentations.put(part.partId(), part);
+        Map<String, Map<String, List<Integer>>> allocations = new LinkedHashMap<>();
+        Map<String, String> optionParts = new LinkedHashMap<>();
+        path.chosen().forEach(choice -> optionParts.put(choice.optionId(), choice.partId()));
+        for (int i = 0; i < path.choices().size(); i++) {
+            String optionId = path.choices().get(i).optionId();
+            var picks = path.picks().get(i);
+            if (picks.size() != 1) throw new IllegalStateException("Preview requires one subject allocation");
+            allocations.computeIfAbsent(optionParts.get(optionId), ignored -> new LinkedHashMap<>())
+                    .put(optionId, picks.getFirst().counts());
         }
         Map<String, PreviewSnapshotStore.PartSnapshot> result = new LinkedHashMap<>();
         for (var entry : groupsByPart.entrySet()) {
@@ -60,7 +75,8 @@ final class PreviewSnapshotAssembler {
                 savedVersions.add(version);
             }
             result.put(part, new PreviewSnapshotStore.PartSnapshot(List.copyOf(entry.getValue()),
-                    List.copyOf(savedCandidates), List.copyOf(savedVersions), List.copyOf(lost)));
+                    List.copyOf(savedCandidates), List.copyOf(savedVersions), List.copyOf(lost),
+                    presentations.get(part), allocations.getOrDefault(part, Map.of())));
         }
         return Map.copyOf(result);
     }

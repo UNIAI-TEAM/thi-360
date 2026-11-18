@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import vn.unicom.thi360.exam.api.ExamPreviewController.PreviewPart;
 import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
@@ -21,7 +22,8 @@ public class PreviewSnapshotStore {
     public record Dropped(QuestionPick pick, String subjectCode, String sectionId) {}
 
     public record PartSnapshot(List<GroupWitness> groups, List<QuestionSourcePort.Candidate> candidates,
-                               List<QuestionSourcePort.Version> versions, List<Dropped> droppedQuestions) {}
+                               List<QuestionSourcePort.Version> versions, List<Dropped> droppedQuestions,
+                               PreviewPart presentation, Map<String, List<Integer>> allocations) {}
 
     public record Snapshot(UUID examId, Integer version, long seed, Map<String, PartSnapshot> parts) {}
 

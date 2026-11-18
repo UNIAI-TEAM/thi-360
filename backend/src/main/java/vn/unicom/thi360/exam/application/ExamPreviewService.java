@@ -153,12 +153,12 @@ public class ExamPreviewService {
         List<QuestionSourcePort.VersionKey> missing = snapshotKeys.stream().filter(key -> !versions.containsKey(key)).toList();
         if (!missing.isEmpty()) versions.putAll(store.loadVersions(missing));
         SolvePath actualPath = regeneration == null || sectionTarget != null ? result.path()
-                : mergeRegeneratedPath(resolved.path(), result.path());
+                : mergeRegeneratedPath(resolved.path(), result.path(), regeneration.retained());
         Map<String, SectionOnPath> sections = pathSections(actualPath);
         List<CatalogItemView> knowledge = catalog.listGroupItems("KNOWLEDGE");
         PaperBuilder paperBuilder = new PaperBuilder(groups, candidates, versions, sections, knowledge);
         PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
-                document, request.seed(), mapper);
+                document, request.seed(), mapper, regeneration == null ? Map.of() : regeneration.retained());
         if (request.target() != null && sectionTarget == null) {
             List<PreviewIssue> totals = previewPartTotals(document, paper, request.pathId());
             if (!totals.isEmpty()) {
@@ -191,7 +191,8 @@ public class ExamPreviewService {
                     version.snapshot(), candidate.units().getFirst(), item.subjectCode()));
         }
         Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
-                PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped));
+                PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
+                        actualPath, paper));
         if (regeneration != null) selectedParts.putAll(regeneration.retained());
         List<Compliance> compliance = PreviewCompliance.evaluate(document, actualPath, groups, candidates, allDropped, knowledge);
         UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
@@ -252,10 +253,21 @@ public class ExamPreviewService {
         return sections;
     }
 
-    private static SolvePath mergeRegeneratedPath(SolvePath original, SolvePath generated) {
+    private static SolvePath mergeRegeneratedPath(SolvePath original, SolvePath generated,
+            Map<String, PreviewSnapshotStore.PartSnapshot> retained) {
         Map<String, List<SubjectPick>> updated = new HashMap<>();
         for (int i = 0; i < generated.choices().size(); i++) {
             updated.put(generated.choices().get(i).optionId(), generated.picks().get(i));
+        }
+        for (var part : retained.values()) {
+            for (var allocation : part.allocations().entrySet()) {
+                for (int i = 0; i < original.choices().size(); i++) {
+                    if (!original.choices().get(i).optionId().equals(allocation.getKey())) continue;
+                    SubjectPick selected = original.picks().get(i).getFirst();
+                    updated.put(allocation.getKey(), List.of(new SubjectPick(
+                            selected.optionId(), selected.sections(), allocation.getValue())));
+                }
+            }
         }
         List<List<SubjectPick>> picks = new ArrayList<>();
         for (int i = 0; i < original.choices().size(); i++) {

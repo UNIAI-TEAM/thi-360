@@ -146,20 +146,28 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     void switchingBcaCombinationRegeneratesOnlyThirdPart() throws Exception {
         Subject first = subject();
         Subject second = subject();
-        question(first, "SINGLE_CHOICE", "first", false);
-        question(second, "SINGLE_CHOICE", "second", false);
+        for (Subject subject : List.of(first, second)) {
+            for (int i = 0; i < 3; i++) {
+                UUID id = question(subject, "SINGLE_CHOICE", "retained", false);
+                jdbc.update("""
+                        update questionbank.question_version set snapshot=jsonb_set(snapshot,'{body}',
+                          '{"type":"SINGLE_CHOICE","options":[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"}]}'::jsonb)
+                        where question_id=? and version_no=1
+                        """, id);
+            }
+        }
         for (String code : List.of("LY", "HOA", "SINH", "DIA")) {
             UUID subjectId = jdbc.queryForObject("select id from catalog.catalog_item where group_id = ? and code_normalized = ?",
                     UUID.class, SUBJECT_GROUP, code.toLowerCase(Locale.ROOT));
             question(new Subject(subjectId, code), "SINGLE_CHOICE", code, false);
         }
         UUID examId = exam("""
-                [{"id":"p1","order":1,"name":"One","questionCount":1,"participation":{"mode":"ALL"},
-                  "sections":[{"id":"s1","subjectCode":"%s","questionCount":1,
-                    "blocks":[{"id":"g1","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
-                 {"id":"p2","order":2,"name":"Two","questionCount":1,"participation":{"mode":"ALL"},
-                  "sections":[{"id":"s2","subjectCode":"%s","questionCount":1,
-                    "blocks":[{"id":"g2","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                [{"id":"p1","order":1,"name":"One","questionCount":3,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s1","subjectCode":"%s","questionCount":3,
+                    "blocks":[{"id":"g1","questionType":"SINGLE_CHOICE","questionCount":3,"shuffleUnits":true}]}]},
+                 {"id":"p2","order":2,"name":"Two","questionCount":3,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s2","subjectCode":"%s","questionCount":3,
+                    "blocks":[{"id":"g2","questionType":"SINGLE_CHOICE","questionCount":3,"shuffleUnits":true}]}]},
                  {"id":"p3","order":3,"name":"Three","questionCount":1,
                   "codeSource":{"source":"GLOBAL_LIST"},"subjectPool":[
                     {"id":"ly","subjectCode":"LY","questionCount":1,"blocks":[{"id":"gly","questionType":"SINGLE_CHOICE","questionCount":1}]},
@@ -177,6 +185,49 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         assertThat(newParts.get(0)).isEqualTo(oldParts.get(0));
         assertThat(newParts.get(1)).isEqualTo(oldParts.get(1));
         assertThat(newParts.get(2).path("blocks").get(0).path("subjectCode").asText()).isEqualTo("HOA");
+    }
+
+    @Test
+    void retainedScienceKeepsItsOriginalSubjectAllocation() throws Exception {
+        Subject a = subject();
+        Subject b = subject();
+        Subject c = subject();
+        Subject other = subject();
+        for (Subject science : List.of(a, b, c)) {
+            for (int i = 0; i < 17; i++) question(science, "SINGLE_CHOICE", "science", false);
+        }
+        question(other, "SINGLE_CHOICE", "other", false);
+        UUID examId = exam("""
+                [{"id":"science-part","order":1,"name":"Science","questionCount":50,
+                  "participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"id":"science","kind":"SUBJECT_CHOICE","chooseSubjects":3,"countsByPick":[17,17,16],
+                     "sections":[
+                       {"id":"a","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"ga","questionType":"SINGLE_CHOICE","questionCount":17}]},
+                       {"id":"b","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"gb","questionType":"SINGLE_CHOICE","questionCount":17}]},
+                       {"id":"c","subjectCode":"%s","choiceGroup":"NATURAL","blocks":[{"id":"gc","questionType":"SINGLE_CHOICE","questionCount":17}]}]}]},
+                 {"id":"other-part","order":2,"name":"Other","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"other","subjectCode":"%s","questionCount":1,
+                    "blocks":[{"id":"other-group","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]
+                """.formatted(a.code(), b.code(), c.code(), other.code()));
+        String target = "\"target\":{\"kind\":\"PATH\",\"pathId\":\"science\",\"subjectCodes\":[\""
+                + a.code() + "\",\"" + b.code() + "\",\"" + c.code() + "\"]}";
+        JsonNode initial = preview(examId, "{" + target + ",\"seed\":1}");
+        JsonNode regenerated = preview(examId, "{" + target + ",\"seed\":5,\"basePreviewId\":\""
+                + initial.path("previewId").asText() + "\",\"regeneratePartIds\":[\"other-part\"]}");
+        assertThat(regenerated.path("paper").path("parts").get(0))
+                .isEqualTo(initial.path("paper").path("parts").get(0));
+        assertThat(regenerated.path("droppedQuestions").get(0).path("questionId"))
+                .isEqualTo(initial.path("droppedQuestions").get(0).path("questionId"));
+        for (JsonNode allocation : regenerated.path("paper").path("subjects")) {
+            String code = allocation.path("subjectCode").asText();
+            if (code.equals(other.code())) continue;
+            JsonNode block = null;
+            for (JsonNode candidate : regenerated.path("paper").path("parts").get(0).path("blocks")) {
+                if (code.equals(candidate.path("subjectCode").asText())) block = candidate;
+            }
+            assertThat(block).isNotNull();
+            assertThat(allocation.path("questionCount").asInt()).isEqualTo(block.path("questionCount").asInt());
+        }
     }
 
     @Test

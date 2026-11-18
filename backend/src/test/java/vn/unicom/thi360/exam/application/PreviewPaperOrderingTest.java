@@ -25,8 +25,8 @@ class PreviewPaperOrderingTest {
         var paper = new PreviewPaper(3, BigDecimal.valueOf(3), 10, true, false, List.of(part), List.of(), List.of(), List.of());
         var document = new ExamStructureDocument(List.of());
 
-        PreviewPaper ordered = PreviewPaperOrdering.order(paper, document, 41, mapper);
-        assertThat(PreviewPaperOrdering.order(paper, document, 41, mapper)).isEqualTo(ordered);
+        PreviewPaper ordered = PreviewPaperOrdering.order(paper, document, 41, mapper, java.util.Map.of());
+        assertThat(PreviewPaperOrdering.order(paper, document, 41, mapper, java.util.Map.of())).isEqualTo(ordered);
         var questions = ordered.parts().getFirst().blocks().getFirst().items().stream()
                 .flatMap(value -> value.question() == null ? value.children().stream() : java.util.stream.Stream.of(value.question()))
                 .collect(java.util.stream.Collectors.toMap(PreviewQuestion::questionId, value -> value));

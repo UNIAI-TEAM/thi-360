@@ -14,7 +14,8 @@ import vn.unicom.thi360.exam.spi.PaperOrdering;
 
 /** Applies the same seeded presentation ordering used for attempts without losing authored order. */
 final class PreviewPaperOrdering {
-    static PreviewPaper order(PreviewPaper paper, ExamStructureDocument document, long seed, ObjectMapper mapper) {
+    static PreviewPaper order(PreviewPaper paper, ExamStructureDocument document, long seed, ObjectMapper mapper,
+            Map<String, PreviewSnapshotStore.PartSnapshot> retained) {
         Map<String, Boolean> shuffle = new HashMap<>();
         for (var part : document.parts()) {
             collect(shuffle, part.sections());
@@ -36,14 +37,18 @@ final class PreviewPaperOrdering {
             parts.add(new PaperOrdering.Part(part.partId(), sections));
         }
         PaperOrdering.OrderedPaper ordered = PaperOrdering.order(new PaperOrdering.Paper(parts), seed);
+        Map<String, List<String>> optionOrders = new HashMap<>(ordered.optionOrder());
         List<PreviewPart> output = new ArrayList<>();
         int next = 1;
         for (int p = 0; p < paper.parts().size(); p++) {
             PreviewPart part = paper.parts().get(p);
             int partFirst = next;
+            PreviewPart savedPart = retained.containsKey(part.partId()) ? retained.get(part.partId()).presentation() : null;
             List<PreviewBlock> blocks = new ArrayList<>();
             for (int b = 0; b < part.blocks().size(); b++) {
                 PreviewBlock block = part.blocks().get(b);
+                PreviewBlock savedBlock = savedPart == null ? null : savedPart.blocks().stream()
+                        .filter(value -> value.blockId().equals(block.blockId())).findFirst().orElseThrow();
                 Map<String, PreviewItem> original = new HashMap<>();
                 Map<String, Integer> positions = new HashMap<>();
                 Map<String, Integer> spans = new HashMap<>();
@@ -59,23 +64,40 @@ final class PreviewPaperOrdering {
                 }
                 int first = next;
                 List<PreviewItem> items = new ArrayList<>();
-                for (var unit : ordered.paper().parts().get(p).sections().get(b).blocks().getFirst().units()) {
-                    PreviewItem item = original.get(unit.id());
+                List<String> itemIds = savedBlock == null
+                        ? ordered.paper().parts().get(p).sections().get(b).blocks().getFirst().units().stream()
+                                .map(PaperOrdering.Question::id).toList()
+                        : savedBlock.items().stream().map(PreviewPaperOrdering::id).toList();
+                Map<String, PreviewItem> savedItems = new HashMap<>();
+                if (savedBlock != null) {
+                    for (PreviewItem saved : savedBlock.items()) {
+                        savedItems.put(id(saved), saved);
+                        if (saved.question() != null && saved.question().optionOrder() != null) {
+                            optionOrders.put(saved.question().questionId(), saved.question().optionOrder());
+                        }
+                        if (saved.children() != null) for (PreviewQuestion child : saved.children()) {
+                            if (child.optionOrder() != null) optionOrders.put(child.questionId(), child.optionOrder());
+                        }
+                    }
+                }
+                for (String itemId : itemIds) {
+                    PreviewItem item = original.get(itemId);
                     if (item == null) throw new IllegalStateException("Ordered question missing from preview");
+                    Integer originalOrder = savedBlock == null ? positions.get(itemId) : savedItems.get(itemId).originalOrder();
                     if (item.question() != null) {
-                        PreviewQuestion question = question(item.question(), next, ordered.optionOrder());
+                        PreviewQuestion question = question(item.question(), next, optionOrders);
                         items.add(new PreviewItem(item.kind(), question, item.setId(), item.code(), item.version(),
-                                item.simulated(), item.passage(), item.children(), positions.get(unit.id())));
+                                item.simulated(), item.passage(), item.children(), originalOrder));
                     } else {
                         List<PreviewQuestion> children = new ArrayList<>();
                         int childNumber = next;
                         for (PreviewQuestion child : item.children()) {
-                            children.add(question(child, childNumber++, ordered.optionOrder()));
+                            children.add(question(child, childNumber++, optionOrders));
                         }
                         items.add(new PreviewItem(item.kind(), null, item.setId(), item.code(), item.version(),
-                                item.simulated(), item.passage(), children, positions.get(unit.id())));
+                                item.simulated(), item.passage(), children, originalOrder));
                     }
-                    next += spans.get(unit.id());
+                    next += spans.get(itemId);
                 }
                 blocks.add(new PreviewBlock(block.blockId(), block.blockName(), block.subjectCode(), block.questionType(),
                         block.manualGrading(), block.pointsEach(), first, next - 1, block.questionCount(), block.setCount(),

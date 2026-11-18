@@ -36,7 +36,8 @@ class PreviewSnapshotStoreTest {
         var part = new PreviewSnapshotStore.PartSnapshot(
                 List.of(new GroupWitness("group", List.of(new QuestionPick(questionId.toString(), 3)))),
                 List.of(candidate), List.of(version),
-                List.of(new PreviewSnapshotStore.Dropped(new QuestionPick("dropped", 1), "PHYSICS", "physics-section")));
+                List.of(new PreviewSnapshotStore.Dropped(new QuestionPick("dropped", 1), "PHYSICS", "physics-section")),
+                null, Map.of("science", List.of(17, 16)));
         var snapshot = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), 2, 42L, Map.of("part-1", part));
 
         UUID id = store.save(snapshot);
