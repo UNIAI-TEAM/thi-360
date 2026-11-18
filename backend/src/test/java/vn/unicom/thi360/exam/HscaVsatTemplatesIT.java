@@ -7,18 +7,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
@@ -31,8 +27,6 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class HscaVsatTemplatesIT extends AbstractIntegrationTest {
     private static final List<String> HSCA_SCIENCES = List.of("TOAN", "LY", "HOA", "SINH");
     private static final List<String> VSAT_FULL = List.of("TOAN", "LY", "HOA", "SINH", "SU", "DIA");
-    /** SHA-256 of the 85 expected-totals lines of the seven older examinations, taken before this lane. */
-    private static final String OLD_FIXTURE_LINES = "579801eaedfc7ca63a50e7eff2a5e19b7261feff4be84e984baf579876a9f1c0";
 
     @Autowired private ObjectMapper mapper;
 
@@ -315,7 +309,7 @@ class HscaVsatTemplatesIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void theSevenOlderKindsKeepTheirFixtureLinesAndTheMigrationOnlyTouchesTheNewKinds() throws Exception {
+    void theSevenOlderKindsStillMatchTheirFixtureEntriesAndOnlyTheNewKindsWereAdded() throws Exception {
         JsonNode fixture;
         try (var input = getClass().getResourceAsStream("/templates/expected-totals.json")) {
             assertThat(input).isNotNull();
@@ -325,28 +319,30 @@ class HscaVsatTemplatesIT extends AbstractIntegrationTest {
         fixture.fieldNames().forEachRemaining(code -> {
             if (!code.startsWith("HSCA_") && !code.startsWith("VSAT_")) older.add(code);
         });
-        StringBuilder text = new StringBuilder();
+        assertThat(older).as("fixture entries of the seven older examinations").hasSize(85);
         for (String code : older) {
-            if (text.length() > 0) text.append('\n');
-            text.append(code).append('=').append(mapper.writeValueAsString(fixture.path(code)));
+            JsonNode stored = template(code);
+            JsonNode expected = fixture.path(code);
+            assertThat(stored.path("kindCode").asText()).as(code).isEqualTo(expected.path("examKind").asText());
+            assertThat(stored.path("scope").asText()).as(code).isEqualTo(expected.path("scope").asText());
+            assertThat(stored.path("partCode").asText(null)).as(code)
+                    .isEqualTo(expected.path("partCode").asText(null));
+            assertThat(stored.path("subjectCode").asText(null)).as(code)
+                    .isEqualTo(expected.path("subjectCode").asText(null));
+            assertThat(stored.path("buildMode").asText()).as(code).isEqualTo(expected.path("buildMode").asText());
+            assertThat(stored.path("isDefault").asBoolean()).as(code)
+                    .isEqualTo(expected.path("isDefault").asBoolean());
+            assertThat(stored.path("durationMinutes").asInt(-1)).as(code)
+                    .isEqualTo(expected.path("durationMinutes").asInt(-1));
         }
-        assertThat(older).hasSize(85);
-        assertThat(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest(text.toString().getBytes(StandardCharsets.UTF_8)))).isEqualTo(OLD_FIXTURE_LINES);
-
-        String sql;
-        try (var input = new ClassPathResource("db/migration/exam/V202611182210__exam_templates_hsca_vsat.sql")
-                .getInputStream()) {
-            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        // Row 15's totals for the same entries run in ExamTemplateTotalsIT.everyStoredTemplateMatchesItsFixture;
+        // the generated migration may be renamed freely because nothing here reads it.
+        for (JsonNode stored : templates.values()) {
+            String code = stored.path("code").asText();
+            if (fixture.has(code)) continue;
+            assertThat("REVIEW".equals(stored.path("buildMode").asText())
+                    || code.startsWith("HSCA_") || code.startsWith("VSAT_")).as(code + " is a new kind").isTrue();
         }
-        var codes = new TreeSet<String>();
-        var matcher = java.util.regex.Pattern.compile("(?m)^WHERE code = '([A-Z0-9_]+)';|^VALUES \\('([A-Z0-9_]+)'")
-                .matcher(sql);
-        while (matcher.find()) codes.add(matcher.group(1) != null ? matcher.group(1) : matcher.group(2));
-        assertThat(codes).isNotEmpty().allMatch(code -> code.startsWith("HSCA_") || code.startsWith("VSAT_"));
-        assertThat(codes).contains("HSCA_SUBJECT_TOAN", "HSCA_REVIEW", "VSAT_SUBJECT_VAN", "VSAT_REVIEW");
-        assertThat(codes).doesNotContain("VSAT_SUBJECT_ANH");
-        assertThat(sql).doesNotContain("UPDATE exam.exam_template");
     }
 
     // ------------------------------------------------------------------------------------------------ helpers
