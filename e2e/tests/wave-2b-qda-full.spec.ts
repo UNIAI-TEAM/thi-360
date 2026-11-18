@@ -77,12 +77,21 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
       await expect(page.getByText("Môn không kiểm soát phân bổ khối lớp và độ khó."), `môn ${name}`).toHaveCount(0);
       const region = page.getByRole("region", { name: "Ma trận phân bổ" });
       await expect(region, `môn ${name}`).toBeVisible();
-      const gradeValues = section.matrix!.byGrade!.map((item) => String(item.value));
-      const gradeInputs = region.getByRole("table", { name: "Theo khối lớp" }).getByRole("textbox");
-      await expect(gradeInputs, `môn ${name}: chỉ tiêu theo khối lớp`).toHaveCount(gradeValues.length);
-      for (const [index, value] of gradeValues.entries()) {
-        await expect(gradeInputs.nth(index), `môn ${name}: khối lớp thứ ${index + 1}`).toHaveValue(value);
+      // Bảng "Theo khối lớp" có bốn ô: Lớp 10, 11, 12 và "Liên lớp". Ba ô lớp theo tên ô, ô "Liên lớp" bằng giá trị của mẫu (0 nếu mẫu không khai).
+      const byGrade = section.matrix!.byGrade!;
+      const gradeItems = byGrade.filter((item) => item.code !== "GRADE_MIXED");
+      const mixedValue = String(byGrade.find((item) => item.code === "GRADE_MIXED")?.value ?? 0);
+      const gradeTable = region.getByRole("table", { name: "Theo khối lớp" });
+      const gradeInputs = gradeTable.getByRole("textbox", { name: /^Lớp \d+ · số câu/ });
+      await expect(gradeInputs, `môn ${name}: chỉ tiêu theo khối lớp`).toHaveCount(gradeItems.length);
+      for (const item of gradeItems) {
+        const grade = item.code.replace("GRADE_", "");
+        await expect(
+          gradeTable.getByRole("textbox", { name: new RegExp(`^Lớp ${grade} · số câu`) }),
+          `môn ${name}: khối lớp ${grade}`,
+        ).toHaveValue(String(item.value));
       }
+      await expect(gradeTable.getByRole("textbox", { name: /^Liên lớp · số câu/ }), `môn ${name}: liên lớp`).toHaveValue(mixedValue);
       // Độ khó: chỉ Hóa và Sử khai; các số khác 0 trên màn là đúng các số của mẫu.
       const difficultyValues = (section.matrix!.byDifficulty ?? []).map((item) => String(item.value)).sort();
       const difficultyInputs = region.getByRole("table", { name: "Theo độ khó" }).getByRole("textbox");
