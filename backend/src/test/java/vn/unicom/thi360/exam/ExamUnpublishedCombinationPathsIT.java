@@ -32,6 +32,27 @@ class ExamUnpublishedCombinationPathsIT extends AbstractIntegrationTest {
     void qdaFullListsTheCheckPaths() throws Exception {
         String base = create("QDA", "FULL", null, null, "STANDARD");
         assertThat(unpublishedIds(base)).isEqualTo(checkIds(base)).hasSize(5);
+        JsonNode versions = json(get(base + "/versions").with(asUser(Permissions.EXAM_VIEW)), 200);
+        String partId = null;
+        JsonNode qd01 = null;
+        for (JsonNode path : versions.path("workingCopy").path("unpublishedPaths")) {
+            for (JsonNode choice : path.path("choices")) {
+                if ("QD01".equals(choice.path("code").asText())) {
+                    qd01 = choice;
+                    partId = choice.path("partId").asText();
+                }
+            }
+        }
+        assertThat(qd01).as("QD01 choice in the unpublished paths").isNotNull();
+        String name = jdbc.queryForObject("""
+                select name_vi from catalog.catalog_item where code_normalized = 'qd01'
+                and group_id = '00000000-0000-7000-8100-000000000007'
+                """, String.class);
+        assertThat(partId).isNotBlank();
+        assertThat(qd01.path("optionId").asText()).isEqualTo(partId + ":QD01");
+        assertThat(qd01.path("kind").asText()).isEqualTo("COMBINATION");
+        assertThat(qd01.path("code").asText()).isEqualTo("QD01");
+        assertThat(qd01.path("name").asText()).isEqualTo(name).isNotBlank();
     }
 
     @Test
