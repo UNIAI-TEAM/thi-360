@@ -6,6 +6,7 @@ import { useId, useState, type ReactNode } from "react";
 import type { QuestionType } from "@/features/content/types";
 import type { StrandTable } from "../reference-distribution";
 import type { ExamPart, QuestionBlock } from "../types";
+import { ScrollableTable } from "./scrollable-table";
 
 /**
  * Ví dụ chấm ở bước 2 (bản vẽ `ViDuCham2B`, R-140) và bảng "Mạch đối chiếu theo lệnh" (bản vẽ `BaiDocDungChung2B`, R-139,
@@ -93,14 +94,14 @@ export function ScoringExamples({ kind, part }: ScoringExamplesProps) {
 function ExampleTable({ caption, children }: { caption: string; children: ReactNode }) {
   const captionId = useId();
   return (
-    <div role="region" tabIndex={0} aria-labelledby={captionId} className={cn("max-w-full overflow-x-auto rounded-lg border border-border", focusRing)}>
+    <ScrollableTable labelledBy={captionId} className="rounded-lg border border-border">
       <table className="w-full min-w-[22rem] border-separate border-spacing-0 text-body tabular-nums [&_tbody_tr:last-child>*]:border-b-0">
         <caption id={captionId} className="px-3.5 py-3 text-left text-title font-bold text-text">
           {caption}
         </caption>
         {children}
       </table>
-    </div>
+    </ScrollableTable>
   );
 }
 
@@ -310,7 +311,7 @@ export function StrandReference({ table, subjectName, difficultyName }: StrandRe
         </div>
         <StatusChip tone="neutral">{t("reference")}</StatusChip>
       </div>
-      <div role="region" tabIndex={0} aria-labelledby={headingId} className={cn("overflow-x-auto", focusRing)}>
+      <ScrollableTable labelledBy={headingId}>
         <table className="w-full min-w-[32rem] border-separate border-spacing-0 text-body tabular-nums">
           <caption className="sr-only">{t("caption", { subject: subjectName })}</caption>
           <thead>
@@ -337,7 +338,7 @@ export function StrandReference({ table, subjectName, difficultyName }: StrandRe
             </tr>
           </tbody>
         </table>
-      </div>
+      </ScrollableTable>
       <p className="border-t border-border px-3.5 py-3 text-body text-text-secondary tabular-nums">
         {table.difficulty.length > 0 ? `${t("difficulty", { list: table.difficulty.map((item) => `${difficultyName(item.code)} ${item.value}`).join(" · ") })} ` : ""}
         {t("note")}

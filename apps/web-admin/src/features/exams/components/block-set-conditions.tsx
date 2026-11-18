@@ -20,6 +20,7 @@ import {
 import { blockFieldAnchor } from "./block-form-fields";
 import { BlockNumberInput } from "./block-number-input";
 import { BlockTagPicker } from "./block-tag-picker";
+import { ScrollableTable } from "./scrollable-table";
 
 export interface BlockSetConditionsProps {
   block: QuestionBlock;
@@ -437,7 +438,7 @@ function PositionTable({ block, commandCount }: { block: QuestionBlock; commandC
       <h3 id={captionId} className="text-label font-semibold text-text">
         {t("title")}
       </h3>
-      <div role="region" tabIndex={0} aria-labelledby={captionId} className={cn("max-w-full overflow-x-auto rounded-md border border-border", focusRing)}>
+      <ScrollableTable labelledBy={captionId} className="rounded-md border border-border">
         <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-body tabular-nums">
           <caption className="sr-only">{t("title")}</caption>
           <thead>
@@ -467,7 +468,7 @@ function PositionTable({ block, commandCount }: { block: QuestionBlock; commandC
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollableTable>
       {sets >= 2 && <p className="text-caption text-text-muted">{t("perSetNote", { sets })}</p>}
       <p className="text-label font-semibold text-text">
         {commandCount !== null ? t("total", { questions, commands: commandCount, points }) : t("totalNoCommands", { questions, points })}

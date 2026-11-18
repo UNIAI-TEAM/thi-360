@@ -1,12 +1,12 @@
 "use client";
 
-import { cn, focusRingInset, Input } from "@thi360/ui";
-import { ArrowLeftRight } from "lucide-react";
+import { cn, Input } from "@thi360/ui";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import type { ExamTiming } from "../types";
 import type { OverviewBlockInfo, OverviewRow } from "../create-exam-overview";
 import { overviewTotals } from "../create-exam-overview";
+import { ScrollableTable } from "./scrollable-table";
 
 export interface OverviewNumberField {
   /** Ô số dưới bảng: "Thời lượng chung" khi `timing = SHARED`, "Điểm tối đa" khi bảng không có cột Điểm (2B 15.1). */
@@ -208,11 +208,7 @@ export function ExamOverviewTable({
       {sharedDuration && timing === "SHARED" && (
         <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} position="top" />
       )}
-      <p className="flex items-center gap-1.5 border-b border-border bg-subtle px-3 py-1.5 text-caption text-text-muted md:hidden">
-        <ArrowLeftRight aria-hidden className="size-3.5 shrink-0" />
-        {t("scrollHint")}
-      </p>
-      <div role="region" tabIndex={0} aria-label={t("regionLabel")} className={cn("overflow-x-auto", focusRingInset)}>
+      <ScrollableTable label={t("regionLabel")}>
         <table className={cn("w-full border-collapse text-body", blockMode ? "min-w-[44rem]" : "min-w-[32rem]")}>
           <thead>
             <tr className="border-b border-border bg-subtle text-start">
@@ -367,7 +363,7 @@ export function ExamOverviewTable({
             </tr>
           </tfoot>
         </table>
-      </div>
+      </ScrollableTable>
       {blockMode && !rows.some((row) => row.kind === "part" && row.lockedCount) && (
         <p className="border-t border-border px-3 py-2 text-caption text-text-muted">{t("blockRowsNote")}</p>
       )}

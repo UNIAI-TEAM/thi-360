@@ -17,6 +17,7 @@ import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
@@ -609,7 +610,7 @@ function GroupList({
       {section.blocks.length === 0 ? (
         <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
-        <div role="region" tabIndex={0} aria-label={t("caption", { subject: subjectName })} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
+        <ScrollableTable label={t("caption", { subject: subjectName })} className="rounded-md border border-border">
           <table className="w-full border-separate border-spacing-0 text-body">
             <caption className="sr-only">{t("caption", { subject: subjectName })}</caption>
             <thead>
@@ -651,7 +652,7 @@ function GroupList({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollableTable>
       )}
     </section>
   );
