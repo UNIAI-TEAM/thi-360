@@ -49,15 +49,14 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
             JsonNode created = create(body);
             String base = "/api/v1/admin/exams/" + created.path("id").asText();
 
-            JsonNode saved = saveDraft(base);
-            assertThat(saved.path("revision")).isNotNull();
+            saveDraft(base);
 
             JsonNode check = check(base);
             assertThat(check.path("status").asText()).as(body).isEqualTo("INVALID");
             JsonNode issue = issue(check, "TEMPLATE_NOT_PUBLISHABLE");
             assertThat(issue.path("subjectCode").asText()).isEqualTo("VAN");
 
-            JsonNode refused = publishRefused(base);
+            JsonNode refused = publishRefused(base, check);
             assertThat(refused.path("code").asText()).isEqualTo("PATH_NOT_VALID");
             assertThat(versionCount(created.path("id").asText())).isZero();
         }
@@ -78,7 +77,7 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
         assertThat(check.path("status").asText()).isEqualTo("INVALID");
         assertThat(codes(check)).contains("TEMPLATE_NOT_PUBLISHABLE");
 
-        JsonNode refused = publishRefused(base);
+        JsonNode refused = publishRefused(base, check);
         assertThat(refused.path("code").asText()).isEqualTo("PATH_NOT_VALID");
         assertThat(versionCount(id.toString())).isZero();
     }
@@ -93,7 +92,8 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
         String logicId = logicSection(edited).path("id").asText();
         resize(logicSection(edited), 10, 5, 2);
 
-        assertThat(putStructure(base, structure.path("revision").asLong(), edited).path("revision")).isNotNull();
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertResized(sectionById(saved, logicId), 10);
 
         JsonNode check = check(base);
         assertThat(check.path("status").asText()).isEqualTo("INVALID");
@@ -107,11 +107,11 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
         String base = createVact("FULL", null, null, "VACT_FULL");
         JsonNode structure = structure(base);
         ObjectNode edited = structure.deepCopy();
-        ArrayNode byDifficulty = (ArrayNode) logicSection(edited).at("/matrix/byDifficulty");
-        ((ObjectNode) byDifficulty.get(0)).put("value", 3);   // NB 1 -> 3
-        ((ObjectNode) byDifficulty.get(1)).put("value", 2);   // TH 4 -> 2; total stays 12
+        String logicId = logicSection(edited).path("id").asText();
+        shiftLogicDifficulty(edited);
 
-        assertThat(putStructure(base, structure.path("revision").asLong(), edited).path("revision")).isNotNull();
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertDifficultyShifted(sectionById(saved, logicId));
         assertThat(codes(check(base))).doesNotContain("STRUCTURE_COUNT_LOCKED");
     }
 
@@ -122,9 +122,11 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
         ObjectNode edited = structure.deepCopy();
         ObjectNode section = (ObjectNode) edited.at("/parts/0/sections/0");
         assertThat(section.path("questionCount").asInt()).isEqualTo(12);
+        String sectionId = section.path("id").asText();
         resize(section, 10, 5, 2);
 
-        assertThat(putStructure(base, structure.path("revision").asLong(), edited).path("revision")).isNotNull();
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertResized(sectionById(saved, sectionId), 10);
         // fixed_counts=false on the real template: a count edit is a normal edit, never a lock.
         assertThat(codes(check(base))).doesNotContain("STRUCTURE_COUNT_LOCKED");
     }
@@ -140,8 +142,12 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
         resize(logicSection(edited), 18, 6, 3);
         resize(reasoningSection(edited), 12, 4, 3);
         swapThinkingSections(edited);
+        List<String> expectedOrder = thinkingSectionIds(edited);
 
-        assertThat(putStructure(base, structure.path("revision").asLong(), edited).path("revision")).isNotNull();
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertThat(thinkingSectionIds(saved)).isEqualTo(expectedOrder);
+        assertResized(sectionById(saved, logicId), 18);
+        assertResized(sectionById(saved, reasoningSection(edited).path("id").asText()), 12);
 
         JsonNode check = check(base);
         ObjectNode lock = lockAt(check, logicId);
@@ -151,14 +157,40 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void duplicatedVactFullUnchangedOrOnlyReorderedIsNotLocked() throws Exception {
+    void duplicatedVactFullUnchangedAfterAPutIsNotLocked() throws Exception {
         String base = duplicate(createVact("FULL", null, null, "VACT_FULL"));
         JsonNode structure = structure(base);
         assertThat(codes(check(base))).doesNotContain("STRUCTURE_COUNT_LOCKED");
 
+        ObjectNode saved = putAndReadBack(base, structure, structure.deepCopy());
+        assertThat(sectionShapes(saved)).isEqualTo(sectionShapes(structure));
+        assertThat(codes(check(base))).doesNotContain("STRUCTURE_COUNT_LOCKED");
+    }
+
+    @Test
+    void duplicatedVactFullOnlyReorderedIsNotLocked() throws Exception {
+        String base = duplicate(createVact("FULL", null, null, "VACT_FULL"));
+        JsonNode structure = structure(base);
         ObjectNode edited = structure.deepCopy();
         swapThinkingSections(edited);
-        assertThat(putStructure(base, structure.path("revision").asLong(), edited).path("revision")).isNotNull();
+        List<String> expectedOrder = thinkingSectionIds(edited);
+        assertThat(expectedOrder).isNotEqualTo(thinkingSectionIds((ObjectNode) structure));
+
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertThat(thinkingSectionIds(saved)).isEqualTo(expectedOrder);
+        assertThat(codes(check(base))).doesNotContain("STRUCTURE_COUNT_LOCKED");
+    }
+
+    @Test
+    void duplicatedVactFullDifficultyOnlyEditInsideALockedSectionIsNotLocked() throws Exception {
+        String base = duplicate(createVact("FULL", null, null, "VACT_FULL"));
+        JsonNode structure = structure(base);
+        ObjectNode edited = structure.deepCopy();
+        String logicId = logicSection(edited).path("id").asText();
+        shiftLogicDifficulty(edited);
+
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertDifficultyShifted(sectionById(saved, logicId));
         assertThat(codes(check(base))).doesNotContain("STRUCTURE_COUNT_LOCKED");
     }
 
@@ -171,7 +203,8 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
         String logicId = logic.path("id").asText();
         logic.remove("knowledgeScope");
 
-        assertThat(putStructure(base, structure.path("revision").asLong(), edited).path("revision")).isNotNull();
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertThat(sectionById(saved, logicId).at("/knowledgeScope/competencyCodes").size()).isZero();
 
         JsonNode check = check(base);
         ObjectNode lock = lockAt(check, logicId);
@@ -185,9 +218,11 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
         String base = duplicate(createVact("FULL", null, null, "VACT_FULL"));
         JsonNode structure = structure(base);
         ObjectNode edited = structure.deepCopy();
+        String logicId = logicSection(edited).path("id").asText();
         ((ObjectNode) logicSection(edited).at("/blocks/0")).putArray("tagCodes").add("TD_XEP_HANG");
 
-        assertThat(putStructure(base, structure.path("revision").asLong(), edited).path("revision")).isNotNull();
+        ObjectNode saved = putAndReadBack(base, structure, edited);
+        assertThat(texts(sectionById(saved, logicId).at("/blocks/0/tagCodes"))).containsExactly("TD_XEP_HANG");
         assertThat(codes(check(base))).doesNotContain("STRUCTURE_COUNT_LOCKED");
     }
 
@@ -242,16 +277,30 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content(body.toString()), 200);
     }
 
+    /** PUTs the edit, asserts a numeric revision and returns the structure as persisted (fresh GET). */
+    private ObjectNode putAndReadBack(String base, JsonNode before, ObjectNode edited) throws Exception {
+        JsonNode put = putStructure(base, before.path("revision").asLong(), edited);
+        assertThat(put.path("revision").isNumber()).as("PUT revision in %s", put).isTrue();
+        JsonNode saved = structure(base);
+        assertThat(saved.path("revision").asLong()).isEqualTo(put.path("revision").asLong());
+        return (ObjectNode) saved;
+    }
+
     private JsonNode check(String base) throws Exception {
         return json(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY)), 200);
     }
 
     /** A valid publish request (every reported path): refusal must come from the check, not the request. */
-    private JsonNode publishRefused(String base) throws Exception {
+    private JsonNode publishRefused(String base, JsonNode check) throws Exception {
+        assertThat(check.path("paths").size()).as("check paths").isPositive();
+        check.path("paths").forEach(path -> {
+            assertThat(path.path("pathId").asText()).as("path id in %s", path).isNotBlank();
+            assertThat(path.path("result").asText()).as("path result in %s", path).isNotEqualTo("VALID");
+        });
         JsonNode exam = json(get(base).with(asUser(Permissions.EXAM_VIEW)), 200);
         ObjectNode body = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
         ArrayNode pathIds = body.putArray("pathIds");
-        check(base).path("paths").forEach(path -> pathIds.add(path.path("pathId").asText()));
+        check.path("paths").forEach(path -> pathIds.add(path.path("pathId").asText()));
         return json(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON).content(body.toString()), 422);
@@ -291,6 +340,70 @@ class ExamCheckRealTemplatesIT extends AbstractIntegrationTest {
 
     private static ObjectNode reasoningSection(ObjectNode structure) {
         return sectionOf(structure, "VACT-TD-SL");
+    }
+
+    private static List<String> thinkingSectionIds(ObjectNode structure) {
+        List<String> ids = new ArrayList<>();
+        for (JsonNode section : thinkingSections(structure)) ids.add(section.path("id").asText());
+        return ids;
+    }
+
+    /** Section id, count and difficulty split of every section, in order (numeric formatting independent). */
+    private static List<String> sectionShapes(JsonNode structure) {
+        List<String> shapes = new ArrayList<>();
+        for (JsonNode part : structure.path("parts")) {
+            for (JsonNode section : part.path("sections")) {
+                StringBuilder shape = new StringBuilder(section.path("id").asText())
+                        .append(':').append(section.path("questionCount").asInt());
+                for (JsonNode value : section.at("/matrix/byDifficulty")) {
+                    shape.append(':').append(value.path("code").asText()).append('=').append(value.path("value").asInt());
+                }
+                shapes.add(shape.toString());
+            }
+        }
+        return shapes;
+    }
+
+    private static ObjectNode sectionById(JsonNode structure, String id) {
+        for (JsonNode part : structure.path("parts")) {
+            for (JsonNode section : part.path("sections")) {
+                if (id.equals(section.path("id").asText())) return (ObjectNode) section;
+            }
+        }
+        throw new AssertionError("section " + id + " not found after PUT");
+    }
+
+    private static List<String> texts(JsonNode values) {
+        List<String> texts = new ArrayList<>();
+        for (JsonNode value : values) texts.add(value.asText());
+        return texts;
+    }
+
+    /** The Logic difficulty edit: NB 1 -> 3, TH 4 -> 2; the section total stays 12. */
+    private static void shiftLogicDifficulty(ObjectNode structure) {
+        ArrayNode byDifficulty = (ArrayNode) logicSection(structure).at("/matrix/byDifficulty");
+        ((ObjectNode) byDifficulty.get(0)).put("value", 3);
+        ((ObjectNode) byDifficulty.get(1)).put("value", 2);
+    }
+
+    private static void assertDifficultyShifted(JsonNode section) {
+        JsonNode byDifficulty = section.at("/matrix/byDifficulty");
+        assertThat(byDifficulty.get(0).path("value").asInt()).isEqualTo(3);
+        assertThat(byDifficulty.get(1).path("value").asInt()).isEqualTo(2);
+        assertThat(section.path("questionCount").asInt()).isEqualTo(12);
+        assertThat(difficultySum(section)).isEqualTo(12);
+    }
+
+    private static void assertResized(JsonNode section, int questions) {
+        assertThat(section.path("questionCount").asInt()).isEqualTo(questions);
+        assertThat(section.at("/blocks/0/questionCount").asInt()).isEqualTo(questions);
+        assertThat(difficultySum(section)).isEqualTo(questions);
+    }
+
+    private static int difficultySum(JsonNode section) {
+        int sum = 0;
+        for (JsonNode value : section.at("/matrix/byDifficulty")) sum += value.path("value").asInt();
+        return sum;
     }
 
     private static void swapThinkingSections(ObjectNode structure) {
