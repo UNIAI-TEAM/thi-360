@@ -63,14 +63,14 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 where group_id = '00000000-0000-7000-8100-000000000002' and code = 'HOA'
                 """, UUID.class);
         for (AnswerFormat format : List.of(AnswerFormat.INTEGER, AnswerFormat.DECIMAL, AnswerFormat.CHEM_FORMULA)) {
-            var filter = new QuestionSourcePort.Filter(chemistry, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+            var filter = new QuestionSourcePort.Filter(chemistry, List.of(), List.of(),
                     QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null,
                     null, List.of(format), List.of());
             assertThat(source.findCandidates(filter, 100)).as(format.name()).isNotEmpty();
         }
         for (var shape : List.of(new QuestionSourcePort.ItemShape(null, 4, 6),
                                  new QuestionSourcePort.ItemShape(null, 3, 5))) {
-            var filter = new QuestionSourcePort.Filter(chemistry, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+            var filter = new QuestionSourcePort.Filter(chemistry, List.of(), List.of(),
                     QuestionType.MATCHING, null, null, List.of(), List.of(), null, shape, List.of(), List.of());
             assertThat(source.findCandidates(filter, 100)).as(shape.toString()).isNotEmpty();
         }
@@ -84,7 +84,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                   and code in ('0D1-1-1', '0D1-1-2') order by code
                 """, UUID.class);
         assertThat(mapids).hasSize(2);
-        var positioned = new QuestionSourcePort.Filter(math, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+        var positioned = new QuestionSourcePort.Filter(math, List.of(), List.of(),
                 QuestionType.QUESTION_SET, null, QuestionType.SINGLE_CHOICE, List.of(), List.of(), null, null,
                 List.of(), List.of(new QuestionSourcePort.ChildCondition(1, 1, List.of(mapids.get(0))),
                                    new QuestionSourcePort.ChildCondition(2, 2, List.of(mapids.get(1)))));
@@ -125,7 +125,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                     where group_id = '00000000-0000-7000-8100-000000000002' and code = ?
                     """, UUID.class, code);
             boolean technology = code.startsWith("TECH_");
-            var filter = new QuestionSourcePort.Filter(subject, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+            var filter = new QuestionSourcePort.Filter(subject, List.of(), List.of(),
                     technology ? QuestionType.SHORT_ANSWER : QuestionType.TRUE_FALSE, null, null, List.of(), List.of(),
                     new BigDecimal(technology ? "0.25" : "0.8"),
                     technology ? null : new QuestionSourcePort.ItemShape(4, null, null), List.of(), List.of());
@@ -157,24 +157,24 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 where group_id = '00000000-0000-7000-8100-000000000002' and code = 'ANH'
                 """, UUID.class);
         for (String code : codes.subList(0, 4)) {
-            var filter = new QuestionSourcePort.Filter(english, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+            var filter = new QuestionSourcePort.Filter(english, List.of(), List.of(),
                     QuestionType.SINGLE_CHOICE, null, null, List.of(code), List.of(), null, null, List.of(), List.of());
             assertThat(source.findCandidates(filter, 100)).as(code)
                     .anyMatch(c -> c.code().startsWith("SEED-2B-TAGGED-"));
         }
-        var wordFormation = new QuestionSourcePort.Filter(english, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+        var wordFormation = new QuestionSourcePort.Filter(english, List.of(), List.of(),
                 QuestionType.CLOZE, null, null, List.of("ANH_WORD_FORMATION"), List.of(), null, null, List.of(), List.of());
         assertThat(source.findCandidates(wordFormation, 100)).anyMatch(c -> c.units().size() == 4);
         UUID literature = jdbc.queryForObject("""
                 select id from catalog.catalog_item
                 where group_id = '00000000-0000-7000-8100-000000000002' and code = 'VAN'
                 """, UUID.class);
-        var poetry = new QuestionSourcePort.Filter(literature, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+        var poetry = new QuestionSourcePort.Filter(literature, List.of(), List.of(),
                 QuestionType.QUESTION_SET, null, null, List.of("VAN_THO"), List.of(), null, null, List.of(), List.of());
         assertThat(source.findCandidates(poetry, 100).stream().filter(c -> c.units().size() == 5)).hasSizeGreaterThanOrEqualTo(3);
         Set<String> sptPassages = new HashSet<>();
         for (String tag : List.of("VAN_KHOA_HOC", "VAN_THONG_TIN")) {
-            var spt = new QuestionSourcePort.Filter(literature, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+            var spt = new QuestionSourcePort.Filter(literature, List.of(), List.of(),
                     QuestionType.QUESTION_SET, null, QuestionType.SINGLE_CHOICE, List.of(tag), List.of(),
                     new BigDecimal("0.3"), null, List.of(), List.of());
             var candidates = source.findCandidates(spt, 100);
@@ -192,7 +192,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 select id from catalog.catalog_item
                 where group_id = '00000000-0000-7000-8100-000000000002' and code = 'DIA'
                 """, UUID.class);
-        var geoSkill = new QuestionSourcePort.Filter(geography, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+        var geoSkill = new QuestionSourcePort.Filter(geography, List.of(), List.of(),
                 QuestionType.TRUE_FALSE, null, null, List.of("DIA_CAU_KY_NANG"), List.of(), null,
                 new QuestionSourcePort.ItemShape(4, null, null), List.of(), List.of());
         assertThat(source.findCandidates(geoSkill, 100)).isNotEmpty();
@@ -200,7 +200,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 select id from catalog.catalog_item
                 where group_id = '00000000-0000-7000-8100-000000000002' and code = 'TOAN'
                 """, UUID.class);
-        var synthesis = new QuestionSourcePort.Filter(math, List.of(), QuestionSourcePort.Match.ANY, List.of(),
+        var synthesis = new QuestionSourcePort.Filter(math, List.of(), List.of(),
                 QuestionType.SINGLE_CHOICE, null, null, List.of("TOAN_DU_LIEU_TONG_HOP"), List.of(), null, null,
                 List.of(), List.of());
         assertThat(source.findCandidates(synthesis, 100)).isNotEmpty();
@@ -379,9 +379,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
             failures.add(label + ": subject not found");
             return;
         }
-        JsonNode scope = block.path("knowledgeScope").isObject()
-                ? block.path("knowledgeScope") : section.path("knowledgeScope");
-        QuestionSourcePort.Filter filter = filter(subjectIds.get(0), section, block, strings(block.path("tagCodes")), scope);
+        QuestionSourcePort.Filter filter = filter(subjectIds.get(0), section, block, null);
         List<Candidate> candidates = source.findCandidates(filter, 100_000);
         int setSize = block.path("setSize").asInt(0);
         if (setSize > 0) candidates = candidates.stream().filter(c -> c.units().size() == setSize).toList();
@@ -397,9 +395,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
             List<Set<UUID>> slots = new ArrayList<>();
             for (JsonNode slot : block.path("slots")) {
                 Set<UUID> matching = new HashSet<>();
-                JsonNode slotScope = slot.path("knowledgeScope");
-                source.findCandidates(filter(subjectIds.get(0), section, block, strings(slot.path("tagCodes")),
-                                slotScope.isObject() ? slotScope : scope), 100_000)
+                source.findCandidates(filter(subjectIds.get(0), section, block, slot), 100_000)
                         .stream().filter(c -> eligible.contains(c.questionId()))
                         .forEach(c -> matching.add(c.questionId()));
                 slots.add(matching);
@@ -408,8 +404,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         }
     }
 
-    private QuestionSourcePort.Filter filter(UUID subject, JsonNode section, JsonNode block,
-                                             List<String> tags, JsonNode scope) {
+    private QuestionSourcePort.Filter filter(UUID subject, JsonNode section, JsonNode block, JsonNode slot) {
         JsonNode shape = block.path("itemShape");
         QuestionSourcePort.ItemShape itemShape = shape.isObject()
                 ? new QuestionSourcePort.ItemShape(integer(shape, "statements"), integer(shape, "leftItems"),
@@ -420,11 +415,8 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
             children.add(new QuestionSourcePort.ChildCondition(condition.path("from").asInt(), condition.path("to").asInt(),
                     strings(condition.path("nodeIds")).stream().map(UUID::fromString).toList()));
         }
-        List<List<UUID>> knowledge = new ArrayList<>();
-        for (String id : strings(scope.path("nodeIds"))) {
-            knowledge.add(jdbc.queryForList("select id from catalog.catalog_item where path like ?", UUID.class,
-                    "%/" + id + "/%"));
-        }
+        JsonNode scope = block.path("knowledgeScope").isObject()
+                ? block.path("knowledgeScope") : section.path("knowledgeScope");
         String type = text(block, "questionType", null);
         String childType = text(block, "childAnswerType", null);
         BigDecimal points = block.hasNonNull("requiredPointsPerQuestion")
@@ -435,12 +427,35 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
                 if (quota.hasNonNull("answerType")) answerTypes.add(QuestionType.valueOf(quota.get("answerType").asText()));
             }
         }
-        QuestionSourcePort.Match match = "ALL".equals(text(scope, "match", null))
-                ? QuestionSourcePort.Match.ALL : QuestionSourcePort.Match.ANY;
-        return new QuestionSourcePort.Filter(subject, knowledge, match, answerTypes,
+        // Slot constraints AND onto the block filter, matching SolverInputBuilder's
+        // additionalTagGroups / additionalKnowledgeGroups / additionalCompetencyGroups.
+        List<List<String>> additionalTags = List.of();
+        List<List<List<UUID>>> additionalKnowledge = List.of();
+        List<List<String>> additionalCompetencies = List.of();
+        if (slot != null) {
+            List<String> slotTags = strings(slot.path("tagCodes"));
+            if (!slotTags.isEmpty()) additionalTags = List.of(slotTags);
+            JsonNode slotScope = slot.path("knowledgeScope");
+            List<List<UUID>> slotSubtrees = subtrees(slotScope);
+            if (!slotSubtrees.isEmpty()) additionalKnowledge = List.of(slotSubtrees);
+            List<String> slotCompetencies = strings(slotScope.path("competencyCodes"));
+            if (!slotCompetencies.isEmpty()) additionalCompetencies = List.of(slotCompetencies);
+        }
+        return new QuestionSourcePort.Filter(subject, subtrees(scope), answerTypes,
                 type == null ? null : QuestionType.valueOf(type), text(block, "taskTypeCode", null),
-                childType == null ? null : QuestionType.valueOf(childType), tags,
-                strings(scope.path("competencyCodes")), points, itemShape, formats, children);
+                childType == null ? null : QuestionType.valueOf(childType), strings(block.path("tagCodes")),
+                strings(scope.path("competencyCodes")), points, itemShape, formats, children,
+                additionalTags, additionalKnowledge, additionalCompetencies);
+    }
+
+    private List<List<UUID>> subtrees(JsonNode scope) {
+        List<List<UUID>> subtrees = new ArrayList<>();
+        if (scope == null || !scope.isObject()) return subtrees;
+        for (String id : strings(scope.path("nodeIds"))) {
+            subtrees.add(jdbc.queryForList("select id from catalog.catalog_item where path like ?", UUID.class,
+                    "%/" + id + "/%"));
+        }
+        return subtrees;
     }
 
     private static boolean assignSlots(List<Set<UUID>> slots, int index, Set<UUID> used) {

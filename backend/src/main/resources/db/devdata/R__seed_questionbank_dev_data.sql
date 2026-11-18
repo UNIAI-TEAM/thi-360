@@ -279,14 +279,19 @@ SELECT child_id, code || '-' || pos, 'SINGLE_CHOICE', subject_id, grade_id, leve
 FROM children;
 
 -- Five-child sets support HSA/QDA slots; independent copies avoid reusing a
--- passage across slots. SPT uses the science and information types at 0.3.
+-- passage across slots. SPT uses the science and information types at 0.3 and
+-- the legacy SP2E reading blocks use tagged 7/8-child sets at 0.2.
 WITH sets AS (
-    SELECT spec.purpose, spec.points, n, 5 AS child_count,
+    SELECT spec.purpose, spec.points, n, spec.child_count,
            md5('thi360-2b-literature-' || spec.purpose || '-' || spec.points || '-' || n)::uuid AS id,
            subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id
     FROM seed_2b_tags spec_tag
-    JOIN (SELECT purpose, 1::numeric AS points FROM seed_2b_tags WHERE starts_with(purpose, 'literature_')
-          UNION ALL VALUES ('literature_science', 0.3::numeric), ('literature_information', 0.3::numeric))
+    JOIN (SELECT purpose, 1::numeric AS points, 5 AS child_count FROM seed_2b_tags
+          WHERE starts_with(purpose, 'literature_')
+          UNION ALL VALUES
+              ('literature_science', 0.3::numeric, 5), ('literature_information', 0.3::numeric, 5),
+              ('literature_information', 0.2::numeric, 8), ('literature_poetry', 0.2::numeric, 8),
+              ('literature_story', 0.2::numeric, 7), ('literature_prose', 0.2::numeric, 7))
          spec ON spec.purpose = spec_tag.purpose
     JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
         AND tag.code = spec_tag.code
@@ -409,7 +414,8 @@ WITH sets AS (
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
     CROSS JOIN (VALUES (1::numeric), (0.75::numeric), (0.25::numeric), (0.2::numeric)) p(points)
-    CROSS JOIN (VALUES (5), (6), (8)) sz(child_count)
+    CROSS JOIN LATERAL unnest(CASE WHEN t.purpose = 'english_sentence_cloze'
+        THEN ARRAY[5, 6, 8, 10] ELSE ARRAY[5, 6, 8] END) sz(child_count)
     CROSS JOIN generate_series(1, 2) n
     WHERE starts_with(t.purpose, 'english_')
 ), children AS (
@@ -503,6 +509,29 @@ JOIN seed_2b_tags t ON starts_with(q.code, 'SEED-2B-TAGGED-' || t.purpose || '-'
 JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
 ON CONFLICT DO NOTHING;
 
+-- Tagged 25-point literature essays keep the BCA essay block usable; the new
+-- rows also tag on databases seeded before the unmarked essays existed.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-2b-essay-van-' || n)::uuid, 'SEED-2B-ESSAY-VAN-' || n,
+       'ESSAY', subject.id, grade.id, level.id, NULL, 25, '<p>Social argumentation essay</p>',
+       jsonb_build_object('type', 'ESSAY', 'gradingGuide', '<p>Give credit for a clear argument.</p>',
+                          'rubric', '[]'::jsonb, 'wordLimit', 500),
+       NULL, NULL
+FROM generate_series(1, 3) n
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'VAN'
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH';
+
+-- The BCA essay block filters the social-argumentation text-type tag on the
+-- 25-point literature essays.
+INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
+SELECT q.id, tag.id
+FROM seed_question_rows q
+JOIN seed_2b_tags t ON t.purpose = 'literature_social'
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
+WHERE starts_with(q.code, 'SEED-ESSAY-') OR starts_with(q.code, 'SEED-2B-ESSAY-VAN-')
+ON CONFLICT DO NOTHING;
+
 -- Remaining formats and lifecycle examples, including a draft and a retired
 -- question for each format. READY rows use the same validation as real content.
 INSERT INTO seed_question_rows
@@ -590,7 +619,41 @@ CROSS JOIN generate_series(1, 6) n
 JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
 JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
 WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
-  AND subject.code IN ('LY', 'HOA', 'SINH');
+  AND subject.code IN ('LY', 'HOA', 'SINH', 'SU');
+
+-- Three-child case sets at 0.25 per unit cover the SP2E economic-law blocks.
+WITH sets AS (
+    SELECT subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id, n,
+           md5('thi360-2b-case-set-' || n)::uuid AS id
+    FROM generate_series(1, 4) n
+    JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002'
+        AND subject.code = 'ECON_LAW'
+    JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+    JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+), children AS (
+    SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
+           jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+               jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                                 jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS body
+    FROM sets s CROSS JOIN generate_series(0, 2) pos
+), parents AS (
+    SELECT s.id, 'SEED-2B-CASE-SET-' || s.n AS code, 'QUESTION_SET' AS type,
+           s.subject_id, s.grade_id, s.level_id, NULL::uuid AS task_type_id,
+           0.75::numeric AS points, '<p>Case set</p>' AS content,
+           jsonb_build_object('type', 'QUESTION_SET', 'passage', '<p>Case context</p>', 'children',
+               jsonb_agg(jsonb_build_object('id', c.child_id, 'type', 'SINGLE_CHOICE',
+                   'content', '<p>Case child</p>', 'body', c.body, 'points', 0.25,
+                   'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)) AS body,
+           NULL::uuid AS parent_id, NULL::integer AS position
+    FROM sets s JOIN children c ON c.id = s.id
+    GROUP BY s.id, s.n, s.subject_id, s.grade_id, s.level_id
+)
+INSERT INTO seed_question_rows
+SELECT * FROM parents
+UNION ALL
+SELECT child_id, 'SEED-2B-CASE-SET-' || n || '-' || pos, 'SINGLE_CHOICE',
+       subject_id, grade_id, level_id, NULL, 0.25, '<p>Case child</p>', body, id, pos
+FROM children;
 
 INSERT INTO seed_question_rows
 SELECT md5('thi360-2b-general-matching-' || subject.code || '-' || n)::uuid,
@@ -621,7 +684,7 @@ SELECT md5('thi360-2b-format-' || subject.code || '-' || format.code || '-' || p
                           'answers', jsonb_build_array(format.answer), 'inputHint', ''),
        NULL, NULL
 FROM catalog.catalog_item subject
-CROSS JOIN (VALUES ('INTEGER', '1'), ('DECIMAL', '1.5'), ('CHEM_FORMULA', 'H2O')) format(code, answer)
+CROSS JOIN (VALUES ('INTEGER', '1'), ('DECIMAL', '1.5'), ('FRACTION', '1/2'), ('CHEM_FORMULA', 'H2O')) format(code, answer)
 CROSS JOIN (VALUES (1::numeric), (0.25::numeric), (0.2::numeric)) p(points)
 CROSS JOIN generate_series(1, 6) n
 JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
@@ -816,6 +879,8 @@ WITH prepared AS (
                        THEN 'Mapid set Mapid context Mapid child One Two Mapid child One Two Mapid child One Two'
                    WHEN code LIKE 'SEED-2B-SCIENCE-%'
                        THEN 'Science set Science context Science child One Two Science child One Two Science child One Two'
+                   WHEN code LIKE 'SEED-2B-CASE-SET-%'
+                       THEN 'Case set Case context Case child One Two Case child One Two Case child One Two'
                    WHEN code LIKE 'SEED-READING-%'
                        THEN 'Reading set Reading context Reading child One Two Reading child One Two'
                    WHEN code LIKE 'SEED-HSA-MATH-SET-%'
