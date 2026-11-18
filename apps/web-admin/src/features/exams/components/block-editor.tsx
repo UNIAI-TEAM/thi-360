@@ -27,6 +27,7 @@ import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { BlockSetConditions } from "./block-set-conditions";
 import { BlockSwitches } from "./block-switches";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
 /** Giá trị của ô chọn dạng trả lời cho nhóm lấy theo chỉ tiêu dạng trả lời của môn (`questionType = null`). */
@@ -469,7 +470,8 @@ export function BlockEditor({
         </div>
       </details>
 
-      {!remainder && reference && (
+      {/* Nhóm lấy phần còn lại không có bảng chỉ tiêu chủ đề: lỗi 422 của nó hiện như cảnh báo chung (R3-01). */}
+      {!remainder && reference ? (
         <TopicQuotaTable
           id={block.id}
           quotas={block.topicQuotas ?? []}
@@ -482,6 +484,8 @@ export function BlockEditor({
           labels={labels}
           serverError={topicError}
         />
+      ) : (
+        <TopicQuotaElsewhereAlert error={topicError} />
       )}
 
       <ConfirmDialog

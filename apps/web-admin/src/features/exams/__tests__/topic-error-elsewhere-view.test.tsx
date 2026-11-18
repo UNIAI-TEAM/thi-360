@@ -32,11 +32,11 @@ const gradeQuota = {
   ],
 };
 
-function boot(examQuotas: unknown[]) {
+function boot(examQuotas: unknown[], parts: unknown[] = [FIXED_PART]) {
   return new FakeServer()
     .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10 }) })
     .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [] })
-    .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [FIXED_PART], examQuotas } })
+    .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts, examQuotas } })
     .on("PUT", STRUCTURE, {
       status: 422,
       body: { code: "EXAM_STRUCTURE_INVALID", message: "x", fieldErrors: [{ field: "topicQuotas", code: "MAX_TOPIC_QUOTAS" }] },
@@ -92,6 +92,53 @@ describe("Lỗi 422 chỉ tiêu chủ đề ở panel không có bảng chỉ ti
 
     await user.type(screen.getByRole("textbox", { name: /Tên phần/ }), "y");
     await waitFor(() => expect(screen.queryByText(/tối đa 8 chỉ tiêu chủ đề/)).not.toBeInTheDocument());
+  });
+});
+
+describe("Lỗi 422 chỉ tiêu chủ đề khi nhóm lấy phần còn lại đang mở (R3-01)", () => {
+  // Một phần, một môn 10 câu: nhóm 4 câu cố định và nhóm "lấy phần còn lại" không có bảng chỉ tiêu chủ đề.
+  const REMAINDER_PART = {
+    ...FIXED_PART,
+    sections: [
+      {
+        ...FIXED_PART.sections![0]!,
+        blocks: [
+          { id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 4, requiredPointsPerQuestion: 1 },
+          { id: "blk-2", name: "Còn lại", questionType: "SINGLE_CHOICE", questionCount: null, requiredPointsPerQuestion: 1 },
+        ],
+      },
+    ],
+  } as unknown as typeof FIXED_PART;
+
+  it("đang mở nhóm lấy phần còn lại: cảnh báo hiện trong thẻ nhóm; sửa nháp thì mất", async () => {
+    const server = boot([], [REMAINDER_PART]);
+    const user = userEvent.setup();
+    open("block=blk-2");
+    await user.type(await screen.findByRole("textbox", { name: "Tên nhóm" }), " x");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/tối đa 8 chỉ tiêu chủ đề/);
+    expect(alert).toHaveTextContent(/Mở môn hoặc nhóm có chỉ tiêu chủ đề/);
+
+    await user.type(screen.getByRole("textbox", { name: "Tên nhóm" }), "y");
+    await waitFor(() => expect(screen.queryByText(/tối đa 8 chỉ tiêu chủ đề/)).not.toBeInTheDocument());
+  });
+
+  it("đang mở nhóm có bảng chỉ tiêu: lỗi nằm trong bảng, không có cảnh báo chung", async () => {
+    const server = boot([], [REMAINDER_PART]);
+    const user = userEvent.setup();
+    open("block=blk-1");
+    await user.type(await screen.findByRole("textbox", { name: "Tên nhóm" }), " x");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/tối đa 8 chỉ tiêu chủ đề/);
+    // Lỗi của bảng (bỏ bớt một chỉ tiêu), không phải câu "Mở môn hoặc nhóm có chỉ tiêu chủ đề" của cảnh báo chung.
+    expect(alert).toHaveTextContent(/Bỏ bớt một chỉ tiêu/);
+    expect(alert).not.toHaveTextContent(/Mở môn hoặc nhóm có chỉ tiêu chủ đề/);
   });
 });
 
