@@ -4315,7 +4315,6 @@
         }
       },
       "scoringExamples": {
-        "title": "Scoring examples",
         "description": "For reference only: how this exam scores. This block has no input fields.",
         "hsca": {
           "caption": "H-SCA · scoring by question type",
@@ -4329,6 +4328,7 @@
           "pendingBody": "Partly correct means choosing correct options but not all of them, and no wrong option. Any wrong option scores 0.",
           "pendingTitle": "The multiple-answer scoring rule awaits BA confirmation"
         },
+        "title": "Scoring examples",
         "vsat": {
           "clozeExample": "4 of 5 blanks correct scores {part}/{total}",
           "clozeName": "Fill in the blanks (English)",
@@ -4359,7 +4359,6 @@
         }
       },
       "strand": {
-        "title": "Reference strands by prompt",
         "caption": "Reference strands of {subject} by prompt",
         "colCommands": "Prompts",
         "colStatus": "Status",
@@ -4370,6 +4369,7 @@
         "note": "Prompt counts are for reference only. Required quotas are set per question.",
         "pending": "Awaiting mapping",
         "reference": "Reference",
+        "title": "Reference strands by prompt",
         "total": "Total"
       },
       "subject": {

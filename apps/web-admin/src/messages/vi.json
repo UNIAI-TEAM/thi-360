@@ -4315,7 +4315,6 @@
         }
       },
       "scoringExamples": {
-        "title": "Ví dụ chấm",
         "description": "Chỉ để đối chiếu cách chấm của kỳ thi. Khối này không có ô nhập.",
         "hsca": {
           "caption": "H-SCA · cách chấm theo dạng câu",
@@ -4329,6 +4328,7 @@
           "pendingBody": "Đúng một phần là chọn đúng nhưng chưa đủ và không chọn phương án sai. Có phương án sai thì được 0 điểm.",
           "pendingTitle": "Luật chấm câu nhiều đáp án chờ BA xác nhận"
         },
+        "title": "Ví dụ chấm",
         "vsat": {
           "clozeExample": "Đúng 4/5 vị trí được {part}/{total}",
           "clozeName": "Điền khuyết (Tiếng Anh)",
@@ -4359,7 +4359,6 @@
         }
       },
       "strand": {
-        "title": "Mạch đối chiếu theo lệnh",
         "caption": "Mạch đối chiếu của {subject} theo lệnh",
         "colCommands": "Số lệnh",
         "colStatus": "Trạng thái",
@@ -4370,6 +4369,7 @@
         "note": "Số theo lệnh chỉ để đối chiếu. Chỉ tiêu bắt buộc đặt theo câu.",
         "pending": "Chờ mapping",
         "reference": "Tham khảo",
+        "title": "Mạch đối chiếu theo lệnh",
         "total": "Tổng"
       },
       "subject": {
