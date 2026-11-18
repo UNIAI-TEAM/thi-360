@@ -277,6 +277,12 @@ public class DefaultExamChecker implements ExamChecker {
                         .filter(item -> item.id().equals(section.sectionId()))
                         .flatMap(item -> item.blocks().stream())
                         .filter(block -> sourceBlockId.equals(block.id())).findFirst().orElse(null);
+                if (declaredBlock == null) {
+                    declaredBlock = part.options().stream()
+                            .filter(option -> (option.id() + ":blocks").equals(section.sectionId()))
+                            .flatMap(option -> option.blocks().stream())
+                            .filter(block -> sourceBlockId.equals(block.id())).findFirst().orElse(null);
+                }
                 List<String> affected = new ArrayList<>();
                 for (var choice : result.path().chosen()) {
                     String prefix = choice.partId() + ":";

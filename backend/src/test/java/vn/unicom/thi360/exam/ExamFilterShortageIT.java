@@ -121,6 +121,39 @@ class ExamFilterShortageIT extends AbstractIntegrationTest {
         assertThat(result.path("issueCount").asInt()).isEqualTo(issueCount);
     }
 
+    @Test
+    void optionBlocksSuppressGenericFormatShortage() throws Exception {
+        var subject = subject();
+        question(subject.id(), "SHORT_ANSWER", "{\"type\":\"SHORT_ANSWER\",\"answerFormat\":\"INTEGER\",\"answers\":[\"1\"]}");
+        question(subject.id(), "SHORT_ANSWER", "{\"type\":\"SHORT_ANSWER\",\"answerFormat\":\"DECIMAL\",\"answers\":[\"1.2\"]}");
+        var result = checkOptionResult(subject, 2, "{\"id\":\"b\",\"questionType\":\"SHORT_ANSWER\",\"questionCount\":2,\"answerFormats\":[\"INTEGER\"]}");
+        var issue = findIssue(result, "ANSWER_FORMAT_SHORTAGE");
+        assertThat(issue.path("required").asInt()).isEqualTo(2);
+        assertThat(issue.path("available").asInt()).isEqualTo(1);
+        assertThat(result.path("groups").findValuesAsText("code")).doesNotContain("CELL_SHORTAGE", "SOURCE_SHORTAGE");
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+    }
+
+    @Test
+    void optionBlockChildConditionReportsPositionWithoutGenericShortage() throws Exception {
+        var subject = subject();
+        UUID parent = question(subject.id(), "QUESTION_SET", "{\"type\":\"QUESTION_SET\",\"children\":[]}");
+        for (int position = 0; position < 2; position++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,points) VALUES (?,?,'SINGLE_CHOICE','READY',?,?,1)", child, "CH-" + child, parent, position);
+            jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", child,
+                    "{\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":[{\"id\":\"a\",\"correct\":true}]}}");
+        }
+        UUID node = jdbc.queryForObject("SELECT id FROM catalog.catalog_item WHERE group_id=(SELECT id FROM catalog.catalog_group WHERE code='KNOWLEDGE') AND status=1 LIMIT 1", UUID.class);
+        var result = checkOptionResult(subject, 2, "{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"questionCount\":2,\"setCount\":1,\"setSize\":2,\"childAnswerType\":\"SINGLE_CHOICE\",\"childConditions\":[{\"from\":1,\"to\":1,\"nodeIds\":[\"" + node + "\"]}]}");
+        var issue = findIssue(result, "CHILD_CONDITION_SHORTAGE");
+        assertThat(issue.path("required").asInt()).isEqualTo(1);
+        assertThat(issue.path("available").asInt()).isZero();
+        assertThat(issue.path("location").path("childPosition").asInt()).isEqualTo(1);
+        assertThat(result.path("groups").findValuesAsText("code")).doesNotContain("SET_SHORTAGE");
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+    }
+
     private record Subject(UUID id, String code) { }
 
     private Subject subject() {
@@ -154,6 +187,16 @@ class ExamFilterShortageIT extends AbstractIntegrationTest {
         String document = "{\"parts\":[{\"id\":\"p\",\"questionCount\":" + count + ",\"sections\":[{\"id\":\"s\",\"subjectCode\":\"" + subject.code() + "\",\"questionCount\":" + count + ",\"blocks\":[" + block + "]}]}]}";
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'shortage')", id, document);
         jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)", UUID.randomUUID(), id, "b", "p", "s", subject.id());
+        return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + id + "/check").with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    private JsonNode checkOptionResult(Subject subject, int count, String block) throws Exception {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) VALUES (?,?,?,'Option shortage','FULL','SHARED',?)", id, id.toString(), id.toString(), count);
+        String document = "{\"parts\":[{\"id\":\"p\",\"questionCount\":" + count + ",\"participation\":{\"mode\":\"CHOICE\",\"choose\":1},\"options\":[{\"id\":\"option\",\"kind\":\"SUBJECT\",\"code\":\"" + subject.code() + "\",\"blocks\":[" + block + "]}]}]}";
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'option-shortage')", id, document);
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,option_code,subject_item_id) VALUES (?,?,?,?,?,?)", UUID.randomUUID(), id, "b", "p", subject.code(), subject.id());
         return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + id + "/check").with(asUser(Permissions.EXAM_MODIFY)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }

@@ -546,9 +546,12 @@ final class ExamCheckPathPresenter {
                 case "ITEM_SHAPE_SHORTAGE", "ANSWER_FORMAT_SHORTAGE", "CHILD_CONDITION_SHORTAGE" -> true;
                 default -> false;
             };
+            boolean sameSection = specific.path("sectionId").equals(generic.path("sectionId"));
+            if (!sameSection && generic.hasNonNull("optionId") && !generic.hasNonNull("sectionId")) {
+                sameSection = (generic.path("optionId").asText() + ":blocks").equals(specific.path("sectionId").asText());
+            }
             if (filterShortage && specific.path("blockId").equals(generic.path("blockId"))
-                    && specific.path("sectionId").equals(generic.path("sectionId"))
-                    && specific.path("partId").equals(generic.path("partId"))
+                    && sameSection && specific.path("partId").equals(generic.path("partId"))
                     && specific.path("location").path("slotIndex").equals(generic.path("location").path("slotIndex"))) {
                 return true;
             }
