@@ -66,14 +66,21 @@ class ExamStructureFieldPassThroughTest {
                 new ExamOverviewRequest.Row("p", "s1", null, null, 8, null, null)));
         assertIntact(sectionCount, "overview: section row", true);
 
+        // Valid at the starting count (8): segments cover 1..8 and sum to the part's 150 points.
+        List<DisplaySegment> eight = List.of(
+                new DisplaySegment("P1", "Phần I", 1, 5, 5, new BigDecimal("60")),
+                new DisplaySegment("P2", "Phần II", 6, 8, 3, new BigDecimal("90")));
         ExamStructureDocument single = new ExamStructureDocument(List.of(new ExamPart("p", 1, "Phần", null, 8,
                 null, null, null, new BigDecimal("150"), List.of(structure().parts().getFirst().sections().getFirst()),
-                List.of(), List.of(), null, SEGMENTS)));
+                List.of(), List.of(), null, eight)));
+        ExamStructureValidator.validate(single);
         var propagated = ExamOverview.apply(single, List.of(
                 new ExamOverviewRequest.Row("p", null, null, null, 9, null, null)));
         assertThat(propagated.parts().getFirst().questionCount()).isEqualTo(9);
         assertThat(propagated.parts().getFirst().sections().getFirst().questionCount()).isEqualTo(9);
-        assertIntact(propagated, "overview: propagated count rebuilds the section", true);
+        assertIntact(propagated, "overview: propagated count rebuilds the section", false);
+        // The overview never rewrites segment ranges; the declared list is carried through unchanged.
+        assertThat(propagated.parts().getFirst().displaySegments()).isEqualTo(eight);
     }
 
     @Test
