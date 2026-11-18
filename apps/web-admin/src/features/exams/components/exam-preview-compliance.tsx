@@ -5,10 +5,13 @@ import { Card, ListCard, StatusChip, Table, type StatusTone, type TableCards } f
 import { CircleCheck, Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { useContentReference } from "@/features/content/queries";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import {
+  competencyName,
   complianceLevel,
   droppedCount,
+  examQuotaNames,
   parseCriterion,
   parseScope,
   topicAssignments,
@@ -42,6 +45,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, original = f
   const tContent = useTranslations("content");
   const format = useFormatter();
   const lookup = useLookup();
+  const reference = useContentReference().data;
   const assigned = useMemo(() => topicAssignments(paper, original), [paper, original]);
 
   const { columns, cards } = useMemo(() => {
@@ -61,11 +65,11 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, original = f
         case "DIFFICULTY":
           return t("criterion.DIFFICULTY", { name: lookup.difficulty(ref.code) });
         case "COMPETENCY":
-          return t("criterion.COMPETENCY", { name: ref.code });
+          return t("criterion.COMPETENCY", { name: competencyName(ref.code, reference) });
         case "TOPIC":
           return t("criterion.TOPIC");
         case "EXAM":
-          return t("criterion.EXAM", { names: ref.codes.map((code) => (/^G/.test(code) ? lookup.grade(code) : lookup.difficulty(code))).join(" + ") });
+          return t("criterion.EXAM", { names: examQuotaNames(ref.codes, reference).join(" + ") });
         default:
           return ref.raw;
       }
@@ -118,7 +122,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, original = f
       ),
     };
     return { columns, cards };
-  }, [t, tContent, format, lookup, paper, assigned]);
+  }, [t, tContent, format, lookup, reference, paper, assigned]);
 
   if (compliance.length === 0 && dropped.length === 0) return null;
   const deviations = compliance.filter((row) => complianceLevel(row) !== "OK");

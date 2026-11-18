@@ -7,7 +7,7 @@ import { mapExamDetail } from "../api-mapping";
 import { ExamPreviewCompliance } from "../components/exam-preview-compliance";
 import { ExamPreviewPanel } from "../components/exam-preview-panel";
 import { ExamPreviewPaper } from "../components/exam-preview-paper";
-import { complianceLevel, droppedCount, parseCriterion, topicAssignments } from "../review-compliance";
+import { competencyName, complianceLevel, droppedCount, examQuotaNames, parseCriterion, topicAssignments } from "../review-compliance";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
 import type {
   ExamCheckResult,
@@ -239,6 +239,31 @@ describe("bảng Yêu cầu / Thực tế", () => {
     unmount();
     renderWithProviders(<ExamPreviewCompliance paper={shuffled} compliance={rows} dropped={[]} original />);
     expect(await screen.findByText("2 · gán câu 2, 3")).toBeInTheDocument();
+  });
+
+  it("chỉ tiêu cấp bài: mã là khối lớp hay độ khó theo danh mục, không theo chữ đầu của mã", () => {
+    const reference = {
+      grades: [{ code: "K12", name: "Lớp 12" }, { code: "GRADE_10", name: "Lớp 10" }],
+      difficulties: [{ code: "GOOD", name: "Khá" }, { code: "HIGH", name: "Cao" }],
+    };
+
+    // GOOD bắt đầu bằng G nhưng là độ khó; K12 không bắt đầu bằng G nhưng là khối lớp.
+    expect(examQuotaNames(["K12", "GOOD", "GRADE_10", "HIGH"], reference)).toEqual(["Lớp 12", "Khá", "Lớp 10", "Cao"]);
+    expect(examQuotaNames(["UNKNOWN"], reference)).toEqual(["UNKNOWN"]);
+    expect(examQuotaNames(["K12"], undefined)).toEqual(["K12"]);
+  });
+
+  it("dòng chỉ tiêu cấp bài và năng lực hiện tên theo danh mục", async () => {
+    expect(competencyName("VACT-TOAN", { competencies: [{ code: "VACT-TOAN", name: "Toán học", subjectCode: null, examKindCodes: [] }] })).toBe("Toán học");
+    expect(competencyName("NO-SUCH", undefined)).toBe("NO-SUCH");
+
+    renderTable([
+      row({ criterion: "EXAM:q1:GRADE_10,HIGH_APPLICATION", required: 2, actual: 2 }),
+      row({ criterion: "COMPETENCY:VACT-TOAN", required: 2, actual: 2 }),
+    ]);
+
+    expect(await screen.findByText("Chỉ tiêu cấp bài Lớp 10 + Vận dụng cao")).toBeInTheDocument();
+    expect(await screen.findByText("Năng lực Toán học")).toBeInTheDocument();
   });
 
   it("môn 16 câu: ghi 'môn đã bỏ 1 câu' ở cột Yêu cầu và nêu câu đã bỏ", async () => {

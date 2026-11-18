@@ -1,3 +1,4 @@
+import type { ContentReference } from "@/features/content/types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "./review-types";
 
 /** Sai lệch số thập phân nhỏ hơn mức này coi là bằng nhau (điểm và số câu máy chủ tính bằng BigDecimal). */
@@ -55,6 +56,23 @@ export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
 export function droppedCount(note: string | null): number {
   const match = /^dropped (\d+)$/.exec(note ?? "");
   return match ? Number(match[1]) : 0;
+}
+
+type NameCatalog = Pick<ContentReference, "grades" | "difficulties" | "competencies">;
+
+/**
+ * Tên các mã của chỉ tiêu cấp bài (`EXAM:<id>:G10,G11`): mỗi mã là khối lớp hoặc độ khó, quyết định theo danh mục khối
+ * lớp chứ không theo chữ đầu của mã. Mã không có trong danh mục nào thì giữ nguyên mã.
+ */
+export function examQuotaNames(codes: readonly string[], reference: Pick<NameCatalog, "grades" | "difficulties"> | undefined): string[] {
+  const grades = new Map((reference?.grades ?? []).map((option) => [option.code, option.name]));
+  const difficulties = new Map((reference?.difficulties ?? []).map((option) => [option.code, option.name]));
+  return codes.map((code) => grades.get(code) ?? difficulties.get(code) ?? code);
+}
+
+/** Tên năng lực theo danh mục; mã không có trong danh mục thì giữ nguyên mã. */
+export function competencyName(code: string, reference: Pick<NameCatalog, "competencies"> | undefined): string {
+  return reference?.competencies?.find((item) => item.code === code)?.name ?? code;
 }
 
 /**
