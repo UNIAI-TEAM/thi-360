@@ -611,12 +611,12 @@ public final class ExamCheckRules {
         if (matrix == null) return;
         if (matrix.mode() == MatrixMode.COMBINED) {
             values(found, context, block, matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), count,
-                    null, countCode, countVaries, subjectCount);
+                    null, countCode, countVaries || matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE, subjectCount);
         } else {
             values(found, context, block, matrix.byGrade().stream().map(value -> value.value()).toList(), matrix.unit(), count,
-                    "GRADE", countCode, countVaries, subjectCount);
+                    "GRADE", countCode, countVaries || matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE, subjectCount);
             values(found, context, block, matrix.byDifficulty().stream().map(value -> value.value()).toList(), matrix.unit(), count,
-                    "DIFFICULTY", countCode, countVaries, subjectCount);
+                    "DIFFICULTY", countCode, countVaries || matrix.difficultyEnforcement() == QuotaEnforcement.REFERENCE, subjectCount);
         }
         if (!matrix.byCompetency().isEmpty()) values(found, context, block,
                 matrix.byCompetency().stream().map(value -> value.value()).toList(), matrix.unit(), count,

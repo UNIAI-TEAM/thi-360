@@ -75,15 +75,16 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
         assertThat(issue.path("required").asInt()).isEqualTo(1);
         assertThat(issue.path("available").asInt()).isZero();
         // Required/Actual rows surface on the subject row of every proved path.
+        assertThat(result.path("paths")).isNotEmpty();
         for (var path : result.path("paths")) {
-            for (var subject : path.path("subjects")) {
-                if (!"s-bca-van".equals(subject.path("sectionId").asText())) continue;
-                for (var row : subject.path("byGrade")) {
-                    if (!"G10".equals(row.path("code").asText())) continue;
-                    assertThat(row.path("required").asInt()).isEqualTo(1);
-                    assertThat(row.path("achieved").asInt()).isZero();
-                }
-            }
+            var subjects = java.util.stream.StreamSupport.stream(path.path("subjects").spliterator(), false)
+                    .filter(subject -> "s-bca-van".equals(subject.path("sectionId").asText())).toList();
+            assertThat(subjects).hasSize(1);
+            var rows = java.util.stream.StreamSupport.stream(subjects.getFirst().path("byGrade").spliterator(), false)
+                    .filter(row -> "G10".equals(row.path("code").asText())).toList();
+            assertThat(rows).hasSize(1);
+            assertThat(rows.getFirst().path("required").asInt()).isEqualTo(1);
+            assertThat(rows.getFirst().path("achieved").asInt()).isZero();
         }
     }
 

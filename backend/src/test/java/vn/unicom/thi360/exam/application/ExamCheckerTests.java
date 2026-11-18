@@ -169,6 +169,62 @@ class ExamCheckerTests {
     }
 
     @Test
+    void referenceMatricesComparePromptAndPointsAgainstTheProof() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 0);
+        UUID id = UUID.randomUUID();
+        Unit unit = new Unit(id, null, QuestionType.TRUE_FALSE, "G12", "D", List.of(), List.of(),
+                new BigDecimal("2"), null, "TF", 4, 4, null, null, null, false);
+        candidates.put(subjects.get("MATH"), List.of(new Candidate(id, 1, null, List.of(unit), null, null)));
+        for (String basis : List.of("PROMPT", "POINTS")) {
+            int amount = basis.equals("PROMPT") ? 4 : 2;
+            for (int required : List.of(amount, amount + 1)) {
+                String matrix = """
+                        "matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"%s",
+                        "gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE",
+                        "byGrade":[{"code":"G12","value":%d}]},
+                        """.formatted(basis, required);
+                String doc = singleStructure(1, null, matrix).replace("SINGLE_CHOICE", "TRUE_FALSE");
+                JsonNode result = check(exam, document(doc)).result();
+                assertThat(result.path("status").asText()).isEqualTo("VALID");
+                assertThat(issueCodes(result)).doesNotContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
+                if (required == amount) assertThat(issueCodes(result)).doesNotContain("DISTRIBUTION_DEVIATION");
+                else assertThat(issueCodes(result)).contains("DISTRIBUTION_DEVIATION");
+                JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+                assertThat(row.path("required").asInt()).isEqualTo(required);
+                assertThat(row.path("achieved").asInt()).isEqualTo(amount);
+            }
+        }
+    }
+
+    @Test
+    void provedZeroReferenceBucketDoesNotUseTheSourcePool() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        subject("MATH", 0);
+        UUID g10 = UUID.randomUUID(), g12 = UUID.randomUUID();
+        candidates.put(subjects.get("MATH"), List.of(
+                new Candidate(g10, 1, null, List.of(new Unit(g10, null, QuestionType.SINGLE_CHOICE,
+                        "G10", "D10", List.of(), List.of(), BigDecimal.ONE)), null, null),
+                new Candidate(g12, 1, null, List.of(new Unit(g12, null, QuestionType.SINGLE_CHOICE,
+                        "G12", "D12", List.of(), List.of(), BigDecimal.ONE)), null, null)));
+        String matrix = """
+                "matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION",
+                "gradeEnforcement":"REFERENCE","difficultyEnforcement":"REQUIRED",
+                "byGrade":[{"code":"G10","value":1}],"byDifficulty":[{"code":"D12","value":1}]},
+                """;
+        JsonNode result = check(exam, document(singleStructure(1, null, matrix))).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        JsonNode row = result.path("paths").get(0).path("subjects").get(0).path("byGrade").get(0);
+        assertThat(row.path("code").asText()).isEqualTo("G10");
+        assertThat(row.path("required").asInt()).isEqualTo(1);
+        assertThat(row.path("achieved").asInt()).isZero();
+        JsonNode warning = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                .filter(issue -> "DISTRIBUTION_DEVIATION".equals(issue.path("code").asText())).findFirst().orElseThrow();
+        assertThat(warning.path("available").asInt()).isZero();
+    }
+
+    @Test
     void sharedTimingAndEmptyPartsBlockTheirPaths() throws Exception {
         Exam exam = exam(1, null, "RAW");
         subject("MATH", 1);

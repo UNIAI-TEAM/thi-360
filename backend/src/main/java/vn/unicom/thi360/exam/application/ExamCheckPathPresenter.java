@@ -18,6 +18,7 @@ import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.MatrixMode;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.domain.QuotaBasis;
+import vn.unicom.thi360.exam.domain.QuotaEnforcement;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.exam.domain.solver.CountingUnit;
 import vn.unicom.thi360.exam.domain.solver.GroupQuota;
@@ -391,22 +392,21 @@ final class ExamCheckPathPresenter {
         List<CountingUnit> units = sources.union(section.groups());
         boolean complete = sources.complete(section.groups());
         ExamCheckDistribution.BasisCounts paper = distribution == null ? null
-                : distribution.sectionActuals().getOrDefault(section.sectionId(), Map.of())
-                        .getOrDefault(count, ExamCheckDistribution.BasisCounts.empty());
+                : distribution.sectionActuals().getOrDefault(section.sectionId(), Map.of()).get(count);
         var quota = info.section.answerQuotas();
         if (quota != null) {
             int[] values = ExamCheckQuantities.resolve(quota.items().stream().map(item -> item.value()).toList(), quota.unit(), count);
             if (values != null) for (int i = 0; i < values.length; i++) {
                 String type = quota.items().get(i).answerType().name();
                 long have = units.stream().filter(unit -> type.equals(unit.answerType())).count();
-                BigDecimal witnessHave = paper == null ? null : paper.basis(QuotaBasis.QUESTION).answerTypes().get(type);
+                BigDecimal witnessHave = paper == null ? null : paper.basis(QuotaBasis.QUESTION).answerTypes().getOrDefault(type, BigDecimal.ZERO);
                 ObjectNode entry = answers.addObject(); entry.put("answerType", type); entry.put("required", values[i]);
                 if (witnessHave != null) entry.put("achieved", witnessHave);
                 else if (complete) entry.put("achieved", Math.min(values[i], have));
                 else entry.putNull("achieved");
             }
         }
-        ObjectNode matrix = requirement(info.section.matrix(), count);
+        ObjectNode matrix = requirement(info.section.matrix(), count, paper);
         if (matrix != null) {
             QuotaBasis basis = info.section.matrix() == null || info.section.matrix().basis() == null
                     ? QuotaBasis.QUESTION : info.section.matrix().basis();
@@ -434,7 +434,7 @@ final class ExamCheckPathPresenter {
         for (var value : values.entrySet()) {
             long have = units.stream().filter(unit -> value.getKey().equals(grade ? unit.gradeCode() : unit.difficultyCode())).count();
             BigDecimal witness = actual == null ? null
-                    : (grade ? actual.grade() : actual.difficulty()).get(value.getKey());
+                    : (grade ? actual.grade() : actual.difficulty()).getOrDefault(value.getKey(), BigDecimal.ZERO);
             ObjectNode item = out.addObject(); item.put("code", value.getKey()); item.put("required", value.getValue());
             if (witness != null) item.put("achieved", witness);
             else if (complete) item.put("achieved", Math.min(value.getValue(), have));
@@ -449,28 +449,41 @@ final class ExamCheckPathPresenter {
     }
 
     private ObjectNode requirement(BlockMatrix matrix, int count) {
+        return requirement(matrix, count, null);
+    }
+
+    private ObjectNode requirement(BlockMatrix matrix, int count, ExamCheckDistribution.BasisCounts paper) {
         if (matrix == null || matrix.mode() == null) return null;
+        BigDecimal total = paper == null ? BigDecimal.valueOf(count) : paper.basis(matrix.basis()).total();
         ObjectNode out = mapper.createObjectNode(); out.put("mode", matrix.mode().name());
         ArrayNode cells = out.putArray("cells"), grades = out.putArray("byGrade"),
                 difficulties = out.putArray("byDifficulty"), competencies = out.putArray("byCompetency");
         if (matrix.mode() == MatrixMode.COMBINED) {
-            int[] amounts = ExamCheckQuantities.resolve(matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), count);
+            int[] amounts = matrix.gradeEnforcement() == QuotaEnforcement.REFERENCE
+                    ? ExamCheckDistribution.resolve(matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), total)
+                    : ExamCheckQuantities.resolve(matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), count);
             if (amounts == null) return null;
             for (int i = 0; i < amounts.length; i++) {
                 var cell = matrix.cells().get(i); ObjectNode value = cells.addObject();
                 value.put("gradeCode", cell.gradeCode()); value.put("difficultyCode", cell.difficultyCode()); value.put("required", amounts[i]);
             }
-        } else if (!dimension(grades, matrix.byGrade(), matrix, count) || !dimension(difficulties, matrix.byDifficulty(), matrix, count)) return null;
-        if (!matrix.byCompetency().isEmpty() && !dimension(competencies, matrix.byCompetency(), matrix, count)) return null;
+        } else {
+            dimension(grades, matrix.byGrade(), matrix, count, total, matrix.gradeEnforcement());
+            dimension(difficulties, matrix.byDifficulty(), matrix, count, total, matrix.difficultyEnforcement());
+        }
+        dimension(competencies, matrix.byCompetency(), matrix, count, total, QuotaEnforcement.REQUIRED);
         return out;
     }
 
-    private static boolean dimension(ArrayNode out, List<vn.unicom.thi360.exam.domain.MatrixDimensionValue> items,
-                                     BlockMatrix matrix, int count) {
-        int[] amounts = ExamCheckQuantities.resolve(items.stream().map(item -> item.value()).toList(), matrix.unit(), count);
-        if (amounts == null) return false;
+    private static void dimension(ArrayNode out, List<vn.unicom.thi360.exam.domain.MatrixDimensionValue> items,
+                                  BlockMatrix matrix, int count, BigDecimal total, QuotaEnforcement enforcement) {
+        if (items.isEmpty()) return;
+        var values = items.stream().map(item -> item.value()).toList();
+        int[] amounts = enforcement == QuotaEnforcement.REFERENCE
+                ? ExamCheckDistribution.resolve(values, matrix.unit(), total)
+                : ExamCheckQuantities.resolve(values, matrix.unit(), count);
+        if (amounts == null) return;
         for (int i = 0; i < amounts.length; i++) { ObjectNode value = out.addObject(); value.put("code", items.get(i).code()); value.put("required", amounts[i]); }
-        return true;
     }
 
     private static ObjectNode context(ObjectNode issue, SectionInfo info, QuestionBlock block) {

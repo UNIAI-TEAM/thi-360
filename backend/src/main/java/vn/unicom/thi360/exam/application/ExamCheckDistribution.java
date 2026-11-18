@@ -414,7 +414,7 @@ final class ExamCheckDistribution {
     }
 
     /** Resolve declared matrix values (COUNT or PERCENT) against the basis total on the paper. */
-    private static int[] resolve(List<BigDecimal> values, MatrixUnit unit, BigDecimal total) {
+    static int[] resolve(List<BigDecimal> values, MatrixUnit unit, BigDecimal total) {
         if (unit == MatrixUnit.PERCENT) {
             List<Integer> percents = new ArrayList<>(values.size());
             for (BigDecimal value : values) {
