@@ -148,7 +148,7 @@ public final class ExamCheckRules {
     }
 
     /** Template-driven errors: publish ban (D11) and locked structure counts (H27). */
-    private List<ObjectNode> templateIssues() {
+    List<ObjectNode> templateIssues() {
         List<ObjectNode> found = new ArrayList<>();
         if (template.unpublishableSubject() != null) {
             ObjectNode failure = issue("TEMPLATE_NOT_PUBLISHABLE", "STRUCTURE", null, null, null);

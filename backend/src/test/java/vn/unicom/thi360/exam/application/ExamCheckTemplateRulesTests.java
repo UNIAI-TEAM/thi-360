@@ -299,6 +299,37 @@ class ExamCheckTemplateRulesTests {
         assertThat(issue.path("location").path("sectionId").asText()).isEqualTo("s-logic");
     }
 
+    @Test
+    void lockedSectionIsIncompleteInSectionStatesAndTheOtherSectionIsNot() throws Exception {
+        Exam exam = fullExam("VACT_FULL");
+        ExamTemplate loaded = template(true, true, LOCKED_TEMPLATE);
+        when(templates.findProvenance("VACT_FULL")).thenReturn(loaded);
+        subject("SCIENTIFIC_THINKING", 30);
+        subject("OTHER", 30);
+        // The second section has its own subject, hence its own unit: a lock must not spill into it.
+        String ownSubject = "\"s-reason\",\"subjectCode\":\"OTHER\"";
+        String reason = "\"s-reason\",\"subjectCode\":\"SCIENTIFIC_THINKING\"";
+        ExamStructureDocument edited = document(lockedBase("10", "\"questionCount\":10", SAME_DIFFICULTY)
+                .replace(reason, ownSubject));
+        check(exam, edited);
+        assertThat(sectionStates(exam, edited)).containsExactly("s-logic=INCOMPLETE", "s-reason=NEEDS_CHECK");
+        ExamStructureDocument untouched = document(LOCKED_TEMPLATE.replace(reason, ownSubject));
+        assertThat(sectionStates(exam, untouched)).containsExactly("s-logic=NEEDS_CHECK", "s-reason=NEEDS_CHECK");
+    }
+
+    private List<String> sectionStates(Exam exam, ExamStructureDocument document) {
+        var snapshots = mock(ExamCheckSnapshotReader.class);
+        var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash",
+                mapper.createObjectNode());
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null));
+        var states = new ExamCheckUnitStates(snapshots, mock(ExamCheckUnitStore.class),
+                new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)),
+                new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper, source,
+                new ExamCheckTemplateFacts(catalog, templates, mapper));
+        return states.states(exam.getId()).stream().map(state -> state.sectionId() + "=" + state.state()).toList();
+    }
+
     // ---- rows 7, 8: TOPIC_QUOTA_MAPPING_MISSING ----------------------------------------------------------
 
     @Test

@@ -89,7 +89,8 @@ class ExamCheckUnitEngineTests {
         when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, unrelatedDraft, input, null));
         var states = new ExamCheckUnitStates(snapshots, store,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)),
-                new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper, source);
+                new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper, source,
+                new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "INCOMPLETE");
 
@@ -179,7 +180,8 @@ class ExamCheckUnitEngineTests {
                 .collect(Collectors.toMap(ExamCheckUnitStore.Unit::key, unit -> unit)));
         var snapshots = mock(ExamCheckSnapshotReader.class);
         when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null));
-        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source);
+        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source,
+                new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
         assertThat(states.states(exam.getId())).extracting(state -> state.state()).containsExactly("CHECKED");
     }
 
@@ -261,7 +263,8 @@ class ExamCheckUnitEngineTests {
         assertThat(partCheck.units()).isEmpty();
         var snapshots = mock(ExamCheckSnapshotReader.class);
         when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null));
-        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source);
+        var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source,
+                new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "INCOMPLETE");
     }
