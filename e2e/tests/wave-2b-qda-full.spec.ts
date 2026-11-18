@@ -1,90 +1,122 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_URL, adminApi, loginAdmin } from "./helpers/editor-qa";
+import { adminApi, loginAdmin } from "./helpers/editor-qa";
 import {
   allSections,
   blockingCodes,
-  checkExam,
   clickAndCapturePreview,
+  continueToReviewInUi,
   countBySubject,
+  createExamInUi,
   examCode,
+  expectStructureQuestions,
+  expectValidPaths,
   expectWellFormedPaper,
   getExam,
   getStructure,
+  openPreviewTab,
   pathWithChoice,
+  publishInUi,
+  saveStructureInUi,
   SCENARIO_TIMEOUT_MS,
+  selectPathInUi,
   SOLVER_TIMEOUT_MS,
+  SUBJECT_NAME,
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
 
+/** Sáu môn của kho phần 3 theo mẫu QDA_FULL: số câu của mục (Lý, Hóa, Sinh, Sử, Địa 25 câu; Tiếng Anh 50 câu). */
+const PART3_SUBJECTS = [
+  { code: "LY", count: 25 },
+  { code: "HOA", count: 25 },
+  { code: "SINH", count: 25 },
+  { code: "SU", count: 25 },
+  { code: "DIA", count: 25 },
+  { code: "ANH", count: 50 },
+] as const;
+
 /**
- * Nghiệm thu 2B mục 16, kịch bản 1: QDA toàn bài. Tạo ở bước 1 (mẫu mặc định QDA_FULL) → thiết lập sáu môn của phần 3
- * (Lý, Hóa, Sinh, Sử, Địa, Tiếng Anh) → kiểm tra toàn bài → sinh thử QĐ02 → công bố.
+ * Nghiệm thu 2B mục 16, kịch bản 1: QDA toàn bài. Tạo ở bước 1 (mẫu mặc định QDA_FULL) → thiết lập sáu môn của phần 3 ở
+ * bước 2 (mở từng môn, xem số câu và chỉ tiêu trên màn, sửa một giá trị, lưu, kiểm tra riêng từng môn) → kiểm tra toàn bài
+ * → sinh thử QĐ02 → công bố. Mọi bước ở giao diện.
  */
 test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sinh thử QĐ02, công bố", async ({ context, page }) => {
   await loginAdmin(context, "vi");
 
   // 1. Bước 1: kỳ thi QDA, toàn bài; bảng tổng quan nạp số của mẫu mặc định.
-  await page.goto(`${ADMIN_URL}/exams/new`);
-  await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
-  await page.getByRole("combobox", { name: /^Kỳ thi/ }).click();
-  await page.getByRole("option", { name: /QDA/ }).click();
-  await page.getByRole("radio", { name: /^Toàn bài/ }).check();
-  await expect(page.getByRole("textbox", { name: /^Số câu của/ }).first()).not.toHaveValue("");
-  await page.getByRole("textbox", { name: /Mã bài thi/ }).fill(examCode("W2B-QDA"));
-  await page.getByRole("textbox", { name: /Tên bài thi/ }).fill("QDA toàn bài nghiệm thu 2B");
-  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
-  await page.waitForURL(/\/exams\/[^/]+\/structure$/);
-  const id = /\/exams\/([^/]+)\/structure$/.exec(page.url())![1]!;
-
+  const id = await createExamInUi(page, { kind: "QDA", scope: "FULL", code: examCode("W2B-QDA"), name: "QDA toàn bài nghiệm thu 2B" });
   const admin = await adminApi();
   const exam = await getExam(admin, id);
   expect(exam.templateCode).toBe("QDA_FULL");
   expect(exam.questionCount).toBe(150);
   expect(exam.maxScore).toBe(150);
 
-  // 2. Thiết lập sáu môn: phần 3 chọn mã có kho sáu môn. Mỗi môn kiểm tra riêng rồi phải ở trạng thái "Đã kiểm tra".
+  // 2. Bước 2: phần 3 có kho sáu môn. Mở từng môn trong danh sách: tiêu đề, số câu của mục, chỉ tiêu, nhóm lấy câu.
+  await expectStructureQuestions(page, /^150(\D|$)/);
   const structure = await getStructure(admin, id);
   expect(structure.parts).toHaveLength(3);
   const pool = structure.parts[2]!.subjectPool ?? [];
   expect(pool.map((section) => section.subjectCode).sort()).toEqual(["ANH", "DIA", "HOA", "LY", "SINH", "SU"]);
-  expect(Object.fromEntries(pool.map((section) => [section.subjectCode, section.questionCount]))).toEqual({
-    LY: 25,
-    HOA: 25,
-    SINH: 25,
-    SU: 25,
-    DIA: 25,
-    ANH: 50,
-  });
-  for (const section of pool) {
-    const result = await checkExam(admin, id, { scope: "SECTION", sectionId: section.id });
-    expect(blockingCodes(result), `môn ${section.subjectCode}`).toEqual([]);
-    const states = (await getStructure(admin, id)).sectionStates ?? [];
-    expect(states.find((state) => state.sectionId === section.id)?.state, `môn ${section.subjectCode}`).toBe("CHECKED");
+
+  const nav = page.getByRole("navigation", { name: "Cấu trúc" });
+  for (const { code, count } of PART3_SUBJECTS) {
+    const name = SUBJECT_NAME[code]!;
+    await nav.getByRole("button", { name: new RegExp(`^${name}`) }).click();
+    await expect(page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
+    await expect(page.getByRole("textbox", { name: /^Số câu của mục/ }), `môn ${name}`).toHaveValue(String(count));
+    // Mẫu không khai chỉ tiêu dạng trả lời, khối lớp, độ khó: màn nói rõ; một nhóm trắc nghiệm lấy hết số câu của môn.
+    await expect(page.getByText("Môn không kiểm soát số câu theo dạng trả lời."), `môn ${name}`).toBeVisible();
+    await expect(page.getByText("Môn không kiểm soát phân bổ khối lớp và độ khó."), `môn ${name}`).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: `Các nhóm lấy câu của ${name}` }).getByRole("row", { name: new RegExp(`${count} câu`) }),
+      `môn ${name}`,
+    ).toBeVisible();
   }
 
-  // 3. Kiểm tra toàn bài ở tab Kiểm tra cấu hình: năm mã QĐ01–QĐ05, cả năm hợp lệ.
-  await page.goto(`${ADMIN_URL}/exams/${id}/review`);
-  await page.getByRole("button", { name: "Kiểm tra cấu hình", exact: true }).click();
-  await expect(page.getByText("5 / 5 hợp lệ")).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
+  // Sửa một giá trị của môn Vật lí (tên nhóm lấy câu) rồi lưu.
+  const ly = pool.find((section) => section.subjectCode === "LY")!;
+  const lyBlock = ly.blocks![0]!;
+  await nav.getByRole("button", { name: new RegExp(`^${SUBJECT_NAME.LY}`) }).click();
+  await page.getByRole("button", { name: `Mở nhóm ${lyBlock.name}` }).click();
+  const renamed = `${lyBlock.name} Vật lí 2B`;
+  await page.getByRole("textbox", { name: /^Tên nhóm/ }).fill(renamed);
+  await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
+  await saveStructureInUi(page, id);
+  const savedLy = allSections(await getStructure(admin, id)).find((section) => section.id === ly.id);
+  expect(savedLy?.blocks?.[0]?.name).toBe(renamed);
 
-  const check = await checkExam(admin, id);
+  // Kiểm tra riêng từng môn bằng nút "Kiểm tra môn": mỗi môn không lỗi chặn và hiện "Đã kiểm tra" trong danh sách.
+  for (const { code } of PART3_SUBJECTS) {
+    const name = SUBJECT_NAME[code]!;
+    const subjectButton = nav.getByRole("button", { name: new RegExp(`^${name}`) });
+    await subjectButton.click();
+    await expect(page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
+    const [response] = await Promise.all([
+      page.waitForResponse((item) => item.url().endsWith(`/exams/${id}/check`) && item.request().method() === "POST", {
+        timeout: SOLVER_TIMEOUT_MS,
+      }),
+      page.getByRole("button", { name: "Kiểm tra môn", exact: true }).click(),
+    ]);
+    expect(response.status(), `môn ${name}: ${await response.text()}`).toBe(200);
+    expect(blockingCodes(await response.json()), `môn ${name}`).toEqual([]);
+    await expect(subjectButton, `môn ${name}`).toContainText("Đã kiểm tra");
+  }
+
+  // 3. "Tiếp tục": kiểm tra toàn bài, sang tab Kiểm tra cấu hình: năm mã QĐ01–QĐ05, cả năm hợp lệ.
+  const check = await continueToReviewInUi(page, id);
   expect(check.status, `lỗi chặn: ${blockingCodes(check).join(", ")}`).toBe("VALID");
   expect(blockingCodes(check)).toEqual([]);
   expect(check.paths).toHaveLength(5);
   expect(check.paths.every((path) => path.result === "VALID")).toBe(true);
-  const afterCheck = await getStructure(admin, id);
-  const allStates = afterCheck.sectionStates ?? [];
-  expect(allStates).toHaveLength(allSections(afterCheck).length);
+  await expectValidPaths(page, 5, 5);
+  const allStates = (await getStructure(admin, id)).sectionStates ?? [];
+  expect(allStates).toHaveLength(allSections(await getStructure(admin, id)).length);
   expect(allStates.filter((state) => state.state !== "CHECKED")).toEqual([]);
 
   // 4. Sinh thử QĐ02 (Hóa học – Sinh học) ở tab Đề xem trước.
-  await page.getByRole("tab", { name: "Đề xem trước" }).click();
-  const preview = page.getByRole("tabpanel", { name: "Đề xem trước" });
-  await expect(preview).toBeVisible();
+  const preview = await openPreviewTab(page);
   await expect(preview.getByText("Bài có phần chọn mã: hãy chọn một mã.")).toBeVisible();
-  await preview.getByRole("combobox", { name: "Đường lựa chọn" }).click();
-  await page.getByRole("option", { name: /Q[DĐ]02/ }).click();
+  await selectPathInUi(page, preview, /Q[DĐ]02/);
   const { request, result } = await clickAndCapturePreview(page, id, preview.getByRole("button", { name: "Sinh đề xem trước" }));
 
   expect(request.target).toEqual({ kind: "PATH", pathId: pathWithChoice(check, "QD02").pathId });
@@ -108,19 +140,8 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   await expect(preview.getByText(/Đề thử · Q[DĐ]02/)).toBeVisible();
 
   // 5. Công bố: hộp thoại chọn đủ năm mã hợp lệ, máy chủ tạo v1 cho cả năm đường.
-  await page.goto(`${ADMIN_URL}/exams/${id}/versions`);
-  await page.getByRole("button", { name: "Công bố", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  const [published] = await Promise.all([
-    page.waitForResponse((item) => item.url().endsWith(`/exams/${id}/publish`) && item.request().method() === "POST", {
-      timeout: SOLVER_TIMEOUT_MS,
-    }),
-    dialog.getByRole("button", { name: /^Công bố \d+ đường lựa chọn$/ }).click(),
-  ]);
-  expect(published.status(), await published.text()).toBe(200);
-  const response = (await published.json()) as { version: number; publishedPathIds: string[] };
-  expect(response.version).toBe(1);
-  expect([...response.publishedPathIds].sort()).toEqual(check.paths.map((path) => path.pathId).sort());
+  const published = await publishInUi(page, id);
+  expect(published.version).toBe(1);
+  expect([...published.publishedPathIds].sort()).toEqual(check.paths.map((path) => path.pathId).sort());
   await expect.poll(async () => (await getExam(admin, id)).servingVersion).toBe(1);
 });

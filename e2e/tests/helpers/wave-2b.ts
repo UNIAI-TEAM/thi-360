@@ -2,9 +2,10 @@ import { expect, type APIResponse, type Locator, type Page } from "@playwright/t
 import { ADMIN_URL, type AdminApi, RUN_ID } from "./editor-qa";
 
 /**
- * Dùng chung cho các kịch bản E2E của nghiệm thu đợt 2B (`wave-2b-*.spec.ts`): tạo bài, lưu cấu trúc, kiểm tra, sinh thử
- * và công bố qua API; mở tab Đề xem trước và bắt kết quả sinh thử qua giao diện. Mọi giá trị nghiệp vụ (số câu, dải câu,
- * điểm, mã kiểm tra) do từng spec khẳng định; ở đây chỉ có kiểu và hàm đọc.
+ * Dùng chung cho các kịch bản E2E của nghiệm thu đợt 2B (`wave-2b-*.spec.ts`). Các kịch bản đi qua giao diện: bước 1 tạo
+ * bài, bước 2 mở và lưu, "Tiếp tục" kiểm tra, tab Đề xem trước sinh thử (đổi mã, đổi nhánh ở đó), trang Phiên bản công bố.
+ * API chỉ đọc kết quả để khẳng định (bài, cấu trúc) và dùng cho việc không thuộc phần được thử: đăng nhập, công bố bị từ
+ * chối. Mọi giá trị nghiệp vụ (số câu, dải câu, điểm, mã kiểm tra) do từng spec khẳng định.
  */
 
 /** Kiểm tra và sinh thử chạy bộ giải: có thể mất vài chục giây trên ngân hàng mẫu, nên mỗi lời gọi đồng bộ có hạn riêng. */
@@ -172,15 +173,6 @@ async function body<T>(response: APIResponse, expected: number): Promise<T> {
   return JSON.parse(text) as T;
 }
 
-/** Tạo bài (201) bằng mẫu mặc định của lựa chọn; trả bài vừa tạo kèm `templateCode`. */
-export async function createExam(admin: AdminApi, data: Record<string, unknown>): Promise<CreatedExam> {
-  const response = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams`, {
-    headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
-    data,
-  });
-  return body<CreatedExam>(response, 201);
-}
-
 export async function getExam(admin: AdminApi, id: string): Promise<CreatedExam> {
   return body<CreatedExam>(await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams/${id}`), 200);
 }
@@ -196,35 +188,6 @@ export function allSections(structure: Structure): StructureSection[] {
     ...(part.subjectPool ?? []),
     ...(part.options ?? []).flatMap((option) => option.sections ?? []),
   ]);
-}
-
-/**
- * Lưu cấu trúc (PUT) từ bản đang có, tùy chọn sửa trước. Máy chủ phải trả 200; trả cấu trúc đọc lại sau khi lưu.
- * Không sửa thì đây là "Lưu" của bước 2 trên bản mẫu nguyên vẹn.
- */
-export async function saveStructure(admin: AdminApi, id: string, edit?: (structure: Structure) => void): Promise<Structure> {
-  const current = await getStructure(admin, id);
-  edit?.(current);
-  const put = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`, {
-    headers: admin.headers,
-    data: { expectedRevision: current.revision, parts: current.parts, ...(current.examQuotas ? { examQuotas: current.examQuotas } : {}) },
-  });
-  expect(put.status(), await put.text()).toBe(200);
-  return getStructure(admin, id);
-}
-
-/** Kiểm tra đồng bộ (200): `scope` mặc định là toàn bài. */
-export async function checkExam(
-  admin: AdminApi,
-  id: string,
-  request: { scope?: "EXAM" | "PART" | "SECTION"; sectionId?: string; partId?: string } = { scope: "EXAM" },
-): Promise<CheckResult> {
-  const response = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${id}/check`, {
-    headers: admin.headers,
-    data: request,
-    timeout: SOLVER_TIMEOUT_MS,
-  });
-  return body<CheckResult>(response, 200);
 }
 
 /** Mọi lỗi và cảnh báo trong kết quả kiểm tra (nhóm, đường, khối, môn), mỗi lỗi một lần. */
@@ -259,16 +222,6 @@ export function pathWithChoice(check: CheckResult, code: string): CheckPath {
   const path = check.paths.find((item) => (item.choices ?? []).some((choice) => choice.code === code));
   expect(path, `không có đường chứa lựa chọn ${code}: ${JSON.stringify(check.paths.map((item) => item.choices))}`).toBeDefined();
   return path!;
-}
-
-/** Sinh thử bằng API (không qua giao diện). */
-export async function previewApi(admin: AdminApi, id: string, data: Record<string, unknown>): Promise<PreviewResultLite> {
-  const response = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${id}/preview`, {
-    headers: admin.headers,
-    data,
-    timeout: SOLVER_TIMEOUT_MS,
-  });
-  return body<PreviewResultLite>(response, 200);
 }
 
 /** Công bố các đường `pathIds` ở bản hiện tại; trả phản hồi thô để kịch bản khẳng định mã trạng thái và mã lỗi. */
@@ -335,15 +288,174 @@ export function expectWellFormedPaper(result: PreviewResultLite): PaperQuestion[
   return questions;
 }
 
-/* ---------- Giao diện: tab Đề xem trước ---------- */
+/* ---------- Giao diện: bước 1 (tạo), bước 2 (cấu trúc), kiểm tra, đề thử, công bố ---------- */
 
-/** Mở tab Đề xem trước của bài (tùy chọn chọn sẵn một đường) và trả vùng nội dung của tab. */
-export async function openPreview(page: Page, examId: string, pathId?: string): Promise<Locator> {
-  const query = pathId ? `&path=${encodeURIComponent(pathId)}` : "";
-  await page.goto(`${ADMIN_URL}/exams/${examId}/review?tab=preview${query}`);
+export type UiExamKind = "BCA" | "HSA" | "QDA" | "SP2E" | "SPT" | "THPTQG" | "VACT";
+
+/** Tên kỳ thi trong danh mục kết thúc bằng mã trong ngoặc ("Đánh giá năng lực ĐHSPHN (QDA)"); V-ACT viết "V-ACT". */
+const KIND_SUFFIX: Record<UiExamKind, string> = {
+  BCA: "BCA",
+  HSA: "HSA",
+  QDA: "QDA",
+  SP2E: "SP2E",
+  SPT: "SPT",
+  THPTQG: "THPTQG",
+  VACT: "V-ACT",
+};
+
+/** Tên tiếng Việt của môn trong danh mục dữ liệu mẫu: ô chọn Môn ở bước 1, danh sách môn ở bước 2. */
+export const SUBJECT_NAME: Record<string, string> = {
+  TOAN: "Toán học",
+  VAN: "Ngữ văn",
+  ANH: "Tiếng Anh",
+  LY: "Vật lí",
+  HOA: "Hóa học",
+  SINH: "Sinh học",
+  SU: "Lịch sử",
+  DIA: "Địa lí",
+  INFORMATICS: "Tin học",
+};
+
+export interface UiExamSpec {
+  kind: UiExamKind;
+  scope: "FULL" | "SUBJECT";
+  /** Mã môn (khóa của `SUBJECT_NAME`) khi phạm vi là Theo môn. */
+  subject?: string;
+  /** Chọn thẻ "Tự thiết lập bài ôn" (chỉ Theo môn). */
+  review?: boolean;
+  code: string;
+  name: string;
+  /** Câu báo phải hiện ở bước 1 sau khi chọn xong kỳ thi, phạm vi, môn (ví dụ "chỉ lưu nháp"). */
+  notice?: string;
+  /** Số nhập vào ô của bảng tổng quan (bài ôn không có số mặc định). Bỏ trống: giữ số của mẫu. */
+  overview?: { questionCount?: number; durationMinutes?: number; maxScore?: number };
+}
+
+async function fillOverviewCell(page: Page, name: RegExp, value: number | undefined): Promise<void> {
+  if (value === undefined) return;
+  const cell = page.getByRole("textbox", { name }).first();
+  await expect(cell, `bảng tổng quan không có ô ${String(name)}`).toBeVisible();
+  await cell.fill(String(value));
+}
+
+/**
+ * Bước 1 ở giao diện: chọn kỳ thi, phạm vi, môn, cách dựng bài, nhập tên và mã, "Lưu và tiếp tục". Trả mã bài (id) đọc từ
+ * địa chỉ của bước 2.
+ */
+export async function createExamInUi(page: Page, spec: UiExamSpec): Promise<string> {
+  await page.goto(`${ADMIN_URL}/exams/new`);
+  await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
+  await page.getByRole("combobox", { name: /^Kỳ thi/ }).click();
+  await page.getByRole("option", { name: new RegExp(`\\(${KIND_SUFFIX[spec.kind]}\\)`) }).click();
+  // Kỳ thi chỉ có một phạm vi thì không có nhóm radio (chỉ một dòng chữ): bỏ qua.
+  const scopeRadio = page.getByRole("radio", { name: spec.scope === "FULL" ? /^Toàn bài/ : /^Theo môn/ });
+  if ((await scopeRadio.count()) > 0) await scopeRadio.check();
+  if (spec.subject) {
+    await page.getByRole("combobox", { name: /^Môn/ }).click();
+    await page.getByRole("option", { name: SUBJECT_NAME[spec.subject]!, exact: true }).click();
+  }
+  if (spec.review) await page.getByRole("radio", { name: /^Tự thiết lập bài ôn/ }).check();
+  if (spec.notice) await expect(page.getByText(spec.notice)).toBeVisible();
+
+  const countCell = page.getByRole("textbox", { name: /^Số câu của/ }).first();
+  await expect(countCell).toBeVisible();
+  if (!spec.review) await expect(countCell).not.toHaveValue("");
+  await fillOverviewCell(page, /^Số câu của/, spec.overview?.questionCount);
+  await fillOverviewCell(page, /^Thời lượng (của|chung)/, spec.overview?.durationMinutes);
+  await fillOverviewCell(page, /^Điểm (của|tối đa)/, spec.overview?.maxScore);
+
+  await page.getByRole("textbox", { name: /Mã bài thi/ }).fill(spec.code);
+  await page.getByRole("textbox", { name: /Tên bài thi/ }).fill(spec.name);
+  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  await page.waitForURL(/\/exams\/[^/]+\/structure$/);
+  return /\/exams\/([^/]+)\/structure$/.exec(page.url())![1]!;
+}
+
+/** Bước 2 vừa mở: dòng "Tổng số câu" của khối Tổng hợp cấu trúc khớp `questions`. */
+export async function expectStructureQuestions(page: Page, questions: RegExp): Promise<void> {
+  const summary = page.getByLabel("Tổng hợp cấu trúc");
+  await expect(summary.locator("div").filter({ has: page.getByText("Tổng số câu", { exact: true }) }).locator("dd")).toHaveText(questions);
+}
+
+/** Bấm "Lưu" của bước 2 và đợi máy chủ nhận (PUT 200); sau lưu không còn thay đổi chưa lưu nên nút Lưu tắt. */
+export async function saveStructureInUi(page: Page, examId: string): Promise<void> {
+  const save = page.getByRole("button", { name: "Lưu", exact: true });
+  const [response] = await Promise.all([
+    page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/structure`) && item.request().method() === "PUT", {
+      timeout: SOLVER_TIMEOUT_MS,
+    }),
+    save.click(),
+  ]);
+  expect(response.status(), await response.text()).toBe(200);
+  await expect(save).toBeDisabled();
+}
+
+/**
+ * Bước 2: mở nhóm lấy câu đầu tiên (đường dẫn `?block=` là cách màn mở lại đúng mục), đổi tên nhóm rồi bấm Lưu. Nút Lưu
+ * của bản mẫu nguyên vẹn tắt, nên đổi tên là giá trị sửa được vô hại để lưu thật. Chỉ đọc cấu trúc ở API để chọn nhóm và
+ * để xác nhận tên đã lưu. Trả nhóm sau khi đổi tên.
+ */
+export async function renameFirstBlockAndSaveInUi(page: Page, admin: AdminApi, examId: string): Promise<{ id: string; name: string }> {
+  const blocks = allSections(await getStructure(admin, examId))
+    .flatMap((section) => section.blocks ?? [])
+    .filter((item) => item.id && item.name);
+  // Ưu tiên nhóm đang tính điểm; bài chỉ còn nhóm tạm bỏ qua (THPTQG Ngữ văn) thì sửa nhóm đầu tiên.
+  const block = blocks.find((item) => item.omitted !== true && (item.questionCount ?? 0) > 0) ?? blocks[0];
+  expect(block, "bài không có nhóm lấy câu để sửa").toBeDefined();
+  const renamed = `${block!.name} 2B`;
+  await page.goto(`${ADMIN_URL}/exams/${examId}/structure?block=${encodeURIComponent(block!.id!)}`);
+  const nameField = page.getByRole("textbox", { name: /^Tên nhóm/ });
+  await expect(nameField).toHaveValue(block!.name!);
+  await nameField.fill(renamed);
+  await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
+  await saveStructureInUi(page, examId);
+  const saved = allSections(await getStructure(admin, examId))
+    .flatMap((section) => section.blocks ?? [])
+    .find((item) => item.id === block!.id);
+  expect(saved?.name, "tên nhóm đã lưu").toBe(renamed);
+  return { id: block!.id!, name: renamed };
+}
+
+/**
+ * "Tiếp tục" của bước 2: kiểm tra cả bài rồi sang tab Kiểm tra nếu không có lỗi chặn; có lỗi chặn thì ở lại bước 2. Trả kết
+ * quả kiểm tra mà giao diện nhận từ máy chủ.
+ */
+export async function continueToReviewInUi(page: Page, examId: string): Promise<CheckResult> {
+  const [response] = await Promise.all([
+    page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/check`) && item.request().method() === "POST", {
+      timeout: SOLVER_TIMEOUT_MS,
+    }),
+    page.getByRole("button", { name: "Tiếp tục", exact: true }).click(),
+  ]);
+  expect(response.status(), await response.text()).toBe(200);
+  const check = (await response.json()) as CheckResult;
+  if (blockingCodes(check).length === 0) await page.waitForURL(/\/exams\/[^/]+\/review/);
+  return check;
+}
+
+/** Mở một trang con của bài bằng thanh tab (Thông tin chung, Cấu trúc và ma trận, Kiểm tra và xem trước, Phiên bản và công bố). */
+export async function openEditorTab(page: Page, label: string, url: RegExp): Promise<void> {
+  await page.getByRole("navigation", { name: "Các phần của bài thi" }).getByRole("link", { name: label }).click();
+  await page.waitForURL(url);
+}
+
+/** Tab Kiểm tra cấu hình: dòng tóm tắt "<hợp lệ> / <tổng> hợp lệ" của các đường. */
+export async function expectValidPaths(page: Page, valid: number, total: number): Promise<void> {
+  await expect(page.getByText(`${valid} / ${total} hợp lệ`)).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
+}
+
+/** Sang tab Đề xem trước của trang Kiểm tra và xem trước; trả vùng nội dung của tab. */
+export async function openPreviewTab(page: Page): Promise<Locator> {
+  await page.getByRole("tab", { name: "Đề xem trước" }).click();
   const panel = page.getByRole("tabpanel", { name: "Đề xem trước" });
   await expect(panel).toBeVisible();
   return panel;
+}
+
+/** Chọn một mã hoặc nhánh ở ô "Đường lựa chọn" của tab Đề xem trước; `choice` khớp chữ của dòng chọn. */
+export async function selectPathInUi(page: Page, panel: Locator, choice: RegExp): Promise<void> {
+  await panel.getByRole("combobox", { name: "Đường lựa chọn" }).click();
+  await page.getByRole("option", { name: choice }).click();
 }
 
 /** Bấm nút của tab Đề xem trước và bắt phản hồi sinh thử: trả thân yêu cầu và kết quả. */
@@ -365,13 +477,51 @@ export async function clickAndCapturePreview(
   };
 }
 
-/** Sinh đề lần đầu ở tab Đề xem trước (nút "Sinh đề xem trước") và trả vùng nội dung cùng kết quả. */
-export async function generateInUi(
-  page: Page,
-  examId: string,
-  pathId?: string,
-): Promise<{ panel: Locator; request: Record<string, unknown>; result: PreviewResultLite }> {
-  const panel = await openPreview(page, examId, pathId);
+/** Kết quả một lần sinh thử ở giao diện: vùng nội dung của tab, thân yêu cầu và kết quả máy chủ trả. */
+export interface UiPreview {
+  panel: Locator;
+  request: Record<string, unknown>;
+  result: PreviewResultLite;
+}
+
+/**
+ * Sinh đề lần đầu ở tab Đề xem trước (nút "Sinh đề xem trước"), tùy chọn chọn trước một mã hoặc nhánh `choice`. Trả vùng
+ * nội dung, thân yêu cầu và kết quả.
+ */
+export async function generateInUi(page: Page, examId: string, choice?: RegExp): Promise<UiPreview> {
+  const panel = await openPreviewTab(page);
+  if (choice) await selectPathInUi(page, panel, choice);
   const captured = await clickAndCapturePreview(page, examId, panel.getByRole("button", { name: "Sinh đề xem trước" }));
   return { panel, ...captured };
+}
+
+/** Đổi mã hoặc nhánh trên đề thử đang xem rồi bấm nút `button` (ví dụ "Sinh đề thử mới", "Đổi mã, sinh lại …"). */
+export async function switchPathInUi(
+  page: Page,
+  examId: string,
+  panel: Locator,
+  choice: RegExp,
+  button: RegExp,
+): Promise<{ request: Record<string, unknown>; result: PreviewResultLite }> {
+  await selectPathInUi(page, panel, choice);
+  return clickAndCapturePreview(page, examId, panel.getByRole("button", { name: button }));
+}
+
+/**
+ * Công bố ở trang Phiên bản và công bố: nút "Công bố", hộp thoại, "Công bố N đường lựa chọn". Trả phản hồi của máy chủ
+ * (đã khẳng định 200).
+ */
+export async function publishInUi(page: Page, examId: string): Promise<{ version: number; publishedPathIds: string[] }> {
+  await openEditorTab(page, "Phiên bản và công bố", /\/exams\/[^/]+\/versions/);
+  await page.getByRole("button", { name: "Công bố", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const [published] = await Promise.all([
+    page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/publish`) && item.request().method() === "POST", {
+      timeout: SOLVER_TIMEOUT_MS,
+    }),
+    dialog.getByRole("button", { name: /^Công bố \d+ đường lựa chọn$/ }).click(),
+  ]);
+  expect(published.status(), await published.text()).toBe(200);
+  return (await published.json()) as { version: number; publishedPathIds: string[] };
 }

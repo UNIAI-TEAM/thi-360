@@ -2,13 +2,16 @@ import { expect, test } from "@playwright/test";
 import { adminApi, loginAdmin } from "./helpers/editor-qa";
 import {
   blockingCodes,
-  checkExam,
+  continueToReviewInUi,
   countBySubject,
-  createExam,
+  createExamInUi,
   examCode,
+  expectStructureQuestions,
+  expectValidPaths,
   expectWellFormedPaper,
   generateInUi,
-  saveStructure,
+  getExam,
+  renameFirstBlockAndSaveInUi,
   SCENARIO_TIMEOUT_MS,
 } from "./helpers/wave-2b";
 
@@ -26,27 +29,31 @@ const ENGLISH_GROUPS = [
 
 /**
  * Nghiệm thu bổ sung V-ACT/THPTQG, kịch bản 7: THPTQG Tiếng Anh. Tạo (mẫu THPTQG_ENGLISH_2025, một phần), đề thử 40 câu
- * 10 điểm, sáu nhóm đúng dải câu 1–6, 7–12, 13–17, 18–22, 23–30, 31–40.
+ * 10 điểm, sáu nhóm đúng dải câu 1–6, 7–12, 13–17, 18–22, 23–30, 31–40. Bước 1, bước 2, kiểm tra và sinh thử ở giao diện.
  */
 test("THPTQG Tiếng Anh: tạo, sinh thử 40 câu, sáu nhóm đúng dải câu", async ({ context, page }) => {
   await loginAdmin(context, "vi");
-  const admin = await adminApi();
-  const exam = await createExam(admin, {
+  const id = await createExamInUi(page, {
     kind: "THPTQG",
     scope: "SUBJECT",
-    subjectCode: "ANH",
+    subject: "ANH",
     code: examCode("W2B-TQG-ANH"),
     name: "THPTQG Tiếng Anh nghiệm thu 2B",
   });
+  const admin = await adminApi();
+  const exam = await getExam(admin, id);
   expect(exam.templateCode).toBe("THPTQG_ENGLISH_2025");
   expect(exam.questionCount).toBe(40);
   expect(exam.maxScore).toBe(10);
-  await saveStructure(admin, exam.id);
 
-  const check = await checkExam(admin, exam.id);
+  await expectStructureQuestions(page, /^40(\D|$)/);
+  await renameFirstBlockAndSaveInUi(page, admin, id);
+
+  const check = await continueToReviewInUi(page, id);
   expect(check.status, `lỗi chặn: ${blockingCodes(check).join(", ")}`).toBe("VALID");
+  await expectValidPaths(page, 1, 1);
 
-  const { panel, request, result } = await generateInUi(page, exam.id);
+  const { panel, request, result } = await generateInUi(page, id);
   expect(request.target).toEqual({ kind: "EXAM" });
   const questions = expectWellFormedPaper(result);
   expect(result.paper.totalQuestions).toBe(40);

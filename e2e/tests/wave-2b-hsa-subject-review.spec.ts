@@ -1,128 +1,92 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_URL, adminApi, loginAdmin } from "./helpers/editor-qa";
+import { adminApi, loginAdmin } from "./helpers/editor-qa";
 import {
   blockingCodes,
-  type CheckResult,
-  checkExam,
-  collectIssues,
+  continueToReviewInUi,
   countBySubject,
-  createExam,
+  createExamInUi,
   examCode,
+  expectStructureQuestions,
+  expectValidPaths,
   expectWellFormedPaper,
   generateInUi,
+  getExam,
   getStructure,
-  issueCodes,
-  type PreviewResultLite,
-  saveStructure,
+  renameFirstBlockAndSaveInUi,
   SCENARIO_TIMEOUT_MS,
-  SOLVER_TIMEOUT_MS,
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
 
 /**
- * Nghiệm thu 2B mục 16, kịch bản 2: HSA theo môn và bài ôn HSA. Tạo → lưu → sinh thử.
+ * Nghiệm thu 2B mục 16, kịch bản 2: HSA theo môn và bài ôn HSA. Tạo ở bước 1 → mở và lưu ở bước 2 → kiểm tra → sinh thử,
+ * tất cả ở giao diện.
  */
 test.describe("HSA theo môn và bài ôn", () => {
   test("HSA theo môn Toán: mẫu môn 50 câu, lưu, kiểm tra, sinh thử", async ({ context, page }) => {
     await loginAdmin(context, "vi");
-    const admin = await adminApi();
-    const exam = await createExam(admin, {
+    const id = await createExamInUi(page, {
       kind: "HSA",
       scope: "SUBJECT",
-      subjectCode: "TOAN",
+      subject: "TOAN",
       code: examCode("W2B-HSA-TOAN"),
       name: "HSA theo môn Toán nghiệm thu 2B",
     });
+    const admin = await adminApi();
+    const exam = await getExam(admin, id);
     expect(exam.templateCode).toBe("HSA_SUBJECT_TOAN");
     expect(exam.questionCount).toBe(50);
     expect(exam.maxScore).toBe(50);
 
-    // Lưu bản mẫu nguyên vẹn: máy chủ nhận, cấu trúc đọc lại vẫn một phần một môn 50 câu.
-    const saved = await saveStructure(admin, exam.id);
+    // Bước 2: mở, sửa tên một nhóm, lưu; cấu trúc đọc lại vẫn một phần một môn 50 câu.
+    await expectStructureQuestions(page, /^50(\D|$)/);
+    await renameFirstBlockAndSaveInUi(page, admin, id);
+    const saved = await getStructure(admin, id);
     expect(saved.parts).toHaveLength(1);
     expect(saved.parts[0]!.sections?.map((section) => [section.subjectCode, section.questionCount])).toEqual([["TOAN", 50]]);
 
-    const check = await checkExam(admin, exam.id);
+    const check = await continueToReviewInUi(page, id);
     expect(check.status, `lỗi chặn: ${blockingCodes(check).join(", ")}`).toBe("VALID");
+    await expectValidPaths(page, 1, 1);
 
-    const { request, result } = await generateInUi(page, exam.id);
+    const { request, result, panel } = await generateInUi(page, id);
     expect(request.target).toEqual({ kind: "EXAM" });
     expectWellFormedPaper(result);
     expect(result.paper.totalQuestions).toBe(50);
     expect(result.paper.totalPoints).toBe(50);
     expect(countBySubject(result)).toEqual({ TOAN: 50 });
-    await expect(page.getByRole("tabpanel", { name: "Đề xem trước" }).getByText(/^50 câu · 50 điểm/)).toBeVisible();
+    await expect(panel.getByText(/^50 câu · 50 điểm/)).toBeVisible();
   });
 
-  test("Bài ôn HSA Toán: đặt dạng câu và số lượng, lưu, sinh thử đúng số câu", async ({ context, page }) => {
+  test("Bài ôn HSA Toán: bản mẫu nguyên vẹn, kiểm tra và sinh thử đúng số câu", async ({ context, page }) => {
     await loginAdmin(context, "vi");
-    const admin = await adminApi();
-    const exam = await createExam(admin, {
+    // Bước 1: "Tự thiết lập bài ôn" nhập số câu, thời lượng và thang điểm vào bảng tổng quan. Không ghi cấu trúc nào khác:
+    // dạng câu và điểm mỗi câu ở bước 2 giữ như mẫu (FU-FE3B-V12 là chỗ bài ôn nguyên vẹn có thể sai ở kiểm tra, sinh thử).
+    const id = await createExamInUi(page, {
       kind: "HSA",
       scope: "SUBJECT",
-      subjectCode: "TOAN",
-      buildMode: "REVIEW",
-      maxScore: 10,
+      subject: "TOAN",
+      review: true,
       code: examCode("W2B-HSA-ON"),
       name: "Bài ôn HSA Toán nghiệm thu 2B",
+      overview: { questionCount: 10, durationMinutes: 15, maxScore: 10 },
     });
+    const admin = await adminApi();
+    const exam = await getExam(admin, id);
     expect(exam.templateCode).toBe("HSA_REVIEW");
-    const skeleton = await getStructure(admin, exam.id);
+    const skeleton = await getStructure(admin, id);
     expect(skeleton.parts).toHaveLength(1);
     expect(skeleton.parts[0]!.sections).toHaveLength(1);
     expect(skeleton.parts[0]!.sections![0]!.subjectCode).toBe("TOAN");
     expect(skeleton.parts[0]!.sections![0]!.blocks).toHaveLength(1);
 
-    // FU-FE3B-V12: bài ôn nguyên vẹn (một nhóm trống) làm gì ở kiểm tra và sinh thử; ghi lại, không khẳng định.
-    const untouchedCheck = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${exam.id}/check`, {
-      headers: admin.headers,
-      data: { scope: "EXAM" },
-      timeout: SOLVER_TIMEOUT_MS,
-    });
-    const untouchedResult: CheckResult | null = untouchedCheck.ok() ? await untouchedCheck.json() : null;
-    const untouchedPreview = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${exam.id}/preview`, {
-      headers: admin.headers,
-      data: { target: { kind: "EXAM" }, seed: 1 },
-      timeout: SOLVER_TIMEOUT_MS,
-    });
-    const untouchedPaper = untouchedPreview.ok() ? ((await untouchedPreview.json()) as PreviewResultLite) : null;
-    test.info().annotations.push({
-      type: "FU-FE3B-V12",
-      description: JSON.stringify({
-        checkHttp: untouchedCheck.status(),
-        checkStatus: untouchedResult?.status ?? (await untouchedCheck.text()),
-        checkCodes: untouchedResult ? issueCodes(untouchedResult) : [],
-        checkIssues: untouchedResult ? collectIssues(untouchedResult).map((issue) => `${issue.code}/${issue.severity}`) : [],
-        previewHttp: untouchedPreview.status(),
-        previewStatus: untouchedPaper?.status ?? null,
-        previewTotalPoints: untouchedPaper?.paper?.totalPoints ?? null,
-        previewTotalQuestions: untouchedPaper?.paper?.totalQuestions ?? null,
-      }),
-    });
-
-    // Như màn Bài ôn ở bước 2: một nhóm trắc nghiệm một đáp án, 10 câu, mỗi câu 1 điểm; số câu của phần và môn theo nhóm.
-    const saved = await saveStructure(admin, exam.id, (structure) => {
-      const part = structure.parts[0]!;
-      part.questionCount = 10;
-      part.questionCountOnPaper = 10;
-      part.questionCountRequired = 10;
-      part.maxPoints = 10;
-      part.durationMinutes = 15;
-      const section = part.sections![0]!;
-      section.questionCount = 10;
-      const block = section.blocks![0]!;
-      block.questionType = "SINGLE_CHOICE";
-      block.questionCount = 10;
-      block.requiredPointsPerQuestion = 1;
-    });
-    const block = saved.parts[0]!.sections![0]!.blocks![0]!;
-    expect([block.questionType, block.questionCount, block.requiredPointsPerQuestion]).toEqual(["SINGLE_CHOICE", 10, 1]);
-
-    const check = await checkExam(admin, exam.id);
+    // Bước 2: màn Bài ôn nạp số câu của bước 1; "Tiếp tục" kiểm tra bản mẫu như người dùng nhận.
+    await expectStructureQuestions(page, /^10(\D|$)/);
+    const check = await continueToReviewInUi(page, id);
     expect(check.status, `lỗi chặn: ${blockingCodes(check).join(", ")}`).toBe("VALID");
+    await expectValidPaths(page, 1, 1);
 
-    const { request, result } = await generateInUi(page, exam.id);
+    const { request, result } = await generateInUi(page, id);
     expect(request.target).toEqual({ kind: "EXAM" });
     const questions = expectWellFormedPaper(result);
     expect(result.paper.totalQuestions).toBe(10);
