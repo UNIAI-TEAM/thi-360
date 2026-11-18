@@ -109,3 +109,20 @@ describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có tha
     expect(body.maxScore ?? null).toBeNull();
   });
 });
+
+describe("Thông tin chung của bài ôn: đi vòng phạm vi (FE-R2-1)", () => {
+  it("Toàn bài rồi Theo môn: thang vẫn trống, không bắt buộc, lưu không qua hộp xác nhận, maxScore null", async () => {
+    const { user, scale } = await renderGeneral();
+    await user.click(screen.getByRole("radio", { name: /^Toàn bài/ }));
+    await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
+    expect(scale).toHaveValue("");
+    expect(scale).not.toBeRequired();
+
+    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    await waitFor(() => expect(server.calls("PATCH", EXAM_PATH)).toHaveLength(1));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const body = server.calls("PATCH", EXAM_PATH)[0]!.body as Wire;
+    expect(body).toMatchObject({ scope: "SUBJECT", subjectCode: "MATH", confirmReplace: false });
+    expect(body.maxScore ?? null).toBeNull();
+  });
+});
