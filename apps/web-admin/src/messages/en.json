@@ -4211,6 +4211,7 @@
             "type": "Question type"
           },
           "onPaper": "{same, select, yes {Question {from, number}} other {Questions {from, number}–{to, number}}}",
+          "perSetNote": "The table above is for one set; the total covers all {sets, number} sets.",
           "position": "{same, select, yes {Position {from, number}} other {Positions {from, number}–{to, number}}}",
           "shape": {
             "any": "Any",

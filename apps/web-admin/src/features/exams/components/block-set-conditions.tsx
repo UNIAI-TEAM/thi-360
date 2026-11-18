@@ -7,7 +7,7 @@ import { useId, useMemo, useState, type ReactNode } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import { QUESTION_TYPES, type ContentReference, type KnowledgeRef, type QuestionType } from "@/features/content/types";
-import { blockPointsEach, isFlexibleSet } from "../matrix";
+import { blockPointsEach, countOf, isFlexibleSet } from "../matrix";
 import type { BlockSlot, ChildCondition, ItemShape, QuestionBlock } from "../types";
 import {
   childConditionIssue,
@@ -392,7 +392,8 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
 
 /**
  * Bảng chỉ đọc "Loại câu hỏi theo vị trí trong chùm" (bản vẽ `BaiDocDungChung2B`, R-132): dải vị trí, câu trên đề, dạng, hình
- * dạng, lệnh hỏi, điểm và dòng tổng của chùm. Lệnh hỏi ở dòng tổng do máy chủ tính (`commandCount`); chưa có thì bỏ phần lệnh.
+ * dạng, lệnh hỏi, điểm của MỘT chùm; dòng tổng tính cho CẢ khối (số câu của khối, điểm = số câu × điểm mỗi câu, lệnh hỏi do
+ * máy chủ tính theo cả khối `commandCount`; chưa có thì bỏ phần lệnh). Khối nhiều chùm có một dòng nói bảng là của một chùm.
  */
 function PositionTable({ block, commandCount }: { block: QuestionBlock; commandCount: number | null }) {
   const t = useTranslations("exams.structure.blockForm.positions");
@@ -402,8 +403,9 @@ function PositionTable({ block, commandCount }: { block: QuestionBlock; commandC
   if (rows.length === 0) return null;
   const from = block.positionRange?.from;
   const single = (block.setCount ?? 1) <= 1 && from !== undefined;
-  const questions = rows.reduce((sum, row) => sum + row.questions, 0);
-  const points = Math.round(rows.reduce((sum, row) => sum + row.points, 0) * 10_000) / 10_000;
+  const questions = countOf(block);
+  const points = Math.round(questions * blockPointsEach(block) * 10_000) / 10_000;
+  const sets = block.setCount ?? 1;
   const shapeText = (row: (typeof rows)[number]) =>
     row.itemShape?.statements
       ? t("shape.statements", { count: row.itemShape.statements })
@@ -447,6 +449,7 @@ function PositionTable({ block, commandCount }: { block: QuestionBlock; commandC
           </tbody>
         </table>
       </div>
+      {sets >= 2 && <p className="text-caption text-text-muted">{t("perSetNote", { sets })}</p>}
       <p className="text-label font-semibold text-text">
         {commandCount !== null ? t("total", { questions, commands: commandCount, points }) : t("totalNoCommands", { questions, points })}
       </p>

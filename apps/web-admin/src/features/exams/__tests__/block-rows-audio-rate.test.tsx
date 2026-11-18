@@ -203,4 +203,33 @@ describe("chùm trộn dạng (R-132)", () => {
     renderEditor(mixed, { commandCount: null });
     expect(screen.getByText("8 câu · 48 điểm")).toBeInTheDocument();
   });
+
+  it("R1-1 · khối 2 chùm × 4: bảng là của một chùm, dòng tổng tính cả khối 8 câu, 8 điểm với lệnh của máy chủ", () => {
+    const twoSets = block({
+      setCount: 2,
+      setSize: 4,
+      questionCount: 8,
+      requiredPointsPerQuestion: 1,
+      childConditions: [
+        { from: 1, to: 2, nodeIds: [], answerType: "TRUE_FALSE", itemShape: { statements: 4 } },
+        { from: 3, to: 4, nodeIds: [], answerType: "SINGLE_CHOICE", itemShape: { options: 4 } },
+      ],
+    });
+    renderEditor(twoSets, { commandCount: 20 });
+    expect(screen.getByText("Bảng trên là của một chùm; dòng tổng tính cho cả 2 chùm.")).toBeInTheDocument();
+    expect(screen.getByText("8 câu · 20 lệnh · 8 điểm")).toBeInTheDocument();
+  });
+
+  it("R1-1 · vị trí chưa khai dạng: dòng tổng vẫn theo số câu của khối, không theo các vị trí đã khai", () => {
+    const partial = block({
+      setCount: 1,
+      setSize: 4,
+      questionCount: 4,
+      requiredPointsPerQuestion: 2,
+      childConditions: [{ from: 1, to: 2, nodeIds: [], answerType: "SINGLE_CHOICE" }],
+    });
+    renderEditor(partial, { commandCount: null });
+    expect(screen.getByText("4 câu · 8 điểm")).toBeInTheDocument();
+    expect(screen.queryByText(/chùm; dòng tổng/)).not.toBeInTheDocument();
+  });
 });

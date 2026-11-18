@@ -4211,6 +4211,7 @@
             "type": "Loại câu hỏi"
           },
           "onPaper": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+          "perSetNote": "Bảng trên là của một chùm; dòng tổng tính cho cả {sets, number} chùm.",
           "position": "{same, select, yes {Vị trí {from, number}} other {Vị trí {from, number}–{to, number}}}",
           "shape": {
             "any": "Không giới hạn",
