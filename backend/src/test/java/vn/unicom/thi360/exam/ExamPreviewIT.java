@@ -290,6 +290,25 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void selectedOptionBlockReportsReferenceCompliance() throws Exception {
+        Subject subject = subject();
+        UUID questionId = question(subject, "SINGLE_CHOICE", "option question", false);
+        jdbc.update("update questionbank.question set grade_item_id='00000000-0000-7000-8200-000000000303' where id=?", questionId);
+        UUID examId = exam("""
+                [{"id":"p","order":1,"name":"Choice","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                  "options":[{"id":"option","kind":"SUBJECT","code":"%s","blocks":[
+                    {"id":"option-block","questionType":"SINGLE_CHOICE","questionCount":1,
+                     "matrix":{"mode":"SEPARATE","unit":"COUNT","gradeEnforcement":"REFERENCE","basis":"QUESTION",
+                               "byGrade":[{"code":"G12","value":1}]}}]}]}]
+                """.formatted(subject.code()));
+        JsonNode result = preview(examId, "{\"target\":{\"kind\":\"PATH\",\"pathId\":\"option\"},\"seed\":1}");
+        assertThat(result.path("compliance")).anyMatch(row -> "BLOCK:option-block".equals(row.path("scope").asText())
+                && "GRADE:G12".equals(row.path("criterion").asText())
+                && "REFERENCE".equals(row.path("enforcement").asText())
+                && row.path("required").asInt() == 1 && row.path("actual").asInt() == 1);
+    }
+
+    @Test
     void previewReturnsAuthoredAndShuffledOptionOrders() throws Exception {
         Subject subject = subject();
         UUID shuffled = question(subject, "SINGLE_CHOICE", "shuffle", false);

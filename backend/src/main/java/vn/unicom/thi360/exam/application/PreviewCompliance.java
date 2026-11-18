@@ -36,7 +36,11 @@ final class PreviewCompliance {
             index(part.subjectPool(), sections, blocks);
             for (ExamPartOption option : part.options()) {
                 index(option.sections(), sections, blocks);
-                for (QuestionBlock block : option.blocks()) blocks.put(block.id(), block);
+                if (!option.blocks().isEmpty()) {
+                    ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), null,
+                            null, null, null, null, option.blocks());
+                    index(List.of(synthetic), sections, blocks);
+                }
             }
         }
         List<SectionOnPath> selected = new ArrayList<>(path.sections());

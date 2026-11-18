@@ -22,6 +22,25 @@ class PreviewComplianceTest {
     private final ExamStructureCodec codec = new ExamStructureCodec(new ObjectMapper());
 
     @Test
+    void selectedOptionBlockIncludesReferenceMatrix() {
+        var document = codec.read("""
+                {"parts":[{"id":"part","participation":{"mode":"CHOICE","choose":1},
+                  "options":[{"id":"option","kind":"SUBJECT","code":"EN","blocks":[
+                    {"id":"block","questionType":"SINGLE_CHOICE","questionCount":1,
+                     "matrix":{"mode":"SEPARATE","unit":"COUNT","gradeEnforcement":"REFERENCE",
+                       "byGrade":[{"code":"G12","value":1}]}}]}]}]}
+                """);
+        UUID id = UUID.randomUUID();
+        var section = new SectionOnPath("EN", "option:blocks", 1, null, List.of(GroupQuota.single("block", 1)));
+        var rows = PreviewCompliance.evaluate(document, SolvePath.of(0, List.of(section)),
+                Map.of("block", new GroupWitness("block", List.of(new QuestionPick(id.toString(), 1)))),
+                Map.of(new QuestionSourcePort.VersionKey(id, 1), candidate(id, "G12", List.of())),
+                List.of(), List.of());
+        assertThat(rows).contains(new Compliance("GRADE:G12", "BLOCK:block", BigDecimal.ONE, BigDecimal.ONE,
+                "REFERENCE", "QUESTION", null));
+    }
+
+    @Test
     void referenceGradeUsesFullQuotaLessDroppedContribution() {
         var document = codec.read("""
                 {"parts":[{"id":"part","sections":[{"id":"english","subjectCode":"EN","questionCount":2,
