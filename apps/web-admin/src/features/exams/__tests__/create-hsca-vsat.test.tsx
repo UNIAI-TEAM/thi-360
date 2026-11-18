@@ -119,6 +119,13 @@ const TEMPLATES: Wire[] = [
     part(1, "Phần I", 12, [section("MATH", 12)]),
     part(2, "Phần II", 4, [section("MATH", 4)]),
   ]),
+  // D25: Ngữ văn và Tiếng Anh THPTQG là mẫu môn một phần tính giờ theo phần (mẫu thật V202611181305).
+  wireTemplate("THPTQG_LITERATURE", { kindCode: "THPTQG", subjectCode: "LITERATURE", timing: "PER_PART", maxScore: 10, durationMinutes: 120 }, [
+    part(1, "Ngữ văn", 7, [section("LITERATURE", 7, {}, [block("Đọc hiểu", 5, { questionType: "QUESTION_SET" })])], { durationMinutes: 120 }),
+  ]),
+  wireTemplate("THPTQG_ENGLISH", { kindCode: "THPTQG", subjectCode: "ENGLISH", timing: "PER_PART", maxScore: 10, durationMinutes: 50 }, [
+    part(1, "Tiếng Anh", 40, [section("ENGLISH", 40, {}, [block("Đọc điền", 6, { questionType: "QUESTION_SET" })])], { durationMinutes: 50 }),
+  ]),
 ];
 
 /** Hồ sơ kỳ thi của BE-16 (chưa có trong danh mục mẫu): H-SCA, V-SAT một đồng hồ chung cho cả môn; THPTQG thêm Theo phần. */
@@ -318,6 +325,28 @@ describe("bước 1 cho H-SCA, V-SAT: thời lượng theo mẫu và phạm vi",
     await screen.findByText(message, { selector: "p" });
     expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
   }, 30_000);
+  it("dòng 6 (D25) · THPTQG Ngữ văn, Tiếng Anh theo phần: mẫu môn một phần PER_PART giữ thời lượng, ô nhập được", async () => {
+    const user = await renderPage();
+    await pickKind(user, "THPTQG");
+    await pickSubject(user, "Ngữ văn");
+    await chooseScope(user, /^Theo phần/);
+    // Một phần duy nhất nên chọn sẵn; mẫu PER_PART mang sẵn thời lượng riêng của phần.
+    const litDuration = await screen.findByRole("textbox", { name: "Thời lượng của Ngữ văn" });
+    await waitFor(() => expect(litDuration).toHaveValue("120"));
+    expect(litDuration).not.toHaveAttribute("readonly");
+    expect(litDuration).toBeEnabled();
+    await user.clear(litDuration);
+    await user.type(litDuration, "130");
+    await waitFor(() => expect(litDuration).toHaveValue("130"));
+
+    // Đổi môn sau khi sửa ô thì bảng hỏi nạp lại (H35).
+    await pickSubject(user, "Tiếng Anh");
+    await user.click(await screen.findByRole("button", { name: "Đổi và nạp lại" }));
+    const engDuration = await screen.findByRole("textbox", { name: "Thời lượng của Tiếng Anh" });
+    await waitFor(() => expect(engDuration).toHaveValue("50"));
+    expect(engDuration).toBeEnabled();
+  }, 30_000);
+
 });
 
 describe("bước 1 cho H-SCA, V-SAT: khóa dòng của mẫu (H42)", () => {
