@@ -28,7 +28,7 @@ class ExamTemplateFlagsCheckIT extends AbstractIntegrationTest {
 
     @Test
     void unpublishableSubjectSavesDraftFailsTheCheckAndRefusesPublish() throws Exception {
-        jdbc.update("UPDATE exam.exam_template SET publishable = false WHERE code = 'THPTQG_LITERATURE_2025'");
+        // The real seed marks THPTQG_LITERATURE_2025 publishable=false; no override needed.
         String url = url("TEST-THPTQG-02");
 
         JsonNode structure = json(get(url + "/structure").with(asUser(Permissions.EXAM_VIEW)), 200);
@@ -41,14 +41,17 @@ class ExamTemplateFlagsCheckIT extends AbstractIntegrationTest {
         JsonNode result = json(post(url + "/check").with(asUser(Permissions.EXAM_MODIFY)), 200);
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
         assertThat(codes(result)).contains("TEMPLATE_NOT_PUBLISHABLE");
+        assertThat(result.path("paths")).isNotEmpty();
         assertThat(result.path("paths").findValuesAsText("result")).doesNotContain("VALID");
 
         JsonNode exam = json(get(url).with(asUser(Permissions.EXAM_VIEW)), 200);
         String publish = "{\"pathIds\":[\"default\"],\"expectedRevision\":" + exam.path("revision").asLong() + "}";
-        mockMvc.perform(post(url + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+        JsonNode refused = mapper.readTree(mockMvc.perform(post(url + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(publish))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isUnprocessableEntity())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(refused.path("code").asText()).isEqualTo("PATH_NOT_VALID");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?::uuid",
                 Long.class, exam.path("id").asText())).isZero();
     }

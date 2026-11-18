@@ -361,8 +361,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
 
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
-        // D11: THPTQG Ngữ văn is not publishable. Idempotent once the seeded template itself carries the flag.
-        jdbc.update("UPDATE exam.exam_template SET publishable = false WHERE code = 'THPTQG_LITERATURE_2025'");
+        // D11: THPTQG Ngữ văn is not publishable; the seeded template itself carries the flag.
         SoftAssertions softly = new SoftAssertions();
         List<String> valid = List.of("TEST-HSA-01", "TEST-HSA-02", "TEST-HSA-03", "TEST-HSA-04",
                 "TEST-QDA-01", "TEST-VACT-01", "TEST-SPT-01", "TEST-SP2E-01", "TEST-SP2E-02",
