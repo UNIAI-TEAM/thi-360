@@ -86,6 +86,39 @@ class VactThptSampleDataIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void competencySnapshotsMatchRelationalValuesForRootAndChild() {
+        for (String code : List.of("SEED-BE14-VACT-TOAN-NONE-1",
+                "SEED-BE14-VACT-TOAN-NONE-3-1-0")) {
+            assertThat(jdbc.queryForObject("""
+                    select count(*) from questionbank.question q
+                    join questionbank.question_version v on v.question_id = q.id and v.version_no = 1
+                    join catalog.catalog_item c on c.id = q.competency_item_id
+                    where q.code = ? and c.code = 'VACT-TOAN'
+                      and v.snapshot->>'competencyItemId' = q.competency_item_id::text
+                    """, Integer.class, code)).as(code).isEqualTo(1);
+        }
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question q
+                join questionbank.question_version v on v.question_id = q.id and v.version_no = 1
+                where q.code = 'SEED-MATH-G10-NB-SC-001'
+                  and q.competency_item_id is null and v.snapshot->>'competencyItemId' is null
+                """, Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void untaggedSamplesHaveNoTags() {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question
+                where code like 'SEED-BE14-%-NONE-%'
+                """, Integer.class)).isPositive();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question q
+                join questionbank.question_tag t on t.question_id = q.id
+                where q.code like 'SEED-BE14-%-NONE-%'
+                """, Integer.class)).isZero();
+    }
+
     private void assertSingles(String subject, String tag, String competency, int minimum) {
         var filter = filter(subject, QuestionType.SINGLE_CHOICE, tag == null ? List.of() : List.of(tag),
                 competency, "10", null);
