@@ -9,20 +9,23 @@ import { useCallback, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
+import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
 import { yearsNeedConfirmation } from "../check";
+import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { examTabFromPathname, examTabHref } from "../editor-tabs";
-import { combinationsForKind } from "../create-exam-schema";
+import { addPoolSection } from "../coded-part";
 import type { MatrixAxes } from "../matrix";
 import { useExam, useExamStructure, useExamStructureSummary, useExamTemplates, useUpdateExamStructure } from "../queries";
 import { useRunExamCheck } from "../review-queries";
+import { ExamsApiError } from "../review-api";
 import type { ExamCheckResult, RunExamCheckRequest } from "../review-types";
-import type { ExamDetail, ExamPart, ExamSection, ExamStructure, ExamTemplate } from "../types";
+import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamStructure, ExamTemplate } from "../types";
 import { BlockEditor } from "./block-editor";
+import type { TopicQuotaServerError } from "./topic-quota-table";
 import {
   selectionScope,
   addBlock,
   addBranch,
-  attachCombination,
   confirmOption,
   defaultSelection,
   ENGLISH_CODE,
@@ -48,6 +51,7 @@ import {
   validateDraft,
 } from "./exam-structure-draft";
 import { ExamEditorActions } from "./exam-editor-actions";
+import { ExamOverviewPanel } from "./exam-overview-panel";
 import { optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
 import { describeStructureChanges } from "./exam-structure-changes";
 import { ExamStructureLeaveDialog, type LeaveDestination } from "./exam-structure-leave-dialog";
@@ -58,14 +62,16 @@ import { ExamStructureSummaryRegion } from "./exam-structure-summary";
 import { checkIssueTarget } from "./exam-structure-check-result";
 import { StructureVersionPicker } from "./structure-version-picker";
 import { SubjectChoiceNav } from "./subject-choice-nav";
+import { ReviewSubjectPanel } from "./review-subject-panel";
 import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 
-const SELECTION_PARAMS = { part: "part", option: "option", section: "section", block: "block" } as const;
+const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block" } as const;
 
 function readSelectionFromUrl(): StructureSelection | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const blockId = params.get(SELECTION_PARAMS.block);
+  if (params.get(SELECTION_PARAMS.exam)) return { kind: "exam" };
   if (blockId) return { kind: "block", blockId };
   const sectionId = params.get(SELECTION_PARAMS.section);
   if (sectionId) return { kind: "section", sectionId };
@@ -78,11 +84,13 @@ function readSelectionFromUrl(): StructureSelection | null {
 /** Ghi mục đang mở vào `?block=` / `?section=` / `?option=&part=` / `?part=` (giữ tham số xem trạng thái của màn) để tải lại hoặc gửi đường dẫn vẫn mở đúng chỗ. */
 function writeSelectionToUrl(selection: StructureSelection): void {
   const url = new URL(window.location.href);
+  url.searchParams.delete(SELECTION_PARAMS.exam);
   url.searchParams.delete(SELECTION_PARAMS.block);
   url.searchParams.delete(SELECTION_PARAMS.section);
   url.searchParams.delete(SELECTION_PARAMS.option);
   url.searchParams.delete(SELECTION_PARAMS.part);
-  if (selection.kind === "block") url.searchParams.set(SELECTION_PARAMS.block, selection.blockId);
+  if (selection.kind === "exam") url.searchParams.set(SELECTION_PARAMS.exam, "1");
+  else if (selection.kind === "block") url.searchParams.set(SELECTION_PARAMS.block, selection.blockId);
   else if (selection.kind === "section") url.searchParams.set(SELECTION_PARAMS.section, selection.sectionId);
   else {
     url.searchParams.set(SELECTION_PARAMS.part, selection.partId);
@@ -101,10 +109,11 @@ export function ExamStructureView({ examId }: { examId: string }) {
   const structureQuery = useExamStructure(examId);
   const examQuery = useExam(examId);
   const referenceQuery = useContentReference();
-  // Mẫu cấu trúc chỉ để hiện ghi chú chuyên môn và biết phần tự chọn có nhánh Tiếng Anh; không chặn trang khi lỗi.
+  // Mẫu cấu trúc quyết định `fixedCounts` (khóa số câu) và bài ôn (màn rút gọn): chưa tải xong hoặc lỗi thì chưa cho sửa, kẻo
+  // người dùng sửa số câu bị khóa hoặc thấy màn đầy đủ của bài ôn rồi bị máy chủ từ chối (R1-27).
   const templatesQuery = useExamTemplates();
 
-  if (structureQuery.isPending || referenceQuery.isPending || examQuery.isPending) {
+  if (structureQuery.isPending || referenceQuery.isPending || examQuery.isPending || templatesQuery.isPending) {
     return (
       <div role="status" aria-label={common("loading")} className="grid grid-cols-1 gap-4 lg:grid-cols-[18.75rem_minmax(0,1fr)]">
         <Skeleton className="h-96" />
@@ -116,7 +125,8 @@ export function ExamStructureView({ examId }: { examId: string }) {
     );
   }
 
-  if (structureQuery.isError || referenceQuery.isError || examQuery.isError) {
+  // Lần làm mới nền lỗi khi dữ liệu đã có trong bộ nhớ đệm không được gỡ trình sửa (mất bản nháp chưa lưu, R2-02).
+  if (structureQuery.isError || referenceQuery.isError || examQuery.isError || (templatesQuery.isError && templatesQuery.data === undefined)) {
     return (
       <Card>
         <EmptyState
@@ -131,6 +141,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
                 void structureQuery.refetch();
                 void referenceQuery.refetch();
                 void examQuery.refetch();
+                void templatesQuery.refetch();
               }}
             >
               {common("retry")}
@@ -173,7 +184,7 @@ export function ExamStructureView({ examId }: { examId: string }) {
 
 function StructureEditor({
   exam,
-  structure,
+  structure: loadedStructure,
   syncKey,
   reference,
   templates,
@@ -186,6 +197,13 @@ function StructureEditor({
   templates: readonly ExamTemplate[];
   template: ExamTemplate | null;
 }) {
+  /** Bài ôn (R-22): màn rút gọn, một phần, một môn, một nhóm. */
+  const reviewMode = template?.buildMode === "REVIEW";
+  // Bài ôn mới tạo có nhóm duy nhất chưa khai số câu: điền số câu bước 1 để màn, tổng và nội dung lưu cùng một số (V-01b).
+  const structure = useMemo(
+    () => (reviewMode ? { ...loadedStructure, parts: fillReviewCounts(loadedStructure.parts) } : loadedStructure),
+    [loadedStructure, reviewMode],
+  );
   const t = useTranslations("exams.structure");
   const examsT = useTranslations("exams");
   const format = useFormatter();
@@ -197,17 +215,33 @@ function StructureEditor({
   const [checkResult, setCheckResult] = useState<ExamCheckResult | null>(null);
 
   const [draft, setDraft] = useState<ExamPart[]>(structure.parts);
+  const [quotas, setQuotas] = useState<ExamQuota[]>(structure.examQuotas ?? []);
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
+  const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
-  const dirty = JSON.stringify(draft) !== baseline;
+  const draftJson = JSON.stringify(draft);
+  const dirty = draftJson !== baseline || JSON.stringify(quotas) !== quotaBaseline;
   // Dữ liệu mới từ máy chủ (sau khi lưu, hoặc lane khác làm mới) chỉ thay bản nháp khi không còn gì chưa lưu.
   if (syncKey !== syncedKey) {
     setSyncedKey(syncKey);
     if (!dirty) {
       setDraft(structure.parts);
       setBaseline(JSON.stringify(structure.parts));
+      setQuotas(structure.examQuotas ?? []);
+      setQuotaBaseline(JSON.stringify(structure.examQuotas ?? []));
     }
   }
+  // Lỗi 422 của khối chỉ tiêu chủ đề (H20) chỉ hiện khi bản nháp (cả chỉ tiêu cấp bài) còn đúng như lúc lưu lỗi; sửa gì thì lỗi này
+  // không còn đúng.
+  const draftSnapshot = `${draftJson}\n${JSON.stringify(quotas)}`;
+  const [topicFailure, setTopicFailure] = useState<{ code: TopicQuotaServerError; snapshot: string } | null>(null);
+  const topicError = topicFailure && topicFailure.snapshot === draftSnapshot ? topicFailure.code : null;
+  // Lỗi 422 `EXAM_QUOTA_SCOPE_INVALID` của chỉ tiêu cấp bài: hiện ở khối chỉ tiêu cấp bài khi danh sách còn như lúc lưu lỗi.
+  const [quotaScopeFailure, setQuotaScopeFailure] = useState<string | null>(null);
+  const quotaScopeError = quotaScopeFailure !== null && quotaScopeFailure === JSON.stringify(quotas);
+  // Tổng số câu của mục đã xác nhận sau khi đổi (R-121): bảng nhập theo tỷ lệ chờ xác nhận khi tổng khác số này.
+  const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
+  const baselineParts = useMemo(() => JSON.parse(baseline) as ExamPart[], [baseline]);
 
   const [selection, setSelection] = useState<StructureSelection | null>(() => {
     const fromUrl = readSelectionFromUrl();
@@ -265,7 +299,6 @@ function StructureEditor({
     () => reference.competencies.filter((competency) => competency.examKindCodes.includes(exam.kind)),
     [reference, exam.kind],
   );
-  const kindCombinations = useMemo(() => combinationsForKind(reference.combinations, exam.kind), [reference, exam.kind]);
   const branchSubjects = reference.subjects;
   const yearsPending = yearsNeedConfirmation(exam);
 
@@ -284,12 +317,34 @@ function StructureEditor({
     return status === 412 ? t("saveConflict") : status === 422 ? t("saveInvalid") : t("saveError");
   };
 
+  const discardAll = () => {
+    setDraft(JSON.parse(baseline) as ExamPart[]);
+    setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
+    setConfirmedCounts({});
+    setTopicFailure(null);
+  };
+
   const runSave = (options: { onSaved?: () => void; onFailed?: (message: string) => void } = {}) => {
+    // Bảng phân bổ còn lỗi người dùng phải sửa (tổng tỷ lệ khác 100%, quá 8 chỉ tiêu): mở đúng chỗ, không gửi lên máy chủ.
+    const blocker = saveBlockers(draft, axes, (sectionId) => confirmedCounts[sectionId] ?? savedCountOf(sectionId), reviewMode)[0];
+    const quotaBlocked = blocker ? false : examQuotaBlockers(quotas).length > 0;
+    if (blocker || quotaBlocked) {
+      const found = blocker?.kind === "TOTAL_CHANGE" ? findSection(draft, blocker.sectionId) : null;
+      const message = found ? t("totalChangeBlocked", { subject: lookup.subject(found.section.subjectCode) }) : t("allocationBlocked");
+      if (!blocker) selectNow({ kind: "exam" });
+      else selectNow(blocker.blockId ? { kind: "block", blockId: blocker.blockId } : { kind: "section", sectionId: blocker.sectionId });
+      if (!options.onFailed) notify.error(message);
+      announce(message);
+      options.onFailed?.(message);
+      return;
+    }
     save.mutate(
-      { parts: draft, expectedRevision: exam.revision },
+      { parts: draft, examQuotas: quotas, expectedRevision: exam.revision },
       {
         onSuccess: () => {
-          setBaseline(JSON.stringify(draft));
+          setBaseline(draftJson);
+          setQuotaBaseline(JSON.stringify(quotas));
+          setTopicFailure(null);
           // Lưu làm kết quả kiểm tra cũ hết hiệu lực: các môn đã đổi chuyển thành "Cần kiểm tra lại".
           setCheckResult(null);
           const message = exam.check.status === "UNCHECKED" ? t("saved") : t("savedRecheck");
@@ -299,6 +354,17 @@ function StructureEditor({
         },
         onError: (error) => {
           const message = saveErrorText(error);
+          // 422 của khối chỉ tiêu chủ đề hiện ngay ở khối đó (H20), không chỉ ở thông báo nổi: mở nhóm, môn đang quá hạn mức.
+          const topic = (error instanceof ExamsApiError ? error.fieldErrors : []).find((item) => /topicQuotas/.test(item.field));
+          if (topic) {
+            setTopicFailure({ code: topic.code === "PERCENT_OUT_OF_RANGE" ? "PERCENT_OUT_OF_RANGE" : "MAX_TOPIC_QUOTAS", snapshot: draftSnapshot });
+            const over = saveBlockers(draft, axes).find((item) => item.kind === "TOPIC_MAX");
+            if (over) selectNow(over.blockId ? { kind: "block", blockId: over.blockId } : { kind: "section", sectionId: over.sectionId });
+          }
+          if (error instanceof ExamsApiError && error.code === "EXAM_QUOTA_SCOPE_INVALID") {
+            setQuotaScopeFailure(JSON.stringify(quotas));
+            selectNow({ kind: "exam" });
+          }
           // Có `onFailed` thì nơi gọi tự hiện lỗi (ví dụ `role="alert"` trong hộp thoại chuyển mục); không toast kẻo trùng.
           if (!options.onFailed) notify.error(message);
           announce(message);
@@ -353,12 +419,13 @@ function StructureEditor({
   };
   const leaveAfterSave = () => runSave({ onSaved: proceedLeave, onFailed: setLeaveError });
   const leaveAfterDiscard = () => {
-    setDraft(JSON.parse(baseline) as ExamPart[]);
+    discardAll();
     proceedLeave();
   };
 
   /** Tên môn hoặc phần của một mục để gọi trong hộp thoại chuyển mục; nhóm gọi theo tên nhóm. */
   const selectionName = (parts: readonly ExamPart[], target: StructureSelection, scope: boolean): string | null => {
+    if (target.kind === "exam") return t("list.overview");
     if (target.kind === "part") return parts.find((part) => part.id === target.partId)?.name ?? null;
     if (target.kind === "option") {
       const option = parts.find((part) => part.id === target.partId)?.options.find((item) => item.id === target.optionId);
@@ -392,6 +459,14 @@ function StructureEditor({
   const selectedPart =
     current?.kind === "part" || current?.kind === "option" ? draft.find((part) => part.id === current.partId) : null;
   const sectionStates = checkResult?.sectionStates ?? structure.sectionStates ?? null;
+  /** Số câu của mục ở bản đã lưu (mốc để phát hiện tổng đổi, R-121). */
+  const savedCountOf = (sectionId: string): number | null => findSection(baselineParts, sectionId)?.section.questionCount ?? null;
+  /** "Đủ nguồn theo ma trận" chỉ khi môn đã kiểm tra đạt và chưa sửa gì kể từ bản đã lưu (R-122 dòng 8). */
+  const sourceVerified = (section: ExamSection): boolean => {
+    if (sectionStates?.find((item) => item.sectionId === section.id)?.state !== "CHECKED") return false;
+    const saved = findSection(baselineParts, section.id)?.section;
+    return saved !== undefined && JSON.stringify(saved) === JSON.stringify(section);
+  };
   const summaryLoad = summaryQuery.isPending ? "loading" : summaryQuery.data ? "ready" : "unavailable";
   const checkSectionId = sectionContext?.section.id ?? blockContext?.section.id ?? null;
   const checkRequest: Omit<RunExamCheckRequest, "examId"> | null = checkSectionId
@@ -435,16 +510,16 @@ function StructureEditor({
               label={t("summary.questions")}
               value={
                 totals.printedQuestions !== totals.totalQuestions
-                  ? t("summary.questionsPrinted", { count: totals.totalQuestions, printed: totals.printedQuestions })
-                  : format.number(totals.totalQuestions)
+                  ? t("summary.questionsPrinted", { count: roundForDisplay(totals.totalQuestions), printed: roundForDisplay(totals.printedQuestions) })
+                  : format.number(totals.totalQuestions, DISPLAY_NUMBER_FORMAT)
               }
             />
             <SummaryItem
               label={t("summary.duration")}
               value={
                 shared
-                  ? t("summary.sharedMinutes", { count: totals.totalMinutes })
-                  : t("summary.minutes", { count: totals.totalMinutes })
+                  ? t("summary.sharedMinutes", { count: roundForDisplay(totals.totalMinutes) })
+                  : t("summary.minutes", { count: roundForDisplay(totals.totalMinutes) })
               }
             />
             <SummaryItem
@@ -452,10 +527,10 @@ function StructureEditor({
               value={
                 exam.maxScore !== null
                   ? t("summary.pointsOfScale", {
-                      points: format.number(totals.totalPoints, { maximumFractionDigits: 2 }),
-                      scale: format.number(exam.maxScore, { maximumFractionDigits: 2 }),
+                      points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
+                      scale: format.number(exam.maxScore, DISPLAY_NUMBER_FORMAT),
                     })
-                  : format.number(totals.totalPoints, { maximumFractionDigits: 2 })
+                  : format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT)
               }
               warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
             />
@@ -476,6 +551,11 @@ function StructureEditor({
           onApplied={(parts) => {
             setDraft(parts);
             setBaseline(JSON.stringify(parts));
+            // Chỉ tiêu cấp bài đang sửa thuộc mẫu cũ: bỏ để lần tải lại cấu trúc kế tiếp đưa chỉ tiêu của mẫu mới vào, không
+            // để lần lưu sau ghi đè `examQuotas` của mẫu mới (R1-10).
+            setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
+            setConfirmedCounts({});
+            setTopicFailure(null);
             // Phiên bản mới làm kết quả kiểm tra cũ hết hiệu lực: huy hiệu trạng thái tính lại từ đầu.
             setCheckResult(null);
           }}
@@ -509,6 +589,7 @@ function StructureEditor({
           issues={issues}
           names={names}
           onSelect={select}
+          showOverview={!reviewMode}
         />
         <div className="flex min-w-0 flex-col gap-4">
           {sectionContext?.option?.kind === "SUBJECT_CHOICE" && (
@@ -522,7 +603,38 @@ function StructureEditor({
               onOpenSection={(sectionId) => select({ kind: "section", sectionId })}
             />
           )}
-          {sectionContext ? (
+          {current?.kind === "exam" ? (
+            <ExamOverviewPanel
+              examName={exam.name}
+              summary={t("overviewSummary", {
+                count: roundForDisplay(totals.totalQuestions),
+                minutes: roundForDisplay(totals.totalMinutes),
+                shared: shared ? "yes" : "no",
+                points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
+              })}
+              parts={draft}
+              quotas={quotas}
+              onQuotas={setQuotas}
+              names={names}
+              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+              scopeError={quotaScopeError}
+              topicError={topicError}
+              combinations={structure.combinations ?? []}
+            />
+          ) : sectionContext && rendersReviewPanel(sectionContext.section, reviewMode) ? (
+            <ReviewSubjectPanel
+              key={sectionContext.section.id}
+              context={sectionContext}
+              subjectName={lookup.subject(sectionContext.section.subjectCode)}
+              axes={axes}
+              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+              reference={reference}
+              onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
+              step1Count={sectionContext.part.questionCount}
+              headerAction={checkAction}
+              topicError={topicError}
+            />
+          ) : sectionContext ? (
             <ExamStructureSubjectPanel
               key={sectionContext.section.id}
               context={sectionContext}
@@ -534,9 +646,19 @@ function StructureEditor({
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
               onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
               headerAction={checkAction}
+              countLocked={template?.fixedCounts === true}
+              onCount={(count) => setDraft((parts) => setSectionCount(parts, sectionContext.location, count))}
+              sourceVerified={sourceVerified(sectionContext.section)}
+              topicError={topicError}
+              confirmedCount={confirmedCounts[sectionContext.section.id] ?? savedCountOf(sectionContext.section.id)}
+              onConfirmCount={(count) => setConfirmedCounts((counts) => ({ ...counts, [sectionContext.section.id]: count }))}
+              examQuotas={quotas}
+              onExamQuotas={setQuotas}
+              examKind={exam.kind}
             />
           ) : blockContext ? (
             <BlockEditor
+              topicError={topicError}
               key={blockContext.block.id}
               block={blockContext.block}
               section={blockContext.section}
@@ -575,7 +697,14 @@ function StructureEditor({
               timing={exam.timing}
               sharedMinutes={exam.durationMinutes}
               names={names}
-              combinations={kindCombinations}
+              structureCombinations={structure.combinations ?? []}
+              axes={axes}
+              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+              countLocked={template?.fixedCounts === true}
+              onAddSubject={(subjectCode) => {
+                setDraft((parts) => addPoolSection(parts, selectedPart.id, subjectCode));
+                announce(t("subjectAdded", { subject: lookup.subject(subjectCode) }));
+              }}
               showEnglish={
                 selectedPart.options.some((option) => option.kind === "SUBJECT" && option.code === ENGLISH_CODE) ||
                 (selectedPart.sections.length === 0 &&
@@ -612,10 +741,6 @@ function StructureEditor({
               }
               onAddBlock={(optionId, section) => handleAddBlock({ partId: selectedPart.id, optionId, sectionId: section.id }, section)}
               onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
-              onAttachCombination={(combination) => {
-                setDraft((parts) => attachCombination(parts, selectedPart.id, combination));
-                announce(t("combinationAttached", { code: combination.code }));
-              }}
               onRemoveOption={(optionId) => {
                 const option = selectedPart.options.find((item) => item.id === optionId);
                 setDraft((parts) => removeOption(parts, selectedPart.id, optionId));
@@ -625,10 +750,11 @@ function StructureEditor({
               onSelectSection={(sectionId) => select({ kind: "section", sectionId })}
               sectionStates={sectionStates}
               headerAction={checkAction}
+              topicError={topicError}
             />
           ) : null}
           <ExamStructureSummaryRegion
-            summary={summaryQuery.data ?? null}
+            summary={reviewMode && JSON.stringify(loadedStructure.parts) !== JSON.stringify(structure.parts) ? null : (summaryQuery.data ?? null)}
             load={summaryLoad}
             dirty={dirty}
             local={{ allocated: totals.allocated, total: totals.totalQuestions, missing: totals.missing }}
@@ -648,7 +774,7 @@ function StructureEditor({
         description={t("discardDescription")}
         confirmLabel={t("discardConfirm")}
         onConfirm={() => {
-          setDraft(JSON.parse(baseline) as ExamPart[]);
+          discardAll();
           setConfirmDiscard(false);
           announce(t("discarded"));
         }}

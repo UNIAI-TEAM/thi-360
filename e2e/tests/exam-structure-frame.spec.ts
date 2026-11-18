@@ -20,8 +20,9 @@ test("sửa phần rồi chuyển phần: hộp thoại ba nút, Bỏ thay đổ
   await expect(list).toBeVisible();
 
   // Mở Phần 1 (chưa có thay đổi nên không hỏi), sửa điểm tối đa của phần. Nút phần là nút đầu của mỗi mục mức trên:
-  // chọn theo cấu trúc vùng danh sách, không theo tên (tên phần lấy từ mẫu, không còn tiền tố "Phần N").
-  const parts = list.locator(":scope > ol > li > button[data-list-item]");
+  // chọn theo cấu trúc vùng danh sách, không theo tên (tên phần lấy từ mẫu, không còn tiền tố "Phần N"). Mục đầu
+  // danh sách là "Tổng quan bài" (FE-3b), không phải phần.
+  const parts = list.locator(":scope > ol > li:not(:first-child) > button[data-list-item]");
   await parts.nth(0).click();
   const points = page.getByRole("textbox", { name: /Điểm tối đa của phần/ });
   await expect(points).toBeVisible();

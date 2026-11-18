@@ -51,32 +51,11 @@ describe("Cấu trúc theo bảy kỳ thi", () => {
     expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
   });
 
-  it("BCA: điểm phần và thang 100; tổ hợp chờ chuyên gia xác nhận được xác nhận tại chỗ", async () => {
-    const user = userEvent.setup();
+  it("BCA: điểm phần và thang 100", async () => {
     openStructure("ex-bca-f-001", "?part=part-b3");
     expect(await screen.findByRole("heading", { name: "Phần 3 · Tự chọn" })).toBeInTheDocument();
     expect(screen.getByText("100 / 100 điểm")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("15");
-    expect(screen.getAllByText("Chờ chuyên gia xác nhận").length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: /^Xác nhận số câu của CA4/ }));
-    expect(screen.queryByRole("button", { name: /^Xác nhận số câu của CA4/ })).not.toBeInTheDocument();
-    expect(screen.getAllByText("Chuyên gia đã xác nhận")).toHaveLength(4);
-  });
-
-  it("QDA: không còn nút sinh tổ hợp; gắn tổ hợp danh mục QD02 vào phần tự chọn", async () => {
-    // HSA đã chuyển sang một phương án chọn môn; QDA, BCA giữ màn tổ hợp (gắn từ danh mục, không sinh).
-    const user = userEvent.setup();
-    openStructure("ex-qda-f-001", "?part=" + backend.app("ex-qda-f-001").parts[2]!.id);
-    expect(await screen.findByRole("heading", { name: "Phần 3 · Khoa học hoặc Tiếng Anh" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Sinh tổ hợp" })).not.toBeInTheDocument();
-    expect(screen.queryByText("QD02")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Gắn tổ hợp" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("radio", { name: /QD02/ }));
-    await user.click(within(dialog).getByRole("button", { name: "Gắn tổ hợp" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getAllByText(/QD02/).length).toBeGreaterThan(0);
-    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
   });
 
   it("V-ACT: khối Tư duy khoa học chia theo năng lực", async () => {

@@ -1,4 +1,3 @@
-import type { CombinationOption } from "@/features/content/types";
 import {
   emptyMatrix,
   type MatrixAxes,
@@ -29,8 +28,12 @@ export function draftId(prefix: string): string {
 
 export const ENGLISH_CODE = "ENGLISH";
 
-/** Đang sửa gì: một phần (thông tin phần, lựa chọn), một phương án chọn môn (tổng quan Khoa học), một môn (chỉ tiêu cấp môn và các nhóm) hoặc một nhóm lấy câu. */
+/**
+ * Đang sửa gì: tổng quan bài (điểm theo môn, chỉ tiêu cấp bài), một phần (thông tin phần, lựa chọn), một phương án chọn
+ * môn (tổng quan Khoa học), một môn (chỉ tiêu cấp môn và các nhóm) hoặc một nhóm lấy câu.
+ */
 export type StructureSelection =
+  | { kind: "exam" }
   | { kind: "part"; partId: string }
   | { kind: "option"; partId: string; optionId: string }
   | { kind: "section"; sectionId: string }
@@ -262,16 +265,6 @@ export function optionQuestionCount(part: ExamPart): number {
   return Math.max(part.questionCount - part.sections.reduce((total, section) => total + (section.questionCount ?? 0), 0), 0);
 }
 
-export function attachCombination(parts: readonly ExamPart[], partId: string, combination: CombinationOption): ExamPart[] {
-  return updatePart(parts, partId, (part) => ({
-    ...part,
-    options: [
-      ...part.options,
-      buildOption("COMBINATION", combination.code, combination.subjectCodes, optionQuestionCount(part)),
-    ],
-  }));
-}
-
 /** Bật/tắt nhánh Tiếng Anh; nhánh luôn đứng đầu danh sách lựa chọn. */
 export function setEnglishOption(parts: readonly ExamPart[], partId: string, enabled: boolean): ExamPart[] {
   return updatePart(parts, partId, (part) => {
@@ -297,6 +290,7 @@ export function firstBlockId(part: ExamPart): string | null {
 }
 
 export function selectionExists(parts: readonly ExamPart[], selection: StructureSelection): boolean {
+  if (selection.kind === "exam") return true;
   if (selection.kind === "part") return parts.some((part) => part.id === selection.partId);
   if (selection.kind === "option")
     return parts.some(
@@ -311,6 +305,7 @@ export function selectionExists(parts: readonly ExamPart[], selection: Structure
  * thuộc môn chứa nó nên mở nhóm của cùng môn không phải chuyển môn.
  */
 export function selectionScope(parts: readonly ExamPart[], selection: StructureSelection): string {
+  if (selection.kind === "exam") return "exam";
   if (selection.kind === "part") return `part:${selection.partId}`;
   if (selection.kind === "option") return `option:${selection.optionId}`;
   if (selection.kind === "section") return `section:${selection.sectionId}`;

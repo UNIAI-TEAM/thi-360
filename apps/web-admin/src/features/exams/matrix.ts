@@ -399,15 +399,23 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
       issues.push({ code: "SET_SIZE_MISMATCH", expected, actual: block.questionCount });
     }
   }
-  const { matrix } = block;
+  return [...issues, ...validateMatrix(block.matrix, block.questionCount, axes)];
+}
+
+/**
+ * Kiểm tra ma trận với số câu của khối hoặc của môn: giá trị hợp lệ, tổng tỷ lệ bằng 100, tổng số câu bằng số câu. Số
+ * câu `null` (nhóm lấy phần còn lại) và ma trận trống thì không có gì để so.
+ */
+export function validateMatrix(matrix: BlockMatrix | null, questionCount: number | null, axes: MatrixAxes): BlockIssue[] {
+  const issues: BlockIssue[] = [];
   // Chỉ tiêu riêng của nhóm là tùy chọn; chỉ tiêu theo % không cần số câu của nhóm khi nhóm lấy phần còn lại.
-  if (!matrix || block.questionCount === null) return issues;
+  if (!matrix || questionCount === null) return issues;
   const values = matrixValues(matrix);
   if (values.some((value) => value < 0 || !Number.isFinite(value) || (matrix.unit === "COUNT" && !Number.isInteger(value)))) {
     issues.push({ code: "INVALID_VALUE" });
     return issues;
   }
-  const allocation = computeAllocation(block, axes);
+  const allocation = computeAllocation({ questionCount, matrix }, axes);
   const dimensions: Array<{ dimension: MatrixDimension; input: number; total: number }> =
     matrix.mode === "COMBINED"
       ? [{ dimension: "COMBINED", input: allocation.inputTotal, total: allocation.total }]
@@ -418,11 +426,21 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
   if (allocation.competency) {
     dimensions.push({ dimension: "COMPETENCY", input: allocation.competency.inputTotal, total: allocation.competency.total });
   }
+  const questionBasis = (matrix.basis ?? "QUESTION") === "QUESTION";
   for (const { dimension, input, total } of dimensions) {
+    // Bảng tham khảo chưa có số (HSA Tiếng Anh khối lớp, chờ chuyên gia): chưa khai, không báo lệch tổng.
+    const enforcement =
+      dimension === "GRADE" || dimension === "COMBINED"
+        ? matrix.gradeEnforcement
+        : dimension === "DIFFICULTY"
+          ? matrix.difficultyEnforcement
+          : undefined;
+    if (enforcement === "REFERENCE" && input === 0) continue;
     if (matrix.unit === "PERCENT") {
       if (Math.abs(input - 100) > PERCENT_TOLERANCE) issues.push({ code: "PERCENT_TOTAL", dimension, actual: roundPrecision(input) });
-    } else if (total !== block.questionCount) {
-      issues.push({ code: "ALLOCATION_TOTAL", dimension, expected: block.questionCount, actual: total });
+    } else if (questionBasis && total !== questionCount) {
+      // Đơn vị lệnh hỏi hoặc điểm (chỉ ở bảng tham khảo, H7) không phải số câu nên không so với số câu.
+      issues.push({ code: "ALLOCATION_TOTAL", dimension, expected: questionCount, actual: total });
     }
   }
   return issues;
@@ -505,6 +523,17 @@ export function groupCounts(section: ExamSection, count: number): number[] {
 }
 
 /**
+ * Cách chia số câu của môn trên các nhóm đang tính: lọc nhóm `omitted` trước `groupCounts` để nhóm bỏ qua không lấy mất
+ * phần số câu của môn và không vào tổng điểm (2B 3.3, 5; R2-06). `count` `null` (môn không khai số câu) trả về số câu khai
+ * báo của nhóm; `count` 0 (môn của `SUBJECT_CHOICE` không được chọn) trả về toàn 0. Hàm chung của `pointsRows` và
+ * `structureTotals` để hai nơi không lệch nhau.
+ */
+export function activeGroupCounts(section: ExamSection, count: number | null): { blocks: QuestionBlock[]; counts: number[] } {
+  const blocks = section.blocks.filter((block) => !block.omitted);
+  return { blocks, counts: count === null ? blocks.map(countOf) : count === 0 ? blocks.map(() => 0) : groupCounts({ ...section, blocks }, count) };
+}
+
+/**
  * Cách chia số câu `countsByPick` cho các môn được chọn của phương án `SUBJECT_CHOICE`, ánh xạ theo chỉ số môn trong
  * `option.sections`; môn không được chọn không có mục. Duyệt các tổ hợp `chooseSubjects` môn theo thứ tự cấu trúc và lấy
  * cách chia hợp lệ đầu tiên — cùng quy tắc B10 của máy chủ (`ChoiceGroupAllocator`). Không có cách chia hợp lệ (cấu
@@ -547,7 +576,7 @@ function subjectChoiceAllocations(option: ExamPart["options"][number]): Map<numb
  *
  * Không có cách chia hợp lệ (cấu hình sai) trả bảng rỗng: người gọi lùi về số câu khai báo để tiêu đề lộ phần thiếu.
  */
-function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
+export function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
   const allocations = subjectChoiceAllocations(option);
   const counts = new Map<number, number>();
   if (allocations.size === 0) return counts;
@@ -715,26 +744,27 @@ export function structureTotals(parts: readonly ExamPart[], options: StructureTo
   let allocated = 0;
   let totalPoints = 0;
   for (const part of parts) {
-    const groups = choiceGroups(part).map((group) => ({ group, blocks: blocksOf(group.sections) }));
-    const counts = groups.map(({ group, blocks }) => {
+    const groups = choiceGroups(part);
+    const counts = groups.map((group) => {
       const option = part.options.find((item) => item.id === group.optionId);
-      // `SUBJECT_CHOICE`: số câu từng môn tính theo `countsByPick`, không có trên môn (D25).
-      if (option?.kind === "SUBJECT_CHOICE") return sum(option.countsByPick ?? []) + sum(part.sections.map(countOf));
-      return sum(blocks.map(countOf));
+      // `SUBJECT_CHOICE`: số câu từng môn tính theo `countsByPick`, không có trên môn (D25). Hai vế cộng số câu khai
+      // báo của các nhóm đang tính (không gồm nhóm `omitted`): nhóm "lấy phần còn lại" góp 0, chênh lệch lộ ở `missing`.
+      if (option?.kind === "SUBJECT_CHOICE")
+        return sum(option.countsByPick ?? []) + sum(part.sections.map((section) => sum(activeGroupCounts(section, null).counts)));
+      return sum(group.sections.map((section) => sum(activeGroupCounts(section, null).counts)));
     });
     allocated += counts.length ? Math.min(...counts) : 0;
     const first = groups[0];
     // G1: nhóm "lấy phần còn lại" nhận phần chênh của môn (cùng cách chia với kiểm tra), không tính 0 điểm; môn của
-    // `SUBJECT_CHOICE` nhận số câu trên đề theo `subjectChoiceCounts` (HSA 17 − 1: môn được bỏ câu tính 16).
-    const option = part.options.find((item) => item.id === first?.group.optionId);
+    // `SUBJECT_CHOICE` nhận số câu trên đề theo `subjectChoiceCounts` (HSA 17 − 1: môn được bỏ câu tính 16). Nhóm
+    // `omitted` bị lọc trước khi chia, cùng quy tắc với `pointsRows`.
+    const option = part.options.find((item) => item.id === first?.optionId);
     const subjectCounts = option?.kind === "SUBJECT_CHOICE" ? subjectChoiceCounts(option) : null;
     totalPoints += sum(
-      (first?.group.sections ?? []).flatMap((section, index) => {
+      (first?.sections ?? []).flatMap((section, index) => {
         const count = subjectCounts?.get(index - part.sections.length) ?? section.questionCount ?? null;
-        // Môn không được chọn (`count` 0) không đóng góp câu nào, kể cả nhóm đặt sẵn số câu.
-        const perGroup =
-          count === null ? section.blocks.map(countOf) : count === 0 ? section.blocks.map(() => 0) : groupCounts(section, count);
-        return section.blocks.map((block, blockIndex) => perGroup[blockIndex]! * blockPointsEach(block));
+        const { blocks, counts: perGroup } = activeGroupCounts(section, count);
+        return blocks.map((block, blockIndex) => perGroup[blockIndex]! * blockPointsEach(block));
       }),
     );
   }

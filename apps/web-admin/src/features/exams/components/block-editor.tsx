@@ -11,6 +11,7 @@ import {
   type QuestionType,
   type ScoringDefaults,
 } from "@/features/content/types";
+import { applyTopicTotal } from "../allocation";
 import type { MatrixAxes } from "../matrix";
 import { roundForDisplay } from "../display-number";
 import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock } from "../matrix";
@@ -27,6 +28,8 @@ import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { BlockSetConditions } from "./block-set-conditions";
 import { BlockSwitches } from "./block-switches";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
+import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
 /** Giá trị của ô chọn dạng trả lời cho nhóm lấy theo chỉ tiêu dạng trả lời của môn (`questionType = null`). */
 const OPEN_TYPE = "__OPEN__";
@@ -68,6 +71,8 @@ export interface BlockEditorProps {
   onOpenSection: () => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
   headerAction?: ReactNode;
+  /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của nhóm (H20). */
+  topicError?: TopicQuotaServerError;
 }
 
 /**
@@ -96,6 +101,7 @@ export function BlockEditor({
   onRemove,
   onOpenSection,
   headerAction,
+  topicError = null,
 }: BlockEditorProps) {
   const t = useTranslations("exams.structure.block");
   const tForm = useTranslations("exams.structure.blockForm");
@@ -136,9 +142,16 @@ export function BlockEditor({
   const countError = issues.some((issue) => issue.code === "COUNT_NOT_POSITIVE") ? t("errors.countPositive") : undefined;
   const setIssue = issues.find((issue) => issue.code === "SET_SIZE_MISMATCH");
 
+  // Tổng của nhóm đổi thì số câu của chỉ tiêu chủ đề nhập theo tỷ lệ tính lại ngay theo tổng mới (R1-03): bảng nằm cạnh ô số
+  // câu nên không cần hỏi như ở môn (R-122 dòng 6), và `count` gửi đi luôn khớp số bảng đang hiện (H30).
   // Giá trị bật sẵn của bài ôn là dữ liệu, không chỉ hiển thị: mọi thay đổi của nhóm đi qua đây.
   const update = (patch: Partial<QuestionBlock>) => {
-    const next = applyBlockPatch(block, patch);
+    const patched = applyBlockPatch(block, patch);
+    const percentRows = patched.topicQuotas?.some((quota) => quota.percent !== undefined && quota.percent !== null) ?? false;
+    const next =
+      patched.questionCount !== null && patched.questionCount !== block.questionCount && percentRows
+        ? { ...patched, topicQuotas: applyTopicTotal(patched.topicQuotas ?? [], patched.questionCount) }
+        : patched;
     onChange(everyChildDefault ? withEveryChildDefault(next) : next);
   };
   // Nhóm đã lưu từ trước chưa có cờ: ghi `true` một lần khi mở nhóm để lưu và đếm nguồn dùng giá trị đang hiện.
@@ -541,6 +554,24 @@ export function BlockEditor({
           )}
         </div>
       </details>
+
+      {/* Nhóm lấy phần còn lại không có bảng chỉ tiêu chủ đề: lỗi 422 của nó hiện như cảnh báo chung (R3-01). */}
+      {!remainder && reference ? (
+        <TopicQuotaTable
+          id={block.id}
+          quotas={block.topicQuotas ?? []}
+          onChange={(topicQuotas) => update({ topicQuotas })}
+          total={questionCount}
+          levelName={block.name || t("untitled")}
+          subjectCode={subjectCode}
+          reference={reference}
+          axes={axes}
+          labels={labels}
+          serverError={topicError}
+        />
+      ) : (
+        <TopicQuotaElsewhereAlert error={topicError} />
+      )}
 
       <ConfirmDialog
         open={confirmRemove}
