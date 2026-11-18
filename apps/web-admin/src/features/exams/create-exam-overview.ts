@@ -1,3 +1,4 @@
+import { isAllOmittedPart } from "./omitted-part";
 import type { ExamOverviewRow, ExamTemplate, ExamTemplateSection, ExamTiming } from "./types";
 
 /**
@@ -147,6 +148,13 @@ function omittedRow(
   };
 }
 
+/** Phần của mẫu mà mọi nhóm đều tạm bỏ qua (quy tắc chung ở `isAllOmittedPart`). */
+function isAllOmitted(part: ExamTemplate["parts"][number]): boolean {
+  return isAllOmittedPart(
+    (part.sections ?? []).map((section) => ({ blockCount: section.blocks?.length ?? 0, omittedCount: section.omittedBlocks?.length ?? 0 })),
+  );
+}
+
 /**
  * Dòng tổng quan của mẫu đã chọn. `scope = PART` gắn `partCode` của bài vào dòng phần (khóa so khớp của mẫu theo
  * phần). Phần cố định nhiều môn thêm dòng môn ngay sau dòng phần; dòng phần khi đó chỉ là dòng nhóm (tổng môn), ô
@@ -162,6 +170,12 @@ export function overviewRowsFromTemplate(
   const locked = template.fixedCounts === true;
   const rows: OverviewRow[] = [];
   template.parts.forEach((part, index) => {
+    if (isAllOmitted(part)) {
+      // Chỉ đọc như nhóm tạm bỏ qua: không kiểm tra, không vào tổng, không vào `overview`.
+      const omittedCount = (part.sections ?? []).reduce((total, section) => total + (section.omittedBlocks ?? []).reduce((sum, block) => sum + (block.questionCount ?? 0), 0), 0);
+      rows.push(omittedRow(index, 0, part.sections?.[0]?.subjectCode ?? "", { name: part.name, questionCount: omittedCount }, 0));
+      return;
+    }
     const row = partRow(part, index);
     if (scope === "PART") row.partCode = partCode || undefined;
     row.lockedCount = locked;

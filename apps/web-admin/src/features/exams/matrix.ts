@@ -1,3 +1,4 @@
+import { isAllOmittedPart } from "./omitted-part";
 import { allocateSubjectCounts } from "./subject-choice";
 import type {
   BlockMatrix,
@@ -588,8 +589,9 @@ export function subjectChoiceCounts(option: ExamPart["options"][number]): Map<nu
   return counts;
 }
 
+/** Nhóm đang tính của các môn: nhóm `omitted` không vào đề, không có câu và điểm (máy chủ bỏ qua cùng cách, `ExamCheckRules`). */
 function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
-  return sections.flatMap((section) => section.blocks);
+  return sections.flatMap((section) => section.blocks.filter((block) => !block.omitted));
 }
 
 /** Điểm mỗi câu mặc định (B5) khi khối không đặt điểm mỗi câu yêu cầu. */
@@ -600,7 +602,7 @@ export function blockPointsEach(block: Pick<QuestionBlock, "requiredPointsPerQue
   return block.requiredPointsPerQuestion ?? DEFAULT_POINTS_PER_QUESTION;
 }
 
-/** Tổng điểm các khối của một nhóm môn (số câu × điểm mỗi câu). */
+/** Tổng điểm các khối đang tính của một nhóm môn (số câu × điểm mỗi câu; không gồm nhóm `omitted`). */
 export function sectionsPoints(sections: readonly ExamSection[]): number {
   return roundPrecision(sum(blocksOf(sections).map((block) => countOf(block) * blockPointsEach(block))));
 }
@@ -608,6 +610,18 @@ export function sectionsPoints(sections: readonly ExamSection[]): number {
 /** Điểm riêng của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
 export function partPoints(part: ExamPart): number | null {
   return part.maxPoints ?? null;
+}
+
+/**
+ * Phần cố định mà mọi nhóm đều `omitted` (SP2E Ngữ văn Phần II · Viết, F5/S3-2): số câu của phần và của môn là 0 theo thiết
+ * kế nên `validateStructure` không đòi số câu dương. Cùng quy tắc `isAllOmittedPart` với màn tạo bài. Phần tự chọn hoặc
+ * theo mã không thuộc loại này.
+ */
+export function isAllOmittedStructurePart(part: ExamPart): boolean {
+  if (part.mode !== "FIXED" || part.options.length > 0 || (part.subjectPool?.length ?? 0) > 0) return false;
+  return isAllOmittedPart(
+    part.sections.map((section) => ({ blockCount: section.blocks.length, omittedCount: section.blocks.filter((block) => block.omitted).length })),
+  );
 }
 
 export interface ValidateStructureOptions {
@@ -626,7 +640,8 @@ export function validateStructure(
 ): StructureIssue[] {
   const issues: StructureIssue[] = [];
   for (const part of parts) {
-    if (!Number.isInteger(part.questionCount) || part.questionCount <= 0) {
+    const allOmitted = isAllOmittedStructurePart(part);
+    if (!allOmitted && (!Number.isInteger(part.questionCount) || part.questionCount <= 0)) {
       issues.push({ code: "PART_COUNT_NOT_POSITIVE", partId: part.id });
     }
     // Thời lượng `null`: bài dùng thời lượng chung (BCA, V-ACT), phần không có thời lượng riêng.
@@ -680,7 +695,8 @@ export function validateStructure(
         // Môn của `SUBJECT_CHOICE` khai `questionCount` là số cần giải (HSA: 17, H3) nên vẫn đối chiếu tổng nhóm;
         // chỉ dữ liệu cũ để `null` thì tổng nhóm do kiểm tra cấu hình báo theo từng cách chọn.
         if (section.questionCount !== null) {
-          const blocksTotal = sum(section.blocks.map(countOf));
+          // Nhóm `omitted` không có câu trên đề nên không vào tổng nhóm (SPT: 4 câu + Tự luận bỏ qua vẫn là 4).
+          const blocksTotal = sum(section.blocks.filter((block) => !block.omitted).map(countOf));
           if (blocksTotal !== section.questionCount) {
             issues.push({ code: "BLOCKS_TOTAL", location, expected: section.questionCount, actual: blocksTotal });
           }

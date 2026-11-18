@@ -183,6 +183,38 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void competencyOnlyBlockUsageStaysInsideTheSectionTopic() throws Exception {
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        CatalogItemView leaf = knowledge.stream().filter(item -> knowledge.stream().anyMatch(parent ->
+                !parent.id().equals(item.id()) && item.path().startsWith(parent.path()))).findFirst().orElseThrow();
+        UUID competency = UUID.fromString("00000000-0000-7000-8400-000000000903");
+        UUID subject = UUID.randomUUID();
+        UUID inside = UUID.randomUUID();
+        UUID outside = UUID.randomUUID();
+        for (UUID question : List.of(inside, outside)) {
+            jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,competency_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,?,1,1)",
+                    question, "COMP-" + question, subject, competency);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", question);
+        }
+        jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)", inside, leaf.id());
+        UUID exam = UUID.randomUUID();
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Competency usage','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)", exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","name":"Part","sections":[
+                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"]},
+                   "blocks":[{"id":"competency-only","name":"Competency only","questionType":"SINGLE_CHOICE",
+                              "knowledgeScope":{"nodeIds":[],"competencyCodes":["VACT-TOAN"]}}]}]}]}
+                """.formatted(leaf.id());
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> competency, code -> null);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
+        assertThat(provider.examUsagesOf(inside)).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
+                .containsExactly("competency-only");
+        assertThat(provider.examUsagesOf(outside)).isEmpty();
+    }
+
+    @Test
     void strictSlotScopesApplyToUsageAndRetireImpactForRootsAndChildren() throws Exception {
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         var topic = knowledge.stream().filter(a -> knowledge.stream().anyMatch(b ->

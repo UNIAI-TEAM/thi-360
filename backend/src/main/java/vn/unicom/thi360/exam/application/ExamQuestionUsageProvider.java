@@ -166,8 +166,8 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
             List<CatalogItemView> knowledge, Map<UUID, CatalogItemView> knowledgeById,
             Map<UUID, List<UUID>> descendants, Map<QuestionSourcePort.Filter, Boolean> matches) {
         if (block == null || !Objects.equals(block.id(), ref.getBlockId())) return;
-        KnowledgeScope scope = block.knowledgeScope() != null ? block.knowledgeScope()
-                : section == null ? null : section.knowledgeScope();
+        KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(),
+                section == null ? null : section.knowledgeScope());
         List<List<UUID>> groups = scope == null ? List.of() : scope.nodeIds().stream().map(id ->
                 descendants.computeIfAbsent(id, key -> {
                     CatalogItemView root = knowledgeById.get(key);

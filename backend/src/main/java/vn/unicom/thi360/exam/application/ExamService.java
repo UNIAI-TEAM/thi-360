@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -480,8 +481,24 @@ public class ExamService {
                         messages.get(ExamErrorCodes.PART_NOT_FOUND));
             }
         }
+        String timing = template != null && template.getTiming() != null
+                ? template.getTiming() : profile != null ? profile.getTiming() : "PER_PART";
+        Integer overviewDuration = null;
         if (template != null && request.overview() != null) {
-            doc = ExamOverview.apply(doc, request.overview());
+            List<ExamOverviewRequest.Row> rows = request.overview();
+            if ("SHARED".equals(timing) && "REVIEW".equals(buildMode)) {
+                // A review has one shared clock and the screen repeats the exam duration on its single part row
+                // (SHARED_PART_DURATION): that positive part-row duration belongs to the exam, not the part. Section
+                // rows and a negative duration stay as sent, so the overview validation still rejects them.
+                Predicate<ExamOverviewRequest.Row> screenDuration = row -> row != null && row.sectionId() == null
+                        && row.durationMinutes() != null && row.durationMinutes() > 0;
+                overviewDuration = rows.stream().filter(screenDuration)
+                        .map(ExamOverviewRequest.Row::durationMinutes).findFirst().orElse(null);
+                rows = rows.stream().map(row -> !screenDuration.test(row) ? row
+                        : new ExamOverviewRequest.Row(row.partId(), row.sectionId(), row.partCode(),
+                                row.subjectCode(), row.questionCount(), null, row.maxPoints())).toList();
+            }
+            doc = ExamOverview.apply(doc, rows);
             ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         }
         if (template == null) {
@@ -489,13 +506,15 @@ public class ExamService {
             validateStructureReferences(doc);
         }
 
-        String timing = template != null && template.getTiming() != null
-                ? template.getTiming() : profile != null ? profile.getTiming() : "PER_PART";
         Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                : overviewDuration != null ? overviewDuration
                 : subjectPart ? doc.parts().getFirst().durationMinutes()
                 : template != null ? template.getDurationMinutes() : null;
         requireSharedDuration(timing, duration);
-        BigDecimal maxScore = request.maxScore() != null ? request.maxScore()
+        boolean review = "REVIEW".equals(buildMode);
+        // A review exam scores LINEAR (BE spec D11) with no profile scale: no scale entered gives no maximum.
+        BigDecimal maxScore = review ? request.maxScore()
+                : request.maxScore() != null ? request.maxScore()
                 : subjectPart ? doc.parts().getFirst().maxPoints()
                 : template != null && template.getMaxScore() != null ? template.getMaxScore()
                 : profile != null ? profile.getMaxScore() : null;
@@ -510,11 +529,11 @@ public class ExamService {
 
         Exam exam = new Exam(Ids.newId(), code, request.name().trim(), kindItem.id(),
                 scopeChoice.scope(), timing, duration, maxScore,
-                profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
+                review ? "LINEAR" : profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
         exam.setBuildMode(buildMode);
-        exam.applyScoringProfile(subjectPart ? null
+        exam.applyScoringProfile(review ? maxScore : subjectPart ? null
                         : scopedReferenceMax(profile, scopeChoice.scope(), maxScore),
-                subjectPart ? "RAW" : profile.getPracticeScoring());
+                review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring());
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
                 duration, maxScore, actor, now);
@@ -635,6 +654,7 @@ public class ExamService {
                 ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
                 ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
                 String mode = "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD";
+                rejectRawReview(request.practiceScoring(), mode);
                 boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
                 ExamTemplate template = subjectPart
                         ? templateService.findDefault(kindItem.code(), "SUBJECT", null, choice.subjectCode(), mode)
@@ -656,13 +676,15 @@ public class ExamService {
                         : subjectPart ? doc.parts().getFirst().durationMinutes()
                         : template != null && template.getDurationMinutes() != null
                                 ? template.getDurationMinutes() : null;
-                BigDecimal maxScore = subjectPart ? doc.parts().getFirst().maxPoints()
+                boolean review = "REVIEW".equals(mode);
+                BigDecimal maxScore = review ? request.maxScore()
+                        : subjectPart ? doc.parts().getFirst().maxPoints()
                         : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
-                exam.applyScoringProfile(subjectPart ? null
+                exam.applyScoringProfile(review ? maxScore : subjectPart ? null
                                 : scopedReferenceMax(profile, choice.scope(),
                                         request.maxScore() != null ? request.maxScore() : maxScore),
-                        subjectPart ? "RAW" : profile.getPracticeScoring());
+                        review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
@@ -676,6 +698,9 @@ public class ExamService {
                 writeStructure(exam, doc, false, actor, now);
             }
         }
+        if (!scopeChanged) {
+            rejectRawReview(request.practiceScoring(), exam.getBuildMode());
+        }
 
         String code = exam.getCode();
         if (request.code() != null && !request.code().isBlank()
@@ -684,6 +709,8 @@ public class ExamService {
         } else if (request.code() != null && !request.code().isBlank()) {
             code = request.code().trim();
         }
+        BigDecimal scaleBefore = exam.getMaxScore();
+        BigDecimal referenceBefore = exam.getReferenceMax();
         exam.updateInfo(code,
                 request.name() != null && !request.name().isBlank() ? request.name().trim() : exam.getName(),
                 request.description() != null ? blankToNull(request.description()) : exam.getDescription(),
@@ -699,12 +726,27 @@ public class ExamService {
         if (request.yearsConfirmed() != null && !scopeChanged) {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
-        if (request.practiceScoring() != null || request.referenceMax() != null) {
+        // A LINEAR exam whose scale equals its reference (BE spec D11: max_score bằng reference_max) keeps them
+        // equal when only the scale is edited; a review exam that has no scale yet takes the entered one as both.
+        // The exam must already be LINEAR as stored (after any scope or template reset, before this patch): a
+        // RAW to LINEAR conversion keeps the stored reference. Values that already differ, a null reference
+        // elsewhere, an explicit referenceMax in the request and RAW scoring are left alone.
+        boolean storedLinear = "LINEAR".equals(exam.getPracticeScoring());
+        String effectiveScoring = request.practiceScoring() == null ? exam.getPracticeScoring()
+                : request.practiceScoring();
+        boolean reviewWithoutScale = "REVIEW".equals(exam.getBuildMode()) && scaleBefore == null
+                && referenceBefore == null;
+        boolean referenceFollowsScale = request.maxScore() != null && request.referenceMax() == null
+                && storedLinear && "LINEAR".equals(effectiveScoring)
+                && (reviewWithoutScale || scaleBefore != null && referenceBefore != null
+                        && scaleBefore.compareTo(referenceBefore) == 0);
+        if (request.practiceScoring() != null || request.referenceMax() != null || referenceFollowsScale) {
             String previousScoring = exam.getPracticeScoring();
             String scoring = request.practiceScoring() == null ? previousScoring : request.practiceScoring();
             // The default reference of 10 applies only when scoring becomes LINEAR; an exam that was already
             // LINEAR without a reference (e.g. a V-ACT review) keeps none.
             BigDecimal referenceMax = request.referenceMax() != null ? request.referenceMax()
+                    : referenceFollowsScale ? request.maxScore()
                     : exam.getReferenceMax() != null ? exam.getReferenceMax()
                     : "LINEAR".equals(scoring) && !"LINEAR".equals(previousScoring) ? BigDecimal.TEN : null;
             exam.applyScoringProfile(referenceMax, scoring);
@@ -807,18 +849,35 @@ public class ExamService {
         }
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         String previousMode = exam.getBuildMode();
+        boolean modeChanged = !Objects.equals(previousMode, template.getBuildMode());
+        ExamKindProfile crossingProfile = modeChanged
+                ? profileRepository.findById(exam.getKindItemId()).orElse(null) : null;
+        if (modeChanged && !"REVIEW".equals(template.getBuildMode()) && crossingProfile == null) {
+            // A standard exam takes its scale from the kind profile, as at creation: without one, fail closed
+            // before anything is changed.
+            throw new BusinessRuleException(ExamErrorCodes.SCOPE_NOT_ALLOWED,
+                    messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED));
+        }
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
                 subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
         exam.setBuildMode(template.getBuildMode());
-        // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the maximum
-        // score and reference of a new exam made from that template, administrator overrides included.
+        // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the scoring values
+        // of a new exam made from that template, administrator overrides included: a review is LINEAR with no
+        // scale, a standard exam takes the template or profile scale and the profile scoring.
         boolean scoringReset = false;
-        if (!Objects.equals(previousMode, template.getBuildMode()) && "LINEAR".equals(exam.getPracticeScoring())) {
-            ExamKindProfile profile = profileRepository.findById(exam.getKindItemId()).orElse(null);
-            if (profile != null && "LINEAR".equals(profile.getPracticeScoring())) {
-                BigDecimal base = template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
-                exam.applyScoringProfile(scopedReferenceMax(profile, exam.getScope(), base), exam.getPracticeScoring());
+        if (modeChanged) {
+            ExamKindProfile profile = crossingProfile;
+            if ("REVIEW".equals(template.getBuildMode())) {
+                exam.applyScoringProfile(null, "LINEAR");
+                exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
+                        exam.getDurationMinutes(), null, actor, now);
+                scoringReset = true;
+            } else {
+                BigDecimal base = subjectPart ? doc.parts().getFirst().maxPoints()
+                        : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
+                exam.applyScoringProfile(subjectPart ? null : scopedReferenceMax(profile, exam.getScope(), base),
+                        subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
                         exam.getDurationMinutes(), base, actor, now);
                 scoringReset = true;
@@ -1329,6 +1388,16 @@ public class ExamService {
         return catalogLookup.findActiveItem(EXAM_GROUP, kindCode.trim())
                 .orElseThrow(() -> new BusinessRuleException(ExamErrorCodes.KIND_UNKNOWN,
                         messages.get(ExamErrorCodes.KIND_UNKNOWN)));
+    }
+
+    /**
+     * A review scores LINEAR against its own raw maximum (BE spec D11) and its check never requires a fixed raw
+     * total, so an explicit RAW scoring is refused for a review; a standard exam keeps the override.
+     */
+    private static void rejectRawReview(String requestedScoring, String buildMode) {
+        if ("RAW".equals(requestedScoring) && "REVIEW".equals(buildMode)) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
     }
 
     private void requireSharedDuration(String timing, Integer duration) {

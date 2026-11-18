@@ -379,6 +379,8 @@ export interface ExamDetail extends ExamSummary {
   instructions: string | null;
   /** Mẫu cấu trúc đã nạp, ví dụ `HSA_FULL`, `THPTQG_MATH_2025`. */
   templateCode: string | null;
+  /** Kiểu xây bài do máy chủ trả (`REVIEW`: bài ôn, thang chỉ có khi người dùng nhập); thiếu thì `STANDARD`. */
+  buildMode: ExamBuildMode;
   /** Năm cấu trúc và năm ma trận của mẫu (SP2E); `null` khi mẫu không ghi năm. */
   structureYear: number | null;
   matrixYear: number | null;

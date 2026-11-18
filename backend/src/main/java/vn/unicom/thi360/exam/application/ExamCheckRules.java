@@ -779,7 +779,7 @@ public final class ExamCheckRules {
                 }
                 if (block.requiredPointsPerQuestion() == null) {
                     missingPoints.add(context.part.id());
-                    if (exam.getMaxScore() != null) {
+                    if (exam.getMaxScore() != null && !isReview()) {
                         ObjectNode issue = sectionIssue("POINTS_TOTAL_MISMATCH", "POINTS", context, null);
                         blockContext(issue, block);
                         found.add(issues.key(issue));
@@ -837,10 +837,18 @@ public final class ExamCheckRules {
             issue.put("required", exam.getQuestionCount()); issue.put("available", total); found.add(issue);
         }
         BigDecimal target = "LINEAR".equals(exam.getPracticeScoring()) ? exam.getReferenceMax() : exam.getMaxScore();
-        if (target != null && missingPoints.isEmpty() && differs(totalPoints, target)) {
+        if (target != null && !isReview() && missingPoints.isEmpty() && differs(totalPoints, target)) {
             ObjectNode issue = issue("POINTS_TOTAL_MISMATCH", "POINTS", null, null, null);
             issue.put("required", target); issue.put("available", totalPoints); found.add(issue);
         }
+    }
+
+    /**
+     * A review exam (BE spec D11) scores LINEAR against the raw maximum of its own paper, so its check never
+     * requires a fixed raw total: no POINTS_TOTAL_MISMATCH, neither per block nor for the total.
+     */
+    private boolean isReview() {
+        return "REVIEW".equals(exam.getBuildMode());
     }
 
     private static boolean differs(BigDecimal left, BigDecimal right) {

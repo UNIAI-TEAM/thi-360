@@ -3917,6 +3917,8 @@
         "minutes": "{count, number} min",
         "points": "Total points",
         "questionsPrinted": "{count, plural, one {# question} other {# questions}} to answer ({printed, number} on the paper)",
+        "scale": "Scale",
+        "scaleValue": "{scale, number} points",
         "sharedMinutes": "{count, number} min, shared",
         "pointsOfScale": "{points} / {scale} points"
       },

@@ -737,7 +737,7 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void changingModeDoesNotResetScoringOfAProfileThatIsNotLinear() throws Exception {
+    void changingModeGivesAnyKindTheFreshCreateScoringOfTheNewMode() throws Exception {
         var exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -751,19 +751,18 @@ class ExamCreateIT extends AbstractIntegrationTest {
         var before = examDetail(id);
         assertThat(before.path("practiceScoring").asText()).isEqualTo("LINEAR");
         assertThat(before.path("referenceMax").decimalValue()).isEqualByComparingTo("10");
-        for (String template : new String[] {"SPT_REVIEW", "SPT_DIA_2025"}) {
-            loadTemplate(id, template);
-            var after = examDetail(id);
-            assertThat(after.path("practiceScoring").asText()).as(template).isEqualTo("LINEAR");
-            assertThat(after.path("referenceMax").decimalValue()).as(template).isEqualByComparingTo("10");
-            java.math.BigDecimal templateMax = jdbc.queryForObject(
-                    "SELECT max_score FROM exam.exam_template WHERE code = ?", java.math.BigDecimal.class, template);
-            if (templateMax == null) {
-                assertThat(after.path("maxScore").decimalValue()).as(template)
-                        .isEqualByComparingTo(before.path("maxScore").decimalValue());
-            }
-        }
-        assertThat(scoringResetFlags(id)).containsOnly("false").hasSize(2);
+        // ADV:FIX-QA:3: a review is LINEAR with no scale for every kind; a standard exam takes the profile scoring.
+        loadTemplate(id, "SPT_REVIEW");
+        var review = examDetail(id);
+        assertThat(review.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(review.path("referenceMax").isNull()).isTrue();
+        assertThat(review.path("maxScore").isNull()).isTrue();
+        loadTemplate(id, "SPT_DIA_2025");
+        var standard = examDetail(id);
+        assertThat(standard.path("practiceScoring").asText()).isEqualTo("RAW");
+        assertThat(standard.path("referenceMax").isNull()).isTrue();
+        assertThat(standard.path("maxScore").decimalValue()).isEqualByComparingTo(exam.path("maxScore").decimalValue());
+        assertThat(scoringResetFlags(id)).containsOnly("true").hasSize(2);
     }
 
     @Test
