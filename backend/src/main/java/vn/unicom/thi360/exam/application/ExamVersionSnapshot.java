@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.domain.solver.LargestRemainderApportioner;
 
 /** Records integer quota allocations alongside the unchanged structure snapshot. */
@@ -16,6 +18,88 @@ final class ExamVersionSnapshot {
     private final LargestRemainderApportioner apportioner = new LargestRemainderApportioner();
 
     ExamVersionSnapshot(ObjectMapper mapper) { this.mapper = mapper; }
+
+    ObjectNode combinations(JsonNode document, Set<String> selectedPaths, UUID kindId, CatalogLookup catalog) {
+        ObjectNode result = mapper.createObjectNode();
+        ArrayNode combinations = result.putArray("combinations");
+        Set<String> selected = new LinkedHashSet<>();
+        for (String path : selectedPaths) selected.addAll(List.of(path.split("\\+")));
+        boolean hasCodeSource = false;
+        for (JsonNode part : document.path("parts")) hasCodeSource |= part.hasNonNull("codeSource");
+        if (!hasCodeSource) return result;
+        var definitions = catalog.listCombinations(kindId);
+        for (JsonNode part : document.path("parts")) {
+            if (!part.hasNonNull("codeSource")) continue;
+            String partId = part.path("id").asText();
+            String branch = part.path("codeSource").path("branch").asText(null);
+            for (var definition : definitions) {
+                if (!selected.contains(partId + ":" + definition.itemCode())) continue;
+                if (branch != null && (definition.branch() == null || !branch.equals(definition.branch().name()))) continue;
+                ObjectNode item = combinations.addObject();
+                item.put("partId", partId);
+                item.put("code", definition.itemCode());
+                item.put("name", definition.itemNameVi());
+                if (definition.branch() == null) item.putNull("branch"); else item.put("branch", definition.branch().name());
+                item.put("versionNo", definition.versionNo());
+                ArrayNode subjects = item.putArray("subjects");
+                int position = 0;
+                for (var subject : definition.subjects()) {
+                    ObjectNode row = subjects.addObject();
+                    row.put("code", subject.code());
+                    row.put("name", subject.nameVi());
+                    row.put("position", position++);
+                }
+            }
+        }
+        return result;
+    }
+
+    ObjectNode parts(JsonNode document, JsonNode checkResult, Set<String> selectedPaths) {
+        ObjectNode snapshot = document.deepCopy();
+        for (JsonNode part : snapshot.path("parts")) {
+            ArrayNode paths = ((ObjectNode) part).putArray("paths");
+            for (JsonNode checked : checkResult.path("paths")) {
+                String pathId = checked.path("pathId").asText();
+                if (!selectedPaths.contains(pathId)) continue;
+                ObjectNode path = paths.addObject();
+                path.put("pathId", pathId);
+                path.set("questionCount", checked.path("totalQuestions").isMissingNode()
+                        ? mapper.nullNode() : checked.path("totalQuestions"));
+                path.set("maxPoints", checked.path("totalPoints").isMissingNode()
+                        ? mapper.nullNode() : checked.path("totalPoints"));
+                path.set("durationMinutes", checked.path("totalMinutes").isMissingNode()
+                        ? mapper.nullNode() : checked.path("totalMinutes"));
+            }
+        }
+        return snapshot;
+    }
+
+    ArrayNode omittedGroups(JsonNode document) {
+        ArrayNode groups = mapper.createArrayNode();
+        collectOmitted(document, groups);
+        return groups;
+    }
+
+    private void collectOmitted(JsonNode node, ArrayNode groups) {
+        if (node.isArray()) {
+            node.forEach(child -> collectOmitted(child, groups));
+        } else if (node.isObject()) {
+            if (node.path("omitted").asBoolean(false)) {
+                ObjectNode group = groups.addObject();
+                group.set("name", node.path("name"));
+                int count = node.path("questionCount").asInt();
+                if (count == 0) count = node.path("setCount").asInt() * node.path("setSize").asInt();
+                if (node.path("requiredPointsPerQuestion").isNumber()) {
+                    group.put("points", node.path("requiredPointsPerQuestion").decimalValue()
+                            .multiply(java.math.BigDecimal.valueOf(count)));
+                } else {
+                    group.putNull("points");
+                }
+            } else {
+                node.elements().forEachRemaining(child -> collectOmitted(child, groups));
+            }
+        }
+    }
 
     ObjectNode resolvedQuotas(JsonNode document, Set<String> selectedPaths) {
         Set<String> selectedOptions = new LinkedHashSet<>();

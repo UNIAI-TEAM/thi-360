@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.api.ExamErrorCodes;
 import vn.unicom.thi360.exam.api.ExamPublishRequest;
 import vn.unicom.thi360.exam.api.ExamPublishResponse;
@@ -36,17 +37,19 @@ public class ExamPublishService {
     private final ObjectMapper mapper;
     private final ExamCheckValidity validity;
     private final QuestionSourcePort source;
+    private final CatalogLookup catalog;
     private final IdempotentCommand idempotency;
     private final CurrentUserProvider currentUser;
     private final AuditRecorder audit;
 
     public ExamPublishService(JdbcTemplate jdbc, ObjectMapper mapper, ExamCheckValidity validity,
-            QuestionSourcePort source, IdempotentCommand idempotency, CurrentUserProvider currentUser,
+            QuestionSourcePort source, CatalogLookup catalog, IdempotentCommand idempotency, CurrentUserProvider currentUser,
             AuditRecorder audit) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.validity = validity;
         this.source = source;
+        this.catalog = catalog;
         this.idempotency = idempotency;
         this.currentUser = currentUser;
         this.audit = audit;
@@ -64,7 +67,6 @@ public class ExamPublishService {
         if (rows.isEmpty()) throw new NotFoundException("Exam not found");
         ExamRow exam = rows.getFirst();
         if (exam.revision() != request.expectedRevision()) throw new VersionConflictException(ExamErrorCodes.REVISION_CONFLICT, null);
-        if (!exam.changed()) throw new ConflictException(ExamErrorCodes.NOTHING_TO_PUBLISH);
         Set<String> selected = new LinkedHashSet<>(request.pathIds());
         if (selected.isEmpty()) throw new BusinessRuleException(ExamErrorCodes.NO_PATH_SELECTED, null);
         if (selected.contains(null) || selected.contains("")) throw new BusinessRuleException(ExamErrorCodes.PATH_NOT_VALID, null);
@@ -112,13 +114,21 @@ public class ExamPublishService {
         var versions = jdbc.query("SELECT version_no, serving_path_ids FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING' ORDER BY version_no",
                 (rs, n) -> new VersionPaths(rs.getInt(1), List.of((String[]) rs.getArray(2).getArray())), examId);
         String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
-        String quotas = new ExamVersionSnapshot(mapper).resolvedQuotas(json(structure), selected).toString();
+        var snapshot = new ExamVersionSnapshot(mapper);
+        JsonNode document = json(structure);
+        String quotas = snapshot.resolvedQuotas(document, selected).toString();
+        UUID kindId = jdbc.queryForObject("SELECT kind_item_id FROM exam.exam WHERE id = ?", UUID.class, examId);
+        var extra = snapshot.combinations(document, selected, kindId, catalog);
+        extra.set("omittedGroups", snapshot.omittedGroups(document));
+        extra.set("examQuotas", json(jdbc.queryForObject("SELECT exam_quotas::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId)));
+        String extraConfig = extra.toString();
+        String snapshotParts = snapshot.parts(document, check.result(), selected).toString();
         String configSql = "jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), 'resolvedQuotas', ?::jsonb)";
         Set<Integer> matchingVersions = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT v.version_no FROM exam.exam_version v JOIN exam.exam e ON e.id = v.exam_id "
                 + "JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
-                + "WHERE (v.config - 'resolvedQuotas') = (" + configSql + " - 'resolvedQuotas') AND v.parts = s.parts AND e.id = ?",
-                Integer.class, quotas, examId));
+                + "WHERE (v.config - 'resolvedQuotas') = ((" + configSql + " || ?::jsonb) - 'resolvedQuotas') AND v.parts = ?::jsonb AND e.id = ?",
+                Integer.class, quotas, extraConfig, snapshotParts, examId));
         Set<String> alreadyServing = new LinkedHashSet<>();
         for (VersionPaths old : versions) {
             if (matchingVersions.contains(old.version())) alreadyServing.addAll(old.paths());
@@ -137,7 +147,7 @@ public class ExamPublishService {
             });
         }
         String sql = "INSERT INTO exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by, note) "
-                + "SELECT ?, e.id, ?, " + configSql + ", s.parts, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id WHERE e.id = ?";
+                + "SELECT ?, e.id, ?, " + configSql + " || ?::jsonb, ?::jsonb, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id WHERE e.id = ?";
         Instant now = Instant.now();
         int inserted = jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql);
@@ -145,13 +155,15 @@ public class ExamPublishService {
             ps.setObject(1, Ids.newId());
             ps.setInt(2, version);
             ps.setString(3, quotas);
-            ps.setArray(4, paths);
-            ps.setArray(5, paths);
-            ps.setObject(6, check.id());
-            ps.setObject(7, java.sql.Timestamp.from(now));
-            ps.setObject(8, actor);
-            ps.setString(9, request.note());
-            ps.setObject(10, examId);
+            ps.setString(4, extraConfig);
+            ps.setString(5, snapshotParts);
+            ps.setArray(6, paths);
+            ps.setArray(7, paths);
+            ps.setObject(8, check.id());
+            ps.setObject(9, java.sql.Timestamp.from(now));
+            ps.setObject(10, actor);
+            ps.setString(11, request.note());
+            ps.setObject(12, examId);
             return ps;
         });
         if (inserted != 1) throw new IllegalStateException("Exam structure missing");

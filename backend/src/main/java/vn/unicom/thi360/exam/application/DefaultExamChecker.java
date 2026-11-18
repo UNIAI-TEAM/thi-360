@@ -56,6 +56,29 @@ public class DefaultExamChecker implements ExamChecker {
         Set<String> requested = scope.sections(snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common().stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList());
+        if (scope.kind() == ExamCheckScope.Kind.EXAM && snapshot.servingCombinations() != null
+                && snapshot.servingCombinations().isArray()) {
+            List<ExamCheckRules.CombinationContent> served = new ArrayList<>();
+            for (var item : snapshot.servingCombinations()) {
+                List<String> subjects = new ArrayList<>();
+                var ordered = new ArrayList<com.fasterxml.jackson.databind.JsonNode>();
+                item.path("subjects").forEach(ordered::add);
+                ordered.sort(java.util.Comparator.comparingInt(subject -> subject.path("position").asInt()));
+                ordered.forEach(subject -> subjects.add(subject.path("code").asText()));
+                served.add(new ExamCheckRules.CombinationContent(item.path("code").asText(), subjects,
+                        item.path("branch").asText(null)));
+            }
+            var definitions = catalog.listCombinations(snapshot.exam().getKindItemId());
+            List<ExamCheckRules.CombinationContent> current = new ArrayList<>();
+            for (var definition : definitions) {
+                boolean relevant = snapshot.structure().parts().stream().anyMatch(part -> part.codeSource() != null
+                        && (part.codeSource().branch() == null || definition.branch() != null
+                        && part.codeSource().branch().equals(definition.branch().name())));
+                if (relevant) current.add(new ExamCheckRules.CombinationContent(definition.itemCode(),
+                        definition.subjectCodes(), definition.branch() == null ? null : definition.branch().name()));
+            }
+            common.addAll(rules.combinationListIssues(served, current));
+        }
         List<ObjectNode> allInvalid = rules.unrepresentable();
         List<ObjectNode> invalid = allInvalid.stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList();

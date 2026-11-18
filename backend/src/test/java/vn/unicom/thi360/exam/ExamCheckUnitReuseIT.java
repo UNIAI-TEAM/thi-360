@@ -226,6 +226,135 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void newCodeRequiresRepublishWhileOldVersionAndPreviewStayFrozen() throws Exception {
+        String base = publishCodeFixture();
+        UUID id = UUID.fromString(base.substring(base.lastIndexOf('/') + 1));
+        String before = jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id);
+        String oldParts = jdbc.queryForObject("SELECT parts::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id);
+        UUID item = UUID.randomUUID();
+        UUID version = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO catalog.catalog_item(id,group_id,code,code_normalized,value,name_vi,path)
+                SELECT ?,g.id,'QD06','qd06',(SELECT max(value)+1 FROM catalog.catalog_item WHERE group_id=g.id),'QD06',?
+                FROM catalog.catalog_group g WHERE g.code='SUBJECT_COMBINATION'
+                """, item, item.toString());
+        jdbc.update("INSERT INTO catalog.combination_version(id,item_id,version_no,exam_item_id,branch) VALUES (?,?,1,?,'SCIENCE')",
+                version, item, UUID.fromString("00000000-0000-7000-8200-000000000102"));
+        jdbc.update("INSERT INTO catalog.combination_subject(combination_version_id,subject_item_id,position) VALUES (?,?,0),(?,?,1)",
+                version, PHYSICS, version, UUID.fromString("00000000-0000-7000-8200-000000000208"));
+        entities.clear();
+        clearInvocations(units);
+        var checked = checkCodes(base);
+        verify(units, times(6)).solveUnit(any(), any(), any());
+        assertThat(checked.path("groups").findValuesAsText("code")).contains("COMBINATION_LIST_CHANGED");
+        assertThat(checked.path("paths").toString()).contains("codes:QD06");
+        assertThat(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id)).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT parts::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id)).isEqualTo(oldParts);
+        mockMvc.perform(post(base + "/preview").with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"target\":{\"kind\":\"PATH\",\"pathId\":\"codes:QD01\"},\"seed\":1,\"version\":1}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GENERATED"));
+        long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
+        mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pathIds\":[\"codes:QD06\"],\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
+        var config = mapper.readTree(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=2", String.class, id));
+        assertThat(config.path("combinations").findValuesAsText("code")).contains("QD06");
+        assertThat(mapper.readTree(before).path("combinations").findValuesAsText("code")).doesNotContain("QD06");
+        assertThat(config.path("examQuotas").isArray()).isTrue();
+    }
+
+    @Test
+    void reorderedCodeWarnsEvenWhenAllUnitsAreReused() throws Exception {
+        String base = publishCodeFixture();
+        UUID version = jdbc.queryForObject("""
+                SELECT v.id FROM catalog.combination_version v
+                JOIN catalog.catalog_item i ON i.id=v.item_id WHERE i.code='QD01' AND v.is_current
+                """, UUID.class);
+        jdbc.update("UPDATE catalog.combination_subject SET position=2 WHERE combination_version_id=? AND position=0", version);
+        jdbc.update("UPDATE catalog.combination_subject SET position=0 WHERE combination_version_id=? AND position=1", version);
+        jdbc.update("UPDATE catalog.combination_subject SET position=1 WHERE combination_version_id=? AND position=2", version);
+        entities.clear();
+        checkCodes(base);
+        clearInvocations(units);
+        var result = checkCodes(base);
+        verify(units, times(0)).solveUnit(any(), any(), any());
+        var issues = result.path("groups").findValues("issues").stream()
+                .flatMap(list -> java.util.stream.StreamSupport.stream(list.spliterator(), false))
+                .filter(issue -> "COMBINATION_LIST_CHANGED".equals(issue.path("code").asText())).toList();
+        assertThat(issues).isNotEmpty().allSatisfy(issue ->
+                assertThat(issue.path("severity").asText()).isEqualTo("WARNING"));
+        var detail = mapper.readTree(mockMvc.perform(get(base + "/versions/1").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var qd01 = java.util.stream.StreamSupport.stream(detail.path("config").path("combinations").spliterator(), false)
+                .filter(item -> "QD01".equals(item.path("code").asText())).findFirst().orElseThrow();
+        assertThat(qd01.path("subjects").get(0).path("code").asText()).isEqualTo("LY");
+        assertThat(detail.path("row").path("publishedPaths").toString()).contains("QD01");
+    }
+
+    @Test
+    void unrelatedCatalogChangeDoesNotWarnAboutCombinations() throws Exception {
+        String base = publishCodeFixture();
+        long before = jdbc.queryForObject("SELECT revision FROM catalog.catalog_revision WHERE id=1", Long.class);
+        jdbc.update("UPDATE catalog.catalog_group SET name_vi=name_vi WHERE code='SUBJECT'");
+        assertThat(jdbc.queryForObject("SELECT revision FROM catalog.catalog_revision WHERE id=1", Long.class)).isGreaterThan(before);
+        entities.clear();
+        assertThat(checkCodes(base).path("groups").findValuesAsText("code")).doesNotContain("COMBINATION_LIST_CHANGED");
+    }
+
+    @Test
+    void oldServingSnapshotWithoutCombinationsDoesNotWarn() throws Exception {
+        String base = publishCodeFixture();
+        UUID id = UUID.fromString(base.substring(base.lastIndexOf('/') + 1));
+        jdbc.update("UPDATE exam.exam_version SET config=config-'combinations' WHERE exam_id=? AND version_no=1", id);
+        entities.clear();
+        assertThat(checkCodes(base).path("groups").findValuesAsText("code")).doesNotContain("COMBINATION_LIST_CHANGED");
+    }
+
+    private String publishCodeFixture() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,has_unpublished_changes) "
+                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',2,true)", id, id.toString(), id.toString(), qda);
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
+                {"parts":[{"id":"codes","name":"Codes","codeSource":{"source":"GLOBAL_LIST"},
+                  "subjectPool":[
+                   {"id":"ly","subjectCode":"LY","questionCount":1,"blocks":[{"id":"bly","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                   {"id":"hoa","subjectCode":"HOA","questionCount":1,"blocks":[{"id":"bhoa","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                   {"id":"sinh","subjectCode":"SINH","questionCount":1,"blocks":[{"id":"bsinh","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                   {"id":"su","subjectCode":"SU","questionCount":1,"blocks":[{"id":"bsu","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                   {"id":"dia","subjectCode":"DIA","questionCount":1,"blocks":[{"id":"bdia","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                   {"id":"anh","subjectCode":"ANH","questionCount":2,"blocks":[{"id":"banh","questionType":"SINGLE_CHOICE","questionCount":2}]}
+                  ]}]}
+                """);
+        for (String[] ref : new String[][] {{"ly", "204"}, {"hoa", "205"}, {"sinh", "206"},
+                {"su", "207"}, {"dia", "208"}, {"anh", "203"}}) {
+            jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                    UUID.randomUUID(), id, "b" + ref[0], "codes", ref[0],
+                    UUID.fromString("00000000-0000-7000-8200-000000000" + ref[1]));
+        }
+        String base = "/api/v1/admin/exams/" + id;
+        var checked = checkCodes(base);
+        assertThat(checked.path("status").asText()).isEqualTo("VALID");
+        var paths = mapper.createArrayNode();
+        checked.path("paths").forEach(path -> paths.add(path.path("pathId").asText()));
+        long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
+        var request = mapper.createObjectNode();
+        request.set("pathIds", paths);
+        request.put("expectedRevision", revision);
+        mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
+                .content(request.toString())).andExpect(status().isOk());
+        entities.clear();
+        return base;
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode checkCodes(String base) throws Exception {
+        return mapper.readTree(mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    @Test
     void missingCodeSubjectsDoNotPreventPublishingCompleteCode() throws Exception {
         UUID id = UUID.randomUUID();
         UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");

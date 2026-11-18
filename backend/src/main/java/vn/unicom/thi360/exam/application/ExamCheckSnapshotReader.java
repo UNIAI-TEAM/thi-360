@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
@@ -30,11 +31,12 @@ public class ExamCheckSnapshotReader {
     private final QuestionSourcePort source;
     private final CatalogLookup catalog;
     private final ExamCheckFingerprint fingerprint;
+    private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
 
     public ExamCheckSnapshotReader(ExamRepository exams, ExamStructureRepository structures,
             ExamKindProfileRepository profiles, ExamBlockRefRepository references, QuestionSourcePort source,
-            CatalogLookup catalog, ExamCheckFingerprint fingerprint, ObjectMapper mapper) {
+            CatalogLookup catalog, ExamCheckFingerprint fingerprint, ObjectMapper mapper, JdbcTemplate jdbc) {
         this.exams = exams;
         this.structures = structures;
         this.profiles = profiles;
@@ -42,11 +44,12 @@ public class ExamCheckSnapshotReader {
         this.source = source;
         this.catalog = catalog;
         this.fingerprint = fingerprint;
+        this.jdbc = jdbc;
         this.mapper = mapper;
     }
 
     public record Snapshot(Exam exam, ExamStructureDocument structure,
-                           ExamCheckResultStore.Input persistenceInput) { }
+                           ExamCheckResultStore.Input persistenceInput, JsonNode servingCombinations) { }
 
     @Transactional(readOnly = true)
     public Snapshot read(UUID examId) {
@@ -68,6 +71,18 @@ public class ExamCheckSnapshotReader {
         ExamCheckResultStore.Input input = new ExamCheckResultStore.Input(examId, exam.getRevision(),
                 structure.getStructureHash(), mapper.valueToTree(config), profileRevision, catalogRevision,
                 hash, mapper.valueToTree(sourceRevisions));
-        return new Snapshot(exam, document, input);
+        JsonNode servingCombinations = null;
+        if (exam.getServingVersion() != null) {
+            var rows = jdbc.query("SELECT config->'combinations' FROM exam.exam_version WHERE exam_id = ? AND version_no = ? AND state = 'SERVING'",
+                    (rs, n) -> rs.getString(1), examId, exam.getServingVersion());
+            if (!rows.isEmpty() && rows.getFirst() != null) {
+                try {
+                    servingCombinations = mapper.readTree(rows.getFirst());
+                } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+                    throw new IllegalStateException("Invalid exam version combination snapshot", ex);
+                }
+            }
+        }
+        return new Snapshot(exam, document, input, servingCombinations);
     }
 }

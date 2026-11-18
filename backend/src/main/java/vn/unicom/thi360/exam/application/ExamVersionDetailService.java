@@ -46,14 +46,15 @@ public class ExamVersionDetailService {
         PersonRef actor = users.findById(current.actor()).map(user -> new PersonRef(user.id(), user.displayName()))
                 .orElseGet(() -> new PersonRef(current.actor(), null));
         ExamVersionResponse row = new ExamVersionResponse(version, current.state(), current.publishedAt(), actor, 0,
-                current.note(), paths(current.published(), current.parts()), paths(current.serving(), current.parts()));
+                current.note(), paths(current.published(), current.parts(), current.config()),
+                paths(current.serving(), current.parts(), current.config()));
         var changes = previous.isEmpty() ? List.<vn.unicom.thi360.exam.api.ExamVersionChange>of()
                 : ExamVersionChanges.between(previous.getFirst().config(), previous.getFirst().parts(), current.config(), current.parts());
         List<JsonNode> parts = StreamSupport.stream(current.parts().path("parts").spliterator(), false).toList();
         return new ExamVersionDetail(examId, row, current.config(), parts, changes);
     }
 
-    private List<ExamVersionPath> paths(List<String> ids, JsonNode document) {
+    private List<ExamVersionPath> paths(List<String> ids, JsonNode document, JsonNode config) {
         List<ExamVersionPath> paths = new ArrayList<>();
         for (String id : ids) {
             Set<String> selected = "default".equals(id) ? Set.of() : Set.copyOf(Arrays.asList(id.split("\\+")));
@@ -64,6 +65,15 @@ public class ExamVersionDetailService {
                         String code = option.path("code").asText();
                         choices.add(new ExamVersionPath.Choice(part.path("id").asText(), option.path("id").asText(),
                                 option.path("kind").asText(), code, option.path("name").asText(code)));
+                    }
+                }
+                for (JsonNode combination : config.path("combinations")) {
+                    String partId = part.path("id").asText();
+                    String code = combination.path("code").asText();
+                    String optionId = partId + ":" + code;
+                    if (partId.equals(combination.path("partId").asText()) && selected.contains(optionId)) {
+                        choices.add(new ExamVersionPath.Choice(partId, optionId, "COMBINATION", code,
+                                combination.path("name").asText(code)));
                     }
                 }
             }

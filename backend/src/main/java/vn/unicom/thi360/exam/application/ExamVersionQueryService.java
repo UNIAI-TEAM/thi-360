@@ -74,7 +74,8 @@ public class ExamVersionQueryService {
             try {
                 JsonNode parts = mapper.readTree(row.parts()).path("parts");
                 result.add(new ExamVersionResponse(row.version(), row.state(), row.publishedAt(), publisher, 0,
-                        row.note(), paths(parts, row.publishedPaths()), paths(parts, row.servingPaths())));
+                        row.note(), paths(parts, jsonNode(mapper, row.config()), row.publishedPaths()),
+                        paths(parts, jsonNode(mapper, row.config()), row.servingPaths())));
             } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
                 throw new IllegalStateException("Invalid exam version snapshot", ex);
             }
@@ -91,7 +92,7 @@ public class ExamVersionQueryService {
                         rs.getString(9)), examId);
     }
 
-    private static List<ExamVersionPath> paths(JsonNode parts, List<String> ids) {
+    private static List<ExamVersionPath> paths(JsonNode parts, JsonNode config, List<String> ids) {
         List<ExamVersionPath> result = new ArrayList<>();
         for (String id : ids) {
             List<String> selected = Arrays.asList(id.split("\\+", -1));
@@ -103,10 +104,27 @@ public class ExamVersionQueryService {
                                 option.path("kind").asText(null), option.path("code").asText(null), option.path("name").asText(null)));
                     }
                 }
+                for (JsonNode combination : config.path("combinations")) {
+                    String partId = part.path("id").asText();
+                    String code = combination.path("code").asText();
+                    String optionId = partId + ":" + code;
+                    if (partId.equals(combination.path("partId").asText()) && selected.contains(optionId)) {
+                        choices.add(new ExamVersionPath.Choice(partId, optionId, "COMBINATION", code,
+                                combination.path("name").asText(code)));
+                    }
+                }
             }
             result.add(new ExamVersionPath(id, List.copyOf(choices)));
         }
         return List.copyOf(result);
+    }
+
+    private static JsonNode jsonNode(ObjectMapper mapper, String value) {
+        try {
+            return mapper.readTree(value);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+            throw new IllegalStateException("Invalid exam version snapshot", ex);
+        }
     }
 
     private JsonNode currentConfig(UUID examId) {
