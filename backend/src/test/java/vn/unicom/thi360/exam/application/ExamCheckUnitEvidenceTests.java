@@ -41,7 +41,7 @@ class ExamCheckUnitEvidenceTests {
                 List.of(new QuestionPick(root.toString(), 3)))));
         var path = new PathResult(SolvePath.of(0, List.of()), SolveStatus.VALID, null, null, null,
                 List.of(witness), List.of(), null);
-        var facts = ExamCheckUnitEvidence.witnessFacts(source, document, List.of(path), Map.of()).get(0L);
+        var facts = ExamCheckUnitEvidence.witnessFacts(source, org.mockito.Mockito.mock(vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.class), document, List.of(path), Map.of()).get(0L);
         assertThat(facts).hasSize(2);
         assertThat(facts.getFirst().questionCode()).isEqualTo("CHILD");
         assertThat(facts.getFirst().hasAnswerKey()).isFalse();
@@ -69,7 +69,7 @@ class ExamCheckUnitEvidenceTests {
                 List.of(new QuestionPick(good.toString(), 1), new QuestionPick(bad.toString(), 1)))));
         var path = new PathResult(SolvePath.of(0, List.of()), SolveStatus.VALID, null, null, null,
                 List.of(witness), List.of(), null);
-        var facts = ExamCheckUnitEvidence.witnessFacts(source, document, List.of(path), Map.of()).get(0L);
+        var facts = ExamCheckUnitEvidence.witnessFacts(source, org.mockito.Mockito.mock(vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.class), document, List.of(path), Map.of()).get(0L);
         assertThat(facts).hasSize(2);
         assertThat(facts.get(0).hasAnswerKey()).isNull();
         assertThat(facts.get(0).hasScoringRule()).isTrue();

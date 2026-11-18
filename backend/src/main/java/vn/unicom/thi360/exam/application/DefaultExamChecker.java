@@ -24,6 +24,7 @@ import vn.unicom.thi360.exam.domain.solver.SolveReason;
 import vn.unicom.thi360.exam.domain.solver.SolveStats;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Runs exact configuration checks and the shared solver without holding a database transaction. */
@@ -35,18 +36,20 @@ public class DefaultExamChecker implements ExamChecker {
     private final ObjectMapper mapper;
     private final CatalogLookup catalog;
     private final QuestionSourcePort source;
+    private final QuestionAttachmentPort attachments;
     private final ExamCheckUnitEngine units;
     private final ExamCheckTemplateFacts templateFacts;
 
     public DefaultExamChecker(SolverInputBuilder builder, SolverLimits limits,
             Clock clock, ObjectMapper mapper, CatalogLookup catalog, QuestionSourcePort source,
-            ExamCheckUnitEngine units, ExamCheckTemplateFacts templateFacts) {
+            QuestionAttachmentPort attachments, ExamCheckUnitEngine units, ExamCheckTemplateFacts templateFacts) {
         this.builder = builder;
         this.limits = limits;
         this.clock = clock;
         this.mapper = mapper;
         this.catalog = catalog;
         this.source = source;
+        this.attachments = attachments;
         this.units = units;
         this.templateFacts = templateFacts;
     }
@@ -219,7 +222,7 @@ public class DefaultExamChecker implements ExamChecker {
         }
         var computed = units.solve(snapshot, input, rules, deadline, budget, scope);
         SolveOutcome outcome = computed.outcome();
-        ExamCheckUnitEvidence.witnessFacts(source, snapshot.structure(), outcome.results(), combinations)
+        ExamCheckUnitEvidence.witnessFacts(source, attachments, snapshot.structure(), outcome.results(), combinations)
                 .forEach((path, facts) -> witnessIssues.put(path, new ArrayList<>(rules.witnessIssues(facts))));
         Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> filterCounts = new LinkedHashMap<>();
         for (var path : outcome.results()) {
