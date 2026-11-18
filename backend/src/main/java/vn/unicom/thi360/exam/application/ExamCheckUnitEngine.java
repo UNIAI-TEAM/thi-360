@@ -169,6 +169,7 @@ public class ExamCheckUnitEngine {
         for (var unit : plan.units()) {
             if (unit.key().sectionIds().stream().noneMatch(requested::contains)) continue;
             var relevant = issues.stream().filter(issue -> {
+                if (!"ERROR".equals(issue.path("severity").asText())) return false;
                 if (issue.hasNonNull("sectionId")) {
                     return unit.key().sectionIds().contains(issue.path("sectionId").asText());
                 }

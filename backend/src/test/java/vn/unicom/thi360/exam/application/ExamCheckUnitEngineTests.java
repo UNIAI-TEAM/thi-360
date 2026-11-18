@@ -157,7 +157,8 @@ class ExamCheckUnitEngineTests {
                   "participation":{"mode":"CHOICE","choose":1},"options":[
                     {"id":"good","kind":"SUBJECT","code":"LY","sections":[
                       {"id":"good-section","subjectCode":"LY","questionCount":1,"blocks":[
-                        {"id":"good-block","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                        {"id":"good-block","questionType":"SINGLE_CHOICE","questionCount":1},
+                        {"id":"omitted-essay","questionType":"ESSAY","questionCount":1,"omitted":true}]}]},
                     {"id":"bad","kind":"SUBJECT_CHOICE","code":"LY","sections":[
                       {"id":"bad-section","subjectCode":"LY","questionCount":1,"blocks":[
                         {"id":"bad-block","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}]}
