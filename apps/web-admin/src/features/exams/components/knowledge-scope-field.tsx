@@ -34,8 +34,8 @@ export interface KnowledgeScopeFieldProps {
    */
   openRequest?: number;
   /**
-   * Chỉ nhóm chùm: ô "Mọi câu con thuộc chủ đề" (`knowledgeScope.everyChildInScope`). Chỉ hiện khi nhóm đã chọn MAPID ở
-   * "Theo chủ đề"; Toàn môn không có chủ đề nào để câu con thuộc về. Bỏ trống: không có ô.
+   * Nhóm chùm và phạm vi của môn: ô "Mọi câu con thuộc chủ đề" (`knowledgeScope.everyChildInScope`). Chỉ hiện khi đã chọn
+   * MAPID ở "Theo chủ đề"; Toàn môn không có chủ đề nào để câu con thuộc về. Bỏ trống (nhóm câu đơn): không có ô.
    */
   everyChild?: { checked: boolean; onChange: (checked: boolean) => void; anchor?: string };
 }
