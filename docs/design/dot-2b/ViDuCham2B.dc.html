@@ -44,7 +44,7 @@ progress::-moz-progress-bar{background:var(--bar,var(--pf));border-radius:9999px
     <sc-if value="{{isV}}" hint-placeholder-val="{{true}}">
       <div style="display: flex; flex-direction: column; gap: 16px">
         <div role="status" style="border: 1px solid var(--wnbd); border-left: 4px solid var(--wn); background: var(--wnb); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
-          <strong style="font-size: 16px; line-height: 24px; font-variant-numeric: tabular-nums">Đúng {{n}}/4: Đúng/Sai {{tfPt}} điểm, Ghép hợp {{mPt}} điểm</strong>
+          <strong style="font-size: 16px; line-height: 24px; font-variant-numeric: tabular-nums">Đúng {{n}}/4: Đúng/Sai {{tfPt}} điểm, Ghép đôi {{mPt}} điểm</strong>
           <span style="color: var(--tx2)">{{contrastNote}}</span>
         </div>
 
@@ -67,7 +67,7 @@ progress::-moz-progress-bar{background:var(--bar,var(--pf));border-radius:9999px
           </div>
           <div style="border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
             <table style="width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums">
-              <caption style="text-align: left; padding: 12px 14px; font-size: 16px; font-weight: 700">Ghép hợp · tối đa 6 điểm</caption>
+              <caption style="text-align: left; padding: 12px 14px; font-size: 16px; font-weight: 700">Ghép đôi · tối đa 6 điểm</caption>
               <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Số cặp đúng</th><th scope="col" style="padding: 8px 14px; text-align: right">Điểm của câu</th></tr></thead>
               <tbody><sc-for list="{{mRows}}" as="r" hint-placeholder-count="5"><tr style="{{r.tr}}"><th scope="row" style="{{r.th}}">{{r.label}}<sc-if value="{{r.on}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--okb); color: var(--ok); margin-left: 8px">Đang xem</span></sc-if></th><td style="{{r.td}}">{{r.pt}}</td></tr></sc-for></tbody>
             </table>
@@ -115,7 +115,7 @@ progress::-moz-progress-bar{background:var(--bar,var(--pf));border-radius:9999px
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; align-items: start">
       <div style="display: flex; flex-direction: column; gap: 6px">
         <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">V-SAT: nguồn còn câu dùng mặc định 1 điểm</h3>
-        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Phần III · Ghép hợp.</strong> Cần 5 câu 6 điểm · Nguồn chỉ có 2 câu đúng điểm. Các câu còn lại đang để 1 điểm.</div>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Phần III · Ghép đôi.</strong> Cần 5 câu 6 điểm · Nguồn chỉ có 2 câu đúng điểm. Các câu còn lại đang để 1 điểm.</div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 6px">
         <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">V-SAT Ngữ văn: đặt thang 150</h3>
@@ -127,7 +127,7 @@ progress::-moz-progress-bar{background:var(--bar,var(--pf));border-radius:9999px
       </div>
       <div style="display: flex; flex-direction: column; gap: 6px">
         <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bài theo phần của V-SAT</h3>
-        <p style="margin: 0; color: var(--tx2)">Chỉ hiện dạng câu có trong phần đang mở. Phần III có Ghép hợp nhưng không có Đúng/Sai nên không hiện dòng so sánh.</p>
+        <p style="margin: 0; color: var(--tx2)">Chỉ hiện dạng câu có trong phần đang mở. Phần III có Ghép đôi nhưng không có Đúng/Sai nên không hiện dòng so sánh.</p>
       </div>
       <div style="display: flex; flex-direction: column; gap: 6px">
         <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Kỳ thi khác</h3>
@@ -173,7 +173,7 @@ theme: this.props.dark ? 'dark' : '', isV, isH: !isV, crumb: isV ? 'V-SAT Toán,
 vOn: isV ? 'true' : 'false', hOn: isV ? 'false' : 'true', vSeg: this.seg(isV), hSeg: this.seg(!isV),
 pickV: () => this.setState({ kind: 'VSAT' }), pickH: () => this.setState({ kind: 'HSCA' }),
 n: String(s.n), tfPt: this.vn(TF[s.n]), mPt: this.vn(M[s.n]),
-contrastNote: same ? 'Ở mức này hai dạng được cùng số điểm.' : 'Cùng số ý đúng nhưng hai dạng được số điểm khác nhau. Đúng/Sai tính theo bảng, Ghép hợp tính 1,5 điểm mỗi cặp.',
+contrastNote: same ? 'Ở mức này hai dạng được cùng số điểm.' : 'Cùng số ý đúng nhưng hai dạng được số điểm khác nhau. Đúng/Sai tính theo bảng, Ghép đôi tính 1,5 điểm mỗi cặp.',
 picks, tfRows: rowsOf(TF, 'ý'), mRows: rowsOf(M, 'cặp')
 };
 }

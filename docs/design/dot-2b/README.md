@@ -134,16 +134,16 @@ Vẽ ngày 2026-11-18 theo `docs/specs/2026-11-18-pbi04-dot-2b-bo-sung-hsca-vsat
 | FE-6 | `TaoBaiThiHscaVsat2B` (bấm thử được) | 1440px | Kỳ thi, môn, phạm vi; H-SCA Tiếng Anh có Nghe, Đọc, Nghe và Đọc; ô thời lượng điền sẵn hoặc bắt buộc nhập; số câu chỉ đọc ở bài cả môn của mẫu khóa dòng; V-SAT Tiếng Anh theo phần chỉ có Phần II, III, IV; phần Viết không có trong danh sách. Trạng thái khác: lỗi thiếu thời lượng, V-SAT Hóa học, khung hẹp, đang tải, lỗi, thiếu quyền | FE-6 1–5, 10–12 |
 | FE-7 | `NhomAudio2B` (bấm thử được) | 1040px | Dòng lấy câu phần Nghe 8 × 1, 3 × 4, 3 × 5: nhãn Có audio, tổng câu, tỷ lệ, nguồn khả dụng; nhập theo số lượng hoặc tỷ lệ; phần Đọc nhãn Không có audio; dòng bị khóa của H-SCA Toán. Trạng thái khác: tỷ lệ không ra chùm nguyên, thiếu nguồn có audio, sai điểm, vượt số câu, bài theo phần | FE-7 1–5 |
 | FE-7, FE-8 | `BaiDocDungChung2B` | 1040px | V-SAT Tiếng Anh câu 8–15: điều kiện theo vị trí, 8 câu, 14 lệnh, 48 điểm; dải 25 câu với ranh giới Phần I và II cắt giữa chùm; mạch đối chiếu theo lệnh; đề thử có bốn tiêu đề Phần I–IV, bài đọc hiện ở cả hai phần | FE-7 6, 9; FE-8 2, 3 |
-| FE-7 | `ViDuCham2B` (bấm thử được) | 1040px | V-SAT "Đúng 3/4: Đúng/Sai 3 điểm, Ghép hợp 4,5 điểm", bảng điểm hai dạng, các dạng còn lại; H-SCA đúng, đúng một phần, sai, bỏ trống kèm chú thích chờ BA xác nhận | FE-7 7, 8 |
-| FE-8 | `SinhThuAudio2B` (bấm thử được) | 1440px | Trình phát ở câu đơn và ở đầu chùm, thao tác bằng bàn phím; đối chiếu theo lệnh "Toán FULL · 67 lệnh" có dòng Chưa phân loại. Trạng thái khác: lỗi phát, tệp mất khỏi kho lưu trữ, câu chữ của năm mã kiểm tra mới | FE-8 1, 4, 5 |
+| FE-7 | `ViDuCham2B` (bấm thử được) | 1040px | V-SAT "Đúng 3/4: Đúng/Sai 3 điểm, Ghép đôi 4,5 điểm", bảng điểm hai dạng, các dạng còn lại; H-SCA đúng, đúng một phần, sai, bỏ trống kèm chú thích chờ BA xác nhận | FE-7 7, 8 |
+| FE-8 | `SinhThuAudio2B` (bấm thử được) | 1440px | Trình phát ở câu đơn và ở đầu chùm, thao tác bằng bàn phím; đối chiếu theo lệnh "Toán cả môn · 67 lệnh" có dòng Chưa phân loại. Trạng thái khác: lỗi phát, tệp mất khỏi kho lưu trữ, câu chữ của năm mã kiểm tra mới | FE-8 1, 4, 5 |
 
 Trình phát trong bản vẽ chỉ mô phỏng thao tác, không phát tiếng và thanh vị trí không tự chạy.
 
 ### Chỗ cần chốt (M.Trường hoặc BA)
 
 1. **Dòng bị khóa không vẽ trên mẫu Nghe.** Yêu cầu giao việc đặt trạng thái khóa cùng mẫu Nghe 8 × 1, 3 × 4, 3 × 5, nhưng spec H-SCA, V-SAT H42 chỉ bật khóa dòng cho bốn môn H-SCA 40 câu và tám môn V-SAT; mục 4.3 cho H-SCA Tiếng Anh chỉnh được. Bản vẽ theo spec: phần Nghe sửa được, trạng thái khóa vẽ trên H-SCA Toán.
-2. **Chữ "FULL" trên màn.** Dòng nghiệm thu FE-8 5 ghi đúng chuỗi "Toán FULL · 67 lệnh", nên bản vẽ giữ nguyên ở mẫu số của bảng đối chiếu. Các chỗ khác ghi "Cả môn". Nếu muốn thuần tiếng Việt thì đổi thành "Toán cả môn · 67 lệnh" và sửa dòng nghiệm thu.
-3. **"Ghép hợp" và "Ghép đôi".** Ghi chú BA, spec và dòng nghiệm thu dùng "Ghép hợp"; danh mục loại câu hỏi của ngân hàng ghi "Ghép đôi". Bản vẽ dùng "Ghép hợp" ở màn V-SAT. Cần chốt có đổi nhãn của ngân hàng hay không.
+2. **Chữ "FULL" trên màn (đã chốt, D21).** Mẫu số của bảng đối chiếu ghi "Toán cả môn · 67 lệnh", tiếng Anh "Math, whole subject · 67 commands". Dòng nghiệm thu FE-8 5 đọc theo câu chữ này.
+3. **Tên dạng ghép cặp (đã chốt, D22).** Mọi màn dùng "Ghép đôi", đúng nhãn loại câu hỏi của ngân hàng. Ghi chú BA và spec viết "Ghép hợp" cho cùng dạng này; Advisor báo BA.
 4. **Phần IV của V-SAT Tiếng Anh.** Các môn khác là Trả lời ngắn; Tiếng Anh là một đoạn năm vị trí (spec mục 5.2). Bản vẽ ghi "Điền khuyết" theo tên loại câu hỏi của ngân hàng, không dùng chữ "Cloze".
 5. **Tên phần của H-SCA Ngữ văn.** Spec mục 4.2 không đặt tên phần; bản vẽ ghi "Đọc hiểu" theo ghi chú BA mục 1.
 6. **Chữ "BA" trên màn.** Dòng nghiệm thu FE-7 8 yêu cầu chú thích luật chờ BA xác nhận, nên `ViDuCham2B` ghi đúng như vậy. Chú thích này bỏ khi BA chốt Q-32.
@@ -155,7 +155,7 @@ Trình phát trong bản vẽ chỉ mô phỏng thao tác, không phát tiếng 
 | Mã | Lời trên màn |
 |---|---|
 | `AUDIO_SHORTAGE` | "Nghe › Dòng 2 · Hội thoại 4 câu: cần 3 chùm × 4 câu có audio, nguồn hiện ghép được 2 chùm." |
-| `POINTS_SHORTAGE` | "Phần III · Ghép hợp. Cần 5 câu 6 điểm, nguồn chỉ có 2 câu đúng điểm." |
+| `POINTS_SHORTAGE` | "Phần III · Ghép đôi. Cần 5 câu 6 điểm, nguồn chỉ có 2 câu đúng điểm." |
 | `BLOCK_COUNT_LOCKED` | "Phần 1 › Dòng 1 · Chọn một. Dòng đang có 22 câu, mẫu giữ 20 câu. Đưa số câu về 20." |
 | `OMITTED_BLOCK_LOCKED` | "Ngữ văn › Phần Viết. Phần này chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này." |
 | `SCALE_INCLUDES_EXCLUDED_PART` | "V-SAT Ngữ văn. Thang đang là 150, tổng điểm của bài là 120. Chênh 30 điểm đúng bằng phần Viết. Đặt thang 120." |

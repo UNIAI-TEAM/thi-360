@@ -286,13 +286,13 @@ const doc = { id: 'DOC', name: 'Đọc · Không có audio', rows: [R('d1', 'Câ
 const hvan = { id: 'DH', name: 'Đọc hiểu', rows: [R('v1', 'Văn bản thông tin', 'set', 1, 5, 1, 1), R('v2', 'Văn bản nghị luận', 'set', 1, 7, 1, 1), R('v3', 'Thơ', 'set', 1, 8, 1, 1)] };
 const p1 = { id: 'I', name: 'Phần I · Đúng/Sai', rows: [R('i', 'Đúng/Sai bốn ý', 'single', 9, 1, 6, 4)] };
 const p2 = { id: 'II', name: 'Phần II · Một đáp án', rows: [R('ii', 'Câu chùm', 'set', 2, 3, 6, 1)] };
-const p3 = { id: 'III', name: 'Phần III · Ghép hợp', rows: [R('iii', 'Ghép hợp bốn mục', 'single', 5, 1, 6, 4)] };
+const p3 = { id: 'III', name: 'Phần III · Ghép đôi', rows: [R('iii', 'Ghép đôi bốn mục', 'single', 5, 1, 6, 4)] };
 const p4 = { id: 'IV', name: 'Phần IV · Trả lời ngắn', rows: [R('iv', 'Trả lời ngắn', 'single', 5, 1, 6, 1)] };
 const vvan2 = { id: 'II', name: 'Phần II · Một đáp án', rows: [R('ii1', 'Chùm thơ', 'set', 1, 3, 6, 1), R('ii2', 'Chùm truyện', 'set', 1, 3, 6, 1)] };
 const a2 = { id: 'II', name: 'Phần II · Một đáp án', rows: [R('a2', 'Câu chùm kèm bài đọc', 'set', 1, 6, 6, 1)] };
-const a3 = { id: 'III', name: 'Phần III · Ghép hợp', rows: [R('a3', 'Ghép hợp bốn mục', 'single', 5, 1, 6, 4)] };
+const a3 = { id: 'III', name: 'Phần III · Ghép đôi', rows: [R('a3', 'Ghép đôi bốn mục', 'single', 5, 1, 6, 4)] };
 const a4 = { id: 'IV', name: 'Phần IV · Điền khuyết', rows: [R('a4', 'Một đoạn, năm vị trí', 'single', 5, 1, 6, 1)] };
-const afull = [{ id: 'FULL', name: 'Một đồng hồ, hiển thị thành Phần I–IV', rows: [R('f1', 'Câu 1–7 · Đúng/Sai độc lập', 'single', 7, 1, 6, 4), R('f2', 'Câu 8–15 · Bài đọc dùng chung', 'set', 1, 8, 6, 1.75), R('f3', 'Câu 16–20 · Ghép hợp', 'single', 5, 1, 6, 4), R('f4', 'Câu 21–25 · Điền khuyết', 'single', 5, 1, 6, 1)] }];
+const afull = [{ id: 'FULL', name: 'Một đồng hồ, hiển thị thành Phần I–IV', rows: [R('f1', 'Câu 1–7 · Đúng/Sai độc lập', 'single', 7, 1, 6, 4), R('f2', 'Câu 8–15 · Bài đọc dùng chung', 'set', 1, 8, 6, 1.75), R('f3', 'Câu 16–20 · Ghép đôi', 'single', 5, 1, 6, 4), R('f4', 'Câu 21–25 · Điền khuyết', 'single', 5, 1, 6, 1)] }];
 const std = [p1, p2, p3, p4];
 const S = (name, locked, dur, parts, extra) => Object.assign({ name, locked, dur, parts, whole: parts }, extra || {});
 return {
