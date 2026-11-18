@@ -16,6 +16,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 class PreviewSnapshotStoreTest {
     @Test
@@ -25,9 +27,17 @@ class PreviewSnapshotStoreTest {
         ValueOperations<String, String> values = mock(ValueOperations.class);
         when(redis.opsForValue()).thenReturn(values);
         PreviewSnapshotStore store = new PreviewSnapshotStore(redis, new ObjectMapper());
-        var snapshot = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), 2, 42L,
-                Map.of("part-1", List.of(new GroupWitness("group", List.of(new QuestionPick("q", 3))))),
-                List.of(new QuestionPick("dropped", 1)));
+        UUID questionId = UUID.randomUUID();
+        var unit = new QuestionSourcePort.Unit(questionId, "ref", QuestionType.SINGLE_CHOICE, "G12",
+                "EASY", List.of(), List.of(), java.math.BigDecimal.ONE);
+        var candidate = new QuestionSourcePort.Candidate(questionId, 3, null, List.of(unit), null, null);
+        var version = new QuestionSourcePort.Version(new QuestionSourcePort.VersionKey(questionId, 3),
+                new ObjectMapper().createObjectNode().put("content", "snapshot"), "CODE", Map.of());
+        var part = new PreviewSnapshotStore.PartSnapshot(
+                List.of(new GroupWitness("group", List.of(new QuestionPick(questionId.toString(), 3)))),
+                List.of(candidate), List.of(version),
+                List.of(new PreviewSnapshotStore.Dropped(new QuestionPick("dropped", 1), "PHYSICS")));
+        var snapshot = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), 2, 42L, Map.of("part-1", part));
 
         UUID id = store.save(snapshot);
         var serialized = ArgumentCaptor.forClass(String.class);

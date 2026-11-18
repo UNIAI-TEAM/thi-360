@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.exam.application.ExamPreviewService;
 import vn.unicom.thi360.identity.spi.Permissions;
-import vn.unicom.thi360.shared.api.NotImplementedException;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.security.RequirePermission;
 
@@ -203,10 +202,22 @@ public class ExamPreviewController {
     @Operation(operationId = "previewExam", summary = "Sinh đề xem trước một đường (có hạt giống)")
     public PreviewResult preview(@PathVariable UUID id,
             @Valid @RequestBody GeneratePreviewRequest request) {
-        if (request.target() != null || request.basePreviewId() != null || request.regeneratePartIds() != null) {
-            throw new NotImplementedException();
-        }
-        if (request.pathId() == null || request.pathId().isBlank() || request.seed() == null) {
+        if (request.target() != null) {
+            if ((request.basePreviewId() == null) != (request.regeneratePartIds() == null)) {
+                throw new ValidationException((String) null);
+            }
+            PreviewTarget target = request.target();
+            if (!"SECTION".equals(target.kind()) && !"PATH".equals(target.kind()) && !"EXAM".equals(target.kind())) {
+                throw new ValidationException((String) null);
+            }
+            String pathId = "PATH".equals(target.kind()) ? target.pathId() : "default";
+            if (pathId == null || pathId.isBlank()) throw new ValidationException((String) null);
+            long seed = request.seed() == null ? java.util.concurrent.ThreadLocalRandom.current().nextLong() : request.seed();
+            request = new GeneratePreviewRequest(pathId, seed, request.version(),
+                    "SECTION".equals(target.kind()) ? null : target.subjectCodes(), target,
+                    request.basePreviewId(), request.regeneratePartIds());
+        } else if (request.pathId() == null || request.pathId().isBlank() || request.seed() == null
+                || request.basePreviewId() != null || request.regeneratePartIds() != null) {
             throw new ValidationException((String) null);
         }
         return preview.generate(id, request);

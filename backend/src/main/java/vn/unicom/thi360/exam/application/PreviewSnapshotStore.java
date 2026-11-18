@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /** Short-lived solver selections used when regenerating only some parts of a preview. */
 @Component
@@ -17,9 +18,12 @@ public class PreviewSnapshotStore {
     private static final String KEY_PREFIX = "exam:preview:";
     private static final Duration TTL = Duration.ofMinutes(30);
 
-    public record Snapshot(UUID examId, Integer version, long seed,
-                           Map<String, List<GroupWitness>> parts,
-                           List<QuestionPick> droppedQuestions) {}
+    public record Dropped(QuestionPick pick, String subjectCode) {}
+
+    public record PartSnapshot(List<GroupWitness> groups, List<QuestionSourcePort.Candidate> candidates,
+                               List<QuestionSourcePort.Version> versions, List<Dropped> droppedQuestions) {}
+
+    public record Snapshot(UUID examId, Integer version, long seed, Map<String, PartSnapshot> parts) {}
 
     private final StringRedisTemplate redis;
     private final ObjectMapper mapper;

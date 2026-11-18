@@ -111,6 +111,94 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GENERATED"))
                 .andReturn().getResponse().getContentAsString());
     }
+
+    @Test
+    void examTargetGeneratesSeededPreviewWithoutChoice() throws Exception {
+        Subject subject = subject();
+        question(subject, "SINGLE_CHOICE", "first", false);
+        question(subject, "SINGLE_CHOICE", "second", false);
+        UUID examId = exam(part(subject.code(),
+                "[{\"id\":\"g\",\"name\":\"Group\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}]", "null"));
+        String request = "{\"target\":{\"kind\":\"EXAM\"},\"seed\":123}";
+        JsonNode first = preview(examId, request).path("paper");
+        assertThat(first.path("totalQuestions").asInt()).isEqualTo(1);
+        assertThat(preview(examId, request).path("paper")).isEqualTo(first);
+    }
+
+    @Test
+    void switchingBcaCombinationRegeneratesOnlyThirdPart() throws Exception {
+        Subject first = subject();
+        Subject second = subject();
+        question(first, "SINGLE_CHOICE", "first", false);
+        question(second, "SINGLE_CHOICE", "second", false);
+        for (String code : List.of("LY", "HOA", "SINH", "DIA")) {
+            UUID subjectId = jdbc.queryForObject("select id from catalog.catalog_item where group_id = ? and code_normalized = ?",
+                    UUID.class, SUBJECT_GROUP, code.toLowerCase(Locale.ROOT));
+            question(new Subject(subjectId, code), "SINGLE_CHOICE", code, false);
+        }
+        UUID examId = exam("""
+                [{"id":"p1","order":1,"name":"One","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s1","subjectCode":"%s","questionCount":1,
+                    "blocks":[{"id":"g1","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                 {"id":"p2","order":2,"name":"Two","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s2","subjectCode":"%s","questionCount":1,
+                    "blocks":[{"id":"g2","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
+                 {"id":"p3","order":3,"name":"Three","questionCount":1,
+                  "codeSource":{"source":"GLOBAL_LIST"},"subjectPool":[
+                    {"id":"ly","subjectCode":"LY","questionCount":1,"blocks":[{"id":"gly","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"hoa","subjectCode":"HOA","questionCount":1,"blocks":[{"id":"ghoa","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"sinh","subjectCode":"SINH","questionCount":1,"blocks":[{"id":"gsinh","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"dia","subjectCode":"DIA","questionCount":1,"blocks":[{"id":"gdia","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]
+                """.formatted(first.code(), second.code()));
+        jdbc.update("update exam.exam set kind_item_id=(select id from catalog.catalog_item where code_normalized='bca' and group_id='00000000-0000-7000-8100-000000000001') where id=?", examId);
+        JsonNode initial = preview(examId, "{\"target\":{\"kind\":\"PATH\",\"pathId\":\"p3:CA1\"},\"seed\":5}");
+        String secondRequest = "{\"target\":{\"kind\":\"PATH\",\"pathId\":\"p3:CA2\"},\"seed\":6,"
+                + "\"basePreviewId\":\"" + initial.path("previewId").asText() + "\",\"regeneratePartIds\":[\"p3\"]}";
+        JsonNode regenerated = preview(examId, secondRequest);
+        JsonNode oldParts = initial.path("paper").path("parts");
+        JsonNode newParts = regenerated.path("paper").path("parts");
+        assertThat(newParts.get(0)).isEqualTo(oldParts.get(0));
+        assertThat(newParts.get(1)).isEqualTo(oldParts.get(1));
+        assertThat(newParts.get(2).path("blocks").get(0).path("subjectCode").asText()).isEqualTo("HOA");
+    }
+
+    @Test
+    void subjectChoiceSectionGeneratesSeventeenThenDropsOne() throws Exception {
+        Subject physics = subject();
+        Subject other = subject();
+        for (int i = 0; i < 17; i++) question(physics, "SINGLE_CHOICE", "physics", false);
+        UUID examId = exam("""
+                [{"id":"science-part","order":1,"name":"Science","questionCount":50,
+                  "participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"id":"science","kind":"SUBJECT_CHOICE","chooseSubjects":2,"countsByPick":[17,16],
+                     "sections":[
+                       {"id":"physics","subjectCode":"%s","choiceGroup":"NATURAL",
+                        "blocks":[{"id":"physics-group","questionType":"SINGLE_CHOICE","questionCount":17}]},
+                       {"id":"other","subjectCode":"%s","choiceGroup":"SOCIAL",
+                        "blocks":[{"id":"other-group","questionType":"SINGLE_CHOICE","questionCount":17}]}]}]}]
+                """.formatted(physics.code(), other.code()));
+        JsonNode result = preview(examId, "{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"physics\","
+                + "\"sectionQuestionCount\":16},\"seed\":42}");
+        assertThat(result.path("paper").path("totalQuestions").asInt()).isEqualTo(16);
+        assertThat(result.path("droppedQuestions")).hasSize(1);
+        String dropped = result.path("droppedQuestions").get(0).path("questionId").asText();
+        assertThat(result.path("paper").path("parts").get(0).path("blocks").get(0).path("items"))
+                .noneMatch(item -> dropped.equals(item.path("question").path("questionId").asText()));
+    }
+
+    @Test
+    void expiredPreviewReturnsGoneAndKeepsPermissionChecks() throws Exception {
+        UUID examId = UUID.randomUUID();
+        String url = "/api/v1/admin/exams/" + examId + "/preview";
+        String body = "{\"target\":{\"kind\":\"EXAM\"},\"basePreviewId\":\"" + UUID.randomUUID()
+                + "\",\"regeneratePartIds\":[\"p1\"]}";
+        mockMvc.perform(post(url).header("Origin", "http://localhost:3001").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post(url).with(asUser(Permissions.QUESTION_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isGone()).andExpect(jsonPath("$.code").value("PREVIEW_EXPIRED"));
+    }
     @Test
     void previewOfSeededChoiceExposesShuffleOptions() throws Exception {
         UUID seededQuestion = seededPreviewQuestion();

@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,10 +49,12 @@ public class ExamPreviewStore {
     @Transactional(readOnly = true)
     public Snapshot load(UUID id) {
         Exam exam = exams.findById(id).orElseThrow(() -> new NotFoundException("Exam not found"));
-        JsonNode parts = structures.findById(id).map(ExamStructure::getParts)
+        ExamStructure structure = structures.findById(id)
                 .orElseThrow(() -> new NotFoundException("Exam structure not found"));
+        ObjectNode parts = ((ObjectNode) structure.getParts()).deepCopy();
+        if (structure.getExamQuotas() != null) parts.set("examQuotas", structure.getExamQuotas().deepCopy());
         return new Snapshot(exam.getId(), exam.getCode(), exam.getTiming(), exam.getDurationMinutes(),
-                exam.getPracticeScoring(), exam.getMaxScore(), parts.deepCopy(), exam);
+                exam.getPracticeScoring(), exam.getMaxScore(), parts, exam);
     }
 
     /** Reconstruct the checker inputs from the immutable published configuration and structure. */

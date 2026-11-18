@@ -36,6 +36,22 @@ class PreviewPathSolverTest {
                 .doesNotContain(result.dropped().getFirst());
     }
 
+    @Test
+    void singleChoiceSectionSolvesSeventeenThenDropsOne() {
+        GroupQuota group = GroupQuota.single("physics", 17);
+        SectionOnPath section = new SectionOnPath("PHYSICS", "physics", 17, null, List.of(group), "NATURAL");
+        List<PathCandidate> candidates = java.util.stream.IntStream.range(0, 17)
+                .mapToObj(index -> question("question-" + index)).toList();
+        var result = PreviewPathSolver.solveSection(new PaperSolver(), SolvePath.of(0, List.of(section)),
+                ignored -> candidates, 42, true);
+
+        assertThat(result.path().status()).isEqualTo(SolveStatus.VALID);
+        assertThat(result.path().witness().getFirst().resolvedCount()).isEqualTo(16);
+        assertThat(result.path().witness().getFirst().groups().getFirst().picks()).hasSize(16)
+                .doesNotContain(result.dropped().getFirst());
+        assertThat(result.dropped()).hasSize(1);
+    }
+
     private static PathCandidate question(String id) {
         return PathCandidate.standalone(id, 1, "SINGLE_CHOICE", null, null, null);
     }

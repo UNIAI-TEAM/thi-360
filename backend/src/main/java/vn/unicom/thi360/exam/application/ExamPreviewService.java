@@ -27,15 +27,17 @@ import vn.unicom.thi360.shared.api.BusinessRuleException;
 @Service
 public class ExamPreviewService {
     private final ExamPreviewStore store;
+    private final PreviewSnapshotStore previewSnapshots;
     private final SolverInputBuilder builder;
     private final SolverLimits limits;
     private final ObjectMapper mapper;
     private final Clock clock;
     private final CatalogLookup catalog;
 
-    public ExamPreviewService(ExamPreviewStore store, SolverInputBuilder builder, SolverLimits limits,
-            ObjectMapper mapper, Clock clock, CatalogLookup catalog) {
+    public ExamPreviewService(ExamPreviewStore store, PreviewSnapshotStore previewSnapshots,
+            SolverInputBuilder builder, SolverLimits limits, ObjectMapper mapper, Clock clock, CatalogLookup catalog) {
         this.store = store;
+        this.previewSnapshots = previewSnapshots;
         this.builder = builder;
         this.limits = limits;
         this.mapper = mapper;
@@ -44,9 +46,19 @@ public class ExamPreviewService {
     }
 
     public PreviewResult generate(UUID id, GeneratePreviewRequest request) {
+        PreviewSnapshotStore.Snapshot base = request.basePreviewId() == null ? null
+                : previewSnapshots.find(request.basePreviewId());
+        if (request.basePreviewId() != null && (base == null || !id.equals(base.examId())
+                || !java.util.Objects.equals(request.version(), base.version()))) {
+            throw new PreviewExpiredException();
+        }
         var snapshot = request.version() == null ? store.load(id)
                 : store.loadVersion(id, request.version(), request.pathId());
         ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
+        PreviewSectionTarget.Selection sectionTarget = request.target() != null && "SECTION".equals(request.target().kind())
+                ? PreviewSectionTarget.select(document, request.target().sectionId(), request.target().sectionQuestionCount())
+                : null;
+        if (sectionTarget != null) document = sectionTarget.document();
         var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
         List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document).unrepresentable()
                 .stream().filter(issue -> {
@@ -56,7 +68,7 @@ public class ExamPreviewService {
         if (!draftIssues.isEmpty()) {
             PathRef path = PreviewPathResolver.resolveDraft(document, request.pathId(), request.subjectCodes());
             return new PreviewResult(id, path, request.version(), request.seed(), Instant.now(clock), "FAILED", null,
-                    "INVALID", draftIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList(),
+                    "INVALID", draftIssues.stream().map(issue -> previewIssue(issue, request.pathId())).toList(),
                     null, null, null);
         }
         PaperSolver solver = new PaperSolver(limits, clock);
@@ -68,33 +80,47 @@ public class ExamPreviewService {
         }
         var resolved = PreviewPathResolver.resolve(document, input.parts(), request.pathId(),
                 request.subjectCodes(), request.seed(), solver.allocator());
-        PathResult selectedPath = new PathResult(resolved.path(), SolveStatus.VALID, null, null,
-                null, List.of(), List.of(), null);
-        List<ObjectNode> staticIssues = ExamCheckRules.issuesForPath(mapper, snapshot.exam(),
-                document, selectedPath);
-        if (staticIssues.stream().anyMatch(issue -> !"WARNING".equals(issue.path("severity").asText()))) {
-            String reason = staticIssues.stream().anyMatch(issue -> "ERROR".equals(issue.path("severity").asText()))
-                    ? "INVALID" : "UNCONFIRMED";
-            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                    "FAILED", null, reason,
-                    staticIssues.stream().map(issue -> mapper.convertValue(issue, PreviewIssue.class)).toList(),
-                    null, null, null);
-        }
-        PathResult result = solver.solvePath(resolved.path(), input.candidates(), SolveMode.generate(request.seed()));
-        if (result.status() != SolveStatus.VALID) {
-            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                    "FAILED", null, result.status().name(), issues(result, document), null, null, null);
-        }
-        Map<String, GroupWitness> groups = new HashMap<>();
-        List<QuestionSourcePort.VersionKey> keys = new ArrayList<>();
-        for (SubjectWitness subject : result.witness()) {
-            for (GroupWitness group : subject.groups()) {
-                groups.put(group.groupId(), group);
-                for (QuestionPick pick : group.picks()) keys.add(key(pick));
+        if (request.target() == null) {
+            PathResult selectedPath = new PathResult(resolved.path(), SolveStatus.VALID, null, null,
+                    null, List.of(), List.of(), null);
+            List<ObjectNode> staticIssues = ExamCheckRules.issuesForPath(mapper, snapshot.exam(),
+                    document, selectedPath);
+            if (staticIssues.stream().anyMatch(issue -> !"WARNING".equals(issue.path("severity").asText()))) {
+                String reason = staticIssues.stream().anyMatch(issue -> "ERROR".equals(issue.path("severity").asText()))
+                        ? "INVALID" : "UNCONFIRMED";
+                return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
+                        "FAILED", null, reason,
+                        staticIssues.stream().map(issue -> previewIssue(issue, request.pathId())).toList(),
+                        null, null, null);
             }
         }
-        var candidates = input.candidates().loadedCandidates();
+        PreviewPartIndex partIndex = new PreviewPartIndex(document);
+        PreviewRegeneration.Selection regeneration = base == null ? null
+                : PreviewRegeneration.prepare(document, partIndex, resolved.path(), base, request.regeneratePartIds());
+        SolvePath solvePath = regeneration == null ? resolved.path() : regeneration.path();
+        var solved = sectionTarget != null
+                ? PreviewPathSolver.solveSection(solver, solvePath, input.candidates(), request.seed(), sectionTarget.trim())
+                : PreviewPathSolver.solve(solver, solvePath, input.candidates(), request.seed(),
+                        regeneration == null ? java.util.Set.of() : regeneration.excluded());
+        PathResult result = solved.path();
+        if (result.status() != SolveStatus.VALID) {
+            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
+                    "FAILED", null, result.status().name(), issues(result, document, request.pathId()), null, null, null);
+        }
+        Map<String, GroupWitness> generatedGroups = new HashMap<>();
+        for (SubjectWitness subject : result.witness()) {
+            for (GroupWitness group : subject.groups()) generatedGroups.put(group.groupId(), group);
+        }
+        Map<String, GroupWitness> groups = new HashMap<>();
+        if (regeneration != null) groups.putAll(regeneration.groups());
+        groups.putAll(generatedGroups);
+        List<QuestionSourcePort.VersionKey> keys = new ArrayList<>();
+        for (GroupWitness group : groups.values()) for (QuestionPick pick : group.picks()) keys.add(key(pick));
+        Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates = new HashMap<>();
+        if (regeneration != null) candidates.putAll(regeneration.candidates());
+        candidates.putAll(input.candidates().loadedCandidates());
         List<QuestionSourcePort.VersionKey> snapshotKeys = new ArrayList<>(keys);
+        for (QuestionPick dropped : solved.dropped()) snapshotKeys.add(key(dropped));
         for (var key : keys) {
             var candidate = candidates.get(key);
             if (candidate == null) throw new IllegalStateException("Selected candidate missing");
@@ -106,20 +132,75 @@ public class ExamPreviewService {
                 }
             }
         }
-        var versions = store.loadVersions(snapshotKeys);
-        Map<String, SectionOnPath> sections = new HashMap<>();
-        for (SectionOnPath section : resolved.path().sections()) sections.put(section.sectionId(), section);
-        for (List<SubjectPick> choices : resolved.path().picks()) {
-            for (SubjectPick pick : choices) for (SectionOnPath section : pick.resolvedSections()) sections.put(section.sectionId(), section);
+        Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions = new HashMap<>();
+        if (regeneration != null) versions.putAll(regeneration.versions());
+        List<QuestionSourcePort.VersionKey> missing = snapshotKeys.stream().filter(key -> !versions.containsKey(key)).toList();
+        if (!missing.isEmpty()) versions.putAll(store.loadVersions(missing));
+        SolvePath actualPath = regeneration == null || sectionTarget != null ? result.path()
+                : mergeRegeneratedPath(resolved.path(), result.path());
+        Map<String, SectionOnPath> sections = pathSections(actualPath);
+        Map<String, SectionOnPath> generatedSections = pathSections(result.path());
+        List<CatalogItemView> knowledge = catalog.listGroupItems("KNOWLEDGE");
+        PaperBuilder paperBuilder = new PaperBuilder(groups, candidates, versions, sections, knowledge);
+        PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
+                document, request.seed(), mapper);
+        List<PreviewSnapshotStore.Dropped> generatedDropped = new ArrayList<>();
+        for (QuestionPick dropped : solved.dropped()) {
+            String subjectCode = generatedSections.values().stream().filter(section ->
+                    section.groups().stream().anyMatch(group -> input.candidates().candidatesFor(group).stream()
+                            .anyMatch(item -> item.questionId().equals(dropped.questionId()))))
+                    .map(SectionOnPath::subjectCode).findFirst().orElseThrow();
+            generatedDropped.add(new PreviewSnapshotStore.Dropped(dropped, subjectCode));
         }
-        PaperBuilder paperBuilder = new PaperBuilder(groups, candidates, versions, sections,
-                catalog.listGroupItems("KNOWLEDGE"));
-        PreviewPaper paper = paperBuilder.build(snapshot, document, resolved.path());
+        List<PreviewSnapshotStore.Dropped> allDropped = new ArrayList<>();
+        if (regeneration != null) allDropped.addAll(regeneration.dropped());
+        allDropped.addAll(generatedDropped);
+        List<PreviewQuestion> droppedQuestions = new ArrayList<>();
+        for (var item : allDropped) {
+            QuestionPick dropped = item.pick();
+            var candidate = candidates.get(key(dropped));
+            var version = versions.get(key(dropped));
+            if (candidate == null || version == null || candidate.units().size() != 1) {
+                throw new IllegalStateException("Dropped question missing");
+            }
+            droppedQuestions.add(paperBuilder.question(dropped.questionId(), version.code(), dropped.versionNo(),
+                    version.snapshot(), candidate.units().getFirst(), item.subjectCode()));
+        }
+        Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
+                PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
+                        new ArrayList<>(generatedSections.values()), input.candidates()));
+        if (regeneration != null) selectedParts.putAll(regeneration.retained());
+        List<Compliance> compliance = PreviewCompliance.evaluate(document, actualPath, groups, candidates, allDropped, knowledge);
+        UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
+                request.seed(), selectedParts));
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
         return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                "GENERATED", paper, null, null, null, null, null);
+                "GENERATED", paper, null, null, previewId, compliance, droppedQuestions);
     }
 
+
+    private static Map<String, SectionOnPath> pathSections(SolvePath path) {
+        Map<String, SectionOnPath> sections = new LinkedHashMap<>();
+        for (SectionOnPath section : path.sections()) sections.put(section.sectionId(), section);
+        for (List<SubjectPick> choices : path.picks()) {
+            for (SubjectPick pick : choices) {
+                for (SectionOnPath section : pick.resolvedSections()) sections.put(section.sectionId(), section);
+            }
+        }
+        return sections;
+    }
+
+    private static SolvePath mergeRegeneratedPath(SolvePath original, SolvePath generated) {
+        Map<String, List<SubjectPick>> updated = new HashMap<>();
+        for (int i = 0; i < generated.choices().size(); i++) {
+            updated.put(generated.choices().get(i).optionId(), generated.picks().get(i));
+        }
+        List<List<SubjectPick>> picks = new ArrayList<>();
+        for (int i = 0; i < original.choices().size(); i++) {
+            picks.add(updated.getOrDefault(original.choices().get(i).optionId(), original.picks().get(i)));
+        }
+        return new SolvePath(original.pathIndex(), original.chosen(), original.sections(), original.choices(), picks);
+    }
 
     private static QuestionSourcePort.VersionKey key(QuestionPick pick) {
         return new QuestionSourcePort.VersionKey(UUID.fromString(pick.questionId()), pick.versionNo());
@@ -148,7 +229,7 @@ public class ExamPreviewService {
      * one issue per failed subject-choice selection, else one for the path-level reason; the
      * mapping matches {@link ExamCheckSolverIssues} so the web panel renders them like check issues.
      */
-    private List<PreviewIssue> issues(PathResult result, ExamStructureDocument document) {
+    private List<PreviewIssue> issues(PathResult result, ExamStructureDocument document, String pathId) {
         var solverIssues = new ExamCheckSolverIssues(new ExamCheckIssues(mapper), document,
                 limits.timeout().toSeconds());
         Map<String, ObjectNode> found = new LinkedHashMap<>();
@@ -164,7 +245,19 @@ public class ExamPreviewService {
                     result.groupId(), result.failingQuota(), result.failingSelections());
             found.putIfAbsent(issue.path("key").asText(), issue);
         }
-        return found.values().stream().map(node -> mapper.convertValue(node, PreviewIssue.class)).toList();
+        return found.values().stream().map(node -> previewIssue(node, pathId)).toList();
+    }
+
+    private PreviewIssue previewIssue(ObjectNode issue, String pathId) {
+        if (!issue.hasNonNull("location")) {
+            ObjectNode location = mapper.createObjectNode();
+            for (String field : List.of("partId", "sectionId", "blockId")) {
+                if (issue.hasNonNull(field)) location.set(field, issue.get(field));
+            }
+            location.put("pathId", pathId);
+            issue.set("location", location);
+        }
+        return mapper.convertValue(issue, PreviewIssue.class);
     }
 
     private static final class PaperBuilder {
