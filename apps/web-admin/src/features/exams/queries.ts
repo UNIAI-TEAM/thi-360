@@ -52,8 +52,8 @@ export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsAp
 }
 
 /**
- * Tổng hợp cấu trúc vùng (d) (spec 15.2). `null` khi BE-5 chưa triển khai (501). Không thử lại: vùng (d) dùng được
- * không cần bảng này (số tính trên màn hình), và thử lại làm chậm mọi thao tác ghi đang chờ làm mới nhóm `exams`.
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2). Không thử lại: vùng (d) dùng được khi bảng này lỗi (số tính trên màn hình),
+ * và thử lại làm chậm mọi thao tác ghi đang chờ làm mới nhóm `exams`.
  */
 export function useExamStructureSummary(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
   return useQuery({

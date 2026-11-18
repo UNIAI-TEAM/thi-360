@@ -348,8 +348,9 @@ export class ExamsBackend {
   private readonly previews = new Map<string, Reply>();
   /** Phần thêm của `GET structure` (sectionStates, combinations) theo bài; BE-5 chưa có thì bỏ trống. */
   private readonly structureExtras = new Map<string, { sectionStates?: unknown[] | null; combinations?: unknown[] }>();
-  /** Dòng tổng hợp của `GET structure/summary`; chưa xếp thì trả 501 như BE-5 chưa triển khai. */
+  /** Cây tổng hợp của `GET structure/summary`; chưa xếp thì trả cây rỗng (máy chủ thật luôn trả 200). */
   private readonly summaries = new Map<string, unknown[]>();
+  private readonly summaryFailures = new Set<string>();
   /** Bài mà đổi phiên bản thiếu `overviewPolicy` thì trả 409 `EXAM_OVERVIEW_CONFIRM`. */
   private readonly overviewConfirm = new Set<string>();
   /** Mã gợi ý tùy biến theo truy vấn; mặc định `<KIND>-<F|P|S>-[SLUG-]<NNN>` số tiếp theo chưa dùng. */
@@ -413,8 +414,15 @@ export class ExamsBackend {
     return this;
   }
 
+  /** Cây tổng hợp như BE-5 trả: dòng phần mang `children` là dòng môn, dòng môn mang `children` là dòng nhóm. */
   seedSummary(examId: string, rows: unknown[]): this {
     this.summaries.set(examId, rows);
+    return this;
+  }
+
+  /** `GET structure/summary` của bài này trả 500: vùng (d) dùng số tính trên màn hình. */
+  failSummary(examId: string): this {
+    this.summaryFailures.add(examId);
     return this;
   }
 
@@ -964,8 +972,8 @@ export class ExamsBackend {
         const id = request.url.pathname.split("/").at(-3)!;
         const exam = this.require(id);
         if (exam === null) return err(404, "EXAM_NOT_FOUND");
-        const rows = this.summaries.get(id);
-        return rows ? { status: 200, body: { parts: rows } } : err(501, "NOT_IMPLEMENTED");
+        if (this.summaryFailures.has(id)) return err(500, "INTERNAL_ERROR");
+        return { status: 200, body: { parts: this.summaries.get(id) ?? [] } };
       })
       .on("GET", `${exams}/:id/structure`, (request) => {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);

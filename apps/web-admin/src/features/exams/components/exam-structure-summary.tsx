@@ -3,6 +3,7 @@
 import { Button, Card, cn, focusRingInset, Skeleton } from "@thi360/ui";
 import { TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
+import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import type { StructureIssue } from "../matrix";
 import type { ExamCheckResult } from "../review-types";
 import type { ExamStructureSummary, ExamStructureSummaryRow } from "../types";
@@ -13,7 +14,7 @@ import { ExamStructureCheckResult, type CheckResultNames } from "./exam-structur
 export type SummaryLoad = "loading" | "ready" | "unavailable";
 
 export interface ExamStructureSummaryProps {
-  /** Tổng hợp từ `structure/summary`; `null` khi máy chủ chưa có (BE-5 trả 501). */
+  /** Tổng hợp từ `structure/summary`; `null` khi chưa tải xong hoặc tải lỗi (dùng số tính trên màn hình). */
   summary: ExamStructureSummary | null;
   load: SummaryLoad;
   /** Còn thay đổi chưa lưu: bảng tổng hợp theo bản đã lưu, không theo bản nháp. */
@@ -38,9 +39,10 @@ export function summaryRowTarget(row: ExamStructureSummaryRow): StructureSelecti
 type Headline = { state: "ok" | "missing" | "over"; allocated: number; target: number; missing: number; extra: number };
 
 function headlineOf(allocated: number, target: number): Headline {
-  const missing = Math.max(0, target - allocated);
-  const extra = Math.max(0, allocated - target);
-  return { state: missing > 0 ? "missing" : extra > 0 ? "over" : "ok", allocated, target, missing, extra };
+  const rounded = { allocated: roundForDisplay(allocated), target: roundForDisplay(target) };
+  const missing = roundForDisplay(Math.max(0, rounded.target - rounded.allocated));
+  const extra = roundForDisplay(Math.max(0, rounded.allocated - rounded.target));
+  return { state: missing > 0 ? "missing" : extra > 0 ? "over" : "ok", ...rounded, missing, extra };
 }
 
 /**
@@ -124,7 +126,7 @@ export function ExamStructureSummaryRegion({
               {summary.rows.map((row, index) => {
                 const target = summaryRowTarget(row);
                 const level = row.blockId ? 2 : row.sectionId ? 1 : 0;
-                const difference = (row.allocated ?? 0) - (row.target ?? 0);
+                const difference = roundForDisplay((row.allocated ?? 0) - (row.target ?? 0));
                 const label = row.name ?? "";
                 return (
                   <tr key={`${row.partId}-${row.sectionId}-${row.blockId}-${index}`}>
@@ -153,18 +155,24 @@ export function ExamStructureSummaryRegion({
                         <span className="px-2">{label}</span>
                       )}
                     </th>
-                    <td className="border-b border-border px-2 py-1 text-right">{row.target ?? "—"}</td>
-                    <td className="border-b border-border px-2 py-1 text-right">{row.allocated ?? "—"}</td>
+                    <td className="border-b border-border px-2 py-1 text-right">
+                      {row.target === null ? "—" : format.number(row.target, DISPLAY_NUMBER_FORMAT)}
+                    </td>
+                    <td className="border-b border-border px-2 py-1 text-right">
+                      {row.allocated === null ? "—" : format.number(row.allocated, DISPLAY_NUMBER_FORMAT)}
+                    </td>
                     <td
                       className={cn(
                         "border-b border-border px-2 py-1 text-right",
                         difference !== 0 && row.target !== null && "font-semibold text-warning",
                       )}
                     >
-                      {row.target === null || row.allocated === null ? "—" : difference > 0 ? `+${difference}` : difference}
+                      {row.target === null || row.allocated === null
+                        ? "—"
+                        : format.number(difference, { ...DISPLAY_NUMBER_FORMAT, signDisplay: "exceptZero" })}
                     </td>
                     <td className="border-b border-border px-3 py-1 text-right">
-                      {row.maxPoints === null ? "—" : format.number(row.maxPoints, { maximumFractionDigits: 2 })}
+                      {row.maxPoints === null ? "—" : format.number(row.maxPoints, DISPLAY_NUMBER_FORMAT)}
                     </td>
                   </tr>
                 );

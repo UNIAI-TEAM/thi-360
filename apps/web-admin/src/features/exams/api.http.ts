@@ -7,6 +7,7 @@ import {
   mapExamTemplate,
   mapParts,
   mapSectionStates,
+  mapStructureSummary,
   toApiParts,
 } from "./api-mapping";
 import { partsFromInput } from "./create-parts";
@@ -106,32 +107,16 @@ export async function getExamStructure(id: string): Promise<ExamStructure> {
 }
 
 /**
- * Tổng hợp cấu trúc vùng (d) (spec 15.2). BE-5 chưa triển khai: trả `null` để màn ẩn bảng tổng hợp thay vì báo lỗi.
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2, BE-5): cây phần → môn → nhóm, dàn phẳng theo thứ tự đó. Lỗi máy chủ ném lên
+ * để vùng (d) báo "chưa có tổng hợp" và dùng số tính trên màn hình.
  */
-export async function getExamStructureSummary(id: string): Promise<ExamStructureSummary | null> {
+export async function getExamStructureSummary(id: string): Promise<ExamStructureSummary> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}/structure/summary", {
     params: { path: { id } },
   });
-  if (response.status === 501) return null;
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
-  return {
-    rows: (data.parts ?? []).map((row) => ({
-      name: row.name ?? null,
-      partId: row.partId ?? null,
-      sectionId: row.sectionId ?? null,
-      blockId: row.blockId ?? null,
-      target: row.target ?? null,
-      allocated: row.allocated ?? null,
-      difference: row.difference ?? null,
-      essayCount: row.essayCount ?? null,
-      objectiveCount: row.objectiveCount ?? null,
-      setCount: row.setCount ?? null,
-      commandCount: row.commandCount ?? null,
-      childCount: row.childCount ?? null,
-      maxPoints: row.maxPoints ?? null,
-    })),
-  };
+  return mapStructureSummary(data);
 }
 
 export async function suggestExamCode(query: SuggestExamCodeQuery): Promise<string> {

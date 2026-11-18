@@ -17,6 +17,8 @@ import type {
   ExamTemplateBlock,
   ExamTemplatePart,
   ExamTemplateSection,
+  ExamStructureSummary,
+  ExamStructureSummaryRow,
   ExamVersion,
   KnowledgeScope,
   MatrixDimensionValue,
@@ -49,6 +51,40 @@ export function mapSectionStates(
     subjectCode: item.subjectCode ?? null,
     state: item.state === "CHECKED" || item.state === "NEEDS_CHECK" ? item.state : "INCOMPLETE",
   }));
+}
+
+/**
+ * Hàng của `structure/summary` như BE-5 thật trả: cây phần → môn → nhóm qua `children`. OpenAPI chưa khai `children`
+ * (springdoc bỏ trường tự tham chiếu) nên kiểu sinh chỉ có các trường phẳng; thêm lại ở đây cho đến khi hợp đồng sửa.
+ */
+type ApiSummaryRow = Schemas["ExamStructureSummaryRow"] & { children?: ApiSummaryRow[] | null };
+
+function flattenSummary(rows: readonly ApiSummaryRow[] | null | undefined, into: ExamStructureSummaryRow[]) {
+  for (const row of rows ?? []) {
+    into.push({
+      name: row.name ?? null,
+      partId: row.partId ?? null,
+      sectionId: row.sectionId ?? null,
+      blockId: row.blockId ?? null,
+      target: row.target ?? null,
+      allocated: row.allocated ?? null,
+      difference: row.difference ?? null,
+      essayCount: row.essayCount ?? null,
+      objectiveCount: row.objectiveCount ?? null,
+      setCount: row.setCount ?? null,
+      commandCount: row.commandCount ?? null,
+      childCount: row.childCount ?? null,
+      maxPoints: row.maxPoints ?? null,
+    });
+    flattenSummary(row.children, into);
+  }
+}
+
+/** Dàn cây tổng hợp thành các dòng phẳng theo thứ tự phần → môn → nhóm (bảng ở vùng (d) đọc theo thứ tự này). */
+export function mapStructureSummary(response: { parts?: readonly ApiSummaryRow[] | null }): ExamStructureSummary {
+  const rows: ExamStructureSummaryRow[] = [];
+  flattenSummary(response.parts, rows);
+  return { rows };
 }
 
 function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {

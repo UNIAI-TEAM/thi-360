@@ -190,9 +190,25 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
   it("đọc structure/summary: 'Đã phân bổ 47/50 câu. Còn thiếu 3 câu.'; bấm dòng chọn đúng môn và nhóm", async () => {
     const user = userEvent.setup();
     backend.seedSummary(QDA, [
-      { name: "Phần 1 · Toán học", partId: "part-42", target: 50, allocated: 47, maxPoints: 50 },
-      { name: "Toán học", partId: "part-42", sectionId: "sec-41", target: 50, allocated: 47 },
-      { name: "Nhóm của Toán", partId: "part-42", sectionId: "sec-41", blockId: blockId(), target: 20, allocated: 17 },
+      {
+        name: "Phần 1 · Toán học",
+        partId: "part-42",
+        target: 50,
+        allocated: 47,
+        maxPoints: 50,
+        children: [
+          {
+            name: "Toán học",
+            partId: "part-42",
+            sectionId: "sec-41",
+            target: 50,
+            allocated: 47,
+            children: [
+              { name: "Nhóm của Toán", partId: "part-42", sectionId: "sec-41", blockId: blockId(), target: 20, allocated: 17 },
+            ],
+          },
+        ],
+      },
     ]);
     openStructure(QDA, "?part=part-38");
     expect(await screen.findByTestId("structure-headline")).toHaveTextContent("Đã phân bổ 47/50 câu. Còn thiếu 3 câu.");
@@ -203,10 +219,68 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
     await waitFor(() => expect(window.location.search).toContain(`block=${blockId()}`));
   });
 
-  it("máy chủ chưa có tổng hợp (501): dùng số trên màn hình, không bảng, không lỗi", async () => {
+  it("máy chủ trả tổng hợp thập phân: tiêu đề và bảng hiện 1,25 / 2,5 theo dấu phẩy của vi, tối đa 2 chữ số", async () => {
+    backend.seedSummary(QDA, [
+      {
+        name: "Phần 1 · Toán học",
+        partId: "part-42",
+        target: 2.5,
+        allocated: 1.25,
+        difference: -1.25,
+        maxPoints: 1.239,
+        children: [],
+      },
+    ]);
+    openStructure(QDA, "?part=part-38");
+    expect(await screen.findByTestId("structure-headline")).toHaveTextContent(
+      "Đã phân bổ 1,25/2,5 câu. Còn thiếu 1,25 câu.",
+    );
+    const table = await screen.findByRole("table", { name: /Tổng hợp số câu theo phần/ });
+    const cells = within(table)
+      .getAllByRole("cell")
+      .map((cell) => cell.textContent);
+    expect(cells).toEqual(["2,5", "1,25", "-1,25", "1,24"]);
+  });
+
+  it("tổng hợp dạng cây của máy chủ: dòng phần, môn, nhóm đều thành dòng của bảng", async () => {
+    backend.seedSummary(QDA, [
+      {
+        name: "Phần 1 · Toán học",
+        partId: "part-42",
+        target: 50,
+        allocated: 47,
+        children: [
+          {
+            name: "Toán học",
+            partId: "part-42",
+            sectionId: "sec-41",
+            target: 50,
+            allocated: 47,
+            children: [
+              { name: "Nhóm của Toán", partId: "part-42", sectionId: "sec-41", blockId: blockId(), target: 20, allocated: 17 },
+            ],
+          },
+        ],
+      },
+    ]);
+    openStructure(QDA, "?part=part-38");
+    const table = await screen.findByRole("table", { name: /Tổng hợp số câu theo phần/ });
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
+    expect(within(table).getByRole("button", { name: "Đến Nhóm của Toán" })).toBeInTheDocument();
+  });
+
+  it("máy chủ lỗi khi đọc tổng hợp: dùng số trên màn hình, không bảng, không lỗi", async () => {
+    backend.failSummary(QDA);
     openStructure(QDA);
     expect(await screen.findByText(/Chưa có tổng hợp từ máy chủ/)).toBeInTheDocument();
     expect(screen.getByTestId("structure-headline")).toHaveTextContent(/^Đã phân bổ đủ \d+ câu\.$|Đã phân bổ \d+\/\d+ câu/);
+    expect(screen.queryByRole("table", { name: /Tổng hợp số câu theo phần/ })).not.toBeInTheDocument();
+  });
+
+  it("máy chủ trả tổng hợp rỗng: dùng số trên màn hình, không bảng", async () => {
+    openStructure(QDA);
+    expect(await screen.findByTestId("structure-headline")).toBeInTheDocument();
+    expect(screen.queryByText(/Chưa có tổng hợp từ máy chủ/)).not.toBeInTheDocument();
     expect(screen.queryByRole("table", { name: /Tổng hợp số câu theo phần/ })).not.toBeInTheDocument();
   });
 
