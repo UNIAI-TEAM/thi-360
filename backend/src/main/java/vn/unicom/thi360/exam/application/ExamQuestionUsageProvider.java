@@ -178,8 +178,7 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
         List<QuestionType> answers = block.questionType() == null && section != null && section.answerQuotas() != null
                 ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(Objects::nonNull).toList()
                 : List.of();
-        var slots = block.slots().isEmpty() ? java.util.Collections.<vn.unicom.thi360.exam.domain.BlockSlot>singletonList(null)
-                : block.slots();
+        var slots = effectiveSlots(block);
         boolean included = slots.stream().anyMatch(slot -> {
             KnowledgeScope slotScope = slot == null ? null : slot.knowledgeScope();
             List<List<List<UUID>>> slotGroups = slotScope == null || slotScope.nodeIds().isEmpty()
@@ -209,6 +208,20 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                     option == null ? null : option.code(), option == null ? null : option.name(),
                     section == null ? null : section.id(), block.id(), block.name()));
         }
+    }
+
+    /** One entry per slot index; a null entry is an unconfigured slot that uses the group's own conditions. */
+    private static List<vn.unicom.thi360.exam.domain.BlockSlot> effectiveSlots(QuestionBlock block) {
+        if (block.slots().isEmpty()) return java.util.Collections.singletonList(null);
+        if (block.setCount() == null) return block.slots();
+        List<vn.unicom.thi360.exam.domain.BlockSlot> result = new ArrayList<>(block.setCount());
+        for (int index = 1; index <= block.setCount(); index++) {
+            final int slotIndex = index;
+            result.add(block.slots().stream()
+                    .filter(declared -> declared.index() != null && declared.index() == slotIndex)
+                    .findFirst().orElse(null));
+        }
+        return result;
     }
 
     private record VersionKey(UUID examId, int version) {}
