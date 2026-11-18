@@ -77,7 +77,9 @@ Vẽ ngày 2026-11-18 theo `docs/specs/2026-11-18-pbi04-dot-2b-bo-sung-vact-thpt
 
 Dòng "Kỳ thi chỉ có một phạm vi (V-ACT, THPTQG)" trong khối Trạng thái khác của `TaoBaiThi2B` hết hiệu lực từ spec bổ sung mục 1; bước 1 của hai kỳ thi này theo `TaoBaiThiVact2B` và `TaoBaiThiThpt2B`.
 
-### Chỗ cần chốt (M.Trường hoặc BA)
+### Đã chốt khi nghiệm thu bản vẽ (Advisor, 2026-11-18)
+
+Các mục 1–4 giữ như bản vẽ. Mục 5 chốt: FE-4 giữ một cách hiện theo `KiemTra2B`, tức lời lỗi là chính và mã kỹ thuật là chữ phụ, cho mọi kỳ thi.
 
 1. **Dòng "4 câu · 16 ý · tối đa 4 điểm".** Yêu cầu giao việc đặt dòng này ở khối chùm linh hoạt, còn R-107 và FE-3a dòng 4 gắn nó với nhóm Đúng/Sai. Bản vẽ theo spec: nhóm Đúng/Sai dùng đúng dòng này; chùm linh hoạt không có "ý" nên ghi "18 câu con · tối đa 180 điểm".
 2. **Tên mức của bảng.** Ghi chú BA dùng "Áp dụng khi sinh đề" và "Chỉ đối chiếu". Bản vẽ giữ "Bắt buộc" và "Tham khảo" như các màn 2B đã có.
