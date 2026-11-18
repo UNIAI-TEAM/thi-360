@@ -168,18 +168,29 @@ function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock
       : t("blockRange", { first: block.firstNumber, last: block.lastNumber, count: block.questionCount });
   const listId = `preview-block-${scope}${block.blockId}`;
 
+  /** Trong phân đoạn, tiêu đề khối nhỏ hơn tiêu đề phân đoạn (h4) một mức; câu và bộ theo sau một mức nữa. */
+  const level = scope !== "" ? 5 : 4;
+  const Heading = `h${level}` as "h4" | "h5";
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
-      <h4 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-semibold text-text">
+      <Heading className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-semibold text-text">
         <span>
           {t("blockHeading", { block: name })} <span className="font-normal text-text-muted">· {range}</span>
         </span>
         {block.manualGrading && <Badge>{t("manualGrading")}</Badge>}
-      </h4>
+      </Heading>
       <ol id={listId} className="flex flex-col gap-3">
         {visible.map((item, index) => (
           <li key={item.kind === "SET" ? item.setId : item.question.questionId}>
-            <PreviewItemView item={item} setIndex={index + 1} original={original} cloze={block.questionType === "CLOZE"} scope={scope} />
+            <PreviewItemView
+              item={item}
+              setIndex={index + 1}
+              original={original}
+              cloze={block.questionType === "CLOZE"}
+              scope={scope}
+              level={Math.min(level + 1, 6)}
+            />
           </li>
         ))}
       </ol>
@@ -201,6 +212,7 @@ function PreviewItemView({
   original,
   cloze,
   scope,
+  level = 5,
 }: {
   item: PreviewItem;
   setIndex: number;
@@ -208,21 +220,24 @@ function PreviewItemView({
   cloze: boolean;
   /** Mã phân đoạn chứa mục: bộ bị cắt hiện ở hai phân đoạn nên mã nhận dạng phải khác nhau. */
   scope: string;
+  /** Mức tiêu đề của mục: nhỏ hơn tiêu đề khối một mức, cao nhất h6. */
+  level?: number;
 }) {
   const t = useTranslations("exams.preview");
-  if (item.kind === "QUESTION") return <QuestionArticle question={item.question} original={original} />;
+  if (item.kind === "QUESTION") return <QuestionArticle question={item.question} original={original} level={Math.min(level, 6)} />;
   // Bài đọc điền: chỗ trống của ngữ liệu mang số của câu con đầu, câu con thứ n ứng với chỗ trống thứ n (spec 3.4).
   const blankStart = cloze && item.children[0] ? displayNumber(item.children[0], original) : undefined;
   const headingId = `preview-set-${scope}${item.setId}`;
   const setNumbers = item.children.map((child) => displayNumber(child, original));
   const setFirst = setNumbers[0] ?? 0;
   const setLast = setNumbers[setNumbers.length - 1] ?? 0;
+  const SetHeading = `h${Math.min(level, 6)}` as "h5" | "h6";
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <h5 id={headingId} className="font-semibold text-text">
+        <SetHeading id={headingId} className="font-semibold text-text">
           {t("setHeading", { index: setIndex, count: item.children.length })}
-        </h5>
+        </SetHeading>
         {/* "Có audio" đứng ngay sau số câu như bản vẽ `SinhThuAudio2B` (V-8). */}
         {audioAttachments(item.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
         <Badge className="whitespace-normal wrap-anywhere">{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
@@ -242,6 +257,7 @@ function PreviewItemView({
               question={child}
               compact
               original={original}
+              level={Math.min(level + 1, 6)}
               blank={blankStart === undefined ? undefined : blankStart + item.children.indexOf(child)}
             />
           </li>
@@ -256,10 +272,13 @@ function QuestionArticle({
   compact = false,
   original = false,
   blank,
+  level,
 }: {
   question: PreviewQuestion;
   compact?: boolean;
   original?: boolean;
+  /** Mức tiêu đề: mặc định h5 cho câu đứng một mình, h6 cho câu con của bộ. */
+  level?: number;
   /** Số hiện ở chỗ trống của ngữ liệu mà câu con này điền (bài đọc điền); bỏ trống với câu thường. */
   blank?: number;
 }) {
@@ -269,7 +288,7 @@ function QuestionArticle({
   const lookup = useLookup();
   const headingId = `preview-q-${question.questionId}`;
   const isTrueFalse = question.type === "TRUE_FALSE";
-  const Heading = compact ? "h6" : "h5";
+  const Heading = `h${Math.min(level ?? (compact ? 6 : 5), 6)}` as "h5" | "h6";
   const number = displayNumber(question, original);
   // Xem thứ tự gốc: phương án theo thứ tự lúc soạn (`originalOptionOrder`); không có thì giữ thứ tự đang hiện.
   const options =

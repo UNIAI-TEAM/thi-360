@@ -75,6 +75,27 @@ describe("phân đoạn hiển thị Phần I–IV (R-133, H40)", () => {
     ]);
   });
 
+  it("tiêu đề khối trong phân đoạn nhỏ hơn tiêu đề phân đoạn một mức (h5), câu và bộ theo sau (h6)", () => {
+    renderPaper(paperOf([englishVsat()]));
+
+    const segment = screen.getByRole("heading", { level: 4, name: /^Phần I ·/ });
+    const section = segment.closest("section")!;
+    const blockHeading = within(section).getByRole("heading", { level: 5, name: /Khối .*True\/False/ });
+    expect(blockHeading.tagName).toBe("H5");
+    expect(within(section).queryByRole("heading", { level: 4, name: /Khối/ })).not.toBeInTheDocument();
+    // Bốn khối, khối bài đọc bị cắt hiện ở cả hai phân đoạn nên có 5 tiêu đề khối h5.
+    expect(screen.getAllByRole("heading", { level: 5, name: /Khối/ })).toHaveLength(5);
+    expect(within(section).getAllByRole("heading", { level: 6, name: /^Câu / }).length).toBeGreaterThan(0);
+  });
+
+  it("đề không phân đoạn: tiêu đề khối vẫn h4, câu h5 như trước", () => {
+    renderPaper(paperOf([englishVsat(false)]));
+
+    expect(screen.getAllByRole("heading", { level: 4, name: /Khối/ })).toHaveLength(4);
+    expect(screen.queryByRole("heading", { level: 5, name: /Khối/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 5, name: /^Câu / }).length).toBeGreaterThan(0);
+  });
+
   it("câu 8, 9 nằm dưới Phần I, câu 10–15 dưới Phần II, bài đọc hiện ở cả hai phần", async () => {
     renderPaper(paperOf([englishVsat()]));
 

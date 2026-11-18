@@ -834,13 +834,13 @@ describe("phân đoạn hiển thị của sinh thử một môn (BE-20)", () =>
       ]),
     );
 
-    // Tiêu đề phân đoạn (cấp 4, cùng cấp tiêu đề khối) nêu dải câu, số lệnh và điểm khai báo.
+    // Tiêu đề phân đoạn (cấp 4, trên tiêu đề khối một mức) nêu dải câu, số lệnh và điểm khai báo.
     expect(await screen.findByRole("heading", { level: 4, name: /Phan I · câu 1–2 · 2 lệnh · 2 điểm/ })).toBeInTheDocument();
     // Điểm khai báo thập phân của BE-20 (maxPoints 1.5) qua định dạng vi.
     expect(screen.getByRole("heading", { level: 4, name: /Phan II · câu 3–3 · 1 lệnh · 1,5 điểm/ })).toBeInTheDocument();
-    // Tiêu đề phần (cấp 3) và tiêu đề khối vẫn hiện như thường.
+    // Tiêu đề phần (cấp 3) và tiêu đề khối (cấp 5, dưới phân đoạn cấp 4) vẫn hiện như thường.
     expect(screen.getByRole("heading", { level: 3, name: /Math/ })).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { level: 4, name: /^Khối / })).toHaveLength(2);
+    expect(screen.getAllByRole("heading", { level: 5, name: /^Khối / })).toHaveLength(2);
   });
 
   it("phần sinh không đủ gửi displaySegments []: không có tiêu đề phân đoạn, hiện như trước", async () => {
