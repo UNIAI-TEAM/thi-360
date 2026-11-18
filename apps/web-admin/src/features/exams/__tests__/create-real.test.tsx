@@ -282,6 +282,11 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
       const user = await renderPage();
       await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
       expect(await screen.findByRole("textbox", { name: /^Điểm tối đa/ })).toHaveValue("150");
+      // Qua bài ôn thang để trống, về lại Dùng cấu trúc môn thì thang 150 của mẫu môn (ADV:BE-13:5).
+      await user.click(await screen.findByRole("radio", { name: /Tự thiết lập bài ôn/ }));
+      expect(screen.getByRole("textbox", { name: /^Điểm tối đa/ })).toHaveValue("");
+      await user.click(screen.getByRole("radio", { name: /Dùng cấu trúc môn/ }));
+      expect(screen.getByRole("textbox", { name: /^Điểm tối đa/ })).toHaveValue("150");
       await fillReview(user, null);
       const body = server.calls("POST", EXAMS_PATH)[0]!.body as Wire;
       expect(body).toMatchObject({ kind: "HSA", scope: "SUBJECT", buildMode: "REVIEW", overview: [{ partId: "HSA_REVIEW_PART", questionCount: 10, durationMinutes: 20 }] });
