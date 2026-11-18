@@ -328,6 +328,68 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
 
     @Test
     @Transactional
+    void aFixedChildIdOwnedByAnotherParentSkipsTheWholeSetAndTouchesNothingOfTheirs() throws Exception {
+        // Set 1: a fixed child id belongs to an admin question set. Set 2: a child code is taken.
+        String idCollision = "SEED-HSCA-ANH-LISTEN-SET4-01";
+        String codeCollision = "SEED-HSCA-ANH-LISTEN-SET5-01";
+        UUID collidingRoot = id(idCollision);
+        UUID codeRoot = id(codeCollision);
+        UUID fixedChildId = jdbc.queryForObject("select id from questionbank.question where parent_id = ? and position = 2",
+                UUID.class, collidingRoot);
+        removeWithDependents(collidingRoot);
+        removeWithDependents(codeRoot);
+        UUID adminParent = UUID.randomUUID();
+        jdbc.update("""
+                insert into questionbank.question (id, code, type, status, current_version_no, points, content_text, search_text)
+                values (?, 'ADMIN-OWNING-SET', 'QUESTION_SET', 'READY', 1, 1, 'admin', 'admin')
+                """, adminParent);
+        jdbc.update("""
+                insert into questionbank.question (id, code, type, status, parent_id, position, current_version_no, points,
+                                                   content_text, search_text)
+                values (?, 'ADMIN-OWNED-CHILD', 'SINGLE_CHOICE', 'READY', ?, 0, 2, 1, 'admin', 'admin')
+                """, fixedChildId, adminParent);
+        jdbc.update("""
+                insert into questionbank.question_version (question_id, version_no, snapshot, ready_at)
+                values (?, 1, '{"admin": "history"}'::jsonb, now()), (?, 2, '{"admin": "child"}'::jsonb, now())
+                """, adminParent, fixedChildId);
+        jdbc.update("""
+                insert into questionbank.question (id, code, type, status, points, content_text, search_text)
+                values (gen_random_uuid(), ?, 'SINGLE_CHOICE', 'DRAFT', 1, 'admin', 'admin')
+                """, codeCollision + "-1");
+        List<Map<String, Object>> foreignBefore = state("ADMIN-%", codeCollision + "-1");
+        List<Integer> before = tableCounts();
+
+        runSeed();
+
+        assertThat(tableCounts()).isEqualTo(before);
+        assertThat(state("ADMIN-%", codeCollision + "-1")).isEqualTo(foreignBefore);
+        // The skipped sets leave no partial children behind; only the foreign row holds the code.
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question where code like ?",
+                Integer.class, idCollision + "-%")).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question where code like ?",
+                Integer.class, codeCollision + "-%")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question where code = ?", Integer.class,
+                idCollision)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from questionbank.question where code = ?", Integer.class,
+                codeCollision)).isZero();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question
+                where parent_id in (?, ?) or id in (?, ?)
+                """, Integer.class, collidingRoot, codeRoot, collidingRoot, codeRoot)).isZero();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question_version where question_id in (?, ?)
+                """, Integer.class, collidingRoot, codeRoot)).isZero();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from questionbank.question_asset_ref where question_id in (?, ?)
+                """, Integer.class, collidingRoot, codeRoot)).isZero();
+        assertThat(jdbc.queryForObject("select parent_id from questionbank.question where id = ?", UUID.class,
+                fixedChildId)).isEqualTo(adminParent);
+        assertThat(jdbc.queryForObject("select snapshot::text from questionbank.question_version where question_id = ?",
+                String.class, fixedChildId)).contains("child");
+    }
+
+    @Test
+    @Transactional
     void aRenamedSeedQuestionKeepsItsNewCodeAndIsNotInsertedAgain() throws Exception {
         UUID root = jdbc.queryForObject("select id from questionbank.question where code = 'SEED-VSAT-TOAN-TF-001'",
                 UUID.class);

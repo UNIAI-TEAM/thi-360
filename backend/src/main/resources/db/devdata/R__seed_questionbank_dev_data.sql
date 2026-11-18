@@ -1323,6 +1323,18 @@ CROSS JOIN LATERAL unnest(s.tag_codes) t(code)
 JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
 ON CONFLICT DO NOTHING;
 
+-- A dot2b set is one seed unit: when a fixed root/child id or code is already occupied the
+-- whole set is skipped, so no READY root can point at children another parent owns.
+CREATE TEMP TABLE seed_blocked_sets (id uuid PRIMARY KEY) ON COMMIT DROP;
+INSERT INTO seed_blocked_sets
+SELECT s.id
+FROM seed_dot2b_set s
+WHERE EXISTS (SELECT 1 FROM questionbank.question q WHERE q.id = s.id OR q.code = s.code)
+   OR EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+              JOIN questionbank.question q
+                ON q.id = md5(s.id::text || '-' || pos)::uuid
+               OR q.code = s.code || '-' || pos);
+
 -- END BE-19.
 
 -- Parents must exist before their child rows satisfy the self-reference.
@@ -1373,6 +1385,7 @@ WITH prepared AS (
                    ELSE 'Math set Math context Math child One Two Math child 1' END
            END END AS plain
     FROM seed_question_rows s WHERE parent_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM seed_blocked_sets b WHERE b.id = s.id)
 ), inserted AS (
     INSERT INTO questionbank.question
         (id, code, type, status, parent_id, position, subject_item_id, grade_item_id,
@@ -1409,6 +1422,7 @@ SELECT id, code, type, 'READY', parent_id, position, subject_id, grade_id, level
                      WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END END)
 FROM seed_question_rows
 WHERE parent_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM seed_blocked_sets b WHERE b.id = seed_question_rows.parent_id)
   AND EXISTS (SELECT 1 FROM questionbank.question p WHERE p.id = seed_question_rows.parent_id)
 ON CONFLICT DO NOTHING RETURNING id
 )
@@ -1447,6 +1461,9 @@ SELECT s.id, 1, jsonb_build_object(
     CASE WHEN q.status = 'DRAFT' THEN NULL ELSE now() END
 FROM seed_question_rows s
 JOIN questionbank.question q ON q.id = s.id
+-- Only rows this run inserted: a fixed id owned by someone else never receives a seed version.
+WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = s.id)
+   OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = s.id)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO questionbank.question_tag (question_id, tag_item_id)
@@ -1550,7 +1567,7 @@ WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = sa.question_i
 ON CONFLICT DO NOTHING;
 
 -- Dropped here so the script can run twice in one transaction, as SampleQuestionCoverageIT does.
-DROP TABLE seed_dot2b_cells, seed_dot2b_single, seed_dot2b_set, seed_dot2b_asset;
+DROP TABLE seed_dot2b_cells, seed_dot2b_single, seed_dot2b_set, seed_dot2b_asset, seed_blocked_sets;
 
 DROP FUNCTION pg_temp.seed_plain(text, jsonb), pg_temp.seed_leaf_text(jsonb), pg_temp.seed_text(text),
     pg_temp.seed_options(text, integer, text[]), pg_temp.seed_single(text, integer),
