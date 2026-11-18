@@ -1,6 +1,8 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
 import java.util.Map;
@@ -9,11 +11,13 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.identity.spi.Permissions;
 
 /**
  * BE-16 R1-1, R1-2: the HSCA / VSAT dev seeds on a database that already holds admin-created EXAM items. The repeatable
@@ -62,6 +66,37 @@ class ExamKindSeedUpgradeIT extends AbstractIntegrationTest {
         assertThat(vsat.get("exam_item_id")).as("a missing VSAT is created on the seed id").isEqualTo(UUID.fromString(SEED_VSAT));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_kind_profile WHERE exam_item_id = ?::uuid",
                 Integer.class, SEED_HSCA)).as("no orphan profile on the unused HSCA seed id").isZero();
+    }
+
+
+    /**
+     * R2-1: đổi mã mục seed qua PATCH là hợp lệ; chạy lại repeatable không được đụng khóa chính trên id seed,
+     * mà giữ nguyên mục đã đổi tên và không tạo mục mới.
+     */
+    @Test
+    void renamedSeedItemKeepsItsIdValueAndCodeWhenTheRepeatablesRerun() throws Exception {
+        long version = jdbc.queryForObject(
+                "SELECT version FROM catalog.catalog_item WHERE id = ?::uuid", Long.class, SEED_HSCA);
+        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", SEED_HSCA)
+                        .with(asUser(Permissions.CATALOG_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"HSCA_RENAMED\",\"version\":" + version + "}"))
+                .andExpect(status().isOk());
+
+        runSeeds();
+        runSeeds();
+
+        Map<String, Object> renamed = jdbc.queryForMap(
+                "SELECT code, value FROM catalog.catalog_item WHERE id = ?::uuid", SEED_HSCA);
+        assertThat(renamed.get("code")).as("đổi mã được giữ").isEqualTo("HSCA_RENAMED");
+        assertThat(((Number) renamed.get("value")).intValue()).isEqualTo(8);
+        assertThat(count("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ?::uuid"))
+                .as("không chèn lại HSCA").isEqualTo(9);
+        assertThat(count("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ?::uuid"
+                + " AND code_normalized IN ('hsca', 'vsat')")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_kind_profile WHERE exam_item_id = ?::uuid",
+                Integer.class, SEED_HSCA))
+                .as("hồ sơ của mục đã đổi tên được giữ").isEqualTo(1);
     }
 
     @Test

@@ -157,7 +157,8 @@ ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- 9b. EXAM: H-SCA, V-SAT (UNI-2688, spec H36). Tên viết tắt theo ghi chú BA, chưa có tên đầy đủ chính thức.
 -- `value` cấp trên mốc cao nhất của nhóm (kể cả mục quản trị đã tạo sau bảy kỳ đầu) và không cấp lại khi chạy lại;
--- mục đã có cùng mã giữ nguyên id, value của nó.
+-- mục đã có cùng mã giữ nguyên id, value của nó. Mục đã đổi mã (PATCH cho phép) vẫn chiếm id seed nên bỏ qua
+-- theo id giống bảy kỳ thi đầu, tránh đụng khóa chính; giữ nguyên mã và value mới của nó.
 WITH seed(ordinal, code, name_vi, name_en, id) AS (
     VALUES
       (1, 'HSCA', 'Đánh giá năng lực H-SCA', 'H-SCA assessment', '00000000-0000-7000-8400-000000000108'::uuid),
@@ -169,6 +170,9 @@ WITH seed(ordinal, code, name_vi, name_en, id) AS (
         SELECT 1 FROM catalog.catalog_item i
         WHERE i.group_id = '00000000-0000-7000-8100-000000000001'
           AND i.code_normalized = lower(s.code)
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i WHERE i.id = s.id
     )
 )
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
