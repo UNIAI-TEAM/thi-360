@@ -684,6 +684,8 @@ public class ExamService {
         } else if (request.code() != null && !request.code().isBlank()) {
             code = request.code().trim();
         }
+        BigDecimal scaleBefore = exam.getMaxScore();
+        BigDecimal referenceBefore = exam.getReferenceMax();
         exam.updateInfo(code,
                 request.name() != null && !request.name().isBlank() ? request.name().trim() : exam.getName(),
                 request.description() != null ? blankToNull(request.description()) : exam.getDescription(),
@@ -699,12 +701,21 @@ public class ExamService {
         if (request.yearsConfirmed() != null && !scopeChanged) {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
-        if (request.practiceScoring() != null || request.referenceMax() != null) {
+        // A LINEAR exam whose scale equals its reference (BE spec D11: max_score bằng reference_max) keeps them
+        // equal when only the scale is edited. Values that already differ, a null reference, an explicit
+        // referenceMax in the request and RAW scoring are left alone.
+        String effectiveScoring = request.practiceScoring() == null ? exam.getPracticeScoring()
+                : request.practiceScoring();
+        boolean referenceFollowsScale = request.maxScore() != null && request.referenceMax() == null
+                && "LINEAR".equals(effectiveScoring) && scaleBefore != null && referenceBefore != null
+                && scaleBefore.compareTo(referenceBefore) == 0;
+        if (request.practiceScoring() != null || request.referenceMax() != null || referenceFollowsScale) {
             String previousScoring = exam.getPracticeScoring();
             String scoring = request.practiceScoring() == null ? previousScoring : request.practiceScoring();
             // The default reference of 10 applies only when scoring becomes LINEAR; an exam that was already
             // LINEAR without a reference (e.g. a V-ACT review) keeps none.
             BigDecimal referenceMax = request.referenceMax() != null ? request.referenceMax()
+                    : referenceFollowsScale ? request.maxScore()
                     : exam.getReferenceMax() != null ? exam.getReferenceMax()
                     : "LINEAR".equals(scoring) && !"LINEAR".equals(previousScoring) ? BigDecimal.TEN : null;
             exam.applyScoringProfile(referenceMax, scoring);
