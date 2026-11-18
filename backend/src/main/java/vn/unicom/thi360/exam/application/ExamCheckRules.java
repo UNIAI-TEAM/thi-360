@@ -242,8 +242,15 @@ public final class ExamCheckRules {
         return changed;
     }
 
+    /**
+     * Questions the groups of a section really take: explicit counts, plus the remainder of the declared section
+     * count for a "take the remainder" group (the same rule as the solver), so explicit 30 and remainder over 30 agree.
+     */
     private static int groupTotal(ExamSection section) {
-        return section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+        int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+        boolean remainder = section.blocks().stream().anyMatch(block ->
+                !Boolean.TRUE.equals(block.omitted()) && block.questionCount() == null && !isSet(block));
+        return remainder && section.questionCount() != null ? Math.max(fixed, section.questionCount()) : fixed;
     }
 
     /** A template element and the element of the exam that corresponds to it; either side is null when unmatched. */

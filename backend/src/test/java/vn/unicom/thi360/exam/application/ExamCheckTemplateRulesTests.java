@@ -215,6 +215,39 @@ class ExamCheckTemplateRulesTests {
         assertThat(extra.getFirst().path("partId").asText()).isEqualTo("p2");
     }
 
+    private static final String REMAINDER_TEMPLATE = """
+            {"parts":[{"id":"p","name":"Vietnamese","questionCount":30,"sections":[
+              {"id":"s-vn","subjectCode":"VIETNAMESE","questionCount":30,
+               "blocks":[{"id":"b-vn","questionType":"SINGLE_CHOICE","questionCount":30}]}]}]}
+            """;
+
+    @Test
+    void takingTheRemainderInsteadOfAnExplicitCountOfTheSameTotalIsNotACountChange() throws Exception {
+        String remainder = REMAINDER_TEMPLATE.replace(",\"questionCount\":30}]}]}]}", "}]}]}]}");
+        assertThat(remainder).doesNotContain("\"b-vn\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\"");
+        assertThat(codes(rulesWith(remainder, REMAINDER_TEMPLATE).common())).doesNotContain("STRUCTURE_COUNT_LOCKED");
+    }
+
+    @Test
+    void realCountChangeIsStillLockedWithOrWithoutARemainderGroup() throws Exception {
+        String remainderOf28 = REMAINDER_TEMPLATE
+                .replace(",\"questionCount\":30}]}]}]}", "}]}]}]}")
+                .replace("\"s-vn\",\"subjectCode\":\"VIETNAMESE\",\"questionCount\":30",
+                        "\"s-vn\",\"subjectCode\":\"VIETNAMESE\",\"questionCount\":28");
+        List<ObjectNode> declared = of(rulesWith(remainderOf28, REMAINDER_TEMPLATE).common(), "STRUCTURE_COUNT_LOCKED");
+        assertThat(declared).hasSize(1);
+        assertThat(declared.getFirst().path("sectionId").asText()).isEqualTo("s-vn");
+        assertThat(declared.getFirst().path("required").asInt()).isEqualTo(30);
+        assertThat(declared.getFirst().path("available").asInt()).isEqualTo(28);
+
+        String explicit28 = REMAINDER_TEMPLATE.replace("\"b-vn\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":30",
+                "\"b-vn\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":28");
+        List<ObjectNode> groups = of(rulesWith(explicit28, REMAINDER_TEMPLATE).common(), "STRUCTURE_COUNT_LOCKED");
+        assertThat(groups).hasSize(1);
+        assertThat(groups.getFirst().path("required").asInt()).isEqualTo(30);
+        assertThat(groups.getFirst().path("available").asInt()).isEqualTo(28);
+    }
+
     @Test
     void partCountIsReportedOnlyWhenNoSectionOfThePartExplainsIt() throws Exception {
         String edited = LOCKED_TEMPLATE.replace("\"questionCount\":30", "\"questionCount\":28");
