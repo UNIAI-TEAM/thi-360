@@ -192,6 +192,56 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
         assertThat(returned.path("displaySegments")).isEmpty();
     }
 
+    @Test
+    void segmentTotalsCountMixedSetCommandsAndDecimalPointsAcrossTheBoundary() throws Exception {
+        subject();
+        single(List.of());
+        set(List.of());
+        UUID singleId = jdbc.queryForObject("select id from questionbank.question where subject_item_id=? and type='SINGLE_CHOICE'", UUID.class, subjectId);
+        UUID root = jdbc.queryForObject("select id from questionbank.question where subject_item_id=? and type='QUESTION_SET'", UUID.class, subjectId);
+        UUID first = jdbc.queryForObject("select id from questionbank.question where parent_id=? and position=0", UUID.class, root);
+        UUID second = jdbc.queryForObject("select id from questionbank.question where parent_id=? and position=1", UUID.class, root);
+        jdbc.update("update questionbank.question set points=0.5 where id=?", singleId);
+        jdbc.update("update questionbank.question set type='TRUE_FALSE', points=1.25 where id=?", first);
+        jdbc.update("update questionbank.question set points=0.75 where id=?", second);
+        jdbc.update("update questionbank.question_version set snapshot=?::jsonb where question_id=?", """
+                {"content":"true false","points":1.25,"body":{"type":"TRUE_FALSE","statements":[
+                {"id":"a","content":"a","answer":true},{"id":"b","content":"b","answer":false},
+                {"id":"c","content":"c","answer":true},{"id":"d","content":"d","answer":false}]}}
+                """, first);
+        String correct = """
+                [{"code":"P1","name":"First","fromPosition":1,"toPosition":2,"commandCount":5,"maxPoints":1.75},
+                 {"code":"P2","name":"Second","fromPosition":3,"toPosition":3,"commandCount":1,"maxPoints":0.75}]""";
+        String moved = """
+                [{"code":"P1","name":"First","fromPosition":1,"toPosition":2,"commandCount":4,"maxPoints":1.50},
+                 {"code":"P2","name":"Second","fromPosition":3,"toPosition":3,"commandCount":2,"maxPoints":1.00}]""";
+        String structure = part(correct).replace("\"questionCount\":3,\"displaySegments\"",
+                "\"questionCount\":3,\"maxPoints\":2.5,\"displaySegments\"")
+                .replace(",\"childAnswerType\":\"SINGLE_CHOICE\"", "");
+        JsonNode generated = previewResult(exam(structure), EXAM_BODY);
+        assertThat(generated.path("status").asText()).as(generated.toString()).isEqualTo("GENERATED");
+        JsonNode generatedPart = generated.path("paper").path("parts").get(0);
+        assertThat(generatedPart.path("points").decimalValue()).isEqualByComparingTo("2.5");
+        assertThat(generatedPart.path("displaySegments").get(0).path("commandCount").asInt()).isEqualTo(5);
+        assertThat(generatedPart.path("displaySegments").get(0).path("maxPoints").decimalValue()).isEqualByComparingTo("1.75");
+        assertThat(generatedPart.path("displaySegments").get(1).path("maxPoints").decimalValue()).isEqualByComparingTo("0.75");
+        JsonNode result = previewResult(exam(structure.replace(correct, moved)), EXAM_BODY);
+        assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("FAILED");
+        assertThat(result.path("issues")).hasSize(4);
+        String[] dimensions = {"COMMANDS", "POINTS", "COMMANDS", "POINTS"};
+        String[] required = {"4", "1.5", "2", "1"};
+        String[] actual = {"5", "1.75", "1", "0.75"};
+        for (int i = 0; i < 4; i++) {
+            JsonNode issue = result.path("issues").get(i);
+            assertThat(issue.path("code").asText()).isEqualTo("DISPLAY_SEGMENT_MISMATCH");
+            assertThat(issue.path("segmentCode").asText()).isEqualTo(i < 2 ? "P1" : "P2");
+            assertThat(issue.path("dimension").asText()).isEqualTo(dimensions[i]);
+            assertThat(issue.path("required").decimalValue()).isEqualByComparingTo(required[i]);
+            assertThat(issue.path("available").decimalValue()).isEqualByComparingTo(actual[i]);
+            assertThat(issue.path("location").path("partId").asText()).isEqualTo("part");
+        }
+    }
+
     // ---- fixtures ------------------------------------------------------------------------------------------
 
     private void subject() {
