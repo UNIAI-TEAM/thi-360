@@ -42,6 +42,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
     @MockitoSpyBean QuestionSourcePort sourceSpy;
     @Autowired TransactionTemplate transactions;
     @Autowired CatalogLookup catalog;
+    @MockitoSpyBean CatalogLookup catalogSpy;
 
     @Test
     void simultaneousExamsSharingWitnessQuestionsDoNotDeadlockOrDuplicateUsage() throws Exception {
@@ -121,6 +122,59 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
             jdbc.update("DELETE FROM exam.exam WHERE id = ?", exam);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id = ?", question);
             jdbc.update("DELETE FROM questionbank.question WHERE id = ?", question);
+        }
+    }
+
+    @Test
+    void catalogEditDuringMaterializationRejectsAndRollsBack() throws Exception {
+        UUID question = UUID.randomUUID(), exam = UUID.randomUUID(), item = UUID.randomUUID(), version = UUID.randomUUID();
+        UUID kind = jdbc.queryForObject("SELECT kind_item_id FROM exam.exam WHERE id = ?", UUID.class, SEEDED_EXAM);
+        String code = "RACE" + item.toString().replace("-", "");
+        CountDownLatch reading = new CountDownLatch(1), edited = new CountDownLatch(1);
+        try {
+            jdbc.update("INSERT INTO catalog.catalog_item(id,group_id,code,code_normalized,value,name_vi,path) SELECT ?,id,?,?,(SELECT max(value)+1 FROM catalog.catalog_item WHERE group_id=catalog_group.id),'Race',? FROM catalog.catalog_group WHERE code='SUBJECT_COMBINATION'",
+                    item, code, code.toLowerCase(java.util.Locale.ROOT), "/" + item + "/");
+            jdbc.update("INSERT INTO catalog.combination_version(id,item_id,version_no,exam_item_id) VALUES (?,?,1,?)", version, item, kind);
+            jdbc.update("INSERT INTO catalog.combination_subject(combination_version_id,subject_item_id,position) VALUES (?,?,0)", version, SUBJECT);
+            jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) VALUES (?,?,'SINGLE_CHOICE','READY',?,1,1)", question, "RACE-" + question, SUBJECT);
+            jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,'{}'::jsonb)", question);
+            setup(exam, question, question);
+            String path = "p:" + code;
+            jdbc.update("UPDATE exam.exam_structure SET parts=?::jsonb WHERE exam_id=?", "{\"parts\":[{\"id\":\"p\",\"codeSource\":{}}]}", exam);
+            jdbc.update("UPDATE exam.exam_check_run SET result=jsonb_set(result,'{paths,0,pathId}',to_jsonb(?::text)), witness=jsonb_set(witness,'{0,path,chosen}',jsonb_build_array(jsonb_build_object('optionId',?::text))) WHERE exam_id=?", path, path, exam);
+            doAnswer(invocation -> {
+                reading.countDown();
+                if (!edited.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("Catalog barrier timed out");
+                return invocation.callRealMethod();
+            }).when(catalogSpy).listCombinations(any());
+            CompletableFuture<Void> request = CompletableFuture.runAsync(() -> {
+                try {
+                    mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/publish")
+                            .with(asUser(Permissions.EXAM_PUBLISH)).header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"pathIds\":[\"" + path + "\"],\"expectedRevision\":0}"))
+                            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_REQUIRED"))
+                            .andExpect(jsonPath("$.fieldErrors[0].code").value("CONFIG_CHANGED"));
+                } catch (Exception e) { throw new IllegalStateException(e); }
+            });
+            assertThat(reading.await(10, TimeUnit.SECONDS)).isTrue();
+            transactions.executeWithoutResult(tx -> jdbc.update("UPDATE catalog.combination_subject SET subject_item_id=? WHERE combination_version_id=? AND position=0",
+                    UUID.fromString("00000000-0000-7000-8200-000000000208"), version));
+            edited.countDown();
+            request.get(30, TimeUnit.SECONDS);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id=?", Long.class, exam)).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question_usage_ledger WHERE exam_id=?", Long.class, exam)).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM shared.outbox_event WHERE topic='audit' AND payload->>'action'='EXAM.PUBLISH' AND payload->>'targetId'=?", Long.class, exam.toString())).isZero();
+        } finally {
+            edited.countDown();
+            reset(catalogSpy);
+            jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id=?", exam);
+            jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id=?", exam);
+            jdbc.update("DELETE FROM exam.exam WHERE id=?", exam);
+            jdbc.update("DELETE FROM questionbank.question_version WHERE question_id=?", question);
+            jdbc.update("DELETE FROM questionbank.question WHERE id=?", question);
+            jdbc.update("DELETE FROM catalog.combination_subject WHERE combination_version_id=?", version);
+            jdbc.update("DELETE FROM catalog.combination_version WHERE id=?", version);
+            jdbc.update("DELETE FROM catalog.catalog_item WHERE id=?", item);
         }
     }
 

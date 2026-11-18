@@ -94,6 +94,56 @@ public class SolverInputBuilder {
         public Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> loadedCandidates() {
             return Map.copyOf(loaded);
         }
+
+        public enum FilterDimension { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION }
+
+        /** Source counts in selection units, with one declared filter removed at a time. */
+        public record FilterCount(FilterDimension dimension, int required, long withoutFilter, long withFilter) { }
+
+        public List<FilterCount> filterCounts(GroupQuota group, int required) {
+            var filter = filters.get(group);
+            if (filter == null || filter.subjectId() == null || required <= 0) return List.of();
+            List<FilterDimension> dimensions = new ArrayList<>();
+            if (filter.itemShape() != null) dimensions.add(FilterDimension.ITEM_SHAPE);
+            if (!filter.answerFormats().isEmpty()) dimensions.add(FilterDimension.ANSWER_FORMAT);
+            if (!filter.childConditions().isEmpty()) dimensions.add(FilterDimension.CHILD_CONDITION);
+            if (dimensions.isEmpty()) return List.of();
+            var filtered = source.findCandidates(filter, fetchLimit);
+            long available = eligibleCount(group, filtered);
+            // If the source was truncated, it cannot establish the exact shortfall.
+            if (filtered.size() >= fetchLimit || available >= required) return List.of();
+            List<FilterCount> counts = new ArrayList<>();
+            for (var dimension : dimensions) {
+                var relaxed = new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(),
+                        filter.answerTypes(), filter.questionType(), filter.taskTypeCode(), filter.childAnswerType(),
+                        filter.tagCodes(), filter.competencyCodes(), filter.requiredPointsPerQuestion(),
+                        dimension == FilterDimension.ITEM_SHAPE ? null : filter.itemShape(),
+                        dimension == FilterDimension.ANSWER_FORMAT ? List.of() : filter.answerFormats(),
+                        dimension == FilterDimension.CHILD_CONDITION ? List.of() : filter.childConditions(),
+                        filter.additionalTagGroups(), filter.additionalKnowledgeGroups(), filter.additionalCompetencyGroups());
+                long without = eligibleCount(group, source.findCandidates(relaxed, fetchLimit));
+                if (without >= required) counts.add(new FilterCount(dimension, required, without, available));
+            }
+            return List.copyOf(counts);
+        }
+
+        private static long eligibleCount(GroupQuota group, List<QuestionSourcePort.Candidate> candidates) {
+            return candidates.stream().filter(candidate -> {
+                var units = candidate.units();
+                if (units.isEmpty()) return false;
+                if (group.kind() == GroupQuota.GroupKind.SET && units.size() != group.setSize()) return false;
+                if (group.kind() == GroupQuota.GroupKind.SINGLE && units.size() != 1) return false;
+                if (group.expectedScoringRule() != null
+                        && !group.expectedScoringRule().equals(candidate.scoringRule())) return false;
+                for (var unit : units) {
+                    if (group.childAnswerType() != null && !group.childAnswerType().equals(unit.answerType().name())) return false;
+                    if (group.answerType() != null && !group.answerType().equals(unit.answerType().name())) return false;
+                    if (group.requiredPointsPerUnit() != null && (unit.points() == null
+                            || group.requiredPointsPerUnit().compareTo(unit.points()) != 0)) return false;
+                }
+                return true;
+            }).count();
+        }
     }
 
     /** Build all paths without reading candidates. Invalid draft structures may throw IllegalArgumentException. */
