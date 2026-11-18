@@ -1179,7 +1179,7 @@ public class ExamService {
         if (!Objects.equals(kindCode, template.getKindCode())
                 || (!Objects.equals(exam.getScope(), template.getScope())
                         && !("PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope())
-                        && ("SP2E".equals(kindCode) || "SPT".equals(kindCode))))
+                        && ("SP2E".equals(kindCode) || "SPT".equals(kindCode) || "THPTQG".equals(kindCode))))
                 || (template.getPartCode() != null
                         && !Objects.equals(exam.getPartCode(), template.getPartCode()))
                 || (template.getSubjectCode() != null

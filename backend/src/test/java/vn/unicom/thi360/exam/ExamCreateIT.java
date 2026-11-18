@@ -63,15 +63,66 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void rejectsScopeNotAllowedForVact() throws Exception {
-        String code = "VACT-S-" + UUID.randomUUID().toString().substring(0, 8);
+    void rejectsFullThptqgScope() throws Exception {
+        String code = "THPT-F-" + UUID.randomUUID().toString().substring(0, 8);
         mockMvc.perform(post("/api/v1/admin/exams")
                         .with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\",\"name\":\"Draft\",\"code\":\"" + code + "\"}"))
+                        .content("{\"kind\":\"THPTQG\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"" + code + "\"}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EXAM_SCOPE_NOT_ALLOWED"));
+    }
+
+    @Test
+    void createsThptqgPartAndScopedVactTemplates() throws Exception {
+        String[][] cases = {
+                {"THPTQG", "PART", "\"partCode\":\"P3\",\"subjectCode\":\"DIA\"", "THPTQG_GEOGRAPHY_2025", "6", "1.5"},
+                {"VACT", "PART", "\"partCode\":\"LOGIC\"", "VACT_PART_LOGIC", "12", "120"},
+                {"VACT", "SUBJECT", "\"subjectCode\":\"ANH\"", "VACT_SUBJECT_ANH", "30", "300"},
+                {"VACT", "SUBJECT", "\"subjectCode\":\"TOAN\"", "VACT_SUBJECT_TOAN", "30", "300"}
+        };
+        for (String[] c : cases) {
+            String body = "{\"kind\":\"" + c[0] + "\",\"scope\":\"" + c[1] + "\"," + c[2]
+                    + ",\"durationMinutes\":30,\"name\":\"Draft\",\"code\":\"T-" + UUID.randomUUID() + "\"}";
+            var result = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").value(c[3]))
+                    .andExpect(jsonPath("$.questionCount").value(Integer.parseInt(c[4])))
+                    .andExpect(jsonPath("$.maxScore").value(Double.parseDouble(c[5])))
+                    .andReturn().getResponse().getContentAsString();
+            if ("THPTQG".equals(c[0])) {
+                org.assertj.core.api.Assertions.assertThat(mapper.readTree(result).path("practiceScoring").asText())
+                        .isEqualTo("RAW");
+            }
+        }
+    }
+
+    @Test
+    void scopedSharedTemplatesRequireDuration() throws Exception {
+        for (String selection : new String[]{
+                "\"kind\":\"THPTQG\",\"scope\":\"PART\",\"partCode\":\"P3\",\"subjectCode\":\"DIA\"",
+                "\"kind\":\"VACT\",\"scope\":\"PART\",\"partCode\":\"LOGIC\"",
+                "\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\""}) {
+            mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{" + selection + ",\"name\":\"Draft\",\"code\":\"T-" + UUID.randomUUID() + "\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("durationMinutes"))
+                    .andExpect(jsonPath("$.fieldErrors[0].code").value("EXAM_DURATION_REQUIRED"));
+        }
+    }
+
+    @Test
+    void createsThptqgReviewFromReviewTemplate() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"THPTQG\",\"scope\":\"SUBJECT\",\"subjectCode\":\"DIA\","
+                                + "\"buildMode\":\"REVIEW\",\"name\":\"Review\",\"code\":\"T-" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").value("THPTQG_REVIEW"));
     }
 
     @Test
