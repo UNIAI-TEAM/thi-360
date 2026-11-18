@@ -52,7 +52,8 @@ class PaperSolverPerfTest {
         SectionOnPath lit = SolverTestFixtures.section("LIT", 50,
                 SolverTestFixtures.group("L-G1", 50));
 
-        // Phần 3 — 10 bộ ba, 12 cách phân bổ B10; Tiếng Anh cũng đủ 50 câu.
+        // Phần 3 — 10 bộ ba; kiểm tra giải mỗi môn ở 17 câu (2B 6.3/H3), 12 phân bổ giấy chỉ cho
+        // sinh đề; Tiếng Anh cũng đủ 50 câu.
         List<SectionOnPath> scienceSections = new ArrayList<>();
         for (String code : SCIENCE) {
             scienceSections.add(new SectionOnPath(code, "SEC-" + code, null,
@@ -111,18 +112,22 @@ class PaperSolverPerfTest {
                         .isEqualTo(witness.resolvedCount());
             }
         }
-        assertThat(out.results().get(0).path().picks().get(0)).hasSize(12);
+        // 2B 6.3/H3: kiểm tra giải mỗi môn ở số câu lớn nhất một lần → mỗi bộ ba một cách phân bổ,
+        // C(5,3) = 10 SubjectPick; 12 là số phân bổ giấy B10 (chỉ sinh đề, không phải kiểm tra)
+        assertThat(out.results().get(0).path().picks().get(0)).hasSize(10);
         PathResult scienceResult = out.results().get(0);
         for (SubjectPick pick : scienceResult.path().picks().get(0)) {
-            int paperUnits = 100;
+            // kiểm tra giải ở số câu lớn nhất của countsByPick (17/môn, 2B 6.3/H3): mỗi pick
+            // đóng góp 51 câu thay vì 50 của phân bổ giấy → đề kiểm tra là 100 + 51 = 151
+            int solvedUnits = 100;
             for (int i = 0; i < pick.sections().size(); i++) {
                 String subject = pick.sections().get(i).subjectCode();
                 int count = pick.counts().get(i);
                 assertThat(scienceResult.witness().stream().anyMatch(
                         w -> w.subjectCode().equals(subject) && w.resolvedCount() == count)).isTrue();
-                paperUnits += count;
+                solvedUnits += count;
             }
-            assertThat(paperUnits).isEqualTo(150);
+            assertThat(solvedUnits).isEqualTo(151);
         }
         assertThat(out.results().get(1).witness().stream()
                 .mapToInt(SubjectWitness::resolvedCount).sum()).isEqualTo(150);
