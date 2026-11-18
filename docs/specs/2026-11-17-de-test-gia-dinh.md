@@ -1,243 +1,336 @@
 # Đề test giả định cho 7 kỳ thi
 
-Ngày: 2026-11-17. Trạng thái: giả định, chờ chuyên gia ra đề.
+Ngày: 2026-11-17. Cập nhật 2026-11-18 theo mã tại `3d899976` (đợt 2B và phần bổ sung V-ACT, THPTQG). Trạng thái: số của mẫu theo BA; số của bộ đề `TEST-*` là giả định của đội dự án, chờ chuyên gia ra đề.
 
-Tài liệu này cho số liệu tạm để dựng mẫu cấu trúc, bộ câu hỏi mẫu và dữ liệu E2E trong lúc chuyên gia chưa trả lời các điểm ở `docs/specs/2026-11-16-be-pbi-03-04.md` mục 12 ("Chuyên gia ra đề"). Mọi số ghi "giả định" là do đội dự án tự đặt, không phải số của khách hàng. Khi chuyên gia trả lời, thay số ở đây và trong migration mẫu, rồi chạy lại kiểm tra cấu hình của bộ đề test.
+Tài liệu này mô tả đúng những gì đang có trong mã: 85 mẫu cấu trúc (cộng 7 mẫu bài ôn) và 27 bài `TEST-*` dùng cho E2E, kiểm tra cấu hình và dữ liệu mẫu. Đợt 3 (DS) lấy số ở đây. Khi mã đổi, sửa tài liệu theo mã, không làm ngược lại.
 
-Quy ước đọc bảng: cột hoặc ô có chữ "giả định" là số tự đặt. Số không ghi "giả định" lấy từ nguồn ghi bên cạnh (UniNote PBI-04 mục 5.1, PBI-10, mẫu `V202611161801__seed_exam_templates.sql`).
+Mọi bảng ghi nguồn bên dưới. Đường dẫn tính từ `backend/src/main/resources/db/` trừ khi ghi khác.
 
-## 1. Quy ước chung đã chốt
+| Nguồn | Nội dung |
+|---|---|
+| `migration/exam/V202611161801__seed_exam_templates.sql` | các mẫu đầu tiên (cấu trúc v1) |
+| `migration/exam/V202611171200__assumed_templates_fill.sql` | điền số giả định cho mẫu trống |
+| `migration/exam/V202611180652__exam_templates_ba_numbers.sql` | mẫu HSA, QDA, BCA, SPT, SP2E theo số BA, thêm mẫu theo phần, theo môn, bản cũ SP2E (sinh bởi `backend/src/test/resources/templates/build.mjs`) |
+| `migration/exam/V202611180456__exam_review_templates.sql` | `<KỲ>_REVIEW` cho HSA, QDA, BCA, SP2E, SPT |
+| `migration/exam/V202611181116__exam_template_flags.sql` | cột `publishable`, `fixed_counts` |
+| `migration/exam/V202611181234__correct_sp2e_2026_points.sql` | điểm SP2E Anh, Sử, GDKTPL 2026 |
+| `migration/exam/V202611181305__exam_templates_thptqg_vact.sql` | THPTQG (13 mẫu môn và `THPTQG_REVIEW`), V-ACT (8 mẫu và `VACT_REVIEW`) |
+| `devdata/R__seed_test_exam_data.sql` | 27 bài `TEST-*` và 1.695 câu `TESTQ-*` (sinh bằng `scripts/generate_test_exam_seed.py`) |
+| `devdata/R__seed_questionbank_dev_data.sql` | câu hỏi mẫu có nhãn, MAPID, năng lực cho mọi mẫu mới (UNI-2653, UNI-2675) |
+| `backend/src/test/java/vn/unicom/thi360/exam/TestExamSeedIT.java`, `ExamTemplateFlagsCheckIT.java`, `ExamTemplatePolicyValidityIT.java` | kết quả kiểm tra mong đợi của từng bài `TEST-*` |
 
-Các điểm này đã có quyết định, áp cho mọi đề test:
+Ký hiệu: MĐ Một đáp án, NĐ Nhiều đáp án, ĐS Đúng/Sai, TLN Trả lời ngắn, TL Tự luận, GĐ Ghép đôi, ĐK Điền khuyết, chùm a×b là a bộ, mỗi bộ b câu con. Điểm viết `0,25` là điểm mỗi câu (`requiredPointsPerQuestion`). Số thập phân dùng dấu phẩy.
 
-- Câu con của chùm Toán HSA là Một đáp án (`SINGLE_CHOICE`).
+## 1. Quy ước chung
+
+Các điểm này đang đúng trong mã, áp cho mọi mẫu và mọi bài `TEST-*`:
+
+- Câu con của chùm Toán HSA là Một đáp án (`SINGLE_CHOICE`); mọi chùm của mẫu có `childAnswerType` (migration `V202611171108`).
 - Nhiều đáp án mặc định `ALL_OR_NOTHING`.
-- Các phần chạy theo thứ tự. Không có quy tắc chuyển phần.
-- Câu và phương án luôn được đảo khi sinh đề. Không có cờ đảo trên từng câu. Thứ tự nhóm vẫn theo mẫu (`groupOrder`, D24).
-- HSA Khoa học: học viên chọn 3 môn bất kỳ trong 5 môn. Chia 17–17–16 theo B10.
-- Chỉ tiêu cấp môn của 5 môn Khoa học khai theo tỉ lệ, quy ra 16 hoặc 17 câu bằng phần dư lớn nhất (PBI-04 mục 7.3).
-- 6 kỳ thi khác HSA giữ cấu trúc cũ: mỗi khối một dạng câu, môn không có chỉ tiêu (D26).
-- V-ACT tính điểm luyện tập `LINEAR` về 1.200 (D11).
-- Đúng/Sai 1 điểm của SPT, SP2E dùng bảng điểm theo số ý đúng như THPTQG: 0,1 / 0,25 / 0,5 / 1 (giả định, spec mục 8).
+- Các phần chạy theo thứ tự. Không có quy tắc chuyển phần (BA7).
+- **Thứ tự và đảo (K4, K12).** Thứ tự nhóm là thứ tự trong mảng `blocks`; không còn `groupOrder` và `shuffle` (test `seededExamStructuresContainNoLegacyOrderingFields` bảo đảm không bài nào còn hai khóa này). Nhóm có `shuffleUnits` (mặc định `true`): câu và chùm đảo trong nhóm, câu con giữ thứ tự. Phương án đảo theo cờ `shuffleOptions` của từng câu (mặc định `true`, UNI-2648); `PaperOrdering` không đảo phương án khi cờ là `false`. Nhóm Đọc ngữ liệu (Văn HSA, QDA) có `shuffleEditable = true`, các nhóm khác không.
+- **Không còn điều kiện dạng bài (K11).** Cột `task_type_item_id` đã bỏ (migration `V202611172352`). Nhóm cần đúng một loại câu thì gắn nhãn (`tagCodes`), MAPID hoặc năng lực (`competencyCodes`). Bộ đề `TEST-*` không dùng nhãn, trừ `TEST-ERR-03` (nhãn `TEST-HIEM`) và `TEST-VACT-01` (nhãn `ANH_*`, năng lực `VACT-*`).
+- Chỉ tiêu chủ đề là "ít nhất" (K6, H33), kể cả V-ACT và THPTQG.
+- HSA Khoa học: học viên chọn 3 trong 5 môn (10 bộ ba). Mỗi môn có 17 câu; một môn trong bộ ba chỉ làm 16 (`countsByPick = [17, 17, 16]`, BA8, BA13).
+- `omitted` chỉ hợp lệ ở nhóm `ESSAY`. Câu `omitted` không tính vào số câu, điểm, và không vào kiểm tra. SPT và SP2E Văn dùng `omitted` cho "Tự luận – tạm bỏ qua" (K1, K7).
+- THPTQG Ngữ văn: mẫu có `publishable = false`. Lưu nháp được, kiểm tra báo `TEMPLATE_NOT_PUBLISHABLE`, không công bố được (D11, H26).
+- V-ACT FULL có `fixed_counts = true`: số câu từng phần, từng tiểu mục khóa; kiểm tra báo `STRUCTURE_COUNT_LOCKED` khi đổi (H27).
+- V-ACT tính điểm luyện tập `LINEAR` về 1.200, mỗi câu 10 điểm (D7, H32).
+- Bảng điểm Đúng/Sai theo số ý đúng: 0,1 / 0,25 / 0,5 / 1 (`tf_scoring` của hồ sơ SPT, SP2E, THPTQG là `COUNT_TABLE`). Mẫu SP2E Sử, GDKTPL 2026 và mọi mẫu SP2E bản cũ dùng `PER_STATEMENT` (mỗi ý 0,2 điểm của câu 0,8).
 
-## 2. Các điểm chờ chuyên gia và giá trị giả định
+## 2. Mẫu cấu trúc trong mã
 
-### 2.1 Nhóm lấy câu của từng môn HSA
+Nguồn: các migration ở mục đầu tài liệu. `Điểm` là điểm tối đa của mẫu (`max_score`), `phút` là `duration_minutes` của mẫu. Cột `Câu` ghi số câu học viên làm; khi đề in nhiều hơn thì ghi `làm / in`.
 
-**Chỗ trống.** PBI-04 mục 6.1 chỉ nêu ví dụ nhóm. PBI-10 cho tổng: Văn học – Ngôn ngữ 25 câu đơn + 5 chùm × 5; Tiếng Anh 35 câu đơn + 3 chùm × 5. Mẫu `HSA_FULL` để trống số câu các nhóm câu đơn, số chùm Toán, và mỗi môn Khoa học chỉ có một nhóm "lấy phần còn lại".
+### 2.1 HSA
 
-**Toán học và xử lí số liệu** (50 câu, 75 phút, 50 điểm; nguồn PBI-04 mục 6.1.2):
+Nguồn: `V202611180652` (HSA_FULL, HSA_PART_*, HSA_SUBJECT_*), `V202611171108` (chùm Toán), `V202611171206` (ghi chú).
 
-| Nhóm (`templateGroupCode`) | Loại | Số câu (giả định) | Dạng trả lời | Điểm/câu |
-|---|---|---|---|---|
-| `HSA_MATH_SINGLE` | câu đơn, `questionType = null` | 41 | theo chỉ tiêu môn: 26 Một đáp án + 15 Trả lời ngắn | 1 |
-| `HSA_MATH_CONTEXT` | chùm `QUESTION_SET` | 3 chùm × 3 câu con = 9 | câu con `SINGLE_CHOICE` (đã chốt) | 1 |
-
-Chỉ tiêu môn giữ theo nguồn: `SINGLE_CHOICE` 35, `SHORT_ANSWER` 15; lớp 10/11/12 = 3/20/27; NB/TH/VD/VDC = 2/21/20/7. Chùm trừ 9 vào chỉ tiêu 35, nên nhóm câu đơn lấy 26 + 15.
-
-Lý do: 3 chùm × 3 câu đủ để có chùm trên đề mà không lấn chỉ tiêu Trả lời ngắn. Câu con chỉ có một dạng nên chùm không bao giờ làm vượt chỉ tiêu 15.
-
-**Văn học – Ngôn ngữ** (50 câu, 60 phút, 50 điểm, `groupOrder = SHUFFLE`):
-
-| Nhóm | Loại | Số câu (giả định trừ chỗ ghi nguồn) | Dạng | Điểm/câu |
-|---|---|---|---|---|
-| `HSA_VN_WORD_USAGE` Nhận diện lỗi dùng từ | câu đơn | 10 | `SINGLE_CHOICE` (mẫu khóa) | 1 |
-| `HSA_VN_SINGLE` Câu đơn khác (nhóm mới, giả định) | câu đơn, không lọc dạng bài | 15 | `SINGLE_CHOICE` | 1 |
-| `HSA_VN_PASSAGE` Đọc ngữ liệu | chùm | 5 × 5 = 25 (nguồn PBI-10 mục 3.2) | câu con `SINGLE_CHOICE` (giả định) | 1 |
-
-Lý do: PBI-10 cho 25 câu đơn nhưng BA chỉ nêu một nhóm câu đơn. Tách 10 + 15 để test được hai nhóm câu đơn dùng chung nguồn và đảo cả nhóm. Không lọc dạng bài ở nhóm mới nên không cần thêm giá trị `TASK_TYPE`. Môn không khai chỉ tiêu lớp, độ khó (giả định; mẫu để `null`).
-
-**Tiếng Anh** (50 câu, 60 phút, 50 điểm, `groupOrder = FIXED`):
-
-| Thứ tự | Nhóm | Số câu (giả định trừ chỗ ghi nguồn) | Dạng | Điểm/câu |
-|---|---|---|---|---|
-| 1 | `HSA_EN_SYNONYM` Từ đồng nghĩa | 5 | `SINGLE_CHOICE` | 1 |
-| 2 | `HSA_EN_ANTONYM` Từ trái nghĩa | 5 | `SINGLE_CHOICE` | 1 |
-| 3 | `HSA_EN_DIALOGUE` Hoàn thành hội thoại | 5 | `SINGLE_CHOICE` | 1 |
-| 4 | `HSA_EN_SENTENCE` Hoàn thành câu (nhóm mới, giả định, `TASK_TYPE` `SENTENCE_COMPLETION`) | 20 | `SINGLE_CHOICE` | 1 |
-| 5 | `HSA_EN_READING` Đọc hiểu | 3 × 5 = 15 (nguồn PBI-10 mục 3.4) | câu con `SINGLE_CHOICE` | 1 |
-
-Lý do: 35 câu đơn phải chia vào các nhóm. PBI-04 mục 6 nêu "hoàn thành câu" là một khối của phần Tiếng Anh, nên thêm nhóm này nhận phần lớn số câu. Nếu không muốn thêm giá trị danh mục, chia 12/12/11 cho ba nhóm cũ.
-
-**Khoa học** (phương án `SUBJECT_CHOICE`, 5 môn chọn 3, 50 câu, 60 phút, 50 điểm). Cả 5 môn (Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí) dùng cùng một khung giả định:
-
-| Nhóm | Loại | Số câu (giả định) | Dạng | Điểm/câu |
-|---|---|---|---|---|
-| Chùm môn (`HSA_<MÔN>_CLUSTER`, nhóm mới) | chùm `QUESTION_SET` | 2 chùm × 3 câu con = 6 | câu con `SINGLE_CHOICE` | 1 |
-| `HSA_<MÔN>_REMAINDER` lấy phần còn lại | câu đơn, `questionType = null` | 10 (môn nhận 16) hoặc 11 (môn nhận 17) | theo chỉ tiêu môn | 1 |
-
-Chỉ tiêu cấp môn theo tỉ lệ (giả định) và số câu sau khi quy đổi:
-
-| Chỉ tiêu | Tỉ lệ (giả định) | Môn nhận 16 | Môn nhận 17 |
-|---|---|---|---|
-| Dạng trả lời `SINGLE_CHOICE` / `SHORT_ANSWER` | 75% / 25% | 12 / 4 | 13 / 4 |
-| Lớp 10 / 11 / 12 | 20% / 30% / 50% | 3 / 5 / 8 | 3 / 5 / 9 |
-| NB / TH / VD / VDC | 20% / 40% / 30% / 10% | 3 / 6 / 5 / 2 | 3 / 7 / 5 / 2 |
-
-Lý do: khung "2 chùm × 3 câu + nhóm còn lại 10 hoặc 11" lấy đúng ví dụ Lịch sử của PBI-10 mục 3.3 (spec B10). Dùng chung cho 5 môn để bộ câu mẫu sinh bằng một vòng lặp. Các tỉ lệ được chọn để phần dư lớn nhất cho kết quả khác nhau giữa 16 và 17, nhờ đó test được quy đổi (spec mục 10, "chia phần trăm bằng phần dư lớn nhất").
-
-### 2.2 Điểm từng câu của SPT, SP2E
-
-**Chỗ trống.** Spec mục 12. Mẫu `SPT_MATH_2025`, `SP2E_MATH_2025`, `SP2E_MATH_2026` có điểm tạm.
-
-**Giả định:** giữ điểm tạm của mẫu, vì tổng đã đúng 10:
-
-- SPT Toán 2025: 16 × 0,25 + 2 Đúng/Sai × 1 + 4 Trả lời ngắn × 0,25 + 3 Tự luận × 1 = 10.
-- SP2E Toán 2025: 12 × 0,25 + 4 × 1 + 6 × 0,5 = 10.
-- SP2E Toán 2026: 20 Một đáp án + 5 Nhiều đáp án + 1 chùm × 5 + 10 Trả lời ngắn, mỗi câu 0,25 = 10.
-
-Môn khác: xem mục 2.4. Quy tắc chung của giả định: Một đáp án 0,25 hoặc 0,2; Đúng/Sai 1; phần dư dồn vào Trả lời ngắn và Tự luận để tổng đúng 10 (thang 10 điểm/môn, PBI-04 mục 5.1).
-
-### 2.3 SP2E 2025: chia dạng câu và thời lượng
-
-**Chỗ trống.** Mẫu `SP2E_MATH_2025` ghi "chia dạng câu 12–4–6 và điểm là tạm; thời lượng chưa có".
-
-**Giả định:** 22 câu = 12 Một đáp án (0,25) + 4 Đúng/Sai (1) + 6 Trả lời ngắn (0,5); **90 phút**.
-
-Lý do: 22 câu và cách chia này trùng cấu trúc THPTQG Toán 2025 (22 câu, 90 phút). SP2E Toán 2026 cũng 90 phút (PBI-04 mục 5.1). Ghi thêm: mẫu `SP2E_MATH_2026` đang để `duration_minutes = NULL` dù mục 5.1 ghi 90 phút; nên điền 90.
-
-### 2.4 Cấu trúc 11 môn SPT và 8 môn SP2E còn lại
-
-**Chỗ trống.** Mẫu có đủ số câu, thời lượng theo PBI-04 mục 5.1 nhưng `blocks` rỗng ("Cấu trúc nhóm chưa được BA cung cấp").
-
-**Giả định:** mỗi môn một phần, chia khối như bảng. Số câu, thời lượng lấy từ mục 5.1; chia khối và điểm là giả định. Ký hiệu: MĐ Một đáp án, NĐ Nhiều đáp án, ĐS Đúng/Sai, TLN Trả lời ngắn, TL Tự luận, GĐ Ghép đôi, ĐK Điền khuyết, chùm a×b là a bộ, b câu con Một đáp án.
-
-SPT 2025 (thang 10):
-
-| Môn | Câu / phút (nguồn) | Khối và điểm/câu (giả định) |
-|---|---|---|
-| Ngữ văn | 12 / 90 | chùm Đọc hiểu 2×5 × 0,4; TL viết đoạn 1 × 2; TL viết bài 1 × 4 |
-| Tiếng Anh | 33 / 60 | MĐ 20 × 0,25; chùm Đọc hiểu 2×6 × 0,25; TL viết 1 × 2 |
-| Vật lí | 21 / 60 | MĐ 12 × 0,25; ĐS 4 × 1; TLN 4 × 0,5; TL 1 × 1 |
-| Hóa học | 27 / 60 | MĐ 18 × 0,25; ĐS 4 × 1; TLN 5 × 0,3 |
-| Sinh học | 22 / 60 | MĐ 12 × 0,25; ĐS 4 × 1; TLN 6 × 0,5 |
-| Lịch sử | 25 / 60 | MĐ 20 × 0,25; ĐS 4 × 1; TL 1 × 1 |
-| Địa lí | 20 / 60 | MĐ 8 × 0,25; ĐS 4 × 1; TLN 8 × 0,5 |
-| GD kinh tế và pháp luật | 21 / 60 | MĐ 16 × 0,25; ĐS 4 × 1; TL 1 × 2 |
-| Tin học | 25 / 60 | MĐ 20 × 0,25; ĐS 4 × 1; TL 1 × 1 |
-| Công nghệ – công nghiệp | 24 / 60 | MĐ 16 × 0,25; ĐS 4 × 1; TLN 4 × 0,5 |
-| Công nghệ – nông nghiệp | 24 / 60 | MĐ 16 × 0,25; ĐS 4 × 1; TLN 4 × 0,5 |
-
-SP2E 2026 (thang 10):
-
-| Môn | Câu / phút (nguồn) | Khối và điểm/câu (giả định) |
-|---|---|---|
-| Ngữ văn | 22 / 90 | MĐ 10 × 0,2; chùm Đọc hiểu 2×5 × 0,2; TL viết đoạn 1 × 2; TL viết bài 1 × 4 |
-| Tiếng Anh | 50 / 60 | MĐ 30 × 0,2; chùm Đọc hiểu 2×5 × 0,2; ĐK 1 câu × 10 vị trí × 0,2 |
-| Vật lí, Hóa học, Sinh học, Địa lí | 28 / 60 | MĐ 16 × 0,25; NĐ 4 × 0,25; GĐ 2 × 1; TLN 6 × 0,5 |
-| Lịch sử, GD kinh tế và pháp luật | 32 / 60 | MĐ 24 × 0,25; NĐ 4 × 0,25; GĐ 2 × 1; TLN 2 × 0,5 |
-
-Lý do: SPT lấy khung Toán 2025 (có Tự luận, PBI-04 mục 5.1) và khung THPTQG 2025 (MĐ 0,25, ĐS 1). SP2E lấy khung Toán 2026 (có Nhiều đáp án) và thêm Ghép đôi vì spec mục 8 ghi "Câu Ghép đôi của SP2E dùng dạng `MATCHING`". SP2E Tiếng Anh có Điền khuyết để bộ mẫu có ít nhất một bài dùng `CLOZE`. Mọi dòng cộng đúng số câu của mục 5.1 và đúng 10 điểm.
-
-### 2.5 Đối chiếu THPTQG 12 môn
-
-**Chỗ trống.** Đối chiếu 12 mẫu THPTQG với tài liệu dự án. Kết quả đối chiếu với PBI-04 mục 5.1 (cột "Tốt nghiệp THPT từ 2025"):
-
-| Mẫu | Câu / phút | Khớp mục 5.1 | Tổng điểm |
-|---|---|---|---|
-| `THPTQG_MATH_2025` | 22 / 90: MĐ 12 × 0,25, ĐS 4 × 1, TLN 6 × 0,5 | có | 10 |
-| `THPTQG_LITERATURE_2025` | 7 / 120: chùm 1×5 TL × 0,8, TL 1 × 2, TL 1 × 4 | có | 10 |
-| `THPTQG_ENGLISH_2025` | 40 / 50: MĐ 40 × 0,25 | có | 10 |
-| Vật lí, Hóa học, Sinh học, Địa lí | 28 / 50: MĐ 18 × 0,25, ĐS 4 × 1, TLN 6 × 0,25 | có | 10 |
-| Lịch sử, GD KT&PL, CN công nghiệp, CN nông nghiệp | 28 / 50: MĐ 24 × 0,25, ĐS 4 × 1 | có | 10 |
-| `THPTQG_INFORMATICS_2025` | 28 phải làm / 50, đồng hồ chung: MĐ 24, ĐS chung 2, ĐS nhánh CS hoặc ICT 2 | có | 10 |
-
-Đủ 12 môn, số câu và thời lượng khớp. Một điểm lệch nhỏ: Tin học ghi "đề in 30 câu" nhưng phần II có `questionCountOnPaper = 4`; theo đề in thì phải là 6 (2 chung + 2 CS + 2 ICT). Giả định: sửa thành 6, tổng trên đề 30. Chờ chuyên gia xác nhận cả bảng.
-
-### 2.6 BCA: số câu Trả lời ngắn trong 35 câu Toán
-
-**Giả định:** 25 Một đáp án + 10 Trả lời ngắn, mỗi câu 1 điểm. Khối Toán của mẫu `BCA_FULL` tách làm hai khối.
-
-Lý do: tỉ lệ gần với HSA Toán (35/15, tức 70/30; 35 × 30% ≈ 10). Tổng Phần 2 vẫn 35 + 10 + 15 = 60 (spec mục 8).
-
-### 2.7 SPT: Trả lời ngắn chấm tự động hay chấm tay
-
-**Giả định:** chấm tự động, khớp đúng sau chuẩn hóa (B7), như spec đang để. Câu Trả lời ngắn mẫu của SPT có danh sách đáp án và hướng dẫn nhập (dấu phẩy thập phân). Chỉ Tự luận vào hàng chờ chấm.
-
-### 2.8 BCA Tiếng Anh 0,75 điểm mỗi câu
-
-**Giả định:** soạn câu riêng 0,75 điểm cho BCA (khối đặt `requiredPointsPerQuestion = 0.75`, như mẫu). Không quy điểm theo phần.
-
-Lý do: B5 đặt điểm ở câu hỏi; mẫu `BCA_FULL` đã lọc nguồn theo 0,75. Quy điểm theo phần cần thêm quy tắc chấm mới. Hệ quả: bộ mẫu cần nhóm câu Tiếng Anh 0,75 điểm riêng; khi có câu thật, sao chép câu 1 điểm rồi sửa điểm.
-
-### 2.9 QDA, V-ACT: phần mẫu còn trống
-
-Không có trong mục 12 nhưng đề test cần. Mẫu `QDA_FULL` có Phần 1, 2 với `blocks` rỗng. **Giả định:** Toán 1 khối MĐ 50 × 1; Văn 1 khối MĐ 50 × 1. Phần 3 giữ QĐ01–QĐ04 (2 môn × 25 MĐ) và QĐ05 Tiếng Anh 50 MĐ. Tổng 150. V-ACT giữ mẫu: 120 MĐ × 10 điểm, `LINEAR` về 1.200.
-
-## 3. Bộ đề test
-
-Mã bài viết hoa. Cột "Kết quả" là kết quả kiểm tra cấu hình mong đợi. Bài lỗi dựng từ bài hợp lệ cùng kỳ thi, chỉ đổi đúng một chỗ.
-
-### 3.1 Bài hợp lệ
-
-| Mã | Kỳ thi | Phạm vi | Mẫu | Dùng để kiểm | Kết quả |
+| Mẫu | Phạm vi | Timing | Phút | Điểm | Câu |
 |---|---|---|---|---|---|
-| TEST-HSA-01 | HSA | Toàn bài | `HSA_FULL` + mục 2.1 | đủ 3 phần, 11 đường, 10 bộ ba Khoa học (12 trường hợp chia), xem trước với 3 môn | VALID |
-| TEST-HSA-02 | HSA | Theo phần | `HSA_PART_MATH` | chỉ tiêu 35 + 15, lớp và độ khó hai chiều, chùm 3×3 | VALID |
-| TEST-HSA-03 | HSA | Theo phần | `HSA_PART_LITERATURE` | hai nhóm câu đơn dùng chung nguồn, chùm 5×5, đảo nhóm | VALID |
-| TEST-HSA-04 | HSA | Theo phần | `HSA_PART_SCIENCE` | `SUBJECT_CHOICE`, nhóm lấy phần còn lại, tỉ lệ ra 16/17; nhánh Tiếng Anh giữ thứ tự 5 nhóm | VALID |
-| TEST-QDA-01 | QDA | Toàn bài | `QDA_FULL` + mục 2.9 | 5 mã phần 3, mã tổ hợp 2 môn × 25 | VALID |
-| TEST-BCA-01 | BCA | Toàn bài | `BCA_FULL` + mục 2.6 | đồng hồ chung 180 phút, 100 điểm (25 + 60 + 15), Tiếng Anh 0,75, Tự luận 25 điểm, CA1–CA4 | VALID |
-| TEST-VACT-01 | V-ACT | Toàn bài | `VACT_FULL` | 120 câu, `LINEAR` 1.200 | VALID |
-| TEST-SPT-01 | SPT | Theo môn Toán | `SPT_MATH_2025` | 4 dạng, Tự luận chờ chấm, Trả lời ngắn chấm tự động | VALID |
-| TEST-SP2E-01 | SP2E | Theo môn Toán | `SP2E_MATH_2025` | phiên bản 2025, 90 phút | VALID |
-| TEST-SP2E-02 | SP2E | Theo môn Toán | `SP2E_MATH_2026`, `years_confirmed = true` | đổi phiên bản 2025 → 2026 có xác nhận, Nhiều đáp án, chùm 1×5 | VALID |
-| TEST-SP2E-03 | SP2E | Theo môn Tiếng Anh | `SP2E_ANH_2026` + mục 2.4 | Điền khuyết đếm theo vị trí | VALID |
-| TEST-THPTQG-01 | THPTQG | Theo môn Toán | `THPTQG_MATH_2025` | ĐS bảng điểm, E2E spec mục 10 | VALID |
-| TEST-THPTQG-02 | THPTQG | Theo môn Ngữ văn | `THPTQG_LITERATURE_2025` | chùm có câu con Tự luận, 120 phút | VALID |
-| TEST-THPTQG-03 | THPTQG | Theo môn Tin học | `THPTQG_INFORMATICS_2025` | nhánh CS/ICT, 30 trên đề, 28 phải làm | VALID |
+| `HSA_FULL` | FULL | PER_PART | 195 | 150 | 150 |
+| `HSA_PART_MATH` | PART `TOAN` | PER_PART | 75 | 50 | 50 |
+| `HSA_PART_LITERATURE` | PART `VAN` | PER_PART | 60 | 50 | 50 |
+| `HSA_PART_SCIENCE` | PART `SCIENCE` | PER_PART | 60 | 50 | 50 |
+| `HSA_PART_ENGLISH` | PART `ANH` | PER_PART | 60 | 50 | 50 |
+| `HSA_SUBJECT_TOAN`, `_VAN`, `_ANH` | SUBJECT | PER_PART | không đặt | 50 | 50 |
+| `HSA_SUBJECT_LY`, `_HOA`, `_SINH`, `_SU`, `_DIA` | SUBJECT | PER_PART | không đặt | 17 | 17 |
 
-### 3.2 Bài lỗi, mỗi bài một mã kiểm tra
+Cấu trúc `HSA_FULL` (các mẫu theo phần và theo môn chép từ đây), `structure_year = matrix_year = 2026`:
 
-| Mã | Dựng từ | Đổi gì | Mã mong đợi |
+| Phần | Nội dung |
+|---|---|
+| 1 · Toán học và xử lí số liệu, 75 phút, 50 điểm | Chỉ tiêu dạng trả lời MĐ 35 / TLN 15; lớp 10/11/12 = 3/20/27; độ khó NB/TH/VD/VDC = 2/21/20/7 (cả hai `REQUIRED`). Nhóm `HSA_MATH_SINGLE` MĐ 32; nhóm `HSA_MATH_SINGLE` TLN 15; nhóm `HSA_MATH_CONTEXT` chùm cuối 1×3 (câu con MĐ). Điểm mọi câu 1 |
+| 2 · Ngôn ngữ – Văn học, 60 phút, 50 điểm | 5 nhóm có nhãn: `HSA_VN_ODD_WORD` 5 (`VAN_TU_KHAC_NHOM`), `HSA_VN_WORD_USAGE` 5 (`VAN_TU_SAI`), `HSA_VN_WORD_PAIR` 5 (`VAN_CAP_TU_DIEN`), `HSA_VN_PASSAGE_SINGLE` 10 (`VAN_NGU_LIEU_MOT_CAU`), `HSA_VN_PASSAGE` chùm 5×5 (câu con MĐ) có 5 `slots` theo nhãn `VAN_NGHI_LUAN_XA_HOI`, `VAN_THONG_TIN`, `VAN_KHOA_HOC_CHINH_LUAN`, `VAN_THO`, `VAN_VAN_XUOI`, `shuffleEditable = true`. Điểm mọi câu 1 |
+| 3 · Khoa học hoặc Tiếng Anh, 60 phút, 50 điểm (`participation` `CHOICE`, chọn 1) | Phương án `SCIENCE` (`SUBJECT_CHOICE`, chọn 3, `countsByPick` [17, 17, 16]): 5 môn × 17 câu. Lí, Hóa, Sinh: MĐ 13 + chùm 1×3 + TLN 1, nhóm `NATURAL`. Sử, Địa: MĐ 14 + chùm 1×3, nhóm `SOCIAL`. Phương án `ANH` (`SUBJECT`): 50 câu, 11 nhóm có nhãn |
+
+Ma trận bắt buộc (lớp 10/11/12; NB/TH/VD) của năm môn Khoa học:
+
+| Môn | Lớp | Độ khó |
+|---|---|---|
+| Vật lí | 5/6/6 | 3/1/13 |
+| Hóa học | 2/8/7 | 4/5/8 |
+| Sinh học | 3/5/9 | 7/7/3 |
+| Lịch sử | 2/5/10 | 7/8/2 |
+| Địa lí | 2/4/11 | 5/9/3 |
+
+Tiếng Anh phần 3 (50 câu, mỗi câu 1 điểm): `HSA_EN_SENTENCE` 10 (`ANH_HOAN_THANH_CAU`), `HSA_EN_SYNONYM` 2 (`ANH_DONG_NGHIA`), `HSA_EN_ANTONYM` 2 (`ANH_TRAI_NGHIA`), `HSA_EN_REWRITE` 4 (`ANH_VIET_LAI_CAU`), `HSA_EN_COMBINE` 4 (`ANH_KET_HOP_CAU`), `HSA_EN_DIALOGUE` 4 (`ANH_HOI_THOAI`), `HSA_EN_DIALOGUE_ORDER` 4 (`ANH_SAP_XEP_HOI_THOAI`), `HSA_EN_CLOZE` chùm 1×5 (`ANH_DOC_DIEN`), `HSA_EN_READING` chùm 1×5 (`ANH_DOC_HIEU_1`), `HSA_EN_READING_2` chùm 1×5 (`ANH_DOC_HIEU_2`), `HSA_EN_LOGIC` 5 (`ANH_TU_DUY_LOGIC`). Chỉ tiêu cấp bài `hsa-english-grade` (tham khảo): lớp 10 và 11 gộp 30%, lớp 12 70%. Hai mẫu `HSA_PART_ENGLISH` và `HSA_SUBJECT_ANH` còn ghi chú "Chờ chuyên gia xác nhận".
+
+### 2.2 QDA
+
+Nguồn: `V202611180652`, `V202611161802` (phần 3 và danh sách mã). Mẫu theo phần chép từ `QDA_FULL`: `QDA_PART_MATH` 80 phút, `QDA_PART_LITERATURE` 55, `QDA_PART_SCIENCE` 60, `QDA_PART_ENGLISH` 60, mỗi mẫu 50 điểm. Mẫu theo môn (`PER_PART`, không đặt phút): `QDA_SUBJECT_TOAN`, `_VAN`, `_ANH` 50 điểm; `_LY`, `_HOA`, `_SINH`, `_SU`, `_DIA` 25 điểm.
+
+`QDA_FULL`: FULL, `PER_PART`, 195 phút, 150 điểm, 150 câu.
+
+| Phần | Nội dung |
+|---|---|
+| 1 · Toán, 80 phút, 50 điểm | Chỉ tiêu MĐ 35 / TLN 15; lớp 5/15/30 (`REQUIRED`); không khai độ khó. Nhóm `QDA_TOAN_SINGLE` MĐ 32, chùm `QDA_TOAN_CONTEXT` 1×3, `QDA_TOAN_SINGLE` TLN 15 (định dạng đáp án `INTEGER`, `DECIMAL`, `FRACTION`). Điểm 1 |
+| 2 · Ngôn ngữ – Văn học, 55 phút, 50 điểm | 5 nhóm: `QDA_VAN_ODD_WORD` 5, `QDA_VAN_WORD_PAIR` 5, `QDA_VAN_WORD_USAGE` 5, `QDA_VAN_PASSAGE_SINGLE` 10, `QDA_VAN_PASSAGE` chùm 5×5 có 5 `slots` (như HSA). Điểm 1 |
+| 3 · Khoa học hoặc Tiếng Anh, 60 phút, 50 điểm | `codeSource` = `GLOBAL_LIST`, danh sách mã `QD01`–`QD05` lấy từ Global List (5 phương án), `subjectPool` 5 môn × 25 câu (Lí, Hóa, Sinh: MĐ 21 + chùm 1×3 + TLN 1; Sử, Địa: MĐ 22 + chùm 1×3) và Tiếng Anh 50 câu, 10 nhóm có nhãn: `QDA_ANH_SENTENCE` 10, `QDA_ANH_SYN_ANT` 4 (hai nhãn đồng nghĩa, trái nghĩa), `QDA_ANH_DIALOGUE` 4, `QDA_ANH_NOTICE` 4, `QDA_ANH_REWRITE` 4, `QDA_ANH_COMBINE` 4, `QDA_ANH_CLOZE` chùm 1×5, `QDA_ANH_READING` 1×5, `QDA_ANH_READING_2` 1×5, `QDA_ANH_INFERENCE` 5 |
+
+Mã tổ hợp QDA trong danh mục: `QD01` Lí–Hóa, `QD02` Hóa–Sinh, `QD03` Lí–Sinh, `QD04` Sử–Địa, `QD05` Tiếng Anh. Cả năm mã nằm trong `devdata/R__seed_catalog_dev_data.sql`; `R__seed_test_exam_data.sql` chỉ chèn lại `QD05` khi danh mục chưa có.
+
+### 2.3 BCA
+
+Nguồn: `V202611180652`. `BCA_FULL`: FULL, `SHARED`, 180 phút (đồng hồ chung), 100 điểm, 81 câu. Mẫu theo phần: `BCA_PART_VAN_TU_LUAN` (25 điểm), `BCA_PART_TN_BAT_BUOC` (60 điểm, 65 câu), `BCA_PART_TN_TU_CHON` (15 điểm, 15 câu). Mẫu theo môn (cũng `SHARED`, không đặt phút): `BCA_SUBJECT_TOAN` 35 điểm, `_VAN` 25, `_SU` 10, `_ANH`, `_LY`, `_HOA`, `_SINH`, `_DIA` mỗi mẫu 15.
+
+| Phần | Nội dung |
+|---|---|
+| I · Tự luận Ngữ văn, 25 điểm | 1 TL 25 điểm, nhãn `VAN_NGHI_LUAN_XA_HOI`, không `omitted` (K1) |
+| II · Trắc nghiệm bắt buộc, 60 điểm, 65 câu | Toán 35 câu: MĐ 27 + chùm 1×3 + TLN 5, 1 điểm; lớp 4/7/24 (`REQUIRED`), độ khó 2/12/15/6 (`REFERENCE`). Sử 10 câu: MĐ 7 + chùm tư liệu 1×3 (`SU_TU_LIEU_LICH_SU`), 1 điểm; lớp 1/2/7, độ khó 1/6/3/0. Tiếng Anh 20 câu, **0,75 điểm**: phát âm 1 (`ANH_PHAT_AM`), trọng âm 1 (`ANH_TRONG_AM`), từ vựng ngữ pháp 8 (`ANH_TU_VUNG_NGU_PHAP`), đọc điền 1×5 (`ANH_DOC_DIEN`), đọc hiểu 1×5 (`ANH_DOC_HIEU`); độ khó 3/9/8/0 |
+| III · Trắc nghiệm tự chọn, 15 điểm, 15 câu | `codeSource` = `GLOBAL_LIST`, `subjectPool` Lí, Hóa, Sinh, Địa mỗi môn 15 câu (MĐ 12 + chùm 1×3), 1 điểm; mã `CA1`–`CA4` mỗi mã một môn |
+
+Chỉ tiêu cấp bài tham khảo: `bca-grade` (lớp 10 và 11 gộp 18, lớp 12 42, trừ Văn và Anh) và `bca-level` (NB và TH 24, VD 40, VDC 16).
+
+### 2.4 V-ACT
+
+Nguồn: `V202611181305`, spec `docs/specs/2026-11-18-pbi04-dot-2b-bo-sung-vact-thpt.md` mục 5. Mọi bảng phân bố ở chế độ `REFERENCE`; mọi câu 10 điểm.
+
+| Mẫu | Phạm vi | Phút | Điểm | Câu | `fixed_counts` |
+|---|---|---|---|---|---|
+| `VACT_FULL` | FULL, `SHARED` | 150 | 1.200 | 120 | **true** |
+| `VACT_PART_LANGUAGE` | PART | nhập khi tạo | 600 | 60 | false |
+| `VACT_PART_THINKING` | PART | nhập khi tạo | 300 | 30 | false |
+| `VACT_PART_LOGIC` | PART | nhập khi tạo | 120 | 12 | false |
+| `VACT_PART_REASONING` | PART | nhập khi tạo | 180 | 18 | false |
+| `VACT_SUBJECT_VIETNAMESE`, `_ANH`, `_TOAN` | SUBJECT | nhập khi tạo | 300 | 30 | false |
+
+Cấu trúc `VACT_FULL`:
+
+| Phần | Mục (`subjectCode`, năng lực) | Câu | Nhóm |
 |---|---|---|---|
-| TEST-ERR-01 | TEST-THPTQG-01 | khối MĐ có `matrix` nhưng chưa chọn cách áp dụng (chung hay riêng) | `MATRIX_INCOMPLETE` |
-| TEST-ERR-02 | TEST-BCA-01 | Phần 2 đặt điểm tối đa 60, khối Tiếng Anh đổi 0,75 → 1 (tổng 65) | `PART_POINTS_MISMATCH` (kèm `POINTS_TOTAL_MISMATCH` 105 ≠ 100) |
-| TEST-ERR-03 | TEST-HSA-03 | nhóm Đọc ngữ liệu thêm lọc nhãn `TEST-HIEM`; bộ mẫu chỉ có 2 bộ mang nhãn này, cần 5 | `SET_SHORTAGE` |
-| TEST-ERR-04 | TEST-HSA-02 | nhóm câu đơn 40 thay 41 (môn 49 câu) | `SECTION_TOTAL_MISMATCH` |
-| TEST-ERR-05 | TEST-HSA-02 | chỉ tiêu Trả lời ngắn 14 (tổng 49) | `ANSWER_QUOTA_TOTAL_MISMATCH` |
-| TEST-ERR-06 | TEST-HSA-02 | phạm vi MAPID môn đặt vào nút `TEST-TOAN-HEP`; dưới nút có 10 Trả lời ngắn, cần 15 | `ANSWER_TYPE_SHORTAGE` (có thể kèm `SUBJECT_QUOTA_INFEASIBLE`) |
-| TEST-ERR-07 | TEST-HSA-04 | Địa lí đặt phạm vi nút `TEST-DIA-HEP`, đủ đúng cho 16 câu (2 chùm, 6 MĐ, 4 TLN), thiếu cho 17 | INVALID; `selections` đúng 3 trường hợp Địa lí nhận 17 (1 môn tự nhiên + Lịch sử + Địa lí) |
-| TEST-ERR-08 | TEST-HSA-04 | Vật lí bỏ nhóm lấy phần còn lại, thay bằng nhóm cố định 11 câu | `REMAINDER_GROUP_INVALID` |
-| TEST-ERR-09 | TEST-HSA-04 | Hóa học khai chỉ tiêu dạng trả lời theo số câu (12 + 4) | `SUBJECT_QUOTA_COUNT_VARIES` |
-| TEST-ERR-10 | TEST-HSA-04 | `countsByPick` = 17, 17, 17 | `SUBJECT_CHOICE_COUNTS_INVALID` |
-| TEST-ERR-11 | TEST-THPTQG-01 | ô Lớp 12 × VDC của khối MĐ đặt 12 câu; bộ mẫu có tối đa 4 câu ô này | `CELL_SHORTAGE` |
-| TEST-ERR-12 | TEST-THPTQG-01 | khối Trả lời ngắn bỏ điểm mỗi câu yêu cầu | `POINTS_TOTAL_MISMATCH` (thang cố định, B5) |
-| TEST-ERR-13 | TEST-SP2E-02 | `years_confirmed = false` (cấu trúc 2026, ma trận 2025) | `YEARS_UNCONFIRMED` |
+| 1 · Sử dụng ngôn ngữ, 600 điểm | Tiếng Việt (`VIETNAMESE`, `VACT-NN-TV`) | 30 | `VACT_VN` MĐ 30. Độ khó 6/17/7 (NB/TH/VD). Tám chỉ tiêu chủ đề tham khảo (bốn mạch × mức), `nodeIds` rỗng (chờ mapping): Chính tả từ vựng 5 NB + 2 TH; Thể loại thi pháp 1 NB + 7 TH + 4 VD; Ngữ pháp liên kết 3 TH; Đọc hiểu 5 TH + 3 VD |
+| | Tiếng Anh (`ANH`, `VACT-NN-TA`) | 30 | `VACT_ANH_CLOZE` 5 (`ANH_HOAN_THANH_CAU`; 3/2/0); `VACT_ANH_ERROR` 5 (`ANH_PHAT_HIEN_LOI`; 0/5/0); `VACT_ANH_EQUIVALENT` 5 (`ANH_DIEN_DAT_TUONG_DUONG`; 0/1/4); `VACT_ANH_READING_1` chùm 1×7 (`ANH_DOC_HIEU`; 1/4/2); `VACT_ANH_READING_2` chùm 1×8 (`ANH_DOC_HIEU`; 2/4/2) |
+| 2 · Toán học, 300 điểm | Toán (`TOAN`, `VACT-TOAN`) | 30 | `VACT_MATH_SINGLE` MĐ 12; `VACT_MATH_SET` chùm 18 câu con MĐ, cỡ linh hoạt (không `setCount`, `setSize`). Lớp 10/11/12/`GRADE_MIXED` = 12/9/8/1; độ khó 4/10/16 |
+| 3 · Tư duy khoa học, 300 điểm | Logic (`SCIENTIFIC_THINKING`, `VACT-TD-LOGIC`) | 12 | `VACT_LOGIC` chùm 4×3; độ khó 1/4/7 |
+| | Suy luận (`SCIENTIFIC_THINKING`, `VACT-TD-SL`) | 18 | `VACT_SCIENCE` chùm 6×3; độ khó 4/9/5 |
 
-### 3.3 Nguồn tối thiểu để bài hợp lệ ra VALID
+Dải câu trong từng phần do hệ thống tính (`positionRange`, H34), mẫu không lưu. `VACT_REVIEW` có `everyChildInScope = true`.
 
-Quy tắc của plan BE-2a (`docs/plans/2026-11-16-be-pbi-03-04.md` dòng 311): mỗi ô, mỗi mức điểm có số câu `READY` ít nhất gấp đôi chỉ tiêu. Nguồn lọc theo môn, dạng, điểm (và dạng bài nếu khối lọc), không theo kỳ thi, nên bài khác kỳ thi dùng chung nguồn khi trùng bộ lọc. Mỗi dòng dưới đây là gấp đôi nhu cầu lớn nhất của một đề trong mục 3.1. Đơn vị là đơn vị đếm (câu đơn, câu con, vị trí Điền khuyết); "bộ" là chùm nguyên.
+### 2.5 SPT
 
-| Môn | Dạng, điểm | Tối thiểu | Ghi chú |
-|---|---|---|---|
-| Toán | MĐ đơn 1 điểm, dạng bài `SINGLE` | 100 | QDA 50; HSA 26; BCA 25 |
-| Toán | TLN 1 điểm, dạng bài `SINGLE` | 30 | HSA 15; BCA 10 |
-| Toán | chùm 3 câu con MĐ 1 điểm, dạng bài `CLUSTER` | 6 bộ | HSA 3 bộ |
-| Toán (HSA) | biên lớp, độ khó trên các câu trên | lớp 10/11/12 ≥ 6/40/54; NB/TH/VD/VDC ≥ 4/42/40/14 | trải đều trên cả MĐ và TLN; thêm 10 TLN + 60 MĐ + 6 bộ gắn nút `TEST-TOAN-HEP` cho TEST-ERR-06 |
-| Toán | MĐ 0,25 | 40 | SP2E 2026: 20. Rải đều 12 ô lớp × mức, mỗi ô 3–4 câu (cho TEST-ERR-11) |
-| Toán | ĐS 1 điểm, `COUNT_TABLE` | 8 | THPTQG, SP2E 2025: 4 |
-| Toán | TLN 0,25 / TLN 0,5 | 20 / 12 | SP2E 2026: 10 / THPTQG, SP2E 2025: 6 |
-| Toán | NĐ 0,25 `ALL_OR_NOTHING`; chùm 5 câu con 0,25 | 10; 2 bộ | SP2E 2026 |
-| Toán | TL 1 điểm (có hướng dẫn chấm); MĐ 10 điểm | 6; 60 | SPT 3; V-ACT 30 |
-| Ngữ văn | MĐ đơn 1 điểm | 100, trong đó ≥ 20 dạng bài `WORD_USAGE_ERROR` | QDA 50; HSA 10 + 15 |
-| Ngữ văn | chùm 5 câu con MĐ 1 điểm, `PASSAGE_READING` | 10 bộ | HSA 5 bộ; đúng 2 bộ gắn nhãn `TEST-HIEM` |
-| Ngữ văn | TL 25 điểm; chùm 5 câu con TL 0,8; TL 2; TL 4 | 2; 2 bộ; 2; 2 | BCA Phần 1; THPTQG |
-| Tiếng Anh | MĐ đơn 1 điểm | 100, trong đó ≥ 10 `SYNONYM`, 10 `ANTONYM`, 10 `DIALOGUE_COMPLETION`, 40 `SENTENCE_COMPLETION` | QDA 50; HSA 35 |
-| Tiếng Anh | chùm 5 câu con MĐ 1 điểm, `READING_COMPREHENSION` | 6 bộ | HSA 3 bộ |
-| Tiếng Anh | MĐ 0,75 / MĐ 10 | 40 / 60 | BCA 20 / V-ACT 30 |
-| Tiếng Anh | MĐ 0,2; chùm 5 câu con 0,2; Điền khuyết 10 vị trí × 0,2 | 60; 4 bộ; 2 câu | SP2E 2026 |
-| Lí, Hóa, Sinh, Sử, Địa (mỗi môn) | MĐ đơn 1 điểm | 50 | QDA 25; BCA Sử 10; HSA tối đa 7 |
-| Lí, Hóa, Sinh, Sử, Địa (mỗi môn) | TLN 1 điểm; chùm 3 câu con MĐ 1 điểm | 8; 4 bộ | HSA môn nhận 17 |
-| Lí, Hóa, Sinh, Sử, Địa (HSA) | biên lớp, độ khó | lớp 10/11/12 ≥ 6/10/18; NB/TH/VD/VDC ≥ 6/14/10/4 | gấp đôi trường hợp lớn nhất của 16 và 17; Địa lí thêm đúng 2 bộ, 6 MĐ, 4 TLN gắn nút `TEST-DIA-HEP` khớp biên của trường hợp 16 (lớp 3/5/8; mức 3/6/5/2) |
-| Môn của CA1–CA4 (mỗi mã) | MĐ 1 điểm | 30 | BCA 15 |
-| Tiếng Việt, Tư duy khoa học | MĐ 10 điểm | 60 mỗi môn | V-ACT 30 |
-| Tin học | MĐ 0,25; ĐS 1 điểm | 48; 8 | THPTQG 24; 2 chung + 2 nhánh mỗi đường |
+Nguồn: `V202611180652`. 12 môn, phiên bản 2025, `PER_PART`, **không đặt thời lượng** (quản trị viên nhập khi tạo). Mọi nhóm TL ở trạng thái `omitted`, nên cột Câu và Điểm chỉ tính phần chấm tự động. Đúng/Sai có `itemShape.statements = 4` và bảng điểm 0,1/0,25/0,5/1.
 
-Tổng ước tính: khoảng 1.600 đơn vị đếm. Sinh bằng `generate_series` như plan BE-2a, không viết tay. Mỗi dòng có câu Nháp và câu Ngừng sử dụng đi kèm để chắc rằng chúng không được đếm.
+| Mẫu | Điểm | Câu | Phần I | Phần II | Phần III |
+|---|---|---|---|---|---|
+| `SPT_MATH_2025` | 7 | 22 | MĐ 16 × 0,25 | ĐS 2 × 1 | TLN 4 × 0,25; TL 3 `omitted` |
+| `SPT_LY_2025` | 7 | 19 | MĐ 12 × 0,25 | ĐS 3 × 1 | TLN 4 × 0,25; TL 2 `omitted` |
+| `SPT_HOA_2025` | 8 | 26 | MĐ 20 × 0,25 | ĐS 2 × 1 | TLN 4 × 0,25; TL 1 `omitted` |
+| `SPT_SINH_2025` | 7 | 19 | MĐ 12 × 0,25 | ĐS 3 × 1 | TLN 4 × 0,25; TL 3 `omitted` |
+| `SPT_DIA_2025` | 7 | 19 | MĐ 12 × 0,25 | ĐS 3 × 1 | TLN 4 × 0,25; TL 1 `omitted` |
+| `SPT_SU_2025` | 7 | 22 | MĐ 20 × 0,25 | ĐS 2 × 1; TL 3 `omitted` | không có |
+| `SPT_ECON_LAW_2025` | 7 | 19 | MĐ 16 × 0,25 | ĐS 3 × 1; TL 2 `omitted` | không có |
+| `SPT_TECH_INDUSTRY_2025` | 7 | 22 | MĐ 16 × 0,25 | ĐS 2 × 1 | TLN 4 × 0,25; TL 2 `omitted` |
+| `SPT_TECH_AGRICULTURE_2025` | 7 | 22 | MĐ 16 × 0,25 | ĐS 2 × 1 | TLN 4 × 0,25; TL 2 `omitted` |
+| `SPT_INFORMATICS_2025` | 7 | 22 (đề in 23) | MĐ 20 × 0,25 | ĐS 1 chung + 1 theo nhánh `CS` hoặc `ICT`, × 1; TL 3 `omitted` | không có |
+| `SPT_ANH_2025` | 8 | 32 | MĐ 5 + chùm 2×6 + MĐ 1 (sắp xếp hội thoại), × 0,25 | chùm 2×5 × 0,25 | ĐK 4 vị trí × 0,25; TL 1 `omitted` |
+| `SPT_VAN_2025` | 3 | 10 | chùm 2×5 × 0,3 (hai `slots`) | không có phần chấm tự động | hai nhóm TL `omitted` (nghị luận xã hội, nghị luận văn học) |
 
-## 4. Khi chuyên gia trả lời
+`SPT_REVIEW`: khung bài ôn, không có số.
 
-- Sửa số trong mục 2 và migration mẫu cùng một PR. Ghi mã quyết định mới vào spec mục 1.
-- Chạy lại kiểm tra cấu hình cho cả bộ đề test. Bài hợp lệ phải vẫn VALID; nếu không, tăng nguồn theo mục 3.3 trước.
-- Xóa chữ "giả định" ở dòng đã có số thật; giữ dòng nào chưa có.
+### 2.6 SP2E
+
+Nguồn: `V202611180652`, `V202611181234`. 9 môn bản 2026 và 5 bản cũ ("Đề minh họa cũ", mã `_OLD`, `is_default = false` trừ Văn). `SHARED`. Mặc định: bản 2026, riêng Văn mặc định là `SP2E_VAN_OLD` (K15). Điểm từng dạng của bản 2026 là số tạm (`expert_note` "chờ chuyên gia xác nhận").
+
+| Mẫu | Phút | Điểm | Câu | Phần I | Phần II | Phần III |
+|---|---|---|---|---|---|---|
+| `SP2E_MATH_2025` | 90 | 10 | 22 | MĐ 12 × 0,25 | ĐS 4 × 1 | TLN 6 × 0,5 |
+| `SP2E_MATH_2026` | 90 | 10 | 40 | MĐ 20 + NĐ 5, × 0,25 | MĐ 5 × 0,25, nhãn `TOAN_DU_LIEU_TONG_HOP` | TLN 10 × 0,25 |
+| `SP2E_LY_2026`, `_HOA_2026`, `_SINH_2026` | 60 | 10 | 28 | MĐ 16 × 0,25 | ĐS 4 × 1 | TLN 8 × 0,25 |
+| `SP2E_DIA_2026` | 60 | 10 | 28 | MĐ 16 × 0,25 | ĐS 3 + 1 (nhãn `DIA_CAU_KY_NANG`), × 1 | TLN 8 × 0,25 |
+| `SP2E_SU_2026` | 60 | 10 | 32 | MĐ 26 × 0,2 | ĐS 6 × 0,8 (`PER_STATEMENT`) | không có |
+| `SP2E_ECON_LAW_2026` | 60 | 10 | 32 | MĐ 20 + chùm 2×3, × 0,2 | ĐS 6 × 0,8 (`PER_STATEMENT`) | không có |
+| `SP2E_ANH_2026` | 60 | 10 | 50 | 9 nhóm có nhãn, × 0,2: đọc điền câu 1×10, đồng nghĩa 4, kết hợp câu 4, điền từ 1×5, điền cụm 1×5, giao tiếp 4, sắp xếp 5, đọc hiểu 1 (1×5), đọc hiểu 2 (1×8) | | |
+| `SP2E_VAN_2026` | 90 | 5 | 20 | MĐ 20 × 0,25 (đọc hiểu) | viết đoạn, TL `omitted` | viết bài, TL `omitted` |
+| `SP2E_VAN_OLD` (mặc định) | nhập khi tạo | 6 | 30 | 4 chùm đọc hiểu 8/8/7/7 × 0,2 | viết bài TL 4 điểm `omitted` | không có |
+| `SP2E_LY_OLD`, `_HOA_OLD`, `_SINH_OLD`, `_SU_OLD` | 60 | 10 | 20 | MĐ 10 × 0,2 | ĐS 5 × 0,8 | GĐ 5 × 0,8 |
+
+`SP2E_REVIEW`: khung bài ôn. Mẫu bản cũ nào chưa có phân bố riêng thì chỉ tiêu cấp bài tham khảo của chúng nằm trong `expert_note`.
+
+### 2.7 THPTQG
+
+Nguồn: `V202611181305`, spec bổ sung mục 4. 12 môn, phiên bản 2025. Mẫu tách phần theo T §4 và đổi sang `SHARED` (trừ Tiếng Anh và Ngữ văn giữ `PER_PART`). Đúng/Sai có `itemShape.statements = 4` và bảng điểm 0,1/0,25/0,5/1.
+
+| Mẫu | Phút | Điểm | Câu | Phần I | Phần II | Phần III |
+|---|---|---|---|---|---|---|
+| `THPTQG_MATH_2025` | 90 | 10 | 22 | MĐ 12 × 0,25 = 3 | ĐS 4 × 1 = 4 | TLN 6 × 0,5 = 3 |
+| `THPTQG_PHYSICS_2025`, `_CHEMISTRY_2025`, `_BIOLOGY_2025`, `_GEOGRAPHY_2025` | 50 | 10 | 28 | MĐ 18 × 0,25 = 4,5 | ĐS 4 × 1 = 4 | TLN 6 × 0,25 = 1,5 |
+| `THPTQG_HISTORY_2025`, `_ECON_LAW_2025`, `_TECH_INDUSTRY_2025`, `_TECH_AGRICULTURE_2025` | 50 | 10 | 28 | MĐ 24 × 0,25 = 6 | ĐS 4 × 1 = 4 | không có |
+| `THPTQG_INFORMATICS_2025` | 50 | 10 | 28 làm / 30 in | MĐ 24 × 0,25 = 6 | ĐS 2 chung + một nhánh `CS` hoặc `ICT` 2 = 4 điểm | không có |
+| `THPTQG_ENGLISH_2025` | 50 (`PER_PART`) | 10 | 40 | một phần, mọi câu 0,25 | | |
+| `THPTQG_LITERATURE_2025` | 120 (`PER_PART`) | 10 | 7 | một phần: chùm Đọc hiểu 1×5 TL × 0,8 = 4; TL 1 × 2; TL 1 × 4. `publishable = false`; độ khó Đọc hiểu `REFERENCE` 2/2/1 | | |
+
+Tin học: phần II có `questionCountOnPaper = 6` (2 chung + 2 CS + 2 ICT) và `questionCountRequired = 4`; đề in 30 câu, học viên làm 28. Điểm lệch cũ (`questionCountOnPaper = 4`) đã sửa.
+
+Tiếng Anh, 6 nhóm có thứ tự, mọi chùm có câu con MĐ (dải câu do hệ thống tính):
+
+| Nhóm | Dạng | Dải | Nhãn | Điểm nhóm |
+|---|---|---|---|---|
+| `THPTQG_ANH_CLOZE_1` Reading 1 – Đọc điền | chùm 1×6 | 1–6 | `ANH_DOC_DIEN` | 1,5 |
+| `THPTQG_ANH_CLOZE_2` Reading 2 – Đọc điền | chùm 1×6 | 7–12 | `ANH_DOC_DIEN` | 1,5 |
+| `THPTQG_ANH_ORDER` Sắp xếp hội thoại hoặc văn bản | 5 câu đơn | 13–17 | `ANH_SAP_XEP_HOI_THOAI`, `ANH_SAP_XEP_DOAN` | 1,25 |
+| `THPTQG_ANH_GAP_SENT` Reading 3 – Đọc điền câu | chùm 1×5 | 18–22 | `ANH_DOC_DIEN_CAU` | 1,25 |
+| `THPTQG_ANH_READ_1` Reading 4 – Đọc hiểu | chùm 1×8 | 23–30 | `ANH_DOC_HIEU` | 2 |
+| `THPTQG_ANH_READ_2` Reading – Đọc hiểu | chùm 1×10 | 31–40 | `ANH_DOC_HIEU` | 2,5 |
+
+`THPTQG_REVIEW`: khung bài ôn, không có số. Tin học SPT và THPTQG giữ phần chọn định hướng (K2) ở màn chuẩn bị, đợt 3.
+
+### 2.8 Bài ôn và phạm vi
+
+Nguồn: `V202611180456`, `V202611181305`. Mỗi kỳ thi có một mẫu `<KỲ>_REVIEW` (HSA, QDA, BCA, SP2E, SPT, THPTQG, VACT): `build_mode = REVIEW`, `scope = SUBJECT`, không số câu, không điểm, quản trị viên nhập. `VACT_REVIEW` bật `everyChildInScope`. Phạm vi của hồ sơ kỳ thi (`exam_kind_profile.scopes`): HSA, QDA, BCA, V-ACT `FULL, PART, SUBJECT`; SPT, SP2E, THPTQG `SUBJECT, PART` (test `examKindProfilesSeedScopesPerSpec2B`).
+
+## 3. Số còn là giả định
+
+Số nào mẫu còn ghi chờ chuyên gia (cột `expert_note`), hoặc do đội dự án tự đặt:
+
+| Chỗ | Số đang dùng | Nguồn |
+|---|---|---|
+| HSA Tiếng Anh (`HSA_PART_ENGLISH`, `HSA_SUBJECT_ANH`) | 11 nhóm và số câu mỗi nhóm; phân bố lớp 30/70 | `expert_note` "Chờ chuyên gia xác nhận" |
+| SP2E 2026, điểm từng dạng (Toán, Lí, Hóa, Sinh, Địa, Anh, Sử, GDKTPL) | 0,25 / 0,2 / 0,8 / 1 như bảng mục 2.6 | `expert_note` "số tạm", sửa lần cuối ở `V202611181234` |
+| SP2E Toán 2025 | 22 câu chia 12–4–6, 90 phút | `expert_note` "giả định" |
+| SP2E bản cũ (`_OLD`) và Văn 2026 | số câu mỗi văn bản, điểm Đọc hiểu, phân bố tham khảo | `expert_note` |
+| THPTQG Ngữ văn | điểm từng câu của chùm Đọc hiểu theo hướng dẫn chấm | `expert_note`; mẫu `publishable = false` (D11) |
+| V-ACT | 10 điểm mỗi câu, 1.200 (tạm tính, thật dùng IRT); phạm vi riêng, nhãn D9 | `expert_note` của `VACT_FULL`, spec bổ sung Q-30, Q-31 |
+| THPTQG bài theo phần | bật `PART` | spec bổ sung Q-29 |
+
+Số còn lại của mẫu là số BA (không có `expert_note`). Không bịa thêm: chỗ BA chưa nêu, để trống và ghi vào mục câu hỏi mở của spec.
+
+## 4. Bộ đề `TEST-*`
+
+Bộ đề nằm trong `devdata/R__seed_test_exam_data.sql` (id cố định, `ON CONFLICT DO NOTHING`; chạy lại không ghi đè bài đã sửa) và chạy cùng dữ liệu câu mẫu. Mọi bài ở `DRAFT`, `check_status = UNCHECKED`, thang `RAW` (riêng V-ACT `LINEAR`). Kết quả kiểm tra là kết quả mà `TestExamSeedIT` khẳng định, không phải số suy ra.
+
+**Quan trọng cho đợt 3.** Chỉ `TEST-THPTQG-01` và `TEST-VACT-01` trùng từng nhóm với mẫu hiện hành. Các bài còn lại giữ cấu trúc "giả định" của ngày 2026-11-17 (trước số BA của `V202611180652`): đúng tổng số câu và điểm, nhưng chia nhóm đơn giản hơn mẫu. Mục 4.4 liệt kê chỗ lệch. Khi cần một bài cấu trúc đúng mẫu BA, tạo bài từ mẫu bằng API, không dùng `TEST-*`.
+
+### 4.1 Bài hợp lệ
+
+Cột Câu là số câu học viên làm, Điểm là `max_score`. Phút chép từ cột `duration_minutes` của bài.
+
+| Mã | Mẫu (nguồn cấu trúc) | Phạm vi | Timing, phút | Điểm | Câu | Dùng để kiểm | Kết quả |
+|---|---|---|---|---|---|---|---|
+| `TEST-HSA-01` | `HSA_FULL` | FULL | `PER_PART`, 195 | 150 | 150 | 3 phần, đường Khoa học và đường Tiếng Anh, 10 bộ ba môn | VALID |
+| `TEST-HSA-02` | `HSA_PART_MATH` | PART `TOAN` | `PER_PART`, 75 | 50 | 50 | chỉ tiêu 35 + 15, lớp và độ khó hai chiều, chùm 3×3 | VALID |
+| `TEST-HSA-03` | `HSA_PART_LITERATURE` | PART `VAN` | `PER_PART`, 60 | 50 | 50 | hai nhóm câu đơn dùng chung nguồn, chùm 5×5 | VALID |
+| `TEST-HSA-04` | `HSA_PART_SCIENCE` | PART `SCIENCE` | `PER_PART`, 60 | 50 | 50 | `SUBJECT_CHOICE`, tỉ lệ ra 17/17/16; nhánh Tiếng Anh 5 nhóm | VALID |
+| `TEST-QDA-01` | `QDA_FULL` | FULL | `PER_PART`, 195 | 150 | 150 | mã tổ hợp 5 (`QD01`–`QD05`), `codeSource` | VALID |
+| `TEST-BCA-01` | `BCA_FULL` | FULL | `SHARED`, 180 | 100 | 81 | đồng hồ chung, Anh 0,75, TL 25 điểm, 4 mã `CA1`–`CA4` | VALID, kèm cảnh báo `MANUAL_GRADING_REQUIRED` |
+| `TEST-VACT-01` | `VACT_FULL` (giống mẫu) | FULL | `SHARED`, 150 | 1.200 | 120 | 120 câu, `LINEAR`, Logic và Suy luận giải chung một đơn vị kiểm tra | VALID; chỉ được có cảnh báo `DISTRIBUTION_DEVIATION` |
+| `TEST-SPT-01` | `SPT_MATH_2025` | SUBJECT `TOAN` | `PER_PART`, 90 | 10 | 25 | 4 dạng, Tự luận chờ chấm | VALID, kèm `MANUAL_GRADING_REQUIRED` |
+| `TEST-SP2E-01` | `SP2E_MATH_2025` | SUBJECT `TOAN` | `PER_PART`, 90 | 10 | 22 | phiên bản 2025 | VALID |
+| `TEST-SP2E-02` | `SP2E_MATH_2026`, `years_confirmed = true` | SUBJECT `TOAN` | `PER_PART`, 90 | 10 | 40 | đổi phiên bản 2025 → 2026, Nhiều đáp án, chùm 1×5 | VALID |
+| `TEST-SP2E-03` | `SP2E_ANH_2026` | SUBJECT `ANH` | `PER_PART`, 60 | 10 | 50 | Điền khuyết đếm theo vị trí | VALID |
+| `TEST-THPTQG-01` | `THPTQG_MATH_2025` (giống mẫu) | SUBJECT `TOAN` | `SHARED`, 90 | 10 | 22 | ĐS bảng điểm, 3 phần, E2E; không có cờ chính sách mẫu | VALID, công bố được |
+| `TEST-THPTQG-02` | `THPTQG_LITERATURE_2025` | SUBJECT `VAN` | `PER_PART`, 120 | 10 | 7 | chùm có câu con TL; **chặn công bố** | **INVALID** (`TEMPLATE_NOT_PUBLISHABLE`, `MANUAL_GRADING_REQUIRED`), lưu nháp được |
+| `TEST-THPTQG-03` | `THPTQG_INFORMATICS_2025` | SUBJECT `INFORMATICS` | `SHARED`, 50 | 10 | 28 (in 30) | nhánh CS/ICT, 28 phải làm | VALID |
+
+Cấu trúc từng bài (nguồn `exam.exam_structure` của seed; ghi "mẫu: …" khi lệch mẫu hiện hành):
+
+| Mã | Phần, nhóm | Chỉ tiêu và ma trận |
+|---|---|---|
+| `TEST-HSA-01` | P1 Toán 75′: 41 câu đơn (không khóa dạng) + chùm 3×3 (con MĐ). P2 Văn 60′: nhận diện lỗi dùng từ 10 + câu đơn khác 15 + Đọc ngữ liệu chùm 5×5. P3 60′ chọn 1: `SCIENCE` 5 môn × 17 (mỗi môn chùm 2×3 + câu đơn 11), `ANH` 50 (đồng nghĩa 5, trái nghĩa 5, hội thoại 5, hoàn thành câu 20, đọc hiểu chùm 3×5). Mọi câu 1 điểm | Toán: MĐ 35 + TLN 15; lớp 3/20/27; độ khó 2/21/20/7. Khoa học mỗi môn: MĐ 13 + TLN 4; lớp 3/5/9; độ khó 3/7/5/2. Cả hai `REQUIRED` |
+| `TEST-HSA-02` | như P1 của `TEST-HSA-01` | như trên |
+| `TEST-HSA-03` | như P2 của `TEST-HSA-01` | không có |
+| `TEST-HSA-04` | như P3 của `TEST-HSA-01`, tên phần "Phần 3 · Khoa học hoặc Tiếng Anh" | như trên |
+| `TEST-QDA-01` | P1 Toán 80′: MĐ 50. P2 Văn 55′: MĐ 50. P3 60′ chọn 1, `codeSource` `GLOBAL_LIST`, `subjectPool` Lí, Hóa, Sinh, Sử, Địa mỗi môn MĐ 25 và Anh MĐ 50. Điểm 1 | không có |
+| `TEST-BCA-01` | P1 TL Văn 1 × 25. P2 65 câu: Toán MĐ 25 + TLN 10, Sử MĐ 10, Anh MĐ 20 × 0,75. P3 15 câu chọn 1, `codeSource`, `subjectPool` Lí, Hóa, Sinh, Địa mỗi môn MĐ 15. Điểm P2 60, P3 15 | không có |
+| `TEST-VACT-01` | giống `VACT_FULL` (mục 2.4), id khác | giống mẫu |
+| `TEST-SPT-01` | một phần 90′: MĐ 16 × 0,25, ĐS 2 × 1, TLN 4 × 0,25, TL 3 × 1 (không `omitted`) | không có |
+| `TEST-SP2E-01` | một phần 90′: MĐ 12 × 0,25, ĐS 4 × 1, TLN 6 × 0,5 | không có |
+| `TEST-SP2E-02` | một phần 90′: MĐ 20 × 0,25, NĐ 5 × 0,25, chùm 1×5 × 0,25 (không khai dạng câu con), TLN 10 × 0,25; `structure_year` 2026, `matrix_year` 2025, `years_confirmed = true` | không có |
+| `TEST-SP2E-03` | một phần 60′: MĐ 30, chùm 2×5 (con MĐ), ĐK 1 câu × 10 vị trí; mọi câu 0,2 | không có |
+| `TEST-THPTQG-01` | giống `THPTQG_MATH_2025` (mục 2.7), id khác | giống mẫu |
+| `TEST-THPTQG-02` | một phần 120′: chùm Đọc hiểu 1×5 (con TL) × 0,8; TL × 2; TL × 4 | không có |
+| `TEST-THPTQG-03` | P1 MĐ 24 × 0,25; P2 chọn 1: ĐS chung 2 × 1, `CS` 2, `ICT` 2; đề in 6 câu, làm 4 | không có |
+
+### 4.2 Bài lỗi
+
+Mỗi bài dựng từ một bài hợp lệ, chỉ đổi một chỗ. Cột "Mã thực tế" là bộ mã mà `TestExamSeedIT.assumedExamsHaveTheirSpecifiedCheckResults` khẳng định (so bằng tập, không thừa, không thiếu); một chỗ sửa thường kéo theo vài mã hệ quả.
+
+| Mã | Dựng từ | Đổi gì | Mã chính | Mã thực tế |
+|---|---|---|---|---|
+| `TEST-ERR-01` | `TEST-THPTQG-01` | nhóm MĐ có `matrix` (lớp 12 = 12) nhưng chưa chọn cách áp (chung hay riêng) | `MATRIX_INCOMPLETE` | `MATRIX_INCOMPLETE` |
+| `TEST-ERR-02` | `TEST-BCA-01` | khối Tiếng Anh đổi 0,75 → 1 (Phần 2: 65 > 60; tổng 105 ≠ 100) | `PART_POINTS_MISMATCH` | `PART_POINTS_MISMATCH`, `POINTS_TOTAL_MISMATCH`, `MANUAL_GRADING_REQUIRED` |
+| `TEST-ERR-03` | `TEST-HSA-03` | nhóm Đọc ngữ liệu thêm nhãn `TEST-HIEM`; nguồn chỉ có 2 bộ mang nhãn, cần 5 | `SET_SHORTAGE` | `SET_SHORTAGE` |
+| `TEST-ERR-04` | `TEST-HSA-02` | nhóm câu đơn 40 thay 41 (môn 49 câu) | `SECTION_TOTAL_MISMATCH` | `SECTION_TOTAL_MISMATCH`, `PART_POINTS_MISMATCH`, `PATH_TOTAL_MISMATCH`, `POINTS_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
+| `TEST-ERR-05` | `TEST-HSA-02` | chỉ tiêu TLN 14 (tổng 49) | `ANSWER_QUOTA_TOTAL_MISMATCH` | `ANSWER_QUOTA_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
+| `TEST-ERR-06` | `TEST-HSA-02` | phạm vi MAPID của môn đặt vào nút `TEST-TOAN-HEP`; dưới nút có 10 TLN, cần 15 | `ANSWER_TYPE_SHORTAGE` | `ANSWER_TYPE_SHORTAGE` |
+| `TEST-ERR-07` | `TEST-HSA-04` | Địa lí đặt phạm vi nút `TEST-DIA-HEP`: đủ cho 16 câu, thiếu cho 17 (ô cần 11, có 10) | `CELL_SHORTAGE` | `CELL_SHORTAGE`; 10 bộ ba, **6 bộ có Địa lí INVALID**, 4 bộ còn lại VALID |
+| `TEST-ERR-08` | `TEST-HSA-04` | Vật lí: 6 câu chùm + 11 câu đơn, đổi tên nhóm; giải đủ 17 câu trước khi bỏ một câu. **Hiện VALID**: mã `REMAINDER_GROUP_INVALID` không còn trong mã | không còn lỗi | VALID, không có mã. Giữ làm bài đối chứng cho môn nhận 16 câu |
+| `TEST-ERR-09` | `TEST-HSA-04` | Hóa học khai chỉ tiêu dạng trả lời 12 + 4 = 16 cho môn 17 câu | `ANSWER_QUOTA_TOTAL_MISMATCH` | `ANSWER_QUOTA_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
+| `TEST-ERR-10` | `TEST-HSA-04` | `countsByPick` = 17, 17, 17 | `SUBJECT_CHOICE_COUNTS_INVALID` | `SUBJECT_CHOICE_COUNTS_INVALID`, `PART_EMPTY`, `PART_POINTS_MISMATCH`, `PART_TOTAL_MISMATCH`, `PATH_TOTAL_MISMATCH`, `POINTS_TOTAL_MISMATCH` |
+| `TEST-ERR-11` | `TEST-THPTQG-01` | ô Lớp 12 × VDC của nhóm MĐ đặt 12 câu (bộ mẫu có tối đa 4 câu ô này) | `CELL_SHORTAGE` | `CELL_SHORTAGE` (`required` 12, `available` 4) |
+| `TEST-ERR-12` | `TEST-THPTQG-01` | nhóm TLN bỏ điểm mỗi câu | `POINTS_TOTAL_MISMATCH` | `POINTS_TOTAL_MISMATCH` |
+| `TEST-ERR-13` | `TEST-SP2E-02` | `years_confirmed = false` (cấu trúc 2026, ma trận 2025) | `YEARS_UNCONFIRMED` | `YEARS_UNCONFIRMED` |
+
+Mã `SUBJECT_QUOTA_COUNT_VARIES` mà bản cũ của tài liệu ghi cho `TEST-ERR-09` không còn trong mã.
+
+### 4.3 Nguồn câu hỏi của bộ đề
+
+Quy tắc của plan BE-2a (`docs/plans/2026-11-16-be-pbi-03-04.md`): mỗi ô, mỗi mức điểm có số câu `READY` ít nhất gấp đôi chỉ tiêu. Nguồn lọc theo môn, loại câu và điểm (và nhãn, MAPID khi nhóm có), không theo kỳ thi, nên bài khác kỳ thi dùng chung nguồn khi trùng bộ lọc. Không còn lọc theo dạng bài (K11).
+
+Có 1.695 câu `TESTQ-*`: 1.499 `READY`, 98 `DRAFT`, 98 `RETIRED`. Câu Nháp và Ngừng sử dụng đi kèm mỗi dòng để chắc chúng không được đếm. Sinh bằng `generate_series` trong `scripts/generate_test_exam_seed.py`, không viết tay. Cột "Tối thiểu" là số mà `TestExamSeedIT.readyPoolsMeetAssumedMinimums` khẳng định; "Có" là số `READY` đếm trên cơ sở dữ liệu đã nạp seed. Đơn vị là đơn vị đếm (câu đơn, câu con, vị trí Điền khuyết); "bộ" là chùm nguyên.
+
+| Môn | Loại, điểm | Tối thiểu | Có | Dùng cho |
+|---|---|---|---|---|
+| Toán | MĐ đơn 1 điểm | 100 | 168 (60 gắn nút `TEST-TOAN-HEP`) | QDA 50; HSA 26; BCA 25 |
+| Toán | TLN 1 điểm | 30 | 50 (10 gắn `TEST-TOAN-HEP`) | HSA 15; BCA 10 |
+| Toán | chùm 3 câu con MĐ 1 điểm | 6 bộ | 12 | HSA 3 bộ |
+| Toán | MĐ 0,25 | 40 | 41 (một câu Lớp 12 × VDC, cho `TEST-ERR-11`) | SP2E 2026: 20 |
+| Toán | ĐS 1 điểm (`COUNT_TABLE`) | 8 | 8 | THPTQG, SP2E 2025: 4 |
+| Toán | TLN 0,25 / TLN 0,5 | 20 / 12 | 20 / 12 | SP2E 2026: 10 / THPTQG, SP2E 2025: 6 |
+| Toán | NĐ 0,25 `ALL_OR_NOTHING`; chùm 5 câu con 0,25 | 10; 2 bộ | 10; 2 bộ | SP2E 2026 |
+| Toán | TL 1 điểm (có hướng dẫn chấm); MĐ 10 điểm | 6; 60 | 6; 60 | SPT 3; V-ACT 30 |
+| Ngữ văn | MĐ đơn 1 điểm | 100 | 100 | QDA 50; HSA 10 + 15 |
+| Ngữ văn | chùm 5 câu con MĐ 1 điểm | 10 bộ | 10 | HSA 5 bộ |
+| Ngữ văn | chùm 5 câu con TL 0,8 | 2 bộ | 2 | THPTQG; đúng 2 bộ gắn nhãn `TEST-HIEM` (cho `TEST-ERR-03`) |
+| Ngữ văn | TL 25 / TL 2 / TL 4 | 2 / 2 / 2 | 2 / 2 / 2 | BCA Phần I; THPTQG |
+| Tiếng Anh | MĐ đơn 1 điểm | 100 | 100 | QDA 50; HSA 35 |
+| Tiếng Anh | chùm 5 câu con MĐ 1 điểm | 6 bộ | 6 | HSA 3 bộ |
+| Tiếng Anh | MĐ 0,75 / MĐ 10 | 40 / 60 | 40 / 60 | BCA 20 / V-ACT |
+| Tiếng Anh | MĐ 0,2; chùm 5 câu con 0,2; ĐK 2 điểm | 60; 4 bộ; 2 câu | 60; 4; 2 | SP2E 2026 |
+| Lí, Hóa, Sinh, Sử, Địa (mỗi môn) | MĐ đơn 1 điểm | 50 | 50 (Địa 56: 6 gắn `TEST-DIA-HEP`) | QDA 25; BCA Sử 10; HSA tối đa 17 |
+| Lí, Hóa, Sinh, Sử, Địa (mỗi môn) | TLN 1 điểm; chùm 3 câu con MĐ 1 điểm | 8; 4 bộ | 8; 4 (Địa 12 và 6) | HSA |
+| Tiếng Việt, Tư duy khoa học | MĐ 10 điểm | 60 mỗi môn | 60 | V-ACT |
+| Tin học | MĐ 0,25; ĐS 1 điểm | 48; 8 | 48; 8 | THPTQG 24; 2 chung + 2 mỗi nhánh |
+
+Các nhóm có nhãn `ANH_*` và năng lực `VACT-*` của `TEST-VACT-01` lấy nguồn từ `R__seed_questionbank_dev_data.sql` (câu có nhãn, MAPID, năng lực), không từ `TESTQ-*` (ngoài `TEST-HIEM`).
+
+### 4.4 Chỗ bài `TEST-*` lệch mẫu hiện hành
+
+Số liệu dưới đây là đối chiếu giữa `R__seed_test_exam_data.sql` và cấu trúc mẫu trong cơ sở dữ liệu sau khi chạy toàn bộ migration. Cả hai đều đúng trên mã; chúng khác nhau vì bộ đề test chưa dựng lại theo số BA.
+
+| Bài | Mẫu hiện hành | Bài `TEST-*` |
+|---|---|---|
+| `TEST-HSA-01`, `-02`, `-03`, `-04` | Toán: MĐ 32 + TLN 15 + chùm 1×3. Văn: 5 nhóm có nhãn, chùm có `slots`. Khoa học: Lí, Hóa, Sinh 13 + chùm 1×3 + TLN 1; Sử, Địa 14 + chùm 1×3; ma trận mỗi môn khác nhau. Anh: 11 nhóm có nhãn | Toán: 41 câu đơn + chùm 3×3. Văn: 10 + 15 + chùm 5×5, không nhãn. Khoa học mỗi môn: chùm 2×3 + 11 câu đơn, ma trận cùng 3/5/9 và 3/7/5/2. Anh: 5 + 5 + 5 + 20 + 3×5, không nhãn. Không có `examQuotas` |
+| `TEST-QDA-01` | Toán 32 + 1×3 + TLN 15; Văn 5 nhóm; Anh 10 nhóm | mỗi phần một nhóm MĐ |
+| `TEST-BCA-01` | Toán 27 + 1×3 + TLN 5; Sử 7 + 1×3; Anh 5 nhóm; `subjectPool` 12 + 1×3 | Toán MĐ 25 + TLN 10; Sử MĐ 10; Anh MĐ 20; `subjectPool` MĐ 15. Cùng tổng 81 câu, 100 điểm |
+| `TEST-SPT-01` | 22 câu, 7 điểm; TL 3 `omitted`; ba phần | 25 câu, 10 điểm; TL 3 tính điểm (cảnh báo chấm tay); một phần 90′ |
+| `TEST-SP2E-01`, `-02`, `-03` | `SHARED`; ba phần; Toán 2026 có nhóm "Dữ liệu tổng hợp" ở Phần II với nhãn; Anh 9 nhóm có nhãn | `PER_PART` với 90′ hoặc 60′ ở một phần duy nhất; Anh có nhóm ĐK (mẫu không dùng ĐK); `TEST-SP2E-02` có `matrix_year` 2025 |
+| `TEST-THPTQG-02` | Đọc hiểu có phân bố độ khó `REFERENCE` 2/2/1, nhóm có `templateGroupCode`, `publishable = false` | không có phân bố độ khó, không `templateGroupCode`; cờ lấy từ mẫu lúc kiểm tra |
+| `TEST-THPTQG-03` | nhóm có `templateGroupCode` | không `templateGroupCode` |
+
+## 5. Khi chuyên gia trả lời
+
+- Sửa số trong mục 2 và migration mẫu cùng một PR (migration mới, không sửa migration đã merge, RULES §4). Ghi mã quyết định mới vào spec mục 1.
+- Dựng lại bài `TEST-*` bằng `scripts/generate_test_exam_seed.py` theo số mới. Chạy lại `TestExamSeedIT`: bài hợp lệ phải vẫn VALID. Nếu không, tăng nguồn theo mục 4.3 trước.
+- Xóa chữ "giả định" và `expert_note` ở dòng đã có số thật; giữ dòng nào chưa có.
+- Bài lỗi vẫn dựng từ bài hợp lệ cùng kỳ thi, chỉ đổi một chỗ, và cập nhật cột "Mã thực tế" ở mục 4.2 từ kết quả chạy thật.
