@@ -1,4 +1,4 @@
-import { apportionByPercent, blockPointsEach, countOf, groupCounts, subjectChoiceCounts, sum } from "./matrix";
+import { activeGroupCounts, apportionByPercent, blockPointsEach, countOf, subjectChoiceCounts, sum } from "./matrix";
 import type { ExamPart, ExamQuota, ExamSection, MatrixUnit, StructureCombination } from "./types";
 
 /**
@@ -84,9 +84,8 @@ export function pointsRows(parts: readonly ExamPart[], combinations: readonly St
   for (const part of parts) {
     for (const { section, count } of pathOf(part, combinations, () => true)) {
       // Nhóm tạm bỏ qua không tham gia chia: lọc trước `groupCounts` để nhóm bỏ qua không lấy mất phần số câu của môn (R2-06).
-      const active = section.blocks.filter((block) => !block.omitted);
-      const perGroup = count === null ? active.map(countOf) : groupCounts({ ...section, blocks: active }, count);
-      const taken = active.map((block, index) => ({ block, count: perGroup[index] ?? 0 }));
+      const { blocks, counts: perGroup } = activeGroupCounts(section, count);
+      const taken = blocks.map((block, index) => ({ block, count: perGroup[index] ?? 0 }));
       const eachValues = new Set(taken.map((item) => blockPointsEach(item.block)));
       rows.push({
         key: `${part.id}-${section.id}`,
