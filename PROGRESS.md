@@ -168,6 +168,7 @@
       - 2026-11-18 18:34 (UTC+7): FE-4 phần thêm (UNI-2665, PR #105) merge: cột Chênh lệch, điểm tối đa từng câu trên đề thử, dòng chờ dữ liệu đối chiếu và câu thông báo riêng cho ba mã kiểm tra mới. Advisor chạy lại typecheck, lint, sinh API client và test web trên kết quả merge: 1.941/1.941.
       - 2026-11-18 14:23 (UTC+7): Duyệt phần bổ sung H-SCA, V-SAT (UNI-2687): thêm BE-16 đến BE-21, FE-6 đến FE-8, tổng đợt 160 điểm. Chốt: chỉ tiêu V-SAT theo lệnh chỉ để đối chiếu trong 2B. Đặc tả và kế hoạch ở `docs/specs`, `docs/plans` ngày 2026-11-18.
       - 2026-11-18 21:51 (UTC+7): FIX-QA (UNI-2686, PR #106) merge: sửa sáu lỗi QA tìm ra (bài ôn của cả bảy kỳ thi, bộ lọc năng lực của nhóm, thang LINEAR, phần tạm bỏ qua, công bố đường tổ hợp). Trước khi triển khai lên cơ sở dữ liệu đã có bài thi phải đếm lại các cấu trúc bị ảnh hưởng (FU-F3-CUTOVER).
+      - 2026-11-18 23:48 (UTC+7): BE-16 (UNI-2688, PR #108) merge: mở rộng hợp đồng cấu trúc đề cho H-SCA, V-SAT (audio, phân đoạn hiển thị, điều kiện câu con, khóa dòng), thêm mã kỳ thi, hai nhãn Địa lí và năm mã kiểm tra mới. Mở sóng 2: BE-17, BE-18, BE-20, FE-6.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
