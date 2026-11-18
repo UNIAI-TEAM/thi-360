@@ -3,9 +3,10 @@
 import { Button, Card, cn, focusRing, FormField, Input } from "@thi360/ui";
 import { Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import type { CombinationOption } from "@/features/content/types";
 import { countOf, sectionsPoints, sum, type StructureIssue } from "../matrix";
-import type { ExamPart, ExamSection, ExamTiming } from "../types";
+import type { ExamPart, ExamSectionState, ExamSection, ExamTiming } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
 import { OptionalNumberInput } from "./create-exam-fields";
@@ -33,11 +34,15 @@ export interface PartPanelProps
   onAttachCombination: (combination: CombinationOption) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
+  /** Trạng thái kiểm tra theo môn (H2); `null` hoặc bỏ trống: không hiện cột trạng thái. */
+  sectionStates?: readonly ExamSectionState[] | null;
   /** Mở môn để soạn chỉ tiêu cấp môn và các nhóm. */
   onSelectSection: (sectionId: string) => void;
   onPoints: (points: number | null) => void;
   onOnPaper: (questionCountOnPaper: number) => void;
   onChoose: (choose: number) => void;
+  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra phần"). */
+  headerAction?: ReactNode;
 }
 
 /**
@@ -61,6 +66,7 @@ export function ExamStructurePartPanel({
   onRemoveOption,
   onSelectBlock,
   onSelectSection,
+  sectionStates,
   onPoints,
   onOnPaper,
   onChoose,
@@ -68,6 +74,7 @@ export function ExamStructurePartPanel({
   branchSubjects,
   onAddBranch,
   onConfirm,
+  headerAction,
 }: PartPanelProps) {
   const t = useTranslations("exams.structure.part");
   const partIssues = issues.filter((issue) => issue.code !== "BLOCK");
@@ -82,17 +89,20 @@ export function ExamStructurePartPanel({
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-h3 font-bold wrap-break-word text-text">{part.name}</h2>
-        <p className="text-caption text-text-muted">
-          {part.mode === "CHOICE"
-            ? t("choiceHint", {
-                count: part.questionCount,
-                minutes: part.durationMinutes ?? 0,
-                shared: shared ? "yes" : "no",
-              })
-            : t("fixedHint")}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="text-h3 font-bold wrap-break-word text-text">{part.name}</h2>
+          <p className="text-caption text-text-muted">
+            {part.mode === "CHOICE"
+              ? t("choiceHint", {
+                  count: part.questionCount,
+                  minutes: part.durationMinutes ?? 0,
+                  shared: shared ? "yes" : "no",
+                })
+              : t("fixedHint")}
+          </p>
+        </div>
+        {headerAction}
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(11rem,100%),1fr))] gap-4">
@@ -213,7 +223,13 @@ export function ExamStructurePartPanel({
           {part.options
             .filter((option) => option.kind === "SUBJECT_CHOICE")
             .map((option) => (
-              <SubjectChoiceOptions key={option.id} option={option} names={names} onSelectSection={onSelectSection} />
+              <SubjectChoiceOptions
+                key={option.id}
+                option={option}
+                names={names}
+                sectionStates={sectionStates}
+                onSelectSection={onSelectSection}
+              />
             ))}
           <CombinationOptions
             part={part}

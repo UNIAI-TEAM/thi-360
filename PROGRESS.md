@@ -152,6 +152,8 @@
       - 2026-11-18 02:19 (UTC+7): BE-8 (UNI-2657, PR #90) merge: sinh thử đề theo mục, đường, cả bài; lưu Redis 30 phút, sinh lại từng phần, gán chỉ tiêu chủ đề từ bộ giải, thứ tự PaperOrdering. Advisor chạy lại backend 383 test, xanh.
       - 2026-11-18 03:30 (UTC+7): BE-5 (UNI-2656, PR #91) merge: kiểm tra theo đơn vị, mục, phần và cả bài, chỉ giải lại đơn vị đã cũ; `sectionStates`, `structure/summary`, mã lỗi mục 7.3. Advisor chạy lại backend 445 test và web 1.614 test, xanh. Chuyển sang BE-9: ba mã thiếu nguồn theo bộ lọc, `COMBINATION_LIST_CHANGED`, điểm SP2E 2026.
       - 2026-11-18 04:13 (UTC+7): Duyệt phần bổ sung V-ACT, THPTQG (UNI-2671): thêm BE-11 đến BE-15, FE-5, tổng đợt 127 điểm. Chốt: THPTQG Ngữ văn chưa bán, bảng mã đối tác làm sau, chỉ tiêu mạch giữ "ít nhất". Đặc tả và kế hoạch ở `docs/specs`, `docs/plans` ngày 2026-11-18.
+      - 2026-11-18 04:36 (UTC+7): G2b (UNI-2678, PR #92) merge: sáu bản vẽ bổ sung cho V-ACT, THPTQG. Chưa đưa lên canvas chung. FE-5 và FE-3b hết chờ thiết kế.
+      - 2026-11-18 04:49 (UTC+7): FE-2 (UNI-2662, PR #93) merge: khung bước 2 bốn vùng, hộp thoại ba nút, đổi phiên bản cấu trúc. Advisor chạy lại typecheck, lint, vitest 1.662/1.664; hai test hết giờ khi chạy cả bộ, chạy riêng đạt. Mở FE-3a, FE-4.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)

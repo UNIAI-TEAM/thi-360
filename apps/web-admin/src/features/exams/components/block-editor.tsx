@@ -3,7 +3,7 @@
 import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select } from "@thi360/ui";
 import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import {
   QUESTION_TYPES,
   type CompetencyOption,
@@ -50,6 +50,8 @@ export interface BlockEditorProps {
   onRemove: () => void;
   /** Về màn môn chứa nhóm. */
   onOpenSection: () => void;
+  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
+  headerAction?: ReactNode;
 }
 
 /**
@@ -74,6 +76,7 @@ export function BlockEditor({
   onMove,
   onRemove,
   onOpenSection,
+  headerAction,
 }: BlockEditorProps) {
   const t = useTranslations("exams.structure.block");
   const tContent = useTranslations("content");
@@ -168,25 +171,28 @@ export function BlockEditor({
             {t("backToSection")}
           </Button>
         </div>
-        <div className="flex items-center gap-0.5">
-          <IconButton
-            icon={<ArrowUp />}
-            aria-label={t("moveUp", { name: block.name })}
-            disabled={position <= 1}
-            onClick={() => onMove(-1)}
-          />
-          <IconButton
-            icon={<ArrowDown />}
-            aria-label={t("moveDown", { name: block.name })}
-            disabled={position >= siblingCount}
-            onClick={() => onMove(1)}
-          />
-          <IconButton
-            icon={<Trash2 />}
-            tone="danger"
-            aria-label={t("remove", { name: block.name })}
-            onClick={() => setConfirmRemove(true)}
-          />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {headerAction}
+          <div className="flex items-center gap-0.5">
+            <IconButton
+              icon={<ArrowUp />}
+              aria-label={t("moveUp", { name: block.name })}
+              disabled={position <= 1}
+              onClick={() => onMove(-1)}
+            />
+            <IconButton
+              icon={<ArrowDown />}
+              aria-label={t("moveDown", { name: block.name })}
+              disabled={position >= siblingCount}
+              onClick={() => onMove(1)}
+            />
+            <IconButton
+              icon={<Trash2 />}
+              tone="danger"
+              aria-label={t("remove", { name: block.name })}
+              onClick={() => setConfirmRemove(true)}
+            />
+          </div>
         </div>
       </div>
 
