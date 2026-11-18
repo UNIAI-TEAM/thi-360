@@ -77,11 +77,15 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
     }
 
     private UUID single(Subject subject, String body, int points) {
+        return single(subject, body, points, false);
+    }
+
+    private UUID single(Subject subject, String body, int points, boolean withAudio) {
         UUID id = UUID.randomUUID();
         jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
                 + "VALUES (?,?,'SINGLE_CHOICE','READY',?,1,?)", id, "Q-" + id, subject.id(), points);
         jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)",
-                id, snapshot(body, null));
+                id, snapshot(body, withAudio ? audio() : null));
         return id;
     }
 
@@ -172,6 +176,34 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
                 .map(issue -> issue.path("blockId").asText()).toList();
         assertThat(blocks).containsExactlyInAnyOrder("first", "second");
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
+    }
+
+    /**
+     * R1-3: one block needs audio AND four options. Relaxing the option count must keep audio
+     * required, otherwise the check would blame the option count for a supply problem that is audio.
+     * Source: two audio five-option questions and three non-audio four-option ones. Neither filter
+     * alone is satisfied by the other dimension's supply, so only removing audio yields three.
+     */
+    @Test
+    void audioAndOptionCountBlockBlamesAudioNotOptionCount() throws Exception {
+        var subject = subject();
+        single(subject, SC5, 1, true);
+        single(subject, SC5, 1, true);
+        for (int i = 0; i < 3; i++) single(subject, SC4, 1, false);
+        var result = check(subject, 3, "REQUIRED", """
+                {"id":"both","questionType":"SINGLE_CHOICE","questionCount":3,"itemShape":{"options":4}}""");
+        var issue = findIssue(result, "AUDIO_SHORTAGE");
+        assertThat(issue.path("blockId").asText()).isEqualTo("both");
+        assertThat(issue.path("required").asInt()).isEqualTo(3);
+        assertThat(issue.path("available").asLong()).isZero();
+        // Neither the option count nor a generic shortage may be reported at this block.
+        var atBlock = result.path("groups").findValues("issues").stream()
+                .flatMap(issues -> StreamSupport.stream(issues.spliterator(), false))
+                .filter(item -> "both".equals(item.path("blockId").asText()))
+                .map(item -> item.path("code").asText()).toList();
+        assertThat(atBlock).contains("AUDIO_SHORTAGE")
+                .doesNotContain("ITEM_SHAPE_SHORTAGE", "SOURCE_SHORTAGE", "CELL_SHORTAGE");
+        assertThat(codes(result)).doesNotContain("ITEM_SHAPE_SHORTAGE");
     }
 
     /** Row 9: eight single-choice sets do not satisfy the mixed row; the shortage is at the block. */
