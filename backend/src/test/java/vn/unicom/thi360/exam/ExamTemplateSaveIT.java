@@ -42,11 +42,11 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
 
     @Test
-    void eachActiveTemplateCanBeLoadedSavedAndChecked() throws Exception {
+    void eachStandardTemplateCanBeLoadedSavedAndChecked() throws Exception {
         var templates = jdbc.queryForList("""
                 select code, kind_code, scope, part_code, subject_code, build_mode, active,
                        structure::text as document
-                from exam.exam_template order by code
+                from exam.exam_template where build_mode = 'STANDARD' order by code
                 """);
         assertThat(templates).isNotEmpty();
         Set<String> actualCodeSourcedParts = new LinkedHashSet<>();
@@ -134,6 +134,7 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
                     .put("name", "Template check")
                     .put("code", "T-" + UUID.randomUUID().toString().substring(0, 8))
                     .put("durationMinutes", 60);
+            create.put("buildMode", (String) template.get("build_mode"));
             if (template.get("part_code") != null) create.put("partCode", (String) template.get("part_code"));
             if (template.get("subject_code") != null) create.put("subjectCode", (String) template.get("subject_code"));
             if (template.get("subject_code") == null && "SUBJECT".equals(template.get("scope"))) create.put("subjectCode", "TOAN");

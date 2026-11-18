@@ -14,6 +14,24 @@ class ExamTemplateOrderIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
 
     @Test
+    void allTemplatesKeepPartsInDeclaredOrder() throws Exception {
+        var templates = jdbc.queryForList("select code, structure::text as document from exam.exam_template");
+        assertThat(templates).isNotEmpty();
+        for (var template : templates) {
+            String code = (String) template.get("code");
+            JsonNode parts = mapper.readTree((String) template.get("document")).path("parts");
+            assertThat(parts.isArray()).as("%s parts", code).isTrue();
+            assertThat(parts).as("%s parts", code).isNotEmpty();
+            for (int i = 0; i < parts.size(); i++) {
+                assertThat(parts.get(i).path("order").isIntegralNumber())
+                        .as("%s part %s order", code, i + 1).isTrue();
+                assertThat(parts.get(i).path("order").asInt())
+                        .as("%s part position %s", code, i + 1).isEqualTo(i + 1);
+            }
+        }
+    }
+
+    @Test
     void subjectVersionsKeepPartsInBusinessOrder() throws Exception {
         var templates = jdbc.queryForList("""
                 select code, kind_code, subject_code, structure::text as document
