@@ -110,6 +110,24 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
         assertThat(samples("SEED-VSAT-ANH-CHOICE-SET-%")).hasSize(3);
     }
 
+    @Test
+    void hscaPartTwoSetsOfEachScienceSubjectHaveFiveChildrenAtAQuarterPoint() throws Exception {
+        for (String subject : List.of("TOAN", "LY", "HOA", "SINH")) {
+            List<Sample> sets = samples("SEED-HSCA-" + subject + "-SET-%");
+            assertThat(sets).as(subject).hasSizeGreaterThanOrEqualTo(2);
+            for (Sample set : sets) {
+                JsonNode children = set.snapshot().path("body").path("children");
+                assertThat(children).as(set.code()).hasSize(5);
+                children.forEach(child -> {
+                    assertThat(child.path("type").asText()).isEqualTo("SINGLE_CHOICE");
+                    assertThat(child.path("points").decimalValue()).isEqualByComparingTo("0.25");
+                    assertThat(child.path("body").path("options")).hasSize(4);
+                });
+                assertThat(set.points()).as(set.code()).isEqualByComparingTo("1.25");
+            }
+        }
+    }
+
     // ---- row 4: audio files, object storage and the seeder ---------------------------------
 
     @Test
