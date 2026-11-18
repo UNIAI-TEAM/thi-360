@@ -220,6 +220,35 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void everyChildInScopeFiltersWholeSetsForCandidatesAndCounts() {
+        UUID subject = UUID.randomUUID();
+        UUID scope = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        UUID root = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?, 'QUESTION_SET','READY',?,1)", root, "SET-" + root, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", root);
+        for (int i = 0; i < 3; i++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?, 'SINGLE_CHOICE','READY',?,?,1)", child, "C-" + child, root, i);
+            jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, i < 2 ? scope : other);
+        }
+        var legacy = new QuestionSourcePort.Filter(subject, List.of(List.of(scope)), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null);
+        var strict = new QuestionSourcePort.Filter(subject, List.of(List.of(scope)), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null, true);
+        assertThat(source.findCandidates(legacy, 10)).extracting(QuestionSourcePort.Candidate::questionId).containsExactly(root);
+        assertThat(source.count(legacy).total()).isEqualTo(3);
+        assertThat(source.findCandidates(strict, 10)).isEmpty();
+        assertThat(source.count(strict).total()).isZero();
+        assertThat(source.matching(strict, List.of(root))).isEmpty();
+        var strictSlot = new QuestionSourcePort.Filter(subject, List.of(), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null,
+                List.of(), List.of(List.of(List.of(scope))), List.of(), null, List.of(true));
+        assertThat(source.findCandidates(strictSlot, 10)).isEmpty();
+        assertThat(source.count(strictSlot).total()).isZero();
+    }
+
+    @Test
     void countsCompleteSetsAndClozeUnits() {
         UUID subject = UUID.randomUUID();
         UUID set = UUID.randomUUID();

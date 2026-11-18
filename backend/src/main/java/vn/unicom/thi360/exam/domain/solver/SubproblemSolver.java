@@ -158,6 +158,21 @@ final class SubproblemSolver {
             if (units < groupUnits) {
                 return new Shortage(ctx.groups().get(g).group().groupId(), null);
             }
+            if (ctx.groups().get(g).group().kind() == GroupQuota.GroupKind.FLEXIBLE_SET) {
+                boolean[] reachable = new boolean[groupUnits + 1];
+                reachable[0] = true;
+                for (int i = 0; i < ctx.cands().get(g).size(); i++) {
+                    if ((scans++ & 0x3FF) == 0) deadlineCheck.run();
+                    if (!ctx.usable()[g][i]) continue;
+                    int size = ctx.units()[g][i];
+                    for (int sum = groupUnits; sum >= size; sum--) {
+                        reachable[sum] |= reachable[sum - size];
+                    }
+                }
+                if (!reachable[groupUnits]) {
+                    return new Shortage(ctx.groups().get(g).group().groupId(), null);
+                }
+            }
         }
         for (int r = 0; r < rCount; r++) {
             if (supply[r] < reqs.get(r).quota()) {
