@@ -28,10 +28,9 @@ import vn.unicom.thi360.shared.security.RequirePermission;
 
 /**
  * API tài nguyên câu hỏi (spec 4.5): {@code POST} nhận {@code kind=IMAGE|ATTACHMENT}
+ * (quyền {@code QUESTION.MODIFY}), {@code GET} phát nội dung với {@code nosniff} và
  * {@code Content-Disposition} {@code inline} cho ảnh / {@code attachment} cho tệp đính kèm,
  * quyền một-trong {@code QUESTION.VIEW, EXAM.VIEW} (xem trước đề chỉ cần EXAM.VIEW).
- * Nội dung trả về là {@link Resource} để Spring MVC tự xử lý byte range
- * ({@code 206 Partial Content}, {@code Accept-Ranges: bytes}) cho tua audio/video.
  * Giới hạn cỡ 5/20 MB (413), tần suất 60 tệp/10 phút/người (429), loại theo chữ ký byte.
  */
 @Tag(name = "Admin Question Assets", description = "Ảnh và tệp đính kèm của ngân hàng câu hỏi")
@@ -57,6 +56,12 @@ public class AdminQuestionAssetController {
         return assetService.upload(kind, file);
     }
 
+    /**
+     * Nội dung trả về là {@link Resource} để Spring MVC tự xử lý byte range
+     * ({@code 206 Partial Content}, {@code Accept-Ranges: bytes}) cho tua audio/video.
+     * {@code 416} kèm {@code Content-Range: bytes *&#47;total}, body rỗng — xem
+     * {@link QuestionAssetRangeNotSatisfiableAdvice}.
+     */
     @GetMapping("/{id}")
     @RequirePermission(anyOf = {Permissions.QUESTION_VIEW, Permissions.EXAM_VIEW})
     @Operation(summary = "Phục vụ nội dung tài nguyên (inline cho ảnh, attachment cho tệp)")
