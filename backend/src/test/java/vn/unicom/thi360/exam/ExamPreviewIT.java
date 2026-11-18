@@ -337,6 +337,32 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void hsaMathTopicAssignmentIsExposedAndCounted() throws Exception {
+        UUID subjectId = jdbc.queryForObject("select id from catalog.catalog_item where group_id=? and code_normalized='toan'",
+                UUID.class, SUBJECT_GROUP);
+        UUID questionId = question(new Subject(subjectId, "TOAN"), "SINGLE_CHOICE", "topic", false);
+        jdbc.update("update questionbank.question set points=123.4567 where id=?", questionId);
+        jdbc.update("insert into questionbank.question_knowledge(question_id, knowledge_item_id, is_primary) values (?, ?, true)",
+                questionId, PREVIEW_KNOWLEDGE_LEAF);
+        UUID examId = exam("""
+                [{"id":"math-part","order":1,"name":"Math","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"math","subjectCode":"TOAN","questionCount":1,
+                    "topicQuotas":[{"id":"math-topic","nodeIds":["%s"],"count":1}],
+                    "blocks":[{"id":"math-group","questionType":"SINGLE_CHOICE","questionCount":1,
+                               "requiredPointsPerQuestion":123.4567}]}]}]
+                """.formatted(PREVIEW_KNOWLEDGE_LEAF));
+        jdbc.update("update exam.exam set kind_item_id=(select id from catalog.catalog_item where code_normalized='hsa' and group_id='00000000-0000-7000-8100-000000000001') where id=?", examId);
+        JsonNode result = preview(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}");
+        JsonNode question = result.path("paper").path("parts").get(0).path("blocks").get(0)
+                .path("items").get(0).path("question");
+        assertThat(question.path("questionId").asText()).isEqualTo(questionId.toString());
+        assertThat(question.path("assignedTopicQuotaIds")).hasSize(1);
+        assertThat(question.path("assignedTopicQuotaIds").get(0).asText()).isEqualTo("math-topic");
+        assertThat(result.path("compliance")).anyMatch(row -> "TOPIC:math-topic".equals(row.path("criterion").asText())
+                && "QUESTION".equals(row.path("basis").asText()) && row.path("actual").asInt() == 1);
+    }
+
+    @Test
     void hsaEnglishReferenceGradeAppearsInCompliance() throws Exception {
         UUID subjectId = jdbc.queryForObject("select id from catalog.catalog_item where group_id=? and code_normalized='anh'",
                 UUID.class, SUBJECT_GROUP);
