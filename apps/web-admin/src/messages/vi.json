@@ -3903,6 +3903,7 @@
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
       "allocationBlocked": "Chưa lưu được: bảng phân bổ còn lỗi. Sửa ở bảng rồi lưu lại.",
       "totalChangeBlocked": "Chưa lưu được: tổng số câu của môn {subject} đã đổi. Chọn Áp dụng số mới hoặc Giữ số cũ ở môn này rồi lưu lại.",
+      "rateBlocked": "Chưa lưu được: một dòng nhập theo tỷ lệ chưa ra chùm nguyên. Sửa tỷ lệ ở dòng đó rồi lưu lại.",
       "overviewSummary": "{count, number} câu · {minutes, number} phút{shared, select, yes { chung} other {}} · {points} điểm",
       "subjectAdded": "Đã thêm môn {subject} vào phần. Lưu để áp dụng.",
       "combinationRemoved": "Đã gỡ tổ hợp {code}. Lưu để áp dụng.",
@@ -4075,7 +4076,7 @@
         "untitled": "Chưa đặt tên",
         "name": "Tên nhóm",
         "backToSection": "Về màn môn",
-        "fromTemplate": "Nhóm do mẫu khởi tạo ({code}).",
+        "fromTemplate": "Nhóm do mẫu khởi tạo.",
         "questionType": "Loại câu hỏi",
         "typeLocked": "Điền sẵn theo mẫu, không đổi được.",
         "typeOpen": "Theo chỉ tiêu dạng trả lời của môn",
@@ -4116,6 +4117,8 @@
       "blockForm": {
         "childConditions": {
           "add": "Thêm điều kiện theo vị trí",
+          "answerType": "Loại câu hỏi của câu con",
+          "answerTypeAny": "Không giới hạn dạng",
           "empty": "Chưa có điều kiện theo vị trí.",
           "flexibleNote": "Điều kiện theo vị trí câu con không dùng được khi chỉ nhập tổng câu con, vì cỡ chùm không cố định.",
           "from": "Từ câu con số",
@@ -4126,12 +4129,15 @@
             "OUT_OF_SET": "Vị trí vượt số câu con mỗi chùm ({size, number}).",
             "RANGE_ORDER": "Vị trí kết thúc phải lớn hơn hoặc bằng vị trí bắt đầu."
           },
+          "leftItemsLabel": "Số vế trái",
           "mapidLabel": "MAPID:",
+          "optionsLabel": "Số phương án",
           "pickMapid": "Chọn MAPID",
           "pickerDescription": "{name}: chọn được Chương, Bài hoặc Kiến thức.",
           "remove": "Bỏ {name}",
           "removeMapid": "Bỏ MAPID {code} {name}",
           "rowName": "Điều kiện vị trí {index, number}",
+          "statementsLabel": "Số ý",
           "title": "Điều kiện theo vị trí câu con",
           "to": "Đến câu con số"
         },
@@ -4196,6 +4202,56 @@
         },
         "omittedBadge": "Tự luận – tạm bỏ qua",
         "positionRange": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+        "positions": {
+          "columns": {
+            "commands": "Lệnh hỏi",
+            "onPaper": "Câu trên đề",
+            "points": "Điểm",
+            "position": "Vị trí câu con",
+            "shape": "Hình dạng",
+            "type": "Loại câu hỏi"
+          },
+          "onPaper": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+          "perSetNote": "Bảng trên là của một chùm; dòng tổng tính cho cả {sets, number} chùm.",
+          "position": "{same, select, yes {Vị trí {from, number}} other {Vị trí {from, number}–{to, number}}}",
+          "shape": {
+            "any": "Không giới hạn",
+            "options": "{count, number} phương án",
+            "statements": "{count, number} ý mỗi câu"
+          },
+          "title": "Loại câu hỏi theo vị trí trong chùm",
+          "total": "{questions, number} câu · {commands, number} lệnh · {points, number} điểm",
+          "totalNoCommands": "{questions, number} câu · {points, number} điểm"
+        },
+        "rows": {
+          "audio": {
+            "FORBIDDEN": "Không có audio",
+            "REQUIRED": "Có audio"
+          },
+          "audioNote": "Điều kiện audio đặt theo phần, không đổi ở từng dòng.",
+          "available": "Nguồn khả dụng: {count, number} câu {audio, select, REQUIRED {có audio} other {không có audio}}",
+          "entry": {
+            "count": "Số lượng",
+            "legend": "Nhập theo",
+            "rate": "Tỷ lệ"
+          },
+          "locked": "Mẫu đã khóa dòng",
+          "lockedHint": "Nguồn câu, phạm vi kiến thức và chỉ tiêu trong dòng vẫn sửa được.",
+          "lockedReason": "Bài cả môn giữ nguyên dạng và số lượng của dòng theo mẫu. Muốn đổi, hãy tạo bài theo phần từ cùng mẫu.",
+          "rate": {
+            "errors": {
+              "format": "Nhập tỷ lệ là số, tối đa hai chữ số thập phân.",
+              "sets": "Tỷ lệ {rate}% ra {count, number} câu, không chia hết cho cỡ chùm {size, number} câu con. Chọn {low, number} hoặc {high, number} câu.",
+              "setsFromZero": "Tỷ lệ {rate}% ra {count, number} câu, ít hơn một chùm {size, number} câu con. Chọn {high, number} câu.",
+              "setsTitle": "Không ghép được chùm nguyên.",
+              "title": "Tỷ lệ chưa hợp lệ.",
+              "zero": "Tỷ lệ này ra 0 câu. Nhập tỷ lệ lớn hơn 0."
+            },
+            "label": "Tỷ lệ trong phần (%)",
+            "result": "Ra {count, number} câu."
+          },
+          "share": "{count, number} câu · {rate}% của phần"
+        },
         "setMode": {
           "legend": "Cách khai chùm",
           "note": "Hệ thống luôn lấy nguyên chùm; số câu của nhóm là tổng số câu con.",
@@ -4258,6 +4314,65 @@
           "searchLabel": "Tìm nhãn của {name}",
           "selected": "Nhãn đã chọn của {name}"
         }
+      },
+      "scoringExamples": {
+        "description": "Chỉ để đối chiếu cách chấm của kỳ thi. Khối này không có ô nhập.",
+        "hsca": {
+          "caption": "H-SCA · cách chấm theo dạng câu",
+          "childNote": "Câu con trong chùm chấm theo dạng của từng câu con. Cộng điểm trước, làm tròn ở kết quả cuối.",
+          "colBlank": "Bỏ trống",
+          "colCorrect": "Đúng",
+          "colPartial": "Đúng một phần",
+          "colType": "Dạng câu",
+          "colWrong": "Sai",
+          "notApplicable": "Không áp dụng",
+          "pendingBody": "Đúng một phần là chọn đúng nhưng chưa đủ và không chọn phương án sai. Có phương án sai thì được 0 điểm.",
+          "pendingTitle": "Luật chấm câu nhiều đáp án chờ BA xác nhận"
+        },
+        "title": "Ví dụ chấm",
+        "vsat": {
+          "clozeExample": "Đúng 4/5 vị trí được {part}/{total}",
+          "clozeName": "Điền khuyết (Tiếng Anh)",
+          "clozeRule": "Mỗi vị trí đúng được {points} điểm",
+          "colExample": "Ví dụ",
+          "colMatching": "Số cặp đúng",
+          "colPoints": "Điểm của câu",
+          "colRule": "Quy tắc",
+          "colTrueFalse": "Số ý đúng",
+          "colType": "Dạng câu",
+          "contrastDifferent": "Cùng số ý đúng nhưng hai dạng được số điểm khác nhau. Đúng/Sai tính theo bảng, Ghép đôi tính {perPair} điểm mỗi cặp.",
+          "contrastSame": "Ở mức này hai dạng được cùng số điểm.",
+          "current": "Đang xem",
+          "matchingCaption": "Ghép đôi · tối đa {max} điểm",
+          "othersCaption": "Các dạng còn lại",
+          "pick": "{n}/4",
+          "picksLegend": "Số ý đúng trong câu",
+          "picksLegendMatching": "Số cặp đúng",
+          "rowPairs": "{n}/4 cặp",
+          "rowStatements": "{n}/4 ý",
+          "shortExample": "Theo định dạng và yêu cầu làm tròn của câu",
+          "shortRule": "Khớp đáp án được {points} điểm",
+          "singleExample": "Đúng 2/3 câu trong chùm được {part}/{total}",
+          "singleRule": "Mỗi câu đúng được {points} điểm",
+          "status": "Đúng {n}/4: Đúng/Sai {trueFalse} điểm, Ghép đôi {matching} điểm",
+          "statusMatching": "Đúng {n}/4 cặp: {points} điểm",
+          "statusTrueFalse": "Đúng {n}/4 ý: {points} điểm",
+          "trueFalseCaption": "Đúng/Sai · tối đa {max} điểm"
+        }
+      },
+      "strand": {
+        "caption": "Mạch đối chiếu của {subject} theo lệnh",
+        "colCommands": "Số lệnh",
+        "colStatus": "Trạng thái",
+        "colStrand": "Mạch",
+        "denominator": "Mẫu số: {subject} cả môn · {total, number} lệnh",
+        "difficulty": "Độ khó theo lệnh: {list}.",
+        "mapped": "Đã gắn mã",
+        "note": "Số theo lệnh chỉ để đối chiếu. Chỉ tiêu bắt buộc đặt theo câu.",
+        "pending": "Chờ mapping",
+        "reference": "Tham khảo",
+        "title": "Mạch đối chiếu theo lệnh",
+        "total": "Tổng"
       },
       "subject": {
         "title": "Môn {subject}",
@@ -4344,6 +4459,18 @@
           "countHeader": "Số câu",
           "rateHeader": "Tỷ lệ",
           "rate": "{value}%",
+          "audioHeader": "Nhãn audio",
+          "availableCount": "{count, number} câu",
+          "availableError": "Chưa đếm được nguồn",
+          "availableHeader": "Nguồn khả dụng",
+          "availableLoading": "Đang đếm…",
+          "partSummary": "Phần {part}{known, select, yes { · {count, number} câu} other {}}",
+          "partTotal": "Tổng phần {part}",
+          "quantityHeader": "Số lượng",
+          "quantitySets": "{sets, number} chùm × {size, number} câu con",
+          "quantitySingle": "{count, number} câu đơn",
+          "shareHeader": "Tỷ lệ trong phần",
+          "totalHeader": "Tổng câu",
           "scope": "Phạm vi nguồn",
           "actions": "Thao tác",
           "untitled": "Chưa đặt tên",
@@ -5518,6 +5645,9 @@
           "points": "Điểm",
           "percentPart": "Tỷ lệ trong phần",
           "percentExam": "Tỷ lệ toàn bài",
+          "blockPoints": "Điểm tối đa",
+          "commands": "Lệnh hỏi",
+          "partRows": "Phần và dòng lấy câu",
           "percentExamCustom": "Tỷ lệ trong bài"
         },
         "cell": {
@@ -5527,6 +5657,9 @@
         },
         "lockedCounts": "Mẫu đã khóa số câu",
         "lockedBlockCountsNote": "Bài cả môn giữ nguyên dạng và số lượng từng dòng theo mẫu. Muốn đổi số lượng, chọn phạm vi Theo phần.",
+        "blockUnit": "{sets, number} chùm × {size, number} câu con",
+        "scrollHint": "Bảng cuộn ngang: vuốt để xem các cột còn lại.",
+        "blockRowsNote": "Số câu của từng dòng sửa ở bước 2.",
         "choiceNote": "(học viên chọn một lựa chọn)",
         "omittedLabel": "tạm bỏ qua",
         "notCounted": "không tính",

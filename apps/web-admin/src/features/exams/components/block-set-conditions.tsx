@@ -1,16 +1,17 @@
 "use client";
 
-import { Button, cn, focusRing, IconButton } from "@thi360/ui";
+import { Button, cn, FormField, IconButton, Select } from "@thi360/ui";
 import { CircleMinus, ListTree, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
-import type { ContentReference, KnowledgeRef } from "@/features/content/types";
-import { isFlexibleSet } from "../matrix";
-import type { BlockSlot, ChildCondition, QuestionBlock } from "../types";
+import { QUESTION_TYPES, type ContentReference, type KnowledgeRef, type QuestionType } from "@/features/content/types";
+import { blockPointsEach, countOf, isFlexibleSet } from "../matrix";
+import type { BlockSlot, ChildCondition, ItemShape, QuestionBlock } from "../types";
 import {
   childConditionIssue,
+  positionRows,
   newChildCondition,
   slotAt,
   slotHasCondition,
@@ -19,13 +20,23 @@ import {
 import { blockFieldAnchor } from "./block-form-fields";
 import { BlockNumberInput } from "./block-number-input";
 import { BlockTagPicker } from "./block-tag-picker";
+import { LOCKED_FIELD } from "./locked-field";
+import { ScrollableTable } from "./scrollable-table";
 
 export interface BlockSetConditionsProps {
   block: QuestionBlock;
   reference: ContentReference | undefined;
   subjectCode: string;
   onChange: (patch: Partial<QuestionBlock>) => void;
+  /** Số lệnh hỏi của nhóm do máy chủ tính (R-142); `null`: chưa có hoặc bản nháp đã đổi. */
+  commandCount?: number | null;
+  /** Mẫu khóa dòng (H42): dạng câu con chỉ đọc; MAPID vẫn sửa được. */
+  locked?: boolean;
 }
+
+const ANY = "__ANY__";
+/** Dạng của câu con trong chùm: mọi dạng câu đơn. */
+const CHILD_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE");
 
 /** Bảng và nút chọn MAPID dùng chung cho điều kiện của chùm và điều kiện theo vị trí. */
 function useKnowledgeRefs(reference: ContentReference | undefined) {
@@ -42,13 +53,14 @@ function useKnowledgeRefs(reference: ContentReference | undefined) {
  * con (`childConditions`). Chùm không đặt gì dùng điều kiện của nhóm. Chùm cỡ linh hoạt (chỉ nhập tổng câu con) không
  * có cỡ chùm cố định nên không có hai bảng này; một dòng ghi lý do.
  */
-export function BlockSetConditions({ block, reference, subjectCode, onChange }: BlockSetConditionsProps) {
+export function BlockSetConditions({ block, reference, subjectCode, onChange, commandCount = null, locked = false }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.childConditions");
   if (isFlexibleSet(block)) return <p className="text-caption text-text-muted">{t("flexibleNote")}</p>;
   return (
     <>
       <SlotsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} />
-      <ChildConditionsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} />
+      <ChildConditionsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} locked={locked} />
+      <PositionTable block={block} commandCount={commandCount} />
     </>
   );
 }
@@ -104,7 +116,7 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
 
   return (
     <ConditionSection title={t("title")} hint={t("hint")}>
-      <div role="region" tabIndex={0} aria-labelledby={tagTitle} className={cn("max-w-full overflow-x-auto rounded-md border border-border", focusRing)}>
+      <ScrollableTable labelledBy={tagTitle} className="rounded-md border border-border">
         <table className="w-full border-separate border-spacing-0 text-body">
           <caption id={tagTitle} className="sr-only">
             {t("caption", { count: setCount })}
@@ -187,7 +199,7 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollableTable>
 
       {editing !== null && current && (
         <div className="flex flex-col gap-3 rounded-md border border-border bg-subtle/40 p-3" role="group" aria-label={t("editorTitle", { index: editing })}>
@@ -236,7 +248,7 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
 
 // ---------------------------------------------------------------- điều kiện theo vị trí câu con
 
-function ChildConditionsEditor({ block, reference, subjectCode, onChange }: BlockSetConditionsProps) {
+function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked = false }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.childConditions");
   const refsOf = useKnowledgeRefs(reference);
   const [pickerFor, setPickerFor] = useState<number | null>(null);
@@ -246,6 +258,22 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange }: Bloc
   const replace = (next: ChildCondition[]) => onChange({ childConditions: next.length > 0 ? next : undefined });
   const patch = (index: number, change: Partial<ChildCondition>) =>
     replace(conditions.map((condition, position) => (position === index ? { ...condition, ...change } : condition)));
+  const tContent = useTranslations("content");
+  /** Mẫu khóa dòng (H42): vị trí đã khai dạng là một phần của "dạng" của dòng nên không đổi dải, không xóa; MAPID vẫn sửa. */
+  const frozen = (condition: ChildCondition) => locked && condition.answerType !== undefined;
+  /** Đổi dạng câu con: hình dạng của dạng cũ không còn nghĩa nên bỏ (R-132, H39). */
+  const setAnswerType = (index: number, answerType: QuestionType | undefined) =>
+    replace(
+      conditions.map((condition, position) => {
+        if (position !== index) return condition;
+        const next: ChildCondition = { ...condition };
+        delete next.answerType;
+        delete next.itemShape;
+        if (answerType) next.answerType = answerType;
+        return next;
+      }),
+    );
+  const setShape = (index: number, shape: ItemShape) => patch(index, { itemShape: Object.keys(shape).length > 0 ? shape : undefined });
 
   return (
     <ConditionSection
@@ -274,17 +302,75 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange }: Bloc
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
                 {t("from")}
-                <BlockNumberInput value={condition.from} aria-invalid={issue === "FROM_MIN" || issue === "RANGE_ORDER" ? true : undefined} onValueChange={(from) => patch(index, { from })} />
+                <BlockNumberInput value={condition.from} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} className={frozen(condition) ? LOCKED_FIELD : undefined} aria-invalid={issue === "FROM_MIN" || issue === "RANGE_ORDER" ? true : undefined} onValueChange={(from) => patch(index, { from })} />
               </label>
               <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
                 {t("to")}
-                <BlockNumberInput value={condition.to} aria-invalid={issue === "RANGE_ORDER" || issue === "OUT_OF_SET" ? true : undefined} onValueChange={(to) => patch(index, { to })} />
+                <BlockNumberInput value={condition.to} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} className={frozen(condition) ? LOCKED_FIELD : undefined} aria-invalid={issue === "RANGE_ORDER" || issue === "OUT_OF_SET" ? true : undefined} onValueChange={(to) => patch(index, { to })} />
               </label>
+              <div className="w-56">
+                <FormField label={t("answerType")}>
+                  {(controlProps) => (
+                    <Select
+                      {...controlProps}
+                      disabled={locked}
+                      value={condition.answerType ?? ANY}
+                      onValueChange={(value) => setAnswerType(index, value === ANY ? undefined : (value as QuestionType))}
+                      options={[
+                        { value: ANY, label: t("answerTypeAny") },
+                        ...CHILD_TYPES.map((type) => ({ value: type, label: tContent(`questionType.${type}`) })),
+                      ]}
+                    />
+                  )}
+                </FormField>
+              </div>
+              {condition.answerType === "TRUE_FALSE" && (
+                <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
+                  {t("statementsLabel")}
+                  <BlockNumberInput
+                    value={condition.itemShape?.statements ?? 0}
+                    readOnly={locked}
+                    aria-readonly={locked || undefined}
+                    className={locked ? LOCKED_FIELD : undefined}
+                    onValueChange={(statements) => setShape(index, statements > 0 ? { statements } : {})}
+                  />
+                </label>
+              )}
+              {(condition.answerType === "SINGLE_CHOICE" || condition.answerType === "MULTIPLE_CHOICE") && (
+                <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
+                  {t("optionsLabel")}
+                  <BlockNumberInput
+                    value={condition.itemShape?.options ?? 0}
+                    readOnly={locked}
+                    aria-readonly={locked || undefined}
+                    className={locked ? LOCKED_FIELD : undefined}
+                    onValueChange={(options) => setShape(index, options > 0 ? { options } : {})}
+                  />
+                </label>
+              )}
+              {condition.answerType === "MATCHING" && (
+                <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
+                  {t("leftItemsLabel")}
+                  <BlockNumberInput
+                    value={condition.itemShape?.leftItems ?? 0}
+                    readOnly={locked}
+                    aria-readonly={locked || undefined}
+                    className={locked ? LOCKED_FIELD : undefined}
+                    onValueChange={(leftItems) => {
+                      const shape: ItemShape = { ...condition.itemShape };
+                      if (leftItems > 0) shape.leftItems = leftItems;
+                      else delete shape.leftItems;
+                      setShape(index, shape);
+                    }}
+                  />
+                </label>
+              )}
               <div className="ml-auto">
                 <IconButton
                   icon={<Trash2 />}
                   tone="danger"
                   aria-label={t("remove", { name })}
+                  disabled={frozen(condition)}
                   onClick={() => replace(conditions.filter((_, position) => position !== index))}
                 />
               </div>
@@ -325,5 +411,72 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange }: Bloc
         />
       )}
     </ConditionSection>
+  );
+}
+
+/**
+ * Bảng chỉ đọc "Loại câu hỏi theo vị trí trong chùm" (bản vẽ `BaiDocDungChung2B`, R-132): dải vị trí, câu trên đề, dạng, hình
+ * dạng, lệnh hỏi, điểm của MỘT chùm; dòng tổng tính cho CẢ khối (số câu của khối, điểm = số câu × điểm mỗi câu, lệnh hỏi do
+ * máy chủ tính theo cả khối `commandCount`; chưa có thì bỏ phần lệnh). Khối nhiều chùm có một dòng nói bảng là của một chùm.
+ */
+function PositionTable({ block, commandCount }: { block: QuestionBlock; commandCount: number | null }) {
+  const t = useTranslations("exams.structure.blockForm.positions");
+  const tContent = useTranslations("content");
+  const rows = positionRows(block, blockPointsEach(block));
+  const captionId = useId();
+  if (rows.length === 0) return null;
+  const from = block.positionRange?.from;
+  const single = (block.setCount ?? 1) <= 1 && from !== undefined;
+  const questions = countOf(block);
+  const points = Math.round(questions * blockPointsEach(block) * 10_000) / 10_000;
+  const sets = block.setCount ?? 1;
+  const shapeText = (row: (typeof rows)[number]) =>
+    row.itemShape?.statements
+      ? t("shape.statements", { count: row.itemShape.statements })
+      : row.itemShape?.options
+        ? t("shape.options", { count: row.itemShape.options })
+        : t("shape.any");
+  const cell = "border-b border-border px-3 py-2 align-top";
+  return (
+    <section className="flex flex-col gap-2 rounded-md border border-border p-4" aria-labelledby={captionId}>
+      <h3 id={captionId} className="text-label font-semibold text-text">
+        {t("title")}
+      </h3>
+      <ScrollableTable labelledBy={captionId} className="rounded-md border border-border">
+        <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-body tabular-nums">
+          <caption className="sr-only">{t("title")}</caption>
+          <thead>
+            <tr className="text-left text-caption text-text-muted">
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.position")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.onPaper")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.type")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.shape")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold">{t("columns.commands")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold">{t("columns.points")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.from}-${row.to}`}>
+                <th scope="row" className={cn(cell, "text-left font-medium whitespace-nowrap text-text")}>
+                  {t("position", { from: row.from, to: row.to, same: row.from === row.to ? "yes" : "no" })}
+                </th>
+                <td className={cell}>
+                  {single ? t("onPaper", { from: from + row.from - 1, to: from + row.to - 1, same: row.from === row.to ? "yes" : "no" }) : "—"}
+                </td>
+                <td className={cell}>{tContent(`questionType.${row.answerType}`)}</td>
+                <td className={cell}>{shapeText(row)}</td>
+                <td className={cn(cell, "text-right")}>{row.commands}</td>
+                <td className={cn(cell, "text-right")}>{row.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ScrollableTable>
+      {sets >= 2 && <p className="text-caption text-text-muted">{t("perSetNote", { sets })}</p>}
+      <p className="text-label font-semibold text-text">
+        {commandCount !== null ? t("total", { questions, commands: commandCount, points }) : t("totalNoCommands", { questions, points })}
+      </p>
+    </section>
   );
 }
