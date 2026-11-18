@@ -95,7 +95,7 @@ public class SolverInputBuilder {
             return Map.copyOf(loaded);
         }
 
-        public enum FilterDimension { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION }
+        public enum FilterDimension { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION, AUDIO, POINTS }
 
         /** Source counts in selection units, with one declared filter removed at a time. */
         public record FilterCount(FilterDimension dimension, int required, long withoutFilter, long withFilter) { }

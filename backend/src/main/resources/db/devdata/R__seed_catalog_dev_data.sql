@@ -155,6 +155,33 @@ VALUES
     ('00000000-0000-7000-8400-000000000107', '00000000-0000-7000-8100-000000000001', 'THPTQG', 'thptqg', 7, 'Tốt nghiệp THPT (THPTQG)', 'National high school graduation exam (THPTQG)', NULL, 6, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000107/')
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
+-- 9b. EXAM: H-SCA, V-SAT (UNI-2688, spec H36). Tên viết tắt theo ghi chú BA, chưa có tên đầy đủ chính thức.
+-- `value` cấp trên mốc cao nhất của nhóm (kể cả mục quản trị đã tạo sau bảy kỳ đầu) và không cấp lại khi chạy lại;
+-- mục đã có cùng mã giữ nguyên id, value của nó. Mục đã đổi mã (PATCH cho phép) vẫn chiếm id seed nên bỏ qua
+-- theo id giống bảy kỳ thi đầu, tránh đụng khóa chính; giữ nguyên mã và value mới của nó.
+WITH seed(ordinal, code, name_vi, name_en, id) AS (
+    VALUES
+      (1, 'HSCA', 'Đánh giá năng lực H-SCA', 'H-SCA assessment', '00000000-0000-7000-8400-000000000108'::uuid),
+      (2, 'VSAT', 'Đánh giá năng lực V-SAT', 'V-SAT assessment', '00000000-0000-7000-8400-000000000109'::uuid)
+), missing AS (
+    SELECT s.*, row_number() OVER (ORDER BY s.ordinal) AS allocation
+    FROM seed s
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = '00000000-0000-7000-8100-000000000001'
+          AND i.code_normalized = lower(s.code)
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i WHERE i.id = s.id
+    )
+)
+INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
+SELECT m.id, g.id, m.code, lower(m.code),
+       GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+       m.name_vi, m.name_en, NULL, 6 + m.ordinal, 1, false, NULL, 1, '/' || m.id::text || '/'
+FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000001'
+ON CONFLICT (group_id, code_normalized) DO NOTHING;
+
 -- Chuẩn lại tên hai kỳ đã seed ở đợt 1 theo spec mục 6
 UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực ĐHQG Hà Nội (HSA)', name_en = 'VNU Hanoi Competency Assessment (HSA)'
 WHERE id = '00000000-0000-7000-8200-000000000101';
@@ -358,7 +385,10 @@ WITH seed(ordinal, code, name_vi, name_en) AS (
       (43, 'TD_SAP_XEP_DIEU_KIEN', 'Sắp xếp điều kiện', 'Conditional arrangement'),
       (44, 'TD_XEP_HANG', 'Xếp hạng', 'Ranking'),
       (45, 'TD_BANG_SO_LIEU', 'Bảng số liệu', 'Data table'),
-      (46, 'TD_BIEU_DO', 'Biểu đồ', 'Chart')
+      (46, 'TD_BIEU_DO', 'Biểu đồ', 'Chart'),
+      -- Q-45 (UNI-2687): hai nhãn Địa lí cho V-SAT Phần II, tạm thời đến khi BA xác nhận mã.
+      (47, 'DIA_BANG_SO_LIEU', 'Địa lí · Bảng số liệu', 'Geography · Data table'),
+      (48, 'DIA_BIEU_DO', 'Địa lí · Biểu đồ', 'Geography · Chart')
 ), missing AS (
     SELECT s.*, row_number() OVER (ORDER BY ordinal) AS allocation,
            ('00000000-0000-7000-8601-' || lpad(s.ordinal::text, 12, '0'))::uuid AS id

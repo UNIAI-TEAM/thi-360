@@ -595,8 +595,8 @@ public class ExamService {
                 part.maxPoints(), part.sections().stream().map(section -> new ExamSection(
                         section.id(), subjectCode, section.questionCount(), section.knowledgeScope(),
                         section.answerQuotas(), section.matrix(), section.choiceGroup(), section.blocks(),
-                        section.topicQuotas())).toList(), part.options(), part.subjectPool(),
-                part.codeSource())).toList(), doc.examQuotas());
+                        section.topicQuotas(), section.audioRequirement())).toList(), part.options(),
+                part.subjectPool(), part.codeSource(), part.displaySegments())).toList(), doc.examQuotas());
     }
 
     /** PATCH /exams/{id} — sửa thông tin; đổi phạm vi → nạp lại mẫu theo quy tắc spec 5.2. */

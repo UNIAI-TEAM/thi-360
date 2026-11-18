@@ -1,18 +1,20 @@
 package vn.unicom.thi360.exam.domain;
 
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
-import vn.unicom.thi360.shared.api.FieldError;
 
 /** Type-level checks for PUT structure; completeness and feasibility belong to BE-5b. */
 public final class ExamStructureValidator {
     public static final int MAX_PATHS = 200;
     public static final int DEFAULT_MAX_TOPIC_QUOTAS = 8;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+    /** Not legal as a question-set child (QuestionBodyValidator, QUESTION_CHILD_TYPE_NOT_ALLOWED). */
+    private static final Set<QuestionType> NOT_CHILD_TYPES = EnumSet.of(QuestionType.QUESTION_SET, QuestionType.CLOZE);
 
     private ExamStructureValidator() {
     }
@@ -47,6 +49,9 @@ public final class ExamStructureValidator {
             validatePart(part, ids, maxTopicQuotas, fixedSubjects);
         }
         validateExamQuotas(document.examQuotas());
+        for (int i = 0; i < document.parts().size(); i++) {
+            validateDisplaySegments(document.parts().get(i), i);
+        }
         long paths = pathCount(document.parts());
         if (paths > MAX_PATHS) {
             throw new BusinessRuleException("EXAM_PATH_LIMIT_EXCEEDED");
@@ -203,6 +208,7 @@ public final class ExamStructureValidator {
             nonNegative(block.itemShape().statements(), "blocks.itemShape.statements");
             nonNegative(block.itemShape().leftItems(), "blocks.itemShape.leftItems");
             nonNegative(block.itemShape().rightItems(), "blocks.itemShape.rightItems");
+            nonNegative(block.itemShape().options(), "blocks.itemShape.options");
         }
         for (ChildCondition condition : block.childConditions()) {
             if (condition == null || condition.from() != null && condition.from() < 1
@@ -210,7 +216,14 @@ public final class ExamStructureValidator {
                     || condition.from() != null && condition.to() != null && condition.from() > condition.to()) {
                 invalid("blocks.childConditions", "child positions must form a positive range");
             }
+            if (condition.itemShape() != null) {
+                nonNegative(condition.itemShape().statements(), "blocks.childConditions.itemShape.statements");
+                nonNegative(condition.itemShape().leftItems(), "blocks.childConditions.itemShape.leftItems");
+                nonNegative(condition.itemShape().rightItems(), "blocks.childConditions.itemShape.rightItems");
+                nonNegative(condition.itemShape().options(), "blocks.childConditions.itemShape.options");
+            }
         }
+        validateTypedChildConditions(block);
         if (!block.slots().isEmpty()) {
             if (block.setCount() == null || (block.questionType() != QuestionType.QUESTION_SET
                     && block.questionType() != QuestionType.CLOZE)) {
@@ -267,31 +280,36 @@ public final class ExamStructureValidator {
 
     private static void validateTopicQuotas(List<TopicQuota> quotas, String field, int max) {
         if (quotas.size() > max) {
-            throw new BusinessRuleException("EXAM_STRUCTURE_INVALID",
-                    "topic quota limit exceeded",
-                    List.of(new FieldError("topicQuotas", "MAX_TOPIC_QUOTAS", "Too many topic quotas")));
+            reject("topic quota limit exceeded", "topicQuotas", "MAX_TOPIC_QUOTAS", "MAX_TOPIC_QUOTAS");
         }
         Set<String> ids = new HashSet<>();
         for (TopicQuota quota : quotas) {
             if (quota == null || quota.id() == null || !ids.add(quota.id())
                     || quota.count() == null || quota.count() < 0
-                    || quota.basis() != null && quota.basis() != QuotaBasis.QUESTION) {
+                    || quota.basis() != null && !basisAllowed(quota.basis(), quota.enforcement())) {
                 invalid(field, "topic quota is invalid");
             }
             if (quota.percent() != null
                     && (quota.percent().signum() < 0 || quota.percent().compareTo(ONE_HUNDRED) > 0)) {
-                throw new BusinessRuleException("EXAM_STRUCTURE_INVALID",
-                        "topic quota percent must be between 0 and 100",
-                        List.of(new FieldError(field, "PERCENT_OUT_OF_RANGE",
-                                "Topic quota percent must be between 0 and 100")));
+                reject("topic quota percent must be between 0 and 100", field, "PERCENT_OUT_OF_RANGE",
+                        "PERCENT_OUT_OF_RANGE");
             }
         }
     }
 
+    /**
+     * Chỉ tiêu theo câu ({@code QUESTION}) luôn hợp lệ; theo lệnh ({@code PROMPT}) chỉ ở mức đối chiếu
+     * (spec H44, D19). Thiếu {@code enforcement} tính là {@code REQUIRED}.
+     */
+    private static boolean basisAllowed(QuotaBasis basis, QuotaEnforcement enforcement) {
+        return basis == QuotaBasis.QUESTION
+                || basis == QuotaBasis.PROMPT && enforcement == QuotaEnforcement.REFERENCE;
+    }
+
     private static void validateExamQuotas(List<ExamQuota> quotas) {
         for (ExamQuota quota : quotas) {
-            if (quota == null || quota.dimension() == null || quota.basis() != QuotaBasis.QUESTION
-                    || quota.enforcement() == null) {
+            if (quota == null || quota.dimension() == null || quota.enforcement() == null
+                    || !basisAllowed(quota.basis(), quota.enforcement())) {
                 invalid("examQuotas", "exam quota is invalid");
             }
             if (quota.enforcement() == QuotaEnforcement.REQUIRED
@@ -306,6 +324,98 @@ public final class ExamStructureValidator {
                     invalid("examQuotas", "exam quota bucket is invalid");
                 }
             }
+        }
+    }
+
+    /**
+     * Phân đoạn hiển thị (spec H40): nối nhau phủ kín câu 1 đến {@code questionCount}, không hở, không chồng;
+     * tổng điểm bằng {@code maxPoints} của phần. Lỗi chỉ tới phân đoạn.
+     */
+    private static void validateDisplaySegments(ExamPart part, int partIndex) {
+        List<DisplaySegment> segments = part.displaySegments();
+        if (segments.isEmpty()) {
+            return;
+        }
+        String base = "parts[" + partIndex + "].displaySegments";
+        Set<String> codes = new HashSet<>();
+        int next = 1;
+        BigDecimal total = BigDecimal.ZERO;
+        for (int i = 0; i < segments.size(); i++) {
+            DisplaySegment segment = segments.get(i);
+            String field = base + "[" + i + "]";
+            if (segment == null || segment.code() == null || segment.code().isBlank()
+                    || segment.name() == null || segment.name().isBlank()
+                    || !codes.add(segment.code()) || segment.fromPosition() == null
+                    || segment.toPosition() == null || segment.fromPosition() < 1
+                    || segment.fromPosition() > segment.toPosition()
+                    || segment.commandCount() == null || segment.commandCount() < 0
+                    || segment.maxPoints() == null || segment.maxPoints().signum() < 0) {
+                reject("display segment is incomplete or duplicated", field, "SEGMENT_INVALID", "SEGMENT_INVALID");
+            }
+            if (segment.fromPosition() > next) {
+                reject("display segments leave a gap", field, "SEGMENT_GAP", "SEGMENT_GAP",
+                        String.valueOf(segment.fromPosition()));
+            }
+            if (segment.fromPosition() < next) {
+                reject("display segments overlap", field, "SEGMENT_OVERLAP", "SEGMENT_OVERLAP",
+                        String.valueOf(segment.fromPosition()));
+            }
+            next = segment.toPosition() + 1;
+            total = total.add(segment.maxPoints());
+        }
+        String last = base + "[" + (segments.size() - 1) + "]";
+        if (part.questionCount() == null) {
+            reject("display segments need the part questionCount", last, "SEGMENT_COVERAGE",
+                    "SEGMENT_COVERAGE_TOTAL_MISSING");
+        }
+        if (next - 1 != part.questionCount()) {
+            reject("display segments do not cover the part", last, "SEGMENT_COVERAGE", "SEGMENT_COVERAGE",
+                    String.valueOf(next - 1), String.valueOf(part.questionCount()));
+        }
+        if (part.maxPoints() == null) {
+            reject("display segments need the part maxPoints", last, "SEGMENT_POINTS",
+                    "SEGMENT_POINTS_TOTAL_MISSING");
+        }
+        if (total.compareTo(part.maxPoints()) != 0) {
+            reject("display segment points do not sum to the part points", last, "SEGMENT_POINTS", "SEGMENT_POINTS",
+                    total.toPlainString(), part.maxPoints().toPlainString());
+        }
+    }
+
+    /**
+     * Chùm trộn dạng (spec H39): các điều kiện có {@code answerType} phải phủ kín vị trí 1 đến
+     * {@code setSize}, không chồng nhau. Điều kiện chỉ có {@code nodeIds} không tham gia.
+     */
+    private static void validateTypedChildConditions(QuestionBlock block) {
+        List<ChildCondition> typed = block.childConditions().stream()
+                .filter(condition -> condition.answerType() != null)
+                .sorted(java.util.Comparator.comparing(condition -> condition.from() == null ? 0 : condition.from()))
+                .toList();
+        if (typed.isEmpty()) {
+            return;
+        }
+        if (block.questionType() != QuestionType.QUESTION_SET || block.setSize() == null) {
+            invalid("blocks.childConditions", "typed child conditions require a question set with setSize");
+        }
+        if (block.childAnswerType() != null) {
+            invalid("blocks.childAnswerType", "a mixed set must leave childAnswerType blank");
+        }
+        for (ChildCondition condition : typed) {
+            if (NOT_CHILD_TYPES.contains(condition.answerType())) {
+                invalid("blocks.childConditions.answerType", "answerType is not a legal question set child type");
+            }
+        }
+        int next = 1;
+        for (ChildCondition condition : typed) {
+            if (condition.from() == null || condition.to() == null || condition.from() != next) {
+                invalid("blocks.childConditions", "typed child conditions must cover positions 1 to setSize "
+                        + "without gaps or overlaps");
+            }
+            next = condition.to() + 1;
+        }
+        if (next - 1 != block.setSize()) {
+            invalid("blocks.childConditions", "typed child conditions must cover positions 1 to setSize "
+                    + "without gaps or overlaps");
         }
     }
 
@@ -417,7 +527,14 @@ public final class ExamStructureValidator {
         }
     }
 
-    private static void invalid(String field, String message) {
-        throw new BusinessRuleException("EXAM_STRUCTURE_INVALID", message);
+    /** Generic field rejection; the English {@code reason} is for logs and tests, the client gets a bundle message. */
+    private static void invalid(String field, String reason) {
+        reject(reason, field, "STRUCTURE_FIELD_INVALID", "STRUCTURE_FIELD_INVALID", field);
+    }
+
+    /** Throws the 422; {@code messageKey} and {@code args} are resolved in the request locale at the API boundary. */
+    private static void reject(String reason, String field, String code, String messageKey, String... args) {
+        throw new ExamStructureInvalidException(reason,
+                List.of(new ExamStructureInvalidException.Detail(field, code, messageKey, List.of(args))));
     }
 }

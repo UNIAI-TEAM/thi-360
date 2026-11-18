@@ -569,7 +569,7 @@ public final class ExamCheckRules {
     public record WitnessFact(EvidenceLocation location, String questionCode, Boolean hasAnswerKey,
                               Boolean hasScoringRule, Boolean attachmentsReadable) { }
 
-    public enum FilterKind { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION }
+    public enum FilterKind { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION, AUDIO, POINTS }
 
     /** Counts use the selection unit (individual questions or complete sets), with only this filter removed. */
     public record FilterEvidence(EvidenceLocation location, FilterKind kind, int required,
@@ -596,6 +596,8 @@ public final class ExamCheckRules {
                 case ITEM_SHAPE -> "ITEM_SHAPE_SHORTAGE";
                 case ANSWER_FORMAT -> "ANSWER_FORMAT_SHORTAGE";
                 case CHILD_CONDITION -> "CHILD_CONDITION_SHORTAGE";
+                case AUDIO -> "AUDIO_SHORTAGE";
+                case POINTS -> "POINTS_SHORTAGE";
             };
             ObjectNode failure = evidenceIssue(code, item.location());
             failure.put("required", item.required());

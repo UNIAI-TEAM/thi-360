@@ -37,7 +37,8 @@ final class ExamCheckDraftInputs {
                     option.expertConfirmed())).toList();
             return new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
                     part.questionCountOnPaper(), part.questionCountRequired(), part.participation(), part.maxPoints(),
-                    sections(part.sections(), invalid), options, sections(part.subjectPool(), invalid), part.codeSource());
+                    sections(part.sections(), invalid), options, sections(part.subjectPool(), invalid),
+                    part.codeSource(), part.displaySegments());
         }).toList();
         return new ExamStructureDocument(parts, document.examQuotas());
     }
@@ -47,7 +48,8 @@ final class ExamCheckDraftInputs {
                         || section.id() != null && section.subjectCode() != null)
                 .map(section -> invalid.contains(section.id())
                         ? new ExamSection(section.id(), section.subjectCode(), section.questionCount(),
-                                null, null, null, section.choiceGroup(), List.of()) : section)
+                                null, null, null, section.choiceGroup(), List.of(), List.of(),
+                                section.audioRequirement()) : section)
                 .toList();
     }
 }

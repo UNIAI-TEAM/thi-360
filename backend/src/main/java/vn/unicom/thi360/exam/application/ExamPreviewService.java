@@ -304,7 +304,8 @@ public class ExamPreviewService {
             }
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
                     part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
-                    part.maxPoints(), part.sections(), options, part.subjectPool(), part.codeSource()));
+                    part.maxPoints(), part.sections(), options, part.subjectPool(), part.codeSource(),
+                    part.displaySegments()));
         }
         return new ExamStructureDocument(parts, document.examQuotas());
     }

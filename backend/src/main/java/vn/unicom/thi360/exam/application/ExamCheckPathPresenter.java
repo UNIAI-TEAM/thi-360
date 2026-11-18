@@ -543,7 +543,8 @@ final class ExamCheckPathPresenter {
         if (!plainShortage || !generic.hasNonNull("blockId")) return false;
         for (ObjectNode specific : issues) {
             boolean filterShortage = switch (specific.path("code").asText()) {
-                case "ITEM_SHAPE_SHORTAGE", "ANSWER_FORMAT_SHORTAGE", "CHILD_CONDITION_SHORTAGE" -> true;
+                case "ITEM_SHAPE_SHORTAGE", "ANSWER_FORMAT_SHORTAGE", "CHILD_CONDITION_SHORTAGE",
+                        "AUDIO_SHORTAGE", "POINTS_SHORTAGE" -> true;
                 default -> false;
             };
             boolean sameSection = specific.path("sectionId").equals(generic.path("sectionId"));

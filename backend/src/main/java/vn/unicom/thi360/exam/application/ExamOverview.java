@@ -65,13 +65,13 @@ final class ExamOverview {
                     && !sections.containsKey(part.id() + "\u0000" + fixed.getFirst().id())) {
                 ExamSection s = fixed.getFirst();
                 fixed = List.of(new ExamSection(s.id(), s.subjectCode(), count, s.knowledgeScope(), s.answerQuotas(),
-                        s.matrix(), s.choiceGroup(), s.blocks(), s.topicQuotas()));
+                        s.matrix(), s.choiceGroup(), s.blocks(), s.topicQuotas(), s.audioRequirement()));
             }
             return new ExamPart(part.id(), part.order(), part.name(),
                     change != null && change.durationChanged() ? row.durationMinutes() : part.durationMinutes(),
                     count, part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
                     change != null && change.pointsChanged() ? row.maxPoints() : part.maxPoints(), fixed, options,
-                    pool, part.codeSource());
+                    pool, part.codeSource(), part.displaySegments());
         }).toList();
         if (matched.size() != parts.size() + sections.size()) throw invalid();
         return new ExamStructureDocument(result, document.examQuotas());
@@ -180,7 +180,7 @@ final class ExamOverview {
         return new ExamSection(section.id(), section.subjectCode(),
                 change.countChanged() ? row.questionCount() : section.questionCount(),
                 section.knowledgeScope(), section.answerQuotas(), section.matrix(), section.choiceGroup(),
-                section.blocks(), section.topicQuotas());
+                section.blocks(), section.topicQuotas(), section.audioRequirement());
     }
 
     private static BusinessRuleException invalid() {

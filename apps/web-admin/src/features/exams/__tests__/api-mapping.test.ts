@@ -11,6 +11,8 @@ function template(parts: unknown[]): Template {
     active: true,
     publishable: true,
     fixedCounts: false,
+    fixedBlockCounts: false,
+    omittedLocked: false,
     buildMode: "STANDARD",
     isDefault: true,
     code: "BCA_FULL",
