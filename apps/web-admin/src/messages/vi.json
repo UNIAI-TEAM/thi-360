@@ -4890,6 +4890,7 @@
       "setHeading": "Bộ {index, number} · {count, number} câu liền nhau",
       "simulatedPassage": "Ngữ liệu của bộ mô phỏng (phần ngân hàng chưa nạp vào dữ liệu mẫu).",
       "questionNumber": "Câu {number, number}",
+      "questionPoints": "Tối đa {points} điểm",
       "simulatedQuestion": "Câu của nguồn mô phỏng: phần ngân hàng chưa nạp vào dữ liệu mẫu, không có nội dung.",
       "correct": "Đáp án đúng",
       "trueLabel": "Đúng",
