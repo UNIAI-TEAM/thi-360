@@ -242,6 +242,72 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
         }
     }
 
+    private static final String PATH_BODY = "{\"target\":{\"kind\":\"PATH\",\"pathId\":\"opt\"},\"seed\":7}";
+
+    @Test
+    void aSectionThatIsTheWholeRealizablePartOfAnOptionValidatesAndReturnsSegmentsLikeItsPath() throws Exception {
+        subject();
+        single(List.of());
+        String correct = """
+                [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":1,"commandCount":1,"maxPoints":1}]""";
+        UUID matching = exam(optionPart(correct, optionSection("s", 1, SINGLE_BLOCK)));
+        for (String body : List.of(PATH_BODY, sectionBody("s", 1))) {
+            JsonNode result = previewResult(matching, body);
+            assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("GENERATED");
+            assertThat(result.path("paper").path("parts").get(0).path("displaySegments")).as(body)
+                    .extracting(node -> node.path("code").asText()).containsExactly("P1");
+        }
+        String wrong = correct.replace("\"commandCount\":1", "\"commandCount\":2");
+        UUID mismatching = exam(optionPart(wrong, optionSection("s", 1, SINGLE_BLOCK)));
+        for (String body : List.of(PATH_BODY, sectionBody("s", 1))) {
+            JsonNode result = previewResult(mismatching, body);
+            assertThat(result.path("status").asText()).as(body).isEqualTo("FAILED");
+            assertThat(result.path("issues")).as(body).hasSize(1);
+            JsonNode issue = result.path("issues").get(0);
+            assertThat(issue.path("code").asText()).isEqualTo("DISPLAY_SEGMENT_MISMATCH");
+            assertThat(issue.path("segmentCode").asText()).isEqualTo("P1");
+            assertThat(issue.path("dimension").asText()).isEqualTo("COMMANDS");
+            assertThat(issue.path("required").decimalValue()).isEqualByComparingTo("2");
+            assertThat(issue.path("available").decimalValue()).isEqualByComparingTo("1");
+        }
+    }
+
+    @Test
+    void oneSectionOfAnOptionWithSeveralSectionsIsAPartialProjectionWithoutSegments() throws Exception {
+        subject();
+        single(List.of());
+        set(List.of());
+        String segments = """
+                [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":1,"commandCount":1,"maxPoints":1},
+                 {"code":"P2","name":"Phần II","fromPosition":2,"toPosition":3,"commandCount":2,"maxPoints":2}]""";
+        UUID exam = exam(optionPart(segments, optionSection("first", 1, SINGLE_BLOCK) + "," + optionSection("second", 2, SET_BLOCK)));
+        JsonNode whole = previewResult(exam, PATH_BODY);
+        assertThat(whole.path("status").asText()).as(whole.toString()).isEqualTo("GENERATED");
+        assertThat(whole.path("paper").path("parts").get(0).path("displaySegments")).hasSize(2);
+        // Alone, the second section holds numbers 1 and 2, so P2 (positions 2 to 3) could not match: no validation.
+        JsonNode partial = previewResult(exam, sectionBody("second", 2));
+        assertThat(partial.path("status").asText()).as(partial.toString()).isEqualTo("GENERATED");
+        assertThat(partial.path("paper").path("parts").get(0).path("displaySegments")).isEmpty();
+    }
+
+    @Test
+    void aSectionNextToACommonSectionOfAChoicePartIsAPartialProjectionWithoutSegments() throws Exception {
+        subject();
+        single(List.of());
+        set(List.of());
+        String segments = """
+                [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":1,"commandCount":1,"maxPoints":1},
+                 {"code":"P2","name":"Phần II","fromPosition":2,"toPosition":3,"commandCount":2,"maxPoints":2}]""";
+        String part = optionPart(segments, optionSection("second", 2, SET_BLOCK)).replace("\"options\":",
+                "\"sections\":[" + optionSection("common", 1, SINGLE_BLOCK) + "],\"options\":");
+        UUID exam = exam(part);
+        JsonNode whole = previewResult(exam, PATH_BODY);
+        assertThat(whole.path("status").asText()).as(whole.toString()).isEqualTo("GENERATED");
+        JsonNode partial = previewResult(exam, sectionBody("second", 2));
+        assertThat(partial.path("status").asText()).as(partial.toString()).isEqualTo("GENERATED");
+        assertThat(partial.path("paper").path("parts").get(0).path("displaySegments")).isEmpty();
+    }
+
     // ---- fixtures ------------------------------------------------------------------------------------------
 
     private void subject() {
@@ -315,6 +381,24 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
                    "blocks":[{"id":"set","name":"Set","questionType":"QUESTION_SET","questionCount":2,"setCount":1,"setSize":2,"childAnswerType":"SINGLE_CHOICE"}]}],
                   "options":[]}]
                 """.formatted(displaySegments, subjectCode, subjectCode);
+    }
+
+    private static final String SINGLE_BLOCK = "{\"id\":\"single\",\"name\":\"Single\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1}";
+    private static final String SET_BLOCK = "{\"id\":\"set\",\"name\":\"Set\",\"questionType\":\"QUESTION_SET\",\"questionCount\":2,\"setCount\":1,\"setSize\":2,\"childAnswerType\":\"SINGLE_CHOICE\"}";
+
+    private String optionSection(String id, int count, String block) {
+        return "{\"id\":\"" + id + "\",\"subjectCode\":\"" + subjectCode + "\",\"questionCount\":" + count
+                + ",\"blocks\":[" + block + "]}";
+    }
+
+    /** A CHOICE part with one SUBJECT option "opt" holding the given sections; its sections hold every number. */
+    private String optionPart(String displaySegments, String sections) {
+        int count = sections.contains("\"id\":\"second\"") ? 3 : sections.contains("\"id\":\"common\"") ? 3 : 1;
+        return """
+                [{"id":"part","order":1,"name":"Part","questionCount":%d,"maxPoints":%d,"displaySegments":%s,
+                  "participation":{"mode":"CHOICE","choose":1},
+                  "options":[{"id":"opt","kind":"SUBJECT","code":"%s","name":"Option","sections":[%s]}]}]
+                """.formatted(count, count, displaySegments, subjectCode, sections);
     }
 
     private UUID exam(String parts) {

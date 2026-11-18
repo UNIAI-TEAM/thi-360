@@ -254,10 +254,7 @@ public class ExamPreviewService {
      */
     private static ExamStructureDocument segmentsOfWholePartOnly(ExamStructureDocument source,
             ExamStructureDocument projected, String sectionId) {
-        for (ExamPart part : source.parts()) {
-            if (part.sections().stream().noneMatch(section -> sectionId.equals(section.id()))) continue;
-            if (part.sections().size() == 1 && part.options().isEmpty() && part.subjectPool().isEmpty()) return projected;
-        }
+        if (PreviewSectionTarget.coversWholePart(source, sectionId)) return projected;
         List<ExamPart> parts = new ArrayList<>();
         for (ExamPart part : projected.parts()) {
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
