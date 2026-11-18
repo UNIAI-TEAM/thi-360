@@ -243,6 +243,32 @@ describe("Kiểm tra: trạng thái từng môn và bảng theo mã, theo phần
     ]);
   });
 
+  it("buildUnitRows: nhãn dòng mã là mã tổ hợp (QD01..QD04) dù cấu trúc đặt examCode là mã loại bài (QDA); số lỗi vẫn theo affectedCodes", () => {
+    const section = (id: string, subjectCode: string) => ({ id, subjectCode, blocks: [] });
+    const parts = [
+      { id: "p3", order: 3, name: "Part 3", sections: [], options: [], subjectPool: [section("s-phy", "PHY")] },
+    ] as unknown as ExamDetail["parts"];
+    const combinations = ["QD01", "QD02", "QD03", "QD04"].map((code) => ({
+      code,
+      examCode: "QDA",
+      partId: "p3",
+      subjectCodes: ["PHY"],
+      missingSubjects: [],
+      nameVi: null,
+      nameEn: null,
+    }));
+    const issues = [{ key: "a", severity: "ERROR", affectedCodes: ["QD01", "QD03"], partId: "p3" }] as unknown as CheckIssue[];
+
+    const rows = buildUnitRows({ parts }, combinations, [], issues);
+
+    expect(rows.filter((row) => row.kind === "code").map((row) => [row.name, row.errors])).toEqual([
+      ["QD01", 1],
+      ["QD02", 0],
+      ["QD03", 1],
+      ["QD04", 0],
+    ]);
+  });
+
   it("buildUnitRows: lỗi chỉ có blockId (bộ giải) hoặc sectionId vẫn tính vào dòng phần chứa khối, môn đó", () => {
     const block = (id: string) => ({ id, name: id });
     const parts = [

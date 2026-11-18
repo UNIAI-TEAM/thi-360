@@ -258,7 +258,7 @@ export function buildUnitRows(
       rows.push({
         key: `${part.id}:${combination.code}`,
         kind: "code",
-        name: combination.examCode ?? combination.code,
+        name: combination.code,
         partId: part.id,
         subjectCodes: combination.subjectCodes,
         state: worstSectionState(states.filter((item) => item.subjectCode && combination.subjectCodes.includes(item.subjectCode))),
