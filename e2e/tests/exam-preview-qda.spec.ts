@@ -38,7 +38,7 @@ test("Sinh thử QĐ02 của bài QDA Khoa học: Hóa học câu 1–25, Sinh h
   // Bài có phần chọn mã: "Cả bài" khóa, sinh theo một mã.
   await expect(preview.getByText("Bài có phần chọn mã: hãy chọn một mã.")).toBeVisible();
   await preview.getByRole("combobox", { name: "Đường lựa chọn" }).click();
-  await page.getByRole("option", { name: /QD02/ }).click();
+  await page.getByRole("option", { name: /Q[DĐ]02/ }).click();
   await preview.getByRole("button", { name: "Sinh đề xem trước" }).click();
 
   // Hóa học là 25 câu đầu, Sinh học 25 câu sau. Tiêu đề là từng khối ("Khối Hóa học · … · câu 1–21 · 21 câu", …): đọc dải
@@ -65,5 +65,5 @@ test("Sinh thử QĐ02 của bài QDA Khoa học: Hóa học câu 1–25, Sinh h
     ranges.slice(1).forEach(([start], index) => expect(start, `${subject}: hở hoặc chồng giữa các khối`).toBe(ranges[index]![1] + 1));
     expect(ranges.at(-1)?.[1], `${subject}: dải câu phải kết thúc ở ${to}`).toBe(to);
   }
-  await expect(preview.getByText(/Đề thử · QD02/)).toBeVisible();
+  await expect(preview.getByText(/Đề thử · Q[DĐ]02/)).toBeVisible();
 });
