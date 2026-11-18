@@ -5756,7 +5756,9 @@
       "setCount": "Number of sets",
       "setSize": "Child questions per set",
       "removeSets": "Do not take sets",
-      "declareSets": "Take question sets"
+      "declareSets": "Take question sets",
+      "pointsEach": "{points, number} points per question (scale {scale, number} divided by {count, number} questions).",
+      "pointsEachFixed": "{points, number} points per question."
     },
     "topicQuota": {
       "title": "Topic targets",

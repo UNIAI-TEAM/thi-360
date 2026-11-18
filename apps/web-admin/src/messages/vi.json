@@ -5756,7 +5756,9 @@
       "setCount": "Số chùm",
       "setSize": "Số câu con mỗi chùm",
       "removeSets": "Không lấy câu chùm",
-      "declareSets": "Lấy câu chùm"
+      "declareSets": "Lấy câu chùm",
+      "pointsEach": "Mỗi câu {points, number} điểm (thang {scale, number} chia {count, number} câu).",
+      "pointsEachFixed": "Mỗi câu {points, number} điểm."
     },
     "topicQuota": {
       "title": "Chỉ tiêu chủ đề",

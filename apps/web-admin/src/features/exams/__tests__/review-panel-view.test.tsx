@@ -36,6 +36,7 @@ const reviewTemplate = {
 
 interface SentBlock {
   questionType: string | null;
+  requiredPointsPerQuestion?: number | null;
   questionCount: number | null;
   setCount?: number | null;
   setSize?: number | null;
@@ -65,14 +66,14 @@ const percentMatrix = {
 };
 
 /** Bài ôn: một phần 10 câu, một môn, một nhóm; `block` ghi đè trường của nhóm. */
-function boot(block: Record<string, unknown> = {}, templatesStatus = 200, section: Record<string, unknown> = {}) {
+function boot(block: Record<string, unknown> = {}, templatesStatus = 200, section: Record<string, unknown> = {}, exam: Parameters<typeof examDetailWire>[0] = {}) {
   const base = FIXED_PART.sections![0] as object;
   const part = {
     ...FIXED_PART,
     sections: [{ ...base, blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 10, requiredPointsPerQuestion: 1, ...block }], ...section }],
   };
   return new FakeServer()
-    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_REVIEW" }) })
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_REVIEW", ...exam }) })
     .on("GET", "/api/v1/admin/exam-templates", templatesStatus === 200 ? { status: 200, body: [reviewTemplate] } : { status: templatesStatus, body: { code: "BOOM" } })
     .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [part] } })
     .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
@@ -286,5 +287,73 @@ describe("Bài ôn: tải mẫu và phạm vi (R2-03, R2-05, R2-02)", () => {
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     expect(sentOf(server).parts[0]!.sections[0]!.knowledgeScope?.nodeIds.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Bài ôn: điểm mỗi câu theo thang của bài (F2, QA)", () => {
+  // Dạng thật sau POST /exams: nhóm duy nhất chưa có dạng câu, chưa có điểm; thang là mặc định của kỳ thi hoặc người dùng nhập.
+  const fresh = { name: undefined, questionType: null, questionCount: null, requiredPointsPerQuestion: undefined };
+
+  async function chooseTypeAndSave(server: FakeServer, user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
+    await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    return sentOf(server).parts[0]!.sections[0]!.blocks[0]!;
+  }
+
+  it("thang mặc định 150, 10 câu: lưu gửi 15 điểm mỗi câu (không còn 10/150)", async () => {
+    const server = boot(fresh, 200, {}, { maxScore: 150 });
+    open();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
+    await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
+    expect(await screen.findByText(/Mỗi câu 15 điểm \(thang 150 chia 10 câu\)/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    expect(sentOf(server).parts[0]!.sections[0]!.blocks[0]!.requiredPointsPerQuestion).toBe(15);
+  });
+
+  it("người dùng nhập thang 100 ở bước 1 (HSA 10 câu): điểm mỗi câu là 10; đổi số lượng sang 8 thì 12,5", async () => {
+    const server = boot(fresh, 200, {}, { maxScore: 100 });
+    const user = userEvent.setup();
+    open();
+    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
+    await user.clear(count);
+    await user.type(count, "8");
+    const block = await chooseTypeAndSave(server, user);
+    expect(block).toMatchObject({ questionCount: 8, requiredPointsPerQuestion: 12.5 });
+  });
+
+  it("thang chia không hết (150 ÷ 7): gửi đúng số thực, không làm tròn, để tổng khớp trong dung sai", async () => {
+    const server = boot(fresh, 200, {}, { maxScore: 150 });
+    const user = userEvent.setup();
+    open();
+    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
+    await user.clear(count);
+    await user.type(count, "7");
+    const block = await chooseTypeAndSave(server, user);
+    expect(block.requiredPointsPerQuestion).toBe(150 / 7);
+    expect(Math.abs(block.requiredPointsPerQuestion! * 7 - 150)).toBeLessThan(1e-6);
+  });
+
+  it("V-ACT chưa nhập thang: 10 điểm mỗi câu; V-ACT nhập thang 300 (LINEAR) với 10 câu: 30", async () => {
+    const noScale = boot(fresh, 200, {}, { kind: "VACT", timing: "SHARED", maxScore: undefined, referenceMax: undefined, practiceScoring: "LINEAR" });
+    const user = userEvent.setup();
+    const first = open();
+    expect((await chooseTypeAndSave(noScale, user)).requiredPointsPerQuestion).toBe(10);
+    first.unmount();
+
+    const scaled = boot(fresh, 200, {}, { kind: "VACT", timing: "SHARED", maxScore: 300, referenceMax: 300, practiceScoring: "LINEAR" });
+    open();
+    expect((await chooseTypeAndSave(scaled, user)).requiredPointsPerQuestion).toBe(30);
+  });
+
+  it("bài ôn chưa đụng tới (chưa chọn dạng câu) không tự thành thay đổi chưa lưu", async () => {
+    boot(fresh, 200, {}, { maxScore: 150 });
+    open();
+    await screen.findByRole("combobox", { name: "Dạng câu" });
+    expect(screen.queryByText(/Mỗi câu/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled();
   });
 });

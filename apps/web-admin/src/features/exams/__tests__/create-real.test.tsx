@@ -216,6 +216,34 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
     });
   }, 20_000);
 
+  it("bài ôn HSA: số câu, thời lượng và thang người dùng nhập đi cùng partId của mẫu HSA_REVIEW", async () => {
+    const HSA_MATH = template("HSA_MATH", { kindCode: "HSA", subjectCode: "MATH", structureYear: 2025, maxScore: 150 }, [part(1, "Toán", 50, 75, [section("MATH", 50)])]);
+    const HSA_REVIEW = template("HSA_REVIEW", { kindCode: "HSA", subjectCode: null, buildMode: "REVIEW", maxScore: null }, [
+      part(1, "Bài ôn", null as unknown as number, null, [section("MATH", 0)], { id: "HSA_REVIEW_PART" }),
+    ]);
+    const server = createServer([...ALL_TEMPLATES, HSA_MATH, HSA_REVIEW]).on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() }).install();
+    const user = await renderPage();
+    await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
+    await user.click(await screen.findByRole("radio", { name: /Tự thiết lập bài ôn/ }));
+    expect(screen.queryByText(/Không có mẫu/)).toBeNull();
+    await user.type(await screen.findByRole("textbox", { name: /^Số câu của/ }), "10");
+    await user.type(screen.getByRole("textbox", { name: /^Thời lượng của/ }), "20");
+    const scale = screen.getByRole("textbox", { name: /^Điểm tối đa/ });
+    await user.clear(scale);
+    await user.type(scale, "100");
+    await user.type(name(), "HSA ôn Toán");
+    await user.click(submit());
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
+    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({
+      kind: "HSA",
+      scope: "SUBJECT",
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      maxScore: 100,
+      overview: [{ partId: "HSA_REVIEW_PART", questionCount: 10, durationMinutes: 20 }],
+    });
+  }, 20_000);
+
   it("ô Môn chỉ chào môn có mẫu; Theo phần của SPT chỉ chào môn mà mẫu Theo môn STANDARD có phần (không tính bài ôn)", async () => {
     // Vật lí có mẫu Theo môn nhưng chưa có phần: chào ở Theo môn, không chào ở Theo phần. Mẫu bài ôn (không ghi môn) không tính.
     const SPT_PHYSICS = template("SPT_PHYSICS_V1", { kindCode: "SPT", subjectCode: "PHYSICS", structureYear: 2025, maxScore: 10 }, []);
