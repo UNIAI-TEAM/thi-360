@@ -175,10 +175,11 @@ final class SubproblemSolver {
         return null;
     }
 
-    /** Nhóm g có ít nhất một chỉ tiêu riêng (ô, năng lực, nhóm MAPID) ngoài TỔNG/phân hoạch môn. */
+    /** Nhóm g có ít nhất một chỉ tiêu riêng (ô, năng lực, nhóm MAPID, chủ đề) ngoài TỔNG/phân hoạch môn. */
     private boolean hasOwnDims(Prep.SubproblemContext ctx, int g) {
         GroupQuota q = ctx.groups().get(g).group();
         return q.matrix() != null || !q.competencies().isEmpty()
-                || !q.mapidGroups().isEmpty();
+                || !q.mapidGroups().isEmpty() || !q.topicQuotas().isEmpty()
+                || (q.slotParent() != null && !q.slotParent().topicQuotas().isEmpty());
     }
 }

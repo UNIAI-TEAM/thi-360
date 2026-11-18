@@ -82,8 +82,11 @@ class TopicQuotaTest {
                 null, null, null, List.of(), List.of(), null, null, null,
                 List.of(quota("a", "A"), quota("b", "B")));
         var section = SolverTestFixtures.section("MATH", 2, group);
-        assertThat(solve(section, List.of(candidate("both", "A", "B"), candidate("none"))).status())
-                .isEqualTo(SolveStatus.INVALID);
+        // BE4B-R1-02: chỉ tiêu chủ đề của nhóm là chỉ tiêu riêng → thất bại phía nhóm báo
+        // NO_JOINT_SOLUTION, không phải SUBJECT_QUOTA_INFEASIBLE
+        var infeasible = solve(section, List.of(candidate("both", "A", "B"), candidate("none")));
+        assertThat(infeasible.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(infeasible.reason()).isEqualTo(SolveReason.NO_JOINT_SOLUTION);
         assertThat(solve(section, List.of(candidate("both", "A", "B"), candidate("b", "B"))).status())
                 .isEqualTo(SolveStatus.VALID);
     }
