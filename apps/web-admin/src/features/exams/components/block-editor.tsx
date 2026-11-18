@@ -3,7 +3,7 @@
 import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select } from "@thi360/ui";
 import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
 import {
   QUESTION_TYPES,
   type CompetencyOption,
@@ -12,11 +12,12 @@ import {
   type ScoringDefaults,
 } from "@/features/content/types";
 import type { MatrixAxes } from "../matrix";
-import { blockPointsEach, emptyMatrix, isSetBlock, validateBlock } from "../matrix";
+import { roundForDisplay } from "../display-number";
+import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
 import { effectiveScope } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
-import { applyBlockPatch, resizeSets } from "./block-form";
+import { applyBlockPatch, droppedSlotIndexes, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
 import { blockFieldAnchor, type BlockField } from "./block-form-fields";
 import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
@@ -37,6 +38,8 @@ const PLAIN_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && t
 const SET_TYPES: readonly QuestionType[] = ["QUESTION_SET", "CLOZE"];
 /** SP2E và SPT gọi phạm vi theo chủ đề là "Theo mạch kiến thức". */
 const STRAND_KINDS: readonly string[] = ["SP2E", "SPT"];
+/** Mẫu cấu trúc bật sẵn ô "Mọi câu con thuộc chủ đề" (R-120): bài ôn V-ACT theo chủ đề. */
+const EVERY_CHILD_DEFAULT_TEMPLATES: readonly string[] = ["VACT_REVIEW"];
 
 export interface BlockEditorProps {
   block: QuestionBlock;
@@ -52,6 +55,8 @@ export interface BlockEditorProps {
   reference: ContentReference | undefined;
   /** Mã kỳ thi của bài; chỉ để chọn tên "Theo chủ đề" hay "Theo mạch kiến thức". */
   examKind?: string;
+  /** Mã mẫu cấu trúc của bài; bài từ `VACT_REVIEW` bật sẵn "Mọi câu con thuộc chủ đề" khi nhóm chùm có MAPID. */
+  templateCode?: string | null;
   /** Quy tắc chấm mặc định của kỳ thi, nạp khi nhóm đổi sang Đúng/Sai hoặc Nhiều đáp án. */
   scoringDefaults: ScoringDefaults | null;
   /** Năng lực của kỳ thi (V-ACT); rỗng: không có lọc và chiều năng lực. */
@@ -83,6 +88,7 @@ export function BlockEditor({
   labels,
   reference,
   examKind,
+  templateCode,
   scoringDefaults,
   competencies,
   onChange,
@@ -101,6 +107,8 @@ export function BlockEditor({
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
 
   const isSet = isSetBlock(block);
+  const flexible = isFlexibleSet(block);
+  const everyChildDefault = templateCode != null && EVERY_CHILD_DEFAULT_TEMPLATES.includes(templateCode);
   const remainder = block.questionCount === null;
   // Môn chỉ có một nhóm lấy phần còn lại (R1-5): nhóm khác đã giữ thì ô này khóa, trừ khi chính nhóm này đang giữ.
   const remainderTaken = !remainder && section.blocks.some((other) => other.id !== block.id && other.questionCount === null);
@@ -128,12 +136,30 @@ export function BlockEditor({
   const countError = issues.some((issue) => issue.code === "COUNT_NOT_POSITIVE") ? t("errors.countPositive") : undefined;
   const setIssue = issues.find((issue) => issue.code === "SET_SIZE_MISMATCH");
 
-  const update = (patch: Partial<QuestionBlock>) => onChange(applyBlockPatch(block, patch));
+  // Giá trị bật sẵn của bài ôn là dữ liệu, không chỉ hiển thị: mọi thay đổi của nhóm đi qua đây.
+  const update = (patch: Partial<QuestionBlock>) => {
+    const next = applyBlockPatch(block, patch);
+    onChange(everyChildDefault ? withEveryChildDefault(next) : next);
+  };
+  // Nhóm đã lưu từ trước chưa có cờ: ghi `true` một lần khi mở nhóm để lưu và đếm nguồn dùng giá trị đang hiện.
+  const normaliseOnOpen = useEffectEvent(() => {
+    const next = everyChildDefault ? withEveryChildDefault(block) : block;
+    if (next !== block) onChange(next);
+  });
+  useEffect(() => {
+    normaliseOnOpen();
+  }, [block.id]);
   const setType = (questionType: QuestionType | null) => {
     // Đổi dạng thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
     const expectedScoring = expectedScoringFor(questionType, scoringDefaults, blockPointsEach(block));
     if (questionType === "QUESTION_SET" || questionType === "CLOZE") {
-      const setSize = Math.max(isSet ? (block.setSize ?? 1) : questionCount, 1);
+      // Chùm cỡ linh hoạt chỉ có ở Bộ câu hỏi: đổi sang Điền khuyết thì thành một chùm cỡ bằng tổng câu con.
+      if (flexible && questionType === "QUESTION_SET") {
+        update({ questionType, childAnswerType: null, expectedScoring });
+        setDroppedSlots([]);
+        return;
+      }
+      const setSize = Math.max(isSet ? (block.setSize ?? questionCount) : questionCount, 1);
       const setCount = isSet ? Math.max(block.setCount ?? 1, 1) : 1;
       update({ questionType, setCount, setSize, questionCount: setCount * setSize, childAnswerType: null, expectedScoring });
     } else {
@@ -153,7 +179,18 @@ export function BlockEditor({
     update(patch);
     setDroppedSlots(dropped);
   };
-  const setScope = (knowledgeScope: KnowledgeScope | null) => update({ knowledgeScope });
+  const setSetMode = (mode: "total" | "sets") => {
+    if ((mode === "total") === flexible) return;
+    update(switchSetMode(block, mode));
+    // Sang "chỉ nhập tổng" bỏ điều kiện riêng từng chùm (máy chủ từ chối `slots` không có số chùm): báo như khi đổi số chùm.
+    setDroppedSlots(mode === "total" ? droppedSlotIndexes(block.slots, 0) : []);
+  };
+  // Cờ nằm trong `knowledgeScope` của nhóm: hết MAPID riêng (bỏ chip cuối, "Toàn môn", áp dụng 0 mục) thì `KnowledgeScopeField` bỏ cờ và nhóm kế thừa môn (`null`); `reconcileBlock` bỏ cờ khi thành câu đơn.
+  const setEveryChild = (checked: boolean) => {
+    const scope: KnowledgeScope = { ...(block.knowledgeScope ?? { nodeIds: [] }) };
+    delete scope.everyChildInScope;
+    update({ knowledgeScope: checked || everyChildDefault ? { ...scope, everyChildInScope: checked } : scope });
+  };
 
   // Năng lực chọn được: năng lực của môn của nhóm (V-ACT gắn năng lực theo môn); môn không có năng lực riêng thì mọi năng lực.
   const subjectCompetencies = competencies.filter((competency) => competency.subjectCode === subjectCode);
@@ -180,6 +217,18 @@ export function BlockEditor({
   const matrixCompetencies = (selectedCompetencies.length ? selectedCompetencies : competencyChoices.map((item) => item.code)).map(
     (code) => ({ code, name: competencyName(code) }),
   );
+
+  // Dòng tổng của nhóm (bản vẽ `NhomChumLinhHoat2B`): số câu, số ý (Đúng/Sai) và điểm tối đa = số câu × điểm mỗi câu.
+  const maxPoints = roundForDisplay(questionCount * blockPointsEach(block));
+  const statements = block.itemShape?.statements ?? 0;
+  const summaryText =
+    isSet && questionCount > 0
+      ? flexible
+        ? tForm("summary.flexible", { count: questionCount, points: maxPoints })
+        : tForm("summary.sets", { sets: block.setCount ?? 0, size: block.setSize ?? 0, count: questionCount, points: maxPoints })
+      : block.questionType === "TRUE_FALSE" && questionCount > 0 && statements > 0
+        ? tForm("summary.trueFalse", { count: questionCount, statements: questionCount * statements, points: maxPoints })
+        : null;
 
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
   const range = block.positionRange;
@@ -285,26 +334,53 @@ export function BlockEditor({
         )}
         {isSet ? (
           <>
-            <FormField label={t("setCount")} required>
-              {(controlProps) => (
-                <BlockNumberInput
-                  {...controlProps}
-                  data-field={anchor("setCount")}
-                  value={block.setCount ?? 0}
-                  onValueChange={(value) => setSets(value, block.setSize ?? 0)}
-                />
-              )}
-            </FormField>
-            <FormField label={t("setSize")} required hint={t("setHint", { count: questionCount })}>
-              {(controlProps) => (
-                <BlockNumberInput
-                  {...controlProps}
-                  data-field={anchor("setSize")}
-                  value={block.setSize ?? 0}
-                  onValueChange={(value) => setSets(block.setCount ?? 0, value)}
-                />
-              )}
-            </FormField>
+            {block.questionType === "QUESTION_SET" && (
+              <BlockRadioGroup
+                legend={tForm("setMode.legend")}
+                value={flexible ? "total" : "sets"}
+                anchor={anchor("setMode")}
+                options={[
+                  { value: "total", label: tForm("setMode.total"), hint: tForm("setMode.totalHint") },
+                  { value: "sets", label: tForm("setMode.sets"), hint: tForm("setMode.setsHint") },
+                ]}
+                onChange={setSetMode}
+              />
+            )}
+            {flexible ? (
+              <FormField label={tForm("setMode.totalField")} required hint={tForm("setMode.totalFieldHint")}>
+                {(controlProps) => (
+                  <BlockNumberInput
+                    {...controlProps}
+                    data-field={anchor("questionCount")}
+                    value={questionCount}
+                    onValueChange={(value) => update({ questionCount: value })}
+                  />
+                )}
+              </FormField>
+            ) : (
+              <>
+                <FormField label={t("setCount")} required>
+                  {(controlProps) => (
+                    <BlockNumberInput
+                      {...controlProps}
+                      data-field={anchor("setCount")}
+                      value={block.setCount ?? 0}
+                      onValueChange={(value) => setSets(value, block.setSize ?? 0)}
+                    />
+                  )}
+                </FormField>
+                <FormField label={t("setSize")} required hint={t("setHint", { count: questionCount })}>
+                  {(controlProps) => (
+                    <BlockNumberInput
+                      {...controlProps}
+                      data-field={anchor("setSize")}
+                      value={block.setSize ?? 0}
+                      onValueChange={(value) => setSets(block.setCount ?? 0, value)}
+                    />
+                  )}
+                </FormField>
+              </>
+            )}
             {block.questionType === "QUESTION_SET" && (
               <FormField label={t("childAnswerType")} hint={t("childAnswerTypeHint")}>
                 {(controlProps) => (
@@ -358,10 +434,13 @@ export function BlockEditor({
       {setIssue && setIssue.code === "SET_SIZE_MISMATCH" && (
         <p className="text-caption text-danger">{t("errors.setMismatch", { expected: setIssue.expected })}</p>
       )}
-      {isSet && <p className="text-caption text-text-muted">{t("setWholeNote")}</p>}
+      {isSet && <p className="text-caption text-text-muted">{flexible ? tForm("setMode.note") : t("setWholeNote")}</p>}
+      {summaryText && <p className="text-label font-semibold text-text tabular-nums">{summaryText}</p>}
       {droppedSlots.length > 0 && (
         <p role="status" className="rounded-md border border-info/30 bg-info-bg px-3 py-2 text-body text-info">
-          {tForm("slots.dropped", { sets: block.setCount ?? 0, list: droppedSlots.join(", ") })}
+          {flexible
+            ? tForm("slots.droppedToTotal", { list: droppedSlots.join(", ") })
+            : tForm("slots.dropped", { sets: block.setCount ?? 0, list: droppedSlots.join(", ") })}
         </p>
       )}
 
@@ -369,7 +448,7 @@ export function BlockEditor({
 
       <KnowledgeScopeField
         value={block.knowledgeScope}
-        onChange={setScope}
+        onChange={(knowledgeScope) => update({ knowledgeScope })}
         inherited={{ scope: section.knowledgeScope }}
         reference={reference}
         subjectCode={subjectCode}
@@ -377,6 +456,15 @@ export function BlockEditor({
         anchor={anchor("scope")}
         strand={examKind !== undefined && STRAND_KINDS.includes(examKind)}
         openRequest={mapidRequest}
+        everyChild={
+          isSet
+            ? {
+                checked: block.knowledgeScope?.everyChildInScope ?? false,
+                onChange: setEveryChild,
+                anchor: anchor("everyChildInScope"),
+              }
+            : undefined
+        }
       />
 
       <BlockConditions block={block} reference={reference} onChange={update} onAddMapid={() => setMapidRequest((count) => count + 1)} />

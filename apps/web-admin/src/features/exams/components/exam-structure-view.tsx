@@ -556,6 +556,7 @@ function StructureEditor({
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
               reference={reference}
               examKind={exam.kind}
+              templateCode={exam.templateCode}
               scoringDefaults={kind?.scoringDefaults ?? null}
               competencies={kindCompetencies}
               onChange={(block) => setDraft((parts) => updateBlock(parts, block.id, () => block))}
