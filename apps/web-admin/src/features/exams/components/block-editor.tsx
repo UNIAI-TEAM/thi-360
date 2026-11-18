@@ -16,18 +16,27 @@ import { blockPointsEach, emptyMatrix, isSetBlock, validateBlock } from "../matr
 import { useAvailableQuestions } from "../queries";
 import { effectiveScope } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
+import { applyBlockPatch, resizeSets } from "./block-form";
+import { blockFieldAnchor, type BlockField } from "./block-form-fields";
+import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
+import { BlockRadioGroup } from "./block-radio-group";
 import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
-import { OptionalNumberInput } from "./create-exam-fields";
+import { BlockSetConditions } from "./block-set-conditions";
+import { BlockSwitches } from "./block-switches";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
 
 /** Giá trị của ô chọn dạng trả lời cho nhóm lấy theo chỉ tiêu dạng trả lời của môn (`questionType = null`). */
 const OPEN_TYPE = "__OPEN__";
-/** Ô chọn "không lọc" của dạng bài và dạng câu con. */
+/** Ô chọn "không lọc" của dạng câu con. */
 const ANY = "__ANY__";
-/** D19: câu con của Bộ câu hỏi không phải Bộ câu hỏi hay Điền khuyết. */
-const CHILD_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE");
+/** Loại câu không phải nhóm chùm: dạng của câu con (D19) và dạng của nhóm câu đơn. */
+const PLAIN_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE");
+/** Loại câu của nhóm chùm. */
+const SET_TYPES: readonly QuestionType[] = ["QUESTION_SET", "CLOZE"];
+/** SP2E và SPT gọi phạm vi theo chủ đề là "Theo mạch kiến thức". */
+const STRAND_KINDS: readonly string[] = ["SP2E", "SPT"];
 
 export interface BlockEditorProps {
   block: QuestionBlock;
@@ -41,6 +50,8 @@ export interface BlockEditorProps {
   axes: MatrixAxes;
   labels: MatrixLabels;
   reference: ContentReference | undefined;
+  /** Mã kỳ thi của bài; chỉ để chọn tên "Theo chủ đề" hay "Theo mạch kiến thức". */
+  examKind?: string;
   /** Quy tắc chấm mặc định của kỳ thi, nạp khi nhóm đổi sang Đúng/Sai hoặc Nhiều đáp án. */
   scoringDefaults: ScoringDefaults | null;
   /** Năng lực của kỳ thi (V-ACT); rỗng: không có lọc và chiều năng lực. */
@@ -55,10 +66,11 @@ export interface BlockEditorProps {
 }
 
 /**
- * Một nhóm lấy câu của môn (bản vẽ `BaiThiCauTruc`, UniNote PBI-04 mục 6.1, spec B9): nhóm câu đơn khai số câu và phạm vi
- * nguồn; nhóm câu chùm khai số chùm, số câu con mỗi chùm, phạm vi ngữ liệu hoặc dạng bài và luôn lấy nguyên chùm. Dạng
- * trả lời mẫu đã điền sẵn thì chỉ đọc. Phạm vi MAPID để trống là dùng phạm vi của môn. Ma trận lớp, độ khó của riêng
- * nhóm là mục mở thêm, mặc định đóng; câu của nhóm vẫn tính vào chỉ tiêu của môn.
+ * Một nhóm lấy câu của môn (2B 3.3, 15.3; bản vẽ `NhomChum2B`, `NhomCauDon2B`): chọn cách lấy (câu đơn hoặc câu chùm),
+ * loại câu hỏi (không còn dạng bài, K11), số lượng, phạm vi kiến thức "Toàn môn" hoặc "Theo chủ đề", rồi các điều kiện
+ * thêm bằng menu "Thêm điều kiện" (nhãn, hình dạng câu, định dạng đáp án, điểm mỗi câu). Nhóm chùm có thêm điều kiện
+ * riêng từng chùm và điều kiện theo vị trí câu con. Mỗi trường có mỏ neo `data-field` (xem `block-form-fields.ts`).
+ * Ma trận lớp, độ khó của riêng nhóm là mục mở thêm, mặc định đóng; câu của nhóm vẫn tính vào chỉ tiêu của môn.
  */
 export function BlockEditor({
   block,
@@ -70,6 +82,7 @@ export function BlockEditor({
   axes,
   labels,
   reference,
+  examKind,
   scoringDefaults,
   competencies,
   onChange,
@@ -79,9 +92,13 @@ export function BlockEditor({
   headerAction,
 }: BlockEditorProps) {
   const t = useTranslations("exams.structure.block");
+  const tForm = useTranslations("exams.structure.blockForm");
   const tContent = useTranslations("content");
   const titleId = useId();
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [mapidRequest, setMapidRequest] = useState(0);
+  const [droppedSlots, setDroppedSlots] = useState<number[]>([]);
+  const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
 
   const isSet = isSetBlock(block);
   const remainder = block.questionCount === null;
@@ -101,6 +118,9 @@ export function BlockEditor({
     knowledgeScope: effectiveScope(block, section),
     tagCodes: block.tagCodes,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
+    itemShape: block.itemShape,
+    answerFormats: block.answerFormats,
+    childConditions: block.childConditions,
   });
   const availableState = availableQuery.isError ? "error" : availableQuery.data ? "ready" : "loading";
 
@@ -108,13 +128,14 @@ export function BlockEditor({
   const countError = issues.some((issue) => issue.code === "COUNT_NOT_POSITIVE") ? t("errors.countPositive") : undefined;
   const setIssue = issues.find((issue) => issue.code === "SET_SIZE_MISMATCH");
 
-  const update = (patch: Partial<QuestionBlock>) => onChange({ ...block, ...patch });
+  const update = (patch: Partial<QuestionBlock>) => onChange(applyBlockPatch(block, patch));
   const setType = (questionType: QuestionType | null) => {
     // Đổi dạng thì quy tắc chấm mong đợi theo dạng mới (mặc định của kỳ thi).
     const expectedScoring = expectedScoringFor(questionType, scoringDefaults, blockPointsEach(block));
     if (questionType === "QUESTION_SET" || questionType === "CLOZE") {
-      const setSize = Math.max(questionCount, 1);
-      update({ questionType, setCount: 1, setSize, questionCount: setSize, childAnswerType: null, expectedScoring });
+      const setSize = Math.max(isSet ? (block.setSize ?? 1) : questionCount, 1);
+      const setCount = isSet ? Math.max(block.setCount ?? 1, 1) : 1;
+      update({ questionType, setCount, setSize, questionCount: setCount * setSize, childAnswerType: null, expectedScoring });
     } else {
       update({
         questionType,
@@ -125,8 +146,13 @@ export function BlockEditor({
         expectedScoring,
       });
     }
+    setDroppedSlots([]);
   };
-  const setSets = (setCount: number, setSize: number) => update({ setCount, setSize, questionCount: setCount * setSize });
+  const setSets = (setCount: number, setSize: number) => {
+    const { patch, dropped } = resizeSets(block, setCount, setSize);
+    update(patch);
+    setDroppedSlots(dropped);
+  };
   const setScope = (knowledgeScope: KnowledgeScope | null) => update({ knowledgeScope });
 
   // Năng lực chọn được: năng lực của môn của nhóm (V-ACT gắn năng lực theo môn); môn không có năng lực riêng thì mọi năng lực.
@@ -156,6 +182,7 @@ export function BlockEditor({
   );
 
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
+  const range = block.positionRange;
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -163,7 +190,9 @@ export function BlockEditor({
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 id={titleId} className="flex flex-wrap items-center gap-2 text-h3 font-bold wrap-break-word text-text">
             {t("title", { name: block.name || t("untitled") })}
+            {range && <Badge className="font-medium">{tForm("positionRange", { from: range.from, to: range.to, same: range.from === range.to ? "yes" : "no" })}</Badge>}
             {block.questionType === "ESSAY" && <Badge className="font-medium">{t("manualGrading")}</Badge>}
+            {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
           </h2>
           <p className="text-caption text-text-muted">{locationText}</p>
           {block.templateGroupCode && <p className="text-caption text-text-muted">{t("fromTemplate", { code: block.templateGroupCode })}</p>}
@@ -201,6 +230,7 @@ export function BlockEditor({
           {(controlProps) => (
             <Input
               {...controlProps}
+              data-field={anchor("name")}
               value={block.name}
               autoComplete="off"
               maxLength={200}
@@ -208,12 +238,27 @@ export function BlockEditor({
             />
           )}
         </FormField>
+        <BlockRadioGroup
+          legend={tForm("mode.legend")}
+          value={isSet ? "set" : "single"}
+          disabled={block.answerTypeLocked}
+          anchor={anchor("mode")}
+          options={[
+            { value: "single", label: tForm("mode.single") },
+            { value: "set", label: tForm("mode.set") },
+          ]}
+          onChange={(mode) => {
+            if (mode === "set" && !isSet) setType("QUESTION_SET");
+            if (mode === "single" && isSet) setType("SINGLE_CHOICE");
+          }}
+        />
         {block.answerTypeLocked ? (
           <FormField label={t("questionType")} hint={t("typeLocked")}>
             {(controlProps) => (
               <div className="relative">
                 <Input
                   {...controlProps}
+                  data-field={anchor("questionType")}
                   readOnly
                   value={block.questionType ? typeLabel(block.questionType) : t("typeOpen")}
                   className="pr-9"
@@ -227,11 +272,12 @@ export function BlockEditor({
             {(controlProps) => (
               <Select
                 {...controlProps}
+                data-field={anchor("questionType")}
                 value={block.questionType ?? OPEN_TYPE}
                 onValueChange={(value) => setType(value === OPEN_TYPE ? null : (value as QuestionType))}
                 options={[
                   ...(isSet ? [] : [{ value: OPEN_TYPE, label: t("typeOpen") }]),
-                  ...QUESTION_TYPES.map((type) => ({ value: type, label: typeLabel(type) })),
+                  ...(isSet ? SET_TYPES : PLAIN_TYPES).map((type) => ({ value: type, label: typeLabel(type) })),
                 ]}
               />
             )}
@@ -243,6 +289,7 @@ export function BlockEditor({
               {(controlProps) => (
                 <BlockNumberInput
                   {...controlProps}
+                  data-field={anchor("setCount")}
                   value={block.setCount ?? 0}
                   onValueChange={(value) => setSets(value, block.setSize ?? 0)}
                 />
@@ -252,6 +299,7 @@ export function BlockEditor({
               {(controlProps) => (
                 <BlockNumberInput
                   {...controlProps}
+                  data-field={anchor("setSize")}
                   value={block.setSize ?? 0}
                   onValueChange={(value) => setSets(block.setCount ?? 0, value)}
                 />
@@ -262,11 +310,12 @@ export function BlockEditor({
                 {(controlProps) => (
                   <Select
                     {...controlProps}
+                    data-field={anchor("childAnswerType")}
                     value={block.childAnswerType ?? ANY}
                     onValueChange={(value) => update({ childAnswerType: value === ANY ? null : (value as QuestionType) })}
                     options={[
                       { value: ANY, label: t("childAnswerTypeAny") },
-                      ...CHILD_TYPES.map((type) => ({ value: type, label: typeLabel(type) })),
+                      ...PLAIN_TYPES.map((type) => ({ value: type, label: typeLabel(type) })),
                     ]}
                   />
                 )}
@@ -284,6 +333,7 @@ export function BlockEditor({
               <div className="flex flex-col gap-2">
                 <BlockNumberInput
                   {...controlProps}
+                  data-field={anchor("questionCount")}
                   value={questionCount}
                   disabled={remainder}
                   onValueChange={(value) => update({ questionCount: value })}
@@ -303,31 +353,19 @@ export function BlockEditor({
             )}
           </FormField>
         )}
-        <FormField
-          label={t("points")}
-          hint={
-            block.requiredPointsPerQuestion === null
-              ? t("pointsOpenHint")
-              : t("pointsTotal", {
-                  points: block.requiredPointsPerQuestion,
-                  total: Math.round(questionCount * block.requiredPointsPerQuestion * 10_000) / 10_000,
-                })
-          }
-        >
-          {(controlProps) => (
-            <OptionalNumberInput
-              {...controlProps}
-              value={block.requiredPointsPerQuestion}
-              onValueChange={(requiredPointsPerQuestion) => update({ requiredPointsPerQuestion })}
-            />
-          )}
-        </FormField>
       </div>
       {isSet && countError && <p className="text-caption text-danger">{countError}</p>}
       {setIssue && setIssue.code === "SET_SIZE_MISMATCH" && (
         <p className="text-caption text-danger">{t("errors.setMismatch", { expected: setIssue.expected })}</p>
       )}
       {isSet && <p className="text-caption text-text-muted">{t("setWholeNote")}</p>}
+      {droppedSlots.length > 0 && (
+        <p role="status" className="rounded-md border border-info/30 bg-info-bg px-3 py-2 text-body text-info">
+          {tForm("slots.dropped", { sets: block.setCount ?? 0, list: droppedSlots.join(", ") })}
+        </p>
+      )}
+
+      <BlockSwitches block={block} onChange={update} />
 
       <KnowledgeScopeField
         value={block.knowledgeScope}
@@ -336,7 +374,14 @@ export function BlockEditor({
         reference={reference}
         subjectCode={subjectCode}
         name={block.name}
+        anchor={anchor("scope")}
+        strand={examKind !== undefined && STRAND_KINDS.includes(examKind)}
+        openRequest={mapidRequest}
       />
+
+      <BlockConditions block={block} reference={reference} onChange={update} onAddMapid={() => setMapidRequest((count) => count + 1)} />
+
+      {isSet && <BlockSetConditions block={block} reference={reference} subjectCode={subjectCode} onChange={update} />}
 
       {competencies.length > 0 && (
         <fieldset className="flex flex-col gap-2">
