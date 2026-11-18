@@ -54,7 +54,7 @@ class ExamCheckUnitEngineTests {
         var clock = Clock.systemUTC();
         var engine = spy(new ExamCheckUnitEngine(store,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock));
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, engine);
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, engine, org.mockito.Mockito.mock(ExamTemplateService.class));
         var exam = new Exam(UUID.randomUUID(), "UNIT", "Unit", null, "FULL", "SHARED", null,
                 null, "RAW", clock.instant(), UUID.randomUUID());
         exam.applyStructureSummary(2, false, false, 0);
@@ -152,7 +152,7 @@ class ExamCheckUnitEngineTests {
         var fingerprints = new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper));
         var builder = new SolverInputBuilder(catalog, source, limits);
         var engine = new ExamCheckUnitEngine(store, fingerprints, catalog, mapper, limits, clock);
-        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine);
+        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine, org.mockito.Mockito.mock(ExamTemplateService.class));
         var exam = new Exam(UUID.randomUUID(), "CODES", "Codes", null, "FULL", "SHARED", null,
                 null, "RAW", clock.instant(), UUID.randomUUID());
         exam.applyStructureSummary(1, false, false, 0);
@@ -194,7 +194,7 @@ class ExamCheckUnitEngineTests {
         var builder = new SolverInputBuilder(catalog, source, limits);
         var fingerprints = new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper));
         var engine = new ExamCheckUnitEngine(store, fingerprints, catalog, mapper, limits, clock);
-        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine);
+        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine, org.mockito.Mockito.mock(ExamTemplateService.class));
         var exam = new Exam(UUID.randomUUID(), "EMPTY", "Empty", null, "FULL", "SHARED", null,
                 null, "RAW", clock.instant(), UUID.randomUUID());
         var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
@@ -230,7 +230,7 @@ class ExamCheckUnitEngineTests {
         var fingerprints = new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper));
         var builder = new SolverInputBuilder(catalog, source, limits);
         var engine = new ExamCheckUnitEngine(store, fingerprints, catalog, mapper, limits, clock);
-        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine);
+        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine, org.mockito.Mockito.mock(ExamTemplateService.class));
         var exam = new Exam(UUID.randomUUID(), "UNIT", "Unit", null, "FULL", "SHARED", null,
                 null, "RAW", clock.instant(), UUID.randomUUID());
         exam.applyStructureSummary(1, false, false, 0);

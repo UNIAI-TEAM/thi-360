@@ -313,14 +313,16 @@ class TestExamSeedIT extends AbstractIntegrationTest {
 
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
+        // D11: THPTQG Ngữ văn is not publishable. Idempotent once the seeded template itself carries the flag.
+        jdbc.update("UPDATE exam.exam_template SET publishable = false WHERE code = 'THPTQG_LITERATURE_2025'");
         SoftAssertions softly = new SoftAssertions();
         List<String> valid = List.of("TEST-HSA-01", "TEST-HSA-02", "TEST-HSA-03", "TEST-HSA-04",
                 "TEST-QDA-01", "TEST-VACT-01", "TEST-SPT-01", "TEST-SP2E-01", "TEST-SP2E-02",
-                "TEST-SP2E-03", "TEST-THPTQG-01", "TEST-THPTQG-02", "TEST-THPTQG-03", "TEST-ERR-08");
+                "TEST-SP2E-03", "TEST-THPTQG-01", "TEST-THPTQG-03", "TEST-ERR-08");
         for (String code : valid) {
             JsonNode result = check(code);
             softly.assertThat(result.path("status").asText()).as("%s: %s", code, codes(result)).isEqualTo("VALID");
-            Set<String> expected = Set.of("TEST-SPT-01", "TEST-THPTQG-02").contains(code)
+            Set<String> expected = Set.of("TEST-SPT-01").contains(code)
                     ? Set.of("MANUAL_GRADING_REQUIRED") : Set.of();
             softly.assertThat(codes(result)).as(code).isEqualTo(expected);
         }
@@ -330,6 +332,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         softly.assertThat(codes(bca)).as("TEST-BCA-01").isEqualTo(Set.of("MANUAL_GRADING_REQUIRED"));
 
         Map<String, Set<String>> invalid = new LinkedHashMap<>();
+        invalid.put("TEST-THPTQG-02", Set.of("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED"));
         invalid.put("TEST-ERR-01", Set.of("MATRIX_INCOMPLETE"));
         invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "MANUAL_GRADING_REQUIRED"));
         invalid.put("TEST-ERR-03", Set.of("SET_SHORTAGE"));

@@ -35,11 +35,21 @@ import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /** Structural and exact-quota checks; source feasibility remains the solver's responsibility. */
 public final class ExamCheckRules {
+    /**
+     * Facts about the standard template that the exam itself does not carry. {@code unpublishableSubject} is the
+     * subject whose standard template has {@code publishable = false}; {@code lockedTemplate} is the loaded
+     * template's structure when it has {@code fixed_counts = true}. Either is null when it does not apply.
+     */
+    public record TemplateFacts(String unpublishableSubject, ExamStructureDocument lockedTemplate) {
+        public static final TemplateFacts NONE = new TemplateFacts(null, null);
+    }
+
     private final Exam exam;
     private final ExamStructureDocument document;
     private final ExamCheckIssues issues;
     private final Map<String, Map<String, List<String>>> combinationsByPart;
     private final Map<UUID, UUID> topicParents;
+    private final TemplateFacts template;
     private final Map<String, SectionContext> sections = new LinkedHashMap<>();
     private final Map<String, ExamPartOption> options = new LinkedHashMap<>();
     private final Map<String, ExamPart> parts = new LinkedHashMap<>();
@@ -58,6 +68,13 @@ public final class ExamCheckRules {
     public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
                           Map<String, Map<String, List<String>>> combinationsByPart,
                           Map<UUID, UUID> topicParents) {
+        this(mapper, exam, document, combinationsByPart, topicParents, TemplateFacts.NONE);
+    }
+
+    public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
+                          Map<String, Map<String, List<String>>> combinationsByPart,
+                          Map<UUID, UUID> topicParents, TemplateFacts template) {
+        this.template = template;
         this.topicParents = topicParents;
         this.combinationsByPart = combinationsByPart;
         this.exam = exam;
@@ -124,6 +141,61 @@ public final class ExamCheckRules {
                     warning.put("severity", "WARNING");
                     found.add(issues.key(warning));
                 }
+            }
+        }
+        found.addAll(templateIssues());
+        return found;
+    }
+
+    /** Template-driven errors: publish ban (D11) and locked structure counts (H27). */
+    private List<ObjectNode> templateIssues() {
+        List<ObjectNode> found = new ArrayList<>();
+        if (template.unpublishableSubject() != null) {
+            ObjectNode failure = issue("TEMPLATE_NOT_PUBLISHABLE", "STRUCTURE", null, null, null);
+            failure.put("subjectCode", template.unpublishableSubject());
+            found.add(failure);
+        }
+        if (template.lockedTemplate() != null) found.addAll(lockedCountIssues(template.lockedTemplate()));
+        return found;
+    }
+
+    /**
+     * Compares part and section counts with the loaded template by id. A part is reported only when its own count
+     * differs and none of its sections do, so one edited section yields one issue located at that section.
+     */
+    private List<ObjectNode> lockedCountIssues(ExamStructureDocument locked) {
+        Map<String, ExamPart> lockedParts = new LinkedHashMap<>();
+        Map<String, ExamSection> lockedSections = new LinkedHashMap<>();
+        for (ExamPart part : locked.parts()) {
+            lockedParts.put(part.id(), part);
+            part.sections().forEach(section -> lockedSections.put(section.id(), section));
+            part.subjectPool().forEach(section -> lockedSections.put(section.id(), section));
+            part.options().forEach(option -> option.sections().forEach(section -> lockedSections.put(section.id(), section)));
+        }
+        List<ObjectNode> found = new ArrayList<>();
+        for (ExamPart part : document.parts()) {
+            ExamPart base = part.id() == null ? null : lockedParts.get(part.id());
+            if (base == null) continue;
+            boolean sectionChanged = false;
+            for (SectionContext context : sections.values()) {
+                ExamSection section = context.section;
+                ExamSection original = lockedSections.get(section.id());
+                if (context.part != part || original == null) continue;
+                boolean declared = !Objects.equals(section.questionCount(), original.questionCount());
+                int actual = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+                int expected = original.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+                if (!declared && actual == expected) continue;
+                sectionChanged = true;
+                ObjectNode failure = sectionIssue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", context, null);
+                failure.put("required", declared ? original.questionCount() : Integer.valueOf(expected));
+                failure.put("available", declared ? section.questionCount() : Integer.valueOf(actual));
+                found.add(failure);
+            }
+            if (!sectionChanged && !Objects.equals(part.questionCount(), base.questionCount())) {
+                ObjectNode failure = issue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", part, null, null);
+                failure.put("required", base.questionCount());
+                failure.put("available", part.questionCount());
+                found.add(failure);
             }
         }
         return found;
@@ -250,6 +322,13 @@ public final class ExamCheckRules {
                 ObjectNode failure = sectionIssue("REQUIRED_BASIS_UNSUPPORTED", "MATRIX", context, null);
                 if (block != null) blockContext(failure, block);
                 found.add(issues.key(failure));
+            }
+            if (quota.enforcement() != QuotaEnforcement.REFERENCE && quota.nodeIds().isEmpty()) {
+                ObjectNode failure = sectionIssue("TOPIC_QUOTA_MAPPING_MISSING", "MATRIX", context, null);
+                if (block != null) blockContext(failure, block);
+                issues.key(failure);
+                if (quota.id() != null) failure.put("key", failure.path("key").asText() + "|" + quota.id());
+                found.add(failure);
             }
         }
         for (int i = 0; i < quotas.size(); i++) {

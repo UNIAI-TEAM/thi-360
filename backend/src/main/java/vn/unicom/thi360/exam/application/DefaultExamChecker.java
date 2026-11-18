@@ -13,9 +13,12 @@ import java.util.Set;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
+import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
+import vn.unicom.thi360.exam.domain.ExamTemplate;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SolveOutcome;
@@ -35,10 +38,11 @@ public class DefaultExamChecker implements ExamChecker {
     private final CatalogLookup catalog;
     private final QuestionSourcePort source;
     private final ExamCheckUnitEngine units;
+    private final ExamTemplateService templates;
 
     public DefaultExamChecker(SolverInputBuilder builder, SolverLimits limits,
             Clock clock, ObjectMapper mapper, CatalogLookup catalog, QuestionSourcePort source,
-            ExamCheckUnitEngine units) {
+            ExamCheckUnitEngine units, ExamTemplateService templates) {
         this.builder = builder;
         this.limits = limits;
         this.clock = clock;
@@ -46,13 +50,36 @@ public class DefaultExamChecker implements ExamChecker {
         this.catalog = catalog;
         this.source = source;
         this.units = units;
+        this.templates = templates;
+    }
+
+    /**
+     * The standard subject template of the exam's kind and subject decides whether publishing is allowed (D11),
+     * whatever template the exam was loaded from. Counts are locked only by the template the exam was loaded from.
+     */
+    private ExamCheckRules.TemplateFacts templateFacts(Exam exam) {
+        String unpublishable = null;
+        if (exam.getKindItemId() != null && exam.getSubjectItemId() != null) {
+            var kind = catalog.findItem(exam.getKindItemId());
+            var subject = catalog.findItem(exam.getSubjectItemId());
+            if (kind.isPresent() && subject.isPresent()) {
+                ExamTemplate standard = templates.findDefault(kind.get().code(), "SUBJECT", null,
+                        subject.get().code(), "STANDARD");
+                if (standard != null && !standard.isPublishable()) unpublishable = subject.get().code();
+            }
+        }
+        ExamTemplate loaded = templates.findProvenance(exam.getTemplateCode());
+        ExamStructureDocument locked = loaded != null && loaded.isFixedCounts()
+                ? new ExamStructureCodec(mapper).read(loaded.getStructure()) : null;
+        return new ExamCheckRules.TemplateFacts(unpublishable, locked);
     }
 
     @Override
     public Evaluation check(ExamCheckSnapshotReader.Snapshot snapshot, Instant deadline, Duration budget, ExamCheckScope scope) {
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), snapshot.structure());
         var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure(), combinations,
-                ExamCheckUnitCombinations.topicParents(catalog, snapshot.structure()));
+                ExamCheckUnitCombinations.topicParents(catalog, snapshot.structure()),
+                templateFacts(snapshot.exam()));
         Set<String> requested = scope.sections(snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common().stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList());
