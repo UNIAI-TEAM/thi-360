@@ -17,6 +17,7 @@ import { partsFromInput } from "./create-parts";
 import { ExamStructureSaveError, toExamsApiError } from "./review-api";
 import type {
   ApplyExamTemplateRequest,
+  AudioRequirement,
   AvailableQuestionCounts,
   AvailableQuestionsQuery,
   CreateExamRequest,
@@ -249,11 +250,18 @@ export async function duplicateExam(id: string, request: DuplicateExamRequest): 
 type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery"];
 
 /**
+ * Bộ lọc đếm kèm điều kiện audio của dòng (H38, R-130). `AvailableQuestionsQuery` sinh ra chưa có trường này (BE-17 chưa
+ * merge nên chưa vào hợp đồng): kiểu viết tay ở đây; sau khi BE-17 merge thì dùng kiểu sinh và bỏ hai kiểu này.
+ */
+export type AudioCountQuery = AvailableQuestionsQuery & { audioRequirement?: AudioRequirement };
+type ApiCountBody = ApiAvailableQuestionsQuery & { audioRequirement?: "REQUIRED" | "FORBIDDEN" };
+
+/**
  * Thân `POST .../available-questions/count*`: gửi mọi điều kiện của khối mà hợp đồng nhận (hình dạng câu, định dạng
  * đáp án, điều kiện theo vị trí câu con...). `slots` của khối không có trường trong `AvailableQuestionsQuery` nên không
  * gửi; trường không đặt bị bỏ khỏi thân thay vì gửi `null`/rỗng.
  */
-function toCountBody(query: AvailableQuestionsQuery): ApiAvailableQuestionsQuery {
+function toCountBody(query: AudioCountQuery): ApiCountBody {
   return {
     subjectCode: query.subjectCode,
     questionType: query.questionType ?? undefined,
@@ -270,10 +278,12 @@ function toCountBody(query: AvailableQuestionsQuery): ApiAvailableQuestionsQuery
       ? (query.answerFormats as ApiAvailableQuestionsQuery["answerFormats"])
       : undefined,
     childConditions: query.childConditions?.length ? query.childConditions : undefined,
+    // `ANY` và bỏ trống: không lọc audio, không gửi trường.
+    audioRequirement: query.audioRequirement === "REQUIRED" || query.audioRequirement === "FORBIDDEN" ? query.audioRequirement : undefined,
   };
 }
 
-export async function countAvailableQuestions(query: AvailableQuestionsQuery): Promise<AvailableQuestionCounts> {
+export async function countAvailableQuestions(query: AudioCountQuery): Promise<AvailableQuestionCounts> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count", {
     body: toCountBody(query),

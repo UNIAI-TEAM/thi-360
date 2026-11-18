@@ -3903,6 +3903,7 @@
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
       "allocationBlocked": "Chưa lưu được: bảng phân bổ còn lỗi. Sửa ở bảng rồi lưu lại.",
       "totalChangeBlocked": "Chưa lưu được: tổng số câu của môn {subject} đã đổi. Chọn Áp dụng số mới hoặc Giữ số cũ ở môn này rồi lưu lại.",
+      "rateBlocked": "Chưa lưu được: một dòng nhập theo tỷ lệ chưa ra chùm nguyên. Sửa tỷ lệ ở dòng đó rồi lưu lại.",
       "overviewSummary": "{count, number} câu · {minutes, number} phút{shared, select, yes { chung} other {}} · {points} điểm",
       "subjectAdded": "Đã thêm môn {subject} vào phần. Lưu để áp dụng.",
       "combinationRemoved": "Đã gỡ tổ hợp {code}. Lưu để áp dụng.",
@@ -4116,6 +4117,8 @@
       "blockForm": {
         "childConditions": {
           "add": "Thêm điều kiện theo vị trí",
+          "answerType": "Loại câu hỏi của câu con",
+          "answerTypeAny": "Không giới hạn dạng",
           "empty": "Chưa có điều kiện theo vị trí.",
           "flexibleNote": "Điều kiện theo vị trí câu con không dùng được khi chỉ nhập tổng câu con, vì cỡ chùm không cố định.",
           "from": "Từ câu con số",
@@ -4127,11 +4130,13 @@
             "RANGE_ORDER": "Vị trí kết thúc phải lớn hơn hoặc bằng vị trí bắt đầu."
           },
           "mapidLabel": "MAPID:",
+          "optionsLabel": "Số phương án",
           "pickMapid": "Chọn MAPID",
           "pickerDescription": "{name}: chọn được Chương, Bài hoặc Kiến thức.",
           "remove": "Bỏ {name}",
           "removeMapid": "Bỏ MAPID {code} {name}",
           "rowName": "Điều kiện vị trí {index, number}",
+          "statementsLabel": "Số ý",
           "title": "Điều kiện theo vị trí câu con",
           "to": "Đến câu con số"
         },
@@ -4196,6 +4201,55 @@
         },
         "omittedBadge": "Tự luận – tạm bỏ qua",
         "positionRange": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+        "positions": {
+          "columns": {
+            "commands": "Lệnh hỏi",
+            "onPaper": "Câu trên đề",
+            "points": "Điểm",
+            "position": "Vị trí câu con",
+            "shape": "Hình dạng",
+            "type": "Loại câu hỏi"
+          },
+          "onPaper": "{same, select, yes {Câu {from, number}} other {Câu {from, number}–{to, number}}}",
+          "position": "{same, select, yes {Vị trí {from, number}} other {Vị trí {from, number}–{to, number}}}",
+          "shape": {
+            "any": "Không giới hạn",
+            "options": "{count, number} phương án",
+            "statements": "{count, number} ý mỗi câu"
+          },
+          "title": "Loại câu hỏi theo vị trí trong chùm",
+          "total": "{questions, number} câu · {commands, number} lệnh · {points, number} điểm",
+          "totalNoCommands": "{questions, number} câu · {points, number} điểm"
+        },
+        "rows": {
+          "audio": {
+            "FORBIDDEN": "Không có audio",
+            "REQUIRED": "Có audio"
+          },
+          "audioNote": "Điều kiện audio đặt theo phần, không đổi ở từng dòng.",
+          "available": "Nguồn khả dụng: {count, number} câu {audio, select, REQUIRED {có audio} other {không có audio}}",
+          "entry": {
+            "count": "Số lượng",
+            "legend": "Nhập theo",
+            "rate": "Tỷ lệ"
+          },
+          "locked": "Mẫu đã khóa dòng",
+          "lockedHint": "Nguồn câu, phạm vi kiến thức và chỉ tiêu trong dòng vẫn sửa được.",
+          "lockedReason": "Bài cả môn giữ nguyên dạng và số lượng của dòng theo mẫu. Muốn đổi, hãy tạo bài theo phần từ cùng mẫu.",
+          "rate": {
+            "errors": {
+              "format": "Nhập tỷ lệ là số, tối đa hai chữ số thập phân.",
+              "sets": "Tỷ lệ {rate}% ra {count, number} câu, không chia hết cho cỡ chùm {size, number} câu con. Chọn {low, number} hoặc {high, number} câu.",
+              "setsFromZero": "Tỷ lệ {rate}% ra {count, number} câu, ít hơn một chùm {size, number} câu con. Chọn {high, number} câu.",
+              "setsTitle": "Không ghép được chùm nguyên.",
+              "title": "Tỷ lệ chưa hợp lệ.",
+              "zero": "Tỷ lệ này ra 0 câu. Nhập tỷ lệ lớn hơn 0."
+            },
+            "label": "Tỷ lệ trong phần (%)",
+            "result": "Ra {count, number} câu."
+          },
+          "share": "{count, number} câu · {rate}% của phần"
+        },
         "setMode": {
           "legend": "Cách khai chùm",
           "note": "Hệ thống luôn lấy nguyên chùm; số câu của nhóm là tổng số câu con.",

@@ -201,7 +201,8 @@ function StructureEditor({
   /** Bài ôn (R-22): màn rút gọn, một phần, một môn, một nhóm. */
   const reviewMode = template?.buildMode === "REVIEW";
   // H42, R-135: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT`; bài `PART` và bài ôn từ cùng mẫu vẫn sửa được.
-  const countLocked = template?.fixedCounts === true || blockCountsLocked(template, exam.scope, reviewMode);
+  const rowsLocked = blockCountsLocked(template, exam.scope, reviewMode);
+  const countLocked = template?.fixedCounts === true || rowsLocked;
   // Bài ôn mới tạo có nhóm duy nhất chưa khai số câu: điền số câu bước 1 để màn, tổng và nội dung lưu cùng một số (V-01b).
   const structure = useMemo(
     () => (reviewMode ? { ...loadedStructure, parts: fillReviewCounts(loadedStructure.parts) } : loadedStructure),
@@ -256,6 +257,8 @@ function StructureEditor({
   const guard = useUnsavedChangesGuard(dirty);
   const [pendingSelection, setPendingSelection] = useState<StructureSelection | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  // Dòng nhập theo tỷ lệ không ra chùm nguyên (R-142): lỗi báo tại dòng, bản nháp không đổi, nhưng không cho lưu cho đến khi sửa.
+  const [rateInvalid, setRateInvalid] = useState(false);
 
   /** Mở mục không qua hộp thoại: sau chính thao tác của người dùng (thêm, xóa nhóm) hoặc sau khi đã lưu. */
   const selectNow = useCallback((next: StructureSelection) => {
@@ -328,6 +331,13 @@ function StructureEditor({
   };
 
   const runSave = (options: { onSaved?: () => void; onFailed?: (message: string) => void } = {}) => {
+    if (rateInvalid) {
+      const message = t("rateBlocked");
+      if (!options.onFailed) notify.error(message);
+      announce(message);
+      options.onFailed?.(message);
+      return;
+    }
     // Bảng phân bổ còn lỗi người dùng phải sửa (tổng tỷ lệ khác 100%, quá 8 chỉ tiêu): mở đúng chỗ, không gửi lên máy chủ.
     const blocker = saveBlockers(draft, axes, (sectionId) => confirmedCounts[sectionId] ?? savedCountOf(sectionId), reviewMode)[0];
     const quotaBlocked = blocker ? false : examQuotaBlockers(quotas).length > 0;
@@ -669,6 +679,10 @@ function StructureEditor({
           ) : blockContext ? (
             <BlockEditor
               topicError={topicError}
+              partTotal={blockContext.part.questionCount}
+              rowsLocked={rowsLocked}
+              commandCount={dirty ? null : (summaryQuery.data?.rows.find((row) => row.blockId === blockContext.block.id)?.commandCount ?? null)}
+              onRateInvalid={setRateInvalid}
               key={blockContext.block.id}
               block={blockContext.block}
               section={blockContext.section}

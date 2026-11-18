@@ -1,16 +1,17 @@
 "use client";
 
-import { Button, cn, focusRing, IconButton } from "@thi360/ui";
+import { Button, cn, focusRing, FormField, IconButton, Select } from "@thi360/ui";
 import { CircleMinus, ListTree, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
-import type { ContentReference, KnowledgeRef } from "@/features/content/types";
-import { isFlexibleSet } from "../matrix";
-import type { BlockSlot, ChildCondition, QuestionBlock } from "../types";
+import { QUESTION_TYPES, type ContentReference, type KnowledgeRef, type QuestionType } from "@/features/content/types";
+import { blockPointsEach, isFlexibleSet } from "../matrix";
+import type { BlockSlot, ChildCondition, ItemShape, QuestionBlock } from "../types";
 import {
   childConditionIssue,
+  positionRows,
   newChildCondition,
   slotAt,
   slotHasCondition,
@@ -25,7 +26,15 @@ export interface BlockSetConditionsProps {
   reference: ContentReference | undefined;
   subjectCode: string;
   onChange: (patch: Partial<QuestionBlock>) => void;
+  /** Số lệnh hỏi của nhóm do máy chủ tính (R-142); `null`: chưa có hoặc bản nháp đã đổi. */
+  commandCount?: number | null;
+  /** Mẫu khóa dòng (H42): dạng câu con chỉ đọc; MAPID vẫn sửa được. */
+  locked?: boolean;
 }
+
+const ANY = "__ANY__";
+/** Dạng của câu con trong chùm: mọi dạng câu đơn. */
+const CHILD_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE");
 
 /** Bảng và nút chọn MAPID dùng chung cho điều kiện của chùm và điều kiện theo vị trí. */
 function useKnowledgeRefs(reference: ContentReference | undefined) {
@@ -42,13 +51,14 @@ function useKnowledgeRefs(reference: ContentReference | undefined) {
  * con (`childConditions`). Chùm không đặt gì dùng điều kiện của nhóm. Chùm cỡ linh hoạt (chỉ nhập tổng câu con) không
  * có cỡ chùm cố định nên không có hai bảng này; một dòng ghi lý do.
  */
-export function BlockSetConditions({ block, reference, subjectCode, onChange }: BlockSetConditionsProps) {
+export function BlockSetConditions({ block, reference, subjectCode, onChange, commandCount = null, locked = false }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.childConditions");
   if (isFlexibleSet(block)) return <p className="text-caption text-text-muted">{t("flexibleNote")}</p>;
   return (
     <>
       <SlotsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} />
-      <ChildConditionsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} />
+      <ChildConditionsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} locked={locked} />
+      <PositionTable block={block} commandCount={commandCount} />
     </>
   );
 }
@@ -236,7 +246,7 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
 
 // ---------------------------------------------------------------- điều kiện theo vị trí câu con
 
-function ChildConditionsEditor({ block, reference, subjectCode, onChange }: BlockSetConditionsProps) {
+function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked = false }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.childConditions");
   const refsOf = useKnowledgeRefs(reference);
   const [pickerFor, setPickerFor] = useState<number | null>(null);
@@ -246,6 +256,20 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange }: Bloc
   const replace = (next: ChildCondition[]) => onChange({ childConditions: next.length > 0 ? next : undefined });
   const patch = (index: number, change: Partial<ChildCondition>) =>
     replace(conditions.map((condition, position) => (position === index ? { ...condition, ...change } : condition)));
+  const tContent = useTranslations("content");
+  /** Đổi dạng câu con: hình dạng của dạng cũ không còn nghĩa nên bỏ (R-132, H39). */
+  const setAnswerType = (index: number, answerType: QuestionType | undefined) =>
+    replace(
+      conditions.map((condition, position) => {
+        if (position !== index) return condition;
+        const next: ChildCondition = { ...condition };
+        delete next.answerType;
+        delete next.itemShape;
+        if (answerType) next.answerType = answerType;
+        return next;
+      }),
+    );
+  const setShape = (index: number, shape: ItemShape) => patch(index, { itemShape: Object.keys(shape).length > 0 ? shape : undefined });
 
   return (
     <ConditionSection
@@ -280,6 +304,44 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange }: Bloc
                 {t("to")}
                 <BlockNumberInput value={condition.to} aria-invalid={issue === "RANGE_ORDER" || issue === "OUT_OF_SET" ? true : undefined} onValueChange={(to) => patch(index, { to })} />
               </label>
+              <div className="w-56">
+                <FormField label={t("answerType")}>
+                  {(controlProps) => (
+                    <Select
+                      {...controlProps}
+                      disabled={locked}
+                      value={condition.answerType ?? ANY}
+                      onValueChange={(value) => setAnswerType(index, value === ANY ? undefined : (value as QuestionType))}
+                      options={[
+                        { value: ANY, label: t("answerTypeAny") },
+                        ...CHILD_TYPES.map((type) => ({ value: type, label: tContent(`questionType.${type}`) })),
+                      ]}
+                    />
+                  )}
+                </FormField>
+              </div>
+              {condition.answerType === "TRUE_FALSE" && (
+                <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
+                  {t("statementsLabel")}
+                  <BlockNumberInput
+                    value={condition.itemShape?.statements ?? 0}
+                    readOnly={locked}
+                    aria-readonly={locked || undefined}
+                    onValueChange={(statements) => setShape(index, statements > 0 ? { statements } : {})}
+                  />
+                </label>
+              )}
+              {(condition.answerType === "SINGLE_CHOICE" || condition.answerType === "MULTIPLE_CHOICE") && (
+                <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
+                  {t("optionsLabel")}
+                  <BlockNumberInput
+                    value={condition.itemShape?.options ?? 0}
+                    readOnly={locked}
+                    aria-readonly={locked || undefined}
+                    onValueChange={(options) => setShape(index, options > 0 ? { options } : {})}
+                  />
+                </label>
+              )}
               <div className="ml-auto">
                 <IconButton
                   icon={<Trash2 />}
@@ -325,5 +387,69 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange }: Bloc
         />
       )}
     </ConditionSection>
+  );
+}
+
+/**
+ * Bảng chỉ đọc "Loại câu hỏi theo vị trí trong chùm" (bản vẽ `BaiDocDungChung2B`, R-132): dải vị trí, câu trên đề, dạng, hình
+ * dạng, lệnh hỏi, điểm và dòng tổng của chùm. Lệnh hỏi ở dòng tổng do máy chủ tính (`commandCount`); chưa có thì bỏ phần lệnh.
+ */
+function PositionTable({ block, commandCount }: { block: QuestionBlock; commandCount: number | null }) {
+  const t = useTranslations("exams.structure.blockForm.positions");
+  const tContent = useTranslations("content");
+  const rows = positionRows(block, blockPointsEach(block));
+  const captionId = useId();
+  if (rows.length === 0) return null;
+  const from = block.positionRange?.from;
+  const single = (block.setCount ?? 1) <= 1 && from !== undefined;
+  const questions = rows.reduce((sum, row) => sum + row.questions, 0);
+  const points = Math.round(rows.reduce((sum, row) => sum + row.points, 0) * 10_000) / 10_000;
+  const shapeText = (row: (typeof rows)[number]) =>
+    row.itemShape?.statements
+      ? t("shape.statements", { count: row.itemShape.statements })
+      : row.itemShape?.options
+        ? t("shape.options", { count: row.itemShape.options })
+        : t("shape.any");
+  const cell = "border-b border-border px-3 py-2 align-top";
+  return (
+    <section className="flex flex-col gap-2 rounded-md border border-border p-4" aria-labelledby={captionId}>
+      <h3 id={captionId} className="text-label font-semibold text-text">
+        {t("title")}
+      </h3>
+      <div role="region" tabIndex={0} aria-labelledby={captionId} className={cn("max-w-full overflow-x-auto rounded-md border border-border", focusRing)}>
+        <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-body tabular-nums">
+          <caption className="sr-only">{t("title")}</caption>
+          <thead>
+            <tr className="text-left text-caption text-text-muted">
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.position")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.onPaper")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.type")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("columns.shape")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold">{t("columns.commands")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold">{t("columns.points")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.from}-${row.to}`}>
+                <th scope="row" className={cn(cell, "text-left font-medium whitespace-nowrap text-text")}>
+                  {t("position", { from: row.from, to: row.to, same: row.from === row.to ? "yes" : "no" })}
+                </th>
+                <td className={cell}>
+                  {single ? t("onPaper", { from: from + row.from - 1, to: from + row.to - 1, same: row.from === row.to ? "yes" : "no" }) : "—"}
+                </td>
+                <td className={cell}>{tContent(`questionType.${row.answerType}`)}</td>
+                <td className={cell}>{shapeText(row)}</td>
+                <td className={cn(cell, "text-right")}>{row.commands}</td>
+                <td className={cn(cell, "text-right")}>{row.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-label font-semibold text-text">
+        {commandCount !== null ? t("total", { questions, commands: commandCount, points }) : t("totalNoCommands", { questions, points })}
+      </p>
+    </section>
   );
 }

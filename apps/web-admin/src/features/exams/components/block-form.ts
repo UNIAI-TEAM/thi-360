@@ -203,11 +203,68 @@ export function childConditionIssue(condition: ChildCondition, setSize: number):
   if (condition.from < 1) return "FROM_MIN";
   if (condition.to < condition.from) return "RANGE_ORDER";
   if (setSize > 0 && condition.to > setSize) return "OUT_OF_SET";
-  if (condition.nodeIds.length === 0) return "NO_MAPID";
+  // H39: điều kiện theo dạng câu con (`answerType`) không cần MAPID.
+  if (condition.nodeIds.length === 0 && !condition.answerType) return "NO_MAPID";
   return null;
 }
 
 export function newChildCondition(setSize: number): ChildCondition {
   const from = Math.max(1, setSize);
   return { from, to: from, nodeIds: [] };
+}
+
+export interface PositionRow {
+  from: number;
+  to: number;
+  answerType: QuestionType;
+  itemShape?: ItemShape;
+  /** Số câu con, số lệnh hỏi (câu Đúng/Sai tính theo số ý, Ghép đôi theo số ý trái) và điểm của dải vị trí trong một chùm. */
+  questions: number;
+  commands: number;
+  points: number;
+}
+
+/** Các dải vị trí có khai dạng câu con của chùm (chùm trộn dạng, R-132), theo thứ tự vị trí. Điểm theo `pointsEach` của khối. */
+export function positionRows(block: Pick<QuestionBlock, "childConditions">, pointsEach: number): PositionRow[] {
+  return (block.childConditions ?? [])
+    .filter((condition): condition is ChildCondition & { answerType: QuestionType } => condition.answerType !== undefined && condition.to >= condition.from)
+    .sort((a, b) => a.from - b.from)
+    .map((condition) => {
+      const questions = condition.to - condition.from + 1;
+      const perQuestion =
+        condition.answerType === "TRUE_FALSE"
+          ? (condition.itemShape?.statements ?? 1)
+          : condition.answerType === "MATCHING"
+            ? (condition.itemShape?.leftItems ?? 1)
+            : 1;
+      return {
+        from: condition.from,
+        to: condition.to,
+        answerType: condition.answerType,
+        ...(condition.itemShape ? { itemShape: condition.itemShape } : {}),
+        questions,
+        commands: questions * perQuestion,
+        points: Math.round(questions * pointsEach * 10_000) / 10_000,
+      };
+    });
+}
+
+// ---------------------------------------------------------------- nhập theo tỷ lệ (R-142)
+
+export interface RateSetMismatch {
+  /** Số câu mà tỷ lệ ra. */
+  count: number;
+  /** Hai số câu gần nhất chia hết cho cỡ chùm; `low` là 0 khi tỷ lệ ra ít hơn một chùm. */
+  low: number;
+  high: number;
+}
+
+/**
+ * Tỷ lệ của dòng chùm phải ra số câu chia hết cho cỡ chùm: hệ thống chỉ lấy nguyên chùm. Trả về hai số câu gần nhất khi
+ * không chia hết, `null` khi hợp lệ.
+ */
+export function rateSetMismatch(count: number, setSize: number): RateSetMismatch | null {
+  if (setSize < 1 || (count > 0 && count % setSize === 0)) return null;
+  const low = Math.floor(count / setSize) * setSize;
+  return { count, low, high: low + setSize };
 }

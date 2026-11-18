@@ -1,0 +1,206 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import reference from "@/test/fixtures/content-reference.json";
+import { renderWithProviders } from "@/test/render";
+import type { ContentReference } from "@/features/content/types";
+import { BlockEditor } from "../components/block-editor";
+import type { AudioRequirement, ExamSection, QuestionBlock } from "../types";
+
+/**
+ * FE-7, bước 2: dòng lấy câu có nhãn audio, nguồn khả dụng theo audio, tổng câu và tỷ lệ trong phần, nhập theo tỷ lệ (chùm
+ * phải ra số nguyên chùm), mẫu khóa dòng (R-130, R-135, R-142).
+ */
+
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
+
+const availableMock = vi.hoisted(() => ({ queries: [] as unknown[], total: 42 }));
+vi.mock(import("../queries"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useAvailableQuestions: (query: unknown) => {
+      availableMock.queries.push(query);
+      return { isError: false, data: { total: availableMock.total, cells: [], byAnswerType: [] } } as never;
+    },
+  };
+});
+
+beforeEach(() => {
+  availableMock.queries.length = 0;
+});
+
+const section = (audioRequirement?: AudioRequirement): ExamSection => ({
+  id: "s1",
+  subjectCode: "ANH",
+  questionCount: 35,
+  knowledgeScope: null,
+  answerQuotas: null,
+  matrix: null,
+  choiceGroup: null,
+  blocks: [],
+  ...(audioRequirement ? { audioRequirement } : {}),
+});
+
+const block = (patch: Partial<QuestionBlock> = {}): QuestionBlock => ({
+  id: "b1",
+  name: "Dòng 2 · Hội thoại 4 câu",
+  questionType: "QUESTION_SET",
+  questionCount: 8,
+  setCount: 2,
+  setSize: 4,
+  requiredPointsPerQuestion: 1,
+  knowledgeScope: null,
+  tagCodes: [],
+  matrix: null,
+  childAnswerType: null,
+  templateGroupCode: null,
+  answerTypeLocked: false,
+  ...patch,
+});
+
+function renderEditor(
+  initial: QuestionBlock,
+  options: { audio?: AudioRequirement; rowsLocked?: boolean; partTotal?: number | null; commandCount?: number | null } = {},
+) {
+  const onRateInvalid = vi.fn();
+  const latest = { block: initial };
+  function Harness() {
+    const [current, setCurrent] = useState(initial);
+    return (
+      <BlockEditor
+        block={current}
+        section={section(options.audio)}
+        subjectCode="ANH"
+        locationText="Nghe · Tiếng Anh · dòng 2 / 3"
+        position={1}
+        siblingCount={3}
+        axes={{ grades: reference.grades.map((grade) => grade.code), difficulties: reference.difficulties.map((item) => item.code) }}
+        labels={{ grade: (code) => code, difficulty: (code) => code }}
+        reference={reference as unknown as ContentReference}
+        examKind="HSCA"
+        scoringDefaults={null}
+        competencies={[]}
+        partTotal={options.partTotal === undefined ? 35 : options.partTotal}
+        rowsLocked={options.rowsLocked}
+        onRateInvalid={onRateInvalid}
+        commandCount={options.commandCount}
+        onChange={(next) => {
+          latest.block = next;
+          setCurrent(next);
+        }}
+        onMove={() => {}}
+        onRemove={() => {}}
+        onOpenSection={() => {}}
+      />
+    );
+  }
+  renderWithProviders(<Harness />);
+  return { latest, onRateInvalid };
+}
+
+describe("dòng lấy câu có audio (R-130, R-142)", () => {
+  it("dòng 1, 2, 3 · phần Nghe: nhãn Có audio không đổi ở dòng, nguồn khả dụng theo API, tổng câu và tỷ lệ trong phần", () => {
+    renderEditor(block(), { audio: "REQUIRED" });
+    expect(screen.getByText("Có audio")).toBeInTheDocument();
+    expect(screen.getByText("Điều kiện audio đặt theo phần, không đổi ở từng dòng.")).toBeInTheDocument();
+    expect(screen.getByText("8 câu · 22,9% của phần")).toBeInTheDocument();
+    expect(screen.getByText("Nguồn khả dụng: 42 câu có audio")).toBeInTheDocument();
+    expect(availableMock.queries.at(-1)).toMatchObject({ subjectCode: "ANH", audioRequirement: "REQUIRED" });
+    // Không có ô nào để đổi nhãn audio ở dòng.
+    expect(screen.queryByRole("combobox", { name: /audio/i })).toBeNull();
+  });
+
+  it("dòng 1 · phần Đọc: nhãn Không có audio, đếm nguồn gửi FORBIDDEN; môn không có điều kiện audio thì không nhãn", () => {
+    renderEditor(block(), { audio: "FORBIDDEN" });
+    expect(screen.getByText("Không có audio")).toBeInTheDocument();
+    expect(screen.getByText("Nguồn khả dụng: 42 câu không có audio")).toBeInTheDocument();
+    expect(availableMock.queries.at(-1)).toMatchObject({ audioRequirement: "FORBIDDEN" });
+  });
+
+  it("môn không có điều kiện audio: không nhãn, không dòng nguồn theo audio", () => {
+    renderEditor(block());
+    expect(screen.queryByText("Có audio")).toBeNull();
+    expect(screen.queryByText("Không có audio")).toBeNull();
+    expect(screen.queryByText(/Nguồn khả dụng/)).toBeNull();
+  });
+});
+
+describe("nhập theo tỷ lệ (R-142)", () => {
+  it("dòng 4 · chùm cỡ 4 nhập 28,6% ra 10 câu: báo lỗi tại dòng, chặn lưu, số câu không đổi; 22,9% ra 8 câu thì hết lỗi", async () => {
+    const user = userEvent.setup();
+    const { latest, onRateInvalid } = renderEditor(block(), { audio: "REQUIRED" });
+    const entry = screen.getByRole("radio", { name: "Số lượng" }).closest("fieldset")!;
+    await user.click(within(entry).getByRole("radio", { name: "Tỷ lệ" }));
+    const rate = screen.getByRole("textbox", { name: "Tỷ lệ trong phần (%)" });
+    expect(rate).toHaveValue("22,9");
+
+    await user.clear(rate);
+    await user.type(rate, "28,6");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Không ghép được chùm nguyên.");
+    expect(alert).toHaveTextContent("Tỷ lệ 28,6% ra 10 câu, không chia hết cho cỡ chùm 4 câu con. Chọn 8 hoặc 12 câu.");
+    expect(rate).toBeInvalid();
+    expect(rate).toHaveAccessibleDescription(/Chọn 8 hoặc 12 câu/);
+    await waitFor(() => expect(onRateInvalid).toHaveBeenLastCalledWith(true));
+    expect(latest.block.questionCount).toBe(8);
+
+    await user.clear(rate);
+    await user.type(rate, "34,3");
+    await waitFor(() => expect(onRateInvalid).toHaveBeenLastCalledWith(false));
+    expect(latest.block).toMatchObject({ questionCount: 12, setCount: 3, setSize: 4 });
+    expect(screen.queryByRole("alert")).toBeNull();
+  }, 20_000);
+});
+
+describe("mẫu khóa dòng (R-135)", () => {
+  it("dòng 5 · số lượng và dạng chỉ đọc kèm lý do; nguồn câu vẫn sửa được; không xóa được dòng", () => {
+    renderEditor(block(), { rowsLocked: true });
+    expect(screen.getByText("Mẫu đã khóa dòng")).toBeInTheDocument();
+    const reason = screen.getByText(/Bài cả môn giữ nguyên dạng và số lượng của dòng theo mẫu/);
+    for (const name of ["Số chùm", /^Số câu con mỗi chùm/]) {
+      const input = screen.getByRole("textbox", { name });
+      expect(input).toHaveAttribute("readonly");
+      expect(input).toHaveAttribute("aria-readonly", "true");
+      expect(input.getAttribute("aria-describedby")).toContain(reason.id);
+    }
+    expect(screen.getByRole("textbox", { name: /^Loại câu hỏi/ })).toHaveAttribute("readonly");
+    expect(screen.getByRole("button", { name: /^Xóa nhóm/ })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("radio", { name: "Số lượng" })).toBeNull();
+    expect(screen.getByText(/Nguồn câu, phạm vi kiến thức và chỉ tiêu trong dòng vẫn sửa được/)).toBeInTheDocument();
+  });
+});
+
+describe("chùm trộn dạng (R-132)", () => {
+  const mixed = block({
+    name: "Bài đọc dùng chung – câu 8–15",
+    setCount: 1,
+    setSize: 8,
+    questionCount: 8,
+    requiredPointsPerQuestion: 6,
+    positionRange: { from: 8, to: 15 },
+    childConditions: [
+      { from: 1, to: 2, nodeIds: [], answerType: "TRUE_FALSE", itemShape: { statements: 4 } },
+      { from: 3, to: 8, nodeIds: [], answerType: "SINGLE_CHOICE", itemShape: { options: 4 } },
+    ],
+  });
+
+  it("dòng 6 · hiện vị trí 1–2 Đúng/Sai, 3–8 chọn một; dòng tổng 8 câu, 14 lệnh do máy chủ tính, 48 điểm", () => {
+    renderEditor(mixed, { commandCount: 14 });
+    const table = screen.getByRole("table", { name: "Loại câu hỏi theo vị trí trong chùm" });
+    const rows = within(table).getAllByRole("row").map((row) => Array.from(row.querySelectorAll("th,td"), (cell) => cell.textContent));
+    expect(rows[1]).toEqual(["Vị trí 1–2", "Câu 8–9", "Đúng/Sai", "4 ý mỗi câu", "8", "12"]);
+    expect(rows[2]).toEqual(["Vị trí 3–8", "Câu 10–15", "Một đáp án", "4 phương án", "6", "36"]);
+    expect(screen.getByText("8 câu · 14 lệnh · 48 điểm")).toBeInTheDocument();
+  });
+
+  it("chưa có số lệnh từ máy chủ thì dòng tổng bỏ phần lệnh, không tự đoán", () => {
+    renderEditor(mixed, { commandCount: null });
+    expect(screen.getByText("8 câu · 48 điểm")).toBeInTheDocument();
+  });
+});
