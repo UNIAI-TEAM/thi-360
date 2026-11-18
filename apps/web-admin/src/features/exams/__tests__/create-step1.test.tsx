@@ -577,7 +577,7 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
     const user = await renderWithTemplates(THPTQG_TEMPLATES);
     await pickKind(user, "THPTQG");
     await pickSubject(user, "Ngữ văn");
-    expect(await screen.findByText("Toàn bộ môn Ngữ văn là tự luận – tạm bỏ qua trong V1.")).toBeInTheDocument();
+    expect(await screen.findByText("Toàn bộ môn Ngữ văn là tự luận – tạm bỏ qua trong V1")).toBeInTheDocument();
     expect(screen.getByText(/chỉ lưu nháp, không công bố được/)).toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "THPTQG Ngữ văn nháp");
     await user.click(submitButton());

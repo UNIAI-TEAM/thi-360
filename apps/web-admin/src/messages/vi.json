@@ -5143,7 +5143,7 @@
         "part": "Phần thi",
         "partHint": "Bài Theo phần chỉ gồm phần được chọn",
         "noPart": "Môn này chưa có phần nào để chọn.",
-        "notPublishableNotice": "Toàn bộ môn {subject} là tự luận – tạm bỏ qua trong V1.",
+        "notPublishableNotice": "Toàn bộ môn {subject} là tự luận – tạm bỏ qua trong V1",
         "notPublishableDraft": "Bài này chỉ lưu nháp, không công bố được và không đưa vào bộ đề bán.",
         "durationRequiredBase": "Chưa nhập thời lượng của bài.",
         "durationRequiredPart": "Chưa nhập thời lượng. Bài theo phần không có thời lượng mặc định.",

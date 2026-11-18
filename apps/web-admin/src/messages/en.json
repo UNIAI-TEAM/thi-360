@@ -5143,7 +5143,7 @@
         "part": "Part",
         "partHint": "A by-part exam contains only the selected part",
         "noPart": "This subject has no part to choose yet.",
-        "notPublishableNotice": "The whole {subject} subject is essay-based – skipped for now in V1.",
+        "notPublishableNotice": "The whole {subject} subject is essay-based – skipped for now in V1",
         "notPublishableDraft": "This exam is draft-only: it cannot be published and is not added to sold exam sets.",
         "durationRequiredBase": "Enter the exam duration.",
         "durationRequiredPart": "Duration missing. By-part exams have no default duration.",
