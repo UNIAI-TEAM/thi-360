@@ -55,7 +55,7 @@ public class ExamCheckUnitStates {
         // Only the locked-count template facts feed sections; the exam-level publish ban marks no section.
         var rules = new ExamCheckRules(mapper, snapshot.exam(), document, combinations,
                 ExamCheckUnitCombinations.topicParents(catalog, document),
-                new ExamCheckRules.TemplateFacts(null, templateFacts.locked(snapshot.exam())));
+                templateFacts.forSections(snapshot.exam()));
         Set<String> incomplete = new HashSet<>();
         Set<String> invalidParts = new HashSet<>();
         Set<String> invalidOptions = new HashSet<>();

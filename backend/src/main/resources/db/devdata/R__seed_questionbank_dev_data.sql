@@ -1024,11 +1024,325 @@ JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-0000000
     AND tag.code = m.tag_code
 ON CONFLICT DO NOTHING;
 
+-- BEGIN BE-19 (UNI-2691): H-SCA and V-SAT sample sources, listening audio included.
+-- Content is plain ASCII so content_text and search_text equal the Java normalizer.
+-- Every id and code derives from a fixed seed string, so a rerun inserts nothing twice;
+-- ON CONFLICT DO NOTHING keeps admin-created rows and renamed seeded rows untouched.
+-- Function bodies use single quotes (doubled inside) and no semicolons: the repeatable is also
+-- executed through Spring ScriptUtils in tests, which does not understand dollar quoting.
+CREATE FUNCTION pg_temp.seed_text(html text) RETURNS text LANGUAGE sql IMMUTABLE AS
+'SELECT btrim(regexp_replace(regexp_replace(coalesce(html, ''''), ''<[^>]+>'', '''', ''g''), ''\s+'', '' '', ''g''))';
+
+-- Text of a non-set body in the order of QuestionSearchNormalizer: options or statements, then
+-- matching left and right, short answers, and the cloze passage.
+CREATE FUNCTION pg_temp.seed_leaf_text(body jsonb) RETURNS text LANGUAGE sql IMMUTABLE AS
+'SELECT concat_ws('' '',
+    (SELECT string_agg(pg_temp.seed_text(e.v->>''content''), '' '' ORDER BY e.o)
+     FROM jsonb_array_elements(body->''options'') WITH ORDINALITY e(v, o)),
+    (SELECT string_agg(pg_temp.seed_text(e.v->>''content''), '' '' ORDER BY e.o)
+     FROM jsonb_array_elements(body->''statements'') WITH ORDINALITY e(v, o)),
+    (SELECT string_agg(pg_temp.seed_text(e.v->>''content''), '' '' ORDER BY e.o)
+     FROM jsonb_array_elements(body->''left'') WITH ORDINALITY e(v, o)),
+    (SELECT string_agg(pg_temp.seed_text(e.v->>''content''), '' '' ORDER BY e.o)
+     FROM jsonb_array_elements(body->''right'') WITH ORDINALITY e(v, o)),
+    (SELECT string_agg(e.v #>> ''{}'', '' '' ORDER BY e.o)
+     FROM jsonb_array_elements(body->''answers'') WITH ORDINALITY e(v, o)),
+    CASE WHEN body->>''type'' = ''CLOZE'' THEN pg_temp.seed_text(body->>''passage'') END)';
+
+-- content_text of a question: its content, then the body text; a set adds its passage and, for
+-- each child, the child content followed by the child body text.
+CREATE FUNCTION pg_temp.seed_plain(content text, body jsonb) RETURNS text LANGUAGE sql IMMUTABLE AS
+'SELECT btrim(regexp_replace(concat_ws('' '', pg_temp.seed_text(content),
+    CASE WHEN body->>''type'' = ''QUESTION_SET'' THEN concat_ws('' '', pg_temp.seed_text(body->>''passage''),
+        (SELECT string_agg(concat_ws('' '', pg_temp.seed_text(e.v->>''content''), pg_temp.seed_leaf_text(e.v->''body'')),
+                           '' '' ORDER BY e.o)
+         FROM jsonb_array_elements(body->''children'') WITH ORDINALITY e(v, o)))
+    ELSE pg_temp.seed_leaf_text(body) END), ''\s+'', '' '', ''g''))';
+
+CREATE FUNCTION pg_temp.seed_options(label text, option_count integer, correct_letters text[])
+RETURNS jsonb LANGUAGE sql IMMUTABLE AS
+'SELECT jsonb_agg(jsonb_build_object(''id'', chr(96 + i), ''content'', ''<p>'' || label || '' option '' || chr(64 + i) || ''</p>'',
+                                     ''correct'', chr(96 + i) = ANY (correct_letters)) ORDER BY i)
+ FROM generate_series(1, option_count) i';
+
+-- Four options, exactly one correct; the correct letter rotates with n.
+CREATE FUNCTION pg_temp.seed_single(label text, n integer) RETURNS jsonb LANGUAGE sql IMMUTABLE AS
+'SELECT jsonb_build_object(''type'', ''SINGLE_CHOICE'', ''options'',
+                           pg_temp.seed_options(label, 4, ARRAY[chr(97 + n % 4)]))';
+
+-- Four options, two correct; H-SCA multiple choice is PARTIAL (spec H36).
+CREATE FUNCTION pg_temp.seed_multiple(label text, n integer) RETURNS jsonb LANGUAGE sql IMMUTABLE AS
+'SELECT jsonb_build_object(''type'', ''MULTIPLE_CHOICE'', ''scoringRule'', ''PARTIAL'', ''options'',
+                           pg_temp.seed_options(label, 4, ARRAY[''a'', chr(98 + n % 3)]))';
+
+-- V-SAT true/false: four statements, count table [1,2,3,6] on a six-point question (spec H36).
+CREATE FUNCTION pg_temp.seed_true_false(label text) RETURNS jsonb LANGUAGE sql IMMUTABLE AS
+'SELECT jsonb_build_object(''type'', ''TRUE_FALSE'', ''scoringMethod'', ''COUNT_TABLE'',
+    ''scoreTable'', jsonb_build_array(1, 2, 3, 6),
+    ''statements'', (SELECT jsonb_agg(jsonb_build_object(''id'', chr(96 + i),
+        ''content'', ''<p>'' || label || '' statement '' || chr(64 + i) || ''</p>'', ''answer'', i % 2 = 1) ORDER BY i)
+        FROM generate_series(1, 4) i))';
+
+-- V-SAT matching: four items on each side, 1.5 points per pair (six points in all).
+CREATE FUNCTION pg_temp.seed_matching(label text) RETURNS jsonb LANGUAGE sql IMMUTABLE AS
+'SELECT jsonb_build_object(''type'', ''MATCHING'', ''reuseRight'', false,
+    ''left'', (SELECT jsonb_agg(jsonb_build_object(''id'', ''l'' || i, ''content'', ''<p>'' || label || '' left '' || i || ''</p>'') ORDER BY i)
+             FROM generate_series(1, 4) i),
+    ''right'', (SELECT jsonb_agg(jsonb_build_object(''id'', ''r'' || i, ''content'', ''<p>'' || label || '' right '' || i || ''</p>'') ORDER BY i)
+              FROM generate_series(1, 4) i),
+    ''pairs'', (SELECT jsonb_agg(jsonb_build_object(''leftId'', ''l'' || i, ''rightId'', ''r'' || i, ''points'', 1.5) ORDER BY i)
+              FROM generate_series(1, 4) i))';
+
+CREATE TEMP TABLE seed_dot2b_cells ON COMMIT DROP AS
+SELECT subject.code AS subject_code, subject.id AS subject_id, grade.code AS grade_code, grade.id AS grade_id,
+       level.code AS level_code, level.id AS level_id
+FROM catalog.catalog_item subject
+CROSS JOIN catalog.catalog_item grade
+CROSS JOIN catalog.catalog_item level
+WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
+  AND subject.code IN ('TOAN', 'LY', 'HOA', 'SINH', 'SU', 'DIA', 'VAN', 'ANH')
+  AND grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code IN ('G10', 'G11', 'G12')
+  AND level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code IN ('NB', 'TH', 'VD');
+
+CREATE TEMP TABLE seed_dot2b_single (
+    id uuid PRIMARY KEY,
+    code text NOT NULL,
+    type text NOT NULL,
+    subject_code text NOT NULL,
+    grade_code text NOT NULL,
+    level_code text NOT NULL,
+    points numeric(8,4) NOT NULL,
+    label text NOT NULL,
+    body jsonb NOT NULL
+) ON COMMIT DROP;
+
+CREATE TEMP TABLE seed_dot2b_set (
+    id uuid PRIMARY KEY,
+    code text NOT NULL,
+    subject_code text NOT NULL,
+    grade_code text NOT NULL,
+    level_code text NOT NULL,
+    label text NOT NULL,
+    passage text NOT NULL,
+    child_count integer NOT NULL,
+    child_points numeric(8,4) NOT NULL,
+    mixed boolean NOT NULL,
+    tag_codes text[]
+) ON COMMIT DROP;
+
+-- Listening files: one audio/mpeg attachment per question root (children never carry files).
+-- Size and sha256 equal the files in db/devdata/assets/; DevQuestionAssetSeeder puts the bytes
+-- into object storage under the same object_key.
+CREATE TEMP TABLE seed_dot2b_asset (
+    asset_id uuid PRIMARY KEY,
+    question_id uuid NOT NULL,
+    object_key text NOT NULL,
+    file_name text NOT NULL,
+    size bigint NOT NULL,
+    sha256 bytea NOT NULL
+) ON COMMIT DROP;
+
+-- H-SCA Toan, Ly, Hoa, Sinh (spec 4.1): 0.25 per question, four options.
+INSERT INTO seed_dot2b_single (id, code, type, subject_code, grade_code, level_code, points, label, body)
+SELECT md5('thi360-hsca-' || s.code || '-sc-' || n)::uuid, 'SEED-HSCA-' || s.code || '-SC-' || lpad(n::text, 3, '0'),
+       'SINGLE_CHOICE', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       0.25, 'H-SCA ' || s.code || ' single ' || n, pg_temp.seed_single('H-SCA ' || s.code || ' single ' || n, n)
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH']) AS s(code) CROSS JOIN generate_series(1, 24) n
+UNION ALL
+SELECT md5('thi360-hsca-' || s.code || '-mc-' || n)::uuid, 'SEED-HSCA-' || s.code || '-MC-' || lpad(n::text, 3, '0'),
+       'MULTIPLE_CHOICE', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       0.25, 'H-SCA ' || s.code || ' multiple ' || n, pg_temp.seed_multiple('H-SCA ' || s.code || ' multiple ' || n, n)
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH']) AS s(code) CROSS JOIN generate_series(1, 8) n
+UNION ALL
+SELECT md5('thi360-hsca-' || s.code || '-sa-' || n)::uuid, 'SEED-HSCA-' || s.code || '-SA-' || lpad(n::text, 3, '0'),
+       'SHORT_ANSWER', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       0.25, 'H-SCA ' || s.code || ' short answer ' || n,
+       jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'INTEGER', 'answers', jsonb_build_array(n::text), 'inputHint', '')
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH']) AS s(code) CROSS JOIN generate_series(1, 12) n;
+
+-- H-SCA English listening, single questions (spec 4.3): audio on the question itself, one point.
+INSERT INTO seed_dot2b_single (id, code, type, subject_code, grade_code, level_code, points, label, body)
+SELECT md5('thi360-hsca-en-listen-single-' || n)::uuid, 'SEED-HSCA-ANH-LISTEN-SINGLE-' || lpad(n::text, 2, '0'),
+       'SINGLE_CHOICE', 'ANH', 'G12', 'TH', 1, 'H-SCA English listening single ' || n,
+       pg_temp.seed_single('H-SCA English listening single ' || n, n)
+FROM generate_series(1, 10) n;
+
+-- V-SAT (spec 5.1, 5.2): six points per true/false, matching and short answer; Cloze six per position.
+INSERT INTO seed_dot2b_single (id, code, type, subject_code, grade_code, level_code, points, label, body)
+SELECT md5('thi360-vsat-' || s.code || '-tf-' || n)::uuid, 'SEED-VSAT-' || s.code || '-TF-' || lpad(n::text, 3, '0'),
+       'TRUE_FALSE', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       6, 'V-SAT ' || s.code || ' true false ' || n, pg_temp.seed_true_false('V-SAT ' || s.code || ' true false ' || n)
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH', 'SU', 'DIA', 'VAN', 'ANH']) AS s(code) CROSS JOIN generate_series(1, 12) n
+UNION ALL
+SELECT md5('thi360-vsat-' || s.code || '-match-' || n)::uuid, 'SEED-VSAT-' || s.code || '-MATCH-' || lpad(n::text, 3, '0'),
+       'MATCHING', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       6, 'V-SAT ' || s.code || ' matching ' || n, pg_temp.seed_matching('V-SAT ' || s.code || ' matching ' || n)
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH', 'SU', 'DIA', 'VAN', 'ANH']) AS s(code) CROSS JOIN generate_series(1, 10) n
+UNION ALL
+SELECT md5('thi360-vsat-' || s.code || '-sa-' || n)::uuid, 'SEED-VSAT-' || s.code || '-SA-' || lpad(n::text, 3, '0'),
+       'SHORT_ANSWER', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       6, 'V-SAT ' || s.code || ' short answer ' || n,
+       jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'INTEGER', 'answers', jsonb_build_array(n::text), 'inputHint', '')
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH', 'SU', 'DIA']) AS s(code) CROSS JOIN generate_series(1, 10) n
+UNION ALL
+SELECT md5('thi360-vsat-ANH-cloze-' || n)::uuid, 'SEED-VSAT-ANH-CLOZE-' || lpad(n::text, 3, '0'),
+       'CLOZE', 'ANH', (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       30, 'V-SAT English cloze ' || n,
+       jsonb_build_object('type', 'CLOZE',
+           'passage', '<p>V-SAT English cloze passage ' || n || ' [[a]] [[b]] [[c]] [[d]] [[e]]</p>',
+           'blanks', (SELECT jsonb_agg(jsonb_build_object('id', chr(96 + i), 'answers', jsonb_build_array('word' || i),
+                                                          'points', 6) ORDER BY i)
+                      FROM generate_series(1, 5) i))
+FROM generate_series(1, 3) n;
+
+-- H-SCA sets: Toan/Ly/Hoa/Sinh part 2 (five children, Q-40), literature (5, 7, 8 children,
+-- one point each, Q-39), English listening (4 and 5 children, audio on the root) and reading
+-- (ten children, no audio). Children are single choice with four options.
+INSERT INTO seed_dot2b_set (id, code, subject_code, grade_code, level_code, label, passage, child_count, child_points,
+                            mixed, tag_codes)
+SELECT md5('thi360-hsca-' || s.code || '-set-' || n)::uuid, 'SEED-HSCA-' || s.code || '-SET-' || lpad(n::text, 3, '0'),
+       s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       'H-SCA ' || s.code || ' set ' || n, '<p>H-SCA ' || s.code || ' context ' || n || '</p>', 5, 0.25, false,
+       NULL::text[]
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH']) AS s(code) CROSS JOIN generate_series(1, 4) n
+UNION ALL
+SELECT md5('thi360-hsca-literature-' || f.stem || '-' || n)::uuid, 'SEED-HSCA-VAN-' || f.stem || '-' || lpad(n::text, 3, '0'),
+       'VAN', 'G12', 'TH', 'H-SCA literature ' || f.stem || ' set ' || n,
+       '<p>H-SCA literature ' || f.stem || ' text ' || n || '</p>', f.child_count, 1, false,
+       ARRAY[f.tag]
+FROM (VALUES ('INFO', 'VAN_THONG_TIN', 5), ('ARGUMENT', 'VAN_NGHI_LUAN', 7), ('POETRY', 'VAN_THO', 8))
+     f(stem, tag, child_count)
+CROSS JOIN generate_series(1, 3) n
+UNION ALL
+SELECT md5('thi360-hsca-en-listen-' || f.kind || '-' || n)::uuid,
+       'SEED-HSCA-ANH-LISTEN-' || upper(f.kind) || '-' || lpad(n::text, 2, '0'), 'ANH', 'G12', 'TH',
+       'H-SCA English listening ' || f.kind || ' ' || n, '<p>H-SCA English listening ' || f.kind || ' script ' || n || '</p>',
+       f.child_count, 1, false, NULL::text[]
+FROM (VALUES ('set4', 4), ('set5', 5)) f(kind, child_count) CROSS JOIN generate_series(1, 4) n
+UNION ALL
+SELECT md5('thi360-hsca-en-reading-set-' || n)::uuid, 'SEED-HSCA-ANH-READING-SET-' || lpad(n::text, 2, '0'), 'ANH', 'G12', 'TH',
+       'H-SCA English reading set ' || n, '<p>H-SCA English reading passage ' || n || '</p>', 10, 1, false,
+       NULL::text[]
+FROM generate_series(1, 6) n;
+
+-- V-SAT sets: part 2 of six subjects (two sets of three children are needed; four are seeded),
+-- literature part 2 (poetry and prose), English single-choice set of six, English mixed set of
+-- eight (positions 1-2 true/false). Slot matching is by root tag (ADV:BE-19:3): the four Địa lí
+-- roots carry one label each, two DIA_BANG_SO_LIEU and two DIA_BIEU_DO; children carry none.
+INSERT INTO seed_dot2b_set (id, code, subject_code, grade_code, level_code, label, passage, child_count, child_points,
+                            mixed, tag_codes)
+SELECT md5('thi360-vsat-' || s.code || '-set-' || n)::uuid, 'SEED-VSAT-' || s.code || '-SET-' || lpad(n::text, 3, '0'),
+       s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       'V-SAT ' || s.code || ' set ' || n, '<p>V-SAT ' || s.code || ' context ' || n || '</p>', 3, 6, false,
+       CASE WHEN s.code = 'DIA' THEN ARRAY[(ARRAY['DIA_BANG_SO_LIEU', 'DIA_BIEU_DO'])[1 + n % 2]] END
+FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH', 'SU', 'DIA']) AS s(code) CROSS JOIN generate_series(1, 4) n
+UNION ALL
+SELECT md5('thi360-vsat-literature-' || f.stem || '-' || n)::uuid, 'SEED-VSAT-VAN-' || f.stem || '-SET-' || lpad(n::text, 3, '0'),
+       'VAN', (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       'V-SAT literature ' || f.stem || ' set ' || n, '<p>V-SAT literature ' || f.stem || ' text ' || n || '</p>', 3, 6, false,
+       ARRAY[f.tag]
+FROM (VALUES ('POETRY', 'VAN_THO'), ('PROSE', 'VAN_TRUYEN')) f(stem, tag) CROSS JOIN generate_series(1, 3) n
+UNION ALL
+SELECT md5('thi360-vsat-ANH-choice-set-' || n)::uuid, 'SEED-VSAT-ANH-CHOICE-SET-' || lpad(n::text, 2, '0'), 'ANH',
+       (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       'V-SAT English choice set ' || n, '<p>V-SAT English choice passage ' || n || '</p>', 6, 6, false,
+       NULL::text[]
+FROM generate_series(1, 3) n
+UNION ALL
+SELECT md5('thi360-vsat-ANH-mixed-set-' || n)::uuid, 'SEED-VSAT-ANH-MIXED-SET-' || lpad(n::text, 2, '0'), 'ANH',
+       (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
+       'V-SAT English shared reading set ' || n, '<p>V-SAT English shared reading passage ' || n || '</p>', 8, 6, true,
+       NULL::text[]
+FROM generate_series(1, 3) n;
+
+INSERT INTO seed_dot2b_asset (asset_id, question_id, object_key, file_name, size, sha256)
+SELECT md5('thi360-hsca-audio-' || a.kind || '-' || a.n)::uuid, md5('thi360-hsca-en-listen-' || a.kind || '-' || a.n)::uuid,
+       'questions/dev-seed/hsca-en-listening-' || a.kind || '-' || lpad(a.n::text, 2, '0') || '.mp3',
+       'hsca-en-listening-' || a.kind || '-' || lpad(a.n::text, 2, '0') || '.mp3', a.size, decode(a.sha256, 'hex')
+FROM (VALUES
+        ('single', 1, 6264, '26a61e1708c3893cef781c8b1cf6e9c76a14c44822a244c44e85fe0674a59d93'),
+        ('single', 2, 6264, '34a936fdbd8e95a08314dc41278dad3e14fd736ae1437e3c85595e642086ff16'),
+        ('single', 3, 6264, 'd7a950a21e6433ce1955b11ccda22ac329a3fbf4667a492ad95ef6b70448ee44'),
+        ('single', 4, 6264, '2669ad1c3495e6e502130b1fe18bcf8f498d272c9250943f944ea2be7ff7ce68'),
+        ('single', 5, 6264, '67ef287eada857d3abb46f02c9566a8b7177a4364ec92441e1f78d6681eb5e62'),
+        ('single', 6, 6264, '2893a6106ffd8fe2a1b14880a23bb2250d7181ba534343042abb292b40119a2e'),
+        ('single', 7, 6264, '7befba64f9a942981426eaf0c70e2d414c49d27b6fdd2bacdcaba9f5fac16a6e'),
+        ('single', 8, 6264, '7f014ef0655c7b4d6e0c32d17906e344fb7c7c04c636d27c1f812ec3d9d3157c'),
+        ('single', 9, 6264, '85bf7a3b96e65a932dc9f69e0cf049af5f82cb0e653b79a0ce2cf20a889c3389'),
+        ('single', 10, 6264, '71103f8860aa01d9825be93a7a2a0ce4fb7c45fdf732d14aa677fa28d5c6f179'),
+        ('set4', 1, 6264, 'ba14a916e87470fc371bc629990ef2d698f0f4358b19ca3d9d46f53871fdcb98'),
+        ('set4', 2, 6264, '27968836cb40e6ffdd10807efa0a195435601b0936d2f0bef4a88b99016108f2'),
+        ('set4', 3, 6264, '15e7fe1b33151ef5dbb3b2d4e942eee19b8034b61f70760e2b6137f03bf8a167'),
+        ('set4', 4, 6264, '9611d40f4fa0cce732832672657bff8ceaf9748ad8b25289b6c85c323d826b8e'),
+        ('set5', 1, 6264, '6c5a711f5adea7ff71fa65869776c4a96abf7e2b3809554a5783a59f742c341f'),
+        ('set5', 2, 6264, '9b66487e3e776b4785bdea6e0e86ba0ee2bd514b888c33a89562527d018ff0cf'),
+        ('set5', 3, 6264, 'e001a40179064c7fac51626e15e2b643e3164e92ca101412aa76fd1ff26d5fa2'),
+        ('set5', 4, 6264, 'ac0db8a9a176cdaeb30296ec334d86a45f21e69d84f306e0ad744966c5a208e1')
+     ) a(kind, n, size, sha256);
+
+INSERT INTO questionbank.question_asset (id, kind, object_key, file_name, mime, size, sha256)
+SELECT asset_id, 'ATTACHMENT', object_key, file_name, 'audio/mpeg', size, sha256 FROM seed_dot2b_asset
+ON CONFLICT DO NOTHING;
+
+INSERT INTO seed_question_rows
+SELECT s.id, s.code, s.type, c.subject_id, c.grade_id, c.level_id, NULL, s.points, '<p>' || s.label || '</p>', s.body, NULL, NULL
+FROM seed_dot2b_single s
+JOIN seed_dot2b_cells c ON c.subject_code = s.subject_code AND c.grade_code = s.grade_code AND c.level_code = s.level_code;
+
+WITH sets AS (
+    SELECT s.*, c.subject_id, c.grade_id, c.level_id
+    FROM seed_dot2b_set s
+    JOIN seed_dot2b_cells c ON c.subject_code = s.subject_code AND c.grade_code = s.grade_code AND c.level_code = s.level_code
+), children AS (
+    SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
+           CASE WHEN s.mixed AND pos < 2 THEN 'TRUE_FALSE' ELSE 'SINGLE_CHOICE' END AS child_type,
+           s.label || ' question ' || (pos + 1) AS child_label,
+           CASE WHEN s.mixed AND pos < 2 THEN pg_temp.seed_true_false(s.label || ' question ' || (pos + 1))
+                ELSE pg_temp.seed_single(s.label || ' question ' || (pos + 1), pos) END AS child_body
+    FROM sets s CROSS JOIN LATERAL generate_series(0, s.child_count - 1) pos
+)
+INSERT INTO seed_question_rows
+SELECT s.id, s.code, 'QUESTION_SET', s.subject_id, s.grade_id, s.level_id, NULL::uuid,
+       s.child_count * s.child_points, '<p>' || s.label || '</p>',
+       jsonb_build_object('type', 'QUESTION_SET', 'passage', s.passage, 'children',
+           (SELECT jsonb_agg(jsonb_build_object('id', c.child_id, 'type', c.child_type,
+                                                'content', '<p>' || c.child_label || '</p>', 'body', c.child_body,
+                                                'points', s.child_points, 'knowledgeItemIds', '[]'::jsonb) ORDER BY c.pos)
+            FROM children c WHERE c.id = s.id)),
+       NULL::uuid, NULL::integer
+FROM sets s
+UNION ALL
+SELECT c.child_id, c.code || '-' || c.pos, c.child_type, c.subject_id, c.grade_id, c.level_id, NULL, c.child_points,
+       '<p>' || c.child_label || '</p>', c.child_body, c.id, c.pos
+FROM children c;
+
+INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
+SELECT s.id, tag.id
+FROM seed_dot2b_set s
+CROSS JOIN LATERAL unnest(s.tag_codes) t(code)
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
+ON CONFLICT DO NOTHING;
+
+-- A dot2b set is one seed unit: when a fixed root/child id or code is already occupied the
+-- whole set is skipped, so no READY root can point at children another parent owns.
+CREATE TEMP TABLE seed_blocked_sets (id uuid PRIMARY KEY) ON COMMIT DROP;
+INSERT INTO seed_blocked_sets
+SELECT s.id
+FROM seed_dot2b_set s
+WHERE EXISTS (SELECT 1 FROM questionbank.question q WHERE q.id = s.id OR q.code = s.code)
+   OR EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+              JOIN questionbank.question q
+                ON q.id = md5(s.id::text || '-' || pos)::uuid
+               OR q.code = s.code || '-' || pos);
+
+-- END BE-19.
+
 -- Parents must exist before their child rows satisfy the self-reference.
 WITH prepared AS (
     SELECT s.*,
            CASE WHEN code LIKE 'SEED-EXTRA-%-2' THEN 'DRAFT'
                 WHEN code LIKE 'SEED-EXTRA-%-3' THEN 'RETIRED' ELSE 'READY' END AS seed_status,
+           CASE WHEN code LIKE 'SEED-HSCA-%' OR code LIKE 'SEED-VSAT-%' THEN pg_temp.seed_plain(content, body) ELSE
            CASE type
                WHEN 'SINGLE_CHOICE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' One Two'
                WHEN 'SHORT_ANSWER' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' ' || (body->'answers'->>0)
@@ -1069,8 +1383,9 @@ WITH prepared AS (
                    WHEN code LIKE 'SEED-HSA-MATH-SET-%'
                        THEN 'HSA Math set HSA Math context HSA Math child One Two HSA Math child One Two'
                    ELSE 'Math set Math context Math child One Two Math child 1' END
-           END AS plain
+           END END AS plain
     FROM seed_question_rows s WHERE parent_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM seed_blocked_sets b WHERE b.id = s.id)
 ), inserted AS (
     INSERT INTO questionbank.question
         (id, code, type, status, parent_id, position, subject_item_id, grade_item_id,
@@ -1097,13 +1412,18 @@ INSERT INTO questionbank.question
      content_text, search_text)
 SELECT id, code, type, 'READY', parent_id, position, subject_id, grade_id, level_id, task_type_id,
        points, 1, NULL,
-       regexp_replace(content, '<[^>]+>', '', 'g') ||
-           CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
-                WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END,
-       lower(code || ' ' || regexp_replace(content, '<[^>]+>', '', 'g') ||
-             CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
-                  WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END)
-FROM seed_question_rows WHERE parent_id IS NOT NULL
+       CASE WHEN code LIKE 'SEED-HSCA-%' OR code LIKE 'SEED-VSAT-%' THEN pg_temp.seed_plain(content, body)
+            ELSE regexp_replace(content, '<[^>]+>', '', 'g') ||
+                CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
+                     WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END END,
+       lower(code || ' ' || CASE WHEN code LIKE 'SEED-HSCA-%' OR code LIKE 'SEED-VSAT-%' THEN pg_temp.seed_plain(content, body)
+                                 ELSE regexp_replace(content, '<[^>]+>', '', 'g') ||
+                CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
+                     WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END END)
+FROM seed_question_rows
+WHERE parent_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM seed_blocked_sets b WHERE b.id = seed_question_rows.parent_id)
+  AND EXISTS (SELECT 1 FROM questionbank.question p WHERE p.id = seed_question_rows.parent_id)
 ON CONFLICT DO NOTHING RETURNING id
 )
 INSERT INTO seed_inserted_children (id) SELECT id FROM inserted;
@@ -1134,10 +1454,16 @@ SELECT s.id, 1, jsonb_build_object(
     'tagItemIds', COALESCE(
         (SELECT jsonb_agg(t.tag_item_id ORDER BY t.tag_item_id)
          FROM seed_2b_question_tags t WHERE t.question_id = s.id), '[]'::jsonb), 'content', s.content,
-    'solution', NULL, 'commonMistakes', '[]'::jsonb, 'attachmentIds', '[]'::jsonb, 'body', s.body),
+    'solution', NULL, 'commonMistakes', '[]'::jsonb,
+    'attachmentIds', COALESCE((SELECT jsonb_agg(a.id ORDER BY a.id)
+                               FROM seed_dot2b_asset sa JOIN questionbank.question_asset a ON a.id = sa.asset_id
+                               WHERE sa.question_id = s.id), '[]'::jsonb), 'body', s.body),
     CASE WHEN q.status = 'DRAFT' THEN NULL ELSE now() END
 FROM seed_question_rows s
 JOIN questionbank.question q ON q.id = s.id
+-- Only rows this run inserted: a fixed id owned by someone else never receives a seed version.
+WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = s.id)
+   OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = s.id)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO questionbank.question_tag (question_id, tag_item_id)
@@ -1146,4 +1472,103 @@ WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = t.question_id
    OR EXISTS (SELECT 1 FROM seed_inserted_children i WHERE i.id = t.question_id)
 ON CONFLICT DO NOTHING;
 
+-- Địa lí part II roots keep exactly one slot label (ADV:BE-19:3). A database seeded by 6ef80282
+-- still carries both legacy labels on the roots and one each on the first two children. A root
+-- is corrected only when it is provably in that untouched state: published at version 1 and
+-- never edited, exactly both legacy labels on the root in question_tag and in its version-1
+-- snapshot, children carrying only legacy labels, no extra children. Anything else (already
+-- correct, edited, published again, unrelated) is left as it is.
+CREATE TEMP TABLE seed_dia_legacy ON COMMIT DROP AS
+SELECT id FROM catalog.catalog_item
+WHERE group_id = '00000000-0000-7000-8100-000000000008' AND code IN ('DIA_BANG_SO_LIEU', 'DIA_BIEU_DO');
+
+CREATE TEMP TABLE seed_dia_fix ON COMMIT DROP AS
+SELECT s.id AS root_id, q.subject_item_id AS subject_id, t.tag_item_id AS target_tag_id
+FROM seed_dot2b_set s
+JOIN questionbank.question q ON q.id = s.id AND q.code = s.code AND q.parent_id IS NULL
+JOIN seed_2b_question_tags t ON t.question_id = s.id
+WHERE s.code LIKE 'SEED-VSAT-DIA-SET-%'
+  AND (SELECT count(*) FROM seed_dia_legacy) = 2
+  AND q.status = 'READY' AND q.deleted_at IS NULL
+  AND q.current_version_no = 1 AND q.working_version_no IS NULL
+  AND NOT EXISTS (SELECT 1 FROM questionbank.question_version v WHERE v.question_id = s.id AND v.version_no <> 1)
+  AND (SELECT count(*) FROM questionbank.question_tag qt WHERE qt.question_id = s.id) = 2
+  AND (SELECT count(*) FROM questionbank.question_tag qt
+       JOIN seed_dia_legacy l ON l.id = qt.tag_item_id WHERE qt.question_id = s.id) = 2
+  AND EXISTS (SELECT 1 FROM questionbank.question_version v
+              WHERE v.question_id = s.id AND v.version_no = 1
+                AND jsonb_typeof(v.snapshot -> 'tagItemIds') = 'array'
+                AND jsonb_array_length(v.snapshot -> 'tagItemIds') = 2
+                AND (SELECT count(*) FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+                     JOIN seed_dia_legacy l ON l.id::text = e) = 2)
+  AND NOT EXISTS (SELECT 1 FROM questionbank.question c
+                  WHERE c.parent_id = s.id
+                    AND NOT EXISTS (SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+                                    WHERE md5(s.id::text || '-' || pos)::uuid = c.id))
+  AND NOT EXISTS (
+      SELECT 1 FROM generate_series(0, s.child_count - 1) pos
+      JOIN questionbank.question c ON c.id = md5(s.id::text || '-' || pos)::uuid
+      WHERE c.parent_id IS DISTINCT FROM s.id
+         OR c.current_version_no IS DISTINCT FROM 1 OR c.working_version_no IS NOT NULL
+         OR EXISTS (SELECT 1 FROM questionbank.question_version v WHERE v.question_id = c.id AND v.version_no <> 1)
+         OR EXISTS (SELECT 1 FROM questionbank.question_tag qt
+                    WHERE qt.question_id = c.id AND qt.tag_item_id NOT IN (SELECT id FROM seed_dia_legacy))
+         OR EXISTS (SELECT 1 FROM questionbank.question_version v
+                    WHERE v.question_id = c.id AND v.version_no = 1
+                      AND (jsonb_typeof(v.snapshot -> 'tagItemIds') IS DISTINCT FROM 'array'
+                           OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+                                      WHERE e NOT IN (SELECT id::text FROM seed_dia_legacy)))));
+
+DELETE FROM questionbank.question_tag qt
+WHERE qt.tag_item_id IN (SELECT id FROM seed_dia_legacy)
+  AND (qt.question_id IN (SELECT root_id FROM seed_dia_fix)
+       OR qt.question_id IN (SELECT c.id FROM questionbank.question c
+                             JOIN seed_dia_fix f ON c.parent_id = f.root_id));
+
+INSERT INTO questionbank.question_tag (question_id, tag_item_id)
+SELECT root_id, target_tag_id FROM seed_dia_fix
+ON CONFLICT DO NOTHING;
+
+-- The v1 snapshot of a corrected root keeps its own tags minus the legacy labels plus the
+-- slot label of this set; child snapshots lose the legacy labels. Nothing is read from question_tag.
+UPDATE questionbank.question_version v
+SET snapshot = jsonb_set(v.snapshot, '{tagItemIds}', COALESCE(
+    (SELECT jsonb_agg(x.u ORDER BY x.u)
+     FROM (SELECT e::uuid AS u FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+           WHERE e::uuid NOT IN (SELECT id FROM seed_dia_legacy)
+           UNION SELECT f.target_tag_id FROM seed_dia_fix f WHERE f.root_id = v.question_id) x),
+    '[]'::jsonb))
+WHERE v.version_no = 1 AND v.question_id IN (SELECT root_id FROM seed_dia_fix);
+
+UPDATE questionbank.question_version v
+SET snapshot = jsonb_set(v.snapshot, '{tagItemIds}', COALESCE(
+    (SELECT jsonb_agg(e::uuid ORDER BY e::uuid) FROM jsonb_array_elements_text(v.snapshot -> 'tagItemIds') e
+     WHERE e::uuid NOT IN (SELECT id FROM seed_dia_legacy)), '[]'::jsonb))
+WHERE v.version_no = 1
+  AND v.question_id IN (SELECT c.id FROM questionbank.question c JOIN seed_dia_fix f ON c.parent_id = f.root_id);
+
+-- The READY source of these subjects changed (roots left a root-tag filter), so cached proofs
+-- must be invalidated in the same transaction; a rerun finds no root to correct and bumps nothing.
+INSERT INTO questionbank.question_source_revision (subject_item_id, revision)
+SELECT subject_id, count(*) FROM seed_dia_fix GROUP BY subject_id
+ON CONFLICT (subject_item_id) DO UPDATE
+SET revision = questionbank.question_source_revision.revision + EXCLUDED.revision;
+
+DROP TABLE seed_dia_fix, seed_dia_legacy;
+
 DROP TABLE seed_be14_classification;
+
+-- Roots keep their audio reference even if an admin later edits them (version 1 stays referenced).
+INSERT INTO questionbank.question_asset_ref (asset_id, question_id, version_no)
+SELECT a.id, sa.question_id, 1
+FROM seed_dot2b_asset sa
+JOIN questionbank.question_asset a ON a.id = sa.asset_id
+WHERE EXISTS (SELECT 1 FROM seed_inserted_questions i WHERE i.id = sa.question_id)
+ON CONFLICT DO NOTHING;
+
+-- Dropped here so the script can run twice in one transaction, as SampleQuestionCoverageIT does.
+DROP TABLE seed_dot2b_cells, seed_dot2b_single, seed_dot2b_set, seed_dot2b_asset, seed_blocked_sets;
+
+DROP FUNCTION pg_temp.seed_plain(text, jsonb), pg_temp.seed_leaf_text(jsonb), pg_temp.seed_text(text),
+    pg_temp.seed_options(text, integer, text[]), pg_temp.seed_single(text, integer),
+    pg_temp.seed_multiple(text, integer), pg_temp.seed_true_false(text), pg_temp.seed_matching(text);

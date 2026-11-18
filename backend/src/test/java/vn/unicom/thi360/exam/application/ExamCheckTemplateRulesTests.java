@@ -665,8 +665,7 @@ class ExamCheckTemplateRulesTests {
         when(unitStore.load(exam.getId())).thenReturn(Map.of());
         var unitEngine = new ExamCheckUnitEngine(unitStore,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock);
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper,
-                catalog, source, unitEngine, new ExamCheckTemplateFacts(catalog, templates, mapper));
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, org.mockito.Mockito.mock(vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.class), unitEngine, new ExamCheckTemplateFacts(catalog, templates, mapper));
         var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash",
                 mapper.createObjectNode());

@@ -34,6 +34,7 @@ class QuestionSeedIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired DataSource dataSource;
     @Autowired ObjectMapper mapper;
+    @Autowired QuestionAssetResolver assetResolver;
 
     @Test
     void hsaCellsAtLeastDouble() {
@@ -77,7 +78,7 @@ class QuestionSeedIT extends AbstractIntegrationTest {
         assertThat(rows.stream().map(row -> row.get("type")).distinct()).hasSize(8);
         assertThat(rows.stream().map(row -> row.get("status")).distinct())
             .containsExactlyInAnyOrder("DRAFT", "READY", "RETIRED");
-        QuestionAssetResolver assets = QuestionAssetResolver.none();
+        QuestionAssetResolver assets = assetResolver;
         QuestionHtmlSanitizer sanitizer = new QuestionHtmlSanitizer(assets);
         for (Map<String, Object> row : rows) {
             String code = (String) row.get("code");

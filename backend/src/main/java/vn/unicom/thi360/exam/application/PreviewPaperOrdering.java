@@ -87,7 +87,7 @@ final class PreviewPaperOrdering {
                     if (item.question() != null) {
                         PreviewQuestion question = question(item.question(), next, optionOrders);
                         items.add(new PreviewItem(item.kind(), question, item.setId(), item.code(), item.version(),
-                                item.simulated(), item.passage(), item.children(), originalOrder));
+                                item.simulated(), item.passage(), item.children(), originalOrder, item.attachments()));
                     } else {
                         List<PreviewQuestion> children = new ArrayList<>();
                         int childNumber = next;
@@ -95,7 +95,7 @@ final class PreviewPaperOrdering {
                             children.add(question(child, childNumber++, optionOrders));
                         }
                         items.add(new PreviewItem(item.kind(), null, item.setId(), item.code(), item.version(),
-                                item.simulated(), item.passage(), children, originalOrder));
+                                item.simulated(), item.passage(), children, originalOrder, item.attachments()));
                     }
                     next += spans.get(itemId);
                 }
@@ -104,7 +104,7 @@ final class PreviewPaperOrdering {
                         block.setSize(), block.requirement(), block.allocation(), items));
             }
             output.add(new PreviewPart(part.partId(), part.name(), part.order(), part.durationMinutes(), partFirst,
-                    next - 1, part.points(), part.maxPoints(), blocks));
+                    next - 1, part.points(), part.maxPoints(), blocks, part.displaySegments()));
         }
         return new PreviewPaper(paper.totalQuestions(), paper.totalPoints(), paper.totalMinutes(), paper.sharedDuration(),
                 paper.hasManualGrading(), output, paper.checks(), paper.knowledgeStats(), paper.subjects());
@@ -159,6 +159,7 @@ final class PreviewPaperOrdering {
         return new PreviewQuestion(number, question.questionId(), question.code(), question.version(), question.type(),
                 question.simulated(), question.content(), question.gradeCode(), question.difficultyCode(), question.knowledge(),
                 question.points(), options, question.answer(), question.solution(), question.rubric(), question.body(),
-                order, original == null ? null : List.copyOf(original), question.number(), question.assignedTopicQuotaIds());
+                order, original == null ? null : List.copyOf(original), question.number(), question.assignedTopicQuotaIds(),
+                question.attachments());
     }
 }

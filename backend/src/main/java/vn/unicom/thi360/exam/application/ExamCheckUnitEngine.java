@@ -41,7 +41,8 @@ public class ExamCheckUnitEngine {
 
     record Proof(SolveStatus status, SolveReason reason, String subjectCode, String groupId,
                  QuotaRef failingQuota, List<SubjectWitness> witnesses) { }
-    record Computation(SolveOutcome outcome, List<ExamCheckUnitStore.Unit> changed) { }
+    record Computation(SolveOutcome outcome, List<ExamCheckUnitStore.Unit> changed,
+                       List<ExamCheckUnitStore.Unit> reused) { }
 
     Computation solve(ExamCheckSnapshotReader.Snapshot snapshot, SolverInputBuilder.SolverInput input,
             ExamCheckRules rules, Instant deadline, Duration budget, ExamCheckScope scope) {
@@ -50,10 +51,10 @@ public class ExamCheckUnitEngine {
             plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
         } catch (ExamCheckUnitPlanner.TooManyPaths ex) {
             return new Computation(new SolveOutcome(SolveStatus.UNCONFIRMED, SolveReason.PATH_LIMIT_EXCEEDED,
-                    List.of(), SolveStats.EMPTY), List.of());
+                    List.of(), SolveStats.EMPTY), List.of(), List.of());
         } catch (ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {
             return new Computation(new SolveOutcome(SolveStatus.INVALID, SolveReason.CHOICE_SUBJECT_LIMIT_EXCEEDED,
-                    List.of(), SolveStats.EMPTY), List.of());
+                    List.of(), SolveStats.EMPTY), List.of(), List.of());
         }
         var persisted = store.load(snapshot.exam().getId());
         var inputInfo = snapshot.persistenceInput();
@@ -61,6 +62,7 @@ public class ExamCheckUnitEngine {
         Map<String, ExamSection> sections = sections(snapshot.structure());
         Map<ExamCheckUnitPlanner.Key, Proof> proofs = new LinkedHashMap<>();
         List<ExamCheckUnitStore.Unit> changed = new ArrayList<>();
+        List<ExamCheckUnitStore.Unit> reusedUnits = new ArrayList<>();
         Set<String> requested = scope.sections(snapshot.structure());
         int solved = 0, reused = 0;
         for (var unit : plan.units()) {
@@ -81,6 +83,7 @@ public class ExamCheckUnitEngine {
             if (old != null && "VALID".equals(old.outcome()) && identity.fingerprint().equals(old.fingerprint())
                     && sourceRevision == old.sourceRevision()) {
                 proofs.put(unit.key(), mapper.convertValue(old.witness(), Proof.class));
+                reusedUnits.add(old);
                 reused++;
                 continue;
             }
@@ -155,7 +158,7 @@ public class ExamCheckUnitEngine {
         SolveStatus status = paths.isEmpty() ? SolveStatus.INVALID : SolveStatus.VALID;
         for (var path : paths) status = worst(status, path.status());
         return new Computation(new SolveOutcome(status, null, paths,
-                new SolveStats(plan.paths().stream().mapToLong(path -> path.tuples().size()).sum(), solved, reused)), changed);
+                new SolveStats(plan.paths().stream().mapToLong(path -> path.tuples().size()).sum(), solved, reused)), changed, reusedUnits);
     }
 
     List<ExamCheckUnitStore.Unit> invalidUnits(ExamCheckSnapshotReader.Snapshot snapshot,

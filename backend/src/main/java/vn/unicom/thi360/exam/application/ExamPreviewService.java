@@ -20,12 +20,14 @@ import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.exam.api.ExamPreviewController.*;
 import vn.unicom.thi360.exam.domain.*;
 import vn.unicom.thi360.exam.domain.solver.*;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 
 /** Seeded generation for one requested path, using serving question snapshots only. */
 @Service
 public class ExamPreviewService {
+    private final QuestionAttachmentPort attachmentPort;
     private final ExamPreviewStore store;
     private final PreviewSnapshotStore previewSnapshots;
     private final SolverInputBuilder builder;
@@ -35,7 +37,8 @@ public class ExamPreviewService {
     private final CatalogLookup catalog;
 
     public ExamPreviewService(ExamPreviewStore store, PreviewSnapshotStore previewSnapshots,
-            SolverInputBuilder builder, SolverLimits limits, ObjectMapper mapper, Clock clock, CatalogLookup catalog) {
+            SolverInputBuilder builder, SolverLimits limits, ObjectMapper mapper, Clock clock, CatalogLookup catalog,
+            QuestionAttachmentPort attachmentPort) {
         this.store = store;
         this.previewSnapshots = previewSnapshots;
         this.builder = builder;
@@ -43,6 +46,7 @@ public class ExamPreviewService {
         this.mapper = mapper;
         this.clock = clock;
         this.catalog = catalog;
+        this.attachmentPort = attachmentPort;
     }
 
     public PreviewResult generate(UUID id, GeneratePreviewRequest request) {
@@ -56,7 +60,8 @@ public class ExamPreviewService {
         var snapshot = request.version() == null ? store.load(id)
                 : sectionRequest ? store.loadVersionForSection(id, request.version(), request.target().sectionId())
                 : store.loadVersion(id, request.version(), request.pathId());
-        ExamStructureDocument document = new ExamStructureCodec(mapper).read(snapshot.parts());
+        ExamStructureDocument sourceDocument = new ExamStructureCodec(mapper).read(snapshot.parts());
+        ExamStructureDocument document = sourceDocument;
         PreviewSectionTarget.Selection sectionTarget = request.target() != null && "SECTION".equals(request.target().kind())
                 ? PreviewSectionTarget.select(document, request.target().sectionId(), request.target().sectionQuestionCount())
                 : null;
@@ -156,19 +161,29 @@ public class ExamPreviewService {
         if (regeneration != null) versions.putAll(regeneration.versions());
         List<QuestionSourcePort.VersionKey> missing = snapshotKeys.stream().filter(key -> !versions.containsKey(key)).toList();
         if (!missing.isEmpty()) versions.putAll(store.loadVersions(missing));
+        // Only versions that list attachments reach the port; the storage is not asked for a preview (H48 is a check).
+        List<QuestionSourcePort.VersionKey> withFiles = versions.values().stream()
+                .filter(version -> version.snapshot() != null && version.snapshot().path("attachmentIds").size() > 0)
+                .map(QuestionSourcePort.Version::key).toList();
         SolvePath actualPath = regeneration == null || sectionTarget != null ? result.path()
                 : mergeRegeneratedPath(resolved.path(), result.path(), regeneration.retained());
         Map<String, SectionOnPath> sections = pathSections(actualPath);
         List<CatalogItemView> knowledge = catalog.listGroupItems("KNOWLEDGE");
-        PaperBuilder paperBuilder = new PaperBuilder(groups, candidates, versions, sections, knowledge);
+        PaperBuilder paperBuilder = new PaperBuilder(groups, candidates, versions, sections, knowledge,
+                withFiles.isEmpty() ? Map.of() : attachmentPort.attachments(withFiles, false));
         PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
                 document, request.seed(), mapper, regeneration == null ? Map.of() : regeneration.retained());
+        if (sectionTarget != null) paper = segmentsOfCompletePartsOnly(paper, sourceDocument);
+        // H40 rule 3 holds for every complete segmented part, whatever the request shape (explicit target, legacy
+        // pathId/seed, a section that generated the whole part). A partial projection carries no segments, see above.
+        List<PreviewIssue> totals = new ArrayList<>();
         if (request.target() != null && sectionTarget == null) {
-            List<PreviewIssue> totals = previewPartTotals(document, paper, request.pathId());
-            if (!totals.isEmpty()) {
-                return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                        "FAILED", null, "INVALID", totals, null, null, null);
-            }
+            totals.addAll(previewPartTotals(document, paper, request.pathId()));
+        }
+        totals.addAll(previewSegmentTotals(paper, paperBuilder.unitFacts(), request.pathId()));
+        if (!totals.isEmpty()) {
+            return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
+                    "FAILED", null, "INVALID", totals, null, null, null);
         }
         List<SectionOnPath> trimmedSections = trimmedSections(result.path(), sectionTarget != null && sectionTarget.trim());
         if (trimmedSections.size() != solved.dropped().size()) {
@@ -193,7 +208,7 @@ public class ExamPreviewService {
             }
             droppedQuestions.add(paperBuilder.question(dropped.questionId(), version.code(), dropped.versionNo(),
                     version.snapshot(), candidate.units().getFirst(), item.subjectCode(),
-                    assignedTopics(dropped, 0)));
+                    assignedTopics(dropped, 0), paperBuilder.attachments(key(dropped))));
         }
         Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
                 PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
@@ -230,6 +245,85 @@ public class ExamPreviewService {
             issues.add(previewIssue(issue, pathId));
         }
         return issues;
+    }
+
+    /**
+     * A section projected out of its part declares the part's display segments only when the generated paper holds
+     * that part complete: positions count from the part's first number, so they are comparable only if every
+     * position 1..{@code questionCount} of the part is present, as in the PATH or EXAM paper. The decision is made
+     * from the realized projection, not from the topology of the structure. Otherwise the segments are dropped,
+     * neither returned nor validated.
+     */
+    private static PreviewPaper segmentsOfCompletePartsOnly(PreviewPaper paper, ExamStructureDocument source) {
+        Map<String, Integer> declared = new HashMap<>();
+        for (ExamPart part : source.parts()) declared.put(part.id(), part.questionCount());
+        List<PreviewPart> parts = new ArrayList<>();
+        for (PreviewPart part : paper.parts()) {
+            int generated = part.blocks().stream().mapToInt(PreviewBlock::questionCount).sum();
+            boolean complete = declared.get(part.partId()) != null && declared.get(part.partId()) == generated;
+            parts.add(complete ? part : new PreviewPart(part.partId(), part.name(), part.order(),
+                    part.durationMinutes(), part.firstNumber(), part.lastNumber(), part.points(), part.maxPoints(),
+                    part.blocks(), List.of()));
+        }
+        return new PreviewPaper(paper.totalQuestions(), paper.totalPoints(), paper.totalMinutes(),
+                paper.sharedDuration(), paper.hasManualGrading(), parts, paper.checks(), paper.knowledgeStats(),
+                paper.subjects());
+    }
+
+    /**
+     * Declared commands and points of each display segment against what the generated paper really holds in the
+     * segment's range of numbers (H40 rule 3). Positions count from the first number of the part; numbering is the
+     * final one, after ordering. Every deviation is an error at the part, one per metric.
+     */
+    private List<PreviewIssue> previewSegmentTotals(PreviewPaper paper,
+            Map<String, List<PaperBuilder.UnitFact>> facts, String pathId) {
+        List<PreviewIssue> issues = new ArrayList<>();
+        for (PreviewPart part : paper.parts()) {
+            if (part.displaySegments() == null || part.displaySegments().isEmpty()) continue;
+            Map<Integer, PaperBuilder.UnitFact> byNumber = new HashMap<>();
+            for (PreviewBlock block : part.blocks()) for (PreviewItem item : block.items()) {
+                List<PreviewQuestion> questions = item.question() == null ? item.children() : List.of(item.question());
+                for (PreviewQuestion question : questions) {
+                    List<PaperBuilder.UnitFact> list = facts.getOrDefault(question.questionId(), List.of());
+                    for (int i = 0; i < list.size(); i++) byNumber.put(question.number() + i, list.get(i));
+                }
+            }
+            for (DisplaySegment segment : part.displaySegments()) {
+                if (segment.fromPosition() == null || segment.toPosition() == null) continue;
+                int commands = 0;
+                BigDecimal points = BigDecimal.ZERO;
+                for (int position = segment.fromPosition(); position <= segment.toPosition(); position++) {
+                    PaperBuilder.UnitFact fact = byNumber.get(part.firstNumber() + position - 1);
+                    if (fact == null) continue;
+                    commands += fact.commandCount();
+                    points = points.add(fact.points());
+                }
+                if (segment.commandCount() != null && commands != segment.commandCount()) {
+                    issues.add(segmentIssue(part, segment, "COMMANDS", BigDecimal.valueOf(segment.commandCount()),
+                            BigDecimal.valueOf(commands), pathId));
+                }
+                if (segment.maxPoints() != null && points.compareTo(segment.maxPoints()) != 0) {
+                    issues.add(segmentIssue(part, segment, "POINTS", segment.maxPoints(), points, pathId));
+                }
+            }
+        }
+        return issues;
+    }
+
+    private PreviewIssue segmentIssue(PreviewPart part, DisplaySegment segment, String dimension,
+            BigDecimal declared, BigDecimal actual, String pathId) {
+        ObjectNode issue = mapper.createObjectNode();
+        issue.put("key", "DISPLAY_SEGMENT_MISMATCH:" + part.partId() + ":" + segment.code() + ":" + dimension);
+        issue.put("code", "DISPLAY_SEGMENT_MISMATCH");
+        issue.put("severity", "ERROR");
+        issue.put("group", "DISPLAY");
+        issue.put("partId", part.partId());
+        issue.put("partName", part.name());
+        issue.put("dimension", dimension);
+        issue.put("segmentCode", segment.code());
+        issue.put("required", declared);
+        issue.put("available", actual);
+        return previewIssue(issue, pathId);
     }
 
     private static List<SectionOnPath> trimmedSections(SolvePath path, boolean singleSectionTrim) {
@@ -352,6 +446,8 @@ public class ExamPreviewService {
         private final Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions;
         private final Map<String, SectionOnPath> sections;
         private final List<SubjectAllocation> subjects = new ArrayList<>();
+        private final Map<QuestionSourcePort.VersionKey, List<QuestionAttachmentPort.Attachment>> files;
+        private final Map<String, List<UnitFact>> unitFacts = new HashMap<>();
         private final Map<UUID, CatalogItemView> knowledge;
         private final Map<UUID, KnowledgeStat> knowledgeStats = new LinkedHashMap<>();
         private int number = 1;
@@ -362,13 +458,27 @@ public class ExamPreviewService {
         PaperBuilder(Map<String, GroupWitness> witnesses,
                 Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates,
                 Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions,
-                Map<String, SectionOnPath> sections, List<CatalogItemView> knowledge) {
+                Map<String, SectionOnPath> sections, List<CatalogItemView> knowledge,
+                Map<QuestionSourcePort.VersionKey, List<QuestionAttachmentPort.Attachment>> files) {
             this.witnesses = witnesses;
             this.candidates = candidates;
             this.versions = versions;
             this.sections = sections;
+            this.files = files;
             this.knowledge = new HashMap<>();
             for (CatalogItemView node : knowledge) this.knowledge.put(node.id(), node);
+        }
+
+        /** Command count and points of one numbered unit, by question ID, in unit order. */
+        record UnitFact(int commandCount, BigDecimal points) { }
+
+        Map<String, List<UnitFact>> unitFacts() {
+            return unitFacts;
+        }
+
+        private List<PreviewAttachment> attachments(QuestionSourcePort.VersionKey key) {
+            return files.getOrDefault(key, List.of()).stream()
+                    .map(file -> new PreviewAttachment(file.id().toString(), file.name(), file.mime())).toList();
         }
 
         PreviewPaper build(ExamPreviewStore.Snapshot exam, ExamStructureDocument doc, SolvePath path) {
@@ -403,7 +513,7 @@ public class ExamPreviewService {
                 }
                 partMinutes += part.durationMinutes() == null ? 0 : part.durationMinutes();
                 parts.add(new PreviewPart(part.id(), part.name(), part.order(), part.durationMinutes(),
-                        first, number - 1, totalPoints.subtract(before), part.maxPoints(), blocks));
+                        first, number - 1, totalPoints.subtract(before), part.maxPoints(), blocks, part.displaySegments()));
             }
             boolean shared = "SHARED".equals(exam.timing());
             int minutes = shared && exam.durationMinutes() != null ? exam.durationMinutes() : partMinutes;
@@ -477,29 +587,33 @@ public class ExamPreviewService {
                     String code = version.childCodes().get(unit.questionId());
                     if (code == null) throw new IllegalStateException("Set child code missing");
                     children.add(question(unit.questionId().toString(), code, version.key().versionNo(),
-                            childVersion.snapshot(), unit, subjectCode, assignedTopics(pick, i)));
+                            childVersion.snapshot(), unit, subjectCode, assignedTopics(pick, i), List.of()));
                 }
                 return new PreviewItem("SET", null, version.key().questionId().toString(), version.code(),
-                        version.key().versionNo(), false, text(body, "passage"), children, null);
+                        version.key().versionNo(), false, text(body, "passage"), children, null, attachments(version.key()));
             }
             if (candidate.units().isEmpty()) throw new IllegalStateException("Question has no counting units");
             int start = number;
             PreviewQuestion question = question(version.key().questionId().toString(), version.code(),
                     version.key().versionNo(), snapshot, candidate.units().getFirst(), subjectCode,
-                    assignedTopics(pick, -1));
+                    assignedTopics(pick, -1), attachments(version.key()));
             // A cloze is displayed once but every blank contributes to its numbering and points.
             for (int i = 1; i < candidate.units().size(); i++) {
                 number++;
                 totalPoints = totalPoints.add(points(candidate.units().get(i)));
+                unitFacts.get(version.key().questionId().toString())
+                        .add(new UnitFact(candidate.units().get(i).commandCount(), points(candidate.units().get(i))));
                 countKnowledge(snapshot, subjectCode);
             }
             if (number <= start) throw new IllegalStateException("Invalid question numbering");
-            return new PreviewItem("QUESTION", question, null, null, null, false, null, null, null);
+            return new PreviewItem("QUESTION", question, null, null, null, false, null, null, null, List.of());
         }
 
         private PreviewQuestion question(String id, String code, int version, JsonNode snapshot,
-                QuestionSourcePort.Unit unit, String subjectCode, List<String> assignedTopicQuotaIds) {
+                QuestionSourcePort.Unit unit, String subjectCode, List<String> assignedTopicQuotaIds,
+                List<PreviewAttachment> attachments) {
             BigDecimal points = points(unit);
+            unitFacts.computeIfAbsent(id, ignored -> new ArrayList<>()).add(new UnitFact(unit.commandCount(), points));
             number++;
             totalPoints = totalPoints.add(points);
             KnowledgeRef ref = countKnowledge(snapshot, subjectCode);
@@ -520,7 +634,7 @@ public class ExamPreviewService {
             return new PreviewQuestion(number - 1, id, code, version, unit.answerType().name(), false,
                     text(snapshot, "content"), unit.gradeCode(), unit.difficultyCode(), ref, points,
                     options(body), answer(body), text(snapshot, "solution"), rubric(body), body.isMissingNode() ? null : body,
-                    null, null, null, assignedTopicQuotaIds);
+                    null, null, null, assignedTopicQuotaIds, attachments);
         }
 
         private static BigDecimal points(QuestionSourcePort.Unit unit) {

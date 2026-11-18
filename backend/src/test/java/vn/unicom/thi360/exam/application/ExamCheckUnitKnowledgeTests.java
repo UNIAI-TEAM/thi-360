@@ -41,8 +41,7 @@ class ExamCheckUnitKnowledgeTests {
         var limits = SolverLimits.defaults();
         var clock = Clock.systemUTC();
         var source = mock(QuestionSourcePort.class);
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits),
-                limits, clock, mapper, catalog, source, mock(ExamCheckUnitEngine.class), new ExamCheckTemplateFacts(catalog, mock(ExamTemplateService.class), mapper));
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, org.mockito.Mockito.mock(vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.class), mock(ExamCheckUnitEngine.class), new ExamCheckTemplateFacts(catalog, mock(ExamTemplateService.class), mapper));
         var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, doc, null, null),
                 clock.instant().plusSeconds(30), Duration.ofSeconds(30), ExamCheckScope.from(null, null, null)).result();
         assertThat(result.path("groups").findValuesAsText("code")).contains("TOPIC_QUOTA_NESTED");

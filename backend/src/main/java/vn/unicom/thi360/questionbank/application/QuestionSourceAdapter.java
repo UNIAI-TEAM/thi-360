@@ -401,20 +401,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         }
         if (f.childConditions() != null && !f.childConditions().isEmpty()) {
             for (int j = 0; j < f.childConditions().size(); j++) {
-                var condition = f.childConditions().get(j);
-                String from = p + "childFrom" + j;
-                String to = p + "childTo" + j;
-                String nodes = p + "childNodes" + j;
-                params.addValue(from, condition.from());
-                params.addValue(to, condition.to());
-                params.addValue(nodes, condition.nodeIds());
-                parts.add(condition.from() < 1 || condition.to() < condition.from() || condition.nodeIds().isEmpty()
-                        ? "false"
-                        : "(q.type = 'QUESTION_SET' and not exists (select 1 from generate_series(:"
-                        + from + ", :" + to + ") pos where not exists (select 1 "
-                        + "from questionbank.question c join questionbank.question_knowledge ck "
-                        + "on ck.question_id=c.id where c.parent_id=q.id and c.deleted_at is null "
-                        + "and c.position=pos - 1 and ck.knowledge_item_id in (:" + nodes + "))))");
+                parts.add(childConditionPredicate(f.childConditions().get(j), p, j, params));
             }
         }
         if (f.requiredPointsPerQuestion() != null) {
@@ -425,7 +412,56 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                     + "(select 1 from jsonb_array_elements(v.snapshot #> '{body,blanks}') b "
                     + "where (b->>'points')::numeric <> :" + p + "points) else q.points = :" + p + "points end)");
         }
+        if (f.audioRequirement() == AudioRequirement.REQUIRED) {
+            parts.add(rootHasAudio());
+        } else if (f.audioRequirement() == AudioRequirement.FORBIDDEN) {
+            parts.add("not " + rootHasAudio());
+        }
         return "(" + String.join(" and ", parts) + ")";
+    }
+
+    /**
+     * Audio lives on the ROOT question only (children carry no files): one of the serving root's
+     * attachments has MIME audio/*. {@code Unit.hasAttachment} is true for every file type and is not used.
+     */
+    private static String rootHasAudio() {
+        return "exists (select 1 from jsonb_array_elements_text(case when jsonb_typeof(v.snapshot #> '{attachmentIds}') = 'array' "
+                + "then v.snapshot #> '{attachmentIds}' else '[]'::jsonb end) att(id) "
+                + "join questionbank.question_asset audio_asset on audio_asset.id = att.id::uuid "
+                + "where lower(audio_asset.mime) like 'audio/%')";
+    }
+
+    /**
+     * Per-position child condition. Knowledge nodes, answer type and item shape are ANDed on the child at
+     * each position; a condition that states none of them matches nothing, as before.
+     */
+    private String childConditionPredicate(ChildCondition condition, String p, int j, MapSqlParameterSource params) {
+        boolean nodes = !condition.nodeIds().isEmpty();
+        if (!nodes && condition.answerType() == null && condition.itemShape() == null) return "false";
+        String from = p + "childFrom" + j;
+        String to = p + "childTo" + j;
+        params.addValue(from, condition.from());
+        params.addValue(to, condition.to());
+        StringBuilder source = new StringBuilder("questionbank.question c");
+        List<String> where = new ArrayList<>(List.of("c.parent_id=q.id", "c.deleted_at is null", "c.position=pos - 1"));
+        if (nodes) {
+            String key = p + "childNodes" + j;
+            params.addValue(key, condition.nodeIds());
+            source.append(" join questionbank.question_knowledge ck on ck.question_id=c.id");
+            where.add("ck.knowledge_item_id in (:" + key + ")");
+        }
+        if (condition.answerType() != null) {
+            String key = p + "childType" + j;
+            params.addValue(key, condition.answerType().name());
+            where.add("c.type = :" + key);
+        }
+        if (condition.itemShape() != null) {
+            source.append(" join questionbank.question_version cv on cv.question_id=c.id "
+                    + "and cv.version_no=q.current_version_no");
+            where.add(shapePredicate("c.type", "cv.snapshot", p + "childCondShape" + j, condition.itemShape(), params));
+        }
+        return "(q.type = 'QUESTION_SET' and not exists (select 1 from generate_series(:" + from + ", :" + to
+                + ") pos where not exists (select 1 from " + source + " where " + String.join(" and ", where) + ")))";
     }
 
     private static void addEveryChildKnowledge(List<String> parts, MapSqlParameterSource params,
@@ -493,6 +529,11 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
             params.addValue(prefix + "right", shape.rightItems());
             parts.add(type + " = 'MATCHING' and coalesce(jsonb_array_length("
                     + snapshot + " #> '{body,right}'), 0) = :" + prefix + "right");
+        }
+        if (shape.options() != null) {
+            params.addValue(prefix + "options", shape.options());
+            parts.add(type + " in ('SINGLE_CHOICE','MULTIPLE_CHOICE') and coalesce(jsonb_array_length("
+                    + snapshot + " #> '{body,options}'), 0) = :" + prefix + "options");
         }
         return parts.isEmpty() ? "true" : String.join(" and ", parts);
     }

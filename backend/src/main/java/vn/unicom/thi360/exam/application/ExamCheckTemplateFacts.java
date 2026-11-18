@@ -42,19 +42,34 @@ public class ExamCheckTemplateFacts {
                 }
             }
         }
-        return new ExamCheckRules.TemplateFacts(unpublishable, locked(exam, standard));
+        return template(exam, standard, unpublishable);
     }
 
-    /** Structure of the loaded template when it has {@code fixed_counts = true}; null otherwise. */
-    ExamStructureDocument locked(Exam exam) {
-        return locked(exam, null);
+    /**
+     * The facts that mark a section in the section states: every lock of the loaded template (H27, H42, H43) and no
+     * publish ban, so the exam-level ban marks no section.
+     */
+    ExamCheckRules.TemplateFacts forSections(Exam exam) {
+        return template(exam, null, null);
     }
 
-    private ExamStructureDocument locked(Exam exam, ExamTemplate known) {
+    /**
+     * Row lock (H42) counts only for a {@code SUBJECT} exam, so a {@code PART} or review exam of the same template
+     * may change counts. The omitted lock (H43) and the scale rule (H49) apply to every scope. The template is parsed
+     * once and only when one of its flags is on.
+     */
+    private ExamCheckRules.TemplateFacts template(Exam exam, ExamTemplate known, String unpublishable) {
         String code = exam.getTemplateCode();
-        if (code == null || code.isBlank()) return null;
-        ExamTemplate loaded = known != null && code.trim().equals(known.getCode()) ? known : templates.findProvenance(code);
-        return loaded != null && loaded.isFixedCounts()
+        ExamTemplate loaded = null;
+        if (code != null && !code.isBlank()) {
+            loaded = known != null && code.trim().equals(known.getCode()) ? known : templates.findProvenance(code);
+        }
+        boolean blocks = loaded != null && loaded.isFixedBlockCounts() && "SUBJECT".equals(exam.getScope());
+        boolean omitted = loaded != null && loaded.isOmittedLocked();
+        ExamStructureDocument structure = loaded != null && (loaded.isFixedCounts() || blocks || omitted)
                 ? new ExamStructureCodec(mapper).read(loaded.getStructure()) : null;
+        return new ExamCheckRules.TemplateFacts(unpublishable,
+                loaded != null && loaded.isFixedCounts() ? structure : null, blocks ? structure : null,
+                omitted ? structure : null);
     }
 }
