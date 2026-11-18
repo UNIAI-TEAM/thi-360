@@ -91,6 +91,23 @@ class ExamCheckTemplateRulesTests {
         assertThat(result.path("status").asText()).isEqualTo("VALID");
     }
 
+    @Test
+    void templateFlagsAreReadFromTheExamsOwnSubjectOnlyAndTheLoadedRowIsReused() throws Exception {
+        Exam exam = subjectExam("SUBJECT", "STANDARD");
+        exam.applyTemplate("VAN_STANDARD", null, null, null, null, null, UUID.randomUUID(), clock.instant());
+        ExamTemplate standard = template(false, true, "{\"parts\":[]}");
+        when(standard.getCode()).thenReturn("VAN_STANDARD");
+        when(templates.findBestMatch("THPTQG", "SUBJECT", null, "VAN", null)).thenReturn(standard);
+        subject("VAN", 1);
+        JsonNode result = check(exam, document(oneBlock("VAN", 1))).result();
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.times(1))
+                .findBestMatch(any(), any(), any(), any(), any());
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).findProvenance(any());
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).findDefault(any(), any(), any(), any(), any());
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).findActive(any());
+    }
+
     // ---- rows 4, 5, 6: STRUCTURE_COUNT_LOCKED ------------------------------------------------------------
 
     private static final String LOCKED_TEMPLATE = """
@@ -413,7 +430,7 @@ class ExamCheckTemplateRulesTests {
         var unitEngine = new ExamCheckUnitEngine(unitStore,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock);
         var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper,
-                catalog, source, unitEngine, templates);
+                catalog, source, unitEngine, new ExamCheckTemplateFacts(catalog, templates, mapper));
         var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash",
                 mapper.createObjectNode());
@@ -436,7 +453,7 @@ class ExamCheckTemplateRulesTests {
 
     private void standardTemplate(boolean publishable) {
         ExamTemplate standard = template(false, publishable, "{\"parts\":[]}");
-        when(templates.findDefault("THPTQG", "SUBJECT", null, "VAN", "STANDARD")).thenReturn(standard);
+        when(templates.findBestMatch("THPTQG", "SUBJECT", null, "VAN", null)).thenReturn(standard);
     }
 
     private ExamTemplate template(boolean fixedCounts, boolean publishable, String structure) {
@@ -444,6 +461,7 @@ class ExamCheckTemplateRulesTests {
             ExamTemplate template = mock(ExamTemplate.class);
             when(template.isFixedCounts()).thenReturn(fixedCounts);
             when(template.isPublishable()).thenReturn(publishable);
+            when(template.isDefaultTemplate()).thenReturn(true);
             when(template.getStructure()).thenReturn(mapper.readTree(structure));
             return template;
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {

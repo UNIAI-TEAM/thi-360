@@ -57,7 +57,7 @@ class ExamCheckUnitWitnessTests {
         when(unitStore.load(exam.getId())).thenReturn(java.util.Map.of());
         var engine = new ExamCheckUnitEngine(unitStore,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock);
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, engine, org.mockito.Mockito.mock(ExamTemplateService.class));
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, engine, new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
         var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, 0, "hash", mapper.createObjectNode());
         var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null),

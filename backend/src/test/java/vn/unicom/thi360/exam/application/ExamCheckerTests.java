@@ -595,7 +595,7 @@ class ExamCheckerTests {
         when(unitStore.load(exam.getId())).thenReturn(java.util.Map.of());
         var unitEngine = new ExamCheckUnitEngine(unitStore,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock);
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, unitEngine, mock(ExamTemplateService.class));
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, unitEngine, new ExamCheckTemplateFacts(catalog, mock(ExamTemplateService.class), mapper));
         var input = new ExamCheckResultStore.Input(exam.getId(), exam.getRevision() == null ? 0 : exam.getRevision(), "hash",
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash", mapper.createObjectNode());
         return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null),
