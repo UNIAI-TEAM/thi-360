@@ -83,6 +83,8 @@ export interface KnowledgeScope {
   nodeIds: string[];
   /** Lọc thêm theo năng lực (V-ACT); bỏ trống hoặc rỗng: không lọc. */
   competencyCodes?: string[];
+  /** Nhóm chùm: bật thì mọi câu con của chùm phải thuộc chủ đề đã chọn (H29); bỏ trống: `false`. */
+  everyChildInScope?: boolean;
 }
 
 /** Điều kiện riêng của một chùm (`index` từ 1 đến số chùm); `tagCodes` khớp một trong các nhãn (H22). */
@@ -112,6 +114,10 @@ export interface PositionRange {
 
 export type MatrixMode = "COMBINED" | "SEPARATE";
 export type MatrixUnit = "COUNT" | "PERCENT";
+/** Mức của một phân bố: `REQUIRED` bộ giải áp dụng; `REFERENCE` chỉ đối chiếu khi sinh thử (H6). */
+export type QuotaEnforcement = "REQUIRED" | "REFERENCE";
+/** Đơn vị đếm của phân bố: câu, lệnh hỏi hoặc điểm; mức bắt buộc chỉ nhận câu (H7). */
+export type QuotaBasis = "QUESTION" | "PROMPT" | "POINTS";
 
 export interface MatrixCell {
   gradeCode: string;
@@ -136,6 +142,49 @@ export interface BlockMatrix {
   byDifficulty: MatrixDimensionValue[];
   /** Chiều năng lực (V-ACT), cộng thêm vào ma trận; bỏ trống: không dùng. */
   byCompetency?: MatrixDimensionValue[];
+  /** Mức riêng của chiều lớp và chiều độ khó (K9, H21); bỏ trống: `REQUIRED`. Ma trận `COMBINED`: hai mức bằng nhau. */
+  gradeEnforcement?: QuotaEnforcement;
+  difficultyEnforcement?: QuotaEnforcement;
+  /** Đơn vị đếm của ma trận; bỏ trống: `QUESTION`. */
+  basis?: QuotaBasis;
+}
+
+/**
+ * Chỉ tiêu chủ đề của môn hoặc nhóm (H8, K6): `count` là số câu **ít nhất** được gán cho chủ đề. `percent` chỉ là số gốc
+ * khi nhập theo tỷ lệ (H30). `nodeIds` rỗng: dòng chờ mapping, lưu nháp được nhưng chưa dùng được (H31).
+ */
+export interface TopicQuota {
+  id: string;
+  name: string;
+  nodeIds: string[];
+  count: number;
+  percent?: number | null;
+  gradeCodes?: string[];
+  difficultyCodes?: string[];
+  enforcement: QuotaEnforcement;
+  basis?: QuotaBasis;
+  groupIds?: string[];
+}
+
+/**
+ * Chỉ tiêu cấp bài (3.4): mỗi mức (`buckets`) là một hoặc nhiều mã lớp, độ khó gộp lại. Chỉ tiêu trải nhiều môn chỉ là
+ * `REFERENCE` (H6).
+ */
+export interface ExamQuota {
+  id: string;
+  name: string;
+  dimension: "GRADE" | "DIFFICULTY";
+  buckets: ExamQuotaBucket[];
+  basis: QuotaBasis;
+  enforcement: QuotaEnforcement;
+  subjectCodes?: string[];
+  excludeSubjectCodes?: string[];
+}
+
+export interface ExamQuotaBucket {
+  codes: string[];
+  count?: number | null;
+  percent?: number | null;
 }
 
 /**
@@ -193,6 +242,8 @@ export interface QuestionBlock {
   answerFormats?: string[];
   /** Chỉ có ở phản hồi, do hệ thống tính: dải số thứ tự câu của nhóm trong phần (R-90). Không gửi lại. */
   positionRange?: PositionRange | null;
+  /** Chỉ tiêu chủ đề riêng của nhóm (H8); câu của nhóm vẫn tính vào chỉ tiêu của môn. Tối đa 8 chỉ tiêu (H20). */
+  topicQuotas?: TopicQuota[];
 }
 
 export interface BlockExpectedScoring {
@@ -231,6 +282,8 @@ export interface ExamSection {
   /** Nhóm của môn trong `SUBJECT_CHOICE` (B10); `null` ngoài `SUBJECT_CHOICE`. */
   choiceGroup: ChoiceGroup | null;
   blocks: QuestionBlock[];
+  /** Chỉ tiêu chủ đề của môn (H8). Tối đa 8 chỉ tiêu một cấp (H20). */
+  topicQuotas?: TopicQuota[];
 }
 
 /**
@@ -385,6 +438,8 @@ export interface ExamTemplate {
   summary?: string | null;
   /** Điều cần chuyên gia xác nhận trước khi bán (ví dụ HSA chia 17–17–16), hiện cạnh mẫu; `null` khi không có. */
   expertNote?: string | null;
+  /** Mẫu khóa số câu từng phần, mục (H27): ô số câu của mục ở bước 2 chỉ đọc. */
+  fixedCounts?: boolean;
   parts: ExamTemplatePart[];
 }
 
@@ -574,6 +629,8 @@ export interface ExamStructure {
    * hiện trạng thái nhưng vẫn dùng được.
    */
   sectionStates?: ExamSectionState[] | null;
+  /** Chỉ tiêu cấp bài (R-52); chỉ tiêu của mẫu chỉ sửa được giá trị. */
+  examQuotas?: ExamQuota[];
 }
 
 /** Trạng thái kiểm tra của một môn trong bản làm việc (BE-5, spec 7.1–7.3). */
@@ -624,6 +681,8 @@ export interface ExamStructureSummary {
 }
 
 export interface UpdateExamStructureRequest {
+  /** Chỉ tiêu cấp bài: gửi lại nguyên danh sách đã đọc (kèm thay đổi của quản trị viên). */
+  examQuotas?: ExamQuota[];
   parts: ExamPart[];
   expectedRevision: number;
 }

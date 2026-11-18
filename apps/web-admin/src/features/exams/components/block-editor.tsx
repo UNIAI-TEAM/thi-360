@@ -26,6 +26,7 @@ import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { BlockSetConditions } from "./block-set-conditions";
 import { BlockSwitches } from "./block-switches";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
 /** Giá trị của ô chọn dạng trả lời cho nhóm lấy theo chỉ tiêu dạng trả lời của môn (`questionType = null`). */
 const OPEN_TYPE = "__OPEN__";
@@ -63,6 +64,8 @@ export interface BlockEditorProps {
   onOpenSection: () => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
   headerAction?: ReactNode;
+  /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của nhóm (H20). */
+  topicError?: TopicQuotaServerError;
 }
 
 /**
@@ -90,6 +93,7 @@ export function BlockEditor({
   onRemove,
   onOpenSection,
   headerAction,
+  topicError = null,
 }: BlockEditorProps) {
   const t = useTranslations("exams.structure.block");
   const tForm = useTranslations("exams.structure.blockForm");
@@ -453,6 +457,21 @@ export function BlockEditor({
           )}
         </div>
       </details>
+
+      {!remainder && reference && (
+        <TopicQuotaTable
+          id={block.id}
+          quotas={block.topicQuotas ?? []}
+          onChange={(topicQuotas) => update({ topicQuotas })}
+          total={questionCount}
+          levelName={block.name || t("untitled")}
+          subjectCode={subjectCode}
+          reference={reference}
+          axes={axes}
+          labels={labels}
+          serverError={topicError}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmRemove}

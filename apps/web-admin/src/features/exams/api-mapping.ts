@@ -8,6 +8,7 @@ import type {
   ExamCheckStatus,
   ExamDetail,
   ExamPart,
+  ExamQuota,
   ExamPartOption,
   ExamSection,
   ExamSectionState,
@@ -23,6 +24,7 @@ import type {
   KnowledgeScope,
   MatrixDimensionValue,
   QuestionBlock,
+  TopicQuota,
 } from "./types";
 
 /**
@@ -92,6 +94,7 @@ function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   return {
     nodeIds: scope.nodeIds ?? [],
     ...(scope.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
+    ...(scope.everyChildInScope !== undefined ? { everyChildInScope: scope.everyChildInScope } : {}),
   };
 }
 
@@ -112,7 +115,54 @@ function mapMatrix(matrix: ApiMatrix | null | undefined): BlockMatrix | null {
     byGrade: mapDimension(matrix.byGrade),
     byDifficulty: mapDimension(matrix.byDifficulty),
     ...(matrix.byCompetency?.length ? { byCompetency: mapDimension(matrix.byCompetency) } : {}),
+    ...(matrix.gradeEnforcement ? { gradeEnforcement: matrix.gradeEnforcement } : {}),
+    ...(matrix.difficultyEnforcement ? { difficultyEnforcement: matrix.difficultyEnforcement } : {}),
+    ...(matrix.basis ? { basis: matrix.basis } : {}),
   };
+}
+
+function mapTopicQuotas(quotas: readonly Schemas["TopicQuota"][] | undefined): TopicQuota[] {
+  return (quotas ?? []).map((quota) => ({
+    id: quota.id ?? "",
+    name: quota.name ?? "",
+    nodeIds: quota.nodeIds ?? [],
+    count: quota.count ?? 0,
+    ...(quota.percent !== undefined && quota.percent !== null ? { percent: quota.percent } : {}),
+    ...(quota.gradeCodes?.length ? { gradeCodes: quota.gradeCodes } : {}),
+    ...(quota.difficultyCodes?.length ? { difficultyCodes: quota.difficultyCodes } : {}),
+    enforcement: quota.enforcement ?? "REQUIRED",
+    ...(quota.basis ? { basis: quota.basis } : {}),
+    ...(quota.groupIds?.length ? { groupIds: quota.groupIds } : {}),
+  }));
+}
+
+export function mapExamQuotas(quotas: readonly Schemas["ExamQuota"][] | undefined): ExamQuota[] {
+  return (quotas ?? []).map((quota) => ({
+    id: quota.id ?? "",
+    name: quota.name ?? "",
+    dimension: quota.dimension ?? "GRADE",
+    buckets: (quota.buckets ?? []).map((bucket) => ({
+      codes: bucket.codes ?? [],
+      ...(bucket.count !== undefined && bucket.count !== null ? { count: bucket.count } : {}),
+      ...(bucket.percent !== undefined && bucket.percent !== null ? { percent: bucket.percent } : {}),
+    })),
+    basis: quota.basis ?? "QUESTION",
+    enforcement: quota.enforcement ?? "REFERENCE",
+    ...(quota.subjectCodes?.length ? { subjectCodes: quota.subjectCodes } : {}),
+    ...(quota.excludeSubjectCodes?.length ? { excludeSubjectCodes: quota.excludeSubjectCodes } : {}),
+  }));
+}
+
+/** Chỉ tiêu cấp bài gửi lên: bỏ số trống để máy chủ coi là không khai. */
+export function toApiExamQuotas(quotas: readonly ExamQuota[]): Schemas["ExamQuota"][] {
+  return quotas.map((quota) => ({
+    ...quota,
+    buckets: quota.buckets.map((bucket) => ({
+      codes: bucket.codes,
+      ...(bucket.count !== undefined && bucket.count !== null ? { count: bucket.count } : {}),
+      ...(bucket.percent !== undefined && bucket.percent !== null ? { percent: bucket.percent } : {}),
+    })),
+  }));
 }
 
 function mapQuotas(quotas: Schemas["AnswerQuotas"] | null | undefined): AnswerQuotas | null {
@@ -185,6 +235,7 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
         }
       : {}),
     ...(block.answerFormats?.length ? { answerFormats: block.answerFormats } : {}),
+    ...(block.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(block.topicQuotas) } : {}),
     ...(block.positionRange
       ? { positionRange: { from: block.positionRange.from ?? 0, to: block.positionRange.to ?? 0 } }
       : {}),
@@ -201,6 +252,7 @@ export function mapSection(section: ApiSection): ExamSection {
     matrix: mapMatrix(section.matrix),
     choiceGroup: nullable(section.choiceGroup),
     blocks: (section.blocks ?? []).map(mapBlock),
+    ...(section.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(section.topicQuotas) } : {}),
   };
 }
 
@@ -489,6 +541,7 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     label: nullable(response.label),
     summary: nullable(response.summary),
     expertNote: nullable(response.expertNote),
+    fixedCounts: response.fixedCounts ?? false,
     parts: mapParts(document.parts).map((part, index) => templatePart(part, index, document.parts?.[index])),
   };
 }

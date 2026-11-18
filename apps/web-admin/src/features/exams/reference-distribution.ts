@@ -1,0 +1,120 @@
+import { quotaUnitOf } from "./exam-overview";
+import { convertMatrixMode, dimensionValues, emptyMatrix, type MatrixAxes, sum, toDimension } from "./matrix";
+import type { BlockMatrix, ExamQuota, ExamSection, MatrixUnit } from "./types";
+
+/**
+ * Phân bố tham khảo của một môn và hai nút chuyển (2B 15.3, H6, H7): "Dùng ma trận tham khảo" chép số của phân bố tham
+ * khảo vào ma trận bắt buộc của môn và giữ lại bản tham khảo; "Áp dụng phân bổ này" đổi chính phân bố đó thành bắt buộc.
+ *
+ * Phân bố tham khảo của một môn nằm ở hai nơi:
+ * - chỉ tiêu cấp bài chỉ có một môn (`examQuotas`, `subjectCodes = [môn]`): mức gộp mã được ghi theo bucket (HSA Tiếng
+ *   Anh: lớp 10 + 11 là 30%, lớp 12 là 70%);
+ * - chiều lớp hoặc độ khó của ma trận môn đang ở mức `REFERENCE` (SP2E Hóa học theo lệnh hỏi).
+ */
+
+export type ReferenceReason =
+  /** Đơn vị lệnh hỏi hoặc điểm: phân bố bắt buộc phải tính theo câu (H7). */
+  | "BASIS"
+  /** Chưa có số nào (chờ chuyên gia xác nhận). */
+  | "NO_VALUES"
+  /** Một mức gộp nhiều mã: không chép được vào ma trận theo từng mã. */
+  | "MERGED_BUCKETS"
+  /** Ma trận môn đang nhập chiều kia theo đơn vị khác: chép sẽ trộn hai đơn vị. */
+  | "UNIT_CONFLICT"
+  /** Số này đã nằm ngay trong ma trận của môn. */
+  | "IN_MATRIX";
+
+export type ReferenceEntry =
+  | { kind: "quota"; key: string; quota: ExamQuota; use: ReferenceReason | null; apply: ReferenceReason | null }
+  | {
+      kind: "matrix";
+      key: string;
+      dimension: "GRADE" | "DIFFICULTY";
+      values: Array<{ code: string; value: number }>;
+      unit: MatrixUnit;
+      basis: "QUESTION" | "PROMPT" | "POINTS";
+      use: ReferenceReason | null;
+      apply: ReferenceReason | null;
+    };
+
+function quotaHasValues(quota: ExamQuota): boolean {
+  return quota.buckets.some((bucket) => (bucket.percent ?? bucket.count ?? 0) > 0);
+}
+
+/** Chiều kia của ma trận có số khác 0 theo đơn vị khác với `unit` không. */
+function otherDimensionConflicts(matrix: BlockMatrix | null, dimension: "GRADE" | "DIFFICULTY", unit: MatrixUnit): boolean {
+  if (!matrix || matrix.unit === unit) return false;
+  const other = dimension === "GRADE" ? matrix.byDifficulty : matrix.byGrade;
+  return sum(other.map((item) => item.value)) > 0 || matrix.cells.some((cell) => cell.value > 0);
+}
+
+/** Các phân bố tham khảo của môn (chỉ tiêu cấp bài một môn, chiều `REFERENCE` của ma trận môn). */
+export function referenceEntries(section: ExamSection, examQuotas: readonly ExamQuota[]): ReferenceEntry[] {
+  const entries: ReferenceEntry[] = [];
+  for (const quota of examQuotas) {
+    if (quota.enforcement !== "REFERENCE" || quota.subjectCodes?.length !== 1 || quota.subjectCodes[0] !== section.subjectCode) continue;
+    const merged = quota.buckets.some((bucket) => bucket.codes.length !== 1);
+    const has = quotaHasValues(quota);
+    entries.push({
+      kind: "quota",
+      key: `quota-${quota.id}`,
+      quota,
+      use: !has ? "NO_VALUES" : merged ? "MERGED_BUCKETS" : otherDimensionConflicts(section.matrix, quota.dimension, quotaUnitOf(quota)) ? "UNIT_CONFLICT" : null,
+      apply: has ? null : "NO_VALUES",
+    });
+  }
+  const matrix = section.matrix;
+  if (matrix) {
+    const basis = matrix.basis ?? "QUESTION";
+    const dimensions: Array<{ dimension: "GRADE" | "DIFFICULTY"; enforcement: BlockMatrix["gradeEnforcement"]; values: Array<{ code: string; value: number }> }> = [
+      { dimension: "GRADE", enforcement: matrix.gradeEnforcement, values: matrix.byGrade },
+      { dimension: "DIFFICULTY", enforcement: matrix.difficultyEnforcement, values: matrix.byDifficulty },
+    ];
+    for (const item of dimensions) {
+      if (item.enforcement !== "REFERENCE") continue;
+      // Ma trận kết hợp lớp × độ khó có một mức cho cả hai chiều: bản tham khảo là cả lưới, chỉ nêu một lần.
+      if (matrix.mode === "COMBINED" && item.dimension === "DIFFICULTY") continue;
+      const has = item.values.some((value) => value.value > 0) || (matrix.mode === "COMBINED" && matrix.cells.some((cell) => cell.value > 0));
+      entries.push({
+        kind: "matrix",
+        key: `matrix-${item.dimension}`,
+        dimension: item.dimension,
+        values: item.values,
+        unit: matrix.unit,
+        basis,
+        use: basis !== "QUESTION" ? "BASIS" : "IN_MATRIX",
+        apply: basis !== "QUESTION" ? "BASIS" : has ? null : "NO_VALUES",
+      });
+    }
+  }
+  return entries;
+}
+
+/**
+ * Chép số của chỉ tiêu tham khảo vào ma trận bắt buộc của môn theo từng mã (ma trận riêng từng chiều, đơn vị câu); chỉ
+ * tiêu cấp bài giữ nguyên, tức là giữ lại bản tham khảo. Chiều kia giữ số và mức của nó.
+ */
+export function referenceToMatrix(section: ExamSection, quota: ExamQuota, axes: MatrixAxes): BlockMatrix {
+  const grade = quota.dimension === "GRADE";
+  const codes = grade ? axes.grades : axes.difficulties;
+  const base: BlockMatrix = section.matrix
+    ? section.matrix.mode === "SEPARATE"
+      ? section.matrix
+      : convertMatrixMode(section.matrix, "SEPARATE", axes)
+    : { ...emptyMatrix(), mode: "SEPARATE" };
+  const values = codes.map((code) => {
+    const bucket = quota.buckets.find((item) => item.codes.length === 1 && item.codes[0] === code);
+    return bucket?.percent ?? bucket?.count ?? 0;
+  });
+  const otherCodes = grade ? axes.difficulties : axes.grades;
+  const otherKey = grade ? "byDifficulty" : "byGrade";
+  const otherHasValues = sum(dimensionValues(base[otherKey], otherCodes)) > 0;
+  return {
+    ...base,
+    unit: quotaUnitOf(quota),
+    basis: "QUESTION",
+    [grade ? "byGrade" : "byDifficulty"]: toDimension(values, codes),
+    [otherKey]: otherHasValues ? base[otherKey] : [],
+    [grade ? "gradeEnforcement" : "difficultyEnforcement"]: "REQUIRED",
+  };
+}

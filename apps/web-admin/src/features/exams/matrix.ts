@@ -391,15 +391,23 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
       issues.push({ code: "SET_SIZE_MISMATCH", expected, actual: block.questionCount });
     }
   }
-  const { matrix } = block;
+  return [...issues, ...validateMatrix(block.matrix, block.questionCount, axes)];
+}
+
+/**
+ * Kiểm tra ma trận với số câu của khối hoặc của môn: giá trị hợp lệ, tổng tỷ lệ bằng 100, tổng số câu bằng số câu. Số
+ * câu `null` (nhóm lấy phần còn lại) và ma trận trống thì không có gì để so.
+ */
+export function validateMatrix(matrix: BlockMatrix | null, questionCount: number | null, axes: MatrixAxes): BlockIssue[] {
+  const issues: BlockIssue[] = [];
   // Chỉ tiêu riêng của nhóm là tùy chọn; chỉ tiêu theo % không cần số câu của nhóm khi nhóm lấy phần còn lại.
-  if (!matrix || block.questionCount === null) return issues;
+  if (!matrix || questionCount === null) return issues;
   const values = matrixValues(matrix);
   if (values.some((value) => value < 0 || !Number.isFinite(value) || (matrix.unit === "COUNT" && !Number.isInteger(value)))) {
     issues.push({ code: "INVALID_VALUE" });
     return issues;
   }
-  const allocation = computeAllocation(block, axes);
+  const allocation = computeAllocation({ questionCount, matrix }, axes);
   const dimensions: Array<{ dimension: MatrixDimension; input: number; total: number }> =
     matrix.mode === "COMBINED"
       ? [{ dimension: "COMBINED", input: allocation.inputTotal, total: allocation.total }]
@@ -410,11 +418,21 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
   if (allocation.competency) {
     dimensions.push({ dimension: "COMPETENCY", input: allocation.competency.inputTotal, total: allocation.competency.total });
   }
+  const questionBasis = (matrix.basis ?? "QUESTION") === "QUESTION";
   for (const { dimension, input, total } of dimensions) {
+    // Bảng tham khảo chưa có số (HSA Tiếng Anh khối lớp, chờ chuyên gia): chưa khai, không báo lệch tổng.
+    const enforcement =
+      dimension === "GRADE" || dimension === "COMBINED"
+        ? matrix.gradeEnforcement
+        : dimension === "DIFFICULTY"
+          ? matrix.difficultyEnforcement
+          : undefined;
+    if (enforcement === "REFERENCE" && input === 0) continue;
     if (matrix.unit === "PERCENT") {
       if (Math.abs(input - 100) > PERCENT_TOLERANCE) issues.push({ code: "PERCENT_TOTAL", dimension, actual: roundPrecision(input) });
-    } else if (total !== block.questionCount) {
-      issues.push({ code: "ALLOCATION_TOTAL", dimension, expected: block.questionCount, actual: total });
+    } else if (questionBasis && total !== questionCount) {
+      // Đơn vị lệnh hỏi hoặc điểm (chỉ ở bảng tham khảo, H7) không phải số câu nên không so với số câu.
+      issues.push({ code: "ALLOCATION_TOTAL", dimension, expected: questionCount, actual: total });
     }
   }
   return issues;
