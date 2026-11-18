@@ -155,8 +155,8 @@ export function ExamStructureList({
           </span>
         )}
         {!choice && option.expertConfirmed === false && (
-          <span className="inline-flex items-center gap-1 text-caption font-normal text-warning">
-            <TriangleAlert aria-hidden className="size-3.5" />
+          <span className="inline-flex items-center gap-1 text-caption font-normal">
+            <TriangleAlert aria-hidden className="size-3.5 text-warning" />
             {t("expertPending")}
           </span>
         )}
@@ -284,8 +284,8 @@ function ListItemButton({
       <span className={cn("min-w-0 flex-1 break-words", strong ? "font-semibold" : "font-medium")}>{children}</span>
       {meta && <span className="shrink-0 text-caption text-text-muted">{meta}</span>}
       {warning && (
-        <span className="inline-flex shrink-0 items-center gap-1 text-caption text-warning">
-          <TriangleAlert aria-hidden className="size-3.5" />
+        <span className="inline-flex shrink-0 items-center gap-1 text-caption">
+          <TriangleAlert aria-hidden className="size-3.5 text-warning" />
           <span className="sr-only">{warning}</span>
         </span>
       )}
