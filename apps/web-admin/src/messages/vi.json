@@ -4362,6 +4362,49 @@
           "issue": "Vấn đề"
         }
       },
+      "findings": {
+        "affected": "Mã bị ảnh hưởng:",
+        "blocked": "Chưa công bố được: {count, number} lỗi chặn công bố.",
+        "codeGroup": "Mã {code}",
+        "counters": {
+          "errors": "Lỗi",
+          "sections": "Môn đã kiểm tra",
+          "sectionsValue": "{checked, number}/{total, number}",
+          "unconfirmed": "Chưa xác nhận",
+          "warnings": "Cảnh báo"
+        },
+        "countersLabel": "Số lượng vấn đề",
+        "errorsTitle": "Lỗi · chặn công bố ({count, number})",
+        "groupBy": {
+          "code": "Mã",
+          "label": "Nhóm theo",
+          "subject": "Môn"
+        },
+        "location": "Vị trí: {where}",
+        "noCode": "Không gắn mã",
+        "noWarnings": "Không có cảnh báo.",
+        "none": "–",
+        "open": "Mở chỗ lỗi",
+        "openAria": "Mở chỗ lỗi: {issue}",
+        "openHint": "Bấm Mở chỗ lỗi để tới đúng chỗ ở bước Cấu trúc.",
+        "partsTitle": "Theo mã và phần",
+        "passed": "Công bố được. Không có lỗi chặn.",
+        "title": "Lỗi và cảnh báo",
+        "unconfirmedHeadline": "Chưa kết luận được: {count, number} vấn đề chưa xác nhận trong giới hạn xử lý.",
+        "unconfirmedTitle": "Chưa xác nhận được ({count, number})",
+        "unitCode": "Mã {code}",
+        "unitColumns": {
+          "errors": "Lỗi",
+          "name": "Phần hoặc mã",
+          "state": "Trạng thái",
+          "subjects": "Môn theo thứ tự",
+          "warnings": "Cảnh báo"
+        },
+        "unitsTitle": "Trạng thái từng môn",
+        "warningsNote": "{count, number} cảnh báo không chặn công bố.",
+        "warningsTitle": "Cảnh báo · không chặn công bố ({count, number})",
+        "wholeExam": "Cả bài"
+      },
       "groups": {
         "title": "Các nhóm kiểm tra",
         "passed": "Đạt",

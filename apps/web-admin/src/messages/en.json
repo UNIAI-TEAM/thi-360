@@ -4362,6 +4362,49 @@
           "issue": "Issue"
         }
       },
+      "findings": {
+        "affected": "Affected codes:",
+        "blocked": "Cannot publish yet: {count, plural, one {# error blocks} other {# errors block}} publishing.",
+        "codeGroup": "Code {code}",
+        "counters": {
+          "errors": "Errors",
+          "sections": "Subjects checked",
+          "sectionsValue": "{checked, number}/{total, number}",
+          "unconfirmed": "Unconfirmed",
+          "warnings": "Warnings"
+        },
+        "countersLabel": "Issue counts",
+        "errorsTitle": "Errors · block publishing ({count, number})",
+        "groupBy": {
+          "code": "Code",
+          "label": "Group by",
+          "subject": "Subject"
+        },
+        "location": "Location: {where}",
+        "noCode": "Not tied to a code",
+        "noWarnings": "No warnings.",
+        "none": "–",
+        "open": "Open the problem",
+        "openAria": "Open the problem: {issue}",
+        "openHint": "Select Open the problem to go to the exact place in the Structure step.",
+        "partsTitle": "By code and part",
+        "passed": "Ready to publish. No blocking errors.",
+        "title": "Errors and warnings",
+        "unconfirmedHeadline": "Not conclusive: {count, plural, one {# issue} other {# issues}} could not be confirmed within the processing limit.",
+        "unconfirmedTitle": "Unconfirmed ({count, number})",
+        "unitCode": "Code {code}",
+        "unitColumns": {
+          "errors": "Errors",
+          "name": "Part or code",
+          "state": "Status",
+          "subjects": "Subjects in order",
+          "warnings": "Warnings"
+        },
+        "unitsTitle": "Status of each subject",
+        "warningsNote": "{count, plural, one {# warning does} other {# warnings do}} not block publishing.",
+        "warningsTitle": "Warnings · do not block publishing ({count, number})",
+        "wholeExam": "Whole exam"
+      },
       "groups": {
         "title": "Check groups",
         "passed": "Passed",

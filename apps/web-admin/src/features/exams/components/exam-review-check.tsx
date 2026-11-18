@@ -45,6 +45,7 @@ import {
   useLookup,
   usePathLabel,
 } from "./exam-review-shared";
+import { ExamReviewFindings } from "./exam-review-findings";
 
 export interface ExamReviewCheckProps {
   exam: ExamDetail;
@@ -288,6 +289,7 @@ function CheckResultView({
         />
       </dl>
 
+      <ExamReviewFindings exam={exam} result={result} />
       <PathsSection
         exam={exam}
         result={result}
