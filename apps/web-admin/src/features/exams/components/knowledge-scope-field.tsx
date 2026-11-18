@@ -40,9 +40,16 @@ export interface KnowledgeScopeFieldProps {
   everyChild?: { checked: boolean; onChange: (checked: boolean) => void; anchor?: string };
 }
 
-/** Bỏ các nút MAPID nhưng giữ lọc năng lực (R1-4); không còn gì thì quy về `null`. */
+/**
+ * Bỏ các nút MAPID nhưng giữ lọc năng lực (R1-4) và cờ `everyChildInScope` (đã đặt thì còn qua lưu và tải lại dù ô đang
+ * ẩn vì không còn MAPID); không còn gì thì quy về `null`.
+ */
 function withoutNodes(scope: KnowledgeScope | null): KnowledgeScope | null {
-  return scope?.competencyCodes?.length ? { nodeIds: [], competencyCodes: scope.competencyCodes } : null;
+  const kept: Omit<KnowledgeScope, "nodeIds"> = {
+    ...(scope?.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
+    ...(scope?.everyChildInScope !== undefined ? { everyChildInScope: scope.everyChildInScope } : {}),
+  };
+  return Object.keys(kept).length > 0 ? { nodeIds: [], ...kept } : null;
 }
 
 /**

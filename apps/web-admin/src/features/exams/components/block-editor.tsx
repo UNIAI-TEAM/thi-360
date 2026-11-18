@@ -185,13 +185,7 @@ export function BlockEditor({
     // Sang "chỉ nhập tổng" bỏ điều kiện riêng từng chùm (máy chủ từ chối `slots` không có số chùm): báo như khi đổi số chùm.
     setDroppedSlots(mode === "total" ? droppedSlotIndexes(block.slots, 0) : []);
   };
-  const setScope = (knowledgeScope: KnowledgeScope | null) => {
-    if (!isSet || !knowledgeScope) return update({ knowledgeScope });
-    // Chọn MAPID đầu tiên của bài ôn: ghi sẵn `true` để lưu đúng cái màn đang hiện; hết MAPID thì bỏ cờ.
-    const { everyChildInScope, ...rest } = knowledgeScope;
-    if (knowledgeScope.nodeIds.length === 0) return update({ knowledgeScope: rest });
-    update({ knowledgeScope: everyChildInScope === undefined && everyChildDefault ? { ...rest, everyChildInScope: true } : knowledgeScope });
-  };
+  // Cờ nằm trong `knowledgeScope` và được giữ khi hết MAPID hay chọn "Toàn môn" (R1-06); chỉ `reconcileBlock` bỏ khi thành câu đơn.
   const setEveryChild = (checked: boolean) => {
     const scope: KnowledgeScope = { ...(block.knowledgeScope ?? { nodeIds: [] }) };
     delete scope.everyChildInScope;
@@ -454,7 +448,7 @@ export function BlockEditor({
 
       <KnowledgeScopeField
         value={block.knowledgeScope}
-        onChange={setScope}
+        onChange={(knowledgeScope) => update({ knowledgeScope })}
         inherited={{ scope: section.knowledgeScope }}
         reference={reference}
         subjectCode={subjectCode}

@@ -78,8 +78,10 @@ export function reconcileBlock(block: QuestionBlock): QuestionBlock {
     delete next.slots;
     delete next.childConditions;
     if (next.knowledgeScope?.everyChildInScope !== undefined) {
-      next.knowledgeScope = { ...next.knowledgeScope };
-      delete next.knowledgeScope.everyChildInScope;
+      const scope = { ...next.knowledgeScope };
+      delete scope.everyChildInScope;
+      // Không còn MAPID hay năng lực nào thì phạm vi trống: về `null` như nhóm chưa đặt phạm vi.
+      next.knowledgeScope = scope.nodeIds.length > 0 || scope.competencyCodes?.length ? scope : null;
     }
   }
   return next;

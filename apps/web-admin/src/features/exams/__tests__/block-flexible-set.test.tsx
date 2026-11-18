@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -222,6 +222,56 @@ describe("ô Mọi câu con thuộc chủ đề", () => {
     const latest = renderEditor(makeBlock({ knowledgeScope: scoped }));
     expect(screen.getByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).not.toBeChecked();
     expect(latest.block.knowledgeScope).toEqual(scoped);
+  });
+});
+
+describe("cờ Mọi câu con thuộc chủ đề được giữ khi không còn MAPID", () => {
+  const nodeId = reference.knowledgeTree[0]!.children![0]!.id;
+  const flagged = { nodeIds: [nodeId], everyChildInScope: true };
+  const kept = { nodeIds: [], everyChildInScope: true };
+
+  function reloaded(block: QuestionBlock) {
+    const part = { id: "p1", sections: [{ ...SECTION, blocks: [block] }] } as unknown as ExamPart;
+    const sent = toApiParts([part]) as unknown as { sections: { blocks: Parameters<typeof mapBlock>[0][] }[] }[];
+    return mapBlock(sent[0]!.sections[0]!.blocks[0]!);
+  }
+
+  it("bỏ chip MAPID cuối cùng: cờ true còn trong dữ liệu, ô ẩn, lưu rồi tải lại vẫn true", async () => {
+    const user = userEvent.setup();
+    const latest = renderEditor(makeBlock({ knowledgeScope: flagged }));
+    expect(screen.getByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: /^Bỏ kiến thức 0D1 / }));
+    expect(latest.block.knowledgeScope).toEqual(kept);
+    expect(screen.queryByRole("checkbox", { name: "Mọi câu con thuộc chủ đề" })).not.toBeInTheDocument();
+    expect(reloaded(latest.block).knowledgeScope).toEqual(kept);
+  });
+
+  it("chọn Toàn môn: cờ true còn trong dữ liệu, lưu rồi tải lại vẫn true", async () => {
+    const user = userEvent.setup();
+    const latest = renderEditor(makeBlock({ knowledgeScope: flagged }));
+    const scope = screen.getByText("Phạm vi kiến thức").closest("fieldset")!;
+    await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
+    expect(latest.block.knowledgeScope).toEqual(kept);
+    expect(reloaded(latest.block).knowledgeScope).toEqual(kept);
+  });
+
+  it("nhóm chùm không cờ: Toàn môn vẫn về null như trước", async () => {
+    const user = userEvent.setup();
+    const latest = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId] } }));
+    const scope = screen.getByText("Phạm vi kiến thức").closest("fieldset")!;
+    await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
+    expect(latest.block.knowledgeScope).toBeNull();
+  });
+
+  it("chùm thành câu đơn: bỏ cờ; hết MAPID thì phạm vi về null", async () => {
+    const user = userEvent.setup();
+    const withNodes = renderEditor(makeBlock({ knowledgeScope: flagged }));
+    await user.click(screen.getByRole("radio", { name: "Câu đơn" }));
+    expect(withNodes.block.knowledgeScope).toEqual({ nodeIds: [nodeId] });
+    cleanup();
+    const withoutNodes = renderEditor(makeBlock({ knowledgeScope: kept }));
+    await user.click(screen.getByRole("radio", { name: "Câu đơn" }));
+    expect(withoutNodes.block.knowledgeScope).toBeNull();
   });
 });
 
