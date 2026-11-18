@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class ExamPublishedTotalsIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
+    @Autowired EntityManager entityManager;
     @Test
     void bcaFullPublishesHundredPointPaths() throws Exception {
         String create = "{\"kind\":\"BCA\",\"scope\":\"FULL\",\"name\":\"BCA\","
@@ -45,8 +47,14 @@ class ExamPublishedTotalsIT extends AbstractIntegrationTest {
         JsonNode publishedPaths = version.path("parts").get(0).path("paths");
         assertThat(publishedPaths).isNotEmpty();
         for (JsonNode path : publishedPaths) {
-            assertThat(path.path("maxPoints").decimalValue()).isEqualByComparingTo("100");
-            assertThat(path.path("durationMinutes").asInt()).isEqualTo(180);
+            java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+            for (JsonNode part : version.path("parts")) {
+                JsonNode contribution = java.util.stream.StreamSupport.stream(part.path("paths").spliterator(), false)
+                        .filter(row -> row.path("pathId").equals(path.path("pathId"))).findFirst().orElseThrow();
+                assertThat(contribution.path("maxPoints").isNumber()).isTrue();
+                total = total.add(contribution.path("maxPoints").decimalValue());
+            }
+            assertThat(total).isEqualByComparingTo("100");
         }
     }
 
@@ -66,6 +74,9 @@ class ExamPublishedTotalsIT extends AbstractIntegrationTest {
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON).content(create))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         String base = "/api/v1/admin/exams/" + exam.path("id").asText();
+        jdbc.update("UPDATE exam.exam SET timing='PER_PART', duration_minutes=NULL WHERE id=?::uuid", exam.path("id").asText());
+        jdbc.update("UPDATE exam.exam_structure SET parts=jsonb_set(jsonb_set(parts,'{parts,0,durationMinutes}','10'::jsonb),'{parts,1,durationMinutes}','20'::jsonb) WHERE exam_id=?::uuid", exam.path("id").asText());
+        entityManager.clear();
         JsonNode checked = mapper.readTree(mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(checked.path("status").asText()).isEqualTo("VALID");
@@ -79,12 +90,19 @@ class ExamPublishedTotalsIT extends AbstractIntegrationTest {
                 .content(publish.toString())).andExpect(status().isOk());
         JsonNode version = mapper.readTree(mockMvc.perform(get(base + "/versions/1").with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        JsonNode publishedPaths = version.path("parts").get(0).path("paths");
-        assertThat(publishedPaths).hasSize(2);
-        for (JsonNode path : publishedPaths) {
-            assertThat(path.path("questionCount").asInt()).isEqualTo(22);
-            assertThat(path.path("maxPoints").decimalValue()).isEqualByComparingTo("7");
-            assertThat(path.path("durationMinutes").isNull()).isTrue();
+        JsonNode first = version.path("parts").get(0).path("paths");
+        JsonNode second = version.path("parts").get(1).path("paths");
+        assertThat(first).hasSize(2);
+        assertThat(second).hasSize(2);
+        for (JsonNode path : first) {
+            JsonNode other = java.util.stream.StreamSupport.stream(second.spliterator(), false)
+                    .filter(row -> row.path("pathId").equals(path.path("pathId"))).findFirst().orElseThrow();
+            assertThat(path.path("questionCount").asInt()).isEqualTo(20);
+            assertThat(path.path("maxPoints").decimalValue()).isEqualByComparingTo("5");
+            assertThat(path.path("durationMinutes").asInt()).isEqualTo(10);
+            assertThat(other.path("questionCount").asInt()).isEqualTo(2);
+            assertThat(other.path("maxPoints").decimalValue()).isEqualByComparingTo("2");
+            assertThat(other.path("durationMinutes").asInt()).isEqualTo(20);
         }
     }
 
