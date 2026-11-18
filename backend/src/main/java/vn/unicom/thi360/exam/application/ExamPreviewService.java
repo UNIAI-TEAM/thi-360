@@ -188,7 +188,8 @@ public class ExamPreviewService {
                 throw new IllegalStateException("Dropped question missing");
             }
             droppedQuestions.add(paperBuilder.question(dropped.questionId(), version.code(), dropped.versionNo(),
-                    version.snapshot(), candidate.units().getFirst(), item.subjectCode()));
+                    version.snapshot(), candidate.units().getFirst(), item.subjectCode(),
+                    assignedTopics(dropped, 0)));
         }
         Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
                 PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
@@ -278,6 +279,12 @@ public class ExamPreviewService {
 
     private static QuestionSourcePort.VersionKey key(QuestionPick pick) {
         return new QuestionSourcePort.VersionKey(UUID.fromString(pick.questionId()), pick.versionNo());
+    }
+
+    private static List<String> assignedTopics(QuestionPick pick, int unitIndex) {
+        return pick.topicAssignments().stream()
+                .filter(assignment -> unitIndex < 0 || assignment.unitIndex() == unitIndex)
+                .map(TopicAssignment::quotaId).distinct().toList();
     }
 
     /** Keep unrelated incomplete draft options from preventing the requested path being built. */
@@ -435,7 +442,7 @@ public class ExamPreviewService {
                     if (version == null || candidate == null) throw new IllegalStateException("Missing selected question");
                     units.addAll(candidate.units());
                     blockManual |= candidate.units().stream().anyMatch(u -> u.answerType().name().equals("ESSAY"));
-                    items.add(item(version, candidate, section.subjectCode()));
+                    items.add(item(version, candidate, section.subjectCode(), pick));
                 }
                 sectionUnits.addAll(units);
                 var requirement = requirement(block.matrix(), units);
@@ -450,13 +457,14 @@ public class ExamPreviewService {
         }
 
         private PreviewItem item(QuestionSourcePort.Version version, QuestionSourcePort.Candidate candidate,
-                String subjectCode) {
+                String subjectCode, QuestionPick pick) {
             JsonNode snapshot = version.snapshot();
             JsonNode body = snapshot.path("body");
             if ("QUESTION_SET".equals(text(body, "type"))) {
                 hasSet = true;
                 List<PreviewQuestion> children = new ArrayList<>();
-                for (var unit : candidate.units()) {
+                for (int i = 0; i < candidate.units().size(); i++) {
+                    var unit = candidate.units().get(i);
                     if (unit.questionId() == null) throw new IllegalStateException("Set child ID missing");
                     var childVersion = versions.get(new QuestionSourcePort.VersionKey(
                             unit.questionId(), version.key().versionNo()));
@@ -464,7 +472,7 @@ public class ExamPreviewService {
                     String code = version.childCodes().get(unit.questionId());
                     if (code == null) throw new IllegalStateException("Set child code missing");
                     children.add(question(unit.questionId().toString(), code, version.key().versionNo(),
-                            childVersion.snapshot(), unit, subjectCode));
+                            childVersion.snapshot(), unit, subjectCode, assignedTopics(pick, i)));
                 }
                 return new PreviewItem("SET", null, version.key().questionId().toString(), version.code(),
                         version.key().versionNo(), false, text(body, "passage"), children, null);
@@ -472,7 +480,8 @@ public class ExamPreviewService {
             if (candidate.units().isEmpty()) throw new IllegalStateException("Question has no counting units");
             int start = number;
             PreviewQuestion question = question(version.key().questionId().toString(), version.code(),
-                    version.key().versionNo(), snapshot, candidate.units().getFirst(), subjectCode);
+                    version.key().versionNo(), snapshot, candidate.units().getFirst(), subjectCode,
+                    assignedTopics(pick, -1));
             // A cloze is displayed once but every blank contributes to its numbering and points.
             for (int i = 1; i < candidate.units().size(); i++) {
                 number++;
@@ -484,7 +493,7 @@ public class ExamPreviewService {
         }
 
         private PreviewQuestion question(String id, String code, int version, JsonNode snapshot,
-                QuestionSourcePort.Unit unit, String subjectCode) {
+                QuestionSourcePort.Unit unit, String subjectCode, List<String> assignedTopicQuotaIds) {
             BigDecimal points = points(unit);
             number++;
             totalPoints = totalPoints.add(points);
@@ -506,7 +515,7 @@ public class ExamPreviewService {
             return new PreviewQuestion(number - 1, id, code, version, unit.answerType().name(), false,
                     text(snapshot, "content"), unit.gradeCode(), unit.difficultyCode(), ref, points,
                     options(body), answer(body), text(snapshot, "solution"), rubric(body), body.isMissingNode() ? null : body,
-                    null, null, null, null);
+                    null, null, null, assignedTopicQuotaIds);
         }
 
         private static BigDecimal points(QuestionSourcePort.Unit unit) {

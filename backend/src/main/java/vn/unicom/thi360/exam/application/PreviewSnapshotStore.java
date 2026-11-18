@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
@@ -49,7 +50,18 @@ public class PreviewSnapshotStore {
         String value = redis.opsForValue().get(KEY_PREFIX + id);
         if (value == null) return null;
         try {
-            Snapshot snapshot = mapper.readValue(value, Snapshot.class);
+            JsonNode tree = mapper.readTree(value);
+            for (JsonNode part : tree.path("parts")) {
+                for (JsonNode group : part.path("groups")) {
+                    for (JsonNode pick : group.path("picks")) {
+                        if (!pick.path("topicAssignments").isArray()) return null;
+                    }
+                }
+                for (JsonNode dropped : part.path("droppedQuestions")) {
+                    if (!dropped.path("pick").path("topicAssignments").isArray()) return null;
+                }
+            }
+            Snapshot snapshot = mapper.treeToValue(tree, Snapshot.class);
             if (snapshot.parts() == null || snapshot.parts().values().stream()
                     .anyMatch(part -> part.presentation() == null || part.allocations() == null)) return null;
             return snapshot;

@@ -159,6 +159,6 @@ final class PreviewPaperOrdering {
         return new PreviewQuestion(number, question.questionId(), question.code(), question.version(), question.type(),
                 question.simulated(), question.content(), question.gradeCode(), question.difficultyCode(), question.knowledge(),
                 question.points(), options, question.answer(), question.solution(), question.rubric(), question.body(),
-                order, original == null ? null : List.copyOf(original), question.number(), List.of());
+                order, original == null ? null : List.copyOf(original), question.number(), question.assignedTopicQuotaIds());
     }
 }
