@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   applyBlockPatch,
+  blockCountsLocked,
   childConditionIssue,
   conditionState,
   droppedSlotIndexes,
   normalizeSlots,
+  reconcileBlock,
   resizeSets,
   slotAt,
   withSlot,
@@ -166,5 +168,26 @@ describe("giá trị đã lưu đi qua dạng API của cấu trúc", () => {
     for (const key of ["slots", "childConditions", "itemShape", "answerFormats", "shuffleUnits", "omitted", "positionRange", "taskTypeCode"]) {
       expect(keys).not.toContain(key);
     }
+  });
+});
+
+describe("FE-7 dòng 12: hình dạng câu giữ số phương án", () => {
+  it("giữ itemShape.options của câu chọn một khi sửa nhóm, bỏ trường của loại khác", () => {
+    const patched = applyBlockPatch(block({ itemShape: { options: 4 } }), { name: "Chọn một (đã đổi tên)" });
+    expect(patched.itemShape).toEqual({ options: 4 });
+    expect(reconcileBlock(block({ itemShape: { options: 4, statements: 4 } })).itemShape).toEqual({ options: 4 });
+    expect(reconcileBlock(block({ questionType: "TRUE_FALSE", itemShape: { statements: 4, options: 4 } })).itemShape).toEqual({ statements: 4 });
+    expect(reconcileBlock(block({ questionType: "SHORT_ANSWER", itemShape: { options: 4 } })).itemShape).toBeUndefined();
+  });
+});
+
+describe("FE-7 dòng 5: khóa dòng theo mẫu fixedBlockCounts", () => {
+  const template = { fixedBlockCounts: true };
+  it("chỉ khóa bài SUBJECT, không khóa bài PART, bài ôn hay mẫu không khai", () => {
+    expect(blockCountsLocked(template, "SUBJECT", false)).toBe(true);
+    expect(blockCountsLocked(template, "PART", false)).toBe(false);
+    expect(blockCountsLocked(template, "SUBJECT", true)).toBe(false);
+    expect(blockCountsLocked({ fixedBlockCounts: false }, "SUBJECT", false)).toBe(false);
+    expect(blockCountsLocked(null, "SUBJECT", false)).toBe(false);
   });
 });

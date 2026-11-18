@@ -12,6 +12,7 @@ import {
   updateExamInfo,
   updateExamStructure,
 } from "../api";
+import type { AudioCountQuery } from "../api.http";
 import { ExamStructureSaveError, ExamsApiError } from "../review-api";
 import type { AvailableQuestionsQuery, CreateExamRequest } from "../types";
 import { ExamsBackend } from "./fake-exams-backend";
@@ -349,5 +350,34 @@ describe("nguồn câu hỏi của khối", () => {
     for (const key of ["itemShape", "answerFormats", "childConditions", "tagCodes", "competencyCodes", "requiredPointsPerQuestion"]) {
       expect(bare?.body).not.toHaveProperty(key);
     }
+  });
+
+  it("dòng 2: đếm nguồn gửi audioRequirement của phần; kỳ thi cũ và ANY không có khóa", async () => {
+    const countBodies = async (extra: Partial<AudioCountQuery>) => {
+      backend.seedCounts("count", { status: 200, body: { total: 4, cells: [] } });
+      await countAvailableQuestions({ ...MATH_SINGLE, ...extra });
+      return backend.calls("POST", "/api/v1/admin/exams/available-questions/count").slice(-1)[0]?.body;
+    };
+    expect(await countBodies({ audioRequirement: "REQUIRED" })).toMatchObject({ audioRequirement: "REQUIRED" });
+    expect(await countBodies({ audioRequirement: "FORBIDDEN" })).toMatchObject({ audioRequirement: "FORBIDDEN" });
+    expect(await countBodies({})).not.toHaveProperty("audioRequirement");
+    expect(await countBodies({ audioRequirement: "ANY" })).not.toHaveProperty("audioRequirement");
+  });
+
+  it("dòng 2: đếm nguồn cả môn gửi audioRequirement ở từng nhóm", async () => {
+    backend.seedCounts("count-subject", { status: 200, body: { total: 6, cells: [] } });
+    await countSubjectAvailableQuestions({
+      subjectCode: "MATH",
+      groups: [
+        { ...MATH_SINGLE, audioRequirement: "REQUIRED" },
+        { ...MATH_SINGLE, audioRequirement: "FORBIDDEN" },
+        { ...MATH_SINGLE },
+      ],
+    });
+    const [call] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count-subject");
+    const groups = (call?.body as { groups: Record<string, unknown>[] }).groups;
+    expect(groups[0]).toMatchObject({ audioRequirement: "REQUIRED" });
+    expect(groups[1]).toMatchObject({ audioRequirement: "FORBIDDEN" });
+    expect(groups[2]).not.toHaveProperty("audioRequirement");
   });
 });
