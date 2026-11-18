@@ -8,8 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 class ExamPreviewIT extends AbstractIntegrationTest {
     private static final UUID SUBJECT_GROUP = UUID.fromString("00000000-0000-7000-8100-000000000002");
     private static final UUID PREVIEW_KNOWLEDGE_LEAF = UUID.fromString("00000000-0000-7000-8200-000000001201");
+    private static final UUID PREVIEW_KNOWLEDGE_OVERLAP = UUID.fromString("00000000-0000-7000-8200-000000001202");
     private static final String SEEDED_PREVIEW_CODE = "SEED-MATH-G10-NB-SC-001";
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
@@ -75,6 +78,76 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         if (draft) jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,2,cast(? as jsonb))",
                 id, "{\"content\":\"draft edit\",\"points\":1,\"body\":" + body + "}");
         return id;
+    }
+
+    private record TopicSet(UUID parent, UUID firstChild, UUID secondChild) {}
+
+    private TopicSet topicSet(Subject subject, UUID firstNode, UUID secondNode) {
+        UUID parent = UUID.randomUUID();
+        UUID firstChild = UUID.randomUUID();
+        UUID secondChild = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) "
+                + "values (?,?,'QUESTION_SET','READY',?,1,2)", parent, "SET-" + parent, subject.id());
+        for (int i = 0; i < 2; i++) {
+            UUID child = i == 0 ? firstChild : secondChild;
+            jdbc.update("insert into questionbank.question(id, code, type, status, parent_id, position, points) "
+                    + "values (?,?,?,'READY',?,?,1)", child, "CHILD-" + child, "SINGLE_CHOICE", parent, i);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
+                    child, "{\"content\":\"child\",\"points\":1,\"body\":{\"type\":\"SINGLE_CHOICE\","
+                            + "\"options\":[{\"id\":\"a\",\"content\":\"A\",\"correct\":true},{\"id\":\"b\",\"content\":\"B\"}]}}");
+        }
+        jdbc.update("insert into questionbank.question_knowledge(question_id, knowledge_item_id, is_primary) values (?, ?, true)",
+                firstChild, firstNode);
+        jdbc.update("insert into questionbank.question_knowledge(question_id, knowledge_item_id, is_primary) values (?, ?, false)",
+                firstChild, secondNode);
+        jdbc.update("insert into questionbank.question_knowledge(question_id, knowledge_item_id, is_primary) values (?, ?, true)",
+                secondChild, secondNode);
+        String snapshot = "{\"content\":\"set\",\"points\":2,\"body\":{\"type\":\"QUESTION_SET\",\"passage\":\"passage\","
+                + "\"children\":[{\"id\":\"" + firstChild + "\"},{\"id\":\"" + secondChild + "\"}]}}";
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
+                parent, snapshot);
+        return new TopicSet(parent, firstChild, secondChild);
+    }
+
+    private UUID questionWithKnowledge(Subject subject, String content, UUID... nodes) {
+        UUID id = question(subject, "SINGLE_CHOICE", content, false);
+        for (UUID node : nodes) {
+            jdbc.update("insert into questionbank.question_knowledge(question_id, knowledge_item_id, is_primary) "
+                    + "values (?, ?, true)", id, node);
+        }
+        return id;
+    }
+
+    private static List<String> topicAssignments(JsonNode question) {
+        List<String> ids = new ArrayList<>();
+        question.path("assignedTopicQuotaIds").forEach(id -> ids.add(id.asText()));
+        return ids;
+    }
+
+    private static Map<String, List<String>> topicAssignmentsByQuestion(JsonNode paper) {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        for (JsonNode part : paper.path("parts")) {
+            for (JsonNode block : part.path("blocks")) {
+                for (JsonNode item : block.path("items")) {
+                    if ("SET".equals(item.path("kind").asText())) {
+                        for (JsonNode child : item.path("children")) {
+                            result.put(child.path("questionId").asText(), topicAssignments(child));
+                        }
+                    } else {
+                        JsonNode question = item.path("question");
+                        result.put(question.path("questionId").asText(), topicAssignments(question));
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    private static JsonNode compliance(JsonNode response, String criterion) {
+        for (JsonNode row : response.path("compliance")) {
+            if (criterion.equals(row.path("criterion").asText())) return row;
+        }
+        throw new AssertionError("Missing compliance row " + criterion);
     }
 
     private UUID set(Subject subject) {
@@ -362,6 +435,83 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 && "QUESTION".equals(row.path("basis").asText()) && row.path("actual").asInt() == 1);
     }
 
+    @Test
+    void questionSetPreviewProjectsTopicAssignmentsPerChildAndCompliance() throws Exception {
+        Subject subject = subject();
+        TopicSet set = topicSet(subject, PREVIEW_KNOWLEDGE_LEAF, PREVIEW_KNOWLEDGE_OVERLAP);
+        UUID examId = exam("""
+                [{"id":"part","order":1,"name":"Part","questionCount":2,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"section","subjectCode":"%s","questionCount":2,
+                    "topicQuotas":[{"id":"topic-a","nodeIds":["%s"],"count":1},
+                                   {"id":"topic-b","nodeIds":["%s"],"count":1}],
+                    "blocks":[{"id":"set-group","questionType":"QUESTION_SET","questionCount":2,
+                               "setCount":1,"setSize":2}]}]}]
+                """.formatted(subject.code(), PREVIEW_KNOWLEDGE_LEAF, PREVIEW_KNOWLEDGE_OVERLAP));
+
+        JsonNode response = preview(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}");
+        JsonNode children = response.path("paper").path("parts").get(0).path("blocks").get(0)
+                .path("items").get(0).path("children");
+        assertThat(children).hasSize(2);
+        assertThat(children.get(0).path("questionId").asText()).isEqualTo(set.firstChild().toString());
+        assertThat(children.get(1).path("questionId").asText()).isEqualTo(set.secondChild().toString());
+        assertThat(topicAssignments(children.get(0))).containsExactly("topic-a");
+        assertThat(topicAssignments(children.get(1))).containsExactly("topic-b");
+        assertThat(compliance(response, "TOPIC:topic-a").path("actual").asInt()).isEqualTo(1);
+        assertThat(compliance(response, "TOPIC:topic-b").path("actual").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void trimmedTopicAssignmentsSurviveRedisPartRetention() throws Exception {
+        Subject trimmed = subject();
+        Subject second = subject();
+        Subject third = subject();
+        Subject other = subject();
+        for (int i = 0; i < 17; i++) {
+            questionWithKnowledge(trimmed, "trimmed-" + i, PREVIEW_KNOWLEDGE_LEAF);
+            question(second, "SINGLE_CHOICE", "second-" + i, false);
+            question(third, "SINGLE_CHOICE", "third-" + i, false);
+        }
+        question(other, "SINGLE_CHOICE", "other", false);
+        UUID examId = exam("""
+                [{"id":"science-part","order":1,"name":"Science","questionCount":50,
+                  "participation":{"mode":"CHOICE","choose":1},"options":[
+                    {"id":"science","kind":"SUBJECT_CHOICE","chooseSubjects":3,"countsByPick":[17,17,16],
+                     "sections":[
+                       {"id":"trimmed","subjectCode":"%s","choiceGroup":"NATURAL",
+                        "topicQuotas":[{"id":"trim-topic","nodeIds":["%s"],"count":1}],
+                        "blocks":[{"id":"trim-group","questionType":"SINGLE_CHOICE","questionCount":17}]},
+                       {"id":"second","subjectCode":"%s","choiceGroup":"SOCIAL",
+                        "blocks":[{"id":"second-group","questionType":"SINGLE_CHOICE","questionCount":17}]},
+                       {"id":"third","subjectCode":"%s","choiceGroup":"SOCIAL",
+                        "blocks":[{"id":"third-group","questionType":"SINGLE_CHOICE","questionCount":17}]}]}]},
+                 {"id":"other-part","order":2,"name":"Other","questionCount":1,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"other","subjectCode":"%s","questionCount":1,
+                    "blocks":[{"id":"other-group","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]
+                """.formatted(trimmed.code(), PREVIEW_KNOWLEDGE_LEAF, second.code(), third.code(), other.code()));
+        String target = "\"target\":{\"kind\":\"PATH\",\"pathId\":\"science\",\"subjectCodes\":[\""
+                + trimmed.code() + "\",\"" + second.code() + "\",\"" + third.code() + "\"]}";
+        JsonNode initial = preview(examId, "{" + target + ",\"seed\":1}");
+        Map<String, List<String>> initialAssignments = topicAssignmentsByQuestion(initial.path("paper"));
+        JsonNode dropped = initial.path("droppedQuestions").get(0);
+        List<String> droppedAssignments = topicAssignments(dropped);
+        int droppedContribution = droppedAssignments.contains("trim-topic") ? 1 : 0;
+        JsonNode initialCompliance = compliance(initial, "TOPIC:trim-topic");
+        int assignedInitial = (int) initialAssignments.values().stream()
+                .filter(ids -> ids.contains("trim-topic")).count();
+        assertThat(initialCompliance.path("required").asInt()).isEqualTo(Math.max(0, 1 - droppedContribution));
+        assertThat(initialCompliance.path("actual").asInt()).isEqualTo(assignedInitial);
+
+        JsonNode regenerated = preview(examId, "{" + target + ",\"seed\":5,\"basePreviewId\":\""
+                + initial.path("previewId").asText() + "\",\"regeneratePartIds\":[\"other-part\"]}");
+        Map<String, List<String>> regeneratedAssignments = topicAssignmentsByQuestion(regenerated.path("paper"));
+        assertThat(regeneratedAssignments).isEqualTo(initialAssignments);
+        assertThat(regenerated.path("droppedQuestions").get(0).path("questionId"))
+                .isEqualTo(dropped.path("questionId"));
+        assertThat(topicAssignments(regenerated.path("droppedQuestions").get(0))).isEqualTo(droppedAssignments);
+        JsonNode regeneratedCompliance = compliance(regenerated, "TOPIC:trim-topic");
+        assertThat(regeneratedCompliance.path("required").asInt()).isEqualTo(initialCompliance.path("required").asInt());
+        assertThat(regeneratedCompliance.path("actual").asInt()).isEqualTo(assignedInitial);
+    }
     @Test
     void hsaEnglishReferenceGradeAppearsInCompliance() throws Exception {
         UUID subjectId = jdbc.queryForObject("select id from catalog.catalog_item where group_id=? and code_normalized='anh'",
