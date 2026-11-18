@@ -29,7 +29,7 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
     @Test
     void eachStandardTemplateCanBeLoadedSavedAndChecked() throws Exception {
         var templates = jdbc.queryForList("""
-                select code, kind_code, scope, part_code, subject_code, build_mode, active,
+                select code, kind_code, scope, part_code, subject_code, build_mode, active, publishable,
                        structure::text as document
                 from exam.exam_template where build_mode = 'STANDARD' order by code
                 """);
@@ -95,6 +95,13 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
                     }
                     // SET_SHORTAGE reports bank availability, not set configuration.
                     if ("SET_SHORTAGE".equals(issue.path("code").asText())) continue;
+                    // TEMPLATE_NOT_PUBLISHABLE is the publish policy of the template, not structure configuration (D11).
+                    if ("TEMPLATE_NOT_PUBLISHABLE".equals(issue.path("code").asText())) {
+                        if (!Boolean.FALSE.equals(template.get("publishable"))) {
+                            failures.add(code + " reports TEMPLATE_NOT_PUBLISHABLE but publishable is not false");
+                        }
+                        continue;
+                    }
                     if (Set.of("STRUCTURE", "QUESTION_SET").contains(issue.path("group").asText())
                             && "ERROR".equals(issue.path("severity").asText())) {
                         failures.add(code + " configuration issue: " + issue);
