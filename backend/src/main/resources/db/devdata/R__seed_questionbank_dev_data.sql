@@ -919,7 +919,10 @@ WITH prepared AS (
                        || repeat(' Right one', jsonb_array_length(body->'right'))
                    ELSE regexp_replace(content, '<[^>]+>', '', 'g') || ' Left one Left two Right one Right two' END
                WHEN 'ESSAY' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' Give credit for a clear argument.'
-               WHEN 'TRUE_FALSE' THEN regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth'
+               WHEN 'TRUE_FALSE' THEN CASE WHEN code LIKE 'SEED-BE9-ECON-TF-%'
+                   THEN regexp_replace(content, '<[^>]+>', '', 'g')
+                       || ' Practice statement A Practice statement B Practice statement C Practice statement D'
+                   ELSE regexp_replace(content, '<[^>]+>', '', 'g') || ' First Second Third Fourth' END
                WHEN 'QUESTION_SET' THEN CASE
                    WHEN code LIKE 'SEED-2B-LITERATURE-%' OR code LIKE 'SEED-2B-ENGLISH-SET-%'
                        OR code LIKE 'SEED-2B-GENERIC-READING-%'
@@ -931,6 +934,11 @@ WITH prepared AS (
                        THEN 'Science set Science context Science child One Two Science child One Two Science child One Two'
                    WHEN code LIKE 'SEED-2B-CASE-SET-%'
                        THEN 'Case set Case context Case child One Two Case child One Two Case child One Two'
+                   WHEN code LIKE 'SEED-BE9-ECON-CASE-%'
+                       THEN regexp_replace(content, '<[^>]+>', '', 'g')
+                           || ' ' || regexp_replace(body->>'passage', '<[^>]+>', '', 'g')
+                           || repeat(' Practice case question Practice answer A Practice answer B',
+                                     jsonb_array_length(body->'children'))
                    WHEN code LIKE 'SEED-READING-%'
                        THEN 'Reading set Reading context Reading child One Two Reading child One Two'
                    WHEN code LIKE 'SEED-HSA-MATH-SET-%'
@@ -964,9 +972,12 @@ INSERT INTO questionbank.question
      content_text, search_text)
 SELECT id, code, type, 'READY', parent_id, position, subject_id, grade_id, level_id, task_type_id,
        points, 1, NULL,
-       regexp_replace(content, '<[^>]+>', '', 'g') || CASE type WHEN 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END,
+       regexp_replace(content, '<[^>]+>', '', 'g') ||
+           CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
+                WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END,
        lower(code || ' ' || regexp_replace(content, '<[^>]+>', '', 'g') ||
-             CASE type WHEN 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END)
+             CASE WHEN code LIKE 'SEED-BE9-ECON-CASE-%' THEN ' Practice answer A Practice answer B'
+                  WHEN type = 'SINGLE_CHOICE' THEN ' One Two' ELSE ' 1' END)
 FROM seed_question_rows WHERE parent_id IS NOT NULL
 ON CONFLICT DO NOTHING RETURNING id
 )
