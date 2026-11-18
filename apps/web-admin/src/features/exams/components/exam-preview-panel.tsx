@@ -316,7 +316,7 @@ export function ExamPreviewPanel({
             <TabsTrigger value="allocation">{t("tabs.allocation")}</TabsTrigger>
           </TabsList>
           <TabsContent value="paper" className="flex flex-col gap-6">
-            <ExamPreviewCompliance paper={data.paper} compliance={data.compliance} dropped={data.droppedQuestions} />
+            <ExamPreviewCompliance paper={data.paper} compliance={data.compliance} dropped={data.droppedQuestions} original={original} />
             <ExamPreviewPaper paper={data.paper} original={original} />
           </TabsContent>
           <TabsContent value="allocation">

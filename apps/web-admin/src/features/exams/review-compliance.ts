@@ -1,4 +1,4 @@
-import type { PreviewCompliance, PreviewPaper } from "./review-types";
+import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "./review-types";
 
 /** Sai lệch số thập phân nhỏ hơn mức này coi là bằng nhau (điểm và số câu máy chủ tính bằng BigDecimal). */
 const EPSILON = 1e-9;
@@ -57,17 +57,21 @@ export function droppedCount(note: string | null): number {
   return match ? Number(match[1]) : 0;
 }
 
-/** Số câu (theo số hiện trên đề) được gán vào từng chỉ tiêu chủ đề: khóa là id chỉ tiêu, như `TOPIC:<id>` của bảng. */
-export function topicAssignments(paper: PreviewPaper): Map<string, number[]> {
+/**
+ * Số câu được gán vào từng chỉ tiêu chủ đề: khóa là id chỉ tiêu, như `TOPIC:<id>` của bảng. Số theo đề đã đảo; `original`
+ * dùng số gốc (`originalNumber`) để khớp đề đang xem thứ tự gốc (K12).
+ */
+export function topicAssignments(paper: PreviewPaper, original = false): Map<string, number[]> {
   const assigned = new Map<string, number[]>();
-  const add = (number: number, quotaIds: readonly string[]) => {
-    for (const id of quotaIds) assigned.set(id, [...(assigned.get(id) ?? []), number]);
+  const add = (question: PreviewQuestion) => {
+    const number = original ? (question.originalNumber ?? question.number) : question.number;
+    for (const id of question.assignedTopicQuotaIds) assigned.set(id, [...(assigned.get(id) ?? []), number]);
   };
   for (const part of paper.parts) {
     for (const block of part.blocks) {
       for (const item of block.items) {
-        if (item.kind === "QUESTION") add(item.question.number, item.question.assignedTopicQuotaIds);
-        else item.children.forEach((child) => add(child.number, child.assignedTopicQuotaIds));
+        if (item.kind === "QUESTION") add(item.question);
+        else item.children.forEach(add);
       }
     }
   }

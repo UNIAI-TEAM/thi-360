@@ -28,6 +28,8 @@ export interface ExamPreviewComplianceProps {
   compliance: readonly PreviewCompliance[];
   /** Câu đã bỏ của môn 16 câu (HSA Khoa học). */
   dropped: readonly PreviewQuestion[];
+  /** Xem thứ tự gốc (K12): số câu nêu ở chỉ tiêu chủ đề là số gốc, như số trên đề đang xem. */
+  original?: boolean;
 }
 
 /**
@@ -35,12 +37,12 @@ export interface ExamPreviewComplianceProps {
  * dấu theo mức (Bắt buộc là lỗi, Tham khảo là cảnh báo không chặn). Môn 16 câu ghi "đã bỏ 1 câu" và nêu câu đã bỏ;
  * chỉ tiêu chủ đề nêu các câu được gán.
  */
-export function ExamPreviewCompliance({ paper, compliance, dropped }: ExamPreviewComplianceProps) {
+export function ExamPreviewCompliance({ paper, compliance, dropped, original = false }: ExamPreviewComplianceProps) {
   const t = useTranslations("exams.preview.compliance");
   const tContent = useTranslations("content");
   const format = useFormatter();
   const lookup = useLookup();
-  const assigned = useMemo(() => topicAssignments(paper), [paper]);
+  const assigned = useMemo(() => topicAssignments(paper, original), [paper, original]);
 
   const { columns, cards } = useMemo(() => {
     const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);

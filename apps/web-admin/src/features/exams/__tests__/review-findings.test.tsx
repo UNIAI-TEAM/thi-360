@@ -189,6 +189,17 @@ describe("Kiểm tra: trạng thái từng môn và bảng theo mã, theo phần
     expect(cells[4]).toHaveTextContent("2");
   });
 
+  it("số 0 trong bảng theo phần là dấu '–' trung tính; chỉ số lớn hơn 0 mới tô màu lỗi, cảnh báo", async () => {
+    renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: wire(ERRORS, states) }));
+
+    const table = await screen.findByRole("table", { name: "Theo mã và phần" });
+    const cells = within(within(table).getByText("Part 1").closest("tr")!).getAllByRole("cell");
+    expect(within(cells[3]!).getByText("2")).toHaveClass("text-danger");
+    const dash = within(cells[4]!).getByText("–");
+    expect(dash).not.toHaveClass("text-warning");
+    expect(dash).not.toHaveClass("text-danger");
+  });
+
   it("không có sectionStates (null) thì không hiện trạng thái môn", async () => {
     renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: wire(ERRORS) }));
 

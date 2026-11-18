@@ -258,6 +258,11 @@ function SectionStates({ states }: { states: readonly ExamSectionState[] }) {
   );
 }
 
+/** Số lỗi hoặc cảnh báo của một dòng; 0 là dấu "–" trung tính, không tô màu cảnh báo cho dòng sạch. */
+function CountCell({ value, tone, none }: { value: number; tone: string; none: string }) {
+  return value > 0 ? <span className={`tabular-nums ${tone}`}>{value}</span> : <span className="text-text-muted">{none}</span>;
+}
+
 function UnitTable({
   exam,
   states,
@@ -297,12 +302,12 @@ function UnitTable({
       {
         id: "errors",
         header: t("unitColumns.errors"),
-        cell: ({ row }) => <span className="tabular-nums text-danger">{row.original.errors || t("none")}</span>,
+        cell: ({ row }) => <CountCell value={row.original.errors} tone="text-danger" none={t("none")} />,
       },
       {
         id: "warnings",
         header: t("unitColumns.warnings"),
-        cell: ({ row }) => <span className="tabular-nums text-warning">{row.original.warnings || t("none")}</span>,
+        cell: ({ row }) => <CountCell value={row.original.warnings} tone="text-warning" none={t("none")} />,
       },
     ];
     const cards: TableCards<UnitRow> = {

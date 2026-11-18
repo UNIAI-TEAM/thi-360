@@ -201,7 +201,6 @@ describe("bảng Yêu cầu / Thực tế", () => {
     expect(screen.getByText("1 dòng lệch").closest("[data-tone]")).toHaveAttribute("data-tone", "warning");
   });
 
-
   it("chỉ tiêu chủ đề nêu các câu được gán; thực tế nhiều hơn 'ít nhất' vẫn đạt", async () => {
     renderTable([row({ criterion: "TOPIC:t1", scope: "SECTION:s1", required: 1, actual: 2 })]);
 
@@ -210,6 +209,36 @@ describe("bảng Yêu cầu / Thực tế", () => {
     expect(within(only).getByText("2 · gán câu 1, 3")).toBeInTheDocument();
     expect(within(only).getByText("Đạt")).toBeInTheDocument();
     expect(topicAssignments(paper).get("t1")).toEqual([1, 3]);
+  });
+
+  it("xem thứ tự gốc: chỉ tiêu chủ đề nêu số gốc của câu được gán, khớp số trên đề đang xem", async () => {
+    const shuffled = paperOf([
+      {
+        id: "p1",
+        name: "Part 1",
+        first: 1,
+        last: 3,
+        blocks: [
+          block({
+            items: [
+              item(question(1, { assignedTopicQuotaIds: ["t1"], originalNumber: 3 })),
+              item(question(2, { originalNumber: 1 })),
+              item(question(3, { assignedTopicQuotaIds: ["t1"], originalNumber: 2 })),
+            ],
+          }),
+        ],
+      },
+    ]);
+    const rows = [row({ criterion: "TOPIC:t1", scope: "SECTION:s1", required: 1, actual: 2 })];
+
+    expect(topicAssignments(shuffled).get("t1")).toEqual([1, 3]);
+    expect(topicAssignments(shuffled, true).get("t1")).toEqual([2, 3]);
+
+    const { unmount } = renderWithProviders(<ExamPreviewCompliance paper={shuffled} compliance={rows} dropped={[]} />);
+    expect(await screen.findByText("2 · gán câu 1, 3")).toBeInTheDocument();
+    unmount();
+    renderWithProviders(<ExamPreviewCompliance paper={shuffled} compliance={rows} dropped={[]} original />);
+    expect(await screen.findByText("2 · gán câu 2, 3")).toBeInTheDocument();
   });
 
   it("môn 16 câu: ghi 'môn đã bỏ 1 câu' ở cột Yêu cầu và nêu câu đã bỏ", async () => {
