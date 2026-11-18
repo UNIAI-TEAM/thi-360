@@ -22,6 +22,7 @@ import {
   toCreateExamRequest,
   yearsDiffer,
 } from "../create-exam-schema";
+import { overviewDiff, overviewRowsFromTemplate, updateRowCell, validateOverview } from "../create-exam-overview";
 import type { ExamKind, ExamOverviewRow, ExamScope, ExamTemplate } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 
@@ -545,22 +546,18 @@ describe("V-ACT và THPTQG: phạm vi mới và thời lượng bài theo phần
       expect(template).toMatchObject({ timing: "PER_PART" });
       expect(template.parts.map((part) => part.durationMinutes)).toEqual([minutes]);
     }
-    // Xóa thời lượng điền sẵn thì không gửi được: bài tính giờ theo phần bắt buộc thời lượng riêng của phần.
-    const lit = scopeTemplate(FIXTURE_TEMPLATES, KINDS, { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode: "LITERATURE" })!;
-    const filled = initialParts({
-      templates: FIXTURE_TEMPLATES,
-      kind: "THPTQG",
-      scope: "SUBJECT",
-      partCode: "",
-      combinations: combinationsForKind(COMBINATIONS, "THPTQG"),
-      scopeName: (scope) => scope,
-      template: lit,
-      subjectCode: "LITERATURE",
-    });
-    expect(filled).toHaveLength(1);
-    expect(errors(values({ kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode: "", parts: [{ ...filled[0]!, durationMinutes: 0 }] }))).toEqual({
-      "parts.0.durationMinutes": "durationPositive",
-    });
+    // D25 (ADV:FE-6:4): ô thời lượng của phần sửa được; ô để trống hợp lệ và không gửi `durationMinutes` — máy chủ
+    // giữ thời lượng của mẫu (overviewDiff không ghi khóa rỗng), bài không bao giờ thiếu thời lượng.
+    for (const subjectCode of ["LITERATURE", "ENGLISH"] as const) {
+      const template = scopeTemplate(FIXTURE_TEMPLATES, KINDS, { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode })!;
+      const rows = overviewRowsFromTemplate(template, "PART", "P1");
+      const partKey = rows.find((row) => row.kind === "part")!.key;
+      // Giá trị sửa đi theo yêu cầu.
+      expect(overviewDiff(updateRowCell(rows, partKey, "durationMinutes", "130"))).toEqual([{ partCode: "P1", durationMinutes: 130 }]);
+      const emptied = updateRowCell(rows, partKey, "durationMinutes", "");
+      expect(validateOverview(emptied).filter((issue) => issue.rowKey === partKey)).toEqual([]);
+      expect(overviewDiff(emptied)).toEqual([]);
+    }
   });
 
   it("Theo phần cắt từ mẫu Theo môn không mang phân đoạn hiển thị (H40: phân đoạn chỉ của bài cả môn)", () => {
