@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -84,6 +85,43 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
                 }
             }
         }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void outOfRangeChildBoundsAreLocatedInOrdinaryAndDeepChecks() throws Exception {
+        UUID id = UUID.randomUUID();
+        String url = "/api/v1/admin/exams/" + id + "/check";
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing) VALUES (?,?,?,'Range','FULL','SHARED')",
+                id, id.toString(), id.toString());
+        try {
+            String parts = """
+                    {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                    "questionCount":1,"blocks":[{"id":"b","questionType":"QUESTION_SET","questionCount":1,
+                    "setCount":1,"setSize":1,"childConditions":[{"from":1,"to":21}]}]}]}]}
+                    """;
+            jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (? ,?::jsonb,'range')", id, parts);
+            assertIncomplete(check(id));
+            String accepted = mockMvc.perform(post(url).param("deep", "true").with(asUser(Permissions.EXAM_MODIFY)))
+                    .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+            UUID runId = UUID.fromString(mapper.readTree(accepted).path("runId").asText());
+            org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(30)).untilAsserted(() ->
+                    assertThat(jdbc.queryForObject("SELECT state FROM exam.exam_check_job WHERE id=?", String.class, runId))
+                            .isEqualTo("DONE"));
+            String completed = mockMvc.perform(get(url + "/runs/" + runId).with(asUser(Permissions.EXAM_VIEW)))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertIncomplete(mapper.readTree(completed).path("result"));
+        } finally {
+            jdbc.update("DELETE FROM exam.exam WHERE id=?", id);
+        }
+    }
+
+    private void assertIncomplete(JsonNode result) {
+        JsonNode issue = first(result, "SECTION_INCOMPLETE");
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issue.path("location").path("partId").asText()).isEqualTo("p");
+        assertThat(issue.path("location").path("sectionId").asText()).isEqualTo("s");
+        assertThat(issue.path("location").path("blockId").asText()).isEqualTo("b");
     }
 
     private UUID bca() {

@@ -255,6 +255,26 @@ class ExamCheckerTests {
     }
 
     @Test
+    void invalidChildRangesAreLocatedBeforeConstructingSolverInput() throws Exception {
+        Exam exam = exam(1, null, "RAW");
+        for (String range : List.of("{\"from\":1,\"to\":21}", "{\"from\":0,\"to\":1}", "{\"from\":2,\"to\":1}")) {
+            String doc = """
+                    {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"MATH",
+                    "questionCount":1,"blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1,
+                    "childConditions":[%s]}]}]}]}
+                    """.formatted(range);
+            JsonNode result = check(exam, document(doc)).result();
+            JsonNode issue = java.util.stream.StreamSupport.stream(result.path("groups").spliterator(), false)
+                    .flatMap(group -> java.util.stream.StreamSupport.stream(group.path("issues").spliterator(), false))
+                    .filter(value -> "SECTION_INCOMPLETE".equals(value.path("code").asText())).findFirst().orElseThrow();
+            assertThat(issue.path("location").path("partId").asText()).isEqualTo("p");
+            assertThat(issue.path("location").path("sectionId").asText()).isEqualTo("s");
+            assertThat(issue.path("location").path("blockId").asText()).isEqualTo("b");
+        }
+        verify(source, never()).findCandidates(any(), anyInt());
+    }
+
+    @Test
     void emptyReviewStyleDraftReportsMissingAnswerTypeAndPart() throws Exception {
         Exam exam = exam(5, null, "RAW");
         subject("MATH", 0);

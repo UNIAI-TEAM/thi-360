@@ -30,6 +30,7 @@ import vn.unicom.thi360.exam.domain.TopicQuota;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.exam.domain.solver.SubjectPick;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /** Structural and exact-quota checks; source feasibility remains the solver's responsibility. */
@@ -222,7 +223,9 @@ public final class ExamCheckRules {
             topicQuotas(found, context, null, section.topicQuotas());
             for (QuestionBlock block : section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
-                if (block.childConditions().stream().anyMatch(condition -> condition.from() == null || condition.to() == null)) {
+                if (block.childConditions().stream().anyMatch(condition -> condition.from() == null || condition.to() == null
+                        || condition.from() < 1 || condition.from() > condition.to()
+                        || condition.to() > QuestionSourcePort.MAX_SET_CHILDREN)) {
                     ObjectNode invalid = sectionIssue("SECTION_INCOMPLETE", "STRUCTURE", context, null);
                     blockContext(invalid, block); found.add(issues.key(invalid));
                 }
