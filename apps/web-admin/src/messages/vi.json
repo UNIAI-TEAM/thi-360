@@ -5630,6 +5630,9 @@
           "points": "Điểm",
           "percentPart": "Tỷ lệ trong phần",
           "percentExam": "Tỷ lệ toàn bài",
+          "blockPoints": "Điểm tối đa",
+          "commands": "Lệnh hỏi",
+          "partRows": "Phần và dòng lấy câu",
           "percentExamCustom": "Tỷ lệ trong bài"
         },
         "cell": {
@@ -5639,6 +5642,8 @@
         },
         "lockedCounts": "Mẫu đã khóa số câu",
         "lockedBlockCountsNote": "Bài cả môn giữ nguyên dạng và số lượng từng dòng theo mẫu. Muốn đổi số lượng, chọn phạm vi Theo phần.",
+        "blockUnit": "{sets, number} chùm × {size, number} câu con",
+        "scrollHint": "Bảng cuộn ngang: vuốt để xem các cột còn lại.",
         "choiceNote": "(học viên chọn một lựa chọn)",
         "omittedLabel": "tạm bỏ qua",
         "notCounted": "không tính",

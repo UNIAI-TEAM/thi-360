@@ -1,10 +1,11 @@
 "use client";
 
 import { cn, focusRingInset, Input } from "@thi360/ui";
+import { ArrowLeftRight } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import type { ExamTiming } from "../types";
-import type { OverviewRow } from "../create-exam-overview";
+import type { OverviewBlockInfo, OverviewRow } from "../create-exam-overview";
 import { overviewTotals } from "../create-exam-overview";
 
 export interface OverviewNumberField {
@@ -13,6 +14,8 @@ export interface OverviewNumberField {
   onChange: (text: string) => void;
   /** Chữ lỗi của ô; có thì ô báo `aria-invalid` và dòng lỗi nằm cạnh ô, nối bằng `aria-describedby`. */
   error?: string;
+  /** Gợi ý dưới ô (nguồn của giá trị điền sẵn); khi có lỗi thì lỗi thay chỗ gợi ý. Nối với ô bằng `aria-describedby`. */
+  hint?: string;
 }
 
 export interface ExamOverviewTableProps {
@@ -27,6 +30,8 @@ export interface ExamOverviewTableProps {
   percentExamHeader?: string;
   /** Cột Tỷ lệ trong phần khi phần có tiểu mục (V-ACT toàn bài: 50/50/100/40/60%). */
   showPartPercent?: boolean;
+  /** Cột Lệnh hỏi của các dòng lấy câu (V-SAT, `TaoBaiThiHscaVsat2B`); chỉ hiện khi bảng có dòng lấy câu. */
+  showCommands?: boolean;
   onCellChange: (key: string, field: "questionCount" | "durationMinutes" | "maxPoints", text: string) => void;
   /** Lỗi của ô, khóa theo `OverviewRow.key` → trường → chữ lỗi. */
   issues: ReadonlyMap<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>;
@@ -85,12 +90,28 @@ function NumberCell({
   );
 }
 
-/** Ô số dưới bảng (thời lượng chung, điểm tối đa); `data-field` để tóm tắt dẫn con trỏ tới ô lỗi. */
-function FooterField({ field, label, unit, state }: { field: string; label: string; unit: string; state: OverviewNumberField }) {
+/**
+ * Ô số ngoài bảng (thời lượng chung phía trên bảng, điểm tối đa phía dưới); `data-field` để tóm tắt dẫn con trỏ tới ô lỗi.
+ * Gợi ý nằm ngay dưới ô; ô nối với lỗi nếu có, không thì nối với gợi ý bằng `aria-describedby` (R-141, FE-6 R2-2).
+ */
+function FooterField({
+  field,
+  label,
+  unit,
+  state,
+  position,
+}: {
+  field: string;
+  label: string;
+  unit: string;
+  state: OverviewNumberField;
+  position: "top" | "bottom";
+}) {
   const id = useId();
   const errorId = useId();
+  const hintId = useId();
   return (
-    <div className="flex flex-col gap-1 border-t border-border px-3 py-3">
+    <div className={cn("flex flex-col gap-1 border-border px-3 py-3", position === "top" ? "border-b" : "border-t")}>
       <div className="flex items-center gap-3">
         <label htmlFor={id} className="text-body font-medium">
           {label}
@@ -101,7 +122,7 @@ function FooterField({ field, label, unit, state }: { field: string; label: stri
             id={id}
             value={state.value}
             aria-invalid={Boolean(state.error)}
-            aria-describedby={state.error ? errorId : undefined}
+            aria-describedby={state.error ? errorId : state.hint ? hintId : undefined}
             className={cellInput}
             onChange={(event) => state.onChange(event.target.value)}
           />
@@ -111,6 +132,11 @@ function FooterField({ field, label, unit, state }: { field: string; label: stri
       {state.error && (
         <p id={errorId} className="text-caption text-danger">
           {state.error}
+        </p>
+      )}
+      {state.hint && (
+        <p id={hintId} className="text-caption text-text-muted">
+          {state.hint}
         </p>
       )}
     </div>
@@ -132,6 +158,7 @@ export function ExamOverviewTable({
   showPercents = false,
   percentExamHeader,
   showPartPercent = false,
+  showCommands = false,
   onCellChange,
   issues,
   subjectName,
@@ -143,6 +170,15 @@ export function ExamOverviewTable({
   const format = useFormatter();
   const totals = overviewTotals(rows, timing, sharedDuration?.value ?? "");
   const showDuration = timing === "PER_PART";
+  // H-SCA, V-SAT: dòng lấy câu của mẫu (chỉ đọc) kèm cột Tỷ lệ trong phần, Lệnh hỏi (V-SAT) và Điểm tối đa; kỳ thi khác không có.
+  const blockMode = rows.some((row) => row.kind === "block");
+  const partPercentColumn = showPartPercent || blockMode;
+  const commandColumn = blockMode && showCommands;
+  const blocksOf = (key: string) => rows.filter((row) => row.kind === "block" && row.parentKey === key);
+  const blockSum = (key: string, pick: (info: OverviewBlockInfo) => number | null): number | null => {
+    const values = blocksOf(key).flatMap((row) => (row.block ? [pick(row.block)] : [])).filter((value): value is number => value !== null);
+    return values.length > 0 ? Math.round(values.reduce((total, value) => total + value, 0) * 100) / 100 : null;
+  };
   const byKey = new Map(rows.map((row) => [row.key, row]));
   const label = (row: OverviewRow) =>
     rowLabel?.(row) ?? (row.kind === "section" ? subjectName(row.subjectCode) : row.label);
@@ -169,16 +205,25 @@ export function ExamOverviewTable({
   const percentText = (value: number | null): string => (value === null ? "—" : format.number(value, PERCENT));
   return (
     <div className="overflow-hidden rounded-lg border border-border">
+      {sharedDuration && timing === "SHARED" && (
+        <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} position="top" />
+      )}
+      <p className="flex items-center gap-1.5 border-b border-border bg-subtle px-3 py-1.5 text-caption text-text-muted md:hidden">
+        <ArrowLeftRight aria-hidden className="size-3.5 shrink-0" />
+        {t("scrollHint")}
+      </p>
       <div role="region" tabIndex={0} aria-label={t("regionLabel")} className={cn("overflow-x-auto", focusRingInset)}>
-        <table className="w-full min-w-[32rem] border-collapse text-body">
+        <table className={cn("w-full border-collapse text-body", blockMode ? "min-w-[44rem]" : "min-w-[32rem]")}>
           <thead>
             <tr className="border-b border-border bg-subtle text-start">
-              <th className="px-3 py-2 text-start font-medium text-text-secondary">{t("col.part")}</th>
+              <th className="px-3 py-2 text-start font-medium text-text-secondary">{t(blockMode ? "col.partRows" : "col.part")}</th>
               <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.count")}</th>
-              {showPartPercent && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.percentPart")}</th>}
+              {partPercentColumn && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.percentPart")}</th>}
               {showPercents && <th className="px-3 py-2 text-end font-medium text-text-secondary">{percentExamHeader ?? t("col.percentExam")}</th>}
               {showDuration && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.duration")}</th>}
               {showPoints && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.points")}</th>}
+              {commandColumn && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.commands")}</th>}
+              {blockMode && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.blockPoints")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -195,10 +240,41 @@ export function ExamOverviewTable({
                       <span className="ms-2 text-caption">{t("omittedLabel")}</span>
                     </td>
                     <td className="px-3 py-2 text-end">{row.base.questionCount ?? "—"}</td>
-                    {showPartPercent && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
+                    {partPercentColumn && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
                     {showPercents && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
                     {showDuration && <td className="px-3 py-2 text-end">—</td>}
                     {showPoints && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
+                    {commandColumn && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
+                    {blockMode && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
+                  </tr>
+                );
+              }
+              if (row.kind === "block" && row.block) {
+                const info = row.block;
+                const total = blockSum(row.parentKey ?? "", (item) => item.questions);
+                return (
+                  <tr key={row.key} className="border-b border-border last:border-b-0">
+                    <td className="px-3 py-2 pl-8 align-top text-text-secondary">
+                      <span className="me-1 text-text-muted">–</span>
+                      {display}
+                    </td>
+                    <td className="px-3 py-2 align-top text-end">
+                      <span className="px-3 py-2 font-medium">{info.questions}</span>
+                      {info.sets !== null && info.setSize !== null && (
+                        <span className="block px-3 text-caption text-text-muted">{t("blockUnit", { sets: info.sets, size: info.setSize })}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top text-end text-text-secondary">
+                      <span className="px-3 py-2">{percentText(total ? info.questions / total : null)}</span>
+                    </td>
+                    {commandColumn && (
+                      <td className="px-3 py-2 align-top text-end text-text-secondary">
+                        <span className="px-3 py-2">{info.commands}</span>
+                      </td>
+                    )}
+                    <td className="px-3 py-2 align-top text-end text-text-secondary">
+                      <span className="px-3 py-2">{info.points ?? "—"}</span>
+                    </td>
                   </tr>
                 );
               }
@@ -224,10 +300,14 @@ export function ExamOverviewTable({
                       )}
                     </div>
                   </td>
-                  {showPartPercent && (
+                  {partPercentColumn && (
                     <td className="px-3 py-2 align-top text-end">
                       <span className="px-3 py-2 text-text-secondary">
-                        {row.kind === "section" ? percentText(inPart(row)) : "—"}
+                        {row.kind === "section"
+                          ? percentText(inPart(row))
+                          : row.kind === "part" && blocksOf(row.key).length > 0
+                            ? percentText(1)
+                            : "—"}
                       </span>
                     </td>
                   )}
@@ -258,6 +338,16 @@ export function ExamOverviewTable({
                       </div>
                     </td>
                   )}
+                  {commandColumn && (
+                    <td className="px-3 py-2 align-top text-end">
+                      <span className="px-3 py-2 text-text-secondary">{row.kind === "part" ? (blockSum(row.key, (item) => item.commands) ?? "—") : "—"}</span>
+                    </td>
+                  )}
+                  {blockMode && (
+                    <td className="px-3 py-2 align-top text-end">
+                      <span className="px-3 py-2 text-text-secondary">{row.kind === "part" ? (blockSum(row.key, (item) => item.points) ?? "—") : "—"}</span>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -266,20 +356,19 @@ export function ExamOverviewTable({
             <tr className="border-t border-border bg-subtle font-medium">
               <td className="px-3 py-2">{t("total")}</td>
               <td className="px-3 py-2 text-end">{totals.questions ?? "—"}</td>
-              {showPartPercent && <td className="px-3 py-2 text-end">—</td>}
+              {partPercentColumn && <td className="px-3 py-2 text-end">{blockMode && totals.questions !== null ? format.number(1, PERCENT) : "—"}</td>}
               {showPercents && (
                 <td className="px-3 py-2 text-end">{totals.questions !== null ? format.number(1, PERCENT) : "—"}</td>
               )}
               {showDuration && <td className="px-3 py-2 text-end">{totals.durationMinutes ?? "—"}</td>}
               {showPoints && <td className="px-3 py-2 text-end">{totals.maxPoints ?? "—"}</td>}
+              {commandColumn && <td className="px-3 py-2 text-end">{totals.commands ?? "—"}</td>}
+              {blockMode && <td className="px-3 py-2 text-end">{totals.blockPoints ?? "—"}</td>}
             </tr>
           </tfoot>
         </table>
       </div>
-      {sharedDuration && timing === "SHARED" && (
-        <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} />
-      )}
-      {maxScore && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} />}
+      {maxScore && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" />}
     </div>
   );
 }

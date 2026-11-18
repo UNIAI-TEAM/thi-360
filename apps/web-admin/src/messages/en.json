@@ -5630,6 +5630,9 @@
           "points": "Points",
           "percentPart": "Share of part",
           "percentExam": "Share of exam",
+          "blockPoints": "Max points",
+          "commands": "Prompts",
+          "partRows": "Part and source rows",
           "percentExamCustom": "Share of the exam"
         },
         "cell": {
@@ -5639,6 +5642,8 @@
         },
         "lockedCounts": "Question counts locked by template",
         "lockedBlockCountsNote": "A whole-subject exam keeps the type and quantity of every row from the template. To change quantities, choose the By part scope.",
+        "blockUnit": "{sets, number} sets × {size, number} sub-questions",
+        "scrollHint": "The table scrolls sideways: swipe to see the other columns.",
         "choiceNote": "(learner picks one option)",
         "omittedLabel": "skipped for now",
         "notCounted": "not counted",

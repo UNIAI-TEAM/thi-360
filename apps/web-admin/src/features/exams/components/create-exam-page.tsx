@@ -729,6 +729,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 showPercents={showPercents}
                 percentExamHeader={selection.scope === "PART" ? tOverview("col.percentExamCustom") : undefined}
                 showPartPercent={showPartPercent}
+                showCommands={selection.kind === "VSAT"}
                 onCellChange={onCellChange}
                 issues={cellIssues}
                 subjectName={subjectName}
@@ -736,6 +737,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 sharedDuration={{
                   value: sharedText,
                   error: formState.errors.sharedDuration ? durationError : undefined,
+                  hint: templatesStatus === "ready" ? (durationHint ?? undefined) : undefined,
                   onChange: (text) => {
                     setSharedText(text);
                     setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
@@ -757,9 +759,6 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                       }
                 }
               />
-            )}
-            {durationHint && templatesStatus === "ready" && (
-              <p className="text-caption text-text-muted">{durationHint}</p>
             )}
           </FormSection>
 
