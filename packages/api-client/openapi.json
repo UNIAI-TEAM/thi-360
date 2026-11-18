@@ -3061,6 +3061,9 @@
           "dimension" : {
             "type" : "string"
           },
+          "excludedPoints" : {
+            "type" : "number"
+          },
           "gradeCode" : {
             "type" : "string"
           },
@@ -3824,6 +3827,20 @@
         },
         "type" : "object"
       },
+      "ExamPreviewAttachment" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "mime" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ExamPreviewBlock" : {
         "properties" : {
           "allocation" : {
@@ -3960,8 +3977,7 @@
             "type" : "string"
           },
           "available" : {
-            "format" : "int32",
-            "type" : "integer"
+            "type" : "number"
           },
           "blockId" : {
             "type" : "string"
@@ -4009,11 +4025,14 @@
             "type" : "array"
           },
           "required" : {
-            "format" : "int32",
-            "type" : "integer"
+            "type" : "number"
           },
           "sectionId" : {
             "type" : "string"
+          },
+          "segmentCode" : {
+            "description" : "Display segment code of DISPLAY_SEGMENT_MISMATCH",
+            "type" : [ "string", "null" ]
           },
           "severity" : {
             "type" : "string"
@@ -4034,6 +4053,13 @@
       },
       "ExamPreviewItem" : {
         "properties" : {
+          "attachments" : {
+            "description" : "Attachments of the set's root question; empty for a single question",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewAttachment"
+            },
+            "type" : "array"
+          },
           "children" : {
             "items" : {
               "$ref" : "#/components/schemas/ExamPreviewQuestion"
@@ -4173,6 +4199,13 @@
             },
             "type" : "array"
           },
+          "displaySegments" : {
+            "description" : "Declared display segments of the part; empty when it has none",
+            "items" : {
+              "$ref" : "#/components/schemas/DisplaySegment"
+            },
+            "type" : "array"
+          },
           "durationMinutes" : {
             "format" : "int32",
             "type" : "integer"
@@ -4249,6 +4282,13 @@
               "type" : "string"
             },
             "type" : [ "array", "null" ]
+          },
+          "attachments" : {
+            "description" : "Attachments of a single question; empty for a child of a set",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewAttachment"
+            },
+            "type" : "array"
           },
           "body" : {
             "$ref" : "#/components/schemas/JsonNode"

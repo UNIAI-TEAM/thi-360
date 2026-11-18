@@ -3597,6 +3597,7 @@ export interface components {
             competencyCode?: string;
             difficultyCode?: string;
             dimension?: string;
+            excludedPoints?: number;
             gradeCode?: string;
             group?: string;
             key?: string;
@@ -3901,6 +3902,11 @@ export interface components {
             /** Format: int32 */
             required?: number;
         };
+        ExamPreviewAttachment: {
+            id?: string;
+            mime?: string;
+            name?: string;
+        };
         ExamPreviewBlock: {
             allocation?: components["schemas"]["ExamPreviewAllocationCell"][];
             blockId?: string;
@@ -3945,7 +3951,6 @@ export interface components {
         };
         ExamPreviewIssue: {
             answerType?: string;
-            /** Format: int32 */
             available?: number;
             blockId?: string;
             blockName?: string;
@@ -3961,9 +3966,10 @@ export interface components {
             partId?: string;
             partName?: string;
             questionCodes?: string[];
-            /** Format: int32 */
             required?: number;
             sectionId?: string;
+            /** @description Display segment code of DISPLAY_SEGMENT_MISMATCH */
+            segmentCode?: string | null;
             severity?: string;
             subjectCode?: string;
             /** Format: int32 */
@@ -3972,6 +3978,8 @@ export interface components {
             timeLimitSeconds?: number;
         };
         ExamPreviewItem: {
+            /** @description Attachments of the set's root question; empty for a single question */
+            attachments?: components["schemas"]["ExamPreviewAttachment"][];
             children?: components["schemas"]["ExamPreviewQuestion"][];
             code?: string;
             kind?: string;
@@ -4020,6 +4028,8 @@ export interface components {
         };
         ExamPreviewPart: {
             blocks?: components["schemas"]["ExamPreviewBlock"][];
+            /** @description Declared display segments of the part; empty when it has none */
+            displaySegments?: components["schemas"]["DisplaySegment"][];
             /** Format: int32 */
             durationMinutes?: number;
             /** Format: int32 */
@@ -4048,6 +4058,8 @@ export interface components {
             answer?: string;
             /** @description Topic quota IDs assigned to this question */
             assignedTopicQuotaIds?: string[] | null;
+            /** @description Attachments of a single question; empty for a child of a set */
+            attachments?: components["schemas"]["ExamPreviewAttachment"][];
             body?: components["schemas"]["JsonNode"];
             code?: string;
             content?: string;
