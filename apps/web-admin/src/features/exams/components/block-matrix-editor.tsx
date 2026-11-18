@@ -17,9 +17,12 @@ import {
   toDimension,
   validateBlock,
 } from "../matrix";
-import type { AvailableQuestionCounts, BlockMatrix, MatrixMode, MatrixUnit, QuestionBlock } from "../types";
+import { ratePercent } from "../allocation";
+import { DISPLAY_NUMBER_FORMAT } from "../display-number";
+import type { AvailableQuestionCounts, BlockMatrix, MatrixMode, MatrixUnit, QuestionBlock, QuotaBasis, QuotaEnforcement } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
+import { EnforcementToggle } from "./enforcement-toggle";
 
 export interface MatrixLabels {
   grade: (code: string) => string;
@@ -78,7 +81,22 @@ export function BlockMatrixEditor({
         (issue) => issue.code === "PERCENT_TOTAL" || issue.code === "ALLOCATION_TOTAL" || issue.code === "INVALID_VALUE",
       )
     : [];
-  const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
+  const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
+  const questionBasis = (matrix.basis ?? "QUESTION") === "QUESTION";
+  const gradeEnforcement: QuotaEnforcement = matrix.gradeEnforcement ?? "REQUIRED";
+  const difficultyEnforcement: QuotaEnforcement = matrix.difficultyEnforcement ?? "REQUIRED";
+  const referenceOnly = gradeEnforcement === "REFERENCE" && difficultyEnforcement === "REFERENCE";
+  const rateText = (count: number) => {
+    const rate = ratePercent(count, block.questionCount);
+    return rate === null ? null : t("realRate", { value: format.number(rate, { maximumFractionDigits: 1 }) });
+  };
+  const setEnforcement = (which: "grade" | "difficulty" | "both", value: QuotaEnforcement) => {
+    const next: BlockMatrix = { ...matrix };
+    if (which !== "difficulty") next.gradeEnforcement = value;
+    if (which !== "grade") next.difficultyEnforcement = value;
+    onChange(next);
+  };
+  const setBasis = (basis: QuotaBasis) => onChange({ ...matrix, basis });
 
   const sourceOf = (grade: string | null, difficulty: string | null) =>
     (available?.cells ?? [])
@@ -86,7 +104,7 @@ export function BlockMatrixEditor({
       .reduce((total, cell) => total + cell.value, 0);
 
   const sourceHint = (id: string, need: number, grade: string | null, difficulty: string | null) => {
-    if (availableState !== "ready") return null;
+    if (availableState !== "ready" || !questionBasis) return null;
     const source = sourceOf(grade, difficulty);
     const short = need > source;
     return (
@@ -100,7 +118,9 @@ export function BlockMatrixEditor({
   const setMode = (mode: MatrixMode) => {
     if (mode === matrix.mode) return;
     setSwitched(true);
-    onChange(convertMatrixMode(matrix, mode, axes));
+    const converted = convertMatrixMode(matrix, mode, axes);
+    // Ma trận kết hợp chỉ có một mức cho cả hai chiều (spec 3.2): lấy mức của chiều lớp.
+    onChange(mode === "COMBINED" ? { ...converted, difficultyEnforcement: gradeEnforcement } : converted);
   };
   const setUnit = (unit: MatrixUnit) => onChange(convertMatrixUnit(matrix, unit, block.questionCount, axes));
 
@@ -168,6 +188,33 @@ export function BlockMatrixEditor({
           ]}
         />
       </div>
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+        {matrix.mode === "COMBINED" && (
+          <EnforcementToggle
+            legend={t("matrixName")}
+            name={`${block.id}-enforcement`}
+            value={gradeEnforcement}
+            basis={matrix.basis}
+            onChange={(value) => setEnforcement("both", value)}
+          />
+        )}
+        {referenceOnly ? (
+          <ChoiceCardGroup
+            variant="pill"
+            legend={t("basis")}
+            name={`${block.id}-basis`}
+            value={matrix.basis ?? "QUESTION"}
+            onChange={setBasis}
+            options={[
+              { value: "QUESTION", label: t("basisQUESTION") },
+              { value: "PROMPT", label: t("basisPROMPT") },
+              { value: "POINTS", label: t("basisPOINTS") },
+            ]}
+          />
+        ) : (
+          <p className="text-label text-text-secondary">{t("basisFixed", { unit: t("basisQUESTION") })}</p>
+        )}
+      </div>
       {switched && (
         <p role="status" className="flex items-start gap-2 rounded-md border border-info/30 bg-info-bg px-3 py-2 text-body text-info">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -184,7 +231,7 @@ export function BlockMatrixEditor({
                 {axes.difficulties.map((difficulty) => (
                   <HeadCell key={difficulty}>{labels.difficulty(difficulty)}</HeadCell>
                 ))}
-                <HeadCell>{t("total")}</HeadCell>
+                <HeadCell last>{t("total")}</HeadCell>
               </tr>
             </thead>
             <tbody>
@@ -216,7 +263,7 @@ export function BlockMatrixEditor({
                       </td>
                     );
                   })}
-                  <TotalCell>{totalText(allocation.inputRowTotals[row] ?? 0)}</TotalCell>
+                  <TotalCell last>{totalText(allocation.inputRowTotals[row] ?? 0)}</TotalCell>
                 </tr>
               ))}
             </tbody>
@@ -226,7 +273,7 @@ export function BlockMatrixEditor({
                 {axes.difficulties.map((difficulty, column) => (
                   <TotalCell key={difficulty}>{totalText(allocation.inputColumnTotals[column] ?? 0)}</TotalCell>
                 ))}
-                <TotalCell strong>{totalText(allocation.inputTotal)}</TotalCell>
+                <TotalCell strong last>{totalText(allocation.inputTotal)}</TotalCell>
               </tr>
             </tfoot>
           </MatrixTable>
@@ -247,7 +294,7 @@ export function BlockMatrixEditor({
                     {axes.difficulties.map((difficulty) => (
                       <HeadCell key={difficulty}>{labels.difficulty(difficulty)}</HeadCell>
                     ))}
-                    <HeadCell>{t("total")}</HeadCell>
+                    <HeadCell last>{t("total")}</HeadCell>
                   </tr>
                 </thead>
                 <tbody>
@@ -266,7 +313,7 @@ export function BlockMatrixEditor({
                           />
                         );
                       })}
-                      <TotalCell>{number(allocation.rowTotals[row] ?? 0)}</TotalCell>
+                      <TotalCell last>{number(allocation.rowTotals[row] ?? 0)}</TotalCell>
                     </tr>
                   ))}
                 </tbody>
@@ -288,8 +335,15 @@ export function BlockMatrixEditor({
               const inputTotal = dimension.key === "byGrade" ? allocation.inputGradeTotal : allocation.inputDifficultyTotal;
               const countTotal = dimension.key === "byGrade" ? allocation.gradeTotal : allocation.difficultyTotal;
               return (
+                <div key={dimension.key} className="flex min-w-0 flex-col gap-2">
+                <EnforcementToggle
+                  legend={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
+                  name={`${block.id}-${dimension.key}-enforcement`}
+                  value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}
+                  basis={matrix.basis}
+                  onChange={(value) => setEnforcement(dimension.key === "byGrade" ? "grade" : "difficulty", value)}
+                />
                 <MatrixTable
-                  key={dimension.key}
                   caption={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
                   captionVisible
                 >
@@ -332,6 +386,7 @@ export function BlockMatrixEditor({
                               theoretical={number(dimension.conversion.theoretical[index] ?? 0)}
                               result={dimension.conversion.results[index] ?? 0}
                               bonus={dimension.conversion.bonus[index] ?? false}
+                              rate={rateText(dimension.conversion.results[index] ?? 0)}
                             />
                           )}
                         </tr>
@@ -346,6 +401,7 @@ export function BlockMatrixEditor({
                     </tr>
                   </tfoot>
                 </MatrixTable>
+                </div>
               );
             })}
           </div>
@@ -439,40 +495,46 @@ export function BlockMatrixEditor({
         </section>
       )}
 
-      <AllocationStatus
-        blockCount={block.questionCount}
-        totals={[
-          ...(matrix.mode === "COMBINED"
-            ? [{ label: null, total: allocation.total }]
-            : [
-                { label: t("byGradeCaption"), total: allocation.gradeTotal },
-                { label: t("byDifficultyCaption"), total: allocation.difficultyTotal },
-              ]),
-          ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
-        ]}
-        messages={issues.map((issue) => {
-          const dimension =
-            "dimension" in issue && issue.dimension !== "COMBINED"
-              ? issue.dimension === "GRADE"
-                ? t("byGradeCaption")
-                : issue.dimension === "COMPETENCY"
-                  ? t("byCompetencyCaption")
-                  : t("byDifficultyCaption")
-              : null;
-          if (issue.code === "INVALID_VALUE") return t("issues.invalidValue");
-          if (issue.code === "PERCENT_TOTAL") {
-            return t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) });
-          }
-          if (issue.code === "ALLOCATION_TOTAL") {
-            return t("issues.allocationTotal", {
-              dimension: dimension ?? t("matrixName"),
-              actual: issue.actual,
-              expected: issue.expected,
-            });
-          }
-          return "";
-        })}
-      />
+      {questionBasis ? (
+        <AllocationStatus
+          blockCount={block.questionCount}
+          totals={[
+            ...(matrix.mode === "COMBINED"
+              ? [{ label: null, total: allocation.total }]
+              : [
+                  { label: t("byGradeCaption"), total: allocation.gradeTotal },
+                  { label: t("byDifficultyCaption"), total: allocation.difficultyTotal },
+                ]),
+            ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
+          ]}
+          messages={issues.map((issue) => {
+            const dimension =
+              "dimension" in issue && issue.dimension !== "COMBINED"
+                ? issue.dimension === "GRADE"
+                  ? t("byGradeCaption")
+                  : issue.dimension === "COMPETENCY"
+                    ? t("byCompetencyCaption")
+                    : t("byDifficultyCaption")
+                : null;
+            if (issue.code === "INVALID_VALUE") return t("issues.invalidValue");
+            if (issue.code === "PERCENT_TOTAL") {
+              return t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) });
+            }
+            if (issue.code === "ALLOCATION_TOTAL") {
+              return t("issues.allocationTotal", {
+                dimension: dimension ?? t("matrixName"),
+                actual: issue.actual,
+                expected: issue.expected,
+              });
+            }
+            return "";
+          })}
+        />
+      ) : (
+        <p className="text-body text-text-secondary">
+          {t("basisTotal", { total: number(allocation.inputTotal), unit: t(`basis${matrix.basis}`) })}
+        </p>
+      )}
 
       <p className="flex flex-wrap items-center gap-x-1.5 text-body text-text-secondary">
         {t("sourceLabel")}{" "}
@@ -503,7 +565,7 @@ function MatrixTable({
       role="region"
       tabIndex={0}
       aria-labelledby={captionId}
-      className={cn("max-w-full overflow-x-auto rounded-md border border-border", focusRing)}
+      className={cn("relative max-w-full overflow-x-auto rounded-md border border-border", focusRing)}
     >
       <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
         <caption
@@ -518,13 +580,15 @@ function MatrixTable({
   );
 }
 
-function HeadCell({ children, sticky = false }: { children: ReactNode; sticky?: boolean }) {
+function HeadCell({ children, sticky = false, last = false }: { children: ReactNode; sticky?: boolean; last?: boolean }) {
   return (
     <th
       scope="col"
       className={cn(
         "border-b border-border bg-subtle px-2 py-2 text-right text-caption font-semibold whitespace-nowrap text-text-muted",
         sticky && "sticky left-0 z-1 text-left",
+        // Cột Tổng luôn nằm trong khung và có đệm phải: không dính mép thẻ, không bị cuộn ngang che (V1-05).
+        last && "sticky right-0 z-1 border-l pr-4",
       )}
     >
       {children}
@@ -547,20 +611,37 @@ function RowHead({ children, footer = false }: { children: ReactNode; footer?: b
   );
 }
 
-function TotalCell({ children, strong = false }: { children: ReactNode; strong?: boolean }) {
+function TotalCell({ children, strong = false, last = false }: { children: ReactNode; strong?: boolean; last?: boolean }) {
   return (
-    <td className={cn("border-b border-border px-2 py-1.5 text-right whitespace-nowrap", strong && "font-semibold")}>
+    <td
+      className={cn(
+        "border-b border-border px-2 py-1.5 text-right whitespace-nowrap",
+        strong && "font-semibold",
+        last && "sticky right-0 z-1 border-l bg-surface pr-4",
+      )}
+    >
       <output>{children}</output>
     </td>
   );
 }
 
-function ConversionCell({ theoretical, result, bonus }: { theoretical: string; result: number; bonus: boolean }) {
+function ConversionCell({
+  theoretical,
+  result,
+  bonus,
+  rate = null,
+}: {
+  theoretical: string;
+  result: number;
+  bonus: boolean;
+  rate?: string | null;
+}) {
   const t = useTranslations("exams.matrix");
   return (
     <td className={cn("border-b border-border px-2 py-1.5 text-right whitespace-nowrap", bonus && "bg-info-bg font-semibold")}>
       <span className="flex flex-col items-end gap-0.5">
         <span>{t("conversionValue", { theoretical, result })}</span>
+        {rate && <span className="text-caption font-normal text-text-muted">{rate}</span>}
         {bonus && <Badge className="border-info/40 text-info">{t("remainderBadge")}</Badge>}
       </span>
     </td>
@@ -587,9 +668,7 @@ function ConversionPanel({
     .map((index) =>
       t("remainderCell", {
         cell: cellLabel(index),
-        fraction: format.number((conversion.theoretical[index] ?? 0) - Math.floor((conversion.theoretical[index] ?? 0) + 1e-9), {
-          maximumFractionDigits: 2,
-        }),
+        fraction: format.number((conversion.theoretical[index] ?? 0) - Math.floor((conversion.theoretical[index] ?? 0) + 1e-9), DISPLAY_NUMBER_FORMAT),
       }),
     );
   return (

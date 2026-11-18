@@ -1,29 +1,36 @@
 "use client";
 
 import { Button, Card, cn, focusRing, FormField, Input } from "@thi360/ui";
-import { Plus, TriangleAlert } from "lucide-react";
+import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
-import type { CombinationOption } from "@/features/content/types";
-import { countOf, sectionsPoints, sum, type StructureIssue } from "../matrix";
-import type { ExamPart, ExamSectionState, ExamSection, ExamTiming } from "../types";
+import type { ComponentProps, ReactNode } from "react";
+import { countOf, type MatrixAxes, sectionsPoints, sum, type StructureIssue } from "../matrix";
+import type { ExamPart, ExamSectionState, ExamSection, ExamTiming, StructureCombination } from "../types";
 import { BlockNumberInput } from "./block-number-input";
-import { CombinationOptions, type CombinationOptionsProps } from "./combination-options";
+import type { MatrixLabels } from "./block-matrix-editor";
+import { CodedPartPanel } from "./coded-part-panel";
 import { OptionalNumberInput } from "./create-exam-fields";
+import { PartOptions, type PartOptionsProps } from "./part-options";
 import { SubjectChoiceOptions } from "./subject-choice-options";
 import type { StructureNames } from "./exam-structure-issues";
+import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
+import type { TopicQuotaServerError } from "./topic-quota-table";
 
 export interface PartPanelProps
-  extends Pick<
-    CombinationOptionsProps,
-    "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"
-  > {
+  extends Pick<PartOptionsProps, "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"> {
   part: ExamPart;
   /** `SHARED`: phần không có ô thời lượng, bài dùng thời lượng chung `sharedMinutes`. */
   timing: ExamTiming;
   sharedMinutes: number;
   names: StructureNames;
-  combinations: readonly CombinationOption[];
+  /** Mã của kỳ thi thuộc các phần theo mã (đọc từ Global List, chỉ xem). */
+  structureCombinations: readonly StructureCombination[];
+  axes: MatrixAxes;
+  labels: MatrixLabels;
+  /** Mẫu khóa số câu từng mục (H27): ô số câu của mục chỉ đọc. */
+  countLocked?: boolean;
+  /** Thêm môn còn thiếu của một mã vào danh sách môn của phần theo mã (D12). */
+  onAddSubject: (subjectCode: string) => void;
   issues: readonly StructureIssue[];
   issueText: (issue: StructureIssue) => string;
   onChange: (update: (part: ExamPart) => ExamPart) => void;
@@ -31,7 +38,6 @@ export interface PartPanelProps
   onSectionCount: (optionId: string | null, sectionId: string, questionCount: number) => void;
   onAddBlock: (optionId: string | null, section: ExamSection) => void;
   onToggleEnglish: (enabled: boolean) => void;
-  onAttachCombination: (combination: CombinationOption) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
   /** Trạng thái kiểm tra theo môn (H2); `null` hoặc bỏ trống: không hiện cột trạng thái. */
@@ -43,6 +49,8 @@ export interface PartPanelProps
   onChoose: (choose: number) => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra phần"). */
   headerAction?: ReactNode;
+  /** Lỗi 422 của chỉ tiêu chủ đề (H20): panel của phần không có bảng chỉ tiêu, nên báo ngay trong panel. */
+  topicError?: TopicQuotaServerError;
 }
 
 /**
@@ -54,7 +62,11 @@ export function ExamStructurePartPanel({
   timing,
   sharedMinutes,
   names,
-  combinations,
+  structureCombinations,
+  axes,
+  labels,
+  countLocked = false,
+  onAddSubject,
   issues,
   issueText,
   onChange,
@@ -62,7 +74,6 @@ export function ExamStructurePartPanel({
   onSectionCount,
   onAddBlock,
   onToggleEnglish,
-  onAttachCombination,
   onRemoveOption,
   onSelectBlock,
   onSelectSection,
@@ -75,6 +86,7 @@ export function ExamStructurePartPanel({
   onAddBranch,
   onConfirm,
   headerAction,
+  topicError = null,
 }: PartPanelProps) {
   const t = useTranslations("exams.structure.part");
   const partIssues = issues.filter((issue) => issue.code !== "BLOCK");
@@ -105,6 +117,8 @@ export function ExamStructurePartPanel({
         {headerAction}
       </div>
 
+      <TopicQuotaElsewhereAlert error={topicError} />
+
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(11rem,100%),1fr))] gap-4">
         <FormField label={t("name")} required error={part.name.trim() ? undefined : t("nameRequired")} className="col-span-full sm:col-span-2">
           {(controlProps) => (
@@ -126,9 +140,13 @@ export function ExamStructurePartPanel({
           hint={t("questionCountOnPaperHint")}
           error={paperInvalid ? t("paperInvalid") : undefined}
         >
-          {(controlProps) => (
-            <BlockNumberInput {...controlProps} value={part.questionCountOnPaper} onValueChange={onOnPaper} />
-          )}
+          {(controlProps) =>
+            countLocked ? (
+              <LockedCount {...controlProps} value={part.questionCountOnPaper} />
+            ) : (
+              <BlockNumberInput {...controlProps} value={part.questionCountOnPaper} onValueChange={onOnPaper} />
+            )
+          }
         </FormField>
         <FormField
           label={t("questionCount")}
@@ -136,9 +154,13 @@ export function ExamStructurePartPanel({
           hint={t("questionCountHint")}
           error={countInvalid ? t("countInvalid") : undefined}
         >
-          {(controlProps) => (
-            <BlockNumberInput {...controlProps} value={part.questionCount} onValueChange={onQuestionCount} />
-          )}
+          {(controlProps) =>
+            countLocked ? (
+              <LockedCount {...controlProps} value={part.questionCount} />
+            ) : (
+              <BlockNumberInput {...controlProps} value={part.questionCount} onValueChange={onQuestionCount} />
+            )
+          }
         </FormField>
         {shared ? (
           <div className="flex flex-col gap-1.5">
@@ -166,28 +188,30 @@ export function ExamStructurePartPanel({
       </div>
       {shared && <p className="text-caption text-text-muted">{t("sharedHint")}</p>}
 
-      <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
-        <h3 className="text-title font-semibold text-text">{t("participation.title")}</h3>
-        {part.mode !== "CHOICE" ? (
-          <p className="text-body text-text">{t("participation.all")}</p>
-        ) : onlySubjectChoice ? (
-          // Phương án duy nhất là chọn môn (HSA Khoa học): luật chọn k môn nằm ở thẻ phương án, không lặp ô k ở đây (R1-10).
-          <p className="text-body text-text">{t("participation.subjectChoice")}</p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2 text-body text-text">
-            <span>{t("participation.choosePrefix")}</span>
-            <BlockNumberInput
-              className="h-9 w-20"
-              value={part.participation.choose ?? 1}
-              aria-invalid={chooseInvalid ? true : undefined}
-              aria-label={t("participation.chooseAria")}
-              onValueChange={onChoose}
-            />
-            <span>{t("participation.chooseSuffix", { count: part.options.length })}</span>
-          </div>
-        )}
-        {!onlySubjectChoice && <p className="text-caption text-text-muted">{t("participation.hint")}</p>}
-      </section>
+      {!part.codeSource && (
+        <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
+          <h3 className="text-title font-semibold text-text">{t("participation.title")}</h3>
+          {part.mode !== "CHOICE" ? (
+            <p className="text-body text-text">{t("participation.all")}</p>
+          ) : onlySubjectChoice ? (
+            // Phương án duy nhất là chọn môn (HSA Khoa học): luật chọn k môn nằm ở thẻ phương án, không lặp ô k ở đây (R1-10).
+            <p className="text-body text-text">{t("participation.subjectChoice")}</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 text-body text-text">
+              <span>{t("participation.choosePrefix")}</span>
+              <BlockNumberInput
+                className="h-9 w-20"
+                value={part.participation.choose ?? 1}
+                aria-invalid={chooseInvalid ? true : undefined}
+                aria-label={t("participation.chooseAria")}
+                onValueChange={onChoose}
+              />
+              <span>{t("participation.chooseSuffix", { count: part.options.length })}</span>
+            </div>
+          )}
+          {!onlySubjectChoice && <p className="text-caption text-text-muted">{t("participation.hint")}</p>}
+        </section>
+      )}
 
       {partIssues.length > 0 && (
         <ul className="flex flex-col gap-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2">
@@ -200,10 +224,22 @@ export function ExamStructurePartPanel({
         </ul>
       )}
 
-      {part.mode === "FIXED" ? (
+      {part.codeSource ? (
+        // Phần theo mã (R-24, D12): luôn là bảng môn và mã, kể cả khi `participation.mode` là CHOICE (dữ liệu cũ, seed, di trú).
+        <CodedPartPanel
+          part={part}
+          names={names}
+          axes={axes}
+          combinations={structureCombinations}
+          sectionStates={sectionStates}
+          onSelectSection={onSelectSection}
+          onAddSubject={onAddSubject}
+        />
+      ) : part.mode === "FIXED" ? (
         <SectionsTable
           part={part}
           names={names}
+          countLocked={countLocked}
           onSectionCount={onSectionCount}
           onAddBlock={onAddBlock}
           onSelectSection={onSelectSection}
@@ -215,6 +251,7 @@ export function ExamStructurePartPanel({
               part={part}
               names={names}
               common
+              countLocked={countLocked}
               onSectionCount={onSectionCount}
               onAddBlock={onAddBlock}
               onSelectSection={onSelectSection}
@@ -227,19 +264,19 @@ export function ExamStructurePartPanel({
                 key={option.id}
                 option={option}
                 names={names}
+                axes={axes}
+                labels={labels}
                 sectionStates={sectionStates}
                 onSelectSection={onSelectSection}
               />
             ))}
-          <CombinationOptions
+          <PartOptions
             part={part}
-            combinations={combinations}
             names={names}
             issues={issues}
             showEnglish={showEnglish}
             branchSubjects={branchSubjects}
             onToggleEnglish={onToggleEnglish}
-            onAttach={onAttachCombination}
             onAddBranch={onAddBranch}
             onConfirm={onConfirm}
             onRemove={onRemoveOption}
@@ -257,6 +294,7 @@ function SectionsTable({
   part,
   names,
   common = false,
+  countLocked = false,
   onSectionCount,
   onAddBlock,
   onSelectSection,
@@ -264,6 +302,7 @@ function SectionsTable({
   part: ExamPart;
   names: StructureNames;
   common?: boolean;
+  countLocked?: boolean;
   onSectionCount: PartPanelProps["onSectionCount"];
   onAddBlock: PartPanelProps["onAddBlock"];
   onSelectSection: PartPanelProps["onSelectSection"];
@@ -278,7 +317,7 @@ function SectionsTable({
       <h3 className="text-title font-semibold text-text">{title}</h3>
       {single && <p className="text-caption text-text-muted">{t("singleSectionHint")}</p>}
       {common && <p className="text-caption text-text-muted">{t("commonHint")}</p>}
-      <div role="region" tabIndex={0} aria-label={title} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+      <div role="region" tabIndex={0} aria-label={title} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
         <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
           <caption className="sr-only">
             {common ? t("commonCaption", { name: part.name }) : t("sectionsCaption", { name: part.name })}
@@ -321,8 +360,12 @@ function SectionsTable({
                     </span>
                   </th>
                   <td className="border-b border-border px-2 py-2 text-right">
-                    {single ? (
-                      <span>{section.questionCount ?? 0}</span>
+                    {single || countLocked ? (
+                      <span className="inline-flex items-center justify-end gap-1.5">
+                        {countLocked && <Lock aria-hidden className="size-3.5 text-text-muted" />}
+                        <span>{section.questionCount ?? 0}</span>
+                        {countLocked && <span className="sr-only">{t("countLocked")}</span>}
+                      </span>
                     ) : (
                       <BlockNumberInput
                         className="ml-auto h-9 w-20"
@@ -374,5 +417,19 @@ function SectionsTable({
         </table>
       </div>
     </section>
+  );
+}
+
+/** Số câu của phần khi mẫu khóa số câu (H27): chỉ đọc kèm biểu tượng khóa, như ô số câu của mục. */
+function LockedCount({ value, ...controlProps }: { value: number } & Omit<ComponentProps<typeof Input>, "value">) {
+  const t = useTranslations("exams.structure.part");
+  return (
+    <span className="flex items-center gap-2">
+      <Input {...controlProps} value={String(value)} readOnly aria-readonly="true" className="w-24 tabular-nums" />
+      <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
+        <Lock aria-hidden className="size-3.5" />
+        {t("countLocked")}
+      </span>
+    </span>
   );
 }

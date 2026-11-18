@@ -23,8 +23,9 @@ export function optionLabel(
   if (option.kind === "SUBJECT") return names.subject(option.code);
   // Phương án chọn môn (HSA Khoa học): tên của phương án, không phải mã tổ hợp.
   if (option.kind === "SUBJECT_CHOICE") return option.name ?? option.code;
-  // Tổ hợp sinh từ "chọn k trong n" chưa có trong danh mục mang tên riêng (tên các môn).
-  return `${option.code} · ${option.name ?? names.combination(option.code)}`;
+  // Tổ hợp: tên theo danh mục (đúng ngôn ngữ đang chọn) trước; tổ hợp sinh từ "chọn k trong n" chưa có trong danh mục dùng tên lưu của phương án.
+  const catalogName = names.combination(option.code);
+  return `${option.code} · ${catalogName !== option.code ? catalogName : (option.name ?? catalogName)}`;
 }
 
 /** Chữ của một lỗi cấu trúc, kèm vị trí (phần · lựa chọn · môn · khối), theo mẫu thông báo của UniNote mục 9.4. */
@@ -83,9 +84,10 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
         const number = (value: number) => format.number(value, { maximumFractionDigits: 2 });
         return t("partPoints", { part: prefix, actual: number(issue.actual), expected: number(issue.expected) });
       }
-      const sections = option ? option.sections : (part?.sections ?? []);
+      const sections = option ? option.sections : [...(part?.sections ?? []), ...(part?.subjectPool ?? [])];
       const section = sections.find((item) => item.id === issue.location.sectionId);
-      const sectionText = [prefix, section ? names.subject(section.subjectCode) : null].filter(Boolean).join(" · ");
+      // Môn có mã môn: chỉ dùng tên danh mục (theo ngôn ngữ đang chọn); ghép thêm tên phần của mẫu cho ra "Toán · Mathematics" (V-05).
+      const sectionText = section?.subjectCode ? names.subject(section.subjectCode) : prefix;
       if (issue.code === "BLOCKS_TOTAL") {
         return t("blocksTotal", { section: sectionText, actual: issue.actual, expected: issue.expected });
       }

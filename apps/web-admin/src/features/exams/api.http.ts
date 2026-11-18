@@ -6,9 +6,11 @@ import {
   mapExamDetail,
   mapExamSummary,
   mapExamTemplate,
+  mapExamQuotas,
   mapParts,
   mapSectionStates,
   mapStructureSummary,
+  toApiExamQuotas,
   toApiParts,
 } from "./api-mapping";
 import { partsFromInput } from "./create-parts";
@@ -104,6 +106,7 @@ export async function getExamStructure(id: string): Promise<ExamStructure> {
       nameEn: item.nameEn ?? null,
     })),
     sectionStates: mapSectionStates(data.sectionStates),
+    examQuotas: mapExamQuotas(data.examQuotas),
   };
 }
 
@@ -140,7 +143,11 @@ export async function updateExamStructure(id: string, request: UpdateExamStructu
   const client = createBrowserApiClient();
   const { data, error, response } = await client.PUT("/api/v1/admin/exams/{id}/structure", {
     params: { path: { id } },
-    body: { expectedRevision: request.expectedRevision, parts: toApiParts(request.parts) },
+    body: {
+      expectedRevision: request.expectedRevision,
+      parts: toApiParts(request.parts),
+      ...(request.examQuotas ? { examQuotas: toApiExamQuotas(request.examQuotas) } : {}),
+    },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
   return mapExamDetail(data);
