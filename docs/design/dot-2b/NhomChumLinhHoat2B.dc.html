@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · chùm cỡ linh hoạt và nhóm Đúng/Sai (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45);--sh:rgba(17,24,28,.10)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6);--sh:rgba(0,0,0,.40)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tab{position:relative}
+[aria-current="page"].tab::after{content:"";position:absolute;inset:auto 8px 0;border-bottom:2px solid currentColor}
+input,select,textarea,button{font:inherit}
+input,select{color-scheme:light}.th.dark input,.th.dark select{color-scheme:dark}
+progress{appearance:none;display:block;width:100%;height:8px;border:0 solid;border-radius:9999px;overflow:clip;background:var(--sb)}
+progress::-webkit-progress-bar{background:transparent}
+progress::-webkit-progress-value{background:var(--bar,var(--pf));border-radius:9999px}
+progress::-moz-progress-bar{background:var(--bar,var(--pf));border-radius:9999px}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; min-height: 1650px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · V-ACT toàn bài › Phần 2 · Toán học › Nhóm 2</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+    <div style="padding: 16px; border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Nhóm 2 · Câu con trong chùm dữ kiện</h1><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--wnb); color: var(--wn)">Cần kiểm tra lại</span></div>
+        <p style="margin: 0; color: var(--tx3)">Thứ tự nhóm theo mẫu, không đổi. Hệ thống luôn lấy nguyên chùm.</p>
+      </div>
+      <button type="button" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra môn</button>
+    </div>
+
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px"><label for="g-name" style="font-weight: 600">Tên nhóm</label><input id="g-name" value="Câu con trong chùm dữ kiện" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span style="font-weight: 600">Cách lấy</span><div style="height: 40px; display: flex; align-items: center">Câu chùm</div></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><label for="g-type" style="font-weight: 600">Loại câu hỏi của câu con</label><select id="g-type" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"><option selected>Một đáp án</option><option>Nhiều đáp án</option><option>Đúng/Sai</option><option>Trả lời ngắn</option></select></div>
+      </div>
+
+      <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+        <legend style="font-weight: 600; margin-bottom: 8px">Cách khai chùm</legend>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px">
+          <label style="{{howTotalCard}}"><span style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-wrap: nowrap"><input type="radio" name="how" checked="{{howTotal}}" onChange="{{pickTotal}}" style="width: 18px; height: 18px; margin: 0; accent-color: var(--p600)"><span style="font-weight: 600">Chỉ nhập tổng câu con</span></span><span style="color: var(--tx3)">Hệ thống tự chọn các chùm nguyên có tổng đúng bằng số này.</span></label>
+          <label style="{{howSetsCard}}"><span style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-wrap: nowrap"><input type="radio" name="how" checked="{{howSets}}" onChange="{{pickSets}}" style="width: 18px; height: 18px; margin: 0; accent-color: var(--p600)"><span style="font-weight: 600">Khai số chùm và số câu con</span></span><span style="color: var(--tx3)">Dùng khi chuyên môn yêu cầu số chùm hoặc cỡ chùm cụ thể.</span></label>
+        </div>
+      </fieldset>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; align-items: end">
+        <sc-if value="{{howTotal}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 6px"><label for="g-total" style="font-weight: 600">Tổng số câu con</label><input id="g-total" inputmode="numeric" value="{{total}}" onChange="{{setTotal}}" aria-invalid="{{totalBad}}" aria-describedby="{{totalDesc}}" style="{{totalStyle}}"><sc-if value="{{showTotalErr}}" hint-placeholder-val="{{false}}"><span id="g-total-e" style="color: var(--er); font-weight: 500">Nhập tổng số câu con lớn hơn 0.</span></sc-if></div>
+        </sc-if>
+        <sc-if value="{{howSets}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 6px"><label for="g-sets" style="font-weight: 600">Số chùm</label><input id="g-sets" inputmode="numeric" value="{{sets}}" onChange="{{setSets}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"></div>
+        </sc-if>
+        <sc-if value="{{howSets}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 6px"><label for="g-size" style="font-weight: 600">Số câu con mỗi chùm</label><input id="g-size" inputmode="numeric" value="{{size}}" onChange="{{setSize}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"></div>
+        </sc-if>
+        <p role="status" style="margin: 0; padding-bottom: 8px; color: var(--tx2); font-variant-numeric: tabular-nums"><strong>{{summary}}</strong></p>
+      </div>
+      <p role="status" style="{{allocStyle}}">Toán học: 12 câu đơn + {{childCount}} câu con. {{allocText}}</p>
+
+      <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+        <legend style="font-weight: 600; margin-bottom: 8px">Phạm vi kiến thức</legend>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+          <label style="{{ksAllCard}}"><input type="radio" name="ks" checked="{{ksAll}}" onChange="{{pickAll}}" style="margin: 0; accent-color: var(--p600)">Toàn môn</label>
+          <label style="{{ksTopicCard}}"><input type="radio" name="ks" checked="{{ksTopic}}" onChange="{{pickTopic}}" style="margin: 0; accent-color: var(--p600)">Theo chủ đề</label>
+        </div>
+        <sc-if value="{{ksTopic}}" hint-placeholder-val="{{true}}">
+          <div style="border: 1px solid var(--bd); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="font-weight: 600">Chủ đề (MAPID)</span><span style="display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 9999px; border: 1px solid var(--p200); background: var(--p50); color: var(--p800); font-weight: 500">Xác suất</span><button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--p100); color: var(--pt); font-weight: 600; cursor: pointer">+ Chọn chủ đề</button></div>
+            <label style="display: flex; gap: 10px; align-items: flex-start"><input type="checkbox" checked="{{every}}" onChange="{{toggleEvery}}" style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--p600)"><span><span style="font-weight: 600">Mọi câu con thuộc chủ đề</span><br><span style="color: var(--tx3)">Bật thì chùm có câu con ngoài chủ đề bị loại. Ví dụ chùm 2 câu Xác suất và 1 câu Hình học không được chọn.</span></span></label>
+          </div>
+        </sc-if>
+      </fieldset>
+
+      <div style="display: flex; flex-direction: column; gap: 6px"><span style="font-weight: 600">Điều kiện của nhóm</span><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 9999px; border: 1px solid var(--p200); background: var(--p50); color: var(--p800); font-weight: 500">Điểm mỗi câu: 10</span></div></div>
+    </div>
+
+    <div style="padding: 12px 16px; border-top: 1px solid var(--bd); display: flex; justify-content: flex-end; gap: 8px">
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Hủy thay đổi</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--pf); color: var(--op); font-weight: 600; cursor: pointer">Lưu nhóm</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-tf" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px">
+    <div><p style="margin: 0 0 2px; font-size: 12.5px; color: var(--tx3)">THPTQG · Toán › Phần II</p><h2 id="h-tf" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Nhóm Đúng/Sai</h2></div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 16px; align-items: end">
+      <div style="display: flex; flex-direction: column; gap: 6px"><label for="tf-q" style="font-weight: 600">Số câu</label><input id="tf-q" inputmode="numeric" value="{{tf}}" onChange="{{setTf}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label for="tf-s" style="font-weight: 600">Số mệnh đề mỗi câu</label><input id="tf-s" readonly aria-readonly="true" value="4" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); background: var(--sb); color: var(--tx2)"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label for="tf-p" style="font-weight: 600">Điểm mỗi câu</label><input id="tf-p" readonly aria-readonly="true" value="1" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); background: var(--sb); color: var(--tx2)"></div>
+    </div>
+    <p role="status" style="margin: 0; font-weight: 700; font-variant-numeric: tabular-nums">{{tfSummary}}</p>
+    <p style="margin: 0; color: var(--tx3)">Điểm tính riêng từng câu: đúng 1 ý được 0,1 · đúng 2 ý được 0,25 · đúng 3 ý được 0,5 · đúng 4 ý được 1 điểm.</p>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 18px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; align-items: start">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Không ghép được đúng tổng câu con</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Thiếu chùm phù hợp.</strong> Nhóm cần 5 câu con nhưng nguồn chỉ có chùm 3 câu con. Hệ thống không cắt chùm. Sửa tổng câu con hoặc mở rộng nguồn.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">THPTQG · Tiếng Anh · nhóm 6, chùm cố định 1 × 10</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Thiếu một chùm 10 câu con.</strong> Nguồn có đủ câu đọc hiểu nhưng rải trên nhiều bài đọc, chưa có bài nào đủ 10 câu con.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bài ôn V-ACT: ô bật sẵn</h3>
+        <label style="border: 1px solid var(--bd); border-radius: 10px; padding: 10px 12px; color: var(--tx2); display: flex; gap: 10px; align-items: flex-start"><input type="checkbox" checked style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--p600)"><span><span style="font-weight: 600">Mọi câu con thuộc chủ đề</span><br><span style="color: var(--tx3)">Bài ôn theo chủ đề bật sẵn ô này. Quản trị viên tắt được.</span></span></label>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Phạm vi Toàn môn</h3>
+        <p style="margin: 0; color: var(--tx2)">Không hiện ô “Mọi câu con thuộc chủ đề”, vì nhóm chưa chọn chủ đề nào.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Mẫu V-ACT toàn bài khóa số câu của mục</h3>
+        <div role="status" style="border: 1px solid var(--wnbd); background: var(--wnb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)">Tổng câu con của nhóm vẫn sửa được. Đổi 18 thành 15 thì mục Toán học báo <strong style="color: var(--wn)">Đã phân bổ 27/30 · Còn thiếu 3 câu</strong>.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Nhóm Đúng/Sai đổi còn 3 câu</h3>
+        <p style="margin: 0; font-weight: 700; font-variant-numeric: tabular-nums">3 câu · 12 ý · tối đa 3 điểm</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đang tải nhóm</h3>
+        <div aria-busy="true" style="display: flex; flex-direction: column; gap: 6px"><div style="height: 40px; border-radius: 10px; background: var(--sb)"></div><div style="height: 40px; border-radius: 10px; background: var(--sb); width: 70%"></div><span class="sr-only">Đang tải</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Không lưu được</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được nhóm.</strong> Số đã nhập vẫn còn trên màn. <button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Thử lại</button></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Thiếu quyền sửa bài thi</h3>
+        <p style="margin: 0; color: var(--tx2)">Bạn chỉ có quyền xem. Mọi ô của nhóm ở chế độ chỉ đọc, không có nút Lưu nhóm.</p>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":1650}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { how: 'TOTAL', total: '18', sets: '6', size: '3', ks: 'TOPIC', every: false, tf: '4' }; }
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+seg(on) { return 'min-height: 32px; padding: 0 12px; border: 0; border-radius: 8px; cursor: pointer; font-weight: ' + (on ? '600; background: var(--sf); color: var(--pt); box-shadow: 0 1px 4px var(--sh)' : '500; background: transparent; color: var(--tx2)'); }
+num(x) { const n = parseFloat(String(x).replace(',', '.')); return isNaN(n) ? 0 : n; }
+vn(x) { return String(Math.round(x * 100) / 100).replace('.', ','); }
+pct(n, d) { return d ? this.vn(Math.round(n / d * 1000) / 10) + '%' : '0%'; }
+renderVals() {
+const s = this.state;
+const total = s.how === 'TOTAL';
+const n = total ? Math.round(this.num(s.total)) : Math.round(this.num(s.sets)) * Math.round(this.num(s.size));
+const summary = (total ? '' : Math.round(this.num(s.sets)) + ' chùm × ' + Math.round(this.num(s.size)) + ' câu con = ') + n + ' câu con · tối đa ' + (n * 10) + ' điểm';
+const sum = 12 + n;
+const allocText = sum === 30 ? 'Đã phân bổ 30/30' : sum < 30 ? 'Đã phân bổ ' + sum + '/30 · Còn thiếu ' + (30 - sum) + ' câu' : 'Đã phân bổ ' + sum + '/30 · Vượt ' + (sum - 30) + ' câu';
+const tone = sum === 30 ? '--ok' : sum < 30 ? '--wn' : '--er';
+const card = (on) => 'display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 12px; cursor: pointer; ' + (on ? 'border: 2px solid var(--p600); background: var(--p50)' : 'border: 1px solid var(--bd); background: var(--sf)');
+const pill = (on) => 'display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; cursor: pointer; ' + (on ? 'border: 2px solid var(--p600); background: var(--p50)' : 'border: 1px solid var(--bd)');
+const bad = total && n <= 0;
+const q = Math.round(this.num(s.tf));
+return {
+theme: this.props.dark ? 'dark' : '',
+howTotal: total, howSets: !total, pickTotal: () => this.setState({ how: 'TOTAL', total: String(n) }), pickSets: () => this.setState({ how: 'SETS' }),
+howTotalCard: card(total), howSetsCard: card(!total),
+total: s.total, sets: s.sets, size: s.size,
+setTotal: (e) => this.setState({ total: e.target.value }), setSets: (e) => this.setState({ sets: e.target.value }), setSize: (e) => this.setState({ size: e.target.value }),
+totalBad: bad ? 'true' : 'false', totalDesc: bad ? 'g-total-e' : '', showTotalErr: bad,
+totalStyle: 'height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; background: var(--sf); color: var(--tx); border: 1px solid var(' + (bad ? '--er' : '--bd') + ')',
+summary, childCount: n, allocText, allocStyle: 'margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; color: var(' + tone + ')',
+ksAll: s.ks === 'ALL', ksTopic: s.ks === 'TOPIC', ksAllCard: pill(s.ks === 'ALL'), ksTopicCard: pill(s.ks === 'TOPIC'),
+pickAll: () => this.setState({ ks: 'ALL' }), pickTopic: () => this.setState({ ks: 'TOPIC' }),
+every: s.every, toggleEvery: () => this.setState({ every: !s.every }),
+tf: s.tf, setTf: (e) => this.setState({ tf: e.target.value }), tfSummary: q + ' câu · ' + (q * 4) + ' ý · tối đa ' + q + ' điểm'
+};
+}
+}
+</script>
+</body>
+</html>

@@ -59,3 +59,66 @@ Màn bước 1, khung bước 2, kiểm tra và sinh thử vẽ cả trang (1440
 ## Dữ liệu mẫu
 
 Số câu, thời lượng, điểm của HSA (150 câu, 195 phút, 150 điểm), QDA (50 câu mỗi phần, thời lượng 80/55/60 phút), BCA (81 câu, 180 phút, 100 điểm) theo đặc tả. Các mã QĐ01–QĐ05, CA1–CA4 và cặp môn là ví dụ. Kết quả kiểm tra, số chùm của các môn QDA, câu hỏi mẫu, tên chủ đề, nhãn câu hỏi và các ma trận HSA Khoa học là dữ liệu mẫu.
+
+## Bản vẽ bổ sung G2b · V-ACT, THPTQG (UNI-2678)
+
+Vẽ ngày 2026-11-18 theo `docs/specs/2026-11-18-pbi04-dot-2b-bo-sung-vact-thpt.md` (gọi tắt **spec bổ sung**) và `docs/plans/2026-11-18-pbi04-dot-2b-bo-sung-vact-thpt.md`. Sáu màn dưới đây chưa đưa lên canvas. Cách đọc, màu và bề rộng theo phần đầu của tệp này.
+
+### Màn nào thuộc task nào
+
+| Task | Màn | Bề rộng | Nội dung | Dòng nghiệm thu |
+|---|---|---|---|---|
+| FE-3b (phần thêm) | `PhanBoVact2B` (bấm thử được) | 1040px | Hai cột Số câu và Tỷ lệ, nhập theo số câu hoặc tỷ lệ; dòng Phần còn lại; Chờ mapping và nút Gắn MAPID; "Chưa có dữ liệu đối chiếu"; tiến độ phân bổ; "Đủ nguồn theo ma trận"; ô số câu của mục chỉ đọc khi mẫu khóa; nhãn "ít nhất"; bảng tham khảo 8 dòng của Tiếng Việt. Trạng thái khác: bảng cấp nhóm 18 câu, tổng tỷ lệ khác 100%, vượt số câu, đổi tổng 30 xuống 20, THPTQG Địa lí | FE-3b 1–12 |
+| FE-3a (phần thêm) | `NhomChumLinhHoat2B` (bấm thử được) | 1040px | Chùm cỡ linh hoạt: chỉ nhập tổng câu con hoặc khai số chùm × số câu con; ô "Mọi câu con thuộc chủ đề"; nhóm Đúng/Sai với dòng "4 câu · 16 ý · tối đa 4 điểm". Trạng thái khác: không ghép được đúng tổng, thiếu chùm 10 câu con, bài ôn bật sẵn ô | FE-3a 1–4 |
+| FE-4 (phần thêm) | `KiemTraVact2B` | 1440px | Câu chữ của ba mã kiểm tra mới; Logic và Suy luận chung một đơn vị kiểm tra; Ngữ văn khóa nút Công bố | FE-4 4 |
+| FE-4 (phần thêm) | `SinhThuVact2B` | 1440px | Cột Chênh lệch; "Chưa có dữ liệu đối chiếu" ở ô Thực tế và Chênh lệch; điểm tối đa từng câu (V-ACT 10 điểm; THPTQG Toán 0,25 / 1 / 0,5). Trạng thái khác: không sinh được do chờ mapping hoặc thiếu nguồn | FE-4 1–3 |
+| FE-5 | `TaoBaiThiVact2B` (bấm thử được) | 1440px | Toàn bài, Theo phần, Theo môn với tên đọc được; số câu khóa, tỷ lệ trong phần và toàn bài; lỗi thiếu thời lượng của bài riêng; bài ôn | FE-5 1–4 |
+| FE-5 | `TaoBaiThiThpt2B` (bấm thử được) | 1440px | Theo môn, Theo phần (chọn môn rồi chọn phần); đủ 12 môn; thông báo Ngữ văn, "Chỉ lưu nháp"; lỗi thiếu thời lượng của bài theo phần | FE-5 5–6 |
+
+Dòng "Kỳ thi chỉ có một phạm vi (V-ACT, THPTQG)" trong khối Trạng thái khác của `TaoBaiThi2B` hết hiệu lực từ spec bổ sung mục 1; bước 1 của hai kỳ thi này theo `TaoBaiThiVact2B` và `TaoBaiThiThpt2B`.
+
+### Đã chốt khi nghiệm thu bản vẽ (Advisor, 2026-11-18)
+
+Các mục 1–4 giữ như bản vẽ. Mục 5 chốt: FE-4 giữ một cách hiện theo `KiemTra2B`, tức lời lỗi là chính và mã kỹ thuật là chữ phụ, cho mọi kỳ thi.
+
+1. **Dòng "4 câu · 16 ý · tối đa 4 điểm".** Yêu cầu giao việc đặt dòng này ở khối chùm linh hoạt, còn R-107 và FE-3a dòng 4 gắn nó với nhóm Đúng/Sai. Bản vẽ theo spec: nhóm Đúng/Sai dùng đúng dòng này; chùm linh hoạt không có "ý" nên ghi "18 câu con · tối đa 180 điểm".
+2. **Tên mức của bảng.** Ghi chú BA dùng "Áp dụng khi sinh đề" và "Chỉ đối chiếu". Bản vẽ giữ "Bắt buộc" và "Tham khảo" như các màn 2B đã có.
+3. **Tên hai môn Công nghệ.** Ghi chú BA viết "Công nghệ – Công nghiệp", danh mục môn viết "Công nghệ (định hướng công nghiệp)". Bản vẽ theo danh mục vì ô Môn đọc từ danh mục.
+4. **Theo phần của Tiếng Anh và Ngữ văn.** Hai mẫu này chỉ có một phần (H23), nên ô chọn phần chỉ có một lựa chọn. Ngữ văn theo phần vẫn hiện thông báo và chỉ lưu nháp.
+5. **Mã kiểm tra trên màn.** `KiemTra2B` hiện mã kỹ thuật cạnh lời lỗi; `KiemTraVact2B` chỉ hiện lời, vì G2b yêu cầu không để lộ mã thô. Bảng dưới ghi mã ứng với từng lời. Nếu muốn thống nhất thì cần chốt một trong hai cách.
+
+### Do agent tự đặt (đổi được khi review)
+
+**Lời của ba mã kiểm tra mới**
+
+| Mã | Lời trên màn |
+|---|---|
+| `TOPIC_QUOTA_MAPPING_MISSING` | "Dòng Xác suất (ít nhất 3 câu, mức Bắt buộc) chưa gắn MAPID. Gắn mã rồi kiểm tra lại." |
+| `STRUCTURE_COUNT_LOCKED` | "Tiểu mục đang có 10 câu, mẫu V-ACT toàn bài giữ 12 câu. Đưa số câu về 12." |
+| `TEMPLATE_NOT_PUBLISHABLE` | Tiêu đề "Môn này chưa công bố được", sau đó là câu thông báo Ngữ văn và "Bài chỉ lưu nháp, không công bố và không đưa vào bộ đề bán." |
+
+**Câu chữ chưa có trong đặc tả**
+
+- "Đã phân bổ 32/30 · Vượt 2 câu" (đặc tả chỉ nói "báo vượt 2 câu");
+- "Mẫu đã khóa số câu", "Hệ thống tự tính, không lưu", "Thực lấy 26,7%", "Mẫu số: 30 câu của Toán học";
+- lỗi tổng tỷ lệ "Tổng tỷ lệ đang là 90%. Bảng này phân bổ toàn bộ số câu nên tổng phải bằng 100%.";
+- xác nhận đổi tổng: "Áp dụng số mới", "Giữ số cũ";
+- "Chỉ nhập tổng câu con", "Khai số chùm và số câu con", "Tổng số câu con", "18 câu con · tối đa 180 điểm";
+- lời giải thích của ô "Mọi câu con thuộc chủ đề" và lỗi "Thiếu chùm phù hợp";
+- "Chưa nhập thời lượng. Bài riêng của V-ACT không có thời lượng mặc định." và câu tương ứng của bài theo phần, bài ôn THPTQG;
+- "Chỉ lưu nháp", "Bài này chỉ lưu nháp, không công bố được và không đưa vào bộ đề bán.", nút "Lưu nháp và tiếp tục";
+- "Dùng cấu trúc môn V-ACT", "Dùng cấu trúc môn THPTQG";
+- chip "Chờ mapping" ở cột Kết quả của bảng đối chiếu.
+
+**Cách hiện**
+
+| Màn | Agent chọn |
+|---|---|
+| Phân bổ | Dòng Phần còn lại nằm ngay dưới các chỉ tiêu, không có ô nhập. Nhập theo tỷ lệ thì cột Số câu chỉ đọc và hiện "Thực lấy" cạnh ô tỷ lệ. Tổng tính từ số câu gốc nên sáu dòng 16,7% vẫn ghi 100%. |
+| Chùm linh hoạt | Chế độ chỉ nhập tổng ẩn hẳn ô Số chùm và Số câu con mỗi chùm. Ô "Mọi câu con thuộc chủ đề" chỉ hiện khi chọn Theo chủ đề. |
+| Kiểm tra | Lỗi Ngữ văn không có liên kết "Mở chỗ lỗi" vì không có ô nào để sửa. |
+| Sinh thử | Chênh lệch bằng Thực tế trừ Yêu cầu, có dấu + hoặc −. Chỉ tiêu "ít nhất" có thực tế nhiều hơn yêu cầu vẫn là Đạt. |
+| Bước 1 V-ACT | Thời lượng chung là một ô riêng trên bảng; bài toàn bài điền sẵn 150 phút và vẫn sửa được. Điểm tối đa bằng số câu nhân 10, chỉ đọc. Bảng không hiện dải câu chạy suốt bài (H34). |
+| Bước 1 THPTQG | Mở màn ở Ngữ văn để thấy ngay thông báo. Các dòng của Ngữ văn không gạch bỏ và vẫn tính 7 câu, 10 điểm (H26). |
+
+**Dữ liệu mẫu:** số câu, điểm, thời lượng, tỷ lệ theo spec bổ sung và ghi chú BA. Cột Thực tế ở `SinhThuVact2B`, câu hỏi mẫu, dòng Xác suất, lỗi Logic 10 câu và tên bài là dữ liệu mẫu.
