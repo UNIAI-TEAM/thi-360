@@ -8,7 +8,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -546,7 +545,6 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         List<Candidate> candidates = source.findCandidates(filter, 100_000);
         int setSize = block.path("setSize").asInt(0);
         if (setSize > 0) candidates = candidates.stream().filter(c -> c.units().size() == setSize).toList();
-        candidates = applyConditions(candidates, section, block);
         int neededSets = block.path("setCount").asInt(0);
         String shortage = capacityFailure(candidates.stream().map(c -> c.units().size()).toList(),
                 flexibleSet(block), neededSets, neededUnits);
@@ -566,83 +564,14 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         }
     }
 
-    /**
-     * Audio, typed child and option-count conditions of a block. {@code QuestionSourcePort.Filter} carries none of
-     * them until BE-17 lands, so they are read here from the stored versions: audio from the MIME of the root
-     * question's attachments (H38), child types and shapes by position (H39), and the option count of a plain
-     * question or of every choice child (R-131). The section's audio requirement is inherited by its blocks.
-     */
-    private List<Candidate> applyConditions(List<Candidate> candidates, JsonNode section, JsonNode block) {
-        String audio = text(section, "audioRequirement", "ANY");
-        Integer options = block.path("itemShape").hasNonNull("options") ? block.path("itemShape").get("options").asInt() : null;
-        List<JsonNode> typed = new ArrayList<>();
-        block.path("childConditions").forEach(condition -> {
-            if (condition.hasNonNull("answerType")) typed.add(condition);
-        });
-        if ("ANY".equals(audio) && options == null && typed.isEmpty()) return candidates;
-        return candidates.stream().filter(candidate -> satisfies(candidate, audio, options, typed)).toList();
-    }
-
-    private boolean satisfies(Candidate candidate, String audio, Integer options, List<JsonNode> typed) {
-        if (!"ANY".equals(audio) && hasAudio(candidate) != "REQUIRED".equals(audio)) return false;
-        List<Integer> childOptions = jdbc.query("""
-                select jsonb_array_length(cv.snapshot #> '{body,options}')
-                from questionbank.question c
-                join questionbank.question_version cv on cv.question_id = c.id and cv.version_no = ?
-                where c.parent_id = ? and c.deleted_at is null order by c.position
-                """, (rs, row) -> (Integer) rs.getObject(1), candidate.versionNo(), candidate.questionId());
-        if (options != null) {
-            if (childOptions.isEmpty()) {
-                Integer own = jdbc.queryForObject("""
-                        select jsonb_array_length(snapshot #> '{body,options}') from questionbank.question_version
-                        where question_id = ? and version_no = ?
-                        """, Integer.class, candidate.questionId(), candidate.versionNo());
-                if (!Objects.equals(own, options)) return false;
-            }
-            for (Integer count : childOptions) {
-                if (count != null && !count.equals(options)) return false;
-            }
-        }
-        for (JsonNode condition : typed) {
-            JsonNode shape = condition.path("itemShape");
-            for (int position = condition.get("from").asInt(); position <= condition.get("to").asInt(); position++) {
-                if (position > candidate.units().size()) return false;
-                QuestionSourcePort.Unit unit = candidate.units().get(position - 1);
-                if (unit.answerType() != QuestionType.valueOf(condition.get("answerType").asText())) return false;
-                if (shape.hasNonNull("statements") && !Objects.equals(unit.statementCount(), shape.get("statements").asInt())) {
-                    return false;
-                }
-                if (shape.hasNonNull("options") && !Objects.equals(childOptions.size() < position ? null
-                        : childOptions.get(position - 1), shape.get("options").asInt())) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private boolean hasAudio(Candidate candidate) {
-        return Boolean.TRUE.equals(jdbc.queryForObject("""
-                select exists (select 1 from questionbank.question_version v
-                    cross join lateral jsonb_array_elements_text(coalesce(v.snapshot -> 'attachmentIds', '[]'::jsonb)) a(id)
-                    join questionbank.question_asset qa on qa.id = a.id::uuid
-                    where v.question_id = ? and v.version_no = ? and qa.mime like 'audio/%')
-                """, Boolean.class, candidate.questionId(), candidate.versionNo()));
-    }
-
     private QuestionSourcePort.Filter filter(UUID subject, JsonNode section, JsonNode block, JsonNode slot) {
-        JsonNode shape = block.path("itemShape");
-        QuestionSourcePort.ItemShape itemShape = shape.isObject() && (shape.hasNonNull("statements")
-                || shape.hasNonNull("leftItems") || shape.hasNonNull("rightItems"))
-                ? new QuestionSourcePort.ItemShape(integer(shape, "statements"), integer(shape, "leftItems"),
-                        integer(shape, "rightItems")) : null;
         List<AnswerFormat> formats = strings(block.path("answerFormats")).stream().map(AnswerFormat::valueOf).toList();
         List<QuestionSourcePort.ChildCondition> children = new ArrayList<>();
         for (JsonNode condition : block.path("childConditions")) {
-            // Typed conditions (H39) carry no knowledge nodes; applyConditions reads them.
-            if (condition.hasNonNull("answerType") && strings(condition.path("nodeIds")).isEmpty()) continue;
             children.add(new QuestionSourcePort.ChildCondition(condition.path("from").asInt(), condition.path("to").asInt(),
-                    strings(condition.path("nodeIds")).stream().map(UUID::fromString).toList()));
+                    strings(condition.path("nodeIds")).stream().map(UUID::fromString).toList(),
+                    condition.hasNonNull("answerType") ? QuestionType.valueOf(condition.get("answerType").asText()) : null,
+                    shape(condition.path("itemShape"))));
         }
         JsonNode scope = block.path("knowledgeScope").isObject()
                 ? block.path("knowledgeScope") : section.path("knowledgeScope");
@@ -670,11 +599,22 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
             List<String> slotCompetencies = strings(slotScope.path("competencyCodes"));
             if (!slotCompetencies.isEmpty()) additionalCompetencies = List.of(slotCompetencies);
         }
+        // Every block of a section inherits the section's audio requirement (SolverInputBuilder.audio).
+        QuestionSourcePort.AudioRequirement audio = QuestionSourcePort.AudioRequirement.valueOf(
+                text(section, "audioRequirement", "ANY"));
         return new QuestionSourcePort.Filter(subject, subtrees(scope), answerTypes,
                 type == null ? null : QuestionType.valueOf(type), text(block, "taskTypeCode", null),
                 childType == null ? null : QuestionType.valueOf(childType), strings(block.path("tagCodes")),
-                strings(scope.path("competencyCodes")), points, itemShape, formats, children,
-                additionalTags, additionalKnowledge, additionalCompetencies);
+                strings(scope.path("competencyCodes")), points, shape(block.path("itemShape")), formats, children,
+                additionalTags, additionalKnowledge, additionalCompetencies,
+                scope.hasNonNull("everyChildInScope") ? scope.get("everyChildInScope").asBoolean() : null,
+                List.of(), audio);
+    }
+
+    private static QuestionSourcePort.ItemShape shape(JsonNode shape) {
+        if (!shape.isObject() || shape.isEmpty()) return null;
+        return new QuestionSourcePort.ItemShape(integer(shape, "statements"), integer(shape, "leftItems"),
+                integer(shape, "rightItems"), integer(shape, "options"));
     }
 
     private List<List<UUID>> subtrees(JsonNode scope) {
