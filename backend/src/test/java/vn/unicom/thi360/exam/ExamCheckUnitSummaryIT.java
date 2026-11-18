@@ -3,12 +3,15 @@ package vn.unicom.thi360.exam;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +62,30 @@ class ExamCheckUnitSummaryIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void createdVactReviewWithTenQuestionOverviewReportsTenForGroupAndSection() throws Exception {
+        // Real VACT_REVIEW template: one untyped block, no questionCount and no rate, ids fixed by the migration.
+        String body = "{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\",\"buildMode\":\"REVIEW\","
+                + "\"durationMinutes\":45,\"name\":\"Review\",\"code\":\"T-"
+                + UUID.randomUUID().toString().substring(0, 8) + "\","
+                + "\"overview\":[{\"partId\":\"e29ab2f3-6070-56e3-bbfd-933ee323d888\",\"questionCount\":10},"
+                + "{\"partId\":\"e29ab2f3-6070-56e3-bbfd-933ee323d888\","
+                + "\"sectionId\":\"029f5eaa-06f3-55df-bfbb-10ed773d1c26\",\"questionCount\":10}]}";
+        String created = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").value("VACT_REVIEW"))
+                .andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(created, "$.id");
+        mockMvc.perform(get(summaryUrl(UUID.fromString(id))).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parts[0].allocated").value(10))
+                .andExpect(jsonPath("$.parts[0].children[0].allocated").value(10))
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].allocated").value(10))
+                // The template block has no requiredPointsPerQuestion, so the group has no maximum.
+                .andExpect(jsonPath("$.parts[0].children[0].children[0].maxPoints").doesNotExist());
+    }
+
+    @Test
     void remainderGroupTakesSectionCountMinusFixedGroups() throws Exception {
         UUID id = insertExam(section(50, """
                 {"id":"fixed","questionType":"SINGLE_CHOICE","questionCount":30,"requiredPointsPerQuestion":1},
@@ -97,7 +124,7 @@ class ExamCheckUnitSummaryIT extends AbstractIntegrationTest {
     @Test
     void omittedGroupCountsZeroAndDoesNotShiftRemainder() throws Exception {
         UUID id = insertExam(section(50, """
-                {"id":"skipped","questionType":"SINGLE_CHOICE","questionCount":7,"omitted":true},
+                {"id":"skipped","questionType":"ESSAY","questionCount":7,"omitted":true},
                 {"id":"fixed","questionType":"SINGLE_CHOICE","questionCount":30},
                 {"id":"rest","questionType":"SINGLE_CHOICE","questionCount":null}
                 """));
