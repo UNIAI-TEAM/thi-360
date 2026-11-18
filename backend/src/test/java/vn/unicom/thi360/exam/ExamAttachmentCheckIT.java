@@ -187,6 +187,81 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
         assertThat(unit(exam, "s2")).isEqualTo(unaffected);
     }
 
+    @Test
+    void aWitnessedFailureIsSavedOnlyOnTheUnitWhoseOwnProofUsedTheLostFile() throws Exception {
+        UUID subject = subject();
+        String code = jdbc.queryForObject("select code from catalog.catalog_item where id=?", String.class, subject);
+        // Candidates are taken in question-id order. Option A's own blocks take the two- and four-point questions, so
+        // its unit proves the shared block with the lost one-point question (id order: four, lost, three); option B's
+        // own blocks take the two- and three-point ones, so its unit proves the shared block with the four-point one.
+        UUID lostFile = asset(true);
+        String lostCode = single(subject, lostFile, 1, UUID.fromString("00000000-0000-7000-8000-000000000002"));
+        single(subject, asset(true), 4, UUID.fromString("00000000-0000-7000-8000-000000000001"));
+        single(subject, asset(true), 3, UUID.fromString("00000000-0000-7000-8000-000000000003"));
+        single(subject, asset(true), 2, UUID.fromString("00000000-0000-7000-8000-000000000005"));
+        UUID exam = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) VALUES (?,?,?,'Attachment','FULL','SHARED',3)",
+                exam, exam.toString(), exam.toString());
+        String document = "{\"parts\":[{\"id\":\"p\",\"questionCount\":3,\"participation\":{\"mode\":\"CHOICE\",\"choose\":1},"
+                + "\"sections\":[" + section("shared", code, 1, "bs", null) + "],\"options\":["
+                + "{\"id\":\"A\",\"kind\":\"SUBJECT\",\"code\":\"" + code + "\",\"name\":\"A\",\"sections\":["
+                + section("sa", code, 2, "ba2", 2, "ba4", 4) + "]},"
+                + "{\"id\":\"B\",\"kind\":\"SUBJECT\",\"code\":\"" + code + "\",\"name\":\"B\",\"sections\":["
+                + section("sb", code, 2, "bb2", 2, "bb3", 3) + "]}]}]}";
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'attachment')", exam, document);
+        for (String[] ref : new String[][] {{"bs", "shared"}, {"ba2", "sa"}, {"ba4", "sa"}, {"bb2", "sb"}, {"bb3", "sb"}}) {
+            jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                    UUID.randomUUID(), exam, ref[0], "p", ref[1], subject);
+        }
+        JsonNode healthy = check(exam);
+        assertThat(healthy.path("status").asText()).as(healthy.toString()).isEqualTo("VALID");
+        assertThat(state(healthy, "sa")).isEqualTo("CHECKED");
+        assertThat(state(healthy, "sb")).isEqualTo("CHECKED");
+        var healthyBefore = unit(exam, "sb");
+
+        String lostKey = jdbc.queryForObject("select object_key from questionbank.question_asset where id=?", String.class, lostFile);
+        storage.delete(lostKey);
+        JsonNode result = check(exam);
+        List<JsonNode> missing = issues(result, "ATTACHMENT_MISSING");
+        assertThat(missing).isNotEmpty().allSatisfy(issue -> {
+            assertThat(issue.path("sectionId").asText()).isEqualTo("shared");
+            assertThat(issue.path("questionCodes")).extracting(JsonNode::asText).containsExactly(lostCode);
+        });
+        assertThat(missing).extracting(issue -> issue.path("location").path("pathId").asText()).containsOnly("A");
+        assertThat(state(result, "sa")).isEqualTo("INCOMPLETE");
+        assertThat(state(result, "sb")).isEqualTo("CHECKED");
+        assertThat(unit(exam, "sa").get("outcome")).isEqualTo("INVALID");
+        // The unit whose proof never used the lost file is not saved: proof, fingerprint, time and duration unchanged.
+        assertThat(unit(exam, "sb")).isEqualTo(healthyBefore);
+        assertThat(unit(exam, "sb").get("outcome")).isEqualTo("VALID");
+        assertThat(healthyBefore.get("witness").toString()).doesNotContain("00000000-0000-7000-8000-000000000002");
+    }
+
+    private static String state(JsonNode result, String sectionId) {
+        for (JsonNode state : result.path("sectionStates")) {
+            if (sectionId.equals(state.path("sectionId").asText())) return state.path("state").asText();
+        }
+        throw new AssertionError("no state for " + sectionId + " in " + result.path("sectionStates"));
+    }
+
+    /** One section of {@code count} questions, one block per (id, required points) pair; the first block may have none. */
+    private static String section(String id, String subjectCode, int count, String block, Integer points) {
+        return section(id, subjectCode, count, block, points, null, null);
+    }
+
+    private static String section(String id, String subjectCode, int count, String first, Integer firstPoints,
+            String second, Integer secondPoints) {
+        StringBuilder blocks = new StringBuilder(block(first, firstPoints));
+        if (second != null) blocks.append(',').append(block(second, secondPoints));
+        return "{\"id\":\"" + id + "\",\"subjectCode\":\"" + subjectCode + "\",\"questionCount\":" + count
+                + ",\"blocks\":[" + blocks + "]}";
+    }
+
+    private static String block(String id, Integer points) {
+        return "{\"id\":\"" + id + "\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":1"
+                + (points == null ? "" : ",\"requiredPointsPerQuestion\":" + points) + "}";
+    }
+
     private java.util.Map<String, Object> unit(UUID exam, String section) {
         return jdbc.queryForMap("select outcome,input_fingerprint,source_revision,witness::text as witness,checked_at,duration_ms "
                 + "from exam.exam_check_unit where exam_id=? and ?=any(section_ids)", exam, section);
@@ -208,9 +283,16 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
 
     /** One READY single-choice question; with an asset its snapshot lists it as an attachment. Returns the code. */
     private String single(UUID subject, UUID asset) {
-        UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) VALUES (?,?,'SINGLE_CHOICE','READY',?,1,1)",
-                id, "Q-" + id, subject);
+        return single(subject, asset, 1);
+    }
+
+    private String single(UUID subject, UUID asset, int points) {
+        return single(subject, asset, points, UUID.randomUUID());
+    }
+
+    private String single(UUID subject, UUID asset, int points, UUID id) {
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) VALUES (?,?,'SINGLE_CHOICE','READY',?,1,?)",
+                id, "Q-" + id, subject, points);
         String attachments = asset == null ? "" : "\"attachmentIds\":[\"" + asset + "\"],";
         jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", id,
                 "{" + attachments + "\"body\":" + SINGLE + "}");

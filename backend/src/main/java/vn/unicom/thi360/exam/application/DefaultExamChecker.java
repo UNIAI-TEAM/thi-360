@@ -222,8 +222,17 @@ public class DefaultExamChecker implements ExamChecker {
         }
         var computed = units.solve(snapshot, input, rules, deadline, budget, scope);
         SolveOutcome outcome = computed.outcome();
-        ExamCheckUnitEvidence.witnessFacts(source, attachments, snapshot.structure(), outcome.results(), combinations)
-                .forEach((path, facts) -> witnessIssues.put(path, new ArrayList<>(rules.witnessIssues(facts))));
+        // A witnessed fact belongs to the unit proof that holds its question; units sharing a section differ in it.
+        Map<ObjectNode, vn.unicom.thi360.exam.domain.solver.SubjectWitness> owners = new java.util.IdentityHashMap<>();
+        ExamCheckUnitEvidence.ownedWitnessFacts(source, attachments, snapshot.structure(), outcome.results(), combinations)
+                .forEach((path, owned) -> {
+                    List<ObjectNode> found = new ArrayList<>();
+                    for (var item : owned) for (ObjectNode issue : rules.witnessIssues(List.of(item.fact()))) {
+                        found.add(issue);
+                        owners.put(issue, item.witness());
+                    }
+                    witnessIssues.put(path, found);
+                });
         Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> filterCounts = new LinkedHashMap<>();
         for (var path : outcome.results()) {
             if (path.status() != SolveStatus.INVALID) continue;
@@ -241,7 +250,7 @@ public class DefaultExamChecker implements ExamChecker {
         }
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
         return new Evaluation(evaluation.result(), evaluation.witness(),
-                markWitnessFailures(computed.changed(), computed.reused(), witnessIssues));
+                markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
     }
 
     private static List<ExamCheckRules.FilterEvidence> filterEvidence(PathResult result, ExamStructureDocument document,
@@ -431,30 +440,64 @@ public class DefaultExamChecker implements ExamChecker {
     }
 
     private List<ExamCheckUnitStore.Unit> markWitnessFailures(List<ExamCheckUnitStore.Unit> changed,
-            List<ExamCheckUnitStore.Unit> reused, Map<Long, List<ObjectNode>> byPath) {
+            List<ExamCheckUnitStore.Unit> reused, Map<Long, List<ObjectNode>> byPath,
+            Map<ObjectNode, vn.unicom.thi360.exam.domain.solver.SubjectWitness> owners) {
         List<ExamCheckUnitStore.Unit> result = new ArrayList<>(changed.size() + reused.size());
         for (var unit : changed) {
-            result.add(withWitnessFailures(unit, byPath));
+            result.add(withWitnessFailures(unit, byPath, owners));
         }
         for (var unit : reused) {
-            var updated = withWitnessFailures(unit, byPath);
+            var updated = withWitnessFailures(unit, byPath, owners);
             if (updated != unit) result.add(updated);
         }
         return result;
     }
 
+    /**
+     * Adds the errors the unit's own proof produced. A fact-based issue is the unit's only when the subject witness
+     * that holds its question is the unit's witness; any other error is matched by the section it names.
+     */
     private ExamCheckUnitStore.Unit withWitnessFailures(ExamCheckUnitStore.Unit unit,
-            Map<Long, List<ObjectNode>> byPath) {
+            Map<Long, List<ObjectNode>> byPath, Map<ObjectNode, vn.unicom.thi360.exam.domain.solver.SubjectWitness> owners) {
         com.fasterxml.jackson.databind.node.ArrayNode issues = null;
+        String proved = null;
+        boolean provedKnown = false;
         for (var pathIssues : byPath.values()) for (var issue : pathIssues) {
-            if (unit.sectionIds().contains(issue.path("sectionId").asText())
-                    && "ERROR".equals(issue.path("severity").asText())) {
+            if (!"ERROR".equals(issue.path("severity").asText())) continue;
+            var owner = owners.get(issue);
+            boolean mine;
+            if (owner == null) {
+                mine = unit.sectionIds().contains(issue.path("sectionId").asText());
+            } else {
+                if (!provedKnown) {
+                    proved = firstWitnessSignature(unit);
+                    provedKnown = true;
+                }
+                mine = proved != null && proved.equals(signature(owner));
+            }
+            if (mine) {
                 if (issues == null) issues = (com.fasterxml.jackson.databind.node.ArrayNode) unit.issues().deepCopy();
                 issues.add(issue);
             }
         }
         return issues != null ? new ExamCheckUnitStore.Unit(unit.key(), unit.sectionIds(), unit.fingerprint(),
                 unit.sourceRevision(), "INVALID", issues, unit.witness(), unit.checkedAt(), unit.durationMs()) : unit;
+    }
+
+    private String firstWitnessSignature(ExamCheckUnitStore.Unit unit) {
+        if (unit.witness() == null || unit.witness().isNull()) return null;
+        var proof = mapper.convertValue(unit.witness(), ExamCheckUnitEngine.Proof.class);
+        return proof.witnesses().isEmpty() ? null : signature(proof.witnesses().getFirst());
+    }
+
+    /** Subject, groups and chosen questions: groups belong to one section, so units that differ cannot collide. */
+    private static String signature(vn.unicom.thi360.exam.domain.solver.SubjectWitness witness) {
+        StringBuilder text = new StringBuilder(witness.subjectCode());
+        for (var group : witness.groups()) {
+            text.append('|').append(group.groupId());
+            for (var pick : group.picks()) text.append(',').append(pick.questionId()).append(':').append(pick.versionNo());
+        }
+        return text.toString();
     }
 
     /** Keep each invalid option's path identifiable while solving unrelated valid options normally. */

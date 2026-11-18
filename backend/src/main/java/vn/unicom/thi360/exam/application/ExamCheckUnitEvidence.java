@@ -21,7 +21,19 @@ final class ExamCheckUnitEvidence {
     private ExamCheckUnitEvidence() { }
     private record BlockLocation(String partId, String sectionId, String subjectCode, String blockId) { }
 
+    /** A fact and the subject witness (one unit's proof) whose group and question it describes. */
+    record OwnedFact(ExamCheckRules.WitnessFact fact, SubjectWitness witness) { }
+
     static Map<Long, List<ExamCheckRules.WitnessFact>> witnessFacts(QuestionSourcePort source,
+            QuestionAttachmentPort attachments, ExamStructureDocument document, List<PathResult> paths,
+            Map<String, Map<String, List<String>>> combinationsByPart) {
+        Map<Long, List<ExamCheckRules.WitnessFact>> result = new LinkedHashMap<>();
+        ownedWitnessFacts(source, attachments, document, paths, combinationsByPart).forEach((path, owned) ->
+                result.put(path, owned.stream().map(OwnedFact::fact).toList()));
+        return result;
+    }
+
+    static Map<Long, List<OwnedFact>> ownedWitnessFacts(QuestionSourcePort source,
             QuestionAttachmentPort attachments, ExamStructureDocument document, List<PathResult> paths,
             Map<String, Map<String, List<String>>> combinationsByPart) {
         Map<String, BlockLocation> locations = new LinkedHashMap<>();
@@ -44,9 +56,9 @@ final class ExamCheckUnitEvidence {
         Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Version> versions = new LinkedHashMap<>();
         for (var version : source.loadVersions(List.copyOf(keys))) versions.put(version.key(), version);
         Map<QuestionSourcePort.VersionKey, Boolean> readable = readable(attachments, versions);
-        Map<Long, List<ExamCheckRules.WitnessFact>> result = new LinkedHashMap<>();
+        Map<Long, List<OwnedFact>> result = new LinkedHashMap<>();
         for (PathResult path : paths) {
-            List<ExamCheckRules.WitnessFact> facts = new ArrayList<>();
+            List<OwnedFact> facts = new ArrayList<>();
             String pathId = path.path().chosen().isEmpty() ? "default"
                     : String.join("+", path.path().chosen().stream().map(choice -> choice.optionId()).toList());
             for (SubjectWitness witness : witnesses(path)) for (var group : witness.groups()) {
@@ -74,7 +86,9 @@ final class ExamCheckUnitEvidence {
                     var key = new QuestionSourcePort.VersionKey(UUID.fromString(pick.questionId()), pick.versionNo());
                     var version = versions.get(key);
                     if (version == null || version.snapshot() == null || version.code() == null) continue;
-                    addFacts(facts, where, version.code(), version.snapshot().path("body"), readable.get(key), version.childCodes());
+                    List<ExamCheckRules.WitnessFact> made = new ArrayList<>();
+                    addFacts(made, where, version.code(), version.snapshot().path("body"), readable.get(key), version.childCodes());
+                    for (var fact : made) facts.add(new OwnedFact(fact, witness));
                 }
             }
             result.put(path.path().pathIndex(), List.copyOf(facts));
