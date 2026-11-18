@@ -46,7 +46,7 @@ const columns = {
   structure_year: 'structureYear', matrix_year: 'matrixYear', timing: 'timing',
   duration_minutes: 'durationMinutes', max_score: 'maxScore', expert_note: 'expertNote',
   label: 'label', summary: 'summary', build_mode: 'buildMode', is_default: 'isDefault',
-  structure: 'structure'
+  publishable: 'publishable', fixed_counts: 'fixedCounts', structure: 'structure'
 };
 const sql = value => {
   if (value == null) return 'NULL';
@@ -69,8 +69,10 @@ for (const source of sources) {
   const template = structuredClone(entry);
   if (!template.code || expected[template.code]) throw new Error(`Missing or duplicate template code in ${source}`);
   if (!Array.isArray(template.structure?.parts) || !template.expected) throw new Error(`Incomplete template in ${source}`);
+  template.publishable ??= true;
+  template.fixedCounts ??= false;
   assignIds(template);
-  expected[template.code] = {
+  if (template.buildMode === 'STANDARD') expected[template.code] = {
     questions: template.expected.questions, maxPoints: template.expected.maxPoints,
     durationMinutes: template.durationMinutes, examKind: template.kindCode, scope: template.scope,
     partCode: template.partCode, subjectCode: template.subjectCode,
