@@ -805,3 +805,51 @@ describe("sinh thử không được", () => {
     expect(screen.getByRole("link", { name: /Đến dòng ma trận/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/structure?part=part-1`);
   });
 });
+
+describe("phân đoạn hiển thị của sinh thử một môn (BE-20)", () => {
+  /** Đề thử của `generatedWire` với `displaySegments` trên phần duy nhất; `segments` rỗng = chiếu cục bộ. */
+  function sectionWire(segments: Array<{ code: string; name: string; fromPosition: number; toPosition: number; commandCount: number; maxPoints: number }>) {
+    const base = generatedWire();
+    const paper = base.paper as { parts: Array<Record<string, unknown>> };
+    return { ...base, paper: { ...paper, parts: [{ ...paper.parts[0], displaySegments: segments }] } };
+  }
+
+  async function generateSection(user: UserEvent, body: unknown) {
+    const server = new FakeServer().on("POST", PREVIEW_PATH, { status: 200, body });
+    renderPanel(server);
+    await pick(user, "Phạm vi sinh thử", "Một môn");
+    await pick(user, "Môn", /Vật lí/);
+    await user.click(screen.getByRole("button", { name: "Sinh đề xem trước" }));
+    await waitFor(() => expect(server.calls("POST", PREVIEW_PATH)).toHaveLength(1));
+    expect(bodyOf(server.calls("POST", PREVIEW_PATH)[0]).target).toMatchObject({ kind: "SECTION", sectionId: "sec-phy" });
+  }
+
+  it("phần sinh đủ có displaySegments: tiêu đề phân đoạn hiện với dải câu, lệnh và điểm khai báo", async () => {
+    const user = userEvent.setup();
+    await generateSection(
+      user,
+      sectionWire([
+        { code: "P1", name: "Phan I", fromPosition: 1, toPosition: 2, commandCount: 2, maxPoints: 2 },
+        { code: "P2", name: "Phan II", fromPosition: 3, toPosition: 3, commandCount: 1, maxPoints: 1.5 },
+      ]),
+    );
+
+    // Tiêu đề phân đoạn (cấp 4, cùng cấp tiêu đề khối) nêu dải câu, số lệnh và điểm khai báo.
+    expect(await screen.findByRole("heading", { level: 4, name: /Phan I · câu 1–2 · 2 lệnh · 2 điểm/ })).toBeInTheDocument();
+    // Điểm khai báo thập phân của BE-20 (maxPoints 1.5) qua định dạng vi.
+    expect(screen.getByRole("heading", { level: 4, name: /Phan II · câu 3–3 · 1 lệnh · 1,5 điểm/ })).toBeInTheDocument();
+    // Tiêu đề phần (cấp 3) và tiêu đề khối vẫn hiện như thường.
+    expect(screen.getByRole("heading", { level: 3, name: /Math/ })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 4, name: /^Khối / })).toHaveLength(2);
+  });
+
+  it("phần sinh không đủ gửi displaySegments []: không có tiêu đề phân đoạn, hiện như trước", async () => {
+    const user = userEvent.setup();
+    await generateSection(user, sectionWire([]));
+
+    expect(await screen.findByRole("heading", { level: 3, name: /Math/ })).toBeInTheDocument();
+    // Không có tiêu đề phân đoạn nào: tiêu đề cấp 4 chỉ còn của khối, hiện như khi phần không có phân đoạn.
+    for (const heading of screen.getAllByRole("heading", { level: 4 })) expect(heading).toHaveTextContent(/^Khối /);
+    expect(screen.queryByText(/Phan I\b/)).not.toBeInTheDocument();
+  });
+});

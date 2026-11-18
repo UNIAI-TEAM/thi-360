@@ -109,6 +109,31 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
     expect(within(table).queryByText("Chưa phân loại")).not.toBeInTheDocument();
     expect(await screen.findByText("Đạt mọi tiêu chí")).toBeInTheDocument();
   });
+  it("dòng cấp bài (scope Cả bài): Chưa phân loại hiện Cả bài, không mã thô; mẫu số cấp bài bỏ qua", async () => {
+    const examRows: PreviewCompliance[] = [
+      row("GRADE:GRADE_10", 0, 0, { scope: "EXAM" }),
+      row("GRADE:GRADE_11", 17, 16, { scope: "EXAM" }),
+      row("GRADE:GRADE_12", 50, 47, { scope: "EXAM" }),
+      row("GRADE:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
+      row("DIFFICULTY:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
+    ];
+    renderTable(examRows);
+
+    const table = await screen.findByRole("table", { name: "Yêu cầu và thực tế của đề thử" });
+    await within(table).findByText("Khối lớp Lớp 11");
+    const unclassified = within(table)
+      .getAllByRole("row")
+      .filter((tr) => within(tr).queryByText("Chưa phân loại"));
+    expect(unclassified).toHaveLength(2);
+    for (const tr of unclassified) {
+      expect(within(tr).getByText("Cả bài")).toBeInTheDocument();
+      expect(within(tr).getByText("Thiếu nhãn")).toBeInTheDocument();
+      expect(within(tr).getByText("—")).toBeInTheDocument();
+      expect(within(tr).getByText("+4")).toBeInTheDocument();
+    }
+    expect(table.textContent).not.toMatch(/UNCLASSIFIED|GRADE_/);
+    expect(await screen.findByText("Mẫu số: Toán cả môn · 67 lệnh")).toBeInTheDocument();
+  });
 
   it("bài theo lệnh không đặt phạm vi môn hoặc phần (cả bài): không có dòng mẫu số", async () => {
     renderTable(COMMAND_ROWS, "FULL");
@@ -125,6 +150,19 @@ describe("mẫu số theo lệnh", () => {
     expect(commandDenominators(COMMAND_ROWS)).toEqual([{ scope: "SECTION:sec-math", total: 67 }]);
     expect(commandDenominators(geography)).toEqual([{ scope: "SECTION:sec-math", total: 67 }]);
     expect(commandDenominators([row("GRADE:GRADE_12", 5, 5, { basis: "QUESTION" }), row("GRADE:GRADE_11", 5, 5, { enforcement: "REQUIRED" })])).toEqual([]);
+  });
+
+  it("mẫu số cấp bài (scope EXAM) bỏ dòng Chưa phân loại", () => {
+    const examRows: PreviewCompliance[] = [
+      row("GRADE:GRADE_10", 0, 0, { scope: "EXAM" }),
+      row("GRADE:GRADE_11", 17, 16, { scope: "EXAM" }),
+      row("GRADE:GRADE_12", 50, 47, { scope: "EXAM" }),
+      row("GRADE:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
+      row("DIFFICULTY:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
+      row("DIFFICULTY:RECOGNITION", 13, 13, { scope: "EXAM" }),
+    ];
+
+    expect(commandDenominators(examRows)).toEqual([{ scope: "EXAM", total: 67 }]);
   });
 
   it("mã Chưa phân loại: chỉ mã UNCLASSIFIED của khối lớp hoặc độ khó", () => {
