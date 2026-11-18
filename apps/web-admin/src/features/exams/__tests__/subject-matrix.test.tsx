@@ -134,7 +134,7 @@ describe("màn môn (Toán HSA)", () => {
 
     // Chùm giới hạn câu con là Một đáp án: 10 câu con trừ vào chỉ tiêu Một đáp án (còn thiếu 35 → 25).
     await user.click(sets.getByRole("button", { name: "Mở nhóm Chùm ngữ cảnh" }));
-    await user.click(await screen.findByRole("combobox", { name: /Dạng của câu con/ }));
+    await user.click(await screen.findByRole("combobox", { name: /Loại câu hỏi của câu con/ }));
     await user.click(await screen.findByRole("option", { name: "Một đáp án" }));
     await user.click(screen.getByRole("button", { name: "Về màn môn" }));
     const after = tableRow(await screen.findByRole("region", { name: "Dạng trả lời" }), "Một đáp án");
@@ -151,7 +151,7 @@ describe("màn môn (Toán HSA)", () => {
     // Ngữ văn: nhóm Trắc nghiệm có dạng trả lời điền sẵn.
     const locked = backend.app("ex-hsa-f-001").parts[1]!.sections[0]!.blocks.find((block) => block.id === "blk-27")!;
     expect(locked.answerTypeLocked).toBe(true);
-    expect(screen.getByRole("textbox", { name: /Dạng trả lời/ })).toHaveAttribute("readonly");
+    expect(screen.getByRole("textbox", { name: /Loại câu hỏi/ })).toHaveAttribute("readonly");
     expect(screen.getByText("Ma trận lớp và độ khó riêng của nhóm").closest("details")).not.toHaveAttribute("open");
   });
 

@@ -4069,7 +4069,7 @@
         "name": "Group name",
         "backToSection": "Back to the subject",
         "fromTemplate": "Group created from the template ({code}).",
-        "questionType": "Answer type",
+        "questionType": "Question type",
         "typeLocked": "Filled in by the template; it cannot be changed.",
         "typeOpen": "By the subject's answer-type targets",
         "typeOpenHint": "The group's questions fill the answer-type targets the subject still lacks.",
@@ -4085,9 +4085,6 @@
         "setSize": "Sub-questions per set",
         "setHint": "The group draws {count, plural, one {# sub-question} other {# sub-questions}}",
         "setWholeNote": "Sets are always drawn whole; the group's count is sets × sub-questions per set.",
-        "points": "Required points per question",
-        "pointsOpenHint": "Optional. Leave empty to accept any question; points come from the question version.",
-        "pointsTotal": "Only questions worth exactly {points, plural, one {# point} other {# points}} enter the source; the group is worth {total, plural, one {# point} other {# points}}.",
         "ownMatrix": "The group's own grade and difficulty matrix",
         "ownMatrixNone": "Not set (optional)",
         "ownMatrixSet": "Set",
@@ -4108,6 +4105,135 @@
         "manualGrading": "Manual grading",
         "competencies": "Competencies",
         "competenciesHint": "Only draw questions tagged with one of the selected competencies. None selected: any competency of the subject."
+      },
+      "blockForm": {
+        "childConditions": {
+          "add": "Add a position condition",
+          "empty": "No position conditions yet.",
+          "from": "From sub-question no.",
+          "hint": "The sub-question at a position or position range in the set must have at least one chosen MAPID. The system only picks sets with enough matching sub-questions.",
+          "issues": {
+            "FROM_MIN": "The start position must be 1 or more.",
+            "NO_MAPID": "Choose at least one MAPID.",
+            "OUT_OF_SET": "The position goes beyond the sub-questions per set ({size, number}).",
+            "RANGE_ORDER": "The end position must be greater than or equal to the start position."
+          },
+          "mapidLabel": "MAPID:",
+          "pickMapid": "Choose MAPID",
+          "pickerDescription": "{name}: chapters, lessons or knowledge items can be chosen.",
+          "remove": "Remove {name}",
+          "removeMapid": "Remove MAPID {code} {name}",
+          "rowName": "Position condition {index, number}",
+          "title": "Conditions by sub-question position",
+          "to": "To sub-question no."
+        },
+        "conditions": {
+          "add": "Add a condition",
+          "added": "Already added",
+          "answerFormats": {
+            "format": {
+              "CHEM_EQUATION": "Chemical equation",
+              "CHEM_FORMULA": "Chemical formula",
+              "DECIMAL": "Decimal number",
+              "FRACTION": "Fraction",
+              "INTEGER": "Integer",
+              "TEXT": "Text"
+            },
+            "legend": "Answer format",
+            "note": "Matches any one of the formats. Questions without a format are not drawn into a group with this condition."
+          },
+          "empty": "No conditions added yet.",
+          "groupName": "group",
+          "hint": "Every question of the group must meet the conditions.",
+          "itemShape": {
+            "leftItems": "Left items",
+            "noteMatching": "A Matching question must have exactly the number of left items and right choices entered.",
+            "noteTrueFalse": "A True/False question must have exactly the number of statements entered.",
+            "required": "Enter a number greater than 0.",
+            "rightItems": "Right choices",
+            "statements": "Statements"
+          },
+          "kind": {
+            "ANSWER_FORMATS": "Answer format",
+            "ITEM_SHAPE": "Question shape",
+            "MAPID": "Knowledge (MAPID)",
+            "POINTS": "Points per question",
+            "TAGS": "Tags or text type"
+          },
+          "kindHint": {
+            "ANSWER_FORMATS": "Only for groups with Short answer questions",
+            "ITEM_SHAPE": "True/False statements; left items and right choices of Matching",
+            "MAPID": "Choose several; matches any one of the codes",
+            "POINTS": "Only accepts questions worth exactly this many points",
+            "TAGS": "Choose several; matches any one of the tags"
+          },
+          "menuLabel": "Condition type",
+          "points": {
+            "label": "Points per question",
+            "openHint": "Optional. Leave empty to accept any question; points come from the question version.",
+            "total": "Only questions worth exactly {points, plural, one {# point} other {# points}} in the bank are accepted; the group is worth {total, plural, one {# point} other {# points}}."
+          },
+          "remove": "Remove the {kind} condition",
+          "removeLabel": "Remove condition",
+          "title": "Group conditions",
+          "unavailable": {
+            "ANSWER_FORMATS": "Only for groups with Short answer questions",
+            "ITEM_SHAPE": "Only for True/False or Matching groups"
+          }
+        },
+        "mode": {
+          "legend": "How to draw",
+          "set": "Question sets",
+          "single": "Single questions"
+        },
+        "omittedBadge": "Essay – temporarily skipped",
+        "positionRange": "{same, select, yes {Question {from, number}} other {Questions {from, number}–{to, number}}}",
+        "slots": {
+          "caption": "Conditions of {count, plural, one {# set} other {# sets}}",
+          "clear": "Clear the conditions of set {index, number}",
+          "clearLabel": "Clear",
+          "close": "Close",
+          "closeEdit": "Close the editor of set {index, number}",
+          "columns": {
+            "actions": "Actions",
+            "mapid": "Knowledge (MAPID)",
+            "set": "Set",
+            "tags": "Text type (tags)"
+          },
+          "dropped": "{sets, plural, one {# set is} other {# sets are}} left. The own conditions of set {list} were removed from the draft.",
+          "edit": "Edit the conditions of set {index, number}",
+          "editLabel": "Edit",
+          "editorTitle": "Conditions of set {index, number}",
+          "hint": "A set with no condition uses the group's conditions. Tags match any one of the tags.",
+          "inheritsGroup": "By the group's conditions",
+          "mapidCount": "{count, plural, one {# knowledge item} other {# knowledge items}}",
+          "mapidLabel": "Knowledge (MAPID):",
+          "pickMapid": "Choose MAPID",
+          "pickerDescription": "Own conditions of set {index, number}: chapters, lessons or knowledge items can be chosen.",
+          "removeMapid": "Remove MAPID {code} {name} of set {index, number}",
+          "setName": "Set {index, number}",
+          "title": "Conditions of each set"
+        },
+        "switches": {
+          "alwaysShuffle": "Questions in the group are always shuffled for each paper; the group keeps its position.",
+          "alwaysShuffleSet": "Questions and sets in the group are always shuffled; sub-questions keep their order.",
+          "omitted": {
+            "description": "The group does not enter the paper, the question total or the maximum score, and is not source-checked. Turn off to put the group in the paper and grade it by hand.",
+            "label": "Temporarily skip"
+          },
+          "shuffle": {
+            "description": "Chosen sets change position within the group for each paper. Sub-questions inside a set keep their order. Only group 5 of HSA Literature and QDA Literature has this switch.",
+            "label": "Shuffle the order of the sets"
+          }
+        },
+        "tags": {
+          "matchAny": "Matches any one of the tags: a question with at least one chosen tag is accepted.",
+          "none": "No tag matches.",
+          "remove": "Remove tag {tag} of {name}",
+          "search": "Search tags",
+          "searchLabel": "Search tags of {name}",
+          "selected": "Chosen tags of {name}"
+        }
       },
       "subject": {
         "title": "Subject {subject}",
@@ -5259,7 +5385,12 @@
       "competencyHeader": "Competency"
     },
     "scopeField": {
-      "legend": "Knowledge scope (MAPID)",
+      "legend": "Knowledge scope",
+      "all": "Whole subject",
+      "topic": "By topic",
+      "strand": "By knowledge strand",
+      "topicEmpty": "No topic chosen yet.",
+      "topicHint": "A question matches when it has at least one chosen code. A chosen node also matches questions tagged with its child nodes.",
       "inheritsSection": "By the subject's scope",
       "inheritsCount": "The subject's scope has {count, plural, one {# knowledge item} other {# knowledge items}}",
       "none": "No MAPID limit",
