@@ -43,10 +43,52 @@ export function parseScope(raw: string): ScopeRef {
 }
 
 /**
+ * Mã của dòng "Chưa phân loại" ở bảng đối chiếu theo lệnh (D19, H44): câu thiếu nhãn khối lớp hoặc độ khó dồn vào dòng
+ * `GRADE:UNCLASSIFIED` hoặc `DIFFICULTY:UNCLASSIFIED`. Mã trống cũng được coi là chưa phân loại.
+ */
+export const UNCLASSIFIED_CODE = "UNCLASSIFIED";
+
+/** Dòng "Chưa phân loại": không có yêu cầu để so, chỉ báo số lệnh còn thiếu nhãn. */
+export function isUnclassifiedRow(row: PreviewCompliance): boolean {
+  const ref = parseCriterion(row.criterion);
+  return (ref.kind === "GRADE" || ref.kind === "DIFFICULTY") && (ref.code === UNCLASSIFIED_CODE || ref.code === "");
+}
+
+export interface CommandDenominator {
+  /** Phạm vi của các dòng (`SECTION:<id>`, `EXAM`): cùng chuỗi với `PreviewCompliance.scope`. */
+  scope: string;
+  /** Tổng số lệnh của mẫu: cộng yêu cầu của các dòng khối lớp, không có thì của các dòng độ khó (Địa lí, Tiếng Anh không có lớp). */
+  total: number;
+}
+
+/**
+ * Mẫu số của bảng đối chiếu theo lệnh (VS §5.1, D21): mỗi phạm vi có dòng `PROMPT` ở mức tham khảo cho một mẫu số, ví dụ
+ * Toán cả môn 67 lệnh. Dòng "Chưa phân loại" không có yêu cầu nên không góp vào mẫu số.
+ */
+export function commandDenominators(rows: readonly PreviewCompliance[]): CommandDenominator[] {
+  const byScope = new Map<string, { grade: number; difficulty: number; hasGrade: boolean }>();
+  for (const row of rows) {
+    if (row.basis !== "PROMPT" || row.enforcement !== "REFERENCE" || isUnclassifiedRow(row)) continue;
+    const ref = parseCriterion(row.criterion);
+    if (ref.kind !== "GRADE" && ref.kind !== "DIFFICULTY") continue;
+    const entry = byScope.get(row.scope) ?? { grade: 0, difficulty: 0, hasGrade: false };
+    if (ref.kind === "GRADE") {
+      entry.grade += row.required;
+      entry.hasGrade = true;
+    } else {
+      entry.difficulty += row.required;
+    }
+    byScope.set(row.scope, entry);
+  }
+  return [...byScope].map(([scope, entry]) => ({ scope, total: entry.hasGrade ? entry.grade : entry.difficulty }));
+}
+
+/**
  * Mức lệch của một dòng. Chỉ tiêu chủ đề là "ít nhất" (K6): thực tế nhiều hơn yêu cầu vẫn đạt, chỉ thiếu mới lệch. Dòng
  * Bắt buộc lệch là lỗi, dòng Tham khảo lệch là cảnh báo không chặn.
  */
 export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
+  if (isUnclassifiedRow(row)) return "OK";
   const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
   const deviates = atLeast ? row.actual < row.required - EPSILON : Math.abs(row.actual - row.required) > EPSILON;
   if (!deviates) return "OK";

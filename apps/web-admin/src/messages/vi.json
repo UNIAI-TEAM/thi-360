@@ -4676,7 +4676,12 @@
         "TEMPLATE_NOT_PUBLISHABLE": "Mẫu chuẩn của môn {subject} chưa công bố được: bài chỉ lưu nháp, không công bố được và không đưa vào bộ đề bán.",
         "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {chỉ tiêu chủ đề cần ít nhất {required, number} câu, nguồn hiện chỉ có {available, number} câu, còn thiếu {missing, number} câu} other {nguồn chưa đủ cho chỉ tiêu chủ đề}}.",
         "TOPIC_QUOTA_MAPPING_MISSING": "{block}: có dòng chỉ tiêu chủ đề bắt buộc chưa gắn MAPID. Gắn mã cho dòng đó rồi kiểm tra lại.",
-        "TOPIC_QUOTA_NESTED": "{block}: có chỉ tiêu ở cả chủ đề cha và chủ đề con cùng cấp; chỉ giữ chỉ tiêu ở một cấp."
+        "TOPIC_QUOTA_NESTED": "{block}: có chỉ tiêu ở cả chủ đề cha và chủ đề con cùng cấp; chỉ giữ chỉ tiêu ở một cấp.",
+        "AUDIO_SHORTAGE": "Khối {block}: nguồn có audio chưa đủ cho dòng{hasCount, select, yes {: cần {required, number}, hiện ghép được {available, number}} other {}}.",
+        "POINTS_SHORTAGE": "Khối {block}: nguồn đúng điểm mỗi câu của dòng chưa đủ{hasCount, select, yes {: cần {required, number}, hiện chỉ có {available, number} đúng điểm} other {}}.",
+        "BLOCK_COUNT_LOCKED": "Khối {block}: mẫu đã khóa dạng, số câu và số chùm của dòng{hasCount, select, yes {; mẫu giữ {required, number}, hiện có {available, number}} other {}}. Đưa dòng về đúng như mẫu.",
+        "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
+        "SCALE_INCLUDES_EXCLUDED_PART": "{hasCount, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {missing, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}"
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -4931,6 +4936,29 @@
       "showAll": "Hiện tất cả {count, number} mục",
       "showLess": "Thu gọn",
       "setHeading": "Bộ {index, number} · {count, number} câu liền nhau",
+      "segmentRange": "câu {first, number}–{last, number} · {commands, number} lệnh · {points} điểm",
+      "audio": {
+        "back": "Lùi 5 giây",
+        "badge": "Có audio",
+        "errorNote": "Đề thử vẫn xem được.",
+        "errorTitle": "Không phát được {file}.",
+        "fileOf": "Tệp {index, number}/{total, number}",
+        "forQuestion": "câu {number, number}",
+        "forSet": "câu {first, number}–{last, number}",
+        "forward": "Tiến 5 giây",
+        "group": "Trình phát audio · {name}",
+        "loading": "Đang tải audio",
+        "mute": "Tắt tiếng · {name}",
+        "noSeek": "Tệp này chỉ phát từ đầu",
+        "pause": "Tạm dừng audio · {name}",
+        "paused": "Đã tạm dừng {name}",
+        "play": "Phát audio · {name}",
+        "playing": "Đang phát {name}",
+        "position": "Vị trí phát",
+        "retry": "Thử lại",
+        "spoken": "{currentMinutes, number} phút {currentSeconds, number} giây trên {totalMinutes, number} phút {totalSeconds, number} giây",
+        "unmute": "Bật tiếng · {name}"
+      },
       "simulatedPassage": "Ngữ liệu của bộ mô phỏng (phần ngân hàng chưa nạp vào dữ liệu mẫu).",
       "questionNumber": "Câu {number, number}",
       "questionPoints": "Tối đa {points} điểm",
@@ -5035,7 +5063,12 @@
           "EXAM": "Chỉ tiêu cấp bài {names}",
           "GRADE": "Khối lớp {name}",
           "TOPIC": "Chỉ tiêu chủ đề",
-          "TOPIC_NAMED": "{name}"
+          "TOPIC_NAMED": "{name}",
+          "UNCLASSIFIED": "Chưa phân loại"
+        },
+        "denominator": {
+          "part": "Mẫu số: {subject} · {part} · {count, number} lệnh",
+          "whole": "Mẫu số: {subject} cả môn · {count, number} lệnh"
         },
         "deviations": "{count, number} dòng lệch",
         "droppedQuestion": "Đã bỏ câu {code} · {type}, {grade}, {difficulty}.",
@@ -5046,9 +5079,11 @@
         "legend": "Chênh lệch bằng Thực tế trừ Yêu cầu. Chỉ tiêu chủ đề là “ít nhất”, nên thực tế nhiều hơn yêu cầu vẫn đạt. Dòng Tham khảo lệch chỉ là cảnh báo, không chặn; dòng chờ mapping chưa đối chiếu được. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
         "level": "{enforcement} · {unit}",
         "pendingNoData": "Chưa có dữ liệu đối chiếu",
+        "requiredNone": "—",
         "requiredAtLeast": "ít nhất {value}",
         "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
         "result": {
+          "MISSING_LABEL": "Thiếu nhãn",
           "OK": "Đạt",
           "PENDING": "Chờ mapping",
           "REFERENCE_DEVIATION": "Lệch · tham khảo",
