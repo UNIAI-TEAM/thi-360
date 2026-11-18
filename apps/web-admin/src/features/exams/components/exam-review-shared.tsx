@@ -150,13 +150,15 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
       const positions = issue.childPosition
         ? String(issue.childPosition)
         : filter.childPositions.map((range) => (range.from === range.to ? `${range.from}` : `${range.from}–${range.to}`)).join(", ");
+      const place = (blockName ? `${subject} · ${blockName}` : subject) || (issue.partName ?? where?.part.name ?? "");
       const required = issue.required ?? 0;
       const available = issue.available ?? 0;
       const values = {
         block: blockName ? `${subject} · ${blockName}` : subject,
         subject,
         part: issue.partName ?? where?.part.name ?? "",
-        place: (blockName ? `${subject} · ${blockName}` : subject) || (issue.partName ?? where?.part.name ?? ""),
+        place,
+        hasPlace: place ? "yes" : "no",
         grade,
         difficulty,
         level,

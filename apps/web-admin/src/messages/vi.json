@@ -4648,7 +4648,7 @@
         "REQUIRED_BASIS_UNSUPPORTED": "{block}: phân bố bắt buộc chỉ tính theo số câu; đơn vị lệnh hỏi hoặc điểm chỉ dùng làm phân bố tham khảo.",
         "SECTION_INCOMPLETE": "Môn {subject} chưa hoàn tất cấu hình.",
         "SLOT_SOURCE_SHORTAGE": "Khối {block}{hasSlot, select, yes {, chùm {slot, number}} other {}}: chưa đủ nguồn cho điều kiện riêng của chùm{hasCount, select, yes { (cần {required, number} câu, hiện có {available, number} câu)} other {}}.",
-        "STRUCTURE_COUNT_LOCKED": "Mẫu đã khóa số câu của {place}: mẫu yêu cầu {required, number} câu, hiện {available, number} câu. Đưa số câu về {required, number}.",
+        "STRUCTURE_COUNT_LOCKED": "Mẫu đã khóa số câu của {hasPlace, select, yes {{place}} other {cả bài}}: mẫu yêu cầu {required, number} câu, hiện {available, number} câu. Đưa số câu về {required, number}.",
         "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Môn {subject}: có ít hơn 2 câu đơn nên không bỏ được 1 câu khi sinh đề 16 câu.",
         "TEMPLATE_NOT_PUBLISHABLE": "Mẫu chuẩn của môn {subject} chưa công bố được: bài chỉ lưu nháp, không công bố được và không đưa vào bộ đề bán.",
         "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {chỉ tiêu chủ đề cần ít nhất {required, number} câu, nguồn hiện chỉ có {available, number} câu, còn thiếu {missing, number} câu} other {nguồn chưa đủ cho chỉ tiêu chủ đề}}.",

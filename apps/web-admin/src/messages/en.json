@@ -4648,7 +4648,7 @@
         "REQUIRED_BASIS_UNSUPPORTED": "{block}: a required distribution counts questions only; the question-part or point units are for reference distributions.",
         "SECTION_INCOMPLETE": "Subject {subject} is not fully configured.",
         "SLOT_SOURCE_SHORTAGE": "Block {block}{hasSlot, select, yes {, set {slot, number}} other {}}: not enough source for the set's own conditions{hasCount, select, yes { (needs {required, number}, has {available, number})} other {}}.",
-        "STRUCTURE_COUNT_LOCKED": "The template locks the question count of {place}: {required, number} required, currently {available, number}. Restore {required, number}.",
+        "STRUCTURE_COUNT_LOCKED": "The template locks the question count of {hasPlace, select, yes {{place}} other {the whole exam}}: {required, number} required, currently {available, number}. Restore {required, number}.",
         "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Subject {subject}: fewer than 2 single questions, so one cannot be dropped for a 16-question paper.",
         "TEMPLATE_NOT_PUBLISHABLE": "The standard template of subject {subject} cannot be published yet: this exam stays a draft and cannot be published or included in paper packs.",
         "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {the topic quota needs at least {required, number} questions, the bank has only {available, number}, {missing, number} short} other {the bank does not have enough for the topic quota}}.",

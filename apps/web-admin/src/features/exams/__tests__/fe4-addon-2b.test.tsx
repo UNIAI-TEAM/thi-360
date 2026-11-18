@@ -440,6 +440,41 @@ describe("câu chữ của ba mã kiểm tra mới", () => {
     expect(text).toContain("Tiếng Việt");
   });
 
+  it("STRUCTURE_COUNT_LOCKED không có chỗ nào (môn thiếu khỏi đề): câu nêu cả bài, không để trống trước dấu hai chấm", async () => {
+    const issue = issueOf({
+      code: "STRUCTURE_COUNT_LOCKED",
+      group: "STRUCTURE",
+      partId: null,
+      partName: null,
+      sectionId: null,
+      subjectCode: null,
+      blockId: null,
+      blockName: null,
+      required: 12,
+      available: 10,
+    });
+
+    expect(await textOf(issue)).toBe("Mẫu đã khóa số câu của cả bài: mẫu yêu cầu 12 câu, hiện 10 câu. Đưa số câu về 12.");
+    expect(await textOf(issue, { en: true })).toBe(
+      "The template locks the question count of the whole exam: 12 required, currently 10. Restore 12.",
+    );
+  });
+
+  it("SUBJECT_CHOICE_COUNTS_INVALID: câu mở đầu bằng tên phần, không in khóa {part}", async () => {
+    const issue = issueOf({
+      code: "SUBJECT_CHOICE_COUNTS_INVALID",
+      group: "STRUCTURE",
+      partName: "Phần 1",
+      required: 8,
+      available: 6,
+    });
+
+    const text = await textOf(issue);
+    expect(text.startsWith("Phần 1:")).toBe(true);
+    expect(text).not.toContain("{part}");
+    expect((await textOf(issue, { en: true })).startsWith("Phần 1:")).toBe(true);
+  });
+
   it("TEMPLATE_NOT_PUBLISHABLE: câu nêu môn và không công bố được; lỗi cả bài không có chỗ sửa", async () => {
     const issue = issueOf({
       code: "TEMPLATE_NOT_PUBLISHABLE",
