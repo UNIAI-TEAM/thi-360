@@ -149,6 +149,7 @@
       - 2026-11-18 00:38 (UTC+7): FE-1 (UNI-2661, PR #87) merge: bước 1 tạo bài trên web admin (phạm vi theo kỳ thi, môn rồi phần P<n>, kiểu xây bài, bảng tổng quan theo id phần/mục của mẫu, xác nhận nạp lại). Advisor chạy lại typecheck, lint, vitest web admin 1614 test, xanh (1 timeout không liên quan, chạy riêng đạt).
       - 2026-11-18 01:29 (UTC+7): BE-4b (UNI-2655, PR #88) merge: bộ giải chỉ tiêu chủ đề, chỉ tiêu cấp bài một môn (gộp qua phần), cắt 17 − 1 giữ chủ đề bắt buộc; ca 8 chỉ tiêu chạy 21 ms trên cloud. Advisor chạy lại backend 347 test, xanh.
       - 2026-11-18 01:39 (UTC+7): BE-10 (UNI-2653, PR #89) merge: dữ liệu câu hỏi mẫu đủ nguồn cho 78 mẫu STANDARD của BE-7. Advisor chạy lại backend 746 test, xanh.
+      - 2026-11-18 02:19 (UTC+7): BE-8 (UNI-2657, PR #90) merge: sinh thử đề theo mục, đường, cả bài; lưu Redis 30 phút, sinh lại từng phần, gán chỉ tiêu chủ đề từ bộ giải, thứ tự PaperOrdering. Advisor chạy lại backend 383 test, xanh.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
