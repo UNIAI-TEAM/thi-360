@@ -79,13 +79,14 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
       await expect(region, `môn ${name}`).toBeVisible();
       // Bảng "Theo khối lớp" có bốn ô: Lớp 10, 11, 12 và "Liên lớp". Ba ô lớp theo tên ô, ô "Liên lớp" bằng giá trị của mẫu (0 nếu mẫu không khai).
       const byGrade = section.matrix!.byGrade!;
-      const gradeItems = byGrade.filter((item) => item.code !== "GRADE_MIXED");
+      // Mã khối trong mẫu: G10/G11/G12; ô "Liên lớp" là GRADE_MIXED (mẫu không khai thì 0).
+      const gradeItems = byGrade.filter((item) => /^G\d+$/.test(item.code));
       const mixedValue = String(byGrade.find((item) => item.code === "GRADE_MIXED")?.value ?? 0);
       const gradeTable = region.getByRole("table", { name: "Theo khối lớp" });
       const gradeInputs = gradeTable.getByRole("textbox", { name: /^Lớp \d+ · số câu/ });
       await expect(gradeInputs, `môn ${name}: chỉ tiêu theo khối lớp`).toHaveCount(gradeItems.length);
       for (const item of gradeItems) {
-        const grade = item.code.replace("GRADE_", "");
+        const grade = item.code.replace(/^G(RADE_)?/, "");
         await expect(
           gradeTable.getByRole("textbox", { name: new RegExp(`^Lớp ${grade} · số câu`) }),
           `môn ${name}: khối lớp ${grade}`,
