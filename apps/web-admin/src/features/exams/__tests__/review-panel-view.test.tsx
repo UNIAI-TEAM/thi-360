@@ -147,6 +147,34 @@ describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
   });
 });
 
+describe("Bài ôn vừa tạo từ mẫu: nhóm chưa khai số câu (V-01b)", () => {
+  // Dạng thật máy chủ trả sau POST /exams (mẫu `<KỲ>_REVIEW` + tổng quan 10 câu): phần và môn đã có 10, nhóm chỉ có `id`.
+  const fresh = { name: undefined, questionType: null, questionCount: null, requiredPointsPerQuestion: undefined };
+
+  it("ô Số lượng hiện 10, không báo lệch bước 1 và không báo thiếu câu", async () => {
+    boot(fresh);
+    open();
+    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
+    expect(count).toHaveValue("10");
+    expect(screen.queryByText(/Bước 1 đặt/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/các khối có 0 câu/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Còn thiếu 10 câu/)).not.toBeInTheDocument();
+  });
+
+  it("lưu gửi 10 câu ở cả môn lẫn nhóm", async () => {
+    const server = boot(fresh);
+    const user = userEvent.setup();
+    open();
+    await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
+    await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const section = sentOf(server).parts[0]!.sections[0]!;
+    expect(section.questionCount).toBe(10);
+    expect(section.blocks[0]).toMatchObject({ questionType: "SHORT_ANSWER", questionCount: 10 });
+  });
+});
+
 describe("Bài ôn: đổi số câu khi bảng nhập theo tỷ lệ (R2-01)", () => {
   const topic = { id: "t1", name: "Xác suất", nodeIds: [], count: 1, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" };
 

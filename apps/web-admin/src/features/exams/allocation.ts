@@ -208,6 +208,26 @@ export function rendersReviewPanel(section: ExamSection, reviewMode: boolean): b
   return reviewMode && section.blocks.length === 1;
 }
 
+/**
+ * Bài ôn do máy chủ tạo từ mẫu `<KỲ>_REVIEW`: mẫu chỉ có khung (phần, môn, nhóm không khai số câu), tổng quan bước 1 đặt số
+ * câu ở phần và môn, còn nhóm duy nhất vẫn `null` ("lấy phần còn lại"). Màn bài ôn đọc số câu từ nhóm và `validateStructure`
+ * cộng số câu các nhóm, nên nhóm `null` hiện 0 câu và báo thiếu. Điền số câu của môn (hoặc của phần) vào nhóm duy nhất để ô
+ * Số lượng, tổng đã phân bổ và nội dung lưu cùng khớp bước 1. Chỉ áp cho phần cố định một môn một nhóm câu đơn.
+ */
+export function fillReviewCounts(parts: readonly ExamPart[]): ExamPart[] {
+  return parts.map((part) => {
+    const [section] = part.sections;
+    const [block] = section?.blocks ?? [];
+    if (!section || !block || part.codeSource || part.mode === "CHOICE" || part.options.length > 0 || part.sections.length !== 1 || section.blocks.length !== 1) {
+      return part;
+    }
+    const sectionCount = section.questionCount ?? (part.questionCount > 0 ? part.questionCount : null);
+    const blockCount = block.questionCount ?? (block.setCount === null && block.setSize === null ? sectionCount : null);
+    if (sectionCount === section.questionCount && blockCount === block.questionCount) return part;
+    return { ...part, sections: [{ ...section, questionCount: sectionCount, blocks: [{ ...block, questionCount: blockCount }] }] };
+  });
+}
+
 /** Tổng của môn đã đổi so với số đã xác nhận mà người dùng chưa chọn "Áp dụng số mới" hay "Giữ số cũ" (R-122 dòng 6). */
 export function totalChangePending(section: ExamSection, confirmedCount: number | null): boolean {
   return section.questionCount !== null && confirmedCount !== null && section.questionCount !== confirmedCount && hasPercentTables(section);
