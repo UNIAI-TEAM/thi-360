@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.exam.api.ExamOverviewRequest;
@@ -50,6 +51,7 @@ class ExamStructureFieldChainIT extends AbstractIntegrationTest {
     private static final ItemShape BLOCK_SHAPE = new ItemShape(null, null, null, 4);
 
     @Autowired private ObjectMapper mapper;
+    @Autowired private JdbcTemplate jdbc;
 
     @Test
     void oneValidSubjectStructureKeepsEveryNewFieldThroughEveryStage() throws Exception {
@@ -81,6 +83,63 @@ class ExamStructureFieldChainIT extends AbstractIntegrationTest {
         ExamStructureDocument readBack = readDocument(codec, load(examUrl));
         assertIntact(readBack, "read back after save", false);
 
+        verifyDownstreamStages(codec, examUrl, readBack);
+    }
+
+    /**
+     * Row 4 entry point: a real create. A default SUBJECT template fixture carries the full structure; the POST
+     * goes through {@code ExamService.createExam} where the template is loaded and the overview applied
+     * ({@code ExamOverview.apply}), so a field dropped there would not reach the stored structure.
+     */
+    @Test
+    void createdSubjectExamFromDefaultTemplateKeepsEveryNewFieldAfterTheOverview() throws Exception {
+        ExamStructureCodec codec = new ExamStructureCodec(mapper);
+        ExamStructureDocument fixture = structure();
+        ExamStructureValidator.validate(fixture);
+        String templateCode = "CHAIN_SPT_TOAN_" + UUID.randomUUID().toString().substring(0, 8);
+        String partId = fixture.parts().getFirst().id();
+        jdbc.update("UPDATE exam.exam_template SET is_default=false WHERE kind_code='SPT' "
+                + "AND scope='SUBJECT' AND subject_code='TOAN' AND build_mode='STANDARD'");
+        jdbc.update("""
+                INSERT INTO exam.exam_template
+                  (code, kind_code, scope, subject_code, timing, duration_minutes, structure,
+                   active, build_mode, is_default)
+                VALUES (?, 'SPT', 'SUBJECT', 'TOAN', 'PER_PART', 90, ?::jsonb, true, 'STANDARD', true)""",
+                templateCode, codec.writeString(fixture));
+
+        String body = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"SPT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                                + "\"name\":\"Chuỗi trường mới tạo\",\"code\":\"CHAINCREATE-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\","
+                                + "\"overview\":[{\"partId\":\"" + partId
+                                + "\",\"durationMinutes\":90}]}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        JsonNode created = mapper.readTree(body);
+        assertThat(created.path("templateCode").asText()).isEqualTo(templateCode);
+        String examUrl = "/api/v1/admin/exams/" + created.path("id").asText();
+
+        ExamStructureDocument readBack = readDocument(codec, load(examUrl));
+        assertThat(readBack.parts().getFirst().durationMinutes())
+                .as("overview duration applied at create").isEqualTo(90);
+        assertIntact(readBack, "created from template + overview", false);
+        verifyDownstreamStages(codec, examUrl, readBack);
+    }
+
+    private String createSubjectExam() throws Exception {
+        String body = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"SPT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                                + "\"name\":\"Chuỗi trường mới\",\"code\":\"CHAIN-" + UUID.randomUUID().toString()
+                                .substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return mapper.readTree(body).path("id").asText();
+    }
+
+    private void verifyDownstreamStages(ExamStructureCodec codec, String examUrl,
+            ExamStructureDocument readBack) throws Exception {
         String duplicate = mockMvc.perform(post(examUrl + "/duplicate").with(asUser(Permissions.EXAM_MODIFY))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Bản sao\"}"))
@@ -98,17 +157,6 @@ class ExamStructureFieldChainIT extends AbstractIntegrationTest {
         PreviewSectionTarget.Selection target = PreviewSectionTarget.select(copy, listening, 8);
         assertThat(target.document().parts().getFirst().sections()).hasSize(1);
         assertIntact(target.document(), "preview target", true);
-    }
-
-    private String createSubjectExam() throws Exception {
-        String body = mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
-                        .header("Idempotency-Key", UUID.randomUUID().toString())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"kind\":\"SPT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
-                                + "\"name\":\"Chuỗi trường mới\",\"code\":\"CHAIN-" + UUID.randomUUID().toString()
-                                .substring(0, 8) + "\"}"))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        return mapper.readTree(body).path("id").asText();
     }
 
     private JsonNode load(String examUrl) throws Exception {
