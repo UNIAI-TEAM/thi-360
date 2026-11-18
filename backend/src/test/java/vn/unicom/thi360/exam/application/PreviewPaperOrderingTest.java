@@ -35,7 +35,7 @@ class PreviewPaperOrderingTest {
         assertThat(questions.get("q2").optionOrder()).isEqualTo(questions.get("q2").originalOptionOrder());
         assertThat(questions.get("q3").optionOrder()).isEqualTo(questions.get("q3").originalOptionOrder());
         assertThat(questions.get("q1").originalNumber()).isEqualTo(1);
-        assertThat(questions.get("q3").assignedTopicQuotaIds()).isEmpty();
+        assertThat(questions.get("q3").assignedTopicQuotaIds()).containsExactly("topic-q3");
     }
 
     private PreviewQuestion question(String id, int number, boolean shuffle) throws Exception {
@@ -46,7 +46,7 @@ class PreviewPaperOrderingTest {
         var options = List.of("a", "b", "c", "d", "e", "f").stream()
                 .map(value -> new PreviewOption(value, value, false)).toList();
         return new PreviewQuestion(number, id, id, 1, "SINGLE_CHOICE", false, id, null, null,
-                null, BigDecimal.ONE, options, null, null, null, body, null, null, null, null);
+                null, BigDecimal.ONE, options, null, null, null, body, null, null, null, List.of("topic-" + id));
     }
 
     private static PreviewItem item(PreviewQuestion question) {
