@@ -34,7 +34,7 @@ final class ExamStructurePresentation {
                 .map(option -> withPositionRanges(option, new Counter(counter.next))).toList();
         return new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
                 part.questionCountOnPaper(), part.questionCountRequired(), part.participation(), part.maxPoints(),
-                sections, options, subjectPool, part.codeSource());
+                sections, options, subjectPool, part.codeSource(), part.displaySegments());
     }
 
     private static ExamPartOption withPositionRanges(ExamPartOption option, Counter counter) {
@@ -56,7 +56,8 @@ final class ExamStructurePresentation {
         List<QuestionBlock> blocks = section.blocks().stream()
                 .map(block -> withPositionRange(block, counter)).toList();
         return new ExamSection(section.id(), section.subjectCode(), section.questionCount(), section.knowledgeScope(),
-                section.answerQuotas(), section.matrix(), section.choiceGroup(), blocks, section.topicQuotas());
+                section.answerQuotas(), section.matrix(), section.choiceGroup(), blocks, section.topicQuotas(),
+                section.audioRequirement());
     }
 
     private static QuestionBlock withPositionRange(QuestionBlock block, Counter counter) {

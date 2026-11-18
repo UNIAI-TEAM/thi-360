@@ -49,10 +49,10 @@ final class PreviewSectionTarget {
     private static Selection project(ExamPart part, ExamSection section, int count, boolean trim) {
         ExamSection projected = new ExamSection(section.id(), section.subjectCode(), count,
                 section.knowledgeScope(), section.answerQuotas(), section.matrix(), section.choiceGroup(),
-                section.blocks(), section.topicQuotas());
+                section.blocks(), section.topicQuotas(), section.audioRequirement());
         ExamPart projectedPart = new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(),
                 count, count, count, new PartParticipation(ParticipationMode.ALL, null), part.maxPoints(),
-                List.of(projected), List.of());
+                List.of(projected), List.of(), List.of(), null, part.displaySegments());
         return new Selection(new ExamStructureDocument(List.of(projectedPart)), trim);
     }
 }
