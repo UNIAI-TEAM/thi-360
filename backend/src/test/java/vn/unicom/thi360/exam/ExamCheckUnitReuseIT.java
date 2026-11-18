@@ -290,6 +290,14 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
                 .filter(item -> "QD01".equals(item.path("code").asText())).findFirst().orElseThrow();
         assertThat(qd01.path("subjects").get(0).path("code").asText()).isEqualTo("LY");
         assertThat(detail.path("row").path("publishedPaths").toString()).contains("QD01");
+        jdbc.update("""
+                UPDATE catalog.combination_subject
+                SET subject_item_id='00000000-0000-7000-8200-000000000201'::uuid
+                WHERE combination_version_id=? AND position=0
+                """, version);
+        mockMvc.perform(post(base + "/preview").with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"target\":{\"kind\":\"PATH\",\"pathId\":\"codes:QD01\"},\"seed\":1,\"version\":1}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GENERATED"));
     }
 
     @Test
