@@ -3918,7 +3918,9 @@
         "points": "Total points",
         "questionsPrinted": "{count, plural, one {# question} other {# questions}} to answer ({printed, number} on the paper)",
         "sharedMinutes": "{count, number} min, shared",
-        "pointsOfScale": "{points} / {scale} points"
+        "pointsOfScale": "{points} / {scale} points",
+        "scale": "Scale",
+        "scaleValue": "{scale, number} points"
       },
       "unsaved": {
         "title": "Leave without saving?",

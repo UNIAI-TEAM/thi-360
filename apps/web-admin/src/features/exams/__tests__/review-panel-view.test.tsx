@@ -290,8 +290,8 @@ describe("Bài ôn: tải mẫu và phạm vi (R2-03, R2-05, R2-02)", () => {
   });
 });
 
-describe("Bài ôn: điểm mỗi câu theo thang của bài (F2, QA)", () => {
-  // Dạng thật sau POST /exams: nhóm duy nhất chưa có dạng câu, chưa có điểm; thang là mặc định của kỳ thi hoặc người dùng nhập.
+describe("Bài ôn: lưu không ghi điểm mỗi câu, đầu trang chỉ nêu thang (F2, QA)", () => {
+  // Dạng thật sau POST /exams: nhóm duy nhất chưa có dạng câu, chưa có điểm; thang là số người dùng nhập ở bước 1 (hoặc không có).
   const fresh = { name: undefined, questionType: null, questionCount: null, requiredPointsPerQuestion: undefined };
 
   async function chooseTypeAndSave(server: FakeServer, user: ReturnType<typeof userEvent.setup>) {
@@ -302,19 +302,23 @@ describe("Bài ôn: điểm mỗi câu theo thang của bài (F2, QA)", () => {
     return sentOf(server).parts[0]!.sections[0]!.blocks[0]!;
   }
 
-  it("thang mặc định 150, 10 câu: lưu gửi 15 điểm mỗi câu (không còn 10/150)", async () => {
-    const server = boot(fresh, 200, {}, { maxScore: 150 });
-    open();
+  it.each([
+    ["HSA, thang 150", { maxScore: 150 }],
+    ["HSA, thang người dùng nhập 100", { maxScore: 100 }],
+    ["HSA, không thang", { maxScore: undefined }],
+    ["V-ACT, không thang (LINEAR)", { kind: "VACT", timing: "SHARED", maxScore: undefined, referenceMax: undefined, practiceScoring: "LINEAR" }],
+    ["V-ACT, thang 300 (LINEAR)", { kind: "VACT", timing: "SHARED", maxScore: 300, referenceMax: 300, practiceScoring: "LINEAR" }],
+  ])("%s: chọn dạng câu rồi lưu không gửi requiredPointsPerQuestion", async (_label, exam) => {
+    const server = boot(fresh, 200, {}, exam as Parameters<typeof examDetailWire>[0]);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
-    await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
-    expect(await screen.findByText(/Mỗi câu 15 điểm \(thang 150 chia 10 câu\)/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-    expect(sentOf(server).parts[0]!.sections[0]!.blocks[0]!.requiredPointsPerQuestion).toBe(15);
+    open();
+    const block = await chooseTypeAndSave(server, user);
+    expect(block.questionType).toBe("SHORT_ANSWER");
+    expect(block.requiredPointsPerQuestion ?? null).toBeNull();
+    expect(screen.queryByText(/Mỗi câu .* điểm/)).not.toBeInTheDocument();
   });
 
-  it("người dùng nhập thang 100 ở bước 1 (HSA 10 câu): điểm mỗi câu là 10; đổi số lượng sang 8 thì 12,5", async () => {
+  it("đổi số lượng rồi lưu vẫn không ghi điểm mỗi câu", async () => {
     const server = boot(fresh, 200, {}, { maxScore: 100 });
     const user = userEvent.setup();
     open();
@@ -322,38 +326,34 @@ describe("Bài ôn: điểm mỗi câu theo thang của bài (F2, QA)", () => {
     await user.clear(count);
     await user.type(count, "8");
     const block = await chooseTypeAndSave(server, user);
-    expect(block).toMatchObject({ questionCount: 8, requiredPointsPerQuestion: 12.5 });
+    expect(block).toMatchObject({ questionCount: 8 });
+    expect(block.requiredPointsPerQuestion ?? null).toBeNull();
   });
 
-  it("thang chia không hết (150 ÷ 7): gửi đúng số thực, không làm tròn, để tổng khớp trong dung sai", async () => {
-    const server = boot(fresh, 200, {}, { maxScore: 150 });
-    const user = userEvent.setup();
+  it("đầu trang: có thang thì chỉ nêu thang, không so tổng điểm với thang (không 10 / 150)", async () => {
+    boot(fresh, 200, {}, { maxScore: 150 });
     open();
-    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
-    await user.clear(count);
-    await user.type(count, "7");
-    const block = await chooseTypeAndSave(server, user);
-    expect(block.requiredPointsPerQuestion).toBe(150 / 7);
-    expect(Math.abs(block.requiredPointsPerQuestion! * 7 - 150)).toBeLessThan(1e-6);
+    await screen.findByRole("combobox", { name: "Dạng câu" });
+    const summary = screen.getByLabelText("Tổng hợp cấu trúc");
+    expect(within(summary).getByText("Thang điểm")).toBeInTheDocument();
+    expect(within(summary).getByText("150 điểm")).toBeInTheDocument();
+    expect(within(summary).queryByText("Tổng điểm")).not.toBeInTheDocument();
+    expect(summary.textContent).not.toMatch(/\d\s*\/\s*150/);
   });
 
-  it("V-ACT chưa nhập thang: 10 điểm mỗi câu; V-ACT nhập thang 300 (LINEAR) với 10 câu: 30", async () => {
-    const noScale = boot(fresh, 200, {}, { kind: "VACT", timing: "SHARED", maxScore: undefined, referenceMax: undefined, practiceScoring: "LINEAR" });
-    const user = userEvent.setup();
-    const first = open();
-    expect((await chooseTypeAndSave(noScale, user)).requiredPointsPerQuestion).toBe(10);
-    first.unmount();
-
-    const scaled = boot(fresh, 200, {}, { kind: "VACT", timing: "SHARED", maxScore: 300, referenceMax: 300, practiceScoring: "LINEAR" });
+  it("đầu trang: không có thang thì không hiện mục điểm", async () => {
+    boot(fresh, 200, {}, { maxScore: undefined });
     open();
-    expect((await chooseTypeAndSave(scaled, user)).requiredPointsPerQuestion).toBe(30);
+    await screen.findByRole("combobox", { name: "Dạng câu" });
+    const summary = screen.getByLabelText("Tổng hợp cấu trúc");
+    expect(within(summary).queryByText("Tổng điểm")).not.toBeInTheDocument();
+    expect(summary.textContent).not.toMatch(/\/\s*\d/);
   });
 
   it("bài ôn chưa đụng tới (chưa chọn dạng câu) không tự thành thay đổi chưa lưu", async () => {
     boot(fresh, 200, {}, { maxScore: 150 });
     open();
     await screen.findByRole("combobox", { name: "Dạng câu" });
-    expect(screen.queryByText(/Mỗi câu/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled();
   });
 });

@@ -3918,7 +3918,9 @@
         "points": "Tổng điểm",
         "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
         "sharedMinutes": "{count, number} phút, chung cả bài",
-        "pointsOfScale": "{points} / {scale} điểm"
+        "pointsOfScale": "{points} / {scale} điểm",
+        "scale": "Thang điểm",
+        "scaleValue": "{scale, number} điểm"
       },
       "unsaved": {
         "title": "Rời trang khi chưa lưu?",

@@ -45,7 +45,9 @@ interface PendingInfoSave {
   parts: ReloadPartRow[];
 }
 
-function toFormValues(exam: ExamDetail): ExamInfoFormValues {
+/** Bài ôn nhận ra qua mẫu đã nạp (bài không ghi `buildMode`): thang của bài ôn được để trống. */
+function toFormValues(exam: ExamDetail, templates: readonly ExamTemplate[]): ExamInfoFormValues {
+  const review = templates.find((item) => item.code === exam.templateCode)?.buildMode === "REVIEW";
   return {
     name: exam.name,
     code: exam.code,
@@ -56,6 +58,7 @@ function toFormValues(exam: ExamDetail): ExamInfoFormValues {
     timing: exam.timing,
     sharedDuration: exam.timing === "SHARED" ? exam.durationMinutes : 0,
     maxScore: exam.maxScore,
+    buildMode: review ? "REVIEW" : undefined,
     yearsConfirmed: exam.yearsConfirmed,
     description: exam.description ?? "",
     instructions: exam.instructions ?? "",
@@ -149,7 +152,7 @@ function ExamGeneralForm({
   const form = useForm<ExamInfoFormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
-    defaultValues: toFormValues(exam),
+    defaultValues: toFormValues(exam, templates),
   });
   const { control, register, handleSubmit, setValue, getValues, setError, reset, formState } = form;
   const values = useWatch({ control }) as ExamInfoFormValues;
@@ -258,11 +261,12 @@ function ExamGeneralForm({
     const dirty = { shouldDirty: true } as const;
     setValue("kind", scope.kind, dirty);
     setValue("scope", scope.scope, dirty);
+    setValue("buildMode", scope.buildMode, dirty);
     setValue("partCode", scope.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
     setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
     const back = sameSelection(scope, examScope(exam));
     const defaults = back
-      ? toFormValues(exam)
+      ? toFormValues(exam, templates)
       : { ...scopeDefaults(latestTemplate(templates, scope), kindOptionFor(kinds, scope.kind), scope.scope), yearsConfirmed: false };
     setValue("timing", defaults.timing, dirty);
     setValue("sharedDuration", defaults.sharedDuration, dirty);
@@ -332,7 +336,7 @@ function ExamGeneralForm({
                 type="button"
                 variant="secondary"
                 disabled={!formState.isDirty || update.isPending}
-                onClick={() => reset(toFormValues(exam))}
+                onClick={() => reset(toFormValues(exam, templates))}
               >
                 {t("discard")}
               </Button>

@@ -522,18 +522,25 @@ function StructureEditor({
                   : t("summary.minutes", { count: roundForDisplay(totals.totalMinutes) })
               }
             />
-            <SummaryItem
-              label={t("summary.points")}
-              value={
-                exam.maxScore !== null
-                  ? t("summary.pointsOfScale", {
-                      points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
-                      scale: format.number(exam.maxScore, DISPLAY_NUMBER_FORMAT),
-                    })
-                  : format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT)
-              }
-              warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
-            />
+            {reviewMode ? (
+              // Bài ôn: tổng điểm theo ngân hàng câu nên không so với thang; chỉ nêu thang khi có.
+              exam.maxScore !== null && (
+                <SummaryItem label={t("summary.scale")} value={t("summary.scaleValue", { scale: exam.maxScore })} />
+              )
+            ) : (
+              <SummaryItem
+                label={t("summary.points")}
+                value={
+                  exam.maxScore !== null
+                    ? t("summary.pointsOfScale", {
+                        points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
+                        scale: format.number(exam.maxScore, DISPLAY_NUMBER_FORMAT),
+                      })
+                    : format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT)
+                }
+                warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
+              />
+            )}
           </dl>
           <Button asChild variant="secondary">
             <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>

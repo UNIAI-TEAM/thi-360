@@ -260,7 +260,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [liveMessage, setLiveMessage] = useState("");
 
-  const initialDefaults = scopeDefaults(initial.template, kindOptionFor(kinds, initial.selection.kind), initial.selection.scope);
+  const initialDefaults = scopeDefaults(initial.template, kindOptionFor(kinds, initial.selection.kind), initial.selection.scope, initial.selection.buildMode);
   // Chữ người dùng gõ ở hai ô số dưới bảng; giá trị số của biểu mẫu chỉ là bản đã phân tích để kiểm tra (R1-08).
   const [sharedText, setSharedText] = useState(() => formatShared(initialDefaults.sharedDuration));
   const [maxScoreText, setMaxScoreText] = useState(() => formatScore(initialDefaults.maxScore));
@@ -274,6 +274,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       scope: initial.selection.scope,
       partCode: initial.selection.partCode,
       subjectCode: initial.selection.subjectCode,
+      buildMode: initial.selection.buildMode,
       timing: initialDefaults.timing,
       sharedDuration: initialDefaults.sharedDuration,
       maxScore: initialDefaults.maxScore,
@@ -287,7 +288,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   const template = useMemo(() => scopeTemplate(templates, kinds, selection), [templates, kinds, selection]);
   const defaults = useMemo(
-    () => scopeDefaults(template, kindOptionFor(kinds, selection.kind), selection.scope),
+    () => scopeDefaults(template, kindOptionFor(kinds, selection.kind), selection.scope, selection.buildMode),
     [template, kinds, selection],
   );
   const showPoints = defaults.pointsByPart;
@@ -388,7 +389,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   /** Nạp lại lựa chọn mới; `markDirty = false` khi nạp vì mẫu vừa tải về (người dùng chưa sửa gì). */
   const applyScope = (next: ScopeSelection, markDirty = true) => {
     const loaded = loadScope(next);
-    const nextDefaults = scopeDefaults(loaded.template, kindOptionFor(kinds, next.kind), next.scope);
+    const nextDefaults = scopeDefaults(loaded.template, kindOptionFor(kinds, next.kind), next.scope, next.buildMode);
     const dirty = markDirty ? ({ shouldDirty: true } as const) : {};
     setSelection(next);
     setRows(loaded.rows);
@@ -396,6 +397,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     setMaxScoreText(formatScore(nextDefaults.maxScore));
     setValue("kind", next.kind, dirty);
     setValue("scope", next.scope, dirty);
+    setValue("buildMode", next.buildMode, dirty);
     setValue("partCode", next.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
     setValue("subjectCode", next.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
     setValue("timing", nextDefaults.timing, dirty);

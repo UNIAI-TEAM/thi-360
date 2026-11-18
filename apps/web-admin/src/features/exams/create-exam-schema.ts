@@ -264,7 +264,10 @@ export function resolveScope(
   return { kind, scope, partCode, subjectCode, buildMode };
 }
 
-/** Thời lượng và thang điểm nạp theo mẫu; không có mẫu thì theo kỳ thi. */
+/**
+ * Thời lượng và thang điểm nạp theo mẫu; không có mẫu thì theo kỳ thi. Bài ôn (`REVIEW`) không có thang mặc định: thang
+ * chỉ là số người dùng nhập ở bước 1, không lấy thang tối đa của kỳ thi (V-ACT cũng vậy), để bài ôn tính điểm theo ngân hàng.
+ */
 export interface ScopeDefaults {
   timing: ExamTiming;
   /** Thời lượng chung (phút) khi `timing = SHARED`; 0 khi mẫu chưa ghi. */
@@ -278,13 +281,21 @@ export function scopeDefaults(
   template: ExamTemplate | undefined,
   kind: ExamKindOption | undefined,
   scope: ApiExamScope,
+  buildMode?: ExamBuildMode,
 ): ScopeDefaults {
   const timing = template?.timing ?? kind?.timing ?? "PER_PART";
+  const review = scope === "SUBJECT" && buildMode === "REVIEW";
   return {
     timing,
     sharedDuration: timing === "SHARED" ? (template?.durationMinutes ?? 0) : 0,
     // Theo phần không có mẫu: thang của cả kỳ thi không dùng được cho một phần, người tạo nhập.
-    maxScore: template ? (template.maxScore ?? kind?.maxScore ?? null) : scope === "PART" ? null : (kind?.maxScore ?? null),
+    maxScore: review
+      ? (template?.maxScore ?? null)
+      : template
+        ? (template.maxScore ?? kind?.maxScore ?? null)
+        : scope === "PART"
+          ? null
+          : (kind?.maxScore ?? null),
     pointsByPart: (template?.parts ?? []).some((part) => part.points !== undefined && part.points !== null),
   };
 }
@@ -310,8 +321,10 @@ export interface ExamInfoFormValues {
   timing: ExamTiming;
   /** Thời lượng chung (phút), chỉ dùng khi `timing = SHARED`. */
   sharedDuration: number;
-  /** Thang điểm; `null` khi để trống (kỳ thi không có thang cố định như V-ACT). */
+  /** Thang điểm; `null` khi để trống (kỳ thi không có thang cố định như V-ACT, hoặc bài ôn chưa nhập thang). */
   maxScore: number | null;
+  /** Kiểu xây bài Theo môn: bài ôn (`REVIEW`) được để trống thang. Bỏ trống: `STANDARD`. */
+  buildMode?: ExamBuildMode;
   /** Năm cấu trúc khác năm ma trận: chuyên gia đã xác nhận chỉ tiêu. */
   yearsConfirmed: boolean;
   description: string;
@@ -354,16 +367,17 @@ const infoShape = (messages: ExamInfoSchemaMessages, takenCodes: TakenCodes) => 
   timing: z.enum(["PER_PART", "SHARED"]),
   sharedDuration: z.number(),
   maxScore: z.number().nullable(),
+  buildMode: z.enum(["STANDARD", "REVIEW"]).optional(),
   yearsConfirmed: z.boolean(),
   description: z.string().max(EXAM_DESCRIPTION_MAX, messages.descriptionMax),
   instructions: z.string(),
 });
 
-type InfoValues = Pick<ExamInfoFormValues, "kind" | "scope" | "partCode" | "subjectCode" | "timing" | "sharedDuration" | "maxScore">;
+type InfoValues = Pick<ExamInfoFormValues, "kind" | "scope" | "partCode" | "subjectCode" | "timing" | "sharedDuration" | "maxScore" | "buildMode">;
 
 /**
  * Quy tắc chung của Thông tin chung: Theo phần chọn phần, Theo môn chọn môn; bài dùng thời lượng chung có thời lượng
- * nguyên dương; thang điểm lớn hơn 0, chỉ để trống được khi kỳ thi không có thang cố định (V-ACT).
+ * nguyên dương; thang điểm lớn hơn 0, chỉ để trống được khi kỳ thi không có thang cố định (V-ACT) hoặc bài là bài ôn.
  */
 function refineInfo(
   values: InfoValues,
@@ -382,7 +396,8 @@ function refineInfo(
     context.addIssue({ code: "custom", path: ["sharedDuration"], message: messages.sharedDurationPositive });
   }
   if (values.maxScore === null) {
-    if (kind && kind.maxScore !== null) {
+    const review = values.scope === "SUBJECT" && values.buildMode === "REVIEW";
+    if (!review && kind && kind.maxScore !== null) {
       context.addIssue({ code: "custom", path: ["maxScore"], message: messages.maxScoreRequired });
     }
   } else if (!(values.maxScore > 0)) {
