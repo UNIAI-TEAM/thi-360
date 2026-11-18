@@ -371,15 +371,14 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                     ? Set.of("MANUAL_GRADING_REQUIRED") : Set.of();
             if ("TEST-VACT-01".equals(code)) {
                 // VACT_FULL distribution tables are all REFERENCE (spec 2B 5.1): the ANH section's
-                // block matrices ("Điền khuyết", "Phát hiện lỗi sai", "Diễn đạt tương đương",
-                // "Đọc hiểu – bài đọc 1/2") and the section matrices are advisory, so the solver's
-                // witness may or may not hit them. Accept any WARNING DISTRIBUTION_DEVIATION.
-                softly.assertThat(codes(result)).as(code).containsOnly("DISTRIBUTION_DEVIATION");
+                // block matrices and the section matrices are advisory, so the solver's witness may or may
+                // not hit them. Every emitted issue must be a WARNING DISTRIBUTION_DEVIATION; none is allowed.
+                softly.assertThat(codes(result)).as(code).isSubsetOf("DISTRIBUTION_DEVIATION");
                 softly.assertThat(result.path("groups").findValues("issues").stream()
                         .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
-                        .filter(issue -> "DISTRIBUTION_DEVIATION".equals(issue.path("code").asText()))
-                        .map(issue -> issue.path("severity").asText()))
-                        .as(code).containsOnly("WARNING");
+                        .map(issue -> issue.path("code").asText() + "/" + issue.path("severity").asText())
+                        .collect(Collectors.toSet()))
+                        .as(code).isSubsetOf("DISTRIBUTION_DEVIATION/WARNING");
             } else {
                 softly.assertThat(codes(result)).as(code).isEqualTo(expected);
             }
