@@ -152,7 +152,7 @@ function PublishForm({
 }) {
   const t = useTranslations("exams.publish");
   const format = useFormatter();
-  const pathLabel = usePathLabel();
+  const pathLabel = usePathLabel(exam.id);
   const issueText = useIssueText();
   const publish = usePublishExam(exam.id);
   const fieldsetId = useId();

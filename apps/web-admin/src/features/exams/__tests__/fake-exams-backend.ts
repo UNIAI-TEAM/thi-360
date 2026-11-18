@@ -919,9 +919,18 @@ export class ExamsBackend {
 
   private handlePreview(request: Recorded): Reply {
     const examId = request.url.pathname.split("/").at(-2)!;
-    const body = (request.body ?? {}) as { pathId?: string; subjectCodes?: string[] };
-    const pathId = body.pathId ?? "";
-    const withSubjects = body.subjectCodes?.length ? `${pathId}|${body.subjectCodes.join(",")}` : undefined;
+    const body = (request.body ?? {}) as {
+      target?: { kind?: string; pathId?: string; sectionId?: string; sectionQuestionCount?: number; subjectCodes?: string[] };
+    };
+    const target = body.target ?? {};
+    // Khóa xếp sẵn: đường (`pathId`, hoặc `pathId|MÔN1,MÔN2,MÔN3`), môn (`section:<id>[:<số câu>]`), cả bài (`default`).
+    const pathId =
+      target.kind === "SECTION"
+        ? `section:${target.sectionId}${target.sectionQuestionCount !== undefined ? `:${target.sectionQuestionCount}` : ""}`
+        : target.kind === "EXAM"
+          ? "default"
+          : (target.pathId ?? "");
+    const withSubjects = target.subjectCodes?.length ? `${pathId}|${target.subjectCodes.join(",")}` : undefined;
     const reply = (withSubjects && this.previews.get(`${examId}/${withSubjects}`)) || this.previews.get(`${examId}/${pathId}`);
     return reply ?? err(404, "PREVIEW_NOT_SEEDED");
   }

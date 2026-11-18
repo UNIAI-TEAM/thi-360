@@ -43,11 +43,12 @@ export function useExamTemplates(deps: ExamsApiDeps = defaultExamsApiDeps) {
 }
 
 /** Bản làm việc của cấu trúc; không tự tải lại khi quay lại cửa sổ để không đè bản nháp đang sửa. */
-export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps, enabled = true) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.structure(id),
     queryFn: () => deps.getExamStructure(id),
     refetchOnWindowFocus: false,
+    enabled,
   });
 }
 
