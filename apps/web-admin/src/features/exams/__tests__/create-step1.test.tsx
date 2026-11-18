@@ -519,12 +519,14 @@ const pickSubject = async (user: UserEvent, label: string) => {
 };
 
 describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
-  it("V-ACT Theo phần: bốn phần có tên, không hiện mã thô", async () => {
+  it("V-ACT Theo phần: bốn phần có tên, không hiện mã thô; cột tỷ lệ là \"Tỷ lệ trong bài\"", async () => {
     const user = await renderWithTemplates(VACT_TEMPLATES);
     await pickKind(user, "V-ACT");
     await user.click(chooseScope(/^Theo phần/));
     expect(await partLabels()).toEqual(["Sử dụng ngôn ngữ", "Tư duy khoa học", "Logic và phân tích số liệu", "Suy luận khoa học"]);
     for (const code of ["LANGUAGE", "THINKING", "LOGIC", "REASONING"]) expect(screen.queryByText(code)).toBeNull();
+    expect(await screen.findByRole("columnheader", { name: "Tỷ lệ trong bài" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Tỷ lệ toàn bài" })).toBeNull();
   }, 20_000);
 
   it("V-ACT Theo môn: Tiếng Việt, Tiếng Anh, Toán học", async () => {
@@ -583,13 +585,14 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
     expect(backend.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ kind: "THPTQG", scope: "SUBJECT", subjectCode: "LITERATURE" });
   }, 20_000);
 
-  it("THPTQG Theo phần: chọn môn rồi chọn phần; Toán có 3 phần, Lịch sử 2 phần; môn khác không có thông báo Ngữ văn", async () => {
+  it("THPTQG Theo phần: chọn môn rồi chọn phần; Toán có 3 phần, Lịch sử 2 phần; không có cột tỷ lệ hay thông báo Ngữ văn", async () => {
     const user = await renderWithTemplates(THPTQG_TEMPLATES);
     await pickKind(user, "THPTQG");
     await user.click(chooseScope(/^Theo phần/));
     await pickSubject(user, "Toán");
     expect(await partLabels()).toHaveLength(3);
     expect(screen.queryByText(/tạm bỏ qua trong V1/)).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: /Tỷ lệ/ })).toBeNull();
     await pickSubject(user, "Lịch sử");
     await waitFor(async () => expect(await partLabels()).toHaveLength(2));
   }, 20_000);

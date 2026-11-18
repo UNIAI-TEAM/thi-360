@@ -21,8 +21,10 @@ export interface ExamOverviewTableProps {
   timing: ExamTiming;
   /** Cột Điểm chỉ hiện khi mẫu chia điểm theo phần hoặc người dùng đã nhập điểm. */
   showPoints: boolean;
-  /** Cột Tỷ lệ toàn bài (R-123): mẫu `fixedCounts` hoặc mẫu bài riêng có tiểu mục (V-ACT). */
+  /** Cột tỷ lệ của dòng so với cả bài (R-123): mẫu `fixedCounts` hoặc mẫu bài riêng có tiểu mục (V-ACT). */
   showPercents?: boolean;
+  /** Đầu cột `showPercents`; mặc định "Tỷ lệ toàn bài", bài riêng V-ACT là "Tỷ lệ trong bài" (TaoBaiThiVact2B). */
+  percentExamHeader?: string;
   /** Cột Tỷ lệ trong phần khi phần có tiểu mục (V-ACT toàn bài: 50/50/100/40/60%). */
   showPartPercent?: boolean;
   onCellChange: (key: string, field: "questionCount" | "durationMinutes" | "maxPoints", text: string) => void;
@@ -126,6 +128,7 @@ export function ExamOverviewTable({
   timing,
   showPoints,
   showPercents = false,
+  percentExamHeader,
   showPartPercent = false,
   onCellChange,
   issues,
@@ -171,7 +174,7 @@ export function ExamOverviewTable({
               <th className="px-3 py-2 text-start font-medium text-text-secondary">{t("col.part")}</th>
               <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.count")}</th>
               {showPartPercent && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.percentPart")}</th>}
-              {showPercents && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.percentExam")}</th>}
+              {showPercents && <th className="px-3 py-2 text-end font-medium text-text-secondary">{percentExamHeader ?? t("col.percentExam")}</th>}
               {showDuration && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.duration")}</th>}
               {showPoints && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.points")}</th>}
             </tr>

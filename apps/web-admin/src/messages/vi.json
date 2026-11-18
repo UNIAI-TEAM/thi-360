@@ -5190,7 +5190,8 @@
           "duration": "Thời lượng (phút)",
           "points": "Điểm",
           "percentPart": "Tỷ lệ trong phần",
-          "percentExam": "Tỷ lệ toàn bài"
+          "percentExam": "Tỷ lệ toàn bài",
+          "percentExamCustom": "Tỷ lệ trong bài"
         },
         "cell": {
           "questionCount": "Số câu của {name}",

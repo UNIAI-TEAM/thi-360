@@ -5190,7 +5190,8 @@
           "duration": "Duration (min)",
           "points": "Points",
           "percentPart": "Share of part",
-          "percentExam": "Share of exam"
+          "percentExam": "Share of exam",
+          "percentExamCustom": "Share of the exam"
         },
         "cell": {
           "questionCount": "Questions of {name}",

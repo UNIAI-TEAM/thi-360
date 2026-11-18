@@ -285,13 +285,13 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     [template, kinds, selection],
   );
   const showPoints = defaults.pointsByPart;
-  // H27: mẫu khóa số câu (V-ACT toàn bài) — ô số câu chỉ đọc, cột tỷ lệ hiện; bài riêng có tiểu mục hiện cột tỷ
-  // lệ toàn bài; cột "trong phần" chỉ khi mẫu nhiều phần (R-118, R-123).
+  // H27: mẫu khóa số câu (V-ACT toàn bài) — ô số câu chỉ đọc, cột tỷ lệ hiện. Các cột tỷ lệ chỉ của V-ACT: mẫu
+  // `fixedCounts` có "Tỷ lệ trong phần" + "Tỷ lệ toàn bài", bài riêng có tiểu mục có "Tỷ lệ trong bài" (R-118, R-123,
+  // TaoBaiThiVact2B); kỳ thi khác không có cột tỷ lệ.
   const lockedCounts = template?.fixedCounts === true;
-  const showPartPercent = lockedCounts && (template?.parts.length ?? 0) > 1;
-  const showPercents =
-    showPartPercent ||
-    (selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
+  const vact = selection.kind === "VACT";
+  const showPartPercent = lockedCounts && vact && (template?.parts.length ?? 0) > 1;
+  const showPercents = showPartPercent || (vact && selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
   /** Dòng tiểu mục V-ACT: mục cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn. */
   const sectionLabel = useCallback(
     (row: OverviewRow) => partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode),
@@ -666,6 +666,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 timing={values.timing}
                 showPoints={showPoints}
                 showPercents={showPercents}
+                percentExamHeader={selection.scope === "PART" ? tOverview("col.percentExamCustom") : undefined}
                 showPartPercent={showPartPercent}
                 onCellChange={onCellChange}
                 issues={cellIssues}
