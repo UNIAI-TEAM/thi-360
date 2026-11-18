@@ -54,6 +54,19 @@ final class ExamVersionSnapshot {
         return result;
     }
 
+    ObjectNode selectedCombinations(ObjectNode all, Set<String> selectedPaths) {
+        Set<String> selected = new LinkedHashSet<>();
+        for (String path : selectedPaths) selected.addAll(List.of(path.split("\\+")));
+        ObjectNode result = mapper.createObjectNode();
+        ArrayNode combinations = result.putArray("combinations");
+        for (JsonNode item : all.path("combinations")) {
+            if (selected.contains(item.path("partId").asText() + ":" + item.path("code").asText())) {
+                combinations.add(item);
+            }
+        }
+        return result;
+    }
+
     ObjectNode parts(JsonNode document, JsonNode checkResult, Set<String> selectedPaths,
                      String timing, Integer durationMinutes) {
         ObjectNode snapshot = document.deepCopy();

@@ -105,21 +105,24 @@ public class ExamPublishService {
             if (stale != null && "SOURCE_CHANGED".equals(stale.invalidReason())) throw checkRequired("SOURCE_CHANGED");
             throw e;
         }
+        String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
+        var snapshot = new ExamVersionSnapshot(mapper);
+        JsonNode document = json(structure);
+        long materializationRevision = catalog.revision();
+        var allCombinations = snapshot.combinations(document, allPaths, exam.kindId(), catalog);
+        if (catalog.revision() != materializationRevision) throw checkRequired("CONFIG_CHANGED");
         var assessment = validity.assess(List.of(examId)).get(examId);
         if (assessment == null || assessment.invalidReason() != null) {
             throw checkRequired(assessment == null ? "NO_CHECK" : assessment.invalidReason());
         }
+        if (catalog.revision() != materializationRevision) throw checkRequired("CONFIG_CHANGED");
         UUID actor = currentUser.requireCurrentUser().id();
         int version = jdbc.queryForObject("SELECT COALESCE(MAX(version_no), 0) + 1 FROM exam.exam_version WHERE exam_id = ?", Integer.class, examId);
         List<ExamPublishResponse.KeptPath> kept = new ArrayList<>();
         var versions = jdbc.query("SELECT version_no, serving_path_ids FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING' ORDER BY version_no",
                 (rs, n) -> new VersionPaths(rs.getInt(1), List.of((String[]) rs.getArray(2).getArray())), examId);
-        String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
-        var snapshot = new ExamVersionSnapshot(mapper);
-        JsonNode document = json(structure);
         String quotas = snapshot.resolvedQuotas(document, selected).toString();
-        UUID kindId = exam.kindId();
-        var extra = snapshot.combinations(document, selected, kindId, catalog);
+        var extra = snapshot.selectedCombinations(allCombinations, selected);
         extra.set("omittedGroups", snapshot.omittedGroups(document));
         extra.set("examQuotas", json(jdbc.queryForObject("SELECT exam_quotas::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId)));
         String extraConfig = extra.toString();
@@ -177,7 +180,7 @@ public class ExamPublishService {
         if (inserted != 1) throw new IllegalStateException("Exam structure missing");
         jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id) "
                 + "SELECT gen_random_uuid(), exam_id, ?, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL", version, examId);
-        String allCombinations = snapshot.combinations(document, allPaths, kindId, catalog).toString();
+        String allCombinationsJson = allCombinations.toString();
         Set<String> published = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT DISTINCT unnest(old.serving_path_ids) FROM exam.exam_version old "
                 + "JOIN exam.exam_version current ON current.exam_id = old.exam_id AND current.version_no = ? "
@@ -191,7 +194,7 @@ public class ExamPublishService {
                 + "WHERE EXISTS (SELECT 1 FROM unnest(old.serving_path_ids) path "
                 + "WHERE ((c->>'partId') || ':' || (c->>'code')) = ANY(string_to_array(path, '+'))) "
                 + "AND NOT (?::jsonb->'combinations' @> jsonb_build_array(c)))",
-                String.class, version, examId, allCombinations));
+                String.class, version, examId, allCombinationsJson));
         jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED', serving_version = ?, has_unpublished_changes = ?, updated_at = ?, updated_by = ?, revision = revision + 1 WHERE id = ?",
                 version, !published.containsAll(allPaths), java.sql.Timestamp.from(now), actor, examId);
         audit.record(AuditEvent.success("EXAM", "EXAM.PUBLISH", "exam", examId.toString(), exam.name(),
