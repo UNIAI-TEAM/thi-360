@@ -89,8 +89,9 @@ const SP2E_LIT_2026 = template("SP2E_LITERATURE_2026", { kindCode: "SP2E", subje
 const SP2E_LIT_OLD = template("SP2E_LITERATURE_2025", { kindCode: "SP2E", subjectCode: "LITERATURE", structureYear: 2025, isDefault: true }, [
   part(1, "Văn đề minh họa cũ", 20, 80, [section("LITERATURE", 20)]),
 ]);
-const SPT_REVIEW = template("SPT_REVIEW", { kindCode: "SPT", subjectCode: "MATH", buildMode: "REVIEW", structureYear: 2025, timing: "PER_PART", maxScore: 10 }, [
-  part(1, "Bài ôn", 10, 15, [section("MATH", 10)]),
+// Hình thật của mẫu bài ôn: không ghi môn (`subjectCode` null), dùng chung cho mọi môn; phần có id.
+const SPT_REVIEW = template("SPT_REVIEW", { kindCode: "SPT", subjectCode: null, buildMode: "REVIEW", structureYear: 2025, timing: "PER_PART", maxScore: 10 }, [
+  part(1, "Bài ôn", 10, 15, [section("MATH", 10)], { id: "SPT_REVIEW_PART" }),
 ]);
 
 const ALL_TEMPLATES = [HSA_FULL, BCA_FULL, SPT_MATH, SPT_REVIEW, SP2E_GEO_SUBJECT, SP2E_LIT_2026, SP2E_LIT_OLD];
@@ -198,17 +199,27 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
     expect(await screen.findByRole("radio", { name: /Dùng cấu trúc môn SPT/ })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: /Tự thiết lập bài ôn/ }));
     expect(await screen.findByText("Bài ôn")).toBeInTheDocument();
+    // Mẫu bài ôn khớp môn bất kỳ: không báo "không có mẫu", dòng phần mang partId của mẫu.
+    expect(screen.queryByText(/Không có mẫu/)).toBeNull();
+    const count = screen.getByRole("textbox", { name: /^Số câu của/ });
+    await user.clear(count);
+    await user.type(count, "8");
     await user.type(name(), "SPT ôn Toán");
     await user.click(submit());
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());
-    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ kind: "SPT", scope: "SUBJECT", subjectCode: "MATH", buildMode: "REVIEW" });
+    expect(server.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({
+      kind: "SPT",
+      scope: "SUBJECT",
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      overview: [{ partId: "SPT_REVIEW_PART", questionCount: 8 }],
+    });
   }, 20_000);
 
   it("ô Môn chỉ chào môn có mẫu; Theo phần của SPT chỉ chào môn mà mẫu Theo môn STANDARD có phần (không tính bài ôn)", async () => {
-    const SPT_PHYSICS_REVIEW = template("SPT_PHYSICS_REVIEW", { kindCode: "SPT", subjectCode: "PHYSICS", buildMode: "REVIEW", structureYear: 2025, maxScore: 10 }, [
-      part(1, "Bài ôn", 10, 15, [section("PHYSICS", 10)]),
-    ]);
-    createServer([...ALL_TEMPLATES, SPT_PHYSICS_REVIEW]).install();
+    // Vật lí có mẫu Theo môn nhưng chưa có phần: chào ở Theo môn, không chào ở Theo phần. Mẫu bài ôn (không ghi môn) không tính.
+    const SPT_PHYSICS = template("SPT_PHYSICS_V1", { kindCode: "SPT", subjectCode: "PHYSICS", structureYear: 2025, maxScore: 10 }, []);
+    createServer([...ALL_TEMPLATES, SPT_PHYSICS]).install();
     const user = await renderPage();
     await pickKind(user, "SPT");
     const subjects = async () => {

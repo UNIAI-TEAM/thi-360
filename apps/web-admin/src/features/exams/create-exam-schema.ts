@@ -87,7 +87,8 @@ export function templateFor(templates: readonly ExamTemplate[], kind: ExamKind, 
 /**
  * Các mẫu (phiên bản năm) khớp kỳ thi, phạm vi, phần hoặc môn và `buildMode` của bài (2B K8). Theo phần của kỳ thi
  * `templateBy = SUBJECT` (SPT, SP2E) còn khớp môn đã chọn; `buildMode` chỉ lọc khi phạm vi Theo môn. Mẫu không ghi
- * `buildMode` coi như `STANDARD`. Năm cấu trúc mới nhất trước.
+ * `buildMode` coi như `STANDARD`. Bài ôn (`REVIEW`) khớp mẫu `<KỲ>_REVIEW` của kỳ thi: mẫu đó không ghi môn
+ * (`subjectCode` null) và dùng chung cho mọi môn, nên môn chỉ lọc mẫu `STANDARD`. Năm cấu trúc mới nhất trước.
  */
 export function matchingTemplates(templates: readonly ExamTemplate[], selection: ScopeSelection): ExamTemplate[] {
   const buildMode = selection.scope === "SUBJECT" ? (selection.buildMode ?? "STANDARD") : null;
@@ -97,7 +98,7 @@ export function matchingTemplates(templates: readonly ExamTemplate[], selection:
         template.kind === selection.kind &&
         template.scope === selection.scope &&
         (selection.scope !== "PART" || template.partCode === selection.partCode) &&
-        (selection.scope !== "SUBJECT" || template.subjectCode === selection.subjectCode) &&
+        (selection.scope !== "SUBJECT" || buildMode === "REVIEW" || template.subjectCode === selection.subjectCode) &&
         (selection.scope !== "PART" || !selection.subjectCode || template.subjectCode === selection.subjectCode) &&
         (buildMode === null || (template.buildMode ?? "STANDARD") === buildMode),
     )
