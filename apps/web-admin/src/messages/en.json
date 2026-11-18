@@ -4347,6 +4347,7 @@
           "othersCaption": "Other types",
           "pick": "{n}/4",
           "picksLegend": "Correct statements in the question",
+          "picksLegendMatching": "Correct pairs",
           "rowPairs": "{n}/4 pairs",
           "rowStatements": "{n}/4 statements",
           "shortExample": "Follows the question's answer format and rounding requirement",

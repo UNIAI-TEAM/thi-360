@@ -79,6 +79,18 @@ describe("ví dụ chấm V-SAT (R-140)", () => {
     expect(screen.queryByText(/Ở mức này|Cùng số ý đúng/)).toBeNull();
   });
 
+  it("N4 · chỉ có Ghép đôi: bộ chọn ghi Số cặp đúng; có Đúng/Sai thì giữ Số ý đúng trong câu; tiếng Anh Correct pairs", () => {
+    const pairs = renderWithProviders(<ScoringExamples kind="VSAT" part={part([block({ questionType: "MATCHING" })])} />);
+    expect(screen.getByRole("group", { name: "Số cặp đúng" })).toBeInTheDocument();
+    expect(screen.queryByText("Số ý đúng trong câu")).toBeNull();
+    pairs.unmount();
+    const both = renderWithProviders(<ScoringExamples kind="VSAT" part={part([block({ questionType: "TRUE_FALSE" }), block({ id: "m", questionType: "MATCHING" })])} />);
+    expect(screen.getByRole("group", { name: "Số ý đúng trong câu" })).toBeInTheDocument();
+    both.unmount();
+    renderWithProviders(<ScoringExamples kind="VSAT" part={part([block({ questionType: "MATCHING" })])} />, { locale: "en", messages: en });
+    expect(screen.getByRole("group", { name: "Correct pairs" })).toBeInTheDocument();
+  });
+
   it("dạng còn lại theo dạng có trong phần, kể cả câu con của chùm", () => {
     renderWithProviders(
       <ScoringExamples

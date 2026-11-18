@@ -142,7 +142,7 @@ function VsatExamples({ types }: { types: Map<QuestionType, number | null> }) {
             )}
           </div>
           <fieldset className="m-0 border-0 p-0">
-            <legend className="mb-2 text-field-label font-medium text-text-secondary">{t("picksLegend")}</legend>
+            <legend className="mb-2 text-field-label font-medium text-text-secondary">{t(hasTrueFalse ? "picksLegend" : "picksLegendMatching")}</legend>
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: STATEMENTS + 1 }, (_, value) => (
                 <label

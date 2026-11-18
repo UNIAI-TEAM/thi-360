@@ -4347,6 +4347,7 @@
           "othersCaption": "Các dạng còn lại",
           "pick": "{n}/4",
           "picksLegend": "Số ý đúng trong câu",
+          "picksLegendMatching": "Số cặp đúng",
           "rowPairs": "{n}/4 cặp",
           "rowStatements": "{n}/4 ý",
           "shortExample": "Theo định dạng và yêu cầu làm tròn của câu",
