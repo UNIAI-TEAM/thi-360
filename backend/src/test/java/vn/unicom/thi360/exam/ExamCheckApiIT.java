@@ -65,7 +65,8 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
                 .andReturn().getResponse();
         var latestJson = mapper.readTree(latest.getContentAsString());
         assertThat(latestJson.has("sectionStates")).isTrue();
-        assertThat(latestJson.path("sectionStates").isNull()).isTrue();
+        assertThat(latestJson.path("sectionStates").isArray()).isTrue();
+        assertThat(latestJson.path("sectionStates")).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_check_run WHERE exam_id=?", Integer.class, examId)).isEqualTo(1);
         entityManager.flush();
         String audit = jdbc.queryForObject("SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "

@@ -42,11 +42,11 @@ class ExamContractStubIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void scopedCheckDoesNotSilentlyRunWholeExam() throws Exception {
+    void scopedCheckReturnsNotFoundForMissingExam() throws Exception {
         mockMvc.perform(post("/api/v1/admin/exams/" + ID + "/check")
                         .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"scope\":\"SECTION\",\"sectionId\":\"section\"}"))
-                .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("NOT_IMPLEMENTED"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -71,7 +71,7 @@ class ExamContractStubIT extends AbstractIntegrationTest {
 
     @Test
     @Transactional
-    void legacyPreviewStillRunsAndExposesPendingFieldsAsNull() throws Exception {
+    void legacyPreviewStillRunsAndStructureReportsUncheckedSection() throws Exception {
         UUID examId = UUID.randomUUID();
         UUID seededQuestion = jdbc.queryForObject("select id from questionbank.question where code = ?",
                 UUID.class, "SEED-MATH-G10-NB-SC-001");
@@ -106,6 +106,8 @@ class ExamContractStubIT extends AbstractIntegrationTest {
         var structure = mockMvc.perform(get("/api/v1/admin/exams/" + examId + "/structure")
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse();
-        assertThat(mapper.readTree(structure.getContentAsString()).path("sectionStates").isNull()).isTrue();
+        var states = mapper.readTree(structure.getContentAsString()).path("sectionStates");
+        assertThat(states.get(0).path("sectionId").asText()).isEqualTo("section");
+        assertThat(states.get(0).path("state").asText()).isEqualTo("NEEDS_CHECK");
     }
 }

@@ -50,11 +50,18 @@ class ExamCheckUnitWitnessTests {
         var exam = mock(Exam.class);
         when(exam.getName()).thenReturn("Test");
         when(exam.getCode()).thenReturn("TEST");
+        when(exam.getId()).thenReturn(UUID.randomUUID());
         var limits = SolverLimits.defaults();
         var clock = Clock.systemUTC();
-        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source);
-        var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, null),
-                clock.instant().plusSeconds(30), Duration.ofSeconds(30)).result();
+        var unitStore = mock(ExamCheckUnitStore.class);
+        when(unitStore.load(exam.getId())).thenReturn(java.util.Map.of());
+        var engine = new ExamCheckUnitEngine(unitStore,
+                new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock);
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, engine);
+        var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, 0, "hash", mapper.createObjectNode());
+        var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input),
+                clock.instant().plusSeconds(30), Duration.ofSeconds(30), ExamCheckScope.from(null, null, null)).result();
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
         assertThat(result.path("groups").findValuesAsText("code")).contains("QUESTION_NOT_PLAYABLE");
     }

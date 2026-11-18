@@ -44,17 +44,18 @@ public class ExamCheckOrchestrator {
         this.mapper = mapper;
     }
 
-    public ObjectNode check(UUID examId, ExamCheckCompletion.Actor actor, String traceId) {
+    public ObjectNode check(UUID examId, ExamCheckScope scope, ExamCheckCompletion.Actor actor, String traceId) {
         Instant started = clock.instant();
-        return execute(examId, null, actor, traceId, started, limits.timeout()).result();
+        return execute(examId, null, scope, actor, traceId, started, limits.timeout()).result();
     }
 
-    public UUID startDeep(UUID examId, ExamCheckCompletion.Actor actor, String traceId) {
+    public UUID startDeep(UUID examId, ExamCheckScope scope, ExamCheckCompletion.Actor actor, String traceId) {
+        if (scope.kind() != ExamCheckScope.Kind.EXAM) scope.sections(snapshots.read(examId).structure());
         Instant started = clock.instant();
         ExamCheckJobStore.Start start = commands.start(examId, actor, traceId);
         if (start.created()) {
             try {
-                executor.execute(() -> runDeep(examId, start.runId(), actor, traceId, started));
+                executor.execute(() -> runDeep(examId, start.runId(), scope, actor, traceId, started));
             } catch (RuntimeException e) {
                 commands.fail(examId, start.runId(), "CHECK_RUN_FAILED", actor, traceId);
                 throw e;
@@ -75,7 +76,7 @@ public class ExamCheckOrchestrator {
         }
     }
 
-    private void runDeep(UUID examId, UUID runId, ExamCheckCompletion.Actor actor, String traceId, Instant started) {
+    private void runDeep(UUID examId, UUID runId, ExamCheckScope scope, ExamCheckCompletion.Actor actor, String traceId, Instant started) {
         String previousTrace = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         String previousUser = MDC.get(TraceIdFilter.MDC_USER_ID);
         try {
@@ -84,7 +85,7 @@ public class ExamCheckOrchestrator {
             if (actor.id() == null) MDC.remove(TraceIdFilter.MDC_USER_ID);
             else MDC.put(TraceIdFilter.MDC_USER_ID, actor.id().toString());
             if (!"RUNNING".equals(commands.get(examId, runId, actor, traceId).state())) return;
-            execute(examId, runId, actor, traceId, started, Duration.ofSeconds(120));
+            execute(examId, runId, scope, actor, traceId, started, Duration.ofSeconds(120));
         } catch (RuntimeException e) {
             log.error("Deep check failed for exam {} and run {}", examId, runId, e);
             commands.fail(examId, runId, "CHECK_RUN_FAILED", actor, traceId);
@@ -94,10 +95,10 @@ public class ExamCheckOrchestrator {
         }
     }
 
-    private ExamCheckCompletion.Completion execute(UUID examId, UUID runId, ExamCheckCompletion.Actor actor,
-            String traceId, Instant started, Duration budget) {
+    private ExamCheckCompletion.Completion execute(UUID examId, UUID runId, ExamCheckScope scope,
+            ExamCheckCompletion.Actor actor, String traceId, Instant started, Duration budget) {
         ExamCheckSnapshotReader.Snapshot snapshot = snapshots.read(examId);
-        ExamChecker.Evaluation evaluation = checker.check(snapshot, started.plus(budget), budget);
+        ExamChecker.Evaluation evaluation = checker.check(snapshot, started.plus(budget), budget, scope);
         Instant finished = clock.instant();
         long durationMs = Math.max(0, Duration.between(started, finished).toMillis());
         ObjectNode result = evaluation.result().deepCopy();
@@ -107,7 +108,7 @@ public class ExamCheckOrchestrator {
         result.put("timeLimitSeconds", budget.toSeconds());
         result.putNull("invalidReason");
         return completion.complete(snapshot.persistenceInput(), runId, result, evaluation.witness(),
-                finished, durationMs, actor, traceId);
+                evaluation.units(), scope, finished, durationMs, actor, traceId);
     }
 
     private static void restore(String key, String value) {

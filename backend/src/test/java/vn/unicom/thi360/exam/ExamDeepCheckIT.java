@@ -38,7 +38,7 @@ class ExamDeepCheckIT extends AbstractIntegrationTest {
     static class GatedCheckerConfiguration {
         @Bean Gate gate() { return new Gate(); }
         @Bean @Primary ExamChecker gatedChecker(DefaultExamChecker delegate, Gate gate) {
-            return (snapshot, deadline, budget) -> {
+            return (snapshot, deadline, budget, scope) -> {
                 if (snapshot.exam().getId().equals(gate.examId)) {
                     gate.entered.countDown();
                     try {
@@ -48,7 +48,7 @@ class ExamDeepCheckIT extends AbstractIntegrationTest {
                         throw new IllegalStateException(e);
                     }
                 }
-                return delegate.check(snapshot, deadline, budget);
+                return delegate.check(snapshot, deadline, budget, scope);
             };
         }
     }
