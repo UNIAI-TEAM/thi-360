@@ -82,8 +82,9 @@ export function findBlockContext(exam: Pick<ExamDetail, "parts">, blockId: strin
 
 /**
  * Điều kiện lọc của khối dùng dựng câu "ngân hàng chỉ có N câu …" (2B 7.3): hình dạng câu, định dạng đáp án, vị trí
- * câu con. Máy chủ chỉ trả mã, `required`, `available` và vị trí khối; phần còn lại đọc từ cấu hình khối. Trường chưa
- * có trên khối thì để rỗng và câu bỏ cụm tương ứng.
+ * câu con. Máy chủ chỉ trả mã, `required`, `available` và vị trí khối; phần còn lại đọc từ cấu hình khối
+ * (`itemShape`, `answerFormats`, `childConditions`, do `api-mapping.ts` điền). Trường chưa khai thì để rỗng và câu bỏ
+ * cụm tương ứng.
  */
 export interface BlockFilterConfig {
   itemShape: { statements: number | null; leftItems: number | null; rightItems: number | null } | null;
@@ -91,26 +92,18 @@ export interface BlockFilterConfig {
   childPositions: Array<{ from: number; to: number }>;
 }
 
-interface BlockFilterFields {
-  itemShape?: { statements?: number | null; leftItems?: number | null; rightItems?: number | null } | null;
-  answerFormats?: string[] | null;
-  childConditions?: Array<{ from?: number | null; to?: number | null }> | null;
-}
-
 export function blockFilterConfig(block: QuestionBlock | null | undefined): BlockFilterConfig {
-  const fields: BlockFilterFields = (block as (QuestionBlock & BlockFilterFields) | null | undefined) ?? {};
-  const shape = fields.itemShape;
-  const positions: Array<{ from: number; to: number }> = [];
-  for (const condition of fields.childConditions ?? []) {
-    if (condition.from == null) continue;
-    positions.push({ from: condition.from, to: condition.to ?? condition.from });
-  }
+  const shape = block?.itemShape;
+  // Vị trí câu con đếm từ 1; `api-mapping` điền 0 khi máy chủ thiếu số, điều kiện đó bị bỏ.
+  const childPositions = (block?.childConditions ?? [])
+    .filter((condition) => condition.from >= 1)
+    .map((condition) => ({ from: condition.from, to: Math.max(condition.from, condition.to) }));
   return {
     itemShape: shape
       ? { statements: shape.statements ?? null, leftItems: shape.leftItems ?? null, rightItems: shape.rightItems ?? null }
       : null,
-    answerFormats: fields.answerFormats ?? [],
-    childPositions: positions,
+    answerFormats: block?.answerFormats ?? [],
+    childPositions,
   };
 }
 

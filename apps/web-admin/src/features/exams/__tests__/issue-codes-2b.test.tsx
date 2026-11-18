@@ -1,3 +1,4 @@
+import type { components } from "@thi360/api-client";
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useContentReference } from "@/features/content/queries";
@@ -6,9 +7,10 @@ import en from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
 import { useIssueText } from "../components/exam-review-shared";
+import { mapBlock } from "../api-mapping";
 import { getExamCheck } from "../review-api";
 import { CHECK_ISSUE_CODES, type CheckIssue, type CheckIssueCode } from "../review-types";
-import type { ExamDetail, QuestionBlock } from "../types";
+import type { ExamDetail } from "../types";
 import { checkResultWire, EXAM_ID, EXAM_PATH, FakeServer } from "./fake-exams-server";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -89,9 +91,12 @@ async function textOf(issue: CheckIssue, options?: { exam?: Pick<ExamDetail, "pa
   return (await screen.findByTestId("line")).textContent ?? "";
 }
 
-/** Cấu trúc tối thiểu có một khối với điều kiện lọc của FE-3a (`itemShape`, `answerFormats`, `childConditions`). */
-function examWithBlock(extra: Record<string, unknown>): Pick<ExamDetail, "parts"> {
-  const block = { id: "blk-5", name: "Nhóm 5", questionType: "MATCHING", ...extra } as unknown as QuestionBlock;
+/**
+ * Cấu trúc tối thiểu có một khối dựng từ JSON của máy chủ qua `mapBlock` của FE-3a, như màn thật: kiểm tra
+ * `itemShape`, `answerFormats`, `childConditions` đi từ API tới câu vấn đề.
+ */
+function examWithBlock(wire: Partial<components["schemas"]["QuestionBlock"]>): Pick<ExamDetail, "parts"> {
+  const block = mapBlock({ id: "blk-5", name: "Nhóm 5", questionType: "MATCHING", ...wire });
   return {
     parts: [
       {
@@ -187,6 +192,49 @@ describe("câu mô tả từng mã của đợt 2B (vi)", () => {
     });
 
     expect(text).toBe("Khối Toán · Nhóm 5: ngân hàng chỉ có 1 chùm có câu con đúng chủ đề ở vị trí 1–2, 5, khối cần 3 chùm.");
+  });
+
+  it("khối đã nạp từ API nhưng không khai điều kiện lọc: mỗi mã trong ba mã dùng câu chung, không in cụm rỗng", async () => {
+    const exam = examWithBlock({});
+    const matching = await textOf(issueOf({ code: "ITEM_SHAPE_SHORTAGE", blockId: "blk-5", required: 5, available: 3 }), { exam });
+    expect(matching).toBe("Khối Toán · Nhóm 5: ngân hàng chỉ có 3 câu đúng hình dạng yêu cầu, khối cần 5 câu.");
+    document.body.innerHTML = "";
+    const format = await textOf(issueOf({ code: "ANSWER_FORMAT_SHORTAGE", blockId: "blk-5", required: 6, available: 2 }), { exam });
+    expect(format).toBe("Khối Toán · Nhóm 5: ngân hàng chỉ có 2 câu đúng định dạng đáp án yêu cầu, khối cần 6 câu.");
+  });
+
+  it("số câu thập phân của câu hình dạng đi qua display-number (dấu phẩy ở vi)", async () => {
+    const text = await textOf(issueOf({ code: "ITEM_SHAPE_SHORTAGE", blockId: "blk-5", required: 5, available: 2.5 }), {
+      exam: examWithBlock({ itemShape: { leftItems: 4, rightItems: 6 } }),
+    });
+
+    expect(text).toBe("Khối Toán · Nhóm 5: ngân hàng chỉ có 2,5 câu ghép đôi đủ cấu trúc 4 ý trái – 6 lựa chọn phải, khối cần 5 câu.");
+  });
+
+  it("ba mã hình dạng, định dạng đáp án, câu con đọc khối đã ánh xạ ở bản en", async () => {
+    const shape = await textOf(issueOf({ code: "ITEM_SHAPE_SHORTAGE", blockId: "blk-5", required: 5, available: 3 }), {
+      en: true,
+      exam: examWithBlock({ itemShape: { leftItems: 4, rightItems: 6 } }),
+    });
+    expect(shape).toBe(
+      "Block Mathematics · Nhóm 5: the bank has only 3 questions with a matching structure of 4 left items – 6 right options; the block needs 5.",
+    );
+    document.body.innerHTML = "";
+    const format = await textOf(issueOf({ code: "ANSWER_FORMAT_SHORTAGE", blockId: "blk-5", required: 6, available: 2 }), {
+      en: true,
+      exam: examWithBlock({ answerFormats: ["INTEGER", "FRACTION"] }),
+    });
+    expect(format).toBe(
+      "Block Mathematics · Nhóm 5: the bank has only 2 questions with answer format Integer, Fraction; the block needs 6.",
+    );
+    document.body.innerHTML = "";
+    const child = await textOf(issueOf({ code: "CHILD_CONDITION_SHORTAGE", blockId: "blk-5", required: 3, available: 1 }), {
+      en: true,
+      exam: examWithBlock({ childConditions: [{ from: 2, to: 3, nodeIds: ["n1"] }] }),
+    });
+    expect(child).toBe(
+      "Block Mathematics · Nhóm 5: the bank has only 1 sets whose child question matches the topic at position 2–3; the block needs 3.",
+    );
   });
 
   it("máy chủ không trả số cần hoặc số có thì không in 'cần 0 câu, hiện có 0 câu'", async () => {
