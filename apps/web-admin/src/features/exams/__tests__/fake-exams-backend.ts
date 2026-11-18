@@ -178,9 +178,21 @@ function optionSubjects(template: ExamTemplate, part: ExamTemplatePart, option: 
   return [part.sections?.[0]?.subjectCode ?? template.subjectCode ?? ""];
 }
 
-/** Phần của mẫu -> wire `ExamPart` trong `structure` của `ExamTemplateResponse` (id `null`). */
+/** UUID cố định theo khóa: máy chủ (BE-6) trả `id` UUID không rỗng cho mọi phần và môn của mẫu. */
+export function templateUuid(key: string): string {
+  let hash = 0;
+  for (const char of key) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) >>> 0;
+  const hex = (hash.toString(16).padStart(8, "0") + key.length.toString(16).padStart(4, "0")).slice(-12);
+  return `00000000-0000-4000-8000-${hex}`;
+}
+
+/** Phần của mẫu -> wire `ExamPart` trong `structure` của `ExamTemplateResponse` (có `id` UUID, môn trong phần cũng vậy). */
 function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index: number): WirePart {
-  const sections = (part.sections ?? []).map(wireTemplateSection);
+  const partKey = `${template.code}/part/${index}`;
+  const sections = (part.sections ?? []).map((section, sectionIndex) => ({
+    ...wireTemplateSection(section),
+    id: templateUuid(`${partKey}/section/${sectionIndex}`),
+  }));
   const blocks = (part.blocks ?? []).map(wireTemplateBlock);
   if (blocks.length && sections.length === 1) sections[0]!.blocks = [...sections[0]!.blocks ?? [], ...blocks];
   const options = (part.options ?? []).map((option): WireOption => {
@@ -210,6 +222,7 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
     } as WireOption;
   });
   return {
+    id: templateUuid(partKey),
     order: index + 1,
     name: part.name,
     durationMinutes: part.durationMinutes ?? undefined,
