@@ -7,7 +7,7 @@ export const AXES = { grades: ["GRADE_12"], difficulties: ["APPLICATION"] };
 
 const block = (id: string, count: number, pointsEach: number, over: Partial<QuestionBlock> = {}): QuestionBlock => ({
   id,
-  name: `Nhóm ${id}`,
+  name: `Group ${id}`,
   questionType: "SINGLE_CHOICE",
   questionCount: count,
   setCount: null,
@@ -36,7 +36,7 @@ const section = (id: string, subjectCode: string, count: number, pointsEach = 1,
 const part = (id: string, order: number, over: Partial<ExamPart> = {}): ExamPart => ({
   id,
   order,
-  name: `Phần ${order}`,
+  name: `Part ${order}`,
   durationMinutes: 60,
   questionCount: 50,
   questionCountOnPaper: 50,
