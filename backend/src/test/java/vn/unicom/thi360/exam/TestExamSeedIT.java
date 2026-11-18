@@ -28,6 +28,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator;
 import vn.unicom.thi360.exam.application.SolverInputBuilder;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
+import vn.unicom.thi360.exam.domain.solver.SolveOption;
 import vn.unicom.thi360.exam.domain.solver.SolvePart;
 import vn.unicom.thi360.questionbank.domain.QuestionInput;
 import vn.unicom.thi360.questionbank.domain.QuestionSearchNormalizer;
@@ -302,15 +303,38 @@ class TestExamSeedIT extends AbstractIntegrationTest {
 
     @Test
     void seededCodeSourcePartsProduceSolverPaths() {
-        for (var entry : Map.of("TEST-QDA-01", 5, "TEST-BCA-01", 4).entrySet()) {
+        for (var entry : Map.of("TEST-QDA-01", 5, "TEST-BCA-01", 4, "TEST-ERR-02", 4).entrySet()) {
             var row = jdbc.queryForMap("""
                     select e.kind_item_id, s.parts::text as document from exam.exam e
                     join exam.exam_structure s on s.exam_id = e.id where e.code = ?
                     """, entry.getKey());
             var document = new ExamStructureCodec(mapper).read((String) row.get("document"));
+            var codePart = document.parts().get(2);
+            assertThat(codePart.codeSource().source()).as(entry.getKey()).isEqualTo("GLOBAL_LIST");
+            assertThat(codePart.options()).as(entry.getKey()).isEmpty();
             var input = solverInputBuilder.build((UUID) row.get("kind_item_id"), document);
             var choice = (SolvePart.Choice) input.parts().get(2);
             assertThat(choice.options()).as(entry.getKey()).hasSize(entry.getValue());
+            // The options must be the live Global List combinations, with their subjects in list order.
+            Map<String, String> live = new LinkedHashMap<>();
+            jdbc.query("""
+                    select ci.code as combination, string_agg(sub.code, ',' order by cs.position) as subjects
+                    from catalog.combination_version cv
+                    join catalog.catalog_item ci on ci.id = cv.item_id
+                    join catalog.combination_subject cs on cs.combination_version_id = cv.id
+                    join catalog.catalog_item sub on sub.id = cs.subject_item_id
+                    where cv.is_current and cv.exam_item_id = ?
+                    group by ci.code, ci.value order by ci.value
+                    """, rs -> {
+                live.put(codePart.id() + ":" + rs.getString("combination"), rs.getString("subjects"));
+            }, row.get("kind_item_id"));
+            Map<String, String> solved = new LinkedHashMap<>();
+            for (var option : choice.options()) {
+                var sections = (SolveOption.Sections) option;
+                solved.put(sections.optionId(), sections.sections().stream()
+                        .map(section -> section.subjectCode()).collect(Collectors.joining(",")));
+            }
+            assertThat(solved).as(entry.getKey()).isEqualTo(live);
         }
     }
 
