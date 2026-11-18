@@ -128,6 +128,56 @@ class ExamCheckUnitEngineTests {
     }
 
     @Test
+    void missingCombinationSubjectOnlyInvalidatesAffectedCode() {
+        var mapper = new ObjectMapper();
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var store = mock(ExamCheckUnitStore.class);
+        UUID physics = UUID.randomUUID();
+        var physicsItem = item(physics);
+        when(catalog.findActiveItem("SUBJECT", "LY")).thenReturn(Optional.of(physicsItem));
+        var subject = new vn.unicom.thi360.catalog.spi.CatalogCombinationSubjectView(physics, "LY", "Ly", "Physics");
+        var missing = new vn.unicom.thi360.catalog.spi.CatalogCombinationSubjectView(UUID.randomUUID(), "HOA", "Hoa", "Chemistry");
+        var good = new vn.unicom.thi360.catalog.spi.CatalogCombinationView(UUID.randomUUID(), "GOOD", "Good", "Good",
+                null, null, null, null, null, 1, List.of(subject));
+        var bad = new vn.unicom.thi360.catalog.spi.CatalogCombinationView(UUID.randomUUID(), "BAD", "Bad", "Bad",
+                null, null, null, null, null, 1, List.of(missing));
+        when(catalog.listCombinations(null)).thenReturn(List.of(good, bad));
+        var question = new QuestionSourcePort.Unit(physics, null, QuestionType.SINGLE_CHOICE,
+                null, null, List.of(), List.of(), BigDecimal.ONE);
+        when(source.findCandidates(any(), anyInt())).thenReturn(List.of(
+                new QuestionSourcePort.Candidate(physics, 1, null, List.of(question), null, null)));
+        var limits = SolverLimits.defaults();
+        var clock = Clock.systemUTC();
+        var fingerprints = new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper));
+        var builder = new SolverInputBuilder(catalog, source, limits);
+        var engine = new ExamCheckUnitEngine(store, fingerprints, catalog, mapper, limits, clock);
+        var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, engine);
+        var exam = new Exam(UUID.randomUUID(), "CODES", "Codes", null, "FULL", "SHARED", null,
+                null, "RAW", clock.instant(), UUID.randomUUID());
+        exam.applyStructureSummary(1, false, false, 0);
+        var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, 0, "hash", mapper.createObjectNode());
+        var document = new ExamStructureCodec(mapper).read("""
+                {"parts":[{"id":"p","name":"Codes","questionCount":1,"codeSource":{"source":"GLOBAL_LIST"},
+                  "subjectPool":[{"id":"ly","subjectCode":"LY","questionCount":1,"blocks":[
+                    {"id":"physics","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """);
+        when(store.load(exam.getId())).thenReturn(Map.of());
+        var checked = check(checker, exam, document, input, clock, ExamCheckScope.from(null, null, null));
+        var paths = checked.result().path("paths");
+        var goodPath = java.util.stream.StreamSupport.stream(paths.spliterator(), false)
+                .filter(path -> "p:GOOD".equals(path.path("pathId").asText())).findFirst().orElseThrow();
+        var badPath = java.util.stream.StreamSupport.stream(paths.spliterator(), false)
+                .filter(path -> "p:BAD".equals(path.path("pathId").asText())).findFirst().orElseThrow();
+        assertThat(goodPath.path("result").asText()).isEqualTo("VALID");
+        assertThat(badPath.path("result").asText()).isEqualTo("INVALID");
+        assertThat(badPath.path("issues").toString()).contains("COMBINATION_SUBJECT_MISSING", "BAD");
+        assertThat(checked.witness().toString()).contains("p:GOOD").doesNotContain("p:BAD");
+        assertThat(checked.units()).singleElement().satisfies(unit -> assertThat(unit.outcome()).isEqualTo("VALID"));
+    }
+
+    @Test
     void emptyPartCheckReportsItsLocation() {
         var mapper = new ObjectMapper();
         var catalog = mock(CatalogLookup.class);

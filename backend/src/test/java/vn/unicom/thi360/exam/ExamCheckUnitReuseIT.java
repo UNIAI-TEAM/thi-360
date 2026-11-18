@@ -226,6 +226,38 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void missingCodeSubjectsDoNotPreventPublishingCompleteCode() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");
+        UUID english = UUID.fromString("00000000-0000-7000-8200-000000000203");
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,has_unpublished_changes) "
+                + "VALUES (?,?,?,'Partial codes',?,'FULL','SHARED',1,true)", id, id.toString(), id.toString(), qda);
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'partial')", id, """
+                {"parts":[{"id":"codes","name":"Codes","questionCount":1,"codeSource":{"source":"GLOBAL_LIST"},
+                  "subjectPool":[{"id":"anh","subjectCode":"ANH","questionCount":1,"blocks":[
+                    {"id":"banh","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """);
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "banh", "codes", "anh", english);
+        String base = "/api/v1/admin/exams/" + id;
+        var result = mapper.readTree(mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var paths = java.util.stream.StreamSupport.stream(result.path("paths").spliterator(), false).toList();
+        var good = paths.stream().filter(path -> "codes:QD05".equals(path.path("pathId").asText())).findFirst().orElseThrow();
+        var bad = paths.stream().filter(path -> "codes:QD01".equals(path.path("pathId").asText())).findFirst().orElseThrow();
+        assertThat(good.path("result").asText()).isEqualTo("VALID");
+        assertThat(bad.path("result").asText()).isEqualTo("INVALID");
+        assertThat(bad.path("issues").toString()).contains("COMBINATION_SUBJECT_MISSING", "QD01");
+        assertThat(jdbc.queryForObject("SELECT witness::text FROM exam.exam_check_run WHERE exam_id=?",
+                String.class, id)).contains("QD05");
+        long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
+        mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                        .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pathIds\":[\"codes:QD05\"],\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void templateReloadInvalidatesSavedUnitsAndRejectsStaleRevision() throws Exception {
         UUID id = UUID.randomUUID();
         UUID hsa = UUID.fromString("00000000-0000-7000-8200-000000000101");

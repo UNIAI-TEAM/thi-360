@@ -73,8 +73,18 @@ public class DefaultExamChecker implements ExamChecker {
             }
         }
         Map<String, List<ObjectNode>> invalidOptions = new LinkedHashMap<>();
+        Map<String, Set<String>> missingCodes = new LinkedHashMap<>();
         boolean commonInvalid = false;
         for (ObjectNode issue : invalid) {
+            if (scope.kind() == ExamCheckScope.Kind.EXAM
+                    && "COMBINATION_SUBJECT_MISSING".equals(issue.path("code").asText())) {
+                String partId = issue.path("partId").asText();
+                for (var code : issue.path("affectedCodes")) {
+                    missingCodes.computeIfAbsent(partId, ignored -> new java.util.LinkedHashSet<>()).add(code.asText());
+                    invalidOptions.computeIfAbsent(partId + ":" + code.asText(), ignored -> new ArrayList<>()).add(issue);
+                }
+                continue;
+            }
             String optionId = issue.path("optionId").asText(null);
             if (optionId == null) commonInvalid = true;
             else invalidOptions.computeIfAbsent(optionId, ignored -> new ArrayList<>()).add(issue);
@@ -145,7 +155,9 @@ public class DefaultExamChecker implements ExamChecker {
         ExamStructureDocument solverDocument = ExamCheckDraftInputs.withoutParts(
                 maskInvalidOptions(ExamCheckDraftInputs.maskSections(snapshot.structure(), maskedSections), maskedOptions),
                 ignoredParts);
-        SolverInputBuilder.SolverInput input = builder.build(snapshot.exam().getKindItemId(), solverDocument);
+        SolverInputBuilder.SolverInput input = missingCodes.isEmpty()
+                ? builder.build(snapshot.exam().getKindItemId(), solverDocument)
+                : buildWithMissingCodes(snapshot, solverDocument, missingCodes);
         if (!maskedSections.isEmpty()) {
             try {
                 var plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
@@ -175,6 +187,33 @@ public class DefaultExamChecker implements ExamChecker {
                 .forEach((path, facts) -> witnessIssues.put(path, rules.witnessIssues(facts)));
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
         return new Evaluation(evaluation.result(), evaluation.witness(), markWitnessFailures(computed.changed(), witnessIssues));
+    }
+
+    private SolverInputBuilder.SolverInput buildWithMissingCodes(ExamCheckSnapshotReader.Snapshot snapshot,
+            ExamStructureDocument document, Map<String, Set<String>> missingCodes) {
+        List<Set<String>> exclusions = document.parts().stream()
+                .sorted(java.util.Comparator.comparing(ExamPart::order,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .filter(part -> part.codeSource() != null)
+                .map(part -> missingCodes.getOrDefault(part.id(), Set.of())).toList();
+        var filtered = new ExamCheckUnitCatalog(catalog, exclusions);
+        var input = new SolverInputBuilder(filtered, source, limits).build(snapshot.exam().getKindItemId(), document);
+        List<vn.unicom.thi360.exam.domain.solver.SolvePart> parts = new ArrayList<>();
+        for (var part : input.parts()) {
+            if (part instanceof vn.unicom.thi360.exam.domain.solver.SolvePart.Choice choice
+                    && missingCodes.containsKey(choice.partId())) {
+                var options = new ArrayList<>(choice.options());
+                for (String code : missingCodes.get(choice.partId())) {
+                    options.add(new vn.unicom.thi360.exam.domain.solver.SolveOption.Sections(
+                            choice.partId() + ":" + code, List.of()));
+                }
+                parts.add(new vn.unicom.thi360.exam.domain.solver.SolvePart.Choice(
+                        choice.partId(), choice.commonSections(), options, choice.choose()));
+            } else {
+                parts.add(part);
+            }
+        }
+        return new SolverInputBuilder.SolverInput(parts, input.candidates());
     }
 
     private Evaluation invalidResult(ExamCheckSnapshotReader.Snapshot snapshot, ExamCheckScope scope,
