@@ -1,3 +1,4 @@
+import { isAllOmittedPart } from "./omitted-part";
 import type { ExamOverviewRow, ExamTemplate, ExamTemplateSection, ExamTiming } from "./types";
 
 /**
@@ -147,15 +148,10 @@ function omittedRow(
   };
 }
 
-/**
- * Phần mà mọi nhóm đều tạm bỏ qua (SP2E Ngữ văn Phần II · Viết, K7, K15): số câu của phần là 0 theo thiết kế, nên không có
- * ô nào để nhập. Phần có cả nhóm thường lẫn nhóm tạm bỏ qua không thuộc loại này.
- */
+/** Phần của mẫu mà mọi nhóm đều tạm bỏ qua (quy tắc chung ở `isAllOmittedPart`). */
 function isAllOmitted(part: ExamTemplate["parts"][number]): boolean {
-  const sections = part.sections ?? [];
-  return (
-    sections.length > 0 &&
-    sections.every((section) => (section.omittedBlocks?.length ?? 0) > 0 && section.omittedBlocks?.length === section.blocks?.length)
+  return isAllOmittedPart(
+    (part.sections ?? []).map((section) => ({ blockCount: section.blocks?.length ?? 0, omittedCount: section.omittedBlocks?.length ?? 0 })),
   );
 }
 
