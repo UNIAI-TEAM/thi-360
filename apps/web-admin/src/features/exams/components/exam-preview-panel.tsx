@@ -13,19 +13,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@thi360/ui";
-import { ArrowRight, CircleHelp, CircleX, Eye, Info, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, RefreshCw, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { enumeratePaths } from "../check";
+import { enumeratePaths, issueStructureHref } from "../check";
 import { errorCodeOf } from "../review-api";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
-import type { ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult } from "../review-types";
+import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
+import type { ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult, PreviewTarget } from "../review-types";
 import type { ExamDetail, ExamPartOption } from "../types";
 import { ExamPreviewAllocation } from "./exam-preview-allocation";
+import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
-import { structureHref, useChoiceNameResolver, useIssueText, usePathLabel } from "./exam-review-shared";
+import { useChoiceNameResolver, useIssueText, useLookup, usePathLabel } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
   exam: ExamDetail;
@@ -45,9 +47,15 @@ interface PathOption {
   result: PathCheckResult | null;
 }
 
+type ScopeKind = PreviewTarget["kind"];
+
+/** Đề thử giữ ở máy chủ 30 phút (2B mục 8). */
+const PREVIEW_RETENTION_MINUTES = 30;
+
 /**
- * Sinh đề xem trước (bản vẽ `BaiThiXemTruoc`): chọn đường lựa chọn, sinh bằng cùng quy tắc với lượt thi thật, xem đề
- * đã sinh và bảng đối chiếu phân bổ. Đề xem trước không trừ lượt, không tạo kết quả học tập.
+ * Sinh thử (bản vẽ `SinhThu2B`, 2B mục 8 và 15.4): chọn phạm vi (một môn, một mã hoặc nhánh, cả bài), sinh bằng cùng quy
+ * tắc với lượt thi thật, xem bảng Yêu cầu / Thực tế và đề đã sinh. Đề thử không trừ lượt, không tạo kết quả học tập.
+ * Đổi mã trên cùng đề thử chỉ sinh lại các phần phụ thuộc mã (R-15); "Sinh đề thử mới" sinh lại cả bài.
  */
 export function ExamPreviewPanel({
   exam,
@@ -61,13 +69,20 @@ export function ExamPreviewPanel({
   const t = useTranslations("exams.preview");
   const tIssue = useTranslations("exams.review.issue");
   const format = useFormatter();
-  const pathLabel = usePathLabel();
+  const lookup = useLookup();
+  const pathLabel = usePathLabel(exam.id);
   const nameOf = useChoiceNameResolver();
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);
   const [liveMessage, setLiveMessage] = useState("");
   const [run, setRun] = useState(0);
   const [tab, setTab] = useState<"paper" | "allocation">("paper");
+  const [original, setOriginal] = useState(false);
+  const [resultLabel, setResultLabel] = useState("");
+
+  const parts = version !== null ? versionQuery.data?.parts : exam.parts;
+  const sectionOptions = useMemo(() => listPreviewSections(parts ?? []), [parts]);
+  const choiceRequired = examNeedsPathChoice(parts ?? []);
 
   const options = useMemo<PathOption[]>(() => {
     if (version !== null) {
@@ -79,13 +94,19 @@ export function ExamPreviewPanel({
     return enumeratePaths(exam.parts, nameOf).map((path) => ({ path, result: null }));
   }, [version, versionQuery.data, check, exam.parts, nameOf]);
 
+  // Phạm vi: bài có phần chọn thì sinh theo một đường (hoặc một môn), "Cả bài" chỉ dùng cho bài không có lựa chọn.
+  const [pickedKind, setPickedKind] = useState<ScopeKind | null>(null);
+  const wanted: ScopeKind = pickedKind ?? "PATH";
+  const kind: ScopeKind =
+    wanted === "SECTION" && sectionOptions.length > 0 ? "SECTION" : choiceRequired ? "PATH" : "EXAM";
+
   const [selected, setSelected] = useState<string | null>(initialPathId);
   const fallback = (options.find((option) => option.result === null || option.result === "VALID") ?? options[0])?.path.pathId;
   const pathId = selected && options.some((option) => option.path.pathId === selected) ? selected : (fallback ?? null);
+  const selectedPath = options.find((option) => option.path.pathId === pathId)?.path ?? null;
 
   /** Phương án `SUBJECT_CHOICE` của đường: đường có phương án này phải gửi đúng số môn muốn xem (spec 5.2). */
   function subjectChoiceOf(candidatePathId: string | null): ExamPartOption | null {
-    const parts = version !== null ? versionQuery.data?.parts : exam.parts;
     const path = options.find((option) => option.path.pathId === candidatePathId)?.path;
     const choice = path?.choices.find((item) => item.kind === "SUBJECT_CHOICE");
     return parts?.find((part) => part.id === choice?.partId)?.options.find((item) => item.id === choice?.optionId) ?? null;
@@ -102,27 +123,71 @@ export function ExamPreviewPanel({
   function generateErrorText(error: unknown): string {
     return errorCodeOf(error) === "PREVIEW_SUBJECTS_INVALID" ? tIssue("PREVIEW_SUBJECTS_INVALID") : t("error");
   }
-  const subjectOption = subjectChoiceOf(pathId);
+  const subjectOption = kind === "PATH" ? subjectChoiceOf(pathId) : null;
   const subjectCodes = subjectsOf(subjectOption);
   const subjectsIncomplete = subjectOption !== null && subjectCodes?.length !== subjectOption.chooseSubjects;
 
-  function start(nextPathId: string | null = pathId) {
-    if (!nextPathId) return;
+  // Một môn: môn của SUBJECT_CHOICE chọn 17 hoặc 16 câu.
+  const [pickedSection, setPickedSection] = useState<string | null>(null);
+  const section = sectionOptions.find((item) => item.sectionId === pickedSection) ?? sectionOptions[0] ?? null;
+  const [pickedCount, setPickedCount] = useState<number | null>(null);
+  const sectionCount = section?.counts ? (section.counts.find((count) => count === pickedCount) ?? section.counts[0]!) : null;
+
+  function currentTarget(): PreviewTarget | null {
+    if (kind === "SECTION") {
+      if (!section) return null;
+      return {
+        kind: "SECTION",
+        sectionId: section.sectionId,
+        ...(sectionCount !== null ? { sectionQuestionCount: sectionCount } : {}),
+      };
+    }
+    if (kind === "PATH") {
+      if (!pathId) return null;
+      return { kind: "PATH", pathId, ...(subjectCodes ? { subjectCodes } : {}) };
+    }
+    return { kind: "EXAM" };
+  }
+  const target = currentTarget();
+  const canGenerate = target !== null && !subjectsIncomplete;
+
+  function labelOf(result: PreviewResult, used: PreviewTarget): string {
+    if (used.kind === "PATH") return pathLabel(result.path);
+    if (used.kind === "SECTION") {
+      const picked = sectionOptions.find((item) => item.sectionId === used.sectionId);
+      const name = picked ? lookup.subject(picked.subjectCode) : "";
+      return used.sectionQuestionCount !== undefined ? t("scope.sectionWithCount", { name, count: used.sectionQuestionCount }) : name;
+    }
+    return t("scope.kind.EXAM");
+  }
+
+  /** Sinh đề mới (không gửi `basePreviewId`) hoặc, khi có `keep`, đổi đường trên đề thử cũ và chỉ sinh lại các phần đã đổi. */
+  function start(keep?: { basePreviewId: string; regeneratePartIds: string[]; seed: number }) {
+    const used = currentTarget();
+    if (!used) return;
     const nextRun = run + 1;
     setRun(nextRun);
     setTab("paper");
+    setOriginal(false);
     setLiveMessage(t("live.generating"));
     generate.mutate(
-      { pathId: nextPathId, seed: nextRun, version, subjectCodes: subjectsOf(subjectChoiceOf(nextPathId)) },
+      {
+        target: used,
+        seed: keep?.seed ?? nextRun,
+        version,
+        ...(keep ? { basePreviewId: keep.basePreviewId, regeneratePartIds: keep.regeneratePartIds } : {}),
+      },
       {
         onSuccess: (result) => {
+          setResultLabel(labelOf(result, used));
           setLiveMessage(
             result.status === "GENERATED"
               ? t("live.generated", { count: result.paper.totalQuestions })
-              : t("live.failed", { path: pathLabel(result.path) }),
+              : t("live.failed", { path: labelOf(result, used) }),
           );
         },
-        onError: (error) => setLiveMessage(generateErrorText(error)),
+        onError: (error) =>
+          setLiveMessage(errorCodeOf(error) === "PREVIEW_EXPIRED" ? t("expired.title") : generateErrorText(error)),
       },
     );
   }
@@ -130,9 +195,9 @@ export function ExamPreviewPanel({
   // Mở từ bảng kết quả kiểm tra ("Sinh đề xem trước cho …"): sinh ngay một lần khi đã biết danh sách đường.
   const autoStarted = useRef(false);
   useEffect(() => {
-    if (!autoGenerate || autoStarted.current || !pathId || options.length === 0) return;
+    if (!autoGenerate || autoStarted.current || !canGenerate || options.length === 0) return;
     autoStarted.current = true;
-    start(pathId);
+    start();
   });
 
   const optionLabel = (option: PathOption) => {
@@ -143,12 +208,24 @@ export function ExamPreviewPanel({
   };
 
   const data = generate.data;
+  const shown = data?.status === "GENERATED" ? data : null;
+  const expired = generate.isError && errorCodeOf(generate.error) === "PREVIEW_EXPIRED";
   const runStatus = data
     ? t(data.status === "GENERATED" ? "runStatus" : "runStatusFailed", {
         run,
         time: format.dateTime(new Date(data.generatedAt), "dateTime"),
       })
     : "";
+
+  // Đổi mã trên cùng đề thử (R-15): chỉ các phần có lựa chọn khác nhau giữa hai đường phải sinh lại.
+  const keepIds = shown && shown.previewId && kind === "PATH" && selectedPath ? changedPartIds(shown.path, selectedPath) : [];
+  const canKeep = shown !== null && shown.previewId !== null && keepIds.length > 0 && canGenerate;
+  const regeneratedParts = shown ? shown.paper.parts.filter((part) => keepIds.includes(part.partId)) : [];
+  const keptParts = shown ? shown.paper.parts.filter((part) => !keepIds.includes(part.partId)) : [];
+  const range = (items: typeof keptParts) =>
+    items.length ? { first: Math.min(...items.map((part) => part.firstNumber)), last: Math.max(...items.map((part) => part.lastNumber)) } : null;
+  const keptRange = range(keptParts);
+  const regeneratedRange = range(regeneratedParts);
 
   let body;
   if (version !== null && versionQuery.isPending) {
@@ -159,7 +236,7 @@ export function ExamPreviewPanel({
         <EmptyState headingLevel={3} icon={<TriangleAlert />} title={t("versionErrorTitle")} />
       </Card>
     );
-  } else if (options.length === 0) {
+  } else if (options.length === 0 && sectionOptions.length === 0) {
     body = (
       <Card>
         <EmptyState headingLevel={3} icon={<Eye />} title={t("noPathsTitle")} description={t("noPathsDescription")} />
@@ -172,6 +249,23 @@ export function ExamPreviewPanel({
         <Skeleton className="h-40" />
         <Skeleton className="h-40" />
       </div>
+    );
+  } else if (expired) {
+    body = (
+      <Card>
+        <EmptyState
+          headingLevel={3}
+          icon={<Clock />}
+          title={t("expired.title")}
+          description={t("expired.description", { minutes: PREVIEW_RETENTION_MINUTES })}
+          action={
+            <Button onClick={() => start()} disabled={!canGenerate}>
+              <RefreshCw />
+              {t("regenerate")}
+            </Button>
+          }
+        />
+      </Card>
     );
   } else if (generate.isError) {
     body = (
@@ -196,23 +290,48 @@ export function ExamPreviewPanel({
       </Card>
     );
   } else if (data.status === "FAILED") {
-    body = <PreviewFailure exam={exam} result={data} onShowCheck={onShowCheck} />;
+    body = <PreviewFailure exam={exam} result={data} label={resultLabel} onShowCheck={onShowCheck} />;
   } else {
     body = (
-      <Tabs variant="segmented" value={tab} onValueChange={(value) => setTab(value as "paper" | "allocation")}>
-        <TabsList aria-label={t("tabs.label")} className="max-w-md">
-          <TabsTrigger value="paper">{t("tabs.paper")}</TabsTrigger>
-          <TabsTrigger value="allocation">{t("tabs.allocation")}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="paper">
-          <ExamPreviewPaper paper={data.paper} />
-        </TabsContent>
-        <TabsContent value="allocation">
-          <ExamPreviewAllocation paper={data.paper} />
-        </TabsContent>
-      </Tabs>
+      <div className="flex flex-col gap-4">
+        <Card padding="md" className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h3 className="text-title font-semibold text-text">{t("resultTitle", { label: resultLabel })}</h3>
+            <p className="text-body text-text-secondary">
+              {t("resultMeta", {
+                questions: data.paper.totalQuestions,
+                seed: data.seed,
+                minutes: PREVIEW_RETENTION_MINUTES,
+              })}
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => setOriginal((value) => !value)}>
+            <ListOrdered />
+            {original ? t("order.showShuffled") : t("order.showOriginal")}
+          </Button>
+        </Card>
+        <Tabs variant="segmented" value={tab} onValueChange={(value) => setTab(value as "paper" | "allocation")}>
+          <TabsList aria-label={t("tabs.label")} className="max-w-md">
+            <TabsTrigger value="paper">{t("tabs.paper")}</TabsTrigger>
+            <TabsTrigger value="allocation">{t("tabs.allocation")}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="paper" className="flex flex-col gap-6">
+            <ExamPreviewCompliance paper={data.paper} compliance={data.compliance} dropped={data.droppedQuestions} original={original} />
+            <ExamPreviewPaper paper={data.paper} original={original} />
+          </TabsContent>
+          <TabsContent value="allocation">
+            <ExamPreviewAllocation paper={data.paper} />
+          </TabsContent>
+        </Tabs>
+      </div>
     );
   }
+
+  const kindOptions = [
+    ...(sectionOptions.length > 0 ? [{ value: "SECTION", label: t("scope.kind.SECTION") }] : []),
+    ...(choiceRequired ? [{ value: "PATH", label: t("scope.kind.PATH") }] : []),
+    { value: "EXAM", label: t("scope.kind.EXAM"), disabled: choiceRequired },
+  ];
 
   return (
     <section aria-labelledby="preview-title" className="flex flex-col gap-4">
@@ -237,28 +356,87 @@ export function ExamPreviewPanel({
 
       <Card padding="md" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-3">
-          <FormField label={t("pathLabel")} className="min-w-0 flex-[1_1_18rem]">
+          <FormField label={t("scope.label")} className="min-w-0 flex-[1_1_14rem]">
             {(controlProps) => (
-              <Select
-                {...controlProps}
-                value={pathId ?? undefined}
-                onValueChange={setSelected}
-                disabled={options.length === 0}
-                options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option) }))}
-              />
+              <Select {...controlProps} value={kind} onValueChange={(value) => setPickedKind(value as ScopeKind)} options={kindOptions} />
             )}
           </FormField>
-          <Button onClick={() => start()} loading={generate.isPending} disabled={!pathId || subjectsIncomplete}>
+          {kind === "PATH" && (
+            <FormField label={t("pathLabel")} className="min-w-0 flex-[1_1_18rem]">
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={pathId ?? undefined}
+                  onValueChange={setSelected}
+                  disabled={options.length === 0}
+                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option) }))}
+                />
+              )}
+            </FormField>
+          )}
+          {kind === "SECTION" && section && (
+            <FormField label={t("scope.section")} className="min-w-0 flex-[1_1_18rem]">
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={section.sectionId}
+                  onValueChange={setPickedSection}
+                  options={sectionOptions.map((item) => ({
+                    value: item.sectionId,
+                    label: t("scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: item.partName }),
+                  }))}
+                />
+              )}
+            </FormField>
+          )}
+          {kind === "SECTION" && section?.counts && section.counts.length > 1 && sectionCount !== null && (
+            <FormField label={t("scope.count")} className="min-w-0 flex-[0_1_12rem]">
+              {(controlProps) => (
+                <Select
+                  {...controlProps}
+                  value={String(sectionCount)}
+                  onValueChange={(value) => setPickedCount(Number(value))}
+                  options={section.counts!.map((count) => ({ value: String(count), label: t("scope.countOption", { count, full: count === section.counts![0] ? "yes" : "no" }) }))}
+                />
+              )}
+            </FormField>
+          )}
+          <Button onClick={() => start()} loading={generate.isPending} disabled={!canGenerate}>
             {data ? <RefreshCw /> : <Eye />}
             {data ? t("regenerate") : t("generate")}
           </Button>
+          {canKeep && shown?.previewId && (
+            <Button
+              variant="secondary"
+              onClick={() => start({ basePreviewId: shown.previewId!, regeneratePartIds: keepIds, seed: shown.seed })}
+              loading={generate.isPending}
+            >
+              {t("keep.change", { parts: regeneratedParts.map((part) => part.name).join(", ") })}
+            </Button>
+          )}
         </div>
+        {choiceRequired && <p className="text-caption text-text-muted">{t("scope.examBlocked")}</p>}
         {subjectOption && (
           <ExamPreviewSubjects
             option={subjectOption}
             value={subjectCodes ?? []}
             onChange={(codes) => setPickedSubjects({ optionId: subjectOption.id, codes })}
           />
+        )}
+        {canKeep && shown && selectedPath && keptRange && regeneratedRange && (
+          <p className="flex items-start gap-2 text-body text-text-secondary">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {t("keep.note", {
+              from: pathLabel(shown.path),
+              to: pathLabel(selectedPath),
+              kept: keptParts.map((part) => part.name).join(", "),
+              keptFirst: keptRange.first,
+              keptLast: keptRange.last,
+              regenerated: regeneratedParts.map((part) => part.name).join(", "),
+              regeneratedFirst: regeneratedRange.first,
+              regeneratedLast: regeneratedRange.last,
+            })}
+          </p>
         )}
         {runStatus && <p className="text-caption text-text-muted">{runStatus}</p>}
       </Card>
@@ -279,17 +457,18 @@ export function ExamPreviewPanel({
 function PreviewFailure({
   exam,
   result,
+  label,
   onShowCheck,
 }: {
   exam: ExamDetail;
   result: Extract<PreviewResult, { status: "FAILED" }>;
+  label: string;
   onShowCheck: () => void;
 }) {
   const t = useTranslations("exams.preview");
-  const pathLabel = usePathLabel();
-  const issueText = useIssueText();
+  const issueText = useIssueText(exam);
   const invalid = result.reason === "INVALID";
-  const fixBlock = result.issues.find((issue) => issue.blockId)?.blockId ?? null;
+  const fixHref = result.issues.map((issue) => issueStructureHref(exam.id, issue)).find((href) => href !== null) ?? null;
   const Icon = invalid ? CircleX : CircleHelp;
   return (
     <div
@@ -298,7 +477,7 @@ function PreviewFailure({
       <Icon aria-hidden className={`mt-0.5 size-5 shrink-0 ${invalid ? "text-danger" : "text-warning"}`} />
       <div className="flex min-w-0 flex-col gap-1.5">
         <h3 className="text-title font-semibold text-text">
-          {t(invalid ? "failInvalidTitle" : "failUnconfirmedTitle", { path: pathLabel(result.path) })}
+          {t(invalid ? "failInvalidTitle" : "failUnconfirmedTitle", { path: label })}
         </h3>
         <ul className="flex flex-col gap-1 text-body text-text">
           {result.issues.map((issue) => (
@@ -309,7 +488,7 @@ function PreviewFailure({
         <div>
           {invalid ? (
             <Button asChild variant="link" size="sm">
-              <Link href={structureHref(exam.id, fixBlock)}>
+              <Link href={fixHref ?? `/exams/${encodeURIComponent(exam.id)}/structure`}>
                 {t("failFixLink")}
                 <ArrowRight />
               </Link>

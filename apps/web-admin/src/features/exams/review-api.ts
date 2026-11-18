@@ -35,6 +35,7 @@ import type {
   PreviewBlock,
   PreviewCheck,
   PreviewCheckCode,
+  PreviewCompliance,
   PreviewItem,
   PreviewPaper,
   PreviewPart,
@@ -188,19 +189,20 @@ async function getCheckRunReal(examId: string, runId: string): Promise<ExamCheck
 
 async function generatePreviewReal({
   examId,
-  pathId,
+  target,
   seed,
   version,
-  subjectCodes,
+  basePreviewId,
+  regeneratePartIds,
 }: GeneratePreviewRequest): Promise<PreviewResult> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/{id}/preview", {
     params: { path: { id: examId } },
     body: {
-      pathId,
+      target,
       seed,
       ...(version !== null && version !== undefined ? { version } : {}),
-      ...(subjectCodes !== undefined ? { subjectCodes } : {}),
+      ...(basePreviewId !== undefined ? { basePreviewId, regeneratePartIds: regeneratePartIds ?? [] } : {}),
     },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
@@ -451,6 +453,8 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     timeLimitSeconds: issue.timeLimitSeconds ?? null,
     questionCodes: issue.questionCodes ?? null,
     affectedCodes: issue.affectedCodes ?? null,
+    slotIndex: issue.location?.slotIndex ?? null,
+    childPosition: issue.location?.childPosition ?? null,
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
@@ -642,6 +646,10 @@ function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
       : null,
     // `body` của API là JsonNode; hình dạng JSON khớp `QuestionBody` của ngân hàng câu hỏi (spec 9.2).
     body: (question.body ?? null) as QuestionBody | null,
+    originalNumber: question.originalNumber ?? null,
+    optionOrder: question.optionOrder ?? null,
+    originalOptionOrder: question.originalOptionOrder ?? null,
+    assignedTopicQuotaIds: question.assignedTopicQuotaIds ?? [],
   };
 }
 
@@ -655,9 +663,10 @@ function mapPreviewItem(item: ApiPreviewItem): PreviewItem {
       simulated: item.simulated ?? false,
       passage: item.passage ?? null,
       children: (item.children ?? []).map(mapPreviewQuestion),
+      originalOrder: item.originalOrder ?? null,
     };
   }
-  return { kind: "QUESTION", question: mapPreviewQuestion(item.question ?? {}) };
+  return { kind: "QUESTION", question: mapPreviewQuestion(item.question ?? {}), originalOrder: item.originalOrder ?? null };
 }
 
 function emptyRequirement(): BlockRequirement {
@@ -759,6 +768,20 @@ function mapPathRef(path: ApiPathRef | undefined): ExamPathRef {
   return { pathId: path?.pathId ?? "", choices: (path?.choices ?? []).map(mapChoice) };
 }
 
+function mapCompliance(row: Schema["ExamPreviewCompliance"]): PreviewCompliance {
+  const basis = row.basis ?? "QUESTION";
+  return {
+    criterion: row.criterion ?? "",
+    scope: row.scope ?? "",
+    required: row.required ?? 0,
+    actual: row.actual ?? 0,
+    enforcement: row.enforcement === "REFERENCE" ? "REFERENCE" : "REQUIRED",
+    basis: basis.startsWith("POINTS") ? "POINTS" : basis.startsWith("PROMPT") ? "PROMPT" : "QUESTION",
+    independent: basis.endsWith("_INDEPENDENT"),
+    note: row.note ?? null,
+  };
+}
+
 function mapPreviewResult(examId: string, result: ApiPreviewResult): PreviewResult {
   const base = {
     examId: result.examId ?? examId,
@@ -768,7 +791,14 @@ function mapPreviewResult(examId: string, result: ApiPreviewResult): PreviewResu
     generatedAt: result.generatedAt ?? "",
   };
   if (result.status === "GENERATED" && result.paper) {
-    return { ...base, status: "GENERATED", paper: mapPreviewPaper(result.paper) };
+    return {
+      ...base,
+      status: "GENERATED",
+      paper: mapPreviewPaper(result.paper),
+      previewId: result.previewId ?? null,
+      compliance: (result.compliance ?? []).map(mapCompliance),
+      droppedQuestions: (result.droppedQuestions ?? []).map(mapPreviewQuestion),
+    };
   }
   return {
     ...base,

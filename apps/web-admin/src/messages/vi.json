@@ -4509,6 +4509,49 @@
           "issue": "Vấn đề"
         }
       },
+      "findings": {
+        "affected": "Mã bị ảnh hưởng:",
+        "blocked": "Chưa công bố được: {count, number} lỗi chặn công bố.",
+        "codeGroup": "Mã {code}",
+        "counters": {
+          "errors": "Lỗi",
+          "sections": "Môn đã kiểm tra",
+          "sectionsValue": "{checked, number}/{total, number}",
+          "unconfirmed": "Chưa xác nhận",
+          "warnings": "Cảnh báo"
+        },
+        "countersLabel": "Số lượng vấn đề",
+        "errorsTitle": "Lỗi · chặn công bố ({count, number})",
+        "groupBy": {
+          "code": "Mã",
+          "label": "Nhóm theo",
+          "subject": "Môn"
+        },
+        "location": "Vị trí: {where}",
+        "noCode": "Không gắn mã",
+        "noWarnings": "Không có cảnh báo.",
+        "none": "–",
+        "open": "Mở chỗ lỗi",
+        "openAria": "Mở chỗ lỗi: {issue}",
+        "openHint": "Bấm Mở chỗ lỗi để tới đúng chỗ ở bước Cấu trúc.",
+        "partsTitle": "Theo mã và phần",
+        "passed": "Công bố được. Không có lỗi chặn.",
+        "title": "Lỗi và cảnh báo",
+        "unconfirmedHeadline": "Chưa kết luận được: {count, number} vấn đề chưa xác nhận trong giới hạn xử lý.",
+        "unconfirmedTitle": "Chưa xác nhận được ({count, number})",
+        "unitCode": "Mã {code}",
+        "unitColumns": {
+          "errors": "Lỗi",
+          "name": "Phần hoặc mã",
+          "state": "Trạng thái",
+          "subjects": "Môn theo thứ tự",
+          "warnings": "Cảnh báo"
+        },
+        "unitsTitle": "Trạng thái từng môn",
+        "warningsNote": "{count, number} cảnh báo không chặn công bố.",
+        "warningsTitle": "Cảnh báo · không chặn công bố ({count, number})",
+        "wholeExam": "Cả bài"
+      },
       "groups": {
         "title": "Các nhóm kiểm tra",
         "passed": "Đạt",
@@ -4594,7 +4637,24 @@
         "PART_EMPTY": "{part} chưa có câu hỏi nào.",
         "SHARED_PART_DURATION": "{part}: bài thi tính thời gian chung nên phần thi không đặt thời lượng riêng.",
         "ANSWER_QUOTA_DUPLICATE": "Môn {subject}: dạng {answerType} bị khai hai lần trong chỉ tiêu dạng trả lời.",
-        "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án."
+        "PREVIEW_SUBJECTS_INVALID": "Xem trước đường có phương án chọn môn cần gửi đúng số môn thuộc phương án.",
+        "ANSWER_FORMAT_SHORTAGE": "Khối {block}: ngân hàng {hasCount, select, yes {chỉ có {available, number} câu} other {chưa đủ câu}} {hasFormats, select, yes {có định dạng đáp án {formats}} other {đúng định dạng đáp án yêu cầu}}{hasCount, select, yes {, khối cần {required, number} câu} other {}}.",
+        "ATTACHMENT_MISSING": "Khối {block}: câu {codes} có tệp đính kèm không đọc được.",
+        "CHILD_CONDITION_SHORTAGE": "Khối {block}: ngân hàng {hasCount, select, yes {chỉ có {available, number} chùm} other {chưa đủ chùm}} có câu con đúng chủ đề{hasPositions, select, yes { ở vị trí {positions}} other { ở vị trí yêu cầu}}{hasCount, select, yes {, khối cần {required, number} chùm} other {}}.",
+        "COMBINATION_LIST_CHANGED": "Danh sách mã của danh mục toàn cục đã khác bản chụp của phiên bản đang phục vụ. Kiểm tra lại rồi công bố bản mới.",
+        "COMBINATION_SUBJECT_MISSING": "{part}: môn {subject} chưa có ma trận trong danh sách môn của phần.",
+        "DISTRIBUTION_DEVIATION": "{block}: phân bố tham khảo{hasBucket, select, yes { {bucket}} other {}} lệch chỉ tiêu: tham khảo {required, number}, thực tế {available, number}.",
+        "EXAM_QUOTA_DEVIATION": "Chỉ tiêu cấp bài tham khảo{hasBucket, select, yes { {bucket}} other {}} lệch: tham khảo {required, number}, thực tế {available, number}.",
+        "ITEM_SHAPE_SHORTAGE": "Khối {block}: ngân hàng {hasCount, select, yes {chỉ có {available, number} câu} other {chưa đủ câu}} {shapeKind, select, MATCHING {ghép đôi đủ cấu trúc {left, number} ý trái – {right, number} lựa chọn phải} STATEMENTS {có đủ {statements, number} ý} other {đúng hình dạng yêu cầu}}{hasCount, select, yes {, khối cần {required, number} câu} other {}}.",
+        "MANUAL_GRADING_REQUIRED": "Khối {block} có câu tự luận: điểm phần này chỉ có sau khi chấm tay.",
+        "OMITTED_GROUPS_PRESENT": "Khối {block} đang tạm bỏ qua: điểm tối đa của bài đã trừ phần này.",
+        "QUESTION_NOT_PLAYABLE": "Khối {block}: câu {codes} thiếu đáp án, thiếu quy tắc chấm hoặc tham chiếu tài nguyên không còn.",
+        "REQUIRED_BASIS_UNSUPPORTED": "{block}: phân bố bắt buộc chỉ tính theo số câu; đơn vị lệnh hỏi hoặc điểm chỉ dùng làm phân bố tham khảo.",
+        "SECTION_INCOMPLETE": "Môn {subject} chưa hoàn tất cấu hình.",
+        "SLOT_SOURCE_SHORTAGE": "Khối {block}{hasSlot, select, yes {, chùm {slot, number}} other {}}: chưa đủ nguồn cho điều kiện riêng của chùm{hasCount, select, yes { (cần {required, number} câu, hiện có {available, number} câu)} other {}}.",
+        "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Môn {subject}: có ít hơn 2 câu đơn nên không bỏ được 1 câu khi sinh đề 16 câu.",
+        "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {chỉ tiêu chủ đề cần ít nhất {required, number} câu, nguồn hiện chỉ có {available, number} câu, còn thiếu {missing, number} câu} other {nguồn chưa đủ cho chỉ tiêu chủ đề}}.",
+        "TOPIC_QUOTA_NESTED": "{block}: có chỉ tiêu ở cả chủ đề cha và chủ đề con cùng cấp; chỉ giữ chỉ tiêu ở một cấp."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -4812,7 +4872,7 @@
       "pathOptionInvalid": "{path} (không sinh được)",
       "pathOptionUnconfirmed": "{path} (chưa xác nhận được)",
       "generate": "Sinh đề xem trước",
-      "regenerate": "Sinh lại",
+      "regenerate": "Sinh đề thử mới",
       "runStatus": "Lần sinh thứ {run, number} · {time}",
       "runStatusFailed": "Lần sinh thứ {run, number} · {time} · không có đề",
       "live": {
@@ -4824,7 +4884,7 @@
       "errorTitle": "Có lỗi khi sinh đề",
       "retry": "Thử lại",
       "idleTitle": "Chưa sinh đề",
-      "idleDescription": "Chọn đường lựa chọn rồi bấm Sinh đề xem trước.",
+      "idleDescription": "Chọn phạm vi sinh thử rồi bấm Sinh đề xem trước.",
       "noPathsTitle": "Chưa có đường lựa chọn",
       "noPathsDescription": "Thêm phần thi và khối câu hỏi ở trang Cấu trúc và ma trận trước khi sinh đề.",
       "failInvalidTitle": "Không sinh được đề cho {path}",
@@ -4877,7 +4937,7 @@
         },
         "remaining": "Đã chọn {picked, number} / {choose, number} môn. Chọn đủ {choose, number} môn để sinh đề.",
         "split": "Số câu từng môn: {list}.",
-        "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh lại để thử cách chia khác.",
+        "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh đề thử mới để thử cách chia khác.",
         "full": "Đã chọn đủ {choose, number} môn. Bỏ chọn một môn để đổi sang môn khác."
       },
       "subjectQuotas": {
@@ -4930,7 +4990,82 @@
       "manualGrading": "Chấm tay",
       "rubricTitle": "Tiêu chí chấm",
       "rubricEmpty": "Câu chưa có tiêu chí chấm.",
-      "rubricItem": "{description}: {points, number} điểm"
+      "rubricItem": "{description}: {points, number} điểm",
+      "clozePosition": "Câu {number, number} → chỗ trống ({blank, number}) · {type}",
+      "compliance": {
+        "actualAssigned": "{value} · gán câu {numbers}",
+        "allPassed": "Đạt mọi tiêu chí",
+        "columns": {
+          "actual": "Thực tế",
+          "criterion": "Tiêu chí",
+          "level": "Mức · đơn vị",
+          "required": "Yêu cầu",
+          "result": "Kết quả",
+          "scope": "Phạm vi"
+        },
+        "criterion": {
+          "ANSWER_TYPE": "Dạng {name}",
+          "CELL": "{grade} × {difficulty}",
+          "COMPETENCY": "Năng lực {name}",
+          "DIFFICULTY": "Độ khó {name}",
+          "EXAM": "Chỉ tiêu cấp bài {names}",
+          "GRADE": "Khối lớp {name}",
+          "TOPIC": "Chỉ tiêu chủ đề"
+        },
+        "deviations": "{count, number} dòng lệch",
+        "droppedQuestion": "Đã bỏ câu {code} · {type}, {grade}, {difficulty}.",
+        "enforcement": {
+          "REFERENCE": "Tham khảo",
+          "REQUIRED": "Bắt buộc"
+        },
+        "legend": "Dòng Tham khảo lệch chỉ là cảnh báo, không chặn. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
+        "level": "{enforcement} · {unit}",
+        "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
+        "result": {
+          "OK": "Đạt",
+          "REFERENCE_DEVIATION": "Lệch · tham khảo",
+          "REQUIRED_DEVIATION": "Lệch · bắt buộc"
+        },
+        "scope": {
+          "EXAM": "Cả bài"
+        },
+        "tableLabel": "Yêu cầu và thực tế của đề thử",
+        "title": "Yêu cầu / Thực tế",
+        "unit": {
+          "POINTS": "điểm",
+          "PROMPT": "lệnh hỏi",
+          "QUESTION": "câu"
+        }
+      },
+      "expired": {
+        "description": "Đề thử chỉ giữ {minutes, number} phút nên không đổi mã trên đề này được nữa.",
+        "title": "Đề thử đã hết hạn"
+      },
+      "keep": {
+        "change": "Đổi mã, sinh lại {parts}",
+        "note": "Đề thử đang dùng {from}. Đổi sang {to} giữ nguyên {kept} (câu {keptFirst, number}–{keptLast, number}), chỉ sinh lại {regenerated} (câu {regeneratedFirst, number}–{regeneratedLast, number}). Sinh đề thử mới sinh lại cả bài với hạt giống mới."
+      },
+      "order": {
+        "showOriginal": "Xem thứ tự gốc",
+        "showShuffled": "Xem thứ tự đã đảo"
+      },
+      "originalOrderNote": "Đang xem thứ tự gốc: câu theo thứ tự bộ giải chọn, phương án theo thứ tự lúc soạn. Đề thật dùng thứ tự đã đảo bằng hạt giống.",
+      "resultMeta": "{questions, number} câu · hạt giống {seed} · giữ trong {minutes, number} phút · câu ghi sổ xem trước, không trừ lượt",
+      "resultTitle": "Đề thử · {label}",
+      "scope": {
+        "count": "Số câu của môn",
+        "countOption": "{count, number} câu{full, select, yes {} other { (bỏ 1 câu)}}",
+        "examBlocked": "Bài có phần chọn mã: hãy chọn một mã.",
+        "kind": {
+          "EXAM": "Cả bài",
+          "PATH": "Một mã hoặc nhánh",
+          "SECTION": "Một môn"
+        },
+        "label": "Phạm vi sinh thử",
+        "section": "Môn",
+        "sectionOption": "{subject} · {part}",
+        "sectionWithCount": "{name} · {count, number} câu"
+      }
     },
     "publish": {
       "close": "Đóng",

@@ -43,7 +43,7 @@ class SolverInputBuilderTest {
         when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of(parentNode, childNode));
         when(catalog.findActiveItem("SUBJECT", "TOAN")).thenReturn(Optional.of(subject));
         when(source.findCandidates(any(), eq(8))).thenReturn(List.of());
-        var scope = new KnowledgeScope(List.of(root), List.of("C1"));
+        var scope = new KnowledgeScope(List.of(root), List.of("C1"), true);
         var matrix = new BlockMatrix(MatrixMode.COMBINED, MatrixUnit.PERCENT,
                 List.of(new MatrixCell("G10", "NB", BigDecimal.valueOf(100))),
                 List.of(), List.of(), List.of(new MatrixDimensionValue("C1", BigDecimal.valueOf(100))));
@@ -68,6 +68,7 @@ class SolverInputBuilderTest {
         assertThat(filter.getValue().knowledgeGroups().getFirst()).containsExactlyInAnyOrder(root, child);
         assertThat(filter.getValue().tagCodes()).containsExactly("TAG");
         assertThat(filter.getValue().competencyCodes()).containsExactly("C1");
+        assertThat(filter.getValue().everyChildInScope()).isTrue();
     }
 
     @Test
@@ -205,7 +206,7 @@ class SolverInputBuilderTest {
         var matrix = new BlockMatrix(MatrixMode.SEPARATE, MatrixUnit.COUNT, List.of(),
                 List.of(new MatrixDimensionValue("G12", BigDecimal.valueOf(10))), List.of(), List.of());
         var slots = java.util.stream.IntStream.rangeClosed(1, 5)
-                .mapToObj(i -> new BlockSlot(i, new KnowledgeScope(List.of(slotNode), List.of("SLOT")), List.of("TAG" + i))).toList();
+                .mapToObj(i -> new BlockSlot(i, new KnowledgeScope(List.of(slotNode), List.of("SLOT"), true), List.of("TAG" + i))).toList();
         var block = new QuestionBlock("literature", "Literature", QuestionType.QUESTION_SET, 10, 5, 2,
                 new KnowledgeScope(List.of(parentNode), List.of("PARENT")), matrix, QuestionType.SINGLE_CHOICE, null, false, null, List.of("PARENT"), null,
                 true, false, slots, List.of(), null, List.of(), false, List.of(), null);
@@ -225,6 +226,7 @@ class SolverInputBuilderTest {
         assertThat(filters.getAllValues()).allSatisfy(f -> {
             assertThat(f.knowledgeGroups()).containsExactly(List.of(parentNode));
             assertThat(f.additionalKnowledgeGroups()).containsExactly(List.of(List.of(slotNode)));
+            assertThat(f.additionalEveryChildInScope()).containsExactly(true);
             assertThat(f.competencyCodes()).containsExactly("PARENT");
             assertThat(f.additionalCompetencyGroups()).containsExactly(List.of("SLOT"));
         });
@@ -261,6 +263,94 @@ class SolverInputBuilderTest {
         var filter = ArgumentCaptor.forClass(QuestionSourcePort.Filter.class);
         verify(source).findCandidates(filter.capture(), eq(20001));
         assertThat(filter.getValue().childConditions()).containsExactly(new QuestionSourcePort.ChildCondition(1, 1, List.of()));
+    }
+
+    @Test
+    void flexibleSetFilterCountsComposeWholeSetsInChildUnits() {
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(UUID.randomUUID());
+        when(catalog.findActiveItem("SUBJECT", "LIT")).thenReturn(Optional.of(subject));
+        when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
+        var block = new QuestionBlock("flex", "Flex", QuestionType.QUESTION_SET, 3, null, null,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(new ChildCondition(1, 1, List.of(UUID.randomUUID()))),
+                null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "LIT", 3, null, null, null, null, List.of(block));
+        var part = new ExamPart("p", 1, "Part", null, null, null, null, null, null, List.of(section), List.of());
+        var input = new SolverInputBuilder(catalog, source, SolverLimits.defaults())
+                .build(UUID.randomUUID(), new ExamStructureDocument(List.of(part)));
+        var group = ((SolvePart.Fixed) input.parts().getFirst()).sections().getFirst().groups().getFirst();
+        assertThat(group.kind()).isEqualTo(GroupQuota.GroupKind.FLEXIBLE_SET);
+        var matching = setOf(3);
+        when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of(matching));
+        // One 3-child set composes the target; the child-unit count (3) meets the required count.
+        assertThat(input.candidates().filterCounts(group, 3)).isEmpty();
+        var uncomposable = setOf(4);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            var filter = (QuestionSourcePort.Filter) invocation.getArgument(0);
+            return filter.childConditions().isEmpty() ? List.of(uncomposable, matching) : List.of(uncomposable);
+        }).when(source).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
+        // The filtered pool cannot compose 3; relaxing the condition can, so it is blamed.
+        assertThat(input.candidates().filterCounts(group, 3)).singleElement().satisfies(count -> {
+            assertThat(count.dimension())
+                    .isEqualTo(SolverInputBuilder.SolverCandidates.FilterDimension.CHILD_CONDITION);
+            assertThat(count.required()).isEqualTo(3);
+            assertThat(count.withFilter()).isZero();
+            assertThat(count.withoutFilter()).isEqualTo(3);
+        });
+        // The relaxed pool fails to compose too, so no filter takes the blame.
+        org.mockito.Mockito.doAnswer(invocation -> {
+            var filter = (QuestionSourcePort.Filter) invocation.getArgument(0);
+            return filter.childConditions().isEmpty() ? List.of(setOf(2), setOf(2)) : List.of();
+        }).when(source).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
+        assertThat(input.candidates().filterCounts(group, 3)).isEmpty();
+    }
+
+    @Test
+    void flexibleFilterCountsStayBoundedWhenTheTargetFarExceedsTheSupply() {
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(UUID.randomUUID());
+        when(catalog.findActiveItem("SUBJECT", "LIT")).thenReturn(Optional.of(subject));
+        when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
+        var block = new QuestionBlock("flex", "Flex", QuestionType.QUESTION_SET, 3, null, null,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(new ChildCondition(1, 1, List.of(UUID.randomUUID()))),
+                null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "LIT", 3, null, null, null, null, List.of(block));
+        var part = new ExamPart("p", 1, "Part", null, null, null, null, null, null, List.of(section), List.of());
+        var input = new SolverInputBuilder(catalog, source, SolverLimits.defaults())
+                .build(UUID.randomUUID(), new ExamStructureDocument(List.of(part)));
+        var group = ((SolvePart.Fixed) input.parts().getFirst()).sections().getFirst().groups().getFirst();
+        int[] targets = {1_000_000_000, Integer.MAX_VALUE};
+        org.junit.jupiter.api.Assertions.assertTimeout(java.time.Duration.ofSeconds(5), () -> {
+            for (int target : targets) {
+                when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());
+                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt()))
+                        .thenReturn(List.of(setOf(3), setOf(2)));
+                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                // A truncated source cannot establish a shortfall; it is rejected before any counting.
+                org.mockito.Mockito.clearInvocations(source);
+                when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt()))
+                        .thenReturn(java.util.Collections.nCopies(20001, setOf(1)));
+                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                verify(source, org.mockito.Mockito.times(1)).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
+            }
+        });
+    }
+
+    private static QuestionSourcePort.Candidate setOf(int children) {
+        List<QuestionSourcePort.Unit> units = new java.util.ArrayList<>();
+        for (int i = 0; i < children; i++) {
+            units.add(new QuestionSourcePort.Unit(UUID.randomUUID(), null, QuestionType.SINGLE_CHOICE,
+                    null, null, List.of(), List.of(), null, null, null, 0, null, null, null, null, false));
+        }
+        return new QuestionSourcePort.Candidate(UUID.randomUUID(), 1, UUID.randomUUID(), units,
+                null, null, null, null, null, null);
     }
 
     @Test

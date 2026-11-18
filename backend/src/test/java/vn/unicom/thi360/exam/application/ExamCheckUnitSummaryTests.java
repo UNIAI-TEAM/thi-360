@@ -58,6 +58,36 @@ class ExamCheckUnitSummaryTests {
     }
 
     @Test
+    void reportsFlexibleChildrenAndRetainsFixedSetMultiplication() {
+        var document = codec.read("""
+                {"parts":[{"id":"p","questionCount":30,"sections":[
+                  {"id":"s","subjectCode":"TOAN","questionCount":30,"blocks":[
+                    {"id":"single","questionType":"SINGLE_CHOICE","questionCount":12,"requiredPointsPerQuestion":10},
+                    {"id":"flex","questionType":"QUESTION_SET","childAnswerType":"SINGLE_CHOICE",
+                     "questionCount":18,"requiredPointsPerQuestion":10}]}]},
+                  {"id":"fixed-part","sections":[{"id":"fixed-section","subjectCode":"TOAN","blocks":[
+                    {"id":"fixed","questionType":"QUESTION_SET","childAnswerType":"SINGLE_CHOICE",
+                     "questionCount":99,"setCount":2,"setSize":3,"requiredPointsPerQuestion":10}]}]}]}
+                """);
+        var parts = ExamCheckUnitSummary.summarize(new ExamStructureResponse(UUID.randomUUID(), document.parts(), 1)).parts();
+        var part = parts.getFirst();
+        var section = part.children().getFirst();
+        var flex = section.children().get(1);
+        assertThat(part.allocated()).isEqualTo(30);
+        assertThat(section.allocated()).isEqualTo(30);
+        assertThat(section.maxPoints()).isEqualByComparingTo("300");
+        assertThat(flex.setCount()).isNull();
+        assertThat(flex.childCount()).isEqualTo(18);
+        assertThat(flex.allocated()).isEqualTo(18);
+        assertThat(flex.maxPoints()).isEqualByComparingTo("180");
+        var fixed = parts.get(1).children().getFirst().children().getFirst();
+        assertThat(fixed.setCount()).isEqualTo(2);
+        assertThat(fixed.childCount()).isEqualTo(6);
+        assertThat(fixed.allocated()).isEqualTo(6);
+        assertThat(fixed.maxPoints()).isEqualByComparingTo("60");
+    }
+
+    @Test
     void neverAddsMutuallyExclusiveCodeSubjects() {
         var document = codec.read("""
                 {"parts":[{"id":"p","name":"Choice","questionCount":15,
