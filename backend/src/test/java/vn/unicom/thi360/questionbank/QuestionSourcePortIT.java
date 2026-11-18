@@ -241,6 +241,11 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         assertThat(source.findCandidates(strict, 10)).isEmpty();
         assertThat(source.count(strict).total()).isZero();
         assertThat(source.matching(strict, List.of(root))).isEmpty();
+        var strictSlot = new QuestionSourcePort.Filter(subject, List.of(), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null,
+                List.of(), List.of(List.of(List.of(scope))), List.of(), null, List.of(true));
+        assertThat(source.findCandidates(strictSlot, 10)).isEmpty();
+        assertThat(source.count(strictSlot).total()).isZero();
     }
 
     @Test

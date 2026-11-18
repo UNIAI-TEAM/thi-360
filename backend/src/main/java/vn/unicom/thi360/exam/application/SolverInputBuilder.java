@@ -230,7 +230,8 @@ public class SolverInputBuilder {
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                             shape, block.answerFormats().stream().map(AnswerFormat::valueOf).toList(), conditions,
-                            slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope()));
+                            slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
+                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope()))));
                     groups.add(group);
                 }
             }

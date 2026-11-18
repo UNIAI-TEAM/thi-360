@@ -206,7 +206,7 @@ class SolverInputBuilderTest {
         var matrix = new BlockMatrix(MatrixMode.SEPARATE, MatrixUnit.COUNT, List.of(),
                 List.of(new MatrixDimensionValue("G12", BigDecimal.valueOf(10))), List.of(), List.of());
         var slots = java.util.stream.IntStream.rangeClosed(1, 5)
-                .mapToObj(i -> new BlockSlot(i, new KnowledgeScope(List.of(slotNode), List.of("SLOT")), List.of("TAG" + i))).toList();
+                .mapToObj(i -> new BlockSlot(i, new KnowledgeScope(List.of(slotNode), List.of("SLOT"), true), List.of("TAG" + i))).toList();
         var block = new QuestionBlock("literature", "Literature", QuestionType.QUESTION_SET, 10, 5, 2,
                 new KnowledgeScope(List.of(parentNode), List.of("PARENT")), matrix, QuestionType.SINGLE_CHOICE, null, false, null, List.of("PARENT"), null,
                 true, false, slots, List.of(), null, List.of(), false, List.of(), null);
@@ -226,6 +226,7 @@ class SolverInputBuilderTest {
         assertThat(filters.getAllValues()).allSatisfy(f -> {
             assertThat(f.knowledgeGroups()).containsExactly(List.of(parentNode));
             assertThat(f.additionalKnowledgeGroups()).containsExactly(List.of(List.of(slotNode)));
+            assertThat(f.additionalEveryChildInScope()).containsExactly(true);
             assertThat(f.competencyCodes()).containsExactly("PARENT");
             assertThat(f.additionalCompetencyGroups()).containsExactly(List.of("SLOT"));
         });

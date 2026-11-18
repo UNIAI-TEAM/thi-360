@@ -29,7 +29,19 @@ public interface QuestionSourcePort {
             List<List<String>> additionalTagGroups,
             List<List<List<UUID>>> additionalKnowledgeGroups,
             List<List<String>> additionalCompetencyGroups,
-            Boolean everyChildInScope) {
+            Boolean everyChildInScope,
+            List<Boolean> additionalEveryChildInScope) {
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, List.of());
+        }
         public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
                 QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
                 List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
