@@ -52,7 +52,7 @@ class ExamContractStubIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void targetPreviewRequiresViewAndReturnsNotImplemented() throws Exception {
+    void targetPreviewRequiresViewAndValidatesRequests() throws Exception {
         String url = "/api/v1/admin/exams/" + ID + "/preview";
         String body = "{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"section\"}}";
         mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(body))
@@ -60,12 +60,9 @@ class ExamContractStubIT extends AbstractIntegrationTest {
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW))
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("NOT_IMPLEMENTED"));
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pathId\":\"default\",\"seed\":1,\"regeneratePartIds\":[\"part\"]}"))
-                .andExpect(status().isNotImplemented());
+                .andExpect(status().isBadRequest());
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW))
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest());
@@ -73,7 +70,7 @@ class ExamContractStubIT extends AbstractIntegrationTest {
 
     @Test
     @Transactional
-    void legacyPreviewStillRunsAndExposesPendingFieldsAsNull() throws Exception {
+    void legacyAndSectionPreviewsExposeImplementedFields() throws Exception {
         UUID examId = UUID.randomUUID();
         UUID seededQuestion = jdbc.queryForObject("select id from questionbank.question where code = ?",
                 UUID.class, "SEED-MATH-G10-NB-SC-001");
@@ -98,13 +95,18 @@ class ExamContractStubIT extends AbstractIntegrationTest {
         var body = mapper.readTree(response.getContentAsString());
         assertThat(body.path("status").asText()).isEqualTo("GENERATED");
         var item = body.path("paper").path("parts").get(0).path("blocks").get(0).path("items").get(0);
-        assertThat(item.path("originalOrder").isNull()).isTrue();
-        assertThat(item.path("question").path("optionOrder").isNull()).isTrue();
-        assertThat(item.path("question").path("originalOptionOrder").isNull()).isTrue();
-        assertThat(item.path("question").path("originalNumber").isNull()).isTrue();
-        assertThat(body.has("compliance")).isTrue();
-        assertThat(body.path("compliance").isNull()).isTrue();
-        assertThat(body.path("previewId").isNull()).isTrue();
+        assertThat(item.path("originalOrder").asInt()).isEqualTo(1);
+        assertThat(item.path("question").path("optionOrder").isArray()).isTrue();
+        assertThat(item.path("question").path("originalOptionOrder").isArray()).isTrue();
+        assertThat(item.path("question").path("originalNumber").asInt()).isEqualTo(1);
+        assertThat(body.path("compliance").isArray()).isTrue();
+        assertThat(UUID.fromString(body.path("previewId").asText())).isNotNull();
+        mockMvc.perform(post("/api/v1/admin/exams/" + examId + "/preview")
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"section\"},\"seed\":123}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GENERATED"))
+                .andExpect(jsonPath("$.previewId").isString())
+                .andExpect(jsonPath("$.paper.totalQuestions").value(1));
         var structure = mockMvc.perform(get("/api/v1/admin/exams/" + examId + "/structure")
                         .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse();
