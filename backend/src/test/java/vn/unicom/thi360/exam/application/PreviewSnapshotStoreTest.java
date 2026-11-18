@@ -37,7 +37,9 @@ class PreviewSnapshotStoreTest {
                 List.of(new GroupWitness("group", List.of(new QuestionPick(questionId.toString(), 3)))),
                 List.of(candidate), List.of(version),
                 List.of(new PreviewSnapshotStore.Dropped(new QuestionPick("dropped", 1), "PHYSICS", "physics-section")),
-                null, Map.of("science", List.of(17, 16)));
+                new vn.unicom.thi360.exam.api.ExamPreviewController.PreviewPart(
+                        "part-1", "Part", 1, null, 1, 1, java.math.BigDecimal.ONE, null, List.of()),
+                Map.of("science", List.of(17, 16)));
         var snapshot = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), 2, 42L, Map.of("part-1", part));
 
         UUID id = store.save(snapshot);
@@ -47,6 +49,12 @@ class PreviewSnapshotStoreTest {
         when(values.get("exam:preview:" + id)).thenReturn(serialized.getValue());
 
         assertThat(store.find(id)).isEqualTo(snapshot);
+        var legacy = new ObjectMapper().valueToTree(snapshot);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) legacy.path("parts").path("part-1"))
+                .remove(List.of("presentation", "allocations"));
+        UUID legacyId = UUID.randomUUID();
+        when(values.get("exam:preview:" + legacyId)).thenReturn(legacy.toString());
+        assertThat(store.find(legacyId)).isNull();
         assertThat(store.find(UUID.randomUUID())).isNull();
     }
 }

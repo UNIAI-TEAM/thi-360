@@ -49,7 +49,10 @@ public class PreviewSnapshotStore {
         String value = redis.opsForValue().get(KEY_PREFIX + id);
         if (value == null) return null;
         try {
-            return mapper.readValue(value, Snapshot.class);
+            Snapshot snapshot = mapper.readValue(value, Snapshot.class);
+            if (snapshot.parts() == null || snapshot.parts().values().stream()
+                    .anyMatch(part -> part.presentation() == null || part.allocations() == null)) return null;
+            return snapshot;
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Cannot deserialize preview snapshot", ex);
         }
