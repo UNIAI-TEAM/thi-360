@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.exam.domain.AudioRequirement;
 import vn.unicom.thi360.exam.domain.BlockMatrix;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
@@ -107,27 +108,38 @@ public class SolverInputBuilder {
             if (filter.itemShape() != null) dimensions.add(FilterDimension.ITEM_SHAPE);
             if (!filter.answerFormats().isEmpty()) dimensions.add(FilterDimension.ANSWER_FORMAT);
             if (!filter.childConditions().isEmpty()) dimensions.add(FilterDimension.CHILD_CONDITION);
+            if (filter.audioRequirement() != QuestionSourcePort.AudioRequirement.ANY) dimensions.add(FilterDimension.AUDIO);
+            if (filter.requiredPointsPerQuestion() != null) dimensions.add(FilterDimension.POINTS);
             if (dimensions.isEmpty()) return List.of();
             var filtered = source.findCandidates(filter, fetchLimit);
             // If the source was truncated, it cannot establish the exact shortfall.
             if (filtered.size() >= fetchLimit) return List.of();
-            long available = eligibleUnits(group, filtered, required);
+            long available = eligibleUnits(group, filtered, required, true);
             if (available >= required) return List.of();
             List<FilterCount> counts = new ArrayList<>();
             for (var dimension : dimensions) {
-                var relaxed = new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(),
-                        filter.answerTypes(), filter.questionType(), filter.taskTypeCode(), filter.childAnswerType(),
-                        filter.tagCodes(), filter.competencyCodes(), filter.requiredPointsPerQuestion(),
-                        dimension == FilterDimension.ITEM_SHAPE ? null : filter.itemShape(),
-                        dimension == FilterDimension.ANSWER_FORMAT ? List.of() : filter.answerFormats(),
-                        dimension == FilterDimension.CHILD_CONDITION ? List.of() : filter.childConditions(),
-                        filter.additionalTagGroups(), filter.additionalKnowledgeGroups(),
-                        filter.additionalCompetencyGroups(), filter.everyChildInScope(),
-                        filter.additionalEveryChildInScope());
-                long without = eligibleUnits(group, source.findCandidates(relaxed, fetchLimit), required);
+                var relaxed = relaxed(filter, dimension);
+                long without = eligibleUnits(group, source.findCandidates(relaxed, fetchLimit), required,
+                        dimension != FilterDimension.POINTS);
                 if (without >= required) counts.add(new FilterCount(dimension, required, without, available));
             }
             return List.copyOf(counts);
+        }
+
+        /** The same filter with one declared dimension removed. */
+        private static QuestionSourcePort.Filter relaxed(QuestionSourcePort.Filter filter, FilterDimension dimension) {
+            return new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(),
+                    filter.answerTypes(), filter.questionType(), filter.taskTypeCode(), filter.childAnswerType(),
+                    filter.tagCodes(), filter.competencyCodes(),
+                    dimension == FilterDimension.POINTS ? null : filter.requiredPointsPerQuestion(),
+                    dimension == FilterDimension.ITEM_SHAPE ? null : filter.itemShape(),
+                    dimension == FilterDimension.ANSWER_FORMAT ? List.of() : filter.answerFormats(),
+                    dimension == FilterDimension.CHILD_CONDITION ? List.of() : filter.childConditions(),
+                    filter.additionalTagGroups(), filter.additionalKnowledgeGroups(),
+                    filter.additionalCompetencyGroups(), filter.everyChildInScope(),
+                    filter.additionalEveryChildInScope(),
+                    dimension == FilterDimension.AUDIO ? QuestionSourcePort.AudioRequirement.ANY
+                            : filter.audioRequirement());
         }
 
         /**
@@ -137,13 +149,13 @@ public class SolverInputBuilder {
          * only when the relaxed pool can actually compose the target.
          */
         private static long eligibleUnits(GroupQuota group, List<QuestionSourcePort.Candidate> candidates,
-                int required) {
+                int required, boolean checkPoints) {
             if (group.kind() != GroupQuota.GroupKind.FLEXIBLE_SET) {
-                return candidates.stream().filter(candidate -> eligible(group, candidate)).count();
+                return candidates.stream().filter(candidate -> eligible(group, candidate, checkPoints)).count();
             }
             long supply = 0;
             for (var candidate : candidates) {
-                if (eligible(group, candidate)) supply += candidate.units().size();
+                if (eligible(group, candidate, checkPoints)) supply += candidate.units().size();
             }
             if (supply == 0) return 0;
             // The target can never be composed beyond the supply, so bound the state by it.
@@ -151,7 +163,7 @@ public class SolverInputBuilder {
             boolean[] reachable = new boolean[limit + 1];
             reachable[0] = true;
             for (var candidate : candidates) {
-                if (!eligible(group, candidate)) continue;
+                if (!eligible(group, candidate, checkPoints)) continue;
                 int size = candidate.units().size();
                 for (int sum = limit; sum >= size; sum--) {
                     reachable[sum] |= reachable[sum - size];
@@ -163,7 +175,7 @@ public class SolverInputBuilder {
             return 0;
         }
 
-        private static boolean eligible(GroupQuota group, QuestionSourcePort.Candidate candidate) {
+        private static boolean eligible(GroupQuota group, QuestionSourcePort.Candidate candidate, boolean checkPoints) {
             var units = candidate.units();
             if (units.isEmpty()) return false;
             if (group.kind() == GroupQuota.GroupKind.SET && units.size() != group.setSize()) return false;
@@ -173,7 +185,7 @@ public class SolverInputBuilder {
             for (var unit : units) {
                 if (group.childAnswerType() != null && !group.childAnswerType().equals(unit.answerType().name())) return false;
                 if (group.answerType() != null && !group.answerType().equals(unit.answerType().name())) return false;
-                if (group.requiredPointsPerUnit() != null && (unit.points() == null
+                if (checkPoints && group.requiredPointsPerUnit() != null && (unit.points() == null
                         || group.requiredPointsPerUnit().compareTo(unit.points()) != 0)) return false;
             }
             return true;
@@ -297,14 +309,8 @@ public class SolverInputBuilder {
                     List<QuestionType> answerTypes = block.questionType() == null && section.answerQuotas() != null
                             ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(a -> a != null).toList()
                             : List.of();
-                    var shape = block.itemShape() == null ? null : new QuestionSourcePort.ItemShape(
-                            block.itemShape().statements(), block.itemShape().leftItems(), block.itemShape().rightItems());
-                    var conditions = block.childConditions().stream().map(c -> {
-                        if (c.from() == null || c.to() == null) {
-                            throw new IllegalArgumentException("Child condition requires both from and to bounds");
-                        }
-                        return new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds());
-                    }).toList();
+                    var shape = shape(block.itemShape());
+                    var conditions = childConditions(block);
                     List<List<String>> slotTags = slot == null || slot.tagCodes().isEmpty()
                             ? List.of() : List.of(slot.tagCodes());
                     List<List<String>> slotCompetencies = slot == null || slot.knowledgeScope() == null
@@ -313,9 +319,10 @@ public class SolverInputBuilder {
                     filters.put(group, new QuestionSourcePort.Filter(subject, subtrees,
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
-                            shape, block.answerFormats().stream().map(AnswerFormat::valueOf).toList(), conditions,
+                            shape, answerFormats(block), conditions,
                             slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
-                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope()))));
+                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())),
+                            audio(section.audioRequirement())));
                     groups.add(group);
                 }
             }
@@ -325,6 +332,32 @@ public class SolverInputBuilder {
                     section.choiceGroup() == null ? null : section.choiceGroup().name()));
         }
         return result;
+    }
+
+    static QuestionSourcePort.ItemShape shape(vn.unicom.thi360.exam.domain.ItemShape shape) {
+        return shape == null ? null : new QuestionSourcePort.ItemShape(shape.statements(), shape.leftItems(),
+                shape.rightItems(), shape.options());
+    }
+
+    /** Positional child conditions of a block as the source filter states them. */
+    static List<QuestionSourcePort.ChildCondition> childConditions(QuestionBlock block) {
+        return block.childConditions().stream().map(c -> {
+            if (c.from() == null || c.to() == null) {
+                throw new IllegalArgumentException("Child condition requires both from and to bounds");
+            }
+            return new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds(), c.answerType(),
+                    shape(c.itemShape()));
+        }).toList();
+    }
+
+    static List<AnswerFormat> answerFormats(QuestionBlock block) {
+        return block.answerFormats().stream().map(AnswerFormat::valueOf).toList();
+    }
+
+    /** An unset requirement is {@code ANY}; every group of a section inherits the section's requirement. */
+    static QuestionSourcePort.AudioRequirement audio(AudioRequirement requirement) {
+        return requirement == null ? QuestionSourcePort.AudioRequirement.ANY
+                : QuestionSourcePort.AudioRequirement.valueOf(requirement.name());
     }
 
     private static List<List<UUID>> expandScope(KnowledgeScope scope, List<CatalogItemView> knowledge,

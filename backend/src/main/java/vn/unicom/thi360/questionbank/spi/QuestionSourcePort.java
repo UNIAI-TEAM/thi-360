@@ -12,6 +12,13 @@ import java.util.UUID;
 public interface QuestionSourcePort {
     int MAX_SET_CHILDREN = 20;
 
+    /**
+     * Audio condition on the ROOT question of a candidate (spec H38): a root has audio when one of its
+     * attachments has MIME {@code audio/*}. A question set is accepted or rejected as a whole by its root.
+     * {@code ANY} does not filter.
+     */
+    enum AudioRequirement { ANY, REQUIRED, FORBIDDEN }
+
     /** Each knowledge subtree contains a selected node and its descendants; additional groups are ANDed. */
     record Filter(
             UUID subjectId,
@@ -30,7 +37,23 @@ public interface QuestionSourcePort {
             List<List<List<UUID>>> additionalKnowledgeGroups,
             List<List<String>> additionalCompetencyGroups,
             Boolean everyChildInScope,
-            List<Boolean> additionalEveryChildInScope) {
+            List<Boolean> additionalEveryChildInScope,
+            AudioRequirement audioRequirement) {
+        public Filter {
+            audioRequirement = audioRequirement == null ? AudioRequirement.ANY : audioRequirement;
+        }
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, AudioRequirement.ANY);
+        }
         public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
                 QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
                 List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
@@ -71,13 +94,27 @@ public interface QuestionSourcePort {
         }
     }
 
-    record ItemShape(Integer statements, Integer leftItems, Integer rightItems) {}
-    record ChildCondition(int from, int to, List<UUID> nodeIds) {
+    /** {@code options} counts the answer options of a single- or multiple-choice question. */
+    record ItemShape(Integer statements, Integer leftItems, Integer rightItems, Integer options) {
+        public ItemShape(Integer statements, Integer leftItems, Integer rightItems) {
+            this(statements, leftItems, rightItems, null);
+        }
+    }
+
+    /**
+     * Condition on the children at positions {@code from}..{@code to}. A non-empty {@code nodeIds}, an
+     * {@code answerType} and an {@code itemShape} are ANDed per position; with all three empty nothing matches.
+     */
+    record ChildCondition(int from, int to, List<UUID> nodeIds, QuestionType answerType, ItemShape itemShape) {
         public ChildCondition {
             if (from < 1 || to < from || to > MAX_SET_CHILDREN) {
                 throw new IllegalArgumentException("Child positions must be an ordered range within 1.." + MAX_SET_CHILDREN);
             }
             nodeIds = nodeIds == null ? List.of() : List.copyOf(nodeIds);
+        }
+
+        public ChildCondition(int from, int to, List<UUID> nodeIds) {
+            this(from, to, nodeIds, null, null);
         }
     }
 
