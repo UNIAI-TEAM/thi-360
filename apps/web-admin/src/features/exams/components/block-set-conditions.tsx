@@ -257,6 +257,8 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
   const patch = (index: number, change: Partial<ChildCondition>) =>
     replace(conditions.map((condition, position) => (position === index ? { ...condition, ...change } : condition)));
   const tContent = useTranslations("content");
+  /** Mẫu khóa dòng (H42): vị trí đã khai dạng là một phần của "dạng" của dòng nên không đổi dải, không xóa; MAPID vẫn sửa. */
+  const frozen = (condition: ChildCondition) => locked && condition.answerType !== undefined;
   /** Đổi dạng câu con: hình dạng của dạng cũ không còn nghĩa nên bỏ (R-132, H39). */
   const setAnswerType = (index: number, answerType: QuestionType | undefined) =>
     replace(
@@ -298,11 +300,11 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
                 {t("from")}
-                <BlockNumberInput value={condition.from} aria-invalid={issue === "FROM_MIN" || issue === "RANGE_ORDER" ? true : undefined} onValueChange={(from) => patch(index, { from })} />
+                <BlockNumberInput value={condition.from} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} aria-invalid={issue === "FROM_MIN" || issue === "RANGE_ORDER" ? true : undefined} onValueChange={(from) => patch(index, { from })} />
               </label>
               <label className="flex w-28 flex-col gap-1 text-field-label font-medium text-text-secondary">
                 {t("to")}
-                <BlockNumberInput value={condition.to} aria-invalid={issue === "RANGE_ORDER" || issue === "OUT_OF_SET" ? true : undefined} onValueChange={(to) => patch(index, { to })} />
+                <BlockNumberInput value={condition.to} readOnly={frozen(condition)} aria-readonly={frozen(condition) || undefined} aria-invalid={issue === "RANGE_ORDER" || issue === "OUT_OF_SET" ? true : undefined} onValueChange={(to) => patch(index, { to })} />
               </label>
               <div className="w-56">
                 <FormField label={t("answerType")}>
@@ -347,6 +349,7 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
                   icon={<Trash2 />}
                   tone="danger"
                   aria-label={t("remove", { name })}
+                  disabled={frozen(condition)}
                   onClick={() => replace(conditions.filter((_, position) => position !== index))}
                 />
               </div>

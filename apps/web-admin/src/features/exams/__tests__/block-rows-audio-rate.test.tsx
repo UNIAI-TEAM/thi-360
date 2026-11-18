@@ -232,4 +232,27 @@ describe("chùm trộn dạng (R-132)", () => {
     expect(screen.getByText("4 câu · 8 điểm")).toBeInTheDocument();
     expect(screen.queryByText(/chùm; dòng tổng/)).not.toBeInTheDocument();
   });
+
+  it("R1-2 · mẫu khóa dòng: vị trí đã khai dạng không đổi dải, không bỏ được; vị trí chưa khai dạng (chỉ MAPID) vẫn sửa được", () => {
+    const typed = block({
+      setCount: 1,
+      setSize: 8,
+      questionCount: 8,
+      childConditions: [
+        { from: 1, to: 2, nodeIds: [], answerType: "TRUE_FALSE", itemShape: { statements: 4 } },
+        { from: 3, to: 8, nodeIds: ["kn-1D4"] },
+      ],
+    });
+    renderEditor(typed, { rowsLocked: true });
+    const frozen = screen.getByRole("group", { name: "Điều kiện vị trí 1" });
+    for (const name of ["Từ câu con số", "Đến câu con số"]) {
+      expect(within(frozen).getByRole("textbox", { name })).toHaveAttribute("readonly");
+    }
+    expect(within(frozen).getByRole("button", { name: "Bỏ Điều kiện vị trí 1" })).toHaveAttribute("aria-disabled", "true");
+    const open = screen.getByRole("group", { name: "Điều kiện vị trí 2" });
+    for (const name of ["Từ câu con số", "Đến câu con số"]) {
+      expect(within(open).getByRole("textbox", { name })).not.toHaveAttribute("readonly");
+    }
+    expect(within(open).getByRole("button", { name: "Bỏ Điều kiện vị trí 2" })).not.toHaveAttribute("aria-disabled");
+  });
 });
