@@ -21537,7 +21537,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "format" : "byte",
+                  "format" : "binary",
                   "type" : "string"
                 }
               }

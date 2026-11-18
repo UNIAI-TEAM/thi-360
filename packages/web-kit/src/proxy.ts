@@ -20,6 +20,7 @@ const FORWARDED_REQUEST_HEADERS = [
   "cookie",
   "idempotency-key",
   "origin",
+  "range",
   "x-xsrf-token",
 ] as const;
 
@@ -256,6 +257,29 @@ export async function proxyApiRequest(
       responseHeaders.set(name, value);
     }
   });
+  // Content-Length bị bỏ mặc định vì proxy stream body (độ dài không bảo đảm khớp). Chỉ chuyển
+  // tiếp khi upstream báo hỗ trợ byte range (206 luôn đủ điều kiện; 200 cần Accept-Ranges: bytes)
+  // để trình duyệt biết độ dài tệp — cần cho tua audio (UNI-2698). Nếu upstream nén
+  // (Content-Encoding khác identity), fetch có thể đã giải mã body nên độ dài trên dây không còn
+  // đúng cho body proxy gửi đi: không chuyển tiếp Content-Length trong trường hợp đó.
+  const upstreamAcceptRanges = upstream.headers.get("accept-ranges");
+  const upstreamContentEncoding = upstream.headers.get("content-encoding");
+  const hasNonIdentityEncoding =
+    upstreamContentEncoding !== null &&
+    upstreamContentEncoding
+      .split(",")
+      .map((token) => token.trim().toLowerCase())
+      .some((token) => token !== "" && token !== "identity");
+  if (
+    !hasNonIdentityEncoding &&
+    (upstream.status === 206 ||
+      (upstreamAcceptRanges !== null && /(^|,)\s*bytes\s*(,|$)/i.test(upstreamAcceptRanges)))
+  ) {
+    const upstreamContentLength = upstream.headers.get("content-length");
+    if (upstreamContentLength !== null) {
+      responseHeaders.set("content-length", upstreamContentLength);
+    }
+  }
   // Cookie của lượt làm mới đi trước; `Set-Cookie` của chính phản hồi (nếu có) đi sau và thắng.
   if (refresh && refresh.setCookies.length > 0) {
     for (const cookie of refresh.setCookies) {

@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -54,10 +56,16 @@ public class AdminQuestionAssetController {
         return assetService.upload(kind, file);
     }
 
+    /**
+     * Nội dung trả về là {@link Resource} để Spring MVC tự xử lý byte range
+     * ({@code 206 Partial Content}, {@code Accept-Ranges: bytes}) cho tua audio/video.
+     * {@code 416} kèm {@code Content-Range: bytes *&#47;total}, body rỗng — xem
+     * {@link QuestionAssetRangeNotSatisfiableAdvice}.
+     */
     @GetMapping("/{id}")
     @RequirePermission(anyOf = {Permissions.QUESTION_VIEW, Permissions.EXAM_VIEW})
     @Operation(summary = "Phục vụ nội dung tài nguyên (inline cho ảnh, attachment cho tệp)")
-    public ResponseEntity<byte[]> download(@PathVariable UUID id) {
+    public ResponseEntity<Resource> download(@PathVariable UUID id) {
         DownloadedAsset downloaded = assetService.download(id);
         QuestionAssetKind kind = downloaded.asset().getKind();
         ContentDisposition disposition = ContentDisposition
@@ -68,7 +76,8 @@ public class AdminQuestionAssetController {
                 .contentType(MediaType.parseMediaType(downloaded.asset().getMime()))
                 .header("X-Content-Type-Options", "nosniff")
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentLength(downloaded.content().length)
-                .body(downloaded.content());
+                // Không đặt Content-Length: Spring tự tính cho 200 (độ dài tệp) và cho
+                // 206 (độ dài vùng byte); đặt tay sẽ khiến 206 mang độ dài cả tệp.
+                .body(new ByteArrayResource(downloaded.content()));
     }
 }
