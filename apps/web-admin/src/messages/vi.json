@@ -5198,7 +5198,7 @@
           "durationMinutes": "Thời lượng của {name}",
           "maxPoints": "Điểm của {name}"
         },
-        "lockedCounts": "Số câu của mẫu này được khóa, không sửa trên dòng.",
+        "lockedCounts": "Mẫu đã khóa số câu",
         "choiceNote": "(học viên chọn một lựa chọn)",
         "omittedLabel": "tạm bỏ qua",
         "notCounted": "không tính",
