@@ -666,7 +666,8 @@ public class ExamService {
                         : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
                 exam.applyScoringProfile(subjectPart ? null
-                                : scopedReferenceMax(profile, choice.scope(), maxScore),
+                                : scopedReferenceMax(profile, choice.scope(),
+                                        request.maxScore() != null ? request.maxScore() : maxScore),
                         subjectPart ? "RAW" : profile.getPracticeScoring());
                 exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
@@ -705,11 +706,13 @@ public class ExamService {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
         if (request.practiceScoring() != null || request.referenceMax() != null) {
-            String scoring = request.practiceScoring() == null
-                    ? exam.getPracticeScoring() : request.practiceScoring();
+            String previousScoring = exam.getPracticeScoring();
+            String scoring = request.practiceScoring() == null ? previousScoring : request.practiceScoring();
+            // The default reference of 10 applies only when scoring becomes LINEAR; an exam that was already
+            // LINEAR without a reference (e.g. a V-ACT review) keeps none.
             BigDecimal referenceMax = request.referenceMax() != null ? request.referenceMax()
                     : exam.getReferenceMax() != null ? exam.getReferenceMax()
-                    : "LINEAR".equals(scoring) ? BigDecimal.TEN : null;
+                    : "LINEAR".equals(scoring) && !"LINEAR".equals(previousScoring) ? BigDecimal.TEN : null;
             exam.applyScoringProfile(referenceMax, scoring);
         }
         exam.markStructureChanged(actor, now);
@@ -809,15 +812,30 @@ public class ExamService {
             }
         }
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        String previousMode = exam.getBuildMode();
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
                 subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
         exam.setBuildMode(template.getBuildMode());
+        // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the maximum
+        // score and reference of a new exam made from that template, administrator overrides included.
+        boolean scoringReset = false;
+        if (!Objects.equals(previousMode, template.getBuildMode()) && "LINEAR".equals(exam.getPracticeScoring())) {
+            ExamKindProfile profile = profileRepository.findById(exam.getKindItemId()).orElse(null);
+            if (profile != null && "LINEAR".equals(profile.getPracticeScoring())) {
+                BigDecimal base = template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
+                exam.applyScoringProfile(scopedReferenceMax(profile, exam.getScope(), base), exam.getPracticeScoring());
+                exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
+                        exam.getDurationMinutes(), base, actor, now);
+                scoringReset = true;
+            }
+        }
         writeStructure(exam, doc, false, actor, now);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.TEMPLATE_LOAD")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
-                .after(Map.of("templateCode", template.getCode(), "topologyReplaced", topologyReplaced))
+                .after(Map.of("templateCode", template.getCode(), "topologyReplaced", topologyReplaced,
+                        "scoringReset", scoringReset))
                 .build());
         return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));

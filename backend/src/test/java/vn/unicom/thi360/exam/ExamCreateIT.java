@@ -1,5 +1,6 @@
 package vn.unicom.thi360.exam;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -681,6 +682,122 @@ class ExamCreateIT extends AbstractIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(checkCodes(id)).doesNotContain("POINTS_TOTAL_MISMATCH");
     }
 
+    @Test
+    void loadingTheReviewTemplateDropsTheStandardScoringTarget() throws Exception {
+        var exam = createVactSubject("ANH", null);
+        String id = exam.path("id").asText();
+        assertThat(exam.path("referenceMax").decimalValue()).isEqualByComparingTo("300");
+        loadTemplate(id, "VACT_REVIEW");
+        var loaded = examDetail(id);
+        assertThat(loaded.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(loaded.path("referenceMax").isNull()).isTrue();
+        assertThat(loaded.path("maxScore").isNull()).isTrue();
+        fillReview(id);
+        var result = checkResult(id);
+        assertThat(result.path("status").asText()).as("issues %s", checkCodes(id)).isEqualTo("VALID");
+        assertThat(scoringResetFlags(id)).containsExactly("true");
+    }
+
+    @Test
+    void loadingAStandardTemplateIntoAReviewGivesItsScopedTarget() throws Exception {
+        var review = createVactSubject("ANH", "REVIEW");
+        String id = review.path("id").asText();
+        assertThat(review.path("referenceMax").isNull()).isTrue();
+        loadTemplate(id, "VACT_SUBJECT_ANH");
+        var loaded = examDetail(id);
+        assertThat(loaded.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(loaded.path("referenceMax").decimalValue()).isEqualByComparingTo("300");
+        assertThat(loaded.path("maxScore").decimalValue()).isEqualByComparingTo("300");
+        assertThat(checkCodes(id)).doesNotContain("POINTS_TOTAL_MISMATCH");
+        var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) structure.path("parts").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0).path("sections").get(0).path("blocks").get(0))
+                .put("requiredPointsPerQuestion", 11);
+        var request = mapper.createObjectNode().put("expectedRevision", structure.path("revision").asLong());
+        request.set("parts", parts);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+        assertThat(checkCodes(id)).contains("POINTS_TOTAL_MISMATCH");
+    }
+
+    @Test
+    void reloadingTheSameModeKeepsAReferenceOverride() throws Exception {
+        var exam = createVactSubject("ANH", null);
+        String id = exam.path("id").asText();
+        patchExam(id, "{\"referenceMax\":250,\"expectedRevision\":" + exam.path("revision").asLong() + "}");
+        assertThat(examDetail(id).path("referenceMax").decimalValue()).isEqualByComparingTo("250");
+        loadTemplate(id, "VACT_SUBJECT_ANH");
+        var reloaded = examDetail(id);
+        assertThat(reloaded.path("referenceMax").decimalValue()).isEqualByComparingTo("250");
+        assertThat(reloaded.path("maxScore").decimalValue()).isEqualByComparingTo("300");
+        assertThat(scoringResetFlags(id)).containsExactly("false");
+    }
+
+    @Test
+    void changingModeDoesNotResetScoringOfAProfileThatIsNotLinear() throws Exception {
+        var exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"SPT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"DIA\",\"name\":\"SPT\","
+                                + "\"code\":\"SPT-L-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String id = exam.path("id").asText();
+        assertThat(exam.path("practiceScoring").asText()).isEqualTo("RAW");
+        patchExam(id, "{\"practiceScoring\":\"LINEAR\",\"confirmScoring\":true,\"referenceMax\":10,"
+                + "\"expectedRevision\":" + exam.path("revision").asLong() + "}");
+        var before = examDetail(id);
+        assertThat(before.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(before.path("referenceMax").decimalValue()).isEqualByComparingTo("10");
+        for (String template : new String[] {"SPT_REVIEW", "SPT_DIA_2025"}) {
+            loadTemplate(id, template);
+            var after = examDetail(id);
+            assertThat(after.path("practiceScoring").asText()).as(template).isEqualTo("LINEAR");
+            assertThat(after.path("referenceMax").decimalValue()).as(template).isEqualByComparingTo("10");
+            java.math.BigDecimal templateMax = jdbc.queryForObject(
+                    "SELECT max_score FROM exam.exam_template WHERE code = ?", java.math.BigDecimal.class, template);
+            if (templateMax == null) {
+                assertThat(after.path("maxScore").decimalValue()).as(template)
+                        .isEqualByComparingTo(before.path("maxScore").decimalValue());
+            }
+        }
+        assertThat(scoringResetFlags(id)).containsOnly("false").hasSize(2);
+    }
+
+    @Test
+    void patchingLinearScoringOnAFilledReviewKeepsItWithoutAReference() throws Exception {
+        var review = createVactSubject("ANH", "REVIEW");
+        String id = review.path("id").asText();
+        fillReview(id);
+        patchExam(id, "{\"practiceScoring\":\"LINEAR\",\"expectedRevision\":" + revisionOf(id) + "}");
+        var patched = examDetail(id);
+        assertThat(patched.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(patched.path("referenceMax").isNull()).isTrue();
+        assertThat(checkCodes(id)).doesNotContain("POINTS_TOTAL_MISMATCH");
+    }
+
+    @Test
+    void changingScopeWithAMaximumUsesItAsTheReferenceUnlessOneIsSent() throws Exception {
+        var exam = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"FULL\",\"name\":\"Draft\",\"code\":\"T-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String id = exam.path("id").asText();
+        var part = patchExam(id, "{\"scope\":\"PART\",\"partCode\":\"LOGIC\",\"maxScore\":150,"
+                + "\"durationMinutes\":60,\"confirmReplace\":true,\"expectedRevision\":" + exam.path("revision").asLong() + "}");
+        assertThat(part.path("maxScore").decimalValue()).isEqualByComparingTo("150");
+        assertThat(part.path("referenceMax").decimalValue()).isEqualByComparingTo("150");
+        var subject = patchExam(id, "{\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\",\"partCode\":null,"
+                + "\"maxScore\":150,\"referenceMax\":200,\"durationMinutes\":60,\"confirmReplace\":true,"
+                + "\"expectedRevision\":" + part.path("revision").asLong() + "}");
+        assertThat(subject.path("maxScore").decimalValue()).isEqualByComparingTo("150");
+        assertThat(subject.path("referenceMax").decimalValue()).isEqualByComparingTo("200");
+    }
+
     private java.util.Set<String> checkCodes(String id) throws Exception {
         var result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", id)
                         .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
@@ -753,6 +870,71 @@ class ExamCreateIT extends AbstractIntegrationTest {
     private String templateLoadFlag(String id) {
         entityManager.flush();
         return jdbc.queryForObject("SELECT payload->'after'->>'topologyReplaced' FROM shared.outbox_event "
+                + "WHERE topic='audit' AND payload->>'action'='EXAM.TEMPLATE_LOAD' AND payload->>'targetId'=?",
+                String.class, id);
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode createVactSubject(String subject, String buildMode) throws Exception {
+        return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"" + subject + "\","
+                                + (buildMode == null ? "" : "\"buildMode\":\"" + buildMode + "\",")
+                                + "\"durationMinutes\":45,\"name\":\"Draft\",\"code\":\"T-"
+                                + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode examDetail(String id) throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        return mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode patchExam(String id, String body) throws Exception {
+        return mapper.readTree(mockMvc.perform(patch("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    private void loadTemplate(String id, String templateCode) throws Exception {
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"" + templateCode + "\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":" + revisionOf(id) + "}"))
+                .andExpect(status().isOk());
+    }
+
+    /** Ten single-choice questions of ten points in the review frame, with every count filled in. */
+    private void fillReview(String id) throws Exception {
+        var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var parts = (com.fasterxml.jackson.databind.node.ArrayNode) structure.path("parts").deepCopy();
+        var part = (com.fasterxml.jackson.databind.node.ObjectNode) parts.get(0);
+        part.put("questionCount", 10);
+        var section = (com.fasterxml.jackson.databind.node.ObjectNode) part.path("sections").get(0);
+        section.put("questionCount", 10);
+        var block = (com.fasterxml.jackson.databind.node.ObjectNode) section.path("blocks").get(0);
+        block.put("questionType", "SINGLE_CHOICE").put("questionCount", 10).put("requiredPointsPerQuestion", 10);
+        var request = mapper.createObjectNode().put("expectedRevision", structure.path("revision").asLong());
+        request.set("parts", parts);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.toString()))
+                .andExpect(status().isOk());
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode checkResult(String id) throws Exception {
+        return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", id)
+                        .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    private List<String> scoringResetFlags(String id) {
+        entityManager.flush();
+        return jdbc.queryForList("SELECT payload->'after'->>'scoringReset' FROM shared.outbox_event "
                 + "WHERE topic='audit' AND payload->>'action'='EXAM.TEMPLATE_LOAD' AND payload->>'targetId'=?",
                 String.class, id);
     }
