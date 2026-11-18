@@ -273,8 +273,8 @@ function UnitTable({
   const tState = useTranslations("exams.structure.list.state");
   const lookup = useLookup();
   const rows = useMemo(
-    () => buildUnitRows(exam.parts, combinations, states, issues),
-    [exam.parts, combinations, states, issues],
+    () => buildUnitRows(exam, combinations, states, issues),
+    [exam, combinations, states, issues],
   );
 
   const { columns, cards } = useMemo(() => {

@@ -7,6 +7,7 @@ import { mapExamDetail } from "../api-mapping";
 import { buildUnitRows, groupIssues, issueStructureHref } from "../check";
 import { ExamReviewCheck } from "../components/exam-review-check";
 import type { CheckIssue } from "../review-types";
+import type { ExamDetail } from "../types";
 import { checkResultWire, EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
 
 const STRUCTURE = `/exams/${EXAM_ID}/structure`;
@@ -182,9 +183,10 @@ describe("Kiểm tra: trạng thái từng môn và bảng theo mã, theo phần
     const table = await screen.findByRole("table", { name: "Theo mã và phần" });
     const row = within(table).getByText("Part 1").closest("tr")!;
     expect(within(row).getByText("Chưa hoàn tất")).toBeInTheDocument();
-    // Phần part-1: 2 lỗi (e1, e2) và 1 cảnh báo (w1 gắn phần; w2 chỉ gắn khối).
-    expect(within(row).getByText("2")).toBeInTheDocument();
-    expect(within(row).getByText("1")).toBeInTheDocument();
+    // Phần part-1: 2 lỗi (e1, e2) và 2 cảnh báo (w1 gắn phần; w2 chỉ có blockId blk-1 của phần này).
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[3]).toHaveTextContent("2");
+    expect(cells[4]).toHaveTextContent("2");
   });
 
   it("không có sectionStates (null) thì không hiện trạng thái môn", async () => {
@@ -206,7 +208,7 @@ describe("Kiểm tra: trạng thái từng môn và bảng theo mã, theo phần
         options: [],
         subjectPool: [section("s-phy", "PHY"), section("s-chem", "CHEM"), section("s-bio", "BIO")],
       },
-    ] as unknown as Parameters<typeof buildUnitRows>[0];
+    ] as unknown as ExamDetail["parts"];
     const combinations = [
       { code: "QD01", examCode: "QD01", partId: "p3", subjectCodes: ["PHY", "CHEM"], missingSubjects: [], nameVi: null, nameEn: null },
       { code: "QD03", examCode: "QD03", partId: "p3", subjectCodes: ["BIO", "PHY"], missingSubjects: [], nameVi: null, nameEn: null },
@@ -221,12 +223,41 @@ describe("Kiểm tra: trạng thái từng môn và bảng theo mã, theo phần
       { key: "b", severity: "WARNING", affectedCodes: ["QD03"], partId: "p3" },
     ] as unknown as CheckIssue[];
 
-    const rows = buildUnitRows(parts, combinations, sectionStates, issues);
+    const rows = buildUnitRows({ parts }, combinations, sectionStates, issues);
 
     expect(rows.map((row) => [row.name, row.state, row.errors, row.warnings])).toEqual([
       ["Part 3", "INCOMPLETE", 1, 1],
       ["QD01", "INCOMPLETE", 1, 0],
       ["QD03", "NEEDS_CHECK", 0, 1],
+    ]);
+  });
+
+  it("buildUnitRows: lỗi chỉ có blockId (bộ giải) hoặc sectionId vẫn tính vào dòng phần chứa khối, môn đó", () => {
+    const block = (id: string) => ({ id, name: id });
+    const parts = [
+      { id: "p1", order: 1, name: "Part 1", options: [], sections: [{ id: "s1", subjectCode: "MATH", blocks: [block("b1")] }] },
+      {
+        id: "p2",
+        order: 2,
+        name: "Part 2",
+        sections: [],
+        subjectPool: [],
+        options: [{ id: "o1", sections: [{ id: "s2", subjectCode: "PHY", blocks: [block("b2")] }], blocks: [] }],
+      },
+    ] as unknown as ExamDetail["parts"];
+    const issues = [
+      { key: "a", severity: "ERROR", partId: null, sectionId: null, blockId: "b1" },
+      { key: "b", severity: "WARNING", partId: null, sectionId: null, blockId: "b2" },
+      { key: "c", severity: "ERROR", partId: null, sectionId: "s2", blockId: null },
+      { key: "d", severity: "ERROR", partId: null, sectionId: null, blockId: null },
+    ] as unknown as CheckIssue[];
+
+    const rows = buildUnitRows({ parts }, [], [], issues);
+
+    // Lỗi cả bài (d) không thuộc phần nào; b1 → Part 1; b2, s2 → Part 2.
+    expect(rows.map((row) => [row.name, row.errors, row.warnings])).toEqual([
+      ["Part 1", 1, 0],
+      ["Part 2", 1, 1],
     ]);
   });
 

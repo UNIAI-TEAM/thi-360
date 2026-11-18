@@ -220,10 +220,11 @@ function partSections(part: ExamPart): ExamSection[] {
 
 /**
  * Bảng "Theo mã và phần": mỗi phần một dòng (môn theo thứ tự, trạng thái xấu nhất, số lỗi, số cảnh báo); phần theo mã có
- * thêm một dòng cho từng mã (R-24), với số lỗi tính theo `affectedCodes`.
+ * thêm một dòng cho từng mã (R-24), với số lỗi tính theo `affectedCodes`. Vấn đề không có `partId` nhưng gắn khối hoặc
+ * môn vẫn tính vào phần chứa khối / môn đó.
  */
 export function buildUnitRows(
-  parts: readonly ExamPart[],
+  exam: Pick<ExamDetail, "parts">,
   combinations: readonly StructureCombination[],
   sectionStates: readonly ExamSectionState[],
   issues: readonly CheckIssue[],
@@ -231,11 +232,23 @@ export function buildUnitRows(
   const count = (list: readonly CheckIssue[], severity: CheckIssue["severity"]) =>
     list.filter((issue) => issue.severity === severity).length;
   const rows: UnitRow[] = [];
-  for (const part of sortedParts(parts)) {
+  /** Phần chứa vấn đề: `partId` của máy chủ, hoặc phần tìm lại qua khối / môn của vấn đề. */
+  const partIdOf = (issue: CheckIssue): string | null => {
+    if (issue.partId) return issue.partId;
+    if (issue.blockId) return findBlockContext(exam, issue.blockId)?.part.id ?? null;
+    if (issue.sectionId) {
+      const owner = exam.parts.find((candidate) =>
+        partSections(candidate).some((section) => section.id === issue.sectionId),
+      );
+      if (owner) return owner.id;
+    }
+    return null;
+  };
+  for (const part of sortedParts(exam.parts)) {
     const sections = partSections(part);
     const sectionIds = new Set(sections.map((section) => section.id));
     const states = sectionStates.filter((item) => item.partId === part.id || (item.sectionId && sectionIds.has(item.sectionId)));
-    const partIssues = issues.filter((issue) => issue.partId === part.id);
+    const partIssues = issues.filter((issue) => partIdOf(issue) === part.id);
     rows.push({
       key: part.id,
       kind: "part",
