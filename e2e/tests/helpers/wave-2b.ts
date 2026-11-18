@@ -537,12 +537,27 @@ export async function switchPathInUi(
 /**
  * Công bố ở trang Phiên bản và công bố: nút "Công bố", hộp thoại, "Công bố N đường lựa chọn". Trả phản hồi của máy chủ
  * (đã khẳng định 200).
+ *
+ * `expectedPaths` (tên ô chọn của từng đường, ví dụ `/^Q[DĐ]01 ·/`): trước khi bấm, hộp thoại phải liệt kê đúng ngần ấy
+ * đường, đều đã chọn, kèm dòng "Sẽ công bố N / N đường lựa chọn" và nút "Công bố N đường lựa chọn". Các khẳng định này
+ * dùng thời hạn expect (không phải SOLVER_TIMEOUT_MS) nên hộp thoại 0 đường hỏng ngay thay vì chờ phản hồi công bố.
  */
-export async function publishInUi(page: Page, examId: string): Promise<{ version: number; publishedPathIds: string[] }> {
+export async function publishInUi(
+  page: Page,
+  examId: string,
+  expectedPaths?: RegExp[],
+): Promise<{ version: number; publishedPathIds: string[] }> {
   await openEditorTab(page, "Phiên bản và công bố", /\/exams\/[^/]+\/versions/);
   await page.getByRole("button", { name: "Công bố", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  if (expectedPaths) {
+    const count = expectedPaths.length;
+    await expect(dialog.getByRole("status")).toHaveText(`Sẽ công bố ${count} / ${count} đường lựa chọn`);
+    await expect(dialog.getByRole("checkbox")).toHaveCount(count);
+    for (const name of expectedPaths) await expect(dialog.getByRole("checkbox", { name })).toBeChecked();
+    await expect(dialog.getByRole("button", { name: `Công bố ${count} đường lựa chọn`, exact: true })).toBeVisible();
+  }
   const [published] = await Promise.all([
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/publish`) && item.request().method() === "POST", {
       timeout: SOLVER_TIMEOUT_MS,

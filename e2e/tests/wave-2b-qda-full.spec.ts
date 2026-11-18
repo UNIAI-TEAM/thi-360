@@ -230,8 +230,8 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   );
   await expect(preview.getByText(/Đề thử · Q[DĐ]02/)).toBeVisible();
 
-  // 5. Công bố: hộp thoại chọn đủ năm mã hợp lệ, máy chủ tạo v1 cho cả năm đường.
-  const published = await publishInUi(page, id);
+  // 5. Công bố: hộp thoại phải liệt kê đủ năm đường QĐ01–QĐ05 (đã chọn) trước khi bấm; máy chủ tạo v1 cho cả năm đường.
+  const published = await publishInUi(page, id, [1, 2, 3, 4, 5].map((number) => new RegExp(`^Q[DĐ]0${number} ·`)));
   expect(published.version).toBe(1);
   expect([...published.publishedPathIds].sort()).toEqual(check.paths.map((path) => path.pathId).sort());
   await expect.poll(async () => (await getExam(admin, id)).servingVersion).toBe(1);
