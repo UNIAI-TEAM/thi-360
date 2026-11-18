@@ -661,24 +661,24 @@ function GroupList({
             <caption className="sr-only">{t("caption", { subject: subjectName })}</caption>
             <thead>
               <tr className="text-left text-caption text-text-muted">
-                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("name")}</th>
-                <th scope="col" className={headCell}>{t("type")}</th>
+                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold whitespace-nowrap">{t("name")}</th>
+                <th scope="col" className={cn(headCell, "whitespace-nowrap")}>{t("type")}</th>
                 {audio && <th scope="col" className={headCell}>{t("audioHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "quantityHeader" : "countHeader")}</th>
                 {audio && <th scope="col" className={cn(headCell, "text-right")}>{t("totalHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "shareHeader" : "rateHeader")}</th>
                 {audio && <th scope="col" className={headCell}>{t("availableHeader")}</th>}
-                <th scope="col" className={headCell}>{t("scope")}</th>
+                <th scope="col" className={cn(headCell, "max-w-40")}>{t("scope")}</th>
                 <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
               </tr>
             </thead>
             <tbody>
               {section.blocks.map((block) => (
                 <tr key={block.id}>
-                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
+                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium whitespace-nowrap text-text">
                     {block.name || t("untitled")}
                   </th>
-                  <td className="border-b border-border px-2 py-2 text-text">
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text">
                     <span className="inline-flex items-center gap-1.5">
                       {typeText(block)}
                       {block.answerTypeLocked && (
@@ -702,7 +702,7 @@ function GroupList({
                       <AvailableSource block={block} section={section} />
                     </td>
                   )}
-                  <td className="border-b border-border px-2 py-2 text-text-secondary">{scopeText(block)}</td>
+                  <td className="max-w-40 border-b border-border px-2 py-2 text-text-secondary">{scopeText(block)}</td>
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name || t("untitled") })} onClick={() => onSelectBlock(block.id)}>
                       {t("open")}

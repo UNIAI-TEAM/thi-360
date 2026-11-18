@@ -177,6 +177,19 @@ describe("bảng nhóm của môn thuộc phần Nghe (F1)", () => {
     expect(screen.getByRole("rowheader", { name: "Part Nghe total" })).toBeInTheDocument();
     expect(within(table()).getByText("3 sets × 4 sub-questions")).toBeInTheDocument();
   });
+
+  it("N3 · tên nhóm và dạng trả lời không xuống dòng từng chữ; bảng vẫn nằm trong vùng cuộn có dòng nhắc", () => {
+    renderPanel(section("REQUIRED"));
+    const row = rowOf("Dòng 2 · Hội thoại 4 câu");
+    expect(row.querySelector("th")).toHaveClass("whitespace-nowrap");
+    expect(row.querySelectorAll("td")[0]).toHaveClass("whitespace-nowrap");
+    expect(within(table()).getByRole("columnheader", { name: "Nhóm" })).toHaveClass("whitespace-nowrap");
+    expect(within(table()).getByRole("columnheader", { name: "Dạng trả lời" })).toHaveClass("whitespace-nowrap");
+    const region = screen.getByRole("region", { name: /^Các nhóm lấy câu/ });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toContainElement(table());
+    expect(region.previousElementSibling).toHaveTextContent("Bảng cuộn ngang");
+  });
 });
 
 describe("môn không có điều kiện audio (F1)", () => {
