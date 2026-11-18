@@ -79,10 +79,12 @@ class QuotaPerfTest {
         pools.put("lit", litPool);
         List<SectionOnPath> subjects = new ArrayList<>();
         for (int s = 0; s < 6; s++) {
-            GroupQuota group = GroupQuota.single("group" + s, 25);
-            subjects.add(SolverTestFixtures.section("SUB" + s, 25, group));
+            // BE4B-R2-02: QĐ05 Tiếng Anh (môn thứ sáu) 50 câu theo R-26/R-41 — mọi mã đạt FULL 150.
+            int count = s == 5 ? 50 : 25;
+            GroupQuota group = GroupQuota.single("group" + s, count);
+            subjects.add(SolverTestFixtures.section("SUB" + s, count, group));
             List<PathCandidate> candidates = new ArrayList<>();
-            for (int i = 0; i < 50; i++) candidates.add(PathCandidate.standalone(
+            for (int i = 0; i < count + 10; i++) candidates.add(PathCandidate.standalone(
                     "q" + s + "-" + i, 1, "SINGLE_CHOICE", null, null, null));
             pools.put(group.groupId(), candidates);
         }
@@ -110,6 +112,12 @@ class QuotaPerfTest {
         assertThat(outcome.stats().pathsEnumerated()).isEqualTo(5);
         assertThat(outcome.stats().subproblemsSolved()).isEqualTo(8);
         assertThat(outcome.stats().subproblemsMemoHit()).isGreaterThanOrEqualTo(5);
+        // R-41: mọi mã FULL 150 câu — Toán 50 + Văn 50 + (25 + 25 khoa học | 50 Tiếng Anh).
+        for (PathResult result : outcome.results()) {
+            assertThat(result.witness().stream().mapToInt(SubjectWitness::resolvedCount).sum())
+                    .as("path=%s witness=%s", result.path().chosen(), result.witness())
+                    .isEqualTo(150);
+        }
     }
 
     private void timed(String name, java.util.function.Supplier<SolveStatus> solve) {
