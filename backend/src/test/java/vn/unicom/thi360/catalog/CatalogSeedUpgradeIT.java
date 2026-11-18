@@ -104,7 +104,7 @@ class CatalogSeedUpgradeIT {
         assertThat(qd05.subjects()).extracting(subject -> subject.code()).containsExactly("ANH");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.combination_version WHERE id = '4df2381e-c78c-5577-805b-818bf8a76373' AND item_id = 'ffbd8a8b-e696-54c4-b87f-fd2e3033f0fe'", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForList("SELECT value FROM catalog.catalog_item WHERE group_id = ? AND code IN ('TEST-HIEM', 'USER-TAG') ORDER BY value", Integer.class, TAG_GROUP)).containsExactly(1, 2);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ? AND id::text LIKE '00000000-0000-7000-8601-%'", Integer.class, TAG_GROUP)).isEqualTo(40);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ? AND id::text LIKE '00000000-0000-7000-8601-%'", Integer.class, TAG_GROUP)).isEqualTo(46);
         int highWater = jdbc.queryForObject("SELECT max(value) FROM catalog.catalog_item WHERE group_id = ?", Integer.class, TAG_GROUP);
         assertThat(jdbc.queryForObject("SELECT last_value FROM catalog.catalog_group WHERE id = ?", Integer.class, TAG_GROUP)).isGreaterThanOrEqualTo(highWater);
         var result = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", TAG_GROUP)
