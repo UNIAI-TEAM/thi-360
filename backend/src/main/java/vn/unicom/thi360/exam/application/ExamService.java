@@ -909,11 +909,12 @@ public class ExamService {
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
-        // BE-21 (R1-1): the RAW metadata policy of a part exam (scale and part-row duration from the
-        // final part overview) is separate from cutting the structure out of a subject template; it
-        // applies to dedicated PART templates as well. A dedicated template's own values are the
-        // fallback when the part row declares none (an entered scale/duration survives when the
-        // template carries no value at all).
+        // BE-21 (R2-1, R2-2): a dedicated PART template never derives the exam clock or the exam
+        // scale from the overview part row. The clock is the template's declared exam-level
+        // duration or, when the template declares none, the exam's existing one. Only a RAW exam
+        // takes its scale from the final part-row points (a dedicated template as fallback); a
+        // LINEAR (or other) scoring keeps maxScore/referenceMax untouched. The legacy cut of a
+        // part from a subject template keeps taking both values from that part row.
         boolean partExam = "PART".equals(exam.getScope());
         boolean dedicated = partExam && "PART".equals(template.getScope());
         // H41 (BE-21): a subject that has dedicated PART templates is never reloaded from the
@@ -970,10 +971,12 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.SCOPE_NOT_ALLOWED,
                     messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED));
         }
-        Integer loadDuration = partExam ? firstNonNull(doc.parts().getFirst().durationMinutes(),
-                dedicated ? template.getDurationMinutes() : null) : template.getDurationMinutes();
-        BigDecimal loadScale = partExam ? firstNonNull(doc.parts().getFirst().maxPoints(),
-                dedicated ? template.getMaxScore() : null) : template.getMaxScore();
+        Integer loadDuration = dedicated ? firstNonNull(template.getDurationMinutes(), exam.getDurationMinutes())
+                : partExam ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes();
+        boolean rawScoring = "RAW".equals(exam.getPracticeScoring());
+        BigDecimal loadScale = dedicated ? (rawScoring ? firstNonNull(doc.parts().getFirst().maxPoints(),
+                template.getMaxScore()) : null)
+                : partExam ? doc.parts().getFirst().maxPoints() : template.getMaxScore();
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), loadDuration, loadScale, actor, now);
         exam.setBuildMode(template.getBuildMode());
@@ -989,7 +992,7 @@ public class ExamService {
                         exam.getDurationMinutes(), null, actor, now);
                 scoringReset = true;
             } else {
-                BigDecimal base = partExam ? loadScale
+                BigDecimal base = partExam ? doc.parts().getFirst().maxPoints()
                         : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 exam.applyScoringProfile(partExam ? null : scopedReferenceMax(profile, exam.getScope(), base),
                         partExam ? "RAW" : profile.getPracticeScoring());

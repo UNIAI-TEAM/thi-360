@@ -156,15 +156,14 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
     }
 
     /**
-     * R1-1: reloading a dedicated PART template derives the RAW scale and duration from the final
-     * part overview for both policies — the dedicated template declares neither value. USE_TEMPLATE
-     * resets the scale to the part's 30 points; KEEP_EDITED applies the edited overview (here the
-     * part duration, whose SHARED_PART_DURATION finding is the expected check result) and the scale
-     * still comes from the final part row, not from the stale override.
+     * R2-1/R2-3: reloading a dedicated PART template never takes the exam clock from the overview
+     * part row — the template declares no exam-level duration, so the entered 45-minute clock
+     * survives while the edited part row (a distinct 20 minutes) produces the expected
+     * SHARED_PART_DURATION finding. Only the RAW scale derives from the final part row.
      */
     @Test
-    void dedicatedTemplateReloadDerivesScaleFromTheFinalPartOverview() throws Exception {
-        JsonNode exam = created(create("PART", "P3", "ANH", 30));
+    void dedicatedReloadKeepsTheExamClockAndDerivesTheRawScale() throws Exception {
+        JsonNode exam = created(create("PART", "P3", "ANH", 45));
         String id = exam.path("id").asText();
         patchMaxScore(id, 25);
         reload(id, "USE_TEMPLATE");
@@ -172,21 +171,109 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
                 .isEqualByComparingTo("30");
         JsonNode detail = detail(id);
         assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("30");
-        assertThat(detail.path("durationMinutes").asInt()).isEqualTo(30);
+        assertThat(detail.path("durationMinutes").asInt()).isEqualTo(45);
         assertThat(check(id).path("status").asText()).isEqualTo("VALID");
 
-        editOverviewDuration(id, 30);
+        editOverview(id, 20, 30);
         patchMaxScore(id, 25);
         reload(id, "KEEP_EDITED");
         JsonNode part = structure(id).path("parts").get(0);
         assertThat(part.path("maxPoints").decimalValue()).isEqualByComparingTo("30");
-        assertThat(part.path("durationMinutes").asInt()).isEqualTo(30);
+        assertThat(part.path("durationMinutes").asInt()).isEqualTo(20);
         detail = detail(id);
         assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("30");
-        assertThat(detail.path("durationMinutes").asInt()).isEqualTo(30);
+        assertThat(detail.path("durationMinutes").asInt()).isEqualTo(45);
         JsonNode result = check(id);
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
         assertThat(result.path("groups").findValuesAsText("code")).contains("SHARED_PART_DURATION");
+    }
+
+    /**
+     * R2-1 + ADV:BE-21:1-A: the create rule still requires a shared duration (400
+     * EXAM_DURATION_REQUIRED), and a zero part-row duration can never reach the exam clock — the
+     * reloaded exam keeps its entered 45 minutes and the published serving version serves 45, not 0.
+     */
+    @Test
+    void reloadedPartExamNeverLosesItsSharedClock() throws Exception {
+        create("PART", "P3", "ANH", null)
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    JsonNode error = mapper.readTree(result.getResponse().getContentAsString());
+                    assertThat(error.path("fieldErrors").findValuesAsText("code"))
+                            .contains("EXAM_DURATION_REQUIRED");
+                });
+        JsonNode exam = created(create("PART", "P3", "ANH", 45));
+        String id = exam.path("id").asText();
+        editOverview(id, 0, null);
+        reload(id, "KEEP_EDITED");
+        JsonNode detail = detail(id);
+        assertThat(detail.path("durationMinutes").asInt()).isEqualTo(45);
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("VALID");
+
+        var publish = mapper.createObjectNode()
+                .put("expectedRevision", detail.path("revision").asLong());
+        var pathIds = publish.putArray("pathIds");
+        result.path("paths").forEach(path -> pathIds.add(path.path("pathId").asText()));
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/publish", id)
+                        .with(asUser(Permissions.EXAM_PUBLISH))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(publish.toString()))
+                .andExpect(status().isOk());
+        JsonNode version = mapper.readTree(mockMvc.perform(
+                        get("/api/v1/admin/exams/{id}/versions/{version}", id, 1)
+                                .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(version.path("config").path("durationMinutes").asInt()).isEqualTo(45);
+    }
+
+    /**
+     * R2-2: a LINEAR exam (scale equals its reference, confirmed override) keeps maxScore and
+     * referenceMax when a dedicated template is reloaded — the edited part points are only reported
+     * as the PART_POINTS_MISMATCH finding against the reloaded 30-point blocks.
+     */
+    @Test
+    void dedicatedReloadKeepsTheLinearScale() throws Exception {
+        JsonNode exam = created(create("PART", "P3", "ANH", 45));
+        String id = exam.path("id").asText();
+        mockMvc.perform(patch("/api/v1/admin/exams/{id}", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + detail(id).path("revision").asLong()
+                                + ",\"practiceScoring\":\"LINEAR\",\"confirmScoring\":true,"
+                                + "\"maxScore\":30,\"referenceMax\":30}"))
+                .andExpect(status().isOk());
+        editOverview(id, null, 24);
+        reload(id, "KEEP_EDITED");
+        JsonNode part = structure(id).path("parts").get(0);
+        assertThat(part.path("maxPoints").decimalValue()).isEqualByComparingTo("24");
+        JsonNode detail = detail(id);
+        assertThat(detail.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("30");
+        assertThat(detail.path("referenceMax").decimalValue()).isEqualByComparingTo("30");
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(result.path("groups").findValuesAsText("code")).contains("PART_POINTS_MISMATCH");
+    }
+
+    /**
+     * R2-3: a RAW exam takes its scale from the edited part points — KEEP_EDITED with part points
+     * 24 leaves the exam maxScore at 24 while the reloaded 30-point blocks produce the expected
+     * PART_POINTS_MISMATCH finding.
+     */
+    @Test
+    void dedicatedReloadDerivesTheRawScaleFromEditedPartPoints() throws Exception {
+        JsonNode exam = created(create("PART", "P3", "ANH", 45));
+        String id = exam.path("id").asText();
+        editOverview(id, null, 24);
+        reload(id, "KEEP_EDITED");
+        JsonNode part = structure(id).path("parts").get(0);
+        assertThat(part.path("maxPoints").decimalValue()).isEqualByComparingTo("24");
+        JsonNode detail = detail(id);
+        assertThat(detail.path("practiceScoring").asText()).isEqualTo("RAW");
+        assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("24");
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(result.path("groups").findValuesAsText("code")).contains("PART_POINTS_MISMATCH");
     }
 
     /** Row 12: a part exam of another V-SAT subject is still cut from the subject template. */
@@ -252,14 +339,16 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
                 .path("sections").get(0).path("topicQuotas")).hasSize(3);
     }
 
-    private void editOverviewDuration(String id, int minutes) throws Exception {
+    private void editOverview(String id, Integer duration, Integer points) throws Exception {
         JsonNode current = structure(id);
         String partId = current.path("parts").get(0).path("id").asText();
+        ObjectNode row = mapper.createObjectNode().put("partId", partId);
+        if (duration != null) row.put("durationMinutes", duration);
+        if (points != null) row.put("maxPoints", points);
         mockMvc.perform(put("/api/v1/admin/exams/{id}/overview", id).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedRevision\":" + current.path("revision").asLong()
-                                + ",\"overview\":[{\"partId\":\"" + partId
-                                + "\",\"durationMinutes\":" + minutes + "}]}"))
+                                + ",\"overview\":[" + row + "]}"))
                 .andExpect(status().isOk());
     }
 
