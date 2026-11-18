@@ -89,6 +89,44 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void promptAndPointsReferencesCompareTheProvedPaperWithoutBlocking() throws Exception {
+        jdbc.update("""
+                UPDATE questionbank.question SET status='RETIRED'
+                WHERE subject_item_id='00000000-0000-7000-8200-000000000201'
+                  AND type='TRUE_FALSE' AND code <> 'TESTQ-TOAN-TF1-259'
+                """);
+        for (String basis : java.util.List.of("PROMPT", "POINTS")) {
+            int actual = basis.equals("PROMPT") ? 4 : 1;
+            for (int required : java.util.List.of(actual, actual + 1)) {
+                UUID id = UUID.randomUUID();
+                jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
+                                + "VALUES (?,?,?,'Reference','FULL','SHARED',1)", id, id.toString(), id.toString());
+                String parts = """
+                        {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"TOAN",
+                        "questionCount":1,"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"%s",
+                        "gradeEnforcement":"REFERENCE","difficultyEnforcement":"REFERENCE",
+                        "byGrade":[{"code":"G12","value":%d}]},
+                        "blocks":[{"id":"b","questionType":"TRUE_FALSE","questionCount":1,
+                        "itemShape":{"statements":4},"requiredPointsPerQuestion":1}]}]}]}
+                        """.formatted(basis, required);
+                jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,?)",
+                        id, parts, id.toString());
+                JsonNode result = check(id);
+                assertThat(result.path("status").asText()).isEqualTo("VALID");
+                assertThat(codes(result)).doesNotContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
+                if (required == actual) {
+                    assertThat(codes(result)).doesNotContain("DISTRIBUTION_DEVIATION");
+                } else {
+                    JsonNode warning = first(result, "DISTRIBUTION_DEVIATION");
+                    assertThat(warning.path("severity").asText()).isEqualTo("WARNING");
+                    assertThat(warning.path("required").asInt()).isEqualTo(required);
+                    assertThat(warning.path("available").asInt()).isEqualTo(actual);
+                }
+            }
+        }
+    }
+
+    @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void outOfRangeChildBoundsAreLocatedInOrdinaryAndDeepChecks() throws Exception {
         UUID id = UUID.randomUUID();
