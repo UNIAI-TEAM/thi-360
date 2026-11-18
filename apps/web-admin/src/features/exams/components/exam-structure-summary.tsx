@@ -127,7 +127,8 @@ export function ExamStructureSummaryRegion({
                 const target = summaryRowTarget(row);
                 const level = row.blockId ? 2 : row.sectionId ? 1 : 0;
                 const difference = roundForDisplay((row.allocated ?? 0) - (row.target ?? 0));
-                const label = row.name ?? "";
+                // Dòng môn: máy chủ trả mã môn; tên môn lấy từ danh mục theo ngôn ngữ đang chọn (V-06). Dòng phần và nhóm giữ tên của mẫu.
+                const label = row.sectionId && !row.blockId && row.name ? names.subject(row.name) : (row.name ?? "");
                 return (
                   <tr key={`${row.partId}-${row.sectionId}-${row.blockId}-${index}`}>
                     <th
