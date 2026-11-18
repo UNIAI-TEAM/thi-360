@@ -152,10 +152,14 @@ describe("Bài ôn vừa tạo từ mẫu: nhóm chưa khai số câu (V-01b)", 
   const fresh = { name: undefined, questionType: null, questionCount: null, requiredPointsPerQuestion: undefined };
 
   it("ô Số lượng hiện 10, không báo lệch bước 1 và không báo thiếu câu", async () => {
-    boot(fresh);
+    boot(fresh).on("GET", `${STRUCTURE}/summary`, {
+      status: 200,
+      body: { parts: [{ partId: "part-1", name: "Review", target: 10, allocated: 0, children: [] }] },
+    });
     open();
     const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
     expect(count).toHaveValue("10");
+    await waitFor(() => expect(screen.getByTestId("structure-headline")).toHaveTextContent("Đã phân bổ đủ 10 câu."));
     expect(screen.queryByText(/Bước 1 đặt/)).not.toBeInTheDocument();
     expect(screen.queryByText(/các khối có 0 câu/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Còn thiếu 10 câu/)).not.toBeInTheDocument();

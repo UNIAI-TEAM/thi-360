@@ -754,7 +754,7 @@ function StructureEditor({
             />
           ) : null}
           <ExamStructureSummaryRegion
-            summary={summaryQuery.data ?? null}
+            summary={reviewMode && JSON.stringify(loadedStructure.parts) !== JSON.stringify(structure.parts) ? null : (summaryQuery.data ?? null)}
             load={summaryLoad}
             dirty={dirty}
             local={{ allocated: totals.allocated, total: totals.totalQuestions, missing: totals.missing }}
