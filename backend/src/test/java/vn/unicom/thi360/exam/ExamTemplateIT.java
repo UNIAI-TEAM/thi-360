@@ -27,8 +27,8 @@ class ExamTemplateIT extends AbstractIntegrationTest {
                 "SELECT structure::text FROM exam.exam_template WHERE code = 'HSA_PART_SCIENCE'",
                 String.class);
         var structure = ExamStructureOps.assignMissingIds(new ExamStructureCodec(mapper).read(json));
-        // Ten science triples plus the English option; 12 scoring cases do not change path count.
-        assertThat(ExamStructureValidator.countPaths(structure)).isEqualTo(11);
+        // 2B §10: English has its own part, leaving ten science triples here.
+        assertThat(ExamStructureValidator.countPaths(structure)).isEqualTo(10);
         var science = structure.parts().getFirst().options().getFirst();
         assertThat(science.sections()).hasSize(5);
         assertThat(science.chooseSubjects()).isEqualTo(3);
@@ -131,12 +131,15 @@ class ExamTemplateIT extends AbstractIntegrationTest {
                 .findFirst().orElseThrow();
         assertThat(literature.path("setCount").asInt()).isEqualTo(5);
         assertThat(literature.path("setSize").asInt()).isEqualTo(5);
-        var english = java.util.stream.StreamSupport.stream(
-                        hsa.at("/structure/parts/2/options/1/sections/0/blocks").spliterator(), false)
-                .filter(block -> "HSA_EN_READING".equals(block.path("templateGroupCode").asText()))
-                .findFirst().orElseThrow();
-        assertThat(english.path("setCount").asInt()).isEqualTo(3);
-        assertThat(english.path("setSize").asInt()).isEqualTo(5);
+        // 2B §10: fixed position bands keep cloze and the two reading sets separate.
+        for (String group : List.of("HSA_EN_CLOZE", "HSA_EN_READING", "HSA_EN_READING_2")) {
+            var english = java.util.stream.StreamSupport.stream(
+                            hsa.at("/structure/parts/2/options/1/sections/0/blocks").spliterator(), false)
+                    .filter(block -> group.equals(block.path("templateGroupCode").asText()))
+                    .findFirst().orElseThrow();
+            assertThat(english.path("setCount").asInt()).as(group).isEqualTo(1);
+            assertThat(english.path("setSize").asInt()).as(group).isEqualTo(5);
+        }
     }
     @Test
     void hsaMathSetGroupsDeclareSingleChoiceChildren() {
