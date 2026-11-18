@@ -1,8 +1,8 @@
 "use client";
 
-import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select } from "@thi360/ui";
+import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select, StatusChip } from "@thi360/ui";
 import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
 import {
   QUESTION_TYPES,
@@ -11,21 +11,22 @@ import {
   type QuestionType,
   type ScoringDefaults,
 } from "@/features/content/types";
-import { applyTopicTotal } from "../allocation";
+import { applyTopicTotal, countFromPercent, ratePercent } from "../allocation";
 import type { MatrixAxes } from "../matrix";
 import { roundForDisplay } from "../display-number";
 import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
-import { effectiveScope } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
-import { applyBlockPatch, droppedSlotIndexes, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
+import { applyBlockPatch, droppedSlotIndexes, rateSetMismatch, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
 import { blockFieldAnchor, type BlockField } from "./block-form-fields";
 import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
-import { BlockNumberInput } from "./block-number-input";
+import { BlockNumberInput, parseNumberText } from "./block-number-input";
 import { BlockRadioGroup } from "./block-radio-group";
+import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { BlockSetConditions } from "./block-set-conditions";
+import { LOCKED_FIELD } from "./locked-field";
 import { BlockSwitches } from "./block-switches";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
@@ -73,6 +74,14 @@ export interface BlockEditorProps {
   headerAction?: ReactNode;
   /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của nhóm (H20). */
   topicError?: TopicQuotaServerError;
+  /** Tổng câu của phần chứa nhóm: mẫu số của "Tỷ lệ trong phần" (R-142); `null`: chưa biết. */
+  partTotal?: number | null;
+  /** Mẫu khóa dòng (H42, R-135): số lượng, cách lấy và dạng chỉ đọc; nguồn câu, phạm vi và chỉ tiêu vẫn sửa được. */
+  rowsLocked?: boolean;
+  /** Số lệnh hỏi của nhóm do máy chủ tính (`structure/summary`); `null`: chưa có hoặc bản nháp đã đổi so với bản lưu. */
+  commandCount?: number | null;
+  /** Dòng nhập theo tỷ lệ đang sai (chùm không ra số nguyên): màn Cấu trúc không cho lưu cho đến khi sửa. */
+  onRateInvalid?: (invalid: boolean) => void;
 }
 
 /**
@@ -102,6 +111,10 @@ export function BlockEditor({
   onOpenSection,
   headerAction,
   topicError = null,
+  partTotal = null,
+  rowsLocked = false,
+  commandCount = null,
+  onRateInvalid,
 }: BlockEditorProps) {
   const t = useTranslations("exams.structure.block");
   const tForm = useTranslations("exams.structure.blockForm");
@@ -110,6 +123,19 @@ export function BlockEditor({
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [mapidRequest, setMapidRequest] = useState(0);
   const [droppedSlots, setDroppedSlots] = useState<number[]>([]);
+  const lockId = useId();
+  const [entryMode, setEntryMode] = useState<"COUNT" | "RATE">("COUNT");
+  // Nhập theo tỷ lệ: số câu do tỷ lệ quyết định nên các ô số câu chỉ đọc; mẫu khóa dòng thì mọi ô số lượng chỉ đọc và có lý do.
+  const countReadOnly = rowsLocked || entryMode === "RATE";
+  const lockProps = (controlProps: { "aria-describedby"?: string }) =>
+    countReadOnly
+      ? {
+          readOnly: true,
+          "aria-readonly": true as const,
+          className: LOCKED_FIELD,
+          ...(rowsLocked ? { "aria-describedby": [controlProps["aria-describedby"], lockId].filter(Boolean).join(" ") } : {}),
+        }
+      : {};
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
 
   const isSet = isSetBlock(block);
@@ -122,20 +148,13 @@ export function BlockEditor({
   const matrix = block.matrix ?? emptyMatrix();
   const editableMatrix = { ...block, matrix, questionCount };
 
-  // Nguồn đếm theo phạm vi có hiệu lực (của nhóm, hoặc của môn khi nhóm kế thừa) và dạng trả lời của nhóm.
-  const quotaTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
-  const availableQuery = useAvailableQuestions({
-    subjectCode,
-    questionType: block.questionType,
-    answerTypes: block.questionType === null ? quotaTypes : [],
-    childAnswerType: block.childAnswerType,
-    knowledgeScope: effectiveScope(block, section),
-    tagCodes: block.tagCodes,
-    requiredPointsPerQuestion: block.requiredPointsPerQuestion,
-    itemShape: block.itemShape,
-    answerFormats: block.answerFormats,
-    childConditions: block.childConditions,
-  });
+  // Nguồn đếm theo phạm vi có hiệu lực, dạng trả lời và điều kiện audio của môn (H38, R-130): cùng bộ lọc với bảng nhóm của môn.
+  const availableInput = blockAvailableInput(block, section, subjectCode);
+  const availableQuery = useAvailableQuestions(availableInput);
+  const applyRateCount = (count: number) => {
+    if (isSet && !flexible) setSets(count / (block.setSize ?? 1), block.setSize ?? 1);
+    else update({ questionCount: count });
+  };
   const availableState = availableQuery.isError ? "error" : availableQuery.data ? "ready" : "loading";
 
   const issues = validateBlock(block, axes);
@@ -257,7 +276,7 @@ export function BlockEditor({
             {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
           </h2>
           <p className="text-caption text-text-muted">{locationText}</p>
-          {block.templateGroupCode && <p className="text-caption text-text-muted">{t("fromTemplate", { code: block.templateGroupCode })}</p>}
+          {block.templateGroupCode && <p className="text-caption text-text-muted">{t("fromTemplate")}</p>}
           <Button type="button" variant="link" size="sm" className="w-fit px-0" onClick={onOpenSection}>
             {t("backToSection")}
           </Button>
@@ -279,6 +298,7 @@ export function BlockEditor({
             />
             <IconButton
               icon={<Trash2 />}
+              disabled={rowsLocked}
               tone="danger"
               aria-label={t("remove", { name: block.name })}
               onClick={() => setConfirmRemove(true)}
@@ -303,7 +323,7 @@ export function BlockEditor({
         <BlockRadioGroup
           legend={tForm("mode.legend")}
           value={isSet ? "set" : "single"}
-          disabled={block.answerTypeLocked}
+          disabled={block.answerTypeLocked || rowsLocked}
           anchor={anchor("mode")}
           options={[
             { value: "single", label: tForm("mode.single") },
@@ -314,7 +334,7 @@ export function BlockEditor({
             if (mode === "single" && isSet) setType("SINGLE_CHOICE");
           }}
         />
-        {block.answerTypeLocked ? (
+        {block.answerTypeLocked || rowsLocked ? (
           <FormField label={t("questionType")} hint={t("typeLocked")}>
             {(controlProps) => (
               <div className="relative">
@@ -350,6 +370,7 @@ export function BlockEditor({
             {block.questionType === "QUESTION_SET" && (
               <BlockRadioGroup
                 legend={tForm("setMode.legend")}
+                disabled={rowsLocked}
                 value={flexible ? "total" : "sets"}
                 anchor={anchor("setMode")}
                 options={[
@@ -364,6 +385,7 @@ export function BlockEditor({
                 {(controlProps) => (
                   <BlockNumberInput
                     {...controlProps}
+                    {...lockProps(controlProps)}
                     data-field={anchor("questionCount")}
                     value={questionCount}
                     onValueChange={(value) => update({ questionCount: value })}
@@ -376,6 +398,7 @@ export function BlockEditor({
                   {(controlProps) => (
                     <BlockNumberInput
                       {...controlProps}
+                      {...lockProps(controlProps)}
                       data-field={anchor("setCount")}
                       value={block.setCount ?? 0}
                       onValueChange={(value) => setSets(value, block.setSize ?? 0)}
@@ -386,6 +409,7 @@ export function BlockEditor({
                   {(controlProps) => (
                     <BlockNumberInput
                       {...controlProps}
+                      {...lockProps(controlProps)}
                       data-field={anchor("setSize")}
                       value={block.setSize ?? 0}
                       onValueChange={(value) => setSets(block.setCount ?? 0, value)}
@@ -422,6 +446,7 @@ export function BlockEditor({
               <div className="flex flex-col gap-2">
                 <BlockNumberInput
                   {...controlProps}
+                  {...lockProps(controlProps)}
                   data-field={anchor("questionCount")}
                   value={questionCount}
                   disabled={remainder}
@@ -431,7 +456,7 @@ export function BlockEditor({
                   <Checkbox
                     id={`${titleId}-remainder`}
                     checked={remainder}
-                    disabled={remainderTaken}
+                    disabled={remainderTaken || rowsLocked}
                     onCheckedChange={(checked) => update({ questionCount: checked === true ? null : 1 })}
                   />
                   <label htmlFor={`${titleId}-remainder`} className={cn("text-body text-text", remainderTaken ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
@@ -443,6 +468,18 @@ export function BlockEditor({
           </FormField>
         )}
       </div>
+      <BlockRowInfo
+        block={block}
+        section={section}
+        partTotal={partTotal}
+        rowsLocked={rowsLocked}
+        lockId={lockId}
+        available={availableQuery.data}
+        entryMode={entryMode}
+        onEntryMode={setEntryMode}
+        onApplyCount={applyRateCount}
+        onRateInvalid={onRateInvalid}
+      />
       {isSet && countError && <p className="text-caption text-danger">{countError}</p>}
       {setIssue && setIssue.code === "SET_SIZE_MISMATCH" && (
         <p className="text-caption text-danger">{t("errors.setMismatch", { expected: setIssue.expected })}</p>
@@ -482,7 +519,7 @@ export function BlockEditor({
 
       <BlockConditions block={block} reference={reference} onChange={update} onAddMapid={() => setMapidRequest((count) => count + 1)} />
 
-      {isSet && <BlockSetConditions block={block} reference={reference} subjectCode={subjectCode} onChange={update} />}
+      {isSet && <BlockSetConditions block={block} reference={reference} subjectCode={subjectCode} onChange={update} commandCount={commandCount} locked={rowsLocked} />}
 
       {competencies.length > 0 && (
         <fieldset className="flex flex-col gap-2">
@@ -585,5 +622,138 @@ export function BlockEditor({
         }}
       />
     </Card>
+  );
+}
+
+interface BlockRowInfoProps {
+  block: QuestionBlock;
+  section: ExamSection;
+  partTotal: number | null;
+  rowsLocked: boolean;
+  lockId: string;
+  available: { total: number } | undefined;
+  entryMode: "COUNT" | "RATE";
+  onEntryMode: (mode: "COUNT" | "RATE") => void;
+  onApplyCount: (count: number) => void;
+  onRateInvalid?: (invalid: boolean) => void;
+}
+
+/**
+ * Thông tin của dòng lấy câu (bản vẽ `NhomAudio2B`, R-130, R-135, R-142): nhãn audio theo phần (không đổi ở từng dòng),
+ * nguồn khả dụng theo audio, tổng câu và tỷ lệ trong phần, nhập theo tỷ lệ (chùm phải ra số nguyên chùm), lý do khóa dòng.
+ */
+function BlockRowInfo({ block, section, partTotal, rowsLocked, lockId, available, entryMode, onEntryMode, onApplyCount, onRateInvalid }: BlockRowInfoProps) {
+  const t = useTranslations("exams.structure.blockForm.rows");
+  const format = useFormatter();
+  const rateId = useId();
+  const errorId = useId();
+  const count = block.questionCount;
+  const isSet = isSetBlock(block);
+  const flexible = isFlexibleSet(block);
+  const setSize = block.setSize ?? 0;
+  const audio = sectionAudio(section);
+  const total = partTotal !== null && partTotal > 0 ? partTotal : null;
+  const share = blockShare(count, partTotal);
+  // Tỷ lệ cần số câu của nhóm; chùm khai số chùm × cỡ chùm cần cỡ chùm để ra số nguyên chùm.
+  const canRate = total !== null && !rowsLocked && count !== null && (!isSet || flexible || setSize >= 1);
+  const rateMode = canRate && entryMode === "RATE";
+  const [rateText, setRateText] = useState("");
+
+  const parsed = rateMode ? parseNumberText(rateText, true) : 0;
+  const derived = parsed === null || total === null ? 0 : countFromPercent(parsed, total);
+  const needsWholeSets = isSet && !flexible;
+  const mismatch = rateMode && parsed !== null && needsWholeSets ? rateSetMismatch(derived, setSize) : null;
+  const rate = rateText.trim();
+  let error: string | null = null;
+  if (rateMode) {
+    if (parsed === null) error = t("rate.errors.format");
+    else if (mismatch) {
+      error = t(mismatch.low === 0 ? "rate.errors.setsFromZero" : "rate.errors.sets", { rate, count: mismatch.count, size: setSize, low: mismatch.low, high: mismatch.high });
+    } else if (derived === 0) error = t("rate.errors.zero");
+  }
+  const invalid = error !== null;
+  const report = useEffectEvent((next: boolean) => onRateInvalid?.(next));
+  useEffect(() => {
+    report(invalid);
+    return () => report(false);
+  }, [invalid]);
+
+  const pickMode = (mode: "COUNT" | "RATE") => {
+    onEntryMode(mode);
+    if (mode === "RATE" && total !== null) setRateText(String(ratePercent(count ?? 0, total) ?? 0).replace(".", ","));
+  };
+  const changeRate = (text: string) => {
+    setRateText(text);
+    const value = parseNumberText(text, true);
+    if (value === null || total === null) return;
+    const next = countFromPercent(value, total);
+    if (next <= 0 || (needsWholeSets && rateSetMismatch(next, setSize))) return;
+    if (next !== count) onApplyCount(next);
+  };
+
+  if (!audio && !rowsLocked && share === null && !canRate) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      {audio && (
+        <div className="flex flex-wrap items-center gap-2">
+          <AudioChip audio={audio} />
+          <span className="text-caption text-text-muted">{t("audioNote")}</span>
+        </div>
+      )}
+      {rowsLocked && (
+        <div className="flex flex-col gap-1.5">
+          <span className="inline-flex items-center gap-1.5">
+            <Lock aria-hidden className="size-4 text-text-muted" />
+            <StatusChip tone="neutral">{t("locked")}</StatusChip>
+          </span>
+          <p id={lockId} className="text-body text-text-secondary">
+            {t("lockedReason")}
+          </p>
+          <p className="text-caption text-text-muted">{t("lockedHint")}</p>
+        </div>
+      )}
+      {share !== null && count !== null && (
+        <p className="text-label font-semibold text-text tabular-nums">
+          {t("share", { count, rate: format.number(share, { maximumFractionDigits: 1 }) })}
+        </p>
+      )}
+      {audio && available && (
+        <p className="text-body text-text-secondary tabular-nums">{t("available", { count: available.total, audio })}</p>
+      )}
+      {canRate && (
+        <BlockRadioGroup
+          legend={t("entry.legend")}
+          value={rateMode ? "RATE" : "COUNT"}
+          onChange={pickMode}
+          options={[
+            { value: "COUNT", label: t("entry.count") },
+            { value: "RATE", label: t("entry.rate") },
+          ]}
+        />
+      )}
+      {rateMode && (
+        <div className="flex max-w-xs flex-col gap-1.5">
+          <label htmlFor={rateId} className="text-field-label font-medium text-text-secondary">
+            {t("rate.label")}
+          </label>
+          <Input
+            id={rateId}
+            inputMode="decimal"
+            autoComplete="off"
+            value={rateText}
+            aria-invalid={invalid || undefined}
+            aria-describedby={error ? errorId : undefined}
+            className="text-right tabular-nums"
+            onChange={(event) => changeRate(event.target.value)}
+          />
+          {!error && <p className="text-caption text-text-muted tabular-nums">{t("rate.result", { count: derived })}</p>}
+        </div>
+      )}
+      {error && (
+        <p id={errorId} role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-text-secondary">
+          <strong className="font-semibold text-danger">{t(isSet && !flexible && mismatch ? "rate.errors.setsTitle" : "rate.errors.title")}</strong> {error}
+        </p>
+      )}
+    </div>
   );
 }
