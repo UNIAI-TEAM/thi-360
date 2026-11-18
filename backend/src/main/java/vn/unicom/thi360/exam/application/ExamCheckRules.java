@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import vn.unicom.thi360.exam.domain.BlockMatrix;
+import vn.unicom.thi360.exam.domain.ChildCondition;
 import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
@@ -347,7 +348,10 @@ public final class ExamCheckRules {
         }
     }
 
-    /** What a locked row has to keep: its type, then for sets the set count and size, else the question count. */
+    /**
+     * What a locked row has to keep: its type, then for sets the set count and size and the answer type of every child
+     * position (a mixed set keeps its type per position, H39), else the question count.
+     */
     private static String blockChange(QuestionBlock locked, ExamSection lockedSection, QuestionBlock current,
                                       ExamSection currentSection) {
         if (locked.questionType() != current.questionType() || locked.childAnswerType() != current.childAnswerType()) {
@@ -356,9 +360,26 @@ public final class ExamCheckRules {
         if (isSet(locked) || isSet(current)) {
             if (!Objects.equals(locked.setCount(), current.setCount())) return "SET_COUNT";
             if (!Objects.equals(locked.setSize(), current.setSize())) return "SET_SIZE";
+            if (!childTypes(locked).equals(childTypes(current))) return "TYPE";
             return fixedCount(locked) != fixedCount(current) ? "COUNT" : null;
         }
         return rowCount(locked, lockedSection) == rowCount(current, currentSection) ? null : "COUNT";
+    }
+
+    /**
+     * The answer type each child position of a mixed set is bound to, by position: how the typed intervals are cut
+     * does not matter, and conditions without an answer type (knowledge filters) are not part of it.
+     */
+    private static List<QuestionType> childTypes(QuestionBlock block) {
+        int size = block.setSize() == null ? 0 : block.setSize();
+        List<QuestionType> types = new ArrayList<>(java.util.Collections.nCopies(size, (QuestionType) null));
+        for (ChildCondition condition : block.childConditions()) {
+            if (condition.answerType() == null || condition.from() == null || condition.to() == null) continue;
+            for (int position = Math.max(1, condition.from()); position <= Math.min(size, condition.to()); position++) {
+                types.set(position - 1, condition.answerType());
+            }
+        }
+        return types;
     }
 
     /** Questions a row takes: its explicit count, or what a "take the remainder" row leaves of the section. */

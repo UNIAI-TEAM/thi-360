@@ -130,6 +130,47 @@ class ExamCheckRowLockTests {
         assertThat(at(both, "b-extra").path("available").asInt()).isEqualTo(2);
     }
 
+    /** V-SAT English: a set of eight whose first two children are True/False and the other six single choice (H39). */
+    private static final String MIXED = """
+            {"parts":[{"id":"p1","name":"Part 1","questionCount":8,"sections":[
+              {"id":"s1","subjectCode":"EN","questionCount":8,"blocks":[
+                {"id":"b-mixed","name":"Mixed","templateGroupCode":"M","questionType":"QUESTION_SET","setCount":1,"setSize":8,
+                 "childConditions":[{"from":1,"to":2,"answerType":"TRUE_FALSE"},
+                                    {"from":3,"to":8,"answerType":"SINGLE_CHOICE"}]}]}]}]}
+            """;
+
+    private List<ObjectNode> mixedLocks(String edited) throws Exception {
+        return of(rules(edited, MIXED, null).common(), "BLOCK_COUNT_LOCKED");
+    }
+
+    @Test
+    void changingTheAnswerTypeOfAMixedSetPositionIsLockedAtTheRow() throws Exception {
+        String edited = MIXED.replace("{\"from\":1,\"to\":2,\"answerType\":\"TRUE_FALSE\"}",
+                "{\"from\":1,\"to\":2,\"answerType\":\"SINGLE_CHOICE\"}");
+        List<ObjectNode> locked = mixedLocks(edited);
+        assertThat(locked).hasSize(1);
+        assertThat(at(locked, "b-mixed").path("dimension").asText()).isEqualTo("TYPE");
+        assertThat(at(locked, "b-mixed").path("sectionId").asText()).isEqualTo("s1");
+        assertThat(at(locked, "b-mixed").path("location").path("blockId").asText()).isEqualTo("b-mixed");
+        // A boundary moved by one position changes the sequence as well.
+        assertThat(mixedLocks(MIXED.replace("\"to\":2,", "\"to\":3,").replace("\"from\":3,", "\"from\":4,"))).hasSize(1);
+    }
+
+    @Test
+    void aMixedSetKeepsItsLockWhenOnlyIntervalsOrKnowledgeFiltersAreRewritten() throws Exception {
+        assertThat(mixedLocks(MIXED)).isEmpty();
+        String split = MIXED.replace("{\"from\":1,\"to\":2,\"answerType\":\"TRUE_FALSE\"}",
+                "{\"from\":1,\"to\":1,\"answerType\":\"TRUE_FALSE\"},{\"from\":2,\"to\":2,\"answerType\":\"TRUE_FALSE\"}");
+        assertThat(mixedLocks(split)).isEmpty();
+        String filtered = MIXED.replace("\"childConditions\":[", "\"childConditions\":["
+                + "{\"from\":1,\"to\":8,\"nodeIds\":[\"" + UUID.randomUUID() + "\"]},");
+        assertThat(mixedLocks(filtered)).isEmpty();
+        ExamStructureDocument copy = ExamStructureOps.regenerateIds(document(MIXED));
+        assertThat(codes(new ExamCheckRules(mapper, exam(8), copy, Map.of(), Map.of(),
+                new ExamCheckRules.TemplateFacts(null, null, document(MIXED), null)).common()))
+                .doesNotContain("BLOCK_COUNT_LOCKED");
+    }
+
     @Test
     void onlyASubjectExamReceivesTheRowLockFromItsTemplate() {
         ExamTemplate template = mock(ExamTemplate.class);
