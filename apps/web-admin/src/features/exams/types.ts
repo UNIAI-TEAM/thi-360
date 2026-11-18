@@ -660,6 +660,12 @@ export interface AvailableQuestionsQuery {
   competencyCodes?: string[];
   /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */
   requiredPointsPerQuestion?: number | null;
+  /** Hình dạng câu (Đúng/Sai, Ghép đôi); bỏ trống: không lọc. */
+  itemShape?: ItemShape | null;
+  /** Nhóm Trả lời ngắn: các định dạng đáp án nhận vào (H11); rỗng: không lọc. */
+  answerFormats?: string[];
+  /** Nhóm chùm: điều kiện MAPID theo vị trí câu con (H13). `slots` của khối không có trường trong hợp đồng đếm. */
+  childConditions?: ChildCondition[];
 }
 
 /** Đếm nguồn cho cả môn: hợp nguồn của các nhóm trong môn, mỗi câu đếm một lần. */

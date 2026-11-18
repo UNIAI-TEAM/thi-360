@@ -118,6 +118,9 @@ export function BlockEditor({
     knowledgeScope: effectiveScope(block, section),
     tagCodes: block.tagCodes,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
+    itemShape: block.itemShape,
+    answerFormats: block.answerFormats,
+    childConditions: block.childConditions,
   });
   const availableState = availableQuery.isError ? "error" : availableQuery.data ? "ready" : "loading";
 
