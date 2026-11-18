@@ -56,6 +56,38 @@ public class DefaultExamChecker implements ExamChecker {
         Set<String> requested = scope.sections(snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common().stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList());
+        if (scope.kind() == ExamCheckScope.Kind.EXAM && snapshot.servingCombinations() != null
+                && snapshot.servingCombinations().isArray()) {
+            List<ExamCheckRules.CombinationContent> served = new ArrayList<>();
+            for (var item : snapshot.servingCombinations()) {
+                List<String> subjects = new ArrayList<>();
+                var ordered = new ArrayList<com.fasterxml.jackson.databind.JsonNode>();
+                item.path("subjects").forEach(ordered::add);
+                ordered.sort(java.util.Comparator.comparingInt(subject -> subject.path("position").asInt()));
+                ordered.forEach(subject -> subjects.add(subject.path("code").asText()));
+                served.add(new ExamCheckRules.CombinationContent(item.path("code").asText(), subjects,
+                        item.path("branch").asText(null)));
+            }
+            var definitions = catalog.listCombinations(snapshot.exam().getKindItemId());
+            List<ExamCheckRules.CombinationContent> current = new ArrayList<>();
+            for (var definition : definitions) {
+                boolean relevant = snapshot.structure().parts().stream().anyMatch(part -> part.codeSource() != null
+                        && (part.codeSource().branch() == null || definition.branch() != null
+                        && part.codeSource().branch().equals(definition.branch().name())));
+                if (relevant) current.add(new ExamCheckRules.CombinationContent(definition.itemCode(),
+                        definition.subjectCodes(), definition.branch() == null ? null : definition.branch().name()));
+            }
+            Map<String, ExamCheckRules.CombinationContent> currentByCode = new LinkedHashMap<>();
+            current.forEach(item -> currentByCode.put(item.code(), item));
+            Map<String, ExamCheckRules.CombinationContent> servedByCode = new LinkedHashMap<>();
+            for (var item : served) {
+                var prior = servedByCode.get(item.code());
+                if (prior == null || java.util.Objects.equals(prior, currentByCode.get(item.code()))) {
+                    servedByCode.put(item.code(), item);
+                }
+            }
+            common.addAll(rules.combinationListIssues(List.copyOf(servedByCode.values()), current));
+        }
         List<ObjectNode> allInvalid = rules.unrepresentable();
         List<ObjectNode> invalid = allInvalid.stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList();
@@ -185,8 +217,15 @@ public class DefaultExamChecker implements ExamChecker {
         SolveOutcome outcome = computed.outcome();
         ExamCheckUnitEvidence.witnessFacts(source, snapshot.structure(), outcome.results(), combinations)
                 .forEach((path, facts) -> witnessIssues.put(path, new ArrayList<>(rules.witnessIssues(facts))));
+        Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> filterCounts = new LinkedHashMap<>();
         for (var path : outcome.results()) {
             if (path.status() != SolveStatus.INVALID) continue;
+            var evidence = filterEvidence(path, snapshot.structure(), input.candidates(), combinations, filterCounts);
+            var specific = rules.filterIssues(evidence).stream()
+                    .filter(issue -> inScope(issue, scope, requested)).toList();
+            if (!specific.isEmpty()) {
+                witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(specific);
+            }
             var topicIssues = ExamCheckUnitTopicEvidence.issues(path, snapshot.structure(), input.candidates(),
                     rules, clock, deadline, limits.maxCandidatesPerBlock());
             if (!topicIssues.isEmpty()) {
@@ -195,6 +234,79 @@ public class DefaultExamChecker implements ExamChecker {
         }
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
         return new Evaluation(evaluation.result(), evaluation.witness(), markWitnessFailures(computed.changed(), witnessIssues));
+    }
+
+    private static List<ExamCheckRules.FilterEvidence> filterEvidence(PathResult result, ExamStructureDocument document,
+            SolverInputBuilder.SolverCandidates candidates, Map<String, Map<String, List<String>>> combinations,
+            Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> cache) {
+        List<ExamCheckRules.FilterEvidence> evidence = new ArrayList<>();
+        List<vn.unicom.thi360.exam.domain.solver.SectionOnPath> sections = new ArrayList<>(result.path().sections());
+        for (var picks : result.path().picks()) for (var pick : picks) sections.addAll(pick.resolvedSections());
+        String pathId = result.path().chosen().isEmpty() ? "default"
+                : String.join("+", result.path().chosen().stream().map(choice -> choice.optionId()).toList());
+        Set<String> seen = new java.util.HashSet<>();
+        for (var section : sections) {
+            ExamPart part = document.parts().stream().filter(candidate ->
+                    java.util.stream.Stream.concat(java.util.stream.Stream.concat(candidate.sections().stream(),
+                            candidate.subjectPool().stream()), candidate.options().stream().flatMap(option -> option.sections().stream()))
+                            .anyMatch(item -> item.id().equals(section.sectionId()))
+                    || candidate.options().stream().anyMatch(option -> (option.id() + ":blocks").equals(section.sectionId())))
+                    .findFirst().orElse(null);
+            if (part == null) continue;
+            int fixed = section.groups().stream().mapToInt(group -> group.kind() == vn.unicom.thi360.exam.domain.solver.GroupQuota.GroupKind.SET
+                    ? group.setCount() * group.setSize() : group.questionCount() == null ? 0 : group.questionCount()).sum();
+            for (var group : section.groups()) {
+                if (!seen.add(section.sectionId() + "|" + group.groupId())) continue;
+                int required = group.kind() == vn.unicom.thi360.exam.domain.solver.GroupQuota.GroupKind.SET
+                        ? group.setCount() : group.questionCount() != null ? group.questionCount()
+                        : section.questionCount() == null ? 0 : Math.max(0, section.questionCount() - fixed);
+                String cacheKey = section.sectionId() + "|" + group.groupId() + "|" + required;
+                var counts = cache.computeIfAbsent(cacheKey, ignored -> candidates.filterCounts(group, required));
+                if (counts.isEmpty()) continue;
+                String blockId = group.groupId();
+                Integer slot = null;
+                int marker = blockId.lastIndexOf(":slot:");
+                if (marker >= 0) {
+                    slot = Integer.valueOf(blockId.substring(marker + 6));
+                    blockId = blockId.substring(0, marker);
+                }
+                String sourceBlockId = blockId;
+                var declaredBlock = java.util.stream.Stream.concat(
+                        java.util.stream.Stream.concat(part.sections().stream(), part.subjectPool().stream()),
+                        part.options().stream().flatMap(option -> option.sections().stream()))
+                        .filter(item -> item.id().equals(section.sectionId()))
+                        .flatMap(item -> item.blocks().stream())
+                        .filter(block -> sourceBlockId.equals(block.id())).findFirst().orElse(null);
+                if (declaredBlock == null) {
+                    declaredBlock = part.options().stream()
+                            .filter(option -> (option.id() + ":blocks").equals(section.sectionId()))
+                            .flatMap(option -> option.blocks().stream())
+                            .filter(block -> sourceBlockId.equals(block.id())).findFirst().orElse(null);
+                }
+                List<String> affected = new ArrayList<>();
+                for (var choice : result.path().chosen()) {
+                    String prefix = choice.partId() + ":";
+                    if (choice.partId().equals(part.id()) && choice.optionId().startsWith(prefix)) {
+                        String code = choice.optionId().substring(prefix.length());
+                        if (combinations.getOrDefault(part.id(), Map.of()).getOrDefault(code, List.of())
+                                .contains(section.subjectCode())) affected.add(code);
+                    }
+                }
+                for (var count : counts) {
+                    Integer childPosition = count.dimension() == SolverInputBuilder.SolverCandidates.FilterDimension.CHILD_CONDITION
+                            && declaredBlock != null && declaredBlock.childConditions().size() == 1
+                            && java.util.Objects.equals(declaredBlock.childConditions().getFirst().from(),
+                                    declaredBlock.childConditions().getFirst().to())
+                            ? declaredBlock.childConditions().getFirst().from() : null;
+                    var where = new ExamCheckRules.EvidenceLocation(part.id(), section.sectionId(), section.subjectCode(),
+                            blockId, slot, childPosition, pathId, affected);
+                    evidence.add(new ExamCheckRules.FilterEvidence(where,
+                            ExamCheckRules.FilterKind.valueOf(count.dimension().name()), count.required(),
+                            count.withoutFilter(), count.withFilter()));
+                }
+            }
+        }
+        return evidence;
     }
 
     static SolverInputBuilder.SolverInput buildWithMissingCodes(ExamCheckSnapshotReader.Snapshot snapshot,

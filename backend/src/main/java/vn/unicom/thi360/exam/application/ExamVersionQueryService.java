@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.api.ExamVersionChange;
 import vn.unicom.thi360.exam.api.ExamVersionList;
 import vn.unicom.thi360.exam.api.ExamDetailResponse;
@@ -24,10 +25,12 @@ import vn.unicom.thi360.identity.spi.UserDirectory;
 public class ExamVersionQueryService {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
+    private final CatalogLookup catalog;
 
-    public ExamVersionQueryService(JdbcTemplate jdbc, ObjectMapper mapper) {
+    public ExamVersionQueryService(JdbcTemplate jdbc, ObjectMapper mapper, CatalogLookup catalog) {
         this.jdbc = jdbc;
         this.mapper = mapper;
+        this.catalog = catalog;
     }
 
     @Transactional(readOnly = true)
@@ -45,14 +48,17 @@ public class ExamVersionQueryService {
             for (Row row : rows) {
                 JsonNode oldConfig = json(row.config());
                 if ("SERVING".equals(row.state())
-                        && ExamVersionChanges.between(oldConfig, json(row.parts()), config, parts).isEmpty()) {
+                        && ExamVersionChanges.between(oldConfig, json(row.parts()),
+                                comparisonConfig(oldConfig, config, parts, row.servingPaths()), parts).isEmpty()) {
                     alreadyPublished.addAll(row.servingPaths());
                 }
             }
             if (!rows.isEmpty()) {
                 Row base = rows.stream().filter(r -> java.util.Objects.equals(r.version(), exam.servingVersion()))
                         .findFirst().orElse(rows.getFirst());
-                changes = ExamVersionChanges.between(json(base.config()), json(base.parts()), config, parts);
+                JsonNode oldConfig = json(base.config());
+                changes = ExamVersionChanges.between(oldConfig, json(base.parts()),
+                        comparisonConfig(oldConfig, config, parts, base.servingPaths()), parts);
             }
             List<ExamVersionPath> unpublished = enumerate(parts.path("parts")).stream()
                     .filter(path -> !alreadyPublished.contains(path.pathId())).toList();
@@ -74,7 +80,8 @@ public class ExamVersionQueryService {
             try {
                 JsonNode parts = mapper.readTree(row.parts()).path("parts");
                 result.add(new ExamVersionResponse(row.version(), row.state(), row.publishedAt(), publisher, 0,
-                        row.note(), paths(parts, row.publishedPaths()), paths(parts, row.servingPaths())));
+                        row.note(), paths(parts, jsonNode(mapper, row.config()), row.publishedPaths()),
+                        paths(parts, jsonNode(mapper, row.config()), row.servingPaths())));
             } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
                 throw new IllegalStateException("Invalid exam version snapshot", ex);
             }
@@ -91,7 +98,7 @@ public class ExamVersionQueryService {
                         rs.getString(9)), examId);
     }
 
-    private static List<ExamVersionPath> paths(JsonNode parts, List<String> ids) {
+    private static List<ExamVersionPath> paths(JsonNode parts, JsonNode config, List<String> ids) {
         List<ExamVersionPath> result = new ArrayList<>();
         for (String id : ids) {
             List<String> selected = Arrays.asList(id.split("\\+", -1));
@@ -103,10 +110,39 @@ public class ExamVersionQueryService {
                                 option.path("kind").asText(null), option.path("code").asText(null), option.path("name").asText(null)));
                     }
                 }
+                for (JsonNode combination : config.path("combinations")) {
+                    String partId = part.path("id").asText();
+                    String code = combination.path("code").asText();
+                    String optionId = partId + ":" + code;
+                    if (partId.equals(combination.path("partId").asText()) && selected.contains(optionId)) {
+                        choices.add(new ExamVersionPath.Choice(partId, optionId, "COMBINATION", code,
+                                combination.path("name").asText(code)));
+                    }
+                }
             }
             result.add(new ExamVersionPath(id, List.copyOf(choices)));
         }
         return List.copyOf(result);
+    }
+
+    private static JsonNode jsonNode(ObjectMapper mapper, String value) {
+        try {
+            return mapper.readTree(value);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+            throw new IllegalStateException("Invalid exam version snapshot", ex);
+        }
+    }
+
+    private JsonNode comparisonConfig(JsonNode old, JsonNode current, JsonNode parts, List<String> paths) {
+        var config = ((com.fasterxml.jackson.databind.node.ObjectNode) current).deepCopy();
+        var snapshot = new ExamVersionSnapshot(mapper);
+        if (old.has("combinations")) {
+            UUID kind = config.hasNonNull("kindItemId") ? UUID.fromString(config.path("kindItemId").asText()) : null;
+            config.set("combinations", snapshot.combinations(parts, Set.copyOf(paths), kind, catalog).path("combinations"));
+        }
+        if (old.has("omittedGroups")) config.set("omittedGroups", snapshot.omittedGroups(parts));
+        if (!old.has("examQuotas")) config.remove("examQuotas");
+        return config;
     }
 
     private JsonNode currentConfig(UUID examId) {
@@ -119,8 +155,10 @@ public class ExamVersionQueryService {
                 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id,
                 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing,
                 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring,
-                'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule))::text
-                from exam.exam e left join exam.exam_kind_profile p on p.exam_item_id=e.kind_item_id where e.id=?
+                'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule),
+                'examQuotas', s.exam_quotas)::text
+                from exam.exam e join exam.exam_structure s on s.exam_id=e.id
+                left join exam.exam_kind_profile p on p.exam_item_id=e.kind_item_id where e.id=?
                 """, String.class, examId);
         return json(config);
     }

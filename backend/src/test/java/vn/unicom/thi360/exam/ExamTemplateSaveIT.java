@@ -35,22 +35,19 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
                 """);
         assertThat(templates).isNotEmpty();
         Set<String> failures = new LinkedHashSet<>();
-        Set<String> pendingPoints = new LinkedHashSet<>();
         for (var template : templates) {
             String code = (String) template.get("code");
             try {
-                checkTemplate(template, failures, pendingPoints);
+                checkTemplate(template, failures);
             } catch (AssertionError | Exception failure) {
                 failures.add(code + ": " + failure.getClass().getSimpleName() + ": " + failure.getMessage());
             }
         }
-        assertThat(pendingPoints).as("BA-pending Q-15 points mismatch")
-                .containsExactlyInAnyOrder("SP2E_ANH_2026", "SP2E_ECON_LAW_2026", "SP2E_SU_2026");
         assertThat(failures).as("template save/check failures").isEmpty();
     }
 
 
-    private void checkTemplate(Map<String, Object> template, Set<String> failures, Set<String> pendingPoints) throws Exception {
+    private void checkTemplate(Map<String, Object> template, Set<String> failures) throws Exception {
             String code = (String) template.get("code");
             assertThat(template.get("active")).as("%s must be loadable", code).isEqualTo(true);
             ObjectNode create = mapper.createObjectNode()
@@ -94,11 +91,7 @@ class ExamTemplateSaveIT extends AbstractIntegrationTest {
             for (JsonNode issueList : result.findValues("issues")) {
                 for (JsonNode issue : issueList) {
                     if ("POINTS_TOTAL_MISMATCH".equals(issue.path("code").asText())) {
-                        assertThat(Set.of("SP2E_ANH_2026", "SP2E_ECON_LAW_2026", "SP2E_SU_2026"))
-                                .as("BA-pending Q-15 template").contains(code);
-                        assertThat(issue.path("required").decimalValue()).as("%s required points", code).isEqualByComparingTo("10");
-                        assertThat(issue.path("available").decimalValue()).as("%s available points", code).isEqualByComparingTo("12.5");
-                        pendingPoints.add(code);
+                        failures.add(code + " points issue: " + issue);
                     }
                     // SET_SHORTAGE reports bank availability, not set configuration.
                     if ("SET_SHORTAGE".equals(issue.path("code").asText())) continue;

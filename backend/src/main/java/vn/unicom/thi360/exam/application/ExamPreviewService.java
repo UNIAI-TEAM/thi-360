@@ -62,9 +62,11 @@ public class ExamPreviewService {
                 : null;
         if (sectionTarget != null) document = sectionTarget.document();
         var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
-        var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), document);
-        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), document, combinations,
-                ExamCheckUnitCombinations.topicParents(catalog, document)).unrepresentable()
+        ExamStructureDocument validationDocument = request.version() == null ? document
+                : PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
+        var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), validationDocument);
+        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), validationDocument, combinations,
+                ExamCheckUnitCombinations.topicParents(catalog, validationDocument)).unrepresentable()
                 .stream().filter(issue -> {
                     String optionId = issue.path("optionId").asText(null);
                     return optionId == null || selectedIds.contains(optionId);
@@ -78,7 +80,7 @@ public class ExamPreviewService {
         PaperSolver solver = new PaperSolver(limits, clock);
         SolverInputBuilder.SolverInput input;
         try {
-            ExamStructureDocument solverDocument = PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
+            ExamStructureDocument solverDocument = validationDocument;
             input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(solverDocument, request.pathId()));
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("EXAM_STRUCTURE_INVALID");

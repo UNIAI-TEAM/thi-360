@@ -43,7 +43,7 @@ class ExamCheckUnitKnowledgeTests {
         var source = mock(QuestionSourcePort.class);
         var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits),
                 limits, clock, mapper, catalog, source, mock(ExamCheckUnitEngine.class));
-        var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, doc, null),
+        var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, doc, null, null),
                 clock.instant().plusSeconds(30), Duration.ofSeconds(30), ExamCheckScope.from(null, null, null)).result();
         assertThat(result.path("groups").findValuesAsText("code")).contains("TOPIC_QUOTA_NESTED");
     }

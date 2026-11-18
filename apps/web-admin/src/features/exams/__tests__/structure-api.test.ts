@@ -323,4 +323,31 @@ describe("nguồn câu hỏi của khối", () => {
     });
     expect(JSON.stringify(call?.body)).not.toContain('"match"');
   });
+
+  it("đếm nguồn gửi điều kiện hình dạng, định dạng đáp án và theo vị trí câu con; điều kiện chưa đặt thì bỏ khỏi thân", async () => {
+    backend.seedCounts("count", { status: 200, body: { total: 5, cells: [{ gradeCode: "GRADE_10", value: 5 }] } });
+    const counted = await countAvailableQuestions({
+      ...MATH_SINGLE,
+      questionType: "QUESTION_SET",
+      itemShape: { leftItems: 4, rightItems: 6 },
+      answerFormats: ["INTEGER", "FRACTION"],
+      childConditions: [{ from: 1, to: 3, nodeIds: ["kn-1D4"] }],
+    });
+    expect(counted.total).toBe(5);
+    const [call] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count");
+    expect(call?.body).toMatchObject({
+      subjectCode: "MATH",
+      questionType: "QUESTION_SET",
+      itemShape: { leftItems: 4, rightItems: 6 },
+      answerFormats: ["INTEGER", "FRACTION"],
+      childConditions: [{ from: 1, to: 3, nodeIds: ["kn-1D4"] }],
+    });
+
+    backend.seedCounts("count", { status: 200, body: { total: 0, cells: [] } });
+    await countAvailableQuestions({ ...MATH_SINGLE });
+    const [bare] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count").slice(-1);
+    for (const key of ["itemShape", "answerFormats", "childConditions", "tagCodes", "competencyCodes", "requiredPointsPerQuestion"]) {
+      expect(bare?.body).not.toHaveProperty(key);
+    }
+  });
 });

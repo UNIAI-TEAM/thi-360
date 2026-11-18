@@ -650,7 +650,7 @@
   },
   "SP2E_SU_2026": {
     "questions": 32,
-    "maxPoints": 12.5,
+    "maxPoints": 10,
     "durationMinutes": 60,
     "examKind": "SP2E",
     "scope": "SUBJECT",
@@ -661,7 +661,7 @@
   },
   "SP2E_ECON_LAW_2026": {
     "questions": 32,
-    "maxPoints": 12.5,
+    "maxPoints": 10,
     "durationMinutes": 60,
     "examKind": "SP2E",
     "scope": "SUBJECT",
@@ -672,7 +672,7 @@
   },
   "SP2E_ANH_2026": {
     "questions": 50,
-    "maxPoints": 12.5,
+    "maxPoints": 10,
     "durationMinutes": 60,
     "examKind": "SP2E",
     "scope": "SUBJECT",

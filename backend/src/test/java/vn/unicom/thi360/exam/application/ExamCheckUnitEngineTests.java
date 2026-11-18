@@ -86,7 +86,7 @@ class ExamCheckUnitEngineTests {
         assertThat(scoped.result().path("status").asText()).isEqualTo("VALID");
         verify(engine, times(0)).solveUnit(any(), any(), any());
         var snapshots = mock(ExamCheckSnapshotReader.class);
-        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, unrelatedDraft, input));
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, unrelatedDraft, input, null));
         var states = new ExamCheckUnitStates(snapshots, store,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)),
                 new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper, source);
@@ -102,7 +102,7 @@ class ExamCheckUnitEngineTests {
             assertThat(unit.outcome()).isEqualTo("INVALID");
             assertThat(unit.sectionIds()).containsExactlyInAnyOrder("physics", "chemistry");
         });
-        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, sharedDraft, input));
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, sharedDraft, input, null));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("INCOMPLETE", "INCOMPLETE");
 
@@ -113,7 +113,7 @@ class ExamCheckUnitEngineTests {
         var separateDraft = new ExamStructureCodec(mapper).read(otherPart.toString());
         var separate = check(checker, exam, separateDraft, input, clock, ExamCheckScope.from("SECTION", null, "physics"));
         assertThat(separate.result().path("status").asText()).isEqualTo("VALID");
-        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, separateDraft, input));
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, separateDraft, input, null));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "CHECKED");
         brokenPart.putArray("sections").addObject().put("id", "broken-section")
@@ -121,7 +121,7 @@ class ExamCheckUnitEngineTests {
                 .putArray("blocks").addObject().put("id", "broken-block")
                 .put("questionType", "SINGLE_CHOICE").put("questionCount", 1);
         var invalidPartDraft = new ExamStructureCodec(mapper).read(otherPart.toString());
-        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, invalidPartDraft, input));
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, invalidPartDraft, input, null));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "CHECKED", "INCOMPLETE");
         verify(engine, times(0)).solveUnit(any(), any(), any());
@@ -178,7 +178,7 @@ class ExamCheckUnitEngineTests {
         when(store.load(exam.getId())).thenReturn(checked.units().stream()
                 .collect(Collectors.toMap(ExamCheckUnitStore.Unit::key, unit -> unit)));
         var snapshots = mock(ExamCheckSnapshotReader.class);
-        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input));
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null));
         var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source);
         assertThat(states.states(exam.getId())).extracting(state -> state.state()).containsExactly("CHECKED");
     }
@@ -260,7 +260,7 @@ class ExamCheckUnitEngineTests {
         assertThat(partCheck.result().path("status").asText()).isEqualTo("INVALID");
         assertThat(partCheck.units()).isEmpty();
         var snapshots = mock(ExamCheckSnapshotReader.class);
-        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input));
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null));
         var states = new ExamCheckUnitStates(snapshots, store, fingerprints, builder, limits, catalog, mapper, source);
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "INCOMPLETE");
@@ -274,7 +274,7 @@ class ExamCheckUnitEngineTests {
 
     private static ExamChecker.Evaluation check(DefaultExamChecker checker, Exam exam, ExamStructureDocument document,
             ExamCheckResultStore.Input input, Clock clock, ExamCheckScope scope) {
-        return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input),
+        return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null),
                 clock.instant().plusSeconds(30), Duration.ofSeconds(30), scope);
     }
 
