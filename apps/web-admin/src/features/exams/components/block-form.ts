@@ -77,14 +77,41 @@ export function reconcileBlock(block: QuestionBlock): QuestionBlock {
   if (!isSetBlock(next)) {
     delete next.slots;
     delete next.childConditions;
+    if (next.knowledgeScope?.everyChildInScope !== undefined) {
+      const scope = { ...next.knowledgeScope };
+      delete scope.everyChildInScope;
+      // Không còn MAPID hay năng lực nào thì phạm vi trống: về `null` như nhóm chưa đặt phạm vi.
+      next.knowledgeScope = scope.nodeIds.length > 0 || scope.competencyCodes?.length ? scope : null;
+    }
   }
   return next;
+}
+
+/**
+ * Bài ôn V-ACT bật sẵn "Mọi câu con thuộc chủ đề" (R-120): nhóm chùm có MAPID riêng mà chưa có cờ thì ghi `true` vào dữ
+ * liệu, để lưu và đếm nguồn dùng đúng giá trị màn đang hiện. Đã có cờ (kể cả `false` do người dùng bỏ chọn): giữ nguyên.
+ */
+export function withEveryChildDefault(block: QuestionBlock): QuestionBlock {
+  const scope = block.knowledgeScope;
+  if (!isSetBlock(block) || !scope || scope.nodeIds.length === 0 || scope.everyChildInScope !== undefined) return block;
+  return { ...block, knowledgeScope: { ...scope, everyChildInScope: true } };
 }
 
 // ---------------------------------------------------------------- điều kiện riêng từng chùm
 
 export function slotHasCondition(slot: BlockSlot | undefined): boolean {
   return (slot?.tagCodes?.length ?? 0) > 0 || (slot?.knowledgeScope?.nodeIds.length ?? 0) > 0;
+}
+
+/**
+ * Đổi cách khai chùm (H28): sang "chỉ nhập tổng" thì bỏ số chùm, cỡ chùm, điều kiện riêng từng chùm và điều kiện theo vị
+ * trí câu con (cỡ chùm không cố định nên vị trí không có nghĩa), giữ tổng câu con; sang "khai số chùm × cỡ" thì dựng 1
+ * chùm cỡ bằng tổng hiện có để người dùng sửa tiếp. Nhóm không bao giờ mang cả hai.
+ */
+export function switchSetMode(block: QuestionBlock, mode: "total" | "sets"): Partial<QuestionBlock> {
+  if (mode === "total") return { setCount: null, setSize: null, slots: undefined, childConditions: undefined };
+  const size = Math.max(block.questionCount ?? 0, 1);
+  return { setCount: 1, setSize: size, questionCount: size };
 }
 
 /** Điều kiện của chùm `index` (từ 1); chùm chưa có phần tử trả về phần tử rỗng. */

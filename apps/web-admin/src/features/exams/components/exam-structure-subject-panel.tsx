@@ -106,6 +106,14 @@ export function ExamStructureSubjectPanel({
   const matrixVaries = section.matrix?.unit === "COUNT" && varies;
 
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));
+  // Ô "Mọi câu con thuộc chủ đề" của phạm vi môn (mẫu VACT_REVIEW bật sẵn ở máy chủ): chùm kế thừa phạm vi này khi
+  // chưa chọn MAPID riêng. Không có giá trị mặc định ở màn; tắt thì bỏ cờ (thiếu cờ là tắt).
+  const setEveryChild = (checked: boolean) =>
+    onChange((current) => {
+      const scope: KnowledgeScope = { ...(current.knowledgeScope ?? { nodeIds: [] }) };
+      delete scope.everyChildInScope;
+      return { ...current, knowledgeScope: checked ? { ...scope, everyChildInScope: true } : scope };
+    });
 
   return (
     <Card padding="md" className="flex flex-col gap-6 sm:p-6">
@@ -345,6 +353,7 @@ export function ExamStructureSubjectPanel({
           reference={reference}
           subjectCode={section.subjectCode}
           name={subjectName}
+          everyChild={{ checked: section.knowledgeScope?.everyChildInScope ?? false, onChange: setEveryChild }}
         />
       </section>
 
