@@ -35,8 +35,6 @@ public class ExamBlockRef {
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "answer_types", columnDefinition = "text[]")
     private String[] answerTypes;
-    @Column(name = "task_type_item_id")
-    private UUID taskTypeItemId;
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "knowledge_item_ids", columnDefinition = "uuid[]")
     private UUID[] knowledgeItemIds;
@@ -59,7 +57,7 @@ public class ExamBlockRef {
     }
 
     public ExamBlockRef(UUID id, UUID examId, Integer versionNo, String blockId, String partId, String optionCode,
-            String sectionId, UUID subjectItemId, String questionType, List<String> answerTypes, UUID taskTypeItemId,
+            String sectionId, UUID subjectItemId, String questionType, List<String> answerTypes,
             List<UUID> knowledgeItemIds, String knowledgeMode, boolean knowledgeInherited, List<UUID> tagItemIds,
             List<UUID> competencyItemIds, BigDecimal requiredPoints, UUID combinationItemId) {
         this.id = id;
@@ -72,7 +70,6 @@ public class ExamBlockRef {
         this.subjectItemId = subjectItemId;
         this.questionType = questionType;
         this.answerTypes = answerTypes == null ? null : answerTypes.toArray(String[]::new);
-        this.taskTypeItemId = taskTypeItemId;
         this.knowledgeItemIds = knowledgeItemIds == null ? null : knowledgeItemIds.toArray(UUID[]::new);
         this.knowledgeMode = knowledgeMode;
         this.knowledgeInherited = knowledgeInherited;
@@ -92,7 +89,6 @@ public class ExamBlockRef {
     public UUID getSubjectItemId() { return subjectItemId; }
     public String getQuestionType() { return questionType; }
     public List<String> getAnswerTypes() { return answerTypes == null ? null : List.copyOf(Arrays.asList(answerTypes)); }
-    public UUID getTaskTypeItemId() { return taskTypeItemId; }
     public List<UUID> getKnowledgeItemIds() {
         return knowledgeItemIds == null ? null : List.copyOf(Arrays.asList(knowledgeItemIds));
     }

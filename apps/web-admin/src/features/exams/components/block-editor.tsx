@@ -96,7 +96,6 @@ export function BlockEditor({
     answerTypes: block.questionType === null ? quotaTypes : [],
     childAnswerType: block.childAnswerType,
     knowledgeScope: effectiveScope(block, section),
-    taskTypeCode: block.taskTypeCode,
     tagCodes: block.tagCodes,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
   });
@@ -139,7 +138,7 @@ export function BlockEditor({
     const knowledgeScope =
       codes.length === 0 && (block.knowledgeScope?.nodeIds.length ?? 0) === 0
         ? null
-        : { nodeIds: [], match: "ANY" as const, ...block.knowledgeScope, competencyCodes: codes };
+        : { nodeIds: [], ...block.knowledgeScope, competencyCodes: codes };
     // Chiều năng lực của ma trận đi theo năng lực đã chọn (giữ giá trị của năng lực còn lại).
     const byCompetency = matrix.byCompetency?.length
       ? (codes.length ? codes : competencyChoices.map((item) => item.code)).map((code) => ({
@@ -154,7 +153,6 @@ export function BlockEditor({
   );
 
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
-  const taskTypes = reference?.taskTypes ?? [];
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -318,16 +316,6 @@ export function BlockEditor({
             />
           )}
         </FormField>
-        <FormField label={isSet ? t("taskTypeSet") : t("taskType")} hint={isSet ? t("taskTypeSetHint") : undefined}>
-          {(controlProps) => (
-            <Select
-              {...controlProps}
-              value={block.taskTypeCode ?? ANY}
-              onValueChange={(value) => update({ taskTypeCode: value === ANY ? null : value })}
-              options={[{ value: ANY, label: t("taskTypeAny") }, ...taskTypes.map((item) => ({ value: item.code, label: item.name }))]}
-            />
-          )}
-        </FormField>
       </div>
       {isSet && countError && <p className="text-caption text-danger">{countError}</p>}
       {setIssue && setIssue.code === "SET_SIZE_MISMATCH" && (
@@ -336,7 +324,6 @@ export function BlockEditor({
       {isSet && <p className="text-caption text-text-muted">{t("setWholeNote")}</p>}
 
       <KnowledgeScopeField
-        fieldId={block.id}
         value={block.knowledgeScope}
         onChange={setScope}
         inherited={{ scope: section.knowledgeScope }}

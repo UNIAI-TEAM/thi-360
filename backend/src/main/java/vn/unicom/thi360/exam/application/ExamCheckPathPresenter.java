@@ -48,6 +48,7 @@ final class ExamCheckPathPresenter {
         this.sources = sources;
         for (ExamPart part : document.parts()) {
             parts.put(part.id(), part);
+            for (ExamSection section : part.subjectPool()) sections.put(section.id(), new SectionInfo(part, null, section));
             for (ExamSection section : part.sections()) sections.put(section.id(), new SectionInfo(part, null, section));
             for (ExamPartOption option : part.options()) {
                 options.put(option.id(), option);
@@ -74,6 +75,13 @@ final class ExamCheckPathPresenter {
             ObjectNode item = choices.addObject();
             item.put("partId", choice.partId());
             item.put("optionId", choice.optionId());
+            if (parts.get(choice.partId()) != null && parts.get(choice.partId()).codeSource() != null) {
+                String prefix = choice.partId() + ":";
+                String code = choice.optionId().startsWith(prefix) ? choice.optionId().substring(prefix.length()) : choice.optionId();
+                item.put("kind", "COMBINATION");
+                item.put("code", code);
+                item.put("name", code);
+            }
             if (option != null) {
                 item.put("kind", option.kind() == null ? null : option.kind().name());
                 item.put("code", option.code());
@@ -169,6 +177,7 @@ final class ExamCheckPathPresenter {
             if (subjectChoice) totalQuestions += section.questionCount() == null ? 0 : section.questionCount();
             int fixed = section.groups().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
             for (QuestionBlock block : info.section.blocks()) {
+                if (Boolean.TRUE.equals(block.omitted())) continue;
                 int count = block.questionCount() == null
                         ? Math.max(0, (section.questionCount() == null ? 0 : section.questionCount()) - fixed)
                         : fixedCount(block);

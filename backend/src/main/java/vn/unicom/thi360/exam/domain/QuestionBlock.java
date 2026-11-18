@@ -17,14 +17,30 @@ public record QuestionBlock(
         Integer setSize,
         KnowledgeScope knowledgeScope,
         BlockMatrix matrix,
-        String taskTypeCode,
         QuestionType childAnswerType,
         String templateGroupCode,
         Boolean answerTypeLocked,
         BigDecimal requiredPointsPerQuestion,
         List<String> tagCodes,
-        BlockExpectedScoring expectedScoring) {
+        BlockExpectedScoring expectedScoring,
+        Boolean shuffleUnits,
+        Boolean shuffleEditable,
+        List<BlockSlot> slots,
+        List<ChildCondition> childConditions,
+        ItemShape itemShape,
+        List<String> answerFormats,
+        Boolean omitted,
+        List<TopicQuota> topicQuotas,
+        PositionRange positionRange) {
     public QuestionBlock {
+        shuffleUnits = shuffleUnits == null ? true : shuffleUnits;
+        shuffleEditable = shuffleEditable == null ? false : shuffleEditable;
+        omitted = omitted == null ? false : omitted;
         tagCodes = tagCodes == null ? List.of() : List.copyOf(tagCodes);
+        slots = slots == null ? List.of() : List.copyOf(slots);
+        childConditions = childConditions == null ? List.of() : List.copyOf(childConditions);
+        answerFormats = answerFormats == null ? List.of() : List.copyOf(answerFormats);
+        topicQuotas = topicQuotas == null ? List.of() : List.copyOf(topicQuotas);
     }
+
 }

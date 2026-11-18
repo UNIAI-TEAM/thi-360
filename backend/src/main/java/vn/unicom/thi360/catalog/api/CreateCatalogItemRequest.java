@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
 
 @Schema(description = "Yêu cầu tạo giá trị danh mục mới")
@@ -33,6 +34,8 @@ public record CreateCatalogItemRequest(
         UUID parentId,
         @Schema(description = "Danh sách ID giá trị liên kết riêng của nút (chỉ dùng cho nhóm TREE)")
         List<UUID> refItemIds,
+        @Schema(description = "Nhánh của mã tổ hợp (SCIENCE, ENGLISH; để trống nếu không áp dụng)")
+        CombinationBranch branch,
         @Schema(description = "ID giá trị kỳ thi (bắt buộc cho nhóm COMBINATION)")
         UUID examItemId,
         @Schema(description = "Danh sách ID môn học theo thứ tự (bắt buộc cho nhóm COMBINATION, không trùng)")
@@ -50,6 +53,6 @@ public record CreateCatalogItemRequest(
             CatalogStatus status,
             UUID parentId,
             List<UUID> refItemIds) {
-        this(code, nameVi, nameEn, description, displayOrder, status, parentId, refItemIds, null, null, null);
+        this(code, nameVi, nameEn, description, displayOrder, status, parentId, refItemIds, null, null, null, null);
     }
 }

@@ -43,7 +43,6 @@ public class AvailableQuestionCountService {
     private QuestionSourcePort.Filter filter(AvailableQuestionCountController.Query query, UUID subjectId) {
         var scope = query.knowledgeScope();
         List<List<UUID>> groups = null;
-        QuestionSourcePort.Match match = QuestionSourcePort.Match.ANY;
         if (scope != null && scope.nodeIds() != null && !scope.nodeIds().isEmpty()) {
             List<CatalogItemView> nodes = catalog.listActiveGroupItems("KNOWLEDGE");
             groups = scope.nodeIds().stream().map(id -> {
@@ -60,8 +59,8 @@ public class AvailableQuestionCountService {
         QuestionSourcePort.ItemShape itemShape = query.itemShape() == null ? null
                 : new QuestionSourcePort.ItemShape(query.itemShape().statements(),
                         query.itemShape().leftItems(), query.itemShape().rightItems());
-        return new QuestionSourcePort.Filter(subjectId, groups, match, query.answerTypes(), query.questionType(),
-                query.taskTypeCode(), query.childAnswerType(), query.tagCodes(), competencies,
+        return new QuestionSourcePort.Filter(subjectId, groups, query.answerTypes(), query.questionType(),
+                null, query.childAnswerType(), query.tagCodes(), competencies,
                 query.requiredPointsPerQuestion(), itemShape, query.answerFormats(), childConditions);
     }
 

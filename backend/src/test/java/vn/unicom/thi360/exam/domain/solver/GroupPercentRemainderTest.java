@@ -13,18 +13,18 @@ class GroupPercentRemainderTest {
 
     @ParameterizedTest
     @EnumSource(Dimension.class)
-    void eachSubjectPickApportionsRemainderForItsResolvedCount(Dimension dimension) {
+    void eachSubjectApportionsRemainderForFullSeventeenCount(Dimension dimension) {
         SolveOutcome outcome = solve(dimension, 6, 5);
         assertThat(outcome.status()).isEqualTo(SolveStatus.VALID);
         List<SubjectWitness> witnesses = outcome.results().getFirst().witness();
-        assertThat(witnesses).hasSize(4);
+        assertThat(witnesses).hasSize(2);
         for (SubjectWitness subject : witnesses) {
             GroupWitness remainder = subject.groups().stream()
                     .filter(group -> group.groupId().endsWith("-remainder")).findFirst().orElseThrow();
             int remainderCount = subject.resolvedCount() - 6;
             assertThat(remainder.picks()).hasSize(remainderCount);
             assertThat(remainder.picks().stream().filter(pick -> pick.questionId().contains("-P-")).count())
-                    .isEqualTo(remainderCount == 10 ? 5 : 6);
+                    .isEqualTo(6);
         }
     }
 
@@ -74,7 +74,7 @@ class GroupPercentRemainderTest {
         for (int i = 0; i < count; i++) {
             CountingUnit unit = new CountingUnit(null, "SINGLE_CHOICE", first ? "G1" : "G2",
                     first ? "NB" : "TH", List.of(), List.of(first ? "P" : "Q"), BigDecimal.ONE);
-            candidates.add(new PathCandidate(subject + "-" + label + "-" + i, 1, null, null, null,
+            candidates.add(new PathCandidate(subject + "-" + label + "-" + i, 1, null, null,
                     List.of(unit)));
         }
         return candidates;

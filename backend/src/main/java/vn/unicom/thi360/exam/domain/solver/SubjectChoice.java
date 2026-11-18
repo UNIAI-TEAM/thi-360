@@ -9,9 +9,9 @@ import java.util.Objects;
  * {@code choose} trong số {@code sections} môn; số câu từng môn tính từ {@code countsByPick}
  * (kích thước = {@code choose}, tổng = số câu của phương án) qua {@link SubjectCountAllocator}.
  *
- * <p>Mỗi bộ môn được chọn tính là một đường cho giới hạn 200 đường (spec 5.4). Bộ ba tự nhiên
- * có ba phân bổ số câu có thể xảy ra, đều được kiểm tra (B10), nhưng vẫn tính là một bộ môn.
- * Các {@link SectionOnPath} của phương án có {@code questionCount = null} cho tới khi mở.
+ * <p>Mỗi bộ môn được chọn tính là một đường cho giới hạn 200 đường (spec 5.4). Khi kiểm tra,
+ * mỗi môn được giải ở số câu đầy đủ; khi sinh đề allocator chọn môn cần giảm. Các
+ * {@link SectionOnPath} của phương án có {@code questionCount = null} cho tới khi mở.
  *
  * @param optionId     id của phương án trong cấu trúc (để ghi vào nhãn đường và kết quả)
  * @param sections     các môn được phép chọn, 2..8 môn (giới hạn giải ở

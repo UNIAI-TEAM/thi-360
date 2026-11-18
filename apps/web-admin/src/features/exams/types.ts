@@ -80,8 +80,6 @@ export interface ExamSummary {
  */
 export interface KnowledgeScope {
   nodeIds: string[];
-  /** `ANY`: câu gắn một trong các nút; `ALL`: câu gắn đủ các nút. */
-  match: "ANY" | "ALL";
   /** Lọc thêm theo năng lực (V-ACT); bỏ trống hoặc rỗng: không lọc. */
   competencyCodes?: string[];
 }
@@ -142,8 +140,6 @@ export interface QuestionBlock {
   tagCodes: string[];
   /** Chỉ tiêu riêng của nhóm (tùy chọn); câu của nhóm vẫn tính vào chỉ tiêu của môn. `null`: không có. */
   matrix: BlockMatrix | null;
-  /** Dạng bài (`ContentReference.taskTypes`); `null`: không lọc. */
-  taskTypeCode: string | null;
   /** Nhóm chùm: giới hạn dạng của câu con; `null`: không giới hạn. */
   childAnswerType: QuestionType | null;
   /** Mã nhóm của mẫu cấu trúc; `null` với nhóm thêm tay. */
@@ -396,7 +392,6 @@ export interface ExamTemplateBlock {
   setSize?: number | null;
   competencyCode?: string | null;
   expectedScoring?: BlockExpectedScoring;
-  taskTypeCode?: string | null;
   childAnswerType?: QuestionType | null;
   templateGroupCode?: string | null;
   answerTypeLocked?: boolean;
@@ -501,8 +496,6 @@ export interface AvailableQuestionsQuery {
   childAnswerType: QuestionType | null;
   /** Phạm vi có hiệu lực; `null`: không giới hạn MAPID. */
   knowledgeScope: KnowledgeScope | null;
-  /** Dạng bài (`ContentReference.taskTypes`); bỏ trống: không lọc. */
-  taskTypeCode?: string | null;
   tagCodes?: string[];
   competencyCodes?: string[];
   /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */

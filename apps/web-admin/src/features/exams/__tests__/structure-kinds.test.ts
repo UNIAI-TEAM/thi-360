@@ -50,9 +50,8 @@ function competencyBlock(byCompetency: BlockMatrix["byCompetency"], unit: BlockM
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY", competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
+    knowledgeScope: { nodeIds: [], competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
     tagCodes: [],
-    taskTypeCode: null,
     childAnswerType: null,
     templateGroupCode: null,
     answerTypeLocked: false,
@@ -226,7 +225,6 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
           for (const block of section.blocks) {
             expect(block, item.id).toMatchObject({
               templateGroupCode: null,
-              taskTypeCode: null,
               childAnswerType: null,
               answerTypeLocked: false,
             });

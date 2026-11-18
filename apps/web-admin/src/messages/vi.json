@@ -99,6 +99,10 @@
       "UNKNOWN_ACTION": "Thao tác khác"
     },
     "behaviorWarning": "Thêm giá trị không tự tạo chức năng xử lý tương ứng.",
+    "branches": {
+      "ENGLISH": "Tiếng Anh",
+      "SCIENCE": "Khoa học"
+    },
     "cancel": "Hủy",
     "cardValueMeta": "Giá trị: {value}",
     "close": "Đóng",
@@ -116,6 +120,9 @@
     "combinationDialog": {
       "addSubjectLabel": "Thêm môn",
       "addSubjectPlaceholder": "Chọn môn đang hoạt động…",
+      "branchHint": "Dùng để lọc mã theo phần Khoa học hoặc Tiếng Anh của bài thi.",
+      "branchLabel": "Nhánh",
+      "branchNone": "Không có nhánh",
       "codeConventionHint": "Duy nhất trong danh mục, ví dụ QDA_QD01 (tổ hợp xác định theo kỳ thi).",
       "createTitle": "Thêm mã tổ hợp",
       "currentVersionMeta": "Nhóm: {groupName} ({groupCode}) · Phiên bản hiện tại: {version}",
@@ -123,10 +130,9 @@
       "editTitle": "Sửa mã tổ hợp",
       "examLabel": "Kỳ thi",
       "examPlaceholder": "Chọn kỳ thi đang hoạt động…",
-      "inPlaceVersionHint": "Tổ hợp này chưa được tham chiếu; sửa kỳ thi, môn hoặc thứ tự môn sẽ cập nhật trực tiếp phiên bản {version}.",
       "moveSubjectDownLabel": "Di chuyển {name} xuống",
       "moveSubjectUpLabel": "Di chuyển {name} lên",
-      "newVersionNotice": "Tổ hợp này đang được dùng. Đổi kỳ thi, môn hoặc thứ tự môn sẽ tạo phiên bản {nextVersion}; đề đã công bố và kết quả cũ tiếp tục dùng phiên bản {currentVersion}.",
+      "newVersionNotice": "Đổi nhánh, kỳ thi, danh sách hoặc thứ tự môn luôn tạo phiên bản mới. Đề đã công bố và kết quả cũ tiếp tục dùng phiên bản {currentVersion}; lần lưu này tạo phiên bản {nextVersion}.",
       "noActiveExams": "Chưa có kỳ thi nào đang hoạt động.",
       "noActiveSubjects": "Chưa còn môn nào đang hoạt động để thêm.",
       "optionsLoadError": "Không tải được danh sách lựa chọn. Hãy thử lại.",
@@ -169,6 +175,7 @@
       "auditPermissionDenied": "Bạn chưa được cấp quyền xem nhật ký nên không xem được lịch sử thay đổi.",
       "auditReasonLabel": "Lý do: {reason}",
       "auditTab": "Lịch sử thay đổi",
+      "branchLabel": "Nhánh",
       "combinationSectionTitle": "Cấu hình tổ hợp hiện hành",
       "createdAtLabel": "Ngày tạo",
       "currentVersionBadge": "Hiện hành",
@@ -3978,10 +3985,6 @@
         "points": "Điểm mỗi câu yêu cầu",
         "pointsOpenHint": "Không bắt buộc. Để trống thì câu nào cũng vào nguồn, điểm lấy từ phiên bản câu.",
         "pointsTotal": "Chỉ câu có đúng {points, number} điểm vào nguồn; nhóm có {total, number} điểm.",
-        "taskType": "Dạng bài",
-        "taskTypeSet": "Dạng bài hoặc ngữ liệu",
-        "taskTypeSetHint": "Giới hạn nguồn theo dạng bài; phạm vi ngữ liệu đặt ở MAPID bên dưới.",
-        "taskTypeAny": "Không lọc theo dạng bài",
         "ownMatrix": "Ma trận lớp và độ khó riêng của nhóm",
         "ownMatrixNone": "Chưa khai (tùy chọn)",
         "ownMatrixSet": "Đã khai",
@@ -4098,6 +4101,8 @@
         "partChoose": "{part}: số phương án phải chọn là {choose, number}, phải từ 1 đến {options, number}.",
         "sectionsTotal": "{part}: tổng phân bổ là {actual, number} câu, yêu cầu của phần thi là {expected, number} câu.",
         "blocksTotal": "{section}: các khối có {actual, number} câu, môn cần {expected, number} câu.",
+        "subjectCountExceeds": "{section}: khai {declared, number} câu nhưng cách chia chỉ cho {allocated, number} câu; chỉ được hơn nhiều nhất một câu (HSA 17 − 1).",
+        "subjectTrimImpossible": "{section}: cần bỏ một câu để còn {allocated, number} câu nhưng môn không có câu đơn nào để bỏ (chùm không bị tách); máy chủ sẽ từ chối.",
         "dimension": {
           "COMBINED": "ma trận",
           "GRADE": "theo khối lớp",
@@ -5074,9 +5079,6 @@
       "pick": "Chọn kiến thức",
       "remove": "Bỏ kiến thức {code} {name}",
       "useSection": "Dùng phạm vi của môn",
-      "match": "Cách đối chiếu",
-      "matchAny": "Khớp ít nhất một (mặc định)",
-      "matchAll": "Khớp tất cả",
       "pickerDescription": "Phạm vi của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó."
     },
     "subjectChoice": {

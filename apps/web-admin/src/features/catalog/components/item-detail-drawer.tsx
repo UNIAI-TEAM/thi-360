@@ -270,6 +270,17 @@ function ItemDetailBody({
               </span>
             </div>
 
+            <div className="flex flex-col gap-1">
+              <span className="text-caption font-medium text-text-muted">
+                {t("detailDrawer.branchLabel")}
+              </span>
+              <span className="text-body font-medium text-text">
+                {item.combination.branch
+                  ? t(`branches.${item.combination.branch}`)
+                  : t("combinationDialog.branchNone")}
+              </span>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <span className="text-caption font-medium text-text-muted">
                 {t("detailDrawer.subjectsLabel")}
@@ -503,6 +514,12 @@ function VersionCard({
         )}
         {version.examStatus === "INACTIVE" ? ` (${t("statuses.INACTIVE")})` : ""}
       </p>
+
+      {version.branch && (
+        <p className="text-field-label text-text-secondary">
+          {t("detailDrawer.branchLabel")}: {t(`branches.${version.branch}`)}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
         {orderedSubjects.map((subject, idx) => (

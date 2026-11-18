@@ -280,15 +280,16 @@ describe("nguồn câu hỏi của khối", () => {
     backend.seedCounts("count", { status: 200, body: { total: 3, cells: [{ gradeCode: "GRADE_10", value: 3 }] } });
     const counted = await countAvailableQuestions({
       ...MATH_SINGLE,
-      knowledgeScope: { nodeIds: ["kn-1D4"], match: "ANY" },
+      knowledgeScope: { nodeIds: ["kn-1D4"] },
     });
     expect(counted.total).toBe(3);
     const [call] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count");
     expect(call?.body).toMatchObject({
       subjectCode: "MATH",
       questionType: "SINGLE_CHOICE",
-      knowledgeScope: { nodeIds: ["kn-1D4"], match: "ANY" },
+      knowledgeScope: { nodeIds: ["kn-1D4"] },
     });
+    expect(JSON.stringify(call?.body)).not.toContain('"match"');
   });
 
   it("countSubjectAvailableQuestions gửi nhóm và ánh xạ byAnswerType", async () => {
@@ -306,7 +307,7 @@ describe("nguồn câu hỏi của khối", () => {
     const counted = await countSubjectAvailableQuestions({
       subjectCode: "MATH",
       groups: [
-        { ...MATH_SINGLE, knowledgeScope: { nodeIds: ["kn-1D4"], match: "ANY" } },
+        { ...MATH_SINGLE, knowledgeScope: { nodeIds: ["kn-1D4"] } },
         { ...MATH_SINGLE, questionType: null, answerTypes: ["SHORT_ANSWER"], knowledgeScope: null },
       ],
     });
@@ -320,5 +321,6 @@ describe("nguồn câu hỏi của khối", () => {
         { answerTypes: ["SHORT_ANSWER"] },
       ],
     });
+    expect(JSON.stringify(call?.body)).not.toContain('"match"');
   });
 });

@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
@@ -26,6 +27,7 @@ import vn.unicom.thi360.exam.api.CreateExamRequest;
 import vn.unicom.thi360.exam.api.DuplicateExamRequest;
 import vn.unicom.thi360.exam.api.ExamCheckSummary;
 import vn.unicom.thi360.exam.api.ExamDetailResponse;
+import vn.unicom.thi360.exam.api.ExamOverviewRequest;
 import vn.unicom.thi360.exam.api.ExamErrorCodes;
 import vn.unicom.thi360.exam.api.ExamStructureResponse;
 import vn.unicom.thi360.exam.api.ExamSummaryResponse;
@@ -33,6 +35,7 @@ import vn.unicom.thi360.exam.api.ExamVersionResponse;
 import vn.unicom.thi360.exam.api.LoadExamTemplateRequest;
 import vn.unicom.thi360.exam.api.PersonRef;
 import vn.unicom.thi360.exam.api.SuggestExamCodeResponse;
+import vn.unicom.thi360.exam.api.StructureCombination;
 import vn.unicom.thi360.exam.api.UpdateExamInfoRequest;
 import vn.unicom.thi360.exam.api.UpdateExamStructureRequest;
 import vn.unicom.thi360.exam.application.ExamBlockRefProjector.CodeResolver;
@@ -57,10 +60,12 @@ import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.infrastructure.ExamBlockRefRepository;
 import vn.unicom.thi360.exam.infrastructure.ExamKindProfileRepository;
 import vn.unicom.thi360.exam.infrastructure.ExamRepository;
+import vn.unicom.thi360.exam.infrastructure.ExamStructureProperties;
 import vn.unicom.thi360.exam.infrastructure.ExamStructureRepository;
+import vn.unicom.thi360.exam.spi.CombinationLookup;
 import vn.unicom.thi360.identity.spi.UserDirectory;
-import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.ConflictException;
+import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.api.PageQuery;
@@ -100,7 +105,8 @@ public class ExamService {
     private final ObjectMapper objectMapper;
     private final AppMessages messages;
     private final ExamCheckValidity checkValidity;
-
+    private final ExamStructureProperties structureProperties;
+    private final CombinationLookup combinationLookup;
     public ExamService(
             ExamRepository examRepository,
             ExamStructureRepository structureRepository,
@@ -117,7 +123,9 @@ public class ExamService {
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
             AppMessages messages,
-            ExamCheckValidity checkValidity) {
+            ExamCheckValidity checkValidity,
+            ExamStructureProperties structureProperties,
+            CombinationLookup combinationLookup) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -134,8 +142,9 @@ public class ExamService {
         this.objectMapper = objectMapper;
         this.messages = messages;
         this.checkValidity = checkValidity;
+        this.structureProperties = structureProperties;
+        this.combinationLookup = combinationLookup;
     }
-
     private ExamStructureCodec codec() {
         return new ExamStructureCodec(objectMapper);
     }
@@ -356,7 +365,31 @@ public class ExamService {
     public ExamStructureResponse getExamStructure(UUID examId) {
         Exam exam = requireExam(examId);
         ExamStructureDocument doc = workingDocument(examId);
-        return new ExamStructureResponse(examId, doc.parts(), exam.getRevision());
+        return structureResponse(examId, doc, exam.getRevision());
+    }
+
+    private ExamStructureResponse structureResponse(UUID examId, ExamStructureDocument doc, long revision) {
+        ExamStructureDocument presented = ExamStructurePresentation.withPositionRanges(doc);
+        Exam exam = requireExam(examId);
+        List<CatalogCombinationView> current = combinationLookup.listCombinations(exam.getKindItemId());
+        List<StructureCombination> combinations = new ArrayList<>();
+        for (ExamPart part : doc.parts()) {
+            if (part.codeSource() == null) {
+                continue;
+            }
+            String branch = part.codeSource().branch();
+            Set<String> subjects = new java.util.HashSet<>();
+            part.subjectPool().forEach(section -> subjects.add(section.subjectCode()));
+            for (CatalogCombinationView value : current) {
+                if (branch != null && (value.branch() == null || !branch.equals(value.branch().name()))) {
+                    continue;
+                }
+                combinations.add(new StructureCombination(part.id(), value.itemCode(), value.itemNameVi(), value.itemNameEn(),
+                        value.examItemCode(), value.subjectCodes(),
+                        value.subjectCodes().stream().filter(code -> !subjects.contains(code)).toList()));
+            }
+        }
+        return new ExamStructureResponse(examId, presented.parts(), revision, presented.examQuotas(), combinations, null);
     }
 
     /** Mã gợi ý <KIND>-<F|P|S>-[PHẦN|MÔN-]<seq:03d>: số tiếp theo chưa dùng trong cùng tiền tố. */
@@ -421,25 +454,54 @@ public class ExamService {
         ScopeChoice scopeChoice = resolveScope(kindItem, profile, request.scope(),
                 request.partCode(), request.subjectCode());
 
-        ExamTemplate template = pickTemplate(null, kindItem.code(),
-                scopeChoice.scope(), scopeChoice.partCode(), scopeChoice.subjectCode(), null);
+        String buildMode = request.buildMode() == null ? "STANDARD" : request.buildMode();
+        if (!Set.of("STANDARD", "REVIEW").contains(buildMode)
+                || ("REVIEW".equals(buildMode) && !"SUBJECT".equals(scopeChoice.scope()))) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
+        boolean subjectPart = "PART".equals(scopeChoice.scope())
+                && "SUBJECT".equals(profile.getTemplateBy());
+        ExamTemplate template = subjectPart
+                ? templateService.findDefault(kindItem.code(), "SUBJECT", null, scopeChoice.subjectCode(), buildMode)
+                : templateService.findDefault(kindItem.code(), scopeChoice.scope(),
+                        scopeChoice.partCode(), scopeChoice.subjectCode(), buildMode);
 
         ExamStructureDocument doc;
         String templateCode = null;
         if (template != null) {
             doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
-            ExamStructureValidator.validate(doc);
+            if ("REVIEW".equals(buildMode)) {
+                doc = reviewSubject(doc, scopeChoice.subjectCode());
+            }
+            if (subjectPart) {
+                doc = selectSubjectPart(doc, scopeChoice.partCode());
+            }
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
             templateCode = template.getCode();
         } else {
-            doc = new ExamStructureDocument(List.of());
+            doc = emptyOverviewStructure(request.overview(), scopeChoice.subjectCode());
+            if (subjectPart) {
+                throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                        messages.get(ExamErrorCodes.PART_NOT_FOUND));
+            }
+        }
+        if (template != null && request.overview() != null) {
+            doc = ExamOverview.apply(doc, request.overview());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        }
+        if (template == null) {
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+            validateStructureReferences(doc);
         }
 
         String timing = template != null && template.getTiming() != null
                 ? template.getTiming() : profile != null ? profile.getTiming() : "PER_PART";
         Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                : subjectPart ? doc.parts().getFirst().durationMinutes()
                 : template != null ? template.getDurationMinutes() : null;
         requireSharedDuration(timing, duration);
         BigDecimal maxScore = request.maxScore() != null ? request.maxScore()
+                : subjectPart ? doc.parts().getFirst().maxPoints()
                 : template != null && template.getMaxScore() != null ? template.getMaxScore()
                 : profile != null ? profile.getMaxScore() : null;
         if (maxScore != null && maxScore.signum() <= 0) {
@@ -454,7 +516,9 @@ public class ExamService {
         Exam exam = new Exam(Ids.newId(), code, request.name().trim(), kindItem.id(),
                 scopeChoice.scope(), timing, duration, maxScore,
                 profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
-        exam.applyScoringProfile(profile.getReferenceMax(), profile.getPracticeScoring());
+        exam.setBuildMode(buildMode);
+        exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+                subjectPart ? "RAW" : profile.getPracticeScoring());
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
                 duration, maxScore, actor, now);
@@ -467,12 +531,12 @@ public class ExamService {
         } catch (DataIntegrityViolationException ex) {
             throw codeTaken();
         }
-        ExamStructureSummary summary = blockRefProjector.summarize(doc.parts());
+        ExamStructureSummary summary = summarize(exam, doc);
         exam.applyStructureSummary(summary.questionCount(), summary.hasEssay(),
                 summary.hasEnglishOption(), summary.combinationCount());
 
-        structureRepository.save(new ExamStructure(exam.getId(), codec().write(doc),
-                hash(doc), null, false, actor, now));
+        structureRepository.save(new ExamStructure(exam.getId(), codec().writeParts(doc),
+                codec().writeQuotas(doc.examQuotas()), hash(doc), null, false, actor, now));
         rewriteBlockRefs(exam.getId(), doc);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.CREATE")
@@ -484,12 +548,56 @@ public class ExamService {
         return toDetail(examRepository.findById(exam.getId()).orElse(exam), doc);
     }
 
+    private ExamStructureDocument emptyOverviewStructure(List<ExamOverviewRequest.Row> rows, String subjectCode) {
+        if (rows == null) return new ExamStructureDocument(List.of());
+        List<ExamPart> parts = new ArrayList<>();
+        for (ExamOverviewRequest.Row row : rows) {
+            String subject = row.subjectCode() != null ? row.subjectCode() : subjectCode;
+            List<ExamSection> sections = subject == null ? List.of()
+                    : List.of(new ExamSection(row.sectionId(), subject, row.questionCount(),
+                            null, null, null, null, List.of()));
+            parts.add(new ExamPart(row.partId(), null, row.partCode(), row.durationMinutes(),
+                    row.questionCount(), null, null, null, row.maxPoints(), sections, List.of()));
+        }
+        return ExamStructureOps.assignMissingIds(new ExamStructureDocument(parts));
+    }
+
+    private ExamStructureDocument selectSubjectPart(ExamStructureDocument doc, String partCode) {
+        List<ExamPart> parts = doc.parts().stream()
+                .filter(p -> p.order() != null && ("P" + p.order()).equals(partCode))
+                .toList();
+        if (parts.size() != 1) {
+            throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                    messages.get(ExamErrorCodes.PART_NOT_FOUND));
+        }
+        return new ExamStructureDocument(parts);
+    }
+
+    private ExamStructureDocument reviewSubject(ExamStructureDocument doc, String subjectCode) {
+        return new ExamStructureDocument(doc.parts().stream().map(part -> new ExamPart(
+                part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
+                part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
+                part.maxPoints(), part.sections().stream().map(section -> new ExamSection(
+                        section.id(), subjectCode, section.questionCount(), section.knowledgeScope(),
+                        section.answerQuotas(), section.matrix(), section.choiceGroup(), section.blocks(),
+                        section.topicQuotas())).toList(), part.options(), part.subjectPool(),
+                part.codeSource())).toList(), doc.examQuotas());
+    }
+
     /** PATCH /exams/{id} — sửa thông tin; đổi phạm vi → nạp lại mẫu theo quy tắc spec 5.2. */
     @Transactional
     public ExamDetailResponse updateExamInfo(UUID examId, UpdateExamInfoRequest request) {
         Exam exam = examRepository.findByIdForUpdate(examId)
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
+        if (request.practiceScoring() != null && !Set.of("RAW", "LINEAR").contains(request.practiceScoring())) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
+        if ("LINEAR".equals(request.practiceScoring()) && !"LINEAR".equals(exam.getPracticeScoring())
+                && !Boolean.TRUE.equals(request.confirmScoring())) {
+            throw new BusinessRuleException(ExamErrorCodes.SCORING_CONFIRM_REQUIRED,
+                    messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
+        }
         Map<String, Object> before = examInfoSnapshot(exam);
         Instant now = Instant.now();
         UUID actor = actorId();
@@ -530,21 +638,34 @@ public class ExamService {
                 }
                 ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
                 ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
-                ExamTemplate template = pickTemplate(null, kindItem.code(), choice.scope(),
-                        choice.partCode(), choice.subjectCode(), structureYear);
+                String mode = "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD";
+                boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
+                ExamTemplate template = subjectPart
+                        ? templateService.findDefault(kindItem.code(), "SUBJECT", null, choice.subjectCode(), mode)
+                        : templateService.findDefault(kindItem.code(), choice.scope(), choice.partCode(),
+                                choice.subjectCode(), mode);
+                if (subjectPart && template == null) {
+                    throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                            messages.get(ExamErrorCodes.PART_NOT_FOUND));
+                }
                 ExamStructureDocument doc = template != null
                         ? ExamStructureOps.assignMissingIds(codec().read(template.getStructure()))
                         : new ExamStructureDocument(List.of());
-                ExamStructureValidator.validate(doc);
+                if (template != null && "REVIEW".equals(mode)) doc = reviewSubject(doc, choice.subjectCode());
+                if (subjectPart) doc = selectSubjectPart(doc, choice.partCode());
+                ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
                 Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                        : subjectPart ? doc.parts().getFirst().durationMinutes()
                         : template != null && template.getDurationMinutes() != null
                                 ? template.getDurationMinutes() : null;
-                BigDecimal maxScore = template != null && template.getMaxScore() != null
-                        ? template.getMaxScore() : profile.getMaxScore();
+                BigDecimal maxScore = subjectPart ? doc.parts().getFirst().maxPoints()
+                        : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
-                exam.applyScoringProfile(profile.getReferenceMax(), profile.getPracticeScoring());
+                exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+                        subjectPart ? "RAW" : profile.getPracticeScoring());
+                exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
                         template != null ? template.getStructureYear() : structureYear,
@@ -580,6 +701,14 @@ public class ExamService {
         if (request.yearsConfirmed() != null && !scopeChanged) {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
+        if (request.practiceScoring() != null || request.referenceMax() != null) {
+            String scoring = request.practiceScoring() == null
+                    ? exam.getPracticeScoring() : request.practiceScoring();
+            BigDecimal referenceMax = request.referenceMax() != null ? request.referenceMax()
+                    : exam.getReferenceMax() != null ? exam.getReferenceMax()
+                    : "LINEAR".equals(scoring) ? BigDecimal.TEN : null;
+            exam.applyScoringProfile(referenceMax, scoring);
+        }
         exam.markStructureChanged(actor, now);
         try {
             examRepository.flush();
@@ -595,6 +724,22 @@ public class ExamService {
         return getExamDetail(examId);
     }
 
+    /** Update overview numbers without replacing configured blocks or quotas. */
+    @Transactional
+    public ExamDetailResponse updateOverview(UUID examId, ExamOverviewRequest request) {
+        Exam exam = examRepository.findByIdForUpdate(examId)
+                .orElseThrow(() -> examNotFound(examId));
+        requireRevision(request.expectedRevision(), exam.getRevision());
+        ExamStructure stored = structureRepository.findById(examId).orElse(null);
+        ExamStructureDocument doc = ExamOverview.apply(workingDocument(examId), request.overview());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now());
+        auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.OVERVIEW_UPDATE")
+                .target("EXAM", exam.getId().toString(), exam.getCode())
+                .build());
+        return toDetail(exam, doc);
+    }
+
     /** POST /exams/{id}/template — nạp lại cấu trúc từ nguyên mẫu; cần confirmReplace khi đã sửa. */
     @Transactional
     public ExamStructureResponse loadTemplate(UUID examId, LoadExamTemplateRequest request) {
@@ -602,8 +747,7 @@ public class ExamService {
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
         ExamStructure structure = structureRepository.findById(examId).orElse(null);
-        if (structure != null && structure.isEdited()
-                && !Boolean.TRUE.equals(request.confirmReplace())) {
+        if (!Boolean.TRUE.equals(request.confirmReplace())) {
             throw new ConflictException(ExamErrorCodes.REPLACE_CONFIRM,
                     messages.get(ExamErrorCodes.REPLACE_CONFIRM));
         }
@@ -612,20 +756,64 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
                     messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
         }
+        if ("REVIEW".equals(template.getBuildMode()) && !"SUBJECT".equals(exam.getScope())) {
+            throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
+                    messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
+        }
         assertTemplateMatches(exam, template);
+        if (request.overviewPolicy() != null
+                && !Set.of("USE_TEMPLATE", "KEEP_EDITED").contains(request.overviewPolicy())) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
         Instant now = Instant.now();
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
-        ExamStructureValidator.validate(doc);
+        boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
+        if (subjectPart) {
+            doc = selectSubjectPart(doc, exam.getPartCode());
+        }
+        if ("REVIEW".equals(template.getBuildMode())) {
+            doc = reviewSubject(doc, subjectCodeOf(exam.getSubjectItemId()));
+        }
+        ExamTemplate previous = templateService.findProvenance(exam.getTemplateCode());
+        if (exam.getTemplateCode() != null && previous == null) {
+            throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
+                    messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
+        }
+        if (previous != null && structure != null) {
+            ExamStructureDocument baseline = codec().read(previous.getStructure());
+            if ("REVIEW".equals(previous.getBuildMode())) {
+                baseline = reviewSubject(baseline, subjectCodeOf(exam.getSubjectItemId()));
+            }
+            if (subjectPart) {
+                baseline = selectSubjectPart(baseline, exam.getPartCode());
+            }
+            ExamStructureDocument current = readStoredStructure(structure);
+            List<ExamOverview.Change> changes = ExamOverview.changes(current, baseline);
+            if (!changes.isEmpty() && request.overviewPolicy() == null) {
+                throw new ConflictException(ExamErrorCodes.OVERVIEW_CONFIRM,
+                        messages.get(ExamErrorCodes.OVERVIEW_CONFIRM), List.of(
+                                new FieldError("overview.current", "CURRENT",
+                                        objectMapper.valueToTree(ExamOverview.rows(readStoredStructure(structure))).toString()),
+                                new FieldError("overview.template", "TEMPLATE",
+                                        objectMapper.valueToTree(ExamOverview.rows(doc)).toString())));
+            }
+            if ("KEEP_EDITED".equals(request.overviewPolicy())) {
+                doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(doc, changes));
+            }
+        }
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
-                template.getTiming(), template.getDurationMinutes(), template.getMaxScore(), actor, now);
+                template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
+                subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
+        exam.setBuildMode(template.getBuildMode());
         writeStructure(exam, doc, false, actor, now);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.TEMPLATE_LOAD")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
                 .after(Map.of("templateCode", template.getCode()))
                 .build());
-        return new ExamStructureResponse(examId, doc.parts(), examRepository.findById(examId)
+        return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
     }
 
@@ -639,10 +827,9 @@ public class ExamService {
         UUID actor = actorId();
 
         ExamStructureDocument incoming = ExamStructureOps.assignMissingIds(
-                new ExamStructureDocument(request.parts()));
+                new ExamStructureDocument(request.parts(), request.examQuotas()));
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
-        ExamStructureDocument storedDoc = stored == null ? null
-                : codec().read(stored.getParts());
+        ExamStructureDocument storedDoc = stored == null ? null : readStoredStructure(stored);
         String beforeHash = stored == null ? null : stored.getStructureHash();
         ExamTemplate template = exam.getTemplateCode() == null ? null
                 : templateService.findActive(exam.getTemplateCode());
@@ -654,7 +841,7 @@ public class ExamService {
                 : codec().read(template.getStructure());
         ExamStructureDocument doc = ExamStructureOps.restoreTemplateOwned(incoming, storedDoc,
                 templateDoc);
-        ExamStructureValidator.validate(doc);
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         validateStructureReferences(doc);
         List<String> changedPartIds = changedPartIds(storedDoc, doc);
         writeStructure(exam, doc, true, actor, now);
@@ -671,7 +858,7 @@ public class ExamService {
                 .before(beforeStructure)
                 .after(afterStructure)
                 .build());
-        return new ExamStructureResponse(examId, doc.parts(), examRepository.findById(examId)
+        return structureResponse(examId, doc, examRepository.findById(examId)
                 .map(Exam::getRevision).orElse(0L));
     }
 
@@ -707,9 +894,9 @@ public class ExamService {
         ExamStructure sourceStructure = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = sourceStructure == null
                 ? new ExamStructureDocument(List.of())
-                : ExamStructureOps.regenerateIds(codec().read(sourceStructure.getParts()));
-        structureRepository.save(new ExamStructure(copy.getId(), codec().write(doc),
-                hash(doc), null, false, actor, now));
+                : ExamStructureOps.regenerateIds(readStoredStructure(sourceStructure));
+        structureRepository.save(new ExamStructure(copy.getId(), codec().writeParts(doc),
+                codec().writeQuotas(doc.examQuotas()), hash(doc), null, false, actor, now));
         rewriteBlockRefs(copy.getId(), doc);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.DUPLICATE")
@@ -727,28 +914,43 @@ public class ExamService {
 
     private ExamStructureDocument workingDocument(UUID examId) {
         return structureRepository.findById(examId)
-                .map(s -> codec().read(s.getParts()))
+                .map(this::readStoredStructure)
                 .orElse(new ExamStructureDocument(List.of()));
+    }
+
+    private ExamStructureDocument readStoredStructure(ExamStructure structure) {
+        return new ExamStructureDocument(codec().read(structure.getParts()).parts(),
+                codec().readQuotas(structure.getExamQuotas()));
     }
 
     private void writeStructure(Exam exam, ExamStructureDocument doc, boolean edited,
             UUID actor, Instant now) {
-        JsonNode json = codec().write(doc);
+        JsonNode partsJson = codec().writeParts(doc);
+        JsonNode quotasJson = codec().writeQuotas(doc.examQuotas());
         String hash = hash(doc);
         ExamStructure structure = structureRepository.findById(exam.getId()).orElse(null);
         if (structure == null) {
-            structureRepository.save(new ExamStructure(exam.getId(), json, hash, null, edited,
+            structureRepository.save(new ExamStructure(exam.getId(), partsJson, quotasJson, hash, null, edited,
                     actor, now));
         } else {
-            structure.replace(json, hash, edited, actor, now);
+            structure.replace(partsJson, quotasJson, hash, edited, actor, now);
             structureRepository.save(structure);
         }
-        ExamStructureSummary summary = blockRefProjector.summarize(doc.parts());
+        ExamStructureSummary summary = summarize(exam, doc);
         exam.applyStructureSummary(summary.questionCount(), summary.hasEssay(),
                 summary.hasEnglishOption(), summary.combinationCount());
         exam.markStructureChanged(actor, now);
         rewriteBlockRefs(exam.getId(), doc);
         examRepository.flush();
+    }
+
+    private ExamStructureSummary summarize(Exam exam, ExamStructureDocument doc) {
+        int count = 0;
+        if (doc.parts().stream().anyMatch(part -> part.codeSource() != null)) {
+            count = (int) combinationLookup.listCombinations(exam.getKindItemId()).stream()
+                    .map(CatalogCombinationView::itemCode).distinct().count();
+        }
+        return blockRefProjector.summarize(doc.parts(), count);
     }
 
     private void rewriteBlockRefs(UUID examId, ExamStructureDocument doc) {
@@ -764,10 +966,7 @@ public class ExamService {
     private CodeResolver resolver() {
         return new CodeResolver(
                 code -> catalogLookup.findActiveItem(SUBJECT_GROUP, code).map(CatalogItemView::id).orElse(null),
-                code -> catalogLookup.findActiveItem("TASK_TYPE", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("COMPETENCY", code).map(CatalogItemView::id).orElse(null),
-                code -> catalogLookup.findActiveItem("SUBJECT_COMBINATION", code)
-                        .map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("QUESTION_TAG", code).map(CatalogItemView::id).orElse(null));
     }
 
@@ -776,15 +975,23 @@ public class ExamService {
             for (ExamSection section : part.sections()) {
                 validateSectionReferences(section);
             }
+            for (ExamSection section : part.subjectPool()) {
+                validateSectionReferences(section);
+            }
             for (ExamPartOption option : part.options()) {
                 if (option.kind() == OptionKind.SUBJECT) {
                     requireActiveReference(SUBJECT_GROUP, option.code());
-                } else if (option.kind() == OptionKind.COMBINATION) {
-                    requireActiveReference("SUBJECT_COMBINATION", option.code());
                 }
                 option.sections().forEach(this::validateSectionReferences);
-                option.blocks().forEach(this::validateBlockReferences);
+                validateBlockReferences(option.blocks());
             }
+        }
+        for (var quota : doc.examQuotas()) {
+            String group = quota.dimension() == vn.unicom.thi360.exam.domain.ExamQuota.Dimension.GRADE
+                    ? "GRADE" : "QUESTION_LEVEL";
+            quota.buckets().forEach(bucket -> bucket.codes().forEach(code -> requireActiveReference(group, code)));
+            quota.subjectCodes().forEach(code -> requireActiveReference(SUBJECT_GROUP, code));
+            quota.excludeSubjectCodes().forEach(code -> requireActiveReference(SUBJECT_GROUP, code));
         }
     }
 
@@ -792,28 +999,52 @@ public class ExamService {
         requireActiveReference(SUBJECT_GROUP, section.subjectCode());
         validateScopeReferences(section.knowledgeScope());
         validateMatrixReferences(section.matrix());
-        section.blocks().forEach(this::validateBlockReferences);
+        Set<String> groupIds = section.blocks().stream().map(QuestionBlock::id)
+                .collect(java.util.stream.Collectors.toSet());
+        validateTopicReferences(section.topicQuotas(), groupIds);
+        validateBlockReferences(section.blocks());
     }
 
-    private void validateBlockReferences(QuestionBlock block) {
-        if (block.taskTypeCode() != null) {
-            requireActiveReference("TASK_TYPE", block.taskTypeCode());
+    private void validateBlockReferences(List<QuestionBlock> blocks) {
+        Set<String> groupIds = blocks.stream().map(QuestionBlock::id)
+                .collect(java.util.stream.Collectors.toSet());
+        for (QuestionBlock block : blocks) {
+            block.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
+            validateScopeReferences(block.knowledgeScope());
+            validateMatrixReferences(block.matrix());
+            block.slots().forEach(slot -> {
+                validateScopeReferences(slot.knowledgeScope());
+                slot.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
+            });
+            block.childConditions().forEach(condition -> validateKnowledgeIds(condition.nodeIds()));
+            validateTopicReferences(block.topicQuotas(), groupIds);
         }
-        block.tagCodes().forEach(code -> requireActiveReference("QUESTION_TAG", code));
-        validateScopeReferences(block.knowledgeScope());
-        validateMatrixReferences(block.matrix());
     }
 
-    private void validateScopeReferences(KnowledgeScope scope) {
-        if (scope == null) {
-            return;
+    private void validateTopicReferences(List<vn.unicom.thi360.exam.domain.TopicQuota> quotas, Set<String> groupIds) {
+        for (var quota : quotas) {
+            validateKnowledgeIds(quota.nodeIds());
+            quota.gradeCodes().forEach(code -> requireActiveReference("GRADE", code));
+            quota.difficultyCodes().forEach(code -> requireActiveReference("QUESTION_LEVEL", code));
+            if (!groupIds.containsAll(quota.groupIds())) {
+                throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+            }
         }
-        for (UUID nodeId : scope.nodeIds()) {
+    }
+
+    private void validateKnowledgeIds(List<UUID> nodeIds) {
+        for (UUID nodeId : nodeIds) {
             if (catalogLookup.findItem(nodeId).filter(item -> "KNOWLEDGE".equals(item.groupCode())
                     && item.effectiveStatus() == CatalogStatus.ACTIVE).isEmpty()) {
                 throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
             }
         }
+    }
+    private void validateScopeReferences(KnowledgeScope scope) {
+        if (scope == null) {
+            return;
+        }
+        validateKnowledgeIds(scope.nodeIds());
         for (String competency : scope.competencyCodes()) {
             requireActiveReference("COMPETENCY", competency);
         }
@@ -915,7 +1146,8 @@ public class ExamService {
                         messages.get(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED));
             }
             part = partCode.trim();
-            if (templateService.findBestMatch(kindItem.code(), "PART", part, null, null) == null) {
+            if (!"SUBJECT".equals(profile.getTemplateBy())
+                    && templateService.findBestMatch(kindItem.code(), "PART", part, null, null) == null) {
                 throw new BusinessRuleException(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED,
                         messages.get(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED));
             }
@@ -939,27 +1171,15 @@ public class ExamService {
         return new ScopeChoice(scope, part, subject, subjectItemId);
     }
 
-    private ExamTemplate pickTemplate(String templateCode, String kindCode, String scope,
-            String partCode, String subjectCode, Integer structureYear) {
-        if (templateCode != null && !templateCode.isBlank()) {
-            ExamTemplate t = templateService.findActive(templateCode);
-            if (t == null || !kindCode.equals(t.getKindCode()) || !scope.equals(t.getScope())
-                    || ("PART".equals(scope) && !Objects.equals(partCode, t.getPartCode()))
-                    || (t.getSubjectCode() != null && !Objects.equals(subjectCode, t.getSubjectCode()))) {
-                throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
-                        messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
-            }
-            return t;
-        }
-        return templateService.findBestMatch(kindCode, scope, partCode, subjectCode, structureYear);
-    }
 
     private void assertTemplateMatches(Exam exam, ExamTemplate template) {
         String kindCode = catalogLookup.findItem(exam.getKindItemId())
                 .map(CatalogItemView::code).orElse(null);
         String subjectCode = subjectCodeOf(exam.getSubjectItemId());
         if (!Objects.equals(kindCode, template.getKindCode())
-                || !Objects.equals(exam.getScope(), template.getScope())
+                || (!Objects.equals(exam.getScope(), template.getScope())
+                        && !("PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope())
+                        && ("SP2E".equals(kindCode) || "SPT".equals(kindCode))))
                 || (template.getPartCode() != null
                         && !Objects.equals(exam.getPartCode(), template.getPartCode()))
                 || (template.getSubjectCode() != null
@@ -1010,6 +1230,7 @@ public class ExamService {
                 exam.getReferenceMax(),
                 exam.getPracticeScoring(),
                 exam.getTemplateCode(),
+                exam.getBuildMode(),
                 exam.getStructureYear(),
                 exam.getMatrixYear(),
                 exam.isYearsConfirmed(),

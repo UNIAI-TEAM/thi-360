@@ -47,6 +47,29 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
     @Autowired EntityManager entityManager;
 
     @Test
+    void subjectPoolBlocksAreReportedAsQuestionUsages() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID question = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,1,1)",
+                question, "POOL-" + question, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", question);
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Pool exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)",
+                exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","name":"Part","codeSource":{"source":"GLOBAL_LIST"},
+                  "subjectPool":[{"id":"s","subjectCode":"TEST","blocks":[
+                    {"id":"pool-block","questionType":"SINGLE_CHOICE"}]}]}]}
+                """;
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
+        assertThat(provider.examUsagesOf(question)).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
+                .contains("pool-block");
+    }
+
+    @Test
     void inheritedScopeAndSubjectChoiceAreReportedByBothEndpoints() throws Exception {
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         CatalogItemView leaf = knowledge.stream().filter(item -> knowledge.stream().anyMatch(parent ->
@@ -62,7 +85,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Usage exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)", exam, exam.toString(), exam.toString());
         String json = """
                 {"parts":[{"id":"p","name":"Part","participation":{"mode":"CHOICE","choose":1},"sections":[
-                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"],"match":"ANY"},
+                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"]},
                    "blocks":[{"id":"inherited","name":"Inherited","questionType":"SINGLE_CHOICE"},
                              {"id":"wrong-type","name":"Wrong type","questionType":"SHORT_ANSWER"}]}],
                   "options":[{"id":"choice","code":"SCIENCE","name":"Science","kind":"SUBJECT_CHOICE",
@@ -72,8 +95,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                 """.formatted(parent.id());
         var document = new ExamStructureCodec(mapper).read(json);
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
-        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null,
-                code -> null, code -> null);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null);
         refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
         UUID unrelatedExam = UUID.randomUUID();
         UUID unrelatedSubject = UUID.randomUUID();
@@ -82,7 +104,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')",
                 unrelatedExam, json);
         var unrelatedResolver = new ExamBlockRefProjector.CodeResolver(code -> unrelatedSubject, code -> null,
-                code -> null, code -> null, code -> null);
+                code -> null);
         refs.saveAllAndFlush(projector.project(unrelatedExam, document.parts(), unrelatedResolver));
 
         var actual = provider.examUsagesOf(question);
@@ -234,20 +256,20 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, k2);
         jdbc.update("insert into questionbank.question_tag(question_id,tag_item_id) values (?,?)", root, tag);
         var good = new QuestionSourcePort.Filter(subject, List.of(List.of(UUID.randomUUID(), k1), List.of(k2)),
-                QuestionSourcePort.Match.ALL, List.of(), QuestionType.QUESTION_SET, "CLUSTER",
-                QuestionType.SHORT_ANSWER, List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
-        var wrongPoints = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(), QuestionType.QUESTION_SET, "CLUSTER",
+                QuestionType.SHORT_ANSWER, List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongPoints = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.TEN);
-        var wrongSubject = new QuestionSourcePort.Filter(UUID.randomUUID(), good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(tagCode), List.of(), java.math.BigDecimal.TEN, null, null, null);
+        var wrongSubject = new QuestionSourcePort.Filter(UUID.randomUUID(), good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
-        var wrongTag = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongTag = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of("MISSING"), List.of(), java.math.BigDecimal.ONE);
-        var wrongTask = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of("MISSING"), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongTask = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "SINGLE", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
         for (var filter : List.of(good, wrongPoints, wrongSubject, wrongTag, wrongTask)) {
             var candidates = source.findCandidates(filter, 100);
             var expected = new java.util.HashSet<UUID>();

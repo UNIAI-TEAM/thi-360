@@ -140,6 +140,9 @@ thi360:
       cleanup:
         scheduling:
           enabled: true
+  exam:
+    structure:
+      max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
 ---
 spring:
   config:

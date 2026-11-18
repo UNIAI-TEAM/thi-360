@@ -16,16 +16,15 @@ class ChoiceGroupAllocatorRegressionTest {
         SubjectChoice choice = new SubjectChoice("science", List.of(physics, chemistry, biology,
                 history, geography), 3, List.of(17, 17, 16));
         ChoiceGroupAllocator allocator = new ChoiceGroupAllocator();
-        assertThat(allocator.allocations(choice, List.of(physics, chemistry, history)).get(0))
+        assertThat(allocator.allocations(choice, List.of(physics, chemistry, history)).getFirst())
+                .containsExactly(17, 17, 17);
+        assertThat(allocator.select(choice, List.of(physics, chemistry, history), 0))
                 .containsExactly(17, 17, 16);
-        assertThat(allocator.allocations(choice, List.of(biology, history, geography)).get(0))
+        assertThat(allocator.select(choice, List.of(biology, history, geography), 0))
                 .containsExactly(16, 17, 17);
-        List<int[]> allNatural = allocator.allocations(choice, List.of(physics, chemistry, biology));
-        assertThat(allNatural).hasSize(3);
-        assertThat(allNatural.get(0)).containsExactly(16, 17, 17);
-        assertThat(allNatural.get(1)).containsExactly(17, 16, 17);
-        assertThat(allNatural.get(2)).containsExactly(17, 17, 16);
-        assertThat(choice.picks(allocator)).hasSize(12);
+        assertThat(allocator.allocations(choice, List.of(physics, chemistry, biology)))
+                .singleElement().satisfies(counts -> assertThat(counts).containsExactly(17, 17, 17));
+        assertThat(choice.picks(allocator)).hasSize(10);
         assertThat(allocator.select(choice, List.of(physics, chemistry, biology), 42))
                 .containsExactly(allocator.select(choice, List.of(physics, chemistry, biology), 42));
     }
@@ -39,10 +38,7 @@ class ChoiceGroupAllocatorRegressionTest {
         SubjectChoice choice = new SubjectChoice("opt-sc", List.of(cs0, cs1, cs2), 2, List.of(2, 1));
         ChoiceGroupAllocator allocator = new ChoiceGroupAllocator();
         List<int[]> all = allocator.allocations(choice, List.of(cs0, cs2));
-        assertThat(all).hasSize(2);
-        assertThat(all.get(0)).containsExactly(1, 2);
-        assertThat(all.get(1)).containsExactly(2, 1);
-        assertThat(allocator.allocations(choice, List.of(cs0, cs1, cs2))).hasSize(3);
+        assertThat(all).singleElement().satisfies(counts -> assertThat(counts).containsExactly(2, 2));
         assertThat(allocator.select(choice, List.of(cs0, cs2), 7))
                 .containsExactly(allocator.select(choice, List.of(cs0, cs2), 7));
     }

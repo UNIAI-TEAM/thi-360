@@ -212,9 +212,8 @@ function toCountBody(query: AvailableQuestionsQuery) {
     answerTypes: query.answerTypes.length ? query.answerTypes : undefined,
     childAnswerType: query.childAnswerType ?? undefined,
     knowledgeScope: query.knowledgeScope
-      ? { nodeIds: query.knowledgeScope.nodeIds, match: query.knowledgeScope.match, competencyCodes: query.knowledgeScope.competencyCodes }
+      ? { nodeIds: query.knowledgeScope.nodeIds, competencyCodes: query.knowledgeScope.competencyCodes }
       : undefined,
-    taskTypeCode: query.taskTypeCode ?? undefined,
     tagCodes: query.tagCodes?.length ? query.tagCodes : undefined,
     competencyCodes: query.competencyCodes?.length ? query.competencyCodes : undefined,
     requiredPointsPerQuestion: query.requiredPointsPerQuestion ?? undefined,

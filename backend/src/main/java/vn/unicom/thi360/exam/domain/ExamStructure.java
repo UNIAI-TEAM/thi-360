@@ -19,6 +19,9 @@ public class ExamStructure {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "parts", nullable = false, columnDefinition = "jsonb")
     private JsonNode parts;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "exam_quotas", nullable = false, columnDefinition = "jsonb")
+    private JsonNode examQuotas;
     @Column(name = "structure_hash")
     private String structureHash;
     @Column(name = "base_version")
@@ -35,8 +38,14 @@ public class ExamStructure {
 
     public ExamStructure(UUID examId, JsonNode parts, String structureHash, Integer baseVersion,
             boolean edited, UUID updatedBy, Instant updatedAt) {
+        this(examId, parts, null, structureHash, baseVersion, edited, updatedBy, updatedAt);
+    }
+
+    public ExamStructure(UUID examId, JsonNode parts, JsonNode examQuotas, String structureHash,
+            Integer baseVersion, boolean edited, UUID updatedBy, Instant updatedAt) {
         this.examId = examId;
         this.parts = parts;
+        this.examQuotas = examQuotas;
         this.structureHash = structureHash;
         this.baseVersion = baseVersion;
         this.edited = edited;
@@ -46,14 +55,21 @@ public class ExamStructure {
 
     public UUID getExamId() { return examId; }
     public JsonNode getParts() { return parts; }
+    public JsonNode getExamQuotas() { return examQuotas; }
     public String getStructureHash() { return structureHash; }
     public Integer getBaseVersion() { return baseVersion; }
     public UUID getUpdatedBy() { return updatedBy; }
     public boolean isEdited() { return edited; }
 
-    /** Thay toàn bộ tài liệu cấu trúc; {@code edited} đánh dấu đã sửa kể từ lần nạp mẫu gần nhất (spec 5.2). */
+    /** Thay toàn bộ tài liệu cấu trúc; {@code edited} đánh dấu đã sửa kể từ lần nạp mẫu gần nhất. */
     public void replace(JsonNode newParts, String newHash, boolean edited, UUID actorId, Instant now) {
+        replace(newParts, examQuotas, newHash, edited, actorId, now);
+    }
+
+    public void replace(JsonNode newParts, JsonNode newExamQuotas, String newHash, boolean edited,
+            UUID actorId, Instant now) {
         this.parts = newParts;
+        this.examQuotas = newExamQuotas;
         this.structureHash = newHash;
         this.edited = edited;
         this.updatedBy = actorId;

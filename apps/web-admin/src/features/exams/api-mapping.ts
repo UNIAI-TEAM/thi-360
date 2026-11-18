@@ -41,7 +41,6 @@ function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   if (!scope) return null;
   return {
     nodeIds: scope.nodeIds ?? [],
-    match: scope.match ?? "ANY",
     ...(scope.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
   };
 }
@@ -98,7 +97,6 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
     knowledgeScope: mapScope(block.knowledgeScope),
     tagCodes: block.tagCodes ?? [],
     matrix: mapMatrix(block.matrix),
-    taskTypeCode: nullable(block.taskTypeCode),
     childAnswerType: nullable(block.childAnswerType),
     templateGroupCode: nullable(block.templateGroupCode),
     answerTypeLocked: block.answerTypeLocked ?? false,
@@ -304,7 +302,6 @@ function templateBlock(block: QuestionBlock): ExamTemplateBlock {
     setCount: block.setCount,
     setSize: block.setSize,
     ...(block.expectedScoring ? { expectedScoring: block.expectedScoring } : {}),
-    taskTypeCode: block.taskTypeCode,
     childAnswerType: block.childAnswerType,
     templateGroupCode: block.templateGroupCode,
     answerTypeLocked: block.answerTypeLocked,

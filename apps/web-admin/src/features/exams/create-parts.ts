@@ -52,11 +52,10 @@ function blockFromTemplate(block: ExamTemplateBlock): QuestionBlock {
       block.knowledgeScope !== undefined
         ? structuredClone(block.knowledgeScope)
         : block.competencyCode
-          ? { nodeIds: [], match: "ANY", competencyCodes: [block.competencyCode] }
+          ? { nodeIds: [], competencyCodes: [block.competencyCode] }
           : null,
     tagCodes: [],
     matrix: block.matrix !== undefined ? structuredClone(block.matrix) : emptyMatrix(),
-    taskTypeCode: block.taskTypeCode ?? null,
     childAnswerType: block.childAnswerType ?? null,
     templateGroupCode: block.templateGroupCode ?? null,
     answerTypeLocked: block.answerTypeLocked ?? false,
