@@ -19,10 +19,18 @@ INSERT INTO exam.exam_kind_profile (exam_item_id, scopes, template_by, timing, m
   ('00000000-0000-7000-8400-000000000104','{FULL,PART,SUBJECT}','KIND','SHARED',NULL,1200,'LINEAR',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000105','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
   ('00000000-0000-7000-8400-000000000106','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  ('00000000-0000-7000-8400-000000000107','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0),
-  -- UNI-2688 (H36): thang lấy từ mẫu vì khác nhau theo môn nên max_score trống; H-SCA chọn nhiều PARTIAL tạm theo Q-32.
-  ('00000000-0000-7000-8400-000000000108','{SUBJECT,PART}','SUBJECT','SHARED',NULL,NULL,'RAW',$${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$::jsonb,'PARTIAL',0),
-  ('00000000-0000-7000-8400-000000000109','{SUBJECT,PART}','SUBJECT','SHARED',NULL,NULL,'RAW',$${"method":"COUNT_TABLE","table":[1,2,3,6],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0)
+  ('00000000-0000-7000-8400-000000000107','{SUBJECT,PART}','SUBJECT','PER_PART',10,NULL,'RAW',$${"method":"COUNT_TABLE","table":[0.1,0.25,0.5,1],"statementPoints":null}$$::jsonb,'ALL_OR_NOTHING',0)
+ON CONFLICT (exam_item_id) DO NOTHING;
+
+-- UNI-2688 (H36): thang lấy từ mẫu vì khác nhau theo môn nên max_score trống; H-SCA chọn nhiều PARTIAL tạm theo Q-32.
+-- Mục kỳ thi tìm theo mã trong nhóm EXAM (mục có thể do quản trị tạo với id khác id seed); hồ sơ đã cấu hình được giữ nguyên.
+INSERT INTO exam.exam_kind_profile (exam_item_id, scopes, template_by, timing, max_score, reference_max, practice_scoring, tf_scoring, mc_rule, revision)
+SELECT i.id, '{SUBJECT,PART}'::text[], 'SUBJECT', 'SHARED', NULL, NULL, 'RAW', p.tf_scoring::jsonb, p.mc_rule, 0
+FROM (VALUES
+  ('hsca', $${"method":"PER_STATEMENT","table":[],"statementPoints":null}$$, 'PARTIAL'),
+  ('vsat', $${"method":"COUNT_TABLE","table":[1,2,3,6],"statementPoints":null}$$, 'ALL_OR_NOTHING')
+) AS p(code_normalized, tf_scoring, mc_rule)
+JOIN catalog.catalog_item i ON i.group_id = '00000000-0000-7000-8100-000000000001' AND i.code_normalized = p.code_normalized
 ON CONFLICT (exam_item_id) DO NOTHING;
 
 -- Đợt 2B 5.1: phạm vi theo kỳ thi; sửa cả hồ sơ đã seed trước đây.

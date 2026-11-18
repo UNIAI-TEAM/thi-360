@@ -156,10 +156,26 @@ VALUES
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- 9b. EXAM: H-SCA, V-SAT (UNI-2688, spec H36). Tên viết tắt theo ghi chú BA, chưa có tên đầy đủ chính thức.
+-- `value` cấp trên mốc cao nhất của nhóm (kể cả mục quản trị đã tạo sau bảy kỳ đầu) và không cấp lại khi chạy lại;
+-- mục đã có cùng mã giữ nguyên id, value của nó.
+WITH seed(ordinal, code, name_vi, name_en, id) AS (
+    VALUES
+      (1, 'HSCA', 'Đánh giá năng lực H-SCA', 'H-SCA assessment', '00000000-0000-7000-8400-000000000108'::uuid),
+      (2, 'VSAT', 'Đánh giá năng lực V-SAT', 'V-SAT assessment', '00000000-0000-7000-8400-000000000109'::uuid)
+), missing AS (
+    SELECT s.*, row_number() OVER (ORDER BY s.ordinal) AS allocation
+    FROM seed s
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = '00000000-0000-7000-8100-000000000001'
+          AND i.code_normalized = lower(s.code)
+    )
+)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
-VALUES
-    ('00000000-0000-7000-8400-000000000108', '00000000-0000-7000-8100-000000000001', 'HSCA', 'hsca', 8, 'Đánh giá năng lực H-SCA', 'H-SCA assessment', NULL, 7, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000108/'),
-    ('00000000-0000-7000-8400-000000000109', '00000000-0000-7000-8100-000000000001', 'VSAT', 'vsat', 9, 'Đánh giá năng lực V-SAT', 'V-SAT assessment', NULL, 8, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000109/')
+SELECT m.id, g.id, m.code, lower(m.code),
+       GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+       m.name_vi, m.name_en, NULL, 6 + m.ordinal, 1, false, NULL, 1, '/' || m.id::text || '/'
+FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000001'
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- Chuẩn lại tên hai kỳ đã seed ở đợt 1 theo spec mục 6
