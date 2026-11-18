@@ -73,7 +73,7 @@ add('VACT_SUBJECT_VIETNAMESE', 'SUBJECT', null, 'VIETNAMESE', [part('Tiếng Vi�
 add('VACT_SUBJECT_ANH', 'SUBJECT', null, 'ANH', [part('Tiếng Anh', [english])], 30);
 add('VACT_SUBJECT_TOAN', 'SUBJECT', null, 'TOAN', [mathPart], 30);
 source.push({code:'VACT_REVIEW', kindCode:'VACT', scope:'SUBJECT', partCode:null, subjectCode:null,
-  structureYear:null, matrixYear:null, timing:'PER_PART', durationMinutes:null, maxScore:null, fixedCounts:false,
+  structureYear:null, matrixYear:null, timing:'SHARED', durationMinutes:null, maxScore:null, fixedCounts:false,
   expertNote:null, label:'VACT REVIEW', summary:null, buildMode:'REVIEW', isDefault:true,
   expected:{questions:null, maxPoints:null}, structure:{parts:[{name:'Review', sections:[{
     subjectCode:null, knowledgeScope:{nodeIds:[], competencyCodes:[], everyChildInScope:true}, blocks:[{}]

@@ -105,7 +105,8 @@ class ExamCreateIT extends AbstractIntegrationTest {
         for (String selection : new String[]{
                 "\"kind\":\"THPTQG\",\"scope\":\"PART\",\"partCode\":\"P3\",\"subjectCode\":\"DIA\"",
                 "\"kind\":\"VACT\",\"scope\":\"PART\",\"partCode\":\"LOGIC\"",
-                "\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\""}) {
+                "\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\"",
+                "\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\",\"buildMode\":\"REVIEW\""}) {
             mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
                             .header("Idempotency-Key", UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +133,7 @@ class ExamCreateIT extends AbstractIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\","
-                                + "\"buildMode\":\"REVIEW\",\"name\":\"Review\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                                + "\"buildMode\":\"REVIEW\",\"durationMinutes\":45,\"name\":\"Review\",\"code\":\"T-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.templateCode").value("VACT_REVIEW"))
                 .andExpect(jsonPath("$.parts[0].sections[0].knowledgeScope.everyChildInScope").value(true));
     }
