@@ -78,6 +78,12 @@ CREATE TEMP TABLE seed_inserted_questions (
 
 CREATE TEMP TABLE seed_inserted_children (id uuid PRIMARY KEY) ON COMMIT DROP;
 
+CREATE TEMP TABLE seed_be14_classification (
+    question_id uuid PRIMARY KEY,
+    competency_code text NOT NULL,
+    tag_code text
+) ON COMMIT DROP;
+
 -- HSA Mathematics: each grade x level x answer-type cell has 12 independent
 -- questions, giving ample headroom for the 35/15 answer and 3/20/27 grade quotas.
 INSERT INTO seed_question_rows
@@ -852,52 +858,65 @@ JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-0000000
 WHERE starts_with(q.code, 'SEED-2B-SCIENCE-SU-')
 ON CONFLICT DO NOTHING;
 
--- BE-14: original placeholder sources. The code includes its competency and
--- tag so both parent and child rows have deterministic, independent IDs.
+-- Resolve provisional D9 tags by their stable catalog IDs; question codes and
+-- IDs retain the existing tag code while classifications use the declared tag.
+WITH singles AS (
+SELECT spec.*, tag.code AS tag_code, n, subject.id AS subject_id,
+       grade.id AS grade_id, level.id AS level_id,
+       md5('thi360-be14-single-' || spec.competency || '-' || COALESCE(tag.code, 'NONE') || '-' || n)::uuid AS id
+FROM (VALUES
+    ('VIETNAMESE', 'VACT-NN-TV', NULL, NULL, 10::numeric, 30),
+    ('ANH', 'VACT-NN-TA', 'ANH_HOAN_THANH_CAU', NULL, 10::numeric, 5),
+    ('ANH', 'VACT-NN-TA', NULL, '00000000-0000-7000-8601-000000000041', 10::numeric, 5),
+    ('ANH', 'VACT-NN-TA', NULL, '00000000-0000-7000-8601-000000000042', 10::numeric, 5),
+    ('TOAN', 'VACT-TOAN', NULL, NULL, 10::numeric, 12),
+    ('ANH', 'THPT', 'ANH_SAP_XEP_HOI_THOAI', NULL, 0.25::numeric, 5)
+) spec(subject, competency, declared_tag, tag_id, points, quantity)
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+    AND (tag.code = spec.declared_tag OR tag.id = spec.tag_id::uuid)
+CROSS JOIN LATERAL generate_series(1, spec.quantity) n
+), classified AS (
+    INSERT INTO seed_be14_classification
+    SELECT id, competency, tag_code FROM singles
+)
 INSERT INTO seed_question_rows
-SELECT md5('thi360-be14-single-' || spec.competency || '-' || spec.tag || '-' || n)::uuid,
-       'SEED-BE14-' || spec.competency || '-' || spec.tag || '-' || n,
-       'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL, spec.points,
-       '<p>Sample ' || spec.subject || ' question ' || n || ': choose the fitting answer.</p>',
+SELECT id,
+       'SEED-BE14-' || competency || '-' || COALESCE(tag_code, 'NONE') || '-' || n,
+       'SINGLE_CHOICE', subject_id, grade_id, level_id, NULL, points,
+       '<p>Sample ' || subject || ' question ' || n || ': choose the fitting answer.</p>',
        jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
            jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                              jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
        NULL, NULL
-FROM (VALUES
-    ('VIETNAMESE', 'VACT-NN-TV', 'NONE', 10::numeric, 30),
-    ('ANH', 'VACT-NN-TA', 'ANH_HOAN_THANH_CAU', 10::numeric, 5),
-    ('ANH', 'VACT-NN-TA', 'ANH_PHAT_HIEN_LOI', 10::numeric, 5),
-    ('ANH', 'VACT-NN-TA', 'ANH_DIEN_DAT_TUONG_DUONG', 10::numeric, 5),
-    ('TOAN', 'VACT-TOAN', 'NONE', 10::numeric, 12),
-    ('ANH', 'THPT', 'ANH_SAP_XEP_HOI_THOAI', 0.25::numeric, 5)
-) spec(subject, competency, tag, points, quantity)
-JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
-JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
-JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
-CROSS JOIN LATERAL generate_series(1, spec.quantity) n;
+FROM singles;
 
 -- Whole passages are separate roots; child points are the filterable score.
 WITH sets AS (
-    SELECT spec.*, n, subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id,
-           md5('thi360-be14-set-' || spec.competency || '-' || spec.tag || '-' || spec.child_count || '-' || n)::uuid AS id,
-           'SEED-BE14-' || spec.competency || '-' || spec.tag || '-' || spec.child_count || '-' || n AS code
+    SELECT spec.*, tag.code AS tag_code, n, subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id,
+           md5('thi360-be14-set-' || spec.competency || '-' || COALESCE(tag.code, 'NONE') || '-' || spec.child_count || '-' || n)::uuid AS id,
+           'SEED-BE14-' || spec.competency || '-' || COALESCE(tag.code, 'NONE') || '-' || spec.child_count || '-' || n AS code
     FROM (VALUES
-        ('ANH', 'THPT', 'ANH_DOC_DIEN', 0.25::numeric, 6, 2),
-        ('ANH', 'THPT', 'ANH_DOC_DIEN_CAU', 0.25::numeric, 5, 1),
-        ('ANH', 'THPT', 'ANH_DOC_HIEU', 0.25::numeric, 8, 1),
-        ('ANH', 'THPT', 'ANH_DOC_HIEU', 0.25::numeric, 10, 1),
-        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', 10::numeric, 7, 1),
-        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', 10::numeric, 8, 1),
-        ('TOAN', 'VACT-TOAN', 'NONE', 10::numeric, 3, 6),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_SAP_XEP_DIEU_KIEN', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_XEP_HANG', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_BANG_SO_LIEU', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_BIEU_DO', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-SL', 'NONE', 10::numeric, 3, 6)
-    ) spec(subject, competency, tag, points, child_count, quantity)
+        ('ANH', 'THPT', 'ANH_DOC_DIEN', NULL, 0.25::numeric, 6, 2),
+        ('ANH', 'THPT', 'ANH_DOC_DIEN_CAU', NULL, 0.25::numeric, 5, 1),
+        ('ANH', 'THPT', 'ANH_DOC_HIEU', NULL, 0.25::numeric, 8, 1),
+        ('ANH', 'THPT', 'ANH_DOC_HIEU', NULL, 0.25::numeric, 10, 1),
+        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', NULL, 10::numeric, 7, 1),
+        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', NULL, 10::numeric, 8, 1),
+        ('TOAN', 'VACT-TOAN', NULL, NULL, 10::numeric, 3, 6),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000043', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000044', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000045', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000046', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-SL', NULL, NULL, 10::numeric, 3, 6)
+    ) spec(subject, competency, declared_tag, tag_id, points, child_count, quantity)
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+    LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+        AND (tag.code = spec.declared_tag OR tag.id = spec.tag_id::uuid)
     CROSS JOIN LATERAL generate_series(1, spec.quantity) n
 ), children AS (
     SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,
@@ -905,6 +924,11 @@ WITH sets AS (
                jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
                                  jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))) AS child_body
     FROM sets s CROSS JOIN LATERAL generate_series(0, s.child_count - 1) pos
+), classified AS (
+    INSERT INTO seed_be14_classification
+    SELECT id, competency, tag_code FROM sets
+    UNION ALL
+    SELECT child_id, competency, tag_code FROM children
 ), parents AS (
     SELECT s.id, s.code, 'QUESTION_SET' AS type, s.subject_id, s.grade_id, s.level_id,
            NULL::uuid AS task_type_id, s.points * s.child_count AS points,
@@ -944,11 +968,10 @@ WHERE subject.group_id = '00000000-0000-7000-8100-000000000002'
   AND subject.code IN ('TOAN', 'LY', 'HOA', 'SINH', 'DIA', 'SU', 'ECON_LAW', 'TECH_INDUSTRY', 'TECH_AGRICULTURE');
 
 INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
-SELECT q.id, tag.id
-FROM seed_question_rows q
+SELECT m.question_id, tag.id
+FROM seed_be14_classification m
 JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
-    AND position('-' || tag.code || '-' IN q.code) > 0
-WHERE starts_with(q.code, 'SEED-BE14-')
+    AND tag.code = m.tag_code
 ON CONFLICT DO NOTHING;
 
 -- Parents must exist before their child rows satisfy the self-reference.
