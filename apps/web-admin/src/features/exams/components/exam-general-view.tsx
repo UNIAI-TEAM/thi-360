@@ -45,9 +45,8 @@ interface PendingInfoSave {
   parts: ReloadPartRow[];
 }
 
-/** Bài ôn nhận ra qua mẫu đã nạp (bài không ghi `buildMode`): thang của bài ôn được để trống. */
-function toFormValues(exam: ExamDetail, templates: readonly ExamTemplate[]): ExamInfoFormValues {
-  const review = templates.find((item) => item.code === exam.templateCode)?.buildMode === "REVIEW";
+/** Bài ôn nhận ra qua `buildMode` máy chủ trả (không đoán từ mẫu): thang của bài ôn được để trống. */
+function toFormValues(exam: ExamDetail): ExamInfoFormValues {
   return {
     name: exam.name,
     code: exam.code,
@@ -58,7 +57,7 @@ function toFormValues(exam: ExamDetail, templates: readonly ExamTemplate[]): Exa
     timing: exam.timing,
     sharedDuration: exam.timing === "SHARED" ? exam.durationMinutes : 0,
     maxScore: exam.maxScore,
-    buildMode: review ? "REVIEW" : undefined,
+    buildMode: exam.scope === "SUBJECT" ? exam.buildMode : undefined,
     yearsConfirmed: exam.yearsConfirmed,
     description: exam.description ?? "",
     instructions: exam.instructions ?? "",
@@ -66,7 +65,13 @@ function toFormValues(exam: ExamDetail, templates: readonly ExamTemplate[]): Exa
 }
 
 function examScope(exam: ExamDetail): ScopeSelection {
-  return { kind: exam.kind, scope: exam.scope, partCode: exam.partCode ?? "", subjectCode: exam.subjectCode ?? "" };
+  return {
+    kind: exam.kind,
+    scope: exam.scope,
+    partCode: exam.partCode ?? "",
+    subjectCode: exam.subjectCode ?? "",
+    buildMode: exam.scope === "SUBJECT" ? exam.buildMode : undefined,
+  };
 }
 
 /**
@@ -152,7 +157,7 @@ function ExamGeneralForm({
   const form = useForm<ExamInfoFormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
-    defaultValues: toFormValues(exam, templates),
+    defaultValues: toFormValues(exam),
   });
   const { control, register, handleSubmit, setValue, getValues, setError, reset, formState } = form;
   const values = useWatch({ control }) as ExamInfoFormValues;
@@ -162,6 +167,7 @@ function ExamGeneralForm({
     scope: values.scope,
     partCode: values.partCode,
     subjectCode: values.subjectCode,
+    buildMode: values.buildMode,
   };
 
   const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
@@ -227,6 +233,7 @@ function ExamGeneralForm({
       scope: submitted.scope,
       partCode: submitted.partCode,
       subjectCode: submitted.subjectCode,
+      buildMode: submitted.buildMode,
     };
     const changed = !sameSelection(examScope(exam), next);
     const request: UpdateExamInfoRequest = {
@@ -256,6 +263,7 @@ function ExamGeneralForm({
       scope: getValues("scope"),
       partCode: getValues("partCode"),
       subjectCode: getValues("subjectCode"),
+      buildMode: getValues("buildMode"),
     };
     const scope = resolveScope(templates, kinds, reference.subjects, current, change);
     const dirty = { shouldDirty: true } as const;
@@ -266,8 +274,8 @@ function ExamGeneralForm({
     setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
     const back = sameSelection(scope, examScope(exam));
     const defaults = back
-      ? toFormValues(exam, templates)
-      : { ...scopeDefaults(latestTemplate(templates, scope), kindOptionFor(kinds, scope.kind), scope.scope), yearsConfirmed: false };
+      ? toFormValues(exam)
+      : { ...scopeDefaults(latestTemplate(templates, scope), kindOptionFor(kinds, scope.kind), scope.scope, scope.buildMode), yearsConfirmed: false };
     setValue("timing", defaults.timing, dirty);
     setValue("sharedDuration", defaults.sharedDuration, dirty);
     setValue("maxScore", defaults.maxScore, dirty);
@@ -336,7 +344,7 @@ function ExamGeneralForm({
                 type="button"
                 variant="secondary"
                 disabled={!formState.isDirty || update.isPending}
-                onClick={() => reset(toFormValues(exam, templates))}
+                onClick={() => reset(toFormValues(exam))}
               >
                 {t("discard")}
               </Button>

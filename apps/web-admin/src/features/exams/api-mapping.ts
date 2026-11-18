@@ -416,6 +416,7 @@ export function mapExamDetail(response: Schemas["ExamDetailResponse"]): ExamDeta
     description: nullable(response.description),
     instructions: nullable(response.instructions),
     templateCode: nullable(response.templateCode),
+    buildMode: response.buildMode ?? "STANDARD",
     structureYear: nullable(response.structureYear),
     matrixYear: nullable(response.matrixYear),
     yearsConfirmed: response.yearsConfirmed,
