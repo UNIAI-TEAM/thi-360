@@ -384,14 +384,14 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
     expect(screen.getAllByRole("textbox", { name: /^Số câu của/ })).toHaveLength(1);
     expect(within(screen.getByRole("region", { name: "Tóm tắt" })).getByText("Tổng số câu").parentElement).toHaveTextContent("22");
 
-    // Mẫu V1 chưa ghi thời lượng: một đồng hồ chung, quản trị viên nhập.
+    // Mẫu V1 chưa ghi thời lượng: một đồng hồ chung, quản trị viên nhập; ô trống báo câu F-1 của bản vẽ.
     await user.type(name(), "SPT Toán V1");
     await user.click(submit());
-    expect(await screen.findAllByText("Thời lượng chung phải là số phút nguyên dương.")).not.toHaveLength(0);
+    expect(await screen.findAllByText("Chưa nhập thời lượng. Môn này không có thời lượng mặc định.")).not.toHaveLength(0);
     expect(server.calls("POST", EXAMS_PATH)).toHaveLength(0);
     const shared = screen.getByRole("textbox", { name: /^Thời lượng chung/ });
     expect(shared).toBeInvalid();
-    expect(shared).toHaveAccessibleDescription("Thời lượng chung phải là số phút nguyên dương.");
+    expect(shared).toHaveAccessibleDescription("Chưa nhập thời lượng. Môn này không có thời lượng mặc định.");
     await user.type(shared, "90");
     await user.click(submit());
     await waitFor(() => expect(routerMock.push).toHaveBeenCalled());

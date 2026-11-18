@@ -295,11 +295,18 @@
       },
       "AvailableQuestionsChildCondition" : {
         "properties" : {
+          "answerType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
           "from" : {
             "format" : "int32",
             "maximum" : 20,
             "minimum" : 1,
             "type" : "integer"
+          },
+          "itemShape" : {
+            "$ref" : "#/components/schemas/AvailableQuestionsItemShape"
           },
           "nodeIds" : {
             "items" : {
@@ -332,6 +339,10 @@
       "AvailableQuestionsItemShape" : {
         "properties" : {
           "leftItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "options" : {
             "format" : "int32",
             "type" : "integer"
           },
@@ -384,6 +395,10 @@
               "type" : "string"
             },
             "type" : "array"
+          },
+          "audioRequirement" : {
+            "enum" : [ "ANY", "REQUIRED", "FORBIDDEN" ],
+            "type" : "string"
           },
           "childAnswerType" : {
             "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],

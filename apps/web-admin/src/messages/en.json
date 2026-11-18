@@ -4863,7 +4863,9 @@
       "VACT": "V-ACT",
       "SPT": "SPT",
       "SP2E": "SP2E",
-      "THPTQG": "THPTQG"
+      "THPTQG": "THPTQG",
+      "HSCA": "H-SCA",
+      "VSAT": "V-SAT"
     },
     "scope": {
       "FULL": "Full exam",
@@ -5455,10 +5457,13 @@
         "noPart": "This subject has no part to choose yet.",
         "notPublishableNotice": "The whole {subject} subject is essay-based – skipped for now in V1",
         "notPublishableDraft": "This exam is draft-only: it cannot be published and is not added to sold exam sets.",
-        "durationRequiredBase": "Enter the exam duration.",
-        "durationRequiredPart": "Duration missing. By-part exams have no default duration.",
+        "durationRequiredPart": "Duration missing. A by-part exam needs its own duration.",
         "durationRequiredReview": "Duration missing. Review exams have no default duration.",
         "durationRequiredCustom": "Duration missing. Custom {kind} exams have no default duration.",
+        "durationRequiredSubject": "Duration missing. This subject has no default duration.",
+        "durationHintPrefilled": "Prefilled from the template; you can edit it.",
+        "durationHintPartCut": "A by-part exam does not take the whole-subject duration.",
+        "durationHintEmpty": "This subject's template leaves the duration empty.",
         "buildModeLegend": "How to build the exam",
         "buildModeStandard": "Use the {kind} subject structure",
         "buildModeStandardHint": "Loads the full subject structure from the default template.",
@@ -5475,7 +5480,19 @@
           "description": "The overview reloads from the default template of the new choice. The question counts, durations and points you edited in the table will be lost.",
           "confirm": "Switch and reload",
           "cancel": "Keep the old choice"
-        }
+        },
+        "scopeWhole": "Whole subject",
+        "scopeWholeHint": "The full structure of the subject",
+        "scopeByPart": "By part",
+        "scopeByPartHint": "Pick one part and enter its own duration",
+        "skillListening": "Listening",
+        "skillReading": "Reading",
+        "skillBoth": "Listening and Reading",
+        "skillListeningHint": "{count, number} questions · audio questions only",
+        "skillReadingHint": "{count, number} questions · questions without audio only",
+        "skillBothHint": "{count, number} questions · both parts",
+        "omittedPartNotice": "Writing parts are not in V1 yet, so they cannot be chosen.",
+        "dedicatedPartsNotice": "{subject} can only be practised by the parts listed. The other parts have no separate exam."
       },
       "steps": {
         "ariaLabel": "Create exam steps",
@@ -5509,6 +5526,7 @@
           "maxPoints": "Points of {name}"
         },
         "lockedCounts": "Question counts locked by template",
+        "lockedBlockCountsNote": "A whole-subject exam keeps the type and quantity of every row from the template. To change quantities, choose the By part scope.",
         "choiceNote": "(learner picks one option)",
         "omittedLabel": "skipped for now",
         "notCounted": "not counted",
