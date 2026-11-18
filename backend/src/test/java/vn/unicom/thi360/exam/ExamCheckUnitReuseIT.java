@@ -258,6 +258,36 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void unavailableRequiredTopicIsReportedWithItsSection() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID math = UUID.fromString("00000000-0000-7000-8200-000000000201");
+        UUID topic = UUID.fromString("00000000-0000-7000-8200-000000001201");
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) "
+                + "VALUES (?,?,?,'Topic shortage','FULL','SHARED',1)", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'topic')", id, """
+                {"parts":[{"id":"p","name":"Part","questionCount":1,"sections":[
+                  {"id":"math","subjectCode":"TOAN","questionCount":1,
+                   "topicQuotas":[{"id":"missing-topic","nodeIds":["%s"],"count":1,
+                     "basis":"QUESTION","enforcement":"REQUIRED","gradeCodes":["NO_SUCH_GRADE"]}],
+                   "blocks":[{"id":"b","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """.formatted(topic));
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "b", "p", "math", math);
+        var result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + id + "/check")
+                        .with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("INVALID"))
+                .andReturn().getResponse().getContentAsString());
+        var issue = result.path("groups").findValues("issues").stream()
+                .flatMap(group -> java.util.stream.StreamSupport.stream(group.spliterator(), false))
+                .filter(value -> "TOPIC_QUOTA_INFEASIBLE".equals(value.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(issue.path("location").path("partId").asText()).isEqualTo("p");
+        assertThat(issue.path("location").path("sectionId").asText()).isEqualTo("math");
+        assertThat(issue.path("required").asInt()).isEqualTo(1);
+        assertThat(issue.path("available").asInt()).isZero();
+    }
+
+    @Test
     void templateReloadInvalidatesSavedUnitsAndRejectsStaleRevision() throws Exception {
         UUID id = UUID.randomUUID();
         UUID hsa = UUID.fromString("00000000-0000-7000-8200-000000000101");

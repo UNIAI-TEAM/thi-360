@@ -184,7 +184,15 @@ public class DefaultExamChecker implements ExamChecker {
         var computed = units.solve(snapshot, input, rules, deadline, budget, scope);
         SolveOutcome outcome = computed.outcome();
         ExamCheckUnitEvidence.witnessFacts(source, snapshot.structure(), outcome.results(), combinations)
-                .forEach((path, facts) -> witnessIssues.put(path, rules.witnessIssues(facts)));
+                .forEach((path, facts) -> witnessIssues.put(path, new ArrayList<>(rules.witnessIssues(facts))));
+        for (var path : outcome.results()) {
+            if (path.status() != SolveStatus.INVALID) continue;
+            var topicIssues = ExamCheckUnitTopicEvidence.issues(path, snapshot.structure(), input.candidates(),
+                    rules, clock, deadline, limits.maxCandidatesPerBlock());
+            if (!topicIssues.isEmpty()) {
+                witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(topicIssues);
+            }
+        }
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
         return new Evaluation(evaluation.result(), evaluation.witness(), markWitnessFailures(computed.changed(), witnessIssues));
     }
