@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -328,6 +329,116 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         assertThat(failures).anyMatch(s -> s.contains("slots lack distinct"));
     }
 
+    @Test
+    @Transactional
+    void audioChildTypeAndOptionConditionsDecideWhichSourceCountsForABlock() throws Exception {
+        UUID subject = UUID.randomUUID();
+        jdbc.update("""
+                insert into catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, path)
+                select ?, g.id, 'BE18AUD', 'be18aud',
+                       (select coalesce(max(value), 0) + 1 from catalog.catalog_item where group_id = g.id),
+                       'BE-18 audio conditions', '/' || ?::text || '/'
+                from catalog.catalog_group g where g.id = '00000000-0000-7000-8100-000000000002'
+                """, subject, subject);
+        UUID audio = asset("audio/mpeg");
+        UUID pdf = asset("application/pdf");
+        choice(subject, audio, 4);
+        choice(subject, pdf, 4);
+        choice(subject, null, 5);
+        choice(subject, null, 4);
+        set(subject, audio, "TRUE_FALSE", "SINGLE_CHOICE");
+        set(subject, null, "SINGLE_CHOICE", "SINGLE_CHOICE");
+
+        // Audio is read from the MIME of the root's attachments: a PDF is no audio.
+        assertThat(failuresOf("REQUIRED", single(1, null))).isEmpty();
+        assertThat(failuresOf("REQUIRED", single(2, null))).singleElement().asString().contains("found 1 candidates");
+        assertThat(failuresOf("FORBIDDEN", single(3, null))).isEmpty();
+        assertThat(failuresOf("FORBIDDEN", single(4, null))).singleElement().asString().contains("found 3 candidates");
+        assertThat(failuresOf("ANY", single(4, null))).isEmpty();
+        // The option count of a plain question: the five-option question is out.
+        assertThat(failuresOf("ANY", single(3, 4))).isEmpty();
+        assertThat(failuresOf("ANY", single(4, 4))).singleElement().asString().contains("found 3 candidates");
+        assertThat(failuresOf("REQUIRED", single(1, 4))).isEmpty();
+        assertThat(failuresOf("REQUIRED", single(1, 5))).singleElement().asString().contains("found 0 candidates");
+
+        // A mixed set: position 1 true/false with four statements, position 2 single choice with four options.
+        String mixed = """
+                [{"from":1,"to":1,"answerType":"TRUE_FALSE","nodeIds":[],"itemShape":{"statements":4}},
+                 {"from":2,"to":2,"answerType":"SINGLE_CHOICE","nodeIds":[],"itemShape":{"options":4}}]""";
+        assertThat(failuresOf("REQUIRED", pair(mixed))).isEmpty();
+        assertThat(failuresOf("FORBIDDEN", pair(mixed))).singleElement().asString().contains("found 0 candidates");
+        assertThat(failuresOf("ANY", pair(mixed))).isEmpty();
+        String uniform = """
+                [{"from":1,"to":2,"answerType":"SINGLE_CHOICE","nodeIds":[],"itemShape":{"options":4}}]""";
+        assertThat(failuresOf("ANY", pair(uniform))).isEmpty();
+        assertThat(failuresOf("REQUIRED", pair(uniform))).singleElement().asString().contains("found 0 candidates");
+        String wrongShape = """
+                [{"from":1,"to":1,"answerType":"TRUE_FALSE","nodeIds":[],"itemShape":{"statements":3}}]""";
+        assertThat(failuresOf("ANY", pair(wrongShape))).singleElement().asString().contains("found 0 candidates");
+    }
+
+    private List<String> failuresOf(String audioRequirement, String block) throws Exception {
+        List<String> failures = new ArrayList<>();
+        inspect(mapper.readTree("{\"subjectCode\":\"BE18AUD\",\"audioRequirement\":\"" + audioRequirement
+                + "\",\"blocks\":[" + block + "]}"), null, "synthetic", failures, new int[1]);
+        return failures;
+    }
+
+    private static String single(int count, Integer options) {
+        return "{\"name\":\"single\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":" + count
+                + (options == null ? "" : ",\"itemShape\":{\"options\":" + options + "}") + "}";
+    }
+
+    private static String pair(String childConditions) {
+        return "{\"name\":\"pair\",\"questionType\":\"QUESTION_SET\",\"questionCount\":2,\"setCount\":1,\"setSize\":2,"
+                + "\"childConditions\":" + childConditions + "}";
+    }
+
+    private UUID asset(String mime) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                insert into questionbank.question_asset (id, kind, object_key, file_name, mime, size, sha256)
+                values (?, 'ATTACHMENT', ?, 'sample', ?, 1, decode('00', 'hex'))
+                """, id, "be18-" + id, mime);
+        return id;
+    }
+
+    private UUID choice(UUID subject, UUID attachment, int options) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) "
+                + "values (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", id, "BE18-" + id, subject);
+        jdbc.update("insert into questionbank.question_version(question_id, version_no, snapshot) values (?, 1, ?::jsonb)",
+                id, snapshot(attachment, optionList(options)));
+        return id;
+    }
+
+    private void set(UUID subject, UUID attachment, String first, String second) {
+        UUID root = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id, code, type, status, subject_item_id, current_version_no) "
+                + "values (?, ?, 'QUESTION_SET', 'READY', ?, 1)", root, "BE18-" + root, subject);
+        jdbc.update("insert into questionbank.question_version(question_id, version_no, snapshot) values (?, 1, ?::jsonb)",
+                root, snapshot(attachment, null));
+        String[] types = {first, second};
+        for (int position = 0; position < 2; position++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question(id, code, type, status, parent_id, position, points) "
+                    + "values (?, ?, ?, 'READY', ?, ?, 1)", child, "BE18-" + child, types[position], root, position);
+            String body = "TRUE_FALSE".equals(types[position]) ? "{\"statements\":[1,2,3,4]}"
+                    : "{\"options\":" + optionList(4) + "}";
+            jdbc.update("insert into questionbank.question_version(question_id, version_no, snapshot) values (?, 1, ?::jsonb)",
+                    child, "{\"body\":" + body + "}");
+        }
+    }
+
+    private static String optionList(int options) {
+        return "[" + String.join(",", java.util.Collections.nCopies(options, "{\"content\":\"o\"}")) + "]";
+    }
+
+    private static String snapshot(UUID attachment, String options) {
+        return "{\"attachmentIds\":[" + (attachment == null ? "" : "\"" + attachment + "\"") + "]"
+                + (options == null ? "" : ",\"body\":{\"options\":" + options + "}") + "}";
+    }
+
     private void inspect(JsonNode node, String subject, String template, List<String> failures, int[] checked) {
         inspect(node, subject, null, template, failures, checked);
     }
@@ -435,6 +546,7 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         List<Candidate> candidates = source.findCandidates(filter, 100_000);
         int setSize = block.path("setSize").asInt(0);
         if (setSize > 0) candidates = candidates.stream().filter(c -> c.units().size() == setSize).toList();
+        candidates = applyConditions(candidates, section, block);
         int neededSets = block.path("setCount").asInt(0);
         String shortage = capacityFailure(candidates.stream().map(c -> c.units().size()).toList(),
                 flexibleSet(block), neededSets, neededUnits);
@@ -454,14 +566,81 @@ class SampleQuestionCoverageIT extends AbstractIntegrationTest {
         }
     }
 
+    /**
+     * Audio, typed child and option-count conditions of a block. {@code QuestionSourcePort.Filter} carries none of
+     * them until BE-17 lands, so they are read here from the stored versions: audio from the MIME of the root
+     * question's attachments (H38), child types and shapes by position (H39), and the option count of a plain
+     * question or of every choice child (R-131). The section's audio requirement is inherited by its blocks.
+     */
+    private List<Candidate> applyConditions(List<Candidate> candidates, JsonNode section, JsonNode block) {
+        String audio = text(section, "audioRequirement", "ANY");
+        Integer options = block.path("itemShape").hasNonNull("options") ? block.path("itemShape").get("options").asInt() : null;
+        List<JsonNode> typed = new ArrayList<>();
+        block.path("childConditions").forEach(condition -> {
+            if (condition.hasNonNull("answerType")) typed.add(condition);
+        });
+        if ("ANY".equals(audio) && options == null && typed.isEmpty()) return candidates;
+        return candidates.stream().filter(candidate -> satisfies(candidate, audio, options, typed)).toList();
+    }
+
+    private boolean satisfies(Candidate candidate, String audio, Integer options, List<JsonNode> typed) {
+        if (!"ANY".equals(audio) && hasAudio(candidate) != "REQUIRED".equals(audio)) return false;
+        List<Integer> childOptions = jdbc.query("""
+                select jsonb_array_length(cv.snapshot #> '{body,options}')
+                from questionbank.question c
+                join questionbank.question_version cv on cv.question_id = c.id and cv.version_no = ?
+                where c.parent_id = ? and c.deleted_at is null order by c.position
+                """, (rs, row) -> (Integer) rs.getObject(1), candidate.versionNo(), candidate.questionId());
+        if (options != null) {
+            if (childOptions.isEmpty()) {
+                Integer own = jdbc.queryForObject("""
+                        select jsonb_array_length(snapshot #> '{body,options}') from questionbank.question_version
+                        where question_id = ? and version_no = ?
+                        """, Integer.class, candidate.questionId(), candidate.versionNo());
+                if (!Objects.equals(own, options)) return false;
+            }
+            for (Integer count : childOptions) {
+                if (count != null && !count.equals(options)) return false;
+            }
+        }
+        for (JsonNode condition : typed) {
+            JsonNode shape = condition.path("itemShape");
+            for (int position = condition.get("from").asInt(); position <= condition.get("to").asInt(); position++) {
+                if (position > candidate.units().size()) return false;
+                QuestionSourcePort.Unit unit = candidate.units().get(position - 1);
+                if (unit.answerType() != QuestionType.valueOf(condition.get("answerType").asText())) return false;
+                if (shape.hasNonNull("statements") && !Objects.equals(unit.statementCount(), shape.get("statements").asInt())) {
+                    return false;
+                }
+                if (shape.hasNonNull("options") && !Objects.equals(childOptions.size() < position ? null
+                        : childOptions.get(position - 1), shape.get("options").asInt())) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean hasAudio(Candidate candidate) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("""
+                select exists (select 1 from questionbank.question_version v
+                    cross join lateral jsonb_array_elements_text(coalesce(v.snapshot -> 'attachmentIds', '[]'::jsonb)) a(id)
+                    join questionbank.question_asset qa on qa.id = a.id::uuid
+                    where v.question_id = ? and v.version_no = ? and qa.mime like 'audio/%')
+                """, Boolean.class, candidate.questionId(), candidate.versionNo()));
+    }
+
     private QuestionSourcePort.Filter filter(UUID subject, JsonNode section, JsonNode block, JsonNode slot) {
         JsonNode shape = block.path("itemShape");
-        QuestionSourcePort.ItemShape itemShape = shape.isObject()
+        QuestionSourcePort.ItemShape itemShape = shape.isObject() && (shape.hasNonNull("statements")
+                || shape.hasNonNull("leftItems") || shape.hasNonNull("rightItems"))
                 ? new QuestionSourcePort.ItemShape(integer(shape, "statements"), integer(shape, "leftItems"),
                         integer(shape, "rightItems")) : null;
         List<AnswerFormat> formats = strings(block.path("answerFormats")).stream().map(AnswerFormat::valueOf).toList();
         List<QuestionSourcePort.ChildCondition> children = new ArrayList<>();
         for (JsonNode condition : block.path("childConditions")) {
+            // Typed conditions (H39) carry no knowledge nodes; applyConditions reads them.
+            if (condition.hasNonNull("answerType") && strings(condition.path("nodeIds")).isEmpty()) continue;
             children.add(new QuestionSourcePort.ChildCondition(condition.path("from").asInt(), condition.path("to").asInt(),
                     strings(condition.path("nodeIds")).stream().map(UUID::fromString).toList()));
         }
