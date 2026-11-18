@@ -85,12 +85,22 @@ class ExamCheckUnitEngineTests {
         var scoped = check(checker, exam, unrelatedDraft, input, clock, ExamCheckScope.from("SECTION", null, "physics"));
         assertThat(scoped.result().path("status").asText()).isEqualTo("VALID");
         verify(engine, times(0)).solveUnit(any(), any(), any());
+        var snapshots = mock(ExamCheckSnapshotReader.class);
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, unrelatedDraft, input));
+        var states = new ExamCheckUnitStates(snapshots, store,
+                new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)),
+                new SolverInputBuilder(catalog, source, limits), limits, catalog, mapper);
+        assertThat(states.states(exam.getId())).extracting(state -> state.state())
+                .containsExactly("CHECKED", "INCOMPLETE");
 
         chemistrySection.put("subjectCode", "LY");
         var sharedDraft = new ExamStructureCodec(mapper).read(draft.toString());
         var shared = check(checker, exam, sharedDraft, input, clock, ExamCheckScope.from("SECTION", null, "physics"));
         assertThat(shared.result().path("status").asText()).isEqualTo("INVALID");
         assertThat(shared.result().toString()).contains("SECTION_INCOMPLETE");
+        when(snapshots.read(exam.getId())).thenReturn(new ExamCheckSnapshotReader.Snapshot(exam, sharedDraft, input));
+        assertThat(states.states(exam.getId())).extracting(state -> state.state())
+                .containsExactly("INCOMPLETE", "INCOMPLETE");
         verify(engine, times(0)).solveUnit(any(), any(), any());
     }
 

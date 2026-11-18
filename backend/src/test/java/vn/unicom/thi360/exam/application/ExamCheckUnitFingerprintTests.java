@@ -42,6 +42,17 @@ class ExamCheckUnitFingerprintTests {
         assertThat(required.fingerprint()).isNotEqualTo(empty.fingerprint());
     }
 
+    @Test
+    void subjectChoiceResolvedCountChangesItsFingerprint() {
+        var section = new ExamSection("science", "TOAN", null, null, null, null, null, List.of());
+        var seventeen = new vn.unicom.thi360.exam.domain.solver.SectionOnPath("TOAN", "science", 17, null, List.of());
+        var eighteen = new vn.unicom.thi360.exam.domain.solver.SectionOnPath("TOAN", "science", 18, null, List.of());
+        var before = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, 2L, List.of(seventeen));
+        var after = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, 2L, List.of(eighteen));
+        assertThat(after.key()).isEqualTo(before.key());
+        assertThat(after.fingerprint()).isNotEqualTo(before.fingerprint());
+    }
+
     private ExamSection section(String id, String name, int count) throws Exception {
         return mapper.readValue("""
                 {"id":"%s","subjectCode":"TOAN","questionCount":%d,"blocks":[

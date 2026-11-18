@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import vn.unicom.thi360.exam.domain.ExamQuota;
 import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.QuotaEnforcement;
+import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 
 /** Stable identity and canonical solver inputs for one jointly solved subject. */
 @Component
@@ -26,11 +27,24 @@ public class ExamCheckUnitFingerprint {
 
     public Identity calculate(String subject, List<ExamSection> sections, List<ExamQuota> quotas,
             ExamCheckFingerprint.Config config, Long profileRevision, long catalogRevision) {
+        return calculate(subject, sections, quotas, config, profileRevision, catalogRevision, List.of());
+    }
+
+    Identity calculate(String subject, List<ExamSection> sections, List<ExamQuota> quotas,
+            ExamCheckFingerprint.Config config, Long profileRevision, long catalogRevision,
+            List<SectionOnPath> resolvedSections) {
         List<ExamSection> ordered = sections.stream().sorted(Comparator.comparing(ExamSection::id)).toList();
         List<String> ids = ordered.stream().map(ExamSection::id).toList();
         var input = mapper.createObjectNode();
         input.put("subjectCode", subject);
         input.set("sections", mapper.valueToTree(ordered));
+        if (!resolvedSections.isEmpty()) {
+            var resolvedCounts = mapper.createObjectNode();
+            for (SectionOnPath section : resolvedSections) {
+                if (section.questionCount() != null) resolvedCounts.put(section.sectionId(), section.questionCount());
+            }
+            input.set("resolvedCounts", resolvedCounts);
+        }
         List<ExamQuota> required = new ArrayList<>();
         for (ExamQuota quota : quotas) {
             if (quota.enforcement() == QuotaEnforcement.REQUIRED && quota.subjectCodes().size() == 1

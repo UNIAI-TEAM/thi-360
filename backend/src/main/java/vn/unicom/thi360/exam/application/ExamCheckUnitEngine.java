@@ -68,7 +68,8 @@ public class ExamCheckUnitEngine {
                     && unit.key().sectionIds().stream().noneMatch(requested::contains)) continue;
             List<ExamSection> sourceSections = unit.key().sectionIds().stream().map(sections::get).toList();
             var identity = fingerprints.calculate(unit.key().subjectCode(), sourceSections,
-                    snapshot.structure().examQuotas(), config, inputInfo.profileRevision(), inputInfo.catalogRevision());
+                    snapshot.structure().examQuotas(), config, inputInfo.profileRevision(), inputInfo.catalogRevision(),
+                    unit.sections());
             UUID subjectId = catalog.findActiveItem("SUBJECT", unit.key().subjectCode()).map(item -> item.id()).orElse(null);
             long sourceRevision = subjectId == null ? 0 : inputInfo.sourceRevisions().path(subjectId.toString()).asLong(0);
             var old = persisted.get(identity.key());

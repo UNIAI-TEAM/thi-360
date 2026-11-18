@@ -73,7 +73,7 @@ public class ExamCheckUnitStates {
                 }
                 List<ExamSection> sourceSections = unit.key().sectionIds().stream().map(sections::get).toList();
                 var identity = fingerprints.calculate(unit.key().subjectCode(), sourceSections, document.examQuotas(),
-                        config, inputs.profileRevision(), inputs.catalogRevision());
+                        config, inputs.profileRevision(), inputs.catalogRevision(), unit.sections());
                 UUID subject = catalog.findActiveItem("SUBJECT", unit.key().subjectCode()).map(item -> item.id()).orElse(null);
                 long revision = subject == null ? 0 : inputs.sourceRevisions().path(subject.toString()).asLong(0);
                 var saved = oldUnits.get(identity.key());
