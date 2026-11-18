@@ -41,8 +41,29 @@ test("Sinh thử QĐ02 của bài QDA Khoa học: Hóa học câu 1–25, Sinh h
   await page.getByRole("option", { name: /QD02/ }).click();
   await preview.getByRole("button", { name: "Sinh đề xem trước" }).click();
 
-  // Hóa học là 25 câu đầu, Sinh học 25 câu sau: tiêu đề khối nêu dải câu.
-  await expect(preview.getByRole("heading", { name: /Hóa học.*câu 1–25/ })).toBeVisible({ timeout: 90_000 });
-  await expect(preview.getByRole("heading", { name: /Sinh học.*câu 26–50/ })).toBeVisible();
+  // Hóa học là 25 câu đầu, Sinh học 25 câu sau. Tiêu đề là từng khối ("Khối Hóa học · … · câu 1–21 · 21 câu", …): đọc dải
+  // câu của mọi khối từng môn, mỗi dải nằm trong phần của môn và các dải ghép liền thành đúng dải đó (không gắn cứng cách chia khối).
+  await expect(preview.getByRole("heading", { name: /^Khối Hóa học/ }).first()).toBeVisible({ timeout: 90_000 });
+  for (const [subject, from, to] of [
+    ["Hóa học", 1, 25],
+    ["Sinh học", 26, 50],
+  ] as const) {
+    const headings = await preview.getByRole("heading", { name: new RegExp(`^Khối ${subject}`) }).allTextContents();
+    const ranges = headings
+      .map((text) => /câu (\d+)–(\d+)/.exec(text))
+      .map((match, index) => {
+        expect(match, `tiêu đề khối không nêu dải câu: ${headings[index]}`).not.toBeNull();
+        return [Number(match![1]), Number(match![2])] as const;
+      })
+      .sort((a, b) => a[0] - b[0]);
+    for (const [start, end] of ranges) {
+      expect(start, `${subject}: khối ${start}–${end} ngoài ${from}–${to}`).toBeGreaterThanOrEqual(from);
+      expect(end, `${subject}: khối ${start}–${end} ngoài ${from}–${to}`).toBeLessThanOrEqual(to);
+    }
+    // Phủ kín: khối đầu bắt đầu ở `from`, mỗi khối nối ngay khối trước, khối cuối kết thúc ở `to`.
+    expect(ranges[0]?.[0], `${subject}: dải câu phải bắt đầu ở ${from}`).toBe(from);
+    ranges.slice(1).forEach(([start], index) => expect(start, `${subject}: hở hoặc chồng giữa các khối`).toBe(ranges[index]![1] + 1));
+    expect(ranges.at(-1)?.[1], `${subject}: dải câu phải kết thúc ở ${to}`).toBe(to);
+  }
   await expect(preview.getByText(/Đề thử · QD02/)).toBeVisible();
 });
