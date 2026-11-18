@@ -317,6 +317,29 @@ class ExamCheckTemplateRulesTests {
         assertThat(sectionStates(exam, untouched)).containsExactly("s-logic=NEEDS_CHECK", "s-reason=NEEDS_CHECK");
     }
 
+    @Test
+    void sectionScopedCheckOfASiblingInTheSameUnitStillReportsTheCommonLock() throws Exception {
+        Exam exam = fullExam("VACT_FULL");
+        ExamTemplate loaded = template(true, true, LOCKED_TEMPLATE);
+        when(templates.findProvenance("VACT_FULL")).thenReturn(loaded);
+        subject("SCIENTIFIC_THINKING", 30);
+        ExamStructureDocument edited = document(lockedBase("10", "\"questionCount\":10", SAME_DIFFICULTY));
+
+        JsonNode sibling = check(exam, edited, ExamCheckScope.from("SECTION", null, "s-reason")).result();
+        assertThat(sibling.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issue(sibling, "STRUCTURE_COUNT_LOCKED").path("location").path("sectionId").asText())
+                .isEqualTo("s-logic");
+        assertThat(issueCodes(sibling).stream().filter("STRUCTURE_COUNT_LOCKED"::equals)).hasSize(1);
+
+        JsonNode own = check(exam, edited, ExamCheckScope.from("SECTION", null, "s-logic")).result();
+        assertThat(own.path("status").asText()).isEqualTo("INVALID");
+        assertThat(issueCodes(own).stream().filter("STRUCTURE_COUNT_LOCKED"::equals)).hasSize(1);
+
+        ExamStructureDocument untouched = document(LOCKED_TEMPLATE);
+        JsonNode control = check(exam, untouched, ExamCheckScope.from("SECTION", null, "s-reason")).result();
+        assertThat(issueCodes(control)).doesNotContain("STRUCTURE_COUNT_LOCKED");
+    }
+
     private List<String> sectionStates(Exam exam, ExamStructureDocument document) {
         var snapshots = mock(ExamCheckSnapshotReader.class);
         var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
@@ -439,6 +462,10 @@ class ExamCheckTemplateRulesTests {
     }
 
     private ExamChecker.Evaluation check(Exam exam, ExamStructureDocument document) {
+        return check(exam, document, ExamCheckScope.from(null, null, null));
+    }
+
+    private ExamChecker.Evaluation check(Exam exam, ExamStructureDocument document, ExamCheckScope scope) {
         CatalogItemView nodeA = node(NODE_A, "/a/");
         CatalogItemView nodeB = node(NODE_B, "/b/");
         when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of(nodeA, nodeB));
@@ -466,7 +493,7 @@ class ExamCheckTemplateRulesTests {
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash",
                 mapper.createObjectNode());
         return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null),
-                clock.instant().plusSeconds(30), Duration.ofSeconds(30), ExamCheckScope.from(null, null, null));
+                clock.instant().plusSeconds(30), Duration.ofSeconds(30), scope);
     }
 
     private static CatalogItemView node(UUID id, String path) {
