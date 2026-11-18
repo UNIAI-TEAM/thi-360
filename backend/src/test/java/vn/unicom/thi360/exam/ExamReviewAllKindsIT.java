@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -62,6 +63,87 @@ class ExamReviewAllKindsIT extends AbstractIntegrationTest {
             verify(failures, kind, 3, new BigDecimal("10"));
         }
         assertThat(failures).isEmpty();
+    }
+
+    @Test
+    void vactReviewKeepsTheScreensDuplicatedDurationOnTheExamOnly() throws Exception {
+        JsonNode created = createReview("VACT", 10, null);
+        assertThat(created.path("durationMinutes").asInt()).isEqualTo(45);
+        JsonNode structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure",
+                        created.path("id").asText()).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode partDuration = structure.path("parts").get(0).path("durationMinutes");
+        assertThat(partDuration.isMissingNode() || partDuration.isNull()).isTrue();
+    }
+
+    @Test
+    void sharedNormalizationDoesNotMaskInvalidReviewOverviewRows() throws Exception {
+        String partId = reviewTemplateId("VACT_REVIEW", "parts", "0");
+        String sectionId = reviewTemplateId("VACT_REVIEW", "parts", "0", "sections", "0");
+        // A section row never carries a duration, even when the exam has a valid top-level duration.
+        postReviewRows("VACT", 45, partRow(partId, 10, 45), sectionRow(partId, sectionId, 10, 45))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        // A negative part duration is not the screen's duplicate: it is rejected, not discarded.
+        postReviewRows("VACT", 45, partRow(partId, 10, -1))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+    }
+
+    @Test
+    void standardSharedCreateKeepsItsDurationRules() throws Exception {
+        String partId = reviewTemplateId("VACT_SUBJECT_ANH", "parts", "0");
+        // The part duration is never promoted to the exam clock for a standard exam: no exam duration, no create.
+        postRows("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\"", null, partRow(partId, 30, 20))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("EXAM_DURATION_REQUIRED"));
+        // With a duration, the part keeps what the request gave it, as before.
+        JsonNode created = mapper.readTree(postRows("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\"",
+                        45, partRow(partId, 30, 20)).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(created.path("durationMinutes").asInt()).isEqualTo(45);
+        JsonNode structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure",
+                        created.path("id").asText()).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(structure.path("parts").get(0).path("durationMinutes").asInt()).isEqualTo(20);
+    }
+
+    private ObjectNode partRow(String partId, int count, int duration) {
+        return mapper.createObjectNode().put("partId", partId).put("questionCount", count)
+                .put("durationMinutes", duration);
+    }
+
+    private ObjectNode sectionRow(String partId, String sectionId, int count, int duration) {
+        return mapper.createObjectNode().put("partId", partId).put("sectionId", sectionId)
+                .put("questionCount", count).put("durationMinutes", duration);
+    }
+
+    private String reviewTemplateId(String templateCode, String... path) {
+        StringBuilder sql = new StringBuilder("SELECT structure");
+        for (int i = 0; i < path.length; i += 2) {
+            sql.append("->'").append(path[i]).append("'->").append(path[i + 1]);
+        }
+        sql.append("->>'id' FROM exam.exam_template WHERE code = ?");
+        return jdbc.queryForObject(sql.toString(), String.class, templateCode);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions postReviewRows(String kind, Integer duration,
+            ObjectNode... rows) throws Exception {
+        return postRows("{\"kind\":\"" + kind + "\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                + "\"buildMode\":\"REVIEW\"", duration, rows);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions postRows(String head, Integer duration,
+            ObjectNode... rows) throws Exception {
+        ObjectNode body = (ObjectNode) mapper.readTree(head + "}");
+        body.put("name", "Rows").put("code", "R-" + UUID.randomUUID().toString().substring(0, 8));
+        if (duration != null) {
+            body.put("durationMinutes", duration);
+        }
+        body.putArray("overview").addAll(List.of(rows));
+        return mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .contentType(MediaType.APPLICATION_JSON).content(body.toString()));
     }
 
     // ------------------------------------------------------------------ the screen's two requests

@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -485,13 +486,17 @@ public class ExamService {
         Integer overviewDuration = null;
         if (template != null && request.overview() != null) {
             List<ExamOverviewRequest.Row> rows = request.overview();
-            if ("SHARED".equals(timing)) {
-                // With one shared time the duration belongs to the exam, never to a part (SHARED_PART_DURATION).
-                overviewDuration = rows.stream().filter(row -> row != null && row.sectionId() == null)
-                        .map(ExamOverviewRequest.Row::durationMinutes).filter(Objects::nonNull).findFirst().orElse(null);
-                rows = rows.stream().map(row -> row == null ? null : new ExamOverviewRequest.Row(row.partId(),
-                        row.sectionId(), row.partCode(), row.subjectCode(), row.questionCount(), null,
-                        row.maxPoints())).toList();
+            if ("SHARED".equals(timing) && "REVIEW".equals(buildMode)) {
+                // A review has one shared clock and the screen repeats the exam duration on its single part row
+                // (SHARED_PART_DURATION): that positive part-row duration belongs to the exam, not the part. Section
+                // rows and a negative duration stay as sent, so the overview validation still rejects them.
+                Predicate<ExamOverviewRequest.Row> screenDuration = row -> row != null && row.sectionId() == null
+                        && row.durationMinutes() != null && row.durationMinutes() > 0;
+                overviewDuration = rows.stream().filter(screenDuration)
+                        .map(ExamOverviewRequest.Row::durationMinutes).findFirst().orElse(null);
+                rows = rows.stream().map(row -> !screenDuration.test(row) ? row
+                        : new ExamOverviewRequest.Row(row.partId(), row.sectionId(), row.partCode(),
+                                row.subjectCode(), row.questionCount(), null, row.maxPoints())).toList();
             }
             doc = ExamOverview.apply(doc, rows);
             ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
