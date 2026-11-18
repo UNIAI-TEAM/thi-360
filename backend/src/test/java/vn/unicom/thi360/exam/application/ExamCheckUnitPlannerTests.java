@@ -22,7 +22,7 @@ class ExamCheckUnitPlannerTests {
                 SolvePart.Choice.of("three", List.of(
                         new SolveOption.Sections("code1", List.of(physics, chemistry)),
                         new SolveOption.Sections("code2", List.of(physics, biology)))));
-        var units = ExamCheckUnitPlanner.plan(parts, 200, 8);
+        var units = ExamCheckUnitPlanner.plan(parts, 200, 8).units();
         assertThat(units).extracting(unit -> unit.key().subjectCode()).containsExactly("MATH", "PHYSICS", "CHEMISTRY", "BIOLOGY");
         assertThat(units.getFirst().key().sectionIds()).containsExactly("m1", "m2");
     }
@@ -32,7 +32,7 @@ class ExamCheckUnitPlannerTests {
         var first = section("MATH", "a", 10);
         var second = section("MATH", "b", 10);
         var units = ExamCheckUnitPlanner.plan(List.of(SolvePart.Choice.of("p", List.of(
-                SolveOption.Sections.of("a", first), SolveOption.Sections.of("b", second)))), 200, 8);
+                SolveOption.Sections.of("a", first), SolveOption.Sections.of("b", second)))), 200, 8).units();
         assertThat(units).extracting(unit -> unit.key().sectionIds()).containsExactly(List.of("a"), List.of("b"));
     }
 
@@ -41,9 +41,13 @@ class ExamCheckUnitPlannerTests {
         var choice = new SubjectChoice("science", List.of(section("A", "a", null), section("B", "b", null),
                 section("C", "c", null), section("D", "d", null)), 3, List.of(17, 17, 16));
         var parts = List.<SolvePart>of(SolvePart.Choice.of("p", List.of(choice)));
-        var units = ExamCheckUnitPlanner.plan(parts, 4, 8);
+        var plan = ExamCheckUnitPlanner.plan(parts, 4, 8);
+        var units = plan.units();
         assertThat(units).hasSize(4).allSatisfy(unit ->
                 assertThat(unit.sections().getFirst().questionCount()).isEqualTo(17));
+        assertThat(plan.paths()).hasSize(1);
+        assertThat(plan.paths().getFirst().tuples()).hasSize(4);
+        assertThat(plan.paths().getFirst().path().picks().getFirst()).hasSize(4);
         assertThatThrownBy(() -> ExamCheckUnitPlanner.plan(parts, 3, 8))
                 .isInstanceOf(ExamCheckUnitPlanner.TooManyPaths.class);
         assertThatThrownBy(() -> ExamCheckUnitPlanner.plan(parts, 20, 3))
