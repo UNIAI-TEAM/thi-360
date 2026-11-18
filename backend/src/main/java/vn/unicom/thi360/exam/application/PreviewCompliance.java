@@ -174,6 +174,17 @@ final class PreviewCompliance {
             };
             addRow(result, dimension + ":" + code, scope, required.get(i), enforcement, basis, data, matches);
         }
+        if (basis == QuotaBasis.PROMPT && enforcement == QuotaEnforcement.REFERENCE && !values.isEmpty()
+                && !"COMPETENCY".equals(dimension)) {
+            // H44: a command is counted by the label of its question; a question without the label is one row apart.
+            Predicate<Datum> unlabeled = datum -> "GRADE".equals(dimension)
+                    ? datum.unit().gradeCode() == null : datum.unit().difficultyCode() == null;
+            BigDecimal actual = sum(data, basis, datum -> !datum.dropped() && unlabeled.test(datum));
+            if (actual.signum() > 0) {
+                result.add(new Compliance(dimension + ":UNCLASSIFIED", scope, null, actual, enforcement.name(),
+                        basis.name(), "UNCLASSIFIED"));
+            }
+        }
     }
 
     private static void topics(List<Compliance> result, String scope, List<TopicQuota> quotas,

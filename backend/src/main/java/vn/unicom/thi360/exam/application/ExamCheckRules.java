@@ -42,8 +42,13 @@ public final class ExamCheckRules {
      * subject whose standard template has {@code publishable = false}; {@code lockedTemplate} is the loaded
      * template's structure when it has {@code fixed_counts = true}. Either is null when it does not apply.
      */
-    public record TemplateFacts(String unpublishableSubject, ExamStructureDocument lockedTemplate) {
+    public record TemplateFacts(String unpublishableSubject, ExamStructureDocument lockedTemplate,
+                                ExamStructureDocument blockLockedTemplate, ExamStructureDocument omittedLockedTemplate) {
         public static final TemplateFacts NONE = new TemplateFacts(null, null);
+
+        public TemplateFacts(String unpublishableSubject, ExamStructureDocument lockedTemplate) {
+            this(unpublishableSubject, lockedTemplate, null, null);
+        }
     }
 
     private final Exam exam;
@@ -158,6 +163,9 @@ public final class ExamCheckRules {
             found.add(failure);
         }
         if (template.lockedTemplate() != null) found.addAll(lockedCountIssues(template.lockedTemplate()));
+        if (template.blockLockedTemplate() != null || template.omittedLockedTemplate() != null) {
+            found.addAll(lockedBlockIssues());
+        }
         return found;
     }
 
@@ -253,6 +261,224 @@ public final class ExamCheckRules {
             found.add(failure);
         }
         return changed;
+    }
+
+    /**
+     * Row locks of the loaded template (H42, H43). Sections are paired with the template as in
+     * {@link #lockedCountIssues}; inside a pair, groups are paired by id first and then by their kind. A template
+     * group that is omitted is not a row (H42): the exam group that switched it back on is reported once as
+     * {@code OMITTED_BLOCK_LOCKED} and is left out of the row comparison.
+     */
+    private List<ObjectNode> lockedBlockIssues() {
+        List<ObjectNode> found = new ArrayList<>();
+        if (template.omittedLockedTemplate() != null) {
+            for (SectionPair pair : sectionPairs(template.omittedLockedTemplate())) {
+                for (BlockPair block : reenabled(pair.locked(), pair.current())) {
+                    SectionContext context = sections.get(pair.current().id());
+                    ObjectNode failure = sectionIssue("OMITTED_BLOCK_LOCKED", "STRUCTURE", context, null);
+                    blockContext(failure, block.current());
+                    found.add(issues.key(failure));
+                }
+            }
+        }
+        if (template.blockLockedTemplate() != null) {
+            for (SectionPair pair : sectionPairs(template.blockLockedTemplate())) lockedRows(found, pair);
+        }
+        return found;
+    }
+
+    private void lockedRows(List<ObjectNode> found, SectionPair pair) {
+        List<QuestionBlock> expected = pair.locked() == null ? List.of()
+                : pair.locked().blocks().stream().filter(block -> !Boolean.TRUE.equals(block.omitted())).toList();
+        List<QuestionBlock> actual = pair.current() == null ? List.of()
+                : pair.current().blocks().stream().filter(block -> !Boolean.TRUE.equals(block.omitted())).toList();
+        if (template.omittedLockedTemplate() != null) {
+            List<QuestionBlock> switchedOn = reenabled(pair.locked(), pair.current()).stream()
+                    .map(BlockPair::current).toList();
+            actual = actual.stream().filter(block -> switchedOn.stream().noneMatch(on -> on == block)).toList();
+        }
+        SectionContext context = pair.current() == null ? null : sections.get(pair.current().id());
+        for (Slot<QuestionBlock> slot : pair(expected, actual, QuestionBlock::id, ExamCheckRules::blockSignature,
+                null, ExamCheckRules::fixedCount)) {
+            ObjectNode failure;
+            if (slot.current() == null) {
+                failure = context == null ? issue("BLOCK_COUNT_LOCKED", "STRUCTURE", pair.part(), pair.optionId(), null)
+                        : sectionIssue("BLOCK_COUNT_LOCKED", "STRUCTURE", context, null);
+                failure.put("required", rowCount(slot.locked(), pair.locked()));
+                failure.put("available", 0);
+                failure.put("dimension", "COUNT");
+                issues.key(failure);
+                failure.put("key", failure.path("key").asText() + "|missing:" + slot.name(slot.locked().id())
+                        + (context == null ? "|" + (pair.locked() == null ? "" : pair.locked().id()) : ""));
+            } else if (context == null) {
+                continue;
+            } else if (slot.locked() == null) {
+                failure = sectionIssue("BLOCK_COUNT_LOCKED", "STRUCTURE", context, null);
+                blockContext(failure, slot.current());
+                failure.put("required", 0);
+                failure.put("available", rowCount(slot.current(), pair.current()));
+                failure.put("dimension", "COUNT");
+                issues.key(failure);
+            } else {
+                String changed = blockChange(slot.locked(), pair.locked(), slot.current(), pair.current());
+                if (changed == null) continue;
+                failure = sectionIssue("BLOCK_COUNT_LOCKED", "STRUCTURE", context, null);
+                blockContext(failure, slot.current());
+                failure.put("dimension", changed);
+                switch (changed) {
+                    case "SET_COUNT" -> {
+                        failure.put("required", slot.locked().setCount());
+                        failure.put("available", slot.current().setCount());
+                    }
+                    case "SET_SIZE" -> {
+                        failure.put("required", slot.locked().setSize());
+                        failure.put("available", slot.current().setSize());
+                    }
+                    default -> {
+                        failure.put("required", rowCount(slot.locked(), pair.locked()));
+                        failure.put("available", rowCount(slot.current(), pair.current()));
+                    }
+                }
+                issues.key(failure);
+            }
+            found.add(failure);
+        }
+    }
+
+    /** What a locked row has to keep: its type, then for sets the set count and size, else the question count. */
+    private static String blockChange(QuestionBlock locked, ExamSection lockedSection, QuestionBlock current,
+                                      ExamSection currentSection) {
+        if (locked.questionType() != current.questionType() || locked.childAnswerType() != current.childAnswerType()) {
+            return "TYPE";
+        }
+        if (isSet(locked) || isSet(current)) {
+            if (!Objects.equals(locked.setCount(), current.setCount())) return "SET_COUNT";
+            if (!Objects.equals(locked.setSize(), current.setSize())) return "SET_SIZE";
+            return fixedCount(locked) != fixedCount(current) ? "COUNT" : null;
+        }
+        return rowCount(locked, lockedSection) == rowCount(current, currentSection) ? null : "COUNT";
+    }
+
+    /** Questions a row takes: its explicit count, or what a "take the remainder" row leaves of the section. */
+    private static int rowCount(QuestionBlock block, ExamSection section) {
+        if (block.questionCount() != null || isSet(block)) return fixedCount(block);
+        int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+        return section.questionCount() == null ? 0 : Math.max(0, section.questionCount() - fixed);
+    }
+
+    /** A group is the same row when it has the same type, child type and template group code. */
+    private static String blockSignature(QuestionBlock block) {
+        return block.questionType() + "|" + block.childAnswerType() + "|" + block.templateGroupCode();
+    }
+
+    private record BlockPair(QuestionBlock locked, QuestionBlock current) { }
+
+    /** Omitted groups of the template paired with the active groups of the exam: by id, then by unique kind. */
+    private static List<BlockPair> reenabled(ExamSection locked, ExamSection current) {
+        List<BlockPair> result = new ArrayList<>();
+        if (locked == null || current == null) return result;
+        List<QuestionBlock> open = new ArrayList<>(locked.blocks().stream()
+                .filter(block -> Boolean.TRUE.equals(block.omitted())).toList());
+        List<QuestionBlock> active = current.blocks().stream()
+                .filter(block -> !Boolean.TRUE.equals(block.omitted())).toList();
+        Set<String> templateIds = new LinkedHashSet<>();
+        locked.blocks().forEach(block -> templateIds.add(block.id()));
+        List<QuestionBlock> claimed = new ArrayList<>();
+        for (QuestionBlock omitted : List.copyOf(open)) {
+            for (QuestionBlock block : active) {
+                if (omitted.id() != null && omitted.id().equals(block.id()) && claimed.stream().noneMatch(c -> c == block)) {
+                    result.add(new BlockPair(omitted, block));
+                    claimed.add(block);
+                    open.remove(omitted);
+                    break;
+                }
+            }
+        }
+        for (QuestionBlock omitted : open) {
+            List<QuestionBlock> same = active.stream()
+                    .filter(block -> claimed.stream().noneMatch(c -> c == block) && !templateIds.contains(block.id())
+                            && blockSignature(block).equals(blockSignature(omitted))).toList();
+            if (same.size() == 1) {
+                result.add(new BlockPair(omitted, same.getFirst()));
+                claimed.add(same.getFirst());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * A template section and the section of the exam it is paired with; either side is null when unmatched.
+     * {@code part} is the exam's part, or the template's when the exam has none.
+     */
+    private record SectionPair(ExamPart part, String optionId, ExamSection locked, ExamSection current) { }
+
+    private List<SectionPair> sectionPairs(ExamStructureDocument locked) {
+        List<SectionPair> result = new ArrayList<>();
+        for (Slot<ExamPart> slot : pair(locked.parts(), document.parts(), ExamPart::id,
+                ExamCheckRules::partSignature, null, part -> part.questionCount() == null ? 0 : part.questionCount())) {
+            ExamPart base = slot.locked();
+            ExamPart part = slot.current();
+            ExamPart owner = part == null ? base : part;
+            sectionPairs(result, owner, null, base == null ? List.of() : base.sections(),
+                    part == null ? List.of() : part.sections());
+            sectionPairs(result, owner, null, base == null ? List.of() : base.subjectPool(),
+                    part == null ? List.of() : part.subjectPool());
+            for (Slot<ExamPartOption> optionSlot : pair(base == null ? List.<ExamPartOption>of() : base.options(),
+                    part == null ? List.<ExamPartOption>of() : part.options(), ExamPartOption::id,
+                    ExamCheckRules::optionSignature, null, option -> 0)) {
+                ExamPartOption lockedOption = optionSlot.locked();
+                ExamPartOption currentOption = optionSlot.current();
+                String optionId = currentOption == null ? lockedOption.id() : currentOption.id();
+                sectionPairs(result, owner, optionId, optionSections(lockedOption), optionSections(currentOption));
+            }
+        }
+        return result;
+    }
+
+    private void sectionPairs(List<SectionPair> out, ExamPart part, String optionId,
+                              List<ExamSection> expected, List<ExamSection> actual) {
+        for (Slot<ExamSection> slot : pair(expected, actual, ExamSection::id, ExamCheckRules::sectionSignature,
+                ExamCheckRules::sectionLooseKey,
+                section -> section.questionCount() != null ? section.questionCount() : groupTotal(section))) {
+            out.add(new SectionPair(part, optionId, slot.locked(), slot.current()));
+        }
+    }
+
+    /** Sections of an option, with its direct groups as the synthetic section the rest of the checker uses. */
+    private static List<ExamSection> optionSections(ExamPartOption option) {
+        if (option == null) return List.of();
+        List<ExamSection> result = new ArrayList<>(option.sections());
+        if (!option.blocks().isEmpty()) {
+            result.add(new ExamSection(option.id() + ":blocks", option.code(),
+                    option.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum(),
+                    null, null, null, null, option.blocks()));
+        }
+        return result;
+    }
+
+    /**
+     * The scale lies above the paper by exactly the points of the groups a part has omitted (H49): the scale counts
+     * a part that is never graded. Only exams loaded from a template with {@code omitted_locked}; null otherwise.
+     */
+    private ObjectNode scaleIncludesExcludedPart(BigDecimal target, BigDecimal paperPoints) {
+        if (template.omittedLockedTemplate() == null) return null;
+        BigDecimal gap = target.subtract(paperPoints);
+        for (ExamPart part : document.parts()) {
+            BigDecimal excluded = BigDecimal.ZERO;
+            List<ExamSection> all = new ArrayList<>(part.sections());
+            all.addAll(part.subjectPool());
+            for (ExamPartOption option : part.options()) all.addAll(optionSections(option));
+            for (ExamSection section : all) for (QuestionBlock block : section.blocks()) {
+                if (!Boolean.TRUE.equals(block.omitted()) || block.requiredPointsPerQuestion() == null) continue;
+                int count = block.questionCount() != null ? block.questionCount()
+                        : block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
+                excluded = excluded.add(block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count)));
+            }
+            if (excluded.signum() > 0 && !differs(excluded, gap)) {
+                return issue("SCALE_INCLUDES_EXCLUDED_PART", "POINTS", part, null, null);
+            }
+        }
+        return null;
     }
 
     /**
@@ -840,7 +1066,8 @@ public final class ExamCheckRules {
         }
         BigDecimal target = "LINEAR".equals(exam.getPracticeScoring()) ? exam.getReferenceMax() : exam.getMaxScore();
         if (target != null && !isReview() && missingPoints.isEmpty() && differs(totalPoints, target)) {
-            ObjectNode issue = issue("POINTS_TOTAL_MISMATCH", "POINTS", null, null, null);
+            ObjectNode issue = scaleIncludesExcludedPart(target, totalPoints);
+            if (issue == null) issue = issue("POINTS_TOTAL_MISMATCH", "POINTS", null, null, null);
             issue.put("required", target); issue.put("available", totalPoints); found.add(issue);
         }
     }
