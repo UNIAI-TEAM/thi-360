@@ -60,7 +60,7 @@ class ExamCheckUnitWitnessTests {
         var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, engine);
         var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, 0, "hash", mapper.createObjectNode());
-        var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input),
+        var result = checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null),
                 clock.instant().plusSeconds(30), Duration.ofSeconds(30), ExamCheckScope.from(null, null, null)).result();
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
         assertThat(result.path("groups").findValuesAsText("code")).contains("QUESTION_NOT_PLAYABLE");

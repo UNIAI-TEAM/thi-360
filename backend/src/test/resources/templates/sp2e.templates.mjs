@@ -47,12 +47,12 @@ for(const s of ['LY','HOA','SINH','DIA']) {
   add(`SP2E_${s}_2026`,s,parts,28,10,60,{existing:true});
 }
 for(const s of ['SU','ECON_LAW']) {
-  const p1=s==='ECON_LAW'?[b('Trắc nghiệm độc lập','SINGLE_CHOICE',20,.25),set('Chùm tình huống',2,3,.25)]:[b('Một đáp án','SINGLE_CHOICE',26,.25)];
-  add(`SP2E_${s}_2026`,s,[part('Phần I · Trắc nghiệm',s,p1,6.5),part('Phần II · Đúng/Sai',s,[tf(6)],6)],32,10,60,{existing:true,rawPoints:12.5,note:'Điểm từng câu là tạm; chờ chuyên gia xác nhận.'});
+  const p1=s==='ECON_LAW'?[b('Trắc nghiệm độc lập','SINGLE_CHOICE',20,.2),set('Chùm tình huống',2,3,.2)]:[b('Một đáp án','SINGLE_CHOICE',26,.2)];
+  add(`SP2E_${s}_2026`,s,[part('Phần I · Trắc nghiệm',s,p1,5.2),part('Phần II · Đúng/Sai',s,[tf(6,.8,{expectedScoring:{trueFalseMethod:'PER_STATEMENT'}})],4.8)],32,10,60,{existing:true,note:'Điểm từng câu là tạm; chờ chuyên gia xác nhận.'});
 }
 const bands=[['Đọc điền câu',10,'ANH_DOC_DIEN_CAU',true],['Đồng nghĩa',4,'ANH_DONG_NGHIA'],['Kết hợp câu',4,'ANH_KET_HOP_CAU'],['Điền từ',5,'ANH_DIEN_TU',true],['Điền cụm hoặc câu',5,'ANH_DIEN_CUM_CAU',true],['Giao tiếp',4,'ANH_GIAO_TIEP'],['Sắp xếp',5,'ANH_SAP_XEP_DOAN'],['Đọc hiểu 1',5,'ANH_DOC_HIEU_1',true],['Đọc hiểu 2',8,'ANH_DOC_HIEU_2',true]];
-const eng=part('Phần I · Tiếng Anh','ANH',bands.map(([name,n,tag,cluster])=>cluster?set(name,1,n,.25,{tagCodes:[tag]}):b(name,'SINGLE_CHOICE',n,.25,{tagCodes:[tag]})),12.5);
-add('SP2E_ANH_2026','ANH',[eng],50,10,60,{existing:true,rawPoints:12.5});
+const eng=part('Phần I · Tiếng Anh','ANH',bands.map(([name,n,tag,cluster])=>cluster?set(name,1,n,.2,{tagCodes:[tag]}):b(name,'SINGLE_CHOICE',n,.2,{tagCodes:[tag]})),10);
+add('SP2E_ANH_2026','ANH',[eng],50,10,60,{existing:true});
 for(const s of ['LY','HOA','SINH','SU']) {
   const parts=[part('Phần I · Trắc nghiệm',s,[b('Một đáp án','SINGLE_CHOICE',10,.2)],2),part('Phần II · Đúng/Sai',s,[tf(5,.8,{expectedScoring:{trueFalseMethod:'PER_STATEMENT'}})],4),part('Phần III · Ghép đôi',s,[b('Ghép đôi','MATCHING',5,.8,{itemShape:{leftItems:4,rightItems:6}})],4)];
   add(`SP2E_${s}_OLD`,s,parts,20,10,60,{old:true,isDefault:false,note:oldNote[s]});

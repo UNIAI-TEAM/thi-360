@@ -115,9 +115,12 @@ final class ExamCheckPathPresenter {
             if (selection != null && status != SolveStatus.VALID) {
                 ObjectNode issue = solverIssues.failure(selection.reason(), selection.subjectCode(),
                         selection.groupId(), selection.failingQuota(), tuple);
-                diagnoseShortage(issue, tuple.stream().flatMap(pick -> pick.resolvedSections().stream()).toList());
-                selectionIssues.add(issue);
-                add(allIssues, issue);
+                if (selection.reason() != vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE
+                        || selection.failingQuota() != null || !replacedBySpecificShortage(issue, structuralIssues)) {
+                    diagnoseShortage(issue, tuple.stream().flatMap(pick -> pick.resolvedSections().stream()).toList());
+                    selectionIssues.add(issue);
+                    add(allIssues, issue);
+                }
             } else if (selection == null) {
                 ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.DEADLINE_EXCEEDED,
                         null, null, null, tuple);
@@ -138,8 +141,11 @@ final class ExamCheckPathPresenter {
         if (result.status() != SolveStatus.VALID && result.reason() != null && tuples.isEmpty()) {
             ObjectNode issue = solverIssues.failure(result.reason(), result.subjectCode(), result.groupId(),
                     result.failingQuota(), List.of());
-            diagnoseShortage(issue, path.sections());
-            add(allIssues, issue);
+            if (result.reason() != vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE
+                    || result.failingQuota() != null || !replacedBySpecificShortage(issue, structuralIssues)) {
+                diagnoseShortage(issue, path.sections());
+                add(allIssues, issue);
+            }
         }
 
         Map<String, SectionOnPath> shown = new LinkedHashMap<>();
@@ -354,9 +360,11 @@ final class ExamCheckPathPresenter {
             if (available < target) {
                 ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE,
                         info.section.subjectCode(), group.groupId(), null, List.of());
-                issue.put("required", target);
-                issue.put("available", available);
-                addBlockIssue(pathIssues, blockIssues, issue);
+                if (!replacedBySpecificShortage(issue, pathIssues.values())) {
+                    issue.put("required", target);
+                    issue.put("available", available);
+                    addBlockIssue(pathIssues, blockIssues, issue);
+                }
             }
         }
         if (block.expectedScoring() != null && pool.complete()) {
@@ -522,6 +530,30 @@ final class ExamCheckPathPresenter {
                 if (sectionId.equals(pick.sections().get(i).sectionId())
                         && (issue.path("subjectCount").isNull()
                             || issue.path("subjectCount").asInt() == pick.counts().get(i))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean replacedBySpecificShortage(ObjectNode generic, java.util.Collection<ObjectNode> issues) {
+        boolean plainShortage = switch (generic.path("code").asText()) {
+            case "SOURCE_SHORTAGE", "SET_SHORTAGE", "CELL_SHORTAGE", "SLOT_SOURCE_SHORTAGE" -> true;
+            default -> false;
+        };
+        if (!plainShortage || !generic.hasNonNull("blockId")) return false;
+        for (ObjectNode specific : issues) {
+            boolean filterShortage = switch (specific.path("code").asText()) {
+                case "ITEM_SHAPE_SHORTAGE", "ANSWER_FORMAT_SHORTAGE", "CHILD_CONDITION_SHORTAGE" -> true;
+                default -> false;
+            };
+            boolean sameSection = specific.path("sectionId").equals(generic.path("sectionId"));
+            if (!sameSection && generic.hasNonNull("optionId") && !generic.hasNonNull("sectionId")) {
+                sameSection = (generic.path("optionId").asText() + ":blocks").equals(specific.path("sectionId").asText());
+            }
+            if (filterShortage && specific.path("blockId").equals(generic.path("blockId"))
+                    && sameSection && specific.path("partId").equals(generic.path("partId"))
+                    && specific.path("location").path("slotIndex").equals(generic.path("location").path("slotIndex"))) {
+                return true;
             }
         }
         return false;

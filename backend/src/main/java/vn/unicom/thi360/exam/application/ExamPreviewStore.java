@@ -78,6 +78,9 @@ public class ExamPreviewStore {
         try {
             JsonNode config = mapper.readTree(rows.getFirst().config());
             JsonNode parts = mapper.readTree(rows.getFirst().parts());
+            for (JsonNode part : parts.path("parts")) {
+                if (part instanceof ObjectNode object) object.remove("paths");
+            }
             if (parts instanceof ObjectNode object && config.has("examQuotas")) {
                 object.set("examQuotas", config.path("examQuotas").deepCopy());
             }
