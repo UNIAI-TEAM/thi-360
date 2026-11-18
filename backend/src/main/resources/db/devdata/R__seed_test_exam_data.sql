@@ -965,27 +965,33 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('b9ee3894-1111-585a-a6e4-172bd692cedd','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('b9ee3894-1111-585a-a6e4-172bd692cedd','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('319f8392-7a1c-57e1-a643-9e1f97a17149','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-math-set','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('8ee0d0bc-aeea-5583-b960-e0775dab4e9f','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-lit-word','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('173aed0e-b07f-52f1-8b95-ea86dc282b51','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-lit-single','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('c3d09b1f-9c55-55f4-8bef-084cde695c6f','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-lit-passage','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('0aa8b830-4e72-5966-b62e-8ad7958922eb','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-ly-cluster','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('95abc878-e278-563c-8526-d816228b9094','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('95abc878-e278-563c-8526-d816228b9094','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('f3c5faf9-931b-52f1-95c7-c9f244a2c0c2','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-hoa-cluster','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('2c0a55ee-9c30-54fe-b5c3-e77276605de5','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('2c0a55ee-9c30-54fe-b5c3-e77276605de5','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('9df904b7-0a4d-51f8-ad00-e413e447f8ab','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-sinh-cluster','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('224eca9b-fa99-5a94-a120-386de0711f88','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('224eca9b-fa99-5a94-a120-386de0711f88','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('8eab083b-ab69-5250-90e9-7b3422853105','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-su-cluster','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('d1717ae2-28cf-57ac-ba57-9d6b265b8520','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('d1717ae2-28cf-57ac-ba57-9d6b265b8520','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('025d7643-ecf8-56e2-b4a6-14ed99b1f1e3','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-dia-cluster','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('c57a09df-b05b-53c4-a16d-7a3be2895085','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('c57a09df-b05b-53c4-a16d-7a3be2895085','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('f01a7780-436f-56bc-812e-ef3d13e77120','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-eng-syn','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('493e423b-7a1d-5f4e-a718-1ac3c034524f','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-eng-ant','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('0dc5fe06-1718-50a5-acf9-77316d28ef65','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-eng-dlg','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('85486064-3039-591b-9f8f-289ce09634ac','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-eng-sentence','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('77b4d1a4-202f-590d-ba3d-90e1bdaeb5a2','dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417',NULL,'b-eng-read','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'dfeb8ef6-8b0f-58b6-8a5b-2d607f62a417' AND r.version_no IS NULL AND r.id IN ('b9ee3894-1111-585a-a6e4-172bd692cedd','319f8392-7a1c-57e1-a643-9e1f97a17149','8ee0d0bc-aeea-5583-b960-e0775dab4e9f','173aed0e-b07f-52f1-8b95-ea86dc282b51','c3d09b1f-9c55-55f4-8bef-084cde695c6f','0aa8b830-4e72-5966-b62e-8ad7958922eb','95abc878-e278-563c-8526-d816228b9094','f3c5faf9-931b-52f1-95c7-c9f244a2c0c2','2c0a55ee-9c30-54fe-b5c3-e77276605de5','9df904b7-0a4d-51f8-ad00-e413e447f8ab','224eca9b-fa99-5a94-a120-386de0711f88','8eab083b-ab69-5250-90e9-7b3422853105','d1717ae2-28cf-57ac-ba57-9d6b265b8520','025d7643-ecf8-56e2-b4a6-14ed99b1f1e3','c57a09df-b05b-53c4-a16d-7a3be2895085','f01a7780-436f-56bc-812e-ef3d13e77120','493e423b-7a1d-5f4e-a718-1ac3c034524f','0dc5fe06-1718-50a5-acf9-77316d28ef65','85486064-3039-591b-9f8f-289ce09634ac','77b4d1a4-202f-590d-ba3d-90e1bdaeb5a2')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-HSA-02: TEST · HSA phần Toán
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1004,9 +1010,15 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('db45ed9e-cb86-57a6-901f-fad3a97d1772','ec9d373f-fe2b-568b-93d1-f98ed1444c93',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('db45ed9e-cb86-57a6-901f-fad3a97d1772','ec9d373f-fe2b-568b-93d1-f98ed1444c93',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('b6b6ab7b-e780-5bbf-b0e4-2311b7fe3dd1','ec9d373f-fe2b-568b-93d1-f98ed1444c93',NULL,'b-math-set','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'ec9d373f-fe2b-568b-93d1-f98ed1444c93' AND r.version_no IS NULL AND r.id IN ('db45ed9e-cb86-57a6-901f-fad3a97d1772','b6b6ab7b-e780-5bbf-b0e4-2311b7fe3dd1')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-HSA-03: TEST · HSA phần Văn
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1028,7 +1040,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('e1f982c1-699c-506b-8e01-f2fd9480e24a','b8689557-e1a5-5fa6-a39e-50d5a34e8d0d',NULL,'b-lit-word','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('2723d876-0174-5580-aadc-38ddd910671b','b8689557-e1a5-5fa6-a39e-50d5a34e8d0d',NULL,'b-lit-single','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('5a539f34-d719-56a5-8c26-15f9baa608fc','b8689557-e1a5-5fa6-a39e-50d5a34e8d0d',NULL,'b-lit-passage','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'b8689557-e1a5-5fa6-a39e-50d5a34e8d0d' AND r.version_no IS NULL AND r.id IN ('e1f982c1-699c-506b-8e01-f2fd9480e24a','2723d876-0174-5580-aadc-38ddd910671b','5a539f34-d719-56a5-8c26-15f9baa608fc')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-HSA-04: TEST · HSA phần Khoa học/Tiếng Anh
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1048,21 +1066,27 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
 ('7c4a0e92-2a6c-5597-8879-689da7d29808','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-ly-cluster','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('a5b9b896-6bb4-5a3c-83fa-0a8da86a55ae','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('a5b9b896-6bb4-5a3c-83fa-0a8da86a55ae','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('cae3ae55-2b3d-5286-9f95-fade0239aebd','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-hoa-cluster','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('031e7a29-bc3e-55a0-9276-f5a641d6d42d','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('031e7a29-bc3e-55a0-9276-f5a641d6d42d','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('6d851dee-cc36-506e-a934-5e700945e55f','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-sinh-cluster','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('b5845fe2-6388-5933-9f0f-6bcde727a219','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('b5845fe2-6388-5933-9f0f-6bcde727a219','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('9fc251bb-0ada-5f64-94dc-8cd07c644a6b','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-su-cluster','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('0a7dac10-91ab-5424-b882-2d1ed858d40d','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('0a7dac10-91ab-5424-b882-2d1ed858d40d','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('f2a29d61-0be1-55fc-bbbf-b6308e871ad8','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-dia-cluster','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('50a6a4d9-3506-5b20-88ad-e97dc30cb2bd','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('50a6a4d9-3506-5b20-88ad-e97dc30cb2bd','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('50cb998c-ca13-5176-bb7f-93260bf9c347','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-eng-syn','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('f31dda10-e868-59cf-9576-1d5cf4d1dff9','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-eng-ant','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('54a5630c-2bab-5fbf-934c-ae51fec6309a','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-eng-dlg','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('4baaf55b-10a1-5554-9cc1-ac8b0534bf1b','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-eng-sentence','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('453dba68-a3a9-5e2a-9bff-5aaaee5e8b29','3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81',NULL,'b-eng-read','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '3dccbbfd-7a19-5ac4-8e87-ed56b35f2c81' AND r.version_no IS NULL AND r.id IN ('7c4a0e92-2a6c-5597-8879-689da7d29808','a5b9b896-6bb4-5a3c-83fa-0a8da86a55ae','cae3ae55-2b3d-5286-9f95-fade0239aebd','031e7a29-bc3e-55a0-9276-f5a641d6d42d','6d851dee-cc36-506e-a934-5e700945e55f','b5845fe2-6388-5933-9f0f-6bcde727a219','9fc251bb-0ada-5f64-94dc-8cd07c644a6b','0a7dac10-91ab-5424-b882-2d1ed858d40d','f2a29d61-0be1-55fc-bbbf-b6308e871ad8','50a6a4d9-3506-5b20-88ad-e97dc30cb2bd','50cb998c-ca13-5176-bb7f-93260bf9c347','f31dda10-e868-59cf-9576-1d5cf4d1dff9','54a5630c-2bab-5fbf-934c-ae51fec6309a','4baaf55b-10a1-5554-9cc1-ac8b0534bf1b','453dba68-a3a9-5e2a-9bff-5aaaee5e8b29')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-QDA-01: TEST · QDA toàn bài
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1089,7 +1113,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('1ff466d0-438f-508d-949f-f954306b60a6','be11dde0-946e-5f37-846c-684f033a779c',NULL,'b-qd04-su','p3',NULL,'s-qd04-su','00000000-0000-7000-8200-000000000207','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('edd76326-72e9-5825-bfb4-ee5593c6fd99','be11dde0-946e-5f37-846c-684f033a779c',NULL,'b-qd04-dia','p3',NULL,'s-qd04-dia','00000000-0000-7000-8200-000000000208','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('58bb0f5f-d09a-5b25-800b-07c096106695','be11dde0-946e-5f37-846c-684f033a779c',NULL,'b-qd05-anh','p3',NULL,'s-qd05-anh','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'be11dde0-946e-5f37-846c-684f033a779c' AND r.version_no IS NULL AND r.id IN ('eec06fbd-0aad-5fd1-82df-ba4051b20d4a','8cff7474-bd44-5521-aa50-5691af07d6dc','9935a520-cfba-5063-bb5a-c5691b52af35','ff691791-6799-5463-95f2-e2ca9b98d1b5','1250a88b-a1cb-5c5b-b65d-d6190e25b1f6','1ff466d0-438f-508d-949f-f954306b60a6','edd76326-72e9-5825-bfb4-ee5593c6fd99','58bb0f5f-d09a-5b25-800b-07c096106695')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-BCA-01: TEST · BCA toàn bài
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1117,7 +1147,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('2e685467-70e5-57fd-9f09-8ba88a992e17','f2294ef4-bfc7-5ba6-ae45-5b6b67e4d132',NULL,'b-ca2','p3',NULL,'s-ca2','00000000-0000-7000-8200-000000000205','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('4bd9fd48-fc76-5897-9555-fae0694e831f','f2294ef4-bfc7-5ba6-ae45-5b6b67e4d132',NULL,'b-ca3','p3',NULL,'s-ca3','00000000-0000-7000-8200-000000000206','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('5e80c8c9-b5fe-5f8a-ae8a-5eb22b6b8daf','f2294ef4-bfc7-5ba6-ae45-5b6b67e4d132',NULL,'b-ca4','p3',NULL,'s-ca4','00000000-0000-7000-8200-000000000208','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'f2294ef4-bfc7-5ba6-ae45-5b6b67e4d132' AND r.version_no IS NULL AND r.id IN ('3b93abd6-3bd4-5b88-85ef-8e96e4d691f3','9c52ed4e-f50a-5b29-947c-e3d188c1aa1a','6313171e-a51f-5baa-969a-2126a867c665','b6ad37db-621e-568a-9d07-6edc45611652','5770b495-7028-5463-ac37-dc77dba98e44','f37c8428-0e35-5251-aa21-9fcbb1ef05f7','2e685467-70e5-57fd-9f09-8ba88a992e17','4bd9fd48-fc76-5897-9555-fae0694e831f','5e80c8c9-b5fe-5f8a-ae8a-5eb22b6b8daf')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-VACT-01: TEST · V-ACT toàn bài
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1136,17 +1172,23 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('9a6818d4-15a6-5f71-b13f-b89d954e5d94','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'6d1d9c9c-de29-505c-a85c-dc37fdc5706c','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'e401ffeb-384d-55f0-83c9-1736b4d1dd6b','00000000-0000-7000-8400-000000000213','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,10,NULL),
-('0da714dd-e747-5c0a-b34d-e312d9f6ba31','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'58c75311-7e8a-5551-b04d-53b928f57471','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_HOAN_THANH_CAU')]::uuid[],NULL,10,NULL),
-('fcf09856-73bd-57de-8ede-db843640af1b','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'00ad8230-7e71-5c12-8d71-cbc3d4eab744','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_PHAT_HIEN_LOI')]::uuid[],NULL,10,NULL),
-('da9cde03-e783-5454-837f-6a4e3d826349','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'24ec4a6e-43a0-501a-aa8e-15d78c68a528','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_DIEN_DAT_TUONG_DUONG')]::uuid[],NULL,10,NULL),
-('bae2ca2c-1908-51ed-91df-bf7c5c92730d','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'503a3cef-94a2-58bc-ac3c-5b585dc4e669','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_DOC_HIEU')]::uuid[],NULL,10,NULL),
-('d816f4ca-0746-540d-8a03-73ad326c04b9','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'7c405d9f-05ac-5b76-8db3-d5706d9f8ff4','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_DOC_HIEU')]::uuid[],NULL,10,NULL),
-('e432d839-7e24-51e7-a8c6-c81866a875e5','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'8deb37e2-3b8d-5d64-89ee-be54263f8629','4d90c6b5-3f13-5d98-a9f0-9b60df20c514',NULL,'02ff2ed3-52c1-5951-afd2-3131796ce314','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,10,NULL),
-('75222f83-8fc9-549f-ac6c-ef56812ef0cc','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'645fef0d-953b-59b9-bd76-bddef9df4556','4d90c6b5-3f13-5d98-a9f0-9b60df20c514',NULL,'02ff2ed3-52c1-5951-afd2-3131796ce314','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,10,NULL),
-('b0994cc9-8740-505e-bc5d-20a9a2d2c858','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'3f07dd8e-c968-58e6-8e8d-12f0ae784090','288ca739-3e0f-54fa-8b0f-3991e94c36f7',NULL,'94de53b5-f0db-5610-a643-4df4c8a397c9','00000000-0000-7000-8400-000000000218','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,10,NULL),
-('c9ce5200-1d03-5994-b72a-fcc304cd94af','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'d622d10d-be85-5153-ab00-c27c70a545f9','288ca739-3e0f-54fa-8b0f-3991e94c36f7',NULL,'ac4678d6-92e8-5f42-a403-4c7e9ba4366f','00000000-0000-7000-8400-000000000218','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,10,NULL)
-ON CONFLICT (id) DO NOTHING;
+('9a6818d4-15a6-5f71-b13f-b89d954e5d94','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'6d1d9c9c-de29-505c-a85c-dc37fdc5706c','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'e401ffeb-384d-55f0-83c9-1736b4d1dd6b','00000000-0000-7000-8400-000000000213','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,'ANY',true,NULL,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-NN-TV')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('0da714dd-e747-5c0a-b34d-e312d9f6ba31','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'58c75311-7e8a-5551-b04d-53b928f57471','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,'ANY',true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_HOAN_THANH_CAU')]::uuid[], NULL), '{}'::uuid[]),NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-NN-TA')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('fcf09856-73bd-57de-8ede-db843640af1b','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'00ad8230-7e71-5c12-8d71-cbc3d4eab744','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,'ANY',true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_PHAT_HIEN_LOI')]::uuid[], NULL), '{}'::uuid[]),NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-NN-TA')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('da9cde03-e783-5454-837f-6a4e3d826349','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'24ec4a6e-43a0-501a-aa8e-15d78c68a528','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,'ANY',true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_DIEN_DAT_TUONG_DUONG')]::uuid[], NULL), '{}'::uuid[]),NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-NN-TA')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('bae2ca2c-1908-51ed-91df-bf7c5c92730d','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'503a3cef-94a2-58bc-ac3c-5b585dc4e669','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,'ANY',true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_DOC_HIEU')]::uuid[], NULL), '{}'::uuid[]),NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-NN-TA')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('d816f4ca-0746-540d-8a03-73ad326c04b9','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'7c405d9f-05ac-5b76-8db3-d5706d9f8ff4','f1f4ad6a-83f6-54b5-ac31-f0c3d9467194',NULL,'02c64577-fbe8-59eb-b8f7-3e30b30456be','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,'ANY',true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='ANH_DOC_HIEU')]::uuid[], NULL), '{}'::uuid[]),NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-NN-TA')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('e432d839-7e24-51e7-a8c6-c81866a875e5','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'8deb37e2-3b8d-5d64-89ee-be54263f8629','4d90c6b5-3f13-5d98-a9f0-9b60df20c514',NULL,'02ff2ed3-52c1-5951-afd2-3131796ce314','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,'ANY',true,NULL,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-TOAN')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('75222f83-8fc9-549f-ac6c-ef56812ef0cc','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'645fef0d-953b-59b9-bd76-bddef9df4556','4d90c6b5-3f13-5d98-a9f0-9b60df20c514',NULL,'02ff2ed3-52c1-5951-afd2-3131796ce314','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,'ANY',true,NULL,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-TOAN')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('b0994cc9-8740-505e-bc5d-20a9a2d2c858','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'3f07dd8e-c968-58e6-8e8d-12f0ae784090','288ca739-3e0f-54fa-8b0f-3991e94c36f7',NULL,'94de53b5-f0db-5610-a643-4df4c8a397c9','00000000-0000-7000-8400-000000000218','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,'ANY',true,NULL,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-TD-LOGIC')]::uuid[], NULL), '{}'::uuid[]),10,NULL),
+('c9ce5200-1d03-5994-b72a-fcc304cd94af','185d2b4f-8b20-5654-a91a-744af731b1e2',NULL,'d622d10d-be85-5153-ab00-c27c70a545f9','288ca739-3e0f-54fa-8b0f-3991e94c36f7',NULL,'ac4678d6-92e8-5f42-a403-4c7e9ba4366f','00000000-0000-7000-8400-000000000218','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,'ANY',true,NULL,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-00000000000a' AND code='VACT-TD-SL')]::uuid[], NULL), '{}'::uuid[]),10,NULL)
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '185d2b4f-8b20-5654-a91a-744af731b1e2' AND r.version_no IS NULL AND r.id IN ('9a6818d4-15a6-5f71-b13f-b89d954e5d94','0da714dd-e747-5c0a-b34d-e312d9f6ba31','fcf09856-73bd-57de-8ede-db843640af1b','da9cde03-e783-5454-837f-6a4e3d826349','bae2ca2c-1908-51ed-91df-bf7c5c92730d','d816f4ca-0746-540d-8a03-73ad326c04b9','e432d839-7e24-51e7-a8c6-c81866a875e5','75222f83-8fc9-549f-ac6c-ef56812ef0cc','b0994cc9-8740-505e-bc5d-20a9a2d2c858','c9ce5200-1d03-5994-b72a-fcc304cd94af')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-SPT-01: TEST · SPT Toán 2025
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1169,7 +1211,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('c391c79c-d95e-56dd-ba4f-9cb654968ecb','d2bdee84-2d67-5a2b-a745-9910f1f64581',NULL,'b2','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('af87ad03-b4e0-5c31-892e-3866b8548b4a','d2bdee84-2d67-5a2b-a745-9910f1f64581',NULL,'b3','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('c9851b21-5f62-531c-a41b-38aa6187c24d','d2bdee84-2d67-5a2b-a745-9910f1f64581',NULL,'b4','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','ESSAY','{ESSAY}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'd2bdee84-2d67-5a2b-a745-9910f1f64581' AND r.version_no IS NULL AND r.id IN ('c9247072-02fd-5dd3-a79d-f6d7ab71ec4b','c391c79c-d95e-56dd-ba4f-9cb654968ecb','af87ad03-b4e0-5c31-892e-3866b8548b4a','c9851b21-5f62-531c-a41b-38aa6187c24d')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-SP2E-01: TEST · SP2E Toán 2025
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1191,7 +1239,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('2d50964d-b213-5314-858f-586ca6af68f8','36ab61c8-c4f0-5517-a391-25a4206e906e',NULL,'b1','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('74eec45c-db98-5dce-9928-0d69b7e7ff49','36ab61c8-c4f0-5517-a391-25a4206e906e',NULL,'b2','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('c72fc30e-1515-52b0-93cc-275b0b4a9ab6','36ab61c8-c4f0-5517-a391-25a4206e906e',NULL,'b3','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,0.5,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '36ab61c8-c4f0-5517-a391-25a4206e906e' AND r.version_no IS NULL AND r.id IN ('2d50964d-b213-5314-858f-586ca6af68f8','74eec45c-db98-5dce-9928-0d69b7e7ff49','c72fc30e-1515-52b0-93cc-275b0b4a9ab6')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-SP2E-02: TEST · SP2E Toán 2026
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1214,7 +1268,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('06d1f6b6-8b1f-5f43-803f-5586fdb7b130','e4f97cf8-a12c-5b3a-8ca1-198ec4f5c875',NULL,'b2','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','MULTIPLE_CHOICE','{MULTIPLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('0e279923-62e7-57c5-851d-0fb4581c71e0','e4f97cf8-a12c-5b3a-8ca1-198ec4f5c875',NULL,'b3','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('1a902664-b2ff-5027-8f6e-d2c2d956b868','e4f97cf8-a12c-5b3a-8ca1-198ec4f5c875',NULL,'b4','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,0.25,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'e4f97cf8-a12c-5b3a-8ca1-198ec4f5c875' AND r.version_no IS NULL AND r.id IN ('6087961e-7a6b-50e6-9a6e-ffd56e823469','06d1f6b6-8b1f-5f43-803f-5586fdb7b130','0e279923-62e7-57c5-851d-0fb4581c71e0','1a902664-b2ff-5027-8f6e-d2c2d956b868')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-SP2E-03: TEST · SP2E Tiếng Anh 2026
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1236,7 +1296,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('07d40c2f-b42a-5ae1-889c-2b625ad4daa4','8e138d51-bc92-560a-9401-fe9faeff8400',NULL,'b1','p1',NULL,'s1','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.2,NULL),
 ('52ef8bec-a43c-5ef4-ac1c-e7e8b02eddf0','8e138d51-bc92-560a-9401-fe9faeff8400',NULL,'b2','p1',NULL,'s1','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.2,NULL),
 ('3c8bf677-112e-5f99-8a45-1fb29dbc8a49','8e138d51-bc92-560a-9401-fe9faeff8400',NULL,'b3','p1',NULL,'s1','00000000-0000-7000-8200-000000000203','CLOZE','{CLOZE}',NULL,NULL,true,NULL,NULL,0.2,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '8e138d51-bc92-560a-9401-fe9faeff8400' AND r.version_no IS NULL AND r.id IN ('07d40c2f-b42a-5ae1-889c-2b625ad4daa4','52ef8bec-a43c-5ef4-ac1c-e7e8b02eddf0','3c8bf677-112e-5f99-8a45-1fb29dbc8a49')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-THPTQG-01: TEST · THPTQG Toán 2025
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1258,7 +1324,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('b335c119-f750-5cfd-94e6-9c6599530428','8d1e140d-15ee-5ddc-95c7-3dfd839a8afc',NULL,'05a8efff-fed0-57bc-961b-dc2dac39819f','1fa851a2-7b2c-555e-ac24-4adb758831a6',NULL,'f6bb2182-9acb-5f27-9b13-fd3268665ce7','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('1b618903-1675-5cb7-b183-b3e38d94c279','8d1e140d-15ee-5ddc-95c7-3dfd839a8afc',NULL,'d17c6827-4210-58aa-8565-510e311081ce','c3648228-0254-54ae-9929-31c53e27d07e',NULL,'75a468af-6c91-585f-8df9-c58eec0d61ab','00000000-0000-7000-8200-000000000201','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('693af964-1a7d-5c03-98ea-ca15abd22fd2','8d1e140d-15ee-5ddc-95c7-3dfd839a8afc',NULL,'e7d37773-48a4-589c-9186-c648a95b4bb1','04152b67-d42f-5df9-bd6c-0bd5b10fad2b',NULL,'220a0da3-330b-5774-a2df-c26fa51bff1f','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,0.5,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '8d1e140d-15ee-5ddc-95c7-3dfd839a8afc' AND r.version_no IS NULL AND r.id IN ('b335c119-f750-5cfd-94e6-9c6599530428','1b618903-1675-5cb7-b183-b3e38d94c279','693af964-1a7d-5c03-98ea-ca15abd22fd2')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-THPTQG-02: TEST · THPTQG Ngữ văn 2025
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1277,10 +1349,16 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('1ac02527-0b4b-572a-bedc-c8bb40173259','afe0cae3-a63b-5975-9eaa-f7e5cf4916e1',NULL,'b1','p1',NULL,'s1','00000000-0000-7000-8200-000000000202','QUESTION_SET','{ESSAY,QUESTION_SET}',NULL,NULL,true,NULL,NULL,0.8,NULL),
+('1ac02527-0b4b-572a-bedc-c8bb40173259','afe0cae3-a63b-5975-9eaa-f7e5cf4916e1',NULL,'b1','p1',NULL,'s1','00000000-0000-7000-8200-000000000202','QUESTION_SET','{QUESTION_SET,ESSAY}',NULL,NULL,true,NULL,NULL,0.8,NULL),
 ('53e3c28a-1e75-5eb0-bbf9-d571ee4f0058','afe0cae3-a63b-5975-9eaa-f7e5cf4916e1',NULL,'b2','p1',NULL,'s1','00000000-0000-7000-8200-000000000202','ESSAY','{ESSAY}',NULL,NULL,true,NULL,NULL,2,NULL),
 ('65c6c5d7-c3db-57f0-bfc1-cc55f772e8e9','afe0cae3-a63b-5975-9eaa-f7e5cf4916e1',NULL,'b3','p1',NULL,'s1','00000000-0000-7000-8200-000000000202','ESSAY','{ESSAY}',NULL,NULL,true,NULL,NULL,4,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'afe0cae3-a63b-5975-9eaa-f7e5cf4916e1' AND r.version_no IS NULL AND r.id IN ('1ac02527-0b4b-572a-bedc-c8bb40173259','53e3c28a-1e75-5eb0-bbf9-d571ee4f0058','65c6c5d7-c3db-57f0-bfc1-cc55f772e8e9')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-THPTQG-03: TEST · THPTQG Tin học 2025
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1303,7 +1381,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('d03ac5a0-a1e6-545d-b962-8223cca4c775','332995c2-ae30-5a2e-b8b3-250d9f6cde4e',NULL,'b-tin-tf','p2',NULL,'s-tin-tf','00000000-0000-7000-8400-000000000215','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('0acb0105-e47f-5184-80ce-0baa3fed516f','332995c2-ae30-5a2e-b8b3-250d9f6cde4e',NULL,'b-tin-cs','p2','CS','s-tin-cs','00000000-0000-7000-8400-000000000215','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('df8e1462-2370-5e18-8368-1420f4cd14d7','332995c2-ae30-5a2e-b8b3-250d9f6cde4e',NULL,'b-tin-ict','p2','ICT','s-tin-ict','00000000-0000-7000-8400-000000000215','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '332995c2-ae30-5a2e-b8b3-250d9f6cde4e' AND r.version_no IS NULL AND r.id IN ('ba79300d-bf8e-5b75-9c01-6a6200b271e2','d03ac5a0-a1e6-545d-b962-8223cca4c775','0acb0105-e47f-5184-80ce-0baa3fed516f','df8e1462-2370-5e18-8368-1420f4cd14d7')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-01: TEST · ERR ma trận thiếu cách áp
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1325,7 +1409,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('7f4901b8-b2ed-55dc-920c-60bc4042b06a','828c8160-2150-5a44-8eeb-4c1a414e422f',NULL,'05a8efff-fed0-57bc-961b-dc2dac39819f','1fa851a2-7b2c-555e-ac24-4adb758831a6',NULL,'f6bb2182-9acb-5f27-9b13-fd3268665ce7','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('1497d7b2-0c81-5018-9171-a0360bd98cc6','828c8160-2150-5a44-8eeb-4c1a414e422f',NULL,'d17c6827-4210-58aa-8565-510e311081ce','c3648228-0254-54ae-9929-31c53e27d07e',NULL,'75a468af-6c91-585f-8df9-c58eec0d61ab','00000000-0000-7000-8200-000000000201','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('139a4f8f-627d-5fe9-8ff5-9f7d394477d1','828c8160-2150-5a44-8eeb-4c1a414e422f',NULL,'e7d37773-48a4-589c-9186-c648a95b4bb1','04152b67-d42f-5df9-bd6c-0bd5b10fad2b',NULL,'220a0da3-330b-5774-a2df-c26fa51bff1f','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,0.5,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '828c8160-2150-5a44-8eeb-4c1a414e422f' AND r.version_no IS NULL AND r.id IN ('7f4901b8-b2ed-55dc-920c-60bc4042b06a','1497d7b2-0c81-5018-9171-a0360bd98cc6','139a4f8f-627d-5fe9-8ff5-9f7d394477d1')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-02: TEST · ERR điểm phần 2 BCA
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1353,7 +1443,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('b0da8ae9-f68f-551d-bcb6-41ade418136a','9216dd1b-b6fd-54b8-974e-11479d8467ba',NULL,'b-ca2','p3',NULL,'s-ca2','00000000-0000-7000-8200-000000000205','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('4d1febb6-473b-5112-af73-934b0ee07d2f','9216dd1b-b6fd-54b8-974e-11479d8467ba',NULL,'b-ca3','p3',NULL,'s-ca3','00000000-0000-7000-8200-000000000206','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('3139877d-5ba8-59e9-8611-530692b88e75','9216dd1b-b6fd-54b8-974e-11479d8467ba',NULL,'b-ca4','p3',NULL,'s-ca4','00000000-0000-7000-8200-000000000208','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '9216dd1b-b6fd-54b8-974e-11479d8467ba' AND r.version_no IS NULL AND r.id IN ('397a5d86-918b-5c79-8ed1-78cf26354fa3','435334eb-0689-50f7-aff0-2e12a7a0a28b','d140be5c-cad9-539b-a905-220a36a1b587','193211f1-47a7-5c3b-822f-f7041ad09881','6ad55fe6-d3a5-5340-b3d4-c80147c7a0b6','26a4bbc0-43a5-5878-8575-735a848eeee7','b0da8ae9-f68f-551d-bcb6-41ade418136a','4d1febb6-473b-5112-af73-934b0ee07d2f','3139877d-5ba8-59e9-8611-530692b88e75')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-03: TEST · ERR chùm hiếm
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1374,8 +1470,14 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
 ('5cad9b62-cdfa-5e30-abe5-7921bef8a712','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'b-lit-word','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('165558b3-0af0-5b5b-845c-59f8433f8e4b','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'b-lit-single','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('25a9663a-7867-55af-a6f4-5a9598eb7c07','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'b-lit-passage','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,ARRAY['6710590e-fa21-5bc6-9c00-3db3e7b4675f']::uuid[],NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+('25a9663a-7867-55af-a6f4-5a9598eb7c07','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'b-lit-passage','p2',NULL,'s-lit2','00000000-0000-7000-8200-000000000202','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULLIF(ARRAY_REMOVE(ARRAY['6710590e-fa21-5bc6-9c00-3db3e7b4675f']::uuid[], NULL), '{}'::uuid[]),NULL,1,NULL)
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '5dbc2955-ba9a-52b1-8ec7-f238b73e37f5' AND r.version_no IS NULL AND r.id IN ('5cad9b62-cdfa-5e30-abe5-7921bef8a712','165558b3-0af0-5b5b-845c-59f8433f8e4b','25a9663a-7867-55af-a6f4-5a9598eb7c07')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-04: TEST · ERR tổng môn 49
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1394,9 +1496,15 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('e8ab0e4e-38e6-5084-b520-c66324e72b3a','b5eeac31-a4c3-53ba-b7fe-e07614bf0a13',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('e8ab0e4e-38e6-5084-b520-c66324e72b3a','b5eeac31-a4c3-53ba-b7fe-e07614bf0a13',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('dd71789c-a9e7-5438-bc31-f587d77127d3','b5eeac31-a4c3-53ba-b7fe-e07614bf0a13',NULL,'b-math-set','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = 'b5eeac31-a4c3-53ba-b7fe-e07614bf0a13' AND r.version_no IS NULL AND r.id IN ('e8ab0e4e-38e6-5084-b520-c66324e72b3a','dd71789c-a9e7-5438-bc31-f587d77127d3')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-05: TEST · ERR chỉ tiêu TLN 14
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1415,9 +1523,15 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('4ff6b307-7959-5919-94f8-c524066f7870','187d20b8-4fea-553e-be19-927d623c861e',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('4ff6b307-7959-5919-94f8-c524066f7870','187d20b8-4fea-553e-be19-927d623c861e',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('08dda761-e158-519b-90f4-c72326dc333a','187d20b8-4fea-553e-be19-927d623c861e',NULL,'b-math-set','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '187d20b8-4fea-553e-be19-927d623c861e' AND r.version_no IS NULL AND r.id IN ('4ff6b307-7959-5919-94f8-c524066f7870','08dda761-e158-519b-90f4-c72326dc333a')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-06: TEST · ERR MAPID hẹp Toán
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1436,9 +1550,15 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('33963592-3f11-598f-84b2-87efd11ee374','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}','{f1f04db9-e1a9-54fa-af70-c72bf65339f0}',NULL,true,NULL,NULL,1,NULL),
-('ba7c7c26-5959-5f84-83c1-912b509c0075','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'b-math-set','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}','{f1f04db9-e1a9-54fa-af70-c72bf65339f0}',NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+('33963592-3f11-598f-84b2-87efd11ee374','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'b-math-single','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}','{f1f04db9-e1a9-54fa-af70-c72bf65339f0}','ANY',true,NULL,NULL,1,NULL),
+('ba7c7c26-5959-5f84-83c1-912b509c0075','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'b-math-set','p1',NULL,'s-math1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}','{f1f04db9-e1a9-54fa-af70-c72bf65339f0}','ANY',true,NULL,NULL,1,NULL)
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '8e18aaeb-3acd-5953-b689-73c36f9f0962' AND r.version_no IS NULL AND r.id IN ('33963592-3f11-598f-84b2-87efd11ee374','ba7c7c26-5959-5f84-83c1-912b509c0075')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-07: TEST · ERR Địa lí chỉ đủ 16
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1458,21 +1578,27 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
 ('b9c26513-9f0a-586b-b64d-b7749a64c2ed','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-ly-cluster','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('f7afc553-aafc-5a83-971e-0972b96187f2','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('f7afc553-aafc-5a83-971e-0972b96187f2','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('4ef478df-db28-5097-ab80-0b73e32ccf00','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-hoa-cluster','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('79ac8887-54ed-5db0-9301-ccb9f916abd9','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('79ac8887-54ed-5db0-9301-ccb9f916abd9','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('52a0d196-700b-563b-83ab-21b65f51d81c','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-sinh-cluster','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('47adfdb3-01a8-552d-bd0f-3a70f2ef891b','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('47adfdb3-01a8-552d-bd0f-3a70f2ef891b','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('17efdade-9237-5aec-abf1-91200586f670','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-su-cluster','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('b47fed96-7ed2-55b3-b3e2-4928e5876017','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('c2448ffe-a98e-587f-8a8b-961cdf7ac02d','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-dia-cluster','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}','{bb64432b-78d8-5251-bde8-2f5cf8d69a24}',NULL,true,NULL,NULL,1,NULL),
-('f1586bc7-cc07-5d0d-a4b2-8a1c8b76f17f','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}','{bb64432b-78d8-5251-bde8-2f5cf8d69a24}',NULL,true,NULL,NULL,1,NULL),
+('b47fed96-7ed2-55b3-b3e2-4928e5876017','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
+('c2448ffe-a98e-587f-8a8b-961cdf7ac02d','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-dia-cluster','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}','{bb64432b-78d8-5251-bde8-2f5cf8d69a24}','ANY',true,NULL,NULL,1,NULL),
+('f1586bc7-cc07-5d0d-a4b2-8a1c8b76f17f','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}','{bb64432b-78d8-5251-bde8-2f5cf8d69a24}','ANY',true,NULL,NULL,1,NULL),
 ('90c96dfc-8d58-5017-8eaa-f8333f750a09','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-eng-syn','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('4435e399-fbe4-5216-9c35-38fd73842d60','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-eng-ant','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('fe9cd4a8-ca38-58b3-8b93-c6d4d467ab99','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-eng-dlg','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('57e0f2aa-43d4-5b52-9ca5-0eae6362e9da','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-eng-sentence','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('92ffa8de-06e6-5484-b297-a2df56f8396c','05e082eb-ebef-53e7-8525-2259e1baf686',NULL,'b-eng-read','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '05e082eb-ebef-53e7-8525-2259e1baf686' AND r.version_no IS NULL AND r.id IN ('b9c26513-9f0a-586b-b64d-b7749a64c2ed','f7afc553-aafc-5a83-971e-0972b96187f2','4ef478df-db28-5097-ab80-0b73e32ccf00','79ac8887-54ed-5db0-9301-ccb9f916abd9','52a0d196-700b-563b-83ab-21b65f51d81c','47adfdb3-01a8-552d-bd0f-3a70f2ef891b','17efdade-9237-5aec-abf1-91200586f670','b47fed96-7ed2-55b3-b3e2-4928e5876017','c2448ffe-a98e-587f-8a8b-961cdf7ac02d','f1586bc7-cc07-5d0d-a4b2-8a1c8b76f17f','90c96dfc-8d58-5017-8eaa-f8333f750a09','4435e399-fbe4-5216-9c35-38fd73842d60','fe9cd4a8-ca38-58b3-8b93-c6d4d467ab99','57e0f2aa-43d4-5b52-9ca5-0eae6362e9da','92ffa8de-06e6-5484-b297-a2df56f8396c')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-08: TEST · ERR Vật lí thiếu nhóm còn lại
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1492,21 +1618,27 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
 ('dbd85a38-9d7b-58c5-b199-3f39803c54fd','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-ly-cluster','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('461eb2fd-bfba-5070-b5de-25a1c8905483','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-ly-fixed','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('461eb2fd-bfba-5070-b5de-25a1c8905483','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-ly-fixed','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('abb0f940-64d1-5270-a4da-bce7fafd16ed','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-hoa-cluster','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('a0c76a45-f24f-50c4-9676-04502e88dbdd','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('a0c76a45-f24f-50c4-9676-04502e88dbdd','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('80c258b0-57b4-5f87-b634-5a69feeb8636','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-sinh-cluster','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('1d8354e8-f7c2-5d42-8c3f-7d8a1d3ed56d','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('1d8354e8-f7c2-5d42-8c3f-7d8a1d3ed56d','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('d4911bb9-8afd-5073-ba59-c25116667175','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-su-cluster','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('495f494b-e717-5e69-a1fc-65972562545a','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('495f494b-e717-5e69-a1fc-65972562545a','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('4bd75635-b474-5a03-a357-19de1517cbb3','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-dia-cluster','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('06aa71e7-6bd6-59dd-9366-f7bf4f55875a','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('06aa71e7-6bd6-59dd-9366-f7bf4f55875a','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('89a62c67-c5cc-5416-a0f8-32df623253c4','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-eng-syn','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('738c61bd-f222-5a0b-8ca4-8407b8e2a056','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-eng-ant','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('5d8f35e9-416e-57ce-b6d1-2b2786f05d3c','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-eng-dlg','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('520a582d-c70c-5a09-a1cf-ae25dc842c52','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-eng-sentence','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('ee7d4723-dbba-5ddd-9308-87742b4e4295','64b7e43a-046c-5172-959c-e6ec0552b65c',NULL,'b-eng-read','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '64b7e43a-046c-5172-959c-e6ec0552b65c' AND r.version_no IS NULL AND r.id IN ('dbd85a38-9d7b-58c5-b199-3f39803c54fd','461eb2fd-bfba-5070-b5de-25a1c8905483','abb0f940-64d1-5270-a4da-bce7fafd16ed','a0c76a45-f24f-50c4-9676-04502e88dbdd','80c258b0-57b4-5f87-b634-5a69feeb8636','1d8354e8-f7c2-5d42-8c3f-7d8a1d3ed56d','d4911bb9-8afd-5073-ba59-c25116667175','495f494b-e717-5e69-a1fc-65972562545a','4bd75635-b474-5a03-a357-19de1517cbb3','06aa71e7-6bd6-59dd-9366-f7bf4f55875a','89a62c67-c5cc-5416-a0f8-32df623253c4','738c61bd-f222-5a0b-8ca4-8407b8e2a056','5d8f35e9-416e-57ce-b6d1-2b2786f05d3c','520a582d-c70c-5a09-a1cf-ae25dc842c52','ee7d4723-dbba-5ddd-9308-87742b4e4295')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-09: TEST · ERR Hóa học chỉ tiêu số câu
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1526,21 +1658,27 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
 ('a014cfa1-e58c-5d28-92be-ca1155ea9ac7','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-ly-cluster','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('94b54c7e-94e8-53c5-a1b4-9d27f7535087','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('94b54c7e-94e8-53c5-a1b4-9d27f7535087','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('5f2ddca1-1c40-50b1-b9b9-9437ad563992','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-hoa-cluster','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('1a70595d-3919-5627-9d67-07d17cc7029d','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('1a70595d-3919-5627-9d67-07d17cc7029d','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('21a7f1b0-544e-5178-ab4e-5fce95cf8cff','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-sinh-cluster','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('63b42457-6d7f-51ae-88ba-5b5c69739e6b','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('63b42457-6d7f-51ae-88ba-5b5c69739e6b','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('7a170b5f-1c74-5e25-b0e8-aa64bdf26fc4','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-su-cluster','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('f02ef683-32bc-52a6-9b83-e2db272a4b82','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('f02ef683-32bc-52a6-9b83-e2db272a4b82','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('690a0caf-2064-5437-bc91-d1476a4de44a','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-dia-cluster','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('a65c93f2-0b7e-56fe-8c62-beafaa6c3ebe','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('a65c93f2-0b7e-56fe-8c62-beafaa6c3ebe','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('1971214f-ba31-54f5-ad94-54cc23ae4789','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-eng-syn','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('eb508986-adec-5c4a-ab6a-c1a41e9efc3c','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-eng-ant','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('4661d2b0-56df-5173-babe-fbb0468bf6cd','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-eng-dlg','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('fe21b4ee-cb3d-504c-8762-71c25cdd591a','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-eng-sentence','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('8baa4a52-1c78-593f-b077-313e9961ae25','94405696-b674-5484-8fbd-a487eddf07ac',NULL,'b-eng-read','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '94405696-b674-5484-8fbd-a487eddf07ac' AND r.version_no IS NULL AND r.id IN ('a014cfa1-e58c-5d28-92be-ca1155ea9ac7','94b54c7e-94e8-53c5-a1b4-9d27f7535087','5f2ddca1-1c40-50b1-b9b9-9437ad563992','1a70595d-3919-5627-9d67-07d17cc7029d','21a7f1b0-544e-5178-ab4e-5fce95cf8cff','63b42457-6d7f-51ae-88ba-5b5c69739e6b','7a170b5f-1c74-5e25-b0e8-aa64bdf26fc4','f02ef683-32bc-52a6-9b83-e2db272a4b82','690a0caf-2064-5437-bc91-d1476a4de44a','a65c93f2-0b7e-56fe-8c62-beafaa6c3ebe','1971214f-ba31-54f5-ad94-54cc23ae4789','eb508986-adec-5c4a-ab6a-c1a41e9efc3c','4661d2b0-56df-5173-babe-fbb0468bf6cd','fe21b4ee-cb3d-504c-8762-71c25cdd591a','8baa4a52-1c78-593f-b077-313e9961ae25')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-10: TEST · ERR countsByPick 17-17-17
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1560,21 +1698,27 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
 ('e88d8f19-534b-5e3e-8c70-727871631945','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-ly-cluster','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('f6fe2c46-8697-5913-909e-9d6a0c92cf7d','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('f6fe2c46-8697-5913-909e-9d6a0c92cf7d','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-ly-rest','p3','SCIENCE','s-sci-ly','00000000-0000-7000-8200-000000000204',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('95ce216c-0f33-5bc4-8974-f34ccea6ede7','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-hoa-cluster','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('82fab48d-d6ca-58af-b52e-7b76024cff1b','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('82fab48d-d6ca-58af-b52e-7b76024cff1b','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-hoa-rest','p3','SCIENCE','s-sci-hoa','00000000-0000-7000-8200-000000000205',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('7afafee6-df77-55bc-b480-c297d80f8660','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-sinh-cluster','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('b28f1ead-e354-53c5-bca8-a2228ee35a4e','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('b28f1ead-e354-53c5-bca8-a2228ee35a4e','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-sinh-rest','p3','SCIENCE','s-sci-sinh','00000000-0000-7000-8200-000000000206',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('07d15511-30f9-5dc4-b84a-27c94f9422c7','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-su-cluster','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('250a0d05-2050-549a-ac06-dced268e82f1','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('250a0d05-2050-549a-ac06-dced268e82f1','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-su-rest','p3','SCIENCE','s-sci-su','00000000-0000-7000-8200-000000000207',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('11bd8025-28b6-5a66-a2f0-174f494df0c1','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-dia-cluster','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
-('8e1a9438-934a-5415-947e-53a5e5411093','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SHORT_ANSWER,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('8e1a9438-934a-5415-947e-53a5e5411093','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-sci-dia-rest','p3','SCIENCE','s-sci-dia','00000000-0000-7000-8200-000000000208',NULL,'{SINGLE_CHOICE,SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('0260a683-712e-51a7-a37e-366b85d65f10','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-eng-syn','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('3e147117-3d66-5244-807c-af659255df72','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-eng-ant','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('2f82b9a2-cf85-5fb2-9499-5fc2c3ad1710','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-eng-dlg','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('5a8d34f9-0b1f-5048-b187-c45d46326b8d','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-eng-sentence','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('c3027cca-055e-5f6b-b229-e5f408d187f2','45dd8ec6-27b7-5d81-a542-2545d933b171',NULL,'b-eng-read','p3','ANH','s-eng3','00000000-0000-7000-8200-000000000203','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '45dd8ec6-27b7-5d81-a542-2545d933b171' AND r.version_no IS NULL AND r.id IN ('e88d8f19-534b-5e3e-8c70-727871631945','f6fe2c46-8697-5913-909e-9d6a0c92cf7d','95ce216c-0f33-5bc4-8974-f34ccea6ede7','82fab48d-d6ca-58af-b52e-7b76024cff1b','7afafee6-df77-55bc-b480-c297d80f8660','b28f1ead-e354-53c5-bca8-a2228ee35a4e','07d15511-30f9-5dc4-b84a-27c94f9422c7','250a0d05-2050-549a-ac06-dced268e82f1','11bd8025-28b6-5a66-a2f0-174f494df0c1','8e1a9438-934a-5415-947e-53a5e5411093','0260a683-712e-51a7-a37e-366b85d65f10','3e147117-3d66-5244-807c-af659255df72','2f82b9a2-cf85-5fb2-9499-5fc2c3ad1710','5a8d34f9-0b1f-5048-b187-c45d46326b8d','c3027cca-055e-5f6b-b229-e5f408d187f2')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-11: TEST · ERR ô G12×VDC thiếu
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1596,7 +1740,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('ac4a6103-39df-525e-b137-ad205d7bf8d8','781b5101-69de-5020-91c1-9c4474a18401',NULL,'05a8efff-fed0-57bc-961b-dc2dac39819f','1fa851a2-7b2c-555e-ac24-4adb758831a6',NULL,'f6bb2182-9acb-5f27-9b13-fd3268665ce7','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('65305d48-eac8-5ee1-81c5-b5f5a46d15bd','781b5101-69de-5020-91c1-9c4474a18401',NULL,'d17c6827-4210-58aa-8565-510e311081ce','c3648228-0254-54ae-9929-31c53e27d07e',NULL,'75a468af-6c91-585f-8df9-c58eec0d61ab','00000000-0000-7000-8200-000000000201','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('fa491ae9-cf4d-5e24-9135-04b2924709ce','781b5101-69de-5020-91c1-9c4474a18401',NULL,'e7d37773-48a4-589c-9186-c648a95b4bb1','04152b67-d42f-5df9-bd6c-0bd5b10fad2b',NULL,'220a0da3-330b-5774-a2df-c26fa51bff1f','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,0.5,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '781b5101-69de-5020-91c1-9c4474a18401' AND r.version_no IS NULL AND r.id IN ('ac4a6103-39df-525e-b137-ad205d7bf8d8','65305d48-eac8-5ee1-81c5-b5f5a46d15bd','fa491ae9-cf4d-5e24-9135-04b2924709ce')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-12: TEST · ERR khối TLN bỏ điểm
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1618,7 +1768,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('b77595cb-1b4a-5835-8229-88209c6cc5ae','04ab69b2-fc29-5caf-9964-9ce20f49c3f6',NULL,'05a8efff-fed0-57bc-961b-dc2dac39819f','1fa851a2-7b2c-555e-ac24-4adb758831a6',NULL,'f6bb2182-9acb-5f27-9b13-fd3268665ce7','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('4f3d534b-7635-51a7-87f2-46398f41cede','04ab69b2-fc29-5caf-9964-9ce20f49c3f6',NULL,'d17c6827-4210-58aa-8565-510e311081ce','c3648228-0254-54ae-9929-31c53e27d07e',NULL,'75a468af-6c91-585f-8df9-c58eec0d61ab','00000000-0000-7000-8200-000000000201','TRUE_FALSE','{TRUE_FALSE}',NULL,NULL,true,NULL,NULL,1,NULL),
 ('112b5599-dded-5959-ae0c-dd0e86730f46','04ab69b2-fc29-5caf-9964-9ce20f49c3f6',NULL,'e7d37773-48a4-589c-9186-c648a95b4bb1','04152b67-d42f-5df9-bd6c-0bd5b10fad2b',NULL,'220a0da3-330b-5774-a2df-c26fa51bff1f','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,NULL,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '04ab69b2-fc29-5caf-9964-9ce20f49c3f6' AND r.version_no IS NULL AND r.id IN ('b77595cb-1b4a-5835-8229-88209c6cc5ae','4f3d534b-7635-51a7-87f2-46398f41cede','112b5599-dded-5959-ae0c-dd0e86730f46')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));
 
 -- TEST-ERR-13: TEST · ERR năm chưa xác nhận
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
@@ -1641,4 +1797,10 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
 ('0a4d0716-609a-5eaf-b14c-ed470c115fb2','18d22940-dc6b-58bb-bc19-f6bbaba4d071',NULL,'b2','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','MULTIPLE_CHOICE','{MULTIPLE_CHOICE}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('8db3f7fa-fa9b-58e3-8581-28d04c6d1bde','18d22940-dc6b-58bb-bc19-f6bbaba4d071',NULL,'b3','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET}',NULL,NULL,true,NULL,NULL,0.25,NULL),
 ('33fd7908-f971-55b5-b3f2-cea2b0ab1675','18d22940-dc6b-58bb-bc19-f6bbaba4d071',NULL,'b4','p1',NULL,'s1','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,0.25,NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
+
+DELETE FROM exam.exam_block_ref r
+WHERE r.exam_id = '18d22940-dc6b-58bb-bc19-f6bbaba4d071' AND r.version_no IS NULL AND r.id IN ('f8982100-ccc9-563d-a247-e30a4e4bec96','0a4d0716-609a-5eaf-b14c-ed470c115fb2','8db3f7fa-fa9b-58e3-8581-28d04c6d1bde','33fd7908-f971-55b5-b3f2-cea2b0ab1675')
+  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',
+          jsonb_build_object('block', r.block_id)));

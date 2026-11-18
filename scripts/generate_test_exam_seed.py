@@ -37,6 +37,7 @@ G_TASK = "00000000-0000-7000-8100-000000000006"
 G_COMBO = "00000000-0000-7000-8100-000000000007"
 G_TAG = "00000000-0000-7000-8100-000000000008"
 G_KNOW = "00000000-0000-7000-8100-000000000009"
+G_COMPETENCY = "00000000-0000-7000-8100-00000000000a"
 
 SUBJECT = {
     "TOAN": "00000000-0000-7000-8200-000000000201",
@@ -1345,35 +1346,66 @@ def emit_exam(exam):
         out.append("    option_code, section_id, subject_item_id, question_type, answer_types,")
         out.append("    knowledge_item_ids, knowledge_mode, knowledge_inherited,")
         out.append("    tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES")
-        out.append(",\n".join(rows) + "\nON CONFLICT (id) DO NOTHING;")
+        out.append(",\n".join(rows) + "\nON CONFLICT DO NOTHING;")
+        out.append("")
+        # The structure above is never replaced once stored, so the refs must follow the stored one:
+        # drop seeded rows for blocks it does not contain. A unique index on (exam, version, block)
+        # already keeps the projection of a later edit and the seeded rows from coexisting.
+        seeded_ids = ",".join(f"'{uid('ref', eid, b['id'])}'" for b in all_blocks(exam["doc"]))
+        out.append("DELETE FROM exam.exam_block_ref r")
+        out.append(f"WHERE r.exam_id = '{eid}' AND r.version_no IS NULL AND r.id IN ({seeded_ids})")
+        out.append("  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id")
+        out.append("      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',")
+        out.append("          jsonb_build_object('block', r.block_id)));")
         out.append("")
     return out
 
 
+def all_blocks(document):
+    blocks = []
+    for p in document["parts"]:
+        for s in p.get("sections", []) + p.get("subjectPool", []):
+            blocks += s["blocks"]
+        for o in p.get("options", []):
+            for s in o.get("sections", []):
+                blocks += s.get("blocks", [])
+            blocks += o.get("blocks", [])
+    return blocks
+
+
+def uuid_array(refs):
+    """Resolved ids in document order; unresolved codes are dropped and an empty result is NULL."""
+    return "NULLIF(ARRAY_REMOVE(ARRAY[" + ",".join(refs) + "]::uuid[], NULL), '{}'::uuid[])"
+
+
 def ref_row(eid, p, o, s, b):
+    """Mirror of ExamBlockRefProjector for one block of the stored structure."""
     subject_code = s["subjectCode"] if s else (o["code"] if o and o["kind"] == "SUBJECT" else None)
     scope = b.get("knowledgeScope") or (s or {}).get("knowledgeScope")
-    answer_types = set()
-    if b.get("questionType"):
-        answer_types.add(b["questionType"])
-    if b.get("childAnswerType"):
-        answer_types.add(b["childAnswerType"])
+    answer_types = []
+    for answer_type in (b.get("questionType"), b.get("childAnswerType")):
+        if answer_type and answer_type not in answer_types:
+            answer_types.append(answer_type)
     if not answer_types and s and s.get("answerQuotas"):
-        answer_types = {i["answerType"] for i in s["answerQuotas"]["items"]}
-    know_ids = (scope or {}).get("nodeIds") or None
-    tag_codes = b.get("tagCodes") or []
+        for item in s["answerQuotas"]["items"]:
+            if item["answerType"] not in answer_types:
+                answer_types.append(item["answerType"])
+    know_ids = list(dict.fromkeys((scope or {}).get("nodeIds") or [])) or None
     tag_refs = [sql_quote(TASK_TAG_IDS[t]) if t in TASK_TAG_IDS else
                 f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_TAG}' AND code={sql_quote(t)})"
-                for t in tag_codes]
+                for t in dict.fromkeys(b.get("tagCodes") or [])]
+    competency_refs = [f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_COMPETENCY}' AND code={sql_quote(c)})"
+                       for c in dict.fromkeys((scope or {}).get("competencyCodes") or [])]
     return (f"('{uid('ref', eid, b['id'])}','{eid}',NULL,'{b['id']}','{p['id']}',"
             f"{sql_quote(o['code']) if o else 'NULL'},{sql_quote(s['id']) if s else 'NULL'},"
             f"{sql_quote(SUBJECT[subject_code]) if subject_code else 'NULL'},"
             f"{sql_quote(b['questionType']) if b.get('questionType') else 'NULL'},"
-            f"{pg_array(sorted(answer_types)) if answer_types else 'NULL'},"
+            f"{pg_array(answer_types) if answer_types else 'NULL'},"
             f"{pg_array(know_ids) if know_ids else 'NULL'},"
-            f"{sql_quote(scope['match']) if scope and scope.get('match') else 'NULL'},"
+            f"{sql_quote('ANY') if scope else 'NULL'},"
             f"{'true' if not b.get('knowledgeScope') else 'false'},"
-            f"{'ARRAY[' + ','.join(tag_refs) + ']::uuid[]' if tag_refs else 'NULL'},NULL,"
+            f"{uuid_array(tag_refs) if tag_refs else 'NULL'},"
+            f"{uuid_array(competency_refs) if competency_refs else 'NULL'},"
             f"{b['requiredPointsPerQuestion'] if b.get('requiredPointsPerQuestion') is not None else 'NULL'},"
             "NULL)")
 
