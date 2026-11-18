@@ -4,6 +4,7 @@ import {
   type MatrixAxes,
   type SectionLocation,
   sectionGroups as storedSectionGroups,
+  sectionsPoints,
   splitEvenly,
   type StructureIssue,
   type StructureTotals,
@@ -13,7 +14,7 @@ import {
   type ValidateStructureOptions,
   validateStructure,
 } from "../matrix";
-import type { ExamPart, ExamPartOption, ExamSection, QuestionBlock } from "../types";
+import type { ExamPart, ExamPartOption, ExamSection, QuestionBlock, StructureCombination } from "../types";
 
 /**
  * Bản nháp của Cấu trúc và ma trận: các hàm cập nhật bất biến trên `ExamPart[]`. Màn chỉ lưu khi bấm Lưu
@@ -373,20 +374,45 @@ export function validateDraft(
   return [...plain, ...codedIssues];
 }
 
-/** Tổng bài từ bản nháp; phần theo mã tính số câu và thời lượng của phần, phân bổ từng mã do máy chủ tính (`structure/summary`). */
-export function draftTotals(parts: readonly ExamPart[], options: StructureTotalsOptions = {}): StructureTotals {
+export interface DraftTotalsOptions extends StructureTotalsOptions {
+  /** Mã bài thi của các phần theo mã (`GET structure`): điểm của phần theo mã lấy theo các mã này. */
+  combinations?: readonly StructureCombination[];
+}
+
+/**
+ * Điểm của một phần theo mã, cùng cách tính với `structure/summary` của máy chủ: điểm các môn chung, cộng điểm các môn
+ * của một mã (học viên chọn một mã). Các mã cho cùng số điểm thì đó là điểm của phần; lệch nhau thì máy chủ không có số
+ * (hiện "–"), còn tổng trên màn hình lấy mã đầu tiên như phần tự chọn thường (`structureTotals`). Chưa có mã nào: chỉ
+ * môn chung.
+ */
+function codedPartPoints(part: ExamPart, combinations: readonly StructureCombination[]): number {
+  const pool = part.subjectPool ?? [];
+  const common = sectionsPoints(part.sections);
+  const first = combinations.find((item) => item.partId === part.id || item.partId === null);
+  if (!first) return common;
+  const selected = pool.filter((section) => first.subjectCodes.includes(section.subjectCode));
+  return common + sectionsPoints(selected);
+}
+
+/**
+ * Tổng bài từ bản nháp; phần theo mã tính số câu, thời lượng và điểm theo các mã của phần (như `structure/summary`), phân
+ * bổ từng mã do máy chủ tính.
+ */
+export function draftTotals(parts: readonly ExamPart[], options: DraftTotalsOptions = {}): StructureTotals {
   const plain = structureTotals(
     parts.filter((part) => !part.codeSource),
     options,
   );
   const coded = parts.filter((part) => part.codeSource);
   const codedQuestions = sum(coded.map((part) => part.questionCount));
+  const codedPoints = sum(coded.map((part) => codedPartPoints(part, options.combinations ?? [])));
   return {
     ...plain,
     partCount: parts.length,
     totalQuestions: plain.totalQuestions + codedQuestions,
     printedQuestions: plain.printedQuestions + sum(coded.map((part) => Math.max(part.questionCountOnPaper, part.questionCount))),
     totalMinutes: options.sharedDuration ?? plain.totalMinutes + sum(coded.map((part) => part.durationMinutes ?? 0)),
+    totalPoints: Math.round((plain.totalPoints + codedPoints) * 1e9) / 1e9,
     allocated: plain.allocated + codedQuestions,
   };
 }

@@ -254,8 +254,8 @@ function StructureEditor({
   const shared = exam.timing === "SHARED";
   const issues = useMemo(() => validateDraft(draft, axes, { timing: exam.timing }), [draft, axes, exam.timing]);
   const totals = useMemo(
-    () => draftTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null }),
-    [draft, shared, exam.durationMinutes],
+    () => draftTotals(draft, { sharedDuration: shared ? exam.durationMinutes : null, combinations: structure.combinations ?? [] }),
+    [draft, shared, exam.durationMinutes, structure.combinations],
   );
   const issueText = useStructureIssueText(draft, names);
 
