@@ -5259,14 +5259,17 @@
       "competencyHeader": "Năng lực"
     },
     "scopeField": {
-      "legend": "Phạm vi kiến thức (MAPID)",
+      "legend": "Phạm vi kiến thức",
+      "all": "Toàn môn",
+      "topic": "Theo chủ đề",
+      "strand": "Theo mạch kiến thức",
+      "topicEmpty": "Chưa chọn chủ đề nào.",
+      "topicHint": "Câu khớp khi có ít nhất một mã đã chọn. Nút đã chọn cũng khớp câu gắn nút con của nó.",
       "inheritsSection": "Theo phạm vi của môn",
       "inheritsCount": "Phạm vi của môn có {count, number} kiến thức",
       "none": "Không giới hạn MAPID",
-      "setOwn": "Đặt phạm vi riêng",
       "pick": "Chọn kiến thức",
       "remove": "Bỏ kiến thức {code} {name}",
-      "useSection": "Dùng phạm vi của môn",
       "pickerDescription": "Phạm vi của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó."
     },
     "subjectChoice": {

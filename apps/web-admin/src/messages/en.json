@@ -5263,10 +5263,8 @@
       "inheritsSection": "By the subject's scope",
       "inheritsCount": "The subject's scope has {count, plural, one {# knowledge item} other {# knowledge items}}",
       "none": "No MAPID limit",
-      "setOwn": "Set own scope",
       "pick": "Choose knowledge",
       "remove": "Remove knowledge {code} {name}",
-      "useSection": "Use the subject's scope",
       "pickerDescription": "Scope of {name}: chapters, lessons or knowledge items can be chosen. A chosen node also matches questions tagged with its child nodes."
     },
     "subjectChoice": {

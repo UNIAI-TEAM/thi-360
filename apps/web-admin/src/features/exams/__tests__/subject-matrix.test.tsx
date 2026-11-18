@@ -158,21 +158,23 @@ describe("màn môn (Toán HSA)", () => {
   it("nhóm của môn không có MAPID riêng hiện 'Theo phạm vi của môn'; hủy hộp chọn giữ nguyên kế thừa, không có thay đổi chưa lưu (R1-3)", async () => {
     const user = userEvent.setup();
     openStructure("ex-hsa-f-001", "?block=blk-22");
-    const scope = (await screen.findByText("Phạm vi kiến thức (MAPID)")).closest("fieldset")!;
+    const scope = (await screen.findByText("Phạm vi kiến thức")).closest("fieldset")!;
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
-    await user.click(within(scope).getByRole("button", { name: "Đặt phạm vi riêng" }));
+    await user.click(within(scope).getByRole("radio", { name: "Theo chủ đề" }));
+    await user.click(within(scope).getByRole("button", { name: "Chọn kiến thức" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
-    expect(within(scope).queryByRole("button", { name: "Dùng phạm vi của môn" })).not.toBeInTheDocument();
+    expect(within(scope).queryByRole("button", { name: "Chọn kiến thức" })).not.toBeInTheDocument();
     expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
   }, 20_000);
 
   it("nhóm V-ACT: bỏ chọn rồi chọn lại năng lực vẫn 'Theo phạm vi của môn', không thành phạm vi riêng 0 kiến thức (R1-4)", async () => {
     const user = userEvent.setup();
     openStructure("ex-vact-f-001", "?block=blk-v1-1");
-    const scope = (await screen.findByText("Phạm vi kiến thức (MAPID)")).closest("fieldset")!;
+    const scope = (await screen.findByText("Phạm vi kiến thức")).closest("fieldset")!;
     const competency = await screen.findByRole("checkbox", { name: "Sử dụng ngôn ngữ · Tiếng Việt" });
     expect(competency).toBeChecked();
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
