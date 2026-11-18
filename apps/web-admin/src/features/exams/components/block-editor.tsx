@@ -289,7 +289,7 @@ export function BlockEditor({
             {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
           </h2>
           <p className="text-caption text-text-muted">{locationText}</p>
-          {block.templateGroupCode && <p className="text-caption text-text-muted">{t("fromTemplate", { code: block.templateGroupCode })}</p>}
+          {block.templateGroupCode && <p className="text-caption text-text-muted">{t("fromTemplate")}</p>}
           <Button type="button" variant="link" size="sm" className="w-fit px-0" onClick={onOpenSection}>
             {t("backToSection")}
           </Button>

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import reference from "@/test/fixtures/content-reference.json";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import type { ContentReference } from "@/features/content/types";
 import { BlockEditor } from "../components/block-editor";
@@ -66,7 +67,7 @@ const block = (patch: Partial<QuestionBlock> = {}): QuestionBlock => ({
 
 function renderEditor(
   initial: QuestionBlock,
-  options: { audio?: AudioRequirement; rowsLocked?: boolean; partTotal?: number | null; commandCount?: number | null } = {},
+  options: { audio?: AudioRequirement; rowsLocked?: boolean; partTotal?: number | null; commandCount?: number | null; english?: boolean } = {},
 ) {
   const onRateInvalid = vi.fn();
   const latest = { block: initial };
@@ -100,7 +101,7 @@ function renderEditor(
       />
     );
   }
-  renderWithProviders(<Harness />);
+  renderWithProviders(<Harness />, options.english ? { locale: "en", messages: en } : undefined);
   return { latest, onRateInvalid };
 }
 
@@ -271,5 +272,25 @@ describe("chùm trộn dạng (R-132)", () => {
     expect(commands()).toBe("2");
     await user.type(screen.getByRole("textbox", { name: "Số vế trái" }), "4");
     expect(commands()).toBe("8");
+  });
+});
+
+describe("nhóm do mẫu khởi tạo (F4)", () => {
+  it("tiếng Việt: tên nhóm nằm ở tiêu đề, dòng nguồn gốc không kèm mã nhóm của mẫu", () => {
+    renderEditor(block({ templateGroupCode: "HSCA_TOAN_MULTI", name: "Phần I · Nhiều đáp án" }));
+    expect(screen.getByText("Nhóm do mẫu khởi tạo.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Phần I · Nhiều đáp án");
+    expect(document.body.textContent).not.toContain("HSCA_TOAN_MULTI");
+  });
+
+  it("tiếng Anh cũng không hiện mã nhóm", () => {
+    renderEditor(block({ templateGroupCode: "HSCA_ANH_LISTEN_SET_4" }), { english: true });
+    expect(screen.getByText("Group created from the template.")).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("HSCA_ANH_LISTEN_SET_4");
+  });
+
+  it("nhóm thêm tay không có dòng này", () => {
+    renderEditor(block({ templateGroupCode: null }));
+    expect(screen.queryByText(/Nhóm do mẫu khởi tạo/)).toBeNull();
   });
 });

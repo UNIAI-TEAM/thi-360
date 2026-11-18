@@ -4076,7 +4076,7 @@
         "untitled": "Untitled",
         "name": "Group name",
         "backToSection": "Back to the subject",
-        "fromTemplate": "Group created from the template ({code}).",
+        "fromTemplate": "Group created from the template.",
         "questionType": "Question type",
         "typeLocked": "Filled in by the template; it cannot be changed.",
         "typeOpen": "By the subject's answer-type targets",
