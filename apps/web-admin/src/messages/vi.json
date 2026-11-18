@@ -4742,11 +4742,13 @@
       "backToList": "Danh sách bài thi",
       "formAriaLabel": "Tạo bài thi",
       "cancel": "Hủy",
-      "submit": "Tạo bài thi và soạn khối câu hỏi",
+      "submit": "Lưu và tiếp tục",
       "success": "Đã tạo bài thi {code}.",
-      "loadErrorTitle": "Không tải được mẫu cấu trúc",
-      "loadErrorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "loadErrorTitle": "Không tải được dữ liệu kỳ thi",
+      "loadErrorDescription": "Danh mục kỳ thi và môn chưa tải được. Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại",
+      "forbiddenTitle": "Thiếu quyền tạo bài",
+      "forbiddenDescription": "Bạn cần quyền {permission} để tạo bài thi. Hãy liên hệ quản trị viên hệ thống.",
       "sections": {
         "info": "Thông tin chung",
         "structure": "Cấu trúc khởi tạo",
@@ -4786,8 +4788,6 @@
       "instructionsLabel": "Hướng dẫn làm bài",
       "instructionsPlaceholder": "Ví dụ: cách chọn tổ hợp, quy định về thời gian làm bài",
       "instructionsHint": "Học viên đọc trước khi bắt đầu. Có thể để trống khi lưu nháp; chưa chèn được ảnh.",
-      "templateFull": "{kind} · Toàn bài",
-      "templatePart": "{kind} · Theo phần {scope}",
       "cover": {
         "label": "Ảnh giới thiệu",
         "hint": "Tỉ lệ 16:9 · PNG, JPG hoặc WebP, tối đa 5 MB · hiện ở danh sách và trang giới thiệu. Ảnh chỉ để xem trước, chưa được lưu cùng bài thi.",
@@ -4880,7 +4880,11 @@
         "pointsValue": "{count, number} điểm",
         "maxScoreUnset": "Đặt lúc thiết lập",
         "partPoints": "Các phần: {count, number} điểm",
-        "pathsBranches": "{count, number} nhánh"
+        "pathsBranches": "{count, number} nhánh",
+        "kind": "Kỳ thi",
+        "scope": "Phạm vi",
+        "template": "Mẫu mặc định",
+        "noTemplate": "Không có"
       },
       "fields": {
         "name": "Tên bài thi",
@@ -4900,7 +4904,10 @@
         "maxScore": "Thang điểm",
         "partPoints": "Phần {order} · điểm",
         "partSections": "Phần {order} · số câu từng môn",
-        "branch": "Nhánh {name}"
+        "branch": "Nhánh {name}",
+        "partCode": "Phần thi",
+        "kind": "Kỳ thi",
+        "scope": "Phạm vi bài thi"
       },
       "replace": {
         "title": "Nạp lại mẫu {name}?",
@@ -4913,10 +4920,17 @@
       },
       "errors": {
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
+        "codes": {
+          "EXAM_INSTRUCTIONS_UNSAFE": "Hướng dẫn làm bài có nội dung không được phép. Sửa lại rồi thử lại.",
+          "EXAM_KIND_UNKNOWN": "Kỳ thi không hợp lệ. Chọn lại kỳ thi.",
+          "EXAM_MAX_SCORE_INVALID": "Thang điểm phải lớn hơn 0.",
+          "EXAM_PART_OR_SUBJECT_REQUIRED": "Chọn phần hoặc môn của bài thi.",
+          "EXAM_SCOPE_NOT_ALLOWED": "Kỳ thi này không cho phạm vi đã chọn. Chọn phạm vi khác.",
+          "EXAM_STRUCTURE_INVALID": "Cấu trúc tổng quan chưa hợp lệ. Kiểm tra số câu, thời lượng và điểm trên bảng rồi thử lại.",
+          "EXAM_TEMPLATE_MISMATCH": "Chưa có mẫu mặc định khớp với lựa chọn này. Chọn môn hoặc phần khác."
+        },
         "generic": "Không tạo được bài thi. Thử lại sau.",
-        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại.",
-        "structureNotSaved": "Đã tạo bài thi {code} với cấu trúc của mẫu, nhưng chưa lưu được cấu trúc bạn đã sửa. Sửa lại cấu trúc ở trang này rồi bấm “Tạo bài thi và soạn khối câu hỏi” để lưu lại (chỉ cấu trúc được lưu lại; thông tin chung sửa ở tab Thông tin chung của bài).",
-        "openCreated": "Mở bài {code} để sửa ở tab Cấu trúc"
+        "structure": "Cấu trúc khởi tạo chưa hợp lệ. Kiểm tra số câu, thời lượng, điểm, tổ hợp và nhánh rồi thử lại."
       },
       "validation": {
         "nameRequired": "Nhập tên bài thi.",
@@ -4971,8 +4985,6 @@
         "PER_PART": "thời lượng theo từng phần",
         "SHARED": "thời lượng chung cho cả bài"
       },
-      "templateSubject": "{kind} {subject} {year}",
-      "templateBlank": "{kind} {subject} (chưa có mẫu)",
       "noSubject": "chưa chọn môn",
       "subjectField": {
         "subject": "Môn của bài thi",
@@ -5011,6 +5023,82 @@
         "title": "Khối gợi ý từ mẫu ({count, number} câu, sửa ở Cấu trúc và ma trận)",
         "item": "{name}: {count, number} câu",
         "essay": "chấm tay"
+      },
+      "step1": {
+        "sections": {
+          "scope": "Phạm vi bài thi",
+          "scopeDescription": "Các lựa chọn lấy theo hồ sơ kỳ thi {kind}."
+        },
+        "noKindsTitle": "Chưa có kỳ thi nào",
+        "noKindsDescription": "Danh mục kỳ thi đang trống. Thêm kỳ thi ở mục Danh mục rồi quay lại.",
+        "subject": "Môn",
+        "subjectHint": "{count, number} môn có mẫu cấu trúc; môn chưa có mẫu thì bảng tổng quan để trống",
+        "subjectBeforePartHint": "Chọn môn trước, rồi chọn phần của môn đó",
+        "subjectPlaceholder": "Chọn môn",
+        "noTemplate": "{subject} chưa có mẫu cấu trúc. Bảng tổng quan để trống: nhập số câu, thời lượng và điểm.",
+        "part": "Phần thi",
+        "partHint": "Bài Theo phần chỉ gồm phần được chọn",
+        "noPart": "Môn này chưa có phần nào để chọn.",
+        "buildModeLegend": "Cách dựng bài",
+        "buildModeStandard": "Dùng cấu trúc môn {kind}",
+        "buildModeStandardHint": "Nạp cấu trúc đầy đủ của môn theo mẫu mặc định.",
+        "buildModeReview": "Tự thiết lập bài ôn",
+        "buildModeReviewHint": "Một phần, một môn: nhập số câu, thời lượng và thang điểm.",
+        "labelFull": "{kind} · Toàn bài",
+        "labelPart": "{kind} · Phần {scope}",
+        "labelSubject": "{kind} · Môn {subject}",
+        "labelReview": "Bài ôn {kind} · {subject}",
+        "noSubject": "chưa chọn môn",
+        "loaded": "Đã nạp bảng tổng quan: {name}.",
+        "replace": {
+          "title": "Đổi sang “{name}”?",
+          "description": "Bảng tổng quan nạp lại theo mẫu mặc định của lựa chọn mới. Số câu, thời lượng, điểm bạn đã sửa trong bảng sẽ mất.",
+          "confirm": "Đổi và nạp lại",
+          "cancel": "Giữ lựa chọn cũ"
+        }
+      },
+      "steps": {
+        "ariaLabel": "Các bước tạo bài thi",
+        "step1": "Thông tin chung",
+        "step2": "Cấu trúc và ma trận"
+      },
+      "overview": {
+        "title": "Cấu trúc tổng quan",
+        "description": "Số lấy từ mẫu mặc định “{template}”, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
+        "descriptionNoTemplate": "Chưa có mẫu mặc định: nhập số câu, thời lượng và điểm của các phần ngay trên dòng.",
+        "versionAtStep2": "Phiên bản cấu trúc chọn ở bước 2",
+        "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
+        "regionLabel": "Bảng cấu trúc tổng quan của bài thi",
+        "loading": "Đang tải bảng tổng quan",
+        "loadError": {
+          "title": "Không tải được bảng tổng quan.",
+          "description": "Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm."
+        },
+        "col": {
+          "part": "Phần hoặc môn",
+          "count": "Số câu",
+          "duration": "Thời lượng (phút)",
+          "points": "Điểm"
+        },
+        "cell": {
+          "questionCount": "Số câu của {name}",
+          "durationMinutes": "Thời lượng của {name}",
+          "maxPoints": "Điểm của {name}"
+        },
+        "choiceNote": "(học viên chọn một lựa chọn)",
+        "omittedLabel": "tạm bỏ qua",
+        "notCounted": "không tính",
+        "sumOfSubjects": "tổng các môn",
+        "total": "Tổng của bài",
+        "sharedDuration": "Thời lượng chung",
+        "minutes": "phút",
+        "maxScore": "Điểm tối đa",
+        "points": "điểm",
+        "errors": {
+          "countInvalid": "Số câu phải là số nguyên dương.",
+          "durationInvalid": "Thời lượng phải là số phút nguyên dương.",
+          "pointsInvalid": "Điểm phải lớn hơn 0."
+        }
       }
     },
     "matrix": {

@@ -27,6 +27,7 @@ import vn.unicom.thi360.exam.api.CreateExamRequest;
 import vn.unicom.thi360.exam.api.DuplicateExamRequest;
 import vn.unicom.thi360.exam.api.ExamCheckSummary;
 import vn.unicom.thi360.exam.api.ExamDetailResponse;
+import vn.unicom.thi360.exam.api.ExamOverviewRequest;
 import vn.unicom.thi360.exam.api.ExamErrorCodes;
 import vn.unicom.thi360.exam.api.ExamStructureResponse;
 import vn.unicom.thi360.exam.api.ExamSummaryResponse;
@@ -453,25 +454,54 @@ public class ExamService {
         ScopeChoice scopeChoice = resolveScope(kindItem, profile, request.scope(),
                 request.partCode(), request.subjectCode());
 
-        ExamTemplate template = pickTemplate(null, kindItem.code(),
-                scopeChoice.scope(), scopeChoice.partCode(), scopeChoice.subjectCode(), null);
+        String buildMode = request.buildMode() == null ? "STANDARD" : request.buildMode();
+        if (!Set.of("STANDARD", "REVIEW").contains(buildMode)
+                || ("REVIEW".equals(buildMode) && !"SUBJECT".equals(scopeChoice.scope()))) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
+        boolean subjectPart = "PART".equals(scopeChoice.scope())
+                && "SUBJECT".equals(profile.getTemplateBy());
+        ExamTemplate template = subjectPart
+                ? templateService.findDefault(kindItem.code(), "SUBJECT", null, scopeChoice.subjectCode(), buildMode)
+                : templateService.findDefault(kindItem.code(), scopeChoice.scope(),
+                        scopeChoice.partCode(), scopeChoice.subjectCode(), buildMode);
 
         ExamStructureDocument doc;
         String templateCode = null;
         if (template != null) {
             doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
+            if ("REVIEW".equals(buildMode)) {
+                doc = reviewSubject(doc, scopeChoice.subjectCode());
+            }
+            if (subjectPart) {
+                doc = selectSubjectPart(doc, scopeChoice.partCode());
+            }
             ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
             templateCode = template.getCode();
         } else {
-            doc = new ExamStructureDocument(List.of());
+            doc = emptyOverviewStructure(request.overview(), scopeChoice.subjectCode());
+            if (subjectPart) {
+                throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                        messages.get(ExamErrorCodes.PART_NOT_FOUND));
+            }
+        }
+        if (template != null && request.overview() != null) {
+            doc = ExamOverview.apply(doc, request.overview());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        }
+        if (template == null) {
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+            validateStructureReferences(doc);
         }
 
         String timing = template != null && template.getTiming() != null
                 ? template.getTiming() : profile != null ? profile.getTiming() : "PER_PART";
         Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                : subjectPart ? doc.parts().getFirst().durationMinutes()
                 : template != null ? template.getDurationMinutes() : null;
         requireSharedDuration(timing, duration);
         BigDecimal maxScore = request.maxScore() != null ? request.maxScore()
+                : subjectPart ? doc.parts().getFirst().maxPoints()
                 : template != null && template.getMaxScore() != null ? template.getMaxScore()
                 : profile != null ? profile.getMaxScore() : null;
         if (maxScore != null && maxScore.signum() <= 0) {
@@ -486,7 +516,9 @@ public class ExamService {
         Exam exam = new Exam(Ids.newId(), code, request.name().trim(), kindItem.id(),
                 scopeChoice.scope(), timing, duration, maxScore,
                 profile != null ? profile.getPracticeScoring() : "RAW", now, actor);
-        exam.applyScoringProfile(profile.getReferenceMax(), profile.getPracticeScoring());
+        exam.setBuildMode(buildMode);
+        exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+                subjectPart ? "RAW" : profile.getPracticeScoring());
         exam.updateInfo(code, request.name().trim(),
                 blankToNull(request.description()), instructionsPolicy.check(request.instructions()),
                 duration, maxScore, actor, now);
@@ -516,12 +548,56 @@ public class ExamService {
         return toDetail(examRepository.findById(exam.getId()).orElse(exam), doc);
     }
 
+    private ExamStructureDocument emptyOverviewStructure(List<ExamOverviewRequest.Row> rows, String subjectCode) {
+        if (rows == null) return new ExamStructureDocument(List.of());
+        List<ExamPart> parts = new ArrayList<>();
+        for (ExamOverviewRequest.Row row : rows) {
+            String subject = row.subjectCode() != null ? row.subjectCode() : subjectCode;
+            List<ExamSection> sections = subject == null ? List.of()
+                    : List.of(new ExamSection(row.sectionId(), subject, row.questionCount(),
+                            null, null, null, null, List.of()));
+            parts.add(new ExamPart(row.partId(), null, row.partCode(), row.durationMinutes(),
+                    row.questionCount(), null, null, null, row.maxPoints(), sections, List.of()));
+        }
+        return ExamStructureOps.assignMissingIds(new ExamStructureDocument(parts));
+    }
+
+    private ExamStructureDocument selectSubjectPart(ExamStructureDocument doc, String partCode) {
+        List<ExamPart> parts = doc.parts().stream()
+                .filter(p -> p.order() != null && ("P" + p.order()).equals(partCode))
+                .toList();
+        if (parts.size() != 1) {
+            throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                    messages.get(ExamErrorCodes.PART_NOT_FOUND));
+        }
+        return new ExamStructureDocument(parts);
+    }
+
+    private ExamStructureDocument reviewSubject(ExamStructureDocument doc, String subjectCode) {
+        return new ExamStructureDocument(doc.parts().stream().map(part -> new ExamPart(
+                part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
+                part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
+                part.maxPoints(), part.sections().stream().map(section -> new ExamSection(
+                        section.id(), subjectCode, section.questionCount(), section.knowledgeScope(),
+                        section.answerQuotas(), section.matrix(), section.choiceGroup(), section.blocks(),
+                        section.topicQuotas())).toList(), part.options(), part.subjectPool(),
+                part.codeSource())).toList(), doc.examQuotas());
+    }
+
     /** PATCH /exams/{id} — sửa thông tin; đổi phạm vi → nạp lại mẫu theo quy tắc spec 5.2. */
     @Transactional
     public ExamDetailResponse updateExamInfo(UUID examId, UpdateExamInfoRequest request) {
         Exam exam = examRepository.findByIdForUpdate(examId)
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
+        if (request.practiceScoring() != null && !Set.of("RAW", "LINEAR").contains(request.practiceScoring())) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
+        if ("LINEAR".equals(request.practiceScoring()) && !"LINEAR".equals(exam.getPracticeScoring())
+                && !Boolean.TRUE.equals(request.confirmScoring())) {
+            throw new BusinessRuleException(ExamErrorCodes.SCORING_CONFIRM_REQUIRED,
+                    messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
+        }
         Map<String, Object> before = examInfoSnapshot(exam);
         Instant now = Instant.now();
         UUID actor = actorId();
@@ -562,21 +638,34 @@ public class ExamService {
                 }
                 ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
                 ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
-                ExamTemplate template = pickTemplate(null, kindItem.code(), choice.scope(),
-                        choice.partCode(), choice.subjectCode(), structureYear);
+                String mode = "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD";
+                boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
+                ExamTemplate template = subjectPart
+                        ? templateService.findDefault(kindItem.code(), "SUBJECT", null, choice.subjectCode(), mode)
+                        : templateService.findDefault(kindItem.code(), choice.scope(), choice.partCode(),
+                                choice.subjectCode(), mode);
+                if (subjectPart && template == null) {
+                    throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                            messages.get(ExamErrorCodes.PART_NOT_FOUND));
+                }
                 ExamStructureDocument doc = template != null
                         ? ExamStructureOps.assignMissingIds(codec().read(template.getStructure()))
                         : new ExamStructureDocument(List.of());
+                if (template != null && "REVIEW".equals(mode)) doc = reviewSubject(doc, choice.subjectCode());
+                if (subjectPart) doc = selectSubjectPart(doc, choice.partCode());
                 ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
                 Integer duration = request.durationMinutes() != null ? request.durationMinutes()
+                        : subjectPart ? doc.parts().getFirst().durationMinutes()
                         : template != null && template.getDurationMinutes() != null
                                 ? template.getDurationMinutes() : null;
-                BigDecimal maxScore = template != null && template.getMaxScore() != null
-                        ? template.getMaxScore() : profile.getMaxScore();
+                BigDecimal maxScore = subjectPart ? doc.parts().getFirst().maxPoints()
+                        : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
-                exam.applyScoringProfile(profile.getReferenceMax(), profile.getPracticeScoring());
+                exam.applyScoringProfile(subjectPart ? null : profile.getReferenceMax(),
+                        subjectPart ? "RAW" : profile.getPracticeScoring());
+                exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
                         template != null ? template.getStructureYear() : structureYear,
@@ -612,6 +701,14 @@ public class ExamService {
         if (request.yearsConfirmed() != null && !scopeChanged) {
             exam.setYearsConfirmed(request.yearsConfirmed());
         }
+        if (request.practiceScoring() != null || request.referenceMax() != null) {
+            String scoring = request.practiceScoring() == null
+                    ? exam.getPracticeScoring() : request.practiceScoring();
+            BigDecimal referenceMax = request.referenceMax() != null ? request.referenceMax()
+                    : exam.getReferenceMax() != null ? exam.getReferenceMax()
+                    : "LINEAR".equals(scoring) ? BigDecimal.TEN : null;
+            exam.applyScoringProfile(referenceMax, scoring);
+        }
         exam.markStructureChanged(actor, now);
         try {
             examRepository.flush();
@@ -627,6 +724,22 @@ public class ExamService {
         return getExamDetail(examId);
     }
 
+    /** Update overview numbers without replacing configured blocks or quotas. */
+    @Transactional
+    public ExamDetailResponse updateOverview(UUID examId, ExamOverviewRequest request) {
+        Exam exam = examRepository.findByIdForUpdate(examId)
+                .orElseThrow(() -> examNotFound(examId));
+        requireRevision(request.expectedRevision(), exam.getRevision());
+        ExamStructure stored = structureRepository.findById(examId).orElse(null);
+        ExamStructureDocument doc = ExamOverview.apply(workingDocument(examId), request.overview());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now());
+        auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.OVERVIEW_UPDATE")
+                .target("EXAM", exam.getId().toString(), exam.getCode())
+                .build());
+        return toDetail(exam, doc);
+    }
+
     /** POST /exams/{id}/template — nạp lại cấu trúc từ nguyên mẫu; cần confirmReplace khi đã sửa. */
     @Transactional
     public ExamStructureResponse loadTemplate(UUID examId, LoadExamTemplateRequest request) {
@@ -634,8 +747,7 @@ public class ExamService {
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
         ExamStructure structure = structureRepository.findById(examId).orElse(null);
-        if (structure != null && structure.isEdited()
-                && !Boolean.TRUE.equals(request.confirmReplace())) {
+        if (!Boolean.TRUE.equals(request.confirmReplace())) {
             throw new ConflictException(ExamErrorCodes.REPLACE_CONFIRM,
                     messages.get(ExamErrorCodes.REPLACE_CONFIRM));
         }
@@ -644,13 +756,57 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
                     messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
         }
+        if ("REVIEW".equals(template.getBuildMode()) && !"SUBJECT".equals(exam.getScope())) {
+            throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
+                    messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
+        }
         assertTemplateMatches(exam, template);
+        if (request.overviewPolicy() != null
+                && !Set.of("USE_TEMPLATE", "KEEP_EDITED").contains(request.overviewPolicy())) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
         Instant now = Instant.now();
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
+        boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
+        if (subjectPart) {
+            doc = selectSubjectPart(doc, exam.getPartCode());
+        }
+        if ("REVIEW".equals(template.getBuildMode())) {
+            doc = reviewSubject(doc, subjectCodeOf(exam.getSubjectItemId()));
+        }
+        ExamTemplate previous = templateService.findProvenance(exam.getTemplateCode());
+        if (exam.getTemplateCode() != null && previous == null) {
+            throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
+                    messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
+        }
+        if (previous != null && structure != null) {
+            ExamStructureDocument baseline = codec().read(previous.getStructure());
+            if ("REVIEW".equals(previous.getBuildMode())) {
+                baseline = reviewSubject(baseline, subjectCodeOf(exam.getSubjectItemId()));
+            }
+            if (subjectPart) {
+                baseline = selectSubjectPart(baseline, exam.getPartCode());
+            }
+            ExamStructureDocument current = readStoredStructure(structure);
+            List<ExamOverview.Change> changes = ExamOverview.changes(current, baseline);
+            if (!changes.isEmpty() && request.overviewPolicy() == null) {
+                throw new ConflictException(ExamErrorCodes.OVERVIEW_CONFIRM,
+                        messages.get(ExamErrorCodes.OVERVIEW_CONFIRM), List.of(
+                                new FieldError("overview.current", "CURRENT",
+                                        objectMapper.valueToTree(ExamOverview.rows(readStoredStructure(structure))).toString()),
+                                new FieldError("overview.template", "TEMPLATE",
+                                        objectMapper.valueToTree(ExamOverview.rows(doc)).toString())));
+            }
+            if ("KEEP_EDITED".equals(request.overviewPolicy())) {
+                doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(doc, changes));
+            }
+        }
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
-                template.getTiming(), template.getDurationMinutes(), template.getMaxScore(), actor, now);
+                template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
+                subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
+        exam.setBuildMode(template.getBuildMode());
         writeStructure(exam, doc, false, actor, now);
 
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.TEMPLATE_LOAD")
@@ -990,7 +1146,8 @@ public class ExamService {
                         messages.get(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED));
             }
             part = partCode.trim();
-            if (templateService.findBestMatch(kindItem.code(), "PART", part, null, null) == null) {
+            if (!"SUBJECT".equals(profile.getTemplateBy())
+                    && templateService.findBestMatch(kindItem.code(), "PART", part, null, null) == null) {
                 throw new BusinessRuleException(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED,
                         messages.get(ExamErrorCodes.PART_OR_SUBJECT_REQUIRED));
             }
@@ -1014,27 +1171,15 @@ public class ExamService {
         return new ScopeChoice(scope, part, subject, subjectItemId);
     }
 
-    private ExamTemplate pickTemplate(String templateCode, String kindCode, String scope,
-            String partCode, String subjectCode, Integer structureYear) {
-        if (templateCode != null && !templateCode.isBlank()) {
-            ExamTemplate t = templateService.findActive(templateCode);
-            if (t == null || !kindCode.equals(t.getKindCode()) || !scope.equals(t.getScope())
-                    || ("PART".equals(scope) && !Objects.equals(partCode, t.getPartCode()))
-                    || (t.getSubjectCode() != null && !Objects.equals(subjectCode, t.getSubjectCode()))) {
-                throw new BusinessRuleException(ExamErrorCodes.TEMPLATE_MISMATCH,
-                        messages.get(ExamErrorCodes.TEMPLATE_MISMATCH));
-            }
-            return t;
-        }
-        return templateService.findBestMatch(kindCode, scope, partCode, subjectCode, structureYear);
-    }
 
     private void assertTemplateMatches(Exam exam, ExamTemplate template) {
         String kindCode = catalogLookup.findItem(exam.getKindItemId())
                 .map(CatalogItemView::code).orElse(null);
         String subjectCode = subjectCodeOf(exam.getSubjectItemId());
         if (!Objects.equals(kindCode, template.getKindCode())
-                || !Objects.equals(exam.getScope(), template.getScope())
+                || (!Objects.equals(exam.getScope(), template.getScope())
+                        && !("PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope())
+                        && ("SP2E".equals(kindCode) || "SPT".equals(kindCode))))
                 || (template.getPartCode() != null
                         && !Objects.equals(exam.getPartCode(), template.getPartCode()))
                 || (template.getSubjectCode() != null
@@ -1085,6 +1230,7 @@ public class ExamService {
                 exam.getReferenceMax(),
                 exam.getPracticeScoring(),
                 exam.getTemplateCode(),
+                exam.getBuildMode(),
                 exam.getStructureYear(),
                 exam.getMatrixYear(),
                 exam.isYearsConfirmed(),

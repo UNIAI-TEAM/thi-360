@@ -159,7 +159,7 @@ describe("tạo bài thi", () => {
 
   it("chặn mã trùng và phạm vi không hợp lệ", async () => {
     await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-001" }), 409, "EXAM_CODE_TAKEN");
-    await rejectsWith(createExam({ ...NEW_EXAM, scope: "SUBJECT" }), 422, "EXAM_SCOPE_NOT_ALLOWED");
+    await rejectsWith(createExam({ ...NEW_EXAM, kind: "VACT", scope: "SUBJECT" }), 422, "EXAM_SCOPE_NOT_ALLOWED");
     await rejectsWith(createExam({ ...NEW_EXAM, scope: "PART", partCode: null }), 422, "EXAM_PART_OR_SUBJECT_REQUIRED");
   });
 });
