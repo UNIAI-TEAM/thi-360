@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { CatalogOption, CombinationOption, ExamKindOption } from "@/features/content/types";
 import { questionHtmlText } from "@/components/rich-text/sanitize";
 import { splitEvenly, sum } from "./matrix";
+import { isAllOmittedTemplatePart } from "./create-exam-overview";
 import type {
   CreateExamPartInput,
   CreateExamRequest,
@@ -111,13 +112,14 @@ export function latestTemplate(templates: readonly ExamTemplate[], selection: Sc
   return matches.find((template) => template.isDefault) ?? matches[0];
 }
 
-/** Kỳ thi mà bài Theo phần không có thời lượng mặc định (H35): quản trị viên nhập khi tạo. */
-const DURATION_ENTERED_KIND = "THPTQG";
-
 /**
- * Mẫu nạp cho bảng tổng quan của bước 1. Bài Theo phần của kỳ thi chọn môn trước (SP2E, SPT) không có mẫu Theo phần:
- * lấy mẫu Theo môn mặc định của môn, thu về đúng phần đã chọn (`P<thứ tự>`) và thang điểm của phần. Các trường hợp khác
- * là `latestTemplate`.
+ * Mẫu nạp cho bảng tổng quan của bước 1. Bài Theo phần của kỳ thi chọn môn trước (SP2E, SPT, THPTQG, H-SCA, V-SAT):
+ * môn có mẫu Theo phần riêng (V-SAT Tiếng Anh, H41) thì lấy mẫu đó; không thì lấy mẫu Theo môn mặc định của môn, thu về
+ * đúng phần đã chọn (`P<thứ tự>`) và thang điểm của phần. Các trường hợp khác là `latestTemplate`.
+ *
+ * Thời lượng theo mẫu và phạm vi, không theo mã kỳ thi (R-141): mẫu Theo môn dùng một đồng hồ chung (`SHARED`) thì phần
+ * cắt ra không thừa hưởng thời lượng của cả môn, chỉ lấy thời lượng riêng của phần (mẫu không ghi thì để trống, người tạo
+ * nhập); mẫu tính thời lượng theo phần thì giữ thời lượng của phần.
  */
 export function scopeTemplate(
   templates: readonly ExamTemplate[],
@@ -127,12 +129,20 @@ export function scopeTemplate(
   if (selection.scope !== "PART" || kindOptionFor(kinds, selection.kind)?.templateBy !== "SUBJECT") {
     return latestTemplate(templates, selection);
   }
+  const dedicated = latestTemplate(templates, selection);
+  if (dedicated) return dedicated;
   const base = latestTemplate(templates, { ...selection, scope: "SUBJECT", partCode: "", buildMode: "STANDARD" });
   if (!base) return undefined;
-  const parts = base.parts.filter((part, index) => subjectPartCode(part.order ?? index + 1) === selection.partCode);
+  // Phần cắt từ mẫu Theo môn không mang phân đoạn hiển thị (H40: chỉ bài Toàn bài/Theo môn giữ displaySegments).
+  const parts = base.parts
+    .filter((part, index) => subjectPartCode(part.order ?? index + 1) === selection.partCode)
+    .map((part) => {
+      const cut = { ...part };
+      delete cut.displaySegments;
+      return cut;
+    });
   const shape = { parts, maxScore: parts[0]?.maxPoints ?? parts[0]?.points ?? base.maxScore };
-  // H35: bài theo phần của THPTQG tự nhập thời lượng chung — thời lượng và `timing` không lấy từ mẫu môn.
-  if (selection.kind === DURATION_ENTERED_KIND) return { ...base, ...shape, timing: "SHARED", durationMinutes: null };
+  if (base.timing === "SHARED") return { ...base, ...shape, durationMinutes: parts[0]?.durationMinutes ?? null };
   return { ...base, ...shape };
 }
 
@@ -187,12 +197,91 @@ export interface SubjectPartOption {
   code: string;
   /** Tên phần theo mẫu (ví dụ "Phần I · Trắc nghiệm"). */
   name: string;
+  /** Số câu của phần. */
+  questionCount: number;
+  /**
+   * Điều kiện audio chung của phần: mọi môn trong phần cùng `REQUIRED` (Nghe) hoặc cùng `FORBIDDEN` (Đọc, H38). Phần
+   * không tách theo audio để trống.
+   */
+  audio?: "REQUIRED" | "FORBIDDEN";
 }
 
-/** Phần chọn được của môn (kỳ thi `templateBy = SUBJECT`): các phần của mẫu Theo môn mặc định (không tính bài ôn). */
+/** Điều kiện audio chung của một phần mẫu (xem `SubjectPartOption.audio`). */
+export function templatePartAudio(part: ExamTemplatePart | undefined): SubjectPartOption["audio"] {
+  const sections = part?.sections ?? [];
+  const first = sections[0]?.audioRequirement;
+  if ((first !== "REQUIRED" && first !== "FORBIDDEN") || !sections.every((section) => section.audioRequirement === first)) {
+    return undefined;
+  }
+  return first;
+}
+
+/** Mẫu Theo phần riêng của môn (V-SAT Tiếng Anh, H41): mỗi mã phần một mẫu mặc định, theo thứ tự mã phần. */
+function dedicatedPartTemplates(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): ExamTemplate[] {
+  const codes = new Set<string>();
+  for (const template of templates) {
+    if (template.kind === kind && template.scope === "PART" && template.subjectCode === subjectCode && template.partCode) {
+      codes.add(template.partCode);
+    }
+  }
+  return [...codes]
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .flatMap((partCode) => latestTemplate(templates, { kind, scope: "PART", partCode, subjectCode }) ?? []);
+}
+
+/**
+ * Phần chọn được của môn (kỳ thi `templateBy = SUBJECT`): mẫu Theo phần riêng của môn nếu có; không thì các phần của mẫu
+ * Theo môn mặc định (không tính bài ôn). Mẫu `omittedLocked` (phần Viết của H-SCA, V-SAT Ngữ văn, H43) không chào phần
+ * chỉ gồm nhóm đã lược: phần đó không tạo được bài riêng.
+ */
 export function subjectPartOptions(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): SubjectPartOption[] {
+  const dedicated = dedicatedPartTemplates(templates, kind, subjectCode);
+  if (dedicated.length > 0) {
+    return dedicated.map((template) => ({
+      code: template.partCode ?? "",
+      name: template.parts[0]?.name ?? template.name,
+      questionCount: template.parts[0]?.questionCount ?? 0,
+    }));
+  }
   const template = latestTemplate(templates, { kind, scope: "SUBJECT", partCode: "", subjectCode, buildMode: "STANDARD" });
-  return (template?.parts ?? []).map((part, index) => ({ code: subjectPartCode(part.order ?? index + 1), name: part.name }));
+  const hideOmitted = template?.omittedLocked === true;
+  return (template?.parts ?? []).flatMap((part, index) => {
+    if (hideOmitted && isAllOmittedTemplatePart(part)) return [];
+    const audio = templatePartAudio(part);
+    return [
+      {
+        code: subjectPartCode(part.order ?? index + 1),
+        name: part.name,
+        questionCount: part.questionCount,
+        ...(audio ? { audio } : {}),
+      },
+    ];
+  });
+}
+
+/**
+ * Các phần của môn tách theo audio (H-SCA Tiếng Anh: Nghe có audio, Đọc không có): phạm vi của môn hiện là Nghe, Đọc,
+ * Nghe và Đọc. Rỗng khi môn không tách theo audio (cần ít nhất một phần Nghe và một phần Đọc, mọi phần đều tách).
+ */
+export function subjectAudioParts(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): SubjectPartOption[] {
+  const options = subjectPartOptions(templates, kind, subjectCode);
+  const split =
+    options.length >= 2 &&
+    options.every((option) => option.audio) &&
+    options.some((option) => option.audio === "REQUIRED") &&
+    options.some((option) => option.audio === "FORBIDDEN");
+  return split ? options : [];
+}
+
+/** Môn có phần viết đã lược không bật lại được (`omittedLocked`, H43): các phần đó không chào ở Theo phần. */
+export function hasLockedOmittedPart(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): boolean {
+  const template = latestTemplate(templates, { kind, scope: "SUBJECT", partCode: "", subjectCode, buildMode: "STANDARD" });
+  return template?.omittedLocked === true && template.parts.some(isAllOmittedTemplatePart);
+}
+
+/** Môn có mẫu Theo phần riêng (V-SAT Tiếng Anh, H41): chỉ luyện riêng các phần có mẫu, phần còn lại không có bài riêng. */
+export function hasDedicatedParts(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): boolean {
+  return dedicatedPartTemplates(templates, kind, subjectCode).length > 0;
 }
 
 /**
@@ -437,6 +526,8 @@ export interface CreateSectionValues {
   knowledgeScope?: ExamTemplateSection["knowledgeScope"];
   answerQuotas?: ExamTemplateSection["answerQuotas"];
   matrix?: ExamTemplateSection["matrix"];
+  /** Điều kiện audio của môn trong mẫu (H38). Giữ nguyên khi gửi lên. */
+  audioRequirement?: ExamTemplateSection["audioRequirement"];
 }
 
 /** Phương án chọn môn của mẫu (HSA Khoa học) giữ nguyên từ mẫu; chưa có ô soạn ở trang Tạo bài thi (FE-3c). */
@@ -473,6 +564,8 @@ export interface CreatePartValues {
   branches: CreateBranchValues[];
   /** Khối gợi ý của mẫu cho phần cố định một môn. */
   blocks: ExamTemplateBlock[];
+  /** Phân đoạn hiển thị của mẫu (Tiếng Anh V-SAT, H40). Giữ nguyên khi gửi lên. */
+  displaySegments?: ExamTemplatePart["displaySegments"];
 }
 
 export interface CreateExamFormValues extends ExamInfoFormValues {
@@ -546,12 +639,14 @@ export function createExamSchema(
         knowledgeScope: z.custom<CreateSectionValues["knowledgeScope"]>().optional(),
         answerQuotas: z.custom<CreateSectionValues["answerQuotas"]>().optional(),
         matrix: z.custom<CreateSectionValues["matrix"]>().optional(),
+        audioRequirement: z.enum(["ANY", "REQUIRED", "FORBIDDEN"]).optional(),
       }),
     ),
     branches: z.array(
       z.object({ code: z.string(), name: z.string(), questionCount: z.number(), blocks: z.array(blockSchema) }),
     ),
     blocks: z.array(blockSchema),
+    displaySegments: z.custom<NonNullable<CreatePartValues["displaySegments"]>>().optional(),
   });
   return z
     .object({ ...infoShape(messages, takenCodes), pointsByPart: z.boolean(), parts: z.array(part) })
@@ -685,6 +780,7 @@ function partFromTemplate(part: ExamTemplatePart, combinations: readonly Combina
     durationMinutes: part.durationMinutes ?? 0,
     points: part.points ?? null,
     sections,
+    ...(part.displaySegments?.length ? { displaySegments: structuredClone(part.displaySegments) } : {}),
   });
   if (part.mode === "FIXED") {
     return { ...common, subjectCode: sections.length > 0 ? "" : (part.subjectCode ?? ""), blocks: cloneBlocks(part.blocks) };
@@ -901,6 +997,7 @@ export function partInputsFromValues(
             })),
           }
         : {}),
+      ...(part.displaySegments?.length ? { displaySegments: part.displaySegments } : {}),
     };
   });
 }

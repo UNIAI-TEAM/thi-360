@@ -38,7 +38,9 @@ import {
   scopeDefaults,
   type ScopeSelection,
   scopeTemplate,
+  subjectAudioParts,
   subjectPartOptions,
+  templatePartAudio,
   toCreateExamRequest,
 } from "../create-exam-schema";
 import {
@@ -295,10 +297,14 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   // H27: mẫu khóa số câu (V-ACT toàn bài) — ô số câu chỉ đọc, cột tỷ lệ hiện. Các cột tỷ lệ chỉ của V-ACT: mẫu
   // `fixedCounts` có "Tỷ lệ trong phần" + "Tỷ lệ toàn bài", bài riêng có tiểu mục có "Tỷ lệ trong bài" (R-118, R-123,
   // TaoBaiThiVact2B); kỳ thi khác không có cột tỷ lệ.
-  const lockedCounts = template?.fixedCounts === true;
+  // H42: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT` (không khóa bài theo phần và bài ôn).
+  const blockLocked = template?.fixedBlockCounts === true && selection.scope === "SUBJECT" && selection.buildMode !== "REVIEW";
+  const lockedCounts = template?.fixedCounts === true || blockLocked;
   const vact = selection.kind === "VACT";
   const showPartPercent = lockedCounts && vact && (template?.parts.length ?? 0) > 1;
   const showPercents = showPartPercent || (vact && selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
+  // H-SCA Tiếng Anh: môn tách phần theo audio (Nghe, Đọc); tên dòng phần theo điều kiện audio để đúng ngôn ngữ.
+  const audioSplit = selection.subjectCode ? subjectAudioParts(templates, selection.kind, selection.subjectCode).length > 0 : false;
   /**
    * Tên dòng V-ACT theo ngôn ngữ đang chọn, dựng từ mã năng lực và mã môn (không lấy tên tiếng Việt lưu trong mẫu): mục
    * cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn trong danh mục. Dòng phần một mục
@@ -308,6 +314,11 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     (row: OverviewRow): string | undefined => {
       if (row.kind === "section") {
         return partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode);
+      }
+      if (row.kind === "part" && audioSplit) {
+        // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
+        const audio = templatePartAudio(template?.parts[Number(row.key.slice(2))]);
+        if (audio) return tStep(audio === "REQUIRED" ? "skillListening" : "skillReading");
       }
       if (!vact || row.kind !== "part") return undefined;
       const sections = template?.parts[Number(row.key.slice(2))]?.sections ?? [];
@@ -329,17 +340,29 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       const [group] = groups;
       return groups.size === 1 && group ? partNames.partName(group) : undefined;
     },
-    [partNames, lookup, vact, template],
+    [partNames, lookup, vact, template, audioSplit, tStep],
   );
-  // H35: bài riêng của V-ACT, bài theo phần và bài ôn của THPTQG không có thời lượng mặc định (mẫu để trống) — lỗi
-  // đặt ở ô thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung.
+  // H35, R-141: bài riêng của V-ACT, bài theo phần và bài ôn không có thời lượng mặc định (mẫu để trống) — lỗi đặt ở ô
+  // thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung. Theo mẫu và phạm vi, không theo mã kỳ thi.
   const durationError = (() => {
     const generic = formState.errors.sharedDuration?.message;
     if (!generic || defaults.sharedDuration > 0) return generic;
     if (selection.kind === "VACT" && selection.scope !== "FULL") return tStep("durationRequiredCustom", { kind: kindLabel(selection.kind) });
-    if (selection.kind !== "THPTQG") return generic;
+    if (selection.scope === "PART") return tStep("durationRequiredPart");
     if (selection.scope === "SUBJECT" && selection.buildMode === "REVIEW") return tStep("durationRequiredReview");
-    return tStep(selection.scope === "PART" ? "durationRequiredPart" : "durationRequiredBase");
+    // F-1: bài cả môn từ mẫu để trống thời lượng (V-SAT Ngữ văn) và ô còn trống — câu của bản vẽ. Giá trị đã gõ mà sai
+    // (chữ, 0, số âm, số thập phân) giữ câu số dương chung.
+    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null && sharedText.trim() === "") return tStep("durationRequiredSubject");
+    return generic;
+  })();
+  // G2c "Trạng thái khác": gợi ý dưới ô thời lượng theo nguồn của giá trị — mẫu điền sẵn, bài theo phần tự nhập
+  // (D24: không lấy thời lượng cả môn), mẫu để trống (D25/F-1).
+  const durationHint = (() => {
+    if (values.timing !== "SHARED") return null;
+    if (defaults.sharedDuration > 0) return tStep("durationHintPrefilled");
+    if (selection.scope === "PART" && template) return tStep("durationHintPartCut");
+    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null) return tStep("durationHintEmpty");
+    return null;
   })();
   // Mã gợi ý theo kỳ thi, phạm vi, phần hoặc môn; người dùng đã sửa mã thì giữ mã của họ.
   const suggestion = useSuggestedExamCode(
@@ -676,6 +699,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 {tOverview("lockedCounts")}
               </p>
             )}
+            {blockLocked && <p className="text-body text-text-secondary">{tOverview("lockedBlockCountsNote")}</p>}
             {templatesStatus === "error" && (
               <div
                 role="alert"
@@ -733,6 +757,9 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                       }
                 }
               />
+            )}
+            {durationHint && templatesStatus === "ready" && (
+              <p className="text-caption text-text-muted">{durationHint}</p>
             )}
           </FormSection>
 

@@ -149,7 +149,7 @@ function omittedRow(
 }
 
 /** Phần của mẫu mà mọi nhóm đều tạm bỏ qua (quy tắc chung ở `isAllOmittedPart`). */
-function isAllOmitted(part: ExamTemplate["parts"][number]): boolean {
+export function isAllOmittedTemplatePart(part: ExamTemplate["parts"][number]): boolean {
   return isAllOmittedPart(
     (part.sections ?? []).map((section) => ({ blockCount: section.blocks?.length ?? 0, omittedCount: section.omittedBlocks?.length ?? 0 })),
   );
@@ -159,7 +159,8 @@ function isAllOmitted(part: ExamTemplate["parts"][number]): boolean {
  * Dòng tổng quan của mẫu đã chọn. `scope = PART` gắn `partCode` của bài vào dòng phần (khóa so khớp của mẫu theo
  * phần). Phần cố định nhiều môn thêm dòng môn ngay sau dòng phần; dòng phần khi đó chỉ là dòng nhóm (tổng môn), ô
  * số câu của phần không sửa — sửa ở dòng môn. Mẫu `fixedCounts` (H27, V-ACT toàn bài) hiện dòng cho mọi tiểu mục
- * và khóa ô số câu của phần lẫn mục.
+ * và khóa ô số câu của phần lẫn mục. Mẫu `fixedBlockCounts` (H42, H-SCA, V-SAT) khóa ô số câu của phần chỉ khi bài là
+ * phạm vi `SUBJECT`: bài `PART` và bài ôn cùng mẫu vẫn nhập được.
  */
 export function overviewRowsFromTemplate(
   template: ExamTemplate | undefined | null,
@@ -167,10 +168,11 @@ export function overviewRowsFromTemplate(
   partCode = "",
 ): OverviewRow[] {
   if (!template) return [];
-  const locked = template.fixedCounts === true;
+  const fixedCounts = template.fixedCounts === true;
+  const locked = fixedCounts || (template.fixedBlockCounts === true && scope === "SUBJECT");
   const rows: OverviewRow[] = [];
   template.parts.forEach((part, index) => {
-    if (isAllOmitted(part)) {
+    if (isAllOmittedTemplatePart(part)) {
       // Chỉ đọc như nhóm tạm bỏ qua: không kiểm tra, không vào tổng, không vào `overview`.
       const omittedCount = (part.sections ?? []).reduce((total, section) => total + (section.omittedBlocks ?? []).reduce((sum, block) => sum + (block.questionCount ?? 0), 0), 0);
       rows.push(omittedRow(index, 0, part.sections?.[0]?.subjectCode ?? "", { name: part.name, questionCount: omittedCount }, 0));
@@ -181,10 +183,10 @@ export function overviewRowsFromTemplate(
     row.lockedCount = locked;
     rows.push(row);
     const sections = part.mode === "FIXED" ? (part.sections ?? []) : [];
-    if (sections.length > 1 || (locked && sections.length > 0)) {
+    if (sections.length > 1 || (fixedCounts && sections.length > 0)) {
       row.group = true;
       sections.forEach((section, sectionIndex) => {
-        rows.push({ ...sectionRow(part, index, sectionIndex, locked), lockedCount: locked });
+        rows.push({ ...sectionRow(part, index, sectionIndex, fixedCounts), lockedCount: locked });
         (section.omittedBlocks ?? []).forEach((block, blockIndex) =>
           rows.push(omittedRow(index, sectionIndex, section.subjectCode, block, blockIndex)),
         );
