@@ -22,7 +22,7 @@ public final class ExamCheckApiModels {
                         String blockName, String optionId, String gradeCode, String difficultyCode,
                         String dimension, String competencyCode, String answerType, Integer subjectCount,
                         BigDecimal required, BigDecimal available, Long timeLimitSeconds, List<String> questionCodes,
-                        Location location, List<String> affectedCodes) { }
+                        BigDecimal excludedPoints, Location location, List<String> affectedCodes) { }
     @Schema(name = "ExamCheckGroup")
     public record Group(String group, String status, List<Issue> issues) { }
     @Schema(name = "ExamCheckChoice")

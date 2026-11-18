@@ -3590,6 +3590,7 @@ export interface components {
             competencyCode?: string;
             difficultyCode?: string;
             dimension?: string;
+            excludedPoints?: number;
             gradeCode?: string;
             group?: string;
             key?: string;

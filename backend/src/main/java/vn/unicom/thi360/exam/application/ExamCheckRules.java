@@ -475,7 +475,9 @@ public final class ExamCheckRules {
                 excluded = excluded.add(block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count)));
             }
             if (excluded.signum() > 0 && !differs(excluded, gap)) {
-                return issue("SCALE_INCLUDES_EXCLUDED_PART", "POINTS", part, null, null);
+                ObjectNode issue = issue("SCALE_INCLUDES_EXCLUDED_PART", "POINTS", part, null, null);
+                issue.put("excludedPoints", excluded);
+                return issue;
             }
         }
         return null;

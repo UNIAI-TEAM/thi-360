@@ -11,7 +11,7 @@ final class ExamCheckIssues {
     private static final List<String> FIELDS = List.of("partId", "partName", "sectionId", "subjectCode",
             "blockId", "blockName", "optionId", "gradeCode", "difficultyCode", "dimension",
             "competencyCode", "answerType", "subjectCount", "required", "available",
-            "timeLimitSeconds", "questionCodes");
+            "timeLimitSeconds", "questionCodes", "excludedPoints");
     private static final List<String> KEY_FIELDS = List.of("optionId", "gradeCode", "difficultyCode",
             "dimension", "competencyCode", "answerType", "subjectCount");
     private final ObjectMapper mapper;

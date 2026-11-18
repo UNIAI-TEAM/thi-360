@@ -204,6 +204,7 @@ class ExamCheckRowLockTests {
         assertThat(issue.path("partName").asText()).isEqualTo("Viết");
         assertThat(issue.path("required").decimalValue()).isEqualByComparingTo("150");
         assertThat(issue.path("available").decimalValue()).isEqualByComparingTo("120");
+        assertThat(issue.path("excludedPoints").decimalValue()).isEqualByComparingTo("30");
         assertThat(issueCodes(result)).doesNotContain("POINTS_TOTAL_MISMATCH", "PART_EMPTY", "PART_TOTAL_MISMATCH",
                 "PART_POINTS_MISMATCH");
     }
