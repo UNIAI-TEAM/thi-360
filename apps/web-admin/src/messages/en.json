@@ -4910,7 +4910,7 @@
       "setHeading": "Set {index, number} · {count, plural, one {# consecutive question} other {# consecutive questions}}",
       "simulatedPassage": "Passage of a simulated set (part of the bank not loaded into the sample data).",
       "questionNumber": "Question {number, number}",
-      "questionPoints": "Max {points} {value, plural, one {point} other {points}}",
+      "questionPoints": "Max {value, plural, one {{points} point} other {{points} points}}",
       "simulatedQuestion": "Question from the simulated source: this part of the bank is not loaded into the sample data and has no content.",
       "correct": "Correct answer",
       "trueLabel": "True",
