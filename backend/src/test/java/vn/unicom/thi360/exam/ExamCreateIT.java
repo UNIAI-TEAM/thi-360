@@ -529,18 +529,30 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void templateWithoutStoredIdsKeepsTheIdBasedReload() throws Exception {
+    void templateWithoutStoredIdsAndADifferentPartCountKeepsTheIdBasedReload() throws Exception {
         String id = createMathDraft();
-        editThirdPartCount(id, 5);
+        editPartCount(id, 0, 10);
+        // The draft keeps two of the template's three parts: its stored ids overlap nothing, because the
+        // template baseline below stores no ids at all, and its part count differs from the baseline's.
+        var document = mapper.readTree(jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_structure WHERE exam_id = CAST(? AS uuid)", String.class, id));
+        ((com.fasterxml.jackson.databind.node.ArrayNode) document.path("parts")).remove(2);
+        storeStructure(id, document.toString());
         var template = mapper.readTree(jdbc.queryForObject(
                 "SELECT structure::text FROM exam.exam_template WHERE code = 'THPTQG_MATH_2025'", String.class));
         removeIds(template);
+        org.assertj.core.api.Assertions.assertThat(document.path("parts").size()).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(template.path("parts").size()).isEqualTo(3);
         jdbc.update("UPDATE exam.exam_template SET structure = CAST(? AS jsonb) WHERE code = 'THPTQG_MATH_2025'",
                 template.toString());
         entityManager.flush();
         entityManager.clear();
+        // Reaching the missing-id guard keeps the id/order-based reload, so the edit survives; a wrongly
+        // applied topology replacement would restore 12/4/6 and report true.
         var reloaded = reloadMath(id, "KEEP_EDITED");
-        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(2).path("sections").get(0).path("questionCount").asInt()).isEqualTo(5);
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").size()).isEqualTo(3);
+        org.assertj.core.api.Assertions.assertThat(reloaded.path("parts").get(0).path("sections").get(0)
+                .path("questionCount").asInt()).isEqualTo(10);
         org.assertj.core.api.Assertions.assertThat(templateLoadFlag(id)).isEqualTo("false");
     }
 
@@ -711,10 +723,14 @@ class ExamCreateIT extends AbstractIntegrationTest {
     }
 
     private void editThirdPartCount(String id, int count) throws Exception {
+        editPartCount(id, 2, count);
+    }
+
+    private void editPartCount(String id, int index, int count) throws Exception {
         var structure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
                         .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
-        var third = structure.path("parts").get(2);
+        var third = structure.path("parts").get(index);
         mockMvc.perform(put("/api/v1/admin/exams/{id}/overview", id).with(asUser(Permissions.EXAM_MODIFY))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(java.util.Map.of(
