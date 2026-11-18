@@ -448,6 +448,8 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     maxScore: nullable(response.maxScore),
     buildMode: nullable(response.buildMode) as ExamTemplate["buildMode"],
     isDefault: nullable(response.isDefault),
+    label: nullable(response.label),
+    summary: nullable(response.summary),
     expertNote: nullable(response.expertNote),
     publishable: nullable(response.publishable),
     fixedCounts: nullable(response.fixedCounts),
