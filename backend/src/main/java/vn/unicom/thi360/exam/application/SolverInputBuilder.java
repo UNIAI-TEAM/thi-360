@@ -120,7 +120,9 @@ public class SolverInputBuilder {
                         dimension == FilterDimension.ITEM_SHAPE ? null : filter.itemShape(),
                         dimension == FilterDimension.ANSWER_FORMAT ? List.of() : filter.answerFormats(),
                         dimension == FilterDimension.CHILD_CONDITION ? List.of() : filter.childConditions(),
-                        filter.additionalTagGroups(), filter.additionalKnowledgeGroups(), filter.additionalCompetencyGroups());
+                        filter.additionalTagGroups(), filter.additionalKnowledgeGroups(),
+                        filter.additionalCompetencyGroups(), filter.everyChildInScope(),
+                        filter.additionalEveryChildInScope());
                 long without = eligibleUnits(group, source.findCandidates(relaxed, fetchLimit), required);
                 if (without >= required) counts.add(new FilterCount(dimension, required, without, available));
             }

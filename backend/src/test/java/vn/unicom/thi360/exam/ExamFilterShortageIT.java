@@ -215,6 +215,39 @@ class ExamFilterShortageIT extends AbstractIntegrationTest {
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
     }
 
+    @Test
+    void strictParentScopeIsKeptWhenOnlyTheChildConditionIsRelaxed() throws Exception {
+        var subject = subject();
+        List<UUID> nodes = disjointKnowledgeNodes();
+        // Position 1 is outside the scope, position 2 inside: legacy any-child scope matches, strict scope does not.
+        questionSet(subject.id(), 2, nodes.get(1), nodes.get(0), null);
+        var result = checkResult(subject, 2, """
+                {"id":"b","questionType":"QUESTION_SET","questionCount":2,"setCount":1,"setSize":2,
+                 "childAnswerType":"SINGLE_CHOICE",
+                 "knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true},
+                 "childConditions":[{"from":1,"to":1,"nodeIds":["%1$s"]}]}
+                """.formatted(nodes.get(0)));
+        var codes = result.path("groups").findValuesAsText("code");
+        assertThat(codes).doesNotContain("CHILD_CONDITION_SHORTAGE").contains("SET_SHORTAGE");
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+    }
+
+    @Test
+    void strictSlotScopeIsKeptWhenOnlyTheChildConditionIsRelaxed() throws Exception {
+        var subject = subject();
+        List<UUID> nodes = disjointKnowledgeNodes();
+        questionSet(subject.id(), 2, nodes.get(1), nodes.get(0), null);
+        var result = checkResult(subject, 2, """
+                {"id":"b","questionType":"QUESTION_SET","questionCount":2,"setCount":1,"setSize":2,
+                 "childAnswerType":"SINGLE_CHOICE",
+                 "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}],
+                 "childConditions":[{"from":1,"to":1,"nodeIds":["%1$s"]}]}
+                """.formatted(nodes.get(0)));
+        var codes = result.path("groups").findValuesAsText("code");
+        assertThat(codes).doesNotContain("CHILD_CONDITION_SHORTAGE").containsAnyOf("SET_SHORTAGE", "SLOT_SOURCE_SHORTAGE");
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+    }
+
     private List<UUID> disjointKnowledgeNodes() {
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         var topic = knowledge.stream().filter(a -> knowledge.stream().anyMatch(b ->
