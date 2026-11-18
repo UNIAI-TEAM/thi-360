@@ -310,13 +310,7 @@ public class SolverInputBuilder {
                             ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(a -> a != null).toList()
                             : List.of();
                     var shape = shape(block.itemShape());
-                    var conditions = block.childConditions().stream().map(c -> {
-                        if (c.from() == null || c.to() == null) {
-                            throw new IllegalArgumentException("Child condition requires both from and to bounds");
-                        }
-                        return new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds(), c.answerType(),
-                                shape(c.itemShape()));
-                    }).toList();
+                    var conditions = childConditions(block);
                     List<List<String>> slotTags = slot == null || slot.tagCodes().isEmpty()
                             ? List.of() : List.of(slot.tagCodes());
                     List<List<String>> slotCompetencies = slot == null || slot.knowledgeScope() == null
@@ -325,7 +319,7 @@ public class SolverInputBuilder {
                     filters.put(group, new QuestionSourcePort.Filter(subject, subtrees,
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
-                            shape, block.answerFormats().stream().map(AnswerFormat::valueOf).toList(), conditions,
+                            shape, answerFormats(block), conditions,
                             slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
                             slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())),
                             audio(section.audioRequirement())));
@@ -340,13 +334,28 @@ public class SolverInputBuilder {
         return result;
     }
 
-    private static QuestionSourcePort.ItemShape shape(vn.unicom.thi360.exam.domain.ItemShape shape) {
+    static QuestionSourcePort.ItemShape shape(vn.unicom.thi360.exam.domain.ItemShape shape) {
         return shape == null ? null : new QuestionSourcePort.ItemShape(shape.statements(), shape.leftItems(),
                 shape.rightItems(), shape.options());
     }
 
+    /** Positional child conditions of a block as the source filter states them. */
+    static List<QuestionSourcePort.ChildCondition> childConditions(QuestionBlock block) {
+        return block.childConditions().stream().map(c -> {
+            if (c.from() == null || c.to() == null) {
+                throw new IllegalArgumentException("Child condition requires both from and to bounds");
+            }
+            return new QuestionSourcePort.ChildCondition(c.from(), c.to(), c.nodeIds(), c.answerType(),
+                    shape(c.itemShape()));
+        }).toList();
+    }
+
+    static List<AnswerFormat> answerFormats(QuestionBlock block) {
+        return block.answerFormats().stream().map(AnswerFormat::valueOf).toList();
+    }
+
     /** An unset requirement is {@code ANY}; every group of a section inherits the section's requirement. */
-    private static QuestionSourcePort.AudioRequirement audio(AudioRequirement requirement) {
+    static QuestionSourcePort.AudioRequirement audio(AudioRequirement requirement) {
         return requirement == null ? QuestionSourcePort.AudioRequirement.ANY
                 : QuestionSourcePort.AudioRequirement.valueOf(requirement.name());
     }

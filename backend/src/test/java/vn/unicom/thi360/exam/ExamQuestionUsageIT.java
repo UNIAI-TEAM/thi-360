@@ -319,6 +319,125 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         }
     }
 
+    private static final String SC4 = choice(4);
+    private static final String SC5 = choice(5);
+    private static final String TF2 = "{\"type\":\"TRUE_FALSE\",\"statements\":[{\"answer\":true},{\"answer\":false}]}";
+
+    private static String choice(int options) {
+        var body = new StringBuilder("{\"type\":\"SINGLE_CHOICE\",\"options\":[");
+        for (int i = 0; i < options; i++) {
+            body.append(i == 0 ? "" : ",").append("{\"id\":\"o").append(i).append("\"")
+                    .append(i == 0 ? ",\"correct\":true" : "").append('}');
+        }
+        return body.append("]}").toString();
+    }
+
+    private UUID usageQuestion(UUID subject, String type, String body, boolean withAudio) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,?,'READY',?,1,1)",
+                id, "PARITY-" + id, type, subject);
+        String attachments = "[]";
+        if (withAudio) {
+            UUID asset = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question_asset(id,kind,object_key,file_name,mime,size,sha256) values (?,'ATTACHMENT',?,?,'audio/mpeg',1,?)",
+                    asset, "k/" + asset, "f-" + asset, new byte[32]);
+            attachments = "[\"" + asset + "\"]";
+        }
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,?::jsonb)",
+                id, "{\"body\":" + body + ",\"attachmentIds\":" + attachments + "}");
+        return id;
+    }
+
+    /** A question set whose children carry the given types and bodies, one per position. */
+    private List<UUID> usageSet(UUID subject, List<String[]> children) {
+        UUID root = usageQuestion(subject, "QUESTION_SET", "{\"type\":\"QUESTION_SET\",\"children\":[]}", false);
+        var ids = new java.util.ArrayList<UUID>(List.of(root));
+        for (int position = 0; position < children.size(); position++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?,?,'READY',?,?,1)",
+                    child, "PARITY-" + child, children.get(position)[0], root, position);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,?::jsonb)",
+                    child, "{\"body\":" + children.get(position)[1] + "}");
+            ids.add(child);
+        }
+        return ids;
+    }
+
+    private void usageExam(UUID subject, String sectionsJson) throws Exception {
+        UUID exam = UUID.randomUUID();
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,has_unpublished_changes) values (?,?,?,'Parity exam','FULL','SHARED',true)",
+                exam, exam.toString(), exam.toString());
+        String json = "{\"parts\":[{\"id\":\"p\",\"name\":\"Part\",\"sections\":" + sectionsJson + "}]}";
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(),
+                new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null)));
+    }
+
+    /** Both reverse lookups list exactly the blocks generation could select this question for. */
+    private void assertUsageBlocks(UUID question, List<String> listed, List<String> notListed) throws Exception {
+        for (String endpoint : List.of("usage", "retire-impact")) {
+            var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                    .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString());
+            String blocks = response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks").toString();
+            for (String block : listed) assertThat(blocks).as(endpoint + " lists " + block).contains(block);
+            for (String block : notListed) assertThat(blocks).as(endpoint + " omits " + block).doesNotContain(block);
+        }
+    }
+
+    /** R1-6: the section's audio requirement reaches the reverse lookup, as it reaches generation. */
+    @Test
+    void usageAndRetireImpactApplySectionAudioRequirement() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID withAudio = usageQuestion(subject, "SINGLE_CHOICE", SC4, true);
+        UUID plain = usageQuestion(subject, "SINGLE_CHOICE", SC4, false);
+        usageExam(subject, """
+                [{"id":"s-needs","subjectCode":"TEST","audioRequirement":"REQUIRED",
+                  "blocks":[{"id":"needs-audio","questionType":"SINGLE_CHOICE"}]},
+                 {"id":"s-forbids","subjectCode":"TEST","audioRequirement":"FORBIDDEN",
+                  "blocks":[{"id":"forbids-audio","questionType":"SINGLE_CHOICE"}]},
+                 {"id":"s-any","subjectCode":"TEST",
+                  "blocks":[{"id":"any-audio","questionType":"SINGLE_CHOICE"}]}]""");
+        assertUsageBlocks(withAudio, List.of("needs-audio", "any-audio"), List.of("forbids-audio"));
+        assertUsageBlocks(plain, List.of("forbids-audio", "any-audio"), List.of("needs-audio"));
+    }
+
+    /** R1-6: a question whose option count differs from itemShape.options is not listed. */
+    @Test
+    void usageAndRetireImpactApplyOptionCount() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID four = usageQuestion(subject, "SINGLE_CHOICE", SC4, false);
+        UUID five = usageQuestion(subject, "SINGLE_CHOICE", SC5, false);
+        usageExam(subject, """
+                [{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"four-options","questionType":"SINGLE_CHOICE","itemShape":{"options":4}},
+                  {"id":"free-options","questionType":"SINGLE_CHOICE"}]}]""");
+        assertUsageBlocks(four, List.of("four-options", "free-options"), List.of());
+        assertUsageBlocks(five, List.of("free-options"), List.of("four-options"));
+    }
+
+    /** R1-6: a set failing a positional child condition is not listed, nor are its children. */
+    @Test
+    void usageAndRetireImpactApplyPositionalChildConditions() throws Exception {
+        UUID subject = UUID.randomUUID();
+        var matching = usageSet(subject, List.of(new String[] {"TRUE_FALSE", TF2},
+                new String[] {"TRUE_FALSE", TF2}, new String[] {"SINGLE_CHOICE", SC4}));
+        var failing = usageSet(subject, List.of(new String[] {"SINGLE_CHOICE", SC4},
+                new String[] {"TRUE_FALSE", TF2}, new String[] {"SINGLE_CHOICE", SC4}));
+        var wrongShape = usageSet(subject, List.of(new String[] {"TRUE_FALSE", TF2},
+                new String[] {"TRUE_FALSE", TF2}, new String[] {"SINGLE_CHOICE", SC5}));
+        usageExam(subject, """
+                [{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"typed-positions","questionType":"QUESTION_SET","setCount":1,"setSize":3,
+                   "childConditions":[{"from":1,"to":2,"answerType":"TRUE_FALSE"},
+                                      {"from":3,"to":3,"answerType":"SINGLE_CHOICE","itemShape":{"options":4}}]},
+                  {"id":"open-positions","questionType":"QUESTION_SET","setCount":1,"setSize":3}]}]""");
+        for (UUID id : matching) assertUsageBlocks(id, List.of("typed-positions", "open-positions"), List.of());
+        for (UUID id : failing) assertUsageBlocks(id, List.of("open-positions"), List.of("typed-positions"));
+        for (UUID id : wrongShape) assertUsageBlocks(id, List.of("open-positions"), List.of("typed-positions"));
+    }
+
     private void publish(UUID exam, UUID subject, UUID witness, List<String> selected) throws Exception {
         entityManager.clear();
         var examEntity = exams.findById(exam).orElseThrow();
