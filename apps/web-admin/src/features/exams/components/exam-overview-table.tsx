@@ -1,7 +1,7 @@
 "use client";
 
 import { cn, focusRingInset, Input } from "@thi360/ui";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import type { ExamTiming } from "../types";
 import type { OverviewRow } from "../create-exam-overview";
@@ -21,11 +21,22 @@ export interface ExamOverviewTableProps {
   timing: ExamTiming;
   /** Cột Điểm chỉ hiện khi mẫu chia điểm theo phần hoặc người dùng đã nhập điểm. */
   showPoints: boolean;
+  /** Cột tỷ lệ của dòng so với cả bài (R-123): mẫu `fixedCounts` hoặc mẫu bài riêng có tiểu mục (V-ACT). */
+  showPercents?: boolean;
+  /** Đầu cột `showPercents`; mặc định "Tỷ lệ toàn bài", bài riêng V-ACT là "Tỷ lệ trong bài" (TaoBaiThiVact2B). */
+  percentExamHeader?: string;
+  /** Cột Tỷ lệ trong phần khi phần có tiểu mục (V-ACT toàn bài: 50/50/100/40/60%). */
+  showPartPercent?: boolean;
   onCellChange: (key: string, field: "questionCount" | "durationMinutes" | "maxPoints", text: string) => void;
   /** Lỗi của ô, khóa theo `OverviewRow.key` → trường → chữ lỗi. */
   issues: ReadonlyMap<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>;
   /** Tra tên môn từ `subjectCode` cho dòng môn thụt vào. */
   subjectName: (code: string) => string;
+  /**
+   * Tên hiển thị của dòng phần hoặc tiểu mục theo ngôn ngữ đang chọn (V-ACT: tên phần, môn, Logic, Suy luận tách theo
+   * năng lực); `undefined` thì dòng tiểu mục dùng `subjectName`, dòng phần dùng tên của mẫu.
+   */
+  rowLabel?: (row: OverviewRow) => string | undefined;
   /** Ô thời lượng chung ở cuối bảng; bỏ trống khi `timing = PER_PART`. */
   sharedDuration?: OverviewNumberField;
   /** Ô điểm tối đa của bài khi bảng không có cột Điểm (không có mẫu chia điểm theo phần). */
@@ -40,11 +51,14 @@ function NumberCell({
   row,
   field,
   error,
+  locked,
   onCellChange,
 }: {
   row: OverviewRow;
   field: "questionCount" | "durationMinutes" | "maxPoints";
   error: string | undefined;
+  /** Mẫu `fixedCounts` (H27): ô chỉ đọc — không cho sửa; vẫn trong thứ tự tab như bản vẽ (`readonly aria-readonly`). */
+  locked?: boolean;
   onCellChange: ExamOverviewTableProps["onCellChange"];
 }) {
   const t = useTranslations("exams.create.overview");
@@ -54,10 +68,12 @@ function NumberCell({
       <Input
         {...NUMERIC}
         value={row[field]}
+        readOnly={locked}
+        aria-readonly={locked || undefined}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         aria-label={t(`cell.${field}`, { name: row.label })}
-        className={cellInput}
+        className={cn(cellInput, locked && "bg-subtle text-text-muted")}
         onChange={(event) => onCellChange(row.key, field, event.target.value)}
       />
       {error && (
@@ -101,25 +117,56 @@ function FooterField({ field, label, unit, state }: { field: string; label: stri
   );
 }
 
+const PERCENT = { style: "percent", maximumFractionDigits: 1 } as const;
+
 /**
  * "Bảng tổng quan" (2B 15.1): dòng phần và dòng môn thụt vào (phần cố định nhiều môn), sửa số câu, thời lượng và
  * điểm trên dòng; có hàng Tổng ở cuối. `timing = SHARED` thay cột thời lượng từng phần bằng ô thời lượng chung dưới
- * bảng. Không đăng ký submit: trang gọi `overviewDiff` khi gửi.
+ * bảng. Không đăng ký submit: trang gọi `overviewDiff` khi gửi. Mẫu `fixedCounts` (H27) khóa ô số câu và hiện tỷ
+ * lệ trong phần / toàn bài của từng tiểu mục (V-ACT toàn bài, R-118, R-123).
  */
 export function ExamOverviewTable({
   rows,
   timing,
   showPoints,
+  showPercents = false,
+  percentExamHeader,
+  showPartPercent = false,
   onCellChange,
   issues,
   subjectName,
+  rowLabel,
   sharedDuration,
   maxScore,
 }: ExamOverviewTableProps) {
   const t = useTranslations("exams.create.overview");
+  const format = useFormatter();
   const totals = overviewTotals(rows, timing, sharedDuration?.value ?? "");
   const showDuration = timing === "PER_PART";
-  const label = (row: OverviewRow) => (row.kind === "section" ? subjectName(row.subjectCode) : row.label);
+  const byKey = new Map(rows.map((row) => [row.key, row]));
+  const label = (row: OverviewRow) =>
+    rowLabel?.(row) ?? (row.kind === "section" ? subjectName(row.subjectCode) : row.label);
+  const countOf = (row: OverviewRow): number | null => {
+    const text = row.questionCount.trim();
+    if (!text) return null;
+    const value = Number(text);
+    return Number.isFinite(value) ? value : null;
+  };
+  /** Tỷ lệ của dòng so với tổng bài; `null` khi tổng chưa có. */
+  const inExam = (row: OverviewRow): number | null => {
+    const count = countOf(row);
+    if (count === null || !totals.questions) return null;
+    return count / totals.questions;
+  };
+  /** Tỷ lệ của dòng tiểu mục so với phần cha; `null` khi dòng không thuộc phần nào. */
+  const inPart = (row: OverviewRow): number | null => {
+    const count = countOf(row);
+    const parent = row.parentKey ? byKey.get(row.parentKey) : undefined;
+    const parentCount = parent ? countOf(parent) : null;
+    if (count === null || !parentCount) return null;
+    return count / parentCount;
+  };
+  const percentText = (value: number | null): string => (value === null ? "—" : format.number(value, PERCENT));
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div role="region" tabIndex={0} aria-label={t("regionLabel")} className={cn("overflow-x-auto", focusRingInset)}>
@@ -128,6 +175,8 @@ export function ExamOverviewTable({
             <tr className="border-b border-border bg-subtle text-start">
               <th className="px-3 py-2 text-start font-medium text-text-secondary">{t("col.part")}</th>
               <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.count")}</th>
+              {showPartPercent && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.percentPart")}</th>}
+              {showPercents && <th className="px-3 py-2 text-end font-medium text-text-secondary">{percentExamHeader ?? t("col.percentExam")}</th>}
               {showDuration && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.duration")}</th>}
               {showPoints && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.points")}</th>}
             </tr>
@@ -146,6 +195,8 @@ export function ExamOverviewTable({
                       <span className="ms-2 text-caption">{t("omittedLabel")}</span>
                     </td>
                     <td className="px-3 py-2 text-end">{row.base.questionCount ?? "—"}</td>
+                    {showPartPercent && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
+                    {showPercents && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
                     {showDuration && <td className="px-3 py-2 text-end">—</td>}
                     {showPoints && <td className="px-3 py-2 text-end">{t("notCounted")}</td>}
                   </tr>
@@ -163,10 +214,28 @@ export function ExamOverviewTable({
                       {row.group ? (
                         <span className="px-3 py-2 text-text-muted">{t("sumOfSubjects")}</span>
                       ) : (
-                        <NumberCell row={cellRow} field="questionCount" error={rowIssues?.questionCount} onCellChange={onCellChange} />
+                        <NumberCell
+                          row={cellRow}
+                          field="questionCount"
+                          error={rowIssues?.questionCount}
+                          locked={row.lockedCount}
+                          onCellChange={onCellChange}
+                        />
                       )}
                     </div>
                   </td>
+                  {showPartPercent && (
+                    <td className="px-3 py-2 align-top text-end">
+                      <span className="px-3 py-2 text-text-secondary">
+                        {row.kind === "section" ? percentText(inPart(row)) : "—"}
+                      </span>
+                    </td>
+                  )}
+                  {showPercents && (
+                    <td className="px-3 py-2 align-top text-end">
+                      <span className="px-3 py-2 text-text-secondary">{percentText(inExam(row))}</span>
+                    </td>
+                  )}
                   {showDuration && (
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
@@ -184,7 +253,7 @@ export function ExamOverviewTable({
                         {row.kind === "part" ? (
                           <NumberCell row={cellRow} field="maxPoints" error={rowIssues?.maxPoints} onCellChange={onCellChange} />
                         ) : (
-                          <span className="px-3 py-2 text-text-muted">—</span>
+                          <span className="px-3 py-2 text-text-muted">{row.maxPoints || "—"}</span>
                         )}
                       </div>
                     </td>
@@ -197,6 +266,10 @@ export function ExamOverviewTable({
             <tr className="border-t border-border bg-subtle font-medium">
               <td className="px-3 py-2">{t("total")}</td>
               <td className="px-3 py-2 text-end">{totals.questions ?? "—"}</td>
+              {showPartPercent && <td className="px-3 py-2 text-end">—</td>}
+              {showPercents && (
+                <td className="px-3 py-2 text-end">{totals.questions !== null ? format.number(1, PERCENT) : "—"}</td>
+              )}
               {showDuration && <td className="px-3 py-2 text-end">{totals.durationMinutes ?? "—"}</td>}
               {showPoints && <td className="px-3 py-2 text-end">{totals.maxPoints ?? "—"}</td>}
             </tr>

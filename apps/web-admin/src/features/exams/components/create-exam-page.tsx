@@ -49,6 +49,7 @@ import {
   type OverviewRow,
   overviewTotals,
   rowsDifferFromTemplate,
+  sectionCompetency,
   updateRowCell,
   validateOverview,
 } from "../create-exam-overview";
@@ -178,6 +179,17 @@ const parseNumber = (text: string): number => {
 const formatShared = (value: number): string => (value ? String(value) : "");
 const formatScore = (value: number | null): string => (value == null ? "" : String(value));
 
+/**
+ * Tiểu mục V-ACT phân biệt bằng năng lực: hai mục cùng môn SCIENTIFIC_THINKING (H24) lấy tên theo mã năng lực
+ * (R-109: không hiện mã thô). Năng lực không thuộc bảng này rơi về tên môn của mục.
+ */
+const VACT_COMPETENCY_PART: Record<string, string> = { "VACT-TD-LOGIC": "LOGIC", "VACT-TD-SL": "REASONING" };
+/** Phần nhiều tiểu mục của V-ACT: mã năng lực các mục cùng tiền tố thì phần lấy tên thông điệp (Sử dụng ngôn ngữ, Tư duy khoa học). */
+const VACT_COMPETENCY_GROUP: Array<[prefix: string, part: string]> = [
+  ["VACT-NN-", "LANGUAGE"],
+  ["VACT-TD-", "THINKING"],
+];
+
 interface CreateExamFormProps {
   /** Mẫu cấu trúc; rỗng khi chưa tải được (`templatesStatus` khác `ready`). */
   templates: readonly ExamTemplate[];
@@ -279,6 +291,55 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     [template, kinds, selection],
   );
   const showPoints = defaults.pointsByPart;
+  // H27: mẫu khóa số câu (V-ACT toàn bài) — ô số câu chỉ đọc, cột tỷ lệ hiện. Các cột tỷ lệ chỉ của V-ACT: mẫu
+  // `fixedCounts` có "Tỷ lệ trong phần" + "Tỷ lệ toàn bài", bài riêng có tiểu mục có "Tỷ lệ trong bài" (R-118, R-123,
+  // TaoBaiThiVact2B); kỳ thi khác không có cột tỷ lệ.
+  const lockedCounts = template?.fixedCounts === true;
+  const vact = selection.kind === "VACT";
+  const showPartPercent = lockedCounts && vact && (template?.parts.length ?? 0) > 1;
+  const showPercents = showPartPercent || (vact && selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
+  /**
+   * Tên dòng V-ACT theo ngôn ngữ đang chọn, dựng từ mã năng lực và mã môn (không lấy tên tiếng Việt lưu trong mẫu): mục
+   * cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn trong danh mục. Dòng phần một mục
+   * lấy tên của mục đó; phần nhiều mục lấy tên nhóm năng lực. Không có khóa thì để `undefined`: giữ tên của mẫu.
+   */
+  const rowLabel = useCallback(
+    (row: OverviewRow): string | undefined => {
+      if (row.kind === "section") {
+        return partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode);
+      }
+      if (!vact || row.kind !== "part") return undefined;
+      const sections = template?.parts[Number(row.key.slice(2))]?.sections ?? [];
+      const subjectOf = (code: string) => {
+        const name = lookup.subject(code);
+        return name === code ? undefined : name;
+      };
+      if (sections.length === 1) {
+        const only = sections[0]!;
+        const competency = sectionCompetency(only);
+        return (competency && VACT_COMPETENCY_PART[competency] && partNames.partName(VACT_COMPETENCY_PART[competency])) || subjectOf(only.subjectCode);
+      }
+      const groups = new Set(
+        sections.map((section) => {
+          const competency = sectionCompetency(section) ?? "";
+          return VACT_COMPETENCY_GROUP.find(([prefix]) => competency.startsWith(prefix))?.[1];
+        }),
+      );
+      const [group] = groups;
+      return groups.size === 1 && group ? partNames.partName(group) : undefined;
+    },
+    [partNames, lookup, vact, template],
+  );
+  // H35: bài riêng của V-ACT, bài theo phần và bài ôn của THPTQG không có thời lượng mặc định (mẫu để trống) — lỗi
+  // đặt ở ô thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung.
+  const durationError = (() => {
+    const generic = formState.errors.sharedDuration?.message;
+    if (!generic || defaults.sharedDuration > 0) return generic;
+    if (selection.kind === "VACT" && selection.scope !== "FULL") return tStep("durationRequiredCustom", { kind: kindLabel(selection.kind) });
+    if (selection.kind !== "THPTQG") return generic;
+    if (selection.scope === "SUBJECT" && selection.buildMode === "REVIEW") return tStep("durationRequiredReview");
+    return tStep(selection.scope === "PART" ? "durationRequiredPart" : "durationRequiredBase");
+  })();
   // Mã gợi ý theo kỳ thi, phạm vi, phần hoặc môn; người dùng đã sửa mã thì giữ mã của họ.
   const suggestion = useSuggestedExamCode(
     {
@@ -396,13 +457,15 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   const fieldLabel = (path: string) => (t.has(`fields.${path}`) ? t(`fields.${path}`) : path);
   const formIssues: CreateExamIssue[] = Object.entries(formState.errors).flatMap(([path, error]) =>
-    error?.message ? [{ path, field: fieldLabel(path), message: String(error.message) }] : [],
+    error?.message
+      ? [{ path, field: fieldLabel(path), message: path === "sharedDuration" ? (durationError ?? String(error.message)) : String(error.message) }]
+      : [],
   );
   const rowIssueItems: CreateExamIssue[] = overviewIssues.map((issue) => {
     const row = rows.find((item) => item.key === issue.rowKey);
     return {
       path: `${issue.rowKey}.${issue.field}`,
-      field: row ? `${row.kind === "section" ? subjectName(row.subjectCode) : row.label}` : tOverview("total"),
+      field: row ? (rowLabel(row) ?? (row.kind === "section" ? subjectName(row.subjectCode) : row.label)) : tOverview("total"),
       message: issueText(issue),
     };
   });
@@ -605,6 +668,12 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
           >
             <TemplateNotes template={template} name={templateName(template) ?? undefined} />
             <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
+            {lockedCounts && (
+              <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
+                <Lock aria-hidden className="size-3.5" />
+                {tOverview("lockedCounts")}
+              </p>
+            )}
             {templatesStatus === "error" && (
               <div
                 role="alert"
@@ -631,12 +700,16 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 rows={rows}
                 timing={values.timing}
                 showPoints={showPoints}
+                showPercents={showPercents}
+                percentExamHeader={selection.scope === "PART" ? tOverview("col.percentExamCustom") : undefined}
+                showPartPercent={showPartPercent}
                 onCellChange={onCellChange}
                 issues={cellIssues}
                 subjectName={subjectName}
+                rowLabel={rowLabel}
                 sharedDuration={{
                   value: sharedText,
-                  error: formState.errors.sharedDuration?.message,
+                  error: formState.errors.sharedDuration ? durationError : undefined,
                   onChange: (text) => {
                     setSharedText(text);
                     setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });

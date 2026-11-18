@@ -90,15 +90,15 @@ export function useScopeOptions(scopes: readonly ExamScope[]): ChoiceCardOption<
 }
 
 /**
- * Phần của bài Theo phần: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi). Mã phần không thuộc bốn mã trên (dữ liệu
- * thật dùng mã môn của danh mục như `TOAN`, `VAN`) thì hiện tên môn theo ngôn ngữ đang chọn; không có trong danh mục
- * mới hiện chính mã.
+ * Phần của bài Theo phần: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi) và các mã phần riêng có thông điệp
+ * (`partName.LANGUAGE`… của V-ACT, spec bổ sung 5.3). Mã không có thông điệp (dữ liệu thật dùng mã môn của danh
+ * mục như `TOAN`, `VAN`) thì hiện tên môn theo ngôn ngữ đang chọn; không có trong danh mục mới hiện chính mã.
  */
 export function usePartNames() {
   const t = useTranslations("exams.create.partName");
   const subjects = useReferenceLookup(useContentReference().data);
   const partName = useCallback(
-    (code: string) => (isPartCode(code) ? t(code) : subjects.subject(code)),
+    (code: string) => (isPartCode(code) || t.has(code) ? t(code) : subjects.subject(code)),
     [t, subjects],
   );
   const options: ChoiceCardOption<PartCode>[] = PART_CODES.map((code) => ({ value: code, label: t(code) }));
