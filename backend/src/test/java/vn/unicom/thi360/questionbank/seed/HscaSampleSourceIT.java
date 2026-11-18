@@ -75,9 +75,10 @@ class HscaSampleSourceIT extends SampleSourceSupport {
 
     // ---- spec 4.3: Tieng Anh ---------------------------------------------------------------
 
+    /** Q-39: English is one point per question; the spec 4.3 table has no points column, the template sets it. */
     @Test
     void spec43ListeningLine1EightSingleQuestionsWithAudio() {
-        var filter = filter("ANH", Block.of(SINGLE_CHOICE).audio(AudioRequirement.REQUIRED));
+        var filter = filter("ANH", Block.of(SINGLE_CHOICE).points("1").audio(AudioRequirement.REQUIRED));
         assertUnits("4.3 listening line 1", filter, 8);
         assertThat(candidates(filter)).allMatch(c -> c.code().startsWith("SEED-HSCA-ANH-LISTEN-SINGLE-"));
     }
@@ -120,11 +121,12 @@ class HscaSampleSourceIT extends SampleSourceSupport {
     }
 
     private static Block listeningSet() {
-        return Block.of(QUESTION_SET).childType(SINGLE_CHOICE).audio(AudioRequirement.REQUIRED);
+        return Block.of(QUESTION_SET).childType(SINGLE_CHOICE).points("1").audio(AudioRequirement.REQUIRED);
     }
 
     private static Block readingSet() {
-        return Block.of(QUESTION_SET).childType(SINGLE_CHOICE).shape(FOUR_OPTIONS).audio(AudioRequirement.FORBIDDEN);
+        return Block.of(QUESTION_SET).childType(SINGLE_CHOICE).shape(FOUR_OPTIONS).points("1")
+                .audio(AudioRequirement.FORBIDDEN);
     }
 
     /** True when some subset of the whole sets (each used once) holds exactly {@code target} questions. */

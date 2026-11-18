@@ -55,46 +55,39 @@ class VsatSampleSourceIT extends SampleSourceSupport {
 
     // ---- spec 5.1: Ngu van I-III, part II is one poetry set and one prose set ---------------
 
+    /** Both slot labels with the same constraints; the two slots need two different root sets. */
     @Test
-    void spec51LiteraturePartIIPoetrySetOfThree() {
-        assertSets("5.1 VAN part II poetry", filter("VAN", partTwoSet().tag("VAN_THO")), 1, 3);
+    void spec51LiteraturePartIIPoetrySetAndProseSetAreTwoDistinctSets() {
+        Set<UUID> poetry = rootIds(assertSets("5.1 VAN part II poetry", filter("VAN", partTwoSet().slot("VAN_THO")), 1, 3));
+        Set<UUID> prose = rootIds(assertSets("5.1 VAN part II prose", filter("VAN", partTwoSet().slot("VAN_TRUYEN")), 1, 3));
+        assertThat(poetry.stream().anyMatch(p -> prose.stream().anyMatch(q -> !p.equals(q))))
+                .as("a poetry set and a different prose set: poetry " + poetry + " prose " + prose).isTrue();
     }
 
-    @Test
-    void spec51LiteraturePartIIProseSetOfThree() {
-        assertSets("5.1 VAN part II prose", filter("VAN", partTwoSet().tag("VAN_TRUYEN")), 1, 3);
+    private static Set<UUID> rootIds(List<Candidate> sets) {
+        Set<UUID> ids = new HashSet<>();
+        sets.forEach(c -> ids.add(c.questionId()));
+        return ids;
     }
 
     // ---- ADV:BE-19:3: Dia li part II slots match by root tag, one label per set -------------
 
     @Test
-    void geographySlotBangSoLieuFindsExactlyItsTwoSets() {
-        assertThat(slotSets("DIA_BANG_SO_LIEU")).hasSize(2);
+    void geographySlotBangSoLieuFindsDataTableSets002And004() {
+        assertGeographySlot("DIA_BANG_SO_LIEU", "SEED-VSAT-DIA-SET-002", "SEED-VSAT-DIA-SET-004");
     }
 
     @Test
-    void geographySlotBieuDoFindsExactlyItsTwoSets() {
-        assertThat(slotSets("DIA_BIEU_DO")).hasSize(2);
+    void geographySlotBieuDoFindsChartSets001And003() {
+        assertGeographySlot("DIA_BIEU_DO", "SEED-VSAT-DIA-SET-001", "SEED-VSAT-DIA-SET-003");
     }
 
-    @Test
-    void geographySlotsShareNoSetAndTogetherCoverTheFourSeededSets() {
-        Set<UUID> bang = slotSets("DIA_BANG_SO_LIEU");
-        Set<UUID> bieu = slotSets("DIA_BIEU_DO");
-        assertThat(bang).doesNotContainAnyElementsOf(bieu);
-        Set<UUID> all = new HashSet<>(bang);
-        all.addAll(bieu);
-        Set<UUID> seeded = new HashSet<>();
-        candidates(filter("DIA", partTwoSet())).forEach(c -> seeded.add(c.questionId()));
-        assertThat(all).isEqualTo(seeded).hasSize(4);
-    }
-
-    private Set<UUID> slotSets(String label) {
-        List<Candidate> sets = candidates(filter("DIA", partTwoSet().slot(label)));
+    private void assertGeographySlot(String label, String first, String second) {
+        var filter = filter("DIA", partTwoSet().slot(label));
+        List<Candidate> sets = candidates(filter);
+        assertThat(sets).as(label).extracting(Candidate::code).containsExactlyInAnyOrder(first, second);
         assertThat(sets).as(label).allMatch(c -> c.units().size() == 3);
-        Set<UUID> ids = new HashSet<>();
-        sets.forEach(c -> ids.add(c.questionId()));
-        return ids;
+        assertThat(source.count(filter).total()).as(label + " count").isEqualTo(6);
     }
 
     private static Block partTwoSet() {
