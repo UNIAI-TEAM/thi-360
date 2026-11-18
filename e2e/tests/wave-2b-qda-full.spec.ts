@@ -25,14 +25,17 @@ import {
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
 
-/** Sáu môn của kho phần 3 theo mẫu QDA_FULL: số câu của mục (Lý, Hóa, Sinh, Sử, Địa 25 câu; Tiếng Anh 50 câu). */
+/**
+ * Sáu môn của kho phần 3 theo mẫu QDA_FULL: số câu của mục (Lý, Hóa, Sinh, Sử, Địa 25 câu; Tiếng Anh 50 câu) và việc mẫu có
+ * khai chỉ tiêu khối lớp (`matrix.byGrade`, bắt buộc) hay không: năm môn khai, chỉ Tiếng Anh không khai.
+ */
 const PART3_SUBJECTS = [
-  { code: "LY", count: 25 },
-  { code: "HOA", count: 25 },
-  { code: "SINH", count: 25 },
-  { code: "SU", count: 25 },
-  { code: "DIA", count: 25 },
-  { code: "ANH", count: 50 },
+  { code: "LY", count: 25, matrix: true },
+  { code: "HOA", count: 25, matrix: true },
+  { code: "SINH", count: 25, matrix: true },
+  { code: "SU", count: 25, matrix: true },
+  { code: "DIA", count: 25, matrix: true },
+  { code: "ANH", count: 50, matrix: false },
 ] as const;
 
 /**
@@ -59,14 +62,39 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   expect(pool.map((section) => section.subjectCode).sort()).toEqual(["ANH", "DIA", "HOA", "LY", "SINH", "SU"]);
 
   const nav = page.getByRole("navigation", { name: "Cấu trúc" });
-  for (const { code, count } of PART3_SUBJECTS) {
+  for (const { code, count, matrix } of PART3_SUBJECTS) {
     const name = SUBJECT_NAME[code]!;
+    const section = pool.find((item) => item.subjectCode === code)!;
+    expect(Boolean(section.matrix), `mẫu QDA_FULL: môn ${name} khai chỉ tiêu khối lớp`).toBe(matrix);
     await nav.getByRole("button", { name: new RegExp(`^${name}`) }).click();
     await expect(page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
     await expect(page.getByRole("textbox", { name: /^Số câu của mục/ }), `môn ${name}`).toHaveValue(String(count));
-    // Mẫu không khai chỉ tiêu dạng trả lời, khối lớp, độ khó: màn nói rõ; một nhóm trắc nghiệm lấy hết số câu của môn.
+    // Mẫu không khai chỉ tiêu dạng trả lời: màn nói rõ; một nhóm trắc nghiệm lấy hết số câu của môn.
     await expect(page.getByText("Môn không kiểm soát số câu theo dạng trả lời."), `môn ${name}`).toBeVisible();
-    await expect(page.getByText("Môn không kiểm soát phân bổ khối lớp và độ khó."), `môn ${name}`).toBeVisible();
+    if (matrix) {
+      // Môn khai chỉ tiêu khối lớp (và độ khó nếu có): khối "Khối lớp và độ khó" hiện ma trận với đúng số của mẫu.
+      await expect(page.getByRole("heading", { name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
+      await expect(page.getByText("Môn không kiểm soát phân bổ khối lớp và độ khó."), `môn ${name}`).toHaveCount(0);
+      const region = page.getByRole("region", { name: "Ma trận phân bổ" });
+      await expect(region, `môn ${name}`).toBeVisible();
+      const gradeValues = section.matrix!.byGrade!.map((item) => String(item.value));
+      const gradeInputs = region.getByRole("table", { name: "Theo khối lớp" }).getByRole("textbox");
+      await expect(gradeInputs, `môn ${name}: chỉ tiêu theo khối lớp`).toHaveCount(gradeValues.length);
+      for (const [index, value] of gradeValues.entries()) {
+        await expect(gradeInputs.nth(index), `môn ${name}: khối lớp thứ ${index + 1}`).toHaveValue(value);
+      }
+      // Độ khó: chỉ Hóa và Sử khai; các số khác 0 trên màn là đúng các số của mẫu.
+      const difficultyValues = (section.matrix!.byDifficulty ?? []).map((item) => String(item.value)).sort();
+      const difficultyInputs = region.getByRole("table", { name: "Theo độ khó" }).getByRole("textbox");
+      const shown = (await difficultyInputs.evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).filter(
+        (value) => value !== "0",
+      );
+      expect(shown.sort(), `môn ${name}: chỉ tiêu theo độ khó`).toEqual(difficultyValues);
+    } else {
+      await expect(page.getByText("Môn không kiểm soát phân bổ khối lớp và độ khó."), `môn ${name}`).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
+      await expect(page.getByRole("region", { name: "Ma trận phân bổ" }), `môn ${name}`).toHaveCount(0);
+    }
     await expect(
       page.getByRole("region", { name: `Các nhóm lấy câu của ${name}` }).getByRole("row", { name: new RegExp(`${count} câu`) }),
       `môn ${name}`,

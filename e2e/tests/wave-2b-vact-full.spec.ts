@@ -57,7 +57,7 @@ test("V-ACT toàn bài: tạo, kiểm tra đạt, đề thử 120 câu, công b�
   // Tiếng Anh: năm nhóm theo thứ tự 5 / 5 / 5 / 7 / 8 câu.
   const english = result.paper.parts[0]!.blocks!.filter((block) => block.subjectCode === "ANH");
   expect(english.map((block) => block.questionCount)).toEqual([5, 5, 5, 7, 8]);
-  await expect(panel.getByText(/^120 câu · /)).toBeVisible();
+  await expect(panel.getByText(/^120 câu · 1\.200 điểm/)).toBeVisible();
 
   // Công bố được: đường duy nhất hợp lệ, v1.
   const published = await publishInUi(page, id);

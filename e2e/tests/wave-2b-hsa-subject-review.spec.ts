@@ -61,8 +61,9 @@ test.describe("HSA theo môn và bài ôn", () => {
 
   test("Bài ôn HSA Toán: chọn dạng câu, lưu, kiểm tra và sinh thử đúng số câu", async ({ context, page }) => {
     await loginAdmin(context, "vi");
-    // Bước 1: "Tự thiết lập bài ôn" nhập số câu, thời lượng và thang điểm vào bảng tổng quan. Không ghi cấu trúc bằng API
-    // (FU-FE3B-V12 là chỗ bài ôn có thể sai ở kiểm tra, sinh thử; nếu sai thì giữ khẳng định trung thực).
+    // Bước 1: "Tự thiết lập bài ôn" nhập số câu và thời lượng vào bảng tổng quan; thang điểm bỏ trống (tùy chọn, bài ôn chấm
+    // LINEAR). Không ghi cấu trúc bằng API (FU-FE3B-V12 là chỗ bài ôn có thể sai ở kiểm tra, sinh thử; nếu sai thì giữ
+    // khẳng định trung thực).
     const id = await createExamInUi(page, {
       kind: "HSA",
       scope: "SUBJECT",
@@ -70,11 +71,13 @@ test.describe("HSA theo môn và bài ôn", () => {
       review: true,
       code: examCode("W2B-HSA-ON"),
       name: "Bài ôn HSA Toán nghiệm thu 2B",
-      overview: { questionCount: 10, durationMinutes: 15, maxScore: 10 },
+      overview: { questionCount: 10, durationMinutes: 15 },
     });
     const admin = await adminApi();
     const exam = await getExam(admin, id);
     expect(exam.templateCode).toBe("HSA_REVIEW");
+    // Bước 1 đã lưu số câu và thời lượng đã nhập.
+    expect([exam.questionCount, exam.durationMinutes]).toEqual([10, 15]);
     const skeleton = await getStructure(admin, id);
     expect(skeleton.parts).toHaveLength(1);
     expect(skeleton.parts[0]!.sections).toHaveLength(1);
@@ -82,7 +85,7 @@ test.describe("HSA theo môn và bài ôn", () => {
     expect(skeleton.parts[0]!.sections![0]!.blocks).toHaveLength(1);
 
     // Bước 2: màn Bài ôn nạp số câu của bước 1. Người dùng chọn dạng câu của nhóm là "Một đáp án" ở ô Dạng câu rồi bấm Lưu;
-    // không ghi trường cấu trúc nào khác (điểm mỗi câu, số câu giữ như mẫu và bước 1).
+    // không ghi trường cấu trúc nào khác (số câu giữ như bước 1; bài ôn không đặt điểm mỗi câu).
     await expectStructureQuestions(page, /^10(\D|$)/);
     const typeField = page.getByRole("combobox", { name: /^Dạng câu/ });
     if (!(await typeField.isVisible())) await page.getByRole("navigation", { name: "Cấu trúc" }).getByRole("button", { name: /^Môn Toán học/ }).click();
@@ -103,7 +106,6 @@ test.describe("HSA theo môn và bài ôn", () => {
     expect(request.target).toEqual({ kind: "EXAM" });
     const questions = expectWellFormedPaper(result);
     expect(result.paper.totalQuestions).toBe(10);
-    expect(result.paper.totalPoints).toBe(10);
-    expect(questions.every((question) => question.subjectCode === "TOAN" && question.points === 1)).toBe(true);
+    expect(questions.every((question) => question.subjectCode === "TOAN")).toBe(true);
   });
 });

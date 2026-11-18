@@ -31,6 +31,8 @@ test("SP2E Ngữ văn theo môn, mẫu mặc định: 30 câu, không có cảnh
     subject: "VAN",
     code: examCode("W2B-SP2E-VAN"),
     name: "SP2E Ngữ văn nghiệm thu 2B",
+    // Mẫu SP2E_VAN_OLD không có thời lượng: "Thời lượng chung" phải nhập. Phần II · Viết giữ số của mẫu (không nhập 1 cho qua).
+    overview: { durationMinutes: 60 },
   });
   const admin = await adminApi();
   const exam = await getExam(admin, id);

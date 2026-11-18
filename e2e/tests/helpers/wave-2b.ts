@@ -41,6 +41,8 @@ export interface StructureBlock {
 }
 
 export interface StructureSection {
+  /** Chỉ tiêu khối lớp và độ khó cấp môn (mẫu QDA_FULL khai cho Lý, Hóa, Sinh, Sử, Địa; Tiếng Anh không có). */
+  matrix?: { byGrade?: Array<{ code: string; value: number }>; byDifficulty?: Array<{ code: string; value: number }> } | null;
   id: string;
   subjectCode: string;
   questionCount?: number | null;
@@ -347,7 +349,13 @@ export async function createExamInUi(page: Page, spec: UiExamSpec): Promise<stri
   await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
   await page.getByRole("combobox", { name: /^Kỳ thi/ }).click();
   await page.getByRole("option", { name: new RegExp(`\\(${KIND_SUFFIX[spec.kind]}\\)`) }).click();
-  // Kỳ thi chỉ có một phạm vi thì không có nhóm radio (chỉ một dòng chữ): bỏ qua.
+  // Kỳ thi chỉ có một phạm vi thì không có nhóm radio (chỉ một dòng chữ).
+  // Đợi bước phạm vi hiện ra (nhóm radio "Phạm vi" hoặc dòng "chỉ có phạm vi này") rồi mới đếm radio, để không bỏ qua khi
+  // nhóm radio mount trễ một lượt render.
+  await expect(
+    page.getByRole("group", { name: /^Phạm vi/ }).or(page.getByText("Kỳ thi này chỉ có phạm vi này")),
+    "bước chọn phạm vi chưa hiện",
+  ).toBeVisible();
   const scopeRadio = page.getByRole("radio", { name: spec.scope === "FULL" ? /^Toàn bài/ : /^Theo môn/ });
   if ((await scopeRadio.count()) > 0) await scopeRadio.check();
   if (spec.subject) {
@@ -367,7 +375,26 @@ export async function createExamInUi(page: Page, spec: UiExamSpec): Promise<stri
   await page.getByRole("textbox", { name: /Mã bài thi/ }).fill(spec.code);
   await page.getByRole("textbox", { name: /Tên bài thi/ }).fill(spec.name);
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
-  await page.waitForURL(/\/exams\/[^/]+\/structure$/);
+
+  // Form có ô sai thì "Lưu và tiếp tục" không gửi gì: báo ngay tên ô sai thay vì chờ hết hạn của cả kịch bản.
+  const form = page.getByRole("form", { name: "Tạo bài thi" });
+  const invalid = form.locator('[aria-invalid="true"]');
+  const stepTwo = /\/exams\/[^/]+\/structure$/;
+  const outcome = await Promise.race([
+    page.waitForURL(stepTwo, { timeout: 20_000 }).then(() => "created" as const, () => "timeout" as const),
+    invalid.first().waitFor({ state: "attached", timeout: 20_000 }).then(() => "invalid" as const, () => "timeout" as const),
+  ]);
+  if (outcome === "invalid") {
+    const fields = await invalid.evaluateAll((elements) =>
+      elements.map((element) => {
+        const input = element as HTMLInputElement;
+        return input.getAttribute("aria-label") ?? input.labels?.[0]?.textContent?.trim() ?? input.id;
+      }),
+    );
+    const alerts = await form.getByRole("alert").allTextContents();
+    throw new Error(`Bước 1 không gửi được, ô sai: ${fields.join("; ")}. ${alerts.join(" ").trim()}`);
+  }
+  await page.waitForURL(stepTwo, { timeout: 20_000 });
   return /\/exams\/([^/]+)\/structure$/.exec(page.url())![1]!;
 }
 
