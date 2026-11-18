@@ -53,9 +53,31 @@ class QuotaPerfTest {
                 SolverTestFixtures.path(section), ignored -> candidates, SolveMode.check()).status());
     }
 
-    @Test void qdaFiveCodes() {
-        List<SectionOnPath> subjects = new ArrayList<>();
+    @Test void qdaFullFiveCodes() {
+        // BE4B-R1-04 / 2B 6.3: QDA FULL — phần bắt buộc Toán (50: 35 TN + 15 điền) và Văn (50)
+        // cộng phần 3 năm mã trên subjectPool sáu môn; mỗi môn pool là một bài toán con dùng chung
+        // cho mọi mã chứa nó, nên giải 2 + 6 bài toán con, không phải 2 + 9 lượt môn.
         Map<String, List<PathCandidate>> pools = new HashMap<>();
+        SectionOnPath math = new SectionOnPath("MATH", "qda-math", 50,
+                new SubjectQuota(SolverTestFixtures.answerQuotas(
+                        SolverTestFixtures.dim(SolverTestFixtures.SC, 35),
+                        SolverTestFixtures.dim(SolverTestFixtures.SA, 15)), null,
+                        List.of(), List.of()),
+                List.of(GroupQuota.single("math", 50)));
+        List<PathCandidate> mathPool = new ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            mathPool.add(PathCandidate.standalone("mq" + i, 1,
+                    i < 40 ? SolverTestFixtures.SC : SolverTestFixtures.SA, null, null, null));
+        }
+        pools.put("math", mathPool);
+        SectionOnPath lit = SolverTestFixtures.section("LIT", 50, GroupQuota.single("lit", 50));
+        List<PathCandidate> litPool = new ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            litPool.add(PathCandidate.standalone("lq" + i, 1,
+                    SolverTestFixtures.SC, null, null, null));
+        }
+        pools.put("lit", litPool);
+        List<SectionOnPath> subjects = new ArrayList<>();
         for (int s = 0; s < 6; s++) {
             GroupQuota group = GroupQuota.single("group" + s, 25);
             subjects.add(SolverTestFixtures.section("SUB" + s, 25, group));
@@ -71,9 +93,23 @@ class QuotaPerfTest {
             for (int subject : codes[i]) sections.add(subjects.get(subject));
             options.add(new SolveOption.Sections("QD" + i, sections));
         }
-        SolvePart part = new SolvePart.Choice("QDA", List.of(), options, 1);
-        timed("QDA-five-codes", () -> new PaperSolver().solveAll(List.of(part),
-                group -> pools.get(group.groupId()), SolveMode.check()).status());
+        List<SolvePart> parts = List.of(
+                SolverTestFixtures.part("P1", math),
+                SolverTestFixtures.part("P2", lit),
+                new SolvePart.Choice("QDA-P3", List.of(), options, 1));
+        long start = System.nanoTime();
+        SolveOutcome outcome = new PaperSolver().solveAll(parts,
+                group -> pools.get(group.groupId()), SolveMode.check());
+        long millis = (System.nanoTime() - start) / 1_000_000;
+        System.out.println("PERF QDA-full-five-codes ms=" + millis + " status=" + outcome.status());
+        assertThat(millis).isLessThan(30_000);
+        assertThat(outcome.status()).isEqualTo(SolveStatus.VALID);
+        assertThat(outcome.results()).hasSize(5);
+        // 5 mã = 5 đường; mỗi môn pool giải đúng một lần + 2 phần bắt buộc = 8 bài toán con,
+        // phần còn lại của 9 lượt môn qua mã lấy từ bộ nhớ
+        assertThat(outcome.stats().pathsEnumerated()).isEqualTo(5);
+        assertThat(outcome.stats().subproblemsSolved()).isEqualTo(8);
+        assertThat(outcome.stats().subproblemsMemoHit()).isGreaterThanOrEqualTo(5);
     }
 
     private void timed(String name, java.util.function.Supplier<SolveStatus> solve) {
