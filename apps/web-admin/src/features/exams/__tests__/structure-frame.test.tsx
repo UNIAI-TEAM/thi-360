@@ -104,7 +104,7 @@ describe("Khung bước 2: mục mở đầu tiên (R-03)", () => {
   });
 
   it("phần đầu tiên theo mã: mở môn đầu của danh sách môn", () => {
-    const coded = part("p-code", { codeSource: "GLOBAL_LIST", subjectPool: [section("s-phy", "PHYSICS"), section("s-che", "CHEMISTRY")] });
+    const coded = part("p-code", { codeSource: { source: "GLOBAL_LIST", branch: null }, subjectPool: [section("s-phy", "PHYSICS"), section("s-che", "CHEMISTRY")] });
     expect(defaultSelection([coded])).toEqual({ kind: "section", sectionId: "s-phy" });
   });
 
@@ -140,7 +140,7 @@ describe("Khung bước 2: vùng danh sách", () => {
 
   it("phần có mã: mỗi môn một lần, dưới đó là dòng mã chỉ đọc kèm môn còn thiếu", () => {
     const coded = part("p-code", {
-      codeSource: "GLOBAL_LIST",
+      codeSource: { source: "GLOBAL_LIST", branch: null },
       subjectPool: [section("s-phy", "PHYSICS"), section("s-che", "CHEMISTRY")],
     });
     renderWithProviders(

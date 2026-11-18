@@ -260,8 +260,11 @@ export interface ExamPart {
    * `subjectPool` chứ không trong `sections`/`options` (R-24, spec 3.4). `null`: phần bình thường, không dùng mã.
    */
   subjectPool?: ExamSection[] | null;
-  /** Nguồn mã của phần (`GLOBAL_LIST`: danh sách toàn cục theo lý thuyết–địa hướng); `null`: không theo mã. */
-  codeSource?: "GLOBAL_LIST" | null;
+  /**
+   * Nguồn mã của phần (`source = GLOBAL_LIST`: danh sách toàn cục theo lý thuyết–địa hướng; `branch`: nhánh giới hạn mã,
+   * `null` khi lấy mọi nhánh); `null`: không theo mã. Giữ nguyên khi gửi lại để lưu cấu trúc không làm mất phần theo mã.
+   */
+  codeSource?: { source: string; branch: string | null } | null;
 }
 
 export type ExamVersionState = "WORKING" | "SERVING" | "RETIRED";

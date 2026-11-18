@@ -198,6 +198,14 @@ export function mapPart(part: ApiPart, index: number): ExamPart {
     mode: choice ? "CHOICE" : "FIXED",
     sections: (part.sections ?? []).map(mapSection),
     options: (part.options ?? []).map(mapOption),
+    // Phần theo mã (R-24): môn nằm trong `subjectPool`; bỏ hai trường này thì phần bị coi là phần chọn rỗng và lưu cấu
+    // trúc sẽ xóa môn của phần.
+    ...(part.codeSource
+      ? {
+          codeSource: { source: part.codeSource.source ?? "GLOBAL_LIST", branch: part.codeSource.branch ?? null },
+          subjectPool: (part.subjectPool ?? []).map(mapSection),
+        }
+      : {}),
   };
 }
 
