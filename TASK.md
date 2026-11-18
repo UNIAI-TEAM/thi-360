@@ -195,6 +195,7 @@ Bổ sung H-SCA, V-SAT (UNI-2687, kế hoạch `docs/plans/2026-11-18-pbi04-dot-
 - FIX-QA UNI-2686, PR #106 (`b82b3bb0`), 2026-11-18.
 - G2c UNI-2697, PR #107 (`2a7dfbd1`), 2026-11-18.
 - BE-16 UNI-2688, PR #108 (`bb622ceb`), 2026-11-18.
+- FE-6 UNI-2694, PR #109 (`b682cc16`), 2026-11-19.
 
 ### Thứ tự làm
 
