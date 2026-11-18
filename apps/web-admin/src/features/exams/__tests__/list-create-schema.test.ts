@@ -533,6 +533,52 @@ describe("V-ACT và THPTQG: phạm vi mới và thời lượng bài theo phần
     expect(scopeDefaults(template, kindOption("THPTQG"), "PART")).toMatchObject({ timing: "SHARED", sharedDuration: 0 });
   });
 
+  it("THPTQG Theo phần (D25): Ngữ văn, Tiếng Anh là mẫu môn một phần PER_PART nên giữ thời lượng của mẫu, nhập được", () => {
+    // Mẫu THPTQG thật: Văn một phần 120 phút, Tiếng Anh một phần 50 phút, đều tính giờ theo phần.
+    const cases = [
+      ["LITERATURE", 120],
+      ["ENGLISH", 50],
+    ] as const;
+    for (const [subjectCode, minutes] of cases) {
+      const selection: ScopeSelection = { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode };
+      const template = scopeTemplate(FIXTURE_TEMPLATES, KINDS, selection)!;
+      expect(template).toMatchObject({ timing: "PER_PART" });
+      expect(template.parts.map((part) => part.durationMinutes)).toEqual([minutes]);
+    }
+    // Xóa thời lượng điền sẵn thì không gửi được: bài tính giờ theo phần bắt buộc thời lượng riêng của phần.
+    const lit = scopeTemplate(FIXTURE_TEMPLATES, KINDS, { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode: "LITERATURE" })!;
+    const filled = initialParts({
+      templates: FIXTURE_TEMPLATES,
+      kind: "THPTQG",
+      scope: "SUBJECT",
+      partCode: "",
+      combinations: combinationsForKind(COMBINATIONS, "THPTQG"),
+      scopeName: (scope) => scope,
+      template: lit,
+      subjectCode: "LITERATURE",
+    });
+    expect(filled).toHaveLength(1);
+    expect(errors(values({ kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode: "", parts: [{ ...filled[0]!, durationMinutes: 0 }] }))).toEqual({
+      "parts.0.durationMinutes": "durationPositive",
+    });
+  });
+
+  it("Theo phần cắt từ mẫu Theo môn không mang phân đoạn hiển thị (H40: phân đoạn chỉ của bài cả môn)", () => {
+    const segments = [{ code: "I", name: "Phần I", fromPosition: 1, toPosition: 25, commandCount: 67, maxPoints: 150 }];
+    const withSegments = FIXTURE_TEMPLATES.map((template) =>
+      template.code === "SP2E_MATH_2026"
+        ? { ...template, parts: template.parts.map((part) => ({ ...part, displaySegments: segments })) }
+        : template,
+    );
+    // Theo môn giữ phân đoạn của mẫu; phần cắt ra thì không.
+    const whole = scopeTemplate(withSegments, KINDS, { kind: "SP2E", scope: "SUBJECT", partCode: "", subjectCode: "MATH" })!;
+    expect(whole.parts[0]!.displaySegments).toEqual(segments);
+    const cut = scopeTemplate(withSegments, KINDS, { kind: "SP2E", scope: "PART", partCode: "P1", subjectCode: "MATH" })!;
+    expect(cut.parts).toHaveLength(1);
+    expect(cut.parts[0]!.displaySegments).toBeUndefined();
+    expect(cut.parts[0]!).not.toHaveProperty("displaySegments");
+  });
+
   it("SP2E Theo phần vẫn lấy thời lượng của mẫu môn (H35 chỉ áp cho THPTQG)", () => {
     const selection: ScopeSelection = { kind: "SP2E", scope: "PART", partCode: "P1", subjectCode: "MATH" };
     expect(scopeTemplate(FIXTURE_TEMPLATES, KINDS, selection)).toMatchObject({ timing: "PER_PART", durationMinutes: 90 });

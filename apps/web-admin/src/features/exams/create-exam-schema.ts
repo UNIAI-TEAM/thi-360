@@ -133,7 +133,14 @@ export function scopeTemplate(
   if (dedicated) return dedicated;
   const base = latestTemplate(templates, { ...selection, scope: "SUBJECT", partCode: "", buildMode: "STANDARD" });
   if (!base) return undefined;
-  const parts = base.parts.filter((part, index) => subjectPartCode(part.order ?? index + 1) === selection.partCode);
+  // Phần cắt từ mẫu Theo môn không mang phân đoạn hiển thị (H40: chỉ bài Toàn bài/Theo môn giữ displaySegments).
+  const parts = base.parts
+    .filter((part, index) => subjectPartCode(part.order ?? index + 1) === selection.partCode)
+    .map((part) => {
+      const cut = { ...part };
+      delete cut.displaySegments;
+      return cut;
+    });
   const shape = { parts, maxScore: parts[0]?.maxPoints ?? parts[0]?.points ?? base.maxScore };
   if (base.timing === "SHARED") return { ...base, ...shape, durationMinutes: parts[0]?.durationMinutes ?? null };
   return { ...base, ...shape };
