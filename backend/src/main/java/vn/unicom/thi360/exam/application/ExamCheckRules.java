@@ -238,7 +238,7 @@ public final class ExamCheckRules {
                     // Same slot by subject and template group, but its competencies no longer identify the template section.
                     failure = sectionIssue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", context, null);
                     failure.put("required", original.questionCount() != null ? original.questionCount() : Integer.valueOf(groupTotal(original)));
-                    failure.put("available", 0);
+                    failure.put("available", section.questionCount() != null ? section.questionCount() : Integer.valueOf(groupTotal(section)));
                 } else {
                     boolean declared = !Objects.equals(section.questionCount(), original.questionCount());
                     int actualTotal = groupTotal(section);

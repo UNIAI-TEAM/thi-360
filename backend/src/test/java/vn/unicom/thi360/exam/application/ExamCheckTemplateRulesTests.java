@@ -315,7 +315,8 @@ class ExamCheckTemplateRulesTests {
         assertThat(locked.getFirst().path("sectionId").asText()).isEqualTo(logicId[0]);
         assertThat(locked.getFirst().path("location").path("sectionId").asText()).isEqualTo(logicId[0]);
         assertThat(locked.getFirst().path("required").asInt()).isEqualTo(12);
-        assertThat(locked.getFirst().path("available").asInt()).isZero();
+        // R4-1: the copy still holds 12 questions; the lock reports its real count, not 0.
+        assertThat(locked.getFirst().path("available").asInt()).isEqualTo(12);
     }
 
     private static void addTag(ObjectNode tree) {
