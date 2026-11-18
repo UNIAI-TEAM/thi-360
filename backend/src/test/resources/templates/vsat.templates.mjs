@@ -58,8 +58,8 @@ function parts(subject) {
       block('Chọn một, 2 chùm × 3 câu', 'QUESTION_SET', 6, 6, code('SET'),
         {setCount: 2, setSize: 3, childAnswerType: 'SINGLE_CHOICE', ...(slots ? {slots} : {})})
     ])]),
-    part('Phần III · Ghép hợp', [section(subject, [
-      block('Ghép hợp bốn mục', 'MATCHING', 5, 6, code('MATCHING'), {itemShape: {leftItems: 4}})
+    part('Phần III · Ghép đôi', [section(subject, [
+      block('Ghép đôi bốn mục', 'MATCHING', 5, 6, code('MATCHING'), {itemShape: {leftItems: 4}})
     ])])
   ];
   list.push(subject === 'VAN'
