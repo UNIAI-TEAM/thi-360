@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,6 +91,51 @@ class ExamScaleSyncIT extends AbstractIntegrationTest {
         assertThat(back.path("practiceScoring").asText()).isEqualTo("RAW");
         assertThat(back.path("maxScore")).isEqualTo(exam.path("maxScore"));
         assertThat(back.path("referenceMax")).isEqualTo(exam.path("referenceMax"));
+    }
+
+    @Test
+    void loadingStandardTemplateWithoutProfileRejectsWithoutChangingReview() throws Exception {
+        JsonNode review = create("{\"kind\":\"HSA\",\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                + "\"buildMode\":\"REVIEW\"");
+        String id = review.path("id").asText();
+        entityManager.flush();
+        // A restored or repaired database can keep the exam and its catalog item without the profile row.
+        entityManager.createNativeQuery("DELETE FROM exam.exam_kind_profile WHERE exam_item_id = "
+                + "(SELECT kind_item_id FROM exam.exam WHERE id = :id)").setParameter("id", UUID.fromString(id))
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+        JsonNode before = detail(id);
+        JsonNode structureBefore = structure(id);
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"HSA_SUBJECT_TOAN\",\"confirmReplace\":true,"
+                                + "\"overviewPolicy\":\"USE_TEMPLATE\",\"expectedRevision\":"
+                                + structureBefore.path("revision").asLong() + "}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_SCOPE_NOT_ALLOWED"));
+        entityManager.flush();
+        entityManager.clear();
+        JsonNode after = detail(id);
+        assertThat(after.path("buildMode").asText()).isEqualTo("REVIEW");
+        assertThat(after.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(after.path("maxScore").isNull()).isTrue();
+        assertThat(after.path("referenceMax").isNull()).isTrue();
+        assertThat(after.path("templateCode")).isEqualTo(before.path("templateCode"));
+        assertThat(after.path("revision")).isEqualTo(before.path("revision"));
+        assertThat(structure(id)).isEqualTo(structureBefore);
+    }
+
+    private JsonNode detail(String id) throws Exception {
+        return mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    private JsonNode structure(String id) throws Exception {
+        return mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
     }
 
     private JsonNode loadTemplate(JsonNode exam, String templateCode) throws Exception {

@@ -838,6 +838,15 @@ public class ExamService {
         }
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         String previousMode = exam.getBuildMode();
+        boolean modeChanged = !Objects.equals(previousMode, template.getBuildMode());
+        ExamKindProfile crossingProfile = modeChanged
+                ? profileRepository.findById(exam.getKindItemId()).orElse(null) : null;
+        if (modeChanged && !"REVIEW".equals(template.getBuildMode()) && crossingProfile == null) {
+            // A standard exam takes its scale from the kind profile, as at creation: without one, fail closed
+            // before anything is changed.
+            throw new BusinessRuleException(ExamErrorCodes.SCOPE_NOT_ALLOWED,
+                    messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED));
+        }
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
                 subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
@@ -846,14 +855,14 @@ public class ExamService {
         // of a new exam made from that template, administrator overrides included: a review is LINEAR with no
         // scale, a standard exam takes the template or profile scale and the profile scoring.
         boolean scoringReset = false;
-        if (!Objects.equals(previousMode, template.getBuildMode())) {
-            ExamKindProfile profile = profileRepository.findById(exam.getKindItemId()).orElse(null);
+        if (modeChanged) {
+            ExamKindProfile profile = crossingProfile;
             if ("REVIEW".equals(template.getBuildMode())) {
                 exam.applyScoringProfile(null, "LINEAR");
                 exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
                         exam.getDurationMinutes(), null, actor, now);
                 scoringReset = true;
-            } else if (profile != null) {
+            } else {
                 BigDecimal base = subjectPart ? doc.parts().getFirst().maxPoints()
                         : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 exam.applyScoringProfile(subjectPart ? null : scopedReferenceMax(profile, exam.getScope(), base),
