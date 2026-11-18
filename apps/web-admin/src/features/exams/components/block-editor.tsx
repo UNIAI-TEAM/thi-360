@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select, StatusChip } from "@thi360/ui";
-import { ArrowDown, ArrowUp, ChevronRight, Headphones, HeadphoneOff, Lock, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
 import {
@@ -15,9 +15,7 @@ import { applyTopicTotal, countFromPercent, ratePercent } from "../allocation";
 import type { MatrixAxes } from "../matrix";
 import { roundForDisplay } from "../display-number";
 import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock } from "../matrix";
-import type { AudioCountQuery } from "../api.http";
 import { useAvailableQuestions } from "../queries";
-import { effectiveScope } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, droppedSlotIndexes, rateSetMismatch, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
 import { blockFieldAnchor, type BlockField } from "./block-form-fields";
@@ -25,6 +23,7 @@ import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput, parseNumberText } from "./block-number-input";
 import { BlockRadioGroup } from "./block-radio-group";
+import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { BlockSetConditions } from "./block-set-conditions";
 import { LOCKED_FIELD } from "./locked-field";
@@ -149,22 +148,8 @@ export function BlockEditor({
   const matrix = block.matrix ?? emptyMatrix();
   const editableMatrix = { ...block, matrix, questionCount };
 
-  // Nguồn đếm theo phạm vi có hiệu lực (của nhóm, hoặc của môn khi nhóm kế thừa) và dạng trả lời của nhóm.
-  const quotaTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
-  // Điều kiện audio đặt theo môn (H38): dòng kế thừa, nên đếm nguồn của dòng gửi cùng điều kiện (R-130).
-  const availableInput: AudioCountQuery = {
-    subjectCode,
-    questionType: block.questionType,
-    answerTypes: block.questionType === null ? quotaTypes : [],
-    childAnswerType: block.childAnswerType,
-    knowledgeScope: effectiveScope(block, section),
-    tagCodes: block.tagCodes,
-    requiredPointsPerQuestion: block.requiredPointsPerQuestion,
-    itemShape: block.itemShape,
-    answerFormats: block.answerFormats,
-    childConditions: block.childConditions,
-    audioRequirement: section.audioRequirement,
-  };
+  // Nguồn đếm theo phạm vi có hiệu lực, dạng trả lời và điều kiện audio của môn (H38, R-130): cùng bộ lọc với bảng nhóm của môn.
+  const availableInput = blockAvailableInput(block, section, subjectCode);
   const availableQuery = useAvailableQuestions(availableInput);
   const applyRateCount = (count: number) => {
     if (isSet && !flexible) setSets(count / (block.setSize ?? 1), block.setSize ?? 1);
@@ -666,9 +651,9 @@ function BlockRowInfo({ block, section, partTotal, rowsLocked, lockId, available
   const isSet = isSetBlock(block);
   const flexible = isFlexibleSet(block);
   const setSize = block.setSize ?? 0;
-  const audio = section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? section.audioRequirement : null;
+  const audio = sectionAudio(section);
   const total = partTotal !== null && partTotal > 0 ? partTotal : null;
-  const share = total !== null && count !== null && count > 0 ? ratePercent(count, total) : null;
+  const share = blockShare(count, partTotal);
   // Tỷ lệ cần số câu của nhóm; chùm khai số chùm × cỡ chùm cần cỡ chùm để ra số nguyên chùm.
   const canRate = total !== null && !rowsLocked && count !== null && (!isSet || flexible || setSize >= 1);
   const rateMode = canRate && entryMode === "RATE";
@@ -711,8 +696,7 @@ function BlockRowInfo({ block, section, partTotal, rowsLocked, lockId, available
     <div className="flex flex-col gap-3">
       {audio && (
         <div className="flex flex-wrap items-center gap-2">
-          {audio === "REQUIRED" ? <Headphones aria-hidden className="size-4 text-info" /> : <HeadphoneOff aria-hidden className="size-4 text-text-muted" />}
-          <StatusChip tone={audio === "REQUIRED" ? "info" : "neutral"}>{t(`audio.${audio}`)}</StatusChip>
+          <AudioChip audio={audio} />
           <span className="text-caption text-text-muted">{t("audioNote")}</span>
         </div>
       )}
