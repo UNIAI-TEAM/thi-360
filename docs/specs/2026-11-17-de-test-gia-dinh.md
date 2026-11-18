@@ -236,6 +236,40 @@ Quy tắc của plan BE-2a (`docs/plans/2026-11-16-be-pbi-03-04.md` dòng 311): 
 
 Tổng ước tính: khoảng 1.600 đơn vị đếm. Sinh bằng `generate_series` như plan BE-2a, không viết tay. Mỗi dòng có câu Nháp và câu Ngừng sử dụng đi kèm để chắc rằng chúng không được đếm.
 
+### 3.4 Câu mẫu cho H-SCA và V-SAT (UNI-2691, spec `2026-11-18-pbi04-dot-2b-bo-sung-hsca-vsat.md` mục 4, 5)
+
+Nằm trong `R__seed_questionbank_dev_data.sql`, mã câu `SEED-HSCA-*` và `SEED-VSAT-*`, trạng thái `READY`. Mỗi dòng có nhiều hơn mức mẫu cần để bộ giải còn chỗ chọn. Mọi nội dung là chữ ASCII ngắn do đội tự soạn, không lấy từ đề thật. Câu trắc nghiệm dùng bốn phương án; lớp và độ khó rải đều ba lớp 10, 11, 12 và ba mức NB, TH, VD (Văn, Tiếng Anh của H-SCA dùng lớp 12, mức TH vì hai môn này tắt lớp và độ khó).
+
+**H-SCA** (điểm theo Q-39, chùm theo Q-40):
+
+| Môn | Dòng của mẫu | Dữ liệu mẫu | Mẫu cần |
+|---|---|---|---|
+| Toán, Vật lí, Hóa học, Sinh học (mỗi môn) | Chọn một, bốn phương án, 0,25 | 24 câu đơn | 20 |
+| | Chọn nhiều, 0,25 (`PARTIAL`) | 8 câu đơn | 5 |
+| | Chùm phần 2 | 4 bộ, mỗi bộ 5 câu con chọn một 0,25 | 1 bộ, tổng 5 câu con |
+| | Trả lời ngắn, 0,25 | 12 câu đơn | 10 |
+| Ngữ văn | Chùm `VAN_THONG_TIN`, `VAN_NGHI_LUAN`, `VAN_THO` | mỗi nhãn 3 bộ: 5, 7, 8 câu con chọn một 1 điểm | 1 bộ mỗi nhãn |
+| Tiếng Anh, Nghe | 8 câu đơn có audio | 10 câu đơn chọn một 1 điểm, mỗi câu một tệp audio | 8 |
+| | 3 chùm × 4 câu con có audio | 4 bộ, audio ở câu gốc của bộ | 3 |
+| | 3 chùm × 5 câu con có audio | 4 bộ, audio ở câu gốc của bộ | 3 |
+| Tiếng Anh, Đọc | 4 chùm × 10 câu con, không audio | 6 bộ, bốn phương án, 1 điểm | 4 |
+
+**V-SAT** (điểm theo spec 5.1, 5.2):
+
+| Môn | Dòng của mẫu | Dữ liệu mẫu | Mẫu cần |
+|---|---|---|---|
+| Cả tám môn | Đúng/Sai bốn ý, 6 điểm, bảng `[1,2,3,6]` | 12 câu đơn | 9 (Tiếng Anh 7) |
+| | Ghép hợp, 4 mục mỗi bên, 1,5 điểm mỗi cặp | 10 câu đơn (6 điểm mỗi câu) | 5 |
+| Toán, Lí, Hóa, Sinh, Sử, Địa | Trả lời ngắn, 6 điểm | 10 câu đơn | 5 |
+| | Phần II, chùm 3 câu con chọn một, 6 điểm mỗi câu con | 4 bộ | 2 |
+| Địa lí | Phần II hai vị trí theo nhãn | bộ gắn `DIA_BANG_SO_LIEU`, `DIA_BIEU_DO` ở câu gốc; câu con 1 gắn bảng số liệu, câu con 2 gắn biểu đồ | 2 |
+| Ngữ văn I–III | Phần II, chùm 3 câu con | 3 bộ `VAN_THO`, 3 bộ `VAN_TRUYEN` | 1 mỗi nhãn |
+| Tiếng Anh | Bài đọc dùng chung câu 8–15 | 3 bộ 8 câu con: vị trí 1–2 Đúng/Sai bốn ý, vị trí 3–8 chọn một, 6 điểm mỗi câu con | 1 |
+| | Phần II theo phần | 3 bộ 6 câu con chọn một, 6 điểm | 1 |
+| | Cloze | 3 câu, 5 vị trí, 6 điểm mỗi vị trí | 1 |
+
+**Audio.** 18 tệp MP3 đơn kênh trong `backend/src/main/resources/db/devdata/assets/` (`hsca-en-listening-single-01..10`, `-set4-01..04`, `-set5-01..04`), mỗi tệp 2 giây âm đơn tự sinh, đúng 6.264 byte, cộng 112.752 byte. Dòng `question_asset` (`kind = ATTACHMENT`, `mime = audio/mpeg`, `object_key = questions/dev-seed/<tên tệp>`) cùng `question_asset_ref` phiên bản 1 nằm trong tệp `R__` ở trên; `DevQuestionAssetSeeder` (hồ sơ `dev`, `test`) ghi từng tệp vào kho lưu trữ theo `object_key` của các dòng đó, bỏ qua tệp đã có. Tệp audio chỉ gắn vào câu gốc: câu đơn Nghe có một tệp, chùm Nghe có một tệp ở câu gốc, câu con không có tệp.
+
 ## 4. Khi chuyên gia trả lời
 
 - Sửa số trong mục 2 và migration mẫu cùng một PR. Ghi mã quyết định mới vào spec mục 1.
