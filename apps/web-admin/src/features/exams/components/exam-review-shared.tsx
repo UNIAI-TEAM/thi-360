@@ -2,13 +2,14 @@
 
 import { cn, focusRing, StatusChip, Tooltip, type StatusTone } from "@thi360/ui";
 import { CircleCheck, CircleHelp, CircleX } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
-import { blockFilterConfig, findBlockContext, type ChoiceNameResolver } from "../check";
+import { blockFilterConfig, combinationLabel, findBlockContext, type ChoiceNameResolver } from "../check";
 import { type ChangeLevel, parseChangeWhere } from "../change-where";
 import { roundForDisplay } from "../display-number";
+import { useExamStructure } from "../queries";
 import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
@@ -48,17 +49,31 @@ export function reviewHref(examId: string, params: Record<string, string> = {}):
   return query ? `${base}?${query}` : base;
 }
 
-/** Tên một đường: "KH-1 · Vật lí – Hóa học – Sinh học", "Tiếng Anh"; bài không có phần tự chọn: "Đề chung". */
-export function usePathLabel() {
+/**
+ * Tên một đường: "QD02 · Hóa học – Sinh học", "Tiếng Anh"; bài không có phần tự chọn: "Đề chung". Có `examId` thì tên mã
+ * lấy theo ngôn ngữ từ cấu trúc của bài; kết quả kiểm tra chỉ có tên = mã, không in lặp "QD01 · QD01".
+ */
+export function usePathLabel(examId?: string) {
   const t = useTranslations("exams.review");
+  const locale = useLocale();
+  const structure = useExamStructure(examId ?? "", undefined, Boolean(examId));
+  const combinations = structure.data?.combinations;
   return useCallback(
     (path: ExamPathRef) =>
       path.choices.length
         ? path.choices
-            .map((choice) => (choice.kind === "COMBINATION" ? `${choice.code} · ${choice.name}` : choice.name))
+            .map((choice) =>
+              choice.kind === "COMBINATION"
+                ? combinationLabel(choice.code, {
+                    combination: combinations?.find((item) => item.code === choice.code),
+                    locale,
+                    fallback: choice.name,
+                  })
+                : choice.name,
+            )
             .join(" + ")
         : t("path.single"),
-    [t],
+    [t, locale, combinations],
   );
 }
 

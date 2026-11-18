@@ -70,7 +70,7 @@ export function ExamPreviewPanel({
   const tIssue = useTranslations("exams.review.issue");
   const format = useFormatter();
   const lookup = useLookup();
-  const pathLabel = usePathLabel();
+  const pathLabel = usePathLabel(exam.id);
   const nameOf = useChoiceNameResolver();
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);

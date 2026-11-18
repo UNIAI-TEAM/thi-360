@@ -147,6 +147,22 @@ export interface IssueGroup {
 }
 
 /**
+ * Nhãn một mã tổ hợp trong tên đường: `QD02 · Hóa học – Sinh học`. Tên lấy theo ngôn ngữ từ cấu trúc (`nameVi` / `nameEn`,
+ * ngôn ngữ kia làm dự phòng), không có thì tên trong kết quả kiểm tra. Tên trống, trùng mã (kết quả kiểm tra đặt tên = mã)
+ * hoặc đã mở đầu bằng mã không được lặp mã.
+ */
+export function combinationLabel(
+  code: string,
+  names: { combination?: StructureCombination; locale: string; fallback?: string | null },
+): string {
+  const { combination, locale, fallback } = names;
+  const localized = locale === "en" ? [combination?.nameEn, combination?.nameVi] : [combination?.nameVi, combination?.nameEn];
+  const name = [...localized, fallback].map((item) => item?.trim()).find((item) => item && item.toLowerCase() !== code.toLowerCase());
+  if (!name) return code;
+  return name.toLowerCase().startsWith(code.toLowerCase()) ? name : `${code} · ${name}`;
+}
+
+/**
  * Gom vấn đề theo môn, hoặc theo mã bài thi bị ảnh hưởng (`affectedCodes`): một vấn đề của nhiều mã nằm ở mọi mã của nó.
  * Giữ thứ tự xuất hiện; nhóm "không gắn" (`value = null`) xếp cuối.
  */

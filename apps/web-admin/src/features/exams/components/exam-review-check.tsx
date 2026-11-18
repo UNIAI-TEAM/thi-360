@@ -383,7 +383,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
   const tReview = useTranslations("exams.review");
   const lookup = useLookup();
   const issueText = useIssueText();
-  const pathLabel = usePathLabel();
+  const pathLabel = usePathLabel(exam.id);
   const choice = path.choices.find((item) => item.kind === "SUBJECT_CHOICE");
   const option = exam.parts
     .find((part) => part.id === choice?.partId)
@@ -509,8 +509,8 @@ const PathActionsContext = createContext<PathActionsValue | null>(null);
 /** Thao tác theo kết quả của một đường: xem trước (hợp lệ), đến dòng ma trận (không hợp lệ), kiểm tra kỹ (chưa xác nhận). */
 function PathActions({ path }: { path: PathCheck }) {
   const t = useTranslations("exams.review");
-  const pathLabel = usePathLabel();
   const context = useContext(PathActionsContext);
+  const pathLabel = usePathLabel(context?.examId);
   if (!context) return null;
   const { examId, deep, checking, onPreview, onShowOverlap } = context;
   const label = pathLabel(path);
@@ -571,7 +571,7 @@ function PathsSection({
   onShowOverlap: (pathId: string) => void;
 }) {
   const t = useTranslations("exams.review");
-  const pathLabel = usePathLabel();
+  const pathLabel = usePathLabel(exam.id);
   const pathSub = usePathSub();
   const issueText = useIssueText();
   const partsList = [...exam.parts]
@@ -765,7 +765,7 @@ function BlocksSection({
   onValueChange: (pathId: string) => void;
 }) {
   const t = useTranslations("exams.review");
-  const pathLabel = usePathLabel();
+  const pathLabel = usePathLabel(exam.id);
   const defaultTab = (result.paths.find((path) => path.result !== "VALID") ?? result.paths[0])?.pathId ?? "";
   const active = value && result.paths.some((path) => path.pathId === value) ? value : defaultTab;
   const tabLabel = (path: PathCheck) =>

@@ -673,7 +673,7 @@ describe("BCA đổi mã trên cùng đề thử", () => {
     await pick(user, "Đường lựa chọn", /CA2/);
     expect(
       await screen.findByText(
-        "Đề thử đang dùng CA1 · CA1. Đổi sang CA2 · CA2 giữ nguyên Part 1, Part 2 (câu 1–65), chỉ sinh lại Part 3 (câu 66–80). Sinh đề thử mới sinh lại cả bài với hạt giống mới.",
+        "Đề thử đang dùng CA1. Đổi sang CA2 giữ nguyên Part 1, Part 2 (câu 1–65), chỉ sinh lại Part 3 (câu 66–80). Sinh đề thử mới sinh lại cả bài với hạt giống mới.",
       ),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Đổi mã, sinh lại Part 3" }));
