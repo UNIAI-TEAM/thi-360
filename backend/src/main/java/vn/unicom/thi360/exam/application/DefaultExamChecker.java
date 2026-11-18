@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
@@ -35,10 +36,11 @@ public class DefaultExamChecker implements ExamChecker {
     private final CatalogLookup catalog;
     private final QuestionSourcePort source;
     private final ExamCheckUnitEngine units;
+    private final ExamCheckTemplateFacts templateFacts;
 
     public DefaultExamChecker(SolverInputBuilder builder, SolverLimits limits,
             Clock clock, ObjectMapper mapper, CatalogLookup catalog, QuestionSourcePort source,
-            ExamCheckUnitEngine units) {
+            ExamCheckUnitEngine units, ExamCheckTemplateFacts templateFacts) {
         this.builder = builder;
         this.limits = limits;
         this.clock = clock;
@@ -46,13 +48,15 @@ public class DefaultExamChecker implements ExamChecker {
         this.catalog = catalog;
         this.source = source;
         this.units = units;
+        this.templateFacts = templateFacts;
     }
 
     @Override
     public Evaluation check(ExamCheckSnapshotReader.Snapshot snapshot, Instant deadline, Duration budget, ExamCheckScope scope) {
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), snapshot.structure());
         var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure(), combinations,
-                ExamCheckUnitCombinations.topicParents(catalog, snapshot.structure()));
+                ExamCheckUnitCombinations.topicParents(catalog, snapshot.structure()),
+                templateFacts.of(snapshot.exam()));
         Set<String> requested = scope.sections(snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common().stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList());
@@ -88,7 +92,7 @@ public class DefaultExamChecker implements ExamChecker {
             }
             common.addAll(rules.combinationListIssues(List.copyOf(servedByCode.values()), current));
         }
-        List<ObjectNode> allInvalid = rules.unrepresentable();
+        List<ObjectNode> allInvalid = withSiblingLocks(rules.unrepresentable(), rules, scope, requested);
         List<ObjectNode> invalid = allInvalid.stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList();
         var assembler = new ExamCheckAssembler(mapper, clock, limits);
@@ -363,6 +367,24 @@ public class DefaultExamChecker implements ExamChecker {
             // A draft without a representable unit is reflected directly by structural section states.
             return evaluation;
         }
+    }
+
+    /**
+     * A scoped check solves every section of the selected unit, so a locked count (H27) of a sibling section outside
+     * the requested scope still makes the unit incomplete; it joins the pre-solve issues like any other section error.
+     * Issues inside the scope already come with {@code rules.common()}.
+     */
+    private static List<ObjectNode> withSiblingLocks(List<ObjectNode> invalid, ExamCheckRules rules,
+                                                    ExamCheckScope scope, Set<String> requested) {
+        if (scope.kind() == ExamCheckScope.Kind.EXAM) return invalid;
+        List<ObjectNode> siblings = rules.templateIssues().stream()
+                .filter(issue -> "ERROR".equals(issue.path("severity").asText()) && issue.hasNonNull("sectionId")
+                        && !requested.contains(issue.path("sectionId").asText()))
+                .toList();
+        if (siblings.isEmpty()) return invalid;
+        List<ObjectNode> all = new ArrayList<>(invalid);
+        all.addAll(siblings);
+        return all;
     }
 
     private static boolean inScope(ObjectNode issue, ExamCheckScope scope, Set<String> sections) {
