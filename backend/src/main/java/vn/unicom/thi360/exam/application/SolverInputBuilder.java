@@ -109,9 +109,10 @@ public class SolverInputBuilder {
             if (!filter.childConditions().isEmpty()) dimensions.add(FilterDimension.CHILD_CONDITION);
             if (dimensions.isEmpty()) return List.of();
             var filtered = source.findCandidates(filter, fetchLimit);
-            long available = eligibleUnits(group, filtered, required);
             // If the source was truncated, it cannot establish the exact shortfall.
-            if (filtered.size() >= fetchLimit || available >= required) return List.of();
+            if (filtered.size() >= fetchLimit) return List.of();
+            long available = eligibleUnits(group, filtered, required);
+            if (available >= required) return List.of();
             List<FilterCount> counts = new ArrayList<>();
             for (var dimension : dimensions) {
                 var relaxed = new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(),
@@ -140,16 +141,23 @@ public class SolverInputBuilder {
             if (group.kind() != GroupQuota.GroupKind.FLEXIBLE_SET) {
                 return candidates.stream().filter(candidate -> eligible(group, candidate)).count();
             }
-            boolean[] reachable = new boolean[required + 1];
+            long supply = 0;
+            for (var candidate : candidates) {
+                if (eligible(group, candidate)) supply += candidate.units().size();
+            }
+            if (supply == 0) return 0;
+            // The target can never be composed beyond the supply, so bound the state by it.
+            int limit = (int) Math.min(required, supply);
+            boolean[] reachable = new boolean[limit + 1];
             reachable[0] = true;
             for (var candidate : candidates) {
                 if (!eligible(group, candidate)) continue;
                 int size = candidate.units().size();
-                for (int sum = required; sum >= size; sum--) {
+                for (int sum = limit; sum >= size; sum--) {
                     reachable[sum] |= reachable[sum - size];
                 }
             }
-            for (int sum = required; sum > 0; sum--) {
+            for (int sum = limit; sum > 0; sum--) {
                 if (reachable[sum]) return sum;
             }
             return 0;

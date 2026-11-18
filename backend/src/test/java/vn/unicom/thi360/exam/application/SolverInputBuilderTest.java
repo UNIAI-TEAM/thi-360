@@ -308,6 +308,41 @@ class SolverInputBuilderTest {
         assertThat(input.candidates().filterCounts(group, 3)).isEmpty();
     }
 
+    @Test
+    void flexibleFilterCountsStayBoundedWhenTheTargetFarExceedsTheSupply() {
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(UUID.randomUUID());
+        when(catalog.findActiveItem("SUBJECT", "LIT")).thenReturn(Optional.of(subject));
+        when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
+        var block = new QuestionBlock("flex", "Flex", QuestionType.QUESTION_SET, 3, null, null,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(new ChildCondition(1, 1, List.of(UUID.randomUUID()))),
+                null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "LIT", 3, null, null, null, null, List.of(block));
+        var part = new ExamPart("p", 1, "Part", null, null, null, null, null, null, List.of(section), List.of());
+        var input = new SolverInputBuilder(catalog, source, SolverLimits.defaults())
+                .build(UUID.randomUUID(), new ExamStructureDocument(List.of(part)));
+        var group = ((SolvePart.Fixed) input.parts().getFirst()).sections().getFirst().groups().getFirst();
+        int[] targets = {1_000_000_000, Integer.MAX_VALUE};
+        org.junit.jupiter.api.Assertions.assertTimeout(java.time.Duration.ofSeconds(5), () -> {
+            for (int target : targets) {
+                when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());
+                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt()))
+                        .thenReturn(List.of(setOf(3), setOf(2)));
+                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                // A truncated source cannot establish a shortfall; it is rejected before any counting.
+                org.mockito.Mockito.clearInvocations(source);
+                when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt()))
+                        .thenReturn(java.util.Collections.nCopies(20001, setOf(1)));
+                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                verify(source, org.mockito.Mockito.times(1)).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
+            }
+        });
+    }
+
     private static QuestionSourcePort.Candidate setOf(int children) {
         List<QuestionSourcePort.Unit> units = new java.util.ArrayList<>();
         for (int i = 0; i < children; i++) {
