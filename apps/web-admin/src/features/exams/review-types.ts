@@ -1,11 +1,15 @@
+import type { components } from "@thi360/api-client";
 import type { PersonRef, QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
 import type { ExamCheckStatus, ExamPart, ExamSectionState, ExamVersion, MatrixMode } from "./types";
 
 /**
  * Kiểu của Kiểm tra cấu hình, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11), dữ liệu mẫu.
- * Khi có OpenAPI của backend, đổi thành bí danh của `components["schemas"][...]`.
+ * Hình dạng wire do BE-20 thêm (tệp đính kèm, phân đoạn hiển thị) ánh theo `components["schemas"]` của
+ * `@thi360/api-client`; phần còn lại là kiểu mức ứng dụng sau chuyển đổi.
  */
+
+type Schema = components["schemas"];
 
 /* ---------- Nguồn câu hỏi ---------- */
 
@@ -203,7 +207,7 @@ export interface CheckIssue {
   subjectCount: number | null;
   required: number | null;
   available: number | null;
-  /** Điểm của phần đã lược (`SCALE_INCLUDES_EXCLUDED_PART`: thang − tổng điểm); `null` ở mã khác hoặc máy chủ cũ. Viết tay đến khi BE-20 sinh lại client. */
+  /** Điểm của phần đã lược (`SCALE_INCLUDES_EXCLUDED_PART`): máy chủ tính và gửi (BE-20); `null` ở mã khác. */
   excludedPoints?: number | null;
   timeLimitSeconds: number | null;
   /** Mã câu nguồn liên quan (quy tắc chấm khác khối, thiếu tiêu chí chấm); `null` khi không áp dụng. */
@@ -214,7 +218,7 @@ export interface CheckIssue {
   slotIndex?: number | null;
   /** Vị trí câu con (từ 1) của lỗi điều kiện câu con (`CHILD_CONDITION_SHORTAGE`); `null`: không gắn vị trí. */
   childPosition?: number | null;
-  /** Phân đoạn hiển thị của `DISPLAY_SEGMENT_MISMATCH` (BE-20); tên tra theo `displaySegments` của phần, không in mã. Viết tay đến khi BE-20 sinh lại client. */
+  /** Phân đoạn hiển thị của `DISPLAY_SEGMENT_MISMATCH` (BE-20, `ExamPreviewIssue.segmentCode`); tên tra theo `displaySegments` của phần, không in mã. */
   segmentCode?: string | null;
 }
 
@@ -361,26 +365,17 @@ export interface PreviewOption {
 }
 
 /**
- * Tệp đính kèm của câu gốc trong đề xem trước (spec 6): chỉ biết mã, tên và MIME. Nguồn phát là
- * `GET /api/v1/admin/question-assets/{id}`. Viết tay đến khi BE-20 sinh lại `packages/api-client`.
+ * Tệp đính kèm của câu gốc trong đề xem trước (spec 6, `ExamPreviewAttachment`): chỉ biết mã, tên và MIME.
+ * Nguồn phát là `GET /api/v1/admin/question-assets/{id}`.
  */
-export interface PreviewAttachment {
-  id: string;
-  name: string;
-  mime: string;
-}
+export type PreviewAttachment = Required<Schema["ExamPreviewAttachment"]>;
 
-/** Phân đoạn hiển thị của một phần (Phần I–IV của Tiếng Anh V-SAT, H40): chỉ để hiện tiêu đề, không đổi số câu. */
-export interface PreviewDisplaySegment {
-  code: string;
-  name: string;
-  /** Số thứ tự câu trong phần, tính từ 1, hai đầu cùng nằm trong phân đoạn. */
-  fromPosition: number;
-  toPosition: number;
-  /** Số lệnh và điểm khai báo của phân đoạn (máy chủ so với đề thật, lệch thì báo lỗi tại phần). */
-  commandCount: number;
-  maxPoints: number;
-}
+/**
+ * Phân đoạn hiển thị của một phần (Phần I–IV của Tiếng Anh V-SAT, H40): chỉ để hiện tiêu đề, không đổi số câu.
+ * `fromPosition`/`toPosition`: số thứ tự câu trong phần (từ 1, hai đầu nằm trong phân đoạn); `commandCount` và
+ * `maxPoints` là số khai báo (máy chủ so với đề thật, lệch thì báo `DISPLAY_SEGMENT_MISMATCH` tại phần).
+ */
+export type PreviewDisplaySegment = Schema["DisplaySegment"];
 
 /** Một câu (câu đơn hoặc câu con của bộ) trong đề xem trước. `simulated`: câu của nguồn mô phỏng, không có nội dung. */
 export interface PreviewQuestion {
@@ -411,7 +406,7 @@ export interface PreviewQuestion {
   originalOptionOrder: string[] | null;
   /** Chỉ tiêu chủ đề mà câu được gán vào (`TOPIC:<id>` của `compliance`); rỗng khi không gán. */
   assignedTopicQuotaIds: string[];
-  /** Tệp đính kèm của câu đơn; câu con không có tệp riêng (tệp nằm ở câu gốc của bộ). Máy chủ cũ không gửi: bỏ trống. */
+  /** Tệp đính kèm của câu đơn; câu con không có tệp riêng (tệp nằm ở câu gốc của bộ). BE-20 gửi `[]` khi không có. */
   attachments?: PreviewAttachment[];
 }
 
@@ -429,7 +424,7 @@ export type PreviewItem =
       children: PreviewQuestion[];
       /** Vị trí gốc của mục trong khối (thứ tự bộ giải chọn); `null` hoặc bỏ trống khi máy chủ không gửi. */
       originalOrder?: number | null;
-      /** Tệp đính kèm của câu gốc của bộ (audio dùng chung cho cả bộ); bỏ trống khi máy chủ không gửi. */
+      /** Tệp đính kèm của câu gốc của bộ (audio dùng chung cho cả bộ). BE-20 gửi `[]` khi không có. */
       attachments?: PreviewAttachment[];
     };
 
@@ -473,7 +468,7 @@ export interface PreviewPart {
   points: number;
   /** Điểm quy định của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
   maxPoints: number | null;
-  /** Phân đoạn hiển thị Phần I–IV; bỏ trống khi phần không có (mọi bài trừ Tiếng Anh V-SAT FULL). */
+  /** Phân đoạn hiển thị Phần I–IV; `[]` khi phần không có hoặc khi sinh thử một phần của phần (chiếu cục bộ, BE-20). */
   displaySegments?: PreviewDisplaySegment[];
   blocks: PreviewBlock[];
 }

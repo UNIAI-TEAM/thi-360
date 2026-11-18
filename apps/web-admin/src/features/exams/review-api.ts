@@ -337,9 +337,10 @@ type ApiCheckPath = Schema["ExamCheckPath"];
 type ApiCheckBlock = Schema["ExamCheckBlock"];
 type ApiCheckSubject = Schema["ExamCheckSubject"];
 type ApiCheckSelection = Schema["ExamCheckSelection"];
-/** Trường của vấn đề mà `packages/api-client` chưa có (BE-20): điểm của phần đã lược, phân đoạn lệch; bỏ khi client đã sinh lại. */
-type WireIssueExtras = { excludedPoints?: number; segmentCode?: string };
-type ApiCheckIssue = Schema["ExamCheckIssue"] & WireIssueExtras;
+type ApiCheckIssue = Schema["ExamCheckIssue"];
+type ApiPreviewIssue = Schema["ExamPreviewIssue"];
+/** Vấn đề của Kiểm tra (`ExamCheckIssue`, có `excludedPoints`) và của Sinh thử (`ExamPreviewIssue`, có `segmentCode`). */
+type ApiIssue = ApiCheckIssue | ApiPreviewIssue;
 type ApiCheckGroup = Schema["ExamCheckGroup"];
 type ApiCheckChoice = Schema["ExamCheckChoice"];
 type ApiCheckRequirement = Schema["ExamCheckRequirement"];
@@ -350,23 +351,11 @@ type ApiVersionChange = Schema["ExamVersionChange"];
 type ApiWorkingCopy = Schema["ExamVersionWorkingCopy"];
 type ApiPreviewResult = Schema["ExamPreviewResult"];
 type ApiPreviewPaper = Schema["ExamPreviewPaper"];
-/** Trường của đề xem trước mà `packages/api-client` chưa có (spec 6, BE-20); bỏ khi client đã sinh lại. */
-type WireAttachments = { attachments?: Array<{ id?: string; name?: string; mime?: string }> };
-type WireDisplaySegments = {
-  displaySegments?: Array<{
-    code?: string;
-    name?: string;
-    fromPosition?: number;
-    toPosition?: number;
-    commandCount?: number;
-    maxPoints?: number;
-  }>;
-};
-type ApiPreviewPart = Schema["ExamPreviewPart"] & WireDisplaySegments;
+type ApiPreviewPart = Schema["ExamPreviewPart"];
 type ApiPreviewBlock = Schema["ExamPreviewBlock"];
 type ApiPreviewBlockRequirement = Schema["ExamPreviewBlockRequirement"];
-type ApiPreviewItem = Schema["ExamPreviewItem"] & WireAttachments;
-type ApiPreviewQuestion = Schema["ExamPreviewQuestion"] & WireAttachments;
+type ApiPreviewItem = Schema["ExamPreviewItem"];
+type ApiPreviewQuestion = Schema["ExamPreviewQuestion"];
 type ApiPreviewCheck = Schema["ExamPreviewCheck"];
 type ApiPreviewSubjectAllocation = Schema["ExamPreviewSubjectAllocation"];
 type ApiPreviewKnowledgeStat = Schema["ExamPreviewKnowledgeStat"];
@@ -453,7 +442,7 @@ function issueKey(issue: Omit<CheckIssue, "key">): string {
   ].join("|");
 }
 
-function mapIssue(issue: ApiCheckIssue): CheckIssue {
+function mapIssue(issue: ApiIssue): CheckIssue {
   const mapped: Omit<CheckIssue, "key"> = {
     code: issue.code !== undefined && ISSUE_CODES[issue.code] ? (issue.code as CheckIssueCode) : "INFO_MISSING",
     severity:
@@ -476,13 +465,13 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     subjectCount: issue.subjectCount ?? null,
     required: issue.required ?? null,
     available: issue.available ?? null,
-    excludedPoints: issue.excludedPoints ?? null,
+    excludedPoints: "excludedPoints" in issue ? (issue.excludedPoints ?? null) : null,
     timeLimitSeconds: issue.timeLimitSeconds ?? null,
     questionCodes: issue.questionCodes ?? null,
-    affectedCodes: issue.affectedCodes ?? null,
+    affectedCodes: "affectedCodes" in issue ? (issue.affectedCodes ?? null) : null,
     slotIndex: issue.location?.slotIndex ?? null,
     childPosition: issue.location?.childPosition ?? null,
-    segmentCode: issue.segmentCode ?? null,
+    segmentCode: "segmentCode" in issue ? (issue.segmentCode ?? null) : null,
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
@@ -637,7 +626,7 @@ function mapPreviewCheck(check: ApiPreviewCheck): PreviewCheck {
   };
 }
 
-function mapAttachments(attachments: WireAttachments["attachments"]): PreviewAttachment[] {
+function mapAttachments(attachments: Schema["ExamPreviewAttachment"][] | undefined): PreviewAttachment[] {
   return (attachments ?? []).map((attachment) => ({
     id: attachment.id ?? "",
     name: attachment.name ?? "",
@@ -645,7 +634,7 @@ function mapAttachments(attachments: WireAttachments["attachments"]): PreviewAtt
   }));
 }
 
-function mapDisplaySegments(segments: WireDisplaySegments["displaySegments"]): PreviewDisplaySegment[] {
+function mapDisplaySegments(segments: Schema["DisplaySegment"][] | undefined): PreviewDisplaySegment[] {
   return (segments ?? []).map((segment) => ({
     code: segment.code ?? "",
     name: segment.name ?? "",
