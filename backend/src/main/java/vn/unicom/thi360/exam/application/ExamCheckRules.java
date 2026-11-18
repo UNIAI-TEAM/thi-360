@@ -395,10 +395,9 @@ public final class ExamCheckRules {
     }
 
     /**
-     * Active groups of the exam that switch back on a group the template omits. Matched by provenance only: the
-     * group's id first (wherever it sits now), then its template group code when that code identifies exactly one
-     * template group and exactly one active group of the exam still carries it. Ambiguous codes match nothing, a row
-     * is never picked arbitrarily. Compared by identity: the result is a set of the document's own group objects.
+     * Groups are matched regardless of activation: id first, then template group code when it uniquely identifies
+     * one template group and one current group. Only after matching do we report active counterparts. Ambiguous
+     * codes match nothing; a row is never picked arbitrarily.
      */
     private Set<QuestionBlock> reenabledBlocks(ExamStructureDocument locked) {
         List<QuestionBlock> omitted = new ArrayList<>();
@@ -409,19 +408,18 @@ public final class ExamCheckRules {
             if (block.templateGroupCode() != null) codes.merge(block.templateGroupCode(), 1, Integer::sum);
             if (Boolean.TRUE.equals(block.omitted())) omitted.add(block);
         }
-        List<QuestionBlock> active = new ArrayList<>();
-        for (SectionContext context : sections.values()) {
-            for (QuestionBlock block : context.section.blocks()) {
-                if (!Boolean.TRUE.equals(block.omitted())) active.add(block);
-            }
-        }
+        List<QuestionBlock> current = new ArrayList<>();
+        for (SectionContext context : sections.values()) current.addAll(context.section.blocks());
         Set<QuestionBlock> matched = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         List<QuestionBlock> open = new ArrayList<>();
         for (QuestionBlock block : omitted) {
             boolean byId = false;
             if (block.id() != null && !block.id().isBlank()) {
-                for (QuestionBlock candidate : active) {
-                    if (block.id().equals(candidate.id())) { matched.add(candidate); byId = true; }
+                for (QuestionBlock candidate : current) {
+                    if (block.id().equals(candidate.id())) {
+                        if (!Boolean.TRUE.equals(candidate.omitted())) matched.add(candidate);
+                        byId = true;
+                    }
                 }
             }
             if (!byId) open.add(block);
@@ -429,10 +427,13 @@ public final class ExamCheckRules {
         for (QuestionBlock block : open) {
             String code = block.templateGroupCode();
             if (code == null || codes.getOrDefault(code, 0) != 1) continue;
-            List<QuestionBlock> same = active.stream().filter(candidate -> !matched.contains(candidate)
-                    && code.equals(candidate.templateGroupCode())
-                    && (candidate.id() == null || !templateIds.contains(candidate.id()))).toList();
-            if (same.size() == 1) matched.add(same.getFirst());
+            List<QuestionBlock> same = current.stream()
+                    .filter(candidate -> code.equals(candidate.templateGroupCode())).toList();
+            if (same.size() == 1) {
+                QuestionBlock candidate = same.getFirst();
+                if (!Boolean.TRUE.equals(candidate.omitted())
+                        && (candidate.id() == null || !templateIds.contains(candidate.id()))) matched.add(candidate);
+            }
         }
         return matched;
     }

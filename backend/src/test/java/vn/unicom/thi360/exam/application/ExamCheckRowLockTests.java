@@ -297,6 +297,21 @@ class ExamCheckRowLockTests {
         assertThat(codes(rulesFor(copy, shared, shared).common())).doesNotContain("OMITTED_BLOCK_LOCKED");
     }
 
+    @Test
+    void omittedAndActiveRowsSharingAGroupCodeAreNotPairedArbitrarily() throws Exception {
+        ObjectNode tree = (ObjectNode) mapper.readTree(WRITING);
+        var blocks = (com.fasterxml.jackson.databind.node.ArrayNode) tree.at("/parts/1/sections/0/blocks");
+        ObjectNode duplicate = ((ObjectNode) blocks.get(0)).deepCopy();
+        duplicate.put("id", "b-extra");
+        duplicate.put("omitted", false);
+        blocks.add(duplicate);
+        // The original ID is still omitted; an unrelated row with the same code cannot take its place.
+        assertThat(codes(rules(tree.toString(), null, WRITING).common())).doesNotContain("OMITTED_BLOCK_LOCKED");
+        // With all IDs regenerated, the two rows make the code ambiguous even though only one is active.
+        ExamStructureDocument copy = ExamStructureOps.regenerateIds(document(tree.toString()));
+        assertThat(codes(rulesFor(copy, null, WRITING).common())).doesNotContain("OMITTED_BLOCK_LOCKED");
+    }
+
     // ---- rows 8 and 9: SCALE_INCLUDES_EXCLUDED_PART --------------------------------------------------------
 
     /** 20 questions of 6 points, and a writing part of one omitted group of 30 points: the paper holds 120. */
