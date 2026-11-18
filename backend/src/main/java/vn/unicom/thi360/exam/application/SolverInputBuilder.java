@@ -109,7 +109,7 @@ public class SolverInputBuilder {
             if (!filter.childConditions().isEmpty()) dimensions.add(FilterDimension.CHILD_CONDITION);
             if (dimensions.isEmpty()) return List.of();
             var filtered = source.findCandidates(filter, fetchLimit);
-            long available = eligibleCount(group, filtered);
+            long available = eligibleUnits(group, filtered, required);
             // If the source was truncated, it cannot establish the exact shortfall.
             if (filtered.size() >= fetchLimit || available >= required) return List.of();
             List<FilterCount> counts = new ArrayList<>();
@@ -121,28 +121,52 @@ public class SolverInputBuilder {
                         dimension == FilterDimension.ANSWER_FORMAT ? List.of() : filter.answerFormats(),
                         dimension == FilterDimension.CHILD_CONDITION ? List.of() : filter.childConditions(),
                         filter.additionalTagGroups(), filter.additionalKnowledgeGroups(), filter.additionalCompetencyGroups());
-                long without = eligibleCount(group, source.findCandidates(relaxed, fetchLimit));
+                long without = eligibleUnits(group, source.findCandidates(relaxed, fetchLimit), required);
                 if (without >= required) counts.add(new FilterCount(dimension, required, without, available));
             }
             return List.copyOf(counts);
         }
 
-        private static long eligibleCount(GroupQuota group, List<QuestionSourcePort.Candidate> candidates) {
-            return candidates.stream().filter(candidate -> {
-                var units = candidate.units();
-                if (units.isEmpty()) return false;
-                if (group.kind() == GroupQuota.GroupKind.SET && units.size() != group.setSize()) return false;
-                if (group.kind() == GroupQuota.GroupKind.SINGLE && units.size() != 1) return false;
-                if (group.expectedScoringRule() != null
-                        && !group.expectedScoringRule().equals(candidate.scoringRule())) return false;
-                for (var unit : units) {
-                    if (group.childAnswerType() != null && !group.childAnswerType().equals(unit.answerType().name())) return false;
-                    if (group.answerType() != null && !group.answerType().equals(unit.answerType().name())) return false;
-                    if (group.requiredPointsPerUnit() != null && (unit.points() == null
-                            || group.requiredPointsPerUnit().compareTo(unit.points()) != 0)) return false;
+        /**
+         * Eligible supply in the units the checker compares: candidate roots for SINGLE and SET
+         * groups, counting units for FLEXIBLE_SET. A flexible pool only counts the largest subset
+         * sum of whole set sizes up to {@code required}, so a shortage is attributed to a filter
+         * only when the relaxed pool can actually compose the target.
+         */
+        private static long eligibleUnits(GroupQuota group, List<QuestionSourcePort.Candidate> candidates,
+                int required) {
+            if (group.kind() != GroupQuota.GroupKind.FLEXIBLE_SET) {
+                return candidates.stream().filter(candidate -> eligible(group, candidate)).count();
+            }
+            boolean[] reachable = new boolean[required + 1];
+            reachable[0] = true;
+            for (var candidate : candidates) {
+                if (!eligible(group, candidate)) continue;
+                int size = candidate.units().size();
+                for (int sum = required; sum >= size; sum--) {
+                    reachable[sum] |= reachable[sum - size];
                 }
-                return true;
-            }).count();
+            }
+            for (int sum = required; sum > 0; sum--) {
+                if (reachable[sum]) return sum;
+            }
+            return 0;
+        }
+
+        private static boolean eligible(GroupQuota group, QuestionSourcePort.Candidate candidate) {
+            var units = candidate.units();
+            if (units.isEmpty()) return false;
+            if (group.kind() == GroupQuota.GroupKind.SET && units.size() != group.setSize()) return false;
+            if (group.kind() == GroupQuota.GroupKind.SINGLE && units.size() != 1) return false;
+            if (group.expectedScoringRule() != null
+                    && !group.expectedScoringRule().equals(candidate.scoringRule())) return false;
+            for (var unit : units) {
+                if (group.childAnswerType() != null && !group.childAnswerType().equals(unit.answerType().name())) return false;
+                if (group.answerType() != null && !group.answerType().equals(unit.answerType().name())) return false;
+                if (group.requiredPointsPerUnit() != null && (unit.points() == null
+                        || group.requiredPointsPerUnit().compareTo(unit.points()) != 0)) return false;
+            }
+            return true;
         }
     }
 

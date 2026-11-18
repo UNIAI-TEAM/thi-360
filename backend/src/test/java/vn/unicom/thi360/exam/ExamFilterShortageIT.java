@@ -1,11 +1,13 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.catalog.spi.CatalogItemView;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.identity.spi.Permissions;
 
 @Transactional
@@ -20,6 +24,7 @@ class ExamFilterShortageIT extends AbstractIntegrationTest {
     private static final UUID SUBJECT_GROUP = UUID.fromString("00000000-0000-7000-8100-000000000002");
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
+    @Autowired CatalogLookup catalog;
 
     @Test
     void matchingShapeShortageReportsFilteredCount() throws Exception {
@@ -152,6 +157,94 @@ class ExamFilterShortageIT extends AbstractIntegrationTest {
         assertThat(issue.path("location").path("childPosition").asInt()).isEqualTo(1);
         assertThat(result.path("groups").findValuesAsText("code")).doesNotContain("SET_SHORTAGE");
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
+    }
+
+    @Test
+    void flexibleShortageOnOneSubjectKeepsTheValidSubjectChecked() throws Exception {
+        var subjectA = subject();
+        var subjectB = subject();
+        List<UUID> nodes = disjointKnowledgeNodes();
+        questionSet(subjectA.id(), 3, nodes.get(0), null, null);
+        questionSet(subjectA.id(), 3, nodes.get(1), null, null);
+        questionSet(subjectA.id(), 3, nodes.get(1), null, null);
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) VALUES (?,?,?,'Flexible','FULL','SHARED',4)", id, id.toString(), id.toString());
+        String document = """
+                {"parts":[{"id":"p","questionCount":4,"sections":[
+                  {"id":"flex","subjectCode":"%1$s","questionCount":3,"blocks":[
+                    {"id":"flexible","questionType":"QUESTION_SET","questionCount":3,
+                     "childConditions":[{"from":1,"to":1,"nodeIds":["%3$s"]}]}]},
+                  {"id":"short","subjectCode":"%2$s","questionCount":1,"blocks":[
+                    {"id":"single","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """.formatted(subjectA.code(), subjectB.code(), nodes.get(0));
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'flex')", id, document);
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "flexible", "p", "flex", subjectA.id());
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "single", "p", "short", subjectB.id());
+        var result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + id + "/check").with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(result.path("groups").findValuesAsText("code")).doesNotContain("CHILD_CONDITION_SHORTAGE");
+        var checked = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/" + id + "/check").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var states = checked.path("sectionStates");
+        assertThat(states).anySatisfy(state -> {
+            assertThat(state.path("sectionId").asText()).isEqualTo("flex");
+            assertThat(state.path("state").asText()).isEqualTo("CHECKED");
+        });
+        assertThat(states).anySatisfy(state -> {
+            assertThat(state.path("sectionId").asText()).isEqualTo("short");
+            assertThat(state.path("state").asText()).isEqualTo("INCOMPLETE");
+        });
+    }
+
+    @Test
+    void uncomposableFlexiblePoolStillReportsTheConditionShortage() throws Exception {
+        var subject = subject();
+        List<UUID> nodes = disjointKnowledgeNodes();
+        questionSet(subject.id(), 4, nodes.get(0), null, null);
+        questionSet(subject.id(), 3, nodes.get(1), null, null);
+        var result = checkResult(subject, 3, """
+                {"id":"b","questionType":"QUESTION_SET","questionCount":3,
+                 "childConditions":[{"from":1,"to":1,"nodeIds":["%s"]}]}
+                """.formatted(nodes.get(0)));
+        var issue = findIssue(result, "CHILD_CONDITION_SHORTAGE");
+        assertThat(issue.path("required").asInt()).isEqualTo(3);
+        assertThat(issue.path("available").asLong()).isZero();
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+    }
+
+    private List<UUID> disjointKnowledgeNodes() {
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        var topic = knowledge.stream().filter(a -> knowledge.stream().anyMatch(b ->
+                !b.path().startsWith(a.path()) && !a.path().startsWith(b.path()))).findFirst().orElseThrow();
+        var other = knowledge.stream().filter(item -> !item.path().startsWith(topic.path())
+                && !topic.path().startsWith(item.path())).findFirst().orElseThrow();
+        return List.of(topic.id(), other.id());
+    }
+
+    private void questionSet(UUID subject, int children, UUID positionZeroNode,
+                             UUID positionOneNode, UUID positionTwoNode) {
+        UUID root = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) VALUES (?,?,?,'READY',?,1,1)", root, "Q-" + root, "QUESTION_SET", subject);
+        List<UUID> nodes = java.util.Arrays.asList(positionZeroNode, positionOneNode, positionTwoNode);
+        var snapshot = new StringBuilder("{\"type\":\"QUESTION_SET\",\"children\":[");
+        for (int position = 0; position < children; position++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,points) VALUES (?,?,'SINGLE_CHOICE','READY',?,?,1)", child, "CH-" + child, root, position);
+            jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", child,
+                    "{\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":[{\"id\":\"a\",\"correct\":true},{\"id\":\"b\",\"correct\":false}]}}");
+            UUID node = nodes.get(Math.min(position, nodes.size() - 1));
+            if (node != null) {
+                jdbc.update("INSERT INTO questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) VALUES (?,?,true)", child, node);
+            }
+            if (position > 0) snapshot.append(',');
+            snapshot.append("{\"id\":\"").append(child).append("\",\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":[{\"id\":\"a\",\"correct\":true},{\"id\":\"b\",\"correct\":false}]}}");
+        }
+        snapshot.append("]}");
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", root,
+                "{\"body\":" + snapshot + "}");
     }
 
     private record Subject(UUID id, String code) { }

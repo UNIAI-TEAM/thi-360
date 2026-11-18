@@ -266,6 +266,59 @@ class SolverInputBuilderTest {
     }
 
     @Test
+    void flexibleSetFilterCountsComposeWholeSetsInChildUnits() {
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var subject = mock(CatalogItemView.class);
+        when(subject.id()).thenReturn(UUID.randomUUID());
+        when(catalog.findActiveItem("SUBJECT", "LIT")).thenReturn(Optional.of(subject));
+        when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
+        var block = new QuestionBlock("flex", "Flex", QuestionType.QUESTION_SET, 3, null, null,
+                null, null, null, null, false, null, List.of(), null,
+                true, false, List.of(), List.of(new ChildCondition(1, 1, List.of(UUID.randomUUID()))),
+                null, List.of(), false, List.of(), null);
+        var section = new ExamSection("s", "LIT", 3, null, null, null, null, List.of(block));
+        var part = new ExamPart("p", 1, "Part", null, null, null, null, null, null, List.of(section), List.of());
+        var input = new SolverInputBuilder(catalog, source, SolverLimits.defaults())
+                .build(UUID.randomUUID(), new ExamStructureDocument(List.of(part)));
+        var group = ((SolvePart.Fixed) input.parts().getFirst()).sections().getFirst().groups().getFirst();
+        assertThat(group.kind()).isEqualTo(GroupQuota.GroupKind.FLEXIBLE_SET);
+        var matching = setOf(3);
+        when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of(matching));
+        // One 3-child set composes the target; the child-unit count (3) meets the required count.
+        assertThat(input.candidates().filterCounts(group, 3)).isEmpty();
+        var uncomposable = setOf(4);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            var filter = (QuestionSourcePort.Filter) invocation.getArgument(0);
+            return filter.childConditions().isEmpty() ? List.of(uncomposable, matching) : List.of(uncomposable);
+        }).when(source).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
+        // The filtered pool cannot compose 3; relaxing the condition can, so it is blamed.
+        assertThat(input.candidates().filterCounts(group, 3)).singleElement().satisfies(count -> {
+            assertThat(count.dimension())
+                    .isEqualTo(SolverInputBuilder.SolverCandidates.FilterDimension.CHILD_CONDITION);
+            assertThat(count.required()).isEqualTo(3);
+            assertThat(count.withFilter()).isZero();
+            assertThat(count.withoutFilter()).isEqualTo(3);
+        });
+        // The relaxed pool fails to compose too, so no filter takes the blame.
+        org.mockito.Mockito.doAnswer(invocation -> {
+            var filter = (QuestionSourcePort.Filter) invocation.getArgument(0);
+            return filter.childConditions().isEmpty() ? List.of(setOf(2), setOf(2)) : List.of();
+        }).when(source).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
+        assertThat(input.candidates().filterCounts(group, 3)).isEmpty();
+    }
+
+    private static QuestionSourcePort.Candidate setOf(int children) {
+        List<QuestionSourcePort.Unit> units = new java.util.ArrayList<>();
+        for (int i = 0; i < children; i++) {
+            units.add(new QuestionSourcePort.Unit(UUID.randomUUID(), null, QuestionType.SINGLE_CHOICE,
+                    null, null, List.of(), List.of(), null, null, null, 0, null, null, null, null, false));
+        }
+        return new QuestionSourcePort.Candidate(UUID.randomUUID(), 1, UUID.randomUUID(), units,
+                null, null, null, null, null, null);
+    }
+
+    @Test
     void pronunciationAndStressGroupsStaySeparateAcrossSeeds() {
         var catalog = mock(CatalogLookup.class);
         var source = mock(QuestionSourcePort.class);
