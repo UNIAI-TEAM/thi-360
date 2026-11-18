@@ -78,7 +78,10 @@ public final class ExamCheckUnitSummary {
     private static Row block(String partId, String sectionId, QuestionBlock block) {
         boolean omitted = Boolean.TRUE.equals(block.omitted());
         boolean set = block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE;
-        Integer count = omitted ? 0 : set ? multiply(block.setCount(), block.setSize()) : block.questionCount();
+        Integer count = omitted ? 0 : set
+                ? block.setCount() == null && block.setSize() == null
+                    ? block.questionCount() : multiply(block.setCount(), block.setSize())
+                : block.questionCount();
         QuestionType answer = set && block.questionType() == QuestionType.QUESTION_SET
                 ? block.childAnswerType() : block.questionType();
         Integer commands = answer == null && !omitted ? null : count;
