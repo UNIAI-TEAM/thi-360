@@ -26,11 +26,6 @@ public class ExamCheckUnitFingerprint {
     public record Identity(String key, List<String> sectionIds, String fingerprint) { }
 
     public Identity calculate(String subject, List<ExamSection> sections, List<ExamQuota> quotas,
-            ExamCheckFingerprint.Config config, Long profileRevision, long catalogRevision) {
-        return calculate(subject, sections, quotas, config, profileRevision, catalogRevision, List.of());
-    }
-
-    Identity calculate(String subject, List<ExamSection> sections, List<ExamQuota> quotas,
             ExamCheckFingerprint.Config config, Long profileRevision, long catalogRevision,
             List<SectionOnPath> resolvedSections) {
         List<ExamSection> ordered = sections.stream().sorted(Comparator.comparing(ExamSection::id)).toList();

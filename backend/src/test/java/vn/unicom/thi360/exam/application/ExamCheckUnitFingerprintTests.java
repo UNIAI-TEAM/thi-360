@@ -19,12 +19,12 @@ class ExamCheckUnitFingerprintTests {
         var first = section("a", "Original", 2);
         var renamed = section("a", "Renamed", 2);
         var second = section("b", "Second", 3);
-        var before = fingerprint.calculate("TOAN", List.of(first, second), List.of(), config, 1L, 2L);
-        var reordered = fingerprint.calculate("TOAN", List.of(second, renamed), List.of(), config, 1L, 2L);
+        var before = fingerprint.calculate("TOAN", List.of(first, second), List.of(), config, 1L, 2L, List.of());
+        var reordered = fingerprint.calculate("TOAN", List.of(second, renamed), List.of(), config, 1L, 2L, List.of());
         assertThat(reordered).isEqualTo(before);
         assertThat(before.sectionIds()).containsExactly("a", "b");
         var changed = fingerprint.calculate("TOAN", List.of(section("a", "Original", 4), second),
-                List.of(), config, 1L, 2L);
+                List.of(), config, 1L, 2L, List.of());
         assertThat(changed.key()).isEqualTo(before.key());
         assertThat(changed.fingerprint()).isNotEqualTo(before.fingerprint());
     }
@@ -32,12 +32,12 @@ class ExamCheckUnitFingerprintTests {
     @Test
     void onlyRequiredQuotasForTheSubjectChangeItsFingerprint() throws Exception {
         var section = section("a", "A", 2);
-        var empty = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, 2L);
+        var empty = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, 2L, List.of());
         var other = quota("LY", "REQUIRED");
         var reference = quota("TOAN", "REFERENCE");
-        assertThat(fingerprint.calculate("TOAN", List.of(section), List.of(other, reference), config, 1L, 2L))
+        assertThat(fingerprint.calculate("TOAN", List.of(section), List.of(other, reference), config, 1L, 2L, List.of()))
                 .isEqualTo(empty);
-        var required = fingerprint.calculate("TOAN", List.of(section), List.of(quota("TOAN", "REQUIRED")), config, 1L, 2L);
+        var required = fingerprint.calculate("TOAN", List.of(section), List.of(quota("TOAN", "REQUIRED")), config, 1L, 2L, List.of());
         assertThat(required.key()).isEqualTo(empty.key());
         assertThat(required.fingerprint()).isNotEqualTo(empty.fingerprint());
     }

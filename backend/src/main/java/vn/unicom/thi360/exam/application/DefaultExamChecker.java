@@ -188,6 +188,7 @@ public class DefaultExamChecker implements ExamChecker {
 
     /** Keep each invalid option's path identifiable while solving unrelated valid options normally. */
     private static ExamStructureDocument maskInvalidOptions(ExamStructureDocument document, Set<String> invalid) {
+        if (invalid.isEmpty()) return document;
         List<ExamPart> parts = new ArrayList<>(document.parts().size());
         for (ExamPart part : document.parts()) {
             List<ExamPartOption> options = new ArrayList<>(part.options().size());
