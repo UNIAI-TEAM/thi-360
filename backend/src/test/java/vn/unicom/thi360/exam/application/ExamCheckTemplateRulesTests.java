@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -28,6 +29,7 @@ import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
+import vn.unicom.thi360.exam.domain.ExamStructureOps;
 import vn.unicom.thi360.exam.domain.ExamTemplate;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
@@ -146,6 +148,71 @@ class ExamCheckTemplateRulesTests {
         var rules = rulesWith(lockedBase("12", "\"setCount\":4,\"setSize\":3",
                 "{\"code\":\"NB\",\"value\":2},{\"code\":\"TH\",\"value\":4},{\"code\":\"VD\",\"value\":6}"), LOCKED_TEMPLATE);
         assertThat(codes(rules.common())).doesNotContain("STRUCTURE_COUNT_LOCKED");
+    }
+
+    private static final String SAME_DIFFICULTY =
+            "{\"code\":\"NB\",\"value\":1},{\"code\":\"TH\",\"value\":4},{\"code\":\"VD\",\"value\":7}";
+
+    @Test
+    void duplicateWithRegeneratedIdsIsLockedAtTheCopiedLogicSectionWhenItsCountIsEdited() throws Exception {
+        ExamStructureDocument copy = ExamStructureOps.regenerateIds(
+                document(lockedBase("9", "\"questionCount\":9", SAME_DIFFICULTY)));
+        assertThat(copy.parts().getFirst().id()).isNotEqualTo("p");
+        List<ObjectNode> locked = of(rulesWith(copy, LOCKED_TEMPLATE).common(), "STRUCTURE_COUNT_LOCKED");
+        assertThat(locked).hasSize(1);
+        assertThat(locked.getFirst().path("sectionId").asText())
+                .isEqualTo(copy.parts().getFirst().sections().getFirst().id());
+        assertThat(locked.getFirst().path("required").asInt()).isEqualTo(12);
+        assertThat(locked.getFirst().path("available").asInt()).isEqualTo(9);
+    }
+
+    @Test
+    void unchangedDuplicateWithRegeneratedIdsHasNoLock() throws Exception {
+        ExamStructureDocument copy = ExamStructureOps.regenerateIds(document(LOCKED_TEMPLATE));
+        assertThat(codes(rulesWith(copy, LOCKED_TEMPLATE).common())).doesNotContain("STRUCTURE_COUNT_LOCKED");
+    }
+
+    @Test
+    void sectionWithoutTemplateCounterpartAndExtraSectionAreLocked() throws Exception {
+        JsonNode removedTree = mapper.readTree(LOCKED_TEMPLATE);
+        ((ArrayNode) removedTree.at("/parts/0/sections")).remove(1);
+        List<ObjectNode> missing = of(rulesWith(document(removedTree.toString()), LOCKED_TEMPLATE).common(),
+                "STRUCTURE_COUNT_LOCKED");
+        assertThat(missing).hasSize(1);
+        assertThat(missing.getFirst().path("partId").asText()).isEqualTo("p");
+        assertThat(missing.getFirst().path("sectionId").isNull()).isTrue();
+        assertThat(missing.getFirst().path("required").asInt()).isEqualTo(18);
+        assertThat(missing.getFirst().path("available").asInt()).isZero();
+
+        JsonNode extraTree = mapper.readTree(LOCKED_TEMPLATE);
+        ((ArrayNode) extraTree.at("/parts/0/sections")).add(mapper.readTree(
+                "{\"id\":\"s-extra\",\"subjectCode\":\"SCIENTIFIC_THINKING\",\"questionCount\":3,"
+                + "\"blocks\":[{\"id\":\"b-x\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":3}]}"));
+        List<ObjectNode> extra = of(rulesWith(document(extraTree.toString()), LOCKED_TEMPLATE).common(),
+                "STRUCTURE_COUNT_LOCKED");
+        assertThat(extra).hasSize(1);
+        assertThat(extra.getFirst().path("sectionId").asText()).isEqualTo("s-extra");
+        assertThat(extra.getFirst().path("required").asInt()).isZero();
+        assertThat(extra.getFirst().path("available").asInt()).isEqualTo(3);
+    }
+
+    @Test
+    void missingAndExtraPartsAreLocked() throws Exception {
+        JsonNode noPart = mapper.readTree(LOCKED_TEMPLATE);
+        ((ArrayNode) noPart.path("parts")).removeAll();
+        List<ObjectNode> missing = of(rulesWith(document(noPart.toString()), LOCKED_TEMPLATE).common(),
+                "STRUCTURE_COUNT_LOCKED");
+        assertThat(missing).hasSize(1);
+        assertThat(missing.getFirst().path("location").isNull()).isTrue();
+        assertThat(missing.getFirst().path("required").asInt()).isEqualTo(30);
+
+        JsonNode twoParts = mapper.readTree(LOCKED_TEMPLATE);
+        ((ArrayNode) twoParts.path("parts")).add(mapper.readTree(
+                "{\"id\":\"p2\",\"name\":\"Extra\",\"questionCount\":5,\"sections\":[]}"));
+        List<ObjectNode> extra = of(rulesWith(document(twoParts.toString()), LOCKED_TEMPLATE).common(),
+                "STRUCTURE_COUNT_LOCKED");
+        assertThat(extra).hasSize(1);
+        assertThat(extra.getFirst().path("partId").asText()).isEqualTo("p2");
     }
 
     @Test
@@ -282,7 +349,11 @@ class ExamCheckTemplateRulesTests {
     // ---- harness -------------------------------------------------------------------------------------------
 
     private ExamCheckRules rulesWith(String edited, String locked) throws Exception {
-        return new ExamCheckRules(mapper, exam(30), document(edited), Map.of(), Map.of(),
+        return rulesWith(document(edited), locked);
+    }
+
+    private ExamCheckRules rulesWith(ExamStructureDocument edited, String locked) throws Exception {
+        return new ExamCheckRules(mapper, exam(30), edited, Map.of(), Map.of(),
                 new ExamCheckRules.TemplateFacts(null, document(locked)));
     }
 

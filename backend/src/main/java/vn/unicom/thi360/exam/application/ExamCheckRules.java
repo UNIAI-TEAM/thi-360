@@ -160,45 +160,121 @@ public final class ExamCheckRules {
     }
 
     /**
-     * Compares part and section counts with the loaded template by id. A part is reported only when its own count
-     * differs and none of its sections do, so one edited section yields one issue located at that section.
+     * Compares part and section counts with the loaded template. Elements are paired by id; when an id has no match
+     * (a duplicate regenerates every id, a PUT may send new ones) the pair falls back to the same position (part
+     * index, section index inside its list). A template slot without a counterpart and an extra element are both
+     * violations. A part is reported only when its own count differs and none of its sections are reported, so one
+     * edited section yields one issue located at that section.
      */
     private List<ObjectNode> lockedCountIssues(ExamStructureDocument locked) {
-        Map<String, ExamPart> lockedParts = new LinkedHashMap<>();
-        Map<String, ExamSection> lockedSections = new LinkedHashMap<>();
-        for (ExamPart part : locked.parts()) {
-            lockedParts.put(part.id(), part);
-            part.sections().forEach(section -> lockedSections.put(section.id(), section));
-            part.subjectPool().forEach(section -> lockedSections.put(section.id(), section));
-            part.options().forEach(option -> option.sections().forEach(section -> lockedSections.put(section.id(), section)));
-        }
         List<ObjectNode> found = new ArrayList<>();
-        for (ExamPart part : document.parts()) {
-            ExamPart base = part.id() == null ? null : lockedParts.get(part.id());
-            if (base == null) continue;
-            boolean sectionChanged = false;
-            for (SectionContext context : sections.values()) {
-                ExamSection section = context.section;
-                ExamSection original = lockedSections.get(section.id());
-                if (context.part != part || original == null) continue;
-                boolean declared = !Objects.equals(section.questionCount(), original.questionCount());
-                int actual = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
-                int expected = original.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
-                if (!declared && actual == expected) continue;
-                sectionChanged = true;
-                ObjectNode failure = sectionIssue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", context, null);
-                failure.put("required", declared ? original.questionCount() : Integer.valueOf(expected));
-                failure.put("available", declared ? section.questionCount() : Integer.valueOf(actual));
+        for (Slot<ExamPart> slot : pair(locked.parts(), document.parts(), ExamPart::id)) {
+            if (slot.current() == null) {
+                ObjectNode failure = issue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", null, null, null);
+                failure.put("required", slot.locked().questionCount());
+                failure.put("available", 0);
+                failure.put("key", failure.path("key").asText() + "|missing:" + slot.name(slot.locked().id()));
                 found.add(failure);
-            }
-            if (!sectionChanged && !Objects.equals(part.questionCount(), base.questionCount())) {
-                ObjectNode failure = issue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", part, null, null);
-                failure.put("required", base.questionCount());
-                failure.put("available", part.questionCount());
+            } else if (slot.locked() == null) {
+                ObjectNode failure = issue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", slot.current(), null, null);
+                failure.put("required", 0);
+                failure.put("available", slot.current().questionCount());
                 found.add(failure);
+            } else {
+                lockedPart(found, slot.locked(), slot.current());
             }
         }
         return found;
+    }
+
+    private void lockedPart(List<ObjectNode> found, ExamPart base, ExamPart part) {
+        boolean changed = lockedSections(found, part, null, base.sections(), part.sections());
+        changed |= lockedSections(found, part, null, base.subjectPool(), part.subjectPool());
+        for (Slot<ExamPartOption> slot : pair(base.options(), part.options(), ExamPartOption::id)) {
+            if (slot.current() == null) {
+                changed |= lockedSections(found, part, slot.locked().id(), slot.locked().sections(), List.of());
+            } else {
+                List<ExamSection> expected = slot.locked() == null ? List.of() : slot.locked().sections();
+                changed |= lockedSections(found, part, slot.current().id(), expected, slot.current().sections());
+            }
+        }
+        if (!changed && !Objects.equals(part.questionCount(), base.questionCount())) {
+            ObjectNode failure = issue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", part, null, null);
+            failure.put("required", base.questionCount());
+            failure.put("available", part.questionCount());
+            found.add(failure);
+        }
+    }
+
+    /** Reports the differing slots of one section list; the result tells whether any section was reported. */
+    private boolean lockedSections(List<ObjectNode> found, ExamPart part, String optionId,
+                                   List<ExamSection> expected, List<ExamSection> actual) {
+        boolean changed = false;
+        for (Slot<ExamSection> slot : pair(expected, actual, ExamSection::id)) {
+            ExamSection original = slot.locked();
+            ExamSection section = slot.current();
+            ObjectNode failure;
+            if (section == null) {
+                failure = issue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", part, optionId, null);
+                failure.put("required", original.questionCount() != null ? original.questionCount() : Integer.valueOf(groupTotal(original)));
+                failure.put("available", 0);
+                failure.put("key", failure.path("key").asText() + "|missing:" + slot.name(original.id()));
+            } else {
+                SectionContext context = sections.get(section.id());
+                if (context == null) continue;
+                if (original == null) {
+                    failure = sectionIssue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", context, null);
+                    failure.put("required", 0);
+                    failure.put("available", section.questionCount() != null ? section.questionCount() : Integer.valueOf(groupTotal(section)));
+                } else {
+                    boolean declared = !Objects.equals(section.questionCount(), original.questionCount());
+                    int actualTotal = groupTotal(section);
+                    int expectedTotal = groupTotal(original);
+                    if (!declared && actualTotal == expectedTotal) continue;
+                    failure = sectionIssue("STRUCTURE_COUNT_LOCKED", "STRUCTURE", context, null);
+                    failure.put("required", declared ? original.questionCount() : Integer.valueOf(expectedTotal));
+                    failure.put("available", declared ? section.questionCount() : Integer.valueOf(actualTotal));
+                }
+            }
+            changed = true;
+            found.add(failure);
+        }
+        return changed;
+    }
+
+    private static int groupTotal(ExamSection section) {
+        return section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+    }
+
+    /** A template element and the element of the exam that corresponds to it; either side is null when unmatched. */
+    private record Slot<T>(T locked, T current, int index) {
+        String name(String id) { return id == null || id.isBlank() ? "#" + index : id; }
+    }
+
+    /** Pairs by id first, then by position among the elements not claimed by an id; leftovers become one-sided slots. */
+    private static <T> List<Slot<T>> pair(List<T> locked, List<T> current, java.util.function.Function<T, String> id) {
+        Map<String, Integer> byId = new HashMap<>();
+        for (int i = 0; i < current.size(); i++) {
+            String key = id.apply(current.get(i));
+            if (key != null && !key.isBlank()) byId.putIfAbsent(key, i);
+        }
+        Set<Integer> claimed = new LinkedHashSet<>();
+        Integer[] match = new Integer[locked.size()];
+        for (int i = 0; i < locked.size(); i++) {
+            String key = id.apply(locked.get(i));
+            Integer found = key == null ? null : byId.get(key);
+            if (found != null && claimed.add(found)) match[i] = found;
+        }
+        List<Slot<T>> result = new ArrayList<>();
+        for (int i = 0; i < locked.size(); i++) {
+            Integer at = match[i];
+            if (at == null && i < current.size() && claimed.add(i)) at = i;
+            result.add(new Slot<>(locked.get(i), at == null ? null : current.get(at), i));
+        }
+        for (int i = 0; i < current.size(); i++) {
+            if (!claimed.contains(i)) result.add(new Slot<>(null, current.get(i), i));
+        }
+        return result;
     }
 
     /** Find catalog combination subjects absent from the part's code-sourced subject pool. */
