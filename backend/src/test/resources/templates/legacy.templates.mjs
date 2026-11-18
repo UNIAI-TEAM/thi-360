@@ -21,23 +21,7 @@ function legacyStructure(code) {
   strip(structure);
   return structure;
 }
-const entries=[
- ['THPTQG_MATH_2025','TOAN','Toán',22,90],['THPTQG_LITERATURE_2025','VAN','Ngữ văn',7,120],
- ['THPTQG_ENGLISH_2025','ANH','Tiếng Anh',40,50],['THPTQG_PHYSICS_2025','LY','Vật lí',28,50],
- ['THPTQG_CHEMISTRY_2025','HOA','Hóa học',28,50],['THPTQG_BIOLOGY_2025','SINH','Sinh học',28,50],
- ['THPTQG_GEOGRAPHY_2025','DIA','Địa lí',28,50],['THPTQG_HISTORY_2025','SU','Lịch sử',28,50],
- ['THPTQG_ECON_LAW_2025','ECON_LAW','Giáo dục kinh tế và pháp luật',28,50],
- ['THPTQG_TECH_INDUSTRY_2025','TECH_INDUSTRY','Công nghệ công nghiệp',28,50],
- ['THPTQG_TECH_AGRICULTURE_2025','TECH_AGRICULTURE','Công nghệ nông nghiệp',28,50],
- ['THPTQG_INFORMATICS_2025','INFORMATICS','Tin học',28,50]
-];
-const source=entries.map(([code,subject,name,questions,duration])=>({
- code,kindCode:'THPTQG',scope:'SUBJECT',partCode:null,subjectCode:subject,structureYear:2025,matrixYear:2025,
- timing:subject==='INFORMATICS'?'SHARED':'PER_PART',durationMinutes:duration,maxScore:10,
- expertNote:subject==='VAN'?'Đọc hiểu là một chùm 5 câu tự luận, tổng 4 điểm; điểm từng câu theo hướng dẫn chấm.':null,
- label:`THPTQG – ${name} – Cấu trúc 2025`,summary:`${questions} câu, ${duration} phút, thang 10 điểm.`,
- buildMode:'STANDARD',isDefault:true,existing:true,expected:{questions,maxPoints:10},structure:legacyStructure(code)
-}));
+const source=[];
 source.push({code:'VACT_FULL',kindCode:'VACT',scope:'FULL',partCode:null,subjectCode:null,structureYear:null,matrixYear:null,timing:'SHARED',durationMinutes:150,maxScore:1200,expertNote:'Điểm luyện tập tạm tính 10 điểm mỗi câu; kỳ thi thật dùng IRT.',label:'V-ACT – Đầy đủ cấu trúc',summary:'120 câu trong 150 phút, thang 1.200 điểm.',buildMode:'STANDARD',isDefault:true,existing:true,expected:{questions:120,maxPoints:1200},structure:legacyStructure('VACT_FULL')});
 // Keep the already-seeded 2025 assumption as a non-default alternative; it is not the 40-question 2026 structure.
 const math=legacyStructure('SP2E_MATH_2025');
