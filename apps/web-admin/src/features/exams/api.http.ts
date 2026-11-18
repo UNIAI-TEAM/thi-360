@@ -17,7 +17,6 @@ import { partsFromInput } from "./create-parts";
 import { ExamStructureSaveError, toExamsApiError } from "./review-api";
 import type {
   ApplyExamTemplateRequest,
-  AudioRequirement,
   AvailableQuestionCounts,
   AvailableQuestionsQuery,
   CreateExamRequest,
@@ -250,18 +249,17 @@ export async function duplicateExam(id: string, request: DuplicateExamRequest): 
 type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery"];
 
 /**
- * Bộ lọc đếm kèm điều kiện audio của dòng (H38, R-130). `AvailableQuestionsQuery` sinh ra chưa có trường này (BE-17 chưa
- * merge nên chưa vào hợp đồng): kiểu viết tay ở đây; sau khi BE-17 merge thì dùng kiểu sinh và bỏ hai kiểu này.
+ * Bộ lọc đếm của một dòng: bộ lọc nhóm kèm điều kiện audio của phần (H38, R-130). Kiểu của trường `audioRequirement`
+ * lấy từ hợp đồng sinh ra (BE-17), không viết tay.
  */
-export type AudioCountQuery = AvailableQuestionsQuery & { audioRequirement?: AudioRequirement };
-type ApiCountBody = ApiAvailableQuestionsQuery & { audioRequirement?: "REQUIRED" | "FORBIDDEN" };
+export type AudioCountQuery = AvailableQuestionsQuery & Pick<ApiAvailableQuestionsQuery, "audioRequirement">;
 
 /**
  * Thân `POST .../available-questions/count*`: gửi mọi điều kiện của khối mà hợp đồng nhận (hình dạng câu, định dạng
  * đáp án, điều kiện theo vị trí câu con...). `slots` của khối không có trường trong `AvailableQuestionsQuery` nên không
  * gửi; trường không đặt bị bỏ khỏi thân thay vì gửi `null`/rỗng.
  */
-function toCountBody(query: AudioCountQuery): ApiCountBody {
+function toCountBody(query: AudioCountQuery): ApiAvailableQuestionsQuery {
   return {
     subjectCode: query.subjectCode,
     questionType: query.questionType ?? undefined,
