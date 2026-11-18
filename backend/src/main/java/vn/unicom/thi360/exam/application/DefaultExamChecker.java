@@ -460,7 +460,7 @@ public class DefaultExamChecker implements ExamChecker {
     private ExamCheckUnitStore.Unit withWitnessFailures(ExamCheckUnitStore.Unit unit,
             Map<Long, List<ObjectNode>> byPath, Map<ObjectNode, vn.unicom.thi360.exam.domain.solver.SubjectWitness> owners) {
         com.fasterxml.jackson.databind.node.ArrayNode issues = null;
-        String proved = null;
+        WitnessKey proved = null;
         boolean provedKnown = false;
         for (var pathIssues : byPath.values()) for (var issue : pathIssues) {
             if (!"ERROR".equals(issue.path("severity").asText())) continue;
@@ -470,10 +470,10 @@ public class DefaultExamChecker implements ExamChecker {
                 mine = unit.sectionIds().contains(issue.path("sectionId").asText());
             } else {
                 if (!provedKnown) {
-                    proved = firstWitnessSignature(unit);
+                    proved = firstWitnessKey(unit);
                     provedKnown = true;
                 }
-                mine = proved != null && proved.equals(signature(owner));
+                mine = proved != null && proved.equals(key(owner));
             }
             if (mine) {
                 if (issues == null) issues = (com.fasterxml.jackson.databind.node.ArrayNode) unit.issues().deepCopy();
@@ -484,20 +484,24 @@ public class DefaultExamChecker implements ExamChecker {
                 unit.sourceRevision(), "INVALID", issues, unit.witness(), unit.checkedAt(), unit.durationMs()) : unit;
     }
 
-    private String firstWitnessSignature(ExamCheckUnitStore.Unit unit) {
+    private WitnessKey firstWitnessKey(ExamCheckUnitStore.Unit unit) {
         if (unit.witness() == null || unit.witness().isNull()) return null;
         var proof = mapper.convertValue(unit.witness(), ExamCheckUnitEngine.Proof.class);
-        return proof.witnesses().isEmpty() ? null : signature(proof.witnesses().getFirst());
+        return proof.witnesses().isEmpty() ? null : key(proof.witnesses().getFirst());
     }
 
     /** Subject, groups and chosen questions: groups belong to one section, so units that differ cannot collide. */
-    private static String signature(vn.unicom.thi360.exam.domain.solver.SubjectWitness witness) {
-        StringBuilder text = new StringBuilder(witness.subjectCode());
-        for (var group : witness.groups()) {
-            text.append('|').append(group.groupId());
-            for (var pick : group.picks()) text.append(',').append(pick.questionId()).append(':').append(pick.versionNo());
-        }
-        return text.toString();
+    record WitnessKey(String subjectCode, List<GroupKey> groups) {}
+
+    record GroupKey(String groupId, List<PickKey> picks) {}
+
+    record PickKey(String questionId, int versionNo) {}
+
+    static WitnessKey key(vn.unicom.thi360.exam.domain.solver.SubjectWitness witness) {
+        return new WitnessKey(witness.subjectCode(), witness.groups().stream()
+                .map(group -> new GroupKey(group.groupId(), group.picks().stream()
+                        .map(pick -> new PickKey(pick.questionId(), pick.versionNo())).toList()))
+                .toList());
     }
 
     /** Keep each invalid option's path identifiable while solving unrelated valid options normally. */
