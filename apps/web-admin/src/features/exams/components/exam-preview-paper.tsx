@@ -1,10 +1,11 @@
 "use client";
 
-import { Badge, Button, cn, focusRing } from "@thi360/ui";
+import { Badge, Button, cn, focusRing, StatusChip } from "@thi360/ui";
 import { Check, ListOrdered, PenLine, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { RichTextView } from "@/components/rich-text";
+import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { PreviewBlock, PreviewItem, PreviewPaper, PreviewQuestion } from "../review-types";
 import { useLookup } from "./exam-review-shared";
 
@@ -177,6 +178,7 @@ function QuestionArticle({
 }) {
   const t = useTranslations("exams.preview");
   const types = useTranslations("content.questionType");
+  const format = useFormatter();
   const lookup = useLookup();
   const headingId = `preview-q-${question.questionId}`;
   const isTrueFalse = question.type === "TRUE_FALSE";
@@ -196,6 +198,10 @@ function QuestionArticle({
         <Heading id={headingId} className="font-semibold text-text">
           {t("questionNumber", { number })}
         </Heading>
+        {/* R-112: điểm tối đa của câu (chip thông tin, như bản vẽ `SinhThuVact2B`). */}
+        <StatusChip tone="info">
+          {t("questionPoints", { points: format.number(question.points, DISPLAY_NUMBER_FORMAT), value: question.points })}
+        </StatusChip>
         <Badge>{question.version !== null ? `${question.code} · v${question.version}` : question.code}</Badge>
         <Badge>{types(question.type)}</Badge>
         <Badge>{lookup.grade(question.gradeCode)}</Badge>

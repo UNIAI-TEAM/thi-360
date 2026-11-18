@@ -4669,8 +4669,11 @@
         "REQUIRED_BASIS_UNSUPPORTED": "{block}: phân bố bắt buộc chỉ tính theo số câu; đơn vị lệnh hỏi hoặc điểm chỉ dùng làm phân bố tham khảo.",
         "SECTION_INCOMPLETE": "Môn {subject} chưa hoàn tất cấu hình.",
         "SLOT_SOURCE_SHORTAGE": "Khối {block}{hasSlot, select, yes {, chùm {slot, number}} other {}}: chưa đủ nguồn cho điều kiện riêng của chùm{hasCount, select, yes { (cần {required, number} câu, hiện có {available, number} câu)} other {}}.",
+        "STRUCTURE_COUNT_LOCKED": "Mẫu đã khóa số câu của {hasPlace, select, yes {{place}} other {cả bài}}: mẫu yêu cầu {required, number} câu, hiện {available, number} câu. Đưa số câu về {required, number}.",
         "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Môn {subject}: có ít hơn 2 câu đơn nên không bỏ được 1 câu khi sinh đề 16 câu.",
+        "TEMPLATE_NOT_PUBLISHABLE": "Mẫu chuẩn của môn {subject} chưa công bố được: bài chỉ lưu nháp, không công bố được và không đưa vào bộ đề bán.",
         "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {chỉ tiêu chủ đề cần ít nhất {required, number} câu, nguồn hiện chỉ có {available, number} câu, còn thiếu {missing, number} câu} other {nguồn chưa đủ cho chỉ tiêu chủ đề}}.",
+        "TOPIC_QUOTA_MAPPING_MISSING": "{block}: có dòng chỉ tiêu chủ đề bắt buộc chưa gắn MAPID. Gắn mã cho dòng đó rồi kiểm tra lại.",
         "TOPIC_QUOTA_NESTED": "{block}: có chỉ tiêu ở cả chủ đề cha và chủ đề con cùng cấp; chỉ giữ chỉ tiêu ở một cấp."
       },
       "issueNoCount": {
@@ -4928,6 +4931,7 @@
       "setHeading": "Bộ {index, number} · {count, number} câu liền nhau",
       "simulatedPassage": "Ngữ liệu của bộ mô phỏng (phần ngân hàng chưa nạp vào dữ liệu mẫu).",
       "questionNumber": "Câu {number, number}",
+      "questionPoints": "Tối đa {points} điểm",
       "simulatedQuestion": "Câu của nguồn mô phỏng: phần ngân hàng chưa nạp vào dữ liệu mẫu, không có nội dung.",
       "correct": "Đáp án đúng",
       "trueLabel": "Đúng",
@@ -5015,6 +5019,7 @@
         "columns": {
           "actual": "Thực tế",
           "criterion": "Tiêu chí",
+          "difference": "Chênh lệch",
           "level": "Mức · đơn vị",
           "required": "Yêu cầu",
           "result": "Kết quả",
@@ -5027,7 +5032,8 @@
           "DIFFICULTY": "Độ khó {name}",
           "EXAM": "Chỉ tiêu cấp bài {names}",
           "GRADE": "Khối lớp {name}",
-          "TOPIC": "Chỉ tiêu chủ đề"
+          "TOPIC": "Chỉ tiêu chủ đề",
+          "TOPIC_NAMED": "{name}"
         },
         "deviations": "{count, number} dòng lệch",
         "droppedQuestion": "Đã bỏ câu {code} · {type}, {grade}, {difficulty}.",
@@ -5035,11 +5041,14 @@
           "REFERENCE": "Tham khảo",
           "REQUIRED": "Bắt buộc"
         },
-        "legend": "Dòng Tham khảo lệch chỉ là cảnh báo, không chặn. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
+        "legend": "Chênh lệch bằng Thực tế trừ Yêu cầu. Chỉ tiêu chủ đề là “ít nhất”, nên thực tế nhiều hơn yêu cầu vẫn đạt. Dòng Tham khảo lệch chỉ là cảnh báo, không chặn; dòng chờ mapping chưa đối chiếu được. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
         "level": "{enforcement} · {unit}",
+        "pendingNoData": "Chưa có dữ liệu đối chiếu",
+        "requiredAtLeast": "ít nhất {value}",
         "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
         "result": {
           "OK": "Đạt",
+          "PENDING": "Chờ mapping",
           "REFERENCE_DEVIATION": "Lệch · tham khảo",
           "REQUIRED_DEVIATION": "Lệch · bắt buộc"
         },
@@ -5047,7 +5056,7 @@
           "EXAM": "Cả bài"
         },
         "tableLabel": "Yêu cầu và thực tế của đề thử",
-        "title": "Yêu cầu / Thực tế",
+        "title": "Yêu cầu / Thực tế / Chênh lệch",
         "unit": {
           "POINTS": "điểm",
           "PROMPT": "lệnh hỏi",

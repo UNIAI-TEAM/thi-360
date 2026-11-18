@@ -4669,8 +4669,11 @@
         "REQUIRED_BASIS_UNSUPPORTED": "{block}: a required distribution counts questions only; the question-part or point units are for reference distributions.",
         "SECTION_INCOMPLETE": "Subject {subject} is not fully configured.",
         "SLOT_SOURCE_SHORTAGE": "Block {block}{hasSlot, select, yes {, set {slot, number}} other {}}: not enough source for the set's own conditions{hasCount, select, yes { (needs {required, number}, has {available, number})} other {}}.",
+        "STRUCTURE_COUNT_LOCKED": "The template locks the question count of {hasPlace, select, yes {{place}} other {the whole exam}}: {required, number} required, currently {available, number}. Restore {required, number}.",
         "SUBJECT_CHOICE_TRIM_IMPOSSIBLE": "Subject {subject}: fewer than 2 single questions, so one cannot be dropped for a 16-question paper.",
+        "TEMPLATE_NOT_PUBLISHABLE": "The standard template of subject {subject} cannot be published yet: this exam stays a draft and cannot be published or included in paper packs.",
         "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {the topic quota needs at least {required, number} questions, the bank has only {available, number}, {missing, number} short} other {the bank does not have enough for the topic quota}}.",
+        "TOPIC_QUOTA_MAPPING_MISSING": "{block}: a required topic quota row has no MAPID yet. Assign the code and run the check again.",
         "TOPIC_QUOTA_NESTED": "{block}: quotas are set on both a parent topic and a child topic at the same level; keep the quota on one level only."
       },
       "issueNoCount": {
@@ -4928,6 +4931,7 @@
       "setHeading": "Set {index, number} · {count, plural, one {# consecutive question} other {# consecutive questions}}",
       "simulatedPassage": "Passage of a simulated set (part of the bank not loaded into the sample data).",
       "questionNumber": "Question {number, number}",
+      "questionPoints": "Max {value, plural, one {{points} point} other {{points} points}}",
       "simulatedQuestion": "Question from the simulated source: this part of the bank is not loaded into the sample data and has no content.",
       "correct": "Correct answer",
       "trueLabel": "True",
@@ -5015,6 +5019,7 @@
         "columns": {
           "actual": "Actual",
           "criterion": "Criterion",
+          "difference": "Difference",
           "level": "Level · unit",
           "required": "Required",
           "result": "Result",
@@ -5027,7 +5032,8 @@
           "DIFFICULTY": "Difficulty {name}",
           "EXAM": "Exam quota {names}",
           "GRADE": "Grade {name}",
-          "TOPIC": "Topic quota"
+          "TOPIC": "Topic quota",
+          "TOPIC_NAMED": "{name}"
         },
         "deviations": "{count, plural, one {# row deviates} other {# rows deviate}}",
         "droppedQuestion": "Dropped question {code} · {type}, {grade}, {difficulty}.",
@@ -5035,11 +5041,14 @@
           "REFERENCE": "Reference",
           "REQUIRED": "Required"
         },
-        "legend": "A Reference row that deviates is only a warning and does not block. A Required row that fails means no paper is generated, and no short paper is returned.",
+        "legend": "Difference is Actual minus Required. Topic quotas are “at least”, so a higher actual still passes. A deviating Reference row is only a warning and does not block; a pending-mapping row cannot be compared yet. A Required row that fails means no paper is generated.",
         "level": "{enforcement} · {unit}",
+        "pendingNoData": "No reference data yet",
+        "requiredAtLeast": "at least {value}",
         "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
         "result": {
           "OK": "Met",
+          "PENDING": "Awaiting mapping",
           "REFERENCE_DEVIATION": "Deviates · reference",
           "REQUIRED_DEVIATION": "Deviates · required"
         },
@@ -5047,7 +5056,7 @@
           "EXAM": "Whole exam"
         },
         "tableLabel": "Required and actual values of the trial paper",
-        "title": "Required / Actual",
+        "title": "Required / Actual / Difference",
         "unit": {
           "POINTS": "points",
           "PROMPT": "prompts",
