@@ -858,40 +858,25 @@ JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-0000000
 WHERE starts_with(q.code, 'SEED-2B-SCIENCE-SU-')
 ON CONFLICT DO NOTHING;
 
--- Resolve each D9 purpose by code, not by its canonical UUID, so an unrelated
--- catalog item at that UUID cannot classify a generated question. Keep the
--- slot in the spec for stable generated IDs and resolve again on each seed run.
-CREATE TEMP TABLE seed_be14_tag_slots (slot uuid PRIMARY KEY, code text NOT NULL) ON COMMIT DROP;
-INSERT INTO seed_be14_tag_slots (slot, code)
-WITH slots(ordinal, code) AS (
-    VALUES
-        (41, 'ANH_PHAT_HIEN_LOI'),
-        (42, 'ANH_DIEN_DAT_TUONG_DUONG'),
-        (43, 'TD_SAP_XEP_DIEU_KIEN'),
-        (44, 'TD_XEP_HANG'),
-        (45, 'TD_BANG_SO_LIEU'),
-        (46, 'TD_BIEU_DO')
-)
-SELECT ('00000000-0000-7000-8601-' || lpad(ordinal::text, 12, '0'))::uuid, code FROM slots;
+-- D9 provisional codes: reconcile with R__seed_catalog_dev_data.sql for BA review.
 
 WITH singles AS (
 SELECT spec.*, tag.code AS tag_code, n, subject.id AS subject_id,
        grade.id AS grade_id, level.id AS level_id,
-       md5('thi360-be14-single-' || spec.competency || '-' || COALESCE(spec.declared_tag, spec.tag_slot, 'NONE') || '-' || n)::uuid AS id
+       md5('thi360-be14-single-' || spec.competency || '-' || COALESCE(spec.declared_tag, 'NONE') || '-' || n)::uuid AS id
 FROM (VALUES
-    ('VIETNAMESE', 'VACT-NN-TV', NULL, NULL, 10::numeric, 30),
-    ('ANH', 'VACT-NN-TA', 'ANH_HOAN_THANH_CAU', NULL, 10::numeric, 5),
-    ('ANH', 'VACT-NN-TA', NULL, '00000000-0000-7000-8601-000000000041', 10::numeric, 5),
-    ('ANH', 'VACT-NN-TA', NULL, '00000000-0000-7000-8601-000000000042', 10::numeric, 5),
-    ('TOAN', 'VACT-TOAN', NULL, NULL, 10::numeric, 12),
-    ('ANH', 'THPT', 'ANH_SAP_XEP_HOI_THOAI', NULL, 0.25::numeric, 5)
-) spec(subject, competency, declared_tag, tag_slot, points, quantity)
+    ('VIETNAMESE', 'VACT-NN-TV', NULL, 10::numeric, 30),
+    ('ANH', 'VACT-NN-TA', 'ANH_HOAN_THANH_CAU', 10::numeric, 5),
+    ('ANH', 'VACT-NN-TA', 'ANH_PHAT_HIEN_LOI', 10::numeric, 5),
+    ('ANH', 'VACT-NN-TA', 'ANH_DIEN_DAT_TUONG_DUONG', 10::numeric, 5),
+    ('TOAN', 'VACT-TOAN', NULL, 10::numeric, 12),
+    ('ANH', 'THPT', 'ANH_SAP_XEP_HOI_THOAI', 0.25::numeric, 5)
+) spec(subject, competency, declared_tag, points, quantity)
 JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
 JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
 JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
-LEFT JOIN seed_be14_tag_slots slot ON slot.slot = spec.tag_slot::uuid
 LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
-    AND tag.code_normalized = lower(COALESCE(spec.declared_tag, slot.code))
+    AND tag.code_normalized = lower(spec.declared_tag)
 CROSS JOIN LATERAL generate_series(1, spec.quantity) n
 ), classified AS (
     INSERT INTO seed_be14_classification
@@ -899,7 +884,7 @@ CROSS JOIN LATERAL generate_series(1, spec.quantity) n
 )
 INSERT INTO seed_question_rows
 SELECT id,
-       'SEED-BE14-' || competency || '-' || COALESCE(tag_code, declared_tag, tag_slot, 'NONE') || '-' || n,
+       'SEED-BE14-' || competency || '-' || COALESCE(declared_tag, 'NONE') || '-' || n,
        'SINGLE_CHOICE', subject_id, grade_id, level_id, NULL, points,
        '<p>Sample ' || subject || ' question ' || n || ': choose the fitting answer.</p>',
        jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
@@ -911,28 +896,27 @@ FROM singles;
 -- Whole passages are separate roots; child points are the filterable score.
 WITH sets AS (
     SELECT spec.*, tag.code AS tag_code, n, subject.id AS subject_id, grade.id AS grade_id, level.id AS level_id,
-           md5('thi360-be14-set-' || spec.competency || '-' || COALESCE(spec.declared_tag, spec.tag_slot, 'NONE') || '-' || spec.child_count || '-' || n)::uuid AS id,
-           'SEED-BE14-' || spec.competency || '-' || COALESCE(tag.code, spec.declared_tag, spec.tag_slot, 'NONE') || '-' || spec.child_count || '-' || n AS code
+           md5('thi360-be14-set-' || spec.competency || '-' || COALESCE(spec.declared_tag, 'NONE') || '-' || spec.child_count || '-' || n)::uuid AS id,
+           'SEED-BE14-' || spec.competency || '-' || COALESCE(spec.declared_tag, 'NONE') || '-' || spec.child_count || '-' || n AS code
     FROM (VALUES
-        ('ANH', 'THPT', 'ANH_DOC_DIEN', NULL, 0.25::numeric, 6, 2),
-        ('ANH', 'THPT', 'ANH_DOC_DIEN_CAU', NULL, 0.25::numeric, 5, 1),
-        ('ANH', 'THPT', 'ANH_DOC_HIEU', NULL, 0.25::numeric, 8, 1),
-        ('ANH', 'THPT', 'ANH_DOC_HIEU', NULL, 0.25::numeric, 10, 1),
-        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', NULL, 10::numeric, 7, 1),
-        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', NULL, 10::numeric, 8, 1),
-        ('TOAN', 'VACT-TOAN', NULL, NULL, 10::numeric, 3, 6),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000043', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000044', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000045', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', NULL, '00000000-0000-7000-8601-000000000046', 10::numeric, 3, 1),
-        ('SCIENTIFIC_THINKING', 'VACT-TD-SL', NULL, NULL, 10::numeric, 3, 6)
-    ) spec(subject, competency, declared_tag, tag_slot, points, child_count, quantity)
+        ('ANH', 'THPT', 'ANH_DOC_DIEN', 0.25::numeric, 6, 2),
+        ('ANH', 'THPT', 'ANH_DOC_DIEN_CAU', 0.25::numeric, 5, 1),
+        ('ANH', 'THPT', 'ANH_DOC_HIEU', 0.25::numeric, 8, 1),
+        ('ANH', 'THPT', 'ANH_DOC_HIEU', 0.25::numeric, 10, 1),
+        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', 10::numeric, 7, 1),
+        ('ANH', 'VACT-NN-TA', 'ANH_DOC_HIEU', 10::numeric, 8, 1),
+        ('TOAN', 'VACT-TOAN', NULL, 10::numeric, 3, 6),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_SAP_XEP_DIEU_KIEN', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_XEP_HANG', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_BANG_SO_LIEU', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-LOGIC', 'TD_BIEU_DO', 10::numeric, 3, 1),
+        ('SCIENTIFIC_THINKING', 'VACT-TD-SL', NULL, 10::numeric, 3, 6)
+    ) spec(subject, competency, declared_tag, points, child_count, quantity)
     JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = spec.subject
     JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
     JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
-    LEFT JOIN seed_be14_tag_slots slot ON slot.slot = spec.tag_slot::uuid
     LEFT JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
-        AND tag.code_normalized = lower(COALESCE(spec.declared_tag, slot.code))
+        AND tag.code_normalized = lower(spec.declared_tag)
     CROSS JOIN LATERAL generate_series(1, spec.quantity) n
 ), children AS (
     SELECT s.*, pos, md5(s.id::text || '-' || pos)::uuid AS child_id,

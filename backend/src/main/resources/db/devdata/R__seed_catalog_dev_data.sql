@@ -350,9 +350,7 @@ SELECT m.id, g.id, m.code, lower(m.code),
 FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000008'
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
--- D9 provisional codes: keep the six definitions together for BA reconciliation.
--- The question seed resolves these codes directly, including preserved rows
--- with noncanonical UUIDs.
+-- D9 provisional codes: reconcile with R__seed_questionbank_dev_data.sql for BA review.
 WITH seed(ordinal, code, name_vi, name_en) AS (
     VALUES
       (41, 'ANH_PHAT_HIEN_LOI', 'Phát hiện lỗi sai', 'Error identification'),
@@ -361,16 +359,15 @@ WITH seed(ordinal, code, name_vi, name_en) AS (
       (44, 'TD_XEP_HANG', 'Xếp hạng', 'Ranking'),
       (45, 'TD_BANG_SO_LIEU', 'Bảng số liệu', 'Data table'),
       (46, 'TD_BIEU_DO', 'Biểu đồ', 'Chart')
-), existing AS (
-    SELECT s.ordinal, i.id
-    FROM seed s
-    JOIN catalog.catalog_item i ON i.group_id = '00000000-0000-7000-8100-000000000008'
-        AND i.code_normalized = lower(s.code)
 ), missing AS (
     SELECT s.*, row_number() OVER (ORDER BY ordinal) AS allocation,
            ('00000000-0000-7000-8601-' || lpad(s.ordinal::text, 12, '0'))::uuid AS id
     FROM seed s
-    WHERE NOT EXISTS (SELECT 1 FROM existing e WHERE e.ordinal = s.ordinal)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = '00000000-0000-7000-8100-000000000008'
+          AND i.code_normalized = lower(s.code)
+    )
 )
 INSERT INTO catalog.catalog_item
         (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, depth, path)
