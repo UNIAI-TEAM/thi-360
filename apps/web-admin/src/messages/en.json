@@ -1270,7 +1270,9 @@
   },
   "nav": {
     "groups": {
+      "commerce": "Commerce",
       "content": "Content",
+      "learners": "Students",
       "overview": "Overview",
       "system": "System",
       "users": "Users"
@@ -1311,6 +1313,22 @@
       "grading": {
         "description": "Attempts with essay questions to grade or already scored",
         "label": "Essay grading"
+      },
+      "attempts": {
+        "description": "Student attempts: status, scores and operations",
+        "label": "Attempts"
+      },
+      "bundles": {
+        "description": "Bundles of exams, pricing and publishing",
+        "label": "Bundles"
+      },
+      "orders": {
+        "description": "Orders, buyers, refunds and reconciliation",
+        "label": "Orders"
+      },
+      "promotions": {
+        "description": "Promotions and vouchers by exam or exam kind",
+        "label": "Promotions"
       }
     }
   },
@@ -4556,6 +4574,159 @@
         }
       }
     },
+    "listing": {
+      "loading": "Loading listing",
+      "errorTitle": "Could not load the listing",
+      "errorDescription": "Check your connection and try again.",
+      "retry": "Try again",
+      "formLabel": "Listing",
+      "updatedAt": "Last edited: {time}",
+      "effectNote": "Price, attempts and benefits only take effect when published again. Editing the listing does not require a new configuration check.",
+      "readOnly": "You can only view the listing. Editing needs permission to modify exams.",
+      "save": "Save",
+      "saved": "Listing saved.",
+      "counter": "{count, number} / {max, number} characters",
+      "currency": "VND",
+      "sections": {
+        "intro": "Introduction",
+        "price": "Price and attempts",
+        "benefit": "Benefits after purchase",
+        "result": "Result view"
+      },
+      "fields": {
+        "summary": "Short description on the card",
+        "description": "Description",
+        "objectives": "Objectives",
+        "audience": "Suitable audience",
+        "price": "List price",
+        "attempts": "Attempts per purchase",
+        "benefitNote": "Limits of the benefits"
+      },
+      "hints": {
+        "description": "Required to publish. Shown on the detail page; the same field as Description in the Details tab.",
+        "price": "Required to publish. Taxes and fees included. Greater than 0{hasMin, select, yes { and not below {min} VND (the payment gateway minimum)} other {}}.",
+        "attempts": "Required to publish. From {min, number} to {max, number}. Buying again adds to the attempts left."
+      },
+      "cover": {
+        "label": "Cover image",
+        "alt": "Exam cover image",
+        "uploading": "Uploading the image",
+        "current": "Selected cover image",
+        "none": "No cover image",
+        "choose": "Choose image",
+        "replace": "Replace image",
+        "remove": "Remove image",
+        "hint": "JPG, PNG or WEBP · up to {max, number} MB · short side at least 480 px, at most 4,096 × 4,096 px. Without an image the card uses a default one (only a warning when publishing).",
+        "keep": "The current image is kept.",
+        "errors": {
+          "type": "File {name} is not a supported format. Choose a JPG, PNG or WEBP image.",
+          "tooLarge": "The image is larger than {max, number} MB. Choose a smaller image.",
+          "empty": "File {name} is empty. Choose another file.",
+          "dimensionsSmall": "The short side of the image is below 480 px. Choose a larger image.",
+          "dimensionsLarge": "The image is wider or taller than 4,096 px. Choose a smaller image.",
+          "corrupt": "File {name} is damaged or cannot be read completely. Choose another file.",
+          "forbidden": "You do not have permission to change the cover image.",
+          "generic": "Could not upload the image. Try again."
+        }
+      },
+      "benefit": {
+        "legend": "Includes",
+        "items": {
+          "benefitAiExplanation": {
+            "label": "AI explanations",
+            "description": "Students ask the AI why an answer is right or wrong once results are available."
+          },
+          "benefitStrengthWeakness": {
+            "label": "Strengths and weaknesses review",
+            "description": "Summary by part, subject and knowledge area of the attempt."
+          },
+          "benefitPractice": {
+            "label": "Extra practice",
+            "description": "A question set on the knowledge areas that are still weak."
+          }
+        }
+      },
+      "result": {
+        "legend": "After grading, students can see",
+        "options": {
+          "SCORE": {
+            "label": "Score only",
+            "description": "Total score, and scores by part and subject."
+          },
+          "SCORE_AND_ANSWERS": {
+            "label": "Score and answers",
+            "description": "Adds the correct answer of each question."
+          },
+          "FULL_SOLUTION": {
+            "label": "Score, answers and solutions",
+            "description": "Adds the detailed solution of each question."
+          }
+        },
+        "note": "Results and history stay available. For exams with essay questions, the total score appears once a grader has finished grading."
+      },
+      "validation": {
+        "summaryMax": "The short description can have at most {max, number} characters.",
+        "descriptionMax": "The description can have at most {max, number} characters.",
+        "objectivesMax": "The objectives can have at most {max, number} characters.",
+        "audienceMax": "The audience can have at most {max, number} characters.",
+        "benefitNoteMax": "The limits can have at most {max, number} characters.",
+        "priceInvalid": "The price is a whole number of 0 VND or more.",
+        "attemptsRange": "Attempts from {min, number} to {max, number}.",
+        "tooLong": "At most {max, number} characters.",
+        "fieldInvalid": "This value is not valid."
+      },
+      "errors": {
+        "coverNotFound": "The selected cover image can no longer be used. Choose the image again, then save.",
+        "invalid": "The listing is not valid. Check the fields, then save.",
+        "saveFailed": "Could not save the listing. Try again."
+      },
+      "conflict": {
+        "title": "Someone else just edited this exam. The latest version has been loaded.",
+        "description": "Your changes were not saved. Review the fields and enter the changes again.",
+        "lastEdit": "Last edited: {time}.",
+        "dismiss": "Dismiss notice"
+      },
+      "strip": {
+        "title": "On sale: {price} · Changes when published",
+        "detail": "The working copy differs from the version on sale in: {fields}.{hasVersion, select, yes { Students keep buying v{version} until you publish again.} other { Students keep buying the version on sale until you publish again.}}",
+        "compare": "Compare with {hasVersion, select, yes {v{version}} other {the version on sale}}",
+        "money": "{amount} VND",
+        "empty": "not set",
+        "fields": {
+          "listPriceVnd": "price ({from} → {to})",
+          "attemptsGranted": "attempts ({from} → {to})",
+          "resultView": "result view",
+          "benefits": "benefits",
+          "description": "description",
+          "summary": "short description",
+          "objectives": "objectives",
+          "audience": "audience",
+          "coverAssetId": "cover image"
+        }
+      },
+      "preview": {
+        "title": "Card preview",
+        "description": "As students see it in the catalog after publishing. Uses the list price, before promotions.",
+        "money": "{amount} VND",
+        "noPrice": "No price yet",
+        "meta": "{questions, number} questions · {minutes, number} minutes{hasAttempts, select, yes { · {attempts, number} attempts} other {}}",
+        "buy": "Buy exam",
+        "detail": "View details",
+        "serving": "On sale{hasVersion, select, yes { (v{version})} other {}}",
+        "servingNone": "On sale",
+        "notPublished": "Not published",
+        "afterPublish": "After publishing",
+        "compareValue": "{price}{hasAttempts, select, yes { · {attempts, number} attempts} other {}}"
+      },
+      "check": {
+        "title": "Listing check",
+        "ready": "Price, attempts and description are enough to publish",
+        "hasCover": "Has a cover image",
+        "errorPrefix": "Error: ",
+        "warningPrefix": "Warning: ",
+        "toReview": "See it in the Check tab"
+      }
+    },
     "review": {
       "title": "Check and preview",
       "tabs": {
@@ -4660,7 +4831,7 @@
         "title": "{path}: results for each subject set the learner can pick",
         "summary": "{total, plural, one {# case} other {# cases}}: {valid, number} valid, {invalid, number} invalid, {unconfirmed, number} unconfirmed.",
         "rule": "Learners pick {choose, number} subjects. Two subjects of the same group (natural or social) get {high, number} questions each and the other subject gets {low, number}. When all {choose, number} subjects are in one group, one of them gets {low, number}: that subject set has {choose, number} splits and every split is checked.",
-        "tableLabel": "Check results for each subject set of {path}",
+        "tableLabel": "Check results for each subject set",
         "empty": "This path has no subject choice yet",
         "columns": {
           "subjects": "Subjects and questions per subject",
@@ -4672,6 +4843,8 @@
         "affected": "Affected codes:",
         "blocked": "Cannot publish yet: {count, plural, one {# error blocks} other {# errors block}} publishing.",
         "codeGroup": "Code {code}",
+        "listingBlocked": "Cannot publish yet: the listing has {count, plural, one {# error} other {# errors}}.",
+        "listingUnconfirmed": "Not conclusive: the listing could not be checked.",
         "counters": {
           "errors": "Errors",
           "sections": "Subjects checked",
@@ -4711,6 +4884,74 @@
         "warningsTitle": "Warnings · do not block publishing ({count, number})",
         "wholeExam": "Whole exam"
       },
+      "listing": {
+        "title": "Listing",
+        "description": "Checked separately against the working copy when the tab opens, not from the saved configuration check. Publishing checks it again.",
+        "edit": "Edit listing",
+        "detailLink": "See details",
+        "status": {
+          "PASS": "Passed",
+          "WARN": "{count, plural, one {# warning} other {# warnings}}",
+          "FAIL": "{count, plural, one {# error} other {# errors}}"
+        },
+        "rowStatus": {
+          "pass": "Passed",
+          "error": "Error",
+          "warning": "Warning"
+        },
+        "rows": {
+          "price": {
+            "name": "List price",
+            "pass": "A price that can be published is set."
+          },
+          "attempts": {
+            "name": "Attempts per purchase",
+            "pass": "Attempts per purchase are set."
+          },
+          "description": {
+            "name": "Description",
+            "pass": "A description is set; it shows on the detail page."
+          },
+          "cover": {
+            "name": "Cover image",
+            "pass": "A cover image is set."
+          }
+        },
+        "tilePass": "Price, attempts, description and cover image passed.",
+        "unavailableTitle": "Could not compute the Listing group",
+        "unavailable": "Could not load the listing check result.",
+        "retry": "Try again",
+        "issue": {
+          "LISTING_PRICE_MISSING": "The list price is not set.",
+          "LISTING_PRICE_ZERO": "The list price must be above 0 VND. An exam is only free through a voucher.",
+          "LISTING_PRICE_BELOW_MIN": "The list price is below the payment gateway minimum{hasMin, select, yes { of {min} VND} other {}}.",
+          "LISTING_ATTEMPTS_MISSING": "Attempts per purchase are not set.",
+          "LISTING_DESCRIPTION_MISSING": "There is no description.",
+          "LISTING_COVER_MISSING": "There is no cover image; the card uses a default one. Does not block publishing.",
+          "UNKNOWN": "The listing is not ready to publish."
+        }
+      },
+      "manual": {
+        "title": "Manually graded questions",
+        "tag": "Warning · does not block publishing",
+        "description": "This exam has essay questions. The total score appears once a grader has finished grading.",
+        "caption": "Parts, subjects and blocks with essay questions",
+        "columns": {
+          "part": "Part",
+          "subject": "Subject",
+          "block": "Block",
+          "paths": "Choice path",
+          "location": "Location"
+        },
+        "badge": "Manual grading",
+        "allPaths": "Every choice path",
+        "openAria": "Open block {block} in Structure and matrix",
+        "openTooltip": "Open block",
+        "notes": {
+          "queue": "Essay questions with an answer go to the essay grading queue; an empty essay scores 0.",
+          "source": "A source question without grading instructions or criteria is still a blocking error (Source group)."
+        }
+      },
       "groups": {
         "title": "Check groups",
         "passed": "Passed",
@@ -4740,7 +4981,7 @@
         "title": "Details by block",
         "description": "Matching source is counted before resolving overlaps between quotas, so enough source per row does not guarantee a paper.",
         "tabsLabel": "Choice path",
-        "tableLabel": "Details by block for {path}",
+        "tableLabel": "Details by block",
         "empty": "This path has no question block yet",
         "part": "Part {order, number}",
         "requiredSets": "{questions, number} ({sets, number} sets × {size, number})",
@@ -4805,7 +5046,7 @@
         "DISTRIBUTION_DEVIATION": "{block}: the reference distribution{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
         "EXAM_QUOTA_DEVIATION": "The reference exam quota{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
         "ITEM_SHAPE_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} questions} other {does not have enough questions}} {shapeKind, select, MATCHING {with a matching structure of {left, number} left items – {right, number} right options} STATEMENTS {with exactly {statements, number} statements} other {of the required shape}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
-        "MANUAL_GRADING_REQUIRED": "Block {block} has essay questions: its points are only available after manual grading.",
+        "MANUAL_GRADING_REQUIRED": "Block {block} has manually graded questions. The total score appears once a grader has finished grading.",
         "OMITTED_GROUPS_PRESENT": "Block {block} is temporarily skipped: the exam's maximum score already excludes it.",
         "QUESTION_NOT_PLAYABLE": "Block {block}: question {codes} is missing an answer key or a scoring rule, or refers to a resource that no longer exists.",
         "REQUIRED_BASIS_UNSUPPORTED": "{block}: a required distribution counts questions only; the question-part or point units are for reference distributions.",
@@ -4884,7 +5125,19 @@
             "section": "Subjects"
           },
           "config": "Exam settings",
+          "listing": "Listing",
           "field": {
+            "audience": "Suitable audience",
+            "attemptsGranted": "Attempts per purchase",
+            "benefitAiExplanation": "Benefit: AI explanations",
+            "benefitNote": "Limits of the benefits",
+            "benefitPractice": "Benefit: extra practice",
+            "benefitStrengthWeakness": "Benefit: strengths and weaknesses review",
+            "coverAssetId": "Cover image",
+            "listPriceVnd": "List price",
+            "objectives": "Objectives",
+            "resultView": "Result view",
+            "summary": "Short description on the card",
             "answerQuotas": "Answer-type targets",
             "childAnswerType": "Sub-question type",
             "choiceGroup": "Subject group",
@@ -4979,6 +5232,7 @@
       "tabs": {
         "general": "Details",
         "structure": "Structure and matrix",
+        "listing": "Listing",
         "review": "Check and preview",
         "versions": "Versions and publishing"
       },
@@ -5289,6 +5543,15 @@
         "noteMax": "The note can have at most {max, number} characters."
       },
       "errors": {
+        "PUBLISH_ALL_PATHS_REQUIRED": "This exam has choices made after the attempt starts, so every path must be published at once.",
+        "allPaths": {
+          "PATH_SERVING_INVALID": "{path}: serving but no longer valid. Fix the configuration, then check again.",
+          "PATH_SERVING_MISSING_FROM_CHECK": "{path}: serving but missing from the latest check. Check the configuration again.",
+          "PATH_VALID_NOT_SELECTED": "{path}: valid but not selected. Select this path to publish.",
+          "unknownPath": "A choice path"
+        },
+        "listing": "The listing is not ready to publish:",
+        "listingLink": "Edit listing",
         "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
         "checkRequired": {
           "NO_CHECK": "The exam has not been checked yet. Check the configuration, then publish.",
@@ -6032,6 +6295,39 @@
         "subjectRequired": "Select a subject.",
         "cancel": "Cancel",
         "submit": "Add branch"
+      }
+    },
+    "subjectForm": {
+      "common": {
+        "blocked": "Fix the remaining errors before saving or checking.",
+        "countPercent": {
+          "count": "Questions",
+          "invalidNumber": "Enter a non-negative number.",
+          "percent": "Percent (%)",
+          "preview": "{percent, number}% of {total, plural, one {# question} other {# questions}} = {count, plural, one {# question} other {# questions}}",
+          "setNotWhole": "This percentage gives {count, plural, one {# question} other {# questions}}, which cannot be split into sets of {size, plural, one {# question} other {# questions}}",
+          "share": "{percent, number}%"
+        },
+        "enforcement": {
+          "apply": "Apply when generating",
+          "legend": "Enforcement of {name}",
+          "notDeclared": "Not declared",
+          "reference": "Reference",
+          "referenceOnly": "For comparison only",
+          "required": "Required"
+        },
+        "fullFormNotice": "This subject uses the full setup because it has settings the compact form cannot show.",
+        "lock": {
+          "answerType": "The question type is set by the template and cannot change",
+          "multiSubject": "A quota across several subjects is for comparison only",
+          "omitted": "This group is omitted by the template and cannot be turned back on",
+          "promptBasis": "A distribution by prompt is for comparison only",
+          "rowCounts": "Standard exam template: the quantity cannot change",
+          "rowHasConditions": "This row has its own conditions; remove them before splitting",
+          "rowNoSetSize": "This row has no fixed set size",
+          "rowOmitted": "This row is temporarily skipped",
+          "templateTotal": "The section total comes from the template and cannot change"
+        }
       }
     }
   },

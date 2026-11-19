@@ -1,6 +1,6 @@
 "use client";
 
-import { questionHtmlText } from "@/components/rich-text";
+import { questionHtmlText } from "@thi360/ui/rich-text";
 import { Button, Chip, cn, FormField, IconButton, Input, Label } from "@thi360/ui";
 import { ChevronDown, ChevronUp, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";

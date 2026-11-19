@@ -15,6 +15,7 @@ import { LoginView } from "./login-view";
 const mocks = vi.hoisted(() => ({
   callbackUrl: null as string | null,
   reason: null as string | null,
+  reset: null as string | null,
   loginWithPassword: vi.fn(),
   navigate: vi.fn(),
   refresh: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("next/navigation", () => ({
     new URLSearchParams({
       ...(mocks.callbackUrl ? { callbackUrl: mocks.callbackUrl } : {}),
       ...(mocks.reason ? { reason: mocks.reason } : {}),
+      ...(mocks.reset ? { reset: mocks.reset } : {}),
     }),
 }));
 
@@ -42,6 +44,7 @@ vi.mock("@/features/session/api", async () => {
 beforeEach(() => {
   mocks.callbackUrl = null;
   mocks.reason = null;
+  mocks.reset = null;
 });
 
 afterEach(() => {
@@ -223,5 +226,36 @@ describe("LoginView", () => {
     const updatedSwitcher = screen.getByRole("button", { name: "Change language" });
     expect(updatedSwitcher).toBe(switcher);
     expect(updatedSwitcher).toHaveFocus();
+  });
+
+  it("liên kết Đăng ký và Quên mật khẩu mang callbackUrl; ghi chú liên hệ quản trị viên không còn (AC-6)", () => {
+    mocks.callbackUrl = "/checkout/BCA-FULL";
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    expect(screen.getByRole("link", { name: "Đăng ký" })).toHaveAttribute(
+      "href",
+      `/register?callbackUrl=${encodeURIComponent("/checkout/BCA-FULL")}`,
+    );
+    expect(screen.getByRole("link", { name: "Quên mật khẩu?" })).toHaveAttribute(
+      "href",
+      `/forgot-password?callbackUrl=${encodeURIComponent("/checkout/BCA-FULL")}`,
+    );
+    expect(screen.queryByText(/Liên hệ quản trị viên/)).toBeNull();
+  });
+
+  it("không có callbackUrl thì hai liên kết đi thẳng, không thêm tham số", () => {
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    expect(screen.getByRole("link", { name: "Đăng ký" })).toHaveAttribute("href", "/register");
+    expect(screen.getByRole("link", { name: "Quên mật khẩu?" })).toHaveAttribute("href", "/forgot-password");
+  });
+
+  it("về từ trang đặt lại mật khẩu: hiện thông báo thành công, ô nhập vẫn trống (không tự đăng nhập)", () => {
+    mocks.reset = "done";
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Đã đặt lại mật khẩu. Hãy đăng nhập bằng mật khẩu mới.");
+    expect(screen.getByLabelText(/Tên đăng nhập hoặc email/)).toHaveValue("");
+    expect(mocks.loginWithPassword).not.toHaveBeenCalled();
   });
 });

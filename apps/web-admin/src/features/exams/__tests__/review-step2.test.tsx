@@ -71,7 +71,7 @@ function boot(exam: Parameters<typeof examDetailWire>[0] = {}) {
   const base = FIXED_PART.sections![0] as object;
   const part = { ...FIXED_PART, durationMinutes: 15, sections: [{ ...base, blocks: [{ id: "blk-1", questionType: null, questionCount: null }] }] };
   return new FakeServer()
-    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, maxScore: 10, templateCode: "T_REVIEW", ...exam }) })
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, maxScore: 10, templateCode: "T_REVIEW", buildMode: "REVIEW", ...exam }) })
     .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [reviewTemplate] })
     .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [part] } })
     .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
