@@ -150,6 +150,57 @@ class PasswordForgotDispatchTests {
         verify(passwordResetService).issue("has.account@thi360.vn", "203.0.113.7");
     }
 
+    @Test
+    void flushFailureBeforeCommitDoesNotHandOffAndDoesNotFailTheCaller() throws Exception {
+        PasswordForgotDispatcher dispatcher = new PasswordForgotDispatcher(capturingExecutor, passwordResetService);
+        AuthController controller = new AuthController(
+                mock(AuthService.class), dispatcher, passwordResetService, clientIpResolver, messages);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse failing = new MockHttpServletResponse() {
+            @Override
+            public void flushBuffer() {
+                throw new java.io.UncheckedIOException(new java.io.IOException("flush failed before the response was committed"));
+            }
+        };
+        currentResponse = failing;
+        AtomicReference<ResponseEntity<PasswordForgotResponse>> result = new AtomicReference<>();
+
+        new PasswordForgotHandoffFilter(dispatcher).doFilter(request, failing, (req, res) -> {
+            result.set(controller.forgot(new PasswordForgotRequest("has.account@thi360.vn"), (HttpServletRequest) req));
+            res.getWriter().write("accepted");
+        });
+
+        assertThat(failing.isCommitted()).isFalse();
+        assertThat(queued).as("no lookup is handed off for an uncommitted response").isEmpty();
+        assertThat(request.getAttribute(PasswordForgotDispatcher.PENDING_ATTRIBUTE)).isNull();
+        assertThat(result.get().getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        verifyNoInteractions(passwordResetService);
+    }
+
+    @Test
+    void flushFailureAfterCommitStillHandsOff() throws Exception {
+        PasswordForgotDispatcher dispatcher = new PasswordForgotDispatcher(capturingExecutor, passwordResetService);
+        AuthController controller = new AuthController(
+                mock(AuthService.class), dispatcher, passwordResetService, clientIpResolver, messages);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse committedThenFails = new MockHttpServletResponse() {
+            @Override
+            public void flushBuffer() {
+                super.flushBuffer();
+                throw new java.io.UncheckedIOException(new java.io.IOException("client went away after the commit"));
+            }
+        };
+        currentResponse = committedThenFails;
+
+        new PasswordForgotHandoffFilter(dispatcher).doFilter(request, committedThenFails, (req, res) -> {
+            controller.forgot(new PasswordForgotRequest("has.account@thi360.vn"), (HttpServletRequest) req);
+            res.getWriter().write("accepted");
+        });
+
+        assertThat(committedWhenHandedOff).containsExactly(true);
+        assertThat(queued).hasSize(1);
+    }
+
     private static void awaitQuietly(java.util.concurrent.CountDownLatch latch) {
         try {
             latch.await();
