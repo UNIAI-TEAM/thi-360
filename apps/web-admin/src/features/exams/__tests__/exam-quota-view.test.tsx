@@ -37,12 +37,14 @@ interface Boot {
   examQuotas: unknown[];
   later?: unknown[];
   templates?: unknown[];
+  /** Kỳ thi của bài: mặc định khác HSA, vì bài HSA cố định mức Bắt buộc (UNI-1701). */
+  kind?: string;
 }
 
-function boot({ examQuotas, later, templates = [] }: Boot) {
+function boot({ examQuotas, later, templates = [], kind = "VACT" }: Boot) {
   const structure = (quotas: unknown[], revision: number) => ({ status: 200, body: { examId: EXAM_ID, revision, parts: [FIXED_PART], examQuotas: quotas } });
   return new FakeServer()
-    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_NOW" }) })
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ kind, questionCount: 10, templateCode: "T_NOW" }) })
     .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: templates })
     .on("GET", STRUCTURE, structure(examQuotas, 7), ...(later ? [structure(later, 8)] : []))
     .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
@@ -106,24 +108,39 @@ describe("Chỉ tiêu cấp bài: lưu và chặn (R1-09, R1-16)", () => {
 });
 
 describe("Chỉ tiêu cấp bài khi đổi phiên bản cấu trúc (R1-10)", () => {
-  it("sửa chỉ tiêu rồi nạp phiên bản khác: màn hiện chỉ tiêu của phiên bản mới, không giữ số đã sửa", async () => {
-    const base = FIXTURE_TEMPLATES.find((template) => template.kind === "HSA" && template.scope === "FULL")!;
-    const now = { ...base, code: "T_NOW", label: "HSA hiện tại", structureYear: 2026 };
-    const other = { ...base, code: "T_OTHER", label: "HSA bản khác", structureYear: 2025, isDefault: false };
-    const server = boot({ examQuotas: [gradeQuota()], later: [gradeQuota([20, 80])], templates: [now, other].map(toWireTemplate) });
-    const user = userEvent.setup();
-    open();
-    await setPercent(user, 0, "40");
-    await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
-    await user.click((await screen.findAllByRole("option"))[1]!);
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
-    await waitFor(() => expect(server.calls("POST", `${STRUCTURE}/template`)).toHaveLength(1));
-    await waitFor(() => {
-      const inputs = screen.getAllByRole("textbox", { name: /^Tỷ lệ/ }) as HTMLInputElement[];
-      expect(inputs.map((input) => input.value)).toEqual(["20", "80"]);
-    });
-  }, 20_000);
+  it.each([
+    { kind: "HSA", saved: "REQUIRED" },
+    { kind: "VACT", saved: "REFERENCE" },
+  ])(
+    "$kind: sửa chỉ tiêu Tham khảo rồi nạp phiên bản khác: màn hiện chỉ tiêu của phiên bản mới, không giữ số đã sửa, lưu gửi chỉ tiêu mới ($saved)",
+    async ({ kind, saved }) => {
+      const base = FIXTURE_TEMPLATES.find((template) => template.kind === "HSA" && template.scope === "FULL")!;
+      const now = { ...base, kind, code: "T_NOW", label: "HSA hiện tại", structureYear: 2026 };
+      const other = { ...base, kind, code: "T_OTHER", label: "HSA bản khác", structureYear: 2025, isDefault: false };
+      // Chỉ tiêu một môn ở Tham khảo: bài HSA chuyển nó sang Bắt buộc khi mở (UNI-1701), nhưng nạp phiên bản vẫn phải để lần tải
+      // lại kế tiếp đưa chỉ tiêu của mẫu mới vào (R2-2).
+      const server = boot({ examQuotas: [gradeQuota()], later: [{ ...gradeQuota([20, 80]), id: "q-later" }], kind, templates: [now, other].map(toWireTemplate) });
+      const user = userEvent.setup();
+      open();
+      await setPercent(user, 0, "40");
+      await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
+      await user.click((await screen.findAllByRole("option"))[1]!);
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
+      await waitFor(() => expect(server.calls("POST", `${STRUCTURE}/template`)).toHaveLength(1));
+      await waitFor(() => {
+        const inputs = screen.getAllByRole("textbox", { name: /^Tỷ lệ/ }) as HTMLInputElement[];
+        expect(inputs.map((input) => input.value)).toEqual(["20", "80"]);
+      });
+      await setPercent(user, 0, "25");
+      await setPercent(user, 1, "75");
+      await user.click(screen.getByRole("button", { name: "Lưu" }));
+      await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+      const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ id: string; enforcement: string }> };
+      expect(sent.examQuotas).toMatchObject([{ id: "q-later", enforcement: saved }]);
+    },
+    20_000,
+  );
 });
 
 describe("Chỉ tiêu cấp bài tính theo đơn vị không phải câu khóa mức Bắt buộc (R2-04)", () => {
@@ -141,5 +158,28 @@ describe("Chỉ tiêu cấp bài tính theo đơn vị không phải câu khóa 
     open();
     const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
     expect(within(section).getByRole("radio", { name: "Bắt buộc" })).toBeEnabled();
+  });
+});
+
+describe("Chỉ tiêu cấp bài của kỳ thi HSA có mức cố định (UNI-1701)", () => {
+  it("một môn, tính theo câu: Bắt buộc cố định, không còn nút radio, và bản nháp lưu Bắt buộc", async () => {
+    const server = boot({ examQuotas: [gradeQuota()], kind: "HSA" });
+    const user = userEvent.setup();
+    open();
+    const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
+    expect(within(section).queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
+    expect(within(section).getByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ enforcement: string }> };
+    expect(sent.examQuotas.map((quota) => quota.enforcement)).toEqual(["REQUIRED"]);
+  });
+
+  it("H6: trải nhiều môn vẫn Tham khảo cố định kèm lý do", async () => {
+    boot({ examQuotas: [{ ...gradeQuota(), subjectCodes: ["MATH", "LITERATURE"], excludeSubjectCodes: [] }], kind: "HSA" });
+    open();
+    const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
+    expect(within(section).queryByRole("radio")).not.toBeInTheDocument();
+    expect(within(section).getByText("Chỉ tiêu trải nhiều môn chỉ ở mức Tham khảo.")).toBeInTheDocument();
   });
 });
