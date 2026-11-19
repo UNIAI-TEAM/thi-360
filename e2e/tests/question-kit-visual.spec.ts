@@ -43,15 +43,20 @@ test.afterAll(async () => {
 });
 
 /** Context của ô, đã đăng nhập `student01` (một lần cho cả file) và đặt lại cookie giao diện, ngôn ngữ. */
-async function openCell(cell: MatrixCell): Promise<{ context: BrowserContext; page: Page }> {
+async function openCell(cell: MatrixCell): Promise<{ context: BrowserContext; page: Page; errors: string[] }> {
   const context = await openMatrixContext(browser, cell, WEB_URL);
   await context.addCookies(sessionState.cookies);
   await applyMatrixCookies(context, cell, WEB_URL);
   const page = await context.newPage();
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(String(error)));
   await page.goto(`${WEB_URL}/dev/question-kit`);
   await expect(page.locator("[data-sample]")).toHaveCount(SAMPLE_COUNT);
   await waitForKit(page);
-  return { context, page };
+  return { context, page, errors };
 }
 
 /** Điền khuyết dựng ô nhập sau khi hydrate: chờ đủ ô trước khi chụp. */
@@ -63,13 +68,14 @@ async function waitForKit(page: Page): Promise<void> {
 for (const cell of matrixCells()) {
   test(`8 dạng câu ở hai chế độ: ${cellLabel(cell)}`, async () => {
     test.setTimeout(120_000);
-    const { context, page } = await openCell(cell);
+    const { context, page, errors } = await openCell(cell);
     try {
       await expectMatrixClean(page, "question-kit-answer", cell);
-      await page.getByRole("button", { name: REVIEW_LABEL[cell.lang] }).click();
+      await page.getByRole("button", { name: REVIEW_LABEL[cell.lang], exact: true }).click();
       await expect(page.getByTestId("value-single")).toHaveCount(0);
       await waitForKit(page);
       await expectMatrixClean(page, "question-kit-review", cell);
+      expect(errors, "không có lỗi console (key React, hydrate…)").toEqual([]);
     } finally {
       await context.close();
     }

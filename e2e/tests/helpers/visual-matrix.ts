@@ -124,8 +124,8 @@ export interface ContrastFinding {
 }
 
 /**
- * Tương phản chữ theo WCAG: mọi nút chữ nhìn thấy, trừ phần tử bị khóa (`disabled`, `aria-disabled`) và chữ
- * trên nền ảnh hay gradient (không tính được chắc). Màu đọc qua canvas nên đúng với mọi cú pháp CSS, kể cả
+ * Tương phản chữ theo WCAG: mọi nút chữ nhìn thấy, trừ phần tử bị khóa (`disabled`, `aria-disabled`), chữ
+ * trong suốt (phantom của KaTeX) và chữ trên nền ảnh hay gradient (không tính được chắc). Màu đọc qua canvas nên đúng với mọi cú pháp CSS, kể cả
  * `color-mix` và `oklch`. Tính cả vùng `data-exam-content`.
  */
 export function auditContrast(page: Page, options: { min?: number; scope?: string } = {}): Promise<ContrastFinding[]> {
@@ -199,6 +199,8 @@ export function auditContrast(page: Page, options: { min?: number; scope?: strin
         if (!bg) return;
         const fgRaw = parse(style.color);
         const fgAlpha = fgRaw[3] * opacityOf(el);
+        // Chữ trong suốt (`color: transparent`, như phần tử `\phantom` của KaTeX/mhchem) không đọc được và không cần đọc.
+        if (fgAlpha === 0) return;
         const fg = over([fgRaw[0], fgRaw[1], fgRaw[2], fgAlpha], bg);
         const ratio = ratioOf(fg, bg);
         if (ratio < min) {
