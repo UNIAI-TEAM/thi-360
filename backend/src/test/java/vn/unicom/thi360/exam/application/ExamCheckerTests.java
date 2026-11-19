@@ -655,6 +655,29 @@ class ExamCheckerTests {
         assertThat(spent.result().path("status").asText()).isEqualTo("INVALID");
     }
 
+    @Test
+    void unconfirmedPathOrSelectionCannotVouchForRulesEvenWhenOverallOutcomeIsInvalid() {
+        var path = vn.unicom.thi360.exam.domain.solver.SolvePath.of(0, List.of());
+        var invalid = vn.unicom.thi360.exam.domain.solver.SolveStatus.INVALID;
+        var uncertain = vn.unicom.thi360.exam.domain.solver.SolveStatus.UNCONFIRMED;
+        var incompletePath = new vn.unicom.thi360.exam.domain.solver.PathResult(
+                path, uncertain, null, null, null, List.of(), List.of(), null);
+        var invalidPath = new vn.unicom.thi360.exam.domain.solver.PathResult(
+                path, invalid, null, null, null, List.of(), List.of(), null);
+        var outcome = new vn.unicom.thi360.exam.domain.solver.SolveOutcome(
+                invalid, null, List.of(invalidPath, incompletePath), null);
+        assertThat(ExamCheckAssembler.rulesEvaluated(outcome)).isFalse();
+
+        var selection = new vn.unicom.thi360.exam.domain.solver.SelectionResult(
+                List.of(), uncertain, null, null, null, null, List.of());
+        var mixed = new vn.unicom.thi360.exam.domain.solver.PathResult(
+                path, invalid, null, null, null, List.of(), List.of(), null, List.of(selection));
+        assertThat(ExamCheckAssembler.rulesEvaluated(new vn.unicom.thi360.exam.domain.solver.SolveOutcome(
+                invalid, null, List.of(mixed), null))).isFalse();
+        assertThat(ExamCheckAssembler.rulesEvaluated(new vn.unicom.thi360.exam.domain.solver.SolveOutcome(
+                invalid, null, List.of(invalidPath), null))).isTrue();
+    }
+
     private ExamChecker.Evaluation check(Exam exam, ExamStructureDocument document) {
         return check(exam, document, clock.instant().plusSeconds(30));
     }
