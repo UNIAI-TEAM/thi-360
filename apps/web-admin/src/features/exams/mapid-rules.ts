@@ -48,16 +48,21 @@ export function hasLegacyMapid(section: ExamSection): boolean {
 
 /**
  * Chỉ tiêu kiểu cũ chuyển được sang quy tắc "ít nhất" mà không mất gì: có MAPID, mức Bắt buộc, đơn vị câu, không lọc khối lớp,
- * độ khó hay nhóm. Quy tắc của máy chủ không có các trường đó (Q3), nên môn có chỉ tiêu như vậy giữ nguyên kiểu cũ.
+ * độ khó hay nhóm. Quy tắc của máy chủ không có các trường đó (Q3), nên môn có chỉ tiêu như vậy giữ nguyên kiểu cũ. Chỉ tiêu theo
+ * tỷ lệ cần mẫu số (`units`: số câu của môn hoặc của nhóm): máy chủ tính `percent` ra số câu theo mẫu số và để `percent` thắng
+ * `count`, nên khi chưa biết mẫu số (môn chọn môn có số câu theo `countsByPick`, nhóm lấy phần còn lại của môn chưa có số câu) quy
+ * tắc mới ra 0 câu và chỉ tiêu bắt buộc đã lưu mất âm thầm (R1-F1); môn đó giữ kiểu cũ, nơi máy chủ dùng `count` đã lưu.
  */
-function convertibleQuota(quota: TopicQuota): boolean {
+function convertibleQuota(quota: TopicQuota, units: number | null): boolean {
+  const byPercent = quota.percent !== undefined && quota.percent !== null;
   return (
     quota.nodeIds.length > 0 &&
     quota.enforcement === "REQUIRED" &&
     (quota.basis === undefined || quota.basis === "QUESTION") &&
     !quota.gradeCodes?.length &&
     !quota.difficultyCodes?.length &&
-    !quota.groupIds?.length
+    !quota.groupIds?.length &&
+    (!byPercent || units !== null)
   );
 }
 
@@ -106,9 +111,10 @@ function sourcesUnchanged(section: ExamSection): boolean {
 export function convertLegacySection(section: ExamSection): ExamSection {
   if (section.mapidMode !== undefined || !usesMapidMatrix(section.subjectCode) || !hasLegacyMapid(section)) return section;
   const sectionQuotas = section.topicQuotas ?? [];
-  const blockQuotas = section.blocks.flatMap((block) => block.topicQuotas ?? []);
-  if (![...sectionQuotas, ...blockQuotas].every(convertibleQuota)) return section;
-  if (!sourcesUnchanged(section)) return section;
+  const quotasConvert =
+    sectionQuotas.every((quota) => convertibleQuota(quota, section.questionCount)) &&
+    section.blocks.every((block) => (block.topicQuotas ?? []).every((quota) => convertibleQuota(quota, ruleUnits(section, { groupId: block.id }))));
+  if (!quotasConvert || !sourcesUnchanged(section)) return section;
 
   const ids = new Set<string>();
   const unique = (base: string): string => {
@@ -173,14 +179,15 @@ function takesRemainder(block: QuestionBlock): boolean {
 
 /**
  * Số câu của nhóm lấy phần còn lại, tính như máy chủ: số câu của môn trừ số câu của mọi nhóm có số cố định (chùm và nhóm câu đơn
- * đã khai số câu; các nhóm lấy phần còn lại khác không bị trừ, mỗi nhóm nhận đủ phần dư). `null` khi môn chưa có số câu, một nhóm
- * cố định chưa biết số câu (chùm chưa khai cỡ), hoặc các nhóm khác đã vượt số câu của môn.
+ * đã khai số câu; các nhóm lấy phần còn lại khác không bị trừ, mỗi nhóm nhận đủ phần dư; nhóm đã bỏ `omitted` không phải nhóm nên
+ * cũng không bị trừ, R1-F2). `null` khi môn chưa có số câu, một nhóm cố định chưa biết số câu (chùm chưa khai cỡ), hoặc các nhóm
+ * khác đã vượt số câu của môn.
  */
 function remainderUnits(section: Pick<ExamSection, "questionCount" | "blocks">, block: QuestionBlock): number | null {
   if (section.questionCount === null) return null;
   let fixed = 0;
   for (const other of section.blocks) {
-    if (other.id === block.id || takesRemainder(other)) continue;
+    if (other.id === block.id || other.omitted === true || takesRemainder(other)) continue;
     const units = groupUnits(other);
     if (units === null) return null;
     fixed += units;
@@ -285,6 +292,8 @@ export interface RuleSentence {
   scope: "SUBJECT" | "GROUP" | "DELETED";
   /** Nhóm của quy tắc; `null` khi quy tắc cả môn hoặc nhóm đã xóa. */
   group: QuestionBlock | null;
+  /** Tên nhóm đã xóa còn ghi trên quy tắc (`MapidRule.deletedGroupName`) cho tới khi lưu; `null` khi không có. */
+  deletedGroupName: string | null;
   /** Chỉ tiêu dạng "3/15" (số câu trên mẫu số), "3/15 (20%)" khi nhập theo tỷ lệ; "20%" khi chưa biết mẫu số; `null` khi quy tắc không có số. */
   amount: string | null;
 }
@@ -320,6 +329,7 @@ export function describeRule(section: ExamSection, rule: MapidRule): RuleSentenc
     kind: sentenceKind(rule),
     scope: !rule.groupId ? "SUBJECT" : group ? "GROUP" : "DELETED",
     group,
+    deletedGroupName: !group && rule.groupId ? (rule.deletedGroupName ?? null) : null,
     amount: amountText(section, rule),
   };
 }
@@ -391,7 +401,14 @@ export function ruleFromForm(form: MapidRuleForm, section: ExamSection): MapidRu
   return { ...withComparator, count: ruleCount(section, { ...withComparator, percent: form.percent }), percent: form.percent };
 }
 
-export type RuleIssue = "NO_NODES" | "GROUP_MISSING" | "ONLY_IN_GROUP_NEEDS_GROUP" | "PERCENT_RANGE" | "PERCENT_DENOMINATOR_UNKNOWN";
+export type RuleIssue =
+  | "NO_NODES"
+  | "GROUP_MISSING"
+  | "ONLY_IN_GROUP_NEEDS_GROUP"
+  | "PERCENT_RANGE"
+  | "PERCENT_DENOMINATOR_UNKNOWN"
+  | "PERCENT_POOL"
+  | "COUNT_ABOVE_TOTAL";
 
 /**
  * Lỗi chặn nút Lưu của hộp thoại. Quy tắc của nhóm đã xóa báo `GROUP_MISSING` cho tới khi người dùng chọn lại phạm vi. Nhập theo tỷ lệ
@@ -406,7 +423,14 @@ export function ruleFormIssues(form: MapidRuleForm, section: ExamSection): RuleI
   if (form.type === "ONLY_IN_GROUP" && !form.groupId) issues.push("ONLY_IN_GROUP_NEEDS_GROUP");
   if (ruleNeedsNumber(form.type, form.withNumber) && form.entry === "PERCENT") {
     if (form.percent < 0 || form.percent > 100) issues.push("PERCENT_RANGE");
-    else if (!groupGone && ruleUnits(section, form) === null) issues.push("PERCENT_DENOMINATOR_UNKNOWN");
+    else if (!groupGone && ruleUnits(section, form) === null) {
+      // Môn tự chọn (HSA Khoa học): số câu theo `countsByPick`, người dùng không nhập được ở môn nên chỉ còn nhập theo số câu (R1-F10).
+      issues.push(section.questionCount === null && section.choiceGroup !== null ? "PERCENT_POOL" : "PERCENT_DENOMINATOR_UNKNOWN");
+    }
+  }
+  // Máy chủ từ chối cả bản lưu khi số câu của quy tắc vượt số câu của môn (`ExamStructureValidator.validateMapidRules`); vượt số câu của nhóm là việc của bước kiểm tra nên không chặn (R1-F5).
+  if (ruleNeedsNumber(form.type, form.withNumber) && form.entry === "COUNT" && section.questionCount !== null && form.count > section.questionCount) {
+    issues.push("COUNT_ABOVE_TOTAL");
   }
   return issues;
 }
@@ -501,7 +525,7 @@ export function groupCountScope(block: QuestionBlock, section: ExamSection): Cou
     nodeGroups.length > 0
       ? {
           nodeIds: [],
-          competencyCodes: own.length > 0 ? (block.knowledgeScope?.competencyCodes ?? []) : (inherited?.competencyCodes ?? []),
+          competencyCodes: inherited?.competencyCodes ?? [],
           nodeGroups,
           ...(isSetBlock(block) ? { everyChildInScope: true, everyChildSameNode: true } : {}),
         }

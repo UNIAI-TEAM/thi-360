@@ -346,8 +346,8 @@ export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
     if (value && typeof value === "object") {
       return Object.fromEntries(
         Object.entries(value as Record<string, unknown>)
-          // `positionRange` do máy chủ tính (2B 3.3), không gửi lại.
-          .filter(([key, item]) => item !== null && item !== undefined && key !== "positionRange")
+          // `positionRange` do máy chủ tính (2B 3.3), không gửi lại; `deletedGroupName` chỉ của bản nháp (quy tắc MAPID).
+          .filter(([key, item]) => item !== null && item !== undefined && key !== "positionRange" && key !== "deletedGroupName")
           .map(([key, item]) => [key, strip(item)]),
       );
     }

@@ -319,6 +319,11 @@ export interface MapidRule {
   comparator?: MapidComparator;
   count?: number | null;
   percent?: number | null;
+  /**
+   * Chỉ có ở bản nháp của màn: tên nhóm đã bị xóa khỏi môn, ghi lại lúc xóa để dòng quy tắc và thông báo chặn lưu còn gọi đúng tên
+   * nhóm cho tới khi người dùng sửa hoặc xóa quy tắc. Không bao giờ gửi lên máy chủ (`toApiParts`).
+   */
+  deletedGroupName?: string;
 }
 
 /**
