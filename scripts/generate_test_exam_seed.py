@@ -151,11 +151,33 @@ def apply_sp2e_points_fix(code, doc):
                     block["requiredPointsPerQuestion"] = 0.2
 
 
+QUESTION_SET_QUOTA_TEMPLATES = ("HSA_FULL", "HSA_PART_MATH", "HSA_SUBJECT_TOAN",
+                                "QDA_FULL", "QDA_PART_MATH", "QDA_SUBJECT_TOAN")
+OLD_TOAN_QUOTAS = [{"answerType": "SINGLE_CHOICE", "value": 35}, {"answerType": "SHORT_ANSWER", "value": 15}]
+NEW_TOAN_QUOTAS = {"unit": "COUNT", "items": [{"answerType": "SINGLE_CHOICE", "value": 32},
+                                              {"answerType": "SHORT_ANSWER", "value": 15},
+                                              {"answerType": "QUESTION_SET", "value": 3}]}
+
+
+def apply_answer_quota_question_set(code, doc):
+    """V202611190100 (UNI-2754): a Toán section whose quotas are exactly SC 35 / SA 15 and that has a
+    QUESTION_SET block gets SC 32 / SA 15 / QUESTION_SET 3 (same six templates, same exact match)."""
+    if code not in QUESTION_SET_QUOTA_TEMPLATES:
+        return
+    for part in doc["parts"]:
+        for section in part.get("sections", []):
+            quotas = section.get("answerQuotas")
+            if (section.get("subjectCode") == "TOAN" and quotas and quotas.get("items") == OLD_TOAN_QUOTAS
+                    and any(block.get("questionType") == "QUESTION_SET" for block in section.get("blocks", []))):
+                section["answerQuotas"] = copy.deepcopy(NEW_TOAN_QUOTAS)
+
+
 def template_row(code):
     """The template as the database holds it after every migration, as an independent copy."""
     row = copy.deepcopy(TEMPLATE_ROWS[code])
     if code in ("SP2E_ANH_2026", "SP2E_SU_2026", "SP2E_ECON_LAW_2026"):
         apply_sp2e_points_fix(code, row["doc"])
+    apply_answer_quota_question_set(code, row["doc"])
     return row
 
 

@@ -69,7 +69,7 @@ Cấu trúc `HSA_FULL` (các mẫu theo phần và theo môn chép từ đây), 
 
 | Phần | Nội dung |
 |---|---|
-| 1 · Toán học và xử lí số liệu, 75 phút, 50 điểm | Chỉ tiêu dạng trả lời MĐ 35 / TLN 15; lớp 10/11/12 = 3/20/27; độ khó NB/TH/VD/VDC = 2/21/20/7 (cả hai `REQUIRED`). Nhóm `HSA_MATH_SINGLE` MĐ 32; nhóm `HSA_MATH_SINGLE` TLN 15; nhóm `HSA_MATH_CONTEXT` chùm cuối 1×3 (câu con MĐ). Điểm mọi câu 1 |
+| 1 · Toán học và xử lí số liệu, 75 phút, 50 điểm | Chỉ tiêu dạng trả lời MĐ 32 / TLN 15 / Bộ câu hỏi 3 (UNI-2754, `V202611190100`: dòng Bộ câu hỏi đếm câu con của nhóm chùm, nên MĐ chỉ còn 32 câu đơn); lớp 10/11/12 = 3/20/27; độ khó NB/TH/VD/VDC = 2/21/20/7 (cả hai `REQUIRED`). Nhóm `HSA_MATH_SINGLE` MĐ 32; nhóm `HSA_MATH_SINGLE` TLN 15; nhóm `HSA_MATH_CONTEXT` chùm cuối 1×3 (câu con MĐ). Điểm mọi câu 1 |
 | 2 · Ngôn ngữ – Văn học, 60 phút, 50 điểm | 5 nhóm có nhãn: `HSA_VN_ODD_WORD` 5 (`VAN_TU_KHAC_NHOM`), `HSA_VN_WORD_USAGE` 5 (`VAN_TU_SAI`), `HSA_VN_WORD_PAIR` 5 (`VAN_CAP_TU_DIEN`), `HSA_VN_PASSAGE_SINGLE` 10 (`VAN_NGU_LIEU_MOT_CAU`), `HSA_VN_PASSAGE` chùm 5×5 (câu con MĐ) có 5 `slots` theo nhãn `VAN_NGHI_LUAN_XA_HOI`, `VAN_THONG_TIN`, `VAN_KHOA_HOC_CHINH_LUAN`, `VAN_THO`, `VAN_VAN_XUOI`, `shuffleEditable = true`. Điểm mọi câu 1 |
 | 3 · Khoa học hoặc Tiếng Anh, 60 phút, 50 điểm (`participation` `CHOICE`, chọn 1) | Phương án `SCIENCE` (`SUBJECT_CHOICE`, chọn 3, `countsByPick` [17, 17, 16]): 5 môn × 17 câu. Lí, Hóa, Sinh: MĐ 13 + chùm 1×3 + TLN 1, nhóm `NATURAL`. Sử, Địa: MĐ 14 + chùm 1×3, nhóm `SOCIAL`. Phương án `ANH` (`SUBJECT`): 50 câu, 11 nhóm có nhãn |
 
@@ -93,7 +93,7 @@ Nguồn: `V202611180652`, `V202611161802` (phần 3 và danh sách mã). Mẫu t
 
 | Phần | Nội dung |
 |---|---|
-| 1 · Toán, 80 phút, 50 điểm | Chỉ tiêu MĐ 35 / TLN 15; lớp 5/15/30 (`REQUIRED`); không khai độ khó. Nhóm `QDA_TOAN_SINGLE` MĐ 32, chùm `QDA_TOAN_CONTEXT` 1×3, `QDA_TOAN_SINGLE` TLN 15 (định dạng đáp án `INTEGER`, `DECIMAL`, `FRACTION`). Điểm 1 |
+| 1 · Toán, 80 phút, 50 điểm | Chỉ tiêu MĐ 32 / TLN 15 / Bộ câu hỏi 3 (UNI-2754); lớp 5/15/30 (`REQUIRED`); không khai độ khó. Nhóm `QDA_TOAN_SINGLE` MĐ 32, chùm `QDA_TOAN_CONTEXT` 1×3, `QDA_TOAN_SINGLE` TLN 15 (định dạng đáp án `INTEGER`, `DECIMAL`, `FRACTION`). Điểm 1 |
 | 2 · Ngôn ngữ – Văn học, 55 phút, 50 điểm | 5 nhóm theo thứ tự: `QDA_VAN_ODD_WORD` 5 (`VAN_TU_KHAC_NHOM`), `QDA_VAN_WORD_PAIR` 5 (`VAN_CAP_TU_DIEN`), `QDA_VAN_WORD_USAGE` 5 (`VAN_TU_SAI`), `QDA_VAN_PASSAGE_SINGLE` 10 (`VAN_NGU_LIEU_MOT_CAU`), `QDA_VAN_PASSAGE` chùm 5×5 (câu con MĐ) có 5 `slots` theo nhãn **khác HSA**: `VAN_THONG_TIN_NGHI_LUAN`, `VAN_NGHI_LUAN`, `VAN_THO`, `VAN_THIEU_NHI`, `VAN_TRUYEN`, `shuffleEditable = true`. Chỉ `VAN_THO` trùng với năm nhãn của HSA; không dùng nhãn HSA để dựng ngữ liệu QDA. Điểm 1 |
 | 3 · Khoa học hoặc Tiếng Anh, 60 phút, 50 điểm | `codeSource` = `GLOBAL_LIST`, danh sách mã `QD01`–`QD05` lấy từ Global List (5 phương án), `subjectPool` 5 môn × 25 câu (Lí, Hóa, Sinh: MĐ 21 + chùm 1×3 + TLN 1; Sử, Địa: MĐ 22 + chùm 1×3) và Tiếng Anh 50 câu, 10 nhóm có nhãn: `QDA_ANH_SENTENCE` 10 (`ANH_HOAN_THANH_CAU`), `QDA_ANH_SYN_ANT` 4 (hai nhãn `ANH_DONG_NGHIA`, `ANH_TRAI_NGHIA`), `QDA_ANH_DIALOGUE` 4 (`ANH_HOI_THOAI`), `QDA_ANH_NOTICE` 4 (`ANH_THONG_BAO`), `QDA_ANH_REWRITE` 4 (`ANH_VIET_LAI_CAU`), `QDA_ANH_COMBINE` 4 (`ANH_KET_HOP_CAU`), `QDA_ANH_CLOZE` chùm 1×5 (`ANH_DOC_DIEN`), `QDA_ANH_READING` 1×5 (`ANH_DOC_HIEU_1`), `QDA_ANH_READING_2` 1×5 (`ANH_DOC_HIEU_2`), `QDA_ANH_INFERENCE` 5 (`ANH_SUY_LUAN`) |
 
@@ -330,7 +330,7 @@ Cột Câu là số câu học viên làm, Điểm là cột `max_score` của b
 | Mã | Mẫu (nguồn cấu trúc) | Phạm vi | Timing, phút | Điểm | Câu | Dùng để kiểm | Kết quả |
 |---|---|---|---|---|---|---|---|
 | `TEST-HSA-01` | `HSA_FULL` | FULL | `PER_PART`, 195 | 150 | 150 | 3 phần; phần 3 chọn 1: Khoa học (10 bộ ba môn) hoặc Tiếng Anh; Văn có `slots`; `examQuotas` Tiếng Anh | VALID; `EXAM_QUOTA_DEVIATION` (cảnh báo) |
-| `TEST-HSA-02` | `HSA_PART_MATH` | PART `TOAN` | `PER_PART`, 75 | 50 | 50 | chỉ tiêu 35 + 15, lớp và độ khó hai chiều, chùm 1×3 | VALID, không mã |
+| `TEST-HSA-02` | `HSA_PART_MATH` | PART `TOAN` | `PER_PART`, 75 | 50 | 50 | chỉ tiêu 32 + 15 + Bộ câu hỏi 3, lớp và độ khó hai chiều, chùm 1×3 | VALID, không mã |
 | `TEST-HSA-03` | `HSA_PART_LITERATURE` | PART `VAN` | `PER_PART`, 60 | 50 | 50 | 4 nhóm câu đơn có nhãn, chùm 5×5 có 5 `slots` | VALID, không mã |
 | `TEST-HSA-04` | `HSA_PART_SCIENCE` | PART `SCIENCE` | `PER_PART`, 60 | 50 | 50 | `SUBJECT_CHOICE`, tỉ lệ ra 17/17/16, ma trận riêng từng môn, 10 bộ ba | VALID, không mã; 10 bộ ba đều VALID |
 | `TEST-QDA-01` | `QDA_FULL` | FULL | `PER_PART`, 195 | 150 | 150 | mã tổ hợp 5 (`QD01`–`QD05`), `codeSource` `GLOBAL_LIST` | VALID, không mã |
@@ -363,7 +363,7 @@ Mỗi bài dựng từ một bài hợp lệ, chỉ đổi một chỗ (chỗ đ
 | `TEST-ERR-02` | `TEST-BCA-01` | cả năm nhóm Tiếng Anh đổi 0,75 → 1 (Phần 2: 65 > 60; tổng 105 ≠ 100) | `PART_POINTS_MISMATCH` | `PART_POINTS_MISMATCH`, `POINTS_TOTAL_MISMATCH` và các cảnh báo của `TEST-BCA-01` (`MANUAL_GRADING_REQUIRED`, `DISTRIBUTION_DEVIATION`, `EXAM_QUOTA_DEVIATION`) |
 | `TEST-ERR-03` | `TEST-HSA-02` | nhóm Ngữ cảnh của Toán (`HSA_MATH_CONTEXT`, 1 chùm 3 câu, không có `slots`) thêm nhãn `TEST-HIEM`; không chùm Toán nào mang nhãn này | `SET_SHORTAGE` | `SET_SHORTAGE`, không mã khác. Dựng từ `TEST-HSA-02` vì nhóm có `slots` (Đọc ngữ liệu của `TEST-HSA-03`) báo `SLOT_SOURCE_SHORTAGE` theo slot, còn `SET_SHORTAGE` chỉ ra ở nhóm chùm không có `slots` |
 | `TEST-ERR-04` | `TEST-HSA-02` | nhóm MĐ 31 thay 32 (môn 49 câu) | `SECTION_TOTAL_MISMATCH` | `SECTION_TOTAL_MISMATCH`, `PART_POINTS_MISMATCH`, `PATH_TOTAL_MISMATCH`, `POINTS_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
-| `TEST-ERR-05` | `TEST-HSA-02` | chỉ tiêu TLN 14 (tổng 49) | `ANSWER_QUOTA_TOTAL_MISMATCH` | `ANSWER_QUOTA_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
+| `TEST-ERR-05` | `TEST-HSA-02` | chỉ tiêu TLN 14 (32 + 14 + 3 = 49) | `ANSWER_QUOTA_TOTAL_MISMATCH` | `ANSWER_QUOTA_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
 | `TEST-ERR-06` | `TEST-HSA-02` | khối Trả lời ngắn (15 câu) đổi `questionType` thành Một đáp án; chỉ tiêu Trả lời ngắn 15 của môn Toán không còn khối nào nhận | `ANSWER_TYPE_SHORTAGE` | `ANSWER_TYPE_SHORTAGE`, không mã khác. Thu hẹp phạm vi MAPID không tới được mã này: bộ giải kiểm nguồn của từng nhóm trước chỉ tiêu loại đáp án (`SubproblemSolver.insufficiencyReason`, vòng nhóm trước vòng chỉ tiêu), nên thiếu TLN dưới nút báo `CELL_SHORTAGE` ở nhóm; chỉ tiêu loại đáp án chỉ báo khi mọi nhóm đủ nguồn mà chỉ tiêu không có câu |
 | `TEST-ERR-07` | `TEST-HSA-04` | Địa lí đặt phạm vi nút `TEST-DIA-HEP`: dưới nút có 13 câu MĐ dùng được và 2 chùm, nhóm MĐ của mẫu cần 14 khi Địa lí nhận 17 câu (thiếu một câu) | `CELL_SHORTAGE` | `CELL_SHORTAGE`; 10 bộ ba, **6 bộ có Địa lí INVALID**, 4 bộ còn lại VALID |
 | `TEST-ERR-08` | `TEST-HSA-04` | Vật lí: nhóm TLN bỏ `templateGroupCode` (thành nhóm còn lại). **Hiện VALID**: mã `REMAINDER_GROUP_INVALID` không còn trong mã | không còn lỗi | VALID, không mã; 10 bộ ba đều VALID. Giữ làm bài đối chứng |
