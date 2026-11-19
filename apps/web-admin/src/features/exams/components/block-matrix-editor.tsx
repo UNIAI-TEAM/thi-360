@@ -20,6 +20,7 @@ import {
 import { ratePercent } from "../allocation";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { AvailableQuestionCounts, BlockMatrix, MatrixMode, MatrixUnit, QuestionBlock, QuotaBasis, QuotaEnforcement } from "../types";
+import { hsaMatrixUndeclared } from "../hsa-enforcement";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { EnforcementToggle } from "./enforcement-toggle";
@@ -195,6 +196,7 @@ export function BlockMatrixEditor({
             name={`${block.id}-enforcement`}
             value={gradeEnforcement}
             basis={matrix.basis}
+            undeclared={hsaMatrixUndeclared(matrix)}
             onChange={(value) => setEnforcement("both", value)}
           />
         )}
@@ -341,6 +343,7 @@ export function BlockMatrixEditor({
                   name={`${block.id}-${dimension.key}-enforcement`}
                   value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}
                   basis={matrix.basis}
+                  undeclared={hsaMatrixUndeclared(matrix, dimension.key === "byGrade" ? "grade" : "difficulty")}
                   onChange={(value) => setEnforcement(dimension.key === "byGrade" ? "grade" : "difficulty", value)}
                 />
                 <MatrixTable

@@ -20,6 +20,8 @@ export interface EnforcementToggleProps {
   lockRequiredReason?: string;
   /** Chỉ tiêu chờ chuyên gia xác nhận (HSA Tiếng Anh): trong bài HSA cố định Tham khảo kèm lý do chờ chuyên gia. */
   expertPending?: boolean;
+  /** Chiều ma trận trống mà lớp chuẩn hóa giữ nguyên Tham khảo (R1-2): trong bài HSA chip khớp bản nháp Tham khảo kèm lý do chưa khai báo. */
+  undeclared?: boolean;
   disabled?: boolean;
 }
 
@@ -36,6 +38,7 @@ export function EnforcementToggle({
   basis,
   lockRequiredReason,
   expertPending = false,
+  undeclared = false,
   disabled = false,
 }: EnforcementToggleProps) {
   const t = useTranslations("exams.allocation.enforcement");
@@ -44,10 +47,11 @@ export function EnforcementToggle({
   const basisLocked = !canRequire(basis);
   const reason = lockRequiredReason ?? (basisLocked ? t("basisLocked") : null);
   const requiredLocked = reason !== null;
-  const fixed = hsaExam ? (expertPending ? "REFERENCE" : hsaFixedEnforcement(basis, requiredLocked)) : undefined;
+  // Chiều chưa khai báo vẫn ở Tham khảo trong bản nháp (R1-2): chip khớp bản nháp thay vì mức Bắt buộc công thức.
+  const fixed = hsaExam ? (expertPending || undeclared ? "REFERENCE" : hsaFixedEnforcement(basis, requiredLocked)) : undefined;
 
   if (fixed !== undefined) {
-    const caption = fixed === "REQUIRED" ? t("fixedRequired") : expertPending ? t("expertPending") : reason;
+    const caption = fixed === "REQUIRED" ? t("fixedRequired") : expertPending ? t("expertPending") : (reason ?? (undeclared ? t("undeclared") : null));
     return (
       <div role="group" aria-label={t("legend", { name: legend })} aria-describedby={caption ? reasonId : undefined} data-fixed={fixed} className="flex min-w-0 flex-col gap-1">
         <Chip variant="tag" className="w-fit">

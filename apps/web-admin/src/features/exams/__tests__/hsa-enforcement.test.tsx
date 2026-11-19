@@ -8,7 +8,14 @@ import { renderWithProviders } from "@/test/render";
 import { BlockMatrixEditor } from "../components/block-matrix-editor";
 import { EnforcementToggle } from "../components/enforcement-toggle";
 import { TopicQuotaTable } from "../components/topic-quota-table";
-import { HsaExamContext, hsaNeedsNormalizing, hsaQuotaAwaitsExpert, normalizeHsaParts, normalizeHsaQuotas } from "../hsa-enforcement";
+import {
+  HsaExamContext,
+  hsaNeedsNormalizing,
+  hsaQuotaAwaitsExpert,
+  normalizeHsaParts,
+  normalizeHsaQuotas,
+  useHsaNormalizedDraft,
+} from "../hsa-enforcement";
 import { emptyMatrix } from "../matrix";
 import type { BlockMatrix, ExamPart, ExamQuota, QuestionBlock, QuotaEnforcement, TopicQuota } from "../types";
 
@@ -35,18 +42,34 @@ const block = (matrix: BlockMatrix): QuestionBlock & { matrix: BlockMatrix; ques
 });
 
 function Matrix({ matrix, hsa }: { matrix: BlockMatrix; hsa: boolean }) {
-  const [value, setValue] = useState(matrix);
+  // Phản ánh trình soạn cấu trúc (D1): ma trận nằm trong bản nháp `parts`, lớp chuẩn hóa HSA chạy mọi lối ghi và màn
+  // báo "có thay đổi chưa lưu" khi bản nháp đã chuyển mức khác bản đã lưu.
+  const part = (value: BlockMatrix) =>
+    ({
+      id: "p1",
+      order: 1,
+      name: "P",
+      mode: "FIXED",
+      sections: [{ id: "s1", subjectCode: "MATH", questionCount: 10, knowledgeScope: null, answerQuotas: null, matrix: value, choiceGroup: null, blocks: [], topicQuotas: [] }],
+      options: [],
+    }) as unknown as ExamPart;
+  const [parts, setParts] = useState<ExamPart[]>(() => [part(matrix)]);
+  const [baseline] = useState(() => JSON.stringify([part(matrix)]));
+  useHsaNormalizedDraft(hsa, parts, setParts, [], () => undefined);
+  const draft = parts[0]!.sections[0]!.matrix!;
   return (
     <HsaExamContext.Provider value={hsa}>
-      <BlockMatrixEditor
-        block={block(value)}
-        axes={axes}
-        labels={labels}
-        competencies={[]}
-        onChange={setValue}
-        available={undefined}
-        availableState="loading"
-      />
+      <div data-testid="draft-state" data-dirty={JSON.stringify(parts) !== baseline} data-payload={JSON.stringify(parts)}>
+        <BlockMatrixEditor
+          block={block(draft)}
+          axes={axes}
+          labels={labels}
+          competencies={[]}
+          onChange={(next) => setParts([part(next)])}
+          available={undefined}
+          availableState="loading"
+        />
+      </div>
     </HsaExamContext.Provider>
   );
 }
@@ -125,14 +148,25 @@ describe("EnforcementToggle: mức cố định của kỳ thi HSA (UNI-1701 AC-
 });
 
 describe("Ma trận và chỉ tiêu chủ đề trong bài HSA (UNI-1701 AC-2)", () => {
-  it("ma trận kết hợp: không có nút Tham khảo", () => {
-    renderWithProviders(<Matrix matrix={referenceMatrix()} hsa />);
+  it("ma trận kết hợp có số: không có nút Tham khảo", () => {
+    renderWithProviders(
+      <Matrix matrix={referenceMatrix({ cells: [{ gradeCode: "GRADE_10", difficultyCode: "RECOGNITION", value: 10 }] })} hsa />,
+    );
     expect(screen.queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
     expect(screen.getByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).toBeInTheDocument();
   });
 
-  it("ma trận riêng từng chiều: cả hai chiều cố định, không có nút Tham khảo", () => {
-    renderWithProviders(<Matrix matrix={referenceMatrix({ mode: "SEPARATE" })} hsa />);
+  it("ma trận riêng từng chiều có số ở cả hai: cả hai chiều cố định, không có nút Tham khảo", () => {
+    renderWithProviders(
+      <Matrix
+        matrix={referenceMatrix({
+          mode: "SEPARATE",
+          byGrade: [{ code: "GRADE_10", value: 10 }],
+          byDifficulty: [{ code: "RECOGNITION", value: 10 }],
+        })}
+        hsa
+      />,
+    );
     expect(screen.queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
     expect(screen.getAllByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).toHaveLength(2);
   });
@@ -278,5 +312,49 @@ describe("normalizeHsaParts, normalizeHsaQuotas (UNI-1701 AC-4)", () => {
       expect(screen.getByText(/Chờ chuyên gia xác nhận/)).toBeInTheDocument();
       expect(screen.queryByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("HSA: chip của chiều ma trận trống (UNI-1701 D1)", () => {
+  const separate = (over: Partial<BlockMatrix> = {}) => referenceMatrix({ mode: "SEPARATE", basis: "QUESTION", ...over });
+
+  it("ma trận riêng chỉ có số ở chiều lớp: chip độ khó là Tham khảo 'chưa khai báo', chip lớp là Bắt buộc", () => {
+    renderWithProviders(<Matrix matrix={separate({ byGrade: [{ code: "GRADE_10", value: 10 }] })} hsa />);
+    const difficulty = screen.getByRole("group", { name: "Mức của Theo độ khó" });
+    expect(difficulty).toHaveAttribute("data-fixed", "REFERENCE");
+    expect(within(difficulty).getByText("Phân bổ này chưa khai báo nên không ràng buộc sinh đề.")).toBeInTheDocument();
+    expect(within(difficulty).queryByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).not.toBeInTheDocument();
+    const grade = screen.getByRole("group", { name: "Mức của Theo khối lớp" });
+    expect(grade).toHaveAttribute("data-fixed", "REQUIRED");
+    expect(within(grade).getByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).toBeInTheDocument();
+  });
+
+  it("ma trận riêng trống hẳn: cả hai chip Tham khảo 'chưa khai báo', bản nháp không bị coi là đã sửa", () => {
+    renderWithProviders(<Matrix matrix={separate()} hsa />);
+    for (const name of ["Mức của Theo khối lớp", "Mức của Theo độ khó"]) {
+      const group = screen.getByRole("group", { name });
+      expect(group).toHaveAttribute("data-fixed", "REFERENCE");
+      expect(within(group).getByText("Phân bổ này chưa khai báo nên không ràng buộc sinh đề.")).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("draft-state")).toHaveAttribute("data-dirty", "false");
+  });
+
+  it("ma trận kết hợp trống: chip Tham khảo 'chưa khai báo' khớp mức bản nháp", () => {
+    renderWithProviders(<Matrix matrix={referenceMatrix({ basis: "QUESTION" })} hsa />);
+    const group = screen.getByRole("group", { name: "Mức của ma trận" });
+    expect(group).toHaveAttribute("data-fixed", "REFERENCE");
+    expect(within(group).getByText("Phân bổ này chưa khai báo nên không ràng buộc sinh đề.")).toBeInTheDocument();
+    expect(screen.getByTestId("draft-state")).toHaveAttribute("data-dirty", "false");
+  });
+
+  it("gõ số vào chiều trống: chip thành Bắt buộc và dữ liệu lưu mang Bắt buộc", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Matrix matrix={separate({ byGrade: [{ code: "GRADE_10", value: 10 }] })} hsa />);
+    expect(screen.getByRole("group", { name: "Mức của Theo độ khó" })).toHaveAttribute("data-fixed", "REFERENCE");
+    await user.type(screen.getByRole("textbox", { name: "RECOGNITION · số câu" }), "5");
+    expect(screen.getByRole("group", { name: "Mức của Theo độ khó" })).toHaveAttribute("data-fixed", "REQUIRED");
+    const payload = screen.getByTestId("draft-state").getAttribute("data-payload") ?? "";
+    expect(payload).toContain('"difficultyEnforcement":"REQUIRED"');
+    expect(payload).toContain('"code":"RECOGNITION","value":5');
   });
 });

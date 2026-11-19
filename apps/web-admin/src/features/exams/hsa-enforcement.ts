@@ -59,6 +59,20 @@ function normalizeMatrix(matrix: BlockMatrix | null): BlockMatrix | null {
   return { ...matrix, ...(grade ? { gradeEnforcement: "REQUIRED" as const } : {}), ...(difficulty ? { difficultyEnforcement: "REQUIRED" as const } : {}) };
 }
 
+/**
+ * Chiều của ma trận mà lớp chuẩn hóa giữ nguyên ở Tham khảo (R1-2): mức hiển thị là Tham khảo chỉ vì chiều chưa có số,
+ * tức chưa được khai báo. Chip của chiều đó hiện Tham khảo kèm ghi chú "chưa khai báo", không mâu thuẫn bản nháp; khi
+ * có số, lớp chuẩn hóa đổi sang Bắt buộc và chip theo đúng bản nháp. `dimension` chỉ dùng cho ma trận riêng từng chiều.
+ */
+export function hsaMatrixUndeclared(matrix: BlockMatrix, dimension?: "grade" | "difficulty"): boolean {
+  if (matrix.mode === "SEPARATE" && dimension !== undefined) {
+    const reference = dimension === "grade" ? matrix.gradeEnforcement === "REFERENCE" : matrix.difficultyEnforcement === "REFERENCE";
+    return reference && !hasValue(dimension === "grade" ? matrix.byGrade : matrix.byDifficulty);
+  }
+  const reference = matrix.gradeEnforcement === "REFERENCE" || matrix.difficultyEnforcement === "REFERENCE";
+  return reference && !matrix.cells.some((cell) => cell.value > 0);
+}
+
 function normalizeTopicQuotas(quotas: TopicQuota[] | undefined): TopicQuota[] | undefined {
   if (!quotas) return quotas;
   return mapKeep(quotas, (quota) => (quota.enforcement === "REFERENCE" && canRequire(quota.basis) ? { ...quota, enforcement: "REQUIRED" } : quota));
