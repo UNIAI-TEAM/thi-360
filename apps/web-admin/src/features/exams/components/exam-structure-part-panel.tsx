@@ -39,7 +39,6 @@ export interface PartPanelProps
   issues: readonly StructureIssue[];
   issueText: (issue: StructureIssue) => string;
   onChange: (update: (part: ExamPart) => ExamPart) => void;
-  onSectionCount: (optionId: string, sectionId: string, questionCount: number) => void;
   onAddBlock: (optionId: string | null, section: ExamSection) => void;
   onToggleEnglish: (enabled: boolean) => void;
   onRemoveOption: (optionId: string) => void;
@@ -74,7 +73,6 @@ export function ExamStructurePartPanel({
   issues,
   issueText,
   onChange,
-  onSectionCount,
   onAddBlock,
   onToggleEnglish,
   onRemoveOption,
@@ -266,6 +264,7 @@ export function ExamStructurePartPanel({
             ))}
           <PartOptions
             part={part}
+            examId={examId}
             names={names}
             issues={issues}
             showEnglish={showEnglish}
@@ -274,7 +273,6 @@ export function ExamStructurePartPanel({
             onAddBranch={onAddBranch}
             onConfirm={onConfirm}
             onRemove={onRemoveOption}
-            onSectionCount={(optionId, sectionId, value) => onSectionCount(optionId, sectionId, value)}
             onEditBlocks={onSelectBlock}
           />
         </>

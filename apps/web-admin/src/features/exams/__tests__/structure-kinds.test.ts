@@ -9,9 +9,7 @@ import {
 } from "../components/block-scoring-editor";
 import {
   addBranch,
-  confirmOption,
   optionQuestionCount,
-  setSectionCount,
 } from "../components/exam-structure-draft";
 import {
   choiceGroups,
@@ -230,19 +228,6 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
         }
       }
     }
-  });
-});
-
-describe("tổ hợp của phần tự chọn", () => {
-  it("sửa số câu môn của lựa chọn đã xác nhận thì phải xác nhận lại", () => {
-    const exam = sample("ex-qda-f-001");
-    const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const option = choice.options.find((item) => item.kind === "COMBINATION")!;
-    const confirmed = confirmOption(exam.parts, choice.id, option.id);
-    const optionOf = (parts: ExamPart[]) => parts.find((part) => part.id === choice.id)!.options.find((item) => item.id === option.id)!;
-    expect(optionOf(confirmed).expertConfirmed).toBe(true);
-    const edited = setSectionCount(confirmed, { partId: choice.id, optionId: option.id, sectionId: option.sections[0]!.id }, 18);
-    expect(optionOf(edited).expertConfirmed).toBe(false);
   });
 });
 

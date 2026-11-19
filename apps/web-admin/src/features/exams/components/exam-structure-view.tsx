@@ -43,7 +43,6 @@ import {
   setEnglishOption,
   setPartChoose,
   setPartPoints,
-  setSectionCount,
   type StructureSelection,
   updateBlock,
   updatePart,
@@ -764,9 +763,6 @@ function StructureEditor({
               )}
               issueText={issueText}
               onChange={(update) => setDraft((parts) => updatePart(parts, selectedPart.id, update))}
-              onSectionCount={(optionId, sectionId, questionCount) =>
-                setDraft((parts) => setSectionCount(parts, { partId: selectedPart.id, optionId, sectionId }, questionCount))
-              }
               onAddBlock={(optionId, section) => handleAddBlock({ partId: selectedPart.id, optionId, sectionId: section.id }, section)}
               onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
               onRemoveOption={(optionId) => {

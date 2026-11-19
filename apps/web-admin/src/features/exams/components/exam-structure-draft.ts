@@ -296,18 +296,6 @@ export function defaultSelection(parts: readonly ExamPart[]): StructureSelection
   return all.length ? { kind: "section", sectionId: all[0]!.id } : { kind: "part", partId: first.id };
 }
 
-/** Đổi số câu một môn. Môn của lựa chọn đã được chuyên gia xác nhận thì số câu mới phải xác nhận lại. */
-export function setSectionCount(parts: readonly ExamPart[], location: DraftLocation, questionCount: number): ExamPart[] {
-  const updated = updateSection(parts, location, (section) => ({ ...section, questionCount }));
-  if (location.optionId === null) return updated;
-  return updatePart(updated, location.partId, (part) => ({
-    ...part,
-    options: part.options.map((option) =>
-      option.id === location.optionId && option.expertConfirmed === true ? { ...option, expertConfirmed: false } : option,
-    ),
-  }));
-}
-
 /**
  * Kiểm tra cấu trúc trên máy như `validateStructure`, nhưng với phần theo mã (QDA, BCA): các môn nằm trong
  * `subjectPool`; mỗi mã chỉ lấy một phần số câu của phần nên không so tổng môn với số câu của phần (R-24, lỗi này do
