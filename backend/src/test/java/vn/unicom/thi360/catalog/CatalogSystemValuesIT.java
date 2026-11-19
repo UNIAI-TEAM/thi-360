@@ -134,16 +134,16 @@ class CatalogSystemValuesIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void valueChangeIs409ButTheSameValueIsAccepted() throws Exception {
+    void valueInThePatchBodyIsIgnoredAndTheStoredValueStays() throws Exception {
         int value = item(G11).get("value").asInt();
-        patchItem(G11, Map.of("value", value + 40))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CATALOG_ITEM_SYSTEM"));
-        assertThat(item(G11).get("value").asInt()).isEqualTo(value);
-
-        patchItem(G11, Map.of("value", value, "nameVi", "Lớp 11 (đối chiếu)"))
+        // The request has no value field and unknown JSON properties are ignored: 200, name changes, value does not.
+        patchItem(G11, Map.of("value", value + 40, "nameVi", "Lớp 11 (đối chiếu)"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nameVi").value("Lớp 11 (đối chiếu)"))
                 .andExpect(jsonPath("$.value").value(value));
+        assertThat(item(G11).get("value").asInt()).isEqualTo(value);
+        assertThat(jdbc.queryForObject(
+                "SELECT value FROM catalog.catalog_item WHERE id = ?", Integer.class, G11)).isEqualTo(value);
     }
 
     @Test

@@ -8062,11 +8062,6 @@
             },
             "type" : "array"
           },
-          "value" : {
-            "description" : "Số thứ tự giá trị bất biến; chỉ để đối chiếu. Giá trị hệ thống khác số hiện tại bị từ chối (CATALOG_ITEM_SYSTEM), giá trị thường bỏ qua trường này",
-            "format" : "int32",
-            "type" : "integer"
-          },
           "version" : {
             "description" : "Phiên bản khóa lạc quan",
             "format" : "int64",

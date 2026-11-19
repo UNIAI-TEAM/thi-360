@@ -704,7 +704,7 @@ public class CatalogAdminService {
             throw new VersionConflictException();
         }
         if (item.isSystem()) {
-            requireSystemItemKeepsValueAndStatus(item, request);
+            requireSystemItemStaysActive(item, request);
         }
 
         CatalogStatus previousStatus = item.getStatus();
@@ -1650,14 +1650,13 @@ public class CatalogAdminService {
     }
 
     /**
-     * A system value keeps its value and stays active; only names, description and order change.
+     * A system value stays active; the request has no value field, so the value cannot change.
      * The code check lives with the code validation in {@link #updateItem}.
      */
-    private static void requireSystemItemKeepsValueAndStatus(CatalogItem item, UpdateCatalogItemRequest request) {
-        boolean valueChanged = request.value() != null && request.value() != item.getValue();
+    private static void requireSystemItemStaysActive(CatalogItem item, UpdateCatalogItemRequest request) {
         boolean deactivating =
                 request.status() == CatalogStatus.INACTIVE && item.getStatus() != CatalogStatus.INACTIVE;
-        if (valueChanged || deactivating) {
+        if (deactivating) {
             throw new ConflictException(ERR_ITEM_SYSTEM);
         }
     }

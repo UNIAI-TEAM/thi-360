@@ -768,8 +768,7 @@ class CatalogCombinationApiIT extends AbstractIntegrationTest {
                         null,
                         SAMPLE_HSA_ID,
                         List.of(SAMPLE_VAN_ID),
-                        "Sẽ rollback",
-                        null));
+                        "Sẽ rollback"));
                 throw new IllegalStateException("Simulated rollback");
             });
         } catch (IllegalStateException expected) {

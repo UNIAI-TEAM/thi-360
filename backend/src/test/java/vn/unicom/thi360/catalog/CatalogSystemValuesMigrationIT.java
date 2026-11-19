@@ -28,7 +28,7 @@ import org.testcontainers.utility.DockerImageName;
 import vn.unicom.thi360.shared.security.TestSecurity;
 
 /**
- * UNI-2759 (AD-34, AD-35): V202611191730 on a database that holds the cases the matching rule names.
+ * UNI-2759 (AD-34, AD-35): V202611191822 on a database that holds the cases the matching rule names.
  * Flyway migrates up to the version before it, the prepared rows go in, then the migration and the
  * devdata seeds run as they do on a real upgrade.
  */
@@ -38,7 +38,7 @@ import vn.unicom.thi360.shared.security.TestSecurity;
 @Import({CatalogSystemValuesMigrationIT.PreparedRows.class, TestSecurity.class})
 class CatalogSystemValuesMigrationIT {
 
-    private static final String MIGRATION_SCRIPT = "db/migration/catalog/V202611191730__catalog_system_values.sql";
+    private static final String MIGRATION_SCRIPT = "db/migration/catalog/V202611191822__catalog_system_values.sql";
     private static final String CATALOG_SEED = "db/devdata/R__seed_catalog_dev_data.sql";
 
     private static final PostgreSQLContainer<?> DB = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));

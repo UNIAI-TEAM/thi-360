@@ -15,7 +15,7 @@ import org.flywaydb.core.api.MigrationVersion;
  */
 final class CatalogUpgradeSupport {
 
-    static final String SYSTEM_VALUES_MIGRATION = "202611191730";
+    static final String SYSTEM_VALUES_MIGRATION = "202611191822";
 
     private CatalogUpgradeSupport() {
     }
