@@ -61,4 +61,32 @@ class ExamLegacyListingIT extends AbstractExamPublishIT {
         saveCheck(exam, paths("default=VALID"));
         publish(exam, "default").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
     }
+
+    /**
+     * R1-3: on a version published before EX-1 a deliberate listing edit (same name, description and cover; only the
+     * sale fields) is a change: it is shown as unpublished and it publishes, with the price that was saved.
+     */
+    @Test
+    void listingOnlyEditOfALegacyVersionIsPublishable() throws Exception {
+        UUID exam = legacyExam();
+        String base = "/api/v1/admin/exams/" + exam;
+        // Untouched: still "nothing to publish".
+        publish(exam, "default").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOTHING_TO_PUBLISH"));
+        String description = jdbc.queryForObject("SELECT description FROM exam.exam WHERE id = ?", String.class, exam);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(base + "/listing")
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"listPriceVnd\":123000,\"attemptsGranted\":2,\"description\":\"" + description
+                                + "\",\"expectedRevision\":" + revision(exam) + "}"))
+                .andExpect(status().isOk());
+        entityManager.clear();
+        // The check is still fresh (listing is outside its fingerprint) and the serving path is unpublished again.
+        mockMvc.perform(get(base + "/versions").with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("default"))
+                .andExpect(jsonPath("$.changes[?(@.where=='config/listing')]").isNotEmpty());
+        publish(exam, "default").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
+        assertThat(jdbc.queryForObject("SELECT (config->'listing'->>'listPriceVnd')::bigint FROM exam.exam_version "
+                + "WHERE exam_id = ? AND version_no = 2", Long.class, exam)).isEqualTo(123000L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM shared.outbox_event WHERE topic = 'exam.published' "
+                + "AND payload->>'examId' = ? AND payload->>'versionNo' = '2'", Long.class, exam.toString())).isEqualTo(1L);
+    }
 }

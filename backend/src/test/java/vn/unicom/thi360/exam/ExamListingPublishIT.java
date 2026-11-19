@@ -20,8 +20,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import org.springframework.test.context.TestPropertySource;
 
 /** EX-1 AC-6 to AC-8, AC-10, AC-13: the listing rules at publish, and the snapshot of the listing. */
+// The 4.999 / 5.000 boundary below does not depend on the shell's payment threshold (THI360_VNPAY_MIN_AMOUNT).
+@TestPropertySource(properties = "thi360.exam.listing.min-price-vnd=5000")
 class ExamListingPublishIT extends AbstractExamPublishIT {
     @Autowired PlatformTransactionManager transactionManager;
     private static final String PLAIN = "[{\"id\":\"part\",\"options\":[{\"id\":\"choice\",\"countsByPick\":[17,17,16],\"sections\":[]}]}]";
@@ -127,7 +132,8 @@ class ExamListingPublishIT extends AbstractExamPublishIT {
 
     @Test
     void existingRefusalsKeepTheirCodes() throws Exception {
-        // No listing row and no description at all.
+        // AC-10: the refusals that existed before EX-1 keep their codes whatever the listing looks like (no listing row
+        // and no description at all). Nothing here depends on the listing feature: it is green on the base as well.
         UUID invalid = newExam("HSA", PLAIN);
         jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id = ?", invalid);
         jdbc.update("UPDATE exam.exam SET description = NULL WHERE id = ?", invalid);
@@ -137,11 +143,16 @@ class ExamListingPublishIT extends AbstractExamPublishIT {
         jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id = ?", unchecked);
         jdbc.update("UPDATE exam.exam SET description = NULL WHERE id = ?", unchecked);
         publish(unchecked, "default").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_REQUIRED"));
-        // A legacy exam with a valid check but no listing is refused by the listing rule, and only by it.
+    }
+
+    /** The new rule of the feature: a valid check and no listing row is refused by the listing rule, and only by it. */
+    @Test
+    void examWithoutListingIsRefusedByTheListingRuleOnly() throws Exception {
         UUID legacy = newExam("HSA", PLAIN);
         jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id = ?", legacy);
         saveCheck(legacy, paths("default=VALID"));
         publish(legacy, "default").andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("LISTING_PRICE_MISSING"));
+        assertThat(versions(legacy)).isZero();
     }
 
     @Test
@@ -169,10 +180,19 @@ class ExamListingPublishIT extends AbstractExamPublishIT {
         assertThat(frozen.path("name").asText()).isEqualTo("E24 test");
         assertThat(frozen.path("description").asText()).isEqualTo("Mo ta v1");
         assertThat(frozen.path("coverAssetId").asText()).isEqualTo(cover.toString());
+        // Every listing column is frozen, the metadata included (R1-7): who saved it last and when.
+        assertThat(frozen.path("examId").asText()).isEqualTo(exam.toString());
+        UUID savedBy = jdbc.queryForObject("SELECT updated_by FROM exam.exam_listing WHERE exam_id = ?", UUID.class, exam);
+        Instant savedAt = jdbc.queryForObject("SELECT updated_at FROM exam.exam_listing WHERE exam_id = ?", java.sql.Timestamp.class, exam).toInstant();
+        assertThat(savedBy).isNotNull();
+        assertThat(frozen.path("updatedBy").asText()).isEqualTo(savedBy.toString());
+        assertThat(OffsetDateTime.parse(frozen.path("updatedAt").asText()).toInstant()).isEqualTo(savedAt);
         // Editing later changes the working copy only; `published` follows the latest version that still serves a path.
         saveListing(exam, "\"summary\":\"Tom tat moi\",\"listPriceVnd\":99000,\"attemptsGranted\":2,\"description\":\"Mo ta v2\"");
         assertThat(mapper.readTree(jdbc.queryForObject("SELECT config->'listing' FROM exam.exam_version WHERE exam_id = ? AND version_no = 1",
                 String.class, exam))).isEqualTo(frozen);
+        assertThat(jdbc.queryForObject("SELECT updated_at FROM exam.exam_listing WHERE exam_id = ?", java.sql.Timestamp.class, exam).toInstant())
+                .as("the later save moved the working metadata, not the frozen one").isAfter(savedAt);
         JsonNode listing = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/" + exam + "/listing").with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(listing.path("listPriceVnd").asLong()).isEqualTo(99000);
@@ -184,6 +204,27 @@ class ExamListingPublishIT extends AbstractExamPublishIT {
                 .andReturn().getResponse().getContentAsString());
         assertThat(listing.path("published").path("versionNo").asInt()).isEqualTo(2);
         assertThat(listing.path("published").path("listing").path("listPriceVnd").asLong()).isEqualTo(99000);
+    }
+
+    /** R1-7: who saved the listing and when is frozen but is no sale term: a save that changes nothing else is nothing to publish. */
+    @Test
+    void metadataOnlyDifferenceIsNotASaleChange() throws Exception {
+        UUID exam = publishable();
+        publish(exam, "default").andExpect(status().isOk());
+        jdbc.update("UPDATE exam.exam_listing SET updated_by = ?, updated_at = updated_at + interval '3 hours' WHERE exam_id = ?",
+                UUID.randomUUID(), exam);
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", exam);
+        entityManager.clear();
+        mockMvc.perform(get("/api/v1/admin/exams/" + exam + "/versions").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.changes").isEmpty())
+                .andExpect(jsonPath("$.workingCopy.unpublishedPaths").isEmpty());
+        publish(exam, "default").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOTHING_TO_PUBLISH"));
+        assertThat(versions(exam)).isEqualTo(1);
+        // A real sale change next to the same metadata is still a change.
+        jdbc.update("UPDATE exam.exam_listing SET list_price_vnd = list_price_vnd + 1000 WHERE exam_id = ?", exam);
+        entityManager.clear();
+        saveCheck(exam, paths("default=VALID"));
+        publish(exam, "default").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
     }
 
     /**

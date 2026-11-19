@@ -148,8 +148,9 @@ public class ExamVersionQueryService {
         }
         if (old.has("omittedGroups")) config.set("omittedGroups", snapshot.omittedGroups(parts));
         if (!old.has("examQuotas")) config.remove("examQuotas");
-        // A version saved before EX-1 has no listing: compare as if the field did not exist.
-        if (!old.has("listing")) config.remove("listing");
+        // A version saved before EX-1 has no listing, and an exam that was never given one has none either: equal.
+        // A listing saved after such a version is a real change and stays in the comparison (R1-3).
+        if (!old.hasNonNull("listing") && !config.hasNonNull("listing")) config.remove("listing");
         return config;
     }
 

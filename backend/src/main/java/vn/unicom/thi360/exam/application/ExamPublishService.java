@@ -138,6 +138,9 @@ public class ExamPublishService {
         extra.set("omittedGroups", snapshot.omittedGroups(document));
         // The default mode is not stored, so a STANDARD exam's snapshot is unchanged and a snapshot without the key is STANDARD.
         if (!"STANDARD".equals(exam.buildMode())) extra.put("buildMode", exam.buildMode());
+        // kindCode is the navigation discriminator of the port; frozen so it never depends on the catalog afterwards.
+        String kindCode = catalog.findItem(exam.kindId()).map(CatalogItemView::code).orElse(null);
+        if (kindCode != null) extra.put("kindCode", kindCode);
         extra.set("examQuotas", json(jdbc.queryForObject("SELECT exam_quotas::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId)));
         String extraConfig = extra.toString();
         String snapshotParts = snapshot.parts(document, check.result(), check.witness(), selected, exam.timing(), exam.durationMinutes()).toString();
@@ -146,8 +149,8 @@ public class ExamPublishService {
         Set<Integer> matchingVersions = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT v.version_no FROM exam.exam_version v JOIN exam.exam e ON e.id = v.exam_id "
                 + "JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
-                + "WHERE (v.config - 'resolvedQuotas' - 'combinations' - " + ExamListingSnapshot.ignoredKeys("v") + ") = "
-                + "((" + configSql + " || ?::jsonb) - 'resolvedQuotas' - 'combinations' - " + ExamListingSnapshot.ignoredKeys("v") + ") "
+                + "WHERE (" + ExamListingSnapshot.comparable("v.config") + " - 'resolvedQuotas' - 'combinations') = "
+                + "(" + ExamListingSnapshot.comparable("(" + configSql + " || ?::jsonb)") + " - 'resolvedQuotas' - 'combinations') "
                 + "AND jsonb_set(v.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
                 + "FROM jsonb_array_elements(v.parts->'parts') WITH ORDINALITY p(value, ordinality)), '[]'::jsonb)) = s.parts "
                 + "AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(?::jsonb->'combinations') c "
@@ -160,7 +163,7 @@ public class ExamPublishService {
             if (matchingVersions.contains(old.version())) alreadyServing.addAll(old.paths());
         }
         if (alreadyServing.containsAll(selected)) throw new ConflictException(ExamErrorCodes.NOTHING_TO_PUBLISH);
-        requireAllPathsTogether(exam.kindId(), document, selected, valid, allPaths, versions);
+        requireAllPathsTogether(kindCode, document, selected, valid, allPaths, versions);
         requireSellableListing(examId);
         for (VersionPaths old : versions) {
             List<String> remaining = old.paths().stream().filter(path -> !selected.contains(path)).toList();
@@ -201,8 +204,8 @@ public class ExamPublishService {
         Set<String> published = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT DISTINCT unnest(old.serving_path_ids) FROM exam.exam_version old "
                 + "JOIN exam.exam_version current ON current.exam_id = old.exam_id AND current.version_no = ? "
-                + "WHERE old.exam_id = ? AND (old.config - 'resolvedQuotas' - 'combinations' - " + ExamListingSnapshot.ignoredKeys("old") + ") = "
-                + "(current.config - 'resolvedQuotas' - 'combinations' - " + ExamListingSnapshot.ignoredKeys("old") + ") "
+                + "WHERE old.exam_id = ? AND (" + ExamListingSnapshot.comparable("old.config") + " - 'resolvedQuotas' - 'combinations') = "
+                + "(" + ExamListingSnapshot.comparable("current.config") + " - 'resolvedQuotas' - 'combinations') "
                 + "AND jsonb_set(old.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
                 + "FROM jsonb_array_elements(old.parts->'parts') WITH ORDINALITY p(value, ordinality)), '[]'::jsonb)) = "
                 + "jsonb_set(current.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
@@ -228,9 +231,8 @@ public class ExamPublishService {
      * what to fix. A path that is neither valid nor serving may stay out. The code of BCA and the orientation of
      * Informatics are chosen before the attempt starts: not covered.
      */
-    private void requireAllPathsTogether(UUID kindId, JsonNode structure, Set<String> selected, Set<String> valid,
+    private void requireAllPathsTogether(String kindCode, JsonNode structure, Set<String> selected, Set<String> valid,
             Set<String> allPaths, List<VersionPaths> serving) {
-        String kindCode = catalog.findItem(kindId).map(CatalogItemView::code).orElse(null);
         if (!choiceAfterStart(structure, kindCode)) return;
         Set<String> servingPaths = new LinkedHashSet<>();
         for (VersionPaths version : serving) servingPaths.addAll(version.paths());
