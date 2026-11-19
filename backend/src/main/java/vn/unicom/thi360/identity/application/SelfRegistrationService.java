@@ -271,10 +271,13 @@ public class SelfRegistrationService {
         KeycloakIdentityClient.CreateUserCommand command = new KeycloakIdentityClient.CreateUserCommand(
                 input.username(), input.email(), names[0], names[1], null, true, false, false);
         try {
-            return keycloakClient.createUser(command);
+            return keycloakClient.createSelfRegisteredUser(command);
         } catch (ConflictException conflict) {
             return retryAfterStaleCleanup(provisionalId, input, command);
         } catch (ValidationException ex) {
+            userAdminService.deleteProvisionalUserQuietly(provisionalId);
+            throw ex;
+        } catch (KeycloakIdentityClient.CreateUserRejectedException ex) {
             userAdminService.deleteProvisionalUserQuietly(provisionalId);
             throw ex;
         } catch (ExternalServiceException ex) {
@@ -314,10 +317,13 @@ public class SelfRegistrationService {
                     : new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
         try {
-            return keycloakClient.createUser(command);
+            return keycloakClient.createSelfRegisteredUser(command);
         } catch (ConflictException ex) {
             throw rejectKeycloakConflict(provisionalId, input);
         } catch (ValidationException ex) {
+            userAdminService.deleteProvisionalUserQuietly(provisionalId);
+            throw ex;
+        } catch (KeycloakIdentityClient.CreateUserRejectedException ex) {
             userAdminService.deleteProvisionalUserQuietly(provisionalId);
             throw ex;
         } catch (RuntimeException ex) {

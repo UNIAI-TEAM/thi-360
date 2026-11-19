@@ -361,7 +361,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         // (a) tạo user Keycloak lỗi
         String createFail = "kc.create." + suffix;
         doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null))
-                .when(keycloakClient).createUser(any(CreateUserCommand.class));
+                .when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
         MvcResult a = support.register(support.body(createFail, createFail + "@thi360.vn"),
                         SelfRegistrationSupport.freshIp())
                 .andExpect(status().isBadGateway())
@@ -410,6 +410,29 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertThat(mailOutbox.count(username + "@thi360.vn")).isZero();
     }
 
+    @Test
+    void actualKeycloakBadRequestIsADefinitiveRejection() {
+        CreateUserCommand invalid = new CreateUserCommand(null, null, null, null, null, true, false, false);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> keycloakClient.createSelfRegisteredUser(invalid))
+                .isInstanceOf(KeycloakIdentityClient.CreateUserRejectedException.class);
+    }
+
+    @Test
+    void definitiveCreateRejectionReleasesReservationImmediately() throws Exception {
+        String username = "reg.reject." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        doThrow(new KeycloakIdentityClient.CreateUserRejectedException())
+                .when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
+        MvcResult result = support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway()).andReturn();
+        Mockito.reset(keycloakClient);
+        assertNothingLeft(username, result);
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+    }
+
+
     /**
      * Tài khoản học viên đã xóa mềm nhưng user Keycloak chưa dọn ({@code idp_cleanup_pending}): đăng ký lại cùng tên
      * đăng nhập phải dọn rồi tạo lại.
@@ -422,6 +445,28 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
                 "UPDATE identity.user_account SET status = 3, deleted_at = now(), idp_cleanup_pending = true WHERE id = ?",
                 oldId);
         assertThat(support.keycloakHasUser(username)).isTrue();
+    }
+
+    @Test
+    void definitiveRetryRejectionReleasesReservationImmediately() throws Exception {
+        String username = "reg.retryreject." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        softDeletedWithKeycloakUserLeft(username, email);
+        AtomicInteger calls = new AtomicInteger();
+        doAnswer(invocation -> {
+            if (calls.incrementAndGet() == 2) {
+                throw new KeycloakIdentityClient.CreateUserRejectedException();
+            }
+            return invocation.callRealMethod();
+        }).when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway());
+        Mockito.reset(keycloakClient);
+        assertThat(calls.get()).isEqualTo(2);
+        assertThat(support.liveAccountCount(username)).isZero();
+        assertThat(support.keycloakHasUser(username)).isFalse();
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
     }
 
     /**
@@ -445,7 +490,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
                 throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
             }
             return created;
-        }).when(keycloakClient).createUser(any(CreateUserCommand.class));
+        }).when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
 
         support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
                 .andExpect(status().isBadGateway());
@@ -492,7 +537,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
                         blocker, email, "Block", "Er", null, true, false, false));
             }
             return invocation.callRealMethod();
-        }).when(keycloakClient).createUser(any(CreateUserCommand.class));
+        }).when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
 
         MvcResult result = support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
                 .andExpect(status().isConflict())
