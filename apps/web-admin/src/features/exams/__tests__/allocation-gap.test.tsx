@@ -125,6 +125,22 @@ describe("Chỉ tiêu dạng trả lời của môn", () => {
   });
 });
 
+describe("Đầu màn môn: chip chênh lệch", () => {
+  const chip = (text: string) => within(screen.getByRole("status")).getByText(text);
+
+  it("vượt chỉ tiêu: chip 'Vượt N câu' tông danger; thiếu: tông warning; đủ: tông success", () => {
+    // Môn 10 câu, nhóm lấy 15 (vượt 5); nhóm lấy 7 (thiếu 3); nhóm lấy 10 (đủ).
+    const view = renderSubject(sectionOf({ blocks: [block({ questionCount: 15 })] }));
+    expect(chip(OVER(5))).toHaveAttribute("data-tone", "danger");
+    view.unmount();
+    const under = renderSubject(sectionOf({ blocks: [block({ questionCount: 7 })] }));
+    expect(chip("Còn thiếu 3 câu")).toHaveAttribute("data-tone", "warning");
+    under.unmount();
+    renderSubject(sectionOf({ blocks: [block({ questionCount: 10 })] }));
+    expect(within(screen.getByRole("status")).getByText("Khớp số câu của môn")).toHaveAttribute("data-tone", "success");
+  });
+});
+
 describe("Chỉ tiêu khối lớp và độ khó của môn", () => {
   it("cột Còn thiếu của hai bảng chi tiết: nhóm lấy vượt chỉ tiêu hiện 'Vượt N câu', thiếu hiện 'Thiếu N câu'", () => {
     // Chỉ tiêu môn 4/3/3; nhóm khai riêng 5/5/0: lớp 10 vượt 1, lớp 11 vượt 2, lớp 12 thiếu 3.

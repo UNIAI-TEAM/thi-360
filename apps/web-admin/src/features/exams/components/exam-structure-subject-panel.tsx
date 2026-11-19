@@ -257,7 +257,7 @@ export function ExamStructureSubjectPanel({
                 : t("allocatedValue", { allocated: allocation.allocated, count: allocation.count })}
             </span>
             {allocation.missing !== null && (
-              <StatusChip tone={allocation.missing === 0 ? "success" : "warning"}>
+              <StatusChip tone={allocation.missing === 0 ? "success" : allocation.missing < 0 ? "danger" : "warning"}>
                 {allocation.missing === 0
                   ? t("matches")
                   : allocation.missing > 0
