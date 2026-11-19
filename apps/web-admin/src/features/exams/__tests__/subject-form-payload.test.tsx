@@ -6,6 +6,7 @@ import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { selectAllSubjectForms } from "../subject-forms/selection";
 import { EXAM_ID } from "./fake-exams-server";
 import { block, part, scienceSection, standardExam } from "./subject-form-builders";
+import { bcaLiteratureSection, hsaLiteratureSection, oneSection, qdaLiteratureSection, thptqgLiteratureSection, thptqgPhysicsParts } from "./subject-row-builders";
 import {
   boot,
   installForms,
@@ -198,6 +199,53 @@ describe("Thân PUT không đổi (FTM AC 6, plan B4)", () => {
     expect(diffWire(seeded[0], sent["sec-kt"])).toEqual(["$.blocks[0].questionCount: 20 -> 18"]);
     expect(diffWire(seeded[1], sent["sec-toan"])).toEqual([]);
     undo();
+  });
+});
+
+describe("Thân PUT của Danh sách dòng thật (CR-3 AC-12, FTM AC 6, AC 40)", () => {
+  const cases: ReadonlyArray<{ name: string; kind: string; parts: () => Wire[]; section: string; row: string }> = [
+    { name: "HSA Văn", kind: "HSA", parts: () => oneSection(hsaLiteratureSection()), section: "sec-van", row: "van-5" },
+    { name: "QDA Văn", kind: "QDA", parts: () => oneSection(qdaLiteratureSection()), section: "sec-van", row: "van-1" },
+    { name: "BCA Văn", kind: "BCA", parts: () => oneSection(bcaLiteratureSection()), section: "sec-van", row: "essay-1" },
+    { name: "THPTQG Lý Phần II", kind: "THPTQG", parts: thptqgPhysicsParts, section: "sec-p2", row: "p2-tf" },
+  ];
+
+  it.each(cases)("rowFormSaveIsIdentity: $name mở bằng DS thật, sửa tên một dòng rồi Lưu: thân PUT chỉ khác ở tên, lưu rồi GET lại bằng thân đã gửi", async ({ kind, parts, section, row }) => {
+    restore();
+    const user = userEvent.setup();
+    const original = parts();
+    const { server, state } = boot({ kind, parts: original });
+    openStructure(`?section=${section}`);
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    await user.click(document.querySelector<HTMLElement>(`[data-form-row="${row}"] button`)!);
+    await user.type(await screen.findByRole("textbox", { name: /Tên nhóm/ }), "X");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const body = putCalls(server)[0]!.body as { parts: Wire[] };
+    const diff = diffWire(original, body.parts);
+    expect(diff).toHaveLength(1);
+    expect(diff[0]).toMatch(/\.name: ".*" -> ".*X"$/);
+    expect(diffWire(body.parts, state.parts)).toEqual([]);
+  });
+
+  it("THPTQG Văn (chỉ đọc): không có nút Sửa nên không có gì để sửa, và Kiểm tra không gửi PUT khi bản nháp sạch", async () => {
+    restore();
+    const { server } = boot({ kind: "THPTQG", parts: oneSection(thptqgLiteratureSection()) });
+    openStructure("?section=sec-van");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    expect(document.querySelector('[data-form-row="essay-1"] button')).toBeNull();
+    expect(putCalls(server)).toHaveLength(0);
+  });
+
+  it("noRowFormRequests: mở môn DS thật và mở dòng chỉ gọi GET (tải bài, cấu trúc, mẫu, danh mục)", async () => {
+    restore();
+    const user = userEvent.setup();
+    const { server } = boot({ kind: "QDA", parts: oneSection(qdaLiteratureSection()) });
+    openStructure("?section=sec-van");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    await user.click(document.querySelector<HTMLElement>('[data-form-row="van-1"] button')!);
+    await screen.findByRole("heading", { name: /Sửa dòng:/ });
+    expect([...new Set(requestLog(server).map((request) => request.split(" ")[0]))]).toEqual(["GET"]);
   });
 });
 

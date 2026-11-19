@@ -2,7 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXAM_ID } from "./fake-exams-server";
-import { boot, installForms, openStructure, qdaParts } from "./subject-form-harness";
+import { registerFormBlockingRuleForTest } from "../subject-forms/blocking";
+import { boot, checkCalls, installForms, openStructure, putCalls, qdaParts } from "./subject-form-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -141,5 +142,57 @@ describe("Điều hướng theo biểu mẫu (FTM R-15)", () => {
     await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(server.calls("PUT", `/api/v1/admin/exams/${EXAM_ID}/structure`)).toHaveLength(1));
+  });
+});
+
+/**
+ * CR-3 AC-13 (FTM AC 59 cho DS) và R1-8 trên Danh sách dòng thật: ?block=, bấm lỗi kiểm tra và lỗi chặn lưu mở đúng màn sửa dòng của đúng dòng và đặt
+ * focus vào đó, kể cả khi môn DS vừa được vẽ (màn sửa dòng vẽ sau khung nên màn tự đặt focus, không nhờ bước focus một lần của khung).
+ */
+describe("Điều hướng tới dòng của Danh sách dòng thật (CR-3 AC-13)", () => {
+  const editorOf = (name: RegExp) => screen.findByRole("heading", { name: new RegExp("Sửa dòng: " + name.source) });
+
+  it("rowTargets: ?block= của nhóm thuộc môn DS mở màn sửa đúng dòng và focus nằm trong màn sửa", async () => {
+    restore();
+    boot();
+    openStructure("?block=van-r2");
+    const heading = await editorOf(/Van dong 2/);
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(screen.queryByRole("button", { name: /Xóa nhóm|Đưa nhóm/ })).toBeNull();
+    expect(document.querySelector('[data-form-row-editor="van-r2"]')).not.toBeNull();
+  });
+
+  it("rowTargets: bấm lỗi kiểm tra của nhóm thuộc môn DS (từ môn MD) mở đúng dòng và đặt focus vào màn sửa", async () => {
+    restore();
+    const user = userEvent.setup();
+    boot({ checkBody: failedCheck("van-r2", "sec-van", "VAN") });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { level: 2, name: /TOAN/ });
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    const heading = await editorOf(/Van dong 2/);
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(window.location.search).toBe("?block=van-r2");
+  });
+
+  it("rowTargets: lỗi chặn lưu của một dòng DS không gửi request, mở đúng dòng và đặt focus; chọn dòng khác thì màn sửa chuyển dòng và focus theo", async () => {
+    restore();
+    const user = userEvent.setup();
+    const undo = registerFormBlockingRuleForTest((section, context) =>
+      context.form === "ROWS" && section.id === "sec-van" ? [{ code: "ROW_X", sectionId: section.id, blockId: "van-r2", field: null }] : [],
+    );
+    try {
+      const { server } = boot();
+      openStructure("?section=sec-toan");
+      await screen.findByRole("heading", { level: 2, name: /TOAN/ });
+      await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+      const heading = await editorOf(/Van dong 2/);
+      await waitFor(() => expect(heading).toHaveFocus());
+      expect(checkCalls(server)).toHaveLength(0);
+      expect(putCalls(server)).toHaveLength(0);
+      await user.click(within(document.querySelector<HTMLElement>('[data-form-row="van-r1"]')!).getByRole("button", { name: /Sửa dòng/ }));
+      expect(await editorOf(/Van dong 1/)).toHaveFocus();
+    } finally {
+      undo();
+    }
   });
 });

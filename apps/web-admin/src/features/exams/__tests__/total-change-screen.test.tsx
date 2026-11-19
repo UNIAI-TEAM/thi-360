@@ -39,6 +39,22 @@ vi.mock("../components/exam-structure-subject-panel", async (importOriginal) => 
   };
 });
 
+vi.mock("../subject-forms/row-list-form", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../subject-forms/row-list-form")>();
+  const Form = actual.RowListForm;
+  return {
+    ...actual,
+    RowListForm: (props: ComponentProps<typeof Form>) => (
+      <>
+        <button type="button" onClick={() => props.onChange((section) => ({ ...section, questionCount: 20 }))}>
+          Đặt tổng dòng thành 20
+        </button>
+        <Form {...props} />
+      </>
+    ),
+  };
+});
+
 const STRUCTURE = `${EXAM_PATH}/structure`;
 
 /** Bài một phần, một môn 30 câu có ma trận theo tỷ lệ và chỉ tiêu chủ đề 10%. */
@@ -113,5 +129,42 @@ describe("R-121: môn đổi tổng từ 30 xuống 20 chưa xác nhận bảng 
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ topicQuotas: Array<{ count: number; percent?: number }> }> }> };
     expect(sent.parts[0]!.sections[0]!.topicQuotas[0]).toMatchObject({ count: 3 });
     expect(sent.parts[0]!.sections[0]!.topicQuotas[0]!.percent).toBeUndefined();
+  });
+});
+
+/** Bài THPTQG một môn Lý 30 câu (DS thật): một dòng 30 câu, không bảng nhập theo tỷ lệ. */
+function bootRows() {
+  const base = FIXED_PART.sections![0] as object;
+  const section = {
+    ...base,
+    subjectCode: "LY",
+    questionCount: 30,
+    blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 30, requiredPointsPerQuestion: 1 }],
+  };
+  return new FakeServer()
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ kind: "THPTQG", questionCount: 30 }) })
+    .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [] })
+    .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [{ ...FIXED_PART, questionCount: 30, sections: [section] }] } })
+    .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ kind: "THPTQG", revision: 8 }) })
+    .install();
+}
+
+describe("R-9 đổi tổng ở Danh sách dòng: dòng nhập theo số câu giữ số, hiện thiếu hoặc vượt", () => {
+  it("rowsKeepCountsOnTotalChange: tổng môn 30 xuống 20: không có hộp Áp dụng số mới, đầu môn báo Vượt 10 câu, Lưu gửi một lần và dòng giữ 30 câu", async () => {
+    const server = bootRows();
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-1`);
+    renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
+
+    await user.click(await screen.findByRole("button", { name: "Đặt tổng dòng thành 20" }));
+    expect(await screen.findByText("Vượt 10 câu")).toBeInTheDocument();
+    expect(screen.queryByText(/Tổng đổi thành 20 câu/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Áp dụng số mới" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ questionCount: number; blocks: Array<{ questionCount: number }> }> }> };
+    expect(sent.parts[0]!.sections[0]!.questionCount).toBe(20);
+    expect(sent.parts[0]!.sections[0]!.blocks[0]!.questionCount).toBe(30);
   });
 });
