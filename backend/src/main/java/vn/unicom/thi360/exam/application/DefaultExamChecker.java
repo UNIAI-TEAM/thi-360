@@ -248,6 +248,20 @@ public class DefaultExamChecker implements ExamChecker {
             }
         }
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
+        if (scope.kind() == ExamCheckScope.Kind.EXAM && evaluation.rulesEvaluated()) {
+            // Unused code-source pool entries belong to the saved structure, but not to any serving path.
+            // Report their R-12 errors at the whole-exam level without making unrelated paths ineligible.
+            for (ObjectNode issue : rules.unusedPoolLimits()) {
+                for (var group : evaluation.result().withArray("groups")) {
+                    if (!issue.path("group").asText().equals(group.path("group").asText())) continue;
+                    ((ObjectNode) group).withArray("issues").add(issue);
+                    ((ObjectNode) group).put("status", "FAIL");
+                    evaluation.result().put("issueCount", evaluation.result().path("issueCount").asInt() + 1);
+                    evaluation.result().put("status", "INVALID");
+                    break;
+                }
+            }
+        }
         return evaluation.withUnits(markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
     }
 

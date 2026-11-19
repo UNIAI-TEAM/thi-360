@@ -983,6 +983,25 @@ public final class ExamCheckRules {
         return failure;
     }
 
+    /** R-12 issues in saved code-source pool entries that no current combination selects. */
+    List<ObjectNode> unusedPoolLimits() {
+        List<ObjectNode> found = new ArrayList<>();
+        for (ExamPart part : document.parts()) {
+            if (part.codeSource() == null) continue;
+            Set<String> used = new java.util.HashSet<>();
+            combinationsByPart.getOrDefault(part.id(), Map.of()).values().forEach(used::addAll);
+            for (ExamSection section : part.subjectPool()) {
+                if (used.contains(section.subjectCode())) continue;
+                SectionContext context = sections.get(section.id());
+                if (context == null) continue;
+                int count = section.questionCount() == null ? 0 : section.questionCount();
+                int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+                subjectFormLimits(found, context, count, fixed);
+            }
+        }
+        return dedupe(found);
+    }
+
     List<ObjectNode> path(PathResult result) {
         List<ObjectNode> found = new ArrayList<>();
         for (var selected : result.path().chosen()) {

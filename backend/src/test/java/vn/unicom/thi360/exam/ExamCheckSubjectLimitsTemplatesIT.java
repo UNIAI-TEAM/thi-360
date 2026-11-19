@@ -113,6 +113,28 @@ class ExamCheckSubjectLimitsTemplatesIT extends AbstractSubjectLimitsIT {
                 .anyMatch(path -> path.path("issues").toString().contains(SHORT_CODE))).as("an HSA path carries the error").isTrue();
     }
 
+    @Test
+    void unusedPoolSectionIsReportedWithoutInvalidatingEnglishPath() throws Exception {
+        String base = loadFullTemplate("QDA");
+        JsonNode before = structure(base);
+        ObjectNode edited = before.deepCopy();
+        ObjectNode history = sectionIn(edited, "SU", "subjectPool");
+        setShape(history, 0, 3);
+        for (JsonNode part : edited.path("parts")) {
+            if (part.path("codeSource").isObject()) ((ObjectNode) part.path("codeSource")).put("branch", "ENGLISH");
+        }
+        save(base, before, edited);
+        JsonNode result = check(base);
+        JsonNode found = issue(result, SET_CODE);
+        assertThat(found.path("sectionId").asText()).isEqualTo(history.path("id").asText());
+        assertThat(found.path("subjectCode").asText()).isEqualTo("SU");
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        JsonNode english = java.util.stream.StreamSupport.stream(result.path("paths").spliterator(), false)
+                .filter(path -> path.path("choices").toString().contains("QD05")).findFirst().orElseThrow();
+        assertThat(english.path("result").asText()).isEqualTo("VALID");
+        assertThat(english.path("issues").toString()).doesNotContain(SET_CODE);
+    }
+
     /** A template's first standard FULL exam of the kind, loaded; returns its URL. */
     private String loadFullTemplate(String kind) throws Exception {
         String code = jdbc.queryForObject("SELECT code FROM exam.exam_template WHERE kind_code = ? AND scope = 'FULL' AND active "
