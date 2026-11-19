@@ -28,6 +28,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.identity.PasswordResetTestSupport.Account;
+import vn.unicom.thi360.identity.application.AvatarService;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.storage.ObjectStorage;
 
@@ -38,6 +39,8 @@ class AvatarMinioIT extends AbstractAvatarMinioIT {
 
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private AvatarService avatarService;
     @MockitoSpyBean(name = "avatarObjectStorage")
     private ObjectStorage avatarStorage;
 
@@ -174,6 +177,7 @@ class AvatarMinioIT extends AbstractAvatarMinioIT {
     @Test
     void concurrentReplaceLeavesSingleObject() throws Exception {
         Account account = support.eligible("avatar.race");
+        List<String> keysBefore = objectKeys(AVATAR_BUCKET);
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
         List<String> assetIds = Collections.synchronizedList(new ArrayList<>());
@@ -199,10 +203,56 @@ class AvatarMinioIT extends AbstractAvatarMinioIT {
         String current = jdbc.queryForObject(
                 "SELECT asset_id::text FROM identity.user_avatar WHERE user_id = ?", String.class, account.id());
         assertThat(assetIds).contains(current);
-        List<String> mine = objectKeys(AVATAR_BUCKET).stream()
-                .filter(key -> assetIds.stream().anyMatch(id -> key.equals(avatarKey(id))))
-                .toList();
-        assertThat(mine).as("only the object of the current row remains").containsExactly(avatarKey(current));
+        // Toàn bộ thay đổi khóa của bucket (không lọc theo phản hồi): đúng một đối tượng mới và là của dòng hiện tại.
+        List<String> delta = new ArrayList<>(objectKeys(AVATAR_BUCKET));
+        delta.removeAll(keysBefore);
+        assertThat(delta).as("only the object of the current row remains, no orphan from the losing write")
+                .containsExactly(avatarKey(current));
+        assertThat(objectKeys(AVATAR_BUCKET)).containsAll(keysBefore);
+    }
+
+    @Test
+    void failedObjectDeleteIsRetriedWithoutTouchingTheCurrentObject() throws Exception {
+        Account account = support.eligible("avatar.cleanup");
+        String first = upload(account, AvatarTestImages.png(64, 64), "one.png", "image/png");
+        doThrow(new ExternalServiceException("INTERNAL_ERROR", null, new RuntimeException("minio down")))
+                .when(avatarStorage).delete(anyString());
+
+        // Thay ảnh: DB đã đổi, xóa đối tượng cũ lỗi nhưng yêu cầu vẫn thành công và ý định xóa được giữ lại.
+        String second = upload(account, AvatarTestImages.png(70, 70), "two.png", "image/png");
+
+        assertThat(objectExists(AVATAR_BUCKET, avatarKey(first))).as("old object could not be deleted yet").isTrue();
+        assertThat(pendingCleanup(avatarKey(first))).isEqualTo(1);
+        assertThat(avatarService.sweepPendingDeletes()).as("delete still failing").isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT attempts FROM identity.avatar_object_cleanup WHERE object_key = ?",
+                Integer.class, avatarKey(first))).isEqualTo(1);
+
+        // Xóa ảnh: cũng lỗi xóa đối tượng, cũng được ghi lại.
+        mockMvc.perform(delete("/api/v1/me/avatar").with(sessionOf(account))).andExpect(status().isNoContent());
+        assertThat(objectExists(AVATAR_BUCKET, avatarKey(second))).isTrue();
+        assertThat(pendingCleanup(avatarKey(second))).isEqualTo(1);
+
+        // MinIO hồi phục: job dọn cả hai.
+        org.mockito.Mockito.doCallRealMethod().when(avatarStorage).delete(anyString());
+        assertThat(avatarService.sweepPendingDeletes()).isEqualTo(2);
+        assertThat(objectExists(AVATAR_BUCKET, avatarKey(first))).isFalse();
+        assertThat(objectExists(AVATAR_BUCKET, avatarKey(second))).isFalse();
+        assertThat(pendingCleanup(avatarKey(first)) + pendingCleanup(avatarKey(second))).isZero();
+
+        // Không bao giờ xóa đối tượng đang được tham chiếu, kể cả khi có dòng chờ xóa trỏ vào nó.
+        String third = upload(account, AvatarTestImages.png(50, 50), "three.png", "image/png");
+        jdbc.update("INSERT INTO identity.avatar_object_cleanup (object_key) VALUES (?)", avatarKey(third));
+        assertThat(avatarService.sweepPendingDeletes()).isEqualTo(1);
+        assertThat(objectExists(AVATAR_BUCKET, avatarKey(third))).as("current object is kept").isTrue();
+        mockMvc.perform(get("/api/v1/avatars/{id}", third).with(sessionOf(account))).andExpect(status().isOk());
+        assertThat(pendingCleanup(avatarKey(third))).isZero();
+    }
+
+    private int pendingCleanup(String objectKey) {
+        Integer count = jdbc.queryForObject(
+                "SELECT count(*) FROM identity.avatar_object_cleanup WHERE object_key = ?", Integer.class, objectKey);
+        return count == null ? 0 : count;
     }
 
     @Test

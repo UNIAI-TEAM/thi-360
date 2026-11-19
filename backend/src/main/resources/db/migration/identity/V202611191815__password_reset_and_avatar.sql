@@ -35,3 +35,13 @@ CREATE TABLE identity.user_avatar (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Đối tượng ảnh đại diện cần xóa khỏi bucket sau khi DB đã commit (ảnh bị thay hoặc xóa, ảnh mới của lần thay thất
+-- bại). Dòng được ghi cùng transaction đổi/xóa dòng user_avatar nên không mất khi xóa đối tượng lỗi; job thử lại và
+-- không bao giờ xóa đối tượng đang được user_avatar tham chiếu.
+CREATE TABLE identity.avatar_object_cleanup (
+    object_key text PRIMARY KEY,
+    queued_at timestamptz NOT NULL DEFAULT now(),
+    attempts integer NOT NULL DEFAULT 0,
+    last_attempt_at timestamptz
+);

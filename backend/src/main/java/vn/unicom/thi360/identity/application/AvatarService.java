@@ -42,6 +42,7 @@ public class AvatarService {
     private static final Logger log = LoggerFactory.getLogger(AvatarService.class);
     private static final String MODULE = "identity";
     private static final String TARGET_TYPE = "USER";
+    private static final int SWEEP_BATCH = 100;
 
     private final UserAvatarRepository avatarRepository;
     private final UserAccountRepository userAccountRepository;
@@ -89,11 +90,11 @@ public class AvatarService {
         try {
             previousAssetId = transactionTemplate.execute(status -> swapRow(userId, assetId, objectKey, png.length));
         } catch (RuntimeException ex) {
-            deleteQuietly(storage, objectKey);
+            deleteOrQueue(storage, objectKey, true);
             throw ex;
         }
         if (previousAssetId != null) {
-            deleteQuietly(storage, objectKey(previousAssetId));
+            deleteOrQueue(storage, objectKey(previousAssetId), false);
         }
         return assetId;
     }
@@ -111,11 +112,12 @@ public class AvatarService {
             }
             avatarRepository.delete(current);
             avatarRepository.flush();
+            queueObjectDeletion(objectKey(current.getAssetId()));
             recordAudit(userId, "AVATAR_REMOVED", current.getAssetId(), null);
             return current.getAssetId();
         });
         if (removedAssetId != null) {
-            deleteQuietly(storage, objectKey(removedAssetId));
+            deleteOrQueue(storage, objectKey(removedAssetId), false);
         }
     }
 
@@ -142,6 +144,7 @@ public class AvatarService {
         } else {
             previousAssetId = current.replace(assetId, objectKey, sizeBytes, now);
             avatarRepository.saveAndFlush(current);
+            queueObjectDeletion(objectKey(previousAssetId));
         }
         recordAudit(userId, "AVATAR_CHANGED", previousAssetId, assetId);
         return previousAssetId;
@@ -181,7 +184,18 @@ public class AvatarService {
         return assetId + ".png";
     }
 
-    private static void deleteQuietly(ObjectStorage storage, String objectKey) {
+    /** Ghi ý định xóa đối tượng (cùng transaction với việc đổi/xóa dòng ảnh). */
+    private void queueObjectDeletion(String objectKey) {
+        jdbcTemplate.update(
+                "INSERT INTO identity.avatar_object_cleanup (object_key) VALUES (?) ON CONFLICT (object_key) DO NOTHING",
+                objectKey);
+    }
+
+    /**
+     * Xóa đối tượng sau khi DB đã commit. Thành công thì bỏ dòng chờ xóa; lỗi thì dòng chờ xóa được giữ (hoặc, với ảnh
+     * mới của lần thay thất bại chưa có dòng, ghi mới) để {@link #sweepPendingDeletes} thử lại.
+     */
+    private void deleteOrQueue(ObjectStorage storage, String objectKey, boolean needsQueueRow) {
         try {
             storage.delete(objectKey);
         } catch (RuntimeException ex) {
@@ -189,7 +203,65 @@ public class AvatarService {
                     .setCause(ex)
                     .addKeyValue("event", "avatar.object_delete_failed")
                     .addKeyValue("objectKey", objectKey)
-                    .log("Failed to delete avatar object; it stays orphaned in the avatar bucket");
+                    .log("Failed to delete avatar object; queued for retry");
+            if (needsQueueRow) {
+                try {
+                    transactionTemplate.executeWithoutResult(status -> queueObjectDeletion(objectKey));
+                } catch (RuntimeException queueFailure) {
+                    log.atError()
+                            .setCause(queueFailure)
+                            .addKeyValue("event", "avatar.object_cleanup_queue_failed")
+                            .addKeyValue("objectKey", objectKey)
+                            .log("Avatar object could not be queued for deletion and stays orphaned");
+                }
+            }
+            return;
         }
+        try {
+            jdbcTemplate.update("DELETE FROM identity.avatar_object_cleanup WHERE object_key = ?", objectKey);
+        } catch (RuntimeException ex) {
+            log.atWarn()
+                    .setCause(ex)
+                    .addKeyValue("event", "avatar.cleanup_row_delete_failed")
+                    .addKeyValue("objectKey", objectKey)
+                    .log("Avatar object deleted; its cleanup row will be dropped by the sweep");
+        }
+    }
+
+    /**
+     * Xóa các đối tượng đã ghi nhận chờ xóa mà lần xóa trực tiếp bị lỗi. Chỉ xóa khóa không còn được
+     * {@code user_avatar} tham chiếu (không bao giờ xóa ảnh hiện tại). Trả số đối tượng đã dọn.
+     */
+    public int sweepPendingDeletes() {
+        ObjectStorage storage = avatarStorage.getIfAvailable();
+        if (storage == null) {
+            return 0;
+        }
+        List<String> keys = jdbcTemplate.queryForList(
+                "SELECT object_key FROM identity.avatar_object_cleanup ORDER BY queued_at LIMIT " + SWEEP_BATCH,
+                String.class);
+        int cleaned = 0;
+        for (String key : keys) {
+            Boolean referenced = jdbcTemplate.queryForObject(
+                    "SELECT EXISTS (SELECT 1 FROM identity.user_avatar WHERE object_key = ?)", Boolean.class, key);
+            try {
+                if (!Boolean.TRUE.equals(referenced)) {
+                    storage.delete(key);
+                }
+                jdbcTemplate.update("DELETE FROM identity.avatar_object_cleanup WHERE object_key = ?", key);
+                cleaned++;
+            } catch (RuntimeException ex) {
+                jdbcTemplate.update(
+                        "UPDATE identity.avatar_object_cleanup SET attempts = attempts + 1, last_attempt_at = now()"
+                                + " WHERE object_key = ?",
+                        key);
+                log.atWarn()
+                        .setCause(ex)
+                        .addKeyValue("event", "avatar.object_sweep_failed")
+                        .addKeyValue("objectKey", key)
+                        .log("Avatar object deletion retry failed");
+            }
+        }
+        return cleaned;
     }
 }
