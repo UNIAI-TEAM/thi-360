@@ -17,6 +17,7 @@ import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { AllocationGap } from "./allocation-gap";
 import { EditOverviewLink } from "./edit-overview-link";
 import { LOCKED_FIELD } from "./locked-field";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
@@ -377,8 +378,8 @@ export function ExamStructureSubjectPanel({
                           </td>
                           <td className="border-b border-border px-2 py-2 text-right">{row ? row.quota : "—"}</td>
                           <td className="border-b border-border px-2 py-2 text-right">{row ? row.allocated : "—"}</td>
-                          <td className={cn("border-b border-border px-2 py-2 text-right font-semibold", row && row.missing !== 0 && "text-warning")}>
-                            {row ? row.missing : "—"}
+                          <td className="border-b border-border px-2 py-2 text-right">
+                            {row ? <AllocationGap missing={row.missing} /> : "—"}
                           </td>
                           <td className="border-b border-border px-2 py-2 text-right text-text-muted">
                             {availableState === "ready" && source !== undefined ? source : "—"}
@@ -402,7 +403,9 @@ export function ExamStructureSubjectPanel({
                         <td className="border-b border-border px-2 py-2 text-right text-text-muted">—</td>
                         <td className="border-b border-border px-2 py-2 text-right">{row.quota}</td>
                         <td className="border-b border-border px-2 py-2 text-right">{row.allocated}</td>
-                        <td className="border-b border-border px-2 py-2 text-right font-semibold text-warning">{row.missing}</td>
+                        <td className="border-b border-border px-2 py-2 text-right">
+                          <AllocationGap missing={row.missing} />
+                        </td>
                         <td className="border-b border-border px-2 py-2 text-right text-text-muted">
                           {availableState === "ready" && sourceOf(row.key) !== undefined ? sourceOf(row.key) : "—"}
                         </td>
@@ -413,7 +416,7 @@ export function ExamStructureSubjectPanel({
                   <tfoot>
                     <tr className="font-semibold text-text">
                       <th scope="row" className="px-3 py-2 text-left">{t("total")}</th>
-                      <td className={cn("px-2 py-2 text-right", quotaMismatch && "text-danger")}>
+                      <td className={cn("px-2 py-2 text-right", quotaMismatch && quotas.unit === "PERCENT" && "text-danger")}>
                         <output>
                           {quotas.unit === "PERCENT"
                             ? t("totalPercent", { total: quotaTotal })
@@ -421,6 +424,11 @@ export function ExamStructureSubjectPanel({
                               ? quotaTotal
                               : t("totalOf", { total: quotaTotal, count })}
                         </output>
+                        {quotas.unit === "COUNT" && quotaMismatch && count !== null && (
+                          <span className="block text-caption">
+                            <AllocationGap missing={count - quotaTotal} />
+                          </span>
+                        )}
                       </td>
                       <td colSpan={5} />
                     </tr>
@@ -556,7 +564,9 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
               <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text last-of-type:border-b-0">{label(row.key)}</th>
               <td className="border-b border-border px-2 py-2 text-right">{row.quota}</td>
               <td className="border-b border-border px-2 py-2 text-right">{row.allocated}</td>
-              <td className={cn("border-b border-border px-3 py-2 text-right font-semibold", row.missing !== 0 && "text-warning")}>{row.missing}</td>
+              <td className="border-b border-border px-3 py-2 text-right">
+                <AllocationGap missing={row.missing} />
+              </td>
             </tr>
           ))}
         </tbody>

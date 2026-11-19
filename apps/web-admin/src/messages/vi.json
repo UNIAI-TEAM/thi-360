@@ -3897,6 +3897,10 @@
       "discardConfirm": "Hủy thay đổi",
       "discarded": "Đã hủy các thay đổi chưa lưu.",
       "issuesSummary": "Lỗi cần xử lý ({count, number})",
+      "gap": {
+        "over": "Vượt {count, number} câu",
+        "under": "Thiếu {count, number} câu"
+      },
       "issueGo": "Đến chỗ sửa",
       "newBlockName": "{subject} · Nhóm mới",
       "blockAdded": "Đã thêm nhóm {name}.",

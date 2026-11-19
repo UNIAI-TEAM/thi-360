@@ -239,7 +239,7 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
     const cells = within(table)
       .getAllByRole("cell")
       .map((cell) => cell.textContent);
-    expect(cells).toEqual(["2,5", "1,25", "-1,25", "1,24"]);
+    expect(cells).toEqual(["2,5", "1,25", "Thiếu 1,25 câu", "1,24"]);
   });
 
   it("tổng hợp dạng cây của máy chủ: dòng phần, môn, nhóm đều thành dòng của bảng", async () => {

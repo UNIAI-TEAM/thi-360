@@ -9,6 +9,7 @@ import type { ExamPart, ExamSectionState, ExamSection, ExamTiming, StructureComb
 import { BlockNumberInput } from "./block-number-input";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { CodedPartPanel } from "./coded-part-panel";
+import { AllocationGap } from "./allocation-gap";
 import { OptionalNumberInput } from "./create-exam-fields";
 import { EditOverviewLink } from "./edit-overview-link";
 import { PartOptions, type PartOptionsProps } from "./part-options";
@@ -363,13 +364,13 @@ function SectionsTable({
                       {templateLocked && <span className="sr-only">{t("countLocked")}</span>}
                     </span>
                   </td>
-                  <td
-                    className={cn(
-                      "border-b border-border px-2 py-2 text-right whitespace-nowrap",
-                      allocated !== section.questionCount && "font-semibold text-danger",
-                    )}
-                  >
+                  <td className="border-b border-border px-2 py-2 text-right whitespace-nowrap">
                     {t("allocatedValue", { allocated, count: section.questionCount ?? 0 })}
+                    {allocated !== (section.questionCount ?? 0) && (
+                      <span className="block text-caption">
+                        <AllocationGap missing={(section.questionCount ?? 0) - allocated} />
+                      </span>
+                    )}
                   </td>
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button
@@ -392,12 +393,17 @@ function SectionsTable({
               <th scope="row" className="px-3 py-2 text-left">
                 {t("total")}
               </th>
-              <td className={cn("px-2 py-2 text-right", totalMismatch && "text-danger")}>
+              <td className="px-2 py-2 text-right">
                 <output>
                   {common
                     ? t("commonTotal", { count: total })
                     : t("allocatedValue", { allocated: total, count: part.questionCount })}
                 </output>
+                {totalMismatch && (
+                  <span className="block text-caption">
+                    <AllocationGap missing={part.questionCount - total} />
+                  </span>
+                )}
               </td>
               <td colSpan={2} />
             </tr>
