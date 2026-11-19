@@ -924,8 +924,9 @@ def upgradable(code, exam_id, structure):
 def upgrade_statements(exam, eid, question_count, has_essay, has_english, combinations):
     """Wave 3 upgrade of a database that holds the 2B seed (docs: de-test 4.4). The structure
     itself is replaced by the upsert that follows; this statement drops the working block refs
-    of the old structure and refreshes the columns derived from the template and the structure
-    (name, description, status and the check history of the exam are left to the admin)."""
+    of the old structure and refreshes every exam column the fresh INSERT sets (name,
+    description, status and the check history of the exam are left to the admin, and
+    check_status only moves to NEEDS_RECHECK)."""
     code = exam["code"]
     guard = upgradable(code, "s.exam_id", "s")
     return [
@@ -933,10 +934,16 @@ def upgrade_statements(exam, eid, question_count, has_essay, has_english, combin
         f"    WHERE s.exam_id = '{eid}' AND {guard}),",
         "dropped AS (DELETE FROM exam.exam_block_ref r USING upgrading u",
         "    WHERE r.exam_id = u.exam_id AND r.version_no IS NULL RETURNING r.id)",
-        f"UPDATE exam.exam e SET template_code = {sql_quote(exam['template'])},",
+        f"UPDATE exam.exam e SET kind_item_id = '{KIND[exam['kind']]}', scope = '{exam['scope']}',",
+        f"    part_code = {sql_quote(exam['part_code']) if exam['part_code'] else 'NULL'},",
+        f"    subject_item_id = {sql_quote(SUBJECT[exam['subject']]) if exam['subject'] else 'NULL'},",
+        f"    template_code = {sql_quote(exam['template'])},",
         f"    structure_year = {exam['structure_year'] or 'NULL'}, matrix_year = {exam['matrix_year'] or 'NULL'},",
+        f"    years_confirmed = {'true' if exam['years_confirmed'] else 'false'},",
         f"    timing = '{exam['timing']}', duration_minutes = {exam['duration'] or 'NULL'},",
         f"    max_score = {exam['max_score'] if exam['max_score'] is not None else 'NULL'},",
+        f"    reference_max = {exam['reference_max'] if exam['reference_max'] is not None else 'NULL'},",
+        f"    practice_scoring = '{exam['practice']}',",
         f"    question_count = {question_count}, has_essay = {'true' if has_essay else 'false'},",
         f"    has_english_option = {'true' if has_english else 'false'}, combination_count = {combinations},",
         "    check_status = CASE WHEN e.check_status = 'UNCHECKED' THEN 'UNCHECKED' ELSE 'NEEDS_RECHECK' END,",
