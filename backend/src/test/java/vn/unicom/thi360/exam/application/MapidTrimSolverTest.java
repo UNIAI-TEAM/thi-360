@@ -30,9 +30,13 @@ import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.ParticipationMode;
 import vn.unicom.thi360.exam.domain.PartParticipation;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
+import vn.unicom.thi360.exam.domain.QuotaBasis;
+import vn.unicom.thi360.exam.domain.QuotaEnforcement;
+import vn.unicom.thi360.exam.domain.TopicQuota;
 import vn.unicom.thi360.exam.domain.solver.PaperSolver;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SolvePart;
+import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
 import vn.unicom.thi360.exam.domain.solver.SubjectChoice;
@@ -102,6 +106,72 @@ class MapidTrimSolverTest {
         assertThat(invalid).as("LY as the low subject cannot keep EXACT 17").isPositive();
     }
 
+    @Test
+    void aLegacyTopicQuotaKeepsTheH3FallbackAndTheLowSubjectStillGetsItsPaper() {
+        // Review R2-1: a quota without mapidMode (here grade filtered AT_LEAST 17 A) may lose one contributor when
+        // no other drop exists (spec H3); only MAPID rules are hard.
+        for (int i = 0; i < 17; i++) add("LY", "ly" + i, "G12", A);
+        for (int i = 0; i < 17; i++) add("HOA", "hoa" + i);
+        for (int i = 0; i < 17; i++) add("SINH", "sinh" + i);
+        SubjectChoice choice = choice(legacySection("LY", 17), section("HOA"), section("SINH"));
+        int lowLy = 0;
+        for (long seed = 1; seed <= 40; seed++) {
+            PathResult result = new PaperSolver().solvePick(choice, List.of("LY", "HOA", "SINH"), seed,
+                    input.candidates(), Set.of());
+            assertThat(result.status()).as("seed %d", seed).isEqualTo(SolveStatus.VALID);
+            var ly = result.witness().stream().filter(w -> w.subjectCode().equals("LY")).findFirst().orElseThrow();
+            if (ly.resolvedCount() == 16) lowLy++;
+            assertThat(ly.groups().getFirst().picks()).as("seed %d", seed).hasSize(ly.resolvedCount());
+        }
+        assertThat(lowLy).as("some seed gives LY the 16-question paper").isPositive();
+    }
+
+    @Test
+    void aStrictAtLeastRuleCannotLoseAContributorToTheTrim() {
+        for (int i = 0; i < 17; i++) add("LY", "ly" + i, A);
+        for (int i = 0; i < 17; i++) add("HOA", "hoa" + i);
+        for (int i = 0; i < 17; i++) add("SINH", "sinh" + i);
+        MapidRule atLeast = new MapidRule("lyA", MapidRuleType.COUNT, null, List.of(A), MapidComparator.AT_LEAST,
+                17, null);
+        SubjectChoice choice = choice(section("LY", atLeast), section("HOA"), section("SINH"));
+        int invalid = 0;
+        for (long seed = 1; seed <= 40; seed++) {
+            PathResult result = new PaperSolver().solvePick(choice, List.of("LY", "HOA", "SINH"), seed,
+                    input.candidates(), Set.of());
+            if (result.status() == SolveStatus.VALID) {
+                var ly = result.witness().stream().filter(w -> w.subjectCode().equals("LY")).findFirst().orElseThrow();
+                assertThat(ly.resolvedCount()).as("seed %d", seed).isEqualTo(17);
+            } else {
+                invalid++;
+                assertThat(result.failingQuota().key()).as("seed %d", seed).isEqualTo("lyA");
+            }
+        }
+        assertThat(invalid).isPositive();
+    }
+
+    @Test
+    void theSectionPreviewTrimsALegacyQuotaButRefusesAStrictOne() {
+        for (int i = 0; i < 17; i++) add("LY", "ly" + i, "G12", A);
+        for (int i = 0; i < 17; i++) add("HOA", "hoa" + i);
+        for (int i = 0; i < 17; i++) add("SINH", "sinh" + i);
+        var legacy = choice(legacySection("LY", 17), section("HOA"), section("SINH")).sections().getFirst();
+        var legacySource = input.candidates();
+        var strict = choice(section("LY", exact("lyA", 17)), section("HOA"), section("SINH")).sections().getFirst();
+        var strictSource = input.candidates();
+        for (long seed = 1; seed <= 20; seed++) {
+            var kept = PreviewPathSolver.solveSection(new PaperSolver(),
+                    SolvePath.of(0, List.of(legacy.withQuestionCount(17))), legacySource, seed, true);
+            assertThat(kept.path().status()).as("seed %d", seed).isEqualTo(SolveStatus.VALID);
+            assertThat(kept.dropped()).hasSize(1);
+        }
+        for (long seed = 1; seed <= 20; seed++) {
+            var refused = PreviewPathSolver.solveSection(new PaperSolver(),
+                    SolvePath.of(0, List.of(strict.withQuestionCount(17))), strictSource, seed, true);
+            assertThat(refused.path().status()).as("seed %d", seed).isEqualTo(SolveStatus.INVALID);
+            assertThat(refused.path().failingQuota().key()).isEqualTo("lyA");
+        }
+    }
+
     // ---------------------------------------------------------------- fixtures
 
     private SubjectChoice choice(ExamSection... sections) {
@@ -123,13 +193,27 @@ class MapidTrimSolverTest {
                 List.of(block), List.of(), null, rules.length == 0 ? null : MapidMode.MATRIX, List.of(rules));
     }
 
+    private static ExamSection legacySection(String code, int count) {
+        QuestionBlock block = new QuestionBlock(code + "-g", code, QuestionType.SHORT_ANSWER, 17, null, null, null,
+                null, null, null, false, null, List.of(), null, true, false, List.of(), List.of(), null, List.of(),
+                false, List.of(), null);
+        TopicQuota quota = new TopicQuota("legacy", "legacy", List.of(A), count, QuotaBasis.QUESTION,
+                QuotaEnforcement.REQUIRED, List.of("G12"), List.of(), List.of());
+        return new ExamSection(code.toLowerCase(), code, null, null, null, null, ChoiceGroup.NATURAL,
+                List.of(block), List.of(quota), null, null, List.of());
+    }
+
     private static MapidRule exact(String id, int count) {
         return new MapidRule(id, MapidRuleType.COUNT, null, List.of(A), MapidComparator.EXACT, count, null);
     }
 
     private void add(String subject, String name, UUID... nodes) {
+        add(subject, name, null, nodes);
+    }
+
+    private void add(String subject, String name, String grade, UUID... nodes) {
         UUID id = UUID.nameUUIDFromBytes((subject + name).getBytes());
-        Candidate candidate = new Candidate(id, 1, null, List.of(new Unit(id, null, QuestionType.SHORT_ANSWER, null,
+        Candidate candidate = new Candidate(id, 1, null, List.of(new Unit(id, null, QuestionType.SHORT_ANSWER, grade,
                 null, List.of(nodes), List.of(), null)), null, null);
         pools.computeIfAbsent(subjectIds.get(subject), key -> new ArrayList<>()).add(candidate);
     }
