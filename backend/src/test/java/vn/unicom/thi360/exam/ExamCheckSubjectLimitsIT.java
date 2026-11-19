@@ -258,6 +258,50 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
         }
     }
 
+    // ---- undetermined size, option blocks (R1-16, R1-13) ------------------------------------------------------
+
+    /**
+     * One fixed set of 3 and one flexible set (no count, no size): the total of sets is in range but the size of the
+     * flexible one is unknown, so the issue says what is required and leaves "available" empty instead of echoing 3.
+     */
+    @Test
+    void flexibleSetLeavesTheAvailableSizeEmpty() throws Exception {
+        String base = create("QDA", "SUBJECT", null, "LY", null);
+        JsonNode before = structure(base);
+        ObjectNode edited = before.deepCopy();
+        ObjectNode physics = section(edited, "LY");
+        ObjectNode single = blockOfType(physics, "SINGLE_CHOICE");
+        single.put("questionCount", single.path("questionCount").asInt() - 3);
+        ((ArrayNode) physics.path("blocks")).addObject().put("id", "flexible-set").put("questionType", "QUESTION_SET")
+                .put("questionCount", 3).put("childAnswerType", "SINGLE_CHOICE");
+        save(base, before, edited);
+
+        JsonNode found = issue(check(base), SET_CODE);
+        assertThat(found.path("sectionId").asText()).isEqualTo(physics.path("id").asText());
+        assertThat(found.path("required").asInt()).isEqualTo(3);
+        assertThat(found.path("available").isNull()).as("available: %s", found).isTrue();
+    }
+
+    /**
+     * R1-13: R-12 reads {@code sections}, {@code subjectPool} and {@code options[].sections}. The blocks a SUBJECT
+     * option holds directly are none of them (no stored subject code), so a Lý option with only single choice raises
+     * neither code, where the same blocks in a section of Lý would.
+     */
+    @Test
+    void blocksOfASubjectOptionAreNotASubjectSection() throws Exception {
+        String options = "[{\"id\":\"p\",\"questionCount\":10,\"participation\":{\"mode\":\"CHOICE\",\"choose\":1},\"options\":["
+                + "{\"id\":\"ly-opt\",\"kind\":\"SUBJECT\",\"code\":\"LY\",\"blocks\":[{\"id\":\"b1\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":10}]},"
+                + "{\"id\":\"anh-opt\",\"kind\":\"SUBJECT\",\"code\":\"ANH\",\"blocks\":[{\"id\":\"b2\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":10}]}]}]";
+        for (String kind : new String[] {"HSA", "QDA"}) {
+            JsonNode result = check("/api/v1/admin/exams/" + sqlExam(kind, options));
+            assertThat(codes(result)).as(kind + " option blocks").doesNotContain(SET_CODE, SHORT_CODE);
+            // Control: the same single-choice blocks as a section of Lý break the rules.
+            UUID section = sqlExam(kind, "[{\"id\":\"s-ly\",\"subjectCode\":\"LY\",\"questionCount\":10,\"blocks\":"
+                    + "[{\"id\":\"b1\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":10}]}]");
+            assertThat(codes(check("/api/v1/admin/exams/" + section))).as(kind + " section control").contains(SET_CODE, SHORT_CODE);
+        }
+    }
+
     // ---- fixtures -----------------------------------------------------------------------------------------
 
     private String matrixExam(String kind, String subject, int count, String byDifficulty) {

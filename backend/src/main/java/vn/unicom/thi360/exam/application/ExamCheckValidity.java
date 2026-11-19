@@ -92,7 +92,9 @@ public class ExamCheckValidity {
     /**
      * SQL boolean (FTM R-12, AC-58): the saved whole-exam result of run {@code r} was not evaluated under the current
      * rules ({@link ExamCheckRulesStamp}) and the rules apply to exam {@code e}: a standard exam of a kind that has
-     * subject limits whose structure {@code s} holds a section of a limited subject, wherever the section sits.
+     * subject limits whose structure {@code s} holds a section of a limited subject in {@code sections},
+     * {@code subjectPool} or {@code options[].sections} (the arrays {@link ExamCheckRules} reads; the blocks of a
+     * SUBJECT option have no stored subject code and are in neither).
      */
     String rulesChanged(String r, String e, String s) {
         Map<String, UUID> kinds = idsByCode("EXAM");
@@ -102,10 +104,12 @@ public class ExamCheckValidity {
         // Constant codes only: no user input reaches this SQL.
         String subjects = SubjectFormLimits.subjects().stream().sorted()
                 .map(code -> "@.subjectCode == \"" + code + "\"").collect(java.util.stream.Collectors.joining(" || "));
+        String arrays = "exists(@.sections[*] ? (" + subjects + ")) || exists(@.subjectPool[*] ? (" + subjects + "))"
+                + " || exists(@.options[*].sections[*] ? (" + subjects + "))";
         return "(" + r + ".result->>'" + ExamCheckRulesStamp.KEY + "' IS DISTINCT FROM '" + ExamCheckRulesStamp.CURRENT + "'"
                 + " AND COALESCE(" + e + ".build_mode, 'STANDARD') <> 'REVIEW'"
                 + " AND " + e + ".kind_item_id IN (" + kindIds + ")"
-                + " AND jsonb_path_exists(" + s + ".parts, '$.** ? (" + subjects + ")'))";
+                + " AND jsonb_path_exists(" + s + ".parts, '$.parts[*] ? (" + arrays + ")'))";
     }
 
     /**

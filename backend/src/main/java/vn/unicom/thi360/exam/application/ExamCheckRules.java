@@ -1210,29 +1210,34 @@ public final class ExamCheckRules {
     /**
      * FTM R-12: the set count and set size of the science subjects of HSA and QDA, and the short-answer minimum of
      * Lý, Hóa, Sinh. Standard exams only; a review exam keeps its own shape. Located at the subject, not at a block.
+     * The rule reads the sections of {@code sections}, {@code subjectPool} and {@code options[].sections}; the blocks
+     * a SUBJECT option holds directly ({@code options[].blocks}) carry no stored {@code subjectCode}, so they are no
+     * subject section here, and {@link ExamCheckValidity#rulesChanged} reads the same three arrays.
      */
     private void subjectFormLimits(List<ObjectNode> found, SectionContext context, int count, int fixed) {
-        if (isReview()) return;
+        if (isReview() || isOptionBlocks(context)) return;
         ExamSection section = context.section;
         SubjectFormLimits.Limit limit = SubjectFormLimits.of(kindCode, section.subjectCode()).orElse(null);
         if (limit == null) return;
         int sets = 0;
+        boolean unknownSets = false;
         boolean badSize = false;
-        int size = limit.setSize();
+        Integer wrongSize = null;
         for (QuestionBlock block : section.blocks()) {
             if (Boolean.TRUE.equals(block.omitted()) || block.questionType() != QuestionType.QUESTION_SET) continue;
             // A flexible-size set (no setCount, no setSize) cannot promise sets of the required size.
-            sets += block.setCount() == null ? 0 : Math.max(0, block.setCount());
-            if (block.setCount() == null || block.setSize() == null || block.setSize() != limit.setSize()) {
-                badSize = true;
-                if (block.setSize() != null) size = block.setSize();
-            }
+            if (block.setCount() == null) unknownSets = true;
+            else sets += Math.max(0, block.setCount());
+            if (block.setSize() != null && block.setSize() != limit.setSize() && wrongSize == null) wrongSize = block.setSize();
+            if (block.setCount() == null || block.setSize() == null || block.setSize() != limit.setSize()) badSize = true;
         }
         boolean outOfRange = sets < limit.setCountMin() || sets > limit.setCountMax();
         if (outOfRange || badSize) {
             ObjectNode failure = sectionIssue("SECTION_SET_COUNT_RANGE", "QUESTION_SET", context, null);
             failure.put("required", outOfRange ? Math.max(limit.setCountMin(), Math.min(limit.setCountMax(), sets)) : limit.setSize());
-            failure.put("available", outOfRange ? sets : size);
+            // Not a number when the section does not say: a flexible set leaves its count or its size undetermined.
+            Integer available = outOfRange ? (unknownSets ? null : Integer.valueOf(sets)) : wrongSize;
+            if (available == null) failure.putNull("available"); else failure.put("available", available);
             found.add(issues.key(failure));
         }
         Integer shortAnswers = shortAnswerCount(section, count, fixed);
@@ -1420,4 +1425,9 @@ public final class ExamCheckRules {
         return List.copyOf(result.values());
     }
     private record SectionContext(ExamPart part, String optionId, ExamSection section) { }
+
+    /** The synthetic section of the blocks a SUBJECT option holds directly: not one of the persisted section arrays. */
+    private static boolean isOptionBlocks(SectionContext context) {
+        return context.optionId != null && (context.optionId + ":blocks").equals(context.section.id());
+    }
 }

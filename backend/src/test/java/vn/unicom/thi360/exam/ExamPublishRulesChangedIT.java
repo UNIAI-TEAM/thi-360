@@ -283,6 +283,23 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         publish(hsca, "science", "english").andExpect(status().isOk());
     }
 
+    /**
+     * R1-13: the blocks a SUBJECT option holds directly are no section of {@code sections}, {@code subjectPool} or
+     * {@code options[].sections}. The check raises no R-12 code for them (ExamCheckSubjectLimitsIT), so an old result
+     * of such an exam keeps its status: no RULES_CHANGED on GET, in the list or at publish.
+     */
+    @Test
+    void optionBlocksOfASubjectKeepTheOldResult() throws Exception {
+        UUID exam = newExam("HSA", "[{\"id\":\"p3\",\"participation\":{\"mode\":\"CHOICE\",\"choose\":1},\"options\":["
+                + "{\"id\":\"science\",\"kind\":\"SUBJECT\",\"code\":\"LY\",\"blocks\":[{\"id\":\"b\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":10}]},"
+                + "{\"id\":\"english\",\"kind\":\"SUBJECT\",\"code\":\"ANH\",\"sections\":[]}]}]");
+        saveOldCheck(exam, paths("science=VALID", "english=VALID"));
+        assertThat(latestReason(exam)).isNull();
+        assertThat(listed("VALID").findValuesAsText("id")).contains(exam.toString());
+        assertThat(listed("NEEDS_RECHECK").findValuesAsText("id")).doesNotContain(exam.toString());
+        publish(exam, "science", "english").andExpect(status().isOk());
+    }
+
     // ---- helpers ------------------------------------------------------------------------------------------
 
     /**
