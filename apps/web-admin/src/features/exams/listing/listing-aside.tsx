@@ -61,7 +61,11 @@ export function ListingCardPreview({ exam, terms, coverUrl, listing }: ListingCa
           <p data-exam-content className="text-label font-semibold uppercase text-text wrap-anywhere">
             {exam.name}
           </p>
-          {terms.summary && <p className="text-body text-text-secondary wrap-anywhere">{terms.summary}</p>}
+          {terms.summary && (
+            <p data-exam-content className="text-body text-text-secondary wrap-anywhere">
+              {terms.summary}
+            </p>
+          )}
           <p className="flex items-center gap-1.5 text-body text-text-secondary tabular-nums">
             <Clock className="size-4" />
             {t("meta", {

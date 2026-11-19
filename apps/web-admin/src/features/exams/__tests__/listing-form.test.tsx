@@ -49,7 +49,7 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     const summary = screen.getByRole("textbox", { name: "Mô tả ngắn trên thẻ" });
     await user.clear(summary);
     await user.type(summary, "Đề mới");
-    expect(preview().getByText("Đề mới")).toBeInTheDocument();
+    expect(preview().getByText("Đề mới")).toHaveAttribute("data-exam-content");
 
     const attemptsInput = await attempts();
     await user.clear(attemptsInput);
