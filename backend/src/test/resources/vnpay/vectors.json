@@ -1,0 +1,281 @@
+{
+  "_comment": "Signature vectors for VnpayGateway (CM-3b). Computed with the made-up test key below, NOT the VNPAY sandbox key. Do not use this key anywhere else.",
+  "test_key": "THI360TESTKEY-NOT-A-SANDBOX-KEY-0001",
+  "test_tmn_code": "TEST-TMN",
+  "hash_algorithm": "HmacSHA512, lower-case hex, 128 chars",
+  "rules": {
+    "pay_source": {
+      "path": "dot-3/reference/vnpay-docs.md",
+      "sections": ["Pay (hash rule, required params)", "Return URL and IPN (return hash input)"],
+      "date": "2026-11-19",
+      "note": "The reference leaves the encoder open for ! ' ( ) * ~; the Java form was fixed by measurement on the sandbox (dot-3/vnpay/min-amount.md section Q9 r5)"
+    },
+    "querydr_refund_source": {
+      "path": "dot-3/reference/vnpay-docs.md",
+      "sections": ["querydr and refund (request hash order, response hash order, algorithm)"],
+      "date": "2026-11-19",
+      "note": "The reference says the hash values are raw (not URL-encoded) and OrderInfo is ASCII; the hash was not confirmed by a signed sandbox response (querydr 99, refund HTTP 500)"
+    },
+    "pay": "sign string = params sorted ascending by name, empty values dropped, vnp_SecureHash and vnp_SecureHashType excluded, each name and value URL-encoded like java.net.URLEncoder (UTF-8: space to '+', '*' '-' '.' '_' left raw, '~' to %7E, other bytes %XX upper-case hex), joined as name=value with '&'. Measured on the VNPAY sandbox on 2026-11-19 for the pay request URL and for the browser return URL (dot-3/vnpay/pay-params.json, return-params.json). Applying the same rule to the IPN (VNPAY to merchant) comes from the VNPAY docs and has NOT been tested on the sandbox (VP-2)",
+    "querydr_refund": "sign string = the values joined by '|' in the field order of VNPAY docs 2.1.0 (TM 8.4); missing optional values are empty strings. NOT measured on the sandbox: the merchant API gave querydr 99 (HTTP 200) and refund HTTP 500 (HTML page) to every well-formed call, both with loopback vnp_IpAddr (r1) and with the machine's real public IP (r2), so the hash function was not confirmed; HMAC-SHA512 assumed like pay (dot-3/vnpay/querydr.json, refund.json)"
+  },
+  "pay": [
+    {
+      "name": "pay-basic-success",
+      "note": "request: URL params of a pay request; return: constructed from the observed browser return shape (the real return params are in dot-3/vnpay/return-params.json), signed with the test key; the rule itself was measured on the sandbox 2026-11-19 for the request and the browser return. This is not an IPN fixture: IPN signing by the same rule is from the docs, untested on the sandbox (VP-2)",
+      "request": {
+        "params": {
+          "vnp_Version": "2.1.0",
+          "vnp_Command": "pay",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_Amount": "1000000",
+          "vnp_CurrCode": "VND",
+          "vnp_TxnRef": "20261119100000001",
+          "vnp_OrderInfo": "Thanh toan don DH000123",
+          "vnp_OrderType": "other",
+          "vnp_Locale": "vn",
+          "vnp_ReturnUrl": "https://thi360.example/checkout/result",
+          "vnp_IpAddr": "203.0.113.7",
+          "vnp_CreateDate": "20261119100000",
+          "vnp_ExpireDate": "20261119101500"
+        },
+        "sign_data": "vnp_Amount=1000000&vnp_Command=pay&vnp_CreateDate=20261119100000&vnp_CurrCode=VND&vnp_ExpireDate=20261119101500&vnp_IpAddr=203.0.113.7&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+DH000123&vnp_OrderType=other&vnp_ReturnUrl=https%3A%2F%2Fthi360.example%2Fcheckout%2Fresult&vnp_TmnCode=TEST-TMN&vnp_TxnRef=20261119100000001&vnp_Version=2.1.0",
+        "secure_hash": "dbbe81ad61e29c9a9055a2b2e10d9b2b49ffd6df53553e4eb55f55b3272e8c40aede739de5574848a6072e53502cf3e1108f9659bf5e519c5002f8398d7f1e50"
+      },
+      "return": {
+        "params": {
+          "vnp_Amount": "1000000",
+          "vnp_BankCode": "NCB",
+          "vnp_BankTranNo": "VNP90000001",
+          "vnp_CardType": "ATM",
+          "vnp_OrderInfo": "Thanh toan don DH000123",
+          "vnp_PayDate": "20261119100230",
+          "vnp_ResponseCode": "00",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TransactionNo": "90000001",
+          "vnp_TransactionStatus": "00",
+          "vnp_TxnRef": "20261119100000001"
+        },
+        "sign_data": "vnp_Amount=1000000&vnp_BankCode=NCB&vnp_BankTranNo=VNP90000001&vnp_CardType=ATM&vnp_OrderInfo=Thanh+toan+don+DH000123&vnp_PayDate=20261119100230&vnp_ResponseCode=00&vnp_TmnCode=TEST-TMN&vnp_TransactionNo=90000001&vnp_TransactionStatus=00&vnp_TxnRef=20261119100000001",
+        "secure_hash": "2c00e0442e017dd2d627eab1ebef57ab2ac251f5d579b6b2205e1cc8d111c7eaef22f90af90a0602a85bbaab350adb21e6f17581d65c47687df85d7c39ee2c80"
+      }
+    },
+    {
+      "name": "pay-encoding-edge-chars",
+      "note": "URLEncoder edge chars in OrderInfo and ReturnUrl: '*' stays raw, '~' -> %7E, '&' '=' '+' '%' '/' ':' '?' encoded, space -> '+'. '*' and '~' are the chars where java and python quote_plus differ; the sandbox accepted the java form and rejected the python form (dot-3/vnpay/pay-params.json, labels enc-probe-*)",
+      "request": {
+        "params": {
+          "vnp_Version": "2.1.0",
+          "vnp_Command": "pay",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_Amount": "1000000",
+          "vnp_CurrCode": "VND",
+          "vnp_TxnRef": "20261119100000002",
+          "vnp_OrderInfo": "Thanh toan a*b~c&d=e f+g%h/i:j",
+          "vnp_OrderType": "other",
+          "vnp_Locale": "vn",
+          "vnp_ReturnUrl": "https://thi360.example/checkout/result?x=1&y=a b",
+          "vnp_IpAddr": "203.0.113.7",
+          "vnp_CreateDate": "20261119100000",
+          "vnp_ExpireDate": "20261119101500"
+        },
+        "sign_data": "vnp_Amount=1000000&vnp_Command=pay&vnp_CreateDate=20261119100000&vnp_CurrCode=VND&vnp_ExpireDate=20261119101500&vnp_IpAddr=203.0.113.7&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+a*b%7Ec%26d%3De+f%2Bg%25h%2Fi%3Aj&vnp_OrderType=other&vnp_ReturnUrl=https%3A%2F%2Fthi360.example%2Fcheckout%2Fresult%3Fx%3D1%26y%3Da+b&vnp_TmnCode=TEST-TMN&vnp_TxnRef=20261119100000002&vnp_Version=2.1.0",
+        "secure_hash": "a9df5d60c1d83fd368bb585b1c63cd51540f3c14724cf8bad46f0c68c5c47f820f38ae94175b674887712c64145986c269995cd6b2be88fc534262fb87b31f63"
+      }
+    },
+    {
+      "name": "pay-return-cancelled",
+      "note": "return constructed from the observed return shape (not a captured URL; signed with the test key): customer cancelled: ResponseCode 24, TransactionStatus 02, BankCode VNPAY, CardType QRCODE, TransactionNo 0, no vnp_BankTranNo key (shape observed on the sandbox 2026-11-19, dot-3/vnpay/return-params.json label cancel-1)",
+      "return": {
+        "params": {
+          "vnp_Amount": "1000000",
+          "vnp_BankCode": "VNPAY",
+          "vnp_CardType": "QRCODE",
+          "vnp_OrderInfo": "Thanh toan don DH000123",
+          "vnp_PayDate": "20261119100500",
+          "vnp_ResponseCode": "24",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TransactionNo": "0",
+          "vnp_TransactionStatus": "02",
+          "vnp_TxnRef": "20261119100000003"
+        },
+        "sign_data": "vnp_Amount=1000000&vnp_BankCode=VNPAY&vnp_CardType=QRCODE&vnp_OrderInfo=Thanh+toan+don+DH000123&vnp_PayDate=20261119100500&vnp_ResponseCode=24&vnp_TmnCode=TEST-TMN&vnp_TransactionNo=0&vnp_TransactionStatus=02&vnp_TxnRef=20261119100000003",
+        "secure_hash": "f86eccbc0402f155f7d60f08f5cf6bc705728330625a8de9eb93f3d90eb2bd8c62da78a4bf36046aecbdf1f2c638f6a86eaf5e1ad203830c01045ec8ae07dd32"
+      }
+    },
+    {
+      "name": "pay-return-with-hash-type-excluded",
+      "note": "return constructed from the observed return shape (test key): vnp_SecureHashType, when present, is not part of the sign string",
+      "return": {
+        "params": {
+          "vnp_Amount": "1000000",
+          "vnp_BankCode": "NCB",
+          "vnp_BankTranNo": "VNP90000001",
+          "vnp_CardType": "ATM",
+          "vnp_OrderInfo": "Thanh toan don DH000123",
+          "vnp_PayDate": "20261119100230",
+          "vnp_ResponseCode": "00",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TransactionNo": "90000001",
+          "vnp_TransactionStatus": "00",
+          "vnp_TxnRef": "20261119100000004",
+          "vnp_SecureHashType": "HmacSHA512"
+        },
+        "sign_data": "vnp_Amount=1000000&vnp_BankCode=NCB&vnp_BankTranNo=VNP90000001&vnp_CardType=ATM&vnp_OrderInfo=Thanh+toan+don+DH000123&vnp_PayDate=20261119100230&vnp_ResponseCode=00&vnp_TmnCode=TEST-TMN&vnp_TransactionNo=90000001&vnp_TransactionStatus=00&vnp_TxnRef=20261119100000004",
+        "secure_hash": "6f32161c8c2495b1c86646df5153828a22463a6678bcfbab1ec05db9fdfe72e3a65a72046142a4b714a882198847de8f3a163edd8230ea0d19ab56e2663eb3ec"
+      }
+    },
+    {
+      "name": "pay-request-empty-param-dropped",
+      "note": "NOT measured on the sandbox: empty-valued params are dropped from the sign string (Java sample behaviour, TM 8.4). Here vnp_BankCode is empty and absent from sign_data",
+      "request": {
+        "params": {
+          "vnp_Version": "2.1.0",
+          "vnp_Command": "pay",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_Amount": "1000000",
+          "vnp_CurrCode": "VND",
+          "vnp_TxnRef": "20261119100000006",
+          "vnp_OrderInfo": "Thanh toan don DH000123",
+          "vnp_OrderType": "other",
+          "vnp_Locale": "vn",
+          "vnp_ReturnUrl": "https://thi360.example/checkout/result",
+          "vnp_IpAddr": "203.0.113.7",
+          "vnp_CreateDate": "20261119100000",
+          "vnp_ExpireDate": "20261119101500",
+          "vnp_BankCode": ""
+        },
+        "sign_data": "vnp_Amount=1000000&vnp_Command=pay&vnp_CreateDate=20261119100000&vnp_CurrCode=VND&vnp_ExpireDate=20261119101500&vnp_IpAddr=203.0.113.7&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+DH000123&vnp_OrderType=other&vnp_ReturnUrl=https%3A%2F%2Fthi360.example%2Fcheckout%2Fresult&vnp_TmnCode=TEST-TMN&vnp_TxnRef=20261119100000006&vnp_Version=2.1.0",
+        "secure_hash": "21f8f96157a25dcd1afa462f8c66f33a8d6b4276f79077e28af972cb9c302e083a83ed28e0dedf7169c4aa683d2f7e3abe0abb297ad35c14ca4906697a52fb79"
+      }
+    }
+  ],
+  "querydr": [
+    {
+      "name": "querydr-success",
+      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox merchant API answered 99 for every request (loopback IP and real egress IP, 2026-11-19), so no real signed response exists; absent optional values are joined as empty strings (assumption). The response is constructed, not captured",
+      "request": {
+        "params": {
+          "vnp_RequestId": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+          "vnp_Version": "2.1.0",
+          "vnp_Command": "querydr",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TxnRef": "20261119100000001",
+          "vnp_TransactionDate": "20261119100000",
+          "vnp_CreateDate": "20261119103000",
+          "vnp_IpAddr": "203.0.113.7",
+          "vnp_OrderInfo": "Kiem tra ket qua GD DH000123"
+        },
+        "sign_data": "a1b2c3d4e5f60718293a4b5c6d7e8f90|2.1.0|querydr|TEST-TMN|20261119100000001|20261119100000|20261119103000|203.0.113.7|Kiem tra ket qua GD DH000123",
+        "secure_hash": "bc870ae41746a365b9b6f74ed277df64e282fc341d92a35bf44dad01bb48aa4ca2f3d13b8ace844a3a9bb2544a3dc488cf818fccc17c433c057867932c9d510b"
+      },
+      "response": {
+        "params": {
+          "vnp_ResponseId": "ffeeddccbbaa00112233445566778899",
+          "vnp_Command": "querydr",
+          "vnp_ResponseCode": "00",
+          "vnp_Message": "QueryDr Success",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TxnRef": "20261119100000001",
+          "vnp_Amount": "1000000",
+          "vnp_BankCode": "NCB",
+          "vnp_PayDate": "20261119100230",
+          "vnp_TransactionNo": "90000001",
+          "vnp_TransactionType": "01",
+          "vnp_TransactionStatus": "00",
+          "vnp_OrderInfo": "Thanh toan don DH000123",
+          "vnp_PromotionCode": "",
+          "vnp_PromotionAmount": ""
+        },
+        "sign_data": "ffeeddccbbaa00112233445566778899|querydr|00|QueryDr Success|TEST-TMN|20261119100000001|1000000|NCB|20261119100230|90000001|01|00|Thanh toan don DH000123||",
+        "secure_hash": "82b8c1445ae5fd0bc4220d4e630c9528ee16cfb80d07b321ded5f0ba45967e8ec0b375be55a5a4b7ad90011c97cbdd0b904a0c40890190355ddf65592b46ade6"
+      }
+    }
+  ],
+  "refund": [
+    {
+      "name": "refund-full",
+      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox refund answered HTTP 500 (HTML page) with loopback and with the real egress IP (dot-3/vnpay/refund.json), so no real response exists; the response is constructed, not captured",
+      "request": {
+        "params": {
+          "vnp_RequestId": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+          "vnp_Version": "2.1.0",
+          "vnp_Command": "refund",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TransactionType": "02",
+          "vnp_TxnRef": "20261119100000001",
+          "vnp_Amount": "1000000",
+          "vnp_TransactionNo": "90000001",
+          "vnp_TransactionDate": "20261119100000",
+          "vnp_CreateBy": "admin.test",
+          "vnp_CreateDate": "20261119110000",
+          "vnp_IpAddr": "203.0.113.7",
+          "vnp_OrderInfo": "Hoan tien giao dich DH000123"
+        },
+        "sign_data": "0f1e2d3c4b5a69788796a5b4c3d2e1f0|2.1.0|refund|TEST-TMN|02|20261119100000001|1000000|90000001|20261119100000|admin.test|20261119110000|203.0.113.7|Hoan tien giao dich DH000123",
+        "secure_hash": "c4c6425502c10918bd1fb9c2f67d9248c8aa4451ddc80d9bebb3a1c0240c76a5480e5051ec24dc8dba24afdc86fbbea9fd37e29e2fa7bcce330bd24ed0555e70"
+      },
+      "response": {
+        "params": {
+          "vnp_ResponseId": "11223344556677889900aabbccddeeff",
+          "vnp_Command": "refund",
+          "vnp_ResponseCode": "00",
+          "vnp_Message": "Refund Success",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TxnRef": "20261119100000001",
+          "vnp_Amount": "1000000",
+          "vnp_BankCode": "NCB",
+          "vnp_PayDate": "20261119110005",
+          "vnp_TransactionNo": "90000002",
+          "vnp_TransactionType": "02",
+          "vnp_TransactionStatus": "05",
+          "vnp_OrderInfo": "Hoan tien giao dich DH000123"
+        },
+        "sign_data": "11223344556677889900aabbccddeeff|refund|00|Refund Success|TEST-TMN|20261119100000001|1000000|NCB|20261119110005|90000002|02|05|Hoan tien giao dich DH000123",
+        "secure_hash": "48e3f39b66bbc25737f577f549082a7721b02c2e9ca7fc948b321a0ffeb03aefb8faf718cb17ff59d88fe6ba4e602db00c82fbcccfd285c52e9e70446464801e"
+      }
+    },
+    {
+      "name": "refund-partial",
+      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox refund answered HTTP 500 (HTML page) with loopback and with the real egress IP (dot-3/vnpay/refund.json), so no real response exists; the response is constructed, not captured",
+      "request": {
+        "params": {
+          "vnp_RequestId": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+          "vnp_Version": "2.1.0",
+          "vnp_Command": "refund",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TransactionType": "03",
+          "vnp_TxnRef": "20261119100000005",
+          "vnp_Amount": "400000",
+          "vnp_TransactionNo": "90000001",
+          "vnp_TransactionDate": "20261119100000",
+          "vnp_CreateBy": "admin.test",
+          "vnp_CreateDate": "20261119110000",
+          "vnp_IpAddr": "203.0.113.7",
+          "vnp_OrderInfo": "Hoan tien giao dich DH000123"
+        },
+        "sign_data": "0f1e2d3c4b5a69788796a5b4c3d2e1f0|2.1.0|refund|TEST-TMN|03|20261119100000005|400000|90000001|20261119100000|admin.test|20261119110000|203.0.113.7|Hoan tien giao dich DH000123",
+        "secure_hash": "701f25b7ba92fce10c6acd38d71a5bc3ce6d7d570ce7b5631de615348ce9fa3ab604503ae9f391bf4e8033126b542dcdb0613e02f6d1a4e88d17bdf0fd194242"
+      },
+      "response": {
+        "params": {
+          "vnp_ResponseId": "11223344556677889900aabbccddeeff",
+          "vnp_Command": "refund",
+          "vnp_ResponseCode": "00",
+          "vnp_Message": "Refund Success",
+          "vnp_TmnCode": "TEST-TMN",
+          "vnp_TxnRef": "20261119100000005",
+          "vnp_Amount": "400000",
+          "vnp_BankCode": "NCB",
+          "vnp_PayDate": "20261119110005",
+          "vnp_TransactionNo": "90000002",
+          "vnp_TransactionType": "03",
+          "vnp_TransactionStatus": "05",
+          "vnp_OrderInfo": "Hoan tien giao dich DH000123"
+        },
+        "sign_data": "11223344556677889900aabbccddeeff|refund|00|Refund Success|TEST-TMN|20261119100000005|400000|NCB|20261119110005|90000002|03|05|Hoan tien giao dich DH000123",
+        "secure_hash": "ab4755909e408a469d165097224f9ced28528a006429a674279887a5ff03c178b0d114056e80a67b843c8ca77396832450785328144845e56353bbb56fd5e0c8"
+      }
+    }
+  ]
+}
