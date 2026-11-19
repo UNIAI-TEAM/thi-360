@@ -136,8 +136,35 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
     const atExam = unclassified.filter((tr) => within(tr).queryByText("Cả bài"));
     expect(atExam).toHaveLength(2);
     expect(table.textContent).not.toMatch(/UNCLASSIFIED|GRADE_1[12]|quota-grades/);
-    // Mẫu số chỉ có một, của môn; dòng cấp bài và Chưa phân loại cấp bài không sinh mẫu số riêng.
-    expect(await screen.findAllByText(/^Mẫu số:/)).toHaveLength(1);
+    // Hai phạm vi mỗi phạm vi một dòng mẫu số: môn (SECTION) và cả bài (EXAM); dòng Chưa phân loại không sinh mẫu số.
+    expect(await screen.findAllByText(/^Mẫu số:/)).toHaveLength(2);
+  });
+
+  it("đề V-SAT cả môn (chỉ tiêu cấp bài): mẫu số 'Toán cả môn · 67 lệnh' đúng một lần, không phải 134", async () => {
+    // Hai chỉ tiêu cấp bài (khối lớp 67, độ khó 67) vẫn chỉ sinh một dòng mẫu số.
+    const examRows: PreviewCompliance[] = [
+      row("EXAM:vsat-toan-grade:G10", 0, 0, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-grade:G11", 17, 16, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-grade:G12", 50, 47, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-difficulty:NB", 13, 13, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-difficulty:TH", 35, 33, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-difficulty:VD", 19, 17, { scope: "EXAM" }),
+      row("GRADE:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
+    ];
+    renderTable(examRows);
+
+    expect(await screen.findAllByText("Mẫu số: Toán cả môn · 67 lệnh")).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/134 lệnh/);
+  });
+
+  it("en: đề V-SAT cả môn hiện 'Mathematics, whole subject · 67 commands' một lần", async () => {
+    const examRows: PreviewCompliance[] = [
+      row("EXAM:vsat-toan-grade:G10,G11,G12", 67, 63, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-difficulty:NB,TH,VD", 67, 63, { scope: "EXAM" }),
+    ];
+    renderTable(examRows, "SUBJECT", "en");
+
+    expect(await screen.findAllByText("Denominator: Mathematics, whole subject · 67 commands")).toHaveLength(1);
   });
 
   it("bài theo lệnh không đặt phạm vi môn hoặc phần (cả bài): không có dòng mẫu số", async () => {
@@ -157,16 +184,55 @@ describe("mẫu số theo lệnh", () => {
     expect(commandDenominators([row("GRADE:GRADE_12", 5, 5, { basis: "QUESTION" }), row("GRADE:GRADE_11", 5, 5, { enforcement: "REQUIRED" })])).toEqual([]);
   });
 
-  it("scope cả bài (EXAM): chỉ tiêu EXAM:<id>:<mã> và dòng Chưa phân loại không góp vào mẫu số", () => {
-    // Scope EXAM chỉ có chỉ tiêu tổng hợp và dòng UNCLASSIFIED, không có dòng GRADE/DIFFICULTY:<mã>.
+  it("scope cả bài (EXAM): chỉ tiêu cấp bài đầu tiên làm mẫu số, chỉ tiêu thứ hai và dòng Chưa phân loại không góp vào", () => {
+    // Scope EXAM gửi chỉ tiêu tổng hợp `EXAM:<id>:<mã>` (khối lớp rồi độ khó, cùng tổng) và dòng UNCLASSIFIED.
     const examRows: PreviewCompliance[] = [
       row("EXAM:quota-grades:GRADE_11,GRADE_12", 67, 63, { scope: "EXAM" }),
       row("GRADE:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
       row("DIFFICULTY:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
     ];
 
-    expect(commandDenominators(examRows)).toEqual([]);
-    expect(commandDenominators([...COMMAND_ROWS, ...examRows])).toEqual([{ scope: "SECTION:sec-math", total: 67 }]);
+    expect(commandDenominators(examRows)).toEqual([{ scope: "EXAM", total: 67 }]);
+    expect(commandDenominators([...COMMAND_ROWS, ...examRows])).toEqual([
+      { scope: "SECTION:sec-math", total: 67 },
+      { scope: "EXAM", total: 67 },
+    ]);
+  });
+
+  it("scope EXAM của đề V-SAT: chỉ tiêu khối lớp + độ khó cho một mẫu số 67 (không 134, không hai dòng)", () => {
+    // Hình dạng dây thật của VSAT_SUBJECT_TOAN: chỉ tiêu khối lớp trước, độ khó sau, cùng tổng 67.
+    const examRows: PreviewCompliance[] = [
+      row("EXAM:vsat-toan-grade:G10", 0, 0, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-grade:G11", 17, 16, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-grade:G12", 50, 47, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-difficulty:NB", 13, 13, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-difficulty:TH", 35, 33, { scope: "EXAM" }),
+      row("EXAM:vsat-toan-difficulty:VD", 19, 17, { scope: "EXAM" }),
+      row("TOPIC:quota-1", 3, 3, { scope: "EXAM" }),
+      row("GRADE:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
+    ];
+
+    expect(commandDenominators(examRows)).toEqual([{ scope: "EXAM", total: 67 }]);
+  });
+
+  it("scope EXAM chỉ có chỉ tiêu độ khó (môn không lớp): mẫu số là tổng chỉ tiêu đó", () => {
+    const examRows: PreviewCompliance[] = [
+      row("EXAM:eng-difficulty:NB", 20, 20, { scope: "EXAM" }),
+      row("EXAM:eng-difficulty:TH", 42, 42, { scope: "EXAM" }),
+      row("EXAM:eng-difficulty:VD", 5, 5, { scope: "EXAM" }),
+    ];
+
+    expect(commandDenominators(examRows)).toEqual([{ scope: "EXAM", total: 67 }]);
+  });
+
+  it("scope EXAM: ô nhiều mã `EXAM:<id>:G10,G11` cộng một lần, không nhân theo số mã", () => {
+    const examRows: PreviewCompliance[] = [
+      row("EXAM:quota-grades:G10,G11", 17, 16, { scope: "EXAM" }),
+      row("EXAM:quota-grades:G12", 50, 47, { scope: "EXAM" }),
+      row("EXAM:quota-difficulty:NB,TH,VD", 67, 63, { scope: "EXAM" }),
+    ];
+
+    expect(commandDenominators(examRows)).toEqual([{ scope: "EXAM", total: 67 }]);
   });
 
   it("mã Chưa phân loại: chỉ mã UNCLASSIFIED của khối lớp hoặc độ khó", () => {

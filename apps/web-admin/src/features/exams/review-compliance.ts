@@ -58,21 +58,29 @@ export function isUnclassifiedRow(row: PreviewCompliance): boolean {
 export interface CommandDenominator {
   /** Phạm vi của các dòng (`SECTION:<id>`, `EXAM`): cùng chuỗi với `PreviewCompliance.scope`. */
   scope: string;
-  /** Tổng số lệnh của mẫu: cộng yêu cầu của các dòng khối lớp, không có thì của các dòng độ khó (Địa lí, Tiếng Anh không có lớp). */
+  /** Tổng số lệnh của mẫu: cộng yêu cầu của các dòng khối lớp, không có thì của các dòng độ khó (Địa lí, Tiếng Anh không có lớp). Phạm vi `EXAM` lấy tổng của chỉ tiêu cấp bài đầu tiên theo thứ tự máy chủ. */
   total: number;
 }
 
 /**
  * Mẫu số của bảng đối chiếu theo lệnh (VS §5.1, D21): mỗi phạm vi có dòng `PROMPT` ở mức tham khảo cho một mẫu số, ví dụ
- * Toán cả môn 67 lệnh. Dòng "Chưa phân loại" không có yêu cầu nên không góp vào mẫu số.
+ * Toán cả môn 67 lệnh. Dòng "Chưa phân loại" và dòng chủ đề không có yêu cầu theo lệnh nên không góp vào mẫu số. Phạm
+ * vi `EXAM`: chỉ tiêu cấp bài `EXAM:<id>:<mã>` nhóm theo id, đề thường mang chỉ tiêu khối lớp lẫn độ khó (cùng tổng) nên
+ * lấy chỉ tiêu đầu tiên theo thứ tự máy chủ gửi (mẫu đặt khối lớp trước), không bao giờ cộng hai chỉ tiêu hay in hai dòng.
  */
 export function commandDenominators(rows: readonly PreviewCompliance[]): CommandDenominator[] {
-  const byScope = new Map<string, { grade: number; difficulty: number; hasGrade: boolean }>();
+  const byScope = new Map<string, { grade: number; difficulty: number; hasGrade: boolean; examQuotas: Map<string, number> }>();
   for (const row of rows) {
     if (row.basis !== "PROMPT" || row.enforcement !== "REFERENCE" || isUnclassifiedRow(row)) continue;
     const ref = parseCriterion(row.criterion);
+    if (ref.kind === "EXAM" && parseScope(row.scope).kind === "EXAM") {
+      const entry = byScope.get(row.scope) ?? { grade: 0, difficulty: 0, hasGrade: false, examQuotas: new Map<string, number>() };
+      entry.examQuotas.set(ref.quotaId, (entry.examQuotas.get(ref.quotaId) ?? 0) + (row.required ?? 0));
+      byScope.set(row.scope, entry);
+      continue;
+    }
     if (ref.kind !== "GRADE" && ref.kind !== "DIFFICULTY") continue;
-    const entry = byScope.get(row.scope) ?? { grade: 0, difficulty: 0, hasGrade: false };
+    const entry = byScope.get(row.scope) ?? { grade: 0, difficulty: 0, hasGrade: false, examQuotas: new Map<string, number>() };
     if (ref.kind === "GRADE") {
       entry.grade += row.required ?? 0;
       entry.hasGrade = true;
@@ -81,7 +89,10 @@ export function commandDenominators(rows: readonly PreviewCompliance[]): Command
     }
     byScope.set(row.scope, entry);
   }
-  return [...byScope].map(([scope, entry]) => ({ scope, total: entry.hasGrade ? entry.grade : entry.difficulty }));
+  return [...byScope].map(([scope, entry]) => {
+    const firstQuota = entry.examQuotas.values().next();
+    return { scope, total: firstQuota.done ? (entry.hasGrade ? entry.grade : entry.difficulty) : firstQuota.value };
+  });
 }
 
 /**
