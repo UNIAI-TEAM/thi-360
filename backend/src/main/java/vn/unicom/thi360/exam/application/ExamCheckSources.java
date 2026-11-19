@@ -44,6 +44,7 @@ final class ExamCheckSources {
     private final int maxCandidates;
     private final Map<GroupQuota, Pool> pools = new LinkedHashMap<>();
     private Map<VersionKey, Candidate> loaded;
+    private boolean cutShort;
 
     ExamCheckSources(SolverInputBuilder.SolverCandidates candidates,
                      Clock clock, Instant deadline, int maxCandidates) {
@@ -53,12 +54,26 @@ final class ExamCheckSources {
         this.maxCandidates = maxCandidates;
     }
 
+    /**
+     * True once any read of this renderer was cut short: a pool read after the deadline, beyond the candidate limit
+     * or finished after the deadline, or a scoring comparison finished after it. Such a result is incomplete whatever
+     * the verdicts of the paths it shows.
+     */
+    boolean cutShort() {
+        return cutShort;
+    }
+
     Pool pool(GroupQuota group) {
         return pools.computeIfAbsent(group, key -> {
             loaded = null;
-            if (!clock.instant().isBefore(deadline)) return new Pool(List.of(), false);
+            if (!clock.instant().isBefore(deadline)) {
+                cutShort = true;
+                return new Pool(List.of(), false);
+            }
             List<PathCandidate> found = candidates.candidatesFor(key);
-            return new Pool(found, found.size() <= maxCandidates && clock.instant().isBefore(deadline));
+            boolean complete = found.size() <= maxCandidates && clock.instant().isBefore(deadline);
+            if (!complete) cutShort = true;
+            return new Pool(found, complete);
         });
     }
 
@@ -137,7 +152,9 @@ final class ExamCheckSources {
                 }
             }
         }
-        return new Mismatches(List.copyOf(codes), clock.instant().isBefore(deadline));
+        boolean inTime = clock.instant().isBefore(deadline);
+        if (!inTime) cutShort = true;
+        return new Mismatches(List.copyOf(codes), inTime);
     }
 
     static boolean mismatch(BlockExpectedScoring expected, Unit unit) {

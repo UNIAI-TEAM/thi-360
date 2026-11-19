@@ -11,13 +11,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.exam.application.ExamCheckCompletion;
@@ -30,11 +37,13 @@ import vn.unicom.thi360.exam.domain.solver.SolveReason;
 import vn.unicom.thi360.exam.domain.solver.SolveStats;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
 /**
  * CR-4 AC-7 (FTM AC 58): a saved whole-exam result that was not evaluated under the R-12 rules cannot publish a
  * standard HSA or QDA exam with a science subject. Only a whole-exam check, valid or not, lifts the reason.
  */
+@Import(ExamPublishRulesChangedIT.JumpingClockConfig.class)
 class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
     private static final String HSA_SCIENCE = """
             [{"id":"p3","participation":{"mode":"CHOICE","choose":1},"options":[
@@ -48,6 +57,30 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
 
     @Autowired private ExamCheckCompletion completion;
     @MockitoSpyBean private ExamCheckUnitEngine units;
+    @MockitoSpyBean private QuestionSourcePort questionSource;
+    @Autowired private JumpingClock clock;
+
+    private static final UUID SU = UUID.fromString("00000000-0000-7000-8200-000000000207");
+
+    /** The system clock plus an offset the test moves once to cross a check deadline at a chosen moment. */
+    static final class JumpingClock extends Clock {
+        private volatile java.time.Duration offset = java.time.Duration.ZERO;
+
+        void jump(java.time.Duration by) { offset = by; }
+        void reset() { offset = java.time.Duration.ZERO; }
+        boolean jumped() { return !offset.isZero(); }
+
+        @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(ZoneId zone) { return this; }
+        @Override public Instant instant() { return Instant.now().plus(offset); }
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class JumpingClockConfig {
+        @Bean
+        @Primary
+        JumpingClock jumpingClock() { return new JumpingClock(); }
+    }
 
     // ---- the chain on a real exam: check, publish, GET, one-subject check, whole check --------------------
 
@@ -298,6 +331,58 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         assertThat(latestReason(exam)).isNull();
         // QDA codes are chosen after the attempt starts (E24): the publish names every valid path of the check.
         publish(exam, "codes:QD02", "codes:QD05").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+    }
+
+    /**
+     * R3-1: every unit proof is terminal (all reused), then the deadline passes while the result is rendered: the pool
+     * of the first Sử/Địa path is read after the time budget. The earlier Hóa+Sinh path was rendered in time and keeps
+     * its VALID witness, the Sử+Địa path is UNCONFIRMED. The result cannot vouch for the rules: no stamp, GET and
+     * publish keep RULES_CHANGED, no version is written. The control without the late read stamps although its
+     * overall verdict is INVALID.
+     */
+    @Test
+    void aDeadlineAfterTerminalProofsDuringRenderingKeepsTheOldResultUnstamped() throws Exception {
+        UUID exam = qdaExamWithPhysicsThreeSets();
+        String base = "/api/v1/admin/exams/" + exam;
+        JsonNode old = check(base, "{}");
+        assertThat(old.path("status").asText()).as("old check: %s", old.path("groups")).isEqualTo("VALID");
+        removeStamp(exam);
+        jdbc.update("UPDATE exam.exam SET build_mode = 'STANDARD' WHERE id = ?", exam);
+        entityManager.clear();
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD02");
+
+        // The units of the first check stay: the next run reuses every proof and solves nothing, so each pool is read
+        // for the first time while the result is rendered, path after path.
+        org.mockito.Mockito.clearInvocations(units);
+        doAnswer(call -> {
+            List<?> found = (List<?>) call.callRealMethod();
+            QuestionSourcePort.Filter filter = call.getArgument(0);
+            boolean rendering = java.util.Arrays.stream(Thread.currentThread().getStackTrace())
+                    .anyMatch(frame -> frame.getClassName().endsWith("ExamCheckSources"));
+            if (rendering && SU.equals(filter.subjectId())) clock.jump(java.time.Duration.ofSeconds(125));
+            return found;
+        }).when(questionSource).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
+        JsonNode late = check(base, "{}");
+        org.mockito.Mockito.verify(units, org.mockito.Mockito.never()).solveUnit(any(), any(), any());
+        assertThat(clock.jumped()).as("the deadline passed while rendering").isTrue();
+        java.util.Map<String, String> outcome = new java.util.TreeMap<>();
+        for (JsonNode path : late.path("paths")) outcome.put(path.path("pathId").asText(), path.path("result").asText());
+        assertThat(outcome).as("QD02 was rendered in time, QD04 was not").containsEntry("codes:QD02", "VALID")
+                .containsEntry("codes:QD04", "UNCONFIRMED");
+        assertThat(stamp(exam)).as("a run cut short while rendering never stamps").isNull();
+        assertThat(latestReason(exam)).isEqualTo("RULES_CHANGED");
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD02");
+        assertThat(versions(exam)).isZero();
+
+        // Control: the same run in time is complete; its overall INVALID verdict (Lý with three sets) stamps.
+        clock.reset();
+        org.mockito.Mockito.reset(questionSource);
+        JsonNode complete = check(base, "{}");
+        assertThat(complete.path("status").asText()).isEqualTo("INVALID");
+        assertThat(stamp(exam)).isEqualTo("FTM_R12");
+        assertThat(latestReason(exam)).isNull();
+        // QDA codes are chosen after the attempt starts (E24): the publish names every valid path of the check.
+        publish(exam, "codes:QD02", "codes:QD04", "codes:QD05").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
     }
 
     // ---- not affected -------------------------------------------------------------------------------------

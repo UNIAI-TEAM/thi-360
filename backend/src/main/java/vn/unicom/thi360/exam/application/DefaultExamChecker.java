@@ -235,6 +235,7 @@ public class DefaultExamChecker implements ExamChecker {
                     witnessIssues.put(path, found);
                 });
         Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> filterCounts = new LinkedHashMap<>();
+        boolean topicCutShort = false;
         for (var path : outcome.results()) {
             if (path.status() != SolveStatus.INVALID) continue;
             var evidence = filterEvidence(path, snapshot.structure(), input.candidates(), combinations, filterCounts);
@@ -243,14 +244,18 @@ public class DefaultExamChecker implements ExamChecker {
             if (!specific.isEmpty()) {
                 witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(specific);
             }
-            var topicIssues = ExamCheckUnitTopicEvidence.issues(path, snapshot.structure(), input.candidates(),
+            var topic = ExamCheckUnitTopicEvidence.issues(path, snapshot.structure(), input.candidates(),
                     rules, clock, deadline, limits.maxCandidatesPerBlock());
-            if (!topicIssues.isEmpty()) {
-                witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(topicIssues);
+            topicCutShort |= topic.cutShort();
+            if (!topic.issues().isEmpty()) {
+                witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(topic.issues());
             }
         }
-        var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues)
-                .withRulesEvaluated(computed.complete());
+        // The result vouches for the rules only when every unit proof is terminal AND its assembly was not cut short
+        // by the deadline or a limit (pool and scoring reads of the renderer, topic evidence reads above).
+        var assembled = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues)
+                .withProofsTerminal(computed.complete());
+        var evaluation = topicCutShort ? assembled.withAssemblyCutShort() : assembled;
         if (scope.kind() == ExamCheckScope.Kind.EXAM && evaluation.rulesEvaluated()) {
             // Pool entries whose subject is on no evaluated path belong to the saved structure, but not to any serving
             // path (a subject kept only by combinations that lack another pool subject is on none).
