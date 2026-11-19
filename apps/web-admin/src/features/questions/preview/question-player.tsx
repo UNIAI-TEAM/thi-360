@@ -4,7 +4,7 @@ import { Checkbox, cn, Input, Select, Textarea } from "@thi360/ui";
 import { CircleCheck, CircleMinus, CircleX, Paperclip } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
-import { questionHtmlText, RichTextView } from "@/components/rich-text";
+import { questionHtmlText, RichTextView } from "@thi360/ui/rich-text";
 import { ClozePassage } from "../components/cloze-passage";
 import { optionLetter, statementLetter } from "../components/question-editor-shared";
 import { blankNumberStartOf, type QuestionDetail } from "../types";

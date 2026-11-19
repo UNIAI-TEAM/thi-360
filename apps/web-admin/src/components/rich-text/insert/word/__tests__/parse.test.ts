@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeQuestionHtml } from "../../../sanitize";
+import { sanitizeQuestionHtml } from "@thi360/ui/rich-text";
 import { materializeBlocks, normalizeEditorHtml, topLevelBlocks, type FormulaResolver } from "../materialize";
 import { isWordHtml } from "../detect";
 import { parseWordHtml } from "../parse";

@@ -3,10 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { RichTextEditor } from "../rich-text-editor";
-import type * as Sanitize from "../sanitize";
+import type * as Sanitize from "@thi360/ui/rich-text";
 
 const calls = vi.hoisted(() => ({ sanitize: 0, math: 0 }));
-vi.mock("../sanitize", async (importOriginal) => {
+vi.mock("@thi360/ui/rich-text", async (importOriginal) => {
   const actual = await importOriginal<typeof Sanitize>();
   return {
     ...actual,
