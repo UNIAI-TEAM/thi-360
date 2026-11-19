@@ -38,3 +38,16 @@ export function childReview(review: QuestionReview | null | undefined, id: strin
 export function answersVisible(review: QuestionReview | null | undefined): boolean {
   return review?.showAnswers !== false;
 }
+
+/**
+ * Lời giải soạn sẵn (`solutionHtml`) của câu ở chế độ xem lại: chỉ khi có và được phép xem đáp án
+ * (`result_view = FULL_SOLUTION`, LT 10.2). Không có thì không dựng gì. Dùng chung cho cả 8 dạng.
+ */
+export function reviewSolution(
+  mode: "answer" | "review",
+  review: QuestionReview | null | undefined,
+): string | undefined {
+  if (mode !== "review" || !answersVisible(review)) return undefined;
+  const html = review?.solutionHtml;
+  return html ? html : undefined;
+}

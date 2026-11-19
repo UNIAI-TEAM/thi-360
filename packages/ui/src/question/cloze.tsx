@@ -10,7 +10,7 @@ import { formatScore } from "./helpers";
 import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
 import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
 import type { KitQuestionProps } from "./shared";
-import { answersVisible, resolveReview } from "./shared";
+import { answersVisible, resolveReview, reviewSolution } from "./shared";
 import { coarseFieldHeight, touchFieldText } from "./touch";
 import type { ClozeAnswer, KitQuestion, KitQuestionOf, PartResult, QuestionReview } from "./types";
 
@@ -138,6 +138,7 @@ export function ClozeQuestion({
           <ReviewPoints earned={resolved?.earned} max={resolved?.max ?? question.points ?? 1} />
         ) : undefined
       }
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
       className={className}
     >
       {mode === "answer" && (

@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
 import { formatScore } from "./helpers";
 import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
-import { answersVisible, resolveReview } from "./shared";
+import { answersVisible, resolveReview, reviewSolution } from "./shared";
 import { touchFieldText } from "./touch";
 import type { AnswerFormat, KitQuestion, KitQuestionOf, ShortAnswerAnswer } from "./types";
 
@@ -49,6 +49,7 @@ export function ShortAnswerQuestion({
           <ReviewPoints earned={resolved?.earned} max={resolved?.max ?? question.points ?? 1} />
         ) : undefined
       }
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
       className={className}
     >
       <div className="flex max-w-[26rem] flex-col gap-2">

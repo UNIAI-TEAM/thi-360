@@ -4,7 +4,7 @@ import { useUiStrings } from "../components/ui-strings";
 import { ChoiceList } from "./choice-question";
 import { QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
-import { resolveReview } from "./shared";
+import { resolveReview, reviewSolution } from "./shared";
 import type {
   KitQuestion,
   KitQuestionOf,
@@ -41,6 +41,7 @@ export function SingleChoiceQuestion({
           <ReviewPoints earned={resolved?.earned} max={resolved?.max ?? question.points ?? 1} />
         ) : undefined
       }
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
       className={className}
     >
       <ChoiceList
@@ -86,6 +87,7 @@ export function MultipleChoiceQuestion({
           <ReviewPoints earned={resolved?.earned} max={resolved?.max ?? question.points ?? 1} />
         ) : undefined
       }
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
       className={className}
     >
       <ChoiceList

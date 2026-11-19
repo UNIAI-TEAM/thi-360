@@ -4,8 +4,9 @@ import { Fragment } from "react";
 import { useUiStrings } from "../components/ui-strings";
 import { cn } from "../lib/cn";
 import { RichTextView } from "../rich-text";
+import { SolutionBlock } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
-import { childReview } from "./shared";
+import { childReview, reviewSolution } from "./shared";
 import type { AnswerValue, KitQuestion, KitQuestionOf, QuestionReview, QuestionSetAnswer } from "./types";
 
 type QuestionSetBody = Extract<KitQuestion["body"], { type: "QUESTION_SET" }>;
@@ -51,6 +52,7 @@ export function QuestionSet({
   const from = nos.length === 0 ? question.displayNo : Math.min(...nos);
   const to = nos.length === 0 ? question.displayNo : Math.max(...nos);
   const HeadingTag = `h${headingLevel ?? 2}` as "h1" | "h2" | "h3";
+  const solution = reviewSolution(mode, review);
   return (
     <div className={cn("flex min-w-0 flex-col gap-4", className)}>
       <p className="text-label font-semibold tracking-wide text-text-secondary uppercase">
@@ -95,6 +97,7 @@ export function QuestionSet({
           ))}
         </div>
       </div>
+      {solution && <SolutionBlock html={solution} />}
     </div>
   );
 }

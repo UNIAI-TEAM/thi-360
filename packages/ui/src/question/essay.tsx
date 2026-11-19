@@ -11,7 +11,7 @@ import { formatScore, htmlToPlainText, plainTextToHtml } from "./helpers";
 import { QuestionFrame, ReviewPoints } from "./question-frame";
 import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
 import type { KitQuestionProps } from "./shared";
-import { answersVisible, resolveReview } from "./shared";
+import { resolveReview, reviewSolution } from "./shared";
 import { coarseTarget, touchFieldText } from "./touch";
 import type { EssayAnswer, EssayGrading, KitQuestion, KitQuestionOf, QuestionReview } from "./types";
 
@@ -74,6 +74,7 @@ export function EssayQuestion({
         ) : undefined
       }
       manualTag={mode === "review"}
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
       className={className}
     >
       {mode === "answer" && (
@@ -202,14 +203,6 @@ function EssayReview({
           <p className="text-title text-text" data-exam-content>
             {grading.comment}
           </p>
-        </div>
-      )}
-      {answersVisible(review) && review?.solutionHtml && (
-        <div className="rounded-lg border border-success/50 bg-success-bg px-4 py-3">
-          <p className="mb-1 text-caption font-semibold text-primary-text">{strings.solutionLabel}</p>
-          <div data-exam-content className="text-title text-text">
-            <RichTextView html={review.solutionHtml} />
-          </div>
         </div>
       )}
     </div>

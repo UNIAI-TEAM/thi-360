@@ -11,7 +11,7 @@ import { MatchOptionContent, MatchSelect } from "./match-select";
 import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
 import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
 import type { KitQuestionProps } from "./shared";
-import { answersVisible, resolveReview } from "./shared";
+import { answersVisible, resolveReview, reviewSolution } from "./shared";
 import { coarseTarget } from "./touch";
 import type {
   KitQuestion,
@@ -72,6 +72,7 @@ export function MatchingQuestion({
           <ReviewPoints earned={resolved?.earned} max={resolved?.max ?? question.points ?? 1} />
         ) : undefined
       }
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
       className={className}
     >
       {mode === "answer" && (

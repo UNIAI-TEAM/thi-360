@@ -24,6 +24,7 @@ export function QuestionFrame({
   reviewOutcome,
   reviewPoints,
   manualTag = false,
+  reviewSolutionHtml,
   className,
 }: {
   question: KitQuestion;
@@ -38,6 +39,8 @@ export function QuestionFrame({
   reviewPoints?: ReactNode;
   /** Chip "Chấm tay" cho câu Tự luận. */
   manualTag?: boolean;
+  /** Chế độ review: lời giải soạn sẵn (HTML); thiếu thì không hiện khối lời giải. Xem `reviewSolution`. */
+  reviewSolutionHtml?: string;
   className?: string;
 }) {
   const strings = useUiStrings().question;
@@ -82,7 +85,21 @@ export function QuestionFrame({
         </div>
       )}
       {children}
+      {reviewSolutionHtml && <SolutionBlock html={reviewSolutionHtml} />}
     </section>
+  );
+}
+
+/** Khối "Lời giải" soạn sẵn của câu (LT 10.2 `FULL_SOLUTION`): nhãn là chữ giao diện, chỉ phần lời giải là nội dung đề. */
+export function SolutionBlock({ html }: { html: string }) {
+  const strings = useUiStrings().question;
+  return (
+    <div className="rounded-lg border border-success/50 bg-success-bg px-4 py-3">
+      <p className="mb-1 text-caption font-semibold text-primary-text">{strings.solutionLabel}</p>
+      <div data-exam-content className="text-title text-text">
+        <RichTextView html={html} />
+      </div>
+    </div>
   );
 }
 
