@@ -103,7 +103,7 @@ class StudentLearningProviderTests {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of()));
+                List.of(Map.of("ticket", "S-0"), Map.of("ticket", "S-00"))));
         StudentLearningProvider attemptProvider = mock(StudentLearningProvider.class);
         when(attemptProvider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
                 true,
@@ -118,11 +118,14 @@ class StudentLearningProviderTests {
         StudentLearningResponse response = service.getUserLearning(userId);
 
         assertThat(response.dataAvailable()).isTrue();
-        assertThat(response.entitlements()).hasSize(2);
-        assertThat(response.attempts()).hasSize(1);
+        assertThat(response.attempts()).containsExactly(Map.of("attemptId", "A-1"));
         assertThat(response.assessments()).isEmpty();
         assertThat(response.practice()).isEmpty();
-        assertThat(response.supportRequests()).hasSize(1);
+        // Both providers fill supportRequests: every entry survives, in provider order.
+        assertThat(response.supportRequests()).containsExactly(
+                Map.of("ticket", "S-0"), Map.of("ticket", "S-00"), Map.of("ticket", "S-1"));
+        assertThat(response.entitlements()).containsExactly(
+                Map.of("entitlementId", "E-1"), Map.of("entitlementId", "E-2"));
     }
 
     @Test

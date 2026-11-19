@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.StudentLearningProvider;
@@ -32,6 +33,7 @@ class UserLearningMultiProviderIT extends AbstractIntegrationTest {
 
         // plan B1: commerce implements the entitlements part.
         @Bean
+        @Order(1)
         StudentLearningProvider commerceLearningProvider() {
             return userId -> new StudentLearningProvider.StudentLearningData(
                     true,
@@ -39,11 +41,12 @@ class UserLearningMultiProviderIT extends AbstractIntegrationTest {
                     List.of(),
                     List.of(),
                     List.of(),
-                    List.of());
+                    List.of(Map.of("ticket", "S-commerce-" + userId)));
         }
 
         // plan B1: attempt implements the attempts part.
         @Bean
+        @Order(2)
         StudentLearningProvider attemptLearningProvider() {
             return userId -> new StudentLearningProvider.StudentLearningData(
                     false,
@@ -51,7 +54,7 @@ class UserLearningMultiProviderIT extends AbstractIntegrationTest {
                     List.of(Map.of("attemptId", "A-" + userId)),
                     List.of(),
                     List.of(),
-                    List.of());
+                    List.of(Map.of("ticket", "S-attempt-" + userId)));
         }
     }
 
@@ -93,7 +96,11 @@ class UserLearningMultiProviderIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.entitlements.length()").value(1))
                 .andExpect(jsonPath("$.entitlements[0].entitlementId").value("E-" + userId))
                 .andExpect(jsonPath("$.attempts.length()").value(1))
-                .andExpect(jsonPath("$.attempts[0].attemptId").value("A-" + userId));
+                .andExpect(jsonPath("$.attempts[0].attemptId").value("A-" + userId))
+                // Both providers fill supportRequests: the response keeps both entries, in provider order.
+                .andExpect(jsonPath("$.supportRequests.length()").value(2))
+                .andExpect(jsonPath("$.supportRequests[0].ticket").value("S-commerce-" + userId))
+                .andExpect(jsonPath("$.supportRequests[1].ticket").value("S-attempt-" + userId));
 
     }
 }
