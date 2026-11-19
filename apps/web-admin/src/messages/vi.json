@@ -5228,7 +5228,7 @@
           "REFERENCE": "Tham khảo",
           "REQUIRED": "Bắt buộc"
         },
-        "legend": "Chênh lệch bằng Thực tế trừ Yêu cầu. Chỉ tiêu chủ đề là “ít nhất”, nên thực tế nhiều hơn yêu cầu vẫn đạt. Dòng Tham khảo lệch chỉ là cảnh báo, không chặn; dòng chờ mapping chưa đối chiếu được. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
+        "legend": "Chênh lệch bằng Thực tế trừ Yêu cầu. Chỉ tiêu chủ đề và quy tắc MAPID “Ít nhất”/“Phải có” là ít nhất: thực tế nhiều hơn yêu cầu vẫn đạt; quy tắc “Đúng” và hai dòng của “Chỉ xuất hiện ở nhóm này” phải khớp đúng. Dòng Tham khảo lệch chỉ là cảnh báo, không chặn; dòng chờ mapping chưa đối chiếu được. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
         "level": "{enforcement} · {unit}",
         "pendingNoData": "Chưa có dữ liệu đối chiếu",
         "requiredNone": "—",

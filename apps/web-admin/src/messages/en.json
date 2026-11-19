@@ -5228,7 +5228,7 @@
           "REFERENCE": "Reference",
           "REQUIRED": "Required"
         },
-        "legend": "Difference is Actual minus Required. Topic quotas are “at least”, so a higher actual still passes. A deviating Reference row is only a warning and does not block; a pending-mapping row cannot be compared yet. A Required row that fails means no paper is generated.",
+        "legend": "Difference is Actual minus Required. Topic quotas and MAPID “At least”/“Must include” rules pass when the actual meets the target; “Exact” rules and the two rows of “Only in this group” must match exactly. A deviating Reference row is only a warning and does not block; a pending-mapping row cannot be compared yet. A Required row that fails means no paper is generated.",
         "level": "{enforcement} · {unit}",
         "pendingNoData": "No reference data yet",
         "requiredNone": "—",
