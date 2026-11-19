@@ -59,7 +59,7 @@ function boot(section: Record<string, unknown>, examQuotas: ExamQuota[] = []) {
     sections: [{ ...base, questionCount: 30, blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 30, requiredPointsPerQuestion: 1 }], ...section }],
   };
   return new FakeServer()
-    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 30 }) })
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ kind: "VACT", questionCount: 30 }) })
     .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [] })
     .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [part], examQuotas } })
     .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
