@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout.vi.html :: shell(~{::#mail-body})}">
+<body>
+<div id="mail-body">
+    <p style="margin:0 0 16px 0;">Xin chào <span th:text="${fullName}">Nguyễn Văn A</span>,</p>
+    <p style="margin:0 0 12px 0;">Đơn <strong th:text="${orderCode}">DH-0001</strong> đã thanh toán thành công và quyền làm bài đã được cấp cho:</p>
+    <ul style="margin:0 0 20px 0;padding:0 0 0 20px;">
+        <li th:each="item : ${items}" th:text="${item['name']}" style="margin:0 0 6px 0;">Tên bài thi</li>
+    </ul>
+    <p style="margin:0;">
+        <a th:href="${webUrl + '/home'}"
+           style="display:inline-block;background-color:#047857;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:14px;line-height:20px;padding:10px 20px;border-radius:10px;">Bài thi của tôi</a>
+    </p>
+</div>
+</body>
+</html>

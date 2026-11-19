@@ -1,0 +1,8 @@
+Your Thi 360 account email was changed
+Hello [(${fullName})],
+
+The email of your Thi 360 account was just changed to [(${newEmail})].
+
+If this was not you, please contact support right away so we can protect your account.
+
+Thi 360

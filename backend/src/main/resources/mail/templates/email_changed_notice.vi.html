@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout.vi.html :: shell(~{::#mail-body})}">
+<body>
+<div id="mail-body">
+    <p style="margin:0 0 16px 0;">Xin chào <span th:text="${fullName}">Nguyễn Văn A</span>,</p>
+    <p style="margin:0 0 16px 0;">Email của tài khoản Thi 360 vừa được đổi sang
+        <strong th:text="${newEmail}">email.moi@example.test</strong>.</p>
+    <p style="margin:0;color:#6B6B72;">Nếu không phải bạn thực hiện, hãy liên hệ bộ phận hỗ trợ ngay để được bảo vệ tài khoản.</p>
+</div>
+</body>
+</html>
