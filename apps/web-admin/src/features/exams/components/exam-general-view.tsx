@@ -24,8 +24,9 @@ import {
   type ScopeSelection,
   yearsDiffer,
 } from "../create-exam-schema";
-import { overviewRowsFromTemplate, rowsDifferFromTemplate, validateOverview } from "../create-exam-overview";
+import { type OverviewRow, overviewRowsFromTemplate, rowsDifferFromTemplate, validateOverview } from "../create-exam-overview";
 import { applyOverviewToParts, overviewRowsFromParts } from "../create-exam-overview-structure";
+import { overviewRowLabel } from "../create-exam-row-label";
 import { blockCountsLocked } from "./block-form";
 import { ExamInfoFields, useExamInfoSchema, usePartNames } from "./create-exam-fields";
 import { focusField } from "./create-exam-summary";
@@ -224,6 +225,24 @@ function ExamGeneralForm({
   // Đổi phạm vi đang chờ xác nhận thì bảng hiện số của mẫu mới (chỉ đọc) và ô đã sửa không đi theo lần lưu này.
   const overviewChanged = !showPreview && rowsDifferFromTemplate(rows);
   const guard = useUnsavedChangesGuard(formState.isDirty || overviewChanged);
+
+  /** Tên dòng của bảng đã lưu: cùng quy tắc với bước 1 (V-ACT tách tên theo năng lực), mục lấy từ cấu trúc đã lưu. */
+  const rowLabel = (row: OverviewRow): string | undefined =>
+    overviewRowLabel(
+      {
+        vact: exam.kind === "VACT",
+        partName: partNames.partName,
+        subjectOf: (code) => {
+          const name = lookup.subject(code);
+          return name === code ? undefined : name;
+        },
+        partSections: (partRow) => {
+          const part = structure?.parts[Number(partRow.key.slice(2))];
+          return part?.mode === "FIXED" ? part.sections : [];
+        },
+      },
+      row,
+    );
 
   const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
 
@@ -450,6 +469,7 @@ function ExamGeneralForm({
         onCellChange={onCellChange}
         issues={cellIssues}
         subjectName={lookup.subject}
+        rowLabel={rowLabel}
       />
     );
   })();

@@ -51,10 +51,10 @@ import {
   type OverviewRow,
   overviewTotals,
   rowsDifferFromTemplate,
-  sectionCompetency,
   updateRowCell,
   validateOverview,
 } from "../create-exam-overview";
+import { overviewRowLabel } from "../create-exam-row-label";
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
 import type { ExamTemplate } from "../types";
@@ -181,17 +181,6 @@ const parseNumber = (text: string): number => {
 const formatShared = (value: number): string => (value ? String(value) : "");
 const formatScore = (value: number | null): string => (value == null ? "" : String(value));
 
-/**
- * Tiểu mục V-ACT phân biệt bằng năng lực: hai mục cùng môn SCIENTIFIC_THINKING (H24) lấy tên theo mã năng lực
- * (R-109: không hiện mã thô). Năng lực không thuộc bảng này rơi về tên môn của mục.
- */
-const VACT_COMPETENCY_PART: Record<string, string> = { "VACT-TD-LOGIC": "LOGIC", "VACT-TD-SL": "REASONING" };
-/** Phần nhiều tiểu mục của V-ACT: mã năng lực các mục cùng tiền tố thì phần lấy tên thông điệp (Sử dụng ngôn ngữ, Tư duy khoa học). */
-const VACT_COMPETENCY_GROUP: Array<[prefix: string, part: string]> = [
-  ["VACT-NN-", "LANGUAGE"],
-  ["VACT-TD-", "THINKING"],
-];
-
 interface CreateExamFormProps {
   /** Mẫu cấu trúc; rỗng khi chưa tải được (`templatesStatus` khác `ready`). */
   templates: readonly ExamTemplate[];
@@ -305,41 +294,27 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const showPercents = showPartPercent || (vact && selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
   // H-SCA Tiếng Anh: môn tách phần theo audio (Nghe, Đọc); tên dòng phần theo điều kiện audio để đúng ngôn ngữ.
   const audioSplit = selection.subjectCode ? subjectAudioParts(templates, selection.kind, selection.subjectCode).length > 0 : false;
-  /**
-   * Tên dòng V-ACT theo ngôn ngữ đang chọn, dựng từ mã năng lực và mã môn (không lấy tên tiếng Việt lưu trong mẫu): mục
-   * cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn trong danh mục. Dòng phần một mục
-   * lấy tên của mục đó; phần nhiều mục lấy tên nhóm năng lực. Không có khóa thì để `undefined`: giữ tên của mẫu.
-   */
   const rowLabel = useCallback(
-    (row: OverviewRow): string | undefined => {
-      if (row.kind === "section") {
-        return partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode);
-      }
-      if (row.kind === "part" && audioSplit) {
-        // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
-        const audio = templatePartAudio(template?.parts[Number(row.key.slice(2))]);
-        if (audio) return tStep(audio === "REQUIRED" ? "skillListening" : "skillReading");
-      }
-      if (!vact || row.kind !== "part") return undefined;
-      const sections = template?.parts[Number(row.key.slice(2))]?.sections ?? [];
-      const subjectOf = (code: string) => {
-        const name = lookup.subject(code);
-        return name === code ? undefined : name;
-      };
-      if (sections.length === 1) {
-        const only = sections[0]!;
-        const competency = sectionCompetency(only);
-        return (competency && VACT_COMPETENCY_PART[competency] && partNames.partName(VACT_COMPETENCY_PART[competency])) || subjectOf(only.subjectCode);
-      }
-      const groups = new Set(
-        sections.map((section) => {
-          const competency = sectionCompetency(section) ?? "";
-          return VACT_COMPETENCY_GROUP.find(([prefix]) => competency.startsWith(prefix))?.[1];
-        }),
-      );
-      const [group] = groups;
-      return groups.size === 1 && group ? partNames.partName(group) : undefined;
-    },
+    (row: OverviewRow): string | undefined =>
+      overviewRowLabel(
+        {
+          vact,
+          partName: partNames.partName,
+          subjectOf: (code) => {
+            const name = lookup.subject(code);
+            return name === code ? undefined : name;
+          },
+          partSections: (partRow) => template?.parts[Number(partRow.key.slice(2))]?.sections ?? [],
+          // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
+          audioLabel: audioSplit
+            ? (partRow) => {
+                const audio = templatePartAudio(template?.parts[Number(partRow.key.slice(2))]);
+                return audio ? tStep(audio === "REQUIRED" ? "skillListening" : "skillReading") : undefined;
+              }
+            : undefined,
+        },
+        row,
+      ),
     [partNames, lookup, vact, template, audioSplit, tStep],
   );
   // H35, R-141: bài riêng của V-ACT, bài theo phần và bài ôn không có thời lượng mặc định (mẫu để trống) — lỗi đặt ở ô

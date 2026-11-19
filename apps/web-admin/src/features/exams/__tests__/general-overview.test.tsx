@@ -106,6 +106,9 @@ function setup(options: { lockCounts?: boolean; configure?: (backend: ExamsBacke
 }
 
 /** Cài bài có sẵn (không qua mẫu HSA) để thử hình dạng riêng của một kỳ thi. */
+/** Bài HSA nền để dựng bài khác từ đó. */
+const seeded0 = (): ExamDetail => new ExamsBackend().app("ex-hsa-f-001");
+
 function setupExam(exam: ExamDetail) {
   routerMock.push.mockReset();
   backend = new ExamsBackend();
@@ -282,9 +285,9 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     open();
     const table = await tableRegion();
     expect(screen.queryByText("Số câu phải là số nguyên dương.")).not.toBeInTheDocument();
-    expect(within(table).queryByRole("textbox", { name: /Phần II/ })).not.toBeInTheDocument();
-    expect(within(table).getByText(/Phần II · Viết/)).toBeInTheDocument();
-    const count = within(table).getByRole("textbox", { name: "Số câu của Phần I · Đọc hiểu" });
+    expect(within(table).queryByRole("textbox", { name: /Part II/ })).not.toBeInTheDocument();
+    expect(within(table).getByText(/Part II Writing/)).toBeInTheDocument();
+    const count = within(table).getByRole("textbox", { name: "Số câu của Part I Reading" });
     await user.clear(count);
     await user.type(count, "28");
     await user.click(screen.getByRole("button", { name: SAVE }));
@@ -295,4 +298,21 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     expect(body.parts[1]).toMatchObject({ id: "p2", questionCount: 0 });
     expect(body.parts[1]!.sections[0]).toMatchObject({ questionCount: 0 });
   }, 30_000);
+
+  it("R1-2: V-ACT có hai mục cùng môn SCIENTIFIC_THINKING: ô số câu mang hai tên khác nhau như ở bước 1", async () => {
+    const competent = (order: number, code: string, count: number): ExamSection => ({
+      ...section(order, "SCIENTIFIC_THINKING", count),
+      knowledgeScope: { nodeIds: [], competencyCodes: [code] },
+    });
+    const thinking: ExamPart = {
+      ...hsaPart(1, "Tư duy khoa học", 30, 0, "SCIENTIFIC_THINKING"),
+      sections: [competent(1, "VACT-TD-LOGIC", 12), competent(2, "VACT-TD-SL", 18)],
+    };
+    setupExam({ ...seeded0(), kind: "VACT", timing: "SHARED", templateCode: null, parts: [thinking] });
+    open();
+    const table = await tableRegion();
+    expect(within(table).getByRole("textbox", { name: "Số câu của Logic và phân tích số liệu" })).toHaveValue("12");
+    expect(within(table).getByRole("textbox", { name: "Số câu của Suy luận khoa học" })).toHaveValue("18");
+  }, 30_000);
 });
+

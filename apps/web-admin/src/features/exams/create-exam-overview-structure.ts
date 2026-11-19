@@ -1,4 +1,4 @@
-import { type OverviewRow, omittedRow, overviewDiff } from "./create-exam-overview";
+import { type OverviewRow, omittedRow, overviewDiff, sectionCompetency } from "./create-exam-overview";
 import { isAllOmittedStructurePart } from "./matrix";
 import type { ExamPart, ExamSection } from "./types";
 
@@ -53,6 +53,7 @@ export function overviewRowsFromParts(
         kind: "section",
         label: section.subjectCode,
         subjectCode: section.subjectCode,
+        competencyCode: sectionCompetency(section),
         partId: part.id,
         sectionId: section.id,
         questionCount: text(section.questionCount),
