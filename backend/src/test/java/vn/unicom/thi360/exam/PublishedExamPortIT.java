@@ -61,6 +61,83 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
                        {"pathId":"o1","questionCount":28,"maxPoints":null,"durationMinutes":null}]}]}
             """;
 
+    private static final String BLOCK_PARTS = """
+            {"parts":[{"id":"p1","order":1,"name":"Phan 1","durationMinutes":60,"questionCount":30,"questionCountOnPaper":30,
+              "questionCountRequired":30,"participation":{"mode":"ALL"},"maxPoints":600,
+              "sections":[{"id":"s1","subjectCode":"TOAN","questionCount":30,
+                "blocks":[{"id":"b1","questionType":"SINGLE_CHOICE","questionCount":30}]}],
+              "paths":[{"pathId":"default","questionCount":30,"maxPoints":600,"durationMinutes":60}]},
+             {"id":"p2","order":2,"name":"Phan 2","durationMinutes":30,"questionCount":20,"questionCountOnPaper":20,
+              "questionCountRequired":20,"participation":{"mode":"ALL"},"maxPoints":400,
+              "sections":[{"id":"s2","subjectCode":"VAN","questionCount":20,
+                "blocks":[{"id":"b2","questionType":"SHORT_ANSWER","questionCount":12},
+                          {"id":"b3","questionType":"QUESTION_SET","questionCount":2,"childAnswerType":"SINGLE_CHOICE"},
+                          {"id":"b4","questionType":"ESSAY","questionCount":6,"omitted":true}]}],
+              "paths":[{"pathId":"default","questionCount":20,"maxPoints":400,"durationMinutes":30}]}]}
+            """;
+
+    private static final String MULTI_PATH_PARTS = """
+            {"parts":[{"id":"p1","order":1,"name":"Phan 1","durationMinutes":60,"questionCount":30,"questionCountOnPaper":30,
+              "questionCountRequired":30,"participation":{"mode":"CHOICE","choose":1},"maxPoints":600,
+              "options":[
+                {"id":"o1","kind":"SUBJECT","code":"TOAN","name":"Toan","chooseSubjects":1,
+                 "sections":[{"id":"s1","subjectCode":"TOAN","questionCount":30,
+                   "blocks":[{"id":"b1","questionType":"SINGLE_CHOICE","questionCount":30}]}]},
+                {"id":"o2","kind":"SUBJECT","code":"VAN","name":"Van","chooseSubjects":1,
+                 "sections":[{"id":"s2","subjectCode":"VAN","questionCount":30,
+                   "blocks":[{"id":"b2","questionType":"ESSAY","questionCount":4},
+                             {"id":"b3","questionType":"SHORT_ANSWER","questionCount":26}]}]}],
+              "paths":[{"pathId":"o1","questionCount":30,"maxPoints":600,"durationMinutes":60},
+                       {"pathId":"o2","questionCount":30,"maxPoints":600,"durationMinutes":60}]}]}
+            """;
+
+    /** AD-77: the frozen blocks come out as answer types and counts, never the block internals. */
+    @Test
+    void partsCarryBlockSummaries() throws Exception {
+        UUID kindId = kind("HSA");
+        UUID exam = newExam("HSA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
+        version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), BLOCK_PARTS, "default");
+        var part1 = port.loadVersion(exam, 1).orElseThrow().parts().getFirst();
+        assertThat(part1.blocks()).extracting(PublishedExamPort.BlockSummary::questionType,
+                        PublishedExamPort.BlockSummary::questionCount, PublishedExamPort.BlockSummary::childAnswerType)
+                .containsExactly(org.assertj.core.api.Assertions.tuple("SINGLE_CHOICE", 30, null));
+        var part2 = port.loadVersion(exam, 1).orElseThrow().parts().get(1);
+        assertThat(part2.blocks()).extracting(PublishedExamPort.BlockSummary::questionType,
+                        PublishedExamPort.BlockSummary::questionCount, PublishedExamPort.BlockSummary::childAnswerType)
+                .containsExactly(
+                        org.assertj.core.api.Assertions.tuple("SHORT_ANSWER", 12, null),
+                        org.assertj.core.api.Assertions.tuple("QUESTION_SET", 2, "SINGLE_CHOICE"),
+                        org.assertj.core.api.Assertions.tuple("ESSAY", 6, null));
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(port.loadVersion(exam, 1).orElseThrow()));
+    }
+
+    /** AD-77: a part with options summarizes the blocks of every option, not just the serving ones. */
+    @Test
+    void partsCarryBlockSummariesOfEveryOption() throws Exception {
+        UUID kindId = kind("BCA");
+        UUID exam = newExam("BCA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
+        version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), MULTI_PATH_PARTS, "o1");
+        var part = port.loadVersion(exam, 1).orElseThrow().parts().getFirst();
+        assertThat(part.blocks()).extracting(PublishedExamPort.BlockSummary::questionType,
+                        PublishedExamPort.BlockSummary::questionCount)
+                .containsExactly(
+                        org.assertj.core.api.Assertions.tuple("SINGLE_CHOICE", 30),
+                        org.assertj.core.api.Assertions.tuple("ESSAY", 4),
+                        org.assertj.core.api.Assertions.tuple("SHORT_ANSWER", 26));
+    }
+
+    /** AD-77: a version published before the snapshot carried blocks gets an empty list, not invented data. */
+    @Test
+    void partsWithoutFrozenBlocksGetAnEmptyList() throws Exception {
+        UUID kindId = kind("HSA");
+        UUID exam = newExam("HSA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
+        version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), CODE_PARTS.formatted(60, 30, 600, "QD01", 30, 600, 60), "default");
+        assertThat(port.loadVersion(exam, 1).orElseThrow().parts().getFirst().blocks()).isEmpty();
+    }
+
     @Test
     void findServingCarriesSaleAndPathData() throws Exception {
         UUID kindId = kind("HSCA");
@@ -167,7 +244,9 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
         JsonNode loaded = mapper.valueToTree(port.loadVersion(exam, 1).orElseThrow());
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(serving);
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(loaded);
-        assertThat(serving.toString()).doesNotContain("knowledgeScope", "requiredPointsPerQuestion", "slots", "blocks");
+        // AD-77: the summarized "blocks" key is allowed; the block internals stay behind.
+        assertThat(serving.toString()).doesNotContain("knowledgeScope", "requiredPointsPerQuestion", "slots",
+                "matrix", "topicQuotas", "tagCodes", "childConditions", "answerFormats");
         // A version that went through the real publish is clean too.
         UUID published = newExam("HSA", PLAIN);
         saveCheck(published, paths("default=VALID"));

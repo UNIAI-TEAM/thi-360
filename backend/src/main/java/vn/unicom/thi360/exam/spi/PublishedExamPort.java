@@ -72,12 +72,21 @@ public interface PublishedExamPort {
 
     /**
      * A part of the version. {@code paths} holds, per serving path, the questions, maximum points and minutes the part
-     * contributes (null when the snapshot could not total them).
+     * contributes (null when the snapshot could not total them). {@code blocks} summarizes the frozen question blocks:
+     * one entry per block of the part's sections, subject pool and options (TM 10.1 answer types, AD-77); empty for a
+     * version published before the snapshot stored them.
      */
     record Part(String id, Integer order, String name, Integer durationMinutes, Integer questionCount,
                 Integer questionCountOnPaper, Integer questionCountRequired, String participationMode, Integer choose,
                 BigDecimal maxPoints, List<Segment> displaySegments, List<Section> sections, List<Section> subjectPool,
-                List<Option> options, List<PartPath> paths) { }
+                List<Option> options, List<PartPath> paths, List<BlockSummary> blocks) { }
+
+    /**
+     * One frozen question block, reduced to what the storefront shows (TM 10.1): the answer type and how many
+     * questions it carries (a set block counts its child questions), plus {@code childAnswerType} when the block is a
+     * set of one child type. Never a question, an answer or a source.
+     */
+    record BlockSummary(String questionType, int questionCount, String childAnswerType) { }
 
     /** A display segment (BS 17.3): a heading before position {@code fromPosition}, no clock or score of its own. */
     record Segment(String code, String name, Integer fromPosition, Integer toPosition, Integer commandCount,

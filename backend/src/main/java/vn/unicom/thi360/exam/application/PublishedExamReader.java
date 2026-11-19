@@ -181,6 +181,13 @@ public class PublishedExamReader implements PublishedExamPort {
             options.add(new Option(text(option, "id"), text(option, "kind"), text(option, "code"), text(option, "name"),
                     integer(option, "chooseSubjects"), counts == null ? null : List.copyOf(counts), sections(option.path("sections"))));
         }
+        List<BlockSummary> blocks = new ArrayList<>();
+        for (JsonNode section : part.path("sections")) addBlocks(blocks, section.path("blocks"));
+        for (JsonNode section : part.path("subjectPool")) addBlocks(blocks, section.path("blocks"));
+        for (JsonNode option : part.path("options")) {
+            addBlocks(blocks, option.path("blocks"));
+            for (JsonNode section : option.path("sections")) addBlocks(blocks, section.path("blocks"));
+        }
         List<PartPath> paths = new ArrayList<>();
         for (JsonNode path : part.path("paths")) {
             paths.add(new PartPath(text(path, "pathId"), integer(path, "questionCount"), decimal(path, "maxPoints"),
@@ -191,7 +198,15 @@ public class PublishedExamReader implements PublishedExamPort {
                 integer(part, "questionCount"), integer(part, "questionCountOnPaper"), integer(part, "questionCountRequired"),
                 text(participation, "mode"), integer(participation, "choose"), decimal(part, "maxPoints"),
                 List.copyOf(segments), sections(part.path("sections")), sections(part.path("subjectPool")),
-                List.copyOf(options), List.copyOf(paths));
+                List.copyOf(options), List.copyOf(paths), List.copyOf(blocks));
+    }
+
+    /** The blocks of one section or option as answer-type rows (AD-77); a set counts its child questions. */
+    private static void addBlocks(List<BlockSummary> target, JsonNode blocks) {
+        for (JsonNode block : blocks) {
+            int count = block.path("questionCount").asInt(0);
+            target.add(new BlockSummary(text(block, "questionType"), count, text(block, "childAnswerType")));
+        }
     }
 
     private static List<Section> sections(JsonNode sections) {

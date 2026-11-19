@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.BlockSummary;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Combination;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.CombinationSubject;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Listing;
@@ -135,6 +136,16 @@ final class TestExam {
         return this;
     }
 
+    /** The frozen question blocks of the default part (AD-77); empty is what a pre-block version returns. */
+    TestExam withBlocks(List<BlockSummary> blocks) {
+        Part base = parts.getFirst();
+        parts.set(0, new Part(base.id(), base.order(), base.name(), base.durationMinutes(), base.questionCount(),
+                base.questionCountOnPaper(), base.questionCountRequired(), base.participationMode(), base.choose(),
+                base.maxPoints(), base.displaySegments(), base.sections(), base.subjectPool(), base.options(),
+                base.paths(), List.copyOf(blocks)));
+        return this;
+    }
+
     TestExam withCombinations(List<Combination> combinations) {
         this.combinations = new ArrayList<>(combinations);
         return this;
@@ -157,13 +168,14 @@ final class TestExam {
     static Part part(String id, int order, String name, String subjectCode, int questions, int minutes, int points) {
         return new Part(id, order, name, minutes, questions, questions, questions, "ALL", null,
                 BigDecimal.valueOf(points), List.of(), List.of(new Section("s-" + id, subjectCode, questions, "ANY")),
-                List.of(), List.of(), List.of(new PartPath("default", questions, BigDecimal.valueOf(points), minutes)));
+                List.of(), List.of(), List.of(new PartPath("default", questions, BigDecimal.valueOf(points), minutes)),
+                List.of());
     }
 
     /** A part whose participation is a choice of options. */
     static Part choicePart(String id, int order, String name, int questions, int minutes, List<Option> options) {
         return new Part(id, order, name, minutes, questions, questions, questions, "CHOICE", 1,
-                BigDecimal.valueOf(questions), List.of(), List.of(), List.of(), options, List.of());
+                BigDecimal.valueOf(questions), List.of(), List.of(), List.of(), options, List.of(), List.of());
     }
 
     static Option option(String id, String kind, String code, String name, Integer chooseSubjects,
