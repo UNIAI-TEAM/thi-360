@@ -39,6 +39,11 @@ function openStructure(examId: string, search = "") {
 }
 
 const list = () => screen.findByRole("navigation", { name: "Cấu trúc" });
+/** Đường dẫn "Sửa thông tin tổng quan" của đầu trang: nằm cạnh bảng tổng hợp cấu trúc, không lẫn với đường dẫn của các ô chỉ đọc. */
+async function headerEditLink() {
+  const summary = await screen.findByLabelText("Tổng hợp cấu trúc");
+  return within(summary.parentElement!).getByRole("link", { name: "Sửa thông tin tổng quan" });
+}
 const dialogName = "Lưu thay đổi của Phần 1 · Toán học?";
 
 /* ---------- dữ liệu dựng tay cho các phép thử thuần ---------- */
@@ -371,7 +376,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(screen.getAllByRole("link", { name: "Sửa thông tin tổng quan" })[0]!);
+    await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
@@ -384,7 +389,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(screen.getAllByRole("link", { name: "Sửa thông tin tổng quan" })[0]!);
+    await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
