@@ -1,8 +1,8 @@
-# Đề test giả định cho 7 kỳ thi
+# Đề test giả định cho 9 kỳ thi
 
-Ngày: 2026-11-17. Cập nhật 2026-11-18 theo mã tại `3d899976` (đợt 2B và phần bổ sung V-ACT, THPTQG). Trạng thái: số của mẫu theo BA; số của bộ đề `TEST-*` là giả định của đội dự án, chờ chuyên gia ra đề.
+Ngày: 2026-11-17. Cập nhật 2026-11-19 theo mã tại `380be740` (đợt 2B và hai phần bổ sung V-ACT/THPTQG, H-SCA/V-SAT, gồm FIX-QA, FIX-AUDIO, FIX-RELOAD). Trạng thái: số của mẫu theo BA; số của bộ đề `TEST-*` là giả định của đội dự án, chờ chuyên gia ra đề.
 
-Tài liệu này mô tả đúng những gì đang có trong mã: 85 mẫu cấu trúc (cộng 7 mẫu bài ôn) và 27 bài `TEST-*` dùng cho E2E, kiểm tra cấu hình và dữ liệu mẫu. Đợt 3 (DS) lấy số ở đây. Khi mã đổi, sửa tài liệu theo mã, không làm ngược lại.
+Tài liệu này mô tả đúng những gì đang có trong mã: 107 mẫu cấu trúc (cộng 9 mẫu bài ôn) và 27 bài `TEST-*` dùng cho E2E, kiểm tra cấu hình và dữ liệu mẫu. Đợt 3 (DS) lấy số ở đây. Khi mã đổi, sửa tài liệu theo mã, không làm ngược lại.
 
 Mọi bảng ghi nguồn bên dưới. Đường dẫn tính từ `backend/src/main/resources/db/` trừ khi ghi khác.
 
@@ -18,6 +18,10 @@ Mọi bảng ghi nguồn bên dưới. Đường dẫn tính từ `backend/src/m
 | `devdata/R__seed_test_exam_data.sql` | 27 bài `TEST-*` và 1.695 câu `TESTQ-*` (sinh bằng `scripts/generate_test_exam_seed.py`) |
 | `devdata/R__seed_questionbank_dev_data.sql` | câu hỏi mẫu có nhãn, MAPID, năng lực cho mọi mẫu mới (UNI-2653, UNI-2675) |
 | `backend/src/test/java/vn/unicom/thi360/exam/TestExamSeedIT.java`, `ExamTemplateFlagsCheckIT.java`, `ExamTemplatePolicyValidityIT.java` | kết quả kiểm tra mong đợi của từng bài `TEST-*` |
+| `migration/exam/V202611182201__exam_template_block_locks.sql` | cờ `fixed_block_counts`, `omitted_locked`; mẫu `PART` được mang `subject_code` (H41–H43) |
+| `migration/exam/V202611182210__exam_templates_hsca_vsat.sql` | mẫu H-SCA (11) và V-SAT (9), `HSCA_REVIEW`, `VSAT_REVIEW` (sinh bởi `hsca.templates.mjs`, `vsat.templates.mjs`) |
+| `migration/exam/V202611182211__exam_templates_vsat_anh.sql` | V-SAT Tiếng Anh FULL và ba mẫu `PART` (sinh bởi `vsat-anh.templates.mjs`) |
+| `devdata/assets/` + `questionbank/application/DevQuestionAssetSeeder.java` | 18 tệp MP3 mẫu và bộ nạp đưa chúng vào kho lưu trữ (hồ sơ `dev`, `test`) |
 
 Ký hiệu: MĐ Một đáp án, NĐ Nhiều đáp án, ĐS Đúng/Sai, TLN Trả lời ngắn, TL Tự luận, GĐ Ghép đôi, ĐK Điền khuyết, chùm a×b là a bộ, mỗi bộ b câu con. Điểm viết `0,25` là điểm mỗi câu (`requiredPointsPerQuestion`). Số thập phân dùng dấu phẩy.
 
@@ -33,6 +37,11 @@ Các điểm này đang đúng trong mã, áp cho mọi mẫu và mọi bài `TE
 - Chỉ tiêu chủ đề là "ít nhất" (K6, H33), kể cả V-ACT và THPTQG.
 - HSA Khoa học: học viên chọn 3 trong 5 môn (10 bộ ba). Mỗi môn có 17 câu; một môn trong bộ ba chỉ làm 16 (`countsByPick = [17, 17, 16]`, BA8, BA13).
 - `omitted` chỉ hợp lệ ở nhóm `ESSAY`. Câu `omitted` không tính vào số câu, điểm, và không vào kiểm tra. SPT và SP2E Văn dùng `omitted` cho "Tự luận – tạm bỏ qua" (K1, K7).
+- Đề `SHARED` có một đồng hồ chung, không lấy giờ từ dòng phần; đồng hồ trống hoặc không dương báo `INFO_MISSING` khi kiểm tra, kể cả sau khi nạp lại mẫu (FIX-RELOAD). Mọi mẫu H-SCA, V-SAT đều `SHARED` nên thời lượng của bài theo phần luôn nhập khi tạo.
+- Mẫu có `fixed_block_counts` (H42): bài `SUBJECT` không đổi được dạng, số câu, số chùm, cỡ chùm của từng nhóm; đổi báo `BLOCK_COUNT_LOCKED`. Chỉ xét bài `SUBJECT`; bài `PART` và bài ôn nạp từ cùng mẫu không bị khóa.
+- Mẫu có `omitted_locked` (H43): nhóm `omitted` của mẫu không bật lại được (`OMITTED_BLOCK_LOCKED`), và không tạo được bài `PART` từ phần chỉ gồm nhóm đã lược (`EXAM_PART_NOT_FOUND`). Hiện có ở `HSCA_SUBJECT_VAN`, `VSAT_SUBJECT_VAN`.
+- Mục (section) có thể khai `audioRequirement` (`REQUIRED`, `FORBIDDEN`); chỉ H-SCA Tiếng Anh dùng. Phần có thể khai `displaySegments` (ranh giới hiển thị, không đổi thứ tự câu); chỉ V-SAT Tiếng Anh dùng.
+- H-SCA chọn nhiều theo `mc_rule = PARTIAL` (tạm, Q-32); V-SAT Đúng/Sai theo bảng `COUNT_TABLE [1,2,3,6]` ở hồ sơ.
 - THPTQG Ngữ văn: mẫu có `publishable = false`. Lưu nháp được, kiểm tra báo `TEMPLATE_NOT_PUBLISHABLE`, không công bố được (D11, H26).
 - V-ACT FULL có `fixed_counts = true`: số câu từng phần, từng tiểu mục khóa; kiểm tra báo `STRUCTURE_COUNT_LOCKED` khi đổi (H27).
 - V-ACT tính điểm luyện tập `LINEAR` về 1.200, mỗi câu 10 điểm (D7, H32).
@@ -195,9 +204,96 @@ Tiếng Anh, 6 nhóm có thứ tự, mọi chùm có câu con MĐ (dải câu do
 
 `THPTQG_REVIEW`: khung bài ôn, không có số. Tin học SPT và THPTQG giữ phần chọn định hướng (K2) ở màn chuẩn bị, đợt 3.
 
-### 2.8 Bài ôn và phạm vi
+### 2.8 H-SCA
 
-Nguồn: `V202611180456`, `V202611181305`. Mỗi kỳ thi có một mẫu `<KỲ>_REVIEW` (HSA, QDA, BCA, SP2E, SPT, THPTQG, VACT): `build_mode = REVIEW`, `scope = SUBJECT`, không số câu, không điểm, quản trị viên nhập. `VACT_REVIEW` bật `everyChildInScope`. Phạm vi của hồ sơ kỳ thi (`exam_kind_profile.scopes`): HSA, QDA, BCA, V-ACT `FULL, PART, SUBJECT`; SPT, SP2E, THPTQG `SUBJECT, PART` (test `examKindProfilesSeedScopesPerSpec2B`).
+Nguồn: `V202611182210` (sinh bởi `hsca.templates.mjs`), `V202611182201` (cờ khóa), spec bổ sung `2026-11-18-pbi04-dot-2b-bo-sung-hsca-vsat.md` mục 4. Hồ sơ (`R__seed_exam_dev_data.sql`): `SHARED`, `template_by = SUBJECT`, `mc_rule = PARTIAL`, `max_score` trống (thang lấy từ mẫu). Bài `PART` cắt từ mẫu môn, `SHARED`, thời lượng nhập khi tạo.
+
+| Mẫu | Phút | Điểm | Câu | Cờ và ghi chú |
+|---|---|---|---|---|
+| `HSCA_SUBJECT_TOAN`, `_LY`, `_HOA`, `_SINH` | 90 | 10 | 40 | `fixed_block_counts`; 3 phần × 0,25 điểm mỗi câu |
+| `HSCA_SUBJECT_TOAN_SAMPLE`, `_LY_SAMPLE`, `_HOA_SAMPLE`, `_SINH_SAMPLE` | 90 | 10 | 40 | biến thể "Sát đề minh họa" (H45), `is_default = false`, `fixed_block_counts`; cùng cấu trúc, khác ma trận độ khó từng nhóm |
+| `HSCA_SUBJECT_VAN` | nhập khi tạo | 20 | 20 | `omitted_locked`; Đọc hiểu + hai phần viết `omitted` |
+| `HSCA_SUBJECT_ANH` | nhập khi tạo | 75 | 75 | Nghe `audioRequirement = REQUIRED`, Đọc `FORBIDDEN` |
+| `HSCA_REVIEW` | – | – | – | khung bài ôn, `build_mode = REVIEW` |
+
+Bốn môn tự nhiên (`HSCA_SUBJECT_{TOAN,LY,HOA,SINH}` và biến thể `_SAMPLE`), 3 phần một đồng hồ 90 phút:
+
+| Phần | Nhóm | Số câu | Điểm |
+|---|---|---|---|
+| 1 · Trắc nghiệm | Chọn một, bốn phương án | 20 | 5 |
+| 1 · Trắc nghiệm | Chọn nhiều | 5 | 1,25 |
+| 2 · Dữ liệu tổng hợp | `QUESTION_SET` tổng 5 câu con, không ràng dạng | 5 | 1,25 |
+| 3 · Điền đáp án | Trả lời ngắn | 10 | 2,5 |
+
+Phân bố đối chiếu toàn môn (`examQuotas`, `basis = QUESTION`, `REFERENCE`):
+
+| Môn | Lớp 10 / 11 / 12 | NB / TH / VD |
+|---|---|---|
+| Toán | 0 / 14 / 26 | 9 / 15 / 16 |
+| Vật lí | 0 / 12 / 28 | 11 / 14 / 15 |
+| Hóa học | 10 / 18 / 12 | 12 / 15 / 13 |
+| Sinh học | 5 / 5 / 30 | 10 / 16 / 14 |
+
+Ma trận độ khó từng nhóm của biến thể "Sát đề minh họa" (`_SAMPLE`, `mode = SEPARATE`, `REFERENCE`):
+
+| Môn | Chọn một · 20 | Chọn nhiều · 5 | Chùm · 5 | Điền · 10 |
+|---|---|---|---|---|
+| Toán | 9 / 10 / 1 | 0 / 1 / 4 | 0 / 2 / 3 | 0 / 2 / 8 |
+| Vật lí | 11 / 9 / 0 | 0 / 3 / 2 | 0 / 2 / 3 | 0 / 0 / 10 |
+| Hóa học | 12 / 8 / 0 | 0 / 4 / 1 | 0 / 2 / 3 | 0 / 1 / 9 |
+| Sinh học | 10 / 9 / 1 | 0 / 4 / 1 | 0 / 2 / 3 | 0 / 1 / 9 |
+
+`HSCA_SUBJECT_VAN`: phần Đọc hiểu 20 câu, ba chùm 1×5 `VAN_THONG_TIN`, 1×7 `VAN_NGHI_LUAN`, 1×8 `VAN_THO`, câu con MĐ 1 điểm, ma trận độ khó từng nhóm lần lượt 2/3/0, 2/3/2, 2/4/2 (`REFERENCE`). Hai phần sau (`questionCount = 0`) mỗi phần một nhóm `ESSAY` `omitted` 1 câu; `omitted_locked` nên không bật lại được và không tạo được bài `PART` cho phần viết.
+
+`HSCA_SUBJECT_ANH` (75 câu, mọi câu MĐ 1 điểm): phần Nghe 35 câu `audioRequirement = REQUIRED` — 8 câu đơn, chùm 3×4, chùm 3×5, câu con MĐ; phần Đọc 40 câu `FORBIDDEN` — chùm 4×10, câu con MĐ `itemShape.options = 4`. Không có mẫu `PART` riêng: bài theo phần cắt từ mẫu này.
+
+### 2.9 V-SAT
+
+Nguồn: `V202611182210` (sinh bởi `vsat.templates.mjs`), `V202611182211` (Tiếng Anh, sinh bởi `vsat-anh.templates.mjs`), spec bổ sung mục 5. Hồ sơ: `SHARED`, `template_by = SUBJECT`, `tf_scoring` `COUNT_TABLE [1,2,3,6]`. Cột "Lệnh" là số ý/lệnh chấm của bài (mẫu số đối chiếu theo `basis = PROMPT`).
+
+| Mẫu | Phút | Điểm | Câu | Lệnh | Cờ |
+|---|---|---|---|---|---|
+| `VSAT_SUBJECT_TOAN` | 90 | 150 | 25 | 67 | `fixed_block_counts` |
+| `VSAT_SUBJECT_LY`, `_HOA`, `_SINH`, `_SU`, `_DIA` | 60 | 150 | 25 | 67 | `fixed_block_counts` |
+| `VSAT_SUBJECT_HOA_50` | 50 | 150 | 25 | 67 | biến thể 50 phút (Q-34), `is_default = false`, `fixed_block_counts` |
+| `VSAT_SUBJECT_VAN` | nhập khi tạo | 120 | 20 | 62 | `fixed_block_counts`, `omitted_locked` |
+| `VSAT_SUBJECT_ANH` | 60 | 150 | 25 | 67 | `fixed_block_counts`, một phần + `displaySegments` |
+| `VSAT_PART_ANH_P2`, `_P3`, `_P4` | nhập khi tạo | theo phần | 6 / 5 / 5 | 6 / 20 / 5 | mẫu `PART` có `subject_code = ANH` (H41) |
+| `VSAT_REVIEW` | – | – | – | – | khung bài ôn |
+
+Sáu môn Toán, Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí dùng chung khung bốn phần (Q-36, tạm):
+
+| Phần | Nhóm | Câu | Lệnh | Điểm |
+|---|---|---|---|---|
+| I · Đúng/Sai | `TRUE_FALSE` `itemShape.statements = 4`, `expectedScoring` bảng `[1,2,3,6]` | 9 | 36 | 54 |
+| II · Chọn một | chùm 2×3, câu con MĐ | 6 | 6 | 36 |
+| III · Ghép đôi | `MATCHING` `itemShape.leftItems = 4` | 5 | 20 | 30 |
+| IV · Trả lời ngắn | `SHORT_ANSWER` | 5 | 5 | 30 |
+
+Mọi câu 6 điểm. Địa lí Phần II có hai `slots` theo nhãn `DIA_BANG_SO_LIEU` và `DIA_BIEU_DO` (Q-45).
+
+`VSAT_SUBJECT_VAN`: Phần I–III như khung trên (Phần II có `slots` `VAN_THO`, `VAN_TRUYEN`), Phần IV `questionCount = 0` chứa một nhóm `ESSAY` `omitted` 1 câu 30 điểm — phần Viết lưu tham chiếu, không tính vào 20 câu, 62 lệnh, 120 điểm (H49), không bật lại được (`omitted_locked`), không tạo được bài `PART` riêng.
+
+`VSAT_SUBJECT_ANH` (`V202611182211`): một phần duy nhất 25 câu 150 điểm — ĐS độc lập 7 × 6 (bảng `[1,2,3,6]`); bài đọc dùng chung chùm 1×8 × 6 điểm mỗi câu con với `childConditions` vị trí 1–2 `TRUE_FALSE` (`itemShape.statements = 4`), 3–8 `SINGLE_CHOICE`; `MATCHING` 5 × 6; `CLOZE` chùm 1×5, 6 điểm mỗi vị trí. `displaySegments` chỉ để hiển thị: P1 câu 1–9 (36 lệnh, 54 điểm), P2 10–15 (6, 36), P3 16–20 (20, 30), P4 21–25 (5, 30). Ba mẫu `PART` riêng có `subject_code = ANH`: `P2` chùm 1×6 MĐ (36 điểm), `P3` ghép đôi 5 × 6 (30), `P4` Đọc điền 1×5 (30); không có mẫu `P1`, tạo bài Phần I báo `EXAM_PART_NOT_FOUND`.
+
+Phân bố đối chiếu theo lệnh (`examQuotas`, `basis = PROMPT`, `REFERENCE`):
+
+| Môn | Lớp 10 / 11 / 12 | NB / TH / VD | Mẫu số |
+|---|---|---|---|
+| Toán | 0 / 17 / 50 | 13 / 35 / 19 | 67 |
+| Vật lí | 0 / 25 / 42 | 19 / 32 / 16 | 67 |
+| Hóa học | 0 / 23 / 44 | 14 / 32 / 21 | 67 |
+| Sinh học | 0 / 13 / 54 | 15 / 28 / 24 | 67 |
+| Lịch sử | 6 / 2 / 59 | 15 / 40 / 12 | 67 |
+| Địa lí | không có | 20 / 42 / 5 | 67 |
+| Tiếng Anh | không có | 21 / 39 / 7 | 67 |
+| Ngữ văn | không có | 12 / 33 / 17 | 62 |
+
+Mạch đối chiếu (`TopicQuota` cấp mục, `basis = PROMPT`, `REFERENCE`, `nodeIds` rỗng — chờ mapping): Ngữ văn 5 mạch Tùy bút, nhật kí 16; Văn bản thông tin 16; Truyện, kịch 15; Văn bản nghị luận 12; Thơ 3 (tổng 62). Địa lí 5 mạch: Các ngành kinh tế 26; Các vùng kinh tế 17; Dân cư 8; Tự nhiên 10; Kỹ năng bảng số liệu, biểu đồ, Atlat 6 (tổng 67). Tiếng Anh 3 mạch: Đọc hiểu 42; Giao tiếp qua văn bản 4; Ngữ pháp và từ vựng 21 (tổng 67).
+
+### 2.10 Bài ôn và phạm vi
+
+Nguồn: `V202611180456`, `V202611181305`, `V202611182210`, `V202611182211`. Mỗi kỳ thi có một mẫu `<KỲ>_REVIEW` (HSA, QDA, BCA, SP2E, SPT, THPTQG, VACT, HSCA, VSAT): `build_mode = REVIEW`, `scope = SUBJECT`, không số câu, không điểm, quản trị viên nhập. `VACT_REVIEW` bật `everyChildInScope`. Phạm vi của hồ sơ kỳ thi (`exam_kind_profile.scopes`): HSA, QDA, BCA, V-ACT `FULL, PART, SUBJECT`; SPT, SP2E, THPTQG, HSCA, VSAT `SUBJECT, PART` (test `examKindProfilesSeedScopesPerSpec2B`).
 
 ## 3. Số còn là giả định
 
@@ -212,6 +308,10 @@ Số nào mẫu còn ghi chờ chuyên gia (cột `expert_note`), hoặc do đ�
 | THPTQG Ngữ văn | điểm từng câu của chùm Đọc hiểu theo hướng dẫn chấm | `expert_note`; mẫu `publishable = false` (D11) |
 | V-ACT | 10 điểm mỗi câu, 1.200 (tạm tính, thật dùng IRT); phạm vi riêng, nhãn D9 | `expert_note` của `VACT_FULL`, spec bổ sung Q-30, Q-31 |
 | THPTQG bài theo phần | bật `PART` | spec bổ sung Q-29 |
+| H-SCA bốn môn tự nhiên | phân bố lớp 10/11/12: định hướng BA 70–80% lớp 12, mức đối chiếu nạp số đề mẫu (Q-33); Toán 26/40 và Hóa 12/40 dưới 28 câu | `expert_note` của `HSCA_SUBJECT_*`, chờ BA |
+| H-SCA Ngữ văn, Tiếng Anh | thang điểm bằng số câu, 1 điểm/câu (Q-39); số phương án của phần Nghe không ràng buộc | `expert_note` |
+| V-SAT cơ cấu bốn phần | 9 + 6 + 5 + 5 (Q-36, tạm) | `expert_note` của mọi `VSAT_SUBJECT_*`, chờ BA |
+| V-SAT Ngữ văn thời lượng | để trống, nhập khi tạo (Q-35); V-SAT Hóa 50' là biến thể tạm (Q-34) | `expert_note` |
 
 Số còn lại của mẫu là số BA (không có `expert_note`). Không bịa thêm: chỗ BA chưa nêu, để trống và ghi vào mục câu hỏi mở của spec.
 
