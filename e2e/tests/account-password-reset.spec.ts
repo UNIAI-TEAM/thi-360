@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createVerifiedAccount, NEW_PASSWORD, submitLoginForm, WEB_URL } from "./helpers/account";
-import { readResetToken, waitForMail } from "./helpers/mail";
+import {
+  createVerifiedAccount,
+  NEW_PASSWORD,
+  readResetToken,
+  submitLoginForm,
+  waitForMail,
+  WEB_URL,
+} from "./helpers/mail";
 
 test.describe("Quên và đặt lại mật khẩu", () => {
   test("quên, đặt lại, đăng nhập (AC-2)", async ({ page }) => {

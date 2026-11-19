@@ -8,15 +8,18 @@ import {
   openMatrixContext,
   type MatrixCell,
 } from "./helpers/visual-matrix";
-import { registerViaApi, newAccount, WEB_URL, type SessionCookies } from "./helpers/account";
+import { newAccount, registerViaApi, solidPng, WEB_URL, type SessionCookies } from "./helpers/mail";
 
 /**
  * AC-21: năm màn tài khoản (đăng ký, xác minh email, quên mật khẩu, đặt lại mật khẩu, hồ sơ) cùng liên kết ở trang đăng
- * nhập, ở đủ trạng thái đang tải, lỗi, có dữ liệu (hồ sơ còn trạng thái rỗng: chưa có ảnh, chưa có số điện thoại), trên
- * 8 ô khổ x chế độ x ngôn ngữ. Mỗi ô chụp `page.screenshot` vào `THI360_VISUAL_DIR` rồi kiểm không cuộn ngang, tương
- * phản và lẫn ngôn ngữ (repo chưa có ảnh chuẩn `toHaveScreenshot`).
+ * nhập, ở đủ trạng thái đang tải, đang gửi, lỗi và có dữ liệu (hồ sơ còn trạng thái rỗng, có ảnh và có email đang chờ),
+ * trên 8 ô khổ x chế độ x ngôn ngữ. Mỗi ô chụp `page.screenshot` vào `THI360_VISUAL_DIR` rồi kiểm không cuộn ngang,
+ * tương phản và lẫn ngôn ngữ (repo chưa có ảnh chuẩn `toHaveScreenshot`). Trạng thái lỗi và dữ liệu có ảnh, có email
+ * chờ dựng bằng `page.route` để không phụ thuộc máy chủ.
  */
-test.setTimeout(240_000);
+test.setTimeout(300_000);
+
+const AVATAR_ID = "0192f3a1-0000-7000-8000-000000000001";
 
 let browser: Browser;
 let sessionCookies: SessionCookies;
@@ -40,14 +43,28 @@ async function openCell(cell: MatrixCell, signedIn: boolean): Promise<{ context:
   return { context, page: await context.newPage() };
 }
 
-/** Giữ lại phản hồi của API `pattern` tới khi gọi `release()`: chụp được khung chờ mà không phụ thuộc tốc độ máy. */
-async function holdApi(page: Page, pattern: string): Promise<() => void> {
+/**
+ * Giữ lại yêu cầu tới `pattern` tới khi gọi `release()`: chụp được khung chờ hay nút đang gửi mà không phụ thuộc tốc
+ * độ máy. `abort` thay cho `continue` khi yêu cầu có tác dụng thật (đăng ký tài khoản).
+ */
+async function holdApi(page: Page, pattern: string, finish: "continue" | "abort" = "continue"): Promise<() => void> {
   const { promise: gate, resolve: release } = Promise.withResolvers<void>();
   await page.route(pattern, async (route) => {
     await gate;
-    await route.continue();
+    if (finish === "abort") await route.abort();
+    else await route.continue();
   });
   return release;
+}
+
+async function failApi(page: Page, pattern: string, status: number, body: object): Promise<void> {
+  await page.route(pattern, (route) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) }));
+}
+
+const SERVER_ERROR = { code: "INTERNAL_ERROR" };
+
+async function expectSubmitting(page: Page): Promise<void> {
+  await expect(page.locator("form button[type=submit][aria-busy=true]")).toBeVisible();
 }
 
 for (const cell of matrixCells()) {
@@ -68,6 +85,20 @@ for (const cell of matrixCells()) {
         await expect(page.locator("[role=alert]").first()).toBeVisible();
         await expectMatrixClean(page, "register-errors", cell);
 
+        // Đang gửi: nút khóa và quay; yêu cầu bị giữ rồi hủy để không tạo tài khoản.
+        await page.goto(`${WEB_URL}/register`);
+        const releaseRegister = await holdApi(page, "**/api/v1/auth/register", "abort");
+        await page.locator('input[name="username"]').fill("visual.submitting");
+        await page.locator('input[name="fullName"]').fill("E2E Student");
+        await page.locator('input[name="email"]').fill("visual.submitting@e2e.thi360.vn");
+        await page.locator('input[name="password"]').fill("Thi360@e2e1");
+        await page.getByRole("checkbox").check();
+        await page.locator("form button[type=submit]").click();
+        await expectSubmitting(page);
+        await expectMatrixClean(page, "register-submitting", cell);
+        releaseRegister();
+        await page.unroute("**/api/v1/auth/register");
+
         // Hộp thoại điều khoản.
         await page.goto(`${WEB_URL}/register`);
         await page.getByRole("button", { name: cell.lang === "vi" ? "Xem Điều khoản sử dụng" : "View the Terms of Use" }).click();
@@ -78,6 +109,24 @@ for (const cell of matrixCells()) {
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expectMatrixClean(page, "forgot-password", cell);
 
+        // Lỗi máy chủ.
+        await failApi(page, "**/api/v1/auth/password/forgot", 500, SERVER_ERROR);
+        await page.getByLabel(/^Email/).fill("an@e2e.thi360.vn");
+        await page.locator("form button[type=submit]").click();
+        await expect(page.locator("[role=alert]")).toBeVisible();
+        await expectMatrixClean(page, "forgot-password-error", cell);
+        await page.unroute("**/api/v1/auth/password/forgot");
+
+        // Đang gửi.
+        const releaseForgot = await holdApi(page, "**/api/v1/auth/password/forgot", "abort");
+        await page.locator("form button[type=submit]").click();
+        await expectSubmitting(page);
+        await expectMatrixClean(page, "forgot-password-submitting", cell);
+        releaseForgot();
+        await page.unroute("**/api/v1/auth/password/forgot");
+
+        // Đã gửi.
+        await page.goto(`${WEB_URL}/forgot-password`);
         await page.getByLabel(/^Email/).fill("an@e2e.thi360.vn");
         await page.locator("form button[type=submit]").click();
         await expect(page.locator("#forgot-sent-title")).toBeVisible();
@@ -87,6 +136,23 @@ for (const cell of matrixCells()) {
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expectMatrixClean(page, "reset-password", cell);
 
+        // Lỗi máy chủ.
+        await failApi(page, "**/api/v1/auth/password/reset", 503, SERVER_ERROR);
+        await page.locator('input[name="newPassword"]').fill("Thi360@moi2");
+        await page.locator('input[name="confirmPassword"]').fill("Thi360@moi2");
+        await page.locator("form button[type=submit]").click();
+        await expect(page.locator("form [role=alert]")).toBeVisible();
+        await expectMatrixClean(page, "reset-password-error", cell);
+        await page.unroute("**/api/v1/auth/password/reset");
+
+        // Đang gửi.
+        const releaseReset = await holdApi(page, "**/api/v1/auth/password/reset", "abort");
+        await page.locator("form button[type=submit]").click();
+        await expectSubmitting(page);
+        await expectMatrixClean(page, "reset-password-submitting", cell);
+        releaseReset();
+        await page.unroute("**/api/v1/auth/password/reset");
+
         await page.goto(`${WEB_URL}/reset-password`);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expectMatrixClean(page, "reset-password-invalid", cell);
@@ -95,7 +161,7 @@ for (const cell of matrixCells()) {
       }
     });
 
-    test("màn cần phiên: xác minh email và hồ sơ (đang tải, lỗi, có dữ liệu, rỗng)", async () => {
+    test("màn cần phiên: xác minh email và hồ sơ (đang tải, lỗi, có dữ liệu, rỗng, có ảnh và email chờ)", async () => {
       const { context, page } = await openCell(cell, true);
       try {
         // Xác minh email: khung chờ, rồi biểu mẫu.
@@ -107,9 +173,16 @@ for (const cell of matrixCells()) {
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expect(page.locator("input[autocomplete=one-time-code]")).toBeVisible();
         await expectMatrixClean(page, "verify-email", cell);
+        await page.unroute("**/api/v1/me/profile");
+
+        // Xác minh email: lỗi tải hồ sơ.
+        await failApi(page, "**/api/v1/me/profile", 500, SERVER_ERROR);
+        await page.goto(`${WEB_URL}/verify-email`);
+        await expect(page.locator("main").getByRole("button")).toBeVisible();
+        await expectMatrixClean(page, "verify-email-error", cell);
+        await page.unroute("**/api/v1/me/profile");
 
         // Hồ sơ: khung chờ.
-        await page.unroute("**/api/v1/me/profile");
         const releaseProfile = await holdApi(page, "**/api/v1/me/profile");
         await page.goto(`${WEB_URL}/account/profile`, { waitUntil: "commit" });
         await expect(page.locator("[role=status][aria-label]")).toBeVisible();
@@ -120,12 +193,36 @@ for (const cell of matrixCells()) {
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expect(page.locator("#profile-email-title")).toBeVisible();
         await expectMatrixClean(page, "profile-empty", cell);
+        await page.unroute("**/api/v1/me/profile");
+
+        // Hồ sơ: có ảnh đại diện, số điện thoại và email mới đang chờ xác minh.
+        await page.route("**/api/v1/me/profile", (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              username: "visual.student",
+              fullName: "E2E Student",
+              email: "visual.student@e2e.thi360.vn",
+              emailVerified: true,
+              phone: "0912345678",
+              avatarAssetId: AVATAR_ID,
+              avatarUrl: `/api/v1/avatars/${AVATAR_ID}`,
+              pendingEmail: "visual.next@e2e.thi360.vn",
+            }),
+          }),
+        );
+        await page.route(`**/api/v1/avatars/${AVATAR_ID}`, (route) =>
+          route.fulfill({ status: 200, contentType: "image/png", body: solidPng(112) }),
+        );
+        await page.goto(`${WEB_URL}/account/profile`);
+        await expect(page.locator("img[src^='/api/v1/avatars/']")).toBeVisible();
+        await expect(page.locator("#profile-pending-title")).toBeVisible();
+        await expectMatrixClean(page, "profile-avatar-pending", cell);
+        await page.unroute("**/api/v1/me/profile");
 
         // Hồ sơ: lỗi tải.
-        await page.unroute("**/api/v1/me/profile");
-        await page.route("**/api/v1/me/profile", (route) =>
-          route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL_ERROR" }) }),
-        );
+        await failApi(page, "**/api/v1/me/profile", 500, SERVER_ERROR);
         await page.goto(`${WEB_URL}/account/profile`);
         await expect(page.locator("main").getByRole("button")).toBeVisible();
         await expectMatrixClean(page, "profile-error", cell);

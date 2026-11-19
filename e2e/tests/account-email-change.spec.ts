@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createVerifiedAccount, newAccount, WEB_URL } from "./helpers/account";
-import { readOtp, waitForMail } from "./helpers/mail";
+import { createVerifiedAccount, newAccount, readOtp, waitForMail, WEB_URL } from "./helpers/mail";
 
 test("đổi email bằng OTP (AC-3)", async ({ context, page }) => {
   const { account, cookies } = await createVerifiedAccount("chg");

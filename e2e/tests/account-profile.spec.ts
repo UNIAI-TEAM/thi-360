@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createVerifiedAccount, solidPng, WEB_URL } from "./helpers/account";
+import { createVerifiedAccount, solidPng, WEB_URL } from "./helpers/mail";
 
 test.describe("Hồ sơ học viên", () => {
   test("lưu hồ sơ còn sau khi tải lại (AC-16)", async ({ context, page }) => {

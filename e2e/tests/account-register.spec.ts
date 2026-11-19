@@ -3,10 +3,11 @@ import {
   expectUrlWithCallback,
   fillRegisterForm,
   newAccount,
+  readOtp,
   submitLoginForm,
+  waitForMail,
   WEB_URL,
-} from "./helpers/account";
-import { readOtp, waitForMail } from "./helpers/mail";
+} from "./helpers/mail";
 
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
 // Đường dẫn bài mẫu của dữ liệu DS; trang chi tiết bài là của FS-1 nên chỉ kiểm điểm đến của URL.
