@@ -121,6 +121,7 @@ describe("VerifyEmailView", () => {
     await waitFor(() => expect(screen.getByText("Gửi lại mã sau 00:18")).toBeInTheDocument(), {
       timeout: 2000,
     });
+    expect(screen.getByRole("button", { name: "Gửi lại mã" })).toBeDisabled();
     nowMs += 18_000;
     await waitFor(() => expect(screen.getByRole("button", { name: "Gửi lại mã" })).toBeEnabled(), { timeout: 2000 });
     expect(screen.getByText("Bạn có thể gửi lại mã bây giờ.")).toBeInTheDocument();
