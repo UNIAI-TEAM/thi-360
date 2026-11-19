@@ -18,6 +18,24 @@ export async function loadSession(): Promise<StudentSession> {
   return data;
 }
 
+/**
+ * Phiên tùy chọn cho trang công khai (`/`, `/exams/<code>`): khách nhận `null`, không phải lỗi. `query-provider.tsx`
+ * đưa mọi 401 từ truy vấn về `/login`, nên 401 của khách phải được hấp thụ ở đây, trước khi thành lỗi của truy vấn.
+ * Lỗi khác (5xx, mạng) vẫn là lỗi.
+ */
+export const OPTIONAL_SESSION_QUERY_KEY = ["session", "optional"] as const;
+export type OptionalSessionLoader = () => Promise<StudentSession | null>;
+
+export async function loadOptionalSession(): Promise<StudentSession | null> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/me");
+  if (response.status === 401) return null;
+  if (!response.ok || !data) {
+    throw toApiStatusError(response.status, error);
+  }
+  return data;
+}
+
 export async function loginWithPassword(body: LoginRequest): Promise<LoginResponse> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/auth/login", { body });

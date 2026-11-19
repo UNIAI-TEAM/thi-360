@@ -1,8 +1,14 @@
-import { render, screen } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type * as SessionApi from "@/features/session/api";
 import viMessages from "@/messages/vi.json";
+import { renderWithProviders } from "@/test/render";
 import LandingPage from "./page";
+
+vi.mock("@/features/session/api", async () => {
+  const actual = await vi.importActual<typeof SessionApi>("@/features/session/api");
+  return { ...actual, loadOptionalSession: async () => null };
+});
 
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: "landing" | "common") => (key: string) => {
@@ -15,11 +21,7 @@ vi.mock("next-intl/server", () => ({
 describe("web-student landing page", () => {
   it("có đúng một <main> chứa tiêu đề và phần giới thiệu; header và footer nằm ngoài <main>", async () => {
     const tree = await LandingPage();
-    render(
-      <NextIntlClientProvider locale="vi" messages={viMessages} timeZone="Asia/Ho_Chi_Minh">
-        {tree}
-      </NextIntlClientProvider>,
-    );
+    renderWithProviders(tree);
 
     const mains = screen.getAllByRole("main");
     expect(mains).toHaveLength(1);

@@ -296,6 +296,17 @@
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
   },
+  "header": {
+    "login": "Đăng nhập",
+    "nav": {
+      "history": "Lịch sử",
+      "label": "Điều hướng chính",
+      "myExams": "Bài thi của tôi",
+      "orders": "Đơn của tôi",
+      "profile": "Hồ sơ"
+    },
+    "register": "Đăng ký"
+  },
   "home": {
     "emptyDescription": "Danh mục bài thi, mua bài và làm bài sẽ có ở các đợt phát triển tiếp theo. Đợt này trang học viên chỉ có đăng nhập, đổi mật khẩu và đăng xuất.",
     "emptyTitle": "Chưa có bài thi nào",

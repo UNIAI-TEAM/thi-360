@@ -2,7 +2,7 @@ import { Button, Card } from "@thi360/ui";
 import { BarChart3, CheckSquare, TrendingUp } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { StudentHeader } from "@/components/student-header";
+import { PublicStudentHeader } from "@/components/public-student-header";
 
 export default async function LandingPage() {
   const t = await getTranslations("landing");
@@ -26,13 +26,7 @@ export default async function LandingPage() {
   ];
   return (
     <div className="flex min-h-screen flex-col bg-page text-text">
-      <StudentHeader
-        actions={
-          <Button asChild size="md">
-            <Link href="/login">{t("ctaHeader")}</Link>
-          </Button>
-        }
-      />
+      <PublicStudentHeader />
 
       {/* Nội dung chính nằm trong một <main> duy nhất; `flex-1` đẩy footer xuống đáy như trước. */}
       <main className="flex flex-1 flex-col">

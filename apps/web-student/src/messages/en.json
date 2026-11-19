@@ -296,6 +296,17 @@
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
   },
+  "header": {
+    "login": "Sign in",
+    "nav": {
+      "history": "History",
+      "label": "Main navigation",
+      "myExams": "My exams",
+      "orders": "My orders",
+      "profile": "Profile"
+    },
+    "register": "Register"
+  },
   "home": {
     "emptyDescription": "Exam catalog, purchases, and test taking will arrive in upcoming waves. This release includes sign-in, password change, and sign-out.",
     "emptyTitle": "No exams yet",
