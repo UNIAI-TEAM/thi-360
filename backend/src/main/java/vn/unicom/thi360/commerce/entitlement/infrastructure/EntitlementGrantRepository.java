@@ -24,22 +24,16 @@ public interface EntitlementGrantRepository extends JpaRepository<EntitlementGra
     @Query("SELECT g FROM EntitlementGrant g WHERE g.id = :id")
     Optional<EntitlementGrant> lockById(@Param("id") UUID id);
 
-    /** Oldest grant of the entitlement that still has an attempt to give (E21), without a lock (describe). */
-    @Query("""
-            SELECT g FROM EntitlementGrant g
-            WHERE g.entitlementId = :entitlementId
-              AND g.attempts - g.attemptsUsed - g.attemptsReserved - g.attemptsRevoked > 0
-            ORDER BY g.grantedAt ASC, g.seq ASC
-            """)
-    List<EntitlementGrant> findWithAttemptsLeft(@Param("entitlementId") UUID entitlementId, Pageable page);
-
-    /** As {@link #findWithAttemptsLeft} but locks the row; the entitlement row is already locked (B2 order). */
+    /**
+     * Oldest grant of the entitlement (lowest {@code seq}, E21) that still has an attempt to give, locked; the
+     * entitlement row is already locked (B2 order).
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT g FROM EntitlementGrant g
             WHERE g.entitlementId = :entitlementId
               AND g.attempts - g.attemptsUsed - g.attemptsReserved - g.attemptsRevoked > 0
-            ORDER BY g.grantedAt ASC, g.seq ASC
+            ORDER BY g.seq ASC
             """)
     List<EntitlementGrant> lockWithAttemptsLeft(@Param("entitlementId") UUID entitlementId, Pageable page);
 }

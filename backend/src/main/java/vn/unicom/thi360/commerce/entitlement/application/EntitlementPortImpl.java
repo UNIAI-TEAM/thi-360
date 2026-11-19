@@ -11,6 +11,7 @@ import vn.unicom.thi360.commerce.entitlement.domain.Entitlement;
 import vn.unicom.thi360.commerce.entitlement.domain.EntitlementGrant;
 import vn.unicom.thi360.commerce.entitlement.domain.EntitlementUsage;
 import vn.unicom.thi360.commerce.entitlement.domain.UsageState;
+import vn.unicom.thi360.commerce.entitlement.infrastructure.EntitlementDescriptionQuery;
 import vn.unicom.thi360.commerce.entitlement.infrastructure.EntitlementGrantRepository;
 import vn.unicom.thi360.commerce.entitlement.infrastructure.EntitlementRepository;
 import vn.unicom.thi360.commerce.entitlement.infrastructure.EntitlementUsageRepository;
@@ -40,6 +41,7 @@ public class EntitlementPortImpl implements EntitlementPort {
     private final EntitlementRepository entitlementRepository;
     private final EntitlementGrantRepository grantRepository;
     private final EntitlementUsageRepository usageRepository;
+    private final EntitlementDescriptionQuery descriptionQuery;
     private final Clock clock;
 
     public EntitlementPortImpl(
@@ -47,33 +49,21 @@ public class EntitlementPortImpl implements EntitlementPort {
             EntitlementRepository entitlementRepository,
             EntitlementGrantRepository grantRepository,
             EntitlementUsageRepository usageRepository,
+            EntitlementDescriptionQuery descriptionQuery,
             Clock clock) {
         this.locker = locker;
         this.entitlementRepository = entitlementRepository;
         this.grantRepository = grantRepository;
         this.usageRepository = usageRepository;
+        this.descriptionQuery = descriptionQuery;
         this.clock = clock;
     }
 
     @Override
     @Transactional(readOnly = true)
     public EntitlementDescription describe(UUID userId, UUID entitlementId) {
-        Entitlement entitlement = ownedEntitlement(userId, entitlementId);
-        List<EntitlementGrant> next =
-                grantRepository.findWithAttemptsLeft(entitlement.getId(), PageRequest.of(0, 1));
-        if (next.isEmpty()) {
-            return new EntitlementDescription(
-                    entitlement.getExamId(), entitlement.attemptsLeft(), null, null, null, null, List.of());
-        }
-        EntitlementGrant grant = next.get(0);
-        return new EntitlementDescription(
-                entitlement.getExamId(),
-                entitlement.attemptsLeft(),
-                grant.getId(),
-                grant.getKind(),
-                grant.getOrderCode(),
-                grant.getGrantedAt(),
-                grant.getOptionCodes());
+        return descriptionQuery.find(userId, entitlementId)
+                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
     }
 
     @Override
@@ -173,20 +163,15 @@ public class EntitlementPortImpl implements EntitlementPort {
         return new CompensationResult(entitlement.getId(), compensation.getId());
     }
 
-    private Entitlement ownedEntitlement(UUID userId, UUID entitlementId) {
-        return entitlementRepository.findByIdAndUserId(entitlementId, userId)
-                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-    }
-
     /**
-     * A repeated {@code reserve} returns the reservation it already made. A reservation already given back
-     * cannot be taken again and an attempt id that belongs to another entitlement is a caller error: both are
-     * plain conflicts (AT-1 uses a fresh attempt id for every start).
+     * A repeated {@code reserve} returns the reservation it already made, whatever state that reservation is in
+     * now: it changes no count (AD-8). An attempt id that belongs to another entitlement is a caller error and a
+     * plain conflict. AT-1 uses a fresh attempt id to reserve the slot of a released attempt again.
      */
     private EntitlementBenefits replayReservation(EntitlementUsage usage, Entitlement entitlement) {
         EntitlementGrant grant = grantRepository.findById(usage.getGrantId())
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        if (!grant.getEntitlementId().equals(entitlement.getId()) || usage.getState() == UsageState.RELEASED) {
+        if (!grant.getEntitlementId().equals(entitlement.getId())) {
             throw new ConflictException("CONFLICT");
         }
         return benefitsOf(grant);

@@ -27,7 +27,8 @@ CREATE TABLE commerce.entitlement (
 
 CREATE TABLE commerce.entitlement_grant (
     id uuid PRIMARY KEY,
-    -- Thứ tự cấp, dùng cho FIFO (E21) khi hai lần cấp có cùng granted_at.
+    -- Thứ tự cấp, khóa FIFO (E21): được cấp khi đang giữ khóa dòng entitlement nên tăng theo thứ tự commit của
+    -- cùng một entitlement. granted_at chỉ để hiển thị: nó lấy từ đồng hồ của tiến trình ứng dụng.
     seq bigint GENERATED ALWAYS AS IDENTITY,
     entitlement_id uuid NOT NULL,
     kind text NOT NULL CHECK (kind IN ('PURCHASE', 'COMPENSATION')),
@@ -66,7 +67,7 @@ CREATE TABLE commerce.entitlement_grant (
 );
 
 CREATE INDEX idx_entitlement_grant_fifo
-    ON commerce.entitlement_grant (entitlement_id, granted_at, seq);
+    ON commerce.entitlement_grant (entitlement_id, seq);
 
 CREATE TABLE commerce.entitlement_usage (
     id uuid PRIMARY KEY,

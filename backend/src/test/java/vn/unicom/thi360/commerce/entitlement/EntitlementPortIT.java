@@ -39,6 +39,54 @@ class EntitlementPortIT extends EntitlementIntegrationTest {
         assertInvariants(granted.entitlementId());
     }
 
+    /**
+     * BE1-3, AD-8 Q2: replaying a successful reserve after the attempt was released returns the original result
+     * and changes nothing; the slot it gave back is reserved by a new attempt id.
+     */
+    @Test
+    void reserveReplayAfterReleaseReturnsTheOriginalResultAndChangesNothing() {
+        UUID userId = newId();
+        GrantOrderResult.Line granted = grant(userId, newId(), 1);
+        UUID attemptId = newId();
+        EntitlementBenefits original = port.reserve(userId, granted.entitlementId(), attemptId);
+        port.release(attemptId);
+        Map<String, Object> entitlementBefore = writtenColumns("commerce.entitlement", granted.entitlementId());
+        Map<String, Object> grantBefore = writtenColumns("commerce.entitlement_grant", granted.grantId());
+
+        EntitlementBenefits replay = port.reserve(userId, granted.entitlementId(), attemptId);
+
+        assertThat(replay).isEqualTo(original);
+        assertThat(usageState(attemptId)).isEqualTo("RELEASED");
+        assertThat(writtenColumns("commerce.entitlement", granted.entitlementId())).isEqualTo(entitlementBefore);
+        assertThat(writtenColumns("commerce.entitlement_grant", granted.grantId())).isEqualTo(grantBefore);
+        assertThat(count(entitlementBefore, "attempts_reserved")).isZero();
+        assertThat(port.describe(userId, granted.entitlementId()).attemptsLeft()).isEqualTo(1);
+
+        UUID newAttempt = newId();
+        assertThat(port.reserve(userId, granted.entitlementId(), newAttempt).grantId()).isEqualTo(granted.grantId());
+        assertThat(usageState(newAttempt)).isEqualTo("RESERVED");
+        assertThat(usageState(attemptId)).isEqualTo("RELEASED");
+        assertThat(count(entitlementRow(granted.entitlementId()), "attempts_reserved")).isEqualTo(1);
+        assertInvariants(granted.entitlementId());
+    }
+
+    /** An attempt id that already belongs to another entitlement is a caller error, not a replay. */
+    @Test
+    void reserveWithAnAttemptIdOfAnotherEntitlementIsAConflict() {
+        UUID userId = newId();
+        GrantOrderResult.Line one = grant(userId, newId(), 1);
+        GrantOrderResult.Line other = grant(userId, newId(), 1);
+        UUID attemptId = newId();
+        port.reserve(userId, one.entitlementId(), attemptId);
+
+        assertThatThrownBy(() -> port.reserve(userId, other.entitlementId(), attemptId))
+                .isInstanceOfSatisfying(ConflictException.class, e -> assertThat(e.getCode()).isEqualTo("CONFLICT"));
+
+        assertThat(count(entitlementRow(other.entitlementId()), "attempts_reserved")).isZero();
+        assertInvariants(one.entitlementId());
+        assertInvariants(other.entitlementId());
+    }
+
     /** AC-6: confirming a used attempt again changes nothing. */
     @Test
     void confirmUseIsIdempotent() {
@@ -159,19 +207,26 @@ class EntitlementPortIT extends EntitlementIntegrationTest {
         assertInvariants(entitlementId);
     }
 
-    /** Grants with the same timestamp are used in the order they were made (the {@code seq} tiebreak). */
+    /**
+     * BE1-4 (E21): FIFO follows the database sequence, not {@code granted_at}. The later grant carries the
+     * earlier timestamp (a lagging application clock), and describe and reserve still take the first grant.
+     */
     @Test
-    void grantsWithTheSameTimestampAreUsedInGrantOrder() {
+    void grantsAreUsedInGrantOrderWhateverTheirTimestamps() {
         UUID userId = newId();
         UUID examId = newId();
         GrantOrderResult.Line first = grant(userId, examId, 1);
         GrantOrderResult.Line second = grant(userId, examId, 1);
-        jdbc.update("UPDATE commerce.entitlement_grant SET granted_at = ? WHERE entitlement_id = ?",
-                java.sql.Timestamp.from(Instant.parse("2026-01-01T00:00:00Z")), first.entitlementId());
+        jdbc.update("UPDATE commerce.entitlement_grant SET granted_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(Instant.parse("2026-03-01T00:00:00Z")), first.grantId());
+        jdbc.update("UPDATE commerce.entitlement_grant SET granted_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(Instant.parse("2026-01-01T00:00:00Z")), second.grantId());
 
         assertThat(port.describe(userId, first.entitlementId()).grantId()).isEqualTo(first.grantId());
         assertThat(port.reserve(userId, first.entitlementId(), newId()).grantId()).isEqualTo(first.grantId());
+        assertThat(port.describe(userId, first.entitlementId()).grantId()).isEqualTo(second.grantId());
         assertThat(port.reserve(userId, first.entitlementId(), newId()).grantId()).isEqualTo(second.grantId());
+        assertInvariants(first.entitlementId());
     }
 
     /** AC-10: describe shows the grant the next reserve takes, with attempts left, options, source, code, date. */
