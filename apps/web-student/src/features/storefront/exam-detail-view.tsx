@@ -1,3 +1,4 @@
+import { cn, focusRing } from "@thi360/ui";
 import { pickName } from "@/lib/pick-name";
 import { Check, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -195,7 +196,13 @@ export function ExamDetailView({ product }: { product: ProductDetail }) {
                   </span>
                 )}
               </div>
-              <div className="overflow-x-auto rounded-lg border border-border">
+              {/* Bảng 6 cột cuộn ngang ở màn hẹp: vùng cuộn có tên và nhận focus để cuộn bằng bàn phím (DESIGN.md 5.13). */}
+              <div
+                role="region"
+                aria-label={t("structureCaption")}
+                tabIndex={0}
+                className={cn("overflow-x-auto rounded-lg border border-border", focusRing)}
+              >
                 <table className="w-full border-collapse text-left tabular-nums">
                   <caption className="sr-only">{t("structureCaption")}</caption>
                   <thead>
