@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "@thi360/ui";
+import { Card, cn, focusRing } from "@thi360/ui";
 import { Question, type AnswerValue } from "@thi360/ui/question";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import { useLocale } from "next-intl";
@@ -103,7 +103,10 @@ function Segmented<T extends string>({
           type="button"
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
-          className="h-10 rounded-lg border border-border bg-surface px-3.5 text-label font-semibold text-text-secondary hover:border-border-strong focus-visible:outline-hidden focus-visible:ring-3 focus-visible:ring-primary-text/40 aria-pressed:border-primary-text aria-pressed:bg-success-bg aria-pressed:text-primary-text"
+          className={cn(
+            "h-10 rounded-lg border border-border bg-surface px-3.5 text-label font-semibold text-text-secondary hover:border-border-strong aria-pressed:border-primary-text aria-pressed:bg-success-bg aria-pressed:text-primary-text",
+            focusRing,
+          )}
         >
           {option.label}
         </button>

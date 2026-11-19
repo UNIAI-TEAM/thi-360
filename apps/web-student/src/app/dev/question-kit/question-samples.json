@@ -411,7 +411,7 @@
         "wordCount": 86
       },
       "review": {
-        "outcome": "CORRECT",
+        "outcome": "PARTIAL",
         "earned": 20,
         "max": 25,
         "essay": {
