@@ -1858,7 +1858,7 @@ public class UserAdminService {
         return trimmed;
     }
 
-    private static String[] splitFullName(String fullName) {
+    static String[] splitFullName(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             return new String[] {null, null};
         }

@@ -53,6 +53,16 @@ public class UserAvatar {
         this.updatedAt = now;
     }
 
+    /** Thay ảnh hiện tại bằng ảnh mới (cùng một dòng của tài khoản); trả {@code assetId} cũ để xóa đối tượng cũ. */
+    public UUID replace(UUID newAssetId, String newObjectKey, long newSizeBytes, Instant now) {
+        UUID previousAssetId = this.assetId;
+        this.assetId = Objects.requireNonNull(newAssetId, "assetId must not be null");
+        this.objectKey = Objects.requireNonNull(newObjectKey, "objectKey must not be null");
+        this.sizeBytes = newSizeBytes;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        return previousAssetId;
+    }
+
     public UUID getUserId() {
         return userId;
     }

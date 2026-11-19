@@ -34,6 +34,7 @@
         <tests.excludedGroups>perf</tests.excludedGroups>
         <jsoup.version>1.21.2</jsoup.version>
         <greenmail.version>2.1.3</greenmail.version>
+        <thumbnailator.version>0.4.20</thumbnailator.version>
     </properties>
 
     <dependencyManagement>
@@ -165,6 +166,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>${thumbnailator.version}</version>
         </dependency>
 
         <dependency>
