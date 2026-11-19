@@ -172,7 +172,7 @@ public class KeycloakIdentityClient {
                 if (status == 409) {
                     throw new ConflictException("USERNAME_TAKEN");
                 }
-                if (status >= 400) {
+                if (status >= 400 && status < 500) {
                     throw new CreateUserRejectedException();
                 }
                 if (status >= 300) {

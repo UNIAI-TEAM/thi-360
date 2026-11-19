@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
+import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,12 +30,17 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UsersResource;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
 import vn.unicom.thi360.identity.application.ProvisioningReconcilerJob;
@@ -432,6 +438,60 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isCreated());
     }
 
+    @Test
+    void httpBadRequestReleasesReservationImmediately() throws Exception {
+        String username = "reg.http400." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        MvcResult result = registerWithCreateResponse(username, email, 400, false);
+        assertNothingLeft(username, result);
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void httpServerErrorRetainsReservationUntilMatchingSubjectIsReconciled() throws Exception {
+        String username = "reg.http502." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        registerWithCreateResponse(username, email, 502, true);
+        UUID provisional = support.accountId(username);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT status FROM identity.user_account WHERE id = ?", Short.class, provisional)).isEqualTo((short) 1);
+        assertThat(support.keycloakHasUser(username)).isTrue();
+        jdbcTemplate.update("UPDATE identity.user_account SET created_at = now() - interval '11 minutes' WHERE id = ?",
+                provisional);
+        reconcilerJob.reconcile();
+        assertThat(support.liveAccountCount(username)).isZero();
+        assertThat(support.keycloakHasUser(username)).isFalse();
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+    }
+
+    private MvcResult registerWithCreateResponse(String username, String email, int status, boolean createSubject)
+            throws Exception {
+        Keycloak original = (Keycloak) ReflectionTestUtils.getField(keycloakClient, "adminClient");
+        Keycloak controlled = Mockito.mock(Keycloak.class);
+        RealmResource realm = Mockito.mock(RealmResource.class);
+        UsersResource users = Mockito.mock(UsersResource.class);
+        Mockito.when(controlled.realm(anyString())).thenReturn(realm);
+        Mockito.when(realm.users()).thenReturn(users);
+        Mockito.when(users.create(any(UserRepresentation.class))).thenAnswer(invocation -> {
+            if (createSubject) {
+                try (Response created = KEYCLOAK.getKeycloakAdminClient().realm("thi-360").users()
+                        .create(invocation.getArgument(0))) {
+                    assertThat(created.getStatus()).isEqualTo(201);
+                }
+            }
+            return Response.status(status).build();
+        });
+        ReflectionTestUtils.setField(keycloakClient, "adminClient", controlled);
+        try {
+            return support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                    .andExpect(status().isBadGateway()).andReturn();
+        } finally {
+            ReflectionTestUtils.setField(keycloakClient, "adminClient", original);
+        }
+    }
+
 
     /**
      * Tài khoản học viên đã xóa mềm nhưng user Keycloak chưa dọn ({@code idp_cleanup_pending}): đăng ký lại cùng tên
@@ -826,6 +886,36 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         keycloakClient.deleteUser(unrelated);
         support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void mismatchedSubjectWithPasswordIsNotPromotedOrChanged() throws Exception {
+        String username = "reg.credential." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        support.track(username, email);
+        UUID unrelated = keycloakClient.createUser(new CreateUserCommand(
+                username, "different." + email, "Other", "Person", null, true, false, false));
+        keycloakClient.setPassword(unrelated, SelfRegistrationSupport.PASSWORD, false);
+        var resource = KEYCLOAK.getKeycloakAdminClient().realm("thi-360").users().get(unrelated.toString());
+        UserRepresentation before = resource.toRepresentation();
+        List<String> credentialIds = resource.credentials().stream().map(c -> c.getId()).toList();
+        assertThat(keycloakClient.hasPasswordCredential(unrelated)).isTrue();
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null))
+                .when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway());
+        Mockito.reset(keycloakClient);
+        UUID provisional = support.accountId(username);
+        jdbcTemplate.update("UPDATE identity.user_account SET created_at = now() - interval '11 minutes' WHERE id = ?",
+                provisional);
+        reconcilerJob.reconcile();
+        assertThat(support.liveAccountCount(username)).isZero();
+        assertThat(keycloakClient.findUserIdByUsername(username)).contains(unrelated);
+        UserRepresentation after = resource.toRepresentation();
+        assertThat(after.getEmail()).isEqualTo(before.getEmail());
+        assertThat(after.getUsername()).isEqualTo(before.getUsername());
+        assertThat(after.isEnabled()).isEqualTo(before.isEnabled());
+        assertThat(resource.credentials().stream().map(c -> c.getId()).toList()).isEqualTo(credentialIds);
     }
 
     @Test
