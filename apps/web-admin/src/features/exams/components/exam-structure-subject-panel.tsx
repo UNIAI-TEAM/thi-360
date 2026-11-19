@@ -149,7 +149,7 @@ export function ExamStructureSubjectPanel({
     : null;
   const matrixVaries = section.matrix?.unit === "COUNT" && varies;
   // Hai bảng "Theo khối lớp / Theo độ khó" (đã phân bổ ở nhóm, còn thiếu) chỉ có nghĩa khi một nhóm khai chỉ tiêu riêng; không thì
-  // chỉ lặp lại chỉ tiêu ở trên, nên ẩn (AD-15). Dòng "Nguồn phù hợp với bộ lọc của khối" của ma trận vẫn hiện.
+  // chỉ lặp lại chỉ tiêu ở trên, nên ẩn (AD-15).
   const groupQuotaDeclared = [...(allocation.grades ?? []), ...(allocation.difficulties ?? [])].some((row) => row.allocated > 0);
 
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));

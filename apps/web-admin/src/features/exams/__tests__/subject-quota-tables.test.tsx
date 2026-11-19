@@ -74,16 +74,14 @@ function renderPanel(groupMatrix: BlockMatrix | null) {
 }
 
 describe("bảng chỉ tiêu khối lớp và độ khó của môn", () => {
-  it("không nhóm nào khai chỉ tiêu khối lớp hay độ khó: chỉ còn dòng nguồn, không có hai bảng chi tiết", () => {
+  it("không nhóm nào khai chỉ tiêu khối lớp hay độ khó: không có hai bảng chi tiết", () => {
     renderPanel(null);
-    expect(screen.getByText(/Nguồn phù hợp với bộ lọc của khối:/)).toBeInTheDocument();
     expect(screen.queryAllByRole("columnheader", { name: "Đã phân bổ ở nhóm" })).toHaveLength(0);
     expect(screen.queryAllByRole("columnheader", { name: "Còn thiếu" })).toHaveLength(0);
   });
 
-  it("một nhóm khai chỉ tiêu riêng: dòng nguồn và cả hai bảng", () => {
+  it("một nhóm khai chỉ tiêu riêng: có cả hai bảng", () => {
     renderPanel(separate([5, 5, 0], [5, 5, 0]));
-    expect(screen.getByText(/Nguồn phù hợp với bộ lọc của khối:/)).toBeInTheDocument();
     // Hai bảng chi tiết: một theo khối lớp, một theo độ khó (cột "Đã phân bổ ở nhóm" chỉ có ở hai bảng này).
     expect(screen.getAllByRole("columnheader", { name: "Đã phân bổ ở nhóm" })).toHaveLength(2);
     expect(screen.getAllByRole("columnheader", { name: "Còn thiếu" })).toHaveLength(2);
