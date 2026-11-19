@@ -64,6 +64,15 @@ public class UserAccount {
     @Column(name = "preferred_locale", nullable = false)
     private String preferredLocale = DEFAULT_LOCALE;
 
+    @Column(name = "terms_version")
+    private String termsVersion;
+
+    @Column(name = "terms_accepted_at")
+    private Instant termsAcceptedAt;
+
+    @Column(name = "pending_email")
+    private String pendingEmail;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
@@ -128,6 +137,38 @@ public class UserAccount {
         this.createdAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedAt = now;
         this.createdBy = actorId;
+        this.updatedBy = actorId;
+    }
+
+    /** TM 5.1: tự đăng ký lưu bản điều khoản học viên đã chấp nhận, đúng giá trị gửi lên. */
+    public void recordTermsAcceptance(String version, Instant at) {
+        this.termsVersion = Objects.requireNonNull(version, "version must not be null");
+        this.termsAcceptedAt = Objects.requireNonNull(at, "at must not be null");
+    }
+
+    /** TM 5.3: email mới chờ xác minh; {@code email} và {@code email_verified_at} giữ nguyên tới khi xác nhận. */
+    public void requestEmailChange(String newEmail, Instant now, UUID actorId) {
+        this.pendingEmail = Objects.requireNonNull(newEmail, "newEmail must not be null").trim();
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = actorId;
+    }
+
+    public void markEmailVerified(Instant now, UUID actorId) {
+        this.emailVerifiedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedAt = now;
+        this.updatedBy = actorId;
+    }
+
+    /** TM 5.3: {@code email = pending_email}, đã xác minh, xóa {@code pending_email}. */
+    public void confirmEmailChange(Instant now, UUID actorId) {
+        if (this.pendingEmail == null) {
+            throw new IllegalStateException("No pending email to confirm");
+        }
+        this.email = this.pendingEmail;
+        this.emailNormalized = Normalizer.normalize(this.email);
+        this.emailVerifiedAt = Objects.requireNonNull(now, "now must not be null");
+        this.pendingEmail = null;
+        this.updatedAt = now;
         this.updatedBy = actorId;
     }
 
@@ -316,6 +357,18 @@ public class UserAccount {
 
     public String getPreferredLocale() {
         return preferredLocale;
+    }
+
+    public String getTermsVersion() {
+        return termsVersion;
+    }
+
+    public Instant getTermsAcceptedAt() {
+        return termsAcceptedAt;
+    }
+
+    public String getPendingEmail() {
+        return pendingEmail;
     }
 
     public Instant getDeletedAt() {

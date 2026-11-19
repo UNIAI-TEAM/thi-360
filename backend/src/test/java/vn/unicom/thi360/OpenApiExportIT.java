@@ -104,6 +104,39 @@ class OpenApiExportIT extends AbstractIntegrationTest {
         assertThat(columnKey.path("type")).extracting(JsonNode::asText).containsExactly("string", "null");
         assertThat(columnKey.path("enum").get(columnKey.path("enum").size() - 1).isNull()).isTrue();
 
+        // ID-1 (UNI-2710): đăng ký, xác minh và đổi email; hợp đồng lỗi mà FS-2 dùng (retryAfter, remainingAttempts).
+        assertThat(root.at("/paths/~1api~1v1~1auth~1register/post").isMissingNode()).isFalse();
+        JsonNode registerProps = schemas.path("RegisterRequest").path("properties");
+        for (String property : List.of(
+                "username", "fullName", "email", "password", "acceptTerms", "termsVersion", "callbackUrl")) {
+            assertThat(registerProps.has(property)).as("RegisterRequest.%s", property).isTrue();
+        }
+        assertThat(registerProps.path("password").path("format").asText()).isEqualTo("password");
+        assertThat(schemas.path("RegisterResponse").path("properties").has("redirectTo")).isTrue();
+        JsonNode changeProps = schemas.path("EmailCodeChangeRequest").path("properties");
+        assertThat(changeProps.has("newEmail")).isTrue();
+        assertThat(changeProps.path("currentPassword").path("format").asText()).isEqualTo("password");
+        assertThat(schemas.path("EmailCodeVerifyRequest").path("properties").has("code")).isTrue();
+        JsonNode emailErrorProps = schemas.path("EmailCodeErrorResponse").path("properties");
+        assertThat(emailErrorProps.has("retryAfter")).isTrue();
+        assertThat(emailErrorProps.has("remainingAttempts")).isTrue();
+        for (String path : List.of("verification", "verify", "change", "change~1confirm")) {
+            assertThat(root.at("/paths/~1api~1v1~1me~1email~1" + path + "/post").isMissingNode())
+                    .as("/api/v1/me/email/%s", path).isFalse();
+        }
+        for (String[] errorResponse : List.of(
+                new String[] {"verification", "429"},
+                new String[] {"change", "429"},
+                new String[] {"verify", "422"},
+                new String[] {"change~1confirm", "422"},
+                new String[] {"change~1confirm", "503"})) {
+            JsonNode content = root.at(
+                    "/paths/~1api~1v1~1me~1email~1" + errorResponse[0] + "/post/responses/" + errorResponse[1] + "/content");
+            assertThat(content.toString())
+                    .as("%s %s response schema", errorResponse[0], errorResponse[1])
+                    .contains("EmailCodeErrorResponse");
+        }
+
         Path targetOut = Path.of("target", "openapi.json");
         Files.createDirectories(targetOut.getParent());
         Files.writeString(targetOut, openApiJson, StandardCharsets.UTF_8);

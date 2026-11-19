@@ -108,6 +108,12 @@ thi360:
     admin-origins:
       - ${THI360_ADMIN_URL:http://localhost:3001}
     trusted-proxies: ${THI360_TRUSTED_PROXIES:127.0.0.1,::1,172.16.0.0/12}
+    rate-limit:
+      # E19: mỗi IP tối đa 30 lần đăng ký mỗi giờ và 100 lần mỗi ngày (ngày = 24 giờ trượt, câu hỏi mở 2 của ID-1).
+      register-per-ip-hour-limit: ${THI360_REGISTER_IP_HOUR_LIMIT:30}
+      register-per-ip-hour-window: PT1H
+      register-per-ip-day-limit: ${THI360_REGISTER_IP_DAY_LIMIT:100}
+      register-per-ip-day-window: PT24H
   s3:
     mode: ${THI360_S3_MODE:s3}
     endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}
@@ -207,6 +213,10 @@ thi360:
     tls: ${THI360_SMTP_TLS:none}
   token:
     pepper: ${THI360_TOKEN_PEPPER:dev-only-token-pepper-do-not-use}
+  identity:
+    # TM 5.3: mã OTP cố định, chỉ ở profile dev. DevEmailCodeGuard chặn biến này ở profile khác.
+    email-code:
+      dev-code: ${THI360_DEV_EMAIL_CODE:}
 ---
 spring:
   config:
