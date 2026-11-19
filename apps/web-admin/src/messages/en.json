@@ -4803,7 +4803,13 @@
         "TEMPLATE_NOT_PUBLISHABLE": "The standard template of subject {subject} cannot be published yet: this exam stays a draft and cannot be published or included in paper packs.",
         "TOPIC_QUOTA_INFEASIBLE": "{block}: {hasCount, select, yes {the topic quota needs at least {required, number} questions, the bank has only {available, number}, {missing, number} short} other {the bank does not have enough for the topic quota}}.",
         "TOPIC_QUOTA_MAPPING_MISSING": "{block}: a required topic quota row has no MAPID yet. Assign the code and run the check again.",
-        "TOPIC_QUOTA_NESTED": "{block}: quotas are set on both a parent topic and a child topic at the same level; keep the quota on one level only."
+        "TOPIC_QUOTA_NESTED": "{block}: quotas are set on both a parent topic and a child topic at the same level; keep the quota on one level only.",
+        "AUDIO_SHORTAGE": "Block {block}: not enough source with audio for the row{hasCount, select, yes {: needs {required, number}, only {available, number} can be assembled} other {}}.",
+        "POINTS_SHORTAGE": "Block {block}: not enough source with the row's points per question{hasCount, select, yes {: needs {required, number}, only {available, number} have the right points} other {}}.",
+        "BLOCK_COUNT_LOCKED": "Block {block}: the template locks the {dimension, select, COUNT {row's question count} SET_COUNT {row's set count} SET_SIZE {row's set size} TYPE {row's question type} other {row's type and counts}}{hasCount, select, yes {; the template keeps {required, number}, the row has {available, number}} other {}}. Set the row back to the template.",
+        "OMITTED_BLOCK_LOCKED": "Block {block}: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
+        "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {The scale is {required, number}, the total points of the exam are {available, number}. The {excluded, number}-point difference equals the points of the omitted part {part}. Set the scale to {available, number}.} other {The scale includes the points of the omitted part {part}.}}",
+        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -5060,6 +5066,30 @@
       "showAll": "Show all {count, plural, one {# item} other {# items}}",
       "showLess": "Show less",
       "setHeading": "Set {index, number} · {count, plural, one {# consecutive question} other {# consecutive questions}}",
+      "segmentRange": "questions {first, number}–{last, number} · {commands, plural, one {# command} other {# commands}} · {points} points",
+      "audio": {
+        "back": "Back 5 seconds",
+        "badge": "Has audio",
+        "errorNote": "The trial paper can still be viewed.",
+        "errorTitle": "Cannot play {file}.",
+        "fileOf": "File {index, number}/{total, number}",
+        "forQuestion": "question {number, number}",
+        "forSet": "questions {first, number}–{last, number}",
+        "forward": "Forward 5 seconds",
+        "group": "Audio player · {name}",
+        "loading": "Loading audio",
+        "mute": "Mute · {name}",
+        "noSeek": "This file can only be played from the start",
+        "pause": "Pause audio · {name}",
+        "paused": "Paused {name}",
+        "play": "Play audio · {name}",
+        "playing": "Playing {name}",
+        "position": "Playback position",
+        "retry": "Try again",
+        "spoken": "{currentMinutes, number} minutes {currentSeconds, number} seconds of {totalMinutes, number} minutes {totalSeconds, number} seconds",
+        "spokenNoTotal": "{currentMinutes, number} minutes {currentSeconds, number} seconds",
+        "unmute": "Unmute · {name}"
+      },
       "simulatedPassage": "Passage of a simulated set (part of the bank not loaded into the sample data).",
       "questionNumber": "Question {number, number}",
       "questionPoints": "Max {value, plural, one {{points} point} other {{points} points}}",
@@ -5164,7 +5194,14 @@
           "EXAM": "Exam quota {names}",
           "GRADE": "Grade {name}",
           "TOPIC": "Topic quota",
-          "TOPIC_NAMED": "{name}"
+          "TOPIC_NAMED": "{name}",
+          "UNCLASSIFIED": "Unclassified"
+        },
+        "denominator": {
+          "part": "Denominator: {subject} · {part} · {count, plural, one {# command} other {# commands}}",
+          "partNoSubject": "Denominator: {part} · {count, plural, one {# command} other {# commands}}",
+          "whole": "Denominator: {subject}, whole subject · {count, plural, one {# command} other {# commands}}",
+          "wholeNoSubject": "Denominator: whole subject · {count, plural, one {# command} other {# commands}}"
         },
         "deviations": "{count, plural, one {# row deviates} other {# rows deviate}}",
         "droppedQuestion": "Dropped question {code} · {type}, {grade}, {difficulty}.",
@@ -5175,9 +5212,11 @@
         "legend": "Difference is Actual minus Required. Topic quotas are “at least”, so a higher actual still passes. A deviating Reference row is only a warning and does not block; a pending-mapping row cannot be compared yet. A Required row that fails means no paper is generated.",
         "level": "{enforcement} · {unit}",
         "pendingNoData": "No reference data yet",
+        "requiredNone": "—",
         "requiredAtLeast": "at least {value}",
         "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
         "result": {
+          "MISSING_LABEL": "Missing label",
           "OK": "Met",
           "PENDING": "Awaiting mapping",
           "REFERENCE_DEVIATION": "Deviates · reference",

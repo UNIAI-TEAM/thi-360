@@ -153,6 +153,10 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
       const place = (blockName ? `${subject} · ${blockName}` : subject) || (issue.partName ?? where?.part.name ?? "");
       const required = issue.required ?? 0;
       const available = issue.available ?? 0;
+      // Phân đoạn của DISPLAY_SEGMENT_MISMATCH: tên từ `displaySegments` của phần (BE-20; FE-6 giữ trường trên cấu trúc), không in mã.
+      const segment = issue.segmentCode
+        ? ((exam?.parts.find((part) => part.id === issue.partId)?.displaySegments ?? []).find((item) => item.code === issue.segmentCode)?.name ?? "")
+        : "";
       const values = {
         block: blockName ? `${subject} · ${blockName}` : subject,
         subject,
@@ -169,6 +173,8 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
         available: roundForDisplay(available),
         missing: roundForDisplay(Math.max(0, required - available)),
         hasCount: issue.required == null || issue.available == null ? "no" : "yes",
+        excluded: roundForDisplay(issue.excludedPoints ?? 0),
+        hasExcluded: issue.required == null || issue.available == null || issue.excludedPoints == null ? "no" : "yes",
         seconds: issue.timeLimitSeconds ?? 0,
         answerType: issue.answerType ? tContent(`questionType.${issue.answerType}`) : "",
         count: issue.subjectCount ?? 0,
@@ -184,6 +190,8 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
         hasFormats: filter.answerFormats.length > 0 ? "yes" : "no",
         positions,
         hasPositions: positions ? "yes" : "no",
+        segment,
+        hasSegment: segment ? "yes" : "no",
       };
       // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
       const noCount = issue.required == null || issue.available == null;
