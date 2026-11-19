@@ -1044,6 +1044,50 @@
     "buildMode": "STANDARD",
     "isDefault": true
   },
+  "VSAT_SUBJECT_ANH": {
+    "questions": 25,
+    "maxPoints": 150,
+    "durationMinutes": 60,
+    "examKind": "VSAT",
+    "scope": "SUBJECT",
+    "partCode": null,
+    "subjectCode": "ANH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_PART_ANH_P2": {
+    "questions": 6,
+    "maxPoints": 36,
+    "durationMinutes": null,
+    "examKind": "VSAT",
+    "scope": "PART",
+    "partCode": "P2",
+    "subjectCode": "ANH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_PART_ANH_P3": {
+    "questions": 5,
+    "maxPoints": 30,
+    "durationMinutes": null,
+    "examKind": "VSAT",
+    "scope": "PART",
+    "partCode": "P3",
+    "subjectCode": "ANH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
+  "VSAT_PART_ANH_P4": {
+    "questions": 5,
+    "maxPoints": 30,
+    "durationMinutes": null,
+    "examKind": "VSAT",
+    "scope": "PART",
+    "partCode": "P4",
+    "subjectCode": "ANH",
+    "buildMode": "STANDARD",
+    "isDefault": true
+  },
   "VSAT_SUBJECT_TOAN": {
     "questions": 25,
     "maxPoints": 150,

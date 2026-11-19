@@ -460,11 +460,23 @@ public class ExamService {
         }
         boolean subjectPart = "PART".equals(scopeChoice.scope())
                 && "SUBJECT".equals(profile.getTemplateBy());
-        ExamTemplate template = subjectPart
-                ? templateService.findDefault(kindItem.code(), "SUBJECT", null, scopeChoice.subjectCode(), buildMode)
-                : templateService.findDefault(kindItem.code(), scopeChoice.scope(),
-                        scopeChoice.partCode(), scopeChoice.subjectCode(), buildMode);
-
+        // H41 (BE-21): a dedicated PART template of the subject comes first; a subject that has
+        // any is never cut from the subject template, so its missing part code is EXAM_PART_NOT_FOUND.
+        boolean cutFromSubject = false;
+        ExamTemplate template = null;
+        if (subjectPart) {
+            template = templateService.findDefault(kindItem.code(), "PART", scopeChoice.partCode(),
+                    scopeChoice.subjectCode(), buildMode);
+            if (template == null && !templateService.hasPartTemplates(kindItem.code(),
+                    scopeChoice.subjectCode())) {
+                template = templateService.findDefault(kindItem.code(), "SUBJECT", null,
+                        scopeChoice.subjectCode(), buildMode);
+                cutFromSubject = true;
+            }
+        } else {
+            template = templateService.findDefault(kindItem.code(), scopeChoice.scope(),
+                    scopeChoice.partCode(), scopeChoice.subjectCode(), buildMode);
+        }
         ExamStructureDocument doc;
         String templateCode = null;
         if (template != null) {
@@ -472,7 +484,7 @@ public class ExamService {
             if ("REVIEW".equals(buildMode)) {
                 doc = reviewSubject(doc, scopeChoice.subjectCode());
             }
-            if (subjectPart) {
+            if (cutFromSubject) {
                 doc = selectSubjectPart(doc, scopeChoice.partCode(), template);
             }
             ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
@@ -730,10 +742,22 @@ public class ExamService {
                 String mode = "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD";
                 rejectRawReview(request.practiceScoring(), mode);
                 boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
-                ExamTemplate template = subjectPart
-                        ? templateService.findDefault(kindItem.code(), "SUBJECT", null, choice.subjectCode(), mode)
-                        : templateService.findDefault(kindItem.code(), choice.scope(), choice.partCode(),
+                // H41 (BE-21): same dedicated PART lookup as doCreate.
+                boolean cutFromSubject = false;
+                ExamTemplate template = null;
+                if (subjectPart) {
+                    template = templateService.findDefault(kindItem.code(), "PART", choice.partCode(),
+                            choice.subjectCode(), mode);
+                    if (template == null && !templateService.hasPartTemplates(kindItem.code(),
+                            choice.subjectCode())) {
+                        template = templateService.findDefault(kindItem.code(), "SUBJECT", null,
                                 choice.subjectCode(), mode);
+                        cutFromSubject = true;
+                    }
+                } else {
+                    template = templateService.findDefault(kindItem.code(), choice.scope(),
+                            choice.partCode(), choice.subjectCode(), mode);
+                }
                 if (subjectPart && template == null) {
                     throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
                             messages.get(ExamErrorCodes.PART_NOT_FOUND));
@@ -742,7 +766,7 @@ public class ExamService {
                         ? ExamStructureOps.assignMissingIds(codec().read(template.getStructure()))
                         : new ExamStructureDocument(List.of());
                 if (template != null && "REVIEW".equals(mode)) doc = reviewSubject(doc, choice.subjectCode());
-                if (subjectPart) doc = selectSubjectPart(doc, choice.partCode(), template);
+                if (cutFromSubject) doc = selectSubjectPart(doc, choice.partCode(), template);
                 ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
@@ -885,6 +909,23 @@ public class ExamService {
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
+        // BE-21 (R2-1, R2-2): a subject-tagged PART template (H41: V-SAT English P2-P4, the
+        // only such templates) never derives the exam clock or the exam scale from the
+        // overview part row. The clock is the template's declared exam-level duration or, when
+        // the template declares none, the exam's existing one. Only a RAW exam takes its scale
+        // from the final part-row points (a dedicated template as fallback); a LINEAR (or
+        // other) scoring keeps maxScore/referenceMax untouched. Generic PART templates keep
+        // the original behavior (clock and declared scale come from the template), and the
+        // legacy cut of a part from a subject template still takes both values from the part row.
+        boolean partExam = "PART".equals(exam.getScope());
+        boolean dedicated = partExam && "PART".equals(template.getScope()) && template.getSubjectCode() != null;
+        // H41 (BE-21): a subject that has dedicated PART templates is never reloaded from the
+        // subject template, whose single part would satisfy every part code (P1 of V-SAT English).
+        if (subjectPart && templateService.hasPartTemplates(template.getKindCode(),
+                subjectCodeOf(exam.getSubjectItemId()))) {
+            throw new BusinessRuleException(ExamErrorCodes.PART_NOT_FOUND,
+                    messages.get(ExamErrorCodes.PART_NOT_FOUND));
+        }
         if (subjectPart) {
             doc = selectSubjectPart(doc, exam.getPartCode(), template);
         }
@@ -932,9 +973,14 @@ public class ExamService {
             throw new BusinessRuleException(ExamErrorCodes.SCOPE_NOT_ALLOWED,
                     messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED));
         }
+        Integer loadDuration = dedicated ? firstNonNull(template.getDurationMinutes(), exam.getDurationMinutes())
+                : subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes();
+        boolean rawScoring = "RAW".equals(exam.getPracticeScoring());
+        BigDecimal loadScale = dedicated ? (rawScoring ? firstNonNull(doc.parts().getFirst().maxPoints(),
+                template.getMaxScore()) : null)
+                : subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore();
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
-                template.getTiming(), subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes(),
-                subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore(), actor, now);
+                template.getTiming(), loadDuration, loadScale, actor, now);
         exam.setBuildMode(template.getBuildMode());
         // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the scoring values
         // of a new exam made from that template, administrator overrides included: a review is LINEAR with no
@@ -1493,6 +1539,10 @@ public class ExamService {
         return catalogLookup.findActiveItem(EXAM_GROUP, kindCode.trim())
                 .orElseThrow(() -> new BusinessRuleException(ExamErrorCodes.KIND_UNKNOWN,
                         messages.get(ExamErrorCodes.KIND_UNKNOWN)));
+    }
+
+    private static <T> T firstNonNull(T first, T fallback) {
+        return first != null ? first : fallback;
     }
 
     /**
