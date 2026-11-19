@@ -38,7 +38,8 @@ public class CookieAuthFilter extends OncePerRequestFilter {
         return SKIP_EXACT_PATHS.contains(path)
                 || path.startsWith("/actuator/health")
                 || path.startsWith("/v3/api-docs")
-                || TestApiPaths.matches(path);
+                || TestApiPaths.matches(path)
+                || RateLimitFilter.RegistrationRoute.matches(request);
     }
 
     @Override

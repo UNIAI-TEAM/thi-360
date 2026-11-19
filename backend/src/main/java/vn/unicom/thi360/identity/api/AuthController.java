@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.identity.application.AuthService;
+import vn.unicom.thi360.identity.application.SelfRegistrationService;
 import vn.unicom.thi360.identity.application.PasswordForgotDispatcher;
 import vn.unicom.thi360.identity.application.PasswordResetService;
 import vn.unicom.thi360.shared.security.AuthCookieService;
@@ -29,6 +30,7 @@ import vn.unicom.thi360.shared.web.AppMessages;
 public class AuthController {
 
     private final AuthService authService;
+    private final SelfRegistrationService selfRegistrationService;
 
     private final PasswordForgotDispatcher passwordForgotDispatcher;
     private final PasswordResetService passwordResetService;
@@ -37,11 +39,13 @@ public class AuthController {
 
     public AuthController(
             AuthService authService,
+            SelfRegistrationService selfRegistrationService,
             PasswordForgotDispatcher passwordForgotDispatcher,
             PasswordResetService passwordResetService,
             ClientIpResolver clientIpResolver,
             AppMessages appMessages) {
         this.authService = authService;
+        this.selfRegistrationService = selfRegistrationService;
         this.passwordForgotDispatcher = passwordForgotDispatcher;
         this.passwordResetService = passwordResetService;
         this.clientIpResolver = clientIpResolver;
@@ -62,6 +66,20 @@ public class AuthController {
                 readCookie(httpRequest, AuthService.LOCALE_COOKIE),
                 response);
         return new LoginResponse(result.redirectTo(), result.mustChangePassword());
+    }
+
+    @PostMapping(value = "/auth/register", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+            summary = "Tự đăng ký tài khoản học viên",
+            description = "Công khai. Tạo tài khoản và user Keycloak, đặt phiên (cookie HttpOnly), xếp thư mã OTP xác minh email.")
+    public RegisterResponse register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+        String redirectTo = selfRegistrationService.register(
+                request, readCookie(httpRequest, AuthService.LOCALE_COOKIE), response);
+        return new RegisterResponse(redirectTo);
     }
 
     @PostMapping("/auth/refresh")

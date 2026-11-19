@@ -144,6 +144,56 @@ public class KeycloakIdentityClient {
         }
     }
 
+    /** A response from the create endpoint rejected the request without creating a user. */
+    public static class CreateUserRejectedException extends ExternalServiceException {
+        public CreateUserRejectedException() {
+            super("IDENTITY_PROVIDER_ERROR", null, null);
+        }
+    }
+
+    /**
+     * Create a self-registered user, distinguishing an explicit rejection from an unknown outcome.
+     * No response or an unusable success response remains ambiguous.
+     */
+    public UUID createSelfRegisteredUser(CreateUserCommand command) {
+        Objects.requireNonNull(command, "command must not be null");
+        long startNanos = System.nanoTime();
+        try {
+            UserRepresentation rep = new UserRepresentation();
+            rep.setUsername(command.username());
+            rep.setEmail(command.email());
+            rep.setFirstName(command.firstName());
+            rep.setLastName(command.lastName());
+            rep.setEnabled(command.enabled());
+            rep.setEmailVerified(command.emailVerified());
+            rep.setRequiredActions(List.of());
+            try (Response response = appRealm().users().create(rep)) {
+                int status = response.getStatus();
+                if (status == 409) {
+                    throw new ConflictException("USERNAME_TAKEN");
+                }
+                if (status >= 400 && status < 500) {
+                    throw new CreateUserRejectedException();
+                }
+                if (status >= 300) {
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
+                }
+                URI location = response.getLocation();
+                if (location == null || location.getPath() == null) {
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
+                }
+                String path = location.getPath();
+                return UUID.fromString(path.substring(path.lastIndexOf('/') + 1));
+            }
+        } catch (ConflictException | ExternalServiceException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            logExternal("createSelfRegisteredUser", properties.realm(), "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+
+
     public void setPassword(UUID userId, String password, boolean temporary) {
         Objects.requireNonNull(userId, "userId must not be null");
         Objects.requireNonNull(password, "password must not be null");
@@ -340,6 +390,17 @@ public class KeycloakIdentityClient {
             return false;
         } catch (RuntimeException ex) {
             logExternal("listCredentials", targetRealm, "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+    /** Compare the full Keycloak subject with the normalized local identity before recovery. */
+    public boolean matchesRegistrationIdentity(UUID userId, String usernameNormalized, String emailNormalized) {
+        try {
+            UserRepresentation user = appRealm().users().get(userId.toString()).toRepresentation();
+            return usernameNormalized != null && emailNormalized != null
+                    && usernameNormalized.equals(vn.unicom.thi360.identity.domain.Normalizer.normalize(user.getUsername()))
+                    && emailNormalized.equals(vn.unicom.thi360.identity.domain.Normalizer.normalize(user.getEmail()));
+        } catch (RuntimeException ex) {
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }

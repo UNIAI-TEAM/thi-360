@@ -1800,40 +1800,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/password/forgot": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Yêu cầu liên kết đặt lại mật khẩu (công khai, luôn 202 cùng một thân) */
-        post: operations["forgotPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/password/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Đặt lại mật khẩu bằng mã trong thư (công khai, không đăng nhập) */
-        post: operations["resetPasswordByToken"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -1851,17 +1817,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/avatars/{assetId}": {
+    "/api/v1/auth/register": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Phục vụ ảnh đại diện (PNG 256px) cho tài khoản đã đăng nhập */
-        get: operations["getAvatar"];
+        get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Tự đăng ký tài khoản học viên
+         * @description Công khai. Tạo tài khoản và user Keycloak, đặt phiên (cookie HttpOnly), xếp thư mã OTP xác minh email.
+         */
+        post: operations["register"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1953,7 +1922,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/avatar": {
+    "/api/v1/me/email/change": {
         parameters: {
             query?: never;
             header?: never;
@@ -1961,32 +1930,64 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Đặt ảnh đại diện (jpg, png, webp, ≤5 MB, ≤4.096 px; lưu PNG 256px) */
-        put: operations["replaceMyAvatar"];
-        post?: never;
-        /** Xóa ảnh đại diện (không có ảnh thì không làm gì) */
-        delete: operations["removeMyAvatar"];
+        put?: never;
+        /** Yêu cầu đổi email: gửi mã tới email mới */
+        post: operations["requestChange"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/profile": {
+    "/api/v1/me/email/change/confirm": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Đọc hồ sơ của tài khoản đang đăng nhập */
-        get: operations["getMyProfile"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Xác nhận đổi email bằng mã OTP */
+        post: operations["confirmChange"];
         delete?: never;
         options?: never;
         head?: never;
-        /** Sửa họ tên, số điện thoại của tài khoản đang đăng nhập */
-        patch: operations["updateMyProfile"];
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/email/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gửi hoặc gửi lại mã xác minh tới email hiện tại */
+        post: operations["sendVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xác minh email hiện tại bằng mã OTP */
+        post: operations["verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/ping": {
@@ -3602,6 +3603,51 @@ export interface components {
              * @description ID tài khoản
              */
             userId: string;
+        };
+        /** @description Yêu cầu đổi email: gửi mã xác nhận tới email mới */
+        EmailCodeChangeRequest: {
+            /**
+             * Format: password
+             * @description Mật khẩu hiện tại
+             */
+            currentPassword: string;
+            /**
+             * @description Email mới
+             * @example moi@thi360.vn
+             */
+            newEmail: string;
+        };
+        /** @description Lỗi của API mã OTP email: lỗi chung kèm retryAfter và remainingAttempts */
+        EmailCodeErrorResponse: {
+            /**
+             * @description Mã lỗi
+             * @example EMAIL_CODE_INVALID
+             */
+            code: string;
+            /** @description Danh sách lỗi theo từng trường */
+            fieldErrors: components["schemas"]["FieldError"][];
+            /** @description Thông báo lỗi theo ngôn ngữ yêu cầu */
+            message: string;
+            /**
+             * Format: int32
+             * @description 422 EMAIL_CODE_INVALID: số lần nhập còn lại
+             */
+            remainingAttempts?: number;
+            /**
+             * Format: int64
+             * @description 429: số giây phải chờ trước khi gửi lại
+             */
+            retryAfter?: number;
+            /** @description Mã định danh yêu cầu */
+            traceId: string;
+        };
+        /** @description Mã OTP 6 số gửi qua email */
+        EmailCodeVerifyRequest: {
+            /**
+             * @description Mã OTP
+             * @example 123456
+             */
+            code: string;
         };
         EssayBody: {
             type: "EssayBody";
@@ -5243,29 +5289,6 @@ export interface components {
             /** @enum {string} */
             mode?: "ALL" | "CHOICE";
         };
-        /** @description Yêu cầu gửi liên kết đặt lại mật khẩu */
-        PasswordForgotRequest: {
-            /** @description Email của tài khoản */
-            email: string;
-        };
-        /** @description Phản hồi cố định của yêu cầu quên mật khẩu: giống nhau cho mọi email (AC-06.04) */
-        PasswordForgotResponse: {
-            /** @description Thông báo đã bản địa hóa, không cho biết email có tài khoản hay không */
-            message: string;
-        };
-        /** @description Yêu cầu đặt lại mật khẩu bằng mã trong thư */
-        PasswordResetRequest: {
-            /**
-             * Format: password
-             * @description Mật khẩu mới đạt quy tắc bảo mật
-             */
-            newPassword: string;
-            /**
-             * Format: password
-             * @description Mã đặt lại trong liên kết thư
-             */
-            token: string;
-        };
         /** @description Thông tin quyền hệ thống */
         PermissionResponse: {
             /**
@@ -5393,42 +5416,6 @@ export interface components {
             from?: number;
             /** Format: int32 */
             to?: number;
-        };
-        /** @description Hồ sơ của tài khoản đang đăng nhập (TM 5.5) */
-        ProfileResponse: {
-            /**
-             * Format: uuid
-             * @description Mã ảnh đại diện; null khi chưa có ảnh
-             */
-            avatarAssetId?: string | null;
-            /**
-             * @description Đường dẫn ảnh đại diện (cần đăng nhập); null khi chưa có ảnh
-             * @example /api/v1/avatars/0192f3a1-0000-7000-8000-000000000001
-             */
-            avatarUrl?: string | null;
-            /** @description Email của tài khoản; null khi tài khoản không có email */
-            email?: string | null;
-            /** @description Email đã xác minh hay chưa */
-            emailVerified: boolean;
-            /** @description Họ và tên */
-            fullName: string;
-            /**
-             * @description Số điện thoại; null khi chưa nhập
-             * @example 0912345678
-             */
-            phone?: string | null;
-            /** @description Tên đăng nhập, chỉ đọc */
-            username: string;
-        };
-        /** @description Yêu cầu sửa hồ sơ; trường không gửi thì giữ nguyên */
-        ProfileUpdateRequest: {
-            /** @description Họ và tên, bắt buộc khi gửi, tối đa 100 ký tự */
-            fullName?: string;
-            /**
-             * @description Số điện thoại Việt Nam 10 chữ số bắt đầu bằng 0; chuỗi rỗng để xóa số
-             * @example 0912345678
-             */
-            phone?: string;
         };
         QuestionAssetUploadResponse: {
             fileName?: string;
@@ -5685,6 +5672,46 @@ export interface components {
             sourceBlocks: components["schemas"]["QuestionbankExamSourceRef"][];
             /** @description Các dòng sổ đã dùng (xem trước, công bố, lượt thi) */
             usedIn: components["schemas"]["LedgerRef"][];
+        };
+        /** @description Yêu cầu đăng ký tài khoản học viên */
+        RegisterRequest: {
+            /** @description Đã chấp nhận điều khoản sử dụng; phải là true */
+            acceptTerms: boolean;
+            /** @description Đường dẫn chuyển hướng sau đăng ký (tương đối hoặc thuộc tên miền cho phép) */
+            callbackUrl?: string;
+            /**
+             * @description Email, dùng để xác minh và khôi phục tài khoản
+             * @example an@thi360.vn
+             */
+            email: string;
+            /**
+             * @description Họ và tên
+             * @example Nguyễn Văn An
+             */
+            fullName: string;
+            /**
+             * Format: password
+             * @description Mật khẩu đạt quy tắc bảo mật
+             */
+            password: string;
+            /**
+             * @description Phiên bản điều khoản đã hiển thị cho người dùng, lưu đúng giá trị gửi lên
+             * @example 2026-11
+             */
+            termsVersion: string;
+            /**
+             * @description Tên đăng nhập (4-30 ký tự, a-z0-9._@-, bắt đầu bằng chữ hoặc số)
+             * @example nguyen.van.an
+             */
+            username: string;
+        };
+        /** @description Kết quả đăng ký: phiên đã được tạo (cookie HttpOnly) */
+        RegisterResponse: {
+            /**
+             * @description Đường dẫn chuyển hướng sau đăng ký: callbackUrl hợp lệ hoặc /home
+             * @example http://localhost:3000/home
+             */
+            redirectTo: string;
         };
         /** @description Yêu cầu sắp xếp lại thứ tự giá trị trong nhóm hoặc cùng nút cha */
         ReorderCatalogItemsRequest: {
@@ -24212,268 +24239,6 @@ export interface operations {
             };
         };
     };
-    forgotPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PasswordForgotRequest"];
-            };
-        };
-        responses: {
-            /** @description Accepted */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PasswordForgotResponse"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Precondition Failed */
-            412: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Payload Too Large */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unprocessable Entity */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Too Many Requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Bad Gateway */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    resetPasswordByToken: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PasswordResetRequest"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Precondition Failed */
-            412: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Payload Too Large */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unprocessable Entity */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Too Many Requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Bad Gateway */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     refresh: {
         parameters: {
             query?: never;
@@ -24604,24 +24369,26 @@ export interface operations {
             };
         };
     };
-    getAvatar: {
+    register: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                assetId: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "image/png": string;
+                    "application/json": components["schemas"]["RegisterResponse"];
                 };
             };
             /** @description Bad Request */
@@ -25387,30 +25154,290 @@ export interface operations {
             };
         };
     };
-    replaceMyAvatar: {
+    requestChange: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    file?: string;
-                };
+                "application/json": components["schemas"]["EmailCodeChangeRequest"];
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Đã xếp thư mã xác nhận tới email mới */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileResponse"];
+                    "*/*": components["schemas"]["ApiError"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Email đã thuộc tài khoản khác (EMAIL_TAKEN) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Gửi quá nhanh hoặc quá 5 lần mỗi ngày: có Retry-After và retryAfter */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    confirmChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCodeVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Email đã đổi, đã xác minh, đã đồng bộ Keycloak */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Email bị tài khoản khác lấy trong lúc chờ (EMAIL_TAKEN) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không đồng bộ được email sang Keycloak; không có thay đổi nào */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+        };
+    };
+    sendVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã xếp thư mã xác minh */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {
@@ -25475,7 +25502,7 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Tài khoản chưa có email (EMAIL_REQUIRED) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -25484,13 +25511,13 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
-            /** @description Too Many Requests */
+            /** @description Gửi quá nhanh hoặc quá 5 lần mỗi ngày: có Retry-After và retryAfter */
             429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -25522,16 +25549,20 @@ export interface operations {
             };
         };
     };
-    removeMyAvatar: {
+    verify: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCodeVerifyRequest"];
+            };
+        };
         responses: {
-            /** @description No Content */
+            /** @description Email đã được xác minh */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -25601,273 +25632,13 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Too Many Requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Bad Gateway */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    getMyProfile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProfileResponse"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Precondition Failed */
-            412: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Payload Too Large */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unprocessable Entity */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Too Many Requests */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Bad Gateway */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    updateMyProfile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProfileUpdateRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProfileResponse"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Precondition Failed */
-            412: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Payload Too Large */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Unprocessable Entity */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
                 };
             };
             /** @description Too Many Requests */

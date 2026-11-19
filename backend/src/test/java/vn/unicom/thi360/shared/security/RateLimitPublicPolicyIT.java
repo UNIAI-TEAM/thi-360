@@ -347,6 +347,8 @@ class RateLimitPublicPolicyIT extends AbstractIntegrationTest {
                 base.loginPerIpLimit(), base.loginPerIpWindow(),
                 base.uploadPerIpLimit(), base.uploadPerIpWindow(),
                 publicLimit, window, exempt,
+                base.registerPerIpHourLimit(), base.registerPerIpHourWindow(),
+                base.registerPerIpDayLimit(), base.registerPerIpDayWindow(),
                 base.forgotPerIpLimit(), base.forgotPerIpWindow(),
                 base.resetPerIpLimit(), base.resetPerIpWindow());
     }
