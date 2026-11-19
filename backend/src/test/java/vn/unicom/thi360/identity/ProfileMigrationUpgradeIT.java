@@ -54,15 +54,21 @@ class ProfileMigrationUpgradeIT extends AbstractIntegrationTest {
                             1, 2, false, now(), ?, now(), ?, 3)
                     """,
                     userId, userId, userId);
-            String before = isolated.queryForObject(
-                    "SELECT to_jsonb(u.*)::text FROM identity.user_account u WHERE id = ?", String.class, userId);
+            // Chỉ các cột có từ trước nâng cấp: migration sau này thêm cột vào user_account không làm test đỏ giả.
+            List<String> preUpgradeColumns = isolated.queryForList(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'identity'"
+                            + " AND table_name = 'user_account' ORDER BY ordinal_position",
+                    String.class);
+            String preUpgradeRow = "SELECT to_jsonb(t.*)::text FROM (SELECT "
+                    + String.join(", ", preUpgradeColumns.stream().map(c -> "\"" + c + "\"").toList())
+                    + " FROM identity.user_account WHERE id = ?) t";
+            String before = isolated.queryForObject(preUpgradeRow, String.class, userId);
 
             flyway(url, null).migrate();
 
             // Hồ sơ đọc như ProfileService: dòng tài khoản nguyên vẹn, nối user_avatar không có dòng nào.
             Map<String, Object> profile = isolated.queryForMap(
-                    "SELECT u.username, u.full_name, u.email, u.phone, a.asset_id,"
-                            + " to_jsonb(u.*)::text AS whole"
+                    "SELECT u.username, u.full_name, u.email, u.phone, a.asset_id"
                             + " FROM identity.user_account u LEFT JOIN identity.user_avatar a ON a.user_id = u.id"
                             + " WHERE u.id = ?",
                     userId);
@@ -71,7 +77,9 @@ class ProfileMigrationUpgradeIT extends AbstractIntegrationTest {
             assertThat(profile.get("email")).isEqualTo("wave2@test.local");
             assertThat(profile.get("phone")).isNull();
             assertThat(profile.get("asset_id")).as("no avatar for a wave-2 account").isNull();
-            assertThat(profile.get("whole")).as("migration leaves the account row untouched").isEqualTo(before);
+            assertThat(isolated.queryForObject(preUpgradeRow, String.class, userId))
+                    .as("migration leaves the pre-upgrade columns of the account row untouched")
+                    .isEqualTo(before);
             assertThat(isolated.queryForObject("SELECT count(*) FROM identity.user_avatar", Long.class)).isZero();
             assertThat(isolated.queryForObject("SELECT count(*) FROM identity.password_reset_token", Long.class))
                     .isZero();
