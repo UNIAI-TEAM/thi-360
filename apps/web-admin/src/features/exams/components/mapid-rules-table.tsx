@@ -105,7 +105,7 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
   };
 
   return (
-    <section ref={rootRef} data-testid="mapid-rules-table" aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-4">
+    <section ref={rootRef} data-testid="mapid-rules-table" tabIndex={-1} aria-labelledby={headingId} className={cn("flex scroll-mt-24 flex-col gap-3 rounded-md border border-border p-4", focusRing)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h4 id={headingId} className="text-label font-semibold text-text">

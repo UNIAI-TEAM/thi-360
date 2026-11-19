@@ -5842,6 +5842,13 @@
       "edit": "Sửa",
       "editAria": "Sửa quy tắc: {sentence}",
       "empty": "Chưa có quy tắc nào. Các vị trí không khai báo được lấy ngẫu nhiên theo cấu trúc đề.",
+      "group": {
+        "allMode": "Môn đang ở chế độ Toàn bài: không giới hạn MAPID cho nhóm này.",
+        "managed": "Phạm vi kiến thức và chỉ tiêu chủ đề của nhóm do các quy tắc MAPID của môn quyết định.",
+        "none": "Chưa có quy tắc MAPID nào áp dụng cho nhóm này.",
+        "open": "Mở bảng Quy tắc MAPID",
+        "title": "Nguồn câu theo MAPID"
+      },
       "hint": "Chỉ khai báo những chủ đề muốn kiểm soát. Các vị trí còn lại được lấy ngẫu nhiên trong phạm vi còn hợp lệ.",
       "limit": "Đã đủ {max, number} quy tắc.",
       "mode": {

@@ -359,3 +359,26 @@ export function focusMapidRule(ruleId: string, root: ParentNode = document): boo
   target.focus();
   return true;
 }
+
+/**
+ * Từ màn nhóm sang bảng "Quy tắc MAPID" của môn: màn môn dựng sau khi chuyển, nên chờ tối đa `frames` khung hình cho tới khi
+ * bảng xuất hiện rồi cuộn tới và đưa tiêu điểm vào. Trả `false` khi không có bảng (môn ở chế độ Toàn bài).
+ */
+export function revealMapidRulesTable(root: ParentNode = document, frames = 30): Promise<boolean> {
+  const { promise, resolve } = Promise.withResolvers<boolean>();
+  let left = frames;
+  const look = () => {
+    const table = root.querySelector<HTMLElement>('[data-testid="mapid-rules-table"]');
+    if (table) {
+      table.scrollIntoView({ block: "start" });
+      table.focus();
+      resolve(true);
+    } else if (--left <= 0) {
+      resolve(false);
+    } else {
+      requestAnimationFrame(look);
+    }
+  };
+  requestAnimationFrame(look);
+  return promise;
+}
