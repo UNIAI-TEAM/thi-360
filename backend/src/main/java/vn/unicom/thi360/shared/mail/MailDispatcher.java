@@ -226,7 +226,10 @@ class MailDispatcher {
             }
             return MailFailure.classify(ex.getCause());
         } catch (InterruptedException ex) {
-            // Đang tắt: bỏ lần gửi, giữ nguyên giữ chỗ để hết hạn rồi gửi lại.
+            // Đang tắt: bỏ lần gửi, giữ nguyên giữ chỗ để hết hạn rồi gửi lại. Ngắt của người gọi đi
+            // qua cùng cổng hủy với nhánh hết hạn: thắng CAS thì lượt đứng ở kiểm tra quyền giữ không
+            // bao giờ tới được vận chuyển; đã STARTED thì ngắt phiên đang chạy, giữ quy tắc in-flight.
+            phase.compareAndSet(PENDING, CANCELLED);
             attempt.cancel(true);
             Thread.currentThread().interrupt();
             return ABANDONED;

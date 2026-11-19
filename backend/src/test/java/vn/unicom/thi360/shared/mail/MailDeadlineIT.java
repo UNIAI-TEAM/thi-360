@@ -13,6 +13,7 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -188,6 +189,76 @@ class MailDeadlineIT extends AbstractMailIT {
         // Thả kiểm tra: luồng gửi đã bị hủy phải bỏ lượt, không mở SMTP.
         release.countDown();
         assertThat(checkReturned.await(10, TimeUnit.SECONDS)).isTrue();
+
+        advance(Duration.ofMinutes(1));
+        assertThat(dispatcher.dispatchBatch()).as("the next legitimate claim delivers").isEqualTo(1);
+
+        MailOutbox.Mail mail = outbox.require(to, MailKind.EMAIL_VERIFY);
+        assertThat(mail.sentAt()).isNotNull();
+        assertThat(mail.attempts()).isEqualTo(1);
+        assertThat(mail.lastError()).isNull();
+        verify(transport, times(1)).send(any(), any(), any(), any(), any());
+        assertThat(receivedAtLeast(1)).extracting(Received::to).containsExactly(to);
+        assertThat(receivedCount()).as("exactly one delivery").isEqualTo(1);
+    }
+
+    /**
+     * R5-01: người gọi dispatch bị ngắt (worker đang tắt, ví dụ {@code shutdownNow()}) trong lúc hàng rào
+     * kiểm tra quyền giữ còn treo, trước khi SMTP bắt đầu. Người gọi trả về nhưng lượt gửi bị hủy mà vẫn chạy
+     * tiếp khi được thả không được mở SMTP và không ghi kết quả; lần lấy lại hợp lệ kế tiếp gửi đúng một thư.
+     */
+    @Test
+    void callerInterruptBeforeFenceReturnsNeverStartsSmtp() throws Exception {
+        String to = MailSamples.randomAddress();
+        enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch checkEntered = new CountDownLatch(1);
+        AtomicInteger checks = new AtomicInteger();
+        AtomicReference<Thread> sendThread = new AtomicReference<>();
+        doAnswer(invocation -> {
+                    if (checks.incrementAndGet() == 1) {
+                        sendThread.set(Thread.currentThread());
+                        checkEntered.countDown();
+                        // Treo và bỏ qua lệnh ngắt, như một truy vấn bị kẹt không đáp lại ngắt.
+                        while (release.getCount() > 0) {
+                            try {
+                                release.await();
+                            } catch (InterruptedException ignored) {
+                                // vẫn treo tới khi được thả
+                            }
+                        }
+                    }
+                    return invocation.callRealMethod();
+                })
+                .when(store)
+                .stillHeld(any(), any());
+
+        AtomicInteger sent = new AtomicInteger(-1);
+        Thread caller = Thread.ofVirtual()
+                .name("mail-dispatch-caller")
+                .start(() -> sent.set(dispatcher.dispatchBatch()));
+        assertThat(checkEntered.await(10, TimeUnit.SECONDS)).isTrue();
+
+        try {
+            caller.interrupt();
+            caller.join(Duration.ofSeconds(10));
+            assertThat(caller.isAlive()).as("the interrupted dispatch returns").isFalse();
+            assertThat(sent.get()).as("nothing was sent").isZero();
+
+            MailOutbox.Mail afterInterrupt = outbox.require(to, MailKind.EMAIL_VERIFY);
+            assertThat(afterInterrupt.lastError()).as("no result written").isNull();
+            assertThat(afterInterrupt.attempts()).as("no attempt counted, no retry spent").isZero();
+            assertThat(afterInterrupt.sentAt()).isNull();
+            assertThat(afterInterrupt.failedAt()).isNull();
+        } finally {
+            release.countDown();
+        }
+
+        // Thả hàng rào: luồng gửi đã bị người gọi hủy phải kết thúc mà không mở SMTP.
+        assertThat(sendThread.get()).isNotNull();
+        sendThread.get().join(Duration.ofSeconds(10));
+        assertThat(sendThread.get().isAlive()).as("the cancelled send task exits").isFalse();
+        verify(transport, never()).send(any(), any(), any(), any(), any());
 
         advance(Duration.ofMinutes(1));
         assertThat(dispatcher.dispatchBatch()).as("the next legitimate claim delivers").isEqualTo(1);
