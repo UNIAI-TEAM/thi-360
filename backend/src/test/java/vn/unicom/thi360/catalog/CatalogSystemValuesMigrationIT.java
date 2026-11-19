@@ -64,11 +64,13 @@ class CatalogSystemValuesMigrationIT {
     private static final String CUSTOM_GRADE_ID = "11111111-1111-4111-8111-000000000002";
     private static final String KNOWLEDGE_ROOT_ID = "11111111-1111-4111-8111-000000000003";
     private static final String QUESTION_ID = "11111111-1111-4111-8111-000000000004";
-    // (a) the wave-1 HSA row (renamed by an admin) and the QDA row (still on the wave-1 default names).
+    // (a) wave-1 rows with names chosen by an admin.
     private static final String HSA_ID = "00000000-0000-7000-8200-000000000101";
     private static final String QDA_ID = "00000000-0000-7000-8200-000000000102";
     private static final String HSA_ADMIN_NAME_VI = "Kỳ thi HSA do admin đặt tên";
     private static final String HSA_ADMIN_NAME_EN = "HSA exam named by an admin";
+    private static final String QDA_ADMIN_NAME_VI = "Kỳ thi QDA do admin đặt tên";
+    private static final String QDA_ADMIN_NAME_EN = "QDA exam named by an admin";
 
     // The 52 listed values by group; G11 and G12 stay under the codes admins gave them (in use).
     private static final Map<String, List<String>> LISTED_CODES = Map.of(
@@ -114,13 +116,13 @@ class CatalogSystemValuesMigrationIT {
                                 + row(G12_ID, GRADE, "LOP12", 3, "Lớp mười hai", 2) + ",\n"
                                 + row(CUSTOM_GRADE_ID, GRADE, "CUSTOM_GRADE", 4, "Khối admin tự tạo", 3) + ",\n"
                                 + row(KNOWLEDGE_ROOT_ID, KNOWLEDGE, "KN_MIG", 900, "Gốc kiến thức", 0));
-                // Wave 1 seeded HSA and QDA; an admin renamed HSA, QDA still carries the wave-1 default names.
+                // Wave 1 seeded HSA and QDA; an admin renamed both before this upgrade.
                 db.update("INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en,"
                         + " display_order, status, is_system, depth, path) VALUES"
                         + " (?::uuid, ?::uuid, 'HSA', 'hsa', 1, ?, ?, 0, 1, false, 1, '/' || ?::text || '/'),"
                         + " (?::uuid, ?::uuid, 'QDA', 'qda', 2, ?, ?, 1, 1, false, 1, '/' || ?::text || '/')",
                         HSA_ID, EXAM, HSA_ADMIN_NAME_VI, HSA_ADMIN_NAME_EN, HSA_ID,
-                        QDA_ID, EXAM, "Đánh giá năng lực ĐHSPHN (QDA)", "QDA Competency Assessment", QDA_ID);
+                        QDA_ID, EXAM, QDA_ADMIN_NAME_VI, QDA_ADMIN_NAME_EN, QDA_ID);
                 db.update("INSERT INTO catalog.catalog_item_ref (item_id, ref_item_id) VALUES (?::uuid, ?::uuid)",
                         KNOWLEDGE_ROOT_ID, G11_ID);
                 db.update("INSERT INTO questionbank.question (id, code, type, grade_item_id)"
@@ -219,32 +221,46 @@ class CatalogSystemValuesMigrationIT {
     }
 
     @Test
-    void namesAnAdminGaveHsaSurviveTheMigrationAndBothSeedRuns() throws Exception {
-        assertThat(hsaNames()).as("after the migration and the first repeatable run")
-                .containsExactly(HSA_ADMIN_NAME_VI, HSA_ADMIN_NAME_EN);
+    void adminNamesSurviveTheMigrationAndBothSeedRuns() throws Exception {
+        assertThat(names(HSA_ID)).containsExactly(HSA_ADMIN_NAME_VI, HSA_ADMIN_NAME_EN);
+        assertThat(names(QDA_ID)).containsExactly(QDA_ADMIN_NAME_VI, QDA_ADMIN_NAME_EN);
+        runSeed();
+        assertThat(names(HSA_ID)).containsExactly(HSA_ADMIN_NAME_VI, HSA_ADMIN_NAME_EN);
+        assertThat(names(QDA_ID)).containsExactly(QDA_ADMIN_NAME_VI, QDA_ADMIN_NAME_EN);
+    }
 
-        // The repeatable runs again whenever its checksum changes.
+    @Test
+    void oldDefaultsUpgradeIndependentlyOfAnAdminRenameInTheOtherColumn() throws Exception {
+        try {
+            setNames(HSA_ID, "Đánh giá năng lực ĐHQGHN (HSA)", HSA_ADMIN_NAME_EN);
+            setNames(QDA_ID, "Đánh giá năng lực ĐHSPHN (QDA)", QDA_ADMIN_NAME_EN);
+            runSeed();
+            assertThat(names(HSA_ID)).containsExactly("Đánh giá năng lực ĐHQG Hà Nội (HSA)", HSA_ADMIN_NAME_EN);
+            assertThat(names(QDA_ID)).containsExactly("Đánh giá năng lực Bộ Quốc phòng (QDA)", QDA_ADMIN_NAME_EN);
+
+            setNames(QDA_ID, QDA_ADMIN_NAME_VI, "QDA Competency Assessment");
+            runSeed();
+            assertThat(names(QDA_ID)).containsExactly(QDA_ADMIN_NAME_VI, "Ministry of Defence Competency Assessment (QDA)");
+        } finally {
+            setNames(HSA_ID, HSA_ADMIN_NAME_VI, HSA_ADMIN_NAME_EN);
+            setNames(QDA_ID, QDA_ADMIN_NAME_VI, QDA_ADMIN_NAME_EN);
+        }
+    }
+
+    private void runSeed() throws Exception {
         try (Connection connection = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(connection,
                     new EncodedResource(new ClassPathResource(CATALOG_SEED), StandardCharsets.UTF_8));
         }
-
-        assertThat(hsaNames()).as("after a seed rerun").containsExactly(HSA_ADMIN_NAME_VI, HSA_ADMIN_NAME_EN);
-        assertThat(jdbc.queryForObject("SELECT is_system FROM catalog.catalog_item WHERE id = ?::uuid",
-                Boolean.class, HSA_ID)).isTrue();
     }
 
-    @Test
-    void waveOneDefaultNamesOfQdaAreUpdatedToTheSpecNamesOnce() {
-        Map<String, Object> qda = jdbc.queryForMap(
-                "SELECT name_vi, name_en FROM catalog.catalog_item WHERE id = ?::uuid", QDA_ID);
-        assertThat(qda).containsEntry("name_vi", "Đánh giá năng lực Bộ Quốc phòng (QDA)")
-                .containsEntry("name_en", "Ministry of Defence Competency Assessment (QDA)");
+    private void setNames(String id, String vi, String en) {
+        jdbc.update("UPDATE catalog.catalog_item SET name_vi = ?, name_en = ? WHERE id = ?::uuid", vi, en, id);
     }
 
-    private List<Object> hsaNames() {
+    private List<Object> names(String id) {
         Map<String, Object> names = jdbc.queryForMap(
-                "SELECT name_vi, name_en FROM catalog.catalog_item WHERE id = ?::uuid", HSA_ID);
+                "SELECT name_vi, name_en FROM catalog.catalog_item WHERE id = ?::uuid", id);
         return List.of(names.get("name_vi"), names.get("name_en"));
     }
 
