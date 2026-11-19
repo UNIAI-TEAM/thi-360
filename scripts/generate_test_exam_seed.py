@@ -970,11 +970,14 @@ def emit_exam(exam):
     out.append(f"  ({cols})")
     out.append("ON CONFLICT (id) DO NOTHING;")
     out.append("")
-    out.append("INSERT INTO exam.exam_structure (exam_id, parts, exam_quotas, structure_hash, base_version,")
+    out.extend(upgrade_statements(exam, eid, qc, has_essay, has_eng, combination_count))
+    out.append("INSERT INTO exam.exam_structure AS s (exam_id, parts, exam_quotas, structure_hash, base_version,")
     out.append("    updated_by) VALUES")
     out.append(f"  ('{eid}',{sql_quote(dump(exam['doc']))}::jsonb,{sql_quote(dump(exam['exam_quotas']))}::jsonb,"
           f"'{seed_marker(code)}',NULL,NULL)")
-    out.append("ON CONFLICT (exam_id) DO NOTHING;")
+    out.append("ON CONFLICT (exam_id) DO UPDATE SET parts = EXCLUDED.parts, exam_quotas = EXCLUDED.exam_quotas,")
+    out.append("    structure_hash = EXCLUDED.structure_hash, edited = false, updated_at = now()")
+    out.append(f"WHERE {upgradable(code, 's.exam_id', 's')};")
     out.append("")
     # block refs
     rows = []
