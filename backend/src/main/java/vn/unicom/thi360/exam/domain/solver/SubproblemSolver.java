@@ -144,17 +144,39 @@ final class SubproblemSolver {
 
     /**
      * A group short of usable units: names the cap whose relaxation ALONE would close the gap, that is, whose
-     * blocked candidates are not over another cap as well. Null when no single cap does (the shortage is the
-     * source's, or several caps hold the same candidates and none explains it alone).
+     * blocked candidates are not over another cap as well. The count only proposes it (individual availability);
+     * the cap is named when relaxing it alone lets the whole section be solved (sufficient) and, with every other
+     * cap relaxed, enforcing it alone keeps the section infeasible (necessary): at most two bounded searches per
+     * proposed cap. Null when no single cap does (the shortage is the source's, several caps hold the same
+     * candidates, or the others must be relaxed too), or when the deadline hit while verifying (UNI-2758 R2-3).
      */
-    private static QuotaRef capShortage(Prep.SubproblemContext ctx, int groupUnits, long units, long[] blocked) {
-        int best = -1;
-        for (int k = 0; k < blocked.length; k++) {
-            if (units + blocked[k] >= groupUnits && (best < 0 || blocked[k] > blocked[best])) {
-                best = k;
+    private QuotaRef capShortage(Prep.SubproblemContext ctx, int groupUnits, long units, long[] blocked) {
+        try {
+            for (int k = 0; k < blocked.length; k++) {
+                if (units + blocked[k] >= groupUnits && aloneNecessaryAndSufficient(ctx, k)) {
+                    return capRef(ctx, k);
+                }
             }
+        } catch (DeadlineHit e) {
+            return null;
         }
-        return best < 0 ? null : capRef(ctx, best);
+        return null;
+    }
+
+    private boolean aloneNecessaryAndSufficient(Prep.SubproblemContext ctx, int k) {
+        int caps = ctx.caps().size();
+        boolean[] onlyK = new boolean[caps];
+        onlyK[k] = true;
+        if (new PathSearch(ctx, deadlineCheck, onlyK).solve() == null) {
+            return false;
+        }
+        if (caps == 1) {
+            return true; // the shortage itself proves the section infeasible with this cap enforced
+        }
+        boolean[] others = new boolean[caps];
+        java.util.Arrays.fill(others, true);
+        others[k] = false;
+        return new PathSearch(ctx, deadlineCheck, others).solve() == null;
     }
 
     /** The only cap candidate {@code i} of group {@code g} is over, or -1 when two or more caps hold it out. */
