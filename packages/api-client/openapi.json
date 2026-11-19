@@ -6596,16 +6596,16 @@
           "avatarAssetId" : {
             "description" : "Mã ảnh đại diện; null khi chưa có ảnh",
             "format" : "uuid",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "avatarUrl" : {
             "description" : "Đường dẫn ảnh đại diện (cần đăng nhập); null khi chưa có ảnh",
             "example" : "/api/v1/avatars/0192f3a1-0000-7000-8000-000000000001",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "email" : {
             "description" : "Email của tài khoản; null khi tài khoản không có email",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "emailVerified" : {
             "description" : "Email đã xác minh hay chưa",
@@ -6618,7 +6618,7 @@
           "phone" : {
             "description" : "Số điện thoại; null khi chưa nhập",
             "example" : "0912345678",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "username" : {
             "description" : "Tên đăng nhập, chỉ đọc",
@@ -18429,7 +18429,7 @@
         "tags" : [ "Exam" ]
       },
       "patch" : {
-        "operationId" : "update_2",
+        "operationId" : "update_1",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -30130,7 +30130,7 @@
     },
     "/api/v1/auth/password/forgot" : {
       "post" : {
-        "operationId" : "forgot",
+        "operationId" : "forgotPassword",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -30142,7 +30142,7 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
+          "202" : {
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -30150,7 +30150,7 @@
                 }
               }
             },
-            "description" : "OK"
+            "description" : "Accepted"
           },
           "400" : {
             "content" : {
@@ -30279,7 +30279,7 @@
     },
     "/api/v1/auth/password/reset" : {
       "post" : {
-        "operationId" : "reset",
+        "operationId" : "resetPasswordByToken",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -30291,8 +30291,8 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK"
+          "204" : {
+            "description" : "No Content"
           },
           "400" : {
             "content" : {
@@ -30568,7 +30568,7 @@
     },
     "/api/v1/avatars/{assetId}" : {
       "get" : {
-        "operationId" : "serve",
+        "operationId" : "getAvatar",
         "parameters" : [ {
           "in" : "path",
           "name" : "assetId",
@@ -31500,10 +31500,10 @@
     },
     "/api/v1/me/avatar" : {
       "delete" : {
-        "operationId" : "remove",
+        "operationId" : "removeMyAvatar",
         "responses" : {
-          "200" : {
-            "description" : "OK"
+          "204" : {
+            "description" : "No Content"
           },
           "400" : {
             "content" : {
@@ -31630,7 +31630,7 @@
         "tags" : [ "Avatar" ]
       },
       "put" : {
-        "operationId" : "replace",
+        "operationId" : "replaceMyAvatar",
         "requestBody" : {
           "content" : {
             "multipart/form-data" : {
@@ -31784,7 +31784,7 @@
     },
     "/api/v1/me/profile" : {
       "get" : {
-        "operationId" : "get",
+        "operationId" : "getMyProfile",
         "responses" : {
           "200" : {
             "content" : {
@@ -31921,7 +31921,7 @@
         "tags" : [ "Profile" ]
       },
       "patch" : {
-        "operationId" : "update_1",
+        "operationId" : "updateMyProfile",
         "requestBody" : {
           "content" : {
             "application/json" : {

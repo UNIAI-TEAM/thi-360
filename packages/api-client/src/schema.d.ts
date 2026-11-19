@@ -746,7 +746,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Sửa thông tin bài thi */
-        patch: operations["update_2"];
+        patch: operations["update_1"];
         trace?: never;
     };
     "/api/v1/admin/exams/{id}/duplicate": {
@@ -1810,7 +1810,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Yêu cầu liên kết đặt lại mật khẩu (công khai, luôn 202 cùng một thân) */
-        post: operations["forgot"];
+        post: operations["forgotPassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1827,7 +1827,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Đặt lại mật khẩu bằng mã trong thư (công khai, không đăng nhập) */
-        post: operations["reset"];
+        post: operations["resetPasswordByToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1859,7 +1859,7 @@ export interface paths {
             cookie?: never;
         };
         /** Phục vụ ảnh đại diện (PNG 256px) cho tài khoản đã đăng nhập */
-        get: operations["serve"];
+        get: operations["getAvatar"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1962,10 +1962,10 @@ export interface paths {
         };
         get?: never;
         /** Đặt ảnh đại diện (jpg, png, webp, ≤5 MB, ≤4.096 px; lưu PNG 256px) */
-        put: operations["replace"];
+        put: operations["replaceMyAvatar"];
         post?: never;
         /** Xóa ảnh đại diện (không có ảnh thì không làm gì) */
-        delete: operations["remove"];
+        delete: operations["removeMyAvatar"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1979,14 +1979,14 @@ export interface paths {
             cookie?: never;
         };
         /** Đọc hồ sơ của tài khoản đang đăng nhập */
-        get: operations["get"];
+        get: operations["getMyProfile"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** Sửa họ tên, số điện thoại của tài khoản đang đăng nhập */
-        patch: operations["update_1"];
+        patch: operations["updateMyProfile"];
         trace?: never;
     };
     "/api/v1/ping": {
@@ -5400,14 +5400,14 @@ export interface components {
              * Format: uuid
              * @description Mã ảnh đại diện; null khi chưa có ảnh
              */
-            avatarAssetId?: string;
+            avatarAssetId?: string | null;
             /**
              * @description Đường dẫn ảnh đại diện (cần đăng nhập); null khi chưa có ảnh
              * @example /api/v1/avatars/0192f3a1-0000-7000-8000-000000000001
              */
-            avatarUrl?: string;
+            avatarUrl?: string | null;
             /** @description Email của tài khoản; null khi tài khoản không có email */
-            email?: string;
+            email?: string | null;
             /** @description Email đã xác minh hay chưa */
             emailVerified: boolean;
             /** @description Họ và tên */
@@ -5416,7 +5416,7 @@ export interface components {
              * @description Số điện thoại; null khi chưa nhập
              * @example 0912345678
              */
-            phone?: string;
+            phone?: string | null;
             /** @description Tên đăng nhập, chỉ đọc */
             username: string;
         };
@@ -14376,7 +14376,7 @@ export interface operations {
             };
         };
     };
-    update_2: {
+    update_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -24212,7 +24212,7 @@ export interface operations {
             };
         };
     };
-    forgot: {
+    forgotPassword: {
         parameters: {
             query?: never;
             header?: never;
@@ -24225,8 +24225,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Accepted */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24344,7 +24344,7 @@ export interface operations {
             };
         };
     };
-    reset: {
+    resetPasswordByToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -24357,8 +24357,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24604,7 +24604,7 @@ export interface operations {
             };
         };
     };
-    serve: {
+    getAvatar: {
         parameters: {
             query?: never;
             header?: never;
@@ -25387,7 +25387,7 @@ export interface operations {
             };
         };
     };
-    replace: {
+    replaceMyAvatar: {
         parameters: {
             query?: never;
             header?: never;
@@ -25522,7 +25522,7 @@ export interface operations {
             };
         };
     };
-    remove: {
+    removeMyAvatar: {
         parameters: {
             query?: never;
             header?: never;
@@ -25531,8 +25531,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25648,7 +25648,7 @@ export interface operations {
             };
         };
     };
-    get: {
+    getMyProfile: {
         parameters: {
             query?: never;
             header?: never;
@@ -25776,7 +25776,7 @@ export interface operations {
             };
         };
     };
-    update_1: {
+    updateMyProfile: {
         parameters: {
             query?: never;
             header?: never;
