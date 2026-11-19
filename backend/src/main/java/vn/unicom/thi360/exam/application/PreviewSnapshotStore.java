@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,16 +22,19 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 public class PreviewSnapshotStore {
     private static final String KEY_PREFIX = "exam:preview:";
     private static final Duration TTL = Duration.ofMinutes(30);
-    /** Reads the remaining life and raises it to at least {@code ARGV[1]} ms in one step; -1 when the key is gone. */
+    /**
+     * Raises the absolute expiry to {@code ARGV[1]} (epoch ms) when that is later, and returns the expiry the key
+     * holds afterwards, read back from Redis itself ({@code PEXPIRETIME}, Redis 7); -1 when the key is gone.
+     */
     private static final DefaultRedisScript<Long> EXTEND = new DefaultRedisScript<>("""
-            local ttl = redis.call('PTTL', KEYS[1])
-            if ttl < 0 then return -1 end
+            local current = redis.call('PEXPIRETIME', KEYS[1])
+            if current < 0 then return -1 end
             local want = tonumber(ARGV[1])
-            if want > ttl then
-                redis.call('PEXPIRE', KEYS[1], want)
-                return want
+            if want > current then
+                redis.call('PEXPIREAT', KEYS[1], want)
+                return redis.call('PEXPIRETIME', KEYS[1])
             end
-            return ttl
+            return current
             """, Long.class);
 
     public record Dropped(QuestionPick pick, String subjectCode, String sectionId) {}
@@ -94,12 +98,13 @@ public class PreviewSnapshotStore {
     }
 
     /**
-     * Raises the remaining life of a stored preview to at least {@code minimum}, never lowers it. The read of the
-     * current life and the write are one Redis script, so concurrent calls cannot overwrite a longer expiry with a
-     * shorter one. Returns the life now left, or null when the preview is gone.
+     * Raises the expiry of a stored preview to at least {@code minimum}, never lowers it. The read of the current
+     * expiry and the write are one Redis script, so concurrent calls cannot overwrite a later expiry with an earlier
+     * one, and the returned instant is the expiry Redis now holds, not a value computed after the round trip.
+     * Returns null when the preview is gone.
      */
-    public Duration extendAtLeast(UUID id, Duration minimum) {
-        Long millis = redis.execute(EXTEND, List.of(KEY_PREFIX + id), Long.toString(minimum.toMillis()));
-        return millis == null || millis < 0 ? null : Duration.ofMillis(millis);
+    public Instant extendUntil(UUID id, Instant minimum) {
+        Long millis = redis.execute(EXTEND, List.of(KEY_PREFIX + id), Long.toString(minimum.toEpochMilli()));
+        return millis == null || millis < 0 ? null : Instant.ofEpochMilli(millis);
     }
 }

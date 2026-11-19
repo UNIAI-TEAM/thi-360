@@ -41,10 +41,10 @@ class PreviewPaperReader implements PreviewPaperPort {
     @Override
     public Instant extendForTrial(UUID examId, UUID previewId) {
         PreviewSnapshotStore.Snapshot snapshot = require(examId, previewId);
-        Duration left = snapshots.extendAtLeast(previewId,
-                Duration.ofMinutes(snapshot.durationMinutes()).plus(LIFE));
-        if (left == null) throw new PreviewGoneException();
-        return clock.instant().plus(left);
+        Instant expiry = snapshots.extendUntil(previewId,
+                clock.instant().plus(Duration.ofMinutes(snapshot.durationMinutes())).plus(LIFE));
+        if (expiry == null) throw new PreviewGoneException();
+        return expiry;
     }
 
     private PreviewSnapshotStore.Snapshot require(UUID examId, UUID previewId) {
