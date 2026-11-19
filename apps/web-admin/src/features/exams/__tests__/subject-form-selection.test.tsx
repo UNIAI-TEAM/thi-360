@@ -1,7 +1,19 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listSubjectFormPairs, patchSubjectFormEntry } from "../subject-forms/registry";
 import { selectAllSubjectForms, selectSubjectForm } from "../subject-forms/selection";
 import { block, part, reviewExam, reviewFixtureTemplates, scienceSection, section, setBlock, standardExam } from "./subject-form-builders";
+import { boot, installForms, openStructure, putCalls, wireBlock, wirePart, wireScience, wireSection } from "./subject-form-harness";
+
+// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
+vi.mock(import("@/features/content/api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
+});
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 /**
  * FTM R-1 (CR-1 AC-3): thứ tự chọn biểu mẫu. Hàm thuần: không gọi request. Ca trên màn thật (ghim trong phiên, dòng chữ) nằm ở
@@ -88,5 +100,61 @@ describe("Thứ tự chọn biểu mẫu (FTM R-1)", () => {
     const pins = selectAllSubjectForms(standardExam("QDA"), parts);
     expect(Object.keys(pins).toSorted()).toEqual(["a", "b", "c"]);
     expect(Object.values(pins).every((pin) => pin.form === "MATRIX")).toBe(true);
+  });
+});
+
+describe("Chọn trên màn: dòng chữ và ghim trong phiên (FTM R-2; CR-1 AC-5)", () => {
+  let uninstall: () => void;
+  beforeEach(() => {
+    uninstall = installForms();
+  });
+  afterEach(() => uninstall());
+
+  /** Lý có 3 chùm: vi phạm giới hạn R-12 ngay khi nạp, nên MD kèm dòng chữ dù MT đang bật. */
+  const violating = () => [
+    wirePart([
+      wireSection("sec-ly", "LY", [
+        wireBlock("ly-s", { questionCount: 14 }),
+        wireBlock("ly-c", { name: "Chum", questionType: "QUESTION_SET", setCount: 3, setSize: 3, questionCount: 9 }),
+        wireBlock("ly-f", { questionType: "SHORT_ANSWER", questionCount: 1 }),
+      ]),
+      wireScience("sec-hoa", "HOA"),
+      wireSection("sec-toan", "TOAN", [wireBlock("t", { questionCount: 10 })]),
+    ]),
+  ];
+
+  it("notFittingFallsBackWithNotice: dạng bật mà không khớp vẽ MD kèm một dòng chữ; môn khớp ra MT; môn dạng tắt ra MD không dòng chữ", async () => {
+    const user = userEvent.setup();
+    boot({ parts: violating() });
+    openStructure("?section=sec-ly");
+    expect(await screen.findByTestId("full-form-notice")).toHaveTextContent("Môn này đang dùng thiết lập đầy đủ vì có thiết lập mà biểu mẫu gọn không hiển thị được.");
+    expect(screen.getByTestId("full-form-notice")).toHaveAttribute("data-reason", "LIMITS_VIOLATED");
+    expect(screen.getByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
+    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
+    expect(await screen.findByRole("heading", { name: "MT HOA" })).toBeInTheDocument();
+    expect(screen.queryByTestId("full-form-notice")).toBeNull();
+    await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
+    expect(await screen.findByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
+    expect(screen.queryByTestId("full-form-notice")).toBeNull();
+  });
+
+  it("formStableWithinSession: sửa ở MD cho tới khi khớp không đổi biểu mẫu trong phiên; lưu rồi mở lại thì ra MT", async () => {
+    const user = userEvent.setup();
+    const { server } = boot({ parts: violating() });
+    const first = openStructure("?block=ly-c");
+    const sets = await screen.findByRole("textbox", { name: /^Số chùm/ });
+    await user.clear(sets);
+    await user.type(sets, "2");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    // Bản đã lưu khớp giới hạn, nhưng biểu mẫu của phiên này đã ghim: vẫn MD, dòng chữ còn.
+    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /LY/ }));
+    expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "MT LY" })).toBeNull();
+    first.unmount();
+    // Tải lại (mở lại bài): tính lại theo cấu trúc đã lưu, nay khớp nên mở MT.
+    openStructure("?section=sec-ly");
+    expect(await screen.findByRole("heading", { name: "MT LY" })).toBeInTheDocument();
+    expect(screen.queryByTestId("full-form-notice")).toBeNull();
   });
 });

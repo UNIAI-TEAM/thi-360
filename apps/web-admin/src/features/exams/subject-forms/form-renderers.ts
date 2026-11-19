@@ -1,7 +1,7 @@
-import type { ComponentType } from "react";
+import { type ComponentType, createElement, type ReactElement } from "react";
 import type { SubjectPanelProps } from "../components/exam-structure-subject-panel";
-import type { SubjectFormKind } from "./registry";
 import type { RawInputStore } from "./raw-input-store";
+import type { SubjectFormKind } from "./registry";
 
 /**
  * Chỗ gắn màn vẽ của MT và DS vào view (plan B1, B2): CR-2 đăng ký Ma trận môn, CR-3 đăng ký Danh sách dòng. Màn nhận cùng dữ
@@ -17,9 +17,15 @@ export interface SubjectFormRendererProps extends Omit<SubjectPanelProps, "onSel
 
 const renderers: Partial<Record<SubjectFormKind, ComponentType<SubjectFormRendererProps>>> = {};
 
-/** Màn vẽ của dạng; `undefined` khi chưa có (view vẽ MD, không để môn trống). */
-export function subjectFormRenderer(kind: SubjectFormKind): ComponentType<SubjectFormRendererProps> | undefined {
-  return renderers[kind];
+/** Dạng đã có màn vẽ chưa; chưa có thì view vẽ MD, không để môn trống. */
+export function hasSubjectFormRenderer(kind: SubjectFormKind): boolean {
+  return renderers[kind] !== undefined;
+}
+
+/** Vẽ màn của dạng đã đăng ký. Thành phần cố định để tra màn trong lúc vẽ không tạo thành phần mới ở mỗi lần render của view. */
+export function SubjectFormScreen({ kind, ...props }: SubjectFormRendererProps & { kind: SubjectFormKind }): ReactElement | null {
+  const component = renderers[kind];
+  return component ? createElement(component, props) : null;
 }
 
 /** Đăng ký màn vẽ của một dạng; trả hàm gỡ (dùng khi kiểm thử). */

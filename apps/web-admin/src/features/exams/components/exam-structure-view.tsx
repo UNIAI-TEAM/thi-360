@@ -5,12 +5,12 @@ import { ArrowRight, ClipboardCheck, Info, LayoutList, Save, TriangleAlert } fro
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
-import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, useHsaNormalizedDraft } from "../hsa-enforcement";
+import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, normalizeHsaParts, useHsaNormalizedDraft } from "../hsa-enforcement";
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
@@ -66,6 +66,12 @@ import { SubjectChoiceNav } from "./subject-choice-nav";
 import { ReviewSubjectPanel } from "./review-subject-panel";
 import { ScoringExamples, StrandReference } from "./scoring-examples";
 import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
+import { formBlockingIssues, type BlockingIssue } from "../subject-forms/blocking";
+import { hasSubjectFormRenderer, SubjectFormScreen } from "../subject-forms/form-renderers";
+import { FullFormNotice } from "../subject-forms/full-form-notice";
+import { focusFormTarget, formTarget, type FormTarget } from "../subject-forms/navigation";
+import { createRawInputStore } from "../subject-forms/raw-input-store";
+import { pinnedForm, selectAllSubjectForms, type SubjectFormPins } from "../subject-forms/selection";
 
 const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block" } as const;
 
@@ -201,8 +207,8 @@ function StructureEditor({
   templates: readonly ExamTemplate[];
   template: ExamTemplate | null;
 }) {
-  /** Bài ôn (R-22): màn rút gọn, một phần, một môn, một nhóm. */
-  const reviewMode = template?.buildMode === "REVIEW";
+  /** Bài ôn (R-22): màn rút gọn, một phần, một môn, một nhóm. Máy chủ trả `buildMode` của bài; mẫu đã nạp là chỗ dựa cũ khi bài chưa khai. */
+  const reviewMode = exam.buildMode === "REVIEW" || template?.buildMode === "REVIEW";
   // H42, R-135: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT`; bài `PART` và bài ôn từ cùng mẫu vẫn sửa được.
   const rowsLocked = blockCountsLocked(template, exam.scope, reviewMode);
   const templateLocked = template?.fixedCounts === true || rowsLocked;
@@ -212,6 +218,7 @@ function StructureEditor({
     [loadedStructure, reviewMode],
   );
   const t = useTranslations("exams.structure");
+  const commonT = useTranslations("exams.subjectForm.common");
   const examsT = useTranslations("exams");
   const format = useFormatter();
   const router = useRouter();
@@ -231,11 +238,17 @@ function StructureEditor({
   const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
   const draftJson = JSON.stringify(draft);
-  const dirty = draftJson !== baseline || JSON.stringify(quotas) !== quotaBaseline;
-  // Dữ liệu mới từ máy chủ (sau khi lưu, hoặc lane khác làm mới) chỉ thay bản nháp khi không còn gì chưa lưu.
+  const draftDirty = draftJson !== baseline || JSON.stringify(quotas) !== quotaBaseline;
+  // Nhập thô của biểu mẫu theo môn (FTM R-15): giá trị đã gõ mà chưa ghi được vào bản nháp. Sống theo phiên của view, không vào `PUT`.
+  const [rawInputs] = useState(createRawInputStore);
+  const rawEntries = useSyncExternalStore(rawInputs.subscribe, rawInputs.getSnapshot, rawInputs.getSnapshot);
+  /** Có thay đổi chưa lưu khi bản nháp khác bản đã nạp hoặc còn nhập thô; dùng cho mọi chỗ hỏi trước khi mất dữ liệu. `dirty` giữ nghĩa cũ (chỉ bản nháp) cho danh sách thay đổi. */
+  const hasUnsavedChanges = draftDirty || rawEntries.length > 0;
+  const dirty = draftDirty;
+  // Dữ liệu mới từ máy chủ (sau khi lưu, hoặc lane khác làm mới) chỉ thay bản nháp khi không còn gì chưa lưu, kể cả nhập thô.
   if (syncKey !== syncedKey) {
     setSyncedKey(syncKey);
-    if (!dirty) {
+    if (!hasUnsavedChanges) {
       setDraft(structure.parts);
       setBaseline(JSON.stringify(structure.parts));
       setQuotas(structure.examQuotas ?? []);
@@ -256,19 +269,43 @@ function StructureEditor({
   // Bản đã lưu còn mức Tham khảo mà HSA không cho: ghi chú hiện cho tới khi lưu.
   const hsaNormalizing = useMemo(() => hsaNeedsNormalizing(hsa, baselineParts, quotaBaseline), [hsa, baselineParts, quotaBaseline]);
 
+  // Biểu mẫu theo môn (FTM R-1, R-2): tính một lần khi mở và khi nạp mẫu (sau chuẩn hóa HSA-C), ghim trong phiên; sửa bản nháp không đổi.
+  const selectionExam = useMemo(() => ({ kind: exam.kind, buildMode: reviewMode ? ("REVIEW" as const) : exam.buildMode }), [exam.kind, exam.buildMode, reviewMode]);
+  const pinForms = (parts: readonly ExamPart[]): SubjectFormPins => selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : parts);
+  const [pinnedForms, setPinnedForms] = useState<SubjectFormPins>(() => pinForms(structure.parts));
+  const [focusRequest, setFocusRequest] = useState<{ target: FormTarget; nonce: number } | null>(null);
+  const formRegionRef = useRef<HTMLDivElement>(null);
+  const focusNonce = useRef(0);
+  /** Đổi mỗi lần bỏ thay đổi hoặc nạp mẫu để màn MT/DS dựng lại, không giữ chữ đang gõ của bản nháp đã bỏ. */
+  const [formEpoch, setFormEpoch] = useState(0);
+
   const [selection, setSelection] = useState<StructureSelection | null>(() => {
     const fromUrl = readSelectionFromUrl();
     return fromUrl && selectionExists(structure.parts, fromUrl) ? fromUrl : defaultSelection(structure.parts);
   });
   const requested = selection && selectionExists(draft, selection) ? selection : defaultSelection(draft);
+  const requestedBlock = requested?.kind === "block" ? findBlock(draft, requested.blockId) : null;
+  // Biểu mẫu theo môn (R-15): `?block=`, bấm lỗi và bấm tóm tắt đi qua `navigation.ts`. MT và DS mở môn rồi đặt focus vào ô hay dòng;
+  // MD giữ màn nhóm.
+  const routedTarget = requestedBlock ? formTarget(pinnedForm(pinnedForms, requestedBlock.section.id), { sectionId: requestedBlock.section.id, blockId: requestedBlock.block.id }) : null;
+  const compactTarget = routedTarget !== null && routedTarget.kind !== "LEGACY_BLOCK" ? routedTarget : null;
   // Bài ôn (UNI-2752): chỗ sửa của khối duy nhất là màn bài ôn. `?block=`, "Đến chỗ sửa" và lỗi kiểm tra trỏ tới khối đó đều mở
   // môn, không mở màn nhóm đầy đủ (Tên nhóm, Cách lấy, Ma trận riêng...) mà bài ôn rút gọn để ẩn.
-  const reviewBlock = reviewMode && requested?.kind === "block" ? findBlock(draft, requested.blockId) : null;
   const current: StructureSelection | null =
-    reviewBlock && rendersReviewPanel(reviewBlock.section, reviewMode) ? { kind: "section", sectionId: reviewBlock.section.id } : requested;
+    requestedBlock && (compactTarget !== null || (reviewMode && rendersReviewPanel(requestedBlock.section, reviewMode)))
+      ? { kind: "section", sectionId: requestedBlock.section.id }
+      : requested;
+  // Đặt focus vào ô (MT) hay dòng (DS) của đích sau khi môn vẽ xong (R-15): đích của `?block=`, bấm lỗi, bấm tóm tắt, hoặc của lỗi chặn lưu.
+  const activeTarget = focusRequest?.target ?? compactTarget;
+  const focusKey = activeTarget ? JSON.stringify({ target: activeTarget, nonce: focusRequest?.nonce ?? 0, current }) : "";
+  useEffect(() => {
+    if (!focusKey || !formRegionRef.current) return;
+    const { target } = JSON.parse(focusKey) as { target: FormTarget };
+    focusFormTarget(formRegionRef.current, target);
+  }, [focusKey]);
   const [liveMessage, setLiveMessage] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const guard = useUnsavedChangesGuard(dirty);
+  const guard = useUnsavedChangesGuard(hasUnsavedChanges);
   const [pendingSelection, setPendingSelection] = useState<StructureSelection | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   // Dòng nhập theo tỷ lệ không ra chùm nguyên (R-142): lỗi báo tại dòng, bản nháp không đổi, nhưng không cho lưu cho đến khi sửa.
@@ -277,11 +314,12 @@ function StructureEditor({
   /** Mở mục không qua hộp thoại: sau chính thao tác của người dùng (thêm, xóa nhóm) hoặc sau khi đã lưu. */
   const selectNow = useCallback((next: StructureSelection) => {
     setSelection(next);
+    setFocusRequest(null);
     writeSelectionToUrl(next);
   }, []);
-  /** Chuyển sang môn hoặc phần khác khi còn thay đổi chưa lưu thì hỏi bằng hộp thoại ba nút (R-05). */
+  /** Chuyển sang môn hoặc phần khác khi còn thay đổi chưa lưu (kể cả nhập thô) thì hỏi bằng hộp thoại ba nút (R-05). */
   const select = (next: StructureSelection) => {
-    if (dirty && current && selectionScope(draft, next) !== selectionScope(draft, current)) {
+    if (hasUnsavedChanges && current && selectionScope(draft, next) !== selectionScope(draft, current)) {
       setLeaveError(null);
       setPendingSelection(next);
       return;
@@ -337,14 +375,44 @@ function StructureEditor({
     return status === 412 ? t("saveConflict") : status === 422 ? t("saveInvalid") : t("saveError");
   };
 
+  /** Đưa tới ô hay dòng của lỗi chặn lưu và đặt focus (R-15); môn MD, ON không có lỗi loại này. */
+  const goToIssue = (issue: BlockingIssue) => {
+    const target = formTarget(pinnedForm(pinnedForms, issue.sectionId), { sectionId: issue.sectionId, blockId: issue.blockId, field: issue.field });
+    selectNow(target?.kind === "LEGACY_BLOCK" ? { kind: "block", blockId: target.blockId } : { kind: "section", sectionId: issue.sectionId });
+    if (target && target.kind !== "LEGACY_BLOCK") {
+      focusNonce.current += 1;
+      setFocusRequest({ target, nonce: focusNonce.current });
+    }
+  };
+  /**
+   * Lỗi chặn lưu của MT/DS tính trên bản nháp của mọi môn cộng nhập thô (R-15): chạy trước mọi `PUT` và trước Kiểm tra, Tiếp tục kể cả
+   * khi bản nháp không đổi. Còn lỗi thì đưa tới lỗi đầu tiên, không gửi request, và trả `true`.
+   */
+  const blockedByForm = (onFailed?: (message: string) => void): boolean => {
+    const issue = formBlockingIssues({ exam: selectionExam, draft, pinnedForms, rawInputs: rawEntries })[0];
+    if (!issue) return false;
+    const message = commonT("blocked");
+    goToIssue(issue);
+    if (!onFailed) notify.error(message);
+    announce(message);
+    onFailed?.(message);
+    return true;
+  };
+
   const discardAll = () => {
     setDraft(JSON.parse(baseline) as ExamPart[]);
     setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
     setConfirmedCounts({});
     setTopicFailure(null);
+    // Bỏ thay đổi bỏ cả nhập thô và ghim lại biểu mẫu theo bản đã lưu (R-2, R-15): không còn lỗi chặn nào từ `id` cũ.
+    rawInputs.clearAll();
+    setFormEpoch((epoch) => epoch + 1);
+    setPinnedForms(pinForms(JSON.parse(baseline) as ExamPart[]));
+    setFocusRequest(null);
   };
 
   const runSave = (options: { onSaved?: () => void; onFailed?: (message: string) => void } = {}) => {
+    if (blockedByForm(options.onFailed)) return;
     if (rateInvalid) {
       const message = t("rateBlocked");
       if (!options.onFailed) notify.error(message);
@@ -403,6 +471,7 @@ function StructureEditor({
 
   /** Kiểm tra chạy trên bản đã lưu: còn thay đổi chưa lưu thì lưu trước, lưu lỗi thì không kiểm tra. */
   const runCheck = (request: Omit<RunExamCheckRequest, "examId">, after?: (result: ExamCheckResult) => void) => {
+    if (blockedByForm()) return;
     const run = () =>
       check.mutate(request, {
         onSuccess: (result) => {
@@ -483,6 +552,9 @@ function StructureEditor({
 
   const blockContext = current?.kind === "block" ? findBlock(draft, current.blockId) : null;
   const sectionContext = current?.kind === "section" ? findSection(draft, current.sectionId) : null;
+  // Biểu mẫu ghim của môn đang mở (R-2): MT, DS vẽ bằng màn đã đăng ký; chưa có màn thì giữ MD, không để môn trống.
+  const sectionForm = sectionContext ? pinnedForm(pinnedForms, sectionContext.section.id) : null;
+  const formKind = sectionForm?.form === "MATRIX" || sectionForm?.form === "ROWS" ? sectionForm.form : null;
   const selectedPart =
     current?.kind === "part" || current?.kind === "option" ? draft.find((part) => part.id === current.partId) : null;
   const sectionStates = checkResult?.sectionStates ?? structure.sectionStates ?? null;
@@ -512,11 +584,11 @@ function StructureEditor({
     <div className="@container flex flex-col gap-4">
       {hsaNormalizing && <HsaNormalizedNote />}
       <ExamEditorActions>
-        {dirty && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
-        <Button type="button" variant="secondary" disabled={!dirty || save.isPending} onClick={() => setConfirmDiscard(true)}>
+        {hasUnsavedChanges && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
+        <Button type="button" variant="secondary" disabled={!hasUnsavedChanges || save.isPending} onClick={() => setConfirmDiscard(true)}>
           {t("discard")}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => runSave()} loading={save.isPending} disabled={!dirty}>
+        <Button type="button" variant="secondary" onClick={() => runSave()} loading={save.isPending} disabled={!hasUnsavedChanges}>
           <Save />
           <span>{t("save")}</span>
         </Button>
@@ -580,7 +652,7 @@ function StructureEditor({
         <StructureVersionPicker
           exam={exam}
           templates={templates}
-          dirty={dirty}
+          dirty={hasUnsavedChanges}
           currentParts={draft}
           onAnnounce={announce}
           onApplied={(parts) => {
@@ -594,6 +666,11 @@ function StructureEditor({
             setQuotas(JSON.parse(loaded.quotas) as ExamQuota[]);
             setConfirmedCounts({});
             setTopicFailure(null);
+            // Nạp mẫu đã xác nhận bỏ nhập thô và ghim lại biểu mẫu theo cấu trúc mới (R-2, R-15).
+            rawInputs.clearAll();
+            setFormEpoch((epoch) => epoch + 1);
+            setPinnedForms(pinForms(parts));
+            setFocusRequest(null);
             // Phiên bản mới làm kết quả kiểm tra cũ hết hiệu lực: huy hiệu trạng thái tính lại từ đầu.
             setCheckResult(null);
           }}
@@ -629,7 +706,7 @@ function StructureEditor({
           onSelect={select}
           showOverview={!reviewMode}
         />
-        <div className="flex min-w-0 flex-col gap-4">
+        <div ref={formRegionRef} className="flex min-w-0 flex-col gap-4">
           {sectionContext?.option?.kind === "SUBJECT_CHOICE" && (
             <SubjectChoiceNav
               option={sectionContext.option}
@@ -675,17 +752,16 @@ function StructureEditor({
               headerAction={checkAction}
               topicError={topicError}
             />
-          ) : sectionContext ? (
-            <ExamStructureSubjectPanel
-              key={sectionContext.section.id}
+          ) : sectionContext && formKind && hasSubjectFormRenderer(formKind) ? (
+            <SubjectFormScreen
+              kind={formKind}
+              key={`${sectionContext.section.id}:${formEpoch}`}
               context={sectionContext}
               subjectName={lookup.subject(sectionContext.section.subjectCode)}
               axes={axes}
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
               reference={reference}
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
-              onSelectBlock={(blockId) => select({ kind: "block", blockId })}
-              onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
               headerAction={checkAction}
               examId={exam.id}
               templateLocked={templateLocked}
@@ -696,7 +772,33 @@ function StructureEditor({
               examQuotas={quotas}
               onExamQuotas={setQuotas}
               examKind={exam.kind}
+              rawInputs={rawInputs}
             />
+          ) : sectionContext ? (
+            <>
+              {sectionForm?.notice && <FullFormNotice reason={sectionForm.reason} />}
+              <ExamStructureSubjectPanel
+                key={sectionContext.section.id}
+                context={sectionContext}
+                subjectName={lookup.subject(sectionContext.section.subjectCode)}
+                axes={axes}
+                labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+                reference={reference}
+                onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
+                onSelectBlock={(blockId) => select({ kind: "block", blockId })}
+                onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
+                headerAction={checkAction}
+                examId={exam.id}
+                templateLocked={templateLocked}
+                sourceVerified={sourceVerified(sectionContext.section)}
+                topicError={topicError}
+                confirmedCount={confirmedCounts[sectionContext.section.id] ?? savedCountOf(sectionContext.section.id)}
+                onConfirmCount={(count) => setConfirmedCounts((counts) => ({ ...counts, [sectionContext.section.id]: count }))}
+                examQuotas={quotas}
+                onExamQuotas={setQuotas}
+                examKind={exam.kind}
+              />
+            </>
           ) : blockContext ? (
             <BlockEditor
               topicError={topicError}

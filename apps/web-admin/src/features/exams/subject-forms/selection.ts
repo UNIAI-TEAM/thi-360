@@ -53,3 +53,8 @@ export function selectAllSubjectForms(exam: Pick<ExamDetail, "kind" | "buildMode
   }
   return pins;
 }
+
+/** Biểu mẫu đã ghim của môn; môn chưa có ghim (mục mới xuất hiện sau khi nạp lại dữ liệu) dùng MD không dòng chữ. */
+export function pinnedForm(pins: SubjectFormPins, sectionId: string): SubjectFormSelection {
+  return pins[sectionId] ?? DEFAULT_FORM;
+}
