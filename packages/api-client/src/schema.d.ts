@@ -3791,6 +3791,8 @@ export interface components {
         };
         /** @description Một lựa chọn trong phạm vi mua: nhánh, môn, môn tự chọn hoặc mã tổ hợp */
         DetailChoiceOption: {
+            /** @description Dạng câu của chính lựa chọn (các nhóm câu gắn với lựa chọn, không gắn với một môn); không bao giờ cộng các môn hay các lựa chọn khác; rỗng khi bản chưa đóng băng chúng */
+            answerTypes: components["schemas"]["AnswerTypeGroup"][];
             /** @description Nhánh của mã tổ hợp (QDA); null nếu không có */
             branch?: string;
             /**
@@ -3804,12 +3806,14 @@ export interface components {
             /** @description BRANCH, SUBJECT, SUBJECT_CHOICE hoặc COMBINATION */
             kind: string;
             name: string;
+            /** @description Dạng câu từng môn của lựa chọn: phần của lựa chọn hoặc bể môn của mã tổ hợp; rỗng khi bản chưa đóng băng chúng */
+            subjectAnswerTypes: components["schemas"]["SubjectAnswerTypes"][];
             /** @description Các môn của lựa chọn, theo thứ tự (với mã tổ hợp là thứ tự làm bài) */
             subjects: components["schemas"]["SubjectRef"][];
         };
         /** @description Một phần của bài thi, theo thứ tự làm bài */
         DetailPart: {
-            /** @description Các dạng câu và số câu từng dạng của phần; rỗng khi bản chưa đóng băng chúng */
+            /** @description Các dạng câu và số câu từng dạng của các nhóm cố định của phần (ai cũng làm); lựa chọn và bể môn không cộng vào đây mà nằm ở choices; rỗng khi bản chưa đóng băng chúng */
             answerTypes: components["schemas"]["AnswerTypeGroup"][];
             durationMinutes?: components["schemas"]["IntRange"];
             maxPoints?: components["schemas"]["DecimalRange"];
@@ -5763,7 +5767,7 @@ export interface components {
              */
             totalPages: number;
         };
-        /** @description Phần; mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) là khóa. Tham số part của danh sách là code, đi kèm kind */
+        /** @description Phần của bài thi theo phần (PART); mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) là khóa. Chỉ bài thi theo phần mới có mã phần: bài thi FULL tìm theo hình thức FULL, không theo phần. Tham số part của danh sách là code, đi kèm kind, và chỉ khớp bài thi theo phần */
         PartFilter: {
             code: string;
             /** Format: int64 */
@@ -6641,6 +6645,11 @@ export interface components {
              * @description ID tài khoản
              */
             userId: string;
+        };
+        /** @description Các dạng câu và số câu từng dạng của một môn trong một lựa chọn (AD-78): mỗi môn tính riêng, không cộng các môn lại với nhau */
+        SubjectAnswerTypes: {
+            answerTypes: components["schemas"]["AnswerTypeGroup"][];
+            subject: components["schemas"]["SubjectRef"];
         };
         /** @description Môn; tham số subject của danh sách là code */
         SubjectFilter: {
