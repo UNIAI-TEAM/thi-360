@@ -47,11 +47,6 @@ class TestExamSeedUpgradeIT extends AbstractIntegrationTest {
             "max_score", "reference_max", "practice_scoring", "question_count", "has_essay", "has_english_option",
             "combination_count");
 
-    /** Fixtures the seed rebuild moves to another base exam: their 2B columns legitimately differ, the
-        structure (parts, quotas, refs) is still checked in full. */
-    private static final Map<String, Set<String>> SHAPE_CHANGES = Map.of("TEST-ERR-03",
-            Set.of("part_code", "template_code", "duration_minutes"));
-
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired DataSource dataSource;
@@ -60,12 +55,6 @@ class TestExamSeedUpgradeIT extends AbstractIntegrationTest {
         JsonNode shape() {
             ObjectNode shape = ((ObjectNode) row).deepCopy();
             shape.retain(SHAPE);
-            return shape;
-        }
-
-        JsonNode shapeWithout(Set<String> columns) {
-            ObjectNode shape = (ObjectNode) shape();
-            columns.forEach(shape::remove);
             return shape;
         }
     }
@@ -152,12 +141,10 @@ class TestExamSeedUpgradeIT extends AbstractIntegrationTest {
                 assertThat(now.refs()).as("%s refs (the admin's exam, ids included) %s", code, when).isEqualTo(edited.refs());
             } else {
                 Snapshot expected = current.get(code);
-                Set<String> changed = SHAPE_CHANGES.getOrDefault(code, Set.of());
                 assertThat(now.parts()).as("%s carries the new structure %s", code, when).isEqualTo(expected.parts());
                 assertThat(now.quotas()).as("%s quotas %s", code, when).isEqualTo(expected.quotas());
-                assertThat(now.shapeWithout(changed))
-                        .as("%s exam columns follow the new structure %s", code, when)
-                        .isEqualTo(expected.shapeWithout(changed));
+                assertThat(now.shape()).as("%s exam columns follow the new structure %s", code, when)
+                        .isEqualTo(expected.shape());
                 assertThat(now.refs()).as("%s block refs %s", code, when).isEqualTo(expected.refs());
                 assertThat(now.edited()).as("%s is not marked edited by the upgrade %s", code, when).isFalse();
             }
