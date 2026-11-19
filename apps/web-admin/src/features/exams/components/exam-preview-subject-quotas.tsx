@@ -63,13 +63,13 @@ export function ExamPreviewSubjectQuotas({ subjects }: { subjects: readonly Prev
       { id: "quota", header: t("columns.quota"), cell: ({ row }) => quotaName(row.original) },
       {
         id: "required",
-        header: t("columns.required"),
-        cell: ({ row }) => <span className="tabular-nums">{format.number(row.original.quota.required)}</span>,
+        header: () => <span className="block text-right">{t("columns.required")}</span>,
+        cell: ({ row }) => <span className="block text-right">{format.number(row.original.quota.required)}</span>,
       },
       {
         id: "generated",
-        header: t("columns.generated"),
-        cell: ({ row }) => <span className="tabular-nums">{format.number(row.original.quota.generated)}</span>,
+        header: () => <span className="block text-right">{t("columns.generated")}</span>,
+        cell: ({ row }) => <span className="block text-right">{format.number(row.original.quota.generated)}</span>,
       },
       { id: "result", header: t("columns.result"), cell: ({ row }) => chip(row.original) },
     ];
