@@ -64,6 +64,29 @@ class MapidRuleSolverInputTest {
     }
 
     @Test
+    void everySourceRuleOfTheSubjectAndOfTheGroupIsItsOwnCondition() {
+        // BA 3: "only from" holds for every row and every scope; inside one row A or B stays an OR.
+        var input = build(section(MapidMode.MATRIX, List.of(
+                new MapidRule("s1", MapidRuleType.SOURCE, null, List.of(ROOT), null, null, null),
+                new MapidRule("s2", MapidRuleType.SOURCE, "g", List.of(LEGACY), null, null, null),
+                new MapidRule("s3", MapidRuleType.SOURCE, null, List.of(CHILD), null, null, null))));
+        var section = ((SolvePart.Fixed) input.parts().getFirst()).sections().getFirst();
+        input.candidates().candidatesFor(section.groups().getFirst());
+        var filter = ArgumentCaptor.forClass(QuestionSourcePort.Filter.class);
+        verify(source).findCandidates(filter.capture(), anyInt());
+        List<java.util.Set<UUID>> conditions = new java.util.ArrayList<>();
+        QuestionSourcePort.Filter built = filter.getValue();
+        if (!built.knowledgeGroups().isEmpty()) {
+            conditions.add(built.knowledgeGroups().stream().flatMap(List::stream).collect(java.util.stream.Collectors.toSet()));
+        }
+        for (var group : built.additionalKnowledgeGroups()) {
+            conditions.add(group.stream().flatMap(List::stream).collect(java.util.stream.Collectors.toSet()));
+        }
+        assertThat(conditions).containsExactlyInAnyOrder(java.util.Set.of(ROOT, CHILD), java.util.Set.of(CHILD),
+                java.util.Set.of(LEGACY));
+    }
+
+    @Test
     void allModeReadsTheWholeSubject() {
         var input = build(section(MapidMode.ALL, List.of(
                 new MapidRule("src", MapidRuleType.SOURCE, null, List.of(ROOT), null, null, null))));

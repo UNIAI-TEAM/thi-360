@@ -236,6 +236,57 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         }
     }
 
+    // ---- SOURCE rules combine by AND (BA "chỉ lấy": every row, every scope); inside a row A | B stays OR ---------
+
+    @Test
+    void aSubjectSourceAndAGroupSourceBothHoldForTheGroup() throws Exception {
+        arrange();
+        for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(0));
+        for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(1));
+        for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(0), nodes.get(1));
+        UUID exam = exam(section(2, "MATRIX", "[" + rule("subject", "SOURCE", null, a()) + ","
+                + rule("group", "SOURCE", "g1", b()) + "]", block("g1", "SINGLE_CHOICE", 2)));
+        assertValid(check(exam));
+        for (int seed = 1; seed <= 6; seed++) {
+            List<String> ids = questionIds(preview(exam, seed));
+            assertThat(carriers(ids, nodes.get(0))).as("seed %d carries A", seed).isEqualTo(2);
+            assertThat(carriers(ids, nodes.get(1))).as("seed %d carries B", seed).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void twoSourceRowsOfOneScopeNarrowThePoolInsteadOfWideningIt() throws Exception {
+        arrange();
+        for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(0));
+        for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(1));
+        for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(0), nodes.get(1));
+        UUID exam = exam(section(2, "MATRIX", "[" + rule("rowA", "SOURCE", null, a()) + ","
+                + rule("rowB", "SOURCE", null, b()) + "]", block("g1", "SINGLE_CHOICE", 2)));
+        for (int seed = 1; seed <= 6; seed++) {
+            List<String> ids = questionIds(preview(exam, seed));
+            assertThat(carriers(ids, nodes.get(0))).as("seed %d carries A", seed).isEqualTo(2);
+            assertThat(carriers(ids, nodes.get(1))).as("seed %d carries B", seed).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void everySourceRowMustHoldForTheChildrenOfAWholeSet() throws Exception {
+        arrange();
+        // Y: the children share A in one and B in the other; Z: both carry A but only one B: neither satisfies
+        // "all children carry A" together with "all children carry B".
+        set(List.of(nodes.get(0)), List.of(nodes.get(1)));
+        set(List.of(nodes.get(0), nodes.get(1)), List.of(nodes.get(0)));
+        UUID exam = exam(section(2, "MATRIX", "[" + rule("rowA", "SOURCE", "g1", a()) + ","
+                + rule("rowB", "SOURCE", "g1", b()) + "]", setBlock("g1", 1, 2)));
+        assertThat(check(exam).path("status").asText()).isEqualTo("INVALID");
+        UUID whole = set(List.of(nodes.get(0), nodes.get(1)), List.of(nodes.get(0), nodes.get(1)));
+        assertValid(check(exam));
+        for (int seed = 1; seed <= 3; seed++) {
+            JsonNode item = preview(exam, seed).path("parts").get(0).path("blocks").get(0).path("items").get(0);
+            assertThat(item.path("setId").asText()).isEqualTo(whole.toString());
+        }
+    }
+
     // ---- AC-8 ------------------------------------------------------------------------------------------------
 
     @Test
