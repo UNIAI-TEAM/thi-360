@@ -355,8 +355,9 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
 
     @Test
     void dot2Db_retainedPermissionRows_backfillsContentAdminOnce_andEvictsItsCache() throws Exception {
-        // Fixture đợt-2 (R1-1/R1-4): mọi dòng permission còn nguyên, content_admin chỉ còn 2
-        // grant danh mục cũ, khóa một lần chưa có -> sync phải gán đủ 7 mặc định một lần duy nhất.
+        // Fixture đợt-2 (R1-2/R1-8): 18 dòng quyền cũ, KHÔNG có chín dòng quyền đợt 3, content_admin
+        // chỉ còn 2 grant danh mục cũ, khóa một lần chưa có -> lần nâng cấp đầu tiên phải vừa gán
+        // 5 mặc định đợt 2 (nâng cấp một lần) vừa gán 3 mặc định đợt 3 (quyền vừa tạo): đủ 10 grant.
         String upgradeKey = "identity.permission_upgrade.content_admin_defaults";
         String[] addedCodes = {
             Permissions.QUESTION_VIEW, Permissions.QUESTION_MODIFY,
@@ -377,8 +378,10 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
 
         try {
             jdbcTemplate.update("DELETE FROM shared.system_setting WHERE key = ?", upgradeKey);
+            deleteWave3PermissionRows();
             removeGrants(roleId, CONTENT_ADMIN_ADDED);
             assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(2);
+            assertThat(permissionRepository.count()).isEqualTo(Permission.values().length - 9L);
 
             permissionCatalogSync.sync();
 
@@ -391,7 +394,9 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
                     .collect(Collectors.toSet());
             assertThat(codes).contains(addedCodes)
                     .contains(Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY)
-                    .hasSize(7);
+                    .contains(Permissions.GRADING_VIEW, Permissions.GRADING_MODIFY, Permissions.ATTEMPT_VIEW)
+                    .hasSize(10);
+            assertThat(permissionRepository.count()).isEqualTo(Permission.values().length);
             // Khóa ghi kết quả "applied" và snapshot authz của người dùng content_admin bị xóa.
             // jsonb trả về text đã chuẩn hóa (": ") nên phải parse JSON, không so text thô.
             String markerJson = jdbcTemplate.queryForObject(
@@ -405,10 +410,10 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
 
             // Chạy lại: không thêm link trùng, không đụng lại khóa.
             permissionCatalogSync.sync();
-            assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(7);
+            assertThat(rolePermissionRepository.findAllByIdRoleId(roleId)).hasSize(10);
             assertThat(jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM identity.role_permission WHERE role_id = ?",
-                    Long.class, roleId)).isEqualTo(7L);
+                    Long.class, roleId)).isEqualTo(10L);
 
             // Vai trò đã bị tùy biến: gỡ cố ý một grant đã gán + thêm một grant ngoài mặc định
             // -> các lần sync sau không khôi phục, không gỡ (khóa một lần đã chốt).
@@ -440,6 +445,40 @@ class PermissionCatalogSyncTest extends AbstractIntegrationTest {
             jdbcTemplate.update("DELETE FROM identity.user_role WHERE user_id = ?", userId);
             jdbcTemplate.update("DELETE FROM identity.user_account WHERE id = ?", userId);
             redisTemplate.delete(authzKey);
+        }
+    }
+
+    @Test
+    void dot2Db_customizedContentAdmin_isSkippedButStillGainsWave3Grants() throws Exception {
+        String upgradeKey = "identity.permission_upgrade.content_admin_defaults";
+        UUID roleId = roleRepository.findByCodeNormalized("content_admin").orElseThrow().getId();
+        UUID userViewId = permissionRepository.findByCode(Permissions.USER_VIEW).orElseThrow().getId();
+        try {
+            jdbcTemplate.update("DELETE FROM shared.system_setting WHERE key = ?", upgradeKey);
+            deleteWave3PermissionRows();
+            removeGrants(roleId, CONTENT_ADMIN_ADDED);
+            jdbcTemplate.update(
+                    "INSERT INTO identity.role_permission (role_id, permission_id, granted_at)"
+                            + " VALUES (?, ?, now())",
+                    roleId, userViewId);
+
+            permissionCatalogSync.sync();
+
+            assertThat(codesOfRole("content_admin")).containsExactlyInAnyOrder(
+                    Permissions.CATALOG_VIEW, Permissions.CATALOG_MODIFY, Permissions.USER_VIEW,
+                    Permissions.GRADING_VIEW, Permissions.GRADING_MODIFY, Permissions.ATTEMPT_VIEW);
+            JsonNode marker = objectMapper.readTree(jdbcTemplate.queryForObject(
+                    "SELECT value::text FROM shared.system_setting WHERE key = ?",
+                    String.class, upgradeKey));
+            assertThat(marker.get("outcome").asText()).isEqualTo("skipped");
+            assertThat(marker.get("reason").asText()).isEqualTo("role customized");
+            assertThat(marker.get("granted").asInt()).isZero();
+        } finally {
+            jdbcTemplate.update(
+                    "DELETE FROM identity.role_permission WHERE role_id = ? AND permission_id = ?",
+                    roleId, userViewId);
+            restoreGrants(roleId, CONTENT_ADMIN_ADDED);
+            jdbcTemplate.update("DELETE FROM shared.system_setting WHERE key = ?", upgradeKey);
         }
     }
 

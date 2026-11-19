@@ -176,8 +176,10 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
 
             permissionRepository.flush();
             seedSystemRoleDefaults(idByCode, now);
-            grantNewPermissionsToSystemRoles(createdPermissions, idByCode, now);
+            // Thứ tự có chủ ý: xét "còn đúng bộ grant đợt 2 cũ" TRƯỚC khi gán ba mặc định đợt 3
+            // vừa tạo, nếu không bộ grant mới sẽ bị coi là vai trò đã tùy biến (R1-2).
             upgradeContentAdminDefaultsOnce(idByCode, now);
+            grantNewPermissionsToSystemRoles(createdPermissions, idByCode, now);
         });
     }
 
