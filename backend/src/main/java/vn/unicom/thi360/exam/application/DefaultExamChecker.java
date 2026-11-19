@@ -59,7 +59,7 @@ public class DefaultExamChecker implements ExamChecker {
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), snapshot.structure());
         var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure(), combinations,
                 ExamCheckUnitCombinations.topicParents(catalog, snapshot.structure()),
-                templateFacts.of(snapshot.exam()));
+                templateFacts.of(snapshot.exam()), templateFacts.kindCode(snapshot.exam()));
         Set<String> requested = scope.sections(snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common().stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList());

@@ -58,6 +58,7 @@ public final class ExamCheckRules {
     private final Map<String, Map<String, List<String>>> combinationsByPart;
     private final Map<UUID, UUID> topicParents;
     private final TemplateFacts template;
+    private final String kindCode;
     private final Map<String, SectionContext> sections = new LinkedHashMap<>();
     private final Map<String, ExamPartOption> options = new LinkedHashMap<>();
     private final Map<String, ExamPart> parts = new LinkedHashMap<>();
@@ -82,6 +83,17 @@ public final class ExamCheckRules {
     public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
                           Map<String, Map<String, List<String>>> combinationsByPart,
                           Map<UUID, UUID> topicParents, TemplateFacts template) {
+        this(mapper, exam, document, combinationsByPart, topicParents, template, null);
+    }
+
+    /**
+     * {@code kindCode} is the catalog code of the exam's kind; the per-subject limits of
+     * {@link SubjectFormLimits} apply to it only, and are skipped when it is null.
+     */
+    public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
+                          Map<String, Map<String, List<String>>> combinationsByPart,
+                          Map<UUID, UUID> topicParents, TemplateFacts template, String kindCode) {
+        this.kindCode = kindCode;
         this.template = template;
         this.topicParents = topicParents;
         this.combinationsByPart = combinationsByPart;
@@ -1155,6 +1167,7 @@ public final class ExamCheckRules {
         int min = possible.stream().mapToInt(Integer::intValue).min().orElse(count);
         int max = possible.stream().mapToInt(Integer::intValue).max().orElse(count);
         int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+        subjectFormLimits(found, context, count, fixed);
         List<QuestionBlock> remaining = section.blocks().stream().filter(block -> !Boolean.TRUE.equals(block.omitted()) && block.questionCount() == null && !isSet(block)).toList();
         if (remaining.size() > 1 || (!remaining.isEmpty() && fixed > min)) {
             ObjectNode issue = sectionIssue("SECTION_TOTAL_MISMATCH", "STRUCTURE", context, varies ? count : null);
@@ -1192,6 +1205,62 @@ public final class ExamCheckRules {
             }
             matrix(found, context, block, block.matrix(), groupCount, "MATRIX_TOTAL_MISMATCH", false, varies ? count : null);
         }
+    }
+
+    /**
+     * FTM R-12: the set count and set size of the science subjects of HSA and QDA, and the short-answer minimum of
+     * Lý, Hóa, Sinh. Standard exams only; a review exam keeps its own shape. Located at the subject, not at a block.
+     */
+    private void subjectFormLimits(List<ObjectNode> found, SectionContext context, int count, int fixed) {
+        if (isReview()) return;
+        ExamSection section = context.section;
+        SubjectFormLimits.Limit limit = SubjectFormLimits.of(kindCode, section.subjectCode()).orElse(null);
+        if (limit == null) return;
+        int sets = 0;
+        boolean badSize = false;
+        int size = limit.setSize();
+        for (QuestionBlock block : section.blocks()) {
+            if (Boolean.TRUE.equals(block.omitted()) || block.questionType() != QuestionType.QUESTION_SET) continue;
+            // A flexible-size set (no setCount, no setSize) cannot promise sets of the required size.
+            sets += block.setCount() == null ? 0 : Math.max(0, block.setCount());
+            if (block.setCount() == null || block.setSize() == null || block.setSize() != limit.setSize()) {
+                badSize = true;
+                if (block.setSize() != null) size = block.setSize();
+            }
+        }
+        boolean outOfRange = sets < limit.setCountMin() || sets > limit.setCountMax();
+        if (outOfRange || badSize) {
+            ObjectNode failure = sectionIssue("SECTION_SET_COUNT_RANGE", "QUESTION_SET", context, null);
+            failure.put("required", outOfRange ? Math.max(limit.setCountMin(), Math.min(limit.setCountMax(), sets)) : limit.setSize());
+            failure.put("available", outOfRange ? sets : size);
+            found.add(issues.key(failure));
+        }
+        int shortAnswers = shortAnswerCount(section, count, fixed);
+        if (shortAnswers < limit.shortAnswerMin()) {
+            ObjectNode failure = sectionIssue("SHORT_ANSWER_MIN", "STRUCTURE", context, null);
+            failure.put("required", limit.shortAnswerMin());
+            failure.put("available", shortAnswers);
+            found.add(issues.key(failure));
+        }
+    }
+
+    /** Questions of the short-answer type that the section requires: by block type, or by the answer-type quota. */
+    private static int shortAnswerCount(ExamSection section, int count, int fixed) {
+        if (section.answerQuotas() != null) {
+            for (var item : section.answerQuotas().items()) {
+                if (item.answerType() != QuestionType.SHORT_ANSWER || item.value() == null) continue;
+                BigDecimal value = section.answerQuotas().unit() == MatrixUnit.COUNT ? item.value()
+                        : item.value().multiply(BigDecimal.valueOf(count)).divide(BigDecimal.valueOf(100), java.math.RoundingMode.FLOOR);
+                return value.setScale(0, java.math.RoundingMode.FLOOR).intValue();
+            }
+            return 0;
+        }
+        int total = 0;
+        for (QuestionBlock block : section.blocks()) {
+            if (Boolean.TRUE.equals(block.omitted()) || block.questionType() != QuestionType.SHORT_ANSWER) continue;
+            total += block.questionCount() == null ? Math.max(0, count - fixed) : block.questionCount();
+        }
+        return total;
     }
 
     private void matrix(List<ObjectNode> found, SectionContext context, QuestionBlock block, BlockMatrix matrix,
