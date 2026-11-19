@@ -9,6 +9,7 @@ import com.redis.testcontainers.RedisContainer;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -115,31 +116,45 @@ abstract class AbstractExamStructureV2DevdataIT {
     @Transactional
     void migrationRemovesObsoleteCombinationReferencesAndRetainsPoolReferences() {
         UUID examId = UUID.fromString("be11dde0-946e-5f37-846c-684f033a779c");
+        // A real subject-pool block of the seeded QDA exam (the ids come from the BA template, not from a name).
+        Map<String, Object> pool = jdbc.queryForMap("""
+                SELECT r.block_id, r.section_id FROM exam.exam_block_ref r
+                JOIN exam.exam_structure s ON s.exam_id = r.exam_id
+                CROSS JOIN LATERAL jsonb_array_elements(s.parts->'parts') part
+                CROSS JOIN LATERAL jsonb_array_elements(part->'subjectPool') section
+                CROSS JOIN LATERAL jsonb_array_elements(section->'blocks') block
+                WHERE r.exam_id = ? AND r.version_no IS NULL AND part->'codeSource' IS NOT NULL
+                  AND part->>'id' = r.part_id AND section->>'id' = r.section_id AND block->>'id' = r.block_id
+                ORDER BY r.section_id, r.block_id LIMIT 1
+                """, examId);
+        String blockId = (String) pool.get("block_id");
+        String obsoleteBlock = "obsolete-qd03-" + blockId;
         int changed = jdbc.update("""
                 UPDATE exam.exam_block_ref SET option_code = 'QD01',
                     combination_item_id = '00000000-0000-7000-8400-000000000709'
-                WHERE exam_id = ? AND block_id = 'b-qd01-ly' AND version_no IS NULL
-                """, examId);
+                WHERE exam_id = ? AND block_id = ? AND version_no IS NULL
+                """, examId, blockId);
         assertThat(changed).isEqualTo(1);
+        // An obsolete combination-specific projection: a block the structure does not hold.
         jdbc.update("""
                 INSERT INTO exam.exam_block_ref
                   (id, exam_id, version_no, block_id, part_id, option_code, section_id,
                    subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode,
                    knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id)
-                SELECT gen_random_uuid(), exam_id, NULL, 'b-qd03-ly', part_id, 'QD03', 's-qd03-ly',
+                SELECT gen_random_uuid(), exam_id, NULL, ?, part_id, 'QD03', 's-qd03-obsolete',
                    subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode,
                    knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id
-                FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = 'b-qd01-ly' AND version_no IS NULL
-                """, examId);
+                FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = ? AND version_no IS NULL
+                """, obsoleteBlock, examId, blockId);
         ScriptUtils.executeSqlScript(DataSourceUtils.getConnection(dataSource),
                 new ClassPathResource("db/migration/exam/V202611172354__reconcile_subject_pool_refs.sql"));
         assertThat(jdbc.queryForObject("""
-                SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = 'b-qd03-ly'
-                """, Integer.class, examId)).isZero();
+                SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = ?
+                """, Integer.class, examId, obsoleteBlock)).isZero();
         assertThat(jdbc.queryForObject("""
-                SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = 'b-qd01-ly'
+                SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = ?
                   AND option_code IS NULL AND combination_item_id IS NULL
-                """, Integer.class, examId)).isEqualTo(1);
+                """, Integer.class, examId, blockId)).isEqualTo(1);
     }
 
     @Test
