@@ -21,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEventView;
@@ -45,6 +46,7 @@ import vn.unicom.thi360.shared.security.AuthCookieService;
 
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles({"api", "worker", "test", "dev"})
+@TestPropertySource(properties = "thi360.devdata.published-exams.enabled=false")
 class DevDataInitializerIT extends AbstractKeycloakIntegrationTest {
 
     private static final Map<String, String> EXPECTED_ROLES = Map.of(

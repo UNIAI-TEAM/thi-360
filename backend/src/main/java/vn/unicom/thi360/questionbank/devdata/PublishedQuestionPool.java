@@ -7,6 +7,7 @@ import static vn.unicom.thi360.questionbank.spi.QuestionType.SINGLE_CHOICE;
 import static vn.unicom.thi360.questionbank.spi.QuestionType.TRUE_FALSE;
 
 import java.util.List;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /** The shortfall families of {@link PoolSpec}; see there for how the counts were measured. */
@@ -27,7 +28,8 @@ final class PublishedQuestionPool {
             PoolSpec.set("ANH-DOC-HIEU-2", "ANH", 4, 5, "1").tags("ANH_DOC_HIEU_2"),
             PoolSpec.of("ANH-LOGIC", "ANH", SINGLE_CHOICE, 8, "1").tags("ANH_TU_DUY_LOGIC").veryHard(),
             PoolSpec.of("ANH-SUY-LUAN", "ANH", SINGLE_CHOICE, 8, "1").tags("ANH_SUY_LUAN").veryHard(),
-            PoolSpec.of("TOAN-SA-1", "TOAN", SHORT_ANSWER, 40, "1").veryHard(),
+            PoolSpec.of("TOAN-SA-1", "TOAN", SHORT_ANSWER, 40, "1").veryHard()
+                    .formats(AnswerFormat.INTEGER, AnswerFormat.DECIMAL, AnswerFormat.FRACTION),
             // BCA: Tieng Anh at 0.75 points.
             PoolSpec.of("ANH-BCA-TVNP", "ANH", SINGLE_CHOICE, 16, "0.75").tags("ANH_TU_VUNG_NGU_PHAP"),
             PoolSpec.set("ANH-BCA-DOC-DIEN", "ANH", 4, 5, "0.75").tags("ANH_DOC_DIEN"),

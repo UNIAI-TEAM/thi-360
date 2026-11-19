@@ -224,6 +224,7 @@ spring:
       - classpath:db/devdata
 
 thi360:
+  devdata.published-exams.enabled: true
   keycloak:
     realm: ${THI360_KC_REALM:thi-360}
   ctx:
@@ -321,6 +322,7 @@ spring:
 # C-0b: giá trị công khai, chỉ dùng cho E2E trên CI và máy dev (plan B6); bản demo dùng giá trị riêng trong .env.
 # Cùng khóa thi360.token.pepper với TokenPepperProperties (C-0).
 thi360:
+  devdata.published-exams.enabled: true
   token:
     pepper: ${THI360_TOKEN_PEPPER:dev-only-e2e-token-pepper-not-a-secret}
   mail:

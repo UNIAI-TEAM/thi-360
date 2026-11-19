@@ -43,7 +43,7 @@ import vn.unicom.thi360.shared.ids.Ids;
 
 @Order(1)
 @Component
-@Profile("dev")
+@Profile({"dev", "e2e"})
 public class DevDataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevDataInitializer.class);

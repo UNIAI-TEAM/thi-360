@@ -28,6 +28,7 @@ import vn.unicom.thi360.questionbank.api.BulkQuestionStatusRequest;
 import vn.unicom.thi360.questionbank.api.QuestionAssetUploadResponse;
 import vn.unicom.thi360.questionbank.api.QuestionDetail;
 import vn.unicom.thi360.questionbank.api.SaveQuestionRequest;
+import vn.unicom.thi360.questionbank.application.DevQuestionAssetSeeder;
 import vn.unicom.thi360.questionbank.application.QuestionAssetService;
 import vn.unicom.thi360.questionbank.application.QuestionService;
 import vn.unicom.thi360.questionbank.domain.QuestionAssetKind;
@@ -39,6 +40,7 @@ import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserAuthenticationToken;
 import vn.unicom.thi360.shared.security.PermissionSet;
 import vn.unicom.thi360.shared.security.Realm;
+import vn.unicom.thi360.shared.storage.ObjectStorage;
 
 /**
  * Question half of the published exam set (DS). It runs as {@code sys.admin} through the real
@@ -65,15 +67,20 @@ public class PublishedQuestionPoolBuilder {
 
     private final QuestionService questions;
     private final QuestionAssetService assets;
+    private final DevQuestionAssetSeeder audioSeeder;
+    private final ObjectStorage storage;
     private final UserDirectory users;
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final TransactionTemplate transaction;
 
-    public PublishedQuestionPoolBuilder(QuestionService questions, QuestionAssetService assets, UserDirectory users,
-            JdbcTemplate jdbc, ObjectMapper mapper, PlatformTransactionManager transactionManager) {
+    public PublishedQuestionPoolBuilder(QuestionService questions, QuestionAssetService assets,
+            DevQuestionAssetSeeder audioSeeder, ObjectStorage storage, UserDirectory users, JdbcTemplate jdbc,
+            ObjectMapper mapper, PlatformTransactionManager transactionManager) {
         this.questions = questions;
         this.assets = assets;
+        this.audioSeeder = audioSeeder;
+        this.storage = storage;
         this.users = users;
         this.jdbc = jdbc;
         this.mapper = mapper;
@@ -91,6 +98,9 @@ public class PublishedQuestionPoolBuilder {
         UserDirectory.UserSummary actor = users.findActiveByUsername(ACTOR).orElseThrow(() -> new IllegalStateException(
                 "Cannot build the published exam set: the account '" + ACTOR + "' does not exist or is not active. "
                         + "Create it first (DevDataInitializer) or set thi360.devdata.published-exams.enabled=false."));
+        // The 2B sample audio is what several published exams check for (ATTACHMENT_MISSING); its seeder is a runner
+        // that boots after this one, so it is asked now (it only writes the missing objects to storage).
+        audioSeeder.seed();
         return runAs(actor, this::buildAs);
     }
 
@@ -101,7 +111,7 @@ public class PublishedQuestionPoolBuilder {
         int created = 0;
         int present = 0;
         UUID audio = null;
-        for (PoolSpec spec : PublishedQuestionPool.SPECS) {
+        for (PoolSpec spec : specs()) {
             List<Integer> missing = new ArrayList<>();
             for (int n = 1; n <= spec.count; n++) {
                 if (existing.contains(code(spec, n))) {
@@ -123,10 +133,30 @@ public class PublishedQuestionPoolBuilder {
                 created += chunk.size();
             }
         }
+        if (specs().stream().anyMatch(spec -> spec.audio)) {
+            ensureAudio();
+        }
         created += ensureImageQuestion(existing) ? 1 : 0;
         log.atInfo().addKeyValue("event", "published_question_pool.built").addKeyValue("created", created)
                 .addKeyValue("existing", present).log("Published exam set questions verified");
         return new Report(created, present);
+    }
+
+    /**
+     * The fixed families plus the H-SCA chemistry short answers: their answers are ions and symbol strings and are listed
+     * in the constants file, so a test can type them.
+     */
+    private List<PoolSpec> specs() {
+        JsonNode chemistry = constants().path("hscaChemistry");
+        List<String> answers = new ArrayList<>();
+        chemistry.path("answers").forEach(answer -> answers.add(answer.asText()));
+        List<PoolSpec> specs = new ArrayList<>(PublishedQuestionPool.SPECS);
+        if (!answers.isEmpty()) {
+            specs.add(PoolSpec.of(chemistry.path("familyCode").asText(), "HOA", QuestionType.SHORT_ANSWER, answers.size(),
+                    "0.25").formats(vn.unicom.thi360.questionbank.spi.AnswerFormat.valueOf(
+                            chemistry.path("answerFormat").asText())).chemAnswers(answers));
+        }
+        return specs;
     }
 
     private void createChunk(PoolSpec spec, List<Integer> chunk, UUID audioId) {
@@ -156,7 +186,7 @@ public class PublishedQuestionPoolBuilder {
         QuestionBody body = switch (spec.type) {
             case QUESTION_SET -> setBody(spec, code, cell, levels);
             case CLOZE -> cloze(code, spec.blanks, spec.points);
-            default -> body(spec.type, spec, spec.points);
+            default -> body(spec.type, spec, spec.points, cell);
         };
         List<UUID> attachments = spec.audio ? List.of(audioId) : List.of();
         return new SaveQuestionRequest(spec.type, spec.subject, grade, level, null, spec.competency,
@@ -172,25 +202,39 @@ public class PublishedQuestionPoolBuilder {
         for (int i = 0; i < types.size(); i++) {
             int childCell = cell * types.size() + i;
             QuestionType type = types.get(i);
-            QuestionBody childBody = body(type, spec, spec.points);
+            QuestionBody childBody = body(type, spec, spec.points, childCell);
             children.add(new QuestionBody.ChildQuestion(type, "<p>" + code + " child " + (i + 1) + "</p>", childBody,
                     null, spec.points, GRADE_IDS[childCell % 3], LEVEL_IDS[(childCell / 3) % levels], null, null));
         }
         return new QuestionBody.QuestionSetBody(QuestionType.QUESTION_SET, "<p>" + code + " passage</p>", null, children);
     }
 
-    private static QuestionBody body(QuestionType type, PoolSpec spec, BigDecimal points) {
+    private static QuestionBody body(QuestionType type, PoolSpec spec, BigDecimal points, int cell) {
         return switch (type) {
             case SINGLE_CHOICE -> new QuestionBody.SingleChoiceBody(type, options(spec.options, 1), true);
             case MULTIPLE_CHOICE -> new QuestionBody.MultipleChoiceBody(type, options(spec.options, 2),
                     spec.partialMultiple ? QuestionBody.MultipleChoiceRule.PARTIAL
                             : QuestionBody.MultipleChoiceRule.ALL_OR_NOTHING, true);
-            case SHORT_ANSWER -> new QuestionBody.ShortAnswerBody(type, List.of("1"), "", null);
+            case SHORT_ANSWER -> shortAnswer(spec, cell);
             case TRUE_FALSE -> trueFalse(spec.statements, points);
             case MATCHING -> matching(spec.matchingSide, points);
             case CLOZE -> cloze("DS", spec.blanks, points);
             default -> throw new IllegalArgumentException("Unsupported sample type " + type);
         };
+    }
+
+    private static QuestionBody shortAnswer(PoolSpec spec, int cell) {
+        if (spec.formats.isEmpty()) {
+            return new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of("1"), "", null);
+        }
+        var format = spec.formats.get(cell % spec.formats.size());
+        String answer = switch (format) {
+            case INTEGER -> "1";
+            case DECIMAL -> "1.5";
+            case FRACTION -> "1/2";
+            default -> spec.chemAnswers.get(cell % spec.chemAnswers.size());
+        };
+        return new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, List.of(answer), "", format);
     }
 
     private static List<ChoiceOption> options(int count, int correct) {
@@ -247,35 +291,37 @@ public class PublishedQuestionPoolBuilder {
 
     // ------------------------------------------------------------------------------------------ assets
 
-    /** The sample listening file of the 2B bank, uploaded once through the real attachment upload. */
+    /**
+     * The sample listening file of the 2B bank, uploaded once through the real attachment upload. A row whose object is
+     * gone from storage (a wiped bucket, a new in-memory store) gets its object back, so the set is whole again.
+     */
     private UUID ensureAudio() {
-        List<UUID> found = jdbc.queryForList(
-                "SELECT id FROM questionbank.question_asset WHERE file_name = ? AND kind = 'ATTACHMENT' ORDER BY created_at LIMIT 1",
-                UUID.class, AUDIO_NAME);
-        if (!found.isEmpty()) {
-            return found.getFirst();
-        }
-        QuestionAssetUploadResponse uploaded = assets.upload(QuestionAssetKind.ATTACHMENT,
-                new BytesMultipartFile(AUDIO_NAME, "audio/mpeg", read("db/devdata/assets/" + AUDIO_FILE)));
-        return uploaded.id();
+        return ensureAsset(AUDIO_NAME, "ATTACHMENT", "audio/mpeg", "db/devdata/assets/" + AUDIO_FILE,
+                QuestionAssetKind.ATTACHMENT);
     }
 
     private UUID ensureImage(String fileName) {
-        List<UUID> found = jdbc.queryForList(
-                "SELECT id FROM questionbank.question_asset WHERE file_name = ? AND kind = 'IMAGE' ORDER BY created_at LIMIT 1",
-                UUID.class, fileName);
+        return ensureAsset(fileName, "IMAGE", "image/png", "devdata/assets/" + fileName, QuestionAssetKind.IMAGE);
+    }
+
+    private UUID ensureAsset(String fileName, String kind, String mime, String resource, QuestionAssetKind uploadKind) {
+        var found = jdbc.queryForList("SELECT id, object_key FROM questionbank.question_asset WHERE file_name = ? "
+                + "AND kind = ? ORDER BY created_at LIMIT 1", fileName, kind);
         if (!found.isEmpty()) {
-            return found.getFirst();
+            String key = (String) found.getFirst().get("object_key");
+            if (!storage.exists(key)) {
+                storage.put(key, read(resource), mime);
+            }
+            return (UUID) found.getFirst().get("id");
         }
-        return assets.upload(QuestionAssetKind.IMAGE,
-                new BytesMultipartFile(fileName, "image/png", read("devdata/assets/" + fileName))).id();
+        return assets.upload(uploadKind, new BytesMultipartFile(fileName, mime, read(resource))).id();
     }
 
     /** The question of the constants file with an image in its prompt, in one option and in its solution (AC-21). */
     private boolean ensureImageQuestion(Set<String> existing) {
         JsonNode image = constants().path("imageQuestion");
         String code = image.path("questionCode").asText();
-        if (code.isBlank() || existing.contains(code)) {
+        if (code.isBlank()) {
             return false;
         }
         UUID prompt = null;
@@ -289,6 +335,9 @@ public class PublishedQuestionPoolBuilder {
                 case "SOLUTION" -> solution = id;
                 default -> throw new IllegalStateException("Unknown image role in " + RESOURCE);
             }
+        }
+        if (existing.contains(code)) {
+            return false;
         }
         Objects.requireNonNull(prompt, "PROMPT image");
         Objects.requireNonNull(option, "OPTION image");

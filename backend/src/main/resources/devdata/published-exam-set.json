@@ -913,5 +913,24 @@
         "resultView": "SCORE"
       }
     }
-  ]
+  ],
+  "hscaChemistry": {
+    "examCode": "DS-HSCA-HOA",
+    "familyCode": "HSCA-HOA-SA",
+    "answerFormat": "CHEM_FORMULA",
+    "answers": [
+      "H2O",
+      "Na+",
+      "Cl-",
+      "NH4+",
+      "OH-",
+      "CO2",
+      "NaCl",
+      "Fe3+",
+      "Cu2+",
+      "HCl",
+      "CH4",
+      "SO4(2-)"
+    ]
+  }
 }

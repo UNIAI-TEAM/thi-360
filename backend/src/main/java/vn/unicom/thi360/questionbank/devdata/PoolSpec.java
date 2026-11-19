@@ -2,6 +2,7 @@ package vn.unicom.thi360.questionbank.devdata;
 
 import java.math.BigDecimal;
 import java.util.List;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /**
@@ -29,6 +30,10 @@ final class PoolSpec {
     int statements = 4;
     int matchingSide = 4;
     int blanks = 5;
+    /** Answer formats of a short answer, cycled by question number; empty keeps the plain answer. */
+    List<AnswerFormat> formats = List.of();
+    /** Answers of the {@code CHEM_FORMULA} format, cycled by question number. */
+    List<String> chemAnswers = List.of();
     boolean audio;
     boolean partialMultiple;
     /** Whether the very hard level is spread too (only the exam kinds with a four-level matrix need it). */
@@ -74,6 +79,16 @@ final class PoolSpec {
 
     PoolSpec partial() {
         this.partialMultiple = true;
+        return this;
+    }
+
+    PoolSpec formats(AnswerFormat... formats) {
+        this.formats = List.of(formats);
+        return this;
+    }
+
+    PoolSpec chemAnswers(List<String> answers) {
+        this.chemAnswers = List.copyOf(answers);
         return this;
     }
 
