@@ -6,6 +6,8 @@ import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Date;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -13,16 +15,26 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 /**
  * Gửi một thư qua SMTP. Tự mở và đóng kết nối thay cho {@code JavaMailSender.send}, vì lệnh đóng ({@code QUIT})
  * chạy sau khi máy chủ đã nhận thư: nếu nó lỗi hoặc quá hạn thì thư vẫn đã được gửi, không được tính là
- * gửi lỗi (sẽ gửi lại và trùng thư).
+ * gửi lỗi (sẽ gửi lại và trùng thư). Việc đóng cũng không được chặn lời gọi {@link #send}: DATA được
+ * chấp nhận là kết quả cuối, nên {@code close} chạy tách trên một luồng ảo khác, chỉ để trả socket, và
+ * {@code mail.smtp.quitwait=false} để nó không chờ câu trả lời {@code QUIT}.
+ *
+ * <p>Trường {@code Date} của MIME lấy từ {@link Clock} được tiêm, đồng nhất với {@code sent_at} trong
+ * cơ sở dữ liệu.
  */
 class SmtpMailTransport implements MailTransport {
 
     private final JavaMailSenderImpl sender;
     private final String from;
+    private final Clock clock;
 
-    SmtpMailTransport(JavaMailSenderImpl sender, String from) {
+    SmtpMailTransport(JavaMailSenderImpl sender, String from, Clock clock) {
         this.sender = sender;
         this.from = from;
+        this.clock = clock;
+        // QUIT không cần câu trả lời: kết quả gửi đã xong khi DATA được nhận; chỉ tôn trọng chỉ định
+        // sẵn có của người dùng bộ gửi (mặc định của angus là true).
+        this.sender.getJavaMailProperties().putIfAbsent("mail.smtp.quitwait", "false");
     }
 
     @Override
@@ -34,7 +46,7 @@ class SmtpMailTransport implements MailTransport {
         helper.setSubject(subject);
         helper.setText(text, html);
         if (message.getSentDate() == null) {
-            message.setSentDate(new Date());
+            message.setSentDate(Date.from(Instant.now(clock)));
         }
         String messageId = message.getMessageID();
         message.saveChanges();
@@ -56,11 +68,12 @@ class SmtpMailTransport implements MailTransport {
             transport.connect(sender.getHost(), sender.getPort(), username, password);
             transport.sendMessage(message, recipients);
         } catch (Exception failure) {
-            closeQuietly(transport);
+            closeDetached(transport);
             throw failure;
         }
-        // Máy chủ đã nhận thư. Từ đây mọi lỗi đóng kết nối chỉ là chuyện của kết nối.
-        closeQuietly(transport);
+        // Máy chủ đã nhận thư: kết quả cuối. Đóng kết nối tách khỏi lời gọi để một máy chủ chậm
+        // trả lời QUIT không làm lần gửi tới hạn, lỡ máy chủ nhận thư rồi.
+        closeDetached(transport);
     }
 
     /** Như {@code JavaMailSenderImpl}: giao thức đặt trên bộ gửi, nếu không thì của phiên, nếu không thì {@code smtp}. */
@@ -72,11 +85,14 @@ class SmtpMailTransport implements MailTransport {
         return protocol == null ? JavaMailSenderImpl.DEFAULT_PROTOCOL : protocol;
     }
 
-    private static void closeQuietly(Transport transport) {
-        try {
-            transport.close();
-        } catch (MessagingException | RuntimeException ignored) {
-            // Có thể là lỗi QUIT sau khi DATA đã được chấp nhận, hoặc kết nối đã hỏng sẵn.
-        }
+    /** Đóng kết nối trên luồng ảo khác: chỉ trả tài nguyên, lỗi đóng không liên quan kết quả gửi. */
+    private static void closeDetached(Transport transport) {
+        Thread.startVirtualThread(() -> {
+            try {
+                transport.close();
+            } catch (MessagingException | RuntimeException ignored) {
+                // Có thể là lỗi QUIT sau khi DATA đã được chấp nhận, hoặc kết nối đã hỏng sẵn.
+            }
+        });
     }
 }

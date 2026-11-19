@@ -9,16 +9,22 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import jakarta.mail.internet.MimeMessage;
+import org.slf4j.MDC;
+import vn.unicom.thi360.shared.web.TraceIdFilter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -336,6 +342,69 @@ class MailDispatchIT extends AbstractMailIT {
 
             assertThat(outbox.require(to, MailKind.EMAIL_VERIFY).lastError()).isEqualTo(expected);
         }
+    }
+    /** R2-04: một lượt giao thật qua máy chủ bắt AUTH, với tài khoản giả {@code dev-only-}. */
+    @Test
+    void deliveryThroughAnAuthRequiredServer() throws Exception {
+        String user = "thi360-test";
+        String password = "dev-only-" + UUID.randomUUID();
+        try (ScriptedSmtpServer server = new ScriptedSmtpServer().requireAuth(user, password)) {
+            routeSmtpTo(server.port(), 5000, user, password);
+            String to = MailSamples.randomAddress();
+            enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+
+            assertThat(dispatcher.dispatchBatch()).isEqualTo(1);
+
+            assertThat(server.authenticatedAs()).isEqualTo(user);
+            assertThat(server.lastData()).contains(to);
+            assertThat(outbox.require(to, MailKind.EMAIL_VERIFY).sentAt()).isEqualTo(START);
+        }
+    }
+
+    /** R2-09: trường {@code Date} của MIME đi theo đồng hồ được tiêm, trùng với {@code sent_at}. */
+    @Test
+    void mimeDateComesFromTheInjectedClock() throws Exception {
+        String to = MailSamples.randomAddress();
+        enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+
+        assertThat(dispatcher.dispatchBatch()).isEqualTo(1);
+
+        receivedAtLeast(1);
+        MimeMessage received = GREEN_MAIL.getReceivedMessages()[0];
+        assertThat(received.getSentDate()).isEqualTo(Date.from(START));
+        assertThat(outbox.require(to, MailKind.EMAIL_VERIFY).sentAt()).isEqualTo(START);
+    }
+
+    /** R2-10: {@code traceId}/{@code job}/{@code jobId} của lượt đi theo tới luồng vận chuyển. */
+    @Test
+    void mdcOfTheBatchFollowsTheSendThread(CapturedOutput output) throws Exception {
+        AtomicReference<String> trace = new AtomicReference<>();
+        AtomicReference<String> job = new AtomicReference<>();
+        AtomicReference<String> jobId = new AtomicReference<>();
+        AtomicReference<String> threadName = new AtomicReference<>();
+        doAnswer(invocation -> {
+                    trace.set(MDC.get(TraceIdFilter.MDC_TRACE_ID));
+                    job.set(MDC.get("job"));
+                    jobId.set(MDC.get("jobId"));
+                    threadName.set(Thread.currentThread().getName());
+                    return invocation.callRealMethod();
+                })
+                .when(transport)
+                .send(any(), any(), any(), any());
+        String to = MailSamples.randomAddress();
+        enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+
+        assertThat(dispatcher.dispatchBatch()).isEqualTo(1);
+
+        assertThat(threadName.get()).as("send ran on the mail virtual executor").startsWith("mail-send-");
+        assertThat(trace.get()).as("traceId present on the transport thread").isNotBlank();
+        assertThat(job.get()).isEqualTo("mail");
+        assertThat(jobId.get()).isNotBlank();
+        assertThat(output.getAll())
+                .as("the transport-thread diagnostic carries the batch trace")
+                .contains("trace=" + trace.get());
+        // MDC của luồng ảo được dọn sau task: các giá trị của lượt không lọt ra ngoài việc gửi.
+        assertThat(MDC.get("job")).as("batch MDC is restored after dispatch").isNull();
     }
 
     private static String firstLineOfTemplate(Sent sent) throws IOException {

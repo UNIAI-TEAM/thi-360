@@ -17,6 +17,7 @@ class MailPropertiesTests {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(MailConfiguration.class)
+            .withBean(java.time.Clock.class, java.time.Clock::systemUTC)
             .withPropertyValues(
                     "thi360.web-url=https://thi360.example.test", "spring.mail.host=smtp.example.test", "spring.mail.port=2525");
 
@@ -87,7 +88,11 @@ class MailPropertiesTests {
         "read-timeout,-PT1S",
         "read-timeout,PT600H",
         "attempt-timeout,PT0S",
-        "attempt-timeout,-PT1S"
+        "attempt-timeout,PT0.0004S",
+        "attempt-timeout,PT0.0000001S",
+        "attempt-timeout,PT600H",
+        "attempt-timeout,-PT1S",
+        "claim-lease,PT0.0004S"
     })
     void timeoutsMustBePositiveWholeMillisecondsThatFitAnInt(String name, String value) {
         runner.withPropertyValues("thi360.mail." + name + "=" + value).run(context -> {

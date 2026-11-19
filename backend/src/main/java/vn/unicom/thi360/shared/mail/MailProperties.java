@@ -13,7 +13,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param tls        chế độ mã hóa SMTP ({@code THI360_SMTP_TLS}): {@code starttls} (mặc định), {@code tls}, {@code none}
  * @param connectTimeout thời gian chờ kết nối SMTP; số mili giây dương, vừa một {@code int}
  * @param readTimeout    thời gian chờ đọc, ghi SMTP; số mili giây dương, vừa một {@code int}
- * @param attemptTimeout hạn cứng của một lần gửi (kết nối, mọi lệnh, thân thư); quá hạn tính là lỗi {@code timeout}
+ * @param attemptTimeout hạn cứng của một lần gửi (kết nối, mọi lệnh, thân thư); số mili giây dương vừa
+ *                       một {@code int} — dưới 1 ms đổi ra 0 ms và khóa mọi lần gửi
  * @param batchSize  số thư tối đa mỗi lượt, từ 1 đến {@value #MAX_BATCH_SIZE}
  * @param claimLease thời gian giữ chỗ một thư trong lúc gửi, phải lớn hơn {@code attemptTimeout};
  *                   hết hạn mà chưa có kết quả thì thư được lấy lại
@@ -38,14 +39,19 @@ public record MailProperties(
 
     public static final int MAX_BATCH_SIZE = 20;
 
+    /** Mặc định dùng chung cho {@link MailProperties} và các chú thích {@code @Scheduled} của {@link MailWorker}. */
+    static final String DEFAULT_POLL_DELAY = "PT5S";
+
+    static final String DEFAULT_CLEANUP_CRON = "0 30 3 * * *";
+
     private static final Duration ONE_MILLI = Duration.ofMillis(1);
     private static final Duration MAX_INT_MILLIS = Duration.ofMillis(Integer.MAX_VALUE);
 
     public MailProperties {
         requireInProviderRange("thi360.mail.connect-timeout", connectTimeout);
         requireInProviderRange("thi360.mail.read-timeout", readTimeout);
-        requirePositive("thi360.mail.attempt-timeout", attemptTimeout);
-        requirePositive("thi360.mail.claim-lease", claimLease);
+        requireInProviderRange("thi360.mail.attempt-timeout", attemptTimeout);
+        requireInProviderRange("thi360.mail.claim-lease", claimLease);
         requirePositive("thi360.mail.sent-retention", sentRetention);
         requirePositive("thi360.mail.poll-delay", pollDelay);
         if (batchSize < 1 || batchSize > MAX_BATCH_SIZE) {
@@ -70,8 +76,8 @@ public record MailProperties(
             @DefaultValue("20") int batchSize,
             @DefaultValue("PT5M") Duration claimLease,
             @DefaultValue("P30D") Duration sentRetention,
-            @DefaultValue("PT5S") Duration pollDelay,
-            @DefaultValue("0 30 3 * * *") String cleanupCron,
+            @DefaultValue(DEFAULT_POLL_DELAY) Duration pollDelay,
+            @DefaultValue(DEFAULT_CLEANUP_CRON) String cleanupCron,
             @DefaultValue("classpath:mail/templates/") String templatesLocation) {
         this(
                 from,

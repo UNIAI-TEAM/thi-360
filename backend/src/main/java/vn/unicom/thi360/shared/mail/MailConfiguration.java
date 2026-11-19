@@ -64,7 +64,7 @@ class MailConfiguration {
     }
 
     @Bean
-    MailTransport mailTransport(JavaMailSenderImpl sender, MailProperties mail) {
-        return new SmtpMailTransport(sender, mail.from());
+    MailTransport mailTransport(JavaMailSenderImpl sender, MailProperties mail, java.time.Clock clock) {
+        return new SmtpMailTransport(sender, mail.from(), clock);
     }
 }

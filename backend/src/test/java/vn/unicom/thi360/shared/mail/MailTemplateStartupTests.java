@@ -18,6 +18,7 @@ class MailTemplateStartupTests {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(MailConfiguration.class)
+            .withBean(java.time.Clock.class, java.time.Clock::systemUTC)
             .withPropertyValues("thi360.web-url=https://thi360.example.test", "spring.mail.host=localhost", "thi360.mail.tls=none");
 
     @TempDir
