@@ -144,6 +144,41 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
                 Integer.class, UUID.fromString(id))).isZero();
     }
 
+    /**
+     * Row 3 (R1-3): a null stored clock is as blocking as a zero one. A fresh check on an
+     * otherwise complete SHARED exam (name, code, part code) reports exactly one
+     * INFO_MISSING finding (INFO, ERROR) and publish is refused without a version. The
+     * null clock is written via JDBC — create and reload cannot produce one.
+     */
+    @Test
+    void nullSharedClockBlocksPublish() throws Exception {
+        JsonNode exam = created(create("VSAT", "PART", "P2", "TOAN", 45));
+        String id = exam.path("id").asText();
+        entityManager.flush();
+        jdbc.update("UPDATE exam.exam SET duration_minutes = NULL WHERE id = ?", UUID.fromString(id));
+        entityManager.clear();
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        JsonNode missing = infoMissingIssues(result);
+        assertThat(missing).hasSize(1);
+        assertThat(missing.get(0).path("group").asText()).isEqualTo("INFO");
+        assertThat(missing.get(0).path("severity").asText()).isEqualTo("ERROR");
+
+        ObjectNode publish = mapper.createObjectNode()
+                .put("expectedRevision", detail(id).path("revision").asLong());
+        result.path("paths").forEach(path -> publish.putArray("pathIds").add(path.path("pathId").asText()));
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/publish", id)
+                        .with(asUser(Permissions.EXAM_PUBLISH))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(publish.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(r -> assertThat(mapper.readTree(r.getResponse().getContentAsString())
+                        .path("code").asText()).isEqualTo("PATH_NOT_VALID"));
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM exam.exam_version WHERE exam_id = ?",
+                Integer.class, UUID.fromString(id))).isZero();
+    }
+
     /** A missing name and a missing clock on one exam are one INFO_MISSING issue, not two. */
     @Test
     void missingNameAndClockReportOneInfoIssue() throws Exception {
