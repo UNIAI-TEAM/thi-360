@@ -25,6 +25,7 @@ function wire(issues: Record<string, unknown>[], sectionStates: Record<string, u
     sectionStates,
     groups: [{ group: "STRUCTURE", status: "FAIL", issues }],
     paths: [{ pathId: "default", result: "INVALID", issues: [] }],
+    listingCheck: { group: "LISTING", status: "PASS", issues: [] },
   };
 }
 
@@ -108,6 +109,13 @@ describe("Kiểm tra: lỗi và cảnh báo tách riêng", () => {
     expect(screen.getByTestId("findings-warnings")).toBeInTheDocument();
   });
 
+  it("máy chủ không trả listingCheck: không báo công bố được, dùng dòng chưa kết luận", async () => {
+    renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: { ...wire(WARNINGS), listingCheck: null } }));
+
+    expect(await screen.findByText("Chưa kết luận được: chưa kiểm tra được Thông tin bán.")).toBeInTheDocument();
+    expect(screen.queryByText("Công bố được. Không có lỗi chặn.")).not.toBeInTheDocument();
+  });
+
   it("lỗi mức UNCONFIRMED ở danh sách riêng, không gộp vào lỗi chặn", async () => {
     const unconfirmed = issue({ key: "u1", code: "OVERLAP_UNCONFIRMED", severity: "UNCONFIRMED", group: "OVERLAP", subjectCode: "MATH" });
     renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: wire([unconfirmed]) }));
@@ -161,7 +169,7 @@ describe("Kiểm tra: bấm lỗi mở đúng chỗ ở bước Cấu trúc", ()
       `${STRUCTURE}?section=sec-1`,
       `${STRUCTURE}?block=blk-1`,
     ]);
-    expect(links[1]!.getAttribute("aria-label")).toMatch(/^Mở chỗ lỗi: /);
+    expect(links[1]).toHaveAccessibleName(/^Mở chỗ lỗi: /);
   });
 
   it("issueStructureHref: lựa chọn của phần, phần, và không có chỗ nào", () => {

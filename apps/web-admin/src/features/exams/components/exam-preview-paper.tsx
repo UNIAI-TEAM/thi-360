@@ -4,7 +4,7 @@ import { Badge, Button, cn, focusRing, StatusChip } from "@thi360/ui";
 import { Check, ListOrdered, PenLine, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { RichTextView } from "@/components/rich-text";
+import { RichTextView } from "@thi360/ui/rich-text";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { PreviewBlock, PreviewDisplaySegment, PreviewItem, PreviewPaper, PreviewPart, PreviewQuestion } from "../review-types";
 import { audioAttachments, PreviewAudioList } from "./exam-preview-audio";

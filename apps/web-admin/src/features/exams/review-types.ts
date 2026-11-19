@@ -307,6 +307,33 @@ export interface CheckGroupResult {
   issues: CheckIssue[];
 }
 
+/** Mã vấn đề của nhóm Thông tin bán (TM 6.2). Thiếu ảnh bìa là cảnh báo, các mã còn lại chặn công bố. */
+export const LISTING_ISSUE_CODES = [
+  "LISTING_PRICE_MISSING",
+  "LISTING_PRICE_ZERO",
+  "LISTING_PRICE_BELOW_MIN",
+  "LISTING_ATTEMPTS_MISSING",
+  "LISTING_DESCRIPTION_MISSING",
+  "LISTING_COVER_MISSING",
+] as const;
+export type ListingIssueCode = (typeof LISTING_ISSUE_CODES)[number];
+
+export interface ListingCheckIssue {
+  key: string;
+  /** Một mã của `LISTING_ISSUE_CODES`; mã máy chủ thêm sau vẫn giữ nguyên và hiện bằng câu chung. */
+  code: string;
+  severity: "ERROR" | "WARNING";
+  /** Trường của biểu mẫu Thông tin bán mà vấn đề nói tới (`listPriceVnd`, `attemptsGranted`, `description`, `coverAssetId`). */
+  field: string | null;
+  /** Mức giá tối thiểu (VND), chỉ có ở `LISTING_PRICE_BELOW_MIN`. */
+  minPriceVnd: number | null;
+}
+
+export interface ListingCheckGroup {
+  status: "PASS" | "WARN" | "FAIL";
+  issues: ListingCheckIssue[];
+}
+
 /** Kết quả thuần của một lần kiểm tra (không có thời điểm, thời gian chạy). */
 export interface ExamCheckOutcome {
   status: Extract<ExamCheckStatus, "VALID" | "INVALID">;
@@ -337,6 +364,11 @@ export interface ExamCheckResult extends ExamCheckOutcome {
 
   /** Trạng thái từng môn sau lần kiểm tra (H2); `null` khi BE-5 chưa triển khai — màn không hiện trạng thái. */
   sectionStates?: ExamSectionState[] | null;
+  /**
+   * Nhóm "Thông tin bán" (EX-1), máy chủ tính lúc đọc từ bản làm việc; không nằm trong `groups` (tám nhóm cấu hình).
+   * Thiếu hoặc `null`: máy chủ chưa tính được, màn hiện trạng thái lỗi kèm nút thử lại.
+   */
+  listingCheck?: ListingCheckGroup | null;
 }
 
 /**

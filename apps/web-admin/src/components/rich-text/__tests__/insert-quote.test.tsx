@@ -6,12 +6,10 @@ import { Editor } from "@tiptap/core";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
+import { RichTextView, sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { createRichTextExtensions } from "../extensions";
-import { stripTrailingEmptyParagraph } from "../html-contract";
 import QuoteInsertDialog from "../insert/quote/dialog";
 import { createQuoteDraft, parseQuote, serializeQuote } from "../insert/quote/quote-model";
-import { sanitizeQuestionHtml } from "../sanitize";
-import { RichTextView } from "../view/rich-text-view";
 
 interface Sample {
   name: string;

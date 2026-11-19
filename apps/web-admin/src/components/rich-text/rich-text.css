@@ -1,6 +1,7 @@
 /*
- * Nội dung HTML của trình soạn và khung xem (spec 4.2): chỉ token của DESIGN.md, đúng cả sáng/tối.
- * Phạm vi `.rich-text-*` để không đụng style toàn cục.
+ * Nội dung HTML của trình soạn (spec 4.2): chỉ token của DESIGN.md, đúng cả sáng/tối.
+ * Phạm vi `.rich-text-*` để không đụng style toàn cục. Phần hiển thị chỉ đọc (`.rich-text-body`)
+ * nằm ở `packages/ui/src/rich-text/rich-text.css`, nạp cùng `@thi360/ui/rich-text`.
  */
 
 .rich-text-editor-content {
@@ -27,44 +28,36 @@
   color: var(--color-text-placeholder);
 }
 
-.rich-text-body,
 .rich-text-editor-content {
   overflow-wrap: break-word;
 }
 
-.rich-text-body p,
 .rich-text-editor-content p {
   margin: 0 0 0.375em;
 }
 
-.rich-text-body p:last-child,
 .rich-text-editor-content p:last-child {
   margin-bottom: 0;
 }
 
-.rich-text-body ul,
 .rich-text-editor-content ul {
   list-style: disc;
   padding-inline-start: 1.5em;
   margin: 0 0 0.375em;
 }
 
-.rich-text-body ol,
 .rich-text-editor-content ol {
   list-style: decimal;
   padding-inline-start: 1.5em;
   margin: 0 0 0.375em;
 }
 
-.rich-text-body table,
 .rich-text-editor-content table {
   border-collapse: collapse;
   margin: 0.375em 0;
   max-width: 100%;
 }
 
-.rich-text-body th,
-.rich-text-body td,
 .rich-text-editor-content th,
 .rich-text-editor-content td {
   border: 1px solid var(--color-border-strong);
@@ -74,7 +67,6 @@
   min-width: 2.5rem;
 }
 
-.rich-text-body th,
 .rich-text-editor-content th {
   background: var(--color-table-head);
   font-weight: 600;
@@ -96,7 +88,6 @@
   position: relative;
 }
 
-.rich-text-body img,
 .rich-text-editor-content img {
   max-width: 100%;
   height: auto;
@@ -129,7 +120,6 @@
 }
 
 /* Figure (bảng số liệu, hình, sơ đồ lai). */
-.rich-text-body figure,
 .rich-text-editor-content figure {
   margin: 0.5em 0;
   padding: 0.75rem 1rem;
@@ -138,7 +128,6 @@
   background: var(--color-surface);
 }
 
-.rich-text-body figcaption,
 .rich-text-editor-content figcaption {
   font-weight: 600;
   font-size: var(--text-caption, 0.875rem);
@@ -146,8 +135,6 @@
   text-align: center;
 }
 
-.rich-text-body .figure-note,
-.rich-text-body .figure-source,
 .rich-text-editor-content .figure-note,
 .rich-text-editor-content .figure-source {
   color: var(--color-text-muted);
@@ -155,30 +142,20 @@
   margin-bottom: 0;
 }
 
-.rich-text-body figure.image[data-width="small"] img,
 .rich-text-editor-content figure.image[data-width="small"] img {
   max-width: 40%;
 }
 
-.rich-text-body figure.image[data-width="medium"] img,
 .rich-text-editor-content figure.image[data-width="medium"] img {
   max-width: 70%;
 }
 
-.rich-text-body figure.image img,
 .rich-text-editor-content figure.image img {
   display: block;
   margin-inline: auto;
 }
 
-.rich-text-body td.num,
-.rich-text-body th.num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Đoạn trích (thơ/văn xuôi/tư liệu): nền xám nhạt, bo 12px như bản vẽ. */
-.rich-text-body blockquote.quote,
 .rich-text-editor-content blockquote.quote {
   margin: 0.5em 0;
   padding: 18px 20px;
@@ -188,39 +165,21 @@
   line-height: 1.7;
 }
 
-.rich-text-body blockquote.quote p,
 .rich-text-editor-content blockquote.quote p {
   margin-bottom: 0.5em;
 }
 
-.rich-text-body blockquote.quote footer,
 .rich-text-editor-content blockquote.quote footer {
   margin-top: 0.5em;
   text-align: right;
   color: var(--color-text-secondary, var(--color-text-muted));
 }
 
-.rich-text-body blockquote.quote cite,
 .rich-text-editor-content blockquote.quote cite {
   font-style: italic;
 }
 
-/* Số dòng thơ: hàng lưới 24px + nội dung, số chỉ hiện ở dòng 5, 10, 15… */
-.rich-text-body .quote-line {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 10px;
-}
-
-.rich-text-body .quote-line-number {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Chỗ trống đánh số: chip xanh-cyan nét đứt như bản vẽ Tiếng Anh. */
-.rich-text-body span.blank,
 .rich-text-editor-content .rich-text-blank {
   display: inline-block;
   padding: 0 8px;
@@ -236,13 +195,11 @@
 }
 
 /* Gạch chân đánh nhãn: nhãn chữ nhỏ phía dưới cụm, như bản vẽ. */
-.rich-text-body u[data-label],
 .rich-text-editor-content u[data-label] {
   position: relative;
   text-decoration-color: var(--color-primary-text);
 }
 
-.rich-text-body u[data-label]::after,
 .rich-text-editor-content u[data-label]::after {
   content: attr(data-label);
   position: absolute;
@@ -255,27 +212,9 @@
   text-align: center;
 }
 
-/* Công thức lỗi: hiện mã nguồn trong khung cảnh báo, không làm vỡ trang (spec 5). */
-.rich-text-body .math-error {
-  display: inline-block;
-  padding: 0.125rem 0.375rem;
-  border: 1px solid var(--color-warning);
-  border-radius: var(--radius-sm);
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  font-family: ui-monospace, monospace;
-  font-size: 0.8125em;
-}
 .rich-text-editor-content .math-block.rich-text-math {
   display: block;
   margin: 0.375em 0;
   padding: 0.375em 0.5em;
-  text-align: center;
-}
-
-/* Công thức khối trong khung xem. */
-.rich-text-body .math-block {
-  display: block;
-  margin: 0.5em 0;
   text-align: center;
 }

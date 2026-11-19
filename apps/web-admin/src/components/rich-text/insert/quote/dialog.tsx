@@ -1,11 +1,10 @@
 "use client";
 
 import { Checkbox, Input, Textarea } from "@thi360/ui";
+import { RichTextView, sanitizeQuestionHtml } from "@thi360/ui/rich-text";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { QUOTE_NODE } from "../../extensions";
-import { sanitizeQuestionHtml } from "../../sanitize";
-import { RichTextView } from "../../view/rich-text-view";
 import type { InsertDialogProps } from "../registry";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
 import { selectedAtom, upsertAtom } from "../shared/upsert-atom";
