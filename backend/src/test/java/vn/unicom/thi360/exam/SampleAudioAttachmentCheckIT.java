@@ -40,8 +40,8 @@ class SampleAudioAttachmentCheckIT extends AbstractIntegrationTest {
         UUID subject = jdbc.queryForObject("SELECT id FROM catalog.catalog_item WHERE group_id = "
                 + "'00000000-0000-7000-8100-000000000002' AND code = 'ANH' AND status = 1", UUID.class);
         UUID exam = UUID.randomUUID();
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Sample audio','FULL','SHARED',35)", exam, exam.toString(), exam.toString());
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Sample audio','FULL','SHARED',35,60)", exam, exam.toString(), exam.toString());
         String document = "{\"parts\":[{\"id\":\"p\",\"questionCount\":35,\"sections\":[{\"id\":\"s\",\"subjectCode\":\"ANH\","
                 + "\"questionCount\":35,\"audioRequirement\":\"REQUIRED\",\"blocks\":["
                 + "{\"id\":\"single\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":8},"

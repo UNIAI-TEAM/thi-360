@@ -40,8 +40,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     @Test
     void onlyChangedSubjectIsSolvedAgain() throws Exception {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Unit reuse','FULL','SHARED',3)", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Unit reuse','FULL','SHARED',3,60)", id, id.toString(), id.toString());
         jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
                 {"parts":[{"id":"p","name":"Part","questionCount":3,"sections":[
                   {"id":"physics","subjectCode":"LY","questionCount":1,"blocks":[
@@ -117,8 +117,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     void mathSectionsAcrossThreePartsShareOneUnit() throws Exception {
         UUID id = UUID.randomUUID();
         UUID math = UUID.fromString("00000000-0000-7000-8200-000000000201");
-        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Three-part math','FULL','SHARED',3)", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Three-part math','FULL','SHARED',3,60)", id, id.toString(), id.toString());
         jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
                 {"parts":[
                   {"id":"i","order":1,"name":"I","questionCount":1,"sections":[{"id":"math-i","subjectCode":"TOAN","questionCount":1,"blocks":[{"id":"bi","questionType":"SINGLE_CHOICE","questionCount":1}]}]},
@@ -161,8 +161,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     void codesBecomeStaleOnlyWhenTheirSubjectChanges() throws Exception {
         UUID id = UUID.randomUUID();
         UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',2)", id, id.toString(), id.toString(), qda);
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',2,60)", id, id.toString(), id.toString(), qda);
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
                 {"parts":[{"id":"codes","name":"Codes","codeSource":{"source":"GLOBAL_LIST"},
                   "subjectPool":[
@@ -345,8 +345,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     private String publishCodeFixture() throws Exception {
         UUID id = UUID.randomUUID();
         UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,has_unpublished_changes) "
-                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',2,true)", id, id.toString(), id.toString(), qda);
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,has_unpublished_changes,duration_minutes) "
+                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',2,true,60)", id, id.toString(), id.toString(), qda);
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
                 {"parts":[{"id":"codes","name":"Codes","codeSource":{"source":"GLOBAL_LIST"},
                   "subjectPool":[
@@ -391,8 +391,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         UUID id = UUID.randomUUID();
         UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");
         UUID english = UUID.fromString("00000000-0000-7000-8200-000000000203");
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,has_unpublished_changes) "
-                + "VALUES (?,?,?,'Partial codes',?,'FULL','SHARED',1,true)", id, id.toString(), id.toString(), qda);
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,has_unpublished_changes,duration_minutes) "
+                + "VALUES (?,?,?,'Partial codes',?,'FULL','SHARED',1,true,60)", id, id.toString(), id.toString(), qda);
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'partial')", id, """
                 {"parts":[{"id":"codes","name":"Codes","questionCount":1,"codeSource":{"source":"GLOBAL_LIST"},
                   "subjectPool":[{"id":"anh","subjectCode":"ANH","questionCount":1,"blocks":[
@@ -453,8 +453,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     void changingOnlyEveryChildInScopeMarksPartAndUnitChanged() throws Exception {
         UUID id = UUID.randomUUID();
         UUID math = UUID.fromString("00000000-0000-7000-8200-000000000201");
-        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,kind_item_id,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Scope change',?,'FULL','SHARED',1)", id, id.toString(), id.toString(),
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,kind_item_id,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Scope change',?,'FULL','SHARED',1,60)", id, id.toString(), id.toString(),
                 UUID.fromString("00000000-0000-7000-8200-000000000101"));
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
                 {"parts":[{"id":"p","name":"Part","questionCount":1,"sections":[
@@ -498,8 +498,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         UUID id = UUID.randomUUID();
         UUID hsa = UUID.fromString("00000000-0000-7000-8200-000000000101");
         UUID math = UUID.fromString("00000000-0000-7000-8200-000000000201");
-        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,kind_item_id,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Reload',?,'FULL','SHARED',1)",
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,kind_item_id,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Reload',?,'FULL','SHARED',1,60)",
                 id, id.toString(), id.toString(), hsa);
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
                 {"parts":[{"id":"p","name":"Part","questionCount":1,"sections":[

@@ -524,8 +524,8 @@ class ExamAudioChildTypeShortageIT extends AbstractIntegrationTest {
     private JsonNode check(Subject subject, int count, String audio, String block) throws Exception {
         UUID id = UUID.randomUUID();
         lastExam = id;
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Audio','FULL','SHARED',?)", id, id.toString(), id.toString(), count);
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Audio','FULL','SHARED',?,60)", id, id.toString(), id.toString(), count);
         jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'audio')",
                 id, document(subject, count, audio, block));
         for (JsonNode declared : mapper.readTree(document(subject, count, audio, block))

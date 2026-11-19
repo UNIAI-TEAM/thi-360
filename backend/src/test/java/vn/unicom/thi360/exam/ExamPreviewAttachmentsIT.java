@@ -461,7 +461,7 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
 
     private UUID exam(String parts) {
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, question_count) values (?, ?, ?, 'Preview', 'FULL', 'SHARED', 3)",
+        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, question_count, duration_minutes) values (?, ?, ?, 'Preview', 'FULL', 'SHARED', 3, 60)",
                 id, id.toString(), id.toString());
         jdbc.update("insert into exam.exam_structure (exam_id, parts, structure_hash) values (?, cast(? as jsonb), 'test')",
                 id, "{\"parts\":" + parts + "}");
