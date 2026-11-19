@@ -753,7 +753,7 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
                     .table("flyway_schema_history")
                     .locations("classpath:db/migration")
                     .placeholders(Map.of("auditAppRole", POSTGRES.getUsername()))
-                    .target("202611191630")
+                    .target("202611191822")
                     .load()
                     .migrate();
             try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
@@ -772,6 +772,7 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
                     .table("flyway_schema_history")
                     .locations("classpath:db/migration")
                     .placeholders(Map.of("auditAppRole", POSTGRES.getUsername()))
+                    .target("202611192026")
                     .load()
                     .migrate();
             try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
