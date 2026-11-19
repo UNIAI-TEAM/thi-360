@@ -214,3 +214,19 @@ export function sectionsOf(body: unknown): Record<string, Wire> {
   const parts = (body as { parts: Array<{ sections?: Wire[] }> }).parts;
   return Object.fromEntries(parts.flatMap((part) => part.sections ?? []).map((section) => [section.id as string, section]));
 }
+
+/**
+ * Cặp thiếu trường / `null` mà `api-mapping.ts` đã chuẩn hóa như vậy hôm nay (plan B4): wire có thể bỏ trường, màn luôn điền
+ * `tagCodes: []`, `answerTypeLocked: false` rồi gửi lại. Gọi tên ở đây để so hai wire không loại trừ ngầm điều gì khác.
+ */
+export const MAPPING_DEFAULTED_FIELDS: Readonly<Record<string, unknown>> = { tagCodes: [], answerTypeLocked: false };
+
+/** Bỏ `null`, `undefined` và các trường mặc định có tên ở `MAPPING_DEFAULTED_FIELDS` để so hai wire theo nghĩa. */
+export function withoutMappingDefaults(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutMappingDefaults);
+  if (value === null || typeof value !== "object") return value;
+  const entries = Object.entries(value as Wire)
+    .filter(([key, item]) => item !== null && item !== undefined && !(key in MAPPING_DEFAULTED_FIELDS && JSON.stringify(item) === JSON.stringify(MAPPING_DEFAULTED_FIELDS[key])))
+    .map(([key, item]) => [key, withoutMappingDefaults(item)] as const);
+  return Object.fromEntries(entries);
+}
