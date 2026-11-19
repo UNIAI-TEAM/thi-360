@@ -292,6 +292,33 @@ export interface ExamSection {
   topicQuotas?: TopicQuota[];
   /** Điều kiện audio của môn (H38): các nhóm trong môn kế thừa. Bỏ trống hoặc `ANY`: không lọc. */
   audioRequirement?: AudioRequirement;
+  /**
+   * Chế độ MAPID của môn HSA dùng ma trận (UNI-1704 v2). Vắng: môn dùng phạm vi và chỉ tiêu chủ đề kiểu cũ. `ALL`: lấy toàn
+   * bài, quy tắc vẫn nằm trong bản nháp nhưng máy chủ không áp dụng. `MATRIX`: máy chủ biên dịch `mapidRules` và bỏ qua
+   * `knowledgeScope.nodeIds`, `topicQuotas` của môn và của nhóm.
+   */
+  mapidMode?: MapidMode;
+  mapidRules?: MapidRule[];
+}
+
+export type MapidMode = "ALL" | "MATRIX";
+/** PRESENT: ít nhất 1 câu; COUNT: số câu; ONLY_IN_GROUP: MAPID chỉ ở một nhóm; SOURCE: nguồn của môn hoặc nhóm chỉ từ các MAPID. */
+export type MapidRuleType = "PRESENT" | "COUNT" | "ONLY_IN_GROUP" | "SOURCE";
+export type MapidComparator = "EXACT" | "AT_LEAST";
+
+/**
+ * Một quy tắc MAPID của môn (khớp record `MapidRule` của máy chủ). `groupId` rỗng: cả môn; ngược lại là `QuestionBlock.id` của
+ * môn. `nodeIds` hiểu theo nghĩa "hoặc". `count` và `percent` chỉ có ở COUNT và ONLY_IN_GROUP kèm số; có cả hai thì `percent`
+ * thắng và mẫu số là số câu của phạm vi.
+ */
+export interface MapidRule {
+  id: string;
+  type: MapidRuleType;
+  groupId?: string | null;
+  nodeIds: string[];
+  comparator?: MapidComparator;
+  count?: number | null;
+  percent?: number | null;
 }
 
 /**

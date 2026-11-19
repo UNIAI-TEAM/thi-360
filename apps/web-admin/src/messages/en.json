@@ -5756,6 +5756,129 @@
       "basisFixed": "Unit: {unit}",
       "basisTotal": "Total: {total} {unit}"
     },
+    "mapidRules": {
+      "actions": "Actions",
+      "add": "Add rule",
+      "addAria": "Add a MAPID rule for {subject}",
+      "caption": "MAPID rules of {subject}",
+      "counter": "{count, number}/{max, number} rules",
+      "delete": "Delete",
+      "deleteAria": "Delete rule: {sentence}",
+      "deletedGroup": "Deleted group",
+      "deletedGroupFix": "This rule points to a group that no longer exists. Change its scope or delete it before saving.",
+      "dialog": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "comparator": {
+          "AT_LEAST": "At least",
+          "EXACT": "Exactly",
+          "legend": "Comparison"
+        },
+        "count": "Questions",
+        "countAria": "Question count of the rule",
+        "denominator": "Denominator: {units, number} questions of {scope}",
+        "denominatorUnknown": "Denominator: the question count of {scope} is not known",
+        "description": "Rule for {subject}. The remaining positions are drawn at random within the scope that is still valid.",
+        "entry": "Enter as",
+        "entryCount": "Questions",
+        "entryPercent": "Percent",
+        "issues": {
+          "GROUP_MISSING": "The selected group no longer exists. Choose the scope again.",
+          "NO_NODES": "Pick at least one MAPID.",
+          "ONLY_IN_GROUP_NEEDS_GROUP": "This rule only applies to one group. Choose a group.",
+          "PERCENT_RANGE": "Percent must be between 0 and 100."
+        },
+        "nodeRemove": "Remove MAPID {code} {name}",
+        "nodesEmpty": "No MAPID picked.",
+        "nodesLegend": "MAPID",
+        "percent": "Percent (%)",
+        "percentAria": "Percent of the rule",
+        "percentResult": "= {count, number} questions out of {units, number}",
+        "percentUnknown": "The question count of the group is not known yet, so the percent cannot be turned into questions.",
+        "pick": "Pick MAPID",
+        "pickEdit": "Change MAPID",
+        "pickHint": "A question matches when it has at least one picked code. To require all three topics, add one rule per code.",
+        "pickerDescription": "Rule for {name}: pick a chapter, lesson or knowledge item. A picked node also matches questions on its child nodes.",
+        "save": "Save rule",
+        "scope": {
+          "groupHint": "{type} · {size}",
+          "legend": "Applies to",
+          "subject": "Whole subject",
+          "subjectHint": "{subject}, whole subject",
+          "subjectHintCount": "{subject}, {total, number} questions"
+        },
+        "size": {
+          "remainder": "takes the remainder",
+          "sets": "{sets, number} set × {size, number} child questions = {units, number}/{total, number} questions",
+          "setsNoTotal": "{sets, number} set × {size, number} child questions = {units, number} questions",
+          "single": "{units, number}/{total, number} questions",
+          "singleNoTotal": "{units, number} questions"
+        },
+        "title": "Add rule",
+        "titleEdit": "Edit rule",
+        "type": {
+          "COUNT": {
+            "description": "The number of questions with the MAPID equals, or is at least, a number, counting child questions of sets and randomly drawn questions.",
+            "label": "Count"
+          },
+          "ONLY_IN_GROUP": {
+            "description": "Limits where the topic can appear: other groups drop questions with the MAPID. Only available when applied to one group.",
+            "label": "Only appears in this group"
+          },
+          "PRESENT": {
+            "description": "The paper has at least 1 question with the MAPID. Randomly drawn positions may still add questions on the same topic.",
+            "label": "Must appear"
+          },
+          "SOURCE": {
+            "description": "Limits the source: this scope draws only questions with at least one picked MAPID. The topic can still appear in other groups.",
+            "label": "Source only from these MAPIDs"
+          },
+          "contrast": "Two rules are easy to mix up: “Only appears in this group” limits where the topic can appear (other groups drop that topic). “Source only from these MAPIDs” limits what the group draws from (the group takes only those topics, which can still appear in other groups).",
+          "legend": "Rule type"
+        },
+        "withNumber": "With a count",
+        "withNumberHint": "For example: the topic appears only in this group and exactly 3 times."
+      },
+      "edit": "Edit",
+      "editAria": "Edit rule: {sentence}",
+      "empty": "No rules yet. Positions you do not declare are drawn at random from the exam structure.",
+      "hint": "Declare only the topics you want to control. The remaining positions are drawn at random within the scope that is still valid.",
+      "limit": "The limit of {max, number} rules is reached.",
+      "mode": {
+        "all": "Whole subject (no MAPID limit)",
+        "allHint": "Draws at random from all valid sources of the subject. Questions without a MAPID can still be picked.",
+        "legend": "Knowledge scope",
+        "matrix": "By MAPID matrix",
+        "matrixHint": "Add rules for the whole subject or for one question group. The remaining positions are drawn at random.",
+        "paused": "{count, number} rules paused",
+        "pausedHint": "The rules stay in the draft; choose “By MAPID matrix” again to apply them.",
+        "pausedInvalid": "{count, number} rules point to deleted groups. Switch to “By MAPID matrix” to fix or delete them before saving."
+      },
+      "rule": "Rule",
+      "scopeDeleted": "Deleted group",
+      "scopeSubject": "Whole subject",
+      "sentence": {
+        "COUNT_AT_LEAST": "{scope} · At least {amount} questions on {topics}",
+        "COUNT_EXACT": "{scope} · Exactly {amount} questions on {topics}",
+        "ONLY_IN_GROUP": "{topics} only appears in group {group}",
+        "ONLY_IN_GROUP_AT_LEAST": "{topics} only appears in group {group} · At least {amount} questions",
+        "ONLY_IN_GROUP_EXACT": "{topics} only appears in group {group} · Exactly {amount} questions",
+        "PRESENT": "{scope} · Must include {topics}",
+        "SOURCE": "{scope} · Source only from {topics}"
+      },
+      "short": {
+        "COUNT_AT_LEAST": "At least {amount} questions on {topics}",
+        "COUNT_EXACT": "Exactly {amount} questions on {topics}",
+        "ELSEWHERE": "Excludes {topics} (only appears in another group)",
+        "ONLY_IN_GROUP": "Only this group has {topics}",
+        "ONLY_IN_GROUP_AT_LEAST": "Only this group has {topics} · At least {amount} questions",
+        "ONLY_IN_GROUP_EXACT": "Only this group has {topics} · Exactly {amount} questions",
+        "PRESENT": "Must include {topics}",
+        "SOURCE": "Source only from {topics}"
+      },
+      "title": "MAPID rules",
+      "untitledGroup": "Untitled group"
+    },
     "scopeField": {
       "legend": "Knowledge scope",
       "all": "Whole subject",

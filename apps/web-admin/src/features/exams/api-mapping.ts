@@ -24,6 +24,8 @@ import type {
   ExamStructureSummaryRow,
   ExamVersion,
   KnowledgeScope,
+  MapidMode,
+  MapidRule,
   MatrixDimensionValue,
   QuestionBlock,
   TopicQuota,
@@ -36,7 +38,12 @@ import type {
 
 type Schemas = components["schemas"];
 type ApiPart = Schemas["ExamPart"];
-type ApiSection = Schemas["ExamSection"];
+/**
+ * `mapidMode` và `mapidRules` (UNI-1704 v2) khớp record `ExamSection`, `MapidRule` của máy chủ; kiểu sinh chưa có cho tới khi
+ * tạo lại `packages/api-client`, nên khai tay ở đây.
+ */
+type ApiMapidRule = Omit<MapidRule, "groupId" | "count" | "percent"> & { groupId?: string | null; count?: number | null; percent?: number | null };
+type ApiSection = Schemas["ExamSection"] & { mapidMode?: MapidMode | null; mapidRules?: ApiMapidRule[] | null };
 type ApiOption = Schemas["ExamPartOption"];
 type ApiBlock = Schemas["QuestionBlock"];
 type ApiMatrix = Schemas["BlockMatrix"];
@@ -259,6 +266,18 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
   };
 }
 
+function mapMapidRules(rules: readonly ApiMapidRule[]): MapidRule[] {
+  return rules.map((rule) => ({
+    id: rule.id ?? "",
+    type: rule.type,
+    groupId: rule.groupId ?? null,
+    nodeIds: rule.nodeIds ?? [],
+    ...(rule.comparator ? { comparator: rule.comparator } : {}),
+    ...(rule.count !== undefined && rule.count !== null ? { count: rule.count } : {}),
+    ...(rule.percent !== undefined && rule.percent !== null ? { percent: rule.percent } : {}),
+  }));
+}
+
 export function mapSection(section: ApiSection): ExamSection {
   return {
     id: section.id ?? "",
@@ -271,6 +290,8 @@ export function mapSection(section: ApiSection): ExamSection {
     blocks: (section.blocks ?? []).map(mapBlock),
     ...(section.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(section.topicQuotas) } : {}),
     ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
+    ...(section.mapidMode ? { mapidMode: section.mapidMode } : {}),
+    ...(section.mapidRules?.length ? { mapidRules: mapMapidRules(section.mapidRules) } : {}),
   };
 }
 
