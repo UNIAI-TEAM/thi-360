@@ -146,14 +146,14 @@ public class ProfileService {
     }
 
     /**
-     * Đồng bộ họ tên sang Keycloak như {@code UserAdminService.updateUser}. Gọi sau commit (plan B2: không gọi mạng khi
+     * Đồng bộ họ tên sang Keycloak. Chỉ ghi {@code firstName}/{@code lastName} (không đọc-ghi lại toàn bộ hồ sơ) nên
+     * không thể ghi đè email hay trạng thái do quản trị đổi đồng thời. Gọi sau commit (plan B2: không gọi mạng khi
      * giữ khóa dòng); Keycloak chỉ giữ tên hiển thị, ứng dụng đọc họ tên từ DB, nên lỗi chỉ ghi log.
      */
     private void syncKeycloakNames(UUID userId, String fullName) {
         String[] names = UserAdminService.splitFullName(fullName);
         try {
-            keycloakClient.updateUserProfile(
-                    userId, null, names[0] == null ? "" : names[0], names[1] == null ? "" : names[1], false);
+            keycloakClient.updateUserNames(userId, names[0], names[1]);
         } catch (RuntimeException ex) {
             log.atWarn()
                     .setCause(ex)

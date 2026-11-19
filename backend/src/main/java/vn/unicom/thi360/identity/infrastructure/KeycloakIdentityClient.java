@@ -245,6 +245,26 @@ public class KeycloakIdentityClient {
         }
     }
 
+    /**
+     * Chỉ ghi họ và tên: gửi biểu diễn chỉ có {@code firstName}/{@code lastName}, không đọc rồi ghi lại toàn bộ
+     * hồ sơ nên không thể ghi đè email, trạng thái bật/tắt hay thay đổi khác chạy đồng thời của quản trị.
+     */
+    public void updateUserNames(UUID userId, String firstName, String lastName) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        long startNanos = System.nanoTime();
+        String targetRealm = properties.realm();
+        try {
+            UserRepresentation rep = new UserRepresentation();
+            rep.setFirstName(firstName == null ? "" : firstName.trim());
+            rep.setLastName(lastName == null ? "" : lastName.trim());
+            appRealm().users().get(userId.toString()).update(rep);
+            logExternal("updateUserNames", targetRealm, "success", startNanos);
+        } catch (RuntimeException ex) {
+            logExternal("updateUserNames", targetRealm, "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+
     public void deleteUser(UUID userId) {
         Objects.requireNonNull(userId, "userId must not be null");
         long startNanos = System.nanoTime();

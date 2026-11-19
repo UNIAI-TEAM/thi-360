@@ -95,6 +95,40 @@ class MeProfileIT extends AbstractAvatarMinioIT {
     }
 
     @Test
+    void profileWithoutPhoneAndAvatarSerializesExplicitNulls() throws Exception {
+        Account account = support.eligible("profile.nulls");
+
+        JsonNode body = objectMapper.readTree(mockMvc.perform(get("/api/v1/me/profile").with(sessionOf(account)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        // Khớp lược đồ OpenAPI: các trường nullable có mặt và là null (không bị bỏ), không phải chuỗi rỗng.
+        for (String field : List.of("phone", "avatarAssetId", "avatarUrl")) {
+            assertThat(body.has(field)).as("%s is present", field).isTrue();
+            assertThat(body.get(field).isNull()).as("%s is null", field).isTrue();
+        }
+        assertThat(body.get("email").asText()).isEqualTo(account.email());
+    }
+
+    @Test
+    void nameSyncDoesNotTouchOtherKeycloakFields() throws Exception {
+        Account account = support.eligible("profile.kcsync");
+        var users = KEYCLOAK.getKeycloakAdminClient().realm("thi-360").users();
+        var before = users.get(account.id().toString()).toRepresentation();
+        assertThat(before.isEnabled()).isTrue();
+        assertThat(before.isEmailVerified()).isTrue();
+
+        assertThat(patchAndGet(account, "{\"fullName\":\"Họ Tên Mới\"}").getStatus()).isEqualTo(200);
+
+        var after = users.get(account.id().toString()).toRepresentation();
+        assertThat(after.getLastName() + " " + after.getFirstName()).isEqualTo("Họ Tên Mới");
+        assertThat(after.getEmail()).isEqualTo(before.getEmail());
+        assertThat(after.isEmailVerified()).isEqualTo(before.isEmailVerified());
+        assertThat(after.isEnabled()).isEqualTo(before.isEnabled());
+        assertThat(after.getUsername()).isEqualTo(before.getUsername());
+    }
+
+    @Test
     void fullNameBoundaries() throws Exception {
         Account account = support.eligible("profile.name");
 
