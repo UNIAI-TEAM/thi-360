@@ -439,7 +439,74 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
         JsonNode answers = result.findValue("answerQuotas");
         assertThat(answers).as(result.toString()).isNotNull();
         assertThat(row(answers, "answerType", "QUESTION_SET").path("required").asInt()).isEqualTo(6);
-        assertThat(row(answers, "answerType", "QUESTION_SET").path("achieved").asInt(0)).isLessThanOrEqualTo(3);
+        assertThat(row(answers, "answerType", "QUESTION_SET").path("achieved").asInt(-1)).isEqualTo(3);
+    }
+
+    /**
+     * Two flexible groups each need three children and share the same pool of one three-child set and one
+     * oversized four-child set. Only the three-child set is eligible, so the no-witness row reports its three
+     * children once, not six from counting the unusable set. R4-2.
+     */
+    @Test
+    void overlappingFlexibleGroupsDoNotCountSharedStockTwice() throws Exception {
+        Subject subject = subject();
+        set(subject, 3);
+        set(subject, 4);
+        UUID examId = exam("""
+                [{"id":"p","questionCount":6,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%s",
+                  "questionCount":6,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":6}]},
+                  "blocks":[
+                    {"id":"flex1","name":"Flex 1","questionType":"QUESTION_SET","questionCount":3,"childAnswerType":"SINGLE_CHOICE"},
+                    {"id":"flex2","name":"Flex 2","questionType":"QUESTION_SET","questionCount":3,"childAnswerType":"SINGLE_CHOICE"}]}]}]
+                """.formatted(subject.code()), 6);
+
+        JsonNode result = check(examId);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        JsonNode answers = result.findValue("answerQuotas");
+        assertThat(answers).as(result.toString()).isNotNull();
+        assertThat(row(answers, "answerType", "QUESTION_SET").path("required").asInt()).isEqualTo(6);
+        assertThat(row(answers, "answerType", "QUESTION_SET").path("achieved").asInt(-1)).isEqualTo(3);
+    }
+
+    /**
+     * The no-witness row must never size its work after the authored count: a flexible group that asks for
+     * Integer.MAX_VALUE children gets a normal shortage response, and a large count stays bounded by the
+     * eligible stock. R4-1 / R4-3.
+     */
+    @Test
+    void anUnboundedFlexibleCountStillAnswersTheStructuredShortage() throws Exception {
+        Subject empty = subject();
+        UUID emptyExam = exam("""
+                [{"id":"p","questionCount":8,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%s",
+                  "questionCount":8,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":3}]},
+                  "blocks":[
+                    {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":%d,"childAnswerType":"SINGLE_CHOICE"}]}]}]
+                """.formatted(empty.code(), Integer.MAX_VALUE), 8);
+
+        JsonNode emptyResult = check(emptyExam);
+        assertThat(emptyResult.path("status").asText()).as(emptyResult.toString()).isEqualTo("INVALID");
+        JsonNode emptyAnswers = emptyResult.findValue("answerQuotas");
+        assertThat(emptyAnswers).as(emptyResult.toString()).isNotNull();
+        JsonNode emptyRow = row(emptyAnswers, "answerType", "QUESTION_SET");
+        assertThat(emptyRow.path("required").asInt()).isEqualTo(3);
+        assertThat(emptyRow.path("achieved").asInt(-1)).isEqualTo(0);
+
+        Subject sparse = subject();
+        set(sparse, 3);
+        UUID sparseExam = exam("""
+                [{"id":"p","questionCount":8,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%s",
+                  "questionCount":8,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":3}]},
+                  "blocks":[
+                    {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":%d,"childAnswerType":"SINGLE_CHOICE"}]}]}]
+                """.formatted(sparse.code(), 1_000_000), 8);
+
+        JsonNode sparseResult = check(sparseExam);
+        assertThat(sparseResult.path("status").asText()).as(sparseResult.toString()).isEqualTo("INVALID");
+        JsonNode sparseAnswers = sparseResult.findValue("answerQuotas");
+        assertThat(sparseAnswers).as(sparseResult.toString()).isNotNull();
+        JsonNode sparseRow = row(sparseAnswers, "answerType", "QUESTION_SET");
+        assertThat(sparseRow.path("required").asInt()).isEqualTo(3);
+        assertThat(sparseRow.path("achieved").asInt(-1)).isEqualTo(3);
     }
 
     @Test
