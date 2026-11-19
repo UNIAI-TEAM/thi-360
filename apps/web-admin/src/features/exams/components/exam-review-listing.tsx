@@ -11,7 +11,7 @@ import { examTabHref } from "../editor-tabs";
 import { LISTING_CHECK_ROWS, useListingIssueText } from "../listing/issue-text";
 import type { ExamCheckResult, ListingCheckGroup, ListingCheckIssue } from "../review-types";
 import type { ExamDetail } from "../types";
-import { IconLink, structureHref, useLookup } from "./exam-review-shared";
+import { domId, IconLink, labelAfterName, labelBeforeName, structureHref, useLookup } from "./exam-review-shared";
 
 export const REVIEW_LISTING_ANCHOR = "review-listing";
 export const REVIEW_MANUAL_ANCHOR = "review-manual-grading";
@@ -178,17 +178,22 @@ export function ManualGradingSection({ exam, result }: { exam: ExamDetail; resul
         blockId: issue.blockId,
       };
     });
+    const blockNameId = (row: ManualRow) => domId(REVIEW_MANUAL_ANCHOR, "block", row.key);
     const location = (row: ManualRow) => (
       <IconLink
         href={structureHref(exam.id, row.blockId)}
-        label={t("openAria", { block: row.block })}
+        label={labelBeforeName(t, "openAria", "block")}
+        nameId={blockNameId(row)}
+        labelAfter={labelAfterName(t, "openAria", "block")}
         tooltip={t("openTooltip")}
         icon={<ArrowRight />}
       />
     );
     const blockCell = (row: ManualRow) => (
       <span className="inline-flex flex-wrap items-center gap-2">
-        <span data-exam-content>{row.block}</span>
+        <span id={blockNameId(row)} data-exam-content>
+          {row.block}
+        </span>
         <Badge className="gap-1">
           <PenLine aria-hidden className="size-3" />
           {t("badge")}
@@ -214,7 +219,14 @@ export function ManualGradingSection({ exam, result }: { exam: ExamDetail; resul
           status={<StatusChip tone="warning">{t("badge")}</StatusChip>}
           actions={location(row)}
           meta={[
-            { label: t("columns.block"), value: <span data-exam-content>{row.block}</span> },
+            {
+              label: t("columns.block"),
+              value: (
+                <span id={blockNameId(row)} data-exam-content>
+                  {row.block}
+                </span>
+              ),
+            },
             { label: t("columns.paths"), value: <span data-exam-content>{row.paths}</span> },
           ]}
         />

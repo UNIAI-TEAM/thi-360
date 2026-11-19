@@ -169,7 +169,7 @@ describe("Kiểm tra: bấm lỗi mở đúng chỗ ở bước Cấu trúc", ()
       `${STRUCTURE}?section=sec-1`,
       `${STRUCTURE}?block=blk-1`,
     ]);
-    expect(links[1]!.getAttribute("aria-label")).toMatch(/^Mở chỗ lỗi: /);
+    expect(links[1]).toHaveAccessibleName(/^Mở chỗ lỗi: /);
   });
 
   it("issueStructureHref: lựa chọn của phần, phần, và không có chỗ nào", () => {

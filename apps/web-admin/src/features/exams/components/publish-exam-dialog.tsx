@@ -18,7 +18,7 @@ import {
 import { ArrowRight, ArrowUp, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -28,7 +28,7 @@ import type { ExamCheckResult, ExamVersionList, PathCheck, PublishExamResponse }
 import type { ExamDetail } from "../types";
 import { examTabHref } from "../editor-tabs";
 import { useListingIssueText } from "../listing/issue-text";
-import { PathResultChip, reviewHref, useIssueText, usePathLabel } from "./exam-review-shared";
+import { ExamName, PathResultChip, reviewHref, richNodes, useIssueNode, usePathNode } from "./exam-review-shared";
 
 export const PUBLISH_NOTE_MAX = 500;
 
@@ -156,8 +156,8 @@ function PublishForm({
 }) {
   const t = useTranslations("exams.publish");
   const format = useFormatter();
-  const pathLabel = usePathLabel(exam.id);
-  const issueText = useIssueText();
+  const pathNode = usePathNode(exam.id);
+  const issueNode = useIssueNode();
   const publish = usePublishExam(exam.id);
   const fieldsetId = useId();
   const errorId = useId();
@@ -167,7 +167,7 @@ function PublishForm({
     message: string;
     recheck: boolean;
     /** Lý do từng đường (công bố mọi đường cùng lúc) hoặc từng lỗi của thông tin bán. */
-    details: string[];
+    details: ReactNode[];
     /** Lỗi `LISTING_*`: dẫn sang tab Thông tin bán. */
     listingLink: boolean;
   } | null>(null);
@@ -238,8 +238,10 @@ function PublishForm({
               // Bài có lựa chọn sau khi bắt đầu thi: `fieldErrors` liệt kê từng đường chặn (mã lý do, id đường ở `message`).
               const blocking = fieldErrors.map((item) => {
                 const path = check.paths.find((candidate) => candidate.pathId === item.message);
-                const name = path ? pathLabel(path) : t("errors.allPaths.unknownPath");
-                return ALL_PATHS_REASONS.includes(item.code ?? "") ? t(`errors.allPaths.${item.code}`, { path: name }) : name;
+                const name = path ? pathNode(path) : t("errors.allPaths.unknownPath");
+                return ALL_PATHS_REASONS.includes(item.code ?? "")
+                  ? richNodes(t, `errors.allPaths.${item.code}`, { path: name })
+                  : name;
               });
               setServerError({
                 message: t("errors.PUBLISH_ALL_PATHS_REQUIRED"),
@@ -307,7 +309,9 @@ function PublishForm({
       <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 scroll-shadows-y">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-subtle px-3.5 py-3 text-body">
           <dt className="text-text-muted">{t("summary.exam")}</dt>
-          <dd className="m-0 font-medium wrap-anywhere text-text">{`${exam.code} · ${exam.name}`}</dd>
+          <dd className="m-0 font-medium wrap-anywhere text-text">
+            {exam.code} · <ExamName>{exam.name}</ExamName>
+          </dd>
           {versions.workingCopy && versions.workingCopy.baseVersion !== null && (
             <>
               <dt className="text-text-muted">{t("summary.changes", { version: versions.workingCopy.baseVersion })}</dt>
@@ -321,7 +325,7 @@ function PublishForm({
         {yearsIssue && (
           <p className="flex flex-wrap items-start gap-x-2 gap-y-1 rounded-lg border border-warning/30 bg-warning-bg px-3.5 py-2.5 text-body text-text">
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-            <span className="min-w-0 flex-1">{issueText(yearsIssue)}</span>
+            <span className="min-w-0 flex-1">{issueNode(yearsIssue)}</span>
             <Link
               href={examTabHref(exam.id, "general")}
               className="rounded-sm font-medium text-primary-text hover:underline"
@@ -376,7 +380,7 @@ function PublishForm({
                       <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <label htmlFor={id} className={`font-semibold ${enabled ? "text-text" : "text-text-secondary"}`}>
-                            {pathLabel(path)}
+                            {pathNode(path)}
                           </label>
                           <PathResultChip result={path.result} />
                           {!everPublished.has(path.pathId) && versions.items.length > 0 && <Badge>{t("row.new")}</Badge>}
@@ -386,7 +390,7 @@ function PublishForm({
                         </p>
                         {blocker && (
                           <p className="text-caption text-text-secondary">
-                            {t("row.firstIssue", { issue: issueText(blocker), more: blockers.length - 1 })}
+                            {richNodes(t, "row.firstIssue", { issue: issueNode(blocker), more: blockers.length - 1 })}
                           </p>
                         )}
                         {!enabled && (
@@ -428,8 +432,8 @@ function PublishForm({
               <span>{serverError.message}</span>
               {serverError.details.length > 0 && (
                 <ul className="m-0 flex list-disc flex-col gap-0.5 pl-5 text-text">
-                  {serverError.details.map((line) => (
-                    <li key={line}>{line}</li>
+                  {serverError.details.map((line, index) => (
+                    <li key={index}>{line}</li>
                   ))}
                 </ul>
               )}

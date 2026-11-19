@@ -4831,7 +4831,7 @@
         "title": "{path}: results for each subject set the learner can pick",
         "summary": "{total, plural, one {# case} other {# cases}}: {valid, number} valid, {invalid, number} invalid, {unconfirmed, number} unconfirmed.",
         "rule": "Learners pick {choose, number} subjects. Two subjects of the same group (natural or social) get {high, number} questions each and the other subject gets {low, number}. When all {choose, number} subjects are in one group, one of them gets {low, number}: that subject set has {choose, number} splits and every split is checked.",
-        "tableLabel": "Check results for each subject set of {path}",
+        "tableLabel": "Check results for each subject set",
         "empty": "This path has no subject choice yet",
         "columns": {
           "subjects": "Subjects and questions per subject",
@@ -4981,7 +4981,7 @@
         "title": "Details by block",
         "description": "Matching source is counted before resolving overlaps between quotas, so enough source per row does not guarantee a paper.",
         "tabsLabel": "Choice path",
-        "tableLabel": "Details by block for {path}",
+        "tableLabel": "Details by block",
         "empty": "This path has no question block yet",
         "part": "Part {order, number}",
         "requiredSets": "{questions, number} ({sets, number} sets × {size, number})",

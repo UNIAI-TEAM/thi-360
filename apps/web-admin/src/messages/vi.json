@@ -4831,7 +4831,7 @@
         "title": "{path}: kết quả theo bộ môn học viên chọn",
         "summary": "{total, number} trường hợp: {valid, number} hợp lệ, {invalid, number} không hợp lệ, {unconfirmed, number} chưa xác nhận được.",
         "rule": "Học viên chọn {choose, number} môn. Hai môn cùng nhóm (tự nhiên hoặc xã hội) nhận {high, number} câu mỗi môn, môn còn lại nhận {low, number} câu. Cả {choose, number} môn cùng nhóm thì một môn nhận {low, number} câu: bộ môn đó có {choose, number} cách chia và đều được kiểm tra.",
-        "tableLabel": "Kết quả kiểm tra từng bộ môn của đường {path}",
+        "tableLabel": "Kết quả kiểm tra từng bộ môn",
         "empty": "Đường này chưa có cách chọn môn nào",
         "columns": {
           "subjects": "Bộ môn và số câu mỗi môn",
@@ -4981,7 +4981,7 @@
         "title": "Chi tiết theo khối",
         "description": "Nguồn phù hợp đếm trước khi xử lý trùng giữa các chỉ tiêu, nên đủ nguồn từng dòng chưa chắc ghép được đề.",
         "tabsLabel": "Đường lựa chọn",
-        "tableLabel": "Chi tiết theo khối của đường {path}",
+        "tableLabel": "Chi tiết theo khối",
         "empty": "Đường này chưa có khối câu hỏi nào",
         "part": "Phần {order, number}",
         "requiredSets": "{questions, number} ({sets, number} bộ × {size, number})",

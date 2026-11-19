@@ -17,7 +17,7 @@ import {
 import { ArrowRight, CircleCheck, CircleX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useId, useMemo, useState } from "react";
 import {
   buildUnitRows,
   collectCheckIssues,
@@ -34,7 +34,7 @@ import type { CheckIssue, ExamCheckResult } from "../review-types";
 import type { ExamDetail, ExamSectionState } from "../types";
 import { examTabHref } from "../editor-tabs";
 import { listingErrorCount } from "./exam-review-listing";
-import { useIssueText, useLookup } from "./exam-review-shared";
+import { ExamName, labelBeforeName, richNodes, useIssueNode, useLookup } from "./exam-review-shared";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
 
 export interface ExamReviewFindingsProps {
@@ -208,37 +208,58 @@ function IssueList({
 
 function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
   const t = useTranslations("exams.review.findings");
-  const issueText = useIssueText(exam);
+  const issueNode = useIssueNode(exam);
   const lookup = useLookup();
-  const message = issueText(issue);
+  const openId = useId();
+  const messageId = useId();
+  const message = issueNode(issue);
   const href = issueStructureHref(exam.id, issue);
   const where = findBlockContext(exam, issue.blockId);
+  const partName = issue.partName ?? where?.part.name ?? exam.parts.find((part) => part.id === issue.partId)?.name ?? null;
+  const blockName = issue.blockName ?? where?.block.name ?? null;
+  // Tên phần và khối của mẫu là nội dung đề; tên môn theo danh mục ở ngoài vùng đó.
   const location = [
-    issue.partName ?? where?.part.name ?? exam.parts.find((part) => part.id === issue.partId)?.name ?? null,
+    partName ? <ExamName>{partName}</ExamName> : null,
     issue.subjectCode ? lookup.subject(issue.subjectCode) : null,
-    issue.blockName ?? where?.block.name ?? null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+    blockName ? <ExamName>{blockName}</ExamName> : null,
+  ].filter(Boolean);
   const affected = issue.affectedCodes ?? [];
   const tone = issue.severity === "ERROR" ? "border-danger/30" : "border-warning/30";
   return (
     <li className={`flex flex-col gap-1.5 rounded-lg border bg-surface p-3 ${tone}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="text-body text-text">{message}</p>
+          <p id={messageId} className="text-body text-text">
+            {message}
+          </p>
           <p className="font-mono text-caption text-text-muted">{issue.code}</p>
         </div>
         {href && (
           <Button asChild variant="link" size="sm">
-            <Link href={href} aria-label={t("openAria", { issue: message })}>
+            <Link
+              id={openId}
+              href={href}
+              aria-label={labelBeforeName(t, "openAria", "issue")}
+              aria-labelledby={`${openId} ${messageId}`}
+            >
               {t("open")}
               <ArrowRight />
             </Link>
           </Button>
         )}
       </div>
-      {location && <p className="text-caption text-text-muted">{t("location", { where: location })}</p>}
+      {location.length > 0 && (
+        <p className="text-caption text-text-muted">
+          {richNodes(t, "location", {
+            where: location.map((part, index) => (
+              <Fragment key={index}>
+                {index > 0 && " · "}
+                {part}
+              </Fragment>
+            )),
+          })}
+        </p>
+      )}
       {affected.length > 0 && (
         <p className="flex flex-wrap items-center gap-1.5 text-caption text-text-muted">
           <span>{t("affected")}</span>
@@ -308,7 +329,7 @@ function UnitTable({
     const subjects = (row: UnitRow) => row.subjectCodes.map(lookup.subject).join(" → ");
     const status = (row: UnitRow) =>
       row.state ? <StatusChip tone={SECTION_STATE_TONES[row.state]}>{tState(row.state)}</StatusChip> : null;
-    const name = (row: UnitRow) => (row.kind === "code" ? t("unitCode", { code: row.name }) : row.name);
+    const name = (row: UnitRow) => (row.kind === "code" ? t("unitCode", { code: row.name }) : <ExamName>{row.name}</ExamName>);
     const columns: ColumnDef<UnitRow>[] = [
       {
         id: "name",
@@ -335,7 +356,7 @@ function UnitTable({
     const cards: TableCards<UnitRow> = {
       render: (row) => (
         <ListCard
-          title={name(row)}
+          title={<span className="line-clamp-2">{name(row)}</span>}
           caption={subjects(row)}
           status={status(row)}
           meta={[

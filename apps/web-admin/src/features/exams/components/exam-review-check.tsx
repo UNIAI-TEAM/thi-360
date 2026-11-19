@@ -21,7 +21,7 @@ import {
 import { ArrowRight, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { createContext, type RefObject, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, type RefObject, useCallback, useContext, useId, useMemo, useRef, useState } from "react";
 import { EXTENDED_CHECK_TIME_LIMIT_SECONDS } from "../check";
 import type { ExamReviewApiDeps } from "../review-api";
 import { type DeepCheck, useDeepCheck, useExamCheck, useRunExamCheck } from "../review-queries";
@@ -36,14 +36,18 @@ import type {
 import type { ExamDetail } from "../types";
 import {
   BLOCK_RESULT_TONE,
+  domId,
+  ExamName,
   IconLink,
   PathResultChip,
   PathResultIcon,
+  labelBeforeName,
+  richNodes,
   structureHref,
-  useIssueText,
+  useIssueNode,
   useIssueWithPath,
   useLookup,
-  usePathLabel,
+  usePathNode,
 } from "./exam-review-shared";
 import { useListingIssueText } from "../listing/issue-text";
 import {
@@ -398,8 +402,8 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
   const t = useTranslations("exams.review.selections");
   const tReview = useTranslations("exams.review");
   const lookup = useLookup();
-  const issueText = useIssueText();
-  const pathLabel = usePathLabel(exam.id);
+  const issueNode = useIssueNode();
+  const pathNode = usePathNode(exam.id);
   const choice = path.choices.find((item) => item.kind === "SUBJECT_CHOICE");
   const option = exam.parts
     .find((part) => part.id === choice?.partId)
@@ -407,7 +411,6 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
   const counts = option?.countsByPick ?? [];
   const tally = (value: PathCheckResult) => path.selections.filter((selection) => selection.result === value).length;
   const titleId = `review-selections-${path.pathId}`;
-  const label = pathLabel(path);
 
   const { columns, cards } = useMemo(() => {
     const picked = (selection: PathSelectionCheck) =>
@@ -417,7 +420,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
       if (unique.length === 0) return <span className="text-text-muted">{tReview("noIssue")}</span>;
       return (
         <span className={selection.result === "INVALID" ? "text-danger" : "text-text-secondary"}>
-          {issueText(unique[0]!)}
+          {issueNode(unique[0]!)}
           {unique.length > 1 && <> {tReview("moreIssues", { count: unique.length - 1 })}</>}
         </span>
       );
@@ -447,13 +450,13 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
       ),
     };
     return { columns, cards };
-  }, [t, tReview, lookup, issueText]);
+  }, [t, tReview, lookup, issueNode]);
 
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-3">
       <div>
         <h2 id={titleId} className="text-h3 font-bold text-text">
-          {t("title", { path: label })}
+          {richNodes(t, "title", { path: pathNode(path) })}
         </h2>
         <p className="text-body text-text-muted">
           {t("summary", {
@@ -472,7 +475,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
       </div>
       <Card padding="none" className="overflow-hidden">
         <Table
-          aria-label={t("tableLabel", { path: label })}
+          aria-label={t("tableLabel")}
           columns={columns}
           data={path.selections}
           getRowId={(selection) => `${selection.subjectCodes.join("+")}:${selection.counts.join("/")}`}
@@ -526,15 +529,17 @@ const PathActionsContext = createContext<PathActionsValue | null>(null);
 function PathActions({ path }: { path: PathCheck }) {
   const t = useTranslations("exams.review");
   const context = useContext(PathActionsContext);
-  const pathLabel = usePathLabel(context?.examId);
+  const selfId = useId();
   if (!context) return null;
   const { examId, deep, checking, onPreview, onShowOverlap } = context;
-  const label = pathLabel(path);
+  // Nhãn giao diện lấy `aria-label`, tên đường lấy từ ô tên đang hiện (trong `ExamName`): ghép bằng `aria-labelledby`.
+  const labelled = { id: selfId, "aria-labelledby": `${selfId} ${pathNameId(path.pathId)}` };
   if (path.result === "VALID") {
     return (
       <IconButton
+        {...labelled}
         icon={<Eye />}
-        aria-label={t("paths.previewAria", { path: label })}
+        aria-label={labelBeforeName(t, "paths.previewAria", "path")}
         tooltip={t("paths.previewTooltip")}
         onClick={() => onPreview(path.pathId)}
       />
@@ -544,26 +549,27 @@ function PathActions({ path }: { path: PathCheck }) {
     const blockId = path.issues.find((issue) => issue.blockId)?.blockId ?? null;
     return (
       <Button asChild variant="link" size="sm">
-        <Link href={structureHref(examId, blockId)} aria-label={t("paths.fixAria", { path: label })}>
+        <Link {...labelled} href={structureHref(examId, blockId)} aria-label={labelBeforeName(t, "paths.fixAria", "path")}>
           {t("paths.fix")}
           <ArrowRight />
         </Link>
       </Button>
     );
   }
+  const running = deep.phase === "running";
   return (
     <div className="flex flex-col items-start gap-1">
       <Button
         variant="secondary"
         size="sm"
         onClick={deep.start}
-        loading={deep.phase === "running"}
+        loading={running}
         disabled={checking}
-        aria-label={
-          deep.phase === "running" ? t("deep.runningLabel") : t("paths.deepAria", { path: label })
-        }
+        {...(running
+          ? { "aria-label": t("deep.runningLabel") }
+          : { ...labelled, "aria-label": labelBeforeName(t, "paths.deepAria", "path") })}
       >
-        {deep.phase === "running" ? t("deep.runningLabel") : t("deep.start")}
+        {running ? t("deep.runningLabel") : t("deep.start")}
       </Button>
       <Button variant="link" size="sm" onClick={() => onShowOverlap(path.pathId)}>
         {t("paths.viewOverlap")}
@@ -571,6 +577,12 @@ function PathActions({ path }: { path: PathCheck }) {
     </div>
   );
 }
+
+/** id của ô tên đường trong bảng Kết quả theo đường: các nút thao tác của dòng lấy tên từ đây. */
+function pathNameId(pathId: string): string {
+  return domId("review-path-name", pathId);
+}
+
 function PathsSection({
   exam,
   result,
@@ -587,9 +599,9 @@ function PathsSection({
   onShowOverlap: (pathId: string) => void;
 }) {
   const t = useTranslations("exams.review");
-  const pathLabel = usePathLabel(exam.id);
+  const pathNode = usePathNode(exam.id);
   const pathSub = usePathSub();
-  const issueText = useIssueText();
+  const issueNode = useIssueNode();
   const partsList = [...exam.parts]
     .sort((a, b) => a.order - b.order)
     .map((part) => part.order)
@@ -607,7 +619,7 @@ function PathsSection({
       if (unique.length === 0) return <span className="text-text-muted">{t("noIssue")}</span>;
       return (
         <span className={path.result === "INVALID" ? "text-danger" : "text-text-secondary"}>
-          {issueText(unique[0]!)}
+          {issueNode(unique[0]!)}
           {unique.length > 1 && <> {t("moreIssues", { count: unique.length - 1 })}</>}
         </span>
       );
@@ -619,7 +631,9 @@ function PathsSection({
         header: t("paths.columns.path"),
         cell: ({ row }) => (
           <div className="flex min-w-48 flex-col">
-            <span className="font-semibold text-text">{pathLabel(row.original)}</span>
+            <span id={pathNameId(row.original.pathId)} className="font-semibold text-text">
+              {pathNode(row.original)}
+            </span>
             <span className="text-caption text-text-muted">{pathSub(row.original)}</span>
           </div>
         ),
@@ -649,7 +663,11 @@ function PathsSection({
     const cards: TableCards<PathCheck> = {
       render: (path) => (
         <ListCard
-          title={pathLabel(path)}
+          title={
+            <span id={pathNameId(path.pathId)} className="line-clamp-2">
+              {pathNode(path)}
+            </span>
+          }
           caption={pathSub(path)}
           status={<PathResultChip result={path.result} />}
           actions={path.result === "VALID" ? <PathActions path={path} /> : undefined}
@@ -664,7 +682,7 @@ function PathsSection({
       ),
     };
     return { columns, cards };
-  }, [t, pathLabel, pathSub, issueText, partsList]);
+  }, [t, pathNode, pathSub, issueNode, partsList]);
 
   return (
     <section aria-labelledby="review-paths-title" className="flex flex-col gap-3">
@@ -813,7 +831,7 @@ function BlocksSection({
   onValueChange: (pathId: string) => void;
 }) {
   const t = useTranslations("exams.review");
-  const pathLabel = usePathLabel(exam.id);
+  const pathNode = usePathNode(exam.id);
   const defaultTab = (result.paths.find((path) => path.result !== "VALID") ?? result.paths[0])?.pathId ?? "";
   const active = value && result.paths.some((path) => path.pathId === value) ? value : defaultTab;
 
@@ -835,14 +853,14 @@ function BlocksSection({
           {result.paths.map((path) => (
             <TabsTrigger key={path.pathId} value={path.pathId} className="gap-1.5">
               {path.result !== "VALID" && <PathResultIcon result={path.result} className="size-3.5 shrink-0" />}
-              {pathLabel(path)}
+              {pathNode(path)}
               {path.result !== "VALID" && <span className="sr-only">{`: ${t(`result.${path.result}`)}`}</span>}
             </TabsTrigger>
           ))}
         </TabsList>
         {result.paths.map((path) => (
           <TabsContent key={path.pathId} value={path.pathId}>
-            <BlockTable exam={exam} path={path} label={pathLabel(path)} />
+            <BlockTable exam={exam} path={path} />
           </TabsContent>
         ))}
       </Tabs>
@@ -850,14 +868,52 @@ function BlocksSection({
   );
 }
 
-function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; label: string }) {
+/** Tên khối: tên môn theo danh mục ở ngoài, tên khối của mẫu là nội dung đề. `id`: để nút thao tác của dòng lấy làm tên. */
+function BlockName({ block, id }: { block: BlockCheck; id?: string }) {
+  const lookup = useLookup();
+  return (
+    <span id={id}>
+      {lookup.subject(block.subjectCode)} · <ExamName>{block.blockName}</ExamName>
+    </span>
+  );
+}
+
+function BlockLocation({ examId, block, nameId }: { examId: string; block: BlockCheck; nameId: string }) {
+  const t = useTranslations("exams.review");
+  const selfId = useId();
+  const href = structureHref(examId, block.blockId);
+  if (block.result === "NOT_FOUND") {
+    return (
+      <Button asChild variant="link" size="sm">
+        <Link
+          id={selfId}
+          href={href}
+          aria-label={labelBeforeName(t, "blocks.fixAria", "block")}
+          aria-labelledby={`${selfId} ${nameId}`}
+        >
+          {t("paths.fix")}
+          <ArrowRight />
+        </Link>
+      </Button>
+    );
+  }
+  return (
+    <IconLink
+      href={href}
+      label={labelBeforeName(t, "blocks.openAria", "block")}
+      nameId={nameId}
+      tooltip={t("blocks.openTooltip")}
+      icon={<ArrowRight />}
+    />
+  );
+}
+
+function BlockTable({ exam, path }: { exam: ExamDetail; path: PathCheck }) {
   const t = useTranslations("exams.review");
   const format = useFormatter();
-  const lookup = useLookup();
-  const issueText = useIssueText();
+  const issueNode = useIssueNode();
 
   const { columns, cards } = useMemo(() => {
-    const name = (block: BlockCheck) => `${lookup.subject(block.subjectCode)} · ${block.blockName}`;
     const required = (block: BlockCheck) =>
       block.setCount !== null && block.setSize !== null
         ? t("blocks.requiredSets", {
@@ -873,27 +929,18 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
     const issue = (block: BlockCheck) =>
       block.issues.length ? (
         <span className={block.result === "NOT_FOUND" ? "text-danger" : "text-text-secondary"}>
-          {block.issues.map(issueText).join(" ")}
+          {block.issues.map((item, index) => (
+            <Fragment key={item.key}>
+              {index > 0 && " "}
+              {issueNode(item)}
+            </Fragment>
+          ))}
         </span>
       ) : (
         <span className="text-text-muted">{t("noIssue")}</span>
       );
-    const location = (block: BlockCheck) =>
-      block.result === "NOT_FOUND" ? (
-        <Button asChild variant="link" size="sm">
-          <Link href={structureHref(exam.id, block.blockId)} aria-label={t("blocks.fixAria", { block: name(block) })}>
-            {t("paths.fix")}
-            <ArrowRight />
-          </Link>
-        </Button>
-      ) : (
-        <IconLink
-          href={structureHref(exam.id, block.blockId)}
-          label={t("blocks.openAria", { block: name(block) })}
-          tooltip={t("blocks.openTooltip")}
-          icon={<ArrowRight />}
-        />
-      );
+    const nameId = (block: BlockCheck) => domId("review-block-name", path.pathId, block.blockId);
+    const location = (block: BlockCheck) => <BlockLocation examId={exam.id} block={block} nameId={nameId(block)} />;
     const chip = (block: BlockCheck) => (
       <StatusChip tone={BLOCK_RESULT_TONE[block.result]}>{t(`blocks.result.${block.result}`)}</StatusChip>
     );
@@ -905,7 +952,9 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
         cell: ({ row }) => (
           <span className="flex min-w-44 flex-col">
             <span className="text-caption text-text-muted">{t("blocks.part", { order: row.original.partOrder })}</span>
-            <span className="font-semibold text-text">{name(row.original)}</span>
+            <span className="font-semibold text-text">
+              <BlockName block={row.original} id={nameId(row.original)} />
+            </span>
             {row.original.questionType === "ESSAY" && (
               <Badge className="mt-1 w-fit">{t("blocks.manualGrading")}</Badge>
             )}
@@ -942,7 +991,11 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
     const cards: TableCards<BlockCheck> = {
       render: (block) => (
         <ListCard
-          title={name(block)}
+          title={
+            <span className="line-clamp-2">
+              <BlockName block={block} id={nameId(block)} />
+            </span>
+          }
           caption={t("blocks.part", { order: block.partOrder })}
           status={chip(block)}
           actions={block.result === "NOT_FOUND" ? undefined : location(block)}
@@ -957,12 +1010,12 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
       ),
     };
     return { columns, cards };
-  }, [t, format, lookup, issueText, exam.id]);
+  }, [t, format, issueNode, exam.id, path.pathId]);
 
   return (
     <Card padding="none" className="overflow-hidden">
       <Table
-        aria-label={t("blocks.tableLabel", { path: label })}
+        aria-label={t("blocks.tableLabel")}
         columns={columns}
         data={path.blocks}
         getRowId={(block) => block.blockId}
