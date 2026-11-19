@@ -5716,10 +5716,6 @@
       "questionsValue": "{count, plural, one {# question} other {# questions}}",
       "source": "source {count, number}",
       "sourceShort": "source {count, number}, short",
-      "sourceLabel": "Source matching the block's filters:",
-      "sourceTotal": "{count, plural, one {# Ready question} other {# Ready questions}}",
-      "sourceLoading": "counting…",
-      "sourceError": "could not be counted",
       "conversionTitle": "Converted to questions · block of {count, number}",
       "conversionCaption": "Questions after conversion, block of {count, number}",
       "conversionValue": "{theoretical} → {result, number}",
@@ -5736,6 +5732,11 @@
       "separateNote": "The system picks questions that satisfy both at once: each selected question counts toward its grade and its difficulty.",
       "allocated": "Allocated {allocated, number} / {count, number} questions",
       "allocatedMeter": "{allocated, number} of {count, number} questions",
+      "meterOver": "{allocated, number} of {count, number} questions, over by {over, number}",
+      "meterUnder": "{allocated, number} of {count, number} questions, short by {short, number}",
+      "meterExact": "{allocated, number} of {count, number} questions, matches",
+      "over": "{count, plural, one {Over by # question} other {Over by # questions}}",
+      "under": "{count, plural, one {Short by # question} other {Short by # questions}}",
       "matches": "Matches the block's question count",
       "issues": {
         "invalidValue": "The matrix has negative values or non-whole question counts.",
@@ -5810,7 +5811,11 @@
         "legend": "Level of {name}",
         "REQUIRED": "Required",
         "REFERENCE": "Reference",
-        "basisLocked": "A required distribution must count questions. Change the unit to questions first."
+        "basisLocked": "A required distribution must count questions. Change the unit to questions first.",
+        "fixedRequired": "HSA exam: papers are always generated from the matrix",
+        "expertPending": "Waiting for expert confirmation: the English grade split is for reference only.",
+        "normalized": "Reference levels were switched to Required as HSA rules demand. Save to apply.",
+        "undeclared": "This distribution is not declared, so it does not constrain generation."
       },
       "totalChange": {
         "title": "The total changed to {total, number} questions (was {old, number}). New counts:",

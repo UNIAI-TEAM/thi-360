@@ -45,6 +45,19 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
             Permission.CATALOG_VIEW,
             Permission.CATALOG_MODIFY);
 
+    /**
+     * Mặc định của {@code content_admin} ở đợt 2: chỉ dùng cho nâng cấp một lần bên dưới. Chín quyền
+     * của đợt 3 đến qua nhánh "quyền vừa được tạo" ({@link #grantNewPermissionsToSystemRoles}).
+     */
+    private static final Set<Permission> CONTENT_ADMIN_WAVE2_DEFAULTS = EnumSet.of(
+            Permission.CATALOG_VIEW,
+            Permission.CATALOG_MODIFY,
+            Permission.QUESTION_VIEW,
+            Permission.QUESTION_MODIFY,
+            Permission.EXAM_VIEW,
+            Permission.EXAM_MODIFY,
+            Permission.EXAM_PUBLISH);
+
     private static final Map<String, Set<Permission>> SYSTEM_ROLE_DEFAULTS = Map.of(
             "system_admin", EnumSet.allOf(Permission.class),
             "content_admin", EnumSet.of(
@@ -54,13 +67,22 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
                     Permission.QUESTION_MODIFY,
                     Permission.EXAM_VIEW,
                     Permission.EXAM_MODIFY,
-                    Permission.EXAM_PUBLISH),
+                    Permission.EXAM_PUBLISH,
+                    Permission.GRADING_VIEW,
+                    Permission.GRADING_MODIFY,
+                    Permission.ATTEMPT_VIEW),
             "operations", EnumSet.of(
                     Permission.USER_VIEW,
                     Permission.USER_MODIFY,
                     Permission.USER_LEARNING_VIEW,
                     Permission.CLASS_VIEW,
-                    Permission.CLASS_MODIFY),
+                    Permission.CLASS_MODIFY,
+                    Permission.PROMOTION_VIEW,
+                    Permission.PROMOTION_MODIFY,
+                    Permission.ORDER_VIEW,
+                    Permission.ORDER_RECOVER,
+                    Permission.ATTEMPT_VIEW,
+                    Permission.ATTEMPT_COMPENSATE),
             "student", EnumSet.noneOf(Permission.class));
 
     private final PermissionRepository permissionRepository;
@@ -154,8 +176,10 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
 
             permissionRepository.flush();
             seedSystemRoleDefaults(idByCode, now);
-            grantNewPermissionsToSystemRoles(createdPermissions, idByCode, now);
+            // Thứ tự có chủ ý: xét "còn đúng bộ grant đợt 2 cũ" TRƯỚC khi gán ba mặc định đợt 3
+            // vừa tạo, nếu không bộ grant mới sẽ bị coi là vai trò đã tùy biến (R1-2).
             upgradeContentAdminDefaultsOnce(idByCode, now);
+            grantNewPermissionsToSystemRoles(createdPermissions, idByCode, now);
         });
     }
 
@@ -247,7 +271,7 @@ public class PermissionCatalogSync implements SmartInitializingSingleton {
                 .filter(Role::isSystem)
                 .orElse(null);
         if (role != null) {
-            Set<UUID> defaults = SYSTEM_ROLE_DEFAULTS.get("content_admin").stream()
+            Set<UUID> defaults = CONTENT_ADMIN_WAVE2_DEFAULTS.stream()
                     .map(p -> Objects.requireNonNull(idByCode.get(p.code())))
                     .collect(Collectors.toSet());
             Set<UUID> legacy = CONTENT_ADMIN_LEGACY.stream()

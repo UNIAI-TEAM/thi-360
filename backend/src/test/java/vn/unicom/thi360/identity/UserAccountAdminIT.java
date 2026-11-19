@@ -490,7 +490,10 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
                                 Permissions.QUESTION_MODIFY,
                                 Permissions.EXAM_VIEW,
                                 Permissions.EXAM_MODIFY,
-                                Permissions.EXAM_PUBLISH))
+                                Permissions.EXAM_PUBLISH,
+                                Permissions.GRADING_VIEW,
+                                Permissions.GRADING_MODIFY,
+                                Permissions.ATTEMPT_VIEW))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

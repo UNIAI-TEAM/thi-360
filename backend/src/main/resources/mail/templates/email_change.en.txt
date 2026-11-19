@@ -1,0 +1,9 @@
+Confirm your new email for your Thi 360 account
+Hello [(${fullName})],
+
+You asked to change your account email to [(${newEmail})].
+Your confirmation code is: [(${code})]
+
+The code is only valid for a short time. If you did not ask for this change, please ignore this message; your current email stays as it is.
+
+Thi 360

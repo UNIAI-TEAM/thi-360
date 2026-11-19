@@ -28,6 +28,8 @@ spring:
       - classroom
       - questionbank
       - exam
+      - commerce
+      - attempt
     table: flyway_schema_history
     locations:
       - classpath:db/migration
@@ -44,6 +46,13 @@ spring:
     encoding: UTF-8
     fallback-to-system-locale: false
     default-locale: vi
+  mail:
+    host: ${THI360_SMTP_HOST:localhost}
+    port: ${THI360_SMTP_PORT:1360}
+    username: ${THI360_SMTP_USERNAME:}
+    password: ${THI360_SMTP_PASSWORD:}
+  thymeleaf:
+    check-template-location: false
 
 server:
   port: ${THI360_API_PORT:8080}
@@ -68,6 +77,9 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    mail:
+      enabled: false
 
 springdoc:
   api-docs:
@@ -143,6 +155,12 @@ thi360:
   exam:
     structure:
       max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
+  mail:
+    from: ${THI360_MAIL_FROM:Thi 360 <no-reply@thi360.local>}
+    tls: ${THI360_SMTP_TLS:starttls}
+  token:
+    # Pepper của HMAC mã OTP và mã đặt lại mật khẩu (plan B6). Thiếu thì ứng dụng không khởi động.
+    pepper: ${THI360_TOKEN_PEPPER:}
 ---
 spring:
   config:
@@ -183,6 +201,10 @@ thi360:
     auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:true}
   file:
     enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
+  mail:
+    tls: ${THI360_SMTP_TLS:none}
+  token:
+    pepper: ${THI360_TOKEN_PEPPER:dev-only-token-pepper-do-not-use}
 ---
 spring:
   config:
@@ -227,6 +249,12 @@ thi360:
   exam:
     scheduling:
       enabled: false
+  mail:
+    tls: ${THI360_SMTP_TLS:none}
+    scheduling:
+      enabled: false
+  token:
+    pepper: ${THI360_TOKEN_PEPPER:dev-only-token-pepper-do-not-use}
 ---
 spring:
   config:
@@ -250,3 +278,5 @@ spring:
 thi360:
   token:
     pepper: ${THI360_TOKEN_PEPPER:dev-only-e2e-token-pepper-not-a-secret}
+  mail:
+    tls: ${THI360_SMTP_TLS:none}
