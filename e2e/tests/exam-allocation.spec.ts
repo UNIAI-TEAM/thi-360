@@ -64,6 +64,10 @@ test("bài ôn HSA 10 câu: màn rút gọn ba trường", async ({ context, pag
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
   await expect(page.getByRole("heading", { name: /^Bài ôn ·/ })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /Số lượng/ })).toHaveValue("10");
+  // Ba giá trị của bước 1 chỉ đọc; phạm vi, dạng câu, phân bố và câu chùm nằm trong vùng đóng "Tùy chọn thêm" (UNI-2752).
+  await expect(page.getByRole("textbox", { name: /Số lượng/ })).toHaveAttribute("readonly", "");
+  await expect(page.getByText(/Phân bố khối lớp và độ khó/)).toBeHidden();
+  await page.getByText("Tùy chọn thêm (không bắt buộc)").click();
   await expect(page.getByText(/Phân bố khối lớp và độ khó/)).toBeVisible();
   await expect(page.getByText(/^Câu chùm/)).toBeVisible();
 });

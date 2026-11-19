@@ -104,6 +104,7 @@ describe("bảng cuộn ngang của bước 2 (F3)", () => {
   it("bảng nhóm lấy câu của môn có dòng nhắc cuộn, cả tiếng Anh", () => {
     const current = section([block()]);
     const props = {
+      examId: "exam-1",
       subjectName: "Toán",
       axes: { grades: reference.grades.map((grade) => grade.code), difficulties: reference.difficulties.map((item) => item.code) },
       labels: { grade: (code: string) => code, difficulty: (code: string) => code },

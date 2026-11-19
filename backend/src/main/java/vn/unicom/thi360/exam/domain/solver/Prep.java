@@ -55,7 +55,7 @@ final class Prep {
         /** Chỉ tiêu dạng trả lời của môn (D22). */
         static Requirement subjectAnswer(DimensionQuota item) {
             return new Requirement(Kind.SUBJECT_ANSWER, "ans:" + item.code(), item.quota(),
-                    u -> item.code().equals(u.answerType()));
+                    u -> item.code().equals(u.quotaAnswerType()));
         }
 
         static Requirement subjectCell(CellQuota cell) {

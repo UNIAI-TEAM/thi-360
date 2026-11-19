@@ -64,14 +64,16 @@ public class SolverInputBuilder {
     public static final class SolverCandidates implements CandidateSource {
         private final QuestionSourcePort source;
         private final Map<GroupQuota, QuestionSourcePort.Filter> filters;
+        private final java.util.Set<GroupQuota> setRowGroups;
         private final int fetchLimit;
         private final Map<GroupQuota, List<PathCandidate>> cache = new HashMap<>();
         private final Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> loaded = new LinkedHashMap<>();
 
         private SolverCandidates(QuestionSourcePort source, Map<GroupQuota, QuestionSourcePort.Filter> filters,
-                int fetchLimit) {
+                java.util.Set<GroupQuota> setRowGroups, int fetchLimit) {
             this.source = source;
             this.filters = Map.copyOf(filters);
+            this.setRowGroups = java.util.Set.copyOf(setRowGroups);
             this.fetchLimit = fetchLimit;
         }
 
@@ -85,9 +87,10 @@ public class SolverInputBuilder {
             if (filter == null || filter.subjectId() == null) return List.of();
             List<QuestionSourcePort.Candidate> candidates = source.findCandidates(filter, fetchLimit);
             List<PathCandidate> result = new ArrayList<>(candidates.size());
+            boolean setRow = setRowGroups.contains(group);
             for (var candidate : candidates) {
                 loaded.put(new QuestionSourcePort.VersionKey(candidate.questionId(), candidate.versionNo()), candidate);
-                result.add(toPathCandidate(candidate));
+                result.add(toPathCandidate(candidate, setRow));
             }
             return List.copyOf(result);
         }
@@ -200,6 +203,7 @@ public class SolverInputBuilder {
         Map<UUID, List<UUID>> descendants = new HashMap<>();
         Map<String, UUID> subjects = new HashMap<>();
         Map<GroupQuota, QuestionSourcePort.Filter> filters = new LinkedHashMap<>();
+        java.util.Set<GroupQuota> setRowGroups = new java.util.HashSet<>();
         List<SolvePart> parts = new ArrayList<>();
         Map<String, List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota>> examQuotas = new HashMap<>();
         for (var quota : document.examQuotas()) {
@@ -217,11 +221,11 @@ public class SolverInputBuilder {
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
                 .toList()) {
             List<SectionOnPath> common = sections(part.sections(), false, filters, knowledge,
-                    knowledgeById, descendants, subjects, examQuotas);
+                    knowledgeById, descendants, subjects, examQuotas, setRowGroups);
             if (part.codeSource() != null) {
                 Map<String, SectionOnPath> pool = new LinkedHashMap<>();
                 for (SectionOnPath section : sections(part.subjectPool(), false, filters, knowledge,
-                        knowledgeById, descendants, subjects, examQuotas)) {
+                        knowledgeById, descendants, subjects, examQuotas, setRowGroups)) {
                     pool.put(section.subjectCode(), section);
                 }
                 List<SolveOption> codeOptions = new ArrayList<>();
@@ -247,7 +251,7 @@ public class SolverInputBuilder {
             for (ExamPartOption option : part.options()) {
                 boolean choice = option.kind() == OptionKind.SUBJECT_CHOICE;
                 List<SectionOnPath> optionSections = new ArrayList<>(sections(option.sections(), choice,
-                        filters, knowledge, knowledgeById, descendants, subjects, examQuotas));
+                        filters, knowledge, knowledgeById, descendants, subjects, examQuotas, setRowGroups));
                 if (!option.blocks().isEmpty()) {
                     if (choice || option.kind() != OptionKind.SUBJECT) {
                         throw new IllegalArgumentException("Option-level blocks require a subject option");
@@ -256,7 +260,7 @@ public class SolverInputBuilder {
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
                             null, null, null, null, option.blocks());
                     optionSections.addAll(sections(List.of(synthetic), false, filters, knowledge,
-                            knowledgeById, descendants, subjects, examQuotas));
+                            knowledgeById, descendants, subjects, examQuotas, setRowGroups));
                 }
                 if (choice) {
                     if (option.chooseSubjects() == null || option.countsByPick() == null) {
@@ -273,7 +277,7 @@ public class SolverInputBuilder {
             parts.add(new SolvePart.Choice(part.id(), common, options, choose));
         }
         int limit = limits.maxCandidatesPerBlock();
-        return new SolverInput(parts, new SolverCandidates(source, filters,
+        return new SolverInput(parts, new SolverCandidates(source, filters, setRowGroups,
                 limit == Integer.MAX_VALUE ? limit : limit + 1));
     }
 
@@ -281,7 +285,8 @@ public class SolverInputBuilder {
             Map<GroupQuota, QuestionSourcePort.Filter> filters, List<CatalogItemView> knowledge,
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
             Map<String, UUID> subjects,
-            Map<String, List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota>> examQuotas) {
+            Map<String, List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota>> examQuotas,
+            java.util.Set<GroupQuota> setRowGroups) {
         List<SectionOnPath> result = new ArrayList<>();
         for (ExamSection section : sections) {
             UUID subject = subjects.computeIfAbsent(section.subjectCode(), code ->
@@ -301,6 +306,7 @@ public class SolverInputBuilder {
                             block.id() + ":slot:" + index, GroupQuota.GroupKind.SET, null, null,
                             1, parent.setSize(), parent.childAnswerType(), null, List.of(), List.of(),
                             parent.requiredPointsPerUnit(), null, shared);
+                    if (AnswerQuotaCounting.countsInSetRow(section, block)) setRowGroups.add(group);
                     KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(), section.knowledgeScope());
                     List<List<UUID>> subtrees = expandScope(scope, knowledge, knowledgeById, descendants);
                     List<List<List<UUID>>> slotScopes = slot == null || slot.knowledgeScope() == null
@@ -465,7 +471,11 @@ public class SolverInputBuilder {
         return block.questionCount();
     }
 
-    private static PathCandidate toPathCandidate(QuestionSourcePort.Candidate candidate) {
+    /**
+     * {@code setRow}: the group belongs to a subject whose answer quota has a QUESTION_SET row, so every child unit
+     * counts toward that row. The unit keeps its real answer type for the group filters.
+     */
+    private static PathCandidate toPathCandidate(QuestionSourcePort.Candidate candidate, boolean setRow) {
         List<CountingUnit> units = new ArrayList<>(candidate.units().size());
         for (var item : candidate.units()) {
             String child = null;
@@ -475,7 +485,7 @@ public class SolverInputBuilder {
             }
             units.add(new CountingUnit(child, item.answerType().name(), item.gradeCode(), item.difficultyCode(),
                     item.mapidIds() == null ? List.of() : item.mapidIds().stream().map(UUID::toString).toList(),
-                    item.competencyCodes(), item.points()));
+                    item.competencyCodes(), item.points(), setRow ? AnswerQuotaCounting.QUESTION_SET : null));
         }
         return new PathCandidate(candidate.questionId().toString(), candidate.versionNo(),
                 candidate.setId() == null ? null : candidate.setId().toString(),
