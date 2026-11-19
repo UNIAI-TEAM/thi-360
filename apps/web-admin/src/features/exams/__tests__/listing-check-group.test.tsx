@@ -155,6 +155,21 @@ describe("tab Kiểm tra: cảnh báo Có câu chấm tay", () => {
     expect(before(listing, paths)).toBe(true);
   });
 
+  it("dưới 640 px (dạng thẻ): phần, khối và các mã chữ do admin đặt có data-exam-content", async () => {
+    const rect = vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({ width: 390, height: 40 } as DOMRect);
+    try {
+      renderCheck(withManual());
+      const heading = await screen.findByRole("heading", { name: "Có câu chấm tay" });
+      const section = within(heading.closest("section")!);
+      expect(section.queryByRole("table")).not.toBeInTheDocument();
+      for (const text of ["Phần 1 · Ngữ văn", "Ngữ văn · Tự luận", "CA1, CA2, CA3, CA4"]) {
+        expect(section.getByText(text)).toHaveAttribute("data-exam-content");
+      }
+    } finally {
+      rect.mockRestore();
+    }
+  });
+
   it("cảnh báo không chặn công bố: banner vẫn là Công bố được", async () => {
     renderCheck(withManual([]));
     await screen.findByRole("heading", { name: "Có câu chấm tay" });

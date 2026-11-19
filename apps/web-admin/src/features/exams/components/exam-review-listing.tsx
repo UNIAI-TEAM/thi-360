@@ -209,13 +209,13 @@ export function ManualGradingSection({ exam, result }: { exam: ExamDetail; resul
     const cards: TableCards<ManualRow> = {
       render: (row) => (
         <ListCard
-          title={row.part}
+          title={<span data-exam-content className="line-clamp-2">{row.part}</span>}
           caption={row.subject}
           status={<StatusChip tone="warning">{t("badge")}</StatusChip>}
           actions={location(row)}
           meta={[
-            { label: t("columns.block"), value: row.block },
-            { label: t("columns.paths"), value: row.paths },
+            { label: t("columns.block"), value: <span data-exam-content>{row.block}</span> },
+            { label: t("columns.paths"), value: <span data-exam-content>{row.paths}</span> },
           ]}
         />
       ),
