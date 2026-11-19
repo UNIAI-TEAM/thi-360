@@ -113,10 +113,10 @@ function setup(options: { lockCounts?: boolean; servingVersion?: number; checkSt
   backend.seedExam(seeded);
 }
 
-/** Cài bài có sẵn (không qua mẫu HSA) để thử hình dạng riêng của một kỳ thi. */
 /** Bài HSA nền để dựng bài khác từ đó. */
 const seeded0 = (): ExamDetail => new ExamsBackend().app("ex-hsa-f-001");
 
+/** Cài bài có sẵn (không qua mẫu HSA) để thử hình dạng riêng của một kỳ thi. */
 function setupExam(exam: ExamDetail) {
   routerMock.push.mockReset();
   backend = new ExamsBackend();
@@ -271,8 +271,8 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     }
   }, 20_000);
 
-  it("AC-6: bài đã công bố (servingVersion 1) thì mọi ô của bảng chỉ đọc, có ghi chú, không hiện chip khóa của mẫu", async () => {
-    setup({ servingVersion: 1 });
+  it("AC-6: bài đã công bố trên mẫu khóa số câu thì mọi ô chỉ đọc, có ghi chú đã công bố và không hiện chip khóa của mẫu", async () => {
+    setup({ servingVersion: 1, lockCounts: true });
     open();
     const table = await tableRegion();
     expect(screen.getByText(/Bài đã công bố: bảng chỉ đọc ở đây/)).toBeInTheDocument();
@@ -528,6 +528,22 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
     expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /^Thang điểm/ })).toHaveValue("3");
+  }, 30_000);
+
+  it("RV-2: lưu cả bảng và thông tin khi bài đã kiểm tra thì cũng nhắc kiểm tra lại", async () => {
+    setup({ checkStatus: "VALID" });
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.clear(countOf(MATH));
+    await user.type(countOf(MATH), "44");
+    const name = screen.getByRole("textbox", { name: /Tên bài thi/ });
+    await user.clear(name);
+    await user.type(name, "HSA tổng quan đã sửa");
+    await user.click(screen.getByRole("button", { name: SAVE }));
+
+    await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));
+    expect((await screen.findAllByText(/cần kiểm tra lại trước khi công bố/)).length).toBeGreaterThan(0);
   }, 30_000);
 
   it("R1-10: ô nhập sai ở bảng đã lưu không hiện lại ở bảng xem trước của phạm vi mới", async () => {

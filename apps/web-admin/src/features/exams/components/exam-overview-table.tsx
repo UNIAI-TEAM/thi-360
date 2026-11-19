@@ -242,7 +242,7 @@ export function ExamOverviewTable({
                   <tr key={row.key} className="border-b border-border text-text-muted last:border-b-0">
                     <td className="px-3 py-2 pl-8">
                       <span className="me-1">–</span>
-                      {display}
+                      <span data-exam-content>{display}</span>
                       <span className="ms-2 text-caption">{t("omittedLabel")}</span>
                     </td>
                     <td className="px-3 py-2 text-end">{row.base.questionCount ?? "—"}</td>

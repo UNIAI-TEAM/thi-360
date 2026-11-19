@@ -194,7 +194,6 @@ function ExamGeneralForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [cellEdits, setCellEdits] = useState<CellEdits>({});
   /** Bài đã công bố: phạm vi và bảng tổng quan chỉ đọc (AC-6); sửa số liệu ở bước Cấu trúc, trên bản nháp. */
-  /** Bài đã công bố: phạm vi và bảng tổng quan chỉ đọc (AC-6); sửa số liệu ở bước Cấu trúc, trên bản nháp. */
   const lockScope = exam.servingVersion !== null;
 
   const form = useForm<ExamInfoFormValues>({
@@ -303,7 +302,7 @@ function ExamGeneralForm({
     update.mutate(request, {
       onSuccess: () => {
         onHold(false);
-        done();
+        done(structureSaved && exam.check.status !== "UNCHECKED");
       },
       onError: (error) => {
         setConfirmReplace(null);
@@ -540,7 +539,7 @@ function ExamGeneralForm({
                 </h3>
                 <p className="text-body text-text-muted">{showPreview ? t("overview.pendingDescription") : lockScope ? t("overview.publishedReadOnly") : t("overview.description")}</p>
               </div>
-              {countsLocked && !showPreview && (
+              {countsLocked && !showPreview && !lockScope && (
                 <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
                   <Lock aria-hidden className="size-3.5" />
                   {tOverview("lockedCounts")}
