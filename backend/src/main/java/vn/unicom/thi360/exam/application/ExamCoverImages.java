@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Optional;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
@@ -31,6 +32,8 @@ final class ExamCoverImages {
         return Optional.empty();
     }
 
+    private static final int SUBSAMPLE_TARGET_PX = 512;
+
     /** Signature and size; empty when the bytes are not a readable jpg, png or webp. Reads the header only. */
     static Optional<Probe> probe(byte[] content) {
         Optional<String> type = contentType(content);
@@ -47,6 +50,35 @@ final class ExamCoverImages {
             }
         } catch (IOException | RuntimeException e) {
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Whether the whole pixel payload decodes. A header alone can carry a valid size over truncated or corrupt data
+     * (a PNG cut after IHDR, a JPEG that ends early); the size must already be within the cover limits. PNG and JPEG
+     * are read subsampled so the check does not hold the full bitmap; a JPEG that the decoder only warns about
+     * (premature end of file, corrupt data) counts as corrupt, because the decoder then fills the rest with grey.
+     */
+    static boolean decodes(byte[] content, Probe probe) {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(content))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) return false;
+            ImageReader reader = readers.next();
+            boolean[] warned = {false};
+            try {
+                reader.setInput(input, true, true);
+                if ("image/jpeg".equals(probe.contentType())) reader.addIIOReadWarningListener((source, warning) -> warned[0] = true);
+                ImageReadParam param = reader.getDefaultReadParam();
+                if (!"image/webp".equals(probe.contentType())) {
+                    int step = Math.max(1, Math.max(probe.width(), probe.height()) / SUBSAMPLE_TARGET_PX);
+                    param.setSourceSubsampling(step, step, 0, 0);
+                }
+                return reader.read(0, param) != null && !warned[0];
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            return false;
         }
     }
 }

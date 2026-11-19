@@ -93,6 +93,8 @@ public class ExamCoverService {
         if (Math.min(probe.width(), probe.height()) < MIN_SHORT_SIDE_PX) {
             throw invalid("DIMENSIONS_TOO_SMALL", "EXAM_COVER_DIMENSIONS_TOO_SMALL");
         }
+        // The header can be intact over a truncated payload: the whole image has to decode before anything is stored.
+        if (!ExamCoverImages.decodes(content, probe)) throw invalid("CORRUPT", "EXAM_COVER_CORRUPT");
         UUID assetId = Ids.newId();
         UUID actor = currentUser.requireCurrentUser().id();
         String key = ExamCoverAsset.KEY_PREFIX + assetId;
