@@ -26,7 +26,15 @@ class EmailMessageStore {
 
     /** Một thư vừa giữ chỗ, mang đủ dữ liệu để gửi mà không cần phiên truy cập dữ liệu. */
     record Claimed(
-            UUID id, UUID token, String kind, String to, String subject, String html, String text, int attempts) {
+            UUID id,
+            UUID token,
+            String kind,
+            String to,
+            String subject,
+            String html,
+            String text,
+            int attempts,
+            Instant heldUntil) {
     }
 
     private static final String INSERT = """
@@ -48,7 +56,7 @@ class EmailMessageStore {
                 ORDER BY next_attempt_at ASC, created_at ASC, id ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED)
-            RETURNING id, kind, to_email, subject, html, text, attempts
+            RETURNING id, kind, to_email, subject, html, text, attempts, next_attempt_at
             """;
 
     private static final String MARK_SENT = """
@@ -68,6 +76,28 @@ class EmailMessageStore {
             SET attempts = ?, failed_at = ?, last_error = ?
             WHERE id = ? AND claim_token = ? AND sent_at IS NULL AND failed_at IS NULL
             """;
+
+    /**
+     * Kiểm tra lại quyền giữ ngay trước khi SMTP bắt đầu: dòng phải còn đúng mã giữ chỗ và hạn giữ
+     * chưa qua ({@code next_attempt_at > now}). {@code FOR UPDATE} chặn một claim đang commit dở
+     * của worker khác: đợi nó xong rồi mới đọc, nên worker mất chỗ chắc chắn thấy 0 dòng. Chạy
+     * autocommit (không transaction) vì chỉ là một câu lệnh.
+     *
+     * @return {@code true} khi worker vẫn giữ thư và chỗ chưa hết hạn
+     */
+    boolean stillHeld(Claimed mail, Instant now) {
+        return !jdbc.queryForList(
+                        """
+                        SELECT 1 FROM shared.email_message
+                        WHERE id = ? AND claim_token = ? AND next_attempt_at > ?
+                        FOR UPDATE
+                        """,
+                        Integer.class,
+                        mail.id(),
+                        mail.token(),
+                        utc(now))
+                .isEmpty();
+    }
 
     private final JdbcTemplate jdbc;
 
@@ -117,7 +147,8 @@ class EmailMessageStore {
                         rs.getString("subject"),
                         rs.getString("html"),
                         rs.getString("text"),
-                        rs.getInt("attempts")));
+                        rs.getInt("attempts"),
+                        rs.getObject("next_attempt_at", OffsetDateTime.class).toInstant()));
         return rows.stream().findFirst();
     }
 

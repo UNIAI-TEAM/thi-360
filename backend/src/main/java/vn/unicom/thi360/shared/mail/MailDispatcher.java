@@ -2,7 +2,9 @@ package vn.unicom.thi360.shared.mail;
 
 import jakarta.annotation.PreDestroy;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -29,7 +31,7 @@ import vn.unicom.thi360.shared.web.TraceIdFilter;
  * <ol>
  *   <li>transaction ngắn: giữ chỗ một thư đến hạn bằng {@code FOR UPDATE SKIP LOCKED}, ghi mã giữ chỗ và đẩy
  *       {@code next_attempt_at} ra {@code claimLease}, rồi commit. Hai worker không lấy cùng một thư;
- *   <li>không transaction: gửi thư qua SMTP, tối đa {@code attemptTimeout};
+ *   <li>không transaction: gửi thư qua SMTP, tối đa hạn còn lại của giữ chỗ trừ một khoảng an toàn;
  *   <li>transaction mới: ghi kết quả, chỉ khi worker vẫn giữ đúng mã giữ chỗ.
  * </ol>
  *
@@ -38,8 +40,15 @@ import vn.unicom.thi360.shared.web.TraceIdFilter;
  * "treo" phần đuôi của lô. Nếu worker vẫn mất quyền giữ (tiến trình bị đứng quá hạn), kết quả của nó bị
  * từ chối, không đè lên kết quả của worker lấy lại.
  *
- * <p>Tiến trình chết sau khi SMTP nhận thư mà chưa ghi kết quả thì thư được gửi lại khi hết hạn giữ chỗ:
- * gửi ít nhất một lần, không đòi đúng một lần.
+ * <p>Ngay trước khi nộp việc gửi vào executor, worker kiểm tra lại trong cơ sở dữ liệu rằng nó vẫn giữ thư và
+ * chỗ chưa hết hạn ({@link EmailMessageStore#stillHeld}): worker bị đứng giữa commit giữ chỗ và lúc gửi, bị
+ * worker khác lấy lại thư, bỏ lượt thay vì bắt đầu SMTP. Hạn của lần gửi bị chặn trên bởi phần giữ chỗ còn
+ * lại trừ {@link #RECORD_MARGIN}; phần còn lại nhỏ hơn khoảng đó thì bỏ qua, không bắt đầu SMTP.
+ *
+ * <p>Trường hợp còn lại duy nhất: hạn giữ chỗ trôi qua <em>trong lúc</em> phiên SMTP đang chạy — worker khác
+ * có thể lấy lại thư và gửi trước khi kết quả của lần đầu được ghi. Thiết kế là ít-nhất-một-lần
+ * (at-least-once): trùng thư trong trường hợp này được chấp nhận, không đòi đúng một lần. Tương tự, tiến
+ * trình chết sau khi SMTP nhận thư mà chưa ghi kết quả thì thư được gửi lại khi hết hạn giữ chỗ.
  *
  * <p>Log chỉ ghi id thư, loại thư và mã lỗi; không ghi người nhận, thân thư, mã OTP.
  */
@@ -51,6 +60,18 @@ class MailDispatcher {
     /** Lần gửi bị bỏ vì tiến trình đang tắt: không ghi gì, giữ chỗ tự hết hạn. */
     private static final MailFailure ABANDONED = new MailFailure(false, "abandoned");
 
+    /**
+     * Lần gửi bị bỏ vì giữ chỗ đã hết hạn, bị worker khác lấy lại, hoặc phần hạn còn lại không đủ
+     * để gửi xong và kịp ghi kết quả: không ghi gì, thư được lấy lại đúng hạn của nó.
+     */
+    private static final MailFailure CLAIM_LOST = new MailFailure(false, "claim-lost");
+
+    /**
+     * Khoảng trừ vào hạn của lần gửi để sau khi SMTP xong vẫn còn thời gian ghi kết quả trước khi
+     * hết giữ chỗ. Thư có phần hạn còn lại nhỏ hơn khoảng này bị bỏ qua, không bắt đầu SMTP.
+     */
+    private static final Duration RECORD_MARGIN = Duration.ofSeconds(5);
+
     private final EmailMessageStore store;
     private final MailTransport transport;
     private final MailProperties properties;
@@ -59,7 +80,8 @@ class MailDispatcher {
 
     /**
      * Mỗi lần gửi chạy trên một luồng ảo riêng để hủy được khi quá hạn: ngắt luồng ảo đang chờ socket làm
-     * đóng socket, còn luồng của worker thì không bị kẹt.
+     * đóng socket, còn luồng của worker thì không bị kẹt. Việc gửi mang theo {@code MDC} của lượt để log
+     * trên luồng vận chuyển có đủ {@code traceId}/{@code job}/{@code jobId} (plan B15).
      */
     private final ExecutorService sendExecutor =
             Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("mail-send-", 0).factory());
@@ -126,7 +148,7 @@ class MailDispatcher {
 
     private boolean deliver(Claimed mail) {
         MailFailure failure = send(mail);
-        if (failure == ABANDONED) {
+        if (failure == ABANDONED || failure == CLAIM_LOST) {
             return false;
         }
         if (failure == null) {
@@ -154,14 +176,47 @@ class MailDispatcher {
         return false;
     }
 
-    /** @return {@code null} khi SMTP đã nhận thư, ngược lại lý do lỗi */
+    /**
+     * Gửi một thư. Trước khi nộp việc vào executor, kiểm tra lại quyền giữ trong cơ sở dữ liệu (câu
+     * lệnh autocommit, ngoài mọi transaction) và chặn hạn của lần gửi bởi phần giữ chỗ còn lại trừ
+     * {@link #RECORD_MARGIN}.
+     *
+     * @return {@code null} khi SMTP đã nhận thư, ngược lại lý do lỗi
+     */
     private MailFailure send(Claimed mail) {
+        Instant now = Instant.now(clock);
+        long deadlineNanos = Math.min(
+                properties.attemptTimeout().toNanos(),
+                Duration.between(now, mail.heldUntil()).toNanos() - RECORD_MARGIN.toNanos());
+        if (deadlineNanos <= 0 || !store.stillHeld(mail, Instant.now(clock))) {
+            jobLog.atWarn()
+                    .addKeyValue("mailId", mail.id())
+                    .addKeyValue("kind", mail.kind())
+                    .addKeyValue("error", "claim-lost")
+                    .log("Mail send skipped: the claim expired or was taken before SMTP started");
+            return CLAIM_LOST;
+        }
+        Map<String, String> context = MDC.getCopyOfContextMap();
         Future<?> attempt = sendExecutor.submit(() -> {
-            transport.send(mail.to(), mail.subject(), mail.html(), mail.text());
+            Map<String, String> previous = MDC.getCopyOfContextMap();
+            try {
+                if (context == null) {
+                    MDC.clear();
+                } else {
+                    MDC.setContextMap(context);
+                }
+                transport.send(mail.to(), mail.subject(), mail.html(), mail.text());
+            } finally {
+                if (previous == null) {
+                    MDC.clear();
+                } else {
+                    MDC.setContextMap(previous);
+                }
+            }
             return null;
         });
         try {
-            attempt.get(properties.attemptTimeout().toMillis(), TimeUnit.MILLISECONDS);
+            attempt.get(deadlineNanos, TimeUnit.NANOSECONDS);
             return null;
         } catch (TimeoutException ex) {
             attempt.cancel(true);

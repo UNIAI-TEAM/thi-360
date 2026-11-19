@@ -18,6 +18,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import vn.unicom.thi360.support.MailOutbox;
 
 /**
@@ -32,9 +34,56 @@ class MailClaimOwnershipIT extends AbstractMailIT {
 
     private static final Duration LEASE = Duration.ofMinutes(5);
 
+    @Autowired
+    private MailProperties properties;
+
+    /** Spy để test đứng được giữa commit giữ chỗ và bước kiểm tra lại quyền giữ trước SMTP. */
+    @MockitoSpyBean
+    private EmailMessageStore store;
+
     @AfterEach
     void leaveNoMailBehind() {
         jdbc.update("DELETE FROM shared.email_message");
+    }
+
+    /**
+     * Kẽ hở của R1-01/R1-13: worker A commit giữ chỗ xong thì bị đứng; đồng hồ tua qua hạn giữ chỗ và
+     * worker B lấy lại thư, gửi và ghi kết quả — tất cả trước khi A tới bước nộp việc gửi. A phải phát
+     * hiện chỗ đã mất khi kiểm tra lại ngay trước SMTP và không bao giờ bắt đầu phiên SMTP: toàn cục
+     * chỉ đúng một lần {@link MailTransport#send} (của B). Trên bản cũ (không có kiểm tra này) kịch bản
+     * tương đương đứng ở lời gọi vận chuyển và A gửi lần thứ hai.
+     */
+    @Test
+    void expiredClaimantNeverStartsSmtp() throws Exception {
+        String to = MailSamples.randomAddress();
+        enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+        MailDispatcher other = new MailDispatcher(store, transport, properties, clock, transactionManager);
+        AtomicInteger transportCalls = new AtomicInteger();
+        AtomicInteger checks = new AtomicInteger();
+        doAnswer(invocation -> {
+                    transportCalls.incrementAndGet();
+                    return invocation.callRealMethod();
+                })
+                .when(transport)
+                .send(any(), any(), any(), any());
+        doAnswer(invocation -> {
+                    if (checks.incrementAndGet() == 1) {
+                        // A đứng giữa commit giữ chỗ và nộp việc gửi: quá hạn, B lấy lại và gửi xong.
+                        advance(LEASE.plusMinutes(1));
+                        other.dispatchBatch();
+                    }
+                    return invocation.callRealMethod();
+                })
+                .when(store)
+                .stillHeld(any(), any());
+
+        assertThat(dispatcher.dispatchBatch()).as("A sends nothing: its claim was already taken").isZero();
+
+        assertThat(transportCalls.get()).as("exactly one SMTP transaction, opened by B").isEqualTo(1);
+        MailOutbox.Mail mail = outbox.require(to, MailKind.EMAIL_VERIFY);
+        assertThat(mail.sentAt()).isNotNull();
+        assertThat(mail.attempts()).isEqualTo(1);
+        assertThat(receivedAtLeast(1)).extracting(Received::to).containsExactly(to);
     }
 
     /**
