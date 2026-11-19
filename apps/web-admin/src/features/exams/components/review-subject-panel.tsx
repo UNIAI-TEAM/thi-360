@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, cn, FormField, Input, Select } from "@thi360/ui";
+import { Button, Card, cn, focusRing, FormField, Input, Select } from "@thi360/ui";
 import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
@@ -139,7 +139,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
 
       {/* Mọi thứ ngoài ba giá trị của bước 1 là tùy chọn: để mặc định vẫn lưu và kiểm tra được (UNI-2752). */}
       <details className="group rounded-md border border-border" open={startOpen}>
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
+        <summary className={cn("flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text", focusRing)}>
           <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
           {t("more")}
         </summary>
@@ -165,7 +165,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
           </FormField>
 
           <details className="group rounded-md border border-border">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
+            <summary className={cn("flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text", focusRing)}>
               <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
               {t("distribution")}
               <span className="text-caption font-normal text-text-muted">{section.matrix ? t("set") : t("unset")}</span>
@@ -197,7 +197,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
           </details>
 
           <details className="group rounded-md border border-border" open={isSet}>
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
+            <summary className={cn("flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text", focusRing)}>
               <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
               {t("sets")}
               <span className="text-caption font-normal text-text-muted">{isSet ? t("setsOn") : t("setsOff")}</span>
