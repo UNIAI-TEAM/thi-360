@@ -24,6 +24,7 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.QuestionUsageProvider;
 
 /**
  * UNI-2758 end to end through the API (phase 0 AC-1..AC-9): the structure is saved with PUT, checked with POST
@@ -38,6 +39,7 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired CatalogLookup catalog;
+    @Autowired QuestionUsageProvider provider;
 
     private String subjectCode;
     private UUID subjectId;
@@ -275,6 +277,27 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         assertThat(rules).extracting(rule -> rule.path("type").asText())
                 .containsExactly("PRESENT", "COUNT", "ONLY_IN_GROUP", "SOURCE");
         assertThat(rules.get(3).path("nodeIds")).hasSize(3);
+    }
+
+    // ---- usage of a question follows the compiled rules ------------------------------------------------------
+
+    @Test
+    void questionUsageFollowsTheSourceAndTheOnlyInGroupRulesOfTheSection() throws Exception {
+        arrange();
+        UUID carrierA = single("SINGLE_CHOICE", nodes.get(0));
+        UUID carrierB = single("SINGLE_CHOICE", nodes.get(1));
+        UUID clean = single("SINGLE_CHOICE");
+        exam(section(6, "MATRIX", "[" + rule("source", "SOURCE", "g1", a()) + ","
+                + rule("only", "ONLY_IN_GROUP", "g1", b()) + "]",
+                block("g1", "SINGLE_CHOICE", 3), block("g2", "SINGLE_CHOICE", 3)));
+        // g1 draws only from A, g2 never draws B: A is usable in both groups, B nowhere, a clean question in g2 only.
+        assertThat(usedBlocks(carrierA)).containsExactlyInAnyOrder("g1", "g2");
+        assertThat(usedBlocks(carrierB)).isEmpty();
+        assertThat(usedBlocks(clean)).containsExactly("g2");
+    }
+
+    private List<String> usedBlocks(UUID question) {
+        return provider.examUsagesOf(question).stream().map(QuestionUsageProvider.ExamUsageRef::blockId).toList();
     }
 
     // ---- helpers ---------------------------------------------------------------------------------------------
