@@ -69,6 +69,7 @@ class ForbiddenKeysAssertTests {
                         "questionId", "questionVersionId", "question", "questions", "body",
                         "snapshot", "source", "sourceCode", "sourceRevision",
                         "knowledgeScope", "matrix", "topicQuotas", "tagCodes", "slots", "childConditions",
+                        "itemShape", "answerFormats", "requiredPointsPerQuestion",
                         "evidence", "witness", "witnessPicks",
                         "preview", "previewId", "previewPaper");
 
@@ -219,7 +220,21 @@ class ForbiddenKeysAssertTests {
                 Arguments.of("""
                         {"product": {"detail": {"blocks": [{"name": "Khối 1", "matrix": {
                           "byGrade": [{"value": "G10", "count": 5}, {"value": "G11", "count": 5}]}}]}}}
-                        """, "$.product.detail.blocks[0].matrix"));
+                        """, "$.product.detail.blocks[0].matrix"),
+                // R3-01: các bộ lọc ứng viên còn lại của khối (2B 6.1 -> QuestionSourcePort.Filter);
+                // mỗi ca chỉ có đúng một khóa cấm.
+                Arguments.of("""
+                        {"product": {"detail": {"blocks": [{"name": "Khối 1", "itemShape": {
+                          "statements": 4, "leftItems": 4, "rightItems": 6}}]}}}
+                        """, "$.product.detail.blocks[0].itemShape"),
+                Arguments.of("""
+                        {"product": {"detail": {"blocks": [{"name": "Khối 1",
+                          "answerFormats": ["PLAIN_TEXT", "NUMBER"]}]}}}
+                        """, "$.product.detail.blocks[0].answerFormats"),
+                Arguments.of("""
+                        {"product": {"detail": {"blocks": [{"name": "Khối 1",
+                          "requiredPointsPerQuestion": 0.25}]}}}
+                        """, "$.product.detail.blocks[0].requiredPointsPerQuestion"));
     }
 
     @ParameterizedTest
@@ -234,7 +249,8 @@ class ForbiddenKeysAssertTests {
     @Test
     void everyQuestionBlockFieldIsEitherForbiddenSourceOrAllowedWithAReason() {
         List<String> forbiddenSourceFields = List.of(
-                "knowledgeScope", "matrix", "topicQuotas", "tagCodes", "slots", "childConditions");
+                "knowledgeScope", "matrix", "topicQuotas", "tagCodes", "slots", "childConditions",
+                "itemShape", "answerFormats", "requiredPointsPerQuestion");
         List<String> components = Stream.of(QuestionBlock.class.getRecordComponents())
                 .map(RecordComponent::getName)
                 .toList();
@@ -256,6 +272,8 @@ class ForbiddenKeysAssertTests {
     @Test
     void storefrontPublicDetailPartsShapePasses() {
         // TM 10.1: các phần theo thứ tự làm bài, các lựa chọn trong phạm vi mua, cách chấm, quyền lợi.
+        // R3-01: mô tả dẫn xuất (số mệnh đề, điểm mỗi câu của từng dạng) phải đặt khóa không trùng
+        // tên trường nguồn của khối (itemShape, answerFormats, requiredPointsPerQuestion).
         String json = """
                 {"product": {"code": "HSA_FULL", "name": "HSA", "listPrice": 99000, "detail": {
                   "description": "<p>Mô tả</p>", "objectives": ["a"], "audience": "học sinh",
@@ -264,7 +282,8 @@ class ForbiddenKeysAssertTests {
                      "maxPoints": 50, "required": true},
                     {"name": "Phần 3", "order": 3, "questionCount": 50, "durationMinutes": 60, "maxPoints": 50,
                      "required": false, "options": [{"name": "Khoa học", "subjects": ["Vật lí", "Hóa học"]}]}],
-                  "scoring": {"scale": "LINEAR", "byType": [{"type": "MCQ", "count": 40}]},
+                  "scoring": {"scale": "LINEAR", "byType": [{"type": "MCQ", "count": 40},
+                    {"type": "TRUE_FALSE", "count": 10, "statementCount": 4, "pointsPerItem": 0.25}]},
                   "benefits": ["a"], "resultView": "AFTER_SUBMIT"}}}
                 """;
         assertThatCode(() -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(json)).doesNotThrowAnyException();

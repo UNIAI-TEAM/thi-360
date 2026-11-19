@@ -68,12 +68,14 @@ public final class ForbiddenKeysAssert {
      * hỏi ({@code question(s)…}, {@code body}, {@code snapshot}), đáp án và lời giải
      * (toàn bộ danh sách lượt thi), nguồn câu của khối ({@code source…}), đề chứng
      * minh ({@code evidence}, {@code witness…}) và đề xem trước ({@code preview…}). Nguồn câu của
-     * khối gồm mọi trường ràng buộc chọn câu của {@code QuestionBlock}: {@code knowledgeScope},
-     * {@code matrix}, {@code topicQuotas}, {@code tagCodes}, {@code slots}, {@code childConditions}
-     * ({@code matrix} và {@code topicQuotas} là hạn ngạch chọn câu theo MAPID/khối lớp/độ khó: bị cấm
-     * ở mọi vị trí vì chi tiết sản phẩm theo TM 10.1 không có khóa nào trùng tên). Các trường còn
-     * lại của khối được phép, mỗi trường kèm lý do ở {@link #STOREFRONT_ALLOWED_BLOCK_FIELDS}. Danh
-     * sách này cũng chứa mọi khóa của danh sách lượt thi.
+     * khối gồm mọi trường "Phạm vi lấy câu" và hạn ngạch chọn câu của {@code QuestionBlock}
+     * (đặc tả 2B mục 6.1; {@code SolverInputBuilder} đưa chúng vào {@code QuestionSourcePort.Filter}):
+     * {@code knowledgeScope}, {@code tagCodes}, {@code slots}, {@code childConditions},
+     * {@code itemShape}, {@code answerFormats}, {@code requiredPointsPerQuestion} (bộ lọc ứng viên)
+     * và {@code matrix}, {@code topicQuotas} (hạn ngạch). Bị cấm ở mọi vị trí: chi tiết công khai
+     * theo TM 10.1 chỉ mô tả dạng câu, số câu và thang điểm đã tính, khóa dẫn xuất không được trùng
+     * tên với trường nguồn. Các trường còn lại của khối được phép, mỗi trường kèm lý do ở
+     * {@link #STOREFRONT_ALLOWED_BLOCK_FIELDS}. Danh sách này cũng chứa mọi khóa của danh sách lượt thi.
      */
     public static final Set<String> STOREFRONT_FORBIDDEN_KEYS;
 
@@ -94,10 +96,7 @@ public final class ForbiddenKeysAssert {
             Map.entry("setCount", "số bộ câu: một dạng số câu"),
             Map.entry("setSize", "số câu mỗi bộ: một dạng số câu"),
             Map.entry("childAnswerType", "dạng câu con của bộ câu: cùng loại với questionType"),
-            Map.entry("requiredPointsPerQuestion", "điểm mỗi câu: TM 10.1 hiển thị thang điểm"),
             Map.entry("expectedScoring", "cách chấm dự kiến: TM 10.1 hiển thị cách chấm"),
-            Map.entry("itemShape", "hình dạng câu (số mệnh đề, số lựa chọn): mô tả dạng câu, không chỉ nguồn"),
-            Map.entry("answerFormats", "kiểu đáp án cho phép: mô tả dạng câu, không chỉ nguồn"),
             Map.entry("templateGroupCode", "mã nhóm mẫu: nhãn dựng bài, không chọn câu theo kiến thức hay thẻ"),
             Map.entry("answerTypeLocked", "cờ khóa của trình soạn, không có dữ liệu câu"),
             Map.entry("shuffleUnits", "cờ trộn, không có dữ liệu câu"),
@@ -125,6 +124,9 @@ public final class ForbiddenKeysAssert {
                 "tagCodes",
                 "slots",
                 "childConditions",
+                "itemShape",
+                "answerFormats",
+                "requiredPointsPerQuestion",
                 "evidence",
                 "witness",
                 "witnessPicks",
