@@ -80,6 +80,7 @@ class ExamBcaTemplateCheckIT extends AbstractIntegrationTest {
         var publish = mapper.createObjectNode().put("expectedRevision", current.path("revision").asLong());
         var paths = publish.putArray("pathIds");
         result.path("paths").forEach(path -> paths.add(path.path("pathId").asText()));
+        ExamListingFixture.fill(jdbc, UUID.fromString(base.substring(base.lastIndexOf('/') + 1)));
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(publish.toString()))

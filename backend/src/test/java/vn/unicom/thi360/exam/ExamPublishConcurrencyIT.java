@@ -74,6 +74,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
             jdbc.update("DELETE FROM exam.exam_version WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id IN (?, ?)", first, second);
+            jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam WHERE id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id IN (?, ?)", question, otherQuestion);
             jdbc.update("DELETE FROM questionbank.question WHERE id IN (?, ?)", question, otherQuestion);
@@ -119,6 +120,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
             reset(sourceSpy);
             jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id = ?", exam);
             jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id = ?", exam);
+            jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id = ?", exam);
             jdbc.update("DELETE FROM exam.exam WHERE id = ?", exam);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id = ?", question);
             jdbc.update("DELETE FROM questionbank.question WHERE id = ?", question);
@@ -169,6 +171,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
             reset(catalogSpy);
             jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id=?", exam);
             jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id=?", exam);
+            jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id=?", exam);
             jdbc.update("DELETE FROM exam.exam WHERE id=?", exam);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id=?", question);
             jdbc.update("DELETE FROM questionbank.question WHERE id=?", question);
@@ -182,6 +185,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
         UUID kind = jdbc.queryForObject("SELECT kind_item_id FROM exam.exam WHERE id = ?", UUID.class, SEEDED_EXAM);
         jdbc.update("INSERT INTO exam.exam (id, code, code_normalized, name, kind_item_id, scope, timing, has_unpublished_changes) VALUES (?, ?, ?, 'Concurrent', ?, 'FULL', 'SHARED', true)", id, id.toString(), id.toString(), kind);
         jdbc.update("INSERT INTO exam.exam_structure (exam_id, parts, structure_hash) VALUES (?, '{\"parts\":[]}'::jsonb, 'concurrent')", id);
+        ExamListingFixture.fill(jdbc, id);
         var exam = exams.findById(id).orElseThrow();
         var profile = profiles.findById(kind).orElseThrow();
         var input = new ExamCheckResultStore.Input(id, exam.getRevision(), "concurrent", mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), profile.getRevision(), catalog.revision(), "test", mapper.valueToTree(source.sourceRevisions(List.of(SUBJECT))));

@@ -39,6 +39,7 @@ class ExamPublishedTotalsIT extends AbstractIntegrationTest {
         assertThat(paths).as("BCA checked paths: %s", checked).isNotEmpty();
         var publish = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
         publish.set("pathIds", paths);
+        ExamListingFixture.fill(jdbc, UUID.fromString(exam.path("id").asText()));
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
                 .content(publish.toString())).andExpect(status().isOk());
@@ -85,6 +86,7 @@ class ExamPublishedTotalsIT extends AbstractIntegrationTest {
         assertThat(paths.size()).isEqualTo(2);
         var publish = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
         publish.set("pathIds", paths);
+        ExamListingFixture.fill(jdbc, UUID.fromString(exam.path("id").asText()));
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
                 .content(publish.toString())).andExpect(status().isOk());

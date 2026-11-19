@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam.application;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,7 +20,9 @@ import java.util.stream.Stream;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
@@ -77,6 +80,8 @@ import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.api.VersionConflictException;
+import vn.unicom.thi360.shared.idempotency.IdempotencyKeyId;
+import vn.unicom.thi360.shared.idempotency.IdempotencyKeyRepository;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
@@ -105,6 +110,7 @@ public class ExamService {
     private final UserDirectory userDirectory;
     private final AuditRecorder auditRecorder;
     private final IdempotentCommand idempotentCommand;
+    private final IdempotencyKeyRepository idempotencyKeys;
     private final CurrentUserProvider currentUserProvider;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -112,6 +118,9 @@ public class ExamService {
     private final ExamCheckValidity checkValidity;
     private final ExamStructureProperties structureProperties;
     private final CombinationLookup combinationLookup;
+    private final Clock clock;
+    private final ExamListingService listings;
+    private final TransactionTemplate transaction;
     public ExamService(
             ExamRepository examRepository,
             ExamStructureRepository structureRepository,
@@ -124,13 +133,17 @@ public class ExamService {
             UserDirectory userDirectory,
             AuditRecorder auditRecorder,
             IdempotentCommand idempotentCommand,
+            IdempotencyKeyRepository idempotencyKeys,
             CurrentUserProvider currentUserProvider,
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
             AppMessages messages,
             ExamCheckValidity checkValidity,
             ExamStructureProperties structureProperties,
-            CombinationLookup combinationLookup) {
+            CombinationLookup combinationLookup,
+            Clock clock,
+            ExamListingService listings,
+            PlatformTransactionManager transactionManager) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -142,6 +155,7 @@ public class ExamService {
         this.userDirectory = userDirectory;
         this.auditRecorder = auditRecorder;
         this.idempotentCommand = idempotentCommand;
+        this.idempotencyKeys = idempotencyKeys;
         this.currentUserProvider = currentUserProvider;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -149,6 +163,9 @@ public class ExamService {
         this.checkValidity = checkValidity;
         this.structureProperties = structureProperties;
         this.combinationLookup = combinationLookup;
+        this.clock = clock;
+        this.listings = listings;
+        this.transaction = new TransactionTemplate(transactionManager);
     }
     private ExamStructureCodec codec() {
         return new ExamStructureCodec(objectMapper);
@@ -444,7 +461,7 @@ public class ExamService {
     }
 
     private ExamDetailResponse doCreate(CreateExamRequest request) {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         String code = requireCode(request.code());
 
@@ -700,7 +717,7 @@ public class ExamService {
                     messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
         }
         Map<String, Object> before = examInfoSnapshot(exam);
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
 
         boolean scopeRequested = request.kind() != null || request.scope() != null
@@ -873,7 +890,7 @@ public class ExamService {
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = ExamOverview.apply(workingDocument(examId), request.overview());
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
-        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now());
+        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now(clock));
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.OVERVIEW_UPDATE")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
                 .build());
@@ -905,7 +922,7 @@ public class ExamService {
                 && !Set.of("USE_TEMPLATE", "KEEP_EDITED").contains(request.overviewPolicy())) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
@@ -1063,7 +1080,7 @@ public class ExamService {
         Exam exam = examRepository.findByIdForUpdate(examId)
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
 
         ExamStructureDocument incoming = ExamStructureOps.assignMissingIds(
@@ -1127,18 +1144,40 @@ public class ExamService {
         }
     }
 
-    /** POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. */
-    @Transactional
+    /**
+     * POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. The cover object is copied
+     * before the transaction opens, so a slow or failing object store cannot hold the command's locks and a missing
+     * cover object fails the command instead of producing a copy without it. The staged object is removed again when
+     * the transaction does not keep it (rollback, lost race, any failure). A key that already has a stored response is
+     * resolved before any object-store call: the committed response comes back as recorded (also when the source
+     * object is gone or storage is down) and a different body under the key is the shared 409. The authoritative
+     * check stays inside the transaction, under the key's advisory lock.
+     */
     public ExamDetailResponse duplicateExam(String idempotencyKey, UUID examId,
             DuplicateExamRequest request) {
-        return idempotentCommand.execute(idempotencyKey, "exam.duplicate", examId.toString(), request,
-                new com.fasterxml.jackson.core.type.TypeReference<ExamDetailResponse>() {},
-                () -> doDuplicate(examId, request));
+        // A missing key is refused here, before anything is staged; a recorded key is resolved without storage I/O.
+        String key = idempotentCommand.requireKey(idempotencyKey);
+        String scope = IdempotentCommand.scope(currentUserProvider.requireCurrentUser(), "exam.duplicate",
+                examId.toString());
+        ExamCoverService.StagedCover staged = idempotencyKeys.existsById(new IdempotencyKeyId(scope, key))
+                ? null : listings.stageCoverCopy(examId);
+        boolean kept = false;
+        try {
+            ExamDetailResponse result = transaction.execute(status -> idempotentCommand.execute(
+                    idempotencyKey, "exam.duplicate", examId.toString(), request,
+                    new com.fasterxml.jackson.core.type.TypeReference<ExamDetailResponse>() {},
+                    () -> doDuplicate(examId, request, staged)));
+            kept = staged != null && staged.attached();
+            return result;
+        } finally {
+            if (staged != null && !kept) listings.discardStagedCover(staged);
+        }
     }
 
-    private ExamDetailResponse doDuplicate(UUID examId, DuplicateExamRequest request) {
+    private ExamDetailResponse doDuplicate(UUID examId, DuplicateExamRequest request,
+            ExamCoverService.StagedCover staged) {
         Exam source = examRepository.findById(examId).orElseThrow(() -> examNotFound(examId));
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         String kindCode = catalogLookup.findItem(source.getKindItemId())
                 .map(CatalogItemView::code)
@@ -1155,6 +1194,8 @@ public class ExamService {
         } catch (DataIntegrityViolationException ex) {
             throw codeTaken();
         }
+        // The sale listing and cover are part of the exam (TM 6.2); the copy has no published version yet.
+        listings.copyInto(source, copy, actor, now, staged);
 
         ExamStructure sourceStructure = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = sourceStructure == null
