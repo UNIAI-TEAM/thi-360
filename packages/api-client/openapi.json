@@ -6435,6 +6435,47 @@
         },
         "type" : "object"
       },
+      "PasswordForgotRequest" : {
+        "description" : "Yêu cầu gửi liên kết đặt lại mật khẩu",
+        "properties" : {
+          "email" : {
+            "description" : "Email của tài khoản",
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "email" ],
+        "type" : "object"
+      },
+      "PasswordForgotResponse" : {
+        "description" : "Phản hồi cố định của yêu cầu quên mật khẩu: giống nhau cho mọi email (AC-06.04)",
+        "properties" : {
+          "message" : {
+            "description" : "Thông báo đã bản địa hóa, không cho biết email có tài khoản hay không",
+            "type" : "string"
+          }
+        },
+        "required" : [ "message" ],
+        "type" : "object"
+      },
+      "PasswordResetRequest" : {
+        "description" : "Yêu cầu đặt lại mật khẩu bằng mã trong thư",
+        "properties" : {
+          "newPassword" : {
+            "description" : "Mật khẩu mới đạt quy tắc bảo mật",
+            "format" : "password",
+            "type" : "string"
+          },
+          "token" : {
+            "description" : "Mã đặt lại trong liên kết thư",
+            "format" : "password",
+            "type" : "string"
+          }
+        },
+        "required" : [ "newPassword", "token" ],
+        "type" : "object"
+      },
       "PermissionResponse" : {
         "description" : "Thông tin quyền hệ thống",
         "properties" : {
@@ -6615,6 +6656,64 @@
           "to" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ProfileResponse" : {
+        "description" : "Hồ sơ của tài khoản đang đăng nhập (TM 5.5)",
+        "properties" : {
+          "avatarAssetId" : {
+            "description" : "Mã ảnh đại diện; null khi chưa có ảnh",
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "avatarUrl" : {
+            "description" : "Đường dẫn ảnh đại diện (cần đăng nhập); null khi chưa có ảnh",
+            "example" : "/api/v1/avatars/0192f3a1-0000-7000-8000-000000000001",
+            "type" : [ "string", "null" ]
+          },
+          "email" : {
+            "description" : "Email của tài khoản; null khi tài khoản không có email",
+            "type" : [ "string", "null" ]
+          },
+          "emailVerified" : {
+            "description" : "Email đã xác minh hay chưa",
+            "type" : "boolean"
+          },
+          "fullName" : {
+            "description" : "Họ và tên",
+            "type" : "string"
+          },
+          "pendingEmail" : {
+            "description" : "Email mới đang chờ xác nhận (đổi email, TM 5.3); null khi không có yêu cầu đổi email",
+            "type" : [ "string", "null" ]
+          },
+          "phone" : {
+            "description" : "Số điện thoại; null khi chưa nhập",
+            "example" : "0912345678",
+            "type" : [ "string", "null" ]
+          },
+          "username" : {
+            "description" : "Tên đăng nhập, chỉ đọc",
+            "type" : "string"
+          }
+        },
+        "required" : [ "emailVerified", "fullName", "username" ],
+        "type" : "object"
+      },
+      "ProfileUpdateRequest" : {
+        "description" : "Yêu cầu sửa hồ sơ; trường không gửi thì giữ nguyên",
+        "properties" : {
+          "fullName" : {
+            "description" : "Họ và tên, bắt buộc khi gửi, tối đa 100 ký tự",
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "phone" : {
+            "description" : "Số điện thoại Việt Nam 10 chữ số bắt đầu bằng 0; chuỗi rỗng để xóa số",
+            "example" : "0912345678",
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -30167,6 +30266,297 @@
         "tags" : [ "Auth" ]
       }
     },
+    "/api/v1/auth/password/forgot" : {
+      "post" : {
+        "operationId" : "forgotPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordForgotRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PasswordForgotResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Yêu cầu liên kết đặt lại mật khẩu (công khai, luôn 202 cùng một thân)",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/auth/password/reset" : {
+      "post" : {
+        "operationId" : "resetPasswordByToken",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đặt lại mật khẩu bằng mã trong thư (công khai, không đăng nhập)",
+        "tags" : [ "Auth" ]
+      }
+    },
     "/api/v1/auth/refresh" : {
       "post" : {
         "operationId" : "refresh",
@@ -30462,6 +30852,155 @@
         },
         "summary" : "Tự đăng ký tài khoản học viên",
         "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/avatars/{assetId}" : {
+      "get" : {
+        "operationId" : "getAvatar",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Phục vụ ảnh đại diện (PNG 256px) cho tài khoản đã đăng nhập",
+        "tags" : [ "Avatar" ]
       }
     },
     "/api/v1/catalog/items/{id}" : {
@@ -31247,6 +31786,290 @@
         "tags" : [ "Auth" ]
       }
     },
+    "/api/v1/me/avatar" : {
+      "delete" : {
+        "operationId" : "removeMyAvatar",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xóa ảnh đại diện (không có ảnh thì không làm gì)",
+        "tags" : [ "Avatar" ]
+      },
+      "put" : {
+        "operationId" : "replaceMyAvatar",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đặt ảnh đại diện (jpg, png, webp, ≤5 MB, ≤4.096 px; lưu PNG 256px)",
+        "tags" : [ "Avatar" ]
+      }
+    },
     "/api/v1/me/email/change" : {
       "post" : {
         "operationId" : "requestChange",
@@ -31815,6 +32638,292 @@
         "tags" : [ "Me" ]
       }
     },
+    "/api/v1/me/profile" : {
+      "get" : {
+        "operationId" : "getMyProfile",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đọc hồ sơ của tài khoản đang đăng nhập",
+        "tags" : [ "Profile" ]
+      },
+      "patch" : {
+        "operationId" : "updateMyProfile",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfileUpdateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Sửa họ tên, số điện thoại của tài khoản đang đăng nhập",
+        "tags" : [ "Profile" ]
+      }
+    },
     "/api/v1/ping" : {
       "get" : {
         "operationId" : "ping",
@@ -32005,11 +33114,17 @@
     "description" : "Tra cứu danh mục quyền cố định và người dùng theo quyền",
     "name" : "Admin Permissions"
   }, {
+    "description" : "Ảnh đại diện của tài khoản",
+    "name" : "Avatar"
+  }, {
     "description" : "Quản lý lớp học và thành viên lớp",
     "name" : "Admin Classes"
   }, {
     "description" : "Tra cứu danh mục đang hoạt động cho các module khác",
     "name" : "Catalog Options"
+  }, {
+    "description" : "Hồ sơ của tài khoản đang đăng nhập",
+    "name" : "Profile"
   }, {
     "description" : "Dữ liệu tham chiếu và bài thi",
     "name" : "Exam"
