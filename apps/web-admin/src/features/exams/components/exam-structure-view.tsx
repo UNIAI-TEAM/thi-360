@@ -207,8 +207,8 @@ function StructureEditor({
   templates: readonly ExamTemplate[];
   template: ExamTemplate | null;
 }) {
-  /** Bài ôn (R-22): màn rút gọn, một phần, một môn, một nhóm. Máy chủ trả `buildMode` của bài; mẫu đã nạp là chỗ dựa cũ khi bài chưa khai. */
-  const reviewMode = exam.buildMode === "REVIEW" || template?.buildMode === "REVIEW";
+  /** Bài ôn (R-22, AD-76): màn rút gọn chỉ theo `exam.buildMode` của máy chủ; mẫu REVIEW không còn là chỗ dựa. */
+  const reviewMode = exam.buildMode === "REVIEW";
   // H42, R-135: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT`; bài `PART` và bài ôn từ cùng mẫu vẫn sửa được.
   const rowsLocked = blockCountsLocked(template, exam.scope, reviewMode);
   const templateLocked = template?.fixedCounts === true || rowsLocked;
