@@ -406,13 +406,10 @@ final class ExamCheckPathPresenter {
             int[] values = ExamCheckQuantities.resolve(quota.items().stream().map(item -> item.value()).toList(), quota.unit(), count);
             if (values != null) for (int i = 0; i < values.length; i++) {
                 String type = quota.items().get(i).answerType().name();
-                // Without a witness the Bộ câu hỏi row is what the set groups can take, not the raw child stock.
-                long have = AnswerQuotaCounting.QUESTION_SET.equals(type) ? sources.setRowCapacity(section.groups())
-                        : units.stream().filter(unit -> type.equals(unit.quotaAnswerType())).count();
                 BigDecimal witnessHave = paper == null ? null : paper.basis(QuotaBasis.QUESTION).answerTypes().getOrDefault(type, BigDecimal.ZERO);
                 ObjectNode entry = answers.addObject(); entry.put("answerType", type); entry.put("required", values[i]);
                 if (witnessHave != null) entry.put("achieved", witnessHave);
-                else if (complete) entry.put("achieved", Math.min(values[i], have));
+                else if (complete) entry.put("achieved", Math.min(values[i], rowHave(type, section, units)));
                 else entry.putNull("achieved");
             }
         }
@@ -437,6 +434,16 @@ final class ExamCheckPathPresenter {
             }
         }
         return out;
+    }
+
+    /**
+     * Stock a quota row can draw on; the Bộ câu hỏi row asks the set groups for their capacity (what they can
+     * take, not the raw child stock), so it is computed only when the row actually renders it.
+     */
+    private long rowHave(String type, SectionOnPath section, List<CountingUnit> units) {
+        return AnswerQuotaCounting.QUESTION_SET.equals(type)
+                ? sources.setRowCapacity(section.groups())
+                : units.stream().filter(unit -> type.equals(unit.quotaAnswerType())).count();
     }
 
     private void dimensions(ArrayNode out, Map<String, BigDecimal> values, List<CountingUnit> units,

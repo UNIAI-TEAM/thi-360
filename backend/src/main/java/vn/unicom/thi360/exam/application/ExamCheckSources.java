@@ -21,7 +21,11 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Unit;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
-/** Source details used for display; the solver, not these counts, decides feasibility. */
+/**
+ * Source details used for display; the solver, not these counts, decides feasibility. Counts this class reports
+ * without a witness paper (e.g. {@link #setRowCapacity}) are upper bounds of selectable children, never a proof
+ * that a shared-pool assignment exists.
+ */
 final class ExamCheckSources {
     record Pool(List<PathCandidate> candidates, boolean complete) {
         Pool { candidates = List.copyOf(candidates); }
@@ -75,8 +79,11 @@ final class ExamCheckSources {
     /**
      * Upper bound of the Bộ câu hỏi quota row without a witness paper: what the set groups can take, never the raw
      * child stock. A SET group takes at most {@code setCount} whole sets of exactly {@code setSize}; a FLEXIBLE_SET
-     * group takes whole sets whose sizes add up to at most its {@code questionCount}. Groups can share candidates, so
-     * the sum is also capped by the distinct counting children of every eligible set.
+     * group takes whole sets whose sizes add up to at most its {@code questionCount}. Ineligible candidates (wrong
+     * or oversized sets) are filtered per group before counting. Groups can share candidates, so the sum is also
+     * capped by the distinct counting children of every eligible set: the result is an upper bound of selectable
+     * children, not a proof that a shared-pool assignment exists. The work never follows the authored count: an
+     * empty pool adds nothing, and the subset-sum table is bounded by the eligible child stock.
      */
     long setRowCapacity(List<GroupQuota> groups) {
         Set<String> distinct = new LinkedHashSet<>();
@@ -87,8 +94,11 @@ final class ExamCheckSources {
             List<Integer> weights = new ArrayList<>();
             List<Integer> sizes = new ArrayList<>();
             long groupUnits = 0;
+            long eligibleSize = 0;
             for (PathCandidate candidate : pool(group).candidates()) {
-                if (fixed && (candidate.setId() == null || candidate.units().size() != group.setSize())) continue;
+                if (candidate.setId() == null
+                        || (fixed ? candidate.units().size() != group.setSize()
+                                : candidate.units().size() > group.questionCount())) continue;
                 int weight = 0;
                 for (CountingUnit unit : candidate.units()) {
                     if (!AnswerQuotaCounting.QUESTION_SET.equals(unit.quotaAnswerType())) continue;
@@ -99,22 +109,28 @@ final class ExamCheckSources {
                 weights.add(weight);
                 sizes.add(candidate.units().size());
                 groupUnits += weight;
+                eligibleSize += candidate.units().size();
             }
             if (fixed) {
                 weights.sort(java.util.Comparator.reverseOrder());
                 for (int i = 0; i < Math.min(group.setCount(), weights.size()); i++) sum += weights.get(i);
-            } else {
-                sum += Math.min(groupUnits, composable(sizes, group.questionCount()));
+            } else if (!sizes.isEmpty()) {
+                // Bound the reachability table by the eligible child stock, never the authored count: questionCount
+                // can be Integer.MAX_VALUE, where limit + 1 would overflow. The cap stays within the int range.
+                int limit = (int) Math.min(group.questionCount().longValue(),
+                        Math.min(eligibleSize, (long) Integer.MAX_VALUE - 1));
+                sum += Math.min(groupUnits, composable(sizes, limit));
             }
         }
         return Math.min(sum, distinct.size());
     }
 
-    /** Largest sum of whole set sizes that does not exceed {@code limit}. */
-    private static int composable(List<Integer> sizes, int limit) {
+    /** Largest sum of whole set sizes that does not exceed {@code limit}; stops at the check deadline. */
+    private int composable(List<Integer> sizes, int limit) {
         boolean[] reachable = new boolean[limit + 1];
         reachable[0] = true;
         for (int size : sizes) {
+            if (!clock.instant().isBefore(deadline)) break;
             for (int total = limit; total >= size; total--) reachable[total] |= reachable[total - size];
         }
         for (int total = limit; total > 0; total--) if (reachable[total]) return total;
