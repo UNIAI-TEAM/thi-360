@@ -165,8 +165,16 @@ final class ScriptedSmtpServer implements AutoCloseable {
                     }
                     reply(out, "354 go ahead");
                     StringBuilder data = new StringBuilder();
-                    while ((line = in.readLine()) != null && !line.equals(".")) {
+                    boolean terminated = false;
+                    while ((line = in.readLine()) != null) {
+                        if (line.equals(".")) {
+                            terminated = true;
+                            break;
+                        }
                         data.append(line).append('\n');
+                    }
+                    if (!terminated) {
+                        return; // đóng trước dấu kết thúc thân thư: không trả lời, không tính là đã nhận
                     }
                     lastData.set(data.toString());
                     reply(out, echoDataInReply ? dataReply + " " + data.toString().replace('\n', ' ') : dataReply);

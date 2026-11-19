@@ -83,6 +83,9 @@ class MailDeadlineIT extends AbstractMailIT {
                     .atMost(Duration.ofSeconds(10))
                     .untilAsserted(() ->
                             assertThat(server.connectionsClosed.get()).as("the first connection is gone").isEqualTo(1));
+            assertThat(server.dataAccepted.get())
+                    .as("a connection closed before the DATA terminator is never counted as accepted")
+                    .isZero();
 
             advance(Duration.ofMinutes(1));
             assertThat(dispatcher.dispatchBatch()).as("the retry delivers").isEqualTo(1);
