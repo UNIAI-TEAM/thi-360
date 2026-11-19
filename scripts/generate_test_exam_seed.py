@@ -1291,6 +1291,11 @@ for exam in EXAMS:
 
 
 
+# Every place a blocks[] array can sit in structure v2 (jsonpath, lax mode unwraps the arrays).
+BLOCK_MEMBER_PATHS = ("$.parts.sections.blocks", "$.parts.subjectPool.blocks",
+                      "$.parts.options.sections.blocks", "$.parts.options.blocks")
+
+
 def emit_exam(exam):
     eid = uid("exam", exam["code"])
     out = []
@@ -1351,12 +1356,15 @@ def emit_exam(exam):
         # The structure above is never replaced once stored, so the refs must follow the stored one:
         # drop seeded rows for blocks it does not contain. A unique index on (exam, version, block)
         # already keeps the projection of a later edit and the seeded rows from coexisting.
+        # FU-BE13-2: only an id that is a member of a blocks[] array counts; a part, section or
+        # option id (or any other nested id) that equals a removed block id must not keep its ref.
         seeded_ids = ",".join(f"'{uid('ref', eid, b['id'])}'" for b in all_blocks(exam["doc"]))
         out.append("DELETE FROM exam.exam_block_ref r")
         out.append(f"WHERE r.exam_id = '{eid}' AND r.version_no IS NULL AND r.id IN ({seeded_ids})")
         out.append("  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id")
-        out.append("      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',")
-        out.append("          jsonb_build_object('block', r.block_id)));")
+        out.append("      AND (" + "\n        OR ".join(
+            f"jsonb_path_exists(s.parts, '{path} ? (@.id == $block)', "
+            "jsonb_build_object('block', r.block_id))" for path in BLOCK_MEMBER_PATHS) + "));")
         out.append("")
     return out
 
@@ -1410,10 +1418,23 @@ def ref_row(eid, p, o, s, b):
             "NULL)")
 
 
+REMOVED_V2_KEYS = ("taskTypeCode", "match", "includeDescendants", "groupOrder", "shuffle",
+                   "blockShuffleRule", "task_type_item_id")
+
+
+def assert_structure_v2():
+    """FU-SEEDGEN-1: a regeneration must never bring back a key structure v2 removed."""
+    for exam in EXAMS:
+        text = json.dumps(exam["doc"])
+        for key in REMOVED_V2_KEYS:
+            assert f'"{key}"' not in text, f"{exam['code']} carries removed v2 key {key}"
+
+
 TASK_TAG_IDS = {"TEST-HIEM": TAG_HIEM}
 
 
 def main():
+    assert_structure_v2()
     SEED.write_text(emit_seed().rstrip("\n") + "\n", encoding="utf-8", newline="\n")
     n_q = len(QUESTIONS) + sum(len(s["children"]) + 1 for s in SETS)
     print(f"wrote {SEED.name}; questions={n_q}, exams={len(EXAMS)}")
