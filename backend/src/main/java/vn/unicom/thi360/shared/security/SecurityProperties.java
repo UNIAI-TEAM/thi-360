@@ -25,12 +25,15 @@ public record SecurityProperties(
     ) {
 
         public RateLimitProperties {
+            // Cửa sổ không dương làm Bucket4j từ chối lúc dùng, mà bộ lọc nuốt lỗi và cho qua: GET công khai
+            // sẽ không bao giờ bị giới hạn. Báo lỗi ngay lúc nạp cấu hình để triển khai sai không khởi động.
+            if (publicPerIpWindow == null || publicPerIpWindow.isZero() || publicPerIpWindow.isNegative()) {
+                throw new IllegalArgumentException(
+                        "thi360.security.rate-limit.public-per-ip-window must be a positive duration");
+            }
             // Chỉ miễn chính sách của GET /api/v1/public/** (TM 10.2); mục sai định dạng thì không khởi động.
             exemptIps = exemptIps == null ? List.of() : List.copyOf(exemptIps);
-            exemptIps.stream()
-                    .filter(entry -> entry != null && !entry.isBlank())
-                    .map(String::trim)
-                    .forEach(ExemptIpMatcher::requireIpOrCidr);
+            exemptIps.forEach(ExemptIpMatcher::requireIpOrCidr);
         }
     }
 

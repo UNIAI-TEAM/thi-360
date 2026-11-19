@@ -3,12 +3,15 @@ package vn.unicom.thi360.shared.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.context.ConfigurationPropertiesAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 /** AC-31 and the defaults of the public rate-limit policy (TM 10.2). */
 class RateLimitExemptIpsPropertiesTests {
@@ -24,7 +27,10 @@ class RateLimitExemptIpsPropertiesTests {
 
     @Test
     void malformedEntryStopsStartup() {
-        for (String bad : List.of("not-an-ip", "10.0.0.0/33", "10.0.0.1/abc", "999.1.1.1", "10.0.0.0/-1", "::1/129")) {
+        for (String bad : List.of("not-an-ip", "10.0.0.0/33", "10.0.0.1/abc", "999.1.1.1", "10.0.0.0/-1", "::1/129",
+                // Request-style forms the trusted-proxy parser would normalise into a valid address.
+                "10.0.0.1%eth0", "10.0.0.0%x/24", "fe80::1%eth0", "[::1]", "10.0.0.0/+8", "10.0.0.0/ 8",
+                "10.0.0.5 x", "10")) {
             runner.withPropertyValues("thi360.security.rate-limit.exempt-ips[0]=" + bad)
                     .run(context -> {
                         assertThat(context).as("entry '%s'", bad).hasFailed();
@@ -69,9 +75,52 @@ class RateLimitExemptIpsPropertiesTests {
     }
 
     @Test
+    void blankElementStopsStartup() {
+        for (String blankList : List.of(
+                "thi360.security.rate-limit.exempt-ips[0]=",
+                "thi360.security.rate-limit.exempt-ips[0]=   ",
+                "thi360.security.rate-limit.exempt-ips=10.0.0.5,",
+                "thi360.security.rate-limit.exempt-ips=10.0.0.5,,10.0.0.6")) {
+            runner.withPropertyValues(blankList)
+                    .run(context -> assertThat(context).as(blankList).hasFailed());
+        }
+    }
+
+    @Test
+    void nonPositivePublicWindowStopsStartup() {
+        for (String window : List.of("PT0S", "-PT1M", "0s", "-5s")) {
+            runner.withPropertyValues("thi360.security.rate-limit.public-per-ip-window=" + window)
+                    .run(context -> {
+                        assertThat(context).as("window %s", window).hasFailed();
+                        assertThat(context.getStartupFailure())
+                                .hasStackTraceContaining("public-per-ip-window");
+                    });
+        }
+        runner.withPropertyValues("thi360.security.rate-limit.public-per-ip-window=PT1S")
+                .run(context -> assertThat(context.getBean(SecurityProperties.class)
+                        .rateLimit().publicPerIpWindow()).isEqualTo(java.time.Duration.ofSeconds(1)));
+    }
+
+    @Test
     void emptyEnvironmentValueMeansNobodyExempt() {
-        runner.withPropertyValues("THI360_SECURITY_RATELIMIT_EXEMPTIPS=")
+        withSystemEnvironment(Map.of("THI360_SECURITY_RATELIMIT_EXEMPTIPS", ""))
                 .run(context -> assertThat(context.getBean(SecurityProperties.class).rateLimit().exemptIps())
                         .isEmpty());
+    }
+
+    /** The deployment name of {@code exempt-ips} (.env.example) must bind through the real environment source. */
+    @Test
+    void deploymentEnvironmentVariableNameBindsTheList() {
+        withSystemEnvironment(Map.of("THI360_SECURITY_RATELIMIT_EXEMPTIPS", "10.0.0.5,192.168.0.0/16"))
+                .run(context -> assertThat(context.getBean(SecurityProperties.class).rateLimit().exemptIps())
+                        .containsExactly("10.0.0.5", "192.168.0.0/16"));
+        withSystemEnvironment(Map.of("THI360_SECURITY_RATELIMIT_EXEMPTIPS", "10.0.0.5,not-an-ip"))
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    private ApplicationContextRunner withSystemEnvironment(Map<String, Object> variables) {
+        return runner.withInitializer(context -> context.getEnvironment().getPropertySources().addFirst(
+                new SystemEnvironmentPropertySource(
+                        StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, variables)));
     }
 }
