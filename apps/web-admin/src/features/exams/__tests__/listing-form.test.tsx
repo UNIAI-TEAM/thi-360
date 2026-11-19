@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { notify } from "@thi360/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -78,6 +78,44 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     expect(priceInput.selectionStart).toBe(2);
     await user.tab();
     expect(priceInput).toHaveValue("2.749.000");
+  });
+
+  it("ô giá: đang focus giữ chữ số thô nên chọn hết rồi thay (fill, dán, Ctrl+A) không nối vào số cũ", async () => {
+    listingServer().install();
+    const user = userEvent.setup();
+    renderListingTab();
+
+    const priceInput = (await price()) as HTMLInputElement;
+    expect(priceInput).toHaveValue("249.000");
+
+    // Thứ tự của Playwright `fill()`: chọn hết rồi mới focus. Đổi giá trị lúc focus không được làm mất vùng chọn.
+    act(() => {
+      priceInput.select();
+      priceInput.focus();
+    });
+    expect(priceInput).toHaveValue("249000");
+    expect([priceInput.selectionStart, priceInput.selectionEnd]).toEqual([0, 6]);
+    await user.keyboard("111000");
+    expect(priceInput).toHaveValue("111000");
+    await user.tab();
+    expect(priceInput).toHaveValue("111.000");
+
+    // Xóa rồi gõ, và Ctrl+A rồi gõ đè: thay hẳn giá trị cũ.
+    await user.clear(priceInput);
+    await user.type(priceInput, "150000");
+    expect(priceInput).toHaveValue("150000");
+    await user.keyboard("{Control>}a{/Control}");
+    await user.keyboard("90000");
+    expect(priceInput).toHaveValue("90000");
+    expect(preview().getByText("90.000 đ")).toBeInTheDocument();
+
+    // Dán đè lên vùng đã chọn.
+    await user.tab();
+    await user.tab({ shift: true });
+    expect(priceInput).toHaveValue("90000");
+    await user.keyboard("{Control>}a{/Control}");
+    await user.paste("1.234.000");
+    expect(priceInput).toHaveValue("1234000");
   });
 
   it("mô tả, mục tiêu, đối tượng chặn gõ quá giới hạn như mô tả ngắn", async () => {
