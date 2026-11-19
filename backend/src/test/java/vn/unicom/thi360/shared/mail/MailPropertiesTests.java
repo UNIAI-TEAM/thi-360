@@ -69,11 +69,25 @@ class MailPropertiesTests {
     }
 
     @ParameterizedTest(name = "claim-lease={0} stops the application")
-    @ValueSource(strings = {"PT0S", "-PT1S", "PT2M", "PT1M"})
-    void claimLeaseMustBePositiveAndLongerThanTheAttemptDeadline(String value) {
+    @ValueSource(strings = {"PT0S", "-PT1S", "PT2M", "PT1M", "PT2M4.999S"})
+    void claimLeaseMustBePositiveAndLongerThanTheAttemptDeadlinePlusTheSafetyMargin(String value) {
         runner.withPropertyValues("thi360.mail.claim-lease=" + value, "thi360.mail.attempt-timeout=PT2M").run(context -> {
             assertThat(context).hasFailed();
             assertThat(rootMessage(context.getStartupFailure())).contains("thi360.mail.claim-lease");
+        });
+    }
+
+    /** R3-01: at the boundary, a lease of exactly attempt-timeout + 5 s starts and a fresh claim can start SMTP. */
+    @Test
+    void theSmallestClaimLeaseStillLeavesAFreshClaimTheWholeAttemptBudget() {
+        runner.withPropertyValues("thi360.mail.claim-lease=PT2M5S", "thi360.mail.attempt-timeout=PT2M").run(context -> {
+            assertThat(context).hasNotFailed();
+            MailProperties mail = context.getBean(MailProperties.class);
+            java.time.Instant claimedAt = java.time.Instant.parse("2027-01-01T00:00:00Z");
+            java.time.Clock clock = java.time.Clock.fixed(claimedAt, java.time.ZoneOffset.UTC);
+            SendDeadline fresh = new SendDeadline(clock, claimedAt.plus(mail.claimLease()), mail.attemptTimeout());
+            assertThat(fresh.expired()).isFalse();
+            assertThat(fresh.remaining()).isBetween(Duration.ofSeconds(119), Duration.ofSeconds(120));
         });
     }
 

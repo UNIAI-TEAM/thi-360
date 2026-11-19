@@ -2,6 +2,7 @@ package vn.unicom.thi360.shared.mail;
 
 import jakarta.mail.Address;
 import jakarta.mail.MessagingException;
+import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -9,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Properties;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 
@@ -38,7 +40,8 @@ class SmtpMailTransport implements MailTransport {
     }
 
     @Override
-    public void send(String to, String subject, String html, String text) throws Exception {
+    public void send(String to, String subject, String html, String text, SendDeadline deadline)
+            throws Exception {
         MimeMessage message = sender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
         helper.setFrom(new InternetAddress(from, true));
@@ -55,7 +58,8 @@ class SmtpMailTransport implements MailTransport {
         }
         Address[] recipients = message.getAllRecipients();
 
-        Transport transport = sender.getSession().getTransport(protocol());
+        // Thời gian chờ của socket suy ra từ hạn còn lại ngay lúc này, ngay trước khi kết nối.
+        Transport transport = sessionFor(deadline).getTransport(protocol());
         try {
             String username = sender.getUsername();
             String password = sender.getPassword();
@@ -74,6 +78,35 @@ class SmtpMailTransport implements MailTransport {
         // Máy chủ đã nhận thư: kết quả cuối. Đóng kết nối tách khỏi lời gọi để một máy chủ chậm
         // trả lời QUIT không làm lần gửi tới hạn, lỡ máy chủ nhận thư rồi.
         closeDetached(transport);
+    }
+
+    /**
+     * Phiên riêng cho một lần gửi: thời gian chờ kết nối, đọc và ghi bị chặn bởi hạn còn lại của lần gửi
+     * (không bao giờ dài hơn cấu hình, không bao giờ vượt hạn giữ chỗ).
+     *
+     * @throws SendDeadline.ExpiredException khi hạn đã hết: không bắt đầu SMTP
+     */
+    Session sessionFor(SendDeadline deadline) throws SendDeadline.ExpiredException {
+        int remainingMillis = deadline.remainingMillis();
+        String prefix = "mail." + protocol() + ".";
+        Properties props = new Properties();
+        props.putAll(sender.getJavaMailProperties());
+        for (String key : new String[] {"connectiontimeout", "timeout", "writetimeout"}) {
+            int configured = parseMillis(props.getProperty(prefix + key), remainingMillis);
+            props.setProperty(prefix + key, Integer.toString(Math.min(configured, remainingMillis)));
+        }
+        return Session.getInstance(props);
+    }
+
+    private static int parseMillis(String value, int fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value.strip());
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
     }
 
     /** Như {@code JavaMailSenderImpl}: giao thức đặt trên bộ gửi, nếu không thì của phiên, nếu không thì {@code smtp}. */

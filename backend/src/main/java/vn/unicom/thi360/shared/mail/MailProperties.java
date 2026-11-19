@@ -16,8 +16,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param attemptTimeout hạn cứng của một lần gửi (kết nối, mọi lệnh, thân thư); số mili giây dương vừa
  *                       một {@code int} — dưới 1 ms đổi ra 0 ms và khóa mọi lần gửi
  * @param batchSize  số thư tối đa mỗi lượt, từ 1 đến {@value #MAX_BATCH_SIZE}
- * @param claimLease thời gian giữ chỗ một thư trong lúc gửi, phải lớn hơn {@code attemptTimeout};
- *                   hết hạn mà chưa có kết quả thì thư được lấy lại
+ * @param claimLease thời gian giữ chỗ một thư trong lúc gửi, ít nhất {@code attemptTimeout} cộng
+ *                   {@link #SAFETY_MARGIN}; hết hạn mà chưa có kết quả thì thư được lấy lại
  * @param sentRetention thời gian giữ thư đã gửi trước khi xóa
  * @param pollDelay  nghỉ giữa hai lượt gửi của worker
  * @param cleanupCron lịch dọn thư đã gửi (cron Spring)
@@ -44,6 +44,13 @@ public record MailProperties(
 
     static final String DEFAULT_CLEANUP_CRON = "0 30 3 * * *";
 
+    /**
+     * Khoảng giữ lại cuối mỗi giữ chỗ để ghi kết quả và để lần gửi dừng trước khi worker khác lấy lại thư
+     * (AD-19). Hạn của lần gửi là hạn giữ chỗ trừ khoảng này, nên giữ chỗ phải dài hơn {@code attemptTimeout}
+     * ít nhất bằng khoảng này.
+     */
+    static final Duration SAFETY_MARGIN = Duration.ofSeconds(5);
+
     private static final Duration ONE_MILLI = Duration.ofMillis(1);
     private static final Duration MAX_INT_MILLIS = Duration.ofMillis(Integer.MAX_VALUE);
 
@@ -58,10 +65,11 @@ public record MailProperties(
             throw new IllegalArgumentException(
                     "thi360.mail.batch-size must be between 1 and " + MAX_BATCH_SIZE + " (was " + batchSize + ")");
         }
-        if (claimLease.compareTo(attemptTimeout) <= 0) {
+        if (claimLease.compareTo(attemptTimeout.plus(SAFETY_MARGIN)) < 0) {
             throw new IllegalArgumentException(
-                    "thi360.mail.claim-lease must be longer than thi360.mail.attempt-timeout, "
-                            + "or a live send could lose its claim");
+                    "thi360.mail.claim-lease must be at least thi360.mail.attempt-timeout plus the " + SAFETY_MARGIN
+                            + " safety margin (was " + claimLease + " with attempt-timeout " + attemptTimeout
+                            + "), or a fresh claim could not start SMTP");
         }
     }
 

@@ -2,19 +2,23 @@ package vn.unicom.thi360.shared.mail;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import jakarta.mail.BodyPart;
 import jakarta.mail.Multipart;
 import jakarta.mail.Part;
+import jakarta.mail.Session;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.net.ServerSocket;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,6 +92,9 @@ abstract class AbstractMailIT extends AbstractIntegrationTest {
     protected MailOutbox outbox;
     protected TransactionTemplate tx;
 
+    /** Phiên SMTP mà vận chuyển kịch bản ({@link #routeSmtpTo}) đã mở, theo thứ tự; thời gian chờ của socket nằm ở đây. */
+    protected final List<Session> scriptedSessions = new CopyOnWriteArrayList<>();
+
     @BeforeEach
     void resetMailFixtures() throws Exception {
         outbox = new MailOutbox(jdbc);
@@ -126,17 +133,26 @@ abstract class AbstractMailIT extends AbstractIntegrationTest {
         }
         sender.getJavaMailProperties().put("mail.smtp.connectiontimeout", "3000");
         sender.getJavaMailProperties().put("mail.smtp.timeout", Integer.toString(readTimeoutMillis));
-        SmtpMailTransport scripted = new SmtpMailTransport(sender, "Thi 360 <no-reply@thi360.local>", clock);
+        SmtpMailTransport scripted =
+                spy(new SmtpMailTransport(sender, "Thi 360 <no-reply@thi360.local>", clock));
+        doAnswer(invocation -> {
+                    Session session = (Session) invocation.callRealMethod();
+                    scriptedSessions.add(session);
+                    return session;
+                })
+                .when(scripted)
+                .sessionFor(any());
         doAnswer(invocation -> {
                     scripted.send(
                             invocation.getArgument(0),
                             invocation.getArgument(1),
                             invocation.getArgument(2),
-                            invocation.getArgument(3));
+                            invocation.getArgument(3),
+                            invocation.getArgument(4));
                     return null;
                 })
                 .when(transport)
-                .send(any(), any(), any(), any());
+                .send(any(), any(), any(), any(), any());
     }
 
     /** Một cổng không có ai lắng nghe: kết nối bị từ chối. */

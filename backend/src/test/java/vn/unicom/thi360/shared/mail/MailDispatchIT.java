@@ -262,8 +262,7 @@ class MailDispatchIT extends AbstractMailIT {
                     claimCommittedBeforeSend.set(heldUntil.isAfter(clock.instant()));
                     return invocation.callRealMethod();
                 })
-                .when(transport)
-                .send(any(), any(), any(), any());
+                .when(transport).send(any(), any(), any(), any(), any());
 
         assertThat(dispatcher.dispatchBatch()).isEqualTo(1);
 
@@ -389,8 +388,7 @@ class MailDispatchIT extends AbstractMailIT {
                     threadName.set(Thread.currentThread().getName());
                     return invocation.callRealMethod();
                 })
-                .when(transport)
-                .send(any(), any(), any(), any());
+                .when(transport).send(any(), any(), any(), any(), any());
         String to = MailSamples.randomAddress();
         enqueue(MailKind.EMAIL_VERIFY, "vi", to);
 

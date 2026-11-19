@@ -2,7 +2,6 @@ package vn.unicom.thi360.shared.mail;
 
 import jakarta.annotation.PreDestroy;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -40,15 +39,19 @@ import vn.unicom.thi360.shared.web.TraceIdFilter;
  * "treo" phần đuôi của lô. Nếu worker vẫn mất quyền giữ (tiến trình bị đứng quá hạn), kết quả của nó bị
  * từ chối, không đè lên kết quả của worker lấy lại.
  *
- * <p>Ngay trước khi nộp việc gửi vào executor, worker kiểm tra lại trong cơ sở dữ liệu rằng nó vẫn giữ thư và
- * chỗ chưa hết hạn ({@link EmailMessageStore#stillHeld}): worker bị đứng giữa commit giữ chỗ và lúc gửi, bị
- * worker khác lấy lại thư, bỏ lượt thay vì bắt đầu SMTP. Hạn của lần gửi bị chặn trên bởi phần giữ chỗ còn
- * lại trừ {@link #RECORD_MARGIN}; phần còn lại nhỏ hơn khoảng đó thì bỏ qua, không bắt đầu SMTP.
+ * <p>Hàng rào ở ranh giới gửi (AD-19): <em>trong</em> việc gửi, trên luồng gửi, ngay trước lời gọi
+ * {@link MailTransport#send}, worker kiểm tra lại trong cơ sở dữ liệu rằng nó vẫn giữ thư và chỗ chưa hết hạn
+ * ({@link EmailMessageStore#stillHeld}), rồi mới lấy hạn còn lại ({@link SendDeadline}); không qua thì không
+ * SMTP và ghi {@code claim-lost}. Hạn tuyệt đối {@code heldUntil - }{@link MailProperties#SAFETY_MARGIN}
+ * tính một lần từ dòng giữ chỗ; mọi thời gian chờ (chờ kết quả, thời gian chờ kết nối/đọc/ghi của socket)
+ * suy ra từ phần còn lại của hạn đó tại lúc dùng. Vì hạn dừng sớm hơn {@code heldUntil} một khoảng an toàn, một
+ * worker khác chưa thể lấy lại thư trong lúc lần gửi này còn được phép chạy.
  *
- * <p>Trường hợp còn lại duy nhất: hạn giữ chỗ trôi qua <em>trong lúc</em> phiên SMTP đang chạy — worker khác
- * có thể lấy lại thư và gửi trước khi kết quả của lần đầu được ghi. Thiết kế là ít-nhất-một-lần
- * (at-least-once): trùng thư trong trường hợp này được chấp nhận, không đòi đúng một lần. Tương tự, tiến
- * trình chết sau khi SMTP nhận thư mà chưa ghi kết quả thì thư được gửi lại khi hết hạn giữ chỗ.
+ * <p>Phần còn lại, chấp nhận là ít-nhất-một-lần (at-least-once; quyết định Advisor ML:15 / AD-19): (1) worker
+ * đứng cục bộ giữa hàng rào trong việc gửi và byte SMTP đầu tiên, kéo dài quá khoảng an toàn; (2) hạn giữ chỗ
+ * trôi qua <em>trong lúc</em> phiên SMTP đang chạy, tối đa tới hạn tuyệt đối cộng khoảng an toàn; (3) tiến
+ * trình chết sau khi SMTP nhận thư mà chưa ghi kết quả. Trong các trường hợp này thư có thể được gửi trùng; thiết kế
+ * không hứa đúng-một-lần và không gia hạn giữ chỗ trong lúc gửi (không có heartbeat giữ chỗ).
  *
  * <p>Log chỉ ghi id thư, loại thư và mã lỗi; không ghi người nhận, thân thư, mã OTP.
  */
@@ -62,15 +65,9 @@ class MailDispatcher {
 
     /**
      * Lần gửi bị bỏ vì giữ chỗ đã hết hạn, bị worker khác lấy lại, hoặc phần hạn còn lại không đủ
-     * để gửi xong và kịp ghi kết quả: không ghi gì, thư được lấy lại đúng hạn của nó.
+     * để bắt đầu SMTP: không ghi gì, thư được lấy lại đúng hạn của nó.
      */
     private static final MailFailure CLAIM_LOST = new MailFailure(false, "claim-lost");
-
-    /**
-     * Khoảng trừ vào hạn của lần gửi để sau khi SMTP xong vẫn còn thời gian ghi kết quả trước khi
-     * hết giữ chỗ. Thư có phần hạn còn lại nhỏ hơn khoảng này bị bỏ qua, không bắt đầu SMTP.
-     */
-    private static final Duration RECORD_MARGIN = Duration.ofSeconds(5);
 
     private final EmailMessageStore store;
     private final MailTransport transport;
@@ -177,27 +174,20 @@ class MailDispatcher {
     }
 
     /**
-     * Gửi một thư. Trước khi nộp việc vào executor, kiểm tra lại quyền giữ trong cơ sở dữ liệu (câu
-     * lệnh autocommit, ngoài mọi transaction) và chặn hạn của lần gửi bởi phần giữ chỗ còn lại trừ
-     * {@link #RECORD_MARGIN}.
+     * Gửi một thư. Hạn tuyệt đối ({@link SendDeadline}) tính một lần từ dòng giữ chỗ. Kiểm tra quyền giữ
+     * (mã giữ chỗ, chưa kết thúc, {@code next_attempt_at > now}) và kiểm tra hạn còn lại chạy <em>trong
+     * việc gửi, trên luồng gửi</em>, ngay trước lời gọi vận chuyển; không qua thì không SMTP. Thời gian chờ
+     * kết quả lấy từ phần hạn còn lại tại lúc chờ.
      *
      * @return {@code null} khi SMTP đã nhận thư, ngược lại lý do lỗi
      */
     private MailFailure send(Claimed mail) {
-        Instant now = Instant.now(clock);
-        long deadlineNanos = Math.min(
-                properties.attemptTimeout().toNanos(),
-                Duration.between(now, mail.heldUntil()).toNanos() - RECORD_MARGIN.toNanos());
-        if (deadlineNanos <= 0 || !store.stillHeld(mail, Instant.now(clock))) {
-            jobLog.atWarn()
-                    .addKeyValue("mailId", mail.id())
-                    .addKeyValue("kind", mail.kind())
-                    .addKeyValue("error", "claim-lost")
-                    .log("Mail send skipped: the claim expired or was taken before SMTP started");
-            return CLAIM_LOST;
+        SendDeadline deadline = new SendDeadline(clock, mail.heldUntil(), properties.attemptTimeout());
+        if (deadline.expired()) {
+            return skipped(mail);
         }
         Map<String, String> context = MDC.getCopyOfContextMap();
-        Future<?> attempt = sendExecutor.submit(() -> {
+        Future<MailFailure> attempt = sendExecutor.submit(() -> {
             Map<String, String> previous = MDC.getCopyOfContextMap();
             try {
                 if (context == null) {
@@ -205,7 +195,13 @@ class MailDispatcher {
                 } else {
                     MDC.setContextMap(context);
                 }
-                transport.send(mail.to(), mail.subject(), mail.html(), mail.text());
+                // Hàng rào: kiểm tra quyền giữ trước, rồi mới lấy hạn còn lại, để thời gian đứng ở
+                // bước kiểm tra bị trừ vào hạn. Còn lại duy nhất là khoảng đứng giữa đây và byte SMTP đầu.
+                if (!store.stillHeld(mail, Instant.now(clock)) || deadline.expired()) {
+                    return CLAIM_LOST;
+                }
+                transport.send(mail.to(), mail.subject(), mail.html(), mail.text(), deadline);
+                return null;
             } finally {
                 if (previous == null) {
                     MDC.clear();
@@ -213,15 +209,17 @@ class MailDispatcher {
                     MDC.setContextMap(previous);
                 }
             }
-            return null;
         });
         try {
-            attempt.get(deadlineNanos, TimeUnit.NANOSECONDS);
-            return null;
+            MailFailure result = attempt.get(deadline.remaining().toNanos(), TimeUnit.NANOSECONDS);
+            return result == CLAIM_LOST ? skipped(mail) : result;
         } catch (TimeoutException ex) {
             attempt.cancel(true);
             return MailFailure.timeout();
         } catch (ExecutionException ex) {
+            if (ex.getCause() instanceof SendDeadline.ExpiredException) {
+                return skipped(mail);
+            }
             if (ex.getCause() instanceof Error error) {
                 throw error;
             }
@@ -232,6 +230,15 @@ class MailDispatcher {
             Thread.currentThread().interrupt();
             return ABANDONED;
         }
+    }
+
+    private static MailFailure skipped(Claimed mail) {
+        jobLog.atWarn()
+                .addKeyValue("mailId", mail.id())
+                .addKeyValue("kind", mail.kind())
+                .addKeyValue("error", "claim-lost")
+                .log("Mail send skipped: the claim expired or was taken before SMTP started");
+        return CLAIM_LOST;
     }
 
     /**

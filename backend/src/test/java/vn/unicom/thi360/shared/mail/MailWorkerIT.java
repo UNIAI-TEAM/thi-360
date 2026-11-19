@@ -129,8 +129,7 @@ class MailWorkerIT extends AbstractIntegrationTest {
                     assertThat(release.await(20, TimeUnit.SECONDS)).isTrue();
                     return invocation.callRealMethod();
                 })
-                .when(transport)
-                .send(any(), any(), any(), any());
+                .when(transport).send(any(), any(), any(), any(), any());
         String to = MailSamples.randomAddress();
 
         enqueue(to);
@@ -153,8 +152,7 @@ class MailWorkerIT extends AbstractIntegrationTest {
                     never.await(60, TimeUnit.SECONDS); // bị ngắt khi quá hạn
                     return null;
                 })
-                .when(transport)
-                .send(any(), any(), any(), any());
+                .when(transport).send(any(), any(), any(), any(), any());
         String to = MailSamples.randomAddress();
 
         enqueue(to);

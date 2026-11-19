@@ -12,23 +12,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.awaitility.Awaitility;
 import org.eclipse.angus.mail.smtp.SMTPAddressFailedException;
 import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import vn.unicom.thi360.support.MailOutbox;
 
 /**
- * Quyền giữ thư của worker (R1-01, R1-02, R1-13, R1-14). Hai {@code MailDispatcher} chạy xen kẽ một cách xác định:
- * worker A bị giữ ở ranh giới SMTP (lời gọi {@link MailTransport#send}), đồng hồ tiêm vào được tua qua hạn giữ chỗ,
- * và trong lúc A còn đang gửi thì worker B chạy trọn một lượt ngay trong lời gọi đó.
+ * Quyền giữ thư của worker (R1-01, R1-02, R1-13, R1-14, R3-02). Hai {@code MailDispatcher} chạy xen kẽ một cách xác
+ * định: worker A bị giữ ở ranh giới gửi (kiểm tra quyền giữ trên luồng gửi hoặc lời gọi {@link MailTransport#send}),
+ * đồng hồ tiêm vào được tua qua hạn giữ chỗ, và trong lúc A còn đang đứng thì worker B chạy trọn một lượt ngay đó.
  *
- * <p>Lớp này chỉ dùng {@code MailDispatcher}, {@code MailTransport}, JDBC và đồng hồ, để chạy được cả trên bản
- * cũ của worker khi cần chứng minh test đỏ.
+ * <p>Lớp này chỉ dùng {@code MailDispatcher}, {@code MailTransport}, JDBC và đồng hồ.
  */
 class MailClaimOwnershipIT extends AbstractMailIT {
 
@@ -36,6 +38,9 @@ class MailClaimOwnershipIT extends AbstractMailIT {
 
     @Autowired
     private MailProperties properties;
+
+    @Autowired
+    private JavaMailSenderImpl sender;
 
     /** Spy để test đứng được giữa commit giữ chỗ và bước kiểm tra lại quyền giữ trước SMTP. */
     @MockitoSpyBean
@@ -47,38 +52,51 @@ class MailClaimOwnershipIT extends AbstractMailIT {
     }
 
     /**
-     * Kẽ hở của R1-01/R1-13: worker A commit giữ chỗ xong thì bị đứng; đồng hồ tua qua hạn giữ chỗ và
-     * worker B lấy lại thư, gửi và ghi kết quả — tất cả trước khi A tới bước nộp việc gửi. A phải phát
-     * hiện chỗ đã mất khi kiểm tra lại ngay trước SMTP và không bao giờ bắt đầu phiên SMTP: toàn cục
-     * chỉ đúng một lần {@link MailTransport#send} (của B). Trên bản cũ (không có kiểm tra này) kịch bản
-     * tương đương đứng ở lời gọi vận chuyển và A gửi lần thứ hai.
+     * Phép thử của reviewer (R1-01/R1-13, R3-02): worker A qua bước kiểm tra mã giữ chỗ thành công, rồi bị đứng
+     * <em>sau</em> bước đó và trước SMTP; đồng hồ tua qua hạn giữ chỗ, worker B lấy lại thư, gửi và ghi kết quả; A
+     * chạy tiếp. A không được mở phiên SMTP thứ hai: hạn tuyệt đối lấy lại sau bước kiểm tra nên thời gian đứng bị
+     * trừ vào hạn, và A bỏ lượt. Toàn cục chỉ đúng một lần {@link MailTransport#send} (của B). Kiểm tra chạy trên
+     * luồng gửi, trước lời gọi vận chuyển.
      */
     @Test
-    void expiredClaimantNeverStartsSmtp() throws Exception {
+    void pauseAfterCheckBeforeSendStillSendsOnce() throws Exception {
         String to = MailSamples.randomAddress();
         enqueue(MailKind.EMAIL_VERIFY, "vi", to);
         MailDispatcher other = new MailDispatcher(store, transport, properties, clock, transactionManager);
+        Thread caller = Thread.currentThread();
         AtomicInteger transportCalls = new AtomicInteger();
         AtomicInteger checks = new AtomicInteger();
+        AtomicReference<String> checkThread = new AtomicReference<>();
+        AtomicInteger transportCallsAtCheck = new AtomicInteger(-1);
         doAnswer(invocation -> {
                     transportCalls.incrementAndGet();
                     return invocation.callRealMethod();
                 })
                 .when(transport)
-                .send(any(), any(), any(), any());
+                .send(any(), any(), any(), any(), any());
         doAnswer(invocation -> {
+                    boolean held = (boolean) invocation.callRealMethod();
                     if (checks.incrementAndGet() == 1) {
-                        // A đứng giữa commit giữ chỗ và nộp việc gửi: quá hạn, B lấy lại và gửi xong.
+                        checkThread.set(Thread.currentThread().getName());
+                        transportCallsAtCheck.set(transportCalls.get());
+                        // Chờ cho tới khi lời gọi của A đã vào bước chờ kết quả (đã đo xong thời gian chờ).
+                        Awaitility.await()
+                                .atMost(Duration.ofSeconds(10))
+                                .until(() -> caller.getState() == Thread.State.TIMED_WAITING);
+                        // Kiểm tra đã qua (A còn giữ thư). A đứng ở đây: quá hạn, B lấy lại và gửi xong.
+                        assertThat(held).as("A still holds the mail when the check runs").isTrue();
                         advance(LEASE.plusMinutes(1));
                         other.dispatchBatch();
                     }
-                    return invocation.callRealMethod();
+                    return held;
                 })
                 .when(store)
                 .stillHeld(any(), any());
 
-        assertThat(dispatcher.dispatchBatch()).as("A sends nothing: its claim was already taken").isZero();
+        assertThat(dispatcher.dispatchBatch()).as("A sends nothing: its deadline passed while it paused").isZero();
 
+        assertThat(checkThread.get()).as("the check runs on the send thread").startsWith("mail-send-");
+        assertThat(transportCallsAtCheck.get()).as("the check precedes the transport call").isZero();
         assertThat(transportCalls.get()).as("exactly one SMTP transaction, opened by B").isEqualTo(1);
         MailOutbox.Mail mail = outbox.require(to, MailKind.EMAIL_VERIFY);
         assertThat(mail.sentAt()).isNotNull();
@@ -107,8 +125,7 @@ class MailClaimOwnershipIT extends AbstractMailIT {
                     }
                     return invocation.callRealMethod();
                 })
-                .when(transport)
-                .send(any(), any(), any(), any());
+                .when(transport).send(any(), any(), any(), any(), any());
 
         int aSent = dispatcher.dispatchBatch();
 
@@ -149,12 +166,11 @@ class MailClaimOwnershipIT extends AbstractMailIT {
                         advance(LEASE.plusMinutes(1)); // A quá hạn giữ chỗ
                         dispatcher.dispatchBatch(); // B lấy lại và ghi kết quả
                         afterNewer.set(outbox.require(to, MailKind.EMAIL_VERIFY));
-                        return stale.play(invocation, to); // rồi mới tới kết quả muộn của A
+                        return stale.play(invocation, to, () -> lateRealSend(invocation)); // rồi mới tới kết quả muộn của A
                     }
-                    return newer.play(invocation, to);
+                    return newer.play(invocation, to, invocation::callRealMethod);
                 })
-                .when(transport)
-                .send(any(), any(), any(), any());
+                .when(transport).send(any(), any(), any(), any(), any());
 
         dispatcher.dispatchBatch();
 
@@ -188,8 +204,7 @@ class MailClaimOwnershipIT extends AbstractMailIT {
                     }
                     return invocation.callRealMethod();
                 })
-                .when(transport)
-                .send(any(), any(), any(), any());
+                .when(transport).send(any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> dispatcher.dispatchBatch()).isInstanceOf(ProcessDied.class);
         assertThat(outbox.require(to, MailKind.EMAIL_VERIFY).sentAt()).isNull();
@@ -205,14 +220,31 @@ class MailClaimOwnershipIT extends AbstractMailIT {
         assertThat(receivedAtLeast(1)).extracting(Received::to).containsExactly(to);
     }
 
+    /**
+     * SMTP của A đã chạy trước khi hạn giữ chỗ trôi qua và chỉ kết thúc sau đó (phần còn lại chấp nhận được, AD-19):
+     * gửi thật bằng hạn của một lần gửi còn sống.
+     */
+    private Object lateRealSend(org.mockito.invocation.InvocationOnMock invocation) throws Exception {
+        SendDeadline inFlight = new SendDeadline(clock, clock.instant().plus(LEASE), properties.attemptTimeout());
+        new SmtpMailTransport(sender, properties.from(), clock)
+                .send(
+                        invocation.getArgument(0),
+                        invocation.getArgument(1),
+                        invocation.getArgument(2),
+                        invocation.getArgument(3),
+                        inFlight);
+        return null;
+    }
+
     enum Outcome {
         SENT,
         TRANSIENT,
         PERMANENT;
 
-        Object play(org.mockito.invocation.InvocationOnMock invocation, String to) throws Throwable {
+        Object play(org.mockito.invocation.InvocationOnMock invocation, String to, ThrowingSupplier<Object> realSend)
+                throws Throwable {
             return switch (this) {
-                case SENT -> invocation.callRealMethod();
+                case SENT -> realSend.get();
                 case TRANSIENT -> throw new SMTPSendFailedException("DATA", 451, "451 4.3.0 Try again later", null, null, null, null);
                 case PERMANENT -> throw new SMTPAddressFailedException(new InternetAddress(to), "RCPT TO", 550, "550 5.1.1 No such user");
             };
