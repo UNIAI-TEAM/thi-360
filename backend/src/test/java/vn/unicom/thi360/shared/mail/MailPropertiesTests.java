@@ -2,10 +2,13 @@ package vn.unicom.thi360.shared.mail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.Properties;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -27,21 +30,81 @@ class MailPropertiesTests {
     }
 
     @ParameterizedTest(name = "THI360_SMTP_TLS={0} stops the application")
-    @CsvSource({"ssl", "true", "starttls-required", "off"})
+    @CsvSource({"ssl", "true", "starttls-required", "off", "start-tls", "t.l.s", "start_tls", "TLS1.2", "no-ne"})
     void otherValuesStopStartup(String value) {
         runner.withPropertyValues("thi360.mail.tls=" + value).run(context -> {
             assertThat(context).hasFailed();
             assertThat(hasCause(context.getStartupFailure(), BindException.class)).isTrue();
+            assertThat(rootMessage(context.getStartupFailure())).contains("thi360.mail.tls");
+        });
+    }
+
+    @ParameterizedTest(name = "THI360_SMTP_TLS=\"{0}\" (blank) falls back to starttls")
+    @ValueSource(strings = {"", " ", "   "})
+    void blankValueKeepsTheSecureDefault(String value) {
+        // THI360_SMTP_TLS= (set but blank), as docker compose passes an unset variable of the .env file.
+        runner.withPropertyValues("thi360.mail.tls=" + value).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean(MailProperties.class).tls()).isEqualTo(SmtpTls.STARTTLS);
+        });
+    }
+
+    @ParameterizedTest(name = "batch-size={0} stops the application")
+    @ValueSource(strings = {"0", "-1", "21", "1000"})
+    void batchSizeOutsideOneToTwentyStopsStartup(String value) {
+        runner.withPropertyValues("thi360.mail.batch-size=" + value).run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(rootMessage(context.getStartupFailure())).contains("thi360.mail.batch-size");
+        });
+    }
+
+    @ParameterizedTest(name = "batch-size={0} is accepted")
+    @ValueSource(strings = {"1", "20"})
+    void batchSizeBoundsAreAccepted(String value) {
+        runner.withPropertyValues("thi360.mail.batch-size=" + value).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean(MailProperties.class).batchSize()).isEqualTo(Integer.parseInt(value));
+        });
+    }
+
+    @ParameterizedTest(name = "claim-lease={0} stops the application")
+    @ValueSource(strings = {"PT0S", "-PT1S", "PT2M", "PT1M"})
+    void claimLeaseMustBePositiveAndLongerThanTheAttemptDeadline(String value) {
+        runner.withPropertyValues("thi360.mail.claim-lease=" + value, "thi360.mail.attempt-timeout=PT2M").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(rootMessage(context.getStartupFailure())).contains("thi360.mail.claim-lease");
+        });
+    }
+
+    @ParameterizedTest(name = "{0}={1} stops the application")
+    @CsvSource({
+        "connect-timeout,PT0S",
+        "connect-timeout,PT0.0004S",
+        "connect-timeout,-PT1S",
+        "connect-timeout,PT600H",
+        "read-timeout,PT0S",
+        "read-timeout,PT0.0004S",
+        "read-timeout,-PT1S",
+        "read-timeout,PT600H",
+        "attempt-timeout,PT0S",
+        "attempt-timeout,-PT1S"
+    })
+    void timeoutsMustBePositiveWholeMillisecondsThatFitAnInt(String name, String value) {
+        runner.withPropertyValues("thi360.mail." + name + "=" + value).run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(rootMessage(context.getStartupFailure())).contains("thi360.mail." + name);
         });
     }
 
     @Test
-    void emptyValueMeansNotSetAndKeepsTheSecureDefault() {
-        // THI360_SMTP_TLS= (present but empty) is no value at all: Spring Boot binds it as unset, so starttls applies.
-        runner.withPropertyValues("thi360.mail.tls=").run(context -> {
-            assertThat(context).hasNotFailed();
-            assertThat(context.getBean(MailProperties.class).tls()).isEqualTo(SmtpTls.STARTTLS);
-        });
+    void theSmallestAndLargestProviderTimeoutsAreAccepted() {
+        runner.withPropertyValues("thi360.mail.connect-timeout=PT0.001S", "thi360.mail.read-timeout=PT596H")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(JavaMailSenderImpl.class).getJavaMailProperties())
+                            .containsEntry("mail.smtp.connectiontimeout", "1")
+                            .containsEntry("mail.smtp.timeout", Long.toString(Duration.ofHours(596).toMillis()));
+                });
     }
 
     @Test
@@ -93,6 +156,26 @@ class MailPropertiesTests {
             assertThat(sender.getUsername()).isEqualTo("mailer");
             assertThat(sender.getJavaMailProperties()).containsEntry("mail.smtp.auth", "true");
         });
+    }
+
+    /** R1-11: mật khẩu tới được bộ gửi (SmtpMailTransport kết nối bằng chính bộ gửi này). Giá trị giả, và không đưa vào thông báo lỗi của test. */
+    @Test
+    void thePasswordReachesTheSenderAndTheTransport() {
+        String password = "dev-only-" + UUID.randomUUID();
+        runner.withPropertyValues("thi360.mail.tls=none", "spring.mail.username=mailer", "spring.mail.password=" + password)
+                .run(context -> {
+                    JavaMailSenderImpl sender = context.getBean(JavaMailSenderImpl.class);
+                    assertThat(password.equals(sender.getPassword())).as("password handed to the sender").isTrue();
+                    assertThat(sender.getUsername()).isEqualTo("mailer");
+                });
+    }
+
+    private static String rootMessage(Throwable failure) {
+        Throwable root = failure;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        return String.valueOf(root.getMessage());
     }
 
     private static boolean hasCause(Throwable failure, Class<? extends Throwable> type) {
