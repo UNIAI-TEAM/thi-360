@@ -139,8 +139,8 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
     }
 
     /**
-     * R1-12: a whole-exam run that never evaluated the paths against the rules cannot vouch for them. It neither
-     * clears RULES_CHANGED on an old result nor drops the stamp of a current one; a completed run still stamps.
+     * R1-12: a whole-exam run that never evaluated the paths against the rules cannot vouch for them. It never
+     * receives a stamp, even if the preceding run was stamped; a completed run still stamps.
      */
     @Test
     void incompleteWholeRunDoesNotStamp() throws Exception {
@@ -158,10 +158,10 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         assertThat(stamp(exam)).isEqualTo("FTM_R12");
         assertThat(latestReason(exam)).isNull();
 
-        // An incomplete run after a current one keeps the current stamp: the exam is not asked to recheck for rules.
+        // A new incomplete run cannot inherit the prior run's stamp.
         completeCheck(exam, paths("codes:QD01=INVALID", "codes:QD02=INVALID"), whole, false);
-        assertThat(stamp(exam)).isEqualTo("FTM_R12");
-        assertThat(latestReason(exam)).isNull();
+        assertThat(stamp(exam)).isNull();
+        assertThat(latestReason(exam)).isEqualTo("RULES_CHANGED");
         assertThat(latest("/api/v1/admin/exams/" + exam).path("status").asText()).isEqualTo("INVALID");
     }
 

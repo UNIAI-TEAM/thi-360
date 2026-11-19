@@ -12,11 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.shared.ids.Ids;
 
 /**
- * Atomically saves a completed whole-exam check only while its input exam revision still matches. A result the
- * checker fully evaluated is stamped ({@link ExamCheckRulesStamp}); an incomplete one (the solve was blocked by the
- * time budget or the path limit, no path met the rules) carries over the stamp of the result it replaces, so it
- * can neither clear nor invent the proof that the current rules ran. One-subject and one-part checks never reach
- * this store.
+ * Atomically saves a whole-exam check only while its input exam revision still matches. Only a result whose
+ * checker evaluated the rules is stamped ({@link ExamCheckRulesStamp}); incomplete runs never receive a stamp.
+ * One-subject and one-part checks never reach this store.
  */
 @Service
 public class ExamCheckResultStore {
@@ -58,9 +56,7 @@ public class ExamCheckResultStore {
                         + "exam_revision = EXCLUDED.exam_revision, structure_hash = EXCLUDED.structure_hash, "
                         + "config_snapshot = EXCLUDED.config_snapshot, profile_revision = EXCLUDED.profile_revision, "
                         + "catalog_revision = EXCLUDED.catalog_revision, input_fingerprint = EXCLUDED.input_fingerprint, "
-                        + "source_revisions = EXCLUDED.source_revisions, result = " + (rulesEvaluated ? "EXCLUDED.result"
-                        : "EXCLUDED.result || jsonb_strip_nulls(jsonb_build_object('" + ExamCheckRulesStamp.KEY
-                        + "', exam_check_run.result -> '" + ExamCheckRulesStamp.KEY + "'))") + ", "
+                        + "source_revisions = EXCLUDED.source_revisions, result = EXCLUDED.result, "
                         + "witness = EXCLUDED.witness, checked_at = EXCLUDED.checked_at, duration_ms = EXCLUDED.duration_ms",
                 Ids.newId(), input.examId(), input.examRevision(), input.structureHash(), json(input.configSnapshot()),
                 input.examId(),
