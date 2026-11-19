@@ -4,7 +4,7 @@ import { EXAMS_FIXTURE } from "./exam-fixture";
 
 const block = (overrides: Partial<QuestionBlock>): QuestionBlock => ({
   id: "blk",
-  name: "Nhóm",
+  name: "Group",
   questionType: "SINGLE_CHOICE",
   questionCount: 1,
   setCount: null,
@@ -45,8 +45,8 @@ export function sp2eVanExam(): ExamDetail {
     maxScore: 6,
     totalQuestions: 30,
     parts: [
-      part("p1", "Phần I · Đọc hiểu", 1, 30, [block({ id: "b1", name: "Văn bản 1", questionCount: 30, requiredPointsPerQuestion: 0.2 })]),
-      part("p2", "Phần II · Viết", 2, 0, [block({ id: "b5", name: "Viết bài", questionType: "ESSAY", questionCount: 1, omitted: true })]),
+      part("p1", "Part I Reading", 1, 30, [block({ id: "b1", name: "Text 1", questionCount: 30, requiredPointsPerQuestion: 0.2 })]),
+      part("p2", "Part II Writing", 2, 0, [block({ id: "b5", name: "Essay", questionType: "ESSAY", questionCount: 1, omitted: true })]),
     ],
   };
 }
