@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -66,9 +67,43 @@ class PublishedExamSetProfileIT extends AbstractKeycloakIntegrationTest {
             assertThat(jdbc.queryForList("SELECT status FROM exam.exam WHERE code = ?", String.class, exam.code()))
                     .as(exam.code()).containsExactly(expected);
         }
+        // Active account with the declared role of the constants file (R1-8).
         for (var account : definition.accounts()) {
-            assertThat(jdbc.queryForObject("SELECT count(*) FROM identity.user_account WHERE username = ? "
-                    + "AND status = 2", Integer.class, account.username())).as(account.username()).isEqualTo(1);
+            List<String> roles = jdbc.queryForList("SELECT r.code FROM identity.role r JOIN identity.user_role ur "
+                    + "ON ur.role_id = r.id JOIN identity.user_account u ON u.id = ur.user_id "
+                    + "WHERE u.username = ? AND u.status = 2 AND u.deleted_at IS NULL", String.class, account.username());
+            assertThat(roles).as("roles of %s", account.username()).containsExactly(account.role());
+        }
+    }
+
+    /** Listening roots are selected independently of references, so a missing attachment fails this check. */
+    @Test
+    void listeningAudioIsReadableAfterE2eStartup() {
+        assertThat(jdbc.queryForObject("SELECT status FROM exam.exam WHERE code = 'DS-HSCA-ANH'",
+                String.class)).isEqualTo("PUBLISHED");
+        List<java.util.Map<String, Object>> roots = jdbc.queryForList(
+                "SELECT id, COALESCE(source_code, code) AS source_code FROM questionbank.question "
+                        + "WHERE parent_id IS NULL AND status = 'READY' "
+                        + "AND (code LIKE 'SEED-HSCA-ANH-LISTEN-%' "
+                        + "OR source_code LIKE 'DS-Q-HSCA-ANH-NGHE%')");
+        assertThat(roots).isNotEmpty();
+        assertThat(roots).anySatisfy(root -> assertThat((String) root.get("source_code"))
+                .startsWith("SEED-HSCA-ANH-LISTEN-"));
+        assertThat(roots).anySatisfy(root -> assertThat((String) root.get("source_code"))
+                .startsWith("DS-Q-HSCA-ANH-NGHE"));
+        for (var root : roots) {
+            List<String> keys = jdbc.queryForList(
+                    "SELECT a.object_key FROM questionbank.question q "
+                            + "JOIN questionbank.question_asset_ref r ON r.question_id = q.id "
+                            + "AND r.version_no = q.current_version_no "
+                            + "JOIN questionbank.question_asset a ON a.id = r.asset_id "
+                            + "WHERE q.id = ? AND a.kind = 'ATTACHMENT' AND a.mime LIKE 'audio/%'",
+                    String.class, root.get("id"));
+            assertThat(keys).as("audio attachment of %s", root.get("source_code")).isNotEmpty();
+            for (String key : keys) {
+                assertThat(storage.get(key)).as(key).isPresent()
+                        .hasValueSatisfying(bytes -> assertThat(bytes.length).isPositive());
+            }
         }
     }
 

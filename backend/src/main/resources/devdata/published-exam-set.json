@@ -2,6 +2,11 @@
   "version": 1,
   "note": "Single source of the published exam set built by exam/devdata (DS). Codes are stable keys; do not rename.",
   "actor": "sys.admin",
+  "listingBenefits": {
+    "aiExplanation": true,
+    "strengthWeakness": true,
+    "practice": true
+  },
   "accounts": [
     {
       "username": "sys.admin",

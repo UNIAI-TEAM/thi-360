@@ -187,16 +187,42 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
         }
     }
 
+    /**
+     * E24 sale states plus E26 on the actual serving listings: the price, attempts and result view the EX-1 publish
+     * froze are what the constants file declares (R1-8).
+     */
     @Test
-    void saleStatesMatchTheConstants() {
+    void saleStatesMatchTheConstants() throws Exception {
         ServingExam discontinued = serving(definition.discontinuedExam());
         assertThat(discontinued.status()).isEqualTo("DISCONTINUED");
         ServingExam voucher = serving(definition.voucherExam());
         assertThat(voucher.status()).isEqualTo("PUBLISHED");
         assertThat(voucher.version().listing().listPriceVnd()).isGreaterThan(0L);
+        JsonNode benefits;
+        try (var in = new org.springframework.core.io.ClassPathResource(PublishedExamSetDefinition.RESOURCE)
+                .getInputStream()) {
+            benefits = mapper.readTree(in).path("listingBenefits");
+        }
+        assertThat(benefits.path("aiExplanation").isBoolean()).isTrue();
+        assertThat(benefits.path("strengthWeakness").isBoolean()).isTrue();
+        assertThat(benefits.path("practice").isBoolean()).isTrue();
         for (var exam : definition.exams()) {
-            if (exam.listing().priceVnd() > 0) {
-                assertThat(exam.listing().priceVnd()).as("price of %s (E26)", exam.code()).isGreaterThanOrEqualTo(10_000L);
+            var listing = serving(exam.code()).version().listing();
+            assertThat(listing).as("serving listing of %s", exam.code()).isNotNull();
+            assertThat(listing.listPriceVnd()).as("price of %s", exam.code()).isEqualTo(exam.listing().priceVnd());
+            assertThat(listing.attemptsGranted()).as("attempts of %s", exam.code())
+                    .isEqualTo(exam.listing().attemptsGranted());
+            assertThat(listing.resultView()).as("result view of %s", exam.code())
+                    .isEqualTo(exam.listing().resultView());
+            assertThat(listing.benefitAiExplanation()).as("AI benefit of %s", exam.code())
+                    .isEqualTo(benefits.path("aiExplanation").asBoolean());
+            assertThat(listing.benefitStrengthWeakness()).as("analysis benefit of %s", exam.code())
+                    .isEqualTo(benefits.path("strengthWeakness").asBoolean());
+            assertThat(listing.benefitPractice()).as("practice benefit of %s", exam.code())
+                    .isEqualTo(benefits.path("practice").asBoolean());
+            if (listing.listPriceVnd() != null && listing.listPriceVnd() > 0) {
+                assertThat(listing.listPriceVnd()).as("price of %s (E26)", exam.code())
+                        .isGreaterThanOrEqualTo(10_000L);
             }
         }
     }
