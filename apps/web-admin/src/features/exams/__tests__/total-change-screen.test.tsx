@@ -79,8 +79,16 @@ describe("R-121: môn đổi tổng từ 30 xuống 20 chưa xác nhận bảng 
     await user.click(await screen.findByRole("button", { name: "Đặt tổng môn thành 20" }));
     expect(await screen.findByText(/Tổng đổi thành 20 câu \(trước đó 30 câu\)/)).toBeInTheDocument();
 
+    // Sang nhóm câu của cùng môn (không hỏi chuyển mục): nhóm câu không có ô tổng, chặn phải tự mở lại môn khi Lưu.
+    await user.click(screen.getAllByRole("button", { name: /Choice/ })[0]!);
+    await waitFor(() => expect(window.location.search).toContain("block=blk-1"));
+    expect(screen.queryByRole("heading", { level: 2, name: /Toán/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tổng đổi thành 20 câu/)).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
+    expect(await screen.findByRole("heading", { level: 2, name: /Toán/ })).toBeInTheDocument();
+    expect(window.location.search).toContain("section=sec-1");
     expect(await screen.findByText(/tổng số câu của môn .* đã đổi/)).toBeInTheDocument();
     expect(screen.getByText(/Tổng đổi thành 20 câu/)).toBeInTheDocument();
 
