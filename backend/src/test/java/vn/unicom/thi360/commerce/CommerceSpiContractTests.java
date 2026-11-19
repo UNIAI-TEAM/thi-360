@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import vn.unicom.thi360.commerce.spi.AttemptStatusProvider;
@@ -23,20 +22,19 @@ class CommerceSpiContractTests {
     /** The exact SPI AT-1 / CM-4a build against (plan B1, AD-8): name, parameter types, result type. */
     @Test
     void entitlementPortDeclaresExactlyTheSixContractSignatures() {
-        List<String> signatures = Stream.of(EntitlementPort.class.getDeclaredMethods())
-                .map(CommerceSpiContractTests::signature)
-                .sorted()
-                .toList();
+        Method[] declared = EntitlementPort.class.getDeclaredMethods();
 
-        assertThat(signatures).containsExactlyInAnyOrder(
-                "EntitlementDescription describe(UUID, UUID)",
-                "EntitlementBenefits reserve(UUID, UUID, UUID)",
-                "void confirmUse(UUID)",
-                "void release(UUID)",
-                "EntitlementBenefits benefitsOf(UUID)",
-                "CompensationResult compensate(UUID, UUID, String)");
-        assertThat(signatures).hasSize(6);
-        assertThat(Stream.of(EntitlementPort.class.getDeclaredMethods()).map(Method::getName))
+        assertThat(declared).hasSize(6);
+        assertContractMethod(
+                declared, "describe", EntitlementDescription.class, UUID.class, UUID.class);
+        assertContractMethod(
+                declared, "reserve", EntitlementBenefits.class, UUID.class, UUID.class, UUID.class);
+        assertContractMethod(declared, "confirmUse", void.class, UUID.class);
+        assertContractMethod(declared, "release", void.class, UUID.class);
+        assertContractMethod(declared, "benefitsOf", EntitlementBenefits.class, UUID.class);
+        assertContractMethod(
+                declared, "compensate", CompensationResult.class, UUID.class, UUID.class, String.class);
+        assertThat(Stream.of(declared).map(Method::getName))
                 .doesNotContain("grantForOrder", "revokeUnused");
     }
 
@@ -70,10 +68,14 @@ class CommerceSpiContractTests {
         assertThat(compensation.entitlementId()).isEqualTo(entitlementId);
     }
 
-    private static String signature(Method method) {
-        return method.getReturnType().getSimpleName() + " " + method.getName() + "("
-                + Stream.of(method.getParameterTypes()).map(Class::getSimpleName).collect(Collectors.joining(", "))
-                + ")";
+    private static void assertContractMethod(
+            Method[] declared, String name, Class<?> returnType, Class<?>... parameterTypes) {
+        Method[] matching = Stream.of(declared)
+                .filter(m -> m.getName().equals(name))
+                .toArray(Method[]::new);
+        assertThat(matching).as("exactly one method named %s", name).hasSize(1);
+        assertThat(matching[0].getReturnType()).isEqualTo(returnType);
+        assertThat(matching[0].getParameterTypes()).containsExactly(parameterTypes);
     }
 
     private static List<String> components(Class<? extends Record> type) {
