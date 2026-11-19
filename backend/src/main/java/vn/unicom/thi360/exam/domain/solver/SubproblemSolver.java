@@ -143,8 +143,9 @@ final class SubproblemSolver {
     }
 
     /**
-     * A group short of usable units: names the cap whose blocked candidates would close the gap, null when no
-     * single cap does (the shortage is the source's).
+     * A group short of usable units: names the cap whose relaxation ALONE would close the gap, that is, whose
+     * blocked candidates are not over another cap as well. Null when no single cap does (the shortage is the
+     * source's, or several caps hold the same candidates and none explains it alone).
      */
     private static QuotaRef capShortage(Prep.SubproblemContext ctx, int groupUnits, long units, long[] blocked) {
         int best = -1;
@@ -154,6 +155,21 @@ final class SubproblemSolver {
             }
         }
         return best < 0 ? null : capRef(ctx, best);
+    }
+
+    /** The only cap candidate {@code i} of group {@code g} is over, or -1 when two or more caps hold it out. */
+    private static int soleBlockingCap(Prep.SubproblemContext ctx, int g, int i) {
+        int[] use = ctx.capUse()[g][i];
+        int sole = -1;
+        for (int k = 0; k < use.length; k++) {
+            if (use[k] > ctx.caps().get(k).cap().max()) {
+                if (sole >= 0) {
+                    return -1;
+                }
+                sole = k;
+            }
+        }
+        return sole;
     }
 
     /**
@@ -206,7 +222,10 @@ final class SubproblemSolver {
                         }
                     }
                 } else if (ctx.capBlock()[g][i] >= 0) {
-                    blocked[ctx.capBlock()[g][i]] += ctx.units()[g][i];
+                    int sole = soleBlockingCap(ctx, g, i);
+                    if (sole >= 0) {
+                        blocked[sole] += ctx.units()[g][i];
+                    }
                 }
             }
             if (units < groupUnits) {
