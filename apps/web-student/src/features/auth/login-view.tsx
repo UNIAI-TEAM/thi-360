@@ -2,13 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, cn, FormField, Input, LocaleSwitcher, PasswordField, ThemeToggle } from "@thi360/ui";
-import { AlertCircle, Check, Lock, User } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, Lock, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+  PASSWORD_RESET_DONE_PARAM,
+  PASSWORD_RESET_DONE_VALUE,
+  withCallbackUrl,
+} from "@/features/account/account-links";
 import { loginWithPassword } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
@@ -50,6 +55,8 @@ export function LoginView({
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? undefined;
   const reason = searchParams.get("reason");
+  // Vừa đặt lại mật khẩu xong (về từ `/reset-password`): báo thành công, không tự đăng nhập (TM 5.4).
+  const passwordResetDone = searchParams.get(PASSWORD_RESET_DONE_PARAM) === PASSWORD_RESET_DONE_VALUE;
 
   const [serverErrorCode, setServerErrorCode] = useState<LoginErrorCode | null>(() =>
     reason === "inactive" ? "ACCOUNT_INACTIVE" : null,
@@ -125,6 +132,15 @@ export function LoginView({
             </Link>
           </div>
 
+          {passwordResetDone && (
+            <div
+              role="status"
+              className="flex items-start gap-2.5 rounded-lg border border-success/30 bg-success-bg px-3.5 py-3 text-body text-success"
+            >
+              <CheckCircle2 aria-hidden className="mt-0.5 size-4.5 shrink-0" />
+              <span>{t("resetDone")}</span>
+            </div>
+          )}
           {serverErrorCode && (
             <div
               role="alert"
@@ -189,7 +205,23 @@ export function LoginView({
             </Button>
           </form>
 
-          <p className="text-field-label text-text-muted">{t("forgotNote")}</p>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-field-label">
+            <Link
+              href={withCallbackUrl("/forgot-password", callbackUrl)}
+              className={cn("font-medium text-primary-text hover:underline", coarseTextHitArea)}
+            >
+              {t("forgotLink")}
+            </Link>
+            <p className="text-text-muted">
+              {t("noAccount")}{" "}
+              <Link
+                href={withCallbackUrl("/register", callbackUrl)}
+                className={cn("font-medium text-primary-text hover:underline", coarseTextHitArea)}
+              >
+                {t("registerLink")}
+              </Link>
+            </p>
+          </div>
         </section>
 
         <section className="flex min-w-0 flex-1 flex-col gap-6 bg-primary-50 p-6 sm:p-10 md:p-12">

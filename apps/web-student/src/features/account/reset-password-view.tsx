@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { PASSWORD_RESET_DONE_PARAM, PASSWORD_RESET_DONE_VALUE } from "@/features/account/account-links";
 import { resetPasswordByToken } from "@/features/account/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { touchFieldText } from "@/lib/styles";
@@ -16,10 +17,6 @@ import { touchFieldText } from "@/lib/styles";
 const PAGE_CLASS = "flex min-h-screen flex-col items-center gap-4 bg-page p-4 sm:p-6 md:justify-center";
 const CARD_CLASS =
   "flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-6 shadow-xl sm:p-10";
-
-/** Tham số `reset` trên `/login` báo đã đặt lại mật khẩu xong (câu thông báo hiện ở trang đăng nhập). */
-export const PASSWORD_RESET_DONE_PARAM = "reset";
-export const PASSWORD_RESET_DONE_VALUE = "done";
 
 type ResetFieldErrorKey = "passwordRequired" | "passwordWeak" | "confirmRequired" | "confirmMismatch";
 
