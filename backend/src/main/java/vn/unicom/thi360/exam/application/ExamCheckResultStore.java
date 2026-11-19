@@ -11,7 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.shared.ids.Ids;
 
-/** Atomically saves a completed check only while its input exam revision still matches. */
+/**
+ * Atomically saves a completed whole-exam check only while its input exam revision still matches. Every result saved
+ * here was evaluated under the current rules, so it is stamped ({@link ExamCheckRulesStamp}); one-subject and
+ * one-part checks never reach this store.
+ */
 @Service
 public class ExamCheckResultStore {
     private final JdbcTemplate jdbc;
@@ -50,7 +54,7 @@ public class ExamCheckResultStore {
                 Ids.newId(), input.examId(), input.examRevision(), input.structureHash(), json(input.configSnapshot()),
                 input.examId(),
                 input.profileRevision(), input.catalogRevision(), input.fingerprint(), json(input.sourceRevisions()),
-                json(result), json(witness), Timestamp.from(checkedAt), durationMs);
+                json(ExamCheckRulesStamp.stamped(result)), json(witness), Timestamp.from(checkedAt), durationMs);
         return true;
     }
 

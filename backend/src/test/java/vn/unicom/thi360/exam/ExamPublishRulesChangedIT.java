@@ -1,0 +1,271 @@
+package vn.unicom.thi360.exam;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import vn.unicom.thi360.audit.spi.AuditActorType;
+import vn.unicom.thi360.exam.application.ExamCheckCompletion;
+import vn.unicom.thi360.exam.application.ExamCheckResultStore;
+import vn.unicom.thi360.exam.application.ExamCheckScope;
+import vn.unicom.thi360.identity.spi.Permissions;
+
+/**
+ * CR-4 AC-7 (FTM AC 58): a saved whole-exam result that was not evaluated under the R-12 rules cannot publish a
+ * standard HSA or QDA exam with a science subject. Only a whole-exam check, valid or not, lifts the reason.
+ */
+class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
+    private static final String HSA_SCIENCE = """
+            [{"id":"p3","participation":{"mode":"CHOICE","choose":1},"options":[
+              {"id":"science","kind":"SUBJECT_CHOICE","countsByPick":[17,17,16],"sections":[
+                {"id":"s-ly","subjectCode":"LY","blocks":[]}]},
+              {"id":"english","kind":"SUBJECT","code":"ANH","sections":[]}]}]
+            """;
+    private static final String QDA_SCIENCE =
+            "[{\"id\":\"codes\",\"codeSource\":{\"source\":\"GLOBAL_LIST\"},\"subjectPool\":[{\"id\":\"s-sinh\",\"subjectCode\":\"SINH\",\"blocks\":[]}]}]";
+    private static final String QDA_PATHS_PLAIN = "[{\"id\":\"codes\",\"codeSource\":{\"source\":\"GLOBAL_LIST\"},\"subjectPool\":[]}]";
+
+    @Autowired private ExamCheckCompletion completion;
+
+    // ---- the chain on a real exam: check, publish, GET, one-subject check, whole check --------------------
+
+    /** A VALID whole-exam result saved before the rules: publish and GET say RULES_CHANGED; a subject check does not clear it. */
+    @Test
+    void subjectCheckDoesNotClear() throws Exception {
+        String base = realHsaScienceExam();
+        UUID exam = UUID.fromString(base.substring(base.lastIndexOf('/') + 1));
+        JsonNode first = check(base, "{}");
+        assertThat(first.path("status").asText()).isEqualTo("VALID");
+        assertThat(first.has("rulesStamp")).isFalse();
+        removeStamp(exam);
+
+        publishRefusedWith(exam, "RULES_CHANGED", "default");
+        JsonNode latest = latest(base);
+        assertThat(latest.path("invalidReason").asText()).isEqualTo("RULES_CHANGED");
+        assertThat(latest.path("stale").asBoolean()).isTrue();
+        assertThat(latest.has("rulesStamp")).isFalse();
+        assertThat(latest.path("status").asText()).isEqualTo("VALID");
+
+        String sectionId = jdbc.queryForObject("SELECT jsonb_path_query_first(parts, '$.** ? (@.subjectCode == \"LY\").id') #>> '{}' "
+                + "FROM exam.exam_structure WHERE exam_id = ?", String.class, exam);
+        JsonNode oneSubject = check(base, "{\"scope\":\"SECTION\",\"sectionId\":\"" + sectionId + "\"}");
+        assertThat(oneSubject.has("status")).isTrue();
+        assertThat(latest(base).path("invalidReason").asText()).isEqualTo("RULES_CHANGED");
+        publishRefusedWith(exam, "RULES_CHANGED", "default");
+        assertThat(versions(exam)).isZero();
+    }
+
+    @Test
+    void examCheckClears() throws Exception {
+        String base = realHsaScienceExam();
+        UUID exam = UUID.fromString(base.substring(base.lastIndexOf('/') + 1));
+        check(base, "{}");
+        removeStamp(exam);
+        publishRefusedWith(exam, "RULES_CHANGED", "default");
+
+        JsonNode again = check(base, "{}");
+        assertThat(again.has("rulesStamp")).as("the stamp is not part of the API result").isFalse();
+        assertThat(latest(base).path("invalidReason").isNull()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT result->>'rulesStamp' FROM exam.exam_check_run WHERE exam_id = ?", String.class, exam))
+                .isEqualTo("FTM_R12");
+        publish(exam, "default").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+        assertThat(versions(exam)).isEqualTo(1);
+    }
+
+    // ---- QDA, overall result INVALID under the new rules: E24 as today -----------------------------------
+
+    @Test
+    void invalidOverallStampedE24() throws Exception {
+        UUID exam = newExam("QDA", QDA_SCIENCE);
+        saveOldCheck(exam, paths("codes:QD01=VALID", "codes:QD02=INVALID"));
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD01");
+
+        // The whole check ran and stored its INVALID verdict: stamped, so the reason is gone.
+        completeCheck(exam, paths("codes:QD01=VALID", "codes:QD02=INVALID"), ExamCheckScope.from(null, null, null));
+        assertThat(stamp(exam)).isEqualTo("FTM_R12");
+        assertThat(latestReason(exam)).isNull();
+        // The invalid path is not serving yet: the valid path publishes.
+        publish(exam, "codes:QD01").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+        assertThat(jdbc.queryForObject("SELECT array_to_string(serving_path_ids, ',') FROM exam.exam_version WHERE exam_id = ?",
+                String.class, exam)).isEqualTo("codes:QD01");
+    }
+
+    @Test
+    void servedInvalidBlocks() throws Exception {
+        UUID exam = newExam("QDA", QDA_SCIENCE);
+        completeCheck(exam, paths("codes:QD01=VALID", "codes:QD02=VALID"), ExamCheckScope.from(null, null, null));
+        publish(exam, "codes:QD01", "codes:QD02").andExpect(status().isOk());
+        jdbc.update("UPDATE exam.exam SET description = 'Changed description' WHERE id = ?", exam);
+        completeCheck(exam, paths("codes:QD01=VALID", "codes:QD02=INVALID"), ExamCheckScope.from(null, null, null));
+        // Stamped: not RULES_CHANGED, E24 decides, and the serving path that turned INVALID blocks.
+        publish(exam, "codes:QD01").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PUBLISH_ALL_PATHS_REQUIRED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("PATH_SERVING_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("codes:QD02"));
+        assertThat(versions(exam)).isEqualTo(1);
+    }
+
+    /** Checks and refused publishes never move the serving path or the published version. */
+    @Test
+    void failedOpsKeepServed() throws Exception {
+        UUID exam = newExam("QDA", QDA_SCIENCE);
+        completeCheck(exam, paths("codes:QD01=VALID", "codes:QD02=VALID"), ExamCheckScope.from(null, null, null));
+        publish(exam, "codes:QD01", "codes:QD02").andExpect(status().isOk());
+        String served = servedState(exam);
+        assertThat(served).isEqualTo("1|SERVING|codes:QD01,codes:QD02");
+
+        jdbc.update("UPDATE exam.exam SET description = 'Changed description' WHERE id = ?", exam);
+        saveOldCheck(exam, paths("codes:QD01=VALID", "codes:QD02=VALID")); // a result saved before the rules
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD01", "codes:QD02");
+        assertThat(servedState(exam)).isEqualTo(served);
+        completeCheck(exam, paths("codes:QD01=VALID", "codes:QD02=INVALID"), ExamCheckScope.from("SECTION", null, "s-sinh"));
+        assertThat(latestReason(exam)).isEqualTo("RULES_CHANGED");
+        completeCheck(exam, paths("codes:QD01=VALID", "codes:QD02=INVALID"), ExamCheckScope.from(null, null, null));
+        publish(exam, "codes:QD01").andExpect(status().isUnprocessableEntity());
+        assertThat(servedState(exam)).isEqualTo(served);
+    }
+
+    // ---- not affected -------------------------------------------------------------------------------------
+
+    @Test
+    void otherKindsAndReviewUnaffected() throws Exception {
+        // BCA with a science subject: no limits, no reason. A review QDA exam with a science subject: none either.
+        UUID bca = newExam("BCA", HSA_SCIENCE);
+        saveOldCheck(bca, paths("science=VALID", "english=VALID"));
+        UUID review = newExam("QDA", QDA_SCIENCE);
+        jdbc.update("UPDATE exam.exam SET build_mode = 'REVIEW' WHERE id = ?", review);
+        saveOldCheck(review, paths("codes:QD01=VALID"));
+        // A standard HSA exam with no limited subject keeps its old result, and so does a QDA exam without a pool subject.
+        UUID noScience = newExam("HSA", ExamPublishAllPathsIT.HSA_PART3);
+        saveOldCheck(noScience, paths("science=VALID", "english=VALID"));
+        UUID plainQda = newExam("QDA", QDA_PATHS_PLAIN);
+        saveOldCheck(plainQda, paths("codes:QD01=VALID"));
+        // The same standard HSA and QDA exams WITH a science subject are asked to check again.
+        UUID hsa = newExam("HSA", HSA_SCIENCE);
+        saveOldCheck(hsa, paths("science=VALID", "english=VALID"));
+        UUID qda = newExam("QDA", QDA_SCIENCE);
+        saveOldCheck(qda, paths("codes:QD01=VALID"));
+        for (UUID unaffected : List.of(bca, review, noScience, plainQda)) assertThat(latestReason(unaffected)).isNull();
+        for (UUID affected : List.of(hsa, qda)) assertThat(latestReason(affected)).isEqualTo("RULES_CHANGED");
+        // The list filter agrees with the assessment.
+        List<String> valid = listed("VALID").findValuesAsText("id");
+        List<String> recheck = listed("NEEDS_RECHECK").findValuesAsText("id");
+        for (UUID unaffected : List.of(bca, review, noScience, plainQda)) {
+            assertThat(valid).contains(unaffected.toString());
+            assertThat(recheck).doesNotContain(unaffected.toString());
+        }
+        for (UUID affected : List.of(hsa, qda)) {
+            assertThat(recheck).contains(affected.toString());
+            assertThat(valid).doesNotContain(affected.toString());
+        }
+        publish(bca, "science", "english").andExpect(status().isOk());
+        publish(noScience, "science", "english").andExpect(status().isOk());
+        publish(plainQda, "codes:QD01").andExpect(status().isOk());
+        publish(review, "codes:QD01").andExpect(status().isOk());
+    }
+
+    // ---- helpers ------------------------------------------------------------------------------------------
+
+    private String realHsaScienceExam() throws Exception {
+        ObjectNode body = mapper.createObjectNode().put("kind", "HSA").put("scope", "SUBJECT").put("subjectCode", "LY")
+                .put("durationMinutes", 60).put("name", "CR-4 RULES_CHANGED").put("code", "RC-" + UUID.randomUUID().toString().substring(0, 8));
+        JsonNode created = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
+                        .content(body.toString())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        UUID id = UUID.fromString(created.path("id").asText());
+        ExamListingFixture.fill(jdbc, id);
+        entityManager.flush();
+        entityManager.clear();
+        return "/api/v1/admin/exams/" + id;
+    }
+
+    private JsonNode check(String base, String body) throws Exception {
+        return mapper.readTree(mockMvc.perform(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    private JsonNode latest(String base) throws Exception {
+        return mapper.readTree(mockMvc.perform(get(base + "/check").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    private String latestReason(UUID exam) throws Exception {
+        JsonNode reason = latest("/api/v1/admin/exams/" + exam).path("invalidReason");
+        return reason.isNull() || reason.isMissingNode() ? null : reason.asText();
+    }
+
+    private JsonNode listed(String checkStatus) throws Exception {
+        return mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams").param("checkStatus", checkStatus).param("size", "200")
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    private void publishRefusedWith(UUID exam, String reason, String... paths) throws Exception {
+        publish(exam, paths).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHECK_REQUIRED"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value(reason));
+    }
+
+    /** A saved whole-exam result as it was before the rules: the store stamps every save, so the stamp is removed again. */
+    private void saveOldCheck(UUID exam, Map<String, String> pathResults) {
+        saveCheck(exam, pathResults);
+        removeStamp(exam);
+    }
+
+    private void removeStamp(UUID exam) {
+        assertThat(jdbc.update("UPDATE exam.exam_check_run SET result = result - 'rulesStamp' WHERE exam_id = ?", exam)).isEqualTo(1);
+    }
+
+    private String stamp(UUID exam) {
+        return jdbc.queryForObject("SELECT result->>'rulesStamp' FROM exam.exam_check_run WHERE exam_id = ?", String.class, exam);
+    }
+
+    private long versions(UUID exam) {
+        return jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, exam);
+    }
+
+    private String servedState(UUID exam) {
+        return jdbc.queryForObject("SELECT string_agg(version_no || '|' || state || '|' || array_to_string(serving_path_ids, ','), ';' "
+                + "ORDER BY version_no) FROM exam.exam_version WHERE exam_id = ?", String.class, exam);
+    }
+
+    /** Saves a check the way production does: through {@link ExamCheckCompletion}, which stamps whole-exam results only. */
+    private void completeCheck(UUID examId, Map<String, String> pathResults, ExamCheckScope scope) {
+        entityManager.flush();
+        entityManager.clear();
+        var exam = exams.findById(examId).orElseThrow();
+        var profile = profiles.findById(exam.getKindItemId()).orElseThrow();
+        var input = new ExamCheckResultStore.Input(examId, exam.getRevision(), "publish-it",
+                mapper.valueToTree(vn.unicom.thi360.exam.application.ExamCheckFingerprint.Config.from(exam)),
+                profile.getRevision(), catalog.revision(), "test", mapper.valueToTree(source.sourceRevisions(List.of(SUBJECT))));
+        ObjectNode outcome = mapper.createObjectNode();
+        ArrayNode paths = outcome.putArray("paths");
+        ArrayNode witnesses = mapper.createArrayNode();
+        boolean allValid = true;
+        for (var entry : pathResults.entrySet()) {
+            paths.addObject().put("pathId", entry.getKey()).put("result", entry.getValue());
+            if (!"VALID".equals(entry.getValue())) { allValid = false; continue; }
+            ObjectNode witness = witnesses.addObject();
+            ArrayNode chosen = witness.putObject("path").putArray("chosen");
+            if (!"default".equals(entry.getKey())) for (String option : entry.getKey().split("\\+")) chosen.addObject().put("optionId", option);
+            witness.putArray("witness").addObject().putArray("groups").addObject().putArray("picks")
+                    .addObject().put("questionId", question().toString()).put("versionNo", 1);
+        }
+        outcome.put("status", allValid ? "VALID" : "INVALID").put("issueCount", 0);
+        var done = completion.complete(input, null, outcome, witnesses, List.of(), scope, Instant.now(), 1,
+                new ExamCheckCompletion.Actor(UUID.randomUUID(), "tester", AuditActorType.SYSTEM), "trace-test");
+        assertThat(done.accepted()).isTrue();
+        entityManager.clear();
+    }
+}

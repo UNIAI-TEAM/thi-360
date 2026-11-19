@@ -12,6 +12,7 @@ public final class SubjectFormLimits {
     public record Limit(int setCountMin, int setCountMax, int setSize, int shortAnswerMin) { }
 
     private static final Set<String> KINDS = Set.of("HSA", "QDA");
+    private static final Set<String> SUBJECTS = Set.of("LY", "HOA", "SINH", "SU", "DIA");
     private static final Limit WITH_SHORT_ANSWER = new Limit(1, 2, 3, 1);
     private static final Limit WITHOUT_SHORT_ANSWER = new Limit(1, 2, 3, 0);
 
@@ -24,5 +25,15 @@ public final class SubjectFormLimits {
             case "SU", "DIA" -> Optional.of(WITHOUT_SHORT_ANSWER);
             default -> Optional.empty();
         };
+    }
+
+    /** Kind codes that have any limit. */
+    static Set<String> kinds() {
+        return KINDS;
+    }
+
+    /** Subject codes that have a limit in at least one kind. */
+    static Set<String> subjects() {
+        return SUBJECTS;
     }
 }
