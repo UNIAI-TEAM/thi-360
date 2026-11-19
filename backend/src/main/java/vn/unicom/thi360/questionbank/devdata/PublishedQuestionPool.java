@@ -48,8 +48,8 @@ final class PublishedQuestionPool {
             PoolSpec.set("VACT-TOAN-SET", "TOAN", 14, 3, "10").competency("VACT-TOAN"),
             PoolSpec.set("VACT-LOGIC", "SCIENTIFIC_THINKING", 14, 3, "10").competency("VACT-TD-LOGIC"),
             PoolSpec.set("VACT-SUY-LUAN", "SCIENTIFIC_THINKING", 20, 3, "10").competency("VACT-TD-SL"),
-            // SP2E, THPTQG.
-            PoolSpec.of("TOAN-DLTH", "TOAN", SINGLE_CHOICE, 8, "0.25").tags("TOAN_DU_LIEU_TONG_HOP"),
+            // SP2E, THPTQG. The tagged group competes with the 20 untagged ones for the same 0.25-point questions: keep it deep.
+            PoolSpec.of("TOAN-DLTH", "TOAN", SINGLE_CHOICE, 40, "0.25").tags("TOAN_DU_LIEU_TONG_HOP"),
             PoolSpec.of("TIN-TF-1", "INFORMATICS", TRUE_FALSE, 10, "1"),
             // H-SCA.
             PoolSpec.of("HSCA-TOAN-SC", "TOAN", SINGLE_CHOICE, 40, "0.25"),

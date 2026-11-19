@@ -58,7 +58,8 @@ public class PublishedQuestionPoolBuilder {
     static final String RESOURCE = "devdata/published-exam-set.json";
     static final String AUDIO_FILE = "hsca-en-listening-single-01.mp3";
     static final String AUDIO_NAME = "ds-listening.mp3";
-    private static final int CHUNK = 40;
+    private static final int CHUNK = 20;
+    private static final int THREADS = 4;
 
     private static final String[] GRADES = {"G10", "G11", "G12"};
     private static final String[] LEVELS = {"NB", "TH", "VD", "VDC"};
@@ -108,10 +109,12 @@ public class PublishedQuestionPoolBuilder {
         Set<String> existing = new HashSet<>(jdbc.queryForList(
                 "SELECT source_code FROM questionbank.question WHERE parent_id IS NULL AND source_code LIKE 'DS-Q-%'",
                 String.class));
-        int created = 0;
+        List<PoolSpec> specs = specs();
         int present = 0;
-        UUID audio = null;
-        for (PoolSpec spec : specs()) {
+        UUID audio = specs.stream().anyMatch(spec -> spec.audio) ? ensureAudio() : null;
+        List<Runnable> chunks = new ArrayList<>();
+        int created = 0;
+        for (PoolSpec spec : specs) {
             List<Integer> missing = new ArrayList<>();
             for (int n = 1; n <= spec.count; n++) {
                 if (existing.contains(code(spec, n))) {
@@ -120,26 +123,58 @@ public class PublishedQuestionPoolBuilder {
                     missing.add(n);
                 }
             }
-            if (missing.isEmpty()) {
-                continue;
-            }
-            if (spec.audio && audio == null) {
-                audio = ensureAudio();
-            }
-            UUID audioId = audio;
             for (int from = 0; from < missing.size(); from += CHUNK) {
                 List<Integer> chunk = missing.subList(from, Math.min(missing.size(), from + CHUNK));
-                transaction.executeWithoutResult(status -> createChunk(spec, chunk, audioId));
+                chunks.add(() -> transaction.executeWithoutResult(status -> createChunk(spec, chunk, audio)));
                 created += chunk.size();
             }
         }
-        if (specs().stream().anyMatch(spec -> spec.audio)) {
-            ensureAudio();
-        }
+        runChunks(chunks);
         created += ensureImageQuestion(existing) ? 1 : 0;
         log.atInfo().addKeyValue("event", "published_question_pool.built").addKeyValue("created", created)
                 .addKeyValue("existing", present).log("Published exam set questions verified");
         return new Report(created, present);
+    }
+
+    /**
+     * Runs the chunks on a few threads: each chunk is its own transaction on its own family (one subject), so they only
+     * wait for one another on the per-subject source revision row. The actor is set on every thread.
+     */
+    private void runChunks(List<Runnable> chunks) {
+        if (chunks.isEmpty()) {
+            return;
+        }
+        SecurityContext context = SecurityContextHolder.getContext();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(THREADS, task -> {
+            Thread thread = new Thread(task, "ds-questions");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            List<java.util.concurrent.Future<?>> futures = new ArrayList<>();
+            for (Runnable chunk : chunks) {
+                futures.add(pool.submit(() -> {
+                    SecurityContextHolder.setContext(context);
+                    try {
+                        chunk.run();
+                    } finally {
+                        SecurityContextHolder.clearContext();
+                    }
+                }));
+            }
+            for (var future : futures) {
+                try {
+                    future.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while building the sample questions", e);
+                } catch (java.util.concurrent.ExecutionException e) {
+                    throw new IllegalStateException("Cannot build the sample questions: " + e.getCause(), e.getCause());
+                }
+            }
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     /**
