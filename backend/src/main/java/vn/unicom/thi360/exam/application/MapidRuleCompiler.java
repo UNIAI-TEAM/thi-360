@@ -126,7 +126,7 @@ public final class MapidRuleCompiler {
     private static void count(MapidRule rule, ExamSection section, QuestionBlock target,
             List<TopicQuota> sectionQuotas, Map<String, List<TopicQuota>> blockQuotas, List<Cap> caps) {
         Integer number = rule.percent() != null
-                ? fromPercent(rule.percent(), target == null ? units(section) : units(target)) : rule.count();
+                ? fromPercent(rule.percent(), target == null ? units(section) : units(section, target)) : rule.count();
         if (number == null) {
             throw new IllegalArgumentException("MAPID rule " + rule.id() + " needs a count or a percent");
         }
@@ -158,6 +158,28 @@ public final class MapidRuleCompiler {
 
     private static int units(ExamSection section) {
         return section.questionCount() == null ? 0 : section.questionCount();
+    }
+
+    /**
+     * Units a group draws, as {@code Prep.prepare} gives them to the solver: a set is {@code setCount x setSize}, a
+     * counted group its count, and a single group without a count takes what the section leaves after every other
+     * group (the "take the remainder" group). Omitted blocks are no group.
+     */
+    private static int units(ExamSection section, QuestionBlock block) {
+        if (takesTheRemainder(block)) {
+            int fixed = 0;
+            for (QuestionBlock other : section.blocks()) {
+                if (!Boolean.TRUE.equals(other.omitted()) && !takesTheRemainder(other)) {
+                    fixed += units(other);
+                }
+            }
+            return Math.max(0, units(section) - fixed);
+        }
+        return units(block);
+    }
+
+    private static boolean takesTheRemainder(QuestionBlock block) {
+        return !isSet(block) && block.questionCount() == null;
     }
 
     private static int units(QuestionBlock block) {
