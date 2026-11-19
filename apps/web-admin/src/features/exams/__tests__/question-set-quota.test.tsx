@@ -167,12 +167,12 @@ describe("tổng quan bước 1: lệnh hỏi của nhóm chùm (create-exam-ove
     } as unknown as ExamTemplate;
   };
 
-  it("môn không có dòng Bộ câu hỏi: chùm tính lệnh theo dạng của câu con (6 câu × 4 ý = 24)", () => {
+  it("môn không có dòng Bộ câu hỏi: chùm 6 câu × 4 ý = 24 lệnh", () => {
     expect(overviewRowsFromTemplate(set(null), "SUBJECT")[1]!.block!.commands).toBe(24);
   });
 
-  it("môn có dòng Bộ câu hỏi: chùm là Bộ câu hỏi, mỗi câu con một lệnh (6)", () => {
+  it("môn có dòng Bộ câu hỏi: số lệnh hỏi trên đề không đổi (24); chỉ tiêu dạng trả lời không đổi cách đếm lệnh", () => {
     const quotas: AnswerQuotas = { unit: "COUNT", items: [{ answerType: "QUESTION_SET", value: 6 }] };
-    expect(overviewRowsFromTemplate(set(quotas), "SUBJECT")[1]!.block!.commands).toBe(6);
+    expect(overviewRowsFromTemplate(set(quotas), "SUBJECT")[1]!.block!.commands).toBe(24);
   });
 });
