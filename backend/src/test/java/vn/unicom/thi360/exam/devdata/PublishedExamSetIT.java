@@ -34,6 +34,8 @@ import vn.unicom.thi360.questionbank.application.QuestionService;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.questionbank.application.DevQuestionAssetSeeder;
+import vn.unicom.thi360.questionbank.domain.QuestionAssetRefCollector;
+import vn.unicom.thi360.questionbank.domain.QuestionSnapshot;
 import vn.unicom.thi360.questionbank.devdata.PublishedQuestionPoolBuilder;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
@@ -464,25 +466,34 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
                 + "WHERE q.id = ?", String.class, question));
         String prompt = snapshot.path("content").asText();
         String solution = snapshot.path("solution").asText();
-        String option = snapshot.path("body").path("options").toString();
+        Set<UUID> expectedIds = new HashSet<>();
+        List<String> optionHtmls = new java.util.ArrayList<>();
+        snapshot.path("body").path("options").forEach(node -> optionHtmls.add(node.path("content").asText()));
         // Each declared image sits in its own role in the snapshot and its bytes read back from storage.
         for (JsonNode asset : image.path("assets")) {
             String file = asset.path("fileName").asText();
             var row = jdbc.queryForMap("SELECT id, object_key FROM questionbank.question_asset WHERE file_name = ? "
                     + "AND kind = 'IMAGE'", file);
-            String id = row.get("id").toString();
+            UUID id = UUID.fromString(row.get("id").toString());
             byte[] expected = new org.springframework.core.io.ClassPathResource("devdata/assets/" + file)
                     .getInputStream().readAllBytes();
             assertThat(storage.get((String) row.get("object_key"))).as(file).isPresent()
                     .hasValueSatisfying(bytes -> assertThat(bytes).as(file).isEqualTo(expected));
-            String html = switch (asset.path("role").asText()) {
-                case "PROMPT" -> prompt;
-                case "OPTION" -> option;
-                case "SOLUTION" -> solution;
+            // Same parser and rule as QuestionAssetRefCollector: an img[data-asset-id] in the declared role,
+            // not the bare UUID in the text (R2-1).
+            List<String> fields = switch (asset.path("role").asText()) {
+                case "PROMPT" -> List.of(prompt);
+                case "OPTION" -> optionHtmls;
+                case "SOLUTION" -> List.of(solution);
                 default -> throw new IllegalStateException("role");
             };
-            assertThat(html).as("%s uses %s", asset.path("role").asText(), file).contains(id);
+            assertThat(fields.stream().anyMatch(html -> assetIdsIn(html).contains(id)))
+                    .as("%s uses %s", asset.path("role").asText(), file).isTrue();
+            expectedIds.add(id);
         }
+        // The collector reads the stored snapshot as the runtime does and finds every declared image.
+        assertThat(QuestionAssetRefCollector.assetIdsOf(mapper.readValue(snapshot.toString(), QuestionSnapshot.class)))
+                .as("asset refs of %s", image.path("questionCode").asText()).containsAll(expectedIds);
         // Ask the real solver input builder for candidates from the serving snapshot, not a hand-built filter.
         String parts = jdbc.queryForObject("SELECT v.parts::text FROM exam.exam_version v "
                 + "JOIN exam.exam e ON e.id = v.exam_id WHERE e.code = ? AND v.state = 'SERVING'",
@@ -531,6 +542,12 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
         Optional<ServingExam> serving = port.findServing(examId(code));
         assertThat(serving).as("serving state of %s", code).isPresent();
         return serving.get();
+    }
+
+    /** Asset refs of one HTML field through the real collector (Jsoup {@code img[data-asset-id]}). */
+    private static Set<UUID> assetIdsIn(String html) {
+        return QuestionAssetRefCollector.assetIdsOf(new QuestionSnapshot(null, null, null, null, null, null,
+                null, null, html, null, null, null, null, null));
     }
 
     private UUID examId(String code) {
