@@ -4,6 +4,8 @@ import { type NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS: Record<string, true> = {
   "/": true,
+  "/forgot-password": true,
+  "/reset-password": true,
 };
 
 export async function proxy(request: NextRequest) {
@@ -27,6 +29,14 @@ export async function proxy(request: NextRequest) {
         urls,
       );
       return withSessionCookies(NextResponse.redirect(landing), session);
+    }
+    return continueWithSession(request, session);
+  }
+
+  if (pathname === "/register") {
+    // Công khai cho khách; đã có phiên thì không đăng ký nữa mà về trang chủ theo quyền (AC-9).
+    if (claims) {
+      return withSessionCookies(NextResponse.redirect(resolveAuthenticatedLanding(claims.access, null, urls)), session);
     }
     return continueWithSession(request, session);
   }

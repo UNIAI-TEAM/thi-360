@@ -97,6 +97,62 @@ describe("web-student proxy.ts", () => {
     expect(matcher.test("/_next/static/chunks/app.js")).toBe(false);
     expect(matcher.test("/api/v1/me")).toBe(false);
   });
+
+  describe("đường tài khoản của FS-2 (AD-71)", () => {
+    async function ctxCookie(access: "EXAM" | "MANAGE") {
+      const token = await signCtxCookie(
+        { userId: USER_ID, realm: "APP", access, version: 1, expiresAt: Math.floor(Date.now() / 1000) + 300 },
+        SECRET,
+      );
+      return `${CTX_COOKIE_NAME}=${token}`;
+    }
+
+    it.each(["/register", "/forgot-password", "/reset-password?token=tok"])(
+      "khách mở %s không bị chuyển sang /login",
+      async (path) => {
+        const response = await proxy(new NextRequest(`http://localhost:3000${path}`));
+        expect(response.status).toBe(200);
+      },
+    );
+
+    it("/verify-email và /account/profile cần phiên: khách sang /login kèm callbackUrl", async () => {
+      const verify = await proxy(new NextRequest("http://localhost:3000/verify-email?callbackUrl=%2Fhome"));
+      expect(verify.status).toBe(307);
+      expect(verify.headers.get("location")).toBe(
+        "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify-email%3FcallbackUrl%3D%252Fhome",
+      );
+
+      const profile = await proxy(new NextRequest("http://localhost:3000/account/profile"));
+      expect(profile.status).toBe(307);
+      expect(profile.headers.get("location")).toBe(
+        "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3000%2Faccount%2Fprofile",
+      );
+    });
+
+    it("người có phiên vào được /verify-email và /account/profile", async () => {
+      const cookie = await ctxCookie("EXAM");
+      for (const path of ["/verify-email", "/account/profile"]) {
+        const response = await proxy(new NextRequest(`http://localhost:3000${path}`, { headers: { cookie } }));
+        expect(response.status).toBe(200);
+      }
+    });
+
+    it("đã đăng nhập mở /register thì về trang chủ theo quyền, bỏ qua callbackUrl", async () => {
+      const student = await proxy(
+        new NextRequest("http://localhost:3000/register?callbackUrl=%2Fcheckout%2FBCA-FULL", {
+          headers: { cookie: await ctxCookie("EXAM") },
+        }),
+      );
+      expect(student.status).toBe(307);
+      expect(student.headers.get("location")).toBe("http://localhost:3000/home");
+
+      const admin = await proxy(
+        new NextRequest("http://localhost:3000/register", { headers: { cookie: await ctxCookie("MANAGE") } }),
+      );
+      expect(admin.status).toBe(307);
+      expect(admin.headers.get("location")).toBe("http://localhost:3001/");
+    });
+  });
 });
 
 describe("web-student proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (UNI-2574)", () => {

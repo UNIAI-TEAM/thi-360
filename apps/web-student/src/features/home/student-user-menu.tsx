@@ -12,7 +12,7 @@ import {
   Skeleton,
 } from "@thi360/ui";
 import { initialsOf } from "@thi360/web-kit/client";
-import { ChevronDown, KeyRound, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronDown, KeyRound, LayoutDashboard, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { CHANGE_PASSWORD_MENU_SOURCE } from "@/features/auth/change-password-view";
@@ -42,7 +42,8 @@ export function StudentUserMenu({
   async function onLogout() {
     try {
       await logoutSession();
-      navigate("/login");
+      // Đăng xuất ở web học viên về trang giới thiệu (TM 5.2); phiên đã hết nên trang là bản dành cho khách.
+      navigate("/");
     } catch {
       notify.error(t("logoutFailed"));
     }
@@ -86,6 +87,12 @@ export function StudentUserMenu({
           <Link href="/home">
             <LayoutDashboard aria-hidden />
             {t("studentPortal")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/account/profile">
+            <UserRound aria-hidden />
+            {t("profile")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
