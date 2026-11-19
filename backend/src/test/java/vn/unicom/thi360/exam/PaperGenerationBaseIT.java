@@ -204,6 +204,7 @@ abstract class PaperGenerationBaseIT extends AbstractIntegrationTest {
 
     protected Published checkAndPublish(UUID examId) throws Exception {
         String base = "/api/v1/admin/exams/" + examId;
+        ExamListingFixture.fill(jdbc, examId);
         JsonNode checked = json(post(base + "/check").with(asUser(Permissions.EXAM_MODIFY)), 200);
         var paths = mapper.createArrayNode();
         checked.path("paths").forEach(path -> {

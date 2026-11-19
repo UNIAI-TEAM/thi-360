@@ -93,6 +93,7 @@ class ExamTemplatePolicyValidityIT extends AbstractIntegrationTest {
 
     private MockHttpServletRequestBuilder publish(UUID id, JsonNode checked) throws Exception {
         JsonNode exam = json(get(url(id)).with(asUser(Permissions.EXAM_VIEW)));
+        ExamListingFixture.fill(jdbc, id);
         var body = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
         var paths = body.putArray("pathIds");
         if (checked == null) paths.add("default");

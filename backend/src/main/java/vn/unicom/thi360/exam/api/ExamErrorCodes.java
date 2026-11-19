@@ -34,4 +34,16 @@ public final class ExamErrorCodes {
     public static final String NO_PATH_SELECTED = "NO_PATH_SELECTED";
     public static final String PATH_NOT_VALID = "PATH_NOT_VALID";
     public static final String VERSION_NOT_FOUND = "VERSION_NOT_FOUND";
+    /** 422 — thông tin bán hoặc ảnh bìa sai kiểu, quá giới hạn (TM 6.2), kèm fieldErrors. */
+    public static final String LISTING_INVALID = "EXAM_LISTING_INVALID";
+    /** 422 — mã chặn công bố của thông tin bán (TM 6.2, E7, E26). */
+    public static final String LISTING_PRICE_MISSING = "LISTING_PRICE_MISSING";
+    public static final String LISTING_PRICE_ZERO = "LISTING_PRICE_ZERO";
+    public static final String LISTING_PRICE_BELOW_MIN = "LISTING_PRICE_BELOW_MIN";
+    public static final String LISTING_ATTEMPTS_MISSING = "LISTING_ATTEMPTS_MISSING";
+    public static final String LISTING_DESCRIPTION_MISSING = "LISTING_DESCRIPTION_MISSING";
+    /** Chỉ cảnh báo, không chặn công bố. */
+    public static final String LISTING_COVER_MISSING = "LISTING_COVER_MISSING";
+    /** 422 — bài có lựa chọn sau khi bắt đầu phải công bố mọi đường (E24, BS 8). */
+    public static final String PUBLISH_ALL_PATHS_REQUIRED = "PUBLISH_ALL_PATHS_REQUIRED";
 }

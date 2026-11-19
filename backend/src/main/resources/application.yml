@@ -174,6 +174,13 @@ thi360:
   exam:
     structure:
       max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
+    listing:
+      # Giá bán thấp nhất khi công bố bài thi; cùng biến với mức tối thiểu của VNPAY (TM E26).
+      min-price-vnd: ${THI360_VNPAY_MIN_AMOUNT:5000}
+    cover-cleanup:
+      orphan-age: P7D
+      interval: PT24H
+      batch-size: 100
     solver:
       generate:
         # LT F5: deadline of paper generation, separate from the check/preview limits (thi360.exam.solver.*).

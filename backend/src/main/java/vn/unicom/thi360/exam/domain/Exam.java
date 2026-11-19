@@ -239,6 +239,17 @@ public class Exam {
         touch(actorId, now);
     }
 
+    /**
+     * Sale listing edited (TM 6.1): the description and cover live on this row, the rest in exam_listing. The
+     * listing is not part of the check fingerprint, so the check status stays; the revision still moves (@Version).
+     */
+    public void changeListing(String newDescription, UUID newCoverAssetId, UUID actorId, Instant now) {
+        this.description = newDescription;
+        this.coverAssetId = newCoverAssetId;
+        this.hasUnpublishedChanges = true;
+        touch(actorId, now);
+    }
+
     /** Tính lại các cột tổng hợp cho danh sách/thẻ bài thi sau khi cấu trúc đổi. */
     public void applyStructureSummary(int newQuestionCount, boolean newHasEssay,
             boolean newHasEnglishOption, int newCombinationCount) {
