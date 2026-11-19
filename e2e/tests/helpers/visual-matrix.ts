@@ -1,6 +1,7 @@
 import { chromium, expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Trợ thủ kiểm giao diện cho các lane web của đợt 3 (plan FS-4, A7 mục 7, team-rules "Headless visual").
@@ -115,6 +116,58 @@ export function auditHorizontalOverflow(page: Page): Promise<OverflowReport> {
   });
 }
 
+export interface ElementOverflowFinding {
+  element: string;
+  clientWidth: number;
+  scrollWidth: number;
+  /** Phần tử cuộn được đúng luật DESIGN.md "Bảng rộng hơn khung": `role="region"`, có tên, vào được bằng phím. */
+  accessibleScroller: boolean;
+}
+
+/**
+ * Cấp phần tử: phần tử có `overflow-x` khác `visible` mà nội dung rộng hơn khung (`scrollWidth` > `clientWidth`),
+ * tức bị cắt hoặc phải cuộn ngang bên trong (bảng xem lại nằm trong thẻ ở 390px). `auditHorizontalOverflow` chỉ đo
+ * cả trang nên không thấy lỗi này. `scope` giới hạn trong một vùng; `ignore` là selector của phần tử được phép cuộn
+ * (mặc định khối mã, ô nhập và công thức hiển thị của KaTeX); `allowAccessibleScroller` bỏ qua phần tử cuộn
+ * được đúng luật bảng rộng (mặc định không: bảng xem lại phải vừa khung, không cuộn).
+ */
+export function auditElementOverflow(
+  page: Page,
+  options: { scope?: string; ignore?: string; allowAccessibleScroller?: boolean } = {},
+): Promise<ElementOverflowFinding[]> {
+  return page.evaluate(
+    ({ scope, ignore, allowAccessible }) => {
+      const root = scope ? document.querySelector(scope) : document.body;
+      if (!root) return [];
+      const findings: ElementOverflowFinding[] = [];
+      for (const el of root.querySelectorAll("*")) {
+        const style = getComputedStyle(el);
+        if (style.display === "none" || style.display === "contents" || style.overflowX === "visible") continue;
+        if (el.clientWidth === 0 || el.scrollWidth <= el.clientWidth + 1) continue;
+        if (el.matches(ignore)) continue;
+        const named = Boolean(el.getAttribute("aria-label") || el.getAttribute("aria-labelledby"));
+        const accessibleScroller =
+          el.getAttribute("role") === "region" && named && (el as HTMLElement).tabIndex >= 0;
+        if (allowAccessible && accessibleScroller) continue;
+        const id = el.id ? `#${el.id}` : "";
+        const cls = typeof el.className === "string" && el.className ? `.${el.className.split(/\s+/)[0]}` : "";
+        findings.push({
+          element: `${el.tagName.toLowerCase()}${id}${cls}`,
+          clientWidth: el.clientWidth,
+          scrollWidth: el.scrollWidth,
+          accessibleScroller,
+        });
+      }
+      return findings;
+    },
+    {
+      scope: options.scope ?? null,
+      ignore: options.ignore ?? "pre,input,textarea,select,.katex-display",
+      allowAccessible: options.allowAccessibleScroller ?? false,
+    },
+  );
+}
+
 export interface ContrastFinding {
   element: string;
   text: string;
@@ -186,7 +239,7 @@ export function auditContrast(page: Page, options: { min?: number; scope?: strin
       const rgb = (c: Rgba) => `rgb(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])})`;
       const checked = new Set<Element>();
       const findings: ContrastFinding[] = [];
-      const check = (el: Element, sample: string) => {
+      const check = (el: Element, sample: string, colorStyle?: CSSStyleDeclaration) => {
         if (checked.has(el)) return;
         checked.add(el);
         if (el.closest("[disabled],[aria-disabled='true'],script,style,noscript,template")) return;
@@ -197,8 +250,8 @@ export function auditContrast(page: Page, options: { min?: number; scope?: strin
         if (style.clip && style.clip !== "auto" && rect.width <= 1) return;
         const bg = background(el);
         if (!bg) return;
-        const fgRaw = parse(style.color);
-        const fgAlpha = fgRaw[3] * opacityOf(el);
+        const fgRaw = parse((colorStyle ?? style).color);
+        const fgAlpha = fgRaw[3] * opacityOf(el) * (colorStyle ? Number(colorStyle.opacity) : 1);
         // Chữ trong suốt (`color: transparent`, như phần tử `\phantom` của KaTeX/mhchem) không đọc được và không cần đọc.
         if (fgAlpha === 0) return;
         const fg = over([fgRaw[0], fgRaw[1], fgRaw[2], fgAlpha], bg);
@@ -222,6 +275,10 @@ export function auditContrast(page: Page, options: { min?: number; scope?: strin
       for (const field of root.querySelectorAll("input:not([type=radio]):not([type=checkbox]),textarea")) {
         const value = (field as HTMLInputElement).value;
         if (value) check(field, value);
+        // Ô trống hiện chữ gợi ý (`placeholder`): WCAG 1.4.3 tính cả chữ này, màu lấy từ `::placeholder`.
+        else if ((field as HTMLInputElement).placeholder) {
+          check(field, (field as HTMLInputElement).placeholder, getComputedStyle(field, "::placeholder"));
+        }
       }
       return findings;
     },
@@ -237,14 +294,66 @@ export interface LanguageFinding {
 const VIETNAMESE_RE =
   /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
 
-/** Từ giao diện tiếng Anh thường gặp: xuất hiện ở trang `vi` ngoài vùng `data-exam-content` là lẫn ngôn ngữ. */
+/**
+ * Từ giao diện tiếng Anh thường gặp (gồm nhãn của bộ câu hỏi): xuất hiện ở trang `vi` ngoài vùng
+ * `data-exam-content` là lẫn ngôn ngữ. Danh sách này là lớp dự phòng; lớp chính là `englishOnlyUiValues()`.
+ */
 const ENGLISH_UI_WORDS_RE =
-  /\b(Submit|Cancel|Save|Loading|Next|Previous|Close|Answer|Review|Search|Back|Delete|Edit|Retry|Continue|Confirm|Required|Question|Flag|Matching|Essay)\b/;
+  /\b(Submit|Cancel|Save|Loading|Next|Previous|Close|Answer|Review|Search|Back|Delete|Edit|Retry|Continue|Confirm|Required|Question|Flag|Matching|Essay|Points?|Correct|Wrong|Blank|Items?|Choice|Select|True|False|Solution|Unmatch|Match with|Not answered|Not matched|Your choice|Your essay|Used)\b/;
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(HERE, "../../..");
+
+function stringLeaves(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") out.push(value);
+  else if (value && typeof value === "object") for (const child of Object.values(value)) stringLeaves(child, out);
+  return out;
+}
+
+function stringLiterals(source: string): string[] {
+  const out: string[] = [];
+  for (const match of source.matchAll(/"((?:[^"\\\n]|\\.)*)"/g)) out.push(JSON.parse(`"${match[1]}"`) as string);
+  return out;
+}
+
+const squash = (value: string) => value.replace(/\s+/g, " ").trim();
+
+let englishOnlyCache: Set<string> | undefined;
 
 /**
- * Lẫn ngôn ngữ: chữ nhìn thấy và `aria-label`, `placeholder`, `title`, `alt` ngoài mọi vùng `data-exam-content`.
- * Trang `en` có chữ Việt có dấu, hoặc trang `vi` có từ giao diện tiếng Anh, là lỗi. `allow` bỏ qua các chuỗi
- * hợp lệ (tên riêng, thuật ngữ).
+ * Giá trị tiếng Anh của các catalog giao diện (`apps/web-student`, `apps/web-admin` `en.json` và chuỗi `en` của
+ * `@thi360/ui` trong `ui-strings.ts`) mà không có giá trị nào giống hệt ở phía `vi`. Một chuỗi nhìn thấy ở trang
+ * `vi` khớp nguyên văn với một giá trị trong tập này là giao diện rơi về tiếng Anh. Chuỗi có tham số `{…}` bỏ qua.
+ */
+function englishOnlyUiValues(): Set<string> {
+  if (englishOnlyCache) return englishOnlyCache;
+  const read = (relative: string) => readFileSync(path.resolve(REPO_ROOT, relative), "utf8");
+  const english: string[] = [];
+  const vietnamese = new Set<string>();
+  for (const app of ["web-student", "web-admin"]) {
+    stringLeaves(JSON.parse(read(`apps/${app}/src/messages/en.json`)), english);
+    for (const value of stringLeaves(JSON.parse(read(`apps/${app}/src/messages/vi.json`)))) vietnamese.add(squash(value));
+  }
+  const kit = read("packages/ui/src/messages/ui-strings.ts");
+  const viStart = kit.indexOf("export const UI_STRINGS_VI");
+  const enStart = kit.indexOf("export const UI_STRINGS_EN");
+  const enEnd = kit.indexOf("export const UI_STRINGS_BY_LOCALE");
+  if (viStart < 0 || enStart < viStart || enEnd < enStart) throw new Error("ui-strings.ts: không tìm thấy khối UI_STRINGS_VI/EN");
+  english.push(...stringLiterals(kit.slice(enStart, enEnd)));
+  for (const value of stringLiterals(kit.slice(viStart, enStart))) vietnamese.add(squash(value));
+  englishOnlyCache = new Set(
+    english
+      .map(squash)
+      .filter((value) => /[A-Za-z]{3}/.test(value) && !VIETNAMESE_RE.test(value) && !value.includes("{") && !vietnamese.has(value)),
+  );
+  return englishOnlyCache;
+}
+
+/**
+ * Lẫn ngôn ngữ: chữ nhìn thấy, tiêu đề tab (`document.title`) và `aria-label`, `placeholder`, `title`, `alt` ngoài mọi
+ * vùng `data-exam-content`. Trang `en` có chữ Việt có dấu, hoặc trang `vi` có chuỗi giao diện tiếng Anh (khớp nguyên
+ * văn với catalog `en` hoặc có từ trong danh sách thường gặp), là lỗi. `allow` bỏ qua các chuỗi hợp lệ (tên riêng,
+ * thuật ngữ).
  */
 export async function auditMixedLanguage(
   page: Page,
@@ -268,12 +377,15 @@ export async function auditMixedLanguage(
         if (value?.trim()) out.push({ kind: "attribute", value: value.trim() });
       }
     }
+    if (document.title.trim()) out.push({ kind: "attribute", value: document.title.trim() });
     return out;
   });
   const allow = options.allow ?? [];
+  const englishOnly = lang === "vi" ? englishOnlyUiValues() : null;
   return collected.filter((item) => {
     if (allow.some((pattern) => pattern.test(item.value))) return false;
-    return lang === "en" ? VIETNAMESE_RE.test(item.value) : ENGLISH_UI_WORDS_RE.test(item.value);
+    if (lang === "en") return VIETNAMESE_RE.test(item.value);
+    return ENGLISH_UI_WORDS_RE.test(item.value) || englishOnly!.has(squash(item.value));
   });
 }
 
@@ -304,14 +416,19 @@ export function auditThemeApplied(page: Page): Promise<{ theme: string | null; l
 }
 
 /**
- * Một lần kiểm đủ năm phép cho trang đang mở ở ô `cell`, sau khi trang đã dựng xong: chụp ảnh `<màn>-<khổ>-
+ * Một lần kiểm đủ các phép cho trang đang mở ở ô `cell`, sau khi trang đã dựng xong: chụp ảnh `<màn>-<khổ>-
  * <chế độ>-<ngôn ngữ>.png`, rồi khẳng định `lang`, nền, tràn ngang, tương phản và lẫn ngôn ngữ. Trả đường dẫn ảnh.
+ * `elementOverflow` (mặc định tắt) thêm phép `auditElementOverflow`: không phần tử nào bị cắt hay phải cuộn ngang.
  */
 export async function expectMatrixClean(
   page: Page,
   screen: string,
   cell: MatrixCell,
-  options: { minContrast?: number; allowLanguage?: RegExp[] } = {},
+  options: {
+    minContrast?: number;
+    allowLanguage?: RegExp[];
+    elementOverflow?: boolean | Parameters<typeof auditElementOverflow>[1];
+  } = {},
 ): Promise<string> {
   const shot = await captureMatrixShot(page, screen, cell);
   const tag = `${screen} ${cellLabel(cell)}`;
@@ -323,6 +440,13 @@ export async function expectMatrixClean(
   expect(overflow.scrollWidth, `${tag}: tràn ngang ${overflow.offenders.join("; ")}`).toBeLessThanOrEqual(
     overflow.clientWidth,
   );
+  if (options.elementOverflow) {
+    const clipped = await auditElementOverflow(
+      page,
+      options.elementOverflow === true ? {} : options.elementOverflow,
+    );
+    expect(clipped, `${tag}: phần tử bị cắt hoặc phải cuộn ngang`).toEqual([]);
+  }
   const contrast = await auditContrast(page, { min: options.minContrast ?? 4.5 });
   expect(contrast, `${tag}: tương phản < ${options.minContrast ?? 4.5}`).toEqual([]);
   const mixed = await auditMixedLanguage(page, cell.lang, { allow: options.allowLanguage });

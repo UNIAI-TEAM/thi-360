@@ -1,18 +1,22 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import path from "node:path";
 import {
   applyMatrixCookies,
+  auditContrast,
+  auditElementOverflow,
   auditMixedLanguage,
   cellLabel,
   expectMatrixClean,
   launchMatrixBrowser,
   matrixCells,
   openMatrixContext,
+  visualDir,
   type MatrixCell,
 } from "./helpers/visual-matrix";
 
 const WEB_URL = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
-const SAMPLE_COUNT = 8;
+const SAMPLE_COUNT = 11;
 
 // Trang thử `/dev/question-kit` là 404 ở bản build (AC-18): spec chạy bằng `next dev`.
 test.skip(process.env.E2E_USE_BUILT === "1", "trang thử chỉ có khi chạy dev");
@@ -62,6 +66,7 @@ async function openCell(cell: MatrixCell): Promise<{ context: BrowserContext; pa
 /** Điền khuyết dựng ô nhập sau khi hydrate: chờ đủ ô trước khi chụp. */
 async function waitForKit(page: Page): Promise<void> {
   await expect(page.locator('[data-sample="cloze"] input')).toHaveCount(2);
+  await expect(page.locator('[data-sample="clozeText"] input')).toHaveCount(2);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -74,7 +79,7 @@ for (const cell of matrixCells()) {
       await page.getByRole("button", { name: REVIEW_LABEL[cell.lang], exact: true }).click();
       await expect(page.getByTestId("value-single")).toHaveCount(0);
       await waitForKit(page);
-      await expectMatrixClean(page, "question-kit-review", cell);
+      await expectMatrixClean(page, "question-kit-review", cell, { elementOverflow: true });
       expect(errors, "không có lỗi console (key React, hydrate…)").toEqual([]);
     } finally {
       await context.close();
@@ -109,6 +114,37 @@ test.describe("bố cục Bộ câu hỏi (AC-14)", () => {
   });
 });
 
+test.describe("xem lại từng dạng câu ở 390px (TV1-1)", () => {
+  for (const cell of matrixCells().filter((item) => item.width === 390)) {
+    test(`mỗi mẫu vừa khung, không bị cắt: ${cellLabel(cell)}`, async () => {
+      test.setTimeout(120_000);
+      const { context, page } = await openCell(cell);
+      try {
+        await page.getByRole("button", { name: REVIEW_LABEL[cell.lang], exact: true }).click();
+        await expect(page.getByTestId("value-single")).toHaveCount(0);
+        await waitForKit(page);
+        const keys = await page
+          .locator("[data-sample]")
+          .evaluateAll((elements) => elements.map((element) => element.getAttribute("data-sample") ?? ""));
+        expect(keys, "đủ mẫu của trang thử").toHaveLength(SAMPLE_COUNT);
+        for (const key of keys) {
+          const scope = `[data-sample="${key}"]`;
+          const sample = page.locator(scope);
+          await sample.screenshot({
+            path: path.join(visualDir(), `question-kit-review-${key}-${cell.width}-${cell.mode}-${cell.lang}.png`),
+          });
+          const box = (await sample.boundingBox())!;
+          expect(box.x + box.width, `${key}: thẻ nằm trong khung ${cell.width}px`).toBeLessThanOrEqual(cell.width + 1);
+          expect(await auditElementOverflow(page, { scope }), `${key}: phần tử bị cắt hoặc phải cuộn ngang`).toEqual([]);
+          expect(await auditContrast(page, { scope }), `${key}: tương phản`).toEqual([]);
+        }
+      } finally {
+        await context.close();
+      }
+    });
+  }
+});
+
 test.describe("phép kiểm lẫn ngôn ngữ của visual-matrix (AC-23)", () => {
   async function blank(html: string): Promise<{ context: BrowserContext; page: Page }> {
     const context = await browser.newContext();
@@ -139,5 +175,81 @@ test.describe("phép kiểm lẫn ngôn ngữ của visual-matrix (AC-23)", () =
     } finally {
       await dirtyAttr.context.close();
     }
+  });
+
+  /** Trang trắng ở ngôn ngữ `lang` (mặc định `en`), `head` là phần tử đặt trong `<head>` (`<title>`, `<style>`). */
+  async function inBlank<T>(
+    html: string,
+    run: (page: Page) => Promise<T>,
+    options: { lang?: "vi" | "en"; head?: string } = {},
+  ): Promise<T> {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      await page.setContent(
+        `<!doctype html><html lang="${options.lang ?? "en"}"><head>${options.head ?? ""}</head><body>${html}</body></html>`,
+      );
+      return await run(page);
+    } finally {
+      await context.close();
+    }
+  }
+
+  test("tiêu đề tab (document.title) cũng bị kiểm (R1-12)", async () => {
+    const body = "<main><h1>Question 1</h1></main>";
+    expect(
+      await inBlank(body, (page) => auditMixedLanguage(page, "en"), { head: "<title>Thử bộ câu hỏi</title>" }),
+    ).toEqual([{ kind: "attribute", value: "Thử bộ câu hỏi" }]);
+    expect(
+      await inBlank("<main><h1>Câu hỏi</h1></main>", (page) => auditMixedLanguage(page, "vi"), {
+        lang: "vi",
+        head: "<title>Question kit</title>",
+      }),
+    ).toEqual([{ kind: "attribute", value: "Question kit" }]);
+    expect(
+      await inBlank("<main><h1>Câu hỏi</h1></main>", (page) => auditMixedLanguage(page, "vi"), {
+        lang: "vi",
+        head: "<title>Thử bộ câu hỏi · Thi 360</title>",
+      }),
+    ).toEqual([]);
+  });
+
+  test("trang vi bắt được chuỗi tiếng Anh của bộ câu hỏi và catalog en (R1-13)", async () => {
+    const audit = (html: string) => inBlank(html, (page) => auditMixedLanguage(page, "vi"), { lang: "vi" });
+    expect(await audit("<table><tr><th>Points</th></tr></table>")).toEqual([{ kind: "text", value: "Points" }]);
+    // "Left column", "Not chosen": không có trong danh sách từ thường gặp, chỉ lớp catalog `en` bắt được.
+    expect(await audit("<table><tr><th>Left column</th><td>Not chosen</td></tr></table>")).toEqual([
+      { kind: "text", value: "Left column" },
+      { kind: "text", value: "Not chosen" },
+    ]);
+    expect(await audit(`<button aria-label="Your choice">Chọn</button>`)).toEqual([
+      { kind: "attribute", value: "Your choice" },
+    ]);
+    expect(await audit("<table><tr><th>Điểm</th><th>Cột trái</th></tr><tr><td>Thi 360</td></tr></table>")).toEqual([]);
+  });
+
+  test("chữ gợi ý (placeholder) của ô trống được kiểm tương phản (R1-22)", async () => {
+    const field = `<input placeholder="Nhập đáp số" />`;
+    const style = (placeholder: string) =>
+      `<style>input{color:#000;background:#fff}input::placeholder{color:${placeholder};opacity:1}</style>`;
+    const light = await inBlank(field, (page) => auditContrast(page), { head: style("#cccccc") });
+    expect(light).toHaveLength(1);
+    expect(light[0]).toMatchObject({ element: "input", text: "Nhập đáp số" });
+    expect(light[0]!.ratio).toBeLessThan(4.5);
+    expect(await inBlank(field, (page) => auditContrast(page), { head: style("#555555") })).toEqual([]);
+  });
+
+  test("phép kiểm cấp phần tử bắt bảng bị cắt trong thẻ (TV1-1)", async () => {
+    const scroller = (attrs: string) =>
+      `<div ${attrs} style="width:200px;overflow-x:auto"><table><tr><td style="min-width:400px">Điểm</td></tr></table></div>`;
+    const clipped = await inBlank(scroller(""), (page) => auditElementOverflow(page));
+    expect(clipped).toHaveLength(1);
+    expect(clipped[0]).toMatchObject({ element: "div", clientWidth: 200, accessibleScroller: false });
+    const named = scroller(`role="region" aria-label="Bảng điểm" tabindex="0"`);
+    expect(await inBlank(named, (page) => auditElementOverflow(page))).toHaveLength(1);
+    expect(await inBlank(named, (page) => auditElementOverflow(page, { allowAccessibleScroller: true }))).toEqual([]);
+    expect(
+      await inBlank(`<div style="width:200px;overflow-x:auto"><p>Ngắn</p></div>`, (page) => auditElementOverflow(page)),
+    ).toEqual([]);
   });
 });
