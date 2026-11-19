@@ -313,7 +313,7 @@ Số nào mẫu còn ghi chờ chuyên gia (cột `expert_note`), hoặc do đ�
 | V-SAT cơ cấu bốn phần | 9 + 6 + 5 + 5 (Q-36, tạm) | `expert_note` của `VSAT_SUBJECT_{TOAN,LY,HOA,SINH,SU,DIA}` và `VSAT_SUBJECT_HOA_50`, chờ BA |
 | V-SAT Ngữ văn thời lượng | để trống, nhập khi tạo (Q-35); V-SAT Hóa 50' là biến thể tạm (Q-34) | `expert_note` |
 
-Số còn lại của mẫu là số BA (không có `expert_note`). Không bịa thêm: chỗ BA chưa nêu, để trống và ghi vào mục câu hỏi mở của spec.
+Số còn lại của mẫu là số BA (không có `expert_note`), trừ ghi chú riêng của V-SAT Tiếng Anh: `VSAT_SUBJECT_ANH` có `expert_note` riêng (một phần thật, bốn dải hiển thị Phần I–IV; câu 8–15 dùng chung một bài đọc), trong đó cấu hình bài đọc dùng chung là Q-36, chờ BA, chưa phải số BA đã xác nhận (`V202611182211__exam_templates_vsat_anh.sql:4`, spec bổ sung mục 5.2). Không bịa thêm: chỗ BA chưa nêu, để trống và ghi vào mục câu hỏi mở của spec.
 
 ## 4. Bộ đề `TEST-*`
 
