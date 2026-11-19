@@ -21,7 +21,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import java.time.Clock;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,6 +48,7 @@ import vn.unicom.thi360.support.ForbiddenKeysAssert;
  * producer, so the port is checked against what that endpoint returned.
  */
 @Transactional
+@Import(PreviewPaperPortIT.PinnableClockConfig.class)
 class PreviewPaperPortIT extends AbstractIntegrationTest {
     private static final UUID SUBJECT_GROUP = UUID.fromString("00000000-0000-7000-8100-000000000002");
     private static final long SEED = 20261119L;
@@ -47,6 +58,46 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
     @Autowired private StringRedisTemplate redis;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper mapper;
+    @Autowired private PinnableClock clock;
+    @Autowired private jakarta.persistence.EntityManager entities;
+
+    /** System time until a test pins it: the one click time of AC-28's simultaneous first clicks. */
+    static final class PinnableClock extends Clock {
+        private volatile Instant pinned;
+
+        void pin(Instant instant) {
+            pinned = instant;
+        }
+
+        void unpin() {
+            pinned = null;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            Instant at = pinned;
+            return at == null ? Instant.now() : at;
+        }
+    }
+
+    @TestConfiguration
+    static class PinnableClockConfig {
+        @Bean
+        @Primary
+        PinnableClock pinnableClock() {
+            return new PinnableClock();
+        }
+    }
 
     private record Subject(UUID id, String code) {}
 
@@ -58,33 +109,8 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
         JsonNode result = generate(examId);
         PreviewPaperPort.PreviewPaper paper = port.load(examId, previewId(result));
 
-        List<String> expected = new ArrayList<>();
-        List<String> actual = new ArrayList<>();
-        for (JsonNode part : result.path("paper").path("parts")) {
-            expected.add("part " + part.path("partId").asText() + " " + part.path("firstNumber").asInt() + "-"
-                    + part.path("lastNumber").asInt());
-            for (JsonNode block : part.path("blocks")) {
-                expected.add("block " + block.path("blockId").asText());
-                for (JsonNode item : block.path("items")) {
-                    if ("SET".equals(item.path("kind").asText())) {
-                        expected.add("set " + item.path("setId").asText() + " v" + item.path("version").asInt());
-                        for (JsonNode child : item.path("children")) expected.add(question(child));
-                    } else expected.add(question(item.path("question")));
-                }
-            }
-        }
-        for (PreviewPaperPort.Part part : paper.parts()) {
-            actual.add("part " + part.partId() + " " + part.firstNumber() + "-" + part.lastNumber());
-            for (PreviewPaperPort.Block block : part.blocks()) {
-                actual.add("block " + block.blockId());
-                for (PreviewPaperPort.Item item : block.items()) {
-                    if (item.kind() == PreviewPaperPort.Item.Kind.SET) {
-                        actual.add("set " + item.set().questionId() + " v" + item.set().versionNo());
-                        for (PreviewPaperPort.Question child : item.set().children()) actual.add(question(child));
-                    } else actual.add(question(item.question()));
-                }
-            }
-        }
+        List<String> expected = outline(result.path("paper").path("parts"));
+        List<String> actual = outline(paper);
         assertThat(expected).hasSizeGreaterThan(10);
         assertThat(actual).containsExactlyElementsOf(expected);
         assertThat(paper.examId()).isEqualTo(examId);
@@ -141,14 +167,18 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
         assertSeconds(KEY + previewId, 90 * 60);
         assertThat(first).isBetween(before.plus(Duration.ofMinutes(90)).minusSeconds(5),
                 Instant.now().plus(Duration.ofMinutes(90)));
+        assertThat(first).as("told what Redis stores").isEqualTo(Instant.ofEpochMilli(storedExpiry(KEY + previewId)));
         Instant second = port.extendForTrial(examId, previewId);
         assertThat(second).isAfterOrEqualTo(first);
+        assertThat(second).isEqualTo(Instant.ofEpochMilli(storedExpiry(KEY + previewId)));
         assertSeconds(KEY + previewId, 90 * 60);
 
         redis.expire(KEY + previewId, Duration.ofMinutes(300));
         Instant longer = port.extendForTrial(examId, previewId);
         assertSeconds(KEY + previewId, 300 * 60);
         assertThat(longer).isAfter(Instant.now().plus(Duration.ofMinutes(299)));
+        assertThat(longer).as("an expiry already longer is kept and reported as stored")
+                .isEqualTo(Instant.ofEpochMilli(storedExpiry(KEY + previewId)));
         assertThat(port.load(examId, previewId)).as("an extended preview reads as before").isNotNull();
     }
 
@@ -202,6 +232,52 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void perPartTrialSumsOnlyTheGeneratedProjection() throws Exception {
+        // One section of a PER_PART exam is generated: the trial covers the part it belongs to, not every part.
+        UUID examId = exam("PER_PART", null, subject -> parts(subject, 40, 50));
+        UUID previewId = previewId(generate(examId, "{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"s1\"},\"seed\":"
+                + SEED + "}"));
+        PreviewPaperPort.PreviewPaper paper = port.load(examId, previewId);
+        assertThat(paper.parts()).extracting(PreviewPaperPort.Part::partId).containsExactly("p1");
+        assertThat(paper.durationMinutes()).isEqualTo(40);
+        port.extendForTrial(examId, previewId);
+        assertSeconds(KEY + previewId, 70 * 60);
+    }
+
+    /**
+     * Regenerating part one at another length and time moves the numbers and the time of the retained part two: the
+     * stored paper must be the one the response showed, not part two as it was first generated.
+     */
+    @Test
+    void regenerationStoresTheNewPaper() throws Exception {
+        AtomicReference<Subject> held = new AtomicReference<>();
+        UUID examId = exam("PER_PART", null, subject -> {
+            held.set(subject);
+            return parts(subject, 40, 50, 8);
+        });
+        JsonNode initial = generate(examId);
+        assertThat(initial.path("paper").path("parts").get(1).path("firstNumber").asInt()).isEqualTo(11);
+
+        jdbc.update("update exam.exam_structure set parts = cast(? as jsonb) where exam_id = ?",
+                "{\"parts\":" + parts(held.get(), 70, 50, 6) + "}", examId);
+        entities.clear(); // the draft was read through JPA by the first preview
+        JsonNode regenerated = generate(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":" + SEED
+                + ",\"basePreviewId\":\"" + previewId(initial) + "\",\"regeneratePartIds\":[\"p1\"]}");
+        JsonNode shown = regenerated.path("paper").path("parts");
+        assertThat(shown.get(0).path("lastNumber").asInt()).as(outline(shown).toString()).isEqualTo(8);
+        assertThat(shown.get(1).path("firstNumber").asInt()).as("part two moved up").isEqualTo(9);
+        assertThat(shown.get(0).path("durationMinutes").asInt()).isEqualTo(70);
+
+        UUID after = previewId(regenerated);
+        PreviewPaperPort.PreviewPaper stored = port.load(examId, after);
+        assertThat(outline(stored)).containsExactlyElementsOf(outline(shown));
+        assertThat(stored.parts()).extracting(PreviewPaperPort.Part::durationMinutes).containsExactly(70, 50);
+        assertThat(stored.durationMinutes()).isEqualTo(120);
+        port.extendForTrial(examId, after);
+        assertSeconds(KEY + after, 150 * 60);
+    }
+
+    @Test
     void draftEditDoesNotChangeTrial() throws Exception {
         UUID examId = exam("SHARED", 150, subject -> parts(subject, null, null));
         UUID previewId = previewId(generate(examId));
@@ -248,7 +324,14 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
         assertThat(before.parts().getFirst().displaySegments()).isNotEmpty();
         jdbc.update("update exam.exam set name = 'edited', duration_minutes = 5, timing = 'PER_PART' where id = ?", vsat);
         jdbc.update("update exam.exam_structure set parts = '{\"parts\":[]}'::jsonb where exam_id = ?", vsat);
-        assertThat(port.load(vsat, previewId)).isEqualTo(before);
+        // The template the exam came from changes too: the stored paper keeps the segments it was generated with.
+        assertThat(jdbc.update("update exam.exam_template set structure = '{\"parts\":[]}'::jsonb, duration_minutes = 5, "
+                + "timing = 'PER_PART' where code = 'VSAT_SUBJECT_ANH'")).isEqualTo(1);
+        PreviewPaperPort.PreviewPaper after = port.load(vsat, previewId);
+        assertThat(after).isEqualTo(before);
+        assertThat(after.parts().getFirst().displaySegments()).hasSize(4);
+        assertThat(after.durationMinutes()).isEqualTo(60);
+        assertThat(after.timing()).isEqualTo("SHARED");
     }
 
     // --- AC-28 ---------------------------------------------------------------------------------------------
@@ -277,7 +360,36 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
         UUID examId = orderedExam(); // wants 90 minutes
         UUID previewId = previewId(generate(examId));
         redis.expire(KEY + previewId, Duration.ofMinutes(300));
-        int callers = 8;
+        Instant click = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        clock.pin(click);
+        try {
+            // Every caller is told the longer expiry already granted, the very value Redis holds.
+            List<Instant> told = concurrentExtensions(examId, previewId, 8);
+            long stored = storedExpiry(KEY + previewId);
+            assertThat(stored).isGreaterThan(click.plus(Duration.ofMinutes(299)).toEpochMilli());
+            assertThat(told).hasSize(8).containsOnly(Instant.ofEpochMilli(stored));
+            assertSeconds(KEY + previewId, 300 * 60);
+
+            // Two simultaneous first clicks on a fresh preview carry the same click time: one expiry for both, equal
+            // to what Redis stores, and a later click at the same time keeps it.
+            UUID fresh = previewId(generate(examId));
+            List<Instant> first = concurrentExtensions(examId, fresh, 2);
+            Instant expected = click.plus(Duration.ofMinutes(90));
+            assertThat(first).containsExactly(expected, expected);
+            assertThat(storedExpiry(KEY + fresh)).isEqualTo(expected.toEpochMilli());
+            assertThat(port.extendForTrial(examId, fresh)).isEqualTo(expected);
+            assertThat(storedExpiry(KEY + fresh)).isEqualTo(expected.toEpochMilli());
+
+            // A later click raises it and is told the new stored value.
+            clock.pin(click.plusSeconds(10));
+            assertThat(port.extendForTrial(examId, fresh)).isEqualTo(expected.plusSeconds(10));
+            assertThat(storedExpiry(KEY + fresh)).isEqualTo(expected.plusSeconds(10).toEpochMilli());
+        } finally {
+            clock.unpin();
+        }
+    }
+
+    private List<Instant> concurrentExtensions(UUID examId, UUID previewId, int callers) throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(callers);
         try {
             CountDownLatch start = new CountDownLatch(1);
@@ -290,37 +402,9 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
                 calls.add(pool.submit(call));
             }
             start.countDown();
-            for (Future<Instant> call : calls) {
-                assertThat(call.get(30, TimeUnit.SECONDS)).as("every caller sees the longer expiry already granted")
-                        .isAfter(Instant.now().plus(Duration.ofMinutes(299)));
-            }
-        } finally {
-            pool.shutdownNow();
-        }
-        assertSeconds(KEY + previewId, 300 * 60);
-
-        // Two simultaneous first clicks on a fresh preview end with one expiry, no shorter than either caller was told.
-        UUID fresh = previewId(generate(examId));
-        pool = Executors.newFixedThreadPool(2);
-        try {
-            CountDownLatch start = new CountDownLatch(1);
-            List<Future<Instant>> calls = new ArrayList<>();
-            for (int i = 0; i < 2; i++) {
-                Callable<Instant> call = () -> {
-                    start.await();
-                    return port.extendForTrial(examId, fresh);
-                };
-                calls.add(pool.submit(call));
-            }
-            start.countDown();
-            Instant told = Instant.MIN;
-            for (Future<Instant> call : calls) {
-                Instant at = call.get(30, TimeUnit.SECONDS);
-                if (at.isAfter(told)) told = at;
-            }
-            long left = redis.getExpire(KEY + fresh, TimeUnit.MILLISECONDS);
-            assertThat(Instant.now().plusMillis(left)).isAfterOrEqualTo(told.minusMillis(1500));
-            assertSeconds(KEY + fresh, 90 * 60);
+            List<Instant> told = new ArrayList<>();
+            for (Future<Instant> call : calls) told.add(call.get(30, TimeUnit.SECONDS));
+            return told;
         } finally {
             pool.shutdownNow();
         }
@@ -351,12 +435,64 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
     }
 
     private JsonNode generate(UUID examId) throws Exception {
+        return generate(examId, "{\"target\":{\"kind\":\"EXAM\"},\"seed\":" + SEED + "}");
+    }
+
+    private JsonNode generate(UUID examId, String body) throws Exception {
         JsonNode result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/preview", examId)
-                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":" + SEED + "}"))
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(result.path("status").asText()).as(result.path("issues").toString()).isEqualTo("GENERATED");
         return result;
+    }
+
+    /** The expiry Redis itself holds for the key, in epoch milliseconds. */
+    private long storedExpiry(String key) {
+        Long value = redis.execute(new DefaultRedisScript<>("return redis.call('PEXPIRETIME', KEYS[1])", Long.class),
+                List.of(key));
+        assertThat(value).as("the key has an expiry").isNotNull().isPositive();
+        return value;
+    }
+
+    /** Parts, blocks and questions of the preview response, in the shape {@link #outline(PreviewPaperPort.PreviewPaper)} gives. */
+    private static List<String> outline(JsonNode parts) {
+        List<String> lines = new ArrayList<>();
+        for (JsonNode part : parts) {
+            lines.add("part " + part.path("partId").asText() + " " + part.path("firstNumber").asInt() + "-"
+                    + part.path("lastNumber").asInt() + " min=" + (part.hasNonNull("durationMinutes")
+                    ? part.path("durationMinutes").asText() : "") + " points=" + (part.hasNonNull("points")
+                    ? part.path("points").decimalValue().stripTrailingZeros().toPlainString() : ""));
+            for (JsonNode block : part.path("blocks")) {
+                lines.add("block " + block.path("blockId").asText() + " " + block.path("firstNumber").asInt() + "-"
+                        + block.path("lastNumber").asInt());
+                for (JsonNode item : block.path("items")) {
+                    if ("SET".equals(item.path("kind").asText())) {
+                        lines.add("set " + item.path("setId").asText() + " v" + item.path("version").asInt());
+                        for (JsonNode child : item.path("children")) lines.add(question(child));
+                    } else lines.add(question(item.path("question")));
+                }
+            }
+        }
+        return lines;
+    }
+
+    private static List<String> outline(PreviewPaperPort.PreviewPaper paper) {
+        List<String> lines = new ArrayList<>();
+        for (PreviewPaperPort.Part part : paper.parts()) {
+            lines.add("part " + part.partId() + " " + part.firstNumber() + "-" + part.lastNumber() + " min="
+                    + (part.durationMinutes() == null ? "" : part.durationMinutes()) + " points="
+                    + (part.points() == null ? "" : part.points().stripTrailingZeros().toPlainString()));
+            for (PreviewPaperPort.Block block : part.blocks()) {
+                lines.add("block " + block.blockId() + " " + block.firstNumber() + "-" + block.lastNumber());
+                for (PreviewPaperPort.Item item : block.items()) {
+                    if (item.kind() == PreviewPaperPort.Item.Kind.SET) {
+                        lines.add("set " + item.set().questionId() + " v" + item.set().versionNo());
+                        for (PreviewPaperPort.Question child : item.set().children()) lines.add(question(child));
+                    } else lines.add(question(item.question()));
+                }
+            }
+        }
+        return lines;
     }
 
     private org.springframework.test.web.servlet.ResultActions create(String kind, String scope, String partCode,
@@ -422,16 +558,23 @@ class PreviewPaperPortIT extends AbstractIntegrationTest {
 
     /** Two parts, ten questions each: eight single-choice with six options and one set of two. */
     private String parts(Subject subject, Integer firstMinutes, Integer secondMinutes) {
+        return parts(subject, firstMinutes, secondMinutes, 8);
+    }
+
+    /** As above, with {@code firstSingles} single-choice questions in the first part. */
+    private String parts(Subject subject, Integer firstMinutes, Integer secondMinutes, int firstSingles) {
+        int firstCount = firstSingles + 2;
         return """
-                [{"id":"p1","order":1,"name":"One",%s"questionCount":10,"participation":{"mode":"ALL"},
-                  "sections":[{"id":"s1","subjectCode":"%s","questionCount":10,
-                    "blocks":[{"id":"single-1","name":"Singles","questionType":"SINGLE_CHOICE","questionCount":8},
+                [{"id":"p1","order":1,"name":"One",%s"questionCount":%d,"participation":{"mode":"ALL"},
+                  "sections":[{"id":"s1","subjectCode":"%s","questionCount":%d,
+                    "blocks":[{"id":"single-1","name":"Singles","questionType":"SINGLE_CHOICE","questionCount":%d},
                               {"id":"set-1","name":"Set","questionType":"QUESTION_SET","questionCount":2,"setCount":1,"setSize":2}]}]},
                  {"id":"p2","order":2,"name":"Two",%s"questionCount":10,"participation":{"mode":"ALL"},
                   "sections":[{"id":"s2","subjectCode":"%s","questionCount":10,
                     "blocks":[{"id":"single-2","name":"Singles","questionType":"SINGLE_CHOICE","questionCount":8},
                               {"id":"set-2","name":"Set","questionType":"QUESTION_SET","questionCount":2,"setCount":1,"setSize":2}]}]}]
-                """.formatted(minutes(firstMinutes), subject.code(), minutes(secondMinutes), subject.code());
+                """.formatted(minutes(firstMinutes), firstCount, subject.code(), firstCount, firstSingles,
+                minutes(secondMinutes), subject.code());
     }
 
     private static String minutes(Integer value) {
