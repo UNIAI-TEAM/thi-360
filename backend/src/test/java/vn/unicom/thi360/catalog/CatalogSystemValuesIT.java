@@ -283,6 +283,46 @@ class CatalogSystemValuesIT extends AbstractIntegrationTest {
                 Integer.class, SUBJECT_GROUP, newCode)).isZero();
     }
 
+    @Test
+    void excelConfirmRecheckRejectsACodeThatBecameASystemValueAfterACleanPreview() throws Exception {
+        String code = "LATE_" + shortCode();
+        byte[] xlsx = buildXlsx(List.of(
+                List.of("Mã*", "Tên tiếng Việt*", "Tên tiếng Anh", "Mô tả", "Trạng thái"),
+                List.of(code, "Môn đến muộn", "", "", "Hoạt động")));
+        MvcResult preview = mockMvc.perform(multipart("/api/v1/admin/catalog/groups/{id}/items/import", SUBJECT_GROUP)
+                        .file(new MockMultipartFile(
+                                "file", "late.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx))
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.errorRows").value(0))
+                .andExpect(jsonPath("$.canConfirm").value(true))
+                .andReturn();
+        UUID previewId = UUID.fromString(
+                objectMapper.readTree(preview.getResponse().getContentAsString()).get("previewId").asText());
+
+        // The code becomes a system value (a migration, say) between the clean preview and the confirm.
+        UUID systemId = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, display_order,"
+                        + " status, is_system, depth, path) SELECT ?, ?, ?, lower(?),"
+                        + " coalesce(max(value), 0) + 1000, 'Môn hệ thống đến muộn', 999, 1, true, 1, '/' || ?::text || '/'"
+                        + " FROM catalog.catalog_item WHERE group_id = ?",
+                systemId, SUBJECT_GROUP, code, code, systemId, SUBJECT_GROUP);
+        createdItemIds.add(systemId);
+
+        mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items/import/{previewId}/confirm",
+                        SUBJECT_GROUP, previewId)
+                        .with(asUser(Permissions.CATALOG_MODIFY)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IMPORT_HAS_ERRORS"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("CATALOG_ITEM_SYSTEM"));
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM catalog.catalog_item WHERE group_id = ? AND code_normalized = lower(?)",
+                Integer.class, SUBJECT_GROUP, code)).isEqualTo(1);
+    }
+
     private JsonNode item(UUID id) throws Exception {
         String json = mockMvc.perform(get("/api/v1/admin/catalog/items/{id}", id)
                         .with(asUser(Permissions.CATALOG_VIEW)))
