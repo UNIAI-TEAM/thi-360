@@ -66,6 +66,19 @@ class MyExamsApiIT extends AbstractExamAccessIT {
     }
 
     @Test
+    void fullyRevokedUnusedDiscontinuedKeepsHistory() throws Exception {
+        UUID userId = activeAccount();
+        Product product = discontinued();
+        grantService.revokeUnused(grant(userId, product.examId(), 2).grantId());
+
+        JsonNode card = only(myExams(learner(userId)));
+
+        assertThat(card.get("state").asText()).isEqualTo("EXHAUSTED");
+        assertThat(card.get("attemptsLeft").asInt()).isZero();
+        assertThat(actions(card)).containsExactly("HISTORY").doesNotContain("REBUY", "BUY_MORE");
+    }
+
+    @Test
     void onSaleWithAttemptsCanBuyMore() throws Exception {
         UUID userId = activeAccount();
         Product product = onSale();
@@ -89,8 +102,8 @@ class MyExamsApiIT extends AbstractExamAccessIT {
 
         assertThat(card.get("attemptsLeft").asInt()).as("the only attempt is held by the open one").isZero();
         assertThat(card.get("state").asText()).isEqualTo("IN_PROGRESS");
-        assertThat(actions(card).get(0)).isEqualTo("CONTINUE");
-        assertThat(actions(card)).doesNotContain("START", "REBUY");
+        assertThat(actions(card)).as("an open attempt at zero left on sale: continue, no purchase button")
+                .containsExactly("CONTINUE", "HISTORY");
         assertThat(card.get("activeAttemptId").asText()).isEqualTo(attemptId.toString());
         assertThat(card.get("activeAttemptState").asText()).isEqualTo("STARTING");
     }

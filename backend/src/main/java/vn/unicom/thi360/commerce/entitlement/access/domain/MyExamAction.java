@@ -13,9 +13,9 @@ public enum MyExamAction {
     VIEW_RESULT,
     /** Open the attempt history of the exam. */
     HISTORY,
-    /** Buy again: every attempt is gone and the product is still on sale. */
+    /** Buy again (TM 12): every attempt is gone ({@code EXHAUSTED}) and the product is still on sale. */
     REBUY,
-    /** Buy more attempts (C13): attempts are left or one is in use, and the product is still on sale. */
+    /** Buy more attempts (C13): attempts are left and the product is still on sale. */
     BUY_MORE,
     /** A paid order is being fulfilled: shown instead of any purchase button, not clickable. */
     CHECKING;
@@ -27,7 +27,8 @@ public enum MyExamAction {
      * @param attemptsLeft attempts usable now
      * @param openAttempt an attempt is open ({@code STARTING} counts)
      * @param hasResult some attempt of the entitlement has a result
-     * @param hasHistory the entitlement has had an attempt (used, held, open or with a result)
+     * @param hasHistory the entitlement has had an attempt (used, held, open or with a result); an exhausted card has
+     *        History whatever its attempts were (all of them may have been revoked unused)
      * @param onSale the product is still on sale
      */
     public static List<MyExamAction> of(ExamAccessState state, int attemptsLeft, boolean openAttempt,
@@ -44,11 +45,15 @@ public enum MyExamAction {
         if (hasResult) {
             actions.add(VIEW_RESULT);
         }
-        if (hasHistory) {
+        if (hasHistory || state == ExamAccessState.EXHAUSTED) {
             actions.add(HISTORY);
         }
-        if (onSale && state != ExamAccessState.CHECKING) {
-            actions.add(attemptsLeft > 0 || openAttempt ? BUY_MORE : REBUY);
+        if (onSale) {
+            if (state == ExamAccessState.EXHAUSTED) {
+                actions.add(REBUY);
+            } else if (attemptsLeft > 0 && state != ExamAccessState.CHECKING) {
+                actions.add(BUY_MORE);
+            }
         }
         return actions;
     }
