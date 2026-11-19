@@ -54,6 +54,9 @@ interface PendingInfoSave {
 
 type OverviewField = "questionCount" | "durationMinutes" | "maxPoints";
 
+/** Bảng xem trước phạm vi mới chỉ đọc: ô lỗi của bảng đã lưu không đi theo sang đó. */
+const NO_CELL_ISSUES: ReadonlyMap<string, { questionCount?: string }> = new Map();
+
 /** Ô của bảng tổng quan người dùng đã sửa, theo khóa dòng; phủ lên số đang lưu để bảng đổi theo cấu trúc mới tải về. */
 type CellEdits = Record<string, Partial<Record<OverviewField, string>>>;
 
@@ -271,9 +274,10 @@ function ExamGeneralForm({
     }));
   };
 
-  const done = () => {
+  /** `recheck`: chỉ ghi cấu trúc mà kết quả kiểm tra trước đó đã cũ, nên báo cần kiểm tra lại (như bước Cấu trúc). */
+  const done = (recheck = false) => {
     setConfirmReplace(null);
-    const message = t("saved");
+    const message = t(recheck ? "overview.savedRecheck" : "saved");
     notify.success(message);
     onAnnounce(message);
   };
@@ -336,7 +340,7 @@ function ExamGeneralForm({
     setCellEdits({});
     if (!formState.isDirty) {
       onHold(false);
-      done();
+      done(exam.check.status !== "UNCHECKED");
       return;
     }
     save({ ...pending, request: { ...pending.request, expectedRevision: saved.revision } }, true);
@@ -433,7 +437,7 @@ function ExamGeneralForm({
           showPoints={pendingRows.some((row) => row.kind === "part" && row.maxPoints !== "")}
           sharedTotal={String(pendingTemplate?.durationMinutes ?? "")}
           onCellChange={onCellChange}
-          issues={cellIssues}
+          issues={NO_CELL_ISSUES}
           subjectName={lookup.subject}
         />
       );

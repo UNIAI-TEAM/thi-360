@@ -3827,7 +3827,8 @@
         "loadErrorTitle": "Không tải được cấu trúc đã lưu.",
         "loadErrorDescription": "Vẫn lưu được thông tin chung; thử lại để sửa số câu, thời lượng, điểm của các phần.",
         "infoNotSaved": "Số câu, thời lượng, điểm của các phần đã được lưu, nhưng thông tin chung chưa lưu được. Kiểm tra lại các ô rồi bấm Lưu thông tin.",
-        "publishedReadOnly": "Bài đã công bố: bảng chỉ đọc ở đây. Sửa số câu, thời lượng, điểm ở bước Cấu trúc (bản nháp)."
+        "publishedReadOnly": "Bài đã công bố: bảng chỉ đọc ở đây. Sửa số câu, thời lượng, điểm ở bước Cấu trúc (bản nháp).",
+        "savedRecheck": "Đã lưu số câu, thời lượng, điểm của các phần. Bài thi cần kiểm tra lại trước khi công bố."
       },
       "loadErrorTitle": "Không tải được danh mục và mẫu cấu trúc",
       "loadErrorDescription": "Kiểm tra kết nối rồi thử lại.",

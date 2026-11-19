@@ -3827,7 +3827,8 @@
         "loadErrorTitle": "Could not load the saved structure.",
         "loadErrorDescription": "General information can still be saved; try again to edit the parts' questions, durations and points.",
         "infoNotSaved": "The parts' questions, durations and points were saved, but the general information was not. Check the fields and press Save again.",
-        "publishedReadOnly": "The exam is published: the table is read-only here. Edit questions, durations and points in the Structure step (working version)."
+        "publishedReadOnly": "The exam is published: the table is read-only here. Edit questions, durations and points in the Structure step (working version).",
+        "savedRecheck": "Saved the parts' questions, durations and points. The exam needs to be rechecked before publishing."
       },
       "loadErrorTitle": "Could not load the catalog and structure templates",
       "loadErrorDescription": "Check your connection and try again.",

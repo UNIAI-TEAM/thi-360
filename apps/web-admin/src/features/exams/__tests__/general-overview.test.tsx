@@ -87,7 +87,7 @@ let backend: ExamsBackend;
 let seeded: ExamDetail;
 
 /** Bài HSA toàn bài đã sửa số câu Toán 50 → 45 lúc tạo (45 / 50 / 50). `configure` đăng ký phản hồi ghi đè trước khi cài. */
-function setup(options: { lockCounts?: boolean; servingVersion?: number; configure?: (backend: ExamsBackend) => void } = {}) {
+function setup(options: { lockCounts?: boolean; servingVersion?: number; checkStatus?: ExamDetail["check"]["status"]; configure?: (backend: ExamsBackend) => void } = {}) {
   routerMock.push.mockReset();
   backend = new ExamsBackend();
   if (options.lockCounts) {
@@ -107,6 +107,7 @@ function setup(options: { lockCounts?: boolean; servingVersion?: number; configu
     timing: "PER_PART",
     templateCode: "HSA_FULL",
     servingVersion: options.servingVersion ?? null,
+    check: { ...base.check, status: options.checkStatus ?? "UNCHECKED" },
     parts: [hsaPart(1, MATH, 45, 75, "MATH"), hsaPart(2, LITERATURE, 50, 60, "LITERATURE"), hsaPart(3, SCIENCE, 50, 60, "PHYSICS")],
   };
   backend.seedExam(seeded);
@@ -369,4 +370,39 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     expect(counts).toHaveLength(1);
     expect(counts[0]).toHaveAttribute("readonly");
   }, 30_000);
+
+  it("R1-10: ô nhập sai ở bảng đã lưu không hiện lại ở bảng xem trước của phạm vi mới", async () => {
+    setup();
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.clear(countOf(MATH));
+    await user.type(countOf(MATH), "abc");
+    expect(await screen.findByText("Số câu phải là số nguyên dương.")).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
+    expect(screen.queryByText("Số câu phải là số nguyên dương.")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("R1-11: chỉ lưu bảng khi bài đã kiểm tra thì báo cần kiểm tra lại; chưa kiểm tra thì giữ câu lưu thường", async () => {
+    setup({ checkStatus: "VALID" });
+    const user = userEvent.setup();
+    const { unmount } = open();
+    await tableRegion();
+    await user.clear(countOf(MATH));
+    await user.type(countOf(MATH), "44");
+    await user.click(screen.getByRole("button", { name: SAVE }));
+    expect(await screen.findAllByText(/cần kiểm tra lại trước khi công bố/)).not.toHaveLength(0);
+    unmount();
+
+    setup();
+    open();
+    await tableRegion();
+    await user.clear(countOf(MATH));
+    await user.type(countOf(MATH), "44");
+    await user.click(screen.getByRole("button", { name: SAVE }));
+    expect((await screen.findAllByText("Đã lưu thông tin chung.")).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/cần kiểm tra lại trước khi công bố/)).not.toBeInTheDocument();
+  }, 30_000);
 });
+
