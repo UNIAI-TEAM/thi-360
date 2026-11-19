@@ -1,7 +1,7 @@
 /**
  * Bảng đăng ký biểu mẫu theo môn (FTM R-1, plan B1): khóa bằng cặp mã kỳ + mã môn canonical. Mục cho biết biểu mẫu
- * (MT Ma trận môn, DS Danh sách dòng lấy câu) và các cấu hình của cặp (R-4, R-8 đến R-12). Mọi mục đang `enabled: false`:
- * mỗi lát cắt (plan B7) tự bật mục của mình khi đủ tiêu chí chấp nhận.
+ * (MT Ma trận môn, DS Danh sách dòng lấy câu) và các cấu hình của cặp (R-4, R-8 đến R-12). Cờ `enabled` bật theo lát cắt: mỗi lát (plan B7)
+ * bật mục của mình khi đủ tiêu chí chấp nhận, mục còn lại dùng MD.
  *
  * Tra bằng mã canonical. Bí danh chỉ đổi mã **dùng để tra** và chỉ ở kỳ có mã canonical tương ứng; không trả và không ghi lại
  * mã đã đổi (mã môn gốc của bài giữ nguyên). Mã không có trong bảng, kể cả mã hệ thống cũ, không có mục (dùng MD).
@@ -155,6 +155,12 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
   },
 };
 
+/**
+ * Cờ `enabled` theo lát cắt (plan B7): cặp chỉ bật khi lát có đủ hành vi FTM yêu cầu cho nó. Lát CR-2a bật MT của QDA, BCA; mọi dạng khác
+ * (HSA: CR-2H; V-ACT: CR-2a′; DS: CR-3) còn tắt và dùng MD như hôm nay.
+ */
+const MATRIX_ENABLED_KINDS: readonly SubjectFormExamKind[] = ["QDA", "BCA"];
+
 /** Giới hạn R-12 của Khoa học HSA, QDA: 1–2 chùm, mỗi chùm 3 câu con; Lý, Hóa, Sinh có ít nhất 1 câu điền. */
 const SCIENCE_SET_COUNT = { min: 1, max: 2, size: 3 } as const;
 const SCIENCE_LIMITS: Readonly<Record<string, number>> = { LY: 1, HOA: 1, SINH: 1, SU: 0, DIA: 0 };
@@ -166,7 +172,7 @@ function buildEntry(kind: SubjectFormExamKind, subject: string, form: SubjectFor
   const limited = LIMITED_KINDS.includes(kind) && subject in SCIENCE_LIMITS;
   return {
     form,
-    enabled: false,
+    enabled: matrix && MATRIX_ENABLED_KINDS.includes(kind),
     percentEntry: rule.percent[form],
     enforcement: rule.enforcement,
     combinedMatrix: rule.combinedMatrix,

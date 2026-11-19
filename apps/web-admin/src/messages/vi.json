@@ -6065,6 +6065,70 @@
           "rowOmitted": "Dòng đang tạm bỏ qua",
           "templateTotal": "Số câu của mục theo mẫu, không đổi"
         }
+      },
+      "matrix": {
+        "distribution": {
+          "addCondition": "Thêm điều kiện",
+          "conditionMenu": "Điều kiện thêm",
+          "declared": "Đã khai {declared, number}/{total, number}",
+          "difficulty": "Độ khó",
+          "grade": "Khối lớp",
+          "gradeCondition": "Khối lớp",
+          "hint": "Ô nào không cần kiểm soát thì để trống.",
+          "percentAria": "Tỷ lệ của {label}",
+          "percentNeeds100": "Tổng tỷ lệ {total, number}%, cần 100%",
+          "percentTotal": "Tổng tỷ lệ {total, number}%",
+          "title": "Khối lớp và độ khó"
+        },
+        "errors": {
+          "choiceBelowChildren": "Ít hơn số câu con của chùm ({children, number})",
+          "percentTotal": "Tổng tỷ lệ {total}%, cần 100%",
+          "setMin": "Ít nhất 1 chùm",
+          "setRange": "Số chùm từ {min, number} đến {max, number}",
+          "shortAnswerMin": "Cần ít nhất {min, number} câu điền đáp án"
+        },
+        "scope": {
+          "addQuota": "Thêm chỉ tiêu chủ đề",
+          "addQuotaHint": "Mở bảng số câu tối thiểu theo từng chủ đề.",
+          "hint": "Giới hạn nguồn câu hỏi theo MAPID.",
+          "title": "Phạm vi và chỉ tiêu chủ đề"
+        },
+        "setSource": {
+          "add": "Thêm điều kiện",
+          "added": "Đã thêm",
+          "empty": "Chưa có điều kiện: chùm lấy theo phạm vi của môn.",
+          "groupName": "Câu chùm",
+          "hint": "MAPID và nhãn của riêng nhóm câu chùm; câu đơn không đổi.",
+          "kind": {
+            "MAPID": "MAPID",
+            "TAGS": "Nhãn nguồn"
+          },
+          "kindHint": {
+            "MAPID": "Chỉ lấy chùm thuộc các MAPID này",
+            "TAGS": "Lọc chùm theo nhãn, ví dụ loại ngữ liệu"
+          },
+          "menuLabel": "Điều kiện của nguồn chùm",
+          "remove": "Bỏ",
+          "removeAria": "Bỏ điều kiện {kind} của nguồn chùm",
+          "title": "Nguồn chùm"
+        },
+        "structure": {
+          "children": "Câu con trong chùm",
+          "childrenHint": "Tổng số câu con; hệ thống tự chọn các chùm nguyên",
+          "choice": "Trắc nghiệm",
+          "choiceHint": "Gồm cả câu con của chùm",
+          "choiceTotal": "Trắc nghiệm (gồm câu con)",
+          "choiceTotalHint": "Tự tính: câu đơn cộng câu con",
+          "fill": "Điền đáp án",
+          "fillMin": "Ít nhất {min, number}",
+          "hint": "Nhập số câu của từng dạng. Trắc nghiệm đơn tự tính.",
+          "setSize": "Mỗi chùm {size, number} câu con",
+          "sets": "Số chùm",
+          "single": "Trắc nghiệm đơn",
+          "singleAuto": "Trắc nghiệm đơn",
+          "singleAutoHint": "Tự tính: Trắc nghiệm trừ câu con của chùm",
+          "title": "Cấu trúc câu"
+        }
       }
     }
   },

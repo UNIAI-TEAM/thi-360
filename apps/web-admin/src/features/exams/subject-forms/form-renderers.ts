@@ -1,5 +1,6 @@
 import { type ComponentType, createElement, type ReactElement } from "react";
 import type { SubjectPanelProps } from "../components/exam-structure-subject-panel";
+import { MatrixForm } from "./matrix-form";
 import type { RawInputStore } from "./raw-input-store";
 import type { SubjectFormKind } from "./registry";
 
@@ -15,7 +16,7 @@ export interface SubjectFormRendererProps extends Omit<SubjectPanelProps, "onSel
   rawInputs: RawInputStore;
 }
 
-const renderers: Partial<Record<SubjectFormKind, ComponentType<SubjectFormRendererProps>>> = {};
+const renderers: Partial<Record<SubjectFormKind, ComponentType<SubjectFormRendererProps>>> = { MATRIX: MatrixForm };
 
 /** Dạng đã có màn vẽ chưa; chưa có thì view vẽ MD, không để môn trống. */
 export function hasSubjectFormRenderer(kind: SubjectFormKind): boolean {
@@ -35,5 +36,17 @@ export function registerSubjectFormRenderer(kind: SubjectFormKind, component: Co
   return () => {
     if (previous) renderers[kind] = previous;
     else delete renderers[kind];
+  };
+}
+
+/**
+ * Chỗ cắm kiểm thử: gỡ màn đã đăng ký của một dạng (dạng bật mà chưa có màn vẽ, review R1-5) cho tới khi gọi hàm trả về. Sản phẩm không dùng.
+ * Từ CR-2, MT có màn thật nên cần gỡ mới dựng lại được trạng thái "chưa có màn".
+ */
+export function removeSubjectFormRendererForTest(kind: SubjectFormKind): () => void {
+  const previous = renderers[kind];
+  delete renderers[kind];
+  return () => {
+    if (previous) renderers[kind] = previous;
   };
 }
