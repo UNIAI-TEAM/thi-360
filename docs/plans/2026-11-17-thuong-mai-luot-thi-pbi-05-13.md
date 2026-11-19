@@ -271,9 +271,10 @@ Cộng theo nhóm: Nền 21, Tài khoản 5, Thương mại 29, Lượt thi 31, 
 
 - **Hợp đồng SPI giữa `commerce` và `attempt`** do C-0 khai đủ ngay từ đầu, trong `commerce/spi`:
   - `EntitlementPort` (commerce cài, attempt gọi). Theo TM 8.5, cộng một hàm đọc cho bước chuẩn bị (LT 5.1):
-    - `describe(userId, entitlementId)` → lượt còn lại, lần cấp sẽ dùng (E21), `option_codes`, nguồn (mua hay cấp bù, mã đơn, ngày);
-    - `reserve(userId, entitlementId, attemptId)` → `grantId`, quyền lợi, `option_codes`;
+    - `describe(userId, entitlementId)` → `examId` của quyền dùng, lượt còn lại, lần cấp sẽ dùng (E21), `option_codes`, nguồn (mua hay cấp bù, mã đơn, ngày);
+    - `reserve(userId, entitlementId, attemptId)` → `examId`, `grantId`, quyền lợi, `option_codes`;
     - `confirmUse(attemptId)`, `release(attemptId)`, `benefitsOf(attemptId)`, `compensate(attemptId, adminId, reason)`.
+    - Ngữ nghĩa (Advisor AD-8, review C-0 R1-1, R1-7): `reserve`, `confirmUse`, `release` idempotent theo `attemptId`; `release` cho lượt chưa giữ là no-op; `confirmUse`, `benefitsOf`, `compensate` cho lượt không có `entitlement_usage` ném lỗi không tìm thấy; `compensate` lần hai nhận 409 `ALREADY_COMPENSATED`. AT-1 lấy `examId` từ `describe` (chuẩn bị) và `reserve` (bắt đầu), không đọc chéo schema.
   - `AttemptStatusProvider` (attempt cài, commerce gọi), kèm bản rỗng mặc định. `commerce` lấy bản cài qua `ObjectProvider`.
   - Các hàm chỉ `commerce` dùng (`grantForOrder`, `revokeUnused`) nằm ở service nội bộ `commerce.entitlement.application`, **không** ở `spi`.
   - Đổi chữ ký trong `commerce/spi` sau khi C-0 merge phải qua Advisor; lane đổi phải sửa mọi nơi gọi trong cùng PR.
