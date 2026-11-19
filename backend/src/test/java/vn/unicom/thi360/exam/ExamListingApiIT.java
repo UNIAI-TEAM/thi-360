@@ -24,7 +24,11 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.security.PermissionCatalog;
 
+import org.springframework.test.context.TestPropertySource;
+
 /** EX-1 AC-1 to AC-5: the listing read and write API. Rolled back per test; covers are rows inserted by SQL. */
+// minPriceVnd below does not depend on the shell's payment threshold (THI360_VNPAY_MIN_AMOUNT).
+@TestPropertySource(properties = "thi360.exam.listing.min-price-vnd=5000")
 @Transactional
 class ExamListingApiIT extends AbstractIntegrationTest {
     private static final UUID EXAM = UUID.fromString("00000000-0000-7000-8700-000000000001");
@@ -122,6 +126,36 @@ class ExamListingApiIT extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString());
         Set<String> fields = new TreeSet<>(error.path("fieldErrors").findValuesAsText("field"));
         assertThat(fields).containsExactly("attemptsGranted", "listPriceVnd", "resultView", "summary");
+        // R1-4: JSON types are checked as sent. A fractional number is not rounded, a string is not parsed, and an
+        // integer that does not fit is out of range. Each is a field error of a 422 and nothing is written.
+        record WrongType(String field, Object value, String code) { }
+        long listingRows = jdbc.queryForObject("SELECT count(*) FROM exam.exam_listing WHERE exam_id = ?", Long.class, EXAM);
+        for (var sample : List.of(
+                new WrongType("listPriceVnd", 99_999.5, "WRONG_TYPE"),
+                new WrongType("listPriceVnd", "120000", "WRONG_TYPE"),
+                new WrongType("attemptsGranted", 3.7, "WRONG_TYPE"),
+                new WrongType("attemptsGranted", 3.0, "WRONG_TYPE"),
+                new WrongType("attemptsGranted", "3", "WRONG_TYPE"),
+                new WrongType("attemptsGranted", 10_000_000_000L, "OUT_OF_RANGE"),
+                new WrongType("benefitAiExplanation", "true", "WRONG_TYPE"),
+                new WrongType("benefitPractice", 1, "WRONG_TYPE"),
+                new WrongType("summary", 5, "WRONG_TYPE"),
+                new WrongType("resultView", true, "WRONG_TYPE"),
+                new WrongType("coverAssetId", "not-a-uuid", "WRONG_TYPE"))) {
+            ObjectNode typed = body(revision);
+            typed.set(sample.field(), mapper.valueToTree(sample.value()));
+            save(typed).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("EXAM_LISTING_INVALID"))
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value(sample.field()))
+                    .andExpect(jsonPath("$.fieldErrors[0].code").value(sample.code()));
+        }
+        ObjectNode many = body(revision);
+        many.put("listPriceVnd", 1.5);
+        many.put("attemptsGranted", "x");
+        JsonNode manyErrors = mapper.readTree(save(many).andExpect(status().isUnprocessableEntity()).andReturn().getResponse().getContentAsString());
+        assertThat(new TreeSet<>(manyErrors.path("fieldErrors").findValuesAsText("field"))).containsExactly("attemptsGranted", "listPriceVnd");
+        assertThat(read().path("revision").asLong()).as("a rejected body changes nothing").isEqualTo(revision);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_listing WHERE exam_id = ?", Long.class, EXAM)).isEqualTo(listingRows);
         for (int attempts : new int[] {0, 101}) {
             ObjectNode one = body(revision);
             one.put("attemptsGranted", attempts);
@@ -140,6 +174,14 @@ class ExamListingApiIT extends AbstractIntegrationTest {
         assertThat(saved.path("listPriceVnd").isNull()).isTrue();
         assertThat(saved.path("checkIssues").findValuesAsText("code"))
                 .contains("LISTING_PRICE_MISSING", "LISTING_ATTEMPTS_MISSING", "LISTING_DESCRIPTION_MISSING", "LISTING_COVER_MISSING");
+        // Explicit nulls clear a draft's values and are not type errors.
+        ObjectNode nulls = body(read().path("revision").asLong());
+        nulls.putNull("listPriceVnd");
+        nulls.putNull("attemptsGranted");
+        nulls.putNull("coverAssetId");
+        nulls.putNull("benefitAiExplanation");
+        save(nulls).andExpect(status().isOk()).andExpect(jsonPath("$.listPriceVnd").doesNotExist())
+                .andExpect(jsonPath("$.attemptsGranted").doesNotExist());
     }
 
     @Test
