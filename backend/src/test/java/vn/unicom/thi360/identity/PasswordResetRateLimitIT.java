@@ -1,8 +1,12 @@
 package vn.unicom.thi360.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import io.github.bucket4j.distributed.proxy.ProxyManager;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.util.ReflectionTestUtils;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
 import vn.unicom.thi360.shared.security.RateLimitFilter;
@@ -28,6 +34,8 @@ class PasswordResetRateLimitIT extends AbstractIntegrationTest {
 
     @Autowired
     private StringRedisTemplate redis;
+    @Autowired
+    private List<SecurityFilterChain> securityFilterChains;
 
     @BeforeEach
     @AfterEach
@@ -84,5 +92,35 @@ class PasswordResetRateLimitIT extends AbstractIntegrationTest {
         assertThat(sixtyFirst.getHeader("Retry-After")).isNotNull();
         assertThat(reset(IP_B).getStatus()).isEqualTo(422);
         assertThat(forgot(IP_A).getStatus()).isEqualTo(202);
+    }
+
+    @Test
+    void notThrottledWhenTheRateLimitStoreFails() throws Exception {
+        // Giữ nguyên hành vi mở khi lỗi của bộ lọc dùng chung (như đăng nhập): Redis hỏng thì yêu cầu vẫn được xử lý
+        // bình thường, không 429 và không 5xx.
+        List<RateLimitFilter> filters = securityFilterChains.stream()
+                .flatMap(chain -> chain.getFilters().stream())
+                .filter(RateLimitFilter.class::isInstance)
+                .map(RateLimitFilter.class::cast)
+                .toList();
+        assertThat(filters).isNotEmpty();
+        @SuppressWarnings("unchecked")
+        ProxyManager<String> failing = mock(ProxyManager.class);
+        when(failing.builder()).thenThrow(new IllegalStateException("redis down"));
+        List<Object> originals = new ArrayList<>();
+        for (RateLimitFilter filter : filters) {
+            originals.add(ReflectionTestUtils.getField(filter, "proxyManager"));
+            ReflectionTestUtils.setField(filter, "proxyManager", failing);
+        }
+        try {
+            for (int i = 1; i <= 65; i++) {
+                assertThat(forgot(IP_A).getStatus()).as("forgot call %d", i).isEqualTo(202);
+                assertThat(reset(IP_A).getStatus()).as("reset call %d", i).isEqualTo(422);
+            }
+        } finally {
+            for (int i = 0; i < filters.size(); i++) {
+                ReflectionTestUtils.setField(filters.get(i), "proxyManager", originals.get(i));
+            }
+        }
     }
 }
