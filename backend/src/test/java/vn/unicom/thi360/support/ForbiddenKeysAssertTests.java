@@ -283,10 +283,7 @@ class ForbiddenKeysAssertTests {
                 Arguments.of("truncated", "{\"items\": [{\"id\": \"" + SENTINEL),
                 Arguments.of("trailing object", "{} {\"answer\": \"" + SENTINEL + "\"}"),
                 Arguments.of("trailing garbage", "{}" + SENTINEL),
-                Arguments.of("trailing after array", "[] []"),
-                Arguments.of("duplicate root key", "{\"answer\": \"" + SENTINEL + "\", \"answer\": 1}"),
-                Arguments.of("overwritten nested key",
-                        "{\"items\": [{\"solution\": \"" + SENTINEL + "\", \"solution\": null}]}"));
+                Arguments.of("trailing after array", "[] []"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -297,6 +294,43 @@ class ForbiddenKeysAssertTests {
                 () -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(json))) {
             Throwable thrown = catchThrowable(call::run);
             assertThat(thrown).as(label).isNotNull();
+            assertThat(renderWithCauses(thrown)).doesNotContain(SENTINEL);
+            assertThat(thrown.getCause()).as("no payload-bearing cause").isNull();
+            assertThat(renderWithCauses(thrown)).as("not mistaken for duplicate keys")
+                    .doesNotContain("duplicate object keys");
+        }
+    }
+
+    // R2-03: khóa trùng là khóa trung tính (hoặc cha trung tính che khóa cấm ở con), nên mọi bản phân
+    // tích cho phép khóa trùng đều thấy tài liệu sạch: chỉ STRICT_DUPLICATE_DETECTION mới làm ca đỏ.
+    static Stream<Arguments> neutralDuplicateKeyDocuments() {
+        return Stream.of(
+                Arguments.of("neutral root key", "{\"name\": \"a\", \"name\": \"b\"}"),
+                Arguments.of("neutral nested key", "{\"product\": {\"code\": \"x\", \"code\": \"y\"}}"),
+                Arguments.of("neutral parent overwrites a subtree holding solution",
+                        "{\"detail\": {\"solution\": \"" + SENTINEL + "\"}, \"detail\": {\"note\": \"n\"}}"),
+                Arguments.of("neutral parent overwritten by null",
+                        "{\"detail\": {\"correct\": \"" + SENTINEL + "\"}, \"detail\": null}"),
+                Arguments.of("neutral parent inside an array element",
+                        "{\"items\": [{\"meta\": {\"answer\": \"" + SENTINEL + "\", \"points\": 1},"
+                                + " \"meta\": {\"ok\": true}}]}"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("neutralDuplicateKeyDocuments")
+    void duplicateNeutralKeysAreRejectedAsDuplicatesEvenWhenTheOverwrittenSubtreeWasForbidden(
+            String label, String json) throws Exception {
+        // Điều kiện của ca: bản phân tích mặc định (khóa sau thắng) cho cây sạch, nên cả hai danh sách đạt.
+        JsonNode lastWins = MAPPER.readTree(json);
+        assertThatCode(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(lastWins)).doesNotThrowAnyException();
+        assertThatCode(() -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(lastWins))
+                .doesNotThrowAnyException();
+
+        for (Runnable call : List.<Runnable>of(
+                () -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(json),
+                () -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(json))) {
+            Throwable thrown = catchThrowable(call::run);
+            assertThat(thrown).as(label).isInstanceOf(AssertionError.class).hasMessageContaining("duplicate object keys");
             assertThat(renderWithCauses(thrown)).doesNotContain(SENTINEL);
             assertThat(thrown.getCause()).as("no payload-bearing cause").isNull();
         }

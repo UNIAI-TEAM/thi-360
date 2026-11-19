@@ -140,6 +140,14 @@ public final class ForbiddenKeysAssert {
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .build();
 
+    /**
+     * Như {@link #STRICT_MAPPER} nhưng cho khóa trùng (khóa sau ghi đè khóa trước): chỉ dùng để phân
+     * loại lỗi, khi tài liệu chỉ bị từ chối vì khóa trùng.
+     */
+    private static final ObjectMapper DUPLICATES_ALLOWED_MAPPER = JsonMapper.builder()
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .build();
+
     private ForbiddenKeysAssert() {
     }
 
@@ -233,10 +241,22 @@ public final class ForbiddenKeysAssert {
         try {
             node = STRICT_MAPPER.readTree(json);
         } catch (JsonProcessingException e) {
-            throw new AssertionError(
-                    "not one complete JSON document (malformed, trailing data or duplicate keys); content withheld");
+            throw new AssertionError(onlyDuplicateKeys(json)
+                    ? "duplicate object keys in the document (a later key silently overwrites an earlier one,"
+                            + " hiding it from the scan); content withheld"
+                    : "not one complete JSON document (malformed or trailing data); content withheld");
         }
         requireContainer(node);
         return node;
+    }
+
+    /** Tài liệu chỉ bị từ chối vì khóa trùng: bỏ kiểm khóa trùng thì phân tích được trọn vẹn. */
+    private static boolean onlyDuplicateKeys(String json) {
+        try {
+            DUPLICATES_ALLOWED_MAPPER.readTree(json);
+            return true;
+        } catch (JsonProcessingException e) {
+            return false;
+        }
     }
 }
