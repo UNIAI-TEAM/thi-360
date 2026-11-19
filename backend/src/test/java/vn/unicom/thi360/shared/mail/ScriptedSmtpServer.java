@@ -28,6 +28,7 @@ final class ScriptedSmtpServer implements AutoCloseable {
     private volatile String dataReply = "250 OK queued";
     private volatile boolean echoDataInReply;
     private volatile boolean silentOnQuit;
+    private volatile boolean silentOnRset;
     private volatile boolean stallBeforeData;
     private final CountDownLatch releaseData = new CountDownLatch(1);
     private volatile String authUser;
@@ -39,6 +40,8 @@ final class ScriptedSmtpServer implements AutoCloseable {
     final AtomicInteger dataAccepted = new AtomicInteger();
     /** Số kết nối đã đóng (phía nào đóng cũng đếm). */
     final AtomicInteger connectionsClosed = new AtomicInteger();
+    /** Số lệnh {@code RSET} đã nhận. */
+    final AtomicInteger rsetCommands = new AtomicInteger();
     private final AtomicReference<String> lastData = new AtomicReference<>("");
     private final AtomicReference<String> authenticatedAs = new AtomicReference<>();
 
@@ -75,6 +78,12 @@ final class ScriptedSmtpServer implements AutoCloseable {
     /** Không trả lời {@code QUIT}: máy chủ đã nhận thư nhưng việc đóng kết nối không bao giờ xong. */
     ScriptedSmtpServer silentOnQuit() {
         this.silentOnQuit = true;
+        return this;
+    }
+
+    /** Đọc {@code RSET} nhưng không trả lời: máy chủ đã từ chối người nhận, còn việc đặt lại không bao giờ xong. */
+    ScriptedSmtpServer silentOnRset() {
+        this.silentOnRset = true;
         return this;
     }
 
@@ -170,7 +179,13 @@ final class ScriptedSmtpServer implements AutoCloseable {
                     }
                     reply(out, "221 bye");
                     return;
-                } else if (command.startsWith("RSET") || command.startsWith("NOOP")) {
+                } else if (command.startsWith("RSET")) {
+                    rsetCommands.incrementAndGet();
+                    if (silentOnRset) {
+                        continue; // đọc lệnh nhưng không trả lời: phía gửi phải không chờ câu trả lời này
+                    }
+                    reply(out, "250 OK");
+                } else if (command.startsWith("NOOP")) {
                     reply(out, "250 OK");
                 } else {
                     reply(out, "502 not implemented");

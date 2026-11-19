@@ -4,6 +4,7 @@ import jakarta.mail.Address;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
+import jakarta.mail.URLName;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Properties;
+import org.eclipse.angus.mail.smtp.SMTPTransport;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 
@@ -59,7 +61,7 @@ class SmtpMailTransport implements MailTransport {
         Address[] recipients = message.getAllRecipients();
 
         // Thời gian chờ của socket suy ra từ hạn còn lại ngay lúc này, ngay trước khi kết nối.
-        Transport transport = sessionFor(deadline).getTransport(protocol());
+        Transport transport = newTransport(sessionFor(deadline));
         try {
             String username = sender.getUsername();
             String password = sender.getPassword();
@@ -78,6 +80,40 @@ class SmtpMailTransport implements MailTransport {
         // Máy chủ đã nhận thư: kết quả cuối. Đóng kết nối tách khỏi lời gọi để một máy chủ chậm
         // trả lời QUIT không làm lần gửi tới hạn, lỡ máy chủ nhận thư rồi.
         closeDetached(transport);
+    }
+
+    /**
+     * Vận chuyển dùng một lần. Với giao thức {@code smtp} là {@link SingleUseSmtpTransport}; giao thức khác dùng
+     * cái mà phiên trả về.
+     */
+    private Transport newTransport(Session session) throws MessagingException {
+        String protocol = protocol();
+        if (JavaMailSenderImpl.DEFAULT_PROTOCOL.equals(protocol)) {
+            return new SingleUseSmtpTransport(
+                    session, new URLName(protocol, sender.getHost(), sender.getPort(), null, null, null));
+        }
+        return session.getTransport(protocol);
+    }
+
+    /**
+     * Kết nối chỉ dùng cho một thư và bị bỏ sau khi lỗi, nên không cần {@code RSET}. Angus gửi {@code RSET} rồi
+     * <em>đọc câu trả lời</em> trước khi báo một lỗi đã biết (ví dụ {@code 550} cho mọi người nhận); máy chủ
+     * câm ở {@code RSET} sẽ giữ lỗi vĩnh viễn đó tới hết hạn và biến nó thành "timeout" rồi gửi lại. Bỏ lệnh
+     * này giữ nguyên kết quả {@code 5xx} đã nhận.
+     */
+    private static final class SingleUseSmtpTransport extends SMTPTransport {
+
+        SingleUseSmtpTransport(Session session, URLName url) {
+            super(session, url);
+        }
+
+        @Override
+        public synchronized void issueCommand(String command, int expect) throws MessagingException {
+            if ("RSET".equals(command) && expect == -1) {
+                return;
+            }
+            super.issueCommand(command, expect);
+        }
     }
 
     /**

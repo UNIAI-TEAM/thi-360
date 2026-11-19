@@ -134,4 +134,34 @@ class MailDeadlineIT extends AbstractMailIT {
             }
         }
     }
+
+    /**
+     * Máy chủ từ chối mọi người nhận bằng {@code 550} rồi câm ở {@code RSET} (R2-01). Angus đọc trả lời {@code RSET}
+     * trước khi báo lỗi {@code 550} đã biết; thời gian chờ đọc (30 giây) dài hơn hạn một lần gửi (3 giây) nên nếu
+     * còn chờ thì kết quả vĩnh viễn bị đổi thành "timeout" và thư gửi lại. Đúng ra: {@code failed_at} ngay lần
+     * đầu, một {@code RCPT}, không chờ {@code RSET}.
+     */
+    @Test
+    void aRejectedRecipientStaysPermanentWhenTheServerNeverAnswersRset() throws Exception {
+        try (ScriptedSmtpServer server =
+                new ScriptedSmtpServer().rejectRecipientWith("550 5.1.1 No such user").silentOnRset()) {
+            routeSmtpTo(server.port(), 30000);
+            String to = MailSamples.randomAddress();
+            enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+
+            long startedAt = System.nanoTime();
+            assertThat(dispatcher.dispatchBatch()).isZero();
+            Duration elapsed = Duration.ofNanos(System.nanoTime() - startedAt);
+
+            assertThat(elapsed).as("the 550 is not held back by RSET").isLessThan(Duration.ofSeconds(2));
+            MailOutbox.Mail mail = outbox.require(to, MailKind.EMAIL_VERIFY);
+            assertThat(mail.lastError()).isEqualTo("smtp-550 5.1.1 rcpt-rejected");
+            assertThat(mail.failedAt()).isEqualTo(START);
+            assertThat(mail.attempts()).isEqualTo(1);
+
+            advance(Duration.ofDays(1));
+            assertThat(dispatcher.dispatchBatch()).isZero();
+            assertThat(server.rcptCommands.get()).as("no second RCPT after the permanent failure").isEqualTo(1);
+        }
+    }
 }
