@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
@@ -26,7 +27,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 /**
  * UNI-2699 (FIX-RELOAD): the legacy subject-cut reload keeps the exam clock of a SHARED
  * exam, takes a positive part-row duration only for PER_PART, and takes a scale only for
- * RAW scoring; a stored SHARED clock that is null or not positive blocks publish.
+ * RAW scoring; a stored SHARED clock that is null or not positive blocks publish (INFO_MISSING).
  */
 @Transactional
 class ExamTemplateReloadIT extends AbstractIntegrationTest {
@@ -109,9 +110,9 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
     }
 
     /**
-     * Row 3: a SHARED exam whose stored clock is not positive reports the blocking
-     * SHARED_PART_DURATION finding and publish is refused without writing a version. The
-     * bad clock is written directly — create and reload cannot produce one.
+     * Row 3: a SHARED exam whose stored clock is not positive reports the blocking INFO_MISSING
+     * finding (INFO group, ERROR) and publish is refused without writing a version. The bad
+     * clock is written directly — create and reload cannot produce one.
      */
     @Test
     void badSharedClockBlocksPublish() throws Exception {
@@ -122,7 +123,11 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
         entityManager.clear();
         JsonNode result = check(id);
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
-        assertThat(result.path("groups").findValuesAsText("code")).contains("SHARED_PART_DURATION");
+        JsonNode missing = infoMissingIssues(result);
+        assertThat(missing).hasSize(1);
+        assertThat(missing.get(0).path("group").asText()).isEqualTo("INFO");
+        assertThat(missing.get(0).path("severity").asText()).isEqualTo("ERROR");
+        assertThat(result.path("groups").findValuesAsText("code")).doesNotContain("SHARED_PART_DURATION");
 
         ObjectNode publish = mapper.createObjectNode()
                 .put("expectedRevision", detail(id).path("revision").asLong());
@@ -137,6 +142,27 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM exam.exam_version WHERE exam_id = ?",
                 Integer.class, UUID.fromString(id))).isZero();
+    }
+
+    /** A missing name and a missing clock on one exam are one INFO_MISSING issue, not two. */
+    @Test
+    void missingNameAndClockReportOneInfoIssue() throws Exception {
+        JsonNode exam = created(create("VSAT", "PART", "P2", "TOAN", 45));
+        String id = exam.path("id").asText();
+        entityManager.flush();
+        jdbc.update("UPDATE exam.exam SET name = '', duration_minutes = 0 WHERE id = ?", UUID.fromString(id));
+        entityManager.clear();
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(infoMissingIssues(result)).hasSize(1);
+    }
+
+    private JsonNode infoMissingIssues(JsonNode result) {
+        ArrayNode found = mapper.createArrayNode();
+        result.path("groups").forEach(group -> group.path("issues").forEach(issue -> {
+            if ("INFO_MISSING".equals(issue.path("code").asText())) found.add(issue);
+        }));
+        return found;
     }
 
     /**

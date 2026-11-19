@@ -4751,7 +4751,7 @@
         "manualGrading": "Chấm tay"
       },
       "issue": {
-        "INFO_MISSING": "Thiếu thông tin bắt buộc của bài thi (tên, mã hoặc môn của bài lẻ).",
+        "INFO_MISSING": "Thiếu thông tin bắt buộc của bài thi (tên, mã, thời lượng hoặc môn của bài lẻ).",
         "OPTION_EMPTY": "{part} chưa có lựa chọn nào cho học viên.",
         "PATH_TOTAL_MISMATCH": "Tổng số câu của đường là {available, number}, yêu cầu của bài thi là {required, number} câu.",
         "PART_TOTAL_MISMATCH": "Tổng phân bổ của {part} là {available, number} câu, yêu cầu của phần thi là {required, number} câu.",

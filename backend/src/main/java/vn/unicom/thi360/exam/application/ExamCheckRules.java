@@ -124,18 +124,16 @@ public final class ExamCheckRules {
         List<ObjectNode> found = new ArrayList<>();
         if (document.parts().isEmpty() || exam.getName() == null || exam.getName().isBlank()
                 || exam.getCode() == null || exam.getCode().isBlank()
-                || ("PART".equals(exam.getScope()) && (exam.getPartCode() == null || exam.getPartCode().isBlank()))) {
+                || ("PART".equals(exam.getScope()) && (exam.getPartCode() == null || exam.getPartCode().isBlank()))
+                // UNI-2699: a SHARED exam needs a positive exam clock; a bad stored clock blocks publish.
+                || ("SHARED".equals(exam.getTiming())
+                        && (exam.getDurationMinutes() == null || exam.getDurationMinutes() <= 0))) {
             found.add(issue("INFO_MISSING", "INFO", null, null, null));
         }
         if (exam.getStructureYear() != null && exam.getMatrixYear() != null
                 && !exam.getStructureYear().equals(exam.getMatrixYear()) && !exam.isYearsConfirmed()) {
             ObjectNode issue = issue("YEARS_UNCONFIRMED", "INFO", null, null, null);
             issue.put("required", exam.getStructureYear()); issue.put("available", exam.getMatrixYear()); found.add(issue);
-        }
-        if ("SHARED".equals(exam.getTiming())
-                && (exam.getDurationMinutes() == null || exam.getDurationMinutes() <= 0)) {
-            // UNI-2699: a bad stored clock blocks publish; reload can no longer write one.
-            found.add(issue("SHARED_PART_DURATION", "STRUCTURE", null, null, null));
         }
         for (ExamPart part : document.parts()) {
             if (isChoice(part) && part.codeSource() == null && part.options().isEmpty()) found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));

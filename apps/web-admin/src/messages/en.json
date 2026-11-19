@@ -4751,7 +4751,7 @@
         "manualGrading": "Manual grading"
       },
       "issue": {
-        "INFO_MISSING": "Required exam information is missing (name, code or the subject of a single-subject exam).",
+        "INFO_MISSING": "Required exam information is missing (name, code, duration or the subject of a single-subject exam).",
         "OPTION_EMPTY": "{part} has no option for learners yet.",
         "PATH_TOTAL_MISMATCH": "The path has {available, number} questions in total; the exam requires {required, number}.",
         "PART_TOTAL_MISMATCH": "{part} allocates {available, number} questions; the part requires {required, number}.",
