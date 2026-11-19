@@ -73,8 +73,8 @@ test("HSA dùng cấu trúc môn: số câu của phần và mục chỉ đọc,
   const link = sectionCount.locator("xpath=..").getByRole("link", { name: "Sửa thông tin tổng quan" });
   await expect(link).toHaveAttribute("href", `/exams/${id}`);
 
-  // Màn phần: số câu phải làm và trên đề chỉ đọc.
-  await list.locator(":scope > ol > li > button[data-list-item]").first().click();
+  // Màn phần: số câu phải làm và trên đề chỉ đọc. Mục đầu danh sách là "Tổng quan bài" (FE-3b), không phải phần.
+  await list.locator(":scope > ol > li:not(:first-child) > button[data-list-item]").first().click();
   for (const name of [/^Số câu phải làm/, /^Số câu trên đề/]) {
     await expect(page.getByRole("textbox", { name })).toHaveAttribute("readonly", "");
   }
