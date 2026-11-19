@@ -23,30 +23,79 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 
 /**
- * CR-4 / AD-75: the seeded HSA dev exam keeps passing the R-12 rules with sources, generates a paper with its
- * science sets and short answers, and an older database gets the new structure when the seed file runs again.
+ * CR-4 / AD-75: the seeded HSA dev exam keeps passing the R-12 rules with sources, generates a paper with the science
+ * sets and short answers of every selected subject (also in the section the generator trims from 17 to 16 questions),
+ * and an older database gets the new structure and refs when the seed file runs again, without a key clash.
  */
 @Transactional
 class ExamSeedR12IT extends AbstractIntegrationTest {
     private static final UUID EXAM = UUID.fromString("00000000-0000-7000-8700-000000000001");
     private static final String SCIENCE = "00000000-0000-7000-8800-000000000070";
+    private static final String HASH = "dev-hsa-structure-v4";
+    private static final String FIRST_NEW_BLOCK = "00000000-0000-7000-8800-000000000080";
+    private static final String LAST_NEW_BLOCK = "00000000-0000-7000-8800-000000000087";
+    private static final List<String> FILL_SUBJECTS = List.of("LY", "HOA", "SINH");
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper mapper;
     @Autowired private DataSource dataSource;
 
+    /**
+     * Each selected science subject has its own mix on the generated paper: one set of three children, one short answer
+     * for Lý, Hóa, Sinh and none for Sử, Địa, and the section total is 17, or 16 for the one the generator trims. The
+     * seeds are many so that every selected subject is the trimmed one in some paper: the fill must survive the trim.
+     */
     @Test
-    void seededHsaDevExamGeneratesSciencePapersWithSetAndShortAnswer() throws Exception {
-        for (String[] picks : new String[][] {{"LY", "HOA", "SINH"}, {"SU", "DIA", "LY"}}) {
-            JsonNode preview = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + EXAM + "/preview")
-                            .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"target\":{\"kind\":\"PATH\",\"pathId\":\"" + SCIENCE + "\",\"subjectCodes\":[\""
-                                    + String.join("\",\"", picks) + "\"]},\"seed\":7}"))
-                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-            assertThat(preview.path("status").asText()).as(preview.toString()).isEqualTo("GENERATED");
-            String paper = preview.path("paper").toString();
-            assertThat(paper).contains("QUESTION_SET");
-            if (!List.of(picks).equals(List.of("SU", "DIA", "LY"))) assertThat(paper).contains("SHORT_ANSWER");
+    void seededHsaDevExamGeneratesTheMixOfEverySelectedScienceSubject() throws Exception {
+        for (String[] picks : new String[][] {{"LY", "HOA", "SINH"}, {"SU", "DIA", "LY"}, {"HOA", "SU", "DIA"}}) {
+            java.util.Set<String> trimmedSubjects = new java.util.TreeSet<>();
+            // Lý is always the trimmed section here and the generator drops one standalone question at random: many seeds
+            // so that a section that may drop its short answer (no answer quota) is caught.
+            int seeds = List.of(picks).equals(List.of("SU", "DIA", "LY")) ? 40 : 12;
+            for (int seed = 1; seed <= seeds; seed++) {
+                JsonNode preview = preview(picks, seed);
+                assertThat(preview.path("status").asText()).as(preview.toString()).isEqualTo("GENERATED");
+                int sixteen = 0;
+                for (String subject : picks) {
+                    int questions = 0;
+                    int sets = 0;
+                    int setChildren = 0;
+                    int fills = 0;
+                    for (JsonNode part : preview.path("paper").path("parts")) {
+                        for (JsonNode block : part.path("blocks")) {
+                            if (!subject.equals(block.path("subjectCode").asText())) continue;
+                            for (JsonNode item : block.path("items")) {
+                                if ("SET".equals(item.path("kind").asText())) {
+                                    sets++;
+                                    setChildren += item.path("children").size();
+                                    questions += item.path("children").size();
+                                } else {
+                                    questions++;
+                                    if ("SHORT_ANSWER".equals(item.path("question").path("type").asText())) fills++;
+                                }
+                            }
+                        }
+                    }
+                    String where = String.join("+", picks) + " seed " + seed + " " + subject;
+                    assertThat(sets).as("sets of " + where).isEqualTo(1);
+                    assertThat(setChildren).as("set children of " + where).isEqualTo(3);
+                    assertThat(fills).as("short answers of " + where).isEqualTo(FILL_SUBJECTS.contains(subject) ? 1 : 0);
+                    assertThat(questions).as("questions of " + where).isIn(16, 17);
+                    if (questions == 16) {
+                        sixteen++;
+                        trimmedSubjects.add(subject);
+                    }
+                }
+                assertThat(sixteen).as("exactly one trimmed section in " + String.join("+", picks) + " seed " + seed).isEqualTo(1);
+            }
+            // The generator trims one section by the choice-group rule: with natural and social subjects mixed it is the
+            // minority group (Lý, Hóa, Sinh are natural: the fill subject is the trimmed one), otherwise every subject in turn.
+            java.util.Set<String> natural = new java.util.TreeSet<>();
+            java.util.Set<String> social = new java.util.TreeSet<>();
+            for (String subject : picks) (FILL_SUBJECTS.contains(subject) ? natural : social).add(subject);
+            java.util.Set<String> expected = natural.isEmpty() || social.isEmpty() ? java.util.Set.of(picks)
+                    : natural.size() == 1 ? natural : social;
+            assertThat(trimmedSubjects).as("subjects trimmed to 16 in " + String.join("+", picks)).isEqualTo(expected);
         }
     }
 
@@ -70,39 +119,102 @@ class ExamSeedR12IT extends AbstractIntegrationTest {
         assertThat(offenders).as("seeded HSA/QDA standard exams that break R-12").isEmpty();
     }
 
-    /** The seed file is a repeatable migration: running it on a database that holds the v2 seed upgrades that row only. */
+    /** The seed file is a repeatable migration: running it on a database that holds an older seed upgrades that row only. */
     @Test
     void rerunUpgradesTheOldSeedAndKeepsAnEditedStructure() throws Exception {
-        String upgraded = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM);
-        long blockRefs = jdbc.queryForObject("SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ?", Long.class, EXAM);
-        assertThat(jdbc.queryForObject("SELECT structure_hash FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM))
-                .isEqualTo("dev-hsa-structure-v3");
+        String upgraded = parts();
+        long blockRefs = refs();
+        assertThat(hash()).isEqualTo(HASH);
 
-        // An older database: the v2 hash and a structure without the science sets and short answers.
-        jdbc.update("UPDATE exam.exam_structure SET structure_hash = 'dev-hsa-structure-v2', "
-                + "parts = jsonb_set(parts, '{parts,2,options,0,sections}', '[]'::jsonb) WHERE exam_id = ?", EXAM);
-        jdbc.update("DELETE FROM exam.exam_block_ref WHERE exam_id = ? AND block_id::text >= '00000000-0000-7000-8800-000000000080' "
-                + "AND block_id::text <= '00000000-0000-7000-8800-000000000087'", EXAM);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ?", Long.class, EXAM)).isLessThan(blockRefs);
-        runSeed();
-        assertThat(jdbc.queryForObject("SELECT structure_hash FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM))
-                .isEqualTo("dev-hsa-structure-v3");
-        assertThat(mapper.readTree(jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM)))
-                .isEqualTo(mapper.readTree(upgraded));
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ?", Long.class, EXAM)).isEqualTo(blockRefs);
+        // An older database (v2, then v3): the old hash and a structure without the science sets, short answers and quotas.
+        for (String oldHash : new String[] {"dev-hsa-structure-v2", "dev-hsa-structure-v3"}) {
+            jdbc.update("UPDATE exam.exam_structure SET structure_hash = ?, "
+                    + "parts = jsonb_set(parts, '{parts,2,options,0,sections}', '[]'::jsonb) WHERE exam_id = ?", oldHash, EXAM);
+            deleteNewRefs();
+            assertThat(refs()).isLessThan(blockRefs);
+            runSeed();
+            assertThat(hash()).isEqualTo(HASH);
+            assertThat(mapper.readTree(parts())).isEqualTo(mapper.readTree(upgraded));
+            assertThat(refs()).isEqualTo(blockRefs);
+        }
 
         // Running it again changes nothing.
         runSeed();
-        assertThat(mapper.readTree(jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM)))
-                .isEqualTo(mapper.readTree(upgraded));
+        assertThat(mapper.readTree(parts())).isEqualTo(mapper.readTree(upgraded));
 
         // A structure that someone edited (other hash) is not overwritten.
         jdbc.update("UPDATE exam.exam_structure SET structure_hash = 'edited-by-hand', parts = jsonb_set(parts, '{parts,0,name}', '\"Edited\"') WHERE exam_id = ?", EXAM);
         runSeed();
         assertThat(jdbc.queryForObject("SELECT parts #>> '{parts,0,name}' FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM))
                 .isEqualTo("Edited");
-        assertThat(jdbc.queryForObject("SELECT structure_hash FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM))
-                .isEqualTo("edited-by-hand");
+        assertThat(hash()).isEqualTo("edited-by-hand");
+    }
+
+    /**
+     * R1-9: on a database whose v2 structure was edited by hand, the upgrade of the structure is skipped, so the refs of
+     * the new science blocks must not appear for blocks the structure does not hold; and once the structure holds them
+     * and the projector wrote its own ref (a fresh id) for one, the seed adds the others and never clashes on the block.
+     */
+    @Test
+    void rerunOnAnEditedDatabaseOnlyAddsRefsOfBlocksItStillHolds() throws Exception {
+        String upgraded = parts();
+        long blockRefs = refs();
+
+        // Edited v2 database without the new blocks: no ref for them, nothing else changes.
+        jdbc.update("UPDATE exam.exam_structure SET structure_hash = 'edited-by-hand', "
+                + "parts = jsonb_set(parts, '{parts,2,options,0,sections}', '[]'::jsonb) WHERE exam_id = ?", EXAM);
+        deleteNewRefs();
+        String edited = parts();
+        long before = refs();
+        runSeed();
+        assertThat(newRefs()).isZero();
+        assertThat(refs()).isEqualTo(before);
+        assertThat(mapper.readTree(parts())).isEqualTo(mapper.readTree(edited));
+        assertThat(hash()).isEqualTo("edited-by-hand");
+
+        // The edited database saved a structure that holds the new blocks; the projector wrote a ref with its own id.
+        jdbc.update("UPDATE exam.exam_structure SET parts = ?::jsonb WHERE exam_id = ?", upgraded, EXAM);
+        runSeed();
+        assertThat(newRefs()).isEqualTo(8);
+        UUID projected = UUID.randomUUID();
+        assertThat(jdbc.update("UPDATE exam.exam_block_ref SET id = ? WHERE exam_id = ? AND block_id = ?", projected, EXAM, FIRST_NEW_BLOCK))
+                .isEqualTo(1);
+        runSeed();
+        assertThat(newRefs()).isEqualTo(8);
+        assertThat(jdbc.queryForObject("SELECT id FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = ?", UUID.class, EXAM, FIRST_NEW_BLOCK))
+                .isEqualTo(projected);
+        assertThat(refs()).isEqualTo(blockRefs);
+        assertThat(hash()).isEqualTo("edited-by-hand");
+    }
+
+    private JsonNode preview(String[] picks, int seed) throws Exception {
+        return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + EXAM + "/preview")
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":{\"kind\":\"PATH\",\"pathId\":\"" + SCIENCE + "\",\"subjectCodes\":[\""
+                                + String.join("\",\"", picks) + "\"]},\"seed\":" + seed + "}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    private String parts() {
+        return jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM);
+    }
+
+    private String hash() {
+        return jdbc.queryForObject("SELECT structure_hash FROM exam.exam_structure WHERE exam_id = ?", String.class, EXAM);
+    }
+
+    private long refs() {
+        return jdbc.queryForObject("SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ?", Long.class, EXAM);
+    }
+
+    private long newRefs() {
+        return jdbc.queryForObject("SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ? AND block_id >= ? AND block_id <= ?",
+                Long.class, EXAM, FIRST_NEW_BLOCK, LAST_NEW_BLOCK);
+    }
+
+    private void deleteNewRefs() {
+        jdbc.update("DELETE FROM exam.exam_block_ref WHERE exam_id = ? AND block_id >= ? AND block_id <= ?",
+                EXAM, FIRST_NEW_BLOCK, LAST_NEW_BLOCK);
     }
 
     private void runSeed() throws Exception {
