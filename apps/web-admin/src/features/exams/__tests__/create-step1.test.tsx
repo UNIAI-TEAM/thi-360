@@ -742,4 +742,13 @@ describe("trang Tạo bài thi, bước 1: bỏ ghi chú nạp mẫu, năm và c
     expect(screen.getByText("Mẫu đã khóa số câu")).toBeInTheDocument();
     expectNoRemovedBlocks();
   }, 20_000);
+
+  it("mẫu có ghi chú chuyên gia (expertNote): không còn hộp \"Lưu ý của mẫu\" ở bước 1 (UNI-2750)", async () => {
+    const [bca] = BCA_TEMPLATES as [Wire];
+    const user = await renderWithTemplates([{ ...bca, expertNote: "Chờ chuyên gia xác nhận" }]);
+    await pickKind(user, "BCA");
+    await screen.findByText("Trắc nghiệm bắt buộc");
+    expect(screen.queryByText("Lưu ý của mẫu")).toBeNull();
+    expect(screen.queryByText("Chờ chuyên gia xác nhận")).toBeNull();
+  }, 20_000);
 });

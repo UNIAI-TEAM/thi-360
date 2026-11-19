@@ -502,8 +502,8 @@ export function ScopeFields({
 
 /**
  * Ghi chú của mẫu đã nạp: năm cấu trúc khác năm ma trận thì cảnh báo, kèm ô xác nhận chuyên môn khi có
- * `onYearsConfirmedChange` (chưa xác nhận thì kiểm tra cấu hình chặn công bố), không thì chỉ nhắc xác nhận sau khi tạo;
- * điều chuyên gia cần xác nhận (`expertNote`). Không có gì để nói thì không dựng gì.
+ * `onYearsConfirmedChange` (chưa xác nhận thì kiểm tra cấu hình chặn công bố), không thì chỉ nhắc xác nhận sau khi tạo.
+ * Hai năm trùng nhau thì không dựng gì.
  */
 export function TemplateNotes({
   template,
@@ -519,52 +519,37 @@ export function TemplateNotes({
   const t = useTranslations("exams.create.templateNotes");
   const checkboxId = useId();
   const hintId = useId();
-  if (!template) return null;
-  const differ = yearsDiffer(template);
-  if (!differ && !template.expertNote) return null;
+  if (!template || !yearsDiffer(template)) return null;
   return (
-    <div className="flex flex-col gap-3">
-      {differ && (
-        <div data-field="yearsConfirmed" className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning-bg p-3">
-          <p className="flex items-start gap-2 text-body font-medium text-text">
-            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-            {t("yearsDiffer", {
-              structureYear: yearText(template.structureYear),
-              matrixYear: yearText(template.matrixYear),
-            })}
-          </p>
-          {onYearsConfirmedChange ? (
-            <div className="flex items-start gap-2.5">
-              <Checkbox
-                id={checkboxId}
-                checked={yearsConfirmed}
-                disabled={disabled}
-                aria-describedby={hintId}
-                onCheckedChange={(checked) => onYearsConfirmedChange(checked === true)}
-                className="mt-0.5"
-              />
-              <div className="flex flex-col gap-0.5">
-                <label htmlFor={checkboxId} className="cursor-pointer font-medium text-text">
-                  {t("yearsConfirm", { matrixYear: yearText(template.matrixYear) })}
-                </label>
-                <p id={hintId} className="text-caption text-text-secondary">
-                  {t("yearsConfirmHint")}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-caption text-text-secondary">{t("yearsConfirmLater")}</p>
-          )}
+    <div data-field="yearsConfirmed" className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning-bg p-3">
+      <p className="flex items-start gap-2 text-body font-medium text-text">
+        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+        {t("yearsDiffer", {
+          structureYear: yearText(template.structureYear),
+          matrixYear: yearText(template.matrixYear),
+        })}
+      </p>
+      {onYearsConfirmedChange ? (
+        <div className="flex items-start gap-2.5">
+          <Checkbox
+            id={checkboxId}
+            checked={yearsConfirmed}
+            disabled={disabled}
+            aria-describedby={hintId}
+            onCheckedChange={(checked) => onYearsConfirmedChange(checked === true)}
+            className="mt-0.5"
+          />
+          <div className="flex flex-col gap-0.5">
+            <label htmlFor={checkboxId} className="cursor-pointer font-medium text-text">
+              {t("yearsConfirm", { matrixYear: yearText(template.matrixYear) })}
+            </label>
+            <p id={hintId} className="text-caption text-text-secondary">
+              {t("yearsConfirmHint")}
+            </p>
+          </div>
         </div>
-      )}
-      {template.expertNote && (
-        <div className="flex items-start gap-2 rounded-md border border-border bg-subtle px-3 py-2.5 text-body">
-          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
-          <p className="flex flex-col gap-0.5">
-            <span className="font-semibold text-text">{t("expertNote")}</span>
-            <span className="text-text-secondary">{template.expertNote}</span>
-          </p>
-        </div>
+      ) : (
+        <p className="text-caption text-text-secondary">{t("yearsConfirmLater")}</p>
       )}
     </div>
   );

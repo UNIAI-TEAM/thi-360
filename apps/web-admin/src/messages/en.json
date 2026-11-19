@@ -5580,8 +5580,7 @@
         "yearsDiffer": "The {structureYear} structure uses the {matrixYear} matrix: an expert must confirm the matrix targets before it is sold.",
         "yearsConfirm": "An expert has confirmed that the {matrixYear} matrix targets fit this structure",
         "yearsConfirmHint": "Until it is confirmed, the configuration check blocks publishing. You can confirm later in General information.",
-        "yearsConfirmLater": "An expert confirms the matrix targets in General information after the exam is created.",
-        "expertNote": "Template note"
+        "yearsConfirmLater": "An expert confirms the matrix targets in General information after the exam is created."
       },
       "timing": {
         "sharedDuration": "Shared duration (min)",

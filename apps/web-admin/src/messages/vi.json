@@ -5580,8 +5580,7 @@
         "yearsDiffer": "Cấu trúc {structureYear} dùng ma trận {matrixYear}: chuyên gia cần xác nhận chỉ tiêu ma trận trước khi bán.",
         "yearsConfirm": "Chuyên gia đã xác nhận chỉ tiêu ma trận {matrixYear} dùng được cho cấu trúc này",
         "yearsConfirmHint": "Chưa xác nhận thì kiểm tra cấu hình chặn công bố. Có thể xác nhận sau ở Thông tin chung.",
-        "yearsConfirmLater": "Chuyên gia xác nhận chỉ tiêu ma trận ở Thông tin chung sau khi tạo bài.",
-        "expertNote": "Lưu ý của mẫu"
+        "yearsConfirmLater": "Chuyên gia xác nhận chỉ tiêu ma trận ở Thông tin chung sau khi tạo bài."
       },
       "timing": {
         "sharedDuration": "Thời lượng chung (phút)",
