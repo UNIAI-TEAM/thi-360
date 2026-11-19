@@ -37,6 +37,19 @@ class EmailMessageStore {
             Instant heldUntil) {
     }
 
+    /** Một thư đã xếp hàng, đọc nguyên văn cho {@link MailTestController}. */
+    record StoredMail(
+            UUID id,
+            String kind,
+            String to,
+            String locale,
+            String subject,
+            String html,
+            String text,
+            Instant createdAt,
+            Instant sentAt) {
+    }
+
     private static final String INSERT = """
             INSERT INTO shared.email_message
                 (id, kind, to_email, locale, subject, html, text, user_id, created_at, next_attempt_at)
@@ -150,6 +163,37 @@ class EmailMessageStore {
                         rs.getInt("attempts"),
                         rs.getObject("next_attempt_at", OffsetDateTime.class).toInstant()));
         return rows.stream().findFirst();
+    }
+
+    /** Thư mới nhất gửi tới {@code to} thuộc loại {@code kind}; địa chỉ so khớp không phân biệt hoa thường. */
+    Optional<StoredMail> findLatest(String to, MailKind kind) {
+        return jdbc.query(
+                        """
+                        SELECT id, kind, to_email, locale, subject, html, text, created_at, sent_at
+                        FROM shared.email_message
+                        WHERE lower(to_email) = lower(?) AND kind = ?
+                        ORDER BY created_at DESC, id DESC
+                        LIMIT 1
+                        """,
+                        (PreparedStatement ps) -> {
+                            ps.setString(1, to);
+                            ps.setString(2, kind.name());
+                        },
+                        (rs, row) -> {
+                            OffsetDateTime sentAt = rs.getObject("sent_at", OffsetDateTime.class);
+                            return new StoredMail(
+                                    rs.getObject("id", UUID.class),
+                                    rs.getString("kind"),
+                                    rs.getString("to_email"),
+                                    rs.getString("locale"),
+                                    rs.getString("subject"),
+                                    rs.getString("html"),
+                                    rs.getString("text"),
+                                    rs.getObject("created_at", OffsetDateTime.class).toInstant(),
+                                    sentAt == null ? null : sentAt.toInstant());
+                        })
+                .stream()
+                .findFirst();
     }
 
     /** @return {@code false} khi worker không còn giữ thư (mã giữ chỗ đã đổi) hoặc thư đã kết thúc */

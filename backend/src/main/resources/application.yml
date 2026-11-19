@@ -269,3 +269,5 @@ spring:
 thi360:
   token:
     pepper: ${THI360_TOKEN_PEPPER:dev-only-e2e-token-pepper-not-a-secret}
+  mail:
+    tls: ${THI360_SMTP_TLS:none}
