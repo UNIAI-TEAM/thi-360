@@ -225,9 +225,23 @@ class MapidRuleCompilerTest {
     }
 
     @Test
-    void unknownGroupIsRejected() {
-        ExamSection section = section(MapidMode.MATRIX, List.of(rule("p", MapidRuleType.PRESENT, "gone", A)));
-        assertThatThrownBy(() -> MapidRuleCompiler.compile(section)).isInstanceOf(IllegalArgumentException.class);
+    void aRuleOfAnUnknownGroupIsSkippedNotThrown() {
+        // A saved rule whose group is gone must not break check or preview: it compiles to nothing and the check
+        // reports MAPID_RULE_GROUP_MISSING (UNI-2758 BE-3b).
+        ExamSection section = section(MapidMode.MATRIX, List.of(
+                rule("p", MapidRuleType.PRESENT, "gone", A),
+                count("c", "gone", MapidComparator.EXACT, 2, null, B),
+                new MapidRule("o", MapidRuleType.ONLY_IN_GROUP, "gone", List.of(C), null, null, null),
+                rule("s", MapidRuleType.SOURCE, "gone", A),
+                rule("kept", MapidRuleType.PRESENT, null, B)));
+        var compiled = MapidRuleCompiler.compile(section);
+        assertThat(compiled.caps()).isEmpty();
+        assertThat(compiled.exclusions()).isEmpty();
+        assertThat(compiled.effectiveSection().topicQuotas()).extracting(TopicQuota::id).containsExactly("kept");
+        assertThat(compiled.effectiveSection().blocks()).allSatisfy(block -> {
+            assertThat(block.topicQuotas()).isEmpty();
+            assertThat(block.knowledgeScope().nodeIds()).isEmpty();
+        });
     }
 
     private static ExamSection compile(MapidRule... rules) {
