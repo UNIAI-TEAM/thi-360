@@ -19,13 +19,14 @@ describe("Câu Trả lời ngắn (AC-9)", () => {
     expect(container.textContent).not.toMatch(/dấu phẩy|dấu chấm/i);
   });
 
+  // Outcome khác BLANK: nhánh `text.trim() === ""` mới là thứ làm hiện "Chưa trả lời" (R1-17).
   it("chuỗi chỉ có khoảng trắng tính là bỏ trống ở màn xem lại", () => {
     render(
       <Live
         question={shortAnswer}
         mode="review"
         initial={{ text: "   " }}
-        review={{ outcome: "BLANK", earned: 0, max: 1 }}
+        review={{ outcome: "WRONG", earned: 0, max: 1 }}
       />,
     );
     expect(screen.getByText(UI_STRINGS_VI.question.notAnswered)).toBeInTheDocument();
