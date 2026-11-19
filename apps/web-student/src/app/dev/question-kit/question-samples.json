@@ -64,10 +64,46 @@
         "optionId": "s2"
       },
       "review": {
+        "solutionHtml": "<p>Nhân liên hợp tử và mẫu rồi rút gọn <strong>x − 1</strong>: giới hạn bằng <span class=\"math-inline\">\\(\\frac{3}{4}\\)</span>. Chọn phương án đầu tiên.</p>",
         "outcome": "WRONG",
         "earned": 0,
         "max": 1,
         "showAnswers": true
+      }
+    },
+    {
+      "key": "singleNoKey",
+      "question": {
+        "id": "demo-single-nokey",
+        "displayNo": 34,
+        "points": 1,
+        "stem": "<p>Thủ đô của Việt Nam là thành phố nào? (xem lại khi dữ liệu không có khóa đáp án)</p>",
+        "body": {
+          "type": "SINGLE_CHOICE",
+          "options": [
+            {
+              "id": "k1",
+              "content": "<p>Huế</p>"
+            },
+            {
+              "id": "k2",
+              "content": "<p>Hà Nội</p>"
+            },
+            {
+              "id": "k3",
+              "content": "<p>Đà Nẵng</p>"
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "optionId": "k3"
+      },
+      "review": {
+        "solutionHtml": "<p>Hà Nội là thủ đô của nước Cộng hòa xã hội chủ nghĩa Việt Nam.</p>",
+        "outcome": "WRONG",
+        "earned": 0,
+        "max": 1
       }
     },
     {
@@ -114,6 +150,7 @@
         ]
       },
       "review": {
+        "solutionHtml": "<p>Hàm số chẵn thỏa <span class=\"math-inline\">\\(f(-x) = f(x)\\)</span>: chỉ <span class=\"math-inline\">\\(y = x^2\\)</span> và <span class=\"math-inline\">\\(y = \\cos x\\)</span>. Chọn đủ hai phương án mới được trọn điểm.</p>",
         "outcome": "PARTIAL",
         "earned": 0.5,
         "max": 1
@@ -140,6 +177,7 @@
         "text": "56"
       },
       "review": {
+        "solutionHtml": "<p>6,5 giờ × 60 phút ÷ 7 ngày ≈ <strong>56 phút</strong> mỗi ngày.</p>",
         "outcome": "CORRECT",
         "earned": 1,
         "max": 1
@@ -180,6 +218,64 @@
         }
       },
       "review": {
+        "solutionHtml": "<p>Nước tinh khiết sôi ở <strong>100</strong> độ C và đông đặc ở <strong>0</strong> độ C ở áp suất khí quyển.</p>",
+        "outcome": "PARTIAL",
+        "earned": 1,
+        "max": 2,
+        "gradingDetail": {
+          "b1": {
+            "key": "b1",
+            "outcome": "CORRECT",
+            "earned": 1,
+            "max": 1
+          },
+          "b2": {
+            "key": "b2",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 1
+          }
+        }
+      }
+    },
+    {
+      "key": "clozeText",
+      "question": {
+        "id": "demo-cloze-text",
+        "displayNo": 33,
+        "points": 2,
+        "stem": "<p>Điền từ thích hợp vào ô trống.</p>",
+        "body": {
+          "type": "CLOZE",
+          "passage": "<p>Sông [[b1]] chảy qua Hà Nội, còn thành phố [[b2]] là trung tâm kinh tế lớn nhất phía Nam.</p>",
+          "blanks": [
+            {
+              "id": "b1",
+              "answers": [
+                "Hồng",
+                "sông Hồng"
+              ],
+              "points": 1
+            },
+            {
+              "id": "b2",
+              "answers": [
+                "Hồ Chí Minh",
+                "TP. Hồ Chí Minh"
+              ],
+              "points": 1
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "blanks": {
+          "b1": "Hồng",
+          "b2": "Đà Nẵng"
+        }
+      },
+      "review": {
+        "solutionHtml": "<p>Sông Hồng chảy qua Hà Nội; thành phố Hồ Chí Minh là trung tâm kinh tế lớn nhất phía Nam.</p>",
         "outcome": "PARTIAL",
         "earned": 1,
         "max": 2,
@@ -246,6 +342,7 @@
         }
       },
       "review": {
+        "solutionHtml": "<p>Chỉ phát biểu 1 và 3 đúng. Hai đường thẳng chéo nhau thì <strong>không</strong> có điểm chung; ba điểm bất kỳ <strong>không</strong> luôn thẳng hàng.</p>",
         "outcome": "PARTIAL",
         "earned": 0.5,
         "max": 1,
@@ -273,6 +370,57 @@
             "outcome": "BLANK",
             "earned": 0,
             "max": 0.25
+          }
+        }
+      }
+    },
+    {
+      "key": "trueFalseNoKey",
+      "question": {
+        "id": "demo-tf-nokey",
+        "displayNo": 35,
+        "points": 1,
+        "stem": "<p>Mỗi phát biểu sau đúng hay sai? (xem lại khi kết quả chưa cho xem đáp án: mệnh đề không có khóa đáp án)</p>",
+        "body": {
+          "type": "TRUE_FALSE",
+          "scoringMethod": "PER_STATEMENT",
+          "statements": [
+            {
+              "id": "n1",
+              "content": "<p>Hai đường thẳng song song thì đồng phẳng.</p>",
+              "points": 0.5
+            },
+            {
+              "id": "n2",
+              "content": "<p>Hai đường thẳng chéo nhau thì có điểm chung.</p>",
+              "points": 0.5
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "statements": {
+          "n1": true,
+          "n2": true
+        }
+      },
+      "review": {
+        "outcome": "PARTIAL",
+        "earned": 0.5,
+        "max": 1,
+        "showAnswers": false,
+        "gradingDetail": {
+          "n1": {
+            "key": "n1",
+            "outcome": "CORRECT",
+            "earned": 0.5,
+            "max": 0.5
+          },
+          "n2": {
+            "key": "n2",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 0.5
           }
         }
       }
@@ -363,6 +511,7 @@
         }
       },
       "review": {
+        "solutionHtml": "<p>Pa đo áp suất, J đo năng lượng, W đo công suất, Hz đo tần số. Điện trở (đơn vị ôm) là lựa chọn dư.</p>",
         "outcome": "PARTIAL",
         "earned": 0.25,
         "max": 1,
@@ -411,6 +560,7 @@
         "wordCount": 86
       },
       "review": {
+        "solutionHtml": "<p>Bài văn tốt nêu rõ luận điểm ở mở bài, mỗi đoạn thân bài có dẫn chứng cụ thể từ văn bản và kết bài khái quát lại vẻ đẹp của hình tượng người lính.</p>",
         "outcome": "PARTIAL",
         "earned": 20,
         "max": 25,
@@ -510,16 +660,19 @@
         }
       },
       "review": {
+        "solutionHtml": "<p>Đọc kỹ bảng số liệu rồi lần lượt đối chiếu từng câu con.</p>",
         "outcome": "PARTIAL",
         "earned": 1,
         "max": 2,
         "children": {
           "demo-set-a": {
+            "solutionHtml": "<p>Nhận định đúng là phương án đầu tiên.</p>",
             "outcome": "CORRECT",
             "earned": 1,
             "max": 1
           },
           "demo-set-b": {
+            "solutionHtml": "<p>Số liệu năm 2020 trong bảng: xuất khẩu 2148,6, nhập khẩu 2776,1 (tỉ USD).</p>",
             "outcome": "WRONG",
             "earned": 0,
             "max": 1

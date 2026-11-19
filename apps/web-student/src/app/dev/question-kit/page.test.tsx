@@ -2,9 +2,12 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
-import QuestionKitPage from "./page";
+import QuestionKitPage, { generateMetadata } from "./page";
 import { KIT_SAMPLES } from "./samples";
 
+const state = vi.hoisted(() => ({ locale: "vi" as "vi" | "en" }));
+
+vi.mock("next-intl/server", () => ({ getLocale: async () => state.locale }));
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_HTTP_ERROR_FALLBACK;404");
@@ -15,6 +18,16 @@ describe("trang thử /dev/question-kit", () => {
   it("gọi notFound() khi NODE_ENV = production (AC-18)", () => {
     vi.stubEnv("NODE_ENV", "production");
     expect(() => QuestionKitPage()).toThrow("NEXT_HTTP_ERROR_FALLBACK;404");
+  });
+
+  it("tiêu đề tab theo ngôn ngữ giao diện, không cố định tiếng Anh (R1-12)", async () => {
+    expect((await generateMetadata()).title).toBe("Thử bộ câu hỏi");
+    state.locale = "en";
+    try {
+      expect((await generateMetadata()).title).toBe("Question kit");
+    } finally {
+      state.locale = "vi";
+    }
   });
 
   it("ở dev hiện đủ 8 dạng câu và đổi được sang chế độ xem lại", async () => {
