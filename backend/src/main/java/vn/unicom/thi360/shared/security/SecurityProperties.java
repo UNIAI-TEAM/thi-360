@@ -21,7 +21,11 @@ public record SecurityProperties(
             @DefaultValue("PT1M") Duration uploadPerIpWindow,
             @DefaultValue("120") int publicPerIpLimit,
             @DefaultValue("PT1M") Duration publicPerIpWindow,
-            List<String> exemptIps
+            List<String> exemptIps,
+            @DefaultValue("60") int forgotPerIpLimit,
+            @DefaultValue("PT1M") Duration forgotPerIpWindow,
+            @DefaultValue("60") int resetPerIpLimit,
+            @DefaultValue("PT1M") Duration resetPerIpWindow
     ) {
 
         public RateLimitProperties {
@@ -34,6 +38,15 @@ public record SecurityProperties(
             // Chỉ miễn chính sách của GET /api/v1/public/** (TM 10.2); mục sai định dạng thì không khởi động.
             exemptIps = exemptIps == null ? List.of() : List.copyOf(exemptIps);
             exemptIps.forEach(ExemptIpMatcher::requireIpOrCidr);
+            // E16 / TM 13: giới hạn theo IP của forgot, reset; cửa sổ không dương bị bộ lọc nuốt lỗi như trên.
+            if (forgotPerIpWindow == null || forgotPerIpWindow.isZero() || forgotPerIpWindow.isNegative()) {
+                throw new IllegalArgumentException(
+                        "thi360.security.rate-limit.forgot-per-ip-window must be a positive duration");
+            }
+            if (resetPerIpWindow == null || resetPerIpWindow.isZero() || resetPerIpWindow.isNegative()) {
+                throw new IllegalArgumentException(
+                        "thi360.security.rate-limit.reset-per-ip-window must be a positive duration");
+            }
         }
     }
 

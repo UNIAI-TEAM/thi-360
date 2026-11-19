@@ -46,4 +46,21 @@ class CredentialRequestToStringTests {
         ResetPasswordRequest nullPasswordReq = new ResetPasswordRequest(null, false, null);
         assertThat(nullPasswordReq.toString()).contains("password=null");
     }
+
+    @Test
+    void passwordResetRequest_toStringRedactsTokenAndPassword() {
+        String token = "tok3n-Abc_123-secret-reset-code";
+        String secret = "N3wS3cret!77";
+        PasswordResetRequest req = new PasswordResetRequest(token, secret);
+
+        assertThat(req.toString())
+                .doesNotContain(token)
+                .doesNotContain(secret)
+                .contains("token=[REDACTED]")
+                .contains("newPassword=[REDACTED]");
+
+        assertThat(new PasswordResetRequest(null, null).toString())
+                .contains("token=null")
+                .contains("newPassword=null");
+    }
 }

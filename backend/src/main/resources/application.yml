@@ -108,6 +108,12 @@ thi360:
     admin-origins:
       - ${THI360_ADMIN_URL:http://localhost:3001}
     trusted-proxies: ${THI360_TRUSTED_PROXIES:127.0.0.1,::1,172.16.0.0/12}
+    rate-limit:
+      # E16, TM 13: forgot theo IP; reset cùng ngưỡng 60 lần mỗi phút (quyết định tạm của plan ID-2).
+      forgot-per-ip-limit: ${THI360_FORGOT_PER_IP_LIMIT:60}
+      forgot-per-ip-window: PT1M
+      reset-per-ip-limit: ${THI360_RESET_PER_IP_LIMIT:60}
+      reset-per-ip-window: PT1M
   s3:
     mode: ${THI360_S3_MODE:s3}
     endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}
@@ -134,6 +140,12 @@ thi360:
       lease-duration: PT5M
       retry-delay: PT5S
       max-attempts: 3
+    password-reset:
+      # E16: hạn mã 1 giờ; mỗi tài khoản 1 lần mỗi 60 giây và 5 lần trong 24 giờ trượt.
+      token-ttl: ${THI360_PASSWORD_RESET_TTL:PT1H}
+      account-cooldown: ${THI360_PASSWORD_RESET_COOLDOWN:PT1M}
+      account-daily-limit: ${THI360_PASSWORD_RESET_DAILY_LIMIT:5}
+      account-daily-window: ${THI360_PASSWORD_RESET_DAILY_WINDOW:PT24H}
   questionbank:
     import:
       max-file-bytes: 5242880
@@ -161,6 +173,9 @@ thi360:
   token:
     # Pepper của HMAC mã OTP và mã đặt lại mật khẩu (plan B6). Thiếu thì ứng dụng không khởi động.
     pepper: ${THI360_TOKEN_PEPPER:}
+  avatar:
+    # E20: bucket riêng cho ảnh đại diện (cùng endpoint và khóa với thi360.s3); tạo bucket ở môi trường triển khai.
+    bucket: ${THI360_AVATAR_BUCKET:thi360-avatars}
 ---
 spring:
   config:

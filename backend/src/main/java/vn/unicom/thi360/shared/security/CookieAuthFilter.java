@@ -27,6 +27,8 @@ public class CookieAuthFilter extends OncePerRequestFilter {
             "/api/v1/auth/logout",
             "/api/v1/ping",
             "/api/v1/appearance",
+            "/api/v1/auth/password/forgot",
+            "/api/v1/auth/password/reset",
             "/error"
     );
 

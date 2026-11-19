@@ -1333,7 +1333,7 @@ public class UserAdminService {
             return keycloakClient.createUser(cmd);
         }
     }
-    private void revokeAllSessionsFailClosed(UUID userId) {
+    public void revokeAllSessionsFailClosed(UUID userId) {
         RuntimeException firstFailure = null;
         try {
             sessionStore.deleteAllSessions(userId);
