@@ -5931,6 +5931,11 @@ export interface components {
             /** @description Danh sách ID môn học mới theo thứ tự (chỉ cho nhóm COMBINATION) */
             subjectItemIds?: string[];
             /**
+             * Format: int32
+             * @description Số thứ tự giá trị bất biến; chỉ để đối chiếu. Giá trị hệ thống khác số hiện tại bị từ chối (CATALOG_ITEM_SYSTEM), giá trị thường bỏ qua trường này
+             */
+            value?: number;
+            /**
              * Format: int64
              * @description Phiên bản khóa lạc quan
              */
