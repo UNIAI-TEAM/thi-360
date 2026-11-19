@@ -39,8 +39,9 @@ public record StorefrontFilters(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long count) {
     }
 
-    @Schema(description = "Phần; mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) là khóa. "
-            + "Tham số part của danh sách là code, đi kèm kind")
+    @Schema(description = "Phần của bài thi theo phần (PART); mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) "
+            + "là khóa. Chỉ bài thi theo phần mới có mã phần: bài thi FULL tìm theo hình thức FULL, không theo phần. "
+            + "Tham số part của danh sách là code, đi kèm kind, và chỉ khớp bài thi theo phần")
     public record PartFilter(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String kindCode,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,

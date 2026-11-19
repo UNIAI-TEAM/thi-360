@@ -1,6 +1,9 @@
 package vn.unicom.thi360.commerce.storefront;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,6 +14,9 @@ import java.util.TreeSet;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.commerce.storefront.application.StorefrontRebuildService;
 import vn.unicom.thi360.exam.spi.ExamEventTopics;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.security.PermissionCatalog;
@@ -21,6 +27,7 @@ class StorefrontRebuildIT extends AbstractStorefrontIT {
     private static final String REBUILD = "/api/v1/admin/storefront/rebuild";
 
     @Autowired PermissionCatalog permissionCatalog;
+    @MockitoSpyBean AuditRecorder auditSpy;
 
     @Test
     void rebuildRestoresMissingRows() throws Exception {
@@ -85,6 +92,70 @@ class StorefrontRebuildIT extends AbstractStorefrontIT {
         assertThat(hasRow(fine.examId)).isTrue();
         assertThat(hasRow(broken.examId)).isFalse();
         assertThat(hasRow(unsellable.examId)).as("no listing price, nothing to sell").isFalse();
+    }
+
+    /**
+     * R1-6: a failed SQL statement of one exam (here a duplicate product code) is undone behind its savepoint; the other
+     * exams and the audit still commit in the same transaction.
+     */
+    @Test
+    void aSqlFailureOfOneExamIsUndoneAloneAndTheRestCommitWithTheAudit() throws Exception {
+        TestExam first = exam();
+        TestExam clash = exam();
+        clash.code = first.code;
+        TestExam fine = exam();
+        serve(first);
+        serve(clash);
+        serve(fine);
+        UUID actor = UUID.randomUUID();
+
+        mockMvc.perform(post(REBUILD).with(asUser(actor, "publisher.cm1", Permissions.EXAM_PUBLISH)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.examined").value(3))
+                .andExpect(jsonPath("$.written").value(2))
+                .andExpect(jsonPath("$.failed").value(1));
+
+        assertThat(hasRow(fine.examId)).isTrue();
+        assertThat(hasRow(first.examId) ^ hasRow(clash.examId)).as("exactly one of the two clashing codes won").isTrue();
+        drain();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit.audit_event WHERE action = 'STOREFRONT_REBUILT' "
+                + "AND actor_id = ?", Long.class, actor)).isEqualTo(1L);
+    }
+
+    /** R1-6: the row writes and the audit event commit together; an audit that cannot be recorded leaves no row behind. */
+    @Test
+    void rebuildWritesAreNotCommittedWithoutTheirAudit() throws Exception {
+        TestExam one = exam();
+        TestExam two = exam();
+        serve(one);
+        serve(two);
+        UUID actor = UUID.randomUUID();
+        doThrow(new IllegalStateException("audit store down")).when(auditSpy)
+                .record(argThat(event -> event != null && StorefrontRebuildService.AUDIT_ACTION.equals(event.action())));
+
+        int httpStatus;
+        try {
+            httpStatus = mockMvc.perform(post(REBUILD).with(asUser(actor, "publisher.cm1", Permissions.EXAM_PUBLISH)))
+                    .andReturn().getResponse().getStatus();
+        } catch (Exception e) {
+            httpStatus = 500;
+        }
+
+        assertThat(httpStatus).isEqualTo(500);
+        assertThat(hasRow(one.examId)).as("no committed write without its audit").isFalse();
+        assertThat(hasRow(two.examId)).isFalse();
+        drain();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit.audit_event WHERE action = 'STOREFRONT_REBUILT' "
+                + "AND actor_id = ?", Long.class, actor)).isZero();
+
+        // With the audit available again the same rebuild writes both rows and the audit.
+        reset(auditSpy);
+        mockMvc.perform(post(REBUILD).with(asUser(actor, "publisher.cm1", Permissions.EXAM_PUBLISH)))
+                .andExpect(status().isOk());
+        assertThat(hasRow(one.examId) && hasRow(two.examId)).isTrue();
+        drain();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit.audit_event WHERE action = 'STOREFRONT_REBUILT' "
+                + "AND actor_id = ?", Long.class, actor)).isEqualTo(1L);
     }
 
     @Test

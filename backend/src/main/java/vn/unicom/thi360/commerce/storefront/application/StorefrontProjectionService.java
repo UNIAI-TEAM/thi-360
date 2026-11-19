@@ -2,6 +2,8 @@ package vn.unicom.thi360.commerce.storefront.application;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -14,22 +16,15 @@ import vn.unicom.thi360.commerce.storefront.domain.ProjectionOutcome;
 import vn.unicom.thi360.commerce.storefront.domain.StorefrontRow;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
 import vn.unicom.thi360.shared.ids.Ids;
 
-/**
- * Writes the storefront row of one exam from {@link PublishedExamPort#findServing} (E2, E24). The event handlers and the
- * rebuild call only this class, so both produce the same rows.
- *
- * <p>The whole read-and-write runs in a transaction of its own ({@code REQUIRES_NEW}). The relay runs a handler inside its
- * own transaction and records a failure there: a failure inside this transaction rolls back only this one, so the relay
- * can still write the attempt and its retry schedule (plan B2, AC-12).
- */
+/** Projects frozen serving versions. Relay writes are isolated; rebuild writes join the audited transaction. */
 @Service
 public class StorefrontProjectionService {
-
     private static final Logger log = LoggerFactory.getLogger(StorefrontProjectionService.class);
-
     private final PublishedExamPort port;
     private final StorefrontProjector projector;
     private final StorefrontProductRepository repository;
@@ -41,33 +36,52 @@ public class StorefrontProjectionService {
         this.port = port;
         this.projector = projector;
         this.repository = repository;
-        TransactionTemplate template = new TransactionTemplate(transactionManager);
-        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        this.requiresNew = template;
+        this.requiresNew = new TransactionTemplate(transactionManager);
+        this.requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
     }
 
-    /**
-     * Re-reads the exam through the port and stores its row. Idempotent: the same state gives the same row, a replay
-     * changes nothing, and a version older than the stored one never overwrites it. A failure propagates (the relay
-     * retries); nothing is partly written.
-     */
+    /** Relay reads and writes in a separate transaction so a failure cannot poison the relay transaction. */
     public ProjectionOutcome project(UUID examId) {
-        return requiresNew.execute(status -> projectInTransaction(examId));
+        return requiresNew.execute(status -> write(read(examId)));
     }
 
-    private ProjectionOutcome projectInTransaction(UUID examId) {
+    /** Rebuild reads in isolation, then writes behind a JDBC savepoint in the caller's audited transaction. */
+    public ProjectionOutcome projectInSavepoint(UUID examId) {
+        ReadResult result = requiresNew.execute(status -> read(examId));
+        return repository.inSavepoint(() -> write(result));
+    }
+
+    private record ReadResult(StorefrontRow row, ProjectionOutcome emptyOutcome) { }
+
+    private ReadResult read(UUID examId) {
         Optional<ServingExam> serving = port.findServing(examId);
-        if (serving.isEmpty()) {
-            return ProjectionOutcome.NOT_SERVED;
-        }
-        Optional<StorefrontRow> row = projector.build(serving.get());
+        if (serving.isEmpty()) return new ReadResult(null, ProjectionOutcome.NOT_SERVED);
+        Optional<StorefrontRow> row = projector.build(serving.get(), servingVersions(serving.get()));
         if (row.isEmpty()) {
             log.atWarn().addKeyValue("examId", examId)
                     .log("Exam has no listing price or attempts in its serving version; no storefront row made");
-            return ProjectionOutcome.NOT_SELLABLE;
+            return new ReadResult(null, ProjectionOutcome.NOT_SELLABLE);
         }
-        boolean written = repository.upsert(Ids.newId(), row.get(), Instant.now(clock));
-        return written ? ProjectionOutcome.WRITTEN : ProjectionOutcome.UNCHANGED;
+        return new ReadResult(row.get(), null);
+    }
+
+    private ProjectionOutcome write(ReadResult result) {
+        if (result.row() == null) return result.emptyOutcome();
+        return repository.upsert(Ids.newId(), result.row(), Instant.now(clock))
+                ? ProjectionOutcome.WRITTEN : ProjectionOutcome.UNCHANGED;
+    }
+
+    private Map<Integer, PublishedVersion> servingVersions(ServingExam serving) {
+        Map<Integer, PublishedVersion> versions = new LinkedHashMap<>();
+        versions.put(serving.version().versionNo(), serving.version());
+        for (ServingPath path : serving.servingPaths()) {
+            if (!versions.containsKey(path.versionNo())) {
+                versions.put(path.versionNo(), port.loadVersion(serving.examId(), path.versionNo()).orElseThrow(
+                        () -> new IllegalStateException("Serving version " + path.versionNo() + " of exam "
+                                + serving.examId() + " is not readable")));
+            }
+        }
+        return versions;
     }
 }

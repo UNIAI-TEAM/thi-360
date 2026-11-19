@@ -91,7 +91,7 @@ abstract class AbstractStorefrontIT extends AbstractIntegrationTest {
         if (!examIds.contains(exam.examId)) {
             examIds.add(exam.examId);
         }
-        port.serve(exam.build());
+        port.serve(exam.build(), exam.retainedVersions());
     }
 
     // ---------------------------------------------------------------- events

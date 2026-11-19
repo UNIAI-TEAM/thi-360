@@ -1,6 +1,7 @@
 package vn.unicom.thi360.commerce.storefront;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,17 +17,28 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort;
 public class FakePublishedExamPort implements PublishedExamPort {
 
     private final Map<UUID, ServingExam> serving = new ConcurrentHashMap<>();
+    private final Map<UUID, Map<Integer, PublishedVersion>> versions = new ConcurrentHashMap<>();
     private final Map<UUID, CoverImage> covers = new ConcurrentHashMap<>();
     private final Set<UUID> failing = ConcurrentHashMap.newKeySet();
 
     /** From now on the exam is served as given (a newer version, a discontinued exam, a stale read ...). */
     public void serve(ServingExam exam) {
+        serve(exam, List.of());
+    }
+
+    /** The same, with the older versions the serving paths name, as {@link #loadVersion} returns them. */
+    public void serve(ServingExam exam, Collection<PublishedVersion> olderVersions) {
         serving.put(exam.examId(), exam);
+        Map<Integer, PublishedVersion> byNumber = new ConcurrentHashMap<>();
+        olderVersions.forEach(version -> byNumber.put(version.versionNo(), version));
+        byNumber.put(exam.version().versionNo(), exam.version());
+        versions.put(exam.examId(), byNumber);
     }
 
     /** The exam is a draft again (or never was published). */
     public void withdraw(UUID examId) {
         serving.remove(examId);
+        versions.remove(examId);
     }
 
     public void cover(UUID assetId, String contentType, byte[] content) {
@@ -52,8 +64,7 @@ public class FakePublishedExamPort implements PublishedExamPort {
 
     @Override
     public Optional<PublishedVersion> loadVersion(UUID examId, int versionNo) {
-        return Optional.ofNullable(serving.get(examId)).map(ServingExam::version)
-                .filter(version -> version.versionNo() == versionNo);
+        return Optional.ofNullable(versions.get(examId)).map(byNumber -> byNumber.get(versionNo));
     }
 
     @Override

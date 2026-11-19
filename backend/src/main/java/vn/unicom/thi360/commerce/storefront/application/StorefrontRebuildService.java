@@ -36,7 +36,11 @@ public class StorefrontRebuildService {
         this.audit = audit;
     }
 
-    /** The transaction only carries the audit event (the outbox demands one); each row is written in its own. */
+    /**
+     * One transaction carries every row write and the audit event (R1-6): if the audit cannot be recorded or the
+     * transaction cannot commit, no row stays modified without its audit. Each exam is projected behind a savepoint, so
+     * one that fails is undone alone, counted and logged, and the others still commit with the audit.
+     */
     @Transactional
     public StorefrontRebuildResponse rebuild() {
         List<UUID> examIds = port.listPublishedExamIds();
@@ -46,7 +50,7 @@ public class StorefrontRebuildService {
         int failed = 0;
         for (UUID examId : examIds) {
             try {
-                ProjectionOutcome outcome = projection.project(examId);
+                ProjectionOutcome outcome = projection.projectInSavepoint(examId);
                 switch (outcome) {
                     case WRITTEN -> written++;
                     case UNCHANGED, NOT_SERVED -> unchanged++;

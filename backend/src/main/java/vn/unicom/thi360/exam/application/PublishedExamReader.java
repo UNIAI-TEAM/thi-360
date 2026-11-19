@@ -182,11 +182,12 @@ public class PublishedExamReader implements PublishedExamPort {
                     integer(option, "chooseSubjects"), counts == null ? null : List.copyOf(counts), sections(option.path("sections"))));
         }
         List<BlockSummary> blocks = new ArrayList<>();
-        for (JsonNode section : part.path("sections")) addBlocks(blocks, section.path("blocks"));
-        for (JsonNode section : part.path("subjectPool")) addBlocks(blocks, section.path("blocks"));
+        for (JsonNode section : part.path("sections")) addSectionBlocks(blocks, section, null);
+        for (JsonNode section : part.path("subjectPool")) addSectionBlocks(blocks, section, null);
         for (JsonNode option : part.path("options")) {
-            addBlocks(blocks, option.path("blocks"));
-            for (JsonNode section : option.path("sections")) addBlocks(blocks, section.path("blocks"));
+            String optionId = text(option, "id");
+            addBlocks(blocks, option.path("blocks"), null, optionId, null);
+            for (JsonNode section : option.path("sections")) addSectionBlocks(blocks, section, optionId);
         }
         List<PartPath> paths = new ArrayList<>();
         for (JsonNode path : part.path("paths")) {
@@ -201,12 +202,50 @@ public class PublishedExamReader implements PublishedExamPort {
                 List.copyOf(options), List.copyOf(paths), List.copyOf(blocks));
     }
 
-    /** The blocks of one section or option as answer-type rows (AD-77); a set counts its child questions. */
-    private static void addBlocks(List<BlockSummary> target, JsonNode blocks) {
+    /**
+     * The blocks of one section (or of one option, with no section) as answer-type rows (AD-77, AD-78). The count is the
+     * frozen allocation: the block's own {@code questionCount}, else {@code setCount * setSize}, else (a "take the
+     * remainder" block) the section's target minus the fixed blocks. A block whose count cannot be derived is left out,
+     * never guessed. An omitted block is carried with {@code omitted = true} and its configured count, so the reader of
+     * the port can leave it out of what the learner answers; it never counts as fixed for the remainder.
+     */
+    private static void addBlocks(List<BlockSummary> target, JsonNode blocks, Integer sectionTarget, String optionId,
+            String sectionId) {
+        int fixed = 0;
+        int remainders = 0;
         for (JsonNode block : blocks) {
-            int count = block.path("questionCount").asInt(0);
-            target.add(new BlockSummary(text(block, "questionType"), count, text(block, "childAnswerType")));
+            if (block.path("omitted").asBoolean(false)) continue;
+            Integer own = ownCount(block);
+            if (own != null) fixed += own; else if (!isSet(block)) remainders++;
         }
+        for (JsonNode block : blocks) {
+            boolean omitted = block.path("omitted").asBoolean(false);
+            Integer count = ownCount(block);
+            if (count == null && !omitted && !isSet(block) && remainders == 1 && sectionTarget != null) {
+                count = Math.max(0, sectionTarget - fixed);
+            }
+            if (count == null || count <= 0) continue;
+            target.add(new BlockSummary(text(block, "questionType"), count, text(block, "childAnswerType"), optionId,
+                    sectionId, omitted));
+        }
+    }
+
+    private static void addSectionBlocks(List<BlockSummary> target, JsonNode section, String optionId) {
+        addBlocks(target, section.path("blocks"), integer(section, "questionCount"), optionId, text(section, "id"));
+    }
+
+    /** The count a block states itself: {@code questionCount}, else {@code setCount * setSize}; null when it states none. */
+    private static Integer ownCount(JsonNode block) {
+        if (block.path("questionCount").isIntegralNumber()) return block.path("questionCount").intValue();
+        if (block.path("setCount").isIntegralNumber() && block.path("setSize").isIntegralNumber()) {
+            return block.path("setCount").intValue() * block.path("setSize").intValue();
+        }
+        return null;
+    }
+
+    private static boolean isSet(JsonNode block) {
+        String type = block.path("questionType").asText("");
+        return "QUESTION_SET".equals(type) || "CLOZE".equals(type);
     }
 
     private static List<Section> sections(JsonNode sections) {

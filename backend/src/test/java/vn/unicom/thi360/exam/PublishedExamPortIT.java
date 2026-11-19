@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -91,6 +92,63 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
                        {"pathId":"o2","questionCount":30,"maxPoints":600,"durationMinutes":60}]}]}
             """;
 
+    private static final String DERIVED_PARTS = """
+            {"parts":[{"id":"p1","order":1,"name":"Phan 1","durationMinutes":60,"questionCount":20,"questionCountOnPaper":20,
+              "questionCountRequired":20,"participation":{"mode":"ALL"},"maxPoints":600,
+              "sections":[{"id":"s1","subjectCode":"VAN","questionCount":20,
+                "blocks":[{"id":"b1","questionType":"SINGLE_CHOICE"},
+                          {"id":"b2","questionType":"QUESTION_SET","setCount":2,"setSize":4,"childAnswerType":"SINGLE_CHOICE"},
+                          {"id":"b3","questionType":"SHORT_ANSWER","questionCount":2},
+                          {"id":"b4","questionType":"ESSAY","questionCount":1,"omitted":true},
+                          {"id":"b5","questionType":"ESSAY","questionCount":1}]},
+                {"id":"s1x","subjectCode":"TOAN",
+                 "blocks":[{"id":"b6","questionType":"SHORT_ANSWER"},{"id":"b7","questionType":"SINGLE_CHOICE","questionCount":5}]}],
+              "paths":[{"pathId":"default","questionCount":20,"maxPoints":600,"durationMinutes":60}]}]}
+            """;
+
+    /** HSA P3 shape: science (3 of 5 subjects) or English, each option with sections of its own; part 1 stays fixed. */
+    private static final String OPTION_PARTS = """
+            {"parts":[{"id":"p1","order":1,"name":"Phan 1","durationMinutes":75,"questionCount":50,"questionCountOnPaper":50,
+              "questionCountRequired":50,"participation":{"mode":"ALL"},"maxPoints":50,
+              "sections":[{"id":"fx","subjectCode":"TOAN","questionCount":50,
+                "blocks":[{"id":"fb1","questionType":"SINGLE_CHOICE","questionCount":35},
+                          {"id":"fb2","questionType":"SHORT_ANSWER","questionCount":15}]}],
+              "paths":[{"pathId":"default","questionCount":50,"maxPoints":50,"durationMinutes":75}]},
+             {"id":"p3","order":3,"name":"Khoa hoc hoac Tieng Anh","durationMinutes":60,"questionCount":50,
+              "questionCountOnPaper":50,"questionCountRequired":50,"participation":{"mode":"CHOICE","choose":1},"maxPoints":50,
+              "options":[
+                {"id":"o-sci","kind":"SUBJECT_CHOICE","code":"SCIENCE","name":"Khoa hoc","chooseSubjects":3,"countsByPick":[17,17,16],
+                 "sections":[{"id":"sci-ly","subjectCode":"LY","questionCount":17,
+                              "blocks":[{"id":"l1","questionType":"SINGLE_CHOICE"},
+                                        {"id":"l2","questionType":"QUESTION_SET","setCount":1,"setSize":3},
+                                        {"id":"l3","questionType":"SHORT_ANSWER","questionCount":1}]},
+                             {"id":"sci-su","subjectCode":"SU","questionCount":17,
+                              "blocks":[{"id":"s1","questionType":"SINGLE_CHOICE","questionCount":14},
+                                        {"id":"s2","questionType":"QUESTION_SET","setCount":1,"setSize":3}]}]},
+                {"id":"o-eng","kind":"SUBJECT","code":"ANH","name":"Tieng Anh",
+                 "sections":[{"id":"eng","subjectCode":"ANH","questionCount":50,
+                              "blocks":[{"id":"e1","questionType":"SINGLE_CHOICE","questionCount":40},
+                                        {"id":"e2","questionType":"QUESTION_SET","setCount":2,"setSize":5}]}]}],
+              "paths":[{"pathId":"o-sci","questionCount":50,"maxPoints":50,"durationMinutes":60},
+                       {"pathId":"o-eng","questionCount":50,"maxPoints":50,"durationMinutes":60}]}]}
+            """;
+
+    /** QDA shape: a pool of subject sections; the combination code picks some of them. */
+    private static final String POOL_PARTS = """
+            {"parts":[{"id":"pool","order":3,"name":"Khoa hoc hoac Tieng Anh","durationMinutes":60,"questionCount":50,
+              "questionCountOnPaper":50,"questionCountRequired":50,"participation":{"mode":"ALL"},"maxPoints":50,
+              "subjectPool":[{"id":"pool-ly","subjectCode":"LY","questionCount":25,
+                               "blocks":[{"id":"y1","questionType":"SINGLE_CHOICE","questionCount":22},
+                                         {"id":"y2","questionType":"SHORT_ANSWER","questionCount":3}]},
+                             {"id":"pool-anh","subjectCode":"ANH","questionCount":50,
+                               "blocks":[{"id":"y3","questionType":"SINGLE_CHOICE","questionCount":50}]}],
+              "paths":[{"pathId":"default","questionCount":50,"maxPoints":50,"durationMinutes":60}]}]}
+            """;
+
+    private static org.assertj.core.groups.Tuple summary(PublishedExamPort.BlockSummary b) {
+        return tuple(b.questionType(), b.questionCount(), b.childAnswerType(), b.optionId(), b.sectionId(), b.omitted());
+    }
+
     /** AD-77: the frozen blocks come out as answer types and counts, never the block internals. */
     @Test
     void partsCarryBlockSummaries() throws Exception {
@@ -98,18 +156,74 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
         UUID exam = newExam("HSA", PLAIN);
         jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
         version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), BLOCK_PARTS, "default");
-        var part1 = port.loadVersion(exam, 1).orElseThrow().parts().getFirst();
-        assertThat(part1.blocks()).extracting(PublishedExamPort.BlockSummary::questionType,
-                        PublishedExamPort.BlockSummary::questionCount, PublishedExamPort.BlockSummary::childAnswerType)
-                .containsExactly(org.assertj.core.api.Assertions.tuple("SINGLE_CHOICE", 30, null));
-        var part2 = port.loadVersion(exam, 1).orElseThrow().parts().get(1);
-        assertThat(part2.blocks()).extracting(PublishedExamPort.BlockSummary::questionType,
-                        PublishedExamPort.BlockSummary::questionCount, PublishedExamPort.BlockSummary::childAnswerType)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("SHORT_ANSWER", 12, null),
-                        org.assertj.core.api.Assertions.tuple("QUESTION_SET", 2, "SINGLE_CHOICE"),
-                        org.assertj.core.api.Assertions.tuple("ESSAY", 6, null));
+        var parts = port.loadVersion(exam, 1).orElseThrow().parts();
+        assertThat(parts.getFirst().blocks()).extracting(PublishedExamPortIT::summary)
+                .containsExactly(tuple("SINGLE_CHOICE", 30, null, null, "s1", false));
+        assertThat(parts.get(1).blocks()).extracting(PublishedExamPortIT::summary).containsExactly(
+                tuple("SHORT_ANSWER", 12, null, null, "s2", false),
+                tuple("QUESTION_SET", 2, "SINGLE_CHOICE", null, "s2", false),
+                tuple("ESSAY", 6, null, null, "s2", true));
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(port.loadVersion(exam, 1).orElseThrow()));
+    }
+
+    /**
+     * R1-3: the count comes from the frozen allocation. A fixed set without {@code questionCount} is
+     * {@code setCount * setSize}; the one remainder block takes the section target minus the fixed blocks, an omitted
+     * block is flagged and never counts as fixed; a block whose count cannot be derived is not invented.
+     */
+    @Test
+    void blockCountsAreDerivedFromTheFrozenAllocation() throws Exception {
+        UUID kindId = kind("HSA");
+        UUID exam = newExam("HSA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
+        version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), DERIVED_PARTS, "default");
+        var blocks = port.loadVersion(exam, 1).orElseThrow().parts().getFirst().blocks();
+        assertThat(blocks).extracting(PublishedExamPortIT::summary).containsExactly(
+                // remainder: 20 - (2 * 4 set + 2 short + 1 visible essay) = 9; the omitted essay is not fixed
+                tuple("SINGLE_CHOICE", 9, null, null, "s1", false),
+                tuple("QUESTION_SET", 8, "SINGLE_CHOICE", null, "s1", false),
+                tuple("SHORT_ANSWER", 2, null, null, "s1", false),
+                tuple("ESSAY", 1, null, null, "s1", true),
+                tuple("ESSAY", 1, null, null, "s1", false),
+                // a section with no target: its remainder block has no count to derive and is left out
+                tuple("SINGLE_CHOICE", 5, null, null, "s1x", false));
+    }
+
+    /** AD-78: an option exam (HSA P3) keeps each option's blocks apart, with the option and section they belong to. */
+    @Test
+    void optionBlocksCarryTheirOptionAndSection() throws Exception {
+        UUID kindId = kind("HSA");
+        UUID exam = newExam("HSA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
+        version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), OPTION_PARTS, "default", "o-sci");
+        var parts = port.findServing(exam).orElseThrow().version().parts();
+        assertThat(parts.getFirst().blocks()).extracting(PublishedExamPortIT::summary).containsExactly(
+                tuple("SINGLE_CHOICE", 35, null, null, "fx", false),
+                tuple("SHORT_ANSWER", 15, null, null, "fx", false));
+        assertThat(parts.get(1).blocks()).extracting(PublishedExamPortIT::summary).containsExactly(
+                tuple("SINGLE_CHOICE", 13, null, "o-sci", "sci-ly", false),
+                tuple("QUESTION_SET", 3, null, "o-sci", "sci-ly", false),
+                tuple("SHORT_ANSWER", 1, null, "o-sci", "sci-ly", false),
+                tuple("SINGLE_CHOICE", 14, null, "o-sci", "sci-su", false),
+                tuple("QUESTION_SET", 3, null, "o-sci", "sci-su", false),
+                tuple("SINGLE_CHOICE", 40, null, "o-eng", "eng", false),
+                tuple("QUESTION_SET", 10, null, "o-eng", "eng", false));
+    }
+
+    /** AD-78: a pool exam carries the candidate sections' blocks with their section, never as fixed content. */
+    @Test
+    void poolBlocksCarryTheirSection() throws Exception {
+        UUID kindId = kind("QDA");
+        UUID exam = newExam("QDA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
+        version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), POOL_PARTS, "default");
+        var part = port.loadVersion(exam, 1).orElseThrow().parts().getFirst();
+        assertThat(part.sections()).isEmpty();
+        assertThat(part.subjectPool()).extracting(PublishedExamPort.Section::id).containsExactly("pool-ly", "pool-anh");
+        assertThat(part.blocks()).extracting(PublishedExamPortIT::summary).containsExactly(
+                tuple("SINGLE_CHOICE", 22, null, null, "pool-ly", false),
+                tuple("SHORT_ANSWER", 3, null, null, "pool-ly", false),
+                tuple("SINGLE_CHOICE", 50, null, null, "pool-anh", false));
     }
 
     /** AD-77: a part with options summarizes the blocks of every option, not just the serving ones. */
@@ -120,12 +234,10 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
         jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED' WHERE id = ?", exam);
         version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Bai on", 100000), MULTI_PATH_PARTS, "o1");
         var part = port.loadVersion(exam, 1).orElseThrow().parts().getFirst();
-        assertThat(part.blocks()).extracting(PublishedExamPort.BlockSummary::questionType,
-                        PublishedExamPort.BlockSummary::questionCount)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("SINGLE_CHOICE", 30),
-                        org.assertj.core.api.Assertions.tuple("ESSAY", 4),
-                        org.assertj.core.api.Assertions.tuple("SHORT_ANSWER", 26));
+        assertThat(part.blocks()).extracting(PublishedExamPortIT::summary).containsExactly(
+                tuple("SINGLE_CHOICE", 30, null, "o1", "s1", false),
+                tuple("ESSAY", 4, null, "o2", "s2", false),
+                tuple("SHORT_ANSWER", 26, null, "o2", "s2", false));
     }
 
     /** AD-77: a version published before the snapshot carried blocks gets an empty list, not invented data. */
@@ -233,6 +345,34 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
         assertThat(port.listPublishedExamIds()).contains(exam);
     }
 
+    /** R1-7: the only "blocks" node anywhere in a port result is {@code parts[*].blocks}, and each element is a summary. */
+    private static final java.util.Set<String> BLOCK_SUMMARY_KEYS =
+            java.util.Set.of("questionType", "questionCount", "childAnswerType", "optionId", "sectionId", "omitted");
+
+    private static int assertBlocksAreOnlyPartSummaries(JsonNode node, String path) {
+        int summaries = 0;
+        if (node.isObject()) {
+            for (var entry : (Iterable<java.util.Map.Entry<String, JsonNode>>) node::fields) {
+                if ("blocks".equals(entry.getKey())) {
+                    assertThat(path).as("a blocks node outside version.parts[*] or parts[*]")
+                            .matches("\\$(\\.version)?\\.parts\\[\\d+\\]");
+                    assertThat(entry.getValue().isArray()).as("blocks at %s is a list", path).isTrue();
+                    for (JsonNode block : entry.getValue()) {
+                        assertThat(block.isObject()).isTrue();
+                        java.util.Set<String> keys = new java.util.TreeSet<>();
+                        block.fieldNames().forEachRemaining(keys::add);
+                        assertThat(keys).as("keys of a block summary at %s", path).isEqualTo(BLOCK_SUMMARY_KEYS);
+                        summaries++;
+                    }
+                }
+                summaries += assertBlocksAreOnlyPartSummaries(entry.getValue(), path + "." + entry.getKey());
+            }
+        } else if (node.isArray()) {
+            for (int i = 0; i < node.size(); i++) summaries += assertBlocksAreOnlyPartSummaries(node.get(i), path + "[" + i + "]");
+        }
+        return summaries;
+    }
+
     @Test
     void portResultsContainNoForbiddenKeys() throws Exception {
         UUID kindId = kind("HSCA");
@@ -244,16 +384,33 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
         JsonNode loaded = mapper.valueToTree(port.loadVersion(exam, 1).orElseThrow());
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(serving);
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(loaded);
-        // AD-77: the summarized "blocks" key is allowed; the block internals stay behind.
+        // The prior protection stays: no block internals anywhere, in either result.
         assertThat(serving.toString()).doesNotContain("knowledgeScope", "requiredPointsPerQuestion", "slots",
                 "matrix", "topicQuotas", "tagCodes", "childConditions", "answerFormats");
+        assertThat(loaded.toString()).doesNotContain("knowledgeScope", "requiredPointsPerQuestion", "slots",
+                "matrix", "topicQuotas", "tagCodes", "childConditions", "answerFormats");
+        // AD-77: the one allowed "blocks" is the summary list of parts[*]; nothing else with that name, nothing more in it.
+        assertThat(assertBlocksAreOnlyPartSummaries(serving, "$")).isEqualTo(1);
+        assertThat(assertBlocksAreOnlyPartSummaries(loaded, "$")).isEqualTo(1);
+        for (JsonNode part : List.of(serving.path("version").path("parts").get(0), loaded.path("parts").get(0))) {
+            JsonNode block = part.path("blocks").get(0);
+            assertThat(part.path("blocks")).hasSize(1);
+            assertThat(block.path("questionType").asText()).isEqualTo("SINGLE_CHOICE");
+            assertThat(block.path("questionCount").asInt()).isEqualTo(30);
+            assertThat(block.path("sectionId").asText()).isEqualTo("s1");
+            assertThat(block.path("omitted").asBoolean()).isFalse();
+            assertThat(block.path("optionId").isMissingNode() || block.path("optionId").isNull()).isTrue();
+        }
         // A version that went through the real publish is clean too.
         UUID published = newExam("HSA", PLAIN);
         saveCheck(published, paths("default=VALID"));
         publish(published, "default").andExpect(status().isOk());
         entityManager.clear();
-        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(port.findServing(published).orElseThrow()));
-        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(port.loadVersion(published, 1).orElseThrow()));
+        for (JsonNode tree : List.<JsonNode>of(mapper.valueToTree(port.findServing(published).orElseThrow()),
+                mapper.valueToTree(port.loadVersion(published, 1).orElseThrow()))) {
+            ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(tree);
+            assertBlocksAreOnlyPartSummaries(tree, "$");
+        }
     }
 
     @Test

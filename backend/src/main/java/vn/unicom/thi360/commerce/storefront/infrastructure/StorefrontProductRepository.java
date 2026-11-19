@@ -2,6 +2,7 @@ package vn.unicom.thi360.commerce.storefront.infrastructure;
 
 import java.sql.Array;
 import java.sql.PreparedStatement;
+import java.sql.Savepoint;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -10,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
@@ -54,6 +57,25 @@ public class StorefrontProductRepository {
 
     public StorefrontProductRepository(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    /**
+     * Runs the work behind a JDBC savepoint of the current transaction: a failure undoes what the work wrote and is
+     * rethrown, the rest of the transaction stays intact. The JPA dialect offers no savepoints to the transaction
+     * template, so the connection of the transaction is used directly. Needs an active transaction.
+     */
+    public <T> T inSavepoint(Supplier<T> work) {
+        return jdbc.execute((ConnectionCallback<T>) connection -> {
+            Savepoint savepoint = connection.setSavepoint();
+            try {
+                T result = work.get();
+                connection.releaseSavepoint(savepoint);
+                return result;
+            } catch (RuntimeException e) {
+                connection.rollback(savepoint);
+                throw e;
+            }
+        });
     }
 
     /**
@@ -170,7 +192,7 @@ public class StorefrontProductRepository {
             args.add(query.subjectItemId());
         }
         if (query.partCode() != null) {
-            sql.append(" AND part_codes @> ARRAY[?]::text[]");
+            sql.append(" AND scope = 'PART' AND part_codes @> ARRAY[?]::text[]");
             args.add(query.partCode());
         }
         return sql.toString();
@@ -203,10 +225,14 @@ public class StorefrontProductRepository {
                 (rs, n) -> new SubjectCount(rs.getObject(1, UUID.class), rs.getLong(2)));
     }
 
-    /** Number of on-sale products per (kind, part code); the name is the smallest name seen for that code. */
+    /**
+     * Number of on-sale PART exams per (kind, part code); the name is the smallest name seen for that code. Only a PART
+     * exam stands for one part (AD-78): a FULL exam is found through the format filter, never through a part code.
+     */
     public List<PartCount> countByPart() {
         return jdbc.query("SELECT p.kind_code, t.code, min(t.name), count(*) FROM commerce.storefront_product p, "
                 + "unnest(p.part_codes, p.part_names) AS t(code, name) WHERE p.sale_state = 'ON_SALE' "
+                + "AND p.scope = 'PART' "
                 + "GROUP BY p.kind_code, t.code ORDER BY p.kind_code, t.code",
                 (rs, n) -> new PartCount(rs.getString(1), rs.getString(2), rs.getString(3), rs.getLong(4)));
     }

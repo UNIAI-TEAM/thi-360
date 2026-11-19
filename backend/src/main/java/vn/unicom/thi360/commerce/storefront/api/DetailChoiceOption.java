@@ -16,10 +16,19 @@ public record DetailChoiceOption(
         List<Integer> countsByPick,
         @Schema(description = "Các môn của lựa chọn, theo thứ tự (với mã tổ hợp là thứ tự làm bài)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        List<SubjectRef> subjects) {
+        List<SubjectRef> subjects,
+        @Schema(description = "Dạng câu của chính lựa chọn (các nhóm câu gắn với lựa chọn, không gắn với một môn); "
+                + "không bao giờ cộng các môn hay các lựa chọn khác; rỗng khi bản chưa đóng băng chúng",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        List<AnswerTypeGroup> answerTypes,
+        @Schema(description = "Dạng câu từng môn của lựa chọn: phần của lựa chọn hoặc bể môn của mã tổ hợp; "
+                + "rỗng khi bản chưa đóng băng chúng", requiredMode = Schema.RequiredMode.REQUIRED)
+        List<SubjectAnswerTypes> subjectAnswerTypes) {
 
     public DetailChoiceOption {
         subjects = subjects == null ? List.of() : List.copyOf(subjects);
         countsByPick = countsByPick == null ? null : List.copyOf(countsByPick);
+        answerTypes = answerTypes == null ? List.of() : List.copyOf(answerTypes);
+        subjectAnswerTypes = subjectAnswerTypes == null ? List.of() : List.copyOf(subjectAnswerTypes);
     }
 }

@@ -1,7 +1,12 @@
 package vn.unicom.thi360.commerce.storefront;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -27,6 +32,7 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort.OmittedGroup;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.PathChoice;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPathPart;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
@@ -119,18 +125,18 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
     @Test
     void discontinuedProductLeavesProductsAndFilters() throws Exception {
         String tag = token();
-        TestExam exam = exam().named("Bai " + tag);
+        TestExam exam = exam().named("Bai " + tag).scope("PART", "ZP" + tag.substring(3), null);
         sell(exam);
         String ip = newClientIp();
         assertThat(codes(body(publicGet(BASE + "/products?q=" + tag, ip).andReturn()))).containsExactly(exam.code);
         assertThat(body(publicGet(BASE + "/filters", ip).andReturn()).path("parts").toString())
-                .contains(exam.defaultPartCode());
+                .contains(exam.partCode);
 
         sell(exam.asVersion(1, exam.name, exam.listPrice).discontinued());
 
         assertThat(codes(body(publicGet(BASE + "/products?q=" + tag, ip).andReturn()))).isEmpty();
         assertThat(body(publicGet(BASE + "/filters", ip).andReturn()).path("parts").toString())
-                .doesNotContain(exam.defaultPartCode());
+                .doesNotContain(exam.partCode);
     }
 
     // ------------------------------------------------------------------ filters
@@ -194,8 +200,10 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
 
     @Test
     void filtersOmitZeroCounts() throws Exception {
-        TestExam exam = exam("HSA");
+        TestExam exam = exam("HSA").scope("PART", "ZP" + token().substring(3), null);
+        TestExam full = exam("HSA");
         sell(exam);
+        sell(full);
         String ip = newClientIp();
 
         JsonNode filters = body(publicGet(BASE + "/filters", ip).andExpect(status().isOk()).andReturn());
@@ -221,7 +229,7 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
         }
         JsonNode ownPart = null;
         for (JsonNode part : filters.path("parts")) {
-            if (part.path("code").asText().equals(exam.defaultPartCode())) {
+            if (part.path("code").asText().equals(exam.partCode)) {
                 ownPart = part;
             }
         }
@@ -231,6 +239,217 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
         assertThat(ownPart.path("count").asLong()).isEqualTo(1);
         assertThat(filters.path("subjects").toString()).contains("\"code\":\"TOAN\"");
         assertThat(filters.path("formats").toString()).contains("\"code\":\"FULL\"");
+    }
+
+    // ------------------------------------------------- Phần facet (R1-4, AD-78)
+
+    /** HSA shape: the FULL exam holds the Toan part and a PART exam stands for it; the Phần facet names PART exams only. */
+    @Test
+    void partFacetAndFilterCoverPartExamsOnly() throws Exception {
+        String tag = token();
+        String partCode = "ZP" + tag.substring(3);
+        String toan = "Toan hoc va xu li so lieu";
+        TestExam full = exam("HSA").named("HsaFull " + tag).withParts(
+                List.of(TestExam.part("p1", 1, toan, "TOAN", 50, 75, 50),
+                        TestExam.part("p2", 2, "Ngon ngu - Van hoc", "VAN", 50, 60, 50)),
+                List.of(TestExam.path("default", 1, 100, 100, 135, "p1", toan)));
+        TestExam part = exam("HSA").named("HsaPart " + tag).scope("PART", partCode, null).withParts(
+                List.of(TestExam.part("p1", 1, toan, "TOAN", 50, 75, 50)),
+                List.of(TestExam.path("default", 1, 50, 50, 75, "p1", toan)));
+        sell(full);
+        sell(part);
+        String ip = newClientIp();
+        String q = "&q=" + tag;
+
+        JsonNode facet = body(publicGet(BASE + "/filters", ip).andExpect(status().isOk()).andReturn()).path("parts");
+        List<String> facetKeys = new ArrayList<>();
+        JsonNode own = null;
+        for (JsonNode entry : facet) {
+            facetKeys.add(entry.path("kindCode").asText() + ":" + entry.path("code").asText());
+            if (entry.path("code").asText().equals(partCode)) {
+                own = entry;
+            }
+        }
+        assertThat(own).as("the PART exam's code is in the facet").isNotNull();
+        assertThat(own.path("kindCode").asText()).isEqualTo("HSA");
+        assertThat(own.path("name").asText()).isEqualTo(toan);
+        assertThat(own.path("count").asLong()).isEqualTo(1);
+        assertThat(facetKeys).as("the FULL exam adds no positional part code").doesNotContain("HSA:P1", "HSA:P2");
+
+        assertThat(codes(body(publicGet(BASE + "/products?kind=HSA" + q, ip).andReturn())))
+                .containsExactlyInAnyOrder(full.code, part.code);
+        assertThat(codes(body(publicGet(BASE + "/products?kind=HSA&part=" + partCode + q, ip).andReturn())))
+                .as("part= matches PART exams only").containsExactly(part.code);
+        assertThat(codes(body(publicGet(BASE + "/products?kind=HSA&format=FULL&part=" + partCode + q, ip).andReturn())))
+                .as("a FULL exam is not found through a part").isEmpty();
+        assertThat(codes(body(publicGet(BASE + "/products?kind=HSA&part=P1" + q, ip).andReturn())))
+                .as("a positional code names no part").isEmpty();
+        assertThat(codes(body(publicGet(BASE + "/products?kind=HSA&format=FULL" + q, ip).andReturn())))
+                .as("the FULL exam is found through the format").containsExactly(full.code);
+        assertThat(codes(body(publicGet(BASE + "/products?kind=HSA&format=PART" + q, ip).andReturn())))
+                .containsExactly(part.code);
+    }
+
+    // ---------------------------------------------------- answer types (R1-2, AD-78)
+
+    private static List<String> typeRows(JsonNode types) {
+        List<String> rows = new ArrayList<>();
+        types.forEach(t -> rows.add(t.path("questionType").asText() + ":" + t.path("questionCount").asInt()
+                + (t.path("childAnswerType").isNull() || t.path("childAnswerType").isMissingNode() ? ""
+                        : ":" + t.path("childAnswerType").asText())));
+        return rows;
+    }
+
+    /** HSA shape: part 1 is fixed; part 3 is science (2 of 2 subjects) or English; an option no path serves adds nothing. */
+    @Test
+    void answerTypesAreNeverAddedAcrossExclusiveOptions() throws Exception {
+        Part p1 = TestExam.withBlocks(TestExam.part("p1", 1, "Toan hoc", "TOAN", 50, 75, 50), List.of(
+                TestExam.block("s-p1", "SINGLE_CHOICE", 35), TestExam.block("s-p1", "SHORT_ANSWER", 15),
+                TestExam.omittedBlock("s-p1", "ESSAY", 1)));
+        Part p3 = TestExam.withBlocks(TestExam.choicePart("p3", 3, "Khoa hoc hoac Tieng Anh", 50, 60, List.of(
+                TestExam.option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa hoc", 2, List.of(25, 25),
+                        List.of(TestExam.section("LY", 25), TestExam.section("HOA", 25))),
+                TestExam.option("o-eng", "SUBJECT", "ANH", "Tieng Anh", null, null,
+                        List.of(TestExam.section("ANH", 50))),
+                TestExam.option("o-unserved", "SUBJECT", "VAN", "Khong phuc vu", null, null,
+                        List.of(TestExam.section("VAN", 50))))), List.of(
+                TestExam.optionBlock("o-sci", "sec-LY", "SINGLE_CHOICE", 22),
+                TestExam.optionBlock("o-sci", "sec-LY", "SHORT_ANSWER", 3),
+                TestExam.optionBlock("o-sci", "sec-HOA", "SINGLE_CHOICE", 25),
+                TestExam.optionBlock("o-eng", "sec-ANH", "SINGLE_CHOICE", 40),
+                new BlockSummary("QUESTION_SET", 10, "SINGLE_CHOICE", "o-eng", "sec-ANH", false),
+                TestExam.optionBlock("o-unserved", "sec-VAN", "ESSAY", 5)));
+        ServingPath science = TestExam.optionPath("o-sci", 1, 100, 100, 135, "p3", "Khoa hoc hoac Tieng Anh",
+                new PathChoice("p3", "o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa hoc"));
+        ServingPath english = TestExam.optionPath("o-eng", 1, 100, 100, 135, "p3", "Khoa hoc hoac Tieng Anh",
+                new PathChoice("p3", "o-eng", "SUBJECT", "ANH", "Tieng Anh"));
+        TestExam exam = exam().withParts(List.of(p1, p3), List.of(science, english));
+        sell(exam);
+
+        JsonNode detail = body(publicGet(BASE + "/products/" + exam.code, newClientIp()).andExpect(status().isOk())
+                .andReturn());
+
+        JsonNode parts = detail.path("parts");
+        assertThat(typeRows(parts.get(0).path("answerTypes"))).as("fixed part, omitted essay left out")
+                .containsExactly("SINGLE_CHOICE:35", "SHORT_ANSWER:15");
+        assertThat(typeRows(parts.get(1).path("answerTypes"))).as("exclusive options are not fixed content").isEmpty();
+        JsonNode options = detail.path("choices").get(0).path("options");
+        assertThat(options).as("the option no path serves is absent").hasSize(2);
+        JsonNode sci = options.get(0);
+        assertThat(sci.path("code").asText()).isEqualTo("SCIENCE");
+        assertThat(typeRows(sci.path("answerTypes"))).isEmpty();
+        assertThat(sci.path("subjectAnswerTypes")).hasSize(2);
+        assertThat(sci.path("subjectAnswerTypes").get(0).path("subject").path("code").asText()).isEqualTo("LY");
+        assertThat(typeRows(sci.path("subjectAnswerTypes").get(0).path("answerTypes")))
+                .containsExactly("SINGLE_CHOICE:22", "SHORT_ANSWER:3");
+        assertThat(sci.path("subjectAnswerTypes").get(1).path("subject").path("code").asText()).isEqualTo("HOA");
+        assertThat(typeRows(sci.path("subjectAnswerTypes").get(1).path("answerTypes"))).containsExactly("SINGLE_CHOICE:25");
+        JsonNode eng = options.get(1);
+        assertThat(eng.path("subjectAnswerTypes")).hasSize(1);
+        assertThat(typeRows(eng.path("subjectAnswerTypes").get(0).path("answerTypes")))
+                .as("English alone makes the 50 questions of the path")
+                .containsExactly("SINGLE_CHOICE:40", "QUESTION_SET:10:SINGLE_CHOICE");
+        assertThat(detail.toString()).as("neither the omitted essay nor the unserved option's essay").doesNotContain("ESSAY");
+    }
+
+    /** QDA shape: a pool of subject sections; the combination code names its subjects, each with its own types. */
+    @Test
+    void poolAnswerTypesAreReportedPerSubjectOfTheCombination() throws Exception {
+        Part pool = TestExam.poolPart("pool", 3, "Khoa hoc hoac Tieng Anh", 50, 60,
+                List.of(TestExam.section("LY", 25), TestExam.section("HOA", 25), TestExam.section("ANH", 50)),
+                List.of(TestExam.block("sec-LY", "SINGLE_CHOICE", 22), TestExam.block("sec-LY", "SHORT_ANSWER", 3),
+                        TestExam.block("sec-HOA", "SINGLE_CHOICE", 25), TestExam.block("sec-ANH", "SINGLE_CHOICE", 50)));
+        Combination combination = TestExam.combination("pool", "QD01", "Ma QD01", "KHTN", "LY", "HOA");
+        ServingPath combined = new ServingPath("pool:QD01", 1,
+                List.of(new PathChoice("pool", "pool:QD01", "COMBINATION", "QD01", "Ma QD01")), 50,
+                BigDecimal.valueOf(50), 60, List.of(new ServingPathPart("pool", "Khoa hoc hoac Tieng Anh", 50,
+                BigDecimal.valueOf(50), 60)), List.of(combination));
+        TestExam exam = exam().withParts(List.of(pool), List.of(combined));
+        sell(exam);
+
+        JsonNode detail = body(publicGet(BASE + "/products/" + exam.code, newClientIp()).andExpect(status().isOk())
+                .andReturn());
+
+        assertThat(typeRows(detail.path("parts").get(0).path("answerTypes"))).as("pool candidates are not fixed").isEmpty();
+        JsonNode code = detail.path("choices").get(0).path("options").get(0);
+        assertThat(code.path("kind").asText()).isEqualTo("COMBINATION");
+        assertThat(typeRows(code.path("answerTypes"))).isEmpty();
+        assertThat(code.path("subjectAnswerTypes")).as("English is in the pool but not in this code").hasSize(2);
+        assertThat(code.path("subjectAnswerTypes").get(0).path("subject").path("code").asText()).isEqualTo("LY");
+        assertThat(typeRows(code.path("subjectAnswerTypes").get(0).path("answerTypes")))
+                .containsExactly("SINGLE_CHOICE:22", "SHORT_ANSWER:3");
+        assertThat(code.path("subjectAnswerTypes").get(1).path("subject").path("code").asText()).isEqualTo("HOA");
+        assertThat(typeRows(code.path("subjectAnswerTypes").get(1).path("answerTypes"))).containsExactly("SINGLE_CHOICE:25");
+    }
+
+    // ------------------------------------------------ older serving versions (R1-5)
+
+    /**
+     * E24: v2 is the latest but v1 still serves a path. v1 froze a part, a fixed subject and a choice that v2 does not
+     * have; the product keeps all of them, while name, price and version come from v2.
+     */
+    @Test
+    void olderServingVersionKeepsItsPartsSubjectsAndChoices() throws Exception {
+        Part p1 = TestExam.part("p1", 1, "Toan hoc", "TOAN", 50, 75, 50);
+        Part p2 = TestExam.part("p2", 2, "Vat li", "LY", 30, 45, 30);
+        Part p3 = TestExam.choicePart("p3", 3, "Mon tu chon", 20, 30, List.of(
+                TestExam.option("o-su", "SUBJECT", "SU", "Lich su", null, null, List.of(TestExam.section("SU", 20)))));
+        ServingPath latest = TestExam.path("default", 2, 50, 50, 75, "p1", "Toan hoc");
+        ServingPath older = new ServingPath("o-su", 1,
+                List.of(new PathChoice("p3", "o-su", "SUBJECT", "SU", "Lich su")), 100, BigDecimal.valueOf(100), 150,
+                List.of(new ServingPathPart("p1", "Toan hoc", 50, BigDecimal.valueOf(50), 75),
+                        new ServingPathPart("p2", "Vat li", 30, BigDecimal.valueOf(30), 45),
+                        new ServingPathPart("p3", "Mon tu chon", 20, BigDecimal.valueOf(20), 30)), List.of());
+        TestExam exam = exam().withParts(List.of(p1), List.of(latest, older)).retain(1, List.of(p1, p2, p3)).version(2)
+                .named("Ten phien ban 2").price(300_000L);
+        sell(exam);
+        String ip = newClientIp();
+
+        JsonNode detail = body(publicGet(BASE + "/products/" + exam.code, ip).andExpect(status().isOk()).andReturn());
+        assertThat(detail.path("name").asText()).as("name, price and version come from the latest").isEqualTo("Ten phien ban 2");
+        assertThat(detail.path("listPrice").asLong()).isEqualTo(300_000L);
+        assertThat(detail.path("versionNo").asInt()).isEqualTo(2);
+        List<String> partNames = new ArrayList<>();
+        detail.path("parts").forEach(p -> partNames.add(p.path("name").asText()));
+        assertThat(partNames).as("the part only v1 has is not lost").containsExactly("Toan hoc", "Vat li", "Mon tu chon");
+        assertThat(detail.path("choices")).hasSize(1);
+        assertThat(detail.path("choices").get(0).path("partName").asText()).isEqualTo("Mon tu chon");
+        assertThat(detail.path("choices").get(0).path("options").get(0).path("code").asText()).isEqualTo("SU");
+        for (String subject : List.of("TOAN", "LY", "SU")) {
+            assertThat(codes(body(publicGet(BASE + "/products?subject=" + subject + "&q=" + exam.code, ip).andReturn())))
+                    .as("subject %s of a retained version", subject).containsExactly(exam.code);
+        }
+    }
+
+    @Test
+    void retainedVersionContributesSubjectsToAnExistingChoice() throws Exception {
+        Part newerPart = TestExam.withBlocks(TestExam.choicePart("p", 1, "Khoa hoc", 25, 30, List.of(
+                TestExam.option("science", "SUBJECT_CHOICE", "SCIENCE", "Khoa hoc", 1, List.of(25),
+                        List.of(TestExam.section("HOA", 25))))),
+                List.of(TestExam.optionBlock("science", "sec-HOA", "SINGLE_CHOICE", 25)));
+        Part olderPart = TestExam.withBlocks(TestExam.choicePart("p", 1, "Khoa hoc", 25, 30, List.of(
+                TestExam.option("science", "SUBJECT_CHOICE", "SCIENCE", "Khoa hoc", 1, List.of(25),
+                        List.of(TestExam.section("LY", 25))))),
+                List.of(TestExam.optionBlock("science", "sec-LY", "SHORT_ANSWER", 25)));
+        ServingPath newer = TestExam.optionPath("new", 2, 25, 25, 30, "p", "Khoa hoc",
+                new PathChoice("p", "science", "SUBJECT_CHOICE", "SCIENCE", "Khoa hoc"));
+        ServingPath older = TestExam.optionPath("old", 1, 25, 25, 30, "p", "Khoa hoc",
+                new PathChoice("p", "science", "SUBJECT_CHOICE", "SCIENCE", "Khoa hoc"));
+        TestExam exam = exam().withParts(List.of(newerPart), List.of(newer, older))
+                .retain(1, List.of(olderPart)).version(2);
+        sell(exam);
+
+        JsonNode detail = body(publicGet(BASE + "/products/" + exam.code, newClientIp())
+                .andExpect(status().isOk()).andReturn());
+        JsonNode options = detail.path("choices").get(0).path("options");
+        assertThat(options).hasSize(1);
+        List<String> subjects = new ArrayList<>();
+        options.get(0).path("subjects").forEach(s -> subjects.add(s.path("code").asText()));
+        assertThat(subjects).containsExactly("HOA", "LY");
+        JsonNode perSubject = options.get(0).path("subjectAnswerTypes");
+        assertThat(perSubject).hasSize(2);
+        assertThat(typeRows(perSubject.get(0).path("answerTypes"))).containsExactly("SINGLE_CHOICE:25");
+        assertThat(typeRows(perSubject.get(1).path("answerTypes"))).containsExactly("SHORT_ANSWER:25");
     }
 
     // ------------------------------------------------------- search, sort, paging
@@ -312,9 +531,9 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
                 List.of(TestExam.part("p1", 1, "Toan hoc", "TOAN", 50, 75, 50), part3),
                 List.of(science, english, combined));
         exam.withBlocks(List.of(
-                new BlockSummary("SINGLE_CHOICE", 32, null),
-                new BlockSummary("SHORT_ANSWER", 15, null),
-                new BlockSummary("QUESTION_SET", 3, "SINGLE_CHOICE")));
+                TestExam.block("s-p1", "SINGLE_CHOICE", 32),
+                TestExam.block("s-p1", "SHORT_ANSWER", 15),
+                TestExam.setBlock("s-p1", 3, "SINGLE_CHOICE")));
         exam.omitted.add(new OmittedGroup("Tu luan", new BigDecimal("2.5")));
         sell(exam);
         String ip = newClientIp();
@@ -422,6 +641,23 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
         publicGet(BASE + "/products", ip).andExpect(status().isOk());
         publicGet(BASE + "/products/" + exam.code, ip).andExpect(status().isOk());
         // Anything else outside /api/v1/public still needs a login.
+        publicGet("/api/v1/me", ip).andExpect(status().isUnauthorized());
+    }
+
+    /** R1-10: only GET is open on the public prefix; any other method needs a login (401, not MVC's 405). */
+    @Test
+    void publicPrefixOpensGetOnly() throws Exception {
+        String ip = newClientIp();
+        String path = BASE + "/filters";
+
+        publicGet(path, ip).andExpect(status().isOk());
+        mockMvc.perform(post(path).header("X-Forwarded-For", ip)).andExpect(status().isUnauthorized());
+        mockMvc.perform(put(path).header("X-Forwarded-For", ip)).andExpect(status().isUnauthorized());
+        mockMvc.perform(patch(path).header("X-Forwarded-For", ip)).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete(path).header("X-Forwarded-For", ip)).andExpect(status().isUnauthorized());
+        mockMvc.perform(head(path).header("X-Forwarded-For", ip)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post(BASE + "/products").header("X-Forwarded-For", ip)).andExpect(status().isUnauthorized());
+        // The protected route stays protected, as before.
         publicGet("/api/v1/me", ip).andExpect(status().isUnauthorized());
     }
 

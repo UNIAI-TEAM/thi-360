@@ -20,6 +20,8 @@ import vn.unicom.thi360.exam.spi.ExamEventTopics;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Combination;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.PathChoice;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
 import vn.unicom.thi360.shared.ids.Ids;
 
@@ -71,7 +73,8 @@ class StorefrontProjectionIT extends AbstractStorefrontIT {
     @Test
     void discontinuedEventHidesProduct() {
         TestExam exam = exam();
-        String partCode = exam.defaultPartCode();
+        String partCode = "ZP" + exam.code.substring(1);
+        exam.scope("PART", partCode, null);
         serve(exam);
         long onSaleBefore = onSaleOfKind("HSA");
         emit(ExamEventTopics.PUBLISHED, exam.examId, 1);
@@ -96,11 +99,13 @@ class StorefrontProjectionIT extends AbstractStorefrontIT {
      */
     @Test
     void staleSameVersionOnSaleWriteDoesNotRelistDiscontinuedRow() throws Exception {
-        TestExam published = exam().asVersion(2, "Ten phien ban 2", 250_000L);
+        TestExam base = exam();
+        base.scope("PART", "ZP" + base.code.substring(1), null);
+        TestExam published = base.asVersion(2, "Ten phien ban 2", 250_000L);
         serve(published);
         emit(ExamEventTopics.PUBLISHED, published.examId, 2);
         // Projection A: the row it computed from its read of PUBLISHED v2, held back before the write.
-        StorefrontRow staleOnSale = projector.build(published.build()).orElseThrow();
+        StorefrontRow staleOnSale = rowOf(published);
 
         TestExam stopped = published.asVersion(2, "Ten phien ban 2", 250_000L).discontinued();
         serve(stopped);
@@ -112,13 +117,13 @@ class StorefrontProjectionIT extends AbstractStorefrontIT {
 
         assertThat(row(published.examId)).containsEntry("sale_state", "DISCONTINUED").containsEntry("version_no", 2);
         assertThat(listed(published.code)).as("not listed").isZero();
-        assertThat(repository.countByPart()).noneMatch(p -> p.code().equals(published.defaultPartCode()));
+        assertThat(repository.countByPart()).noneMatch(p -> p.code().equals(published.partCode));
         publicGet("/api/v1/public/storefront/products/" + published.code, newClientIp()).andExpect(status().isGone());
 
         // A same-state repair at the same version still works: the stopped row is rewritten with the corrected name.
         TestExam repaired = published.asVersion(2, "Ten da sua", 250_000L).discontinued();
         serve(repaired);
-        assertThat(repository.upsert(Ids.newId(), projector.build(repaired.build()).orElseThrow(), Instant.now()))
+        assertThat(repository.upsert(Ids.newId(), rowOf(repaired), Instant.now()))
                 .as("same-state repair is accepted").isTrue();
         assertThat(row(published.examId)).containsEntry("sale_state", "DISCONTINUED").containsEntry("name", "Ten da sua");
 
@@ -128,6 +133,15 @@ class StorefrontProjectionIT extends AbstractStorefrontIT {
         emit(ExamEventTopics.PUBLISHED, published.examId, 3);
         assertThat(row(published.examId)).containsEntry("sale_state", "ON_SALE").containsEntry("version_no", 3);
         assertThat(listed(published.code)).isEqualTo(1);
+    }
+
+    /** What the projector builds for the exam as the port serves it, every serving version included. */
+    private StorefrontRow rowOf(TestExam exam) {
+        ServingExam serving = exam.build();
+        Map<Integer, PublishedVersion> versions = new java.util.HashMap<>();
+        versions.put(serving.version().versionNo(), serving.version());
+        exam.retainedVersions().forEach(version -> versions.put(version.versionNo(), version));
+        return projector.build(serving, versions).orElseThrow();
     }
 
     @Test
@@ -279,7 +293,8 @@ class StorefrontProjectionIT extends AbstractStorefrontIT {
         assertThat(subjects).contains(subjectItem("TOAN"), subjectItem("LY"), subjectItem("HOA"), subjectItem("SINH"),
                 subjectItem("SU"), subjectItem("DIA"), subjectItem("ANH"));
         assertThat(subjects).as("an option no serving path stands for adds nothing").doesNotContain(subjectItem("VAN"));
-        assertThat(List.of((String[]) jdbcArray(row(exam.examId).get("part_codes")))).containsExactly("P1", "P3");
+        assertThat(List.of((String[]) jdbcArray(row(exam.examId).get("part_codes"))))
+                .as("a FULL exam has no part code: the Phần facet lists PART exams only (AD-78)").isEmpty();
     }
 
     // ------------------------------------------------------------------ helpers

@@ -13,7 +13,8 @@ public record DetailPart(
         @Schema(nullable = true) DecimalRange maxPoints,
         @Schema(description = "true: phần bắt buộc; false: học viên tự chọn", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean required,
-        @Schema(description = "Các dạng câu và số câu từng dạng của phần; rỗng khi bản chưa đóng băng chúng",
+        @Schema(description = "Các dạng câu và số câu từng dạng của các nhóm cố định của phần (ai cũng làm); "
+                + "lựa chọn và bể môn không cộng vào đây mà nằm ở choices; rỗng khi bản chưa đóng băng chúng",
                 requiredMode = Schema.RequiredMode.REQUIRED) List<AnswerTypeGroup> answerTypes) {
 
     public DetailPart {

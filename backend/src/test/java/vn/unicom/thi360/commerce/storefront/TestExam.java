@@ -50,6 +50,7 @@ final class TestExam {
     List<Combination> combinations = new ArrayList<>();
     List<OmittedGroup> omitted = new ArrayList<>();
     Instant publishedAt = Instant.parse("2026-11-01T00:00:00Z");
+    java.util.Map<Integer, List<Part>> olderParts = new java.util.LinkedHashMap<>();
 
     /** The same exam (same id and code) as another version, for re-serving it after a publish. */
     TestExam asVersion(int versionNo, String name, Long listPrice) {
@@ -71,6 +72,7 @@ final class TestExam {
         copy.combinations = new ArrayList<>(combinations);
         copy.omitted = new ArrayList<>(omitted);
         copy.publishedAt = publishedAt;
+        copy.olderParts = new java.util.LinkedHashMap<>(olderParts);
         copy.versionNo = versionNo;
         copy.name = name;
         copy.listPrice = listPrice;
@@ -138,12 +140,40 @@ final class TestExam {
 
     /** The frozen question blocks of the default part (AD-77); empty is what a pre-block version returns. */
     TestExam withBlocks(List<BlockSummary> blocks) {
-        Part base = parts.getFirst();
-        parts.set(0, new Part(base.id(), base.order(), base.name(), base.durationMinutes(), base.questionCount(),
+        parts.set(0, withBlocks(parts.getFirst(), blocks));
+        return this;
+    }
+
+    static Part withBlocks(Part base, List<BlockSummary> blocks) {
+        return new Part(base.id(), base.order(), base.name(), base.durationMinutes(), base.questionCount(),
                 base.questionCountOnPaper(), base.questionCountRequired(), base.participationMode(), base.choose(),
                 base.maxPoints(), base.displaySegments(), base.sections(), base.subjectPool(), base.options(),
-                base.paths(), List.copyOf(blocks)));
-        return this;
+                base.paths(), List.copyOf(blocks));
+    }
+
+    /** A block of a fixed section of the part (or a pool candidate: the section decides). */
+    static BlockSummary block(String sectionId, String type, int count) {
+        return new BlockSummary(type, count, null, null, sectionId, false);
+    }
+
+    static BlockSummary setBlock(String sectionId, int count, String childType) {
+        return new BlockSummary("QUESTION_SET", count, childType, null, sectionId, false);
+    }
+
+    static BlockSummary omittedBlock(String sectionId, String type, int count) {
+        return new BlockSummary(type, count, null, null, sectionId, true);
+    }
+
+    /** A block of one option's section. */
+    static BlockSummary optionBlock(String optionId, String sectionId, String type, int count) {
+        return new BlockSummary(type, count, null, optionId, sectionId, false);
+    }
+
+    /** A part with subject-pool candidate sections and no fixed sections or options. */
+    static Part poolPart(String id, int order, String name, int questions, int minutes, List<Section> pool,
+            List<BlockSummary> blocks) {
+        return new Part(id, order, name, minutes, questions, questions, questions, "ALL", null,
+                BigDecimal.valueOf(questions), List.of(), List.of(), pool, List.of(), List.of(), List.copyOf(blocks));
     }
 
     TestExam withCombinations(List<Combination> combinations) {
@@ -152,14 +182,37 @@ final class TestExam {
     }
 
     ServingExam build() {
+        List<String> pathIds = paths.stream().map(ServingPath::pathId).toList();
+        return new ServingExam(examId, status, publishedVersion(versionNo, parts, pathIds), List.copyOf(paths));
+    }
+
+    private PublishedVersion publishedVersion(int number, List<Part> versionParts, List<String> pathIds) {
         Listing listing = new Listing(summary, "Muc tieu", "Doi tuong", listPrice, attempts, true, false, true,
                 "Ghi chu", "SCORE_AND_ANSWERS", "Mo ta", coverAssetId);
-        List<String> pathIds = paths.stream().map(ServingPath::pathId).toList();
-        PublishedVersion version = new PublishedVersion(examId, versionNo, "SERVING", status, publishedAt, code, name,
-                kindItemId, kindCode, scope, partCode, subjectItemId, buildMode, timing, null, new BigDecimal("150"),
-                null, "LINEAR", listing, List.copyOf(parts), List.copyOf(combinations), List.copyOf(omitted), pathIds,
-                pathIds);
-        return new ServingExam(examId, status, version, List.copyOf(paths));
+        return new PublishedVersion(examId, number, "SERVING", status, publishedAt, code, name, kindItemId, kindCode,
+                scope, partCode, subjectItemId, buildMode, timing, null, new BigDecimal("150"), null, "LINEAR", listing,
+                List.copyOf(versionParts), List.copyOf(combinations), List.copyOf(omitted), pathIds, pathIds);
+    }
+
+    /**
+     * The older versions the serving paths name, as {@code loadVersion} returns them (E24): the parts given to
+     * {@link #retain}, else the same parts as the latest version.
+     */
+    List<PublishedVersion> retainedVersions() {
+        List<PublishedVersion> result = new ArrayList<>();
+        for (int number : paths.stream().map(ServingPath::versionNo).distinct().toList()) {
+            if (number != versionNo) {
+                List<String> pathIds = paths.stream().filter(p -> p.versionNo() == number).map(ServingPath::pathId).toList();
+                result.add(publishedVersion(number, olderParts.getOrDefault(number, parts), pathIds));
+            }
+        }
+        return result;
+    }
+
+    /** The parts that an older serving version froze (they differ from the latest version's). */
+    TestExam retain(int olderVersionNo, List<Part> olderVersionParts) {
+        olderParts.put(olderVersionNo, new ArrayList<>(olderVersionParts));
+        return this;
     }
 
     // ----------------------------------------------------------------- pieces
