@@ -535,17 +535,6 @@ export function BlockMatrixEditor({
           {t("basisTotal", { total: number(allocation.inputTotal), unit: t(`basis${matrix.basis}`) })}
         </p>
       )}
-
-      <p className="flex flex-wrap items-center gap-x-1.5 text-body text-text-secondary">
-        {t("sourceLabel")}{" "}
-        <strong className="font-semibold text-text">
-          {availableState === "loading"
-            ? t("sourceLoading")
-            : availableState === "error"
-              ? t("sourceError")
-              : t("sourceTotal", { count: available?.total ?? 0 })}
-        </strong>
-      </p>
     </section>
   );
 }
