@@ -239,7 +239,7 @@ function ItemFormBody({
             nameEn: trimmedNameEn,
             description: trimmedDescription,
             ...(parsedOrder !== undefined ? { displayOrder: parsedOrder } : {}),
-            status: values.status,
+            ...(isSystemItem ? {} : { status: values.status }),
             ...(showReason ? { reason: trimmedReason } : {}),
             version: item.version,
           },
@@ -333,9 +333,11 @@ function ItemFormBody({
               required
               error={errors.code?.message}
               hint={
-                effectiveCodeLocked
-                  ? t("itemDialog.codeLockedHint")
-                  : t("itemDialog.codeHint")
+                isSystemItem
+                  ? undefined
+                  : codeLocked
+                    ? t("itemDialog.codeLockedHint")
+                    : t("itemDialog.codeHint")
               }
             >
               {(fieldProps) => (
@@ -405,7 +407,7 @@ function ItemFormBody({
                     options={statusOptions}
                     value={field.value}
                     onValueChange={(value) => field.onChange(value as CatalogStatus)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isSystemItem}
                   />
                 )}
               />
@@ -492,7 +494,7 @@ function ItemFormBody({
 
           {mode === "edit" && (
             <p className="rounded-md border border-border bg-page px-3.5 py-2.5 text-field-label text-text-secondary">
-              {t("itemDialog.editHint")}
+              {isSystemItem ? t("itemDialog.systemHint") : t("itemDialog.editHint")}
             </p>
           )}
 
