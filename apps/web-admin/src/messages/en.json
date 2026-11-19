@@ -5208,6 +5208,10 @@
           "DIFFICULTY": "Difficulty {name}",
           "EXAM": "Exam quota {names}",
           "GRADE": "Grade {name}",
+          "MAPID": "{sentence}",
+          "MAPID_COUNT": "{sentence} · questions in the group",
+          "MAPID_OUTSIDE": "{sentence} · outside this group",
+          "MAPID_UNKNOWN": "MAPID rule {id}",
           "TOPIC": "Topic quota",
           "TOPIC_NAMED": "{name}",
           "UNCLASSIFIED": "Unclassified"

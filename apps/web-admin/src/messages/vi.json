@@ -5208,6 +5208,10 @@
           "DIFFICULTY": "Độ khó {name}",
           "EXAM": "Chỉ tiêu cấp bài {names}",
           "GRADE": "Khối lớp {name}",
+          "MAPID": "{sentence}",
+          "MAPID_COUNT": "{sentence} · số câu trong nhóm",
+          "MAPID_OUTSIDE": "{sentence} · ngoài nhóm này",
+          "MAPID_UNKNOWN": "Quy tắc MAPID {id}",
           "TOPIC": "Chỉ tiêu chủ đề",
           "TOPIC_NAMED": "{name}",
           "UNCLASSIFIED": "Chưa phân loại"

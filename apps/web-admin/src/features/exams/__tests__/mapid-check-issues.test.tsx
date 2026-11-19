@@ -7,6 +7,7 @@ import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { issueRuleHref } from "../check";
 import { ExamStructureCheckResult } from "../components/exam-structure-check-result";
+import { PreviewIssueItem } from "../components/exam-preview-panel";
 import { useIssueText } from "../components/exam-review-shared";
 import { getExamCheck } from "../review-api";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
@@ -298,5 +299,21 @@ describe("Đi tới quy tắc", () => {
     await userEvent.click(screen.getByRole("button", { name: "Đến chỗ sửa" }));
     expect(onSelect).toHaveBeenLastCalledWith({ kind: "block", blockId: "short" });
     expect(screen.getAllByRole("button", { name: /Đi tới quy tắc/ })).toHaveLength(1);
+  });
+});
+
+describe("lỗi sinh thử nêu quy tắc", () => {
+  it("dòng có ruleId và môn có liên kết Đi tới quy tắc về trang Cấu trúc; dòng khác không có", () => {
+    const failure = issueOf({ code: "SUBJECT_QUOTA_INFEASIBLE", group: "SOURCE", ruleId: "r2", nodeIds: ["n-hs"] });
+    renderWithProviders(
+      <ul>
+        <PreviewIssueItem examId="ex-1" issue={failure} text="Quy tắc A thiếu nguồn" />
+        <PreviewIssueItem examId="ex-1" issue={issueOf({ code: "ITEM_SHAPE_SHORTAGE" })} text="Khối B thiếu" />
+      </ul>,
+    );
+
+    const link = screen.getByRole("link", { name: "Đi tới quy tắc: Quy tắc A thiếu nguồn" });
+    expect(link).toHaveAttribute("href", "/exams/ex-1/structure?section=s1&rule=r2");
+    expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 });

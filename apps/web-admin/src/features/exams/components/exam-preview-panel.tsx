@@ -506,7 +506,7 @@ function PreviewFailure({
 }
 
 /** Một vấn đề của lần sinh thử; vấn đề nêu quy tắc MAPID có thêm liên kết tới dòng quy tắc ở trang Cấu trúc. */
-function PreviewIssueItem({ examId, issue, text }: { examId: string; issue: CheckIssue; text: string }) {
+export function PreviewIssueItem({ examId, issue, text }: { examId: string; issue: CheckIssue; text: string }) {
   const tMapid = useTranslations("exams.mapidRules.issue");
   const href = issueRuleHref(examId, issue);
   return (
