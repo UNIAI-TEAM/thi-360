@@ -6,7 +6,7 @@
 export { Question, type QuestionProps } from "./question";
 export { SingleChoiceQuestion, MultipleChoiceQuestion } from "./choice-body";
 export { ShortAnswerQuestion } from "./short-answer";
-export { ClozeQuestion, ClozePassage, clozeHtml } from "./cloze";
+export { ClozeQuestion, ClozePassage } from "./cloze";
 export { TrueFalseQuestion } from "./true-false";
 export { MatchingQuestion } from "./matching";
 export { EssayQuestion, type EssayEditorProps } from "./essay";
@@ -27,6 +27,8 @@ export {
   statementLetter,
   orderById,
   htmlToText,
+  plainTextToHtml,
+  htmlToPlainText,
   formatScore,
 } from "./helpers";
 export type {

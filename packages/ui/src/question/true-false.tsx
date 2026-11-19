@@ -79,12 +79,14 @@ export function TrueFalseQuestion({
                       checked={picked === true}
                       label={strings.trueOption}
                       onPick={() => onChange?.({ statements: { ...statements, [statement.id]: true } })}
+                      onClear={() => onChange?.({ statements: { ...statements, [statement.id]: null } })}
                     />
                     <TrueFalseRadio
                       name={`${question.id}-${statement.id}`}
                       checked={picked === false}
                       label={strings.falseOption}
                       onPick={() => onChange?.({ statements: { ...statements, [statement.id]: false } })}
+                      onClear={() => onChange?.({ statements: { ...statements, [statement.id]: null } })}
                     />
                   </span>
                 </li>
@@ -105,11 +107,14 @@ function TrueFalseRadio({
   checked,
   label,
   onPick,
+  onClear,
 }: {
   name: string;
   checked: boolean;
   label: string;
   onPick: () => void;
+  /** Bấm hay Space lên lựa chọn đang chọn là bỏ chọn: giá trị về `null` (AC-11). */
+  onClear: () => void;
 }) {
   return (
     <label className="flex min-h-8 cursor-pointer items-center gap-1.5 text-label font-semibold whitespace-nowrap text-text">
@@ -118,6 +123,9 @@ function TrueFalseRadio({
         name={name}
         checked={checked}
         onChange={onPick}
+        onClick={() => {
+          if (checked) onClear();
+        }}
         className={cn("size-4.5 accent-primary-fill", focusRing)}
       />
       {label}

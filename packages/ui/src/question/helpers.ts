@@ -53,3 +53,34 @@ const SCORE_FORMATTERS: Record<UiLocale, Intl.NumberFormat> = {
 export function formatScore(value: number, locale: UiLocale): string {
   return SCORE_FORMATTERS[locale].format(Number(value.toFixed(2)));
 }
+
+const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+
+/**
+ * Ô nhập chữ thường của Tự luận -> HTML lưu (`answer.html`, LT 4): mỗi dòng một đoạn, ký tự đặc biệt
+ * được thoát. Rỗng (chỉ khoảng trắng) lưu chuỗi rỗng để câu tính là bỏ trống (F14).
+ */
+export function plainTextToHtml(text: string): string {
+  if (text.trim() === "") return "";
+  return text
+    .split("\n")
+    .map((line) => `<p>${line.replace(/[&<>]/g, (ch) => HTML_ESCAPES[ch] ?? ch)}</p>`)
+    .join("");
+}
+
+/** Ngược lại của `plainTextToHtml`, cho ô nhập chữ thường; HTML từ trình soạn khác thì lấy chữ theo đoạn. */
+export function htmlToPlainText(html: string): string {
+  if (!html) return "";
+  if (!/<[a-z][^>]*>/i.test(html)) return html;
+  const spaced = html.replace(/<\/(?:p|div|li|h[1-6]|blockquote)>|<br\s*\/?>/gi, (tag) => `${tag}\n`);
+  let text: string;
+  if (typeof DOMParser !== "undefined") {
+    const doc = new DOMParser().parseFromString(`<div>${spaced}</div>`, "text/html");
+    text = doc.body.textContent ?? "";
+  } else {
+    text = spaced
+      .replace(/<[^>]*>/g, "")
+      .replace(/&(?:amp|lt|gt|nbsp);/g, (entity) => ({ "&amp;": "&", "&lt;": "<", "&gt;": ">", "&nbsp;": " " })[entity] ?? entity);
+  }
+  return text.replace(/\n$/, "");
+}

@@ -48,7 +48,7 @@ export function QuestionFrame({
     <section aria-labelledby={`${question.id}-title`} className={cn("flex min-w-0 flex-col gap-5", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <HeadingTag id={`${question.id}-title`} className="text-h2 font-bold text-text">
+          <HeadingTag id={`${question.id}-title`} className="text-h3 font-bold text-text">
             {titleOf(question, strings.questionLabel, strings.questionRangeLabel)}
           </HeadingTag>
           <span className="inline-flex h-6 items-center rounded-full bg-success-bg px-2.5 text-caption font-medium whitespace-nowrap text-primary-text">

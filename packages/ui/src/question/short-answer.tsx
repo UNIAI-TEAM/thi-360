@@ -83,7 +83,7 @@ export function ShortAnswerQuestion({
               : strings.shortAnswerNote}
           </p>
         )}
-        {mode === "review" && resolved?.outcome === "BLANK" && (
+        {mode === "review" && (resolved?.outcome === "BLANK" || text.trim() === "") && (
           <p className="text-caption text-text-secondary">{strings.notAnswered}</p>
         )}
         {mode === "review" && answersVisible(resolved) && body.answers.length > 0 && (

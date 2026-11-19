@@ -7,7 +7,7 @@ import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { RichTextView } from "../rich-text";
 import { countWords, textForWordCount } from "./count-words";
-import { formatScore } from "./helpers";
+import { formatScore, htmlToPlainText, plainTextToHtml } from "./helpers";
 import { QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
@@ -93,11 +93,11 @@ export function EssayQuestion({
             <Textarea
               id={editorId}
               rows={10}
-              value={html}
+              value={htmlToPlainText(html)}
               placeholder={strings.essayPlaceholder}
               aria-describedby={countId}
               onChange={(event) => {
-                const next = event.target.value;
+                const next = plainTextToHtml(event.target.value);
                 onChange?.({ html: next, wordCount: countWords(next) });
               }}
               className="min-h-60"

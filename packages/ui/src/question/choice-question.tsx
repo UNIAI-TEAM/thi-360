@@ -88,14 +88,8 @@ export function ChoiceList({
                     if (!checked) onChange?.([option.id]);
                   }}
                   onClick={() => {
-                    // Bỏ chọn lại phương án đã chọn: giá trị về null (AC-7).
+                    // Bấm hay Space lên phương án đang chọn là bỏ chọn: giá trị về null (AC-7).
                     if (checked) onChange?.([]);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === " " && checked) {
-                      event.preventDefault();
-                      onChange?.([]);
-                    }
                   }}
                   className="size-5 shrink-0 accent-primary-fill"
                 />

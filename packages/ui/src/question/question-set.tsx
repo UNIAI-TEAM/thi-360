@@ -49,6 +49,11 @@ export function QuestionSet({
       <p className="text-label font-semibold tracking-wide text-text-secondary uppercase">
         {strings.setPassageCaption(from, to)}
       </p>
+      {question.stem != null && question.stem !== "" && (
+        <div data-exam-content className="text-title text-text">
+          <RichTextView html={question.stem} />
+        </div>
+      )}
       <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <aside
           aria-label={strings.setPassageCaption(from, to)}

@@ -12,7 +12,7 @@ import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import type { ClozeAnswer, KitQuestion, KitQuestionOf, PartResult, QuestionReview } from "./types";
 
-const MARKER = /\[\[([^\]]+)\]\]/g;
+const MARKER = /\[\[([^\]]+)\]\]/;
 
 interface Slot {
   blankId: string;
@@ -20,9 +20,11 @@ interface Slot {
 }
 
 /**
- * Ngữ liệu Điền khuyết: HTML có chỗ trống `[[id]]` nằm ngay trong dòng chữ (port từ
- * `apps/web-admin` ClozePassage, FS-4). Mỗi `[[id]]` được thay bằng một ô; `renderBlank`
- * của `RichTextView` chỉ dùng nội dung sau khi hydrate nên không lẫn vào ngữ liệu.
+ * Ngữ liệu Điền khuyết dạng HTML với chỗ trống `[[id]]` nằm ngay trong dòng chữ (port từ
+ * `ClozePassage` của web-admin): `RichTextView` dựng HTML và công thức, rồi mỗi `[[id]]` trong chữ
+ * thuần được thay bằng một vị trí gắn `renderBlank` (ô nhập khi làm bài, nhãn đáp án khi xem lại).
+ * Vị trí đánh số theo thứ tự xuất hiện. Theo dõi DOM vì `RichTextView` chỉ dựng nội dung sau khi
+ * hydrate và dựng lại khi ngữ liệu đổi.
  */
 export function ClozePassage({
   html,
@@ -39,6 +41,24 @@ export function ClozePassage({
     const root = rootRef.current;
     if (!root) return;
     const scan = () => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const texts: Text[] = [];
+      while (walker.nextNode()) texts.push(walker.currentNode as Text);
+      for (const node of texts) {
+        if (!MARKER.test(node.data)) continue;
+        const fragment = document.createDocumentFragment();
+        // split với nhóm bắt: phần tử lẻ là id chỗ trống.
+        node.data.split(MARKER).forEach((part, index) => {
+          if (index % 2 === 0) {
+            if (part) fragment.append(part);
+            return;
+          }
+          const slot = document.createElement("span");
+          slot.dataset.clozeSlot = part.trim();
+          fragment.append(slot);
+        });
+        node.replaceWith(fragment);
+      }
       const found = [...root.querySelectorAll<HTMLElement>("[data-cloze-slot]")];
       setSlots((current) =>
         current.length === found.length &&
@@ -60,18 +80,6 @@ export function ClozePassage({
       )}
     </div>
   );
-}
-
-/** Chuẩn hóa HTML ngữ liệu: đổi mỗi `[[id]]` thành `<span data-cloze-slot="id">` chứa ký hiệu. */
-export function clozeHtml(passage: string, numberStart = 1): string {
-  MARKER.lastIndex = 0;
-  let index = 0;
-  return passage.replace(MARKER, (_match, id: string) => {
-    const blankId = id.trim();
-    const ordinal = index;
-    index += 1;
-    return `<span data-cloze-slot="${blankId}" style="display:inline-block;min-width:96px">(${numberStart + ordinal}) ____</span>`;
-  });
 }
 
 type ClozeBody = Extract<KitQuestion["body"], { type: "CLOZE" }>;
@@ -121,7 +129,7 @@ export function ClozeQuestion({
       )}
       <div data-exam-content>
         <ClozePassage
-          html={clozeHtml(body.passage, question.displayNo)}
+          html={body.passage}
           renderBlank={(blankId, ordinal) => {
             const number = question.displayNo + ordinal;
             const part = resolved?.gradingDetail?.[blankId];
