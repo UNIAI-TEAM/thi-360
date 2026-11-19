@@ -37,7 +37,7 @@ import java.util.Set;
  */
 public final class PaperSolver {
     /** Witnesses tried (consecutive seeds) before a trim that breaks a topic minimum is reported INVALID. */
-    private static final int TRIM_ATTEMPTS = 4;
+    public static final int TRIM_ATTEMPTS = 4;
 
 
     private final SolverLimits limits;

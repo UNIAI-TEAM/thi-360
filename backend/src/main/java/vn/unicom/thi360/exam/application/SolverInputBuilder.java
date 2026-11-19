@@ -477,7 +477,8 @@ public class SolverInputBuilder {
                 caps.stream().map(cap -> new TopicCap(cap.ruleId(),
                         cap.scope() == CompiledMapidRules.Cap.Scope.GROUP ? cap.groupId() : null,
                         withDescendants(cap.nodeIds(), knowledge, knowledgeById, descendants).stream()
-                                .map(UUID::toString).toList(), cap.max())).toList());
+                                .map(UUID::toString).toList(), cap.max())).toList(),
+                section.mapidMode() == vn.unicom.thi360.exam.domain.MapidMode.MATRIX);
     }
 
     /** The nodes and every descendant of each, without duplicates; unknown nodes stay out, as for topic quotas. */

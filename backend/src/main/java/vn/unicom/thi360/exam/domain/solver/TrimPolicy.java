@@ -12,8 +12,9 @@ public final class TrimPolicy {
 
     /**
      * {@code witness}/{@code droppedQuestion} are null when {@code blockedBy} says the subject cannot lose a question:
-     * every standalone drop would break a topic minimum (a MAPID rule among them). {@code blockedBy} names the first
-     * broken minimum and may be null when the break is only visible to the assignment, not to a plain count.
+     * its section is a MAPID matrix and every standalone drop would break a topic minimum of a rule (legacy topic
+     * quotas never block, spec H3). {@code blockedBy} names the first broken minimum and may be null when the break
+     * is only visible to the assignment, not to a plain count.
      */
     public record Result(SubjectWitness witness, QuestionPick droppedQuestion, QuotaRef blockedBy) {
         Result(SubjectWitness witness, QuestionPick droppedQuestion) {
@@ -71,10 +72,14 @@ public final class TrimPolicy {
             }
         }
         if (eligible.isEmpty()) return null;
-        if (keeping.isEmpty()) {
+        // The topic minimums of a MAPID matrix are hard (UNI-2758 R1-1); a legacy topic quota keeps the H3 fallback of
+        // base: when no other drop exists, one of its contributors may go (review R2-1).
+        boolean strict = section.subjectQuota().mapidMatrix();
+        List<QuestionPick> fallback = strict ? keeping : eligible;
+        if (fallback.isEmpty()) {
             return new Result(null, null, brokenMinimum(section, witness, selected, eligible.getFirst()));
         }
-        List<QuestionPick> choices = preferred.isEmpty() ? keeping : preferred;
+        List<QuestionPick> choices = preferred.isEmpty() ? fallback : preferred;
         QuestionPick dropped = choices.get(new Random(seed).nextInt(choices.size()));
         List<GroupWitness> trimmed = new ArrayList<>();
         Map<TopicAssignments.Pick, List<TopicAssignment>> assignment = reassigned.get(dropped);
