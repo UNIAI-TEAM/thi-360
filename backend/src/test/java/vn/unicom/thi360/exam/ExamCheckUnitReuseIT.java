@@ -425,6 +425,25 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
 
     @Test
     void unavailableRequiredTopicIsReportedWithItsSection() throws Exception {
+        assertTopicShortage();
+    }
+
+    /**
+     * T1-1: a published-ready question that carries no grade and no difficulty (a bare fixture left by another test, or
+     * any legacy row) is in the candidate pool. A topic quota that filters by grade must not count it, and above all
+     * must not turn the check into a 500 (the quota's immutable list rejected the null grade).
+     */
+    @Test
+    void unavailableRequiredTopicIgnoresCandidatesWithoutGradeOrDifficulty() throws Exception {
+        UUID question = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) "
+                + "VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", question, "NOGRADE-" + question,
+                UUID.fromString("00000000-0000-7000-8200-000000000201"));
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", question);
+        assertTopicShortage();
+    }
+
+    private void assertTopicShortage() throws Exception {
         UUID id = UUID.randomUUID();
         UUID math = UUID.fromString("00000000-0000-7000-8200-000000000201");
         UUID topic = UUID.fromString("00000000-0000-7000-8200-000000001201");

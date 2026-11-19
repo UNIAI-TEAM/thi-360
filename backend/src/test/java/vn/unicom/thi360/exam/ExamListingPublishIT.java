@@ -288,12 +288,20 @@ class ExamListingPublishIT extends AbstractExamPublishIT {
             }
         } finally {
             committed.executeWithoutResult(status -> {
+                // The witness questions were committed with the exam (REQUIRES_NEW): a bare READY question without grade
+                // left behind makes every later topic-quota check of the subject fail (T1-1), so remove them too.
+                List<UUID> questions = jdbc.queryForList("SELECT DISTINCT (jsonb_path_query(witness, '$.**.questionId') #>> '{}')::uuid "
+                        + "FROM exam.exam_check_run WHERE exam_id = ?", UUID.class, exam);
                 for (String table : List.of("questionbank.question_usage_ledger", "exam.exam_block_ref", "exam.exam_version",
                         "exam.exam_check_run", "exam.exam_structure", "exam.exam_listing")) {
                     jdbc.update("DELETE FROM " + table + " WHERE exam_id = ?", exam);
                 }
                 jdbc.update("DELETE FROM shared.outbox_event WHERE payload->>'examId' = ? OR payload->>'targetId' = ?", exam.toString(), exam.toString());
                 jdbc.update("DELETE FROM exam.exam WHERE id = ?", exam);
+                for (UUID question : questions) {
+                    jdbc.update("DELETE FROM questionbank.question_version WHERE question_id = ?", question);
+                    jdbc.update("DELETE FROM questionbank.question WHERE id = ?", question);
+                }
             });
         }
     }

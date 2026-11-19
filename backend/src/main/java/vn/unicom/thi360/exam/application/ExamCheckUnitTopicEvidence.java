@@ -69,9 +69,14 @@ final class ExamCheckUnitTopicEvidence {
     }
 
     private static boolean matches(TopicQuota quota, CountingUnit unit) {
-        return (quota.gradeCodes().isEmpty() || quota.gradeCodes().contains(unit.gradeCode()))
-                && (quota.difficultyCodes().isEmpty() || quota.difficultyCodes().contains(unit.difficultyCode()))
+        return (quota.gradeCodes().isEmpty() || listed(quota.gradeCodes(), unit.gradeCode()))
+                && (quota.difficultyCodes().isEmpty() || listed(quota.difficultyCodes(), unit.difficultyCode()))
                 && unit.mapidIds().stream().anyMatch(quota.nodeIds()::contains);
+    }
+
+    /** A unit without a grade or difficulty is in no list; the quota lists are immutable and reject {@code contains(null)}. */
+    private static boolean listed(List<String> codes, String code) {
+        return code != null && codes.contains(code);
     }
 
     private static String partId(ExamStructureDocument document, String sectionId) {
