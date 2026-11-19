@@ -196,7 +196,8 @@ final class ExamOverview {
         return new ExamSection(section.id(), section.subjectCode(),
                 change.countChanged() ? row.questionCount() : section.questionCount(),
                 section.knowledgeScope(), section.answerQuotas(), section.matrix(), section.choiceGroup(),
-                section.blocks(), section.topicQuotas(), section.audioRequirement());
+                section.blocks(), section.topicQuotas(), section.audioRequirement(), section.mapidMode(),
+                section.mapidRules());
     }
 
     /** A changed section count means the expert never saw the option as it now is. */
