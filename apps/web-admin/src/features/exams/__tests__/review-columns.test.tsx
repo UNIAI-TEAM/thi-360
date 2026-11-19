@@ -18,8 +18,10 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
 /**
  * Cột số của các bảng Kiểm tra và Xem trước (UNI-2760): `Table` của kit luôn căn trái tiêu đề cột, nên cột số
  * (ô căn phải) phải căn phải cả tiêu đề, không thì số nằm lệch bên phải tiêu đề của nó.
+ * `text-align` không có tác dụng trên hộp inline, nên phần tử căn phải phải là block (hoặc chính `th`/`td`).
  */
-const isRight = (element: Element) => element.querySelector(".text-right") !== null;
+const isRight = (element: Element) =>
+  element.classList.contains("text-right") || element.querySelector(".block.text-right") !== null;
 
 function columnIndex(table: HTMLElement, header: string) {
   const headers = within(table).getAllByRole("columnheader");
@@ -219,5 +221,10 @@ describe("AC-5: ma trận phân bổ của khối", () => {
     for (const col of cols.slice(1)) expect(col.className).not.toMatch(/\bw-/);
     // Khung cuộn riêng giữ bảng không bị ép nhỏ ở màn hẹp.
     expect(table.className).toMatch(/\bmin-w-/);
+    // Tiêu đề mức độ và tên khối lớp dài (nhất là bản en) xuống dòng trong ô cố định, không tràn sang cột bên cạnh.
+    for (const cell of [...headers.slice(1), ...within(table).getAllByRole("rowheader")]) {
+      expect(cell, cell.textContent ?? "").toHaveClass("break-words");
+      expect(cell).not.toHaveClass("whitespace-nowrap");
+    }
   });
 });
