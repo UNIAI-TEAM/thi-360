@@ -4,6 +4,7 @@ import reference from "@/test/fixtures/content-reference.json";
 import { renderWithProviders } from "@/test/render";
 import type { ContentReference } from "@/features/content/types";
 import { ExamStructureSubjectPanel } from "../components/exam-structure-subject-panel";
+import { subjectAllocation } from "../subject-matrix";
 import type { BlockMatrix, ExamPart, ExamSection, QuestionBlock } from "../types";
 
 /** UNI-2752 (mục C, AD-15): hai bảng "Theo khối lớp" và "Theo độ khó" của môn chỉ hiện khi một nhóm khai chỉ tiêu riêng. */
@@ -86,5 +87,32 @@ describe("bảng chỉ tiêu khối lớp và độ khó của môn", () => {
     // Hai bảng chi tiết: một theo khối lớp, một theo độ khó (cột "Đã phân bổ ở nhóm" chỉ có ở hai bảng này).
     expect(screen.getAllByRole("columnheader", { name: "Đã phân bổ ở nhóm" })).toHaveLength(2);
     expect(screen.getAllByRole("columnheader", { name: "Còn thiếu" })).toHaveLength(2);
+  });
+});
+
+describe("Đã phân bổ ở nhóm của chỉ tiêu khối lớp và độ khó (số liệu)", () => {
+  const axes = { grades: GRADES, difficulties: DIFFICULTIES };
+  const sectionOf = (blocks: QuestionBlock[]): ExamSection => ({
+    id: "s1",
+    subjectCode: "TOAN",
+    questionCount: 10,
+    knowledgeScope: null,
+    answerQuotas: null,
+    matrix: separate([4, 3, 3], [4, 3, 3]),
+    choiceGroup: null,
+    blocks,
+  });
+  const own = separate([5, 5, 0], [5, 5, 0]);
+
+  it("nhóm có số câu cố định và ma trận riêng: đã phân bổ theo ma trận của nhóm", () => {
+    const result = subjectAllocation(sectionOf([{ ...block(own), questionCount: 10 }]), axes, 10);
+    expect(result.grades?.map((row) => row.allocated)).toEqual([5, 5, 0, 0]);
+    expect(result.difficulties?.map((row) => row.allocated)).toEqual([5, 5, 0, 0]);
+  });
+
+  it("nhóm 'lấy phần còn lại' (không khai số câu) có ma trận riêng: tính theo phần còn lại của môn, không bị bỏ qua", () => {
+    const result = subjectAllocation(sectionOf([{ ...block(own), questionCount: null }]), axes, 10);
+    expect(result.grades?.map((row) => row.allocated)).toEqual([5, 5, 0, 0]);
+    expect(result.difficulties?.map((row) => row.allocated)).toEqual([5, 5, 0, 0]);
   });
 });

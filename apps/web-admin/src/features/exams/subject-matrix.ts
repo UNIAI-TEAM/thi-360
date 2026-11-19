@@ -130,10 +130,9 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
   const dimension = (codes: readonly string[], pick: "byGrade" | "byDifficulty"): QuotaRow[] | null => {
     if (!section.matrix || count === null) return null;
     const quota = computeAllocation({ questionCount: count, matrix: section.matrix }, axes)[pick];
+    // Nhóm "lấy phần còn lại" cũng tính: số câu của nhóm là phần còn lại của môn (`units`), không phải 0.
     const own = blocks.flatMap((block, index) =>
-      block.matrix && block.questionCount !== null
-        ? [computeAllocation({ questionCount: units[index] ?? 0, matrix: block.matrix }, axes)[pick]]
-        : [],
+      block.matrix ? [computeAllocation({ questionCount: units[index] ?? 0, matrix: block.matrix }, axes)[pick]] : [],
     );
     return codes.map((key, index) => {
       const used = sum(own.map((values) => values[index] ?? 0));
