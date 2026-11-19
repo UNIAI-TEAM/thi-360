@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout.en.html :: shell(~{::#mail-body})}">
+<body>
+<div id="mail-body">
+    <p style="margin:0 0 16px 0;">Hello <span th:text="${fullName}">Alex Nguyen</span>,</p>
+    <p style="margin:0 0 16px 0;">A refund of <strong th:text="${refundAmount}">100,000 VND</strong> for order
+        <strong th:text="${orderCode}">DH-0001</strong> has been recorded.</p>
+    <p style="margin:0;color:#6B6B72;">When the money reaches your account depends on your bank.</p>
+</div>
+</body>
+</html>

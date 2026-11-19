@@ -18,7 +18,9 @@ test("Tạo bài thi HSA Toàn bài ở bước 1 rồi vào bước 2", async (
   await expect(page.getByRole("combobox", { name: /^Kỳ thi/ })).toContainText("HSA");
   await expect(page.getByRole("radio", { name: /^Toàn bài/ })).toBeChecked();
   await expect(page.getByRole("list", { name: "Các bước tạo bài thi" })).toBeVisible();
-  await expect(page.getByText("Phiên bản cấu trúc chọn ở bước 2")).toBeVisible();
+  await expect(page.getByText("Phiên bản cấu trúc chọn ở bước 2")).toHaveCount(0);
+  await expect(page.getByText(/Hệ thống nạp mẫu mới nhất/)).toHaveCount(0);
+  await expect(page.getByText("Năm cấu trúc", { exact: true })).toHaveCount(0);
   const counts = page.getByRole("textbox", { name: /^Số câu của/ });
   await expect(counts.first()).not.toHaveValue("");
   const summary = page.getByRole("region", { name: "Tóm tắt" });

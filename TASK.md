@@ -1,12 +1,4 @@
-# TASK — Thi 360
-
-> Cập nhật: 2026-11-13 · Trạng thái sống nằm trên UniAI (project Thi 360). File này là bản chụp để đọc nhanh trong repo; khi lệch thì UniAI đúng.
-> Chi tiết từng task (hợp đồng, thứ tự sóng, trọng số): `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Phụ thuộc trong bảng dưới theo Phần C của plan.
-
-## Đợt 1 — Port nền + PBI-01 + PBI-02
-
-Issue cha: **UNI-2537** · Thi 360 · Port nền + PBI-01 Tài khoản & phân quyền + PBI-02 Danh mục dùng chung
-
+đang làm
 | Task | Issue | Việc | Phụ thuộc | Trạng thái |
 |---|---|---|---|---|
 | T01 | UNI-2538 | Nền · Khởi tạo monorepo, CI, môi trường dev (Docker Compose) | — | in_review (đã merge vào `develop` ngày 2026-11-13; người chuyển `done`) |
@@ -230,15 +222,15 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 |---|---|---|---|---|---|---|
 | C-0 | UNI-2703 | Khung module `commerce`, `attempt`; quyền bit 18–26; hợp đồng SPI; `StudentLearningProvider` nhận danh sách; pepper; ngôn ngữ ưa dùng; danh sách IP miễn giới hạn tần suất |  |  | 3 | đang làm |
 | C-0b | UNI-2704 | Profile `e2e`, đồng hồ thử, `/api/v1/test/**`, `ForbiddenKeysAssert` |  |  | 1 | đang làm |
-| ML | UNI-2705 | Gửi thư `shared/mail` (hàng thư, worker, SMTP, mẫu vi/en, endpoint đọc thư cho E2E) |  | C-0b | 3 | đang làm |
+| ML | UNI-2705 | Gửi thư `shared/mail` (hàng thư, worker, SMTP, mẫu vi/en, endpoint đọc thư cho E2E) |  | C-0b | 3 | merge PR #127 (`265ea998`) |
 | TS | UNI-2701 | Dựng lại seed đề test `TEST-*` theo mẫu BA (UNI-2701, cổng G0c cũ) | G0b |  | 3 | đang làm |
 | FU | UNI-2700 | Việc tồn đọng của đợt 2B (UNI-2700, 41 mục) | EX-1, EX-2, TS | FA-1 | 8 | chưa mở |
 | EX-1 | UNI-2706 | Module `exam`: thông tin bán, ảnh bìa (kèm dọn ảnh bỏ), kiểm tra khi công bố, quy tắc E24, sự kiện, `PublishedExamPort`, đọc giờ qua `Clock` | G0b, TS | C-0b | 4 | chưa mở |
 | EX-2 | UNI-2707 | Module `exam`: `PaperSolverPort` trên mô hình 2B, `PreviewPaperPort`, đo hiệu năng | G0b, TS |  | 2 | chưa mở |
 | DS | UNI-2708 | Bộ dữ liệu bài đã công bố cho 9 kỳ thi, dùng cho test, dev, E2E | EX-1 | EX-2 | 4 | chưa mở |
 | VP-1 | UNI-2709 | Thử VNPAY sandbox trước khi làm cổng thật; vector chữ ký thật | G2 |  | 1 | đã merge vào `integration/dot-3` (PR #121, `171ee506`, 2026-11-19); AC-3, AC-12 chờ VNPAY (Q9), VP-2 đo lại |
-| ID-1 | UNI-2710 | Đăng ký, xác minh email, đổi email | C-0, ML |  | 3 | chưa mở |
-| ID-2 | UNI-2711 | Quên và đặt lại mật khẩu, hồ sơ, ảnh đại diện | C-0, ML |  | 2 | chưa mở |
+| ID-1 | UNI-2710 | Đăng ký, xác minh email, đổi email | C-0, ML |  | 3 | đang làm (bro) |
+| ID-2 | UNI-2711 | Quên và đặt lại mật khẩu, hồ sơ, ảnh đại diện | C-0, ML |  | 2 | đang làm (cty) |
 | CM-1 | UNI-2712 | Bảng chiếu sản phẩm, API công khai | C-0, C-0b, EX-1 | DS | 3 | chưa mở |
 | CM-2 | UNI-2713 | Khuyến mãi, voucher, tính giá, cảnh báo giá sàn, tổng tiền đã giảm, lịch sử thay đổi | CM-1 |  | 5 | chưa mở |
 | CM-4a | UNI-2714 | Bảng quyền dùng, `EntitlementPort`, cấp quyền nội bộ | C-0 |  | 2 | chưa mở |
@@ -272,6 +264,16 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | FA-5 | UNI-2742 | Web admin: màn Sinh thử dùng giao diện câu hỏi chung, audio khi làm thử | FA-4, FS-7 |  | 2 | chưa mở |
 | LP | UNI-2743 | Web admin: tab Hồ sơ học tập nối Quyền sử dụng và Lịch sử lượt thi | CM-4b, AT-4, FA-1 |  | 2 | chưa mở |
 | QA | UNI-2744 | E2E đầu cuối, kiểm thử bảo mật, tài liệu | C-0, C-0b, ML, TS, FU, EX-1, EX-2, FS-4, VP-1, CM-4a, DS, ID-1, ID-2, CM-1, FA-1, AT-1, CM-2, CM-4b, FS-1, FS-2, AT-2a, AT-3, CM-3a, FA-2, AT-2b, AT-4, AT-6, AT-8, CM-3b, CM-5, CM-6, FS-3, AT-5, AT-7, LP, FS-5, FS-6, FA-3, FB, FA-4, VP-2, FS-7, FA-5 |  | 4 | chưa mở |
+
+**Ngoài plan (không tính vào 138 điểm):** lỗi UI/UX khi thiết lập HSA, uniworkos UNI-1695 (BA giao M.Trường ngày 2026-11-19, M.Trường yêu cầu mở luồng sửa song song). Issue cha UniAI **UNI-2749**. Xong thì merge vào `integration/dot-3`, rồi cherry-pick sang nhánh hotfix từ `develop`, PR vào `develop` và dựng lại bản demo.
+
+| Lane | Issue UniAI | uniworkos | Việc | Trạng thái |
+|---|---|---|---|---|
+| HSA-A | UNI-2750, UNI-2751 | 1696, 1697 | Bước 1 tạo bài thi: bỏ các dòng thừa; bảng tổng quan sửa được ở tab Thông tin chung | đang làm |
+| HSA-B | UNI-2752, UNI-2753, UNI-2754 | 1698, 1699, 1700 | Bước cấu trúc: kiểm tra bài ôn tập, số câu trên đề chỉ đọc, gọn bảng chỉ tiêu, dòng "Bộ câu hỏi" trong chỉ tiêu dạng trả lời | đang làm |
+| HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | merge PR #125 (`ed52d43e`); cherry-pick vào `develop`: PR #126 |
+| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | tạm dừng sau pha 0: gộp vào đặc tả form thiết lập theo môn (AD-34) |
+| HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | đang làm (cty) |
 
 Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
 

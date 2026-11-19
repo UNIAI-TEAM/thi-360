@@ -3819,6 +3819,17 @@
         "essay": "Essay",
         "essayValue": "Has essay questions, graded by hand"
       },
+      "overview": {
+        "description": "Numbers come from the exam's saved structure; edit them on the row, then press Save. Changing a number here does not change the question groups or the matrix: if a part's count no longer matches its allocation, the Structure step flags the mismatch for you to redistribute.",
+        "pendingDescription": "You picked another scope: the table shows the latest template's numbers, read-only. They load when you confirm reloading the structure.",
+        "pendingEmpty": "The new scope has no template yet: after reloading, the structure is empty.",
+        "empty": "The exam has no parts yet. Add parts in the Structure step.",
+        "loadErrorTitle": "Could not load the saved structure.",
+        "loadErrorDescription": "General information can still be saved; try again to edit the parts' questions, durations and points.",
+        "infoNotSaved": "The parts' questions, durations and points were saved, but the general information was not. Check the fields and press Save again.",
+        "publishedReadOnly": "The exam is published: the table is read-only here. Edit questions, durations and points in the Structure step (working version).",
+        "savedRecheck": "Saved the parts' questions, durations and points. The exam needs to be rechecked before publishing."
+      },
       "loadErrorTitle": "Could not load the catalog and structure templates",
       "loadErrorDescription": "Check your connection and try again.",
       "retry": "Try again"
@@ -5355,8 +5366,6 @@
       "scopeSubject": "By subject",
       "scopeSubjectDescription": "All parts of one subject",
       "scopeOnly": "This exam type only has this scope",
-      "part": "Exam part",
-      "partHint": "A by-part exam has only the chosen part",
       "partName": {
         "MATH": "Math",
         "LITERATURE": "Literature",
@@ -5541,28 +5550,6 @@
         "pointsPositive": "Part points must be greater than 0.",
         "commonTooLarge": "The common part has {common, plural, one {# question} other {# questions}}, leaving none for the options out of the part's {total, number}."
       },
-      "preview": {
-        "title": "Structure to load · {name}",
-        "titleEmpty": "Structure to load · no template",
-        "editable": "Editable in Structure and matrix",
-        "caption": "Structure template for the selected exam type and format",
-        "part": "Part",
-        "questions": "Questions",
-        "duration": "Duration",
-        "questionsValue": "{count, plural, one {# question} other {# questions}}",
-        "durationValue": "{count, number} min",
-        "total": "Total",
-        "choiceNote": "Learners choose English or a Science combination; adjust per-subject counts in Structure",
-        "subjectPending": "No subject chosen",
-        "emptyNote": "Set the questions and duration in Structure",
-        "note": "The template is only a starting point. Check the configuration before publishing. Learners see the questions and duration of the published structure.",
-        "points": "Points",
-        "pointsValue": "{count, plural, one {# point} other {# points}}",
-        "durationShared": "shared",
-        "durationSharedValue": "{count, number} min shared",
-        "choiceOptionsNote": "Learners choose one of {count, plural, one {# preset option} other {# preset options}}",
-        "sectionsNote": "{count, plural, one {# subject} other {# subjects}} in this part"
-      },
       "kindHintKind": "{kind}: one structure template for the whole exam type · {timing}",
       "kindHintSubject": "{kind}: structure templates by subject and year · {timing}",
       "timingMode": {
@@ -5570,23 +5557,11 @@
         "SHARED": "one shared duration"
       },
       "noSubject": "no subject chosen",
-      "subjectField": {
-        "subject": "Exam subject",
-        "hint": "{count, plural, one {# subject has} other {# subjects have}} a structure template; subjects without one start with an empty structure",
-        "placeholder": "Choose a subject",
-        "withTemplates": "{subject} · {count, plural, one {# template} other {# templates}}",
-        "noTemplate": "{subject} has no structure template yet. The initial structure starts empty: enter the questions and duration, and add parts if needed."
-      },
       "templateNotes": {
-        "loaded": "The system loads the latest template: {name}.",
-        "changeInStructure": "To use another year's version, choose it in the Structure step.",
-        "structureYear": "Structure year",
-        "matrixYear": "Matrix year",
         "yearsDiffer": "The {structureYear} structure uses the {matrixYear} matrix: an expert must confirm the matrix targets before it is sold.",
         "yearsConfirm": "An expert has confirmed that the {matrixYear} matrix targets fit this structure",
         "yearsConfirmHint": "Until it is confirmed, the configuration check blocks publishing. You can confirm later in General information.",
-        "yearsConfirmLater": "An expert confirms the matrix targets in General information after the exam is created.",
-        "expertNote": "Template note"
+        "yearsConfirmLater": "An expert confirms the matrix targets in General information after the exam is created."
       },
       "timing": {
         "sharedDuration": "Shared duration (min)",
@@ -5671,7 +5646,6 @@
         "title": "Overview structure",
         "description": "Numbers come from the default template “{template}”; edit them right on the row. Changing a number here does not reload the template.",
         "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
-        "versionAtStep2": "Structure version is chosen in step 2",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
         "regionLabel": "Exam structure overview table",
         "loading": "Loading the overview table",
@@ -5743,10 +5717,6 @@
       "questionsValue": "{count, plural, one {# question} other {# questions}}",
       "source": "source {count, number}",
       "sourceShort": "source {count, number}, short",
-      "sourceLabel": "Source matching the block's filters:",
-      "sourceTotal": "{count, plural, one {# Ready question} other {# Ready questions}}",
-      "sourceLoading": "counting…",
-      "sourceError": "could not be counted",
       "conversionTitle": "Converted to questions · block of {count, number}",
       "conversionCaption": "Questions after conversion, block of {count, number}",
       "conversionValue": "{theoretical} → {result, number}",
@@ -5763,6 +5733,11 @@
       "separateNote": "The system picks questions that satisfy both at once: each selected question counts toward its grade and its difficulty.",
       "allocated": "Allocated {allocated, number} / {count, number} questions",
       "allocatedMeter": "{allocated, number} of {count, number} questions",
+      "meterOver": "{allocated, number} of {count, number} questions, over by {over, number}",
+      "meterUnder": "{allocated, number} of {count, number} questions, short by {short, number}",
+      "meterExact": "{allocated, number} of {count, number} questions, matches",
+      "over": "{count, plural, one {Over by # question} other {Over by # questions}}",
+      "under": "{count, plural, one {Short by # question} other {Short by # questions}}",
       "matches": "Matches the block's question count",
       "issues": {
         "invalidValue": "The matrix has negative values or non-whole question counts.",
@@ -5837,7 +5812,11 @@
         "legend": "Level of {name}",
         "REQUIRED": "Required",
         "REFERENCE": "Reference",
-        "basisLocked": "A required distribution must count questions. Change the unit to questions first."
+        "basisLocked": "A required distribution must count questions. Change the unit to questions first.",
+        "fixedRequired": "HSA exam: papers are always generated from the matrix",
+        "expertPending": "Waiting for expert confirmation: the English grade split is for reference only.",
+        "normalized": "Reference levels were switched to Required as HSA rules demand. Save to apply.",
+        "undeclared": "This distribution is not declared, so it does not constrain generation."
       },
       "totalChange": {
         "title": "The total changed to {total, number} questions (was {old, number}). New counts:",
