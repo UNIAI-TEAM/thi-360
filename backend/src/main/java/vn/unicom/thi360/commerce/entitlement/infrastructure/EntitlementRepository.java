@@ -45,9 +45,14 @@ public interface EntitlementRepository extends JpaRepository<Entitlement, UUID> 
     @Query("SELECT e FROM Entitlement e WHERE e.id = :id")
     Optional<Entitlement> lockById(@Param("id") UUID id);
 
-    Optional<Entitlement> findByIdAndUserId(UUID id, UUID userId);
+    /**
+     * The statement behind {@link #existsByUserId}, shared with the test that explains its plan: the lookup must
+     * stay an index condition on {@code user_id} (the leading column of {@code uq_entitlement_scope}).
+     */
+    String EXISTS_BY_USER_ID_SQL = "SELECT EXISTS (SELECT 1 FROM commerce.entitlement e WHERE e.user_id = :userId)";
 
-    boolean existsByUserId(UUID userId);
+    @Query(value = EXISTS_BY_USER_ID_SQL, nativeQuery = true)
+    boolean existsByUserId(@Param("userId") UUID userId);
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
 

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.commerce.entitlement.infrastructure.EntitlementRepository;
 import vn.unicom.thi360.identity.spi.Permissions;
 
 class EntitlementDeletionGuardIT extends EntitlementIntegrationTest {
@@ -92,23 +93,23 @@ class EntitlementDeletionGuardIT extends EntitlementIntegrationTest {
     }
 
     /**
-     * Plan "Ảnh hưởng ngoài task": the guard runs once per selected account on a bulk delete, so its lookup must
-     * be an index lookup on {@code user_id}. With sequential scans disabled the planner can only answer through
-     * an index, and {@code uq_entitlement_scope} (leading column {@code user_id}) must be that index.
+     * BE1-6, plan "Ảnh hưởng ngoài task": the guard runs once per selected account on a bulk delete, so its lookup
+     * must be an index lookup on {@code user_id}. This explains the production statement
+     * ({@link EntitlementRepository#EXISTS_BY_USER_ID_SQL}, the one {@code existsByUserId} runs) with sequential
+     * scans disabled and asserts the index condition is on {@code user_id}.
      */
     @Test
     void guardLookupUsesAnIndexLedByUserId() {
         UUID userId = account();
         grant(userId, newId(), 1);
+        String sql = "EXPLAIN " + EntitlementRepository.EXISTS_BY_USER_ID_SQL.replace(":userId", "'" + userId + "'");
 
         String plan = new TransactionTemplate(transactionManager).execute(status -> jdbc.execute(
                 (java.sql.Connection connection) -> {
                     try (Statement statement = connection.createStatement()) {
                         statement.execute("SET LOCAL enable_seqscan = off");
                         StringBuilder text = new StringBuilder();
-                        try (ResultSet rows = statement.executeQuery(
-                                "EXPLAIN SELECT e.id FROM commerce.entitlement e WHERE e.user_id = '"
-                                        + userId + "' FETCH FIRST 1 ROWS ONLY")) {
+                        try (ResultSet rows = statement.executeQuery(sql)) {
                             while (rows.next()) {
                                 text.append(rows.getString(1)).append('\n');
                             }
@@ -119,7 +120,10 @@ class EntitlementDeletionGuardIT extends EntitlementIntegrationTest {
                     }
                 }));
 
-        assertThat(plan).contains("uq_entitlement_scope").doesNotContain("Seq Scan");
+        assertThat(plan)
+                .contains("uq_entitlement_scope")
+                .containsPattern("Index Cond: \\(user_id = ")
+                .doesNotContain("Seq Scan");
     }
 
     private UUID account() {
