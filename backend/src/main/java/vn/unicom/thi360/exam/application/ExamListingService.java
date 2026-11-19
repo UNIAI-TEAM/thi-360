@@ -98,7 +98,9 @@ public class ExamListingService {
         if (!RESULT_VIEWS.contains(resultView)) {
             errors.add(fieldError("resultView", "UNKNOWN_VALUE", messages.get("EXAM_LISTING_FIELD_UNKNOWN_VALUE")));
         }
-        if (request.coverAssetId() != null && covers.findByIdAndExamId(request.coverAssetId(), examId).isEmpty()) {
+        // The cover row is locked until this transaction ends: the cleanup sweep claims rows with SKIP LOCKED and its
+        // claim marks the row, so either this save sees the claim (not found) or the sweep skips the row.
+        if (request.coverAssetId() != null && covers.lockAttachable(request.coverAssetId(), examId).isEmpty()) {
             errors.add(fieldError("coverAssetId", "COVER_NOT_FOUND", messages.get("EXAM_LISTING_FIELD_COVER_NOT_FOUND")));
         }
         if (!errors.isEmpty()) {
@@ -115,6 +117,7 @@ public class ExamListingService {
         listings.save(listing);
         exam.changeListing(description, request.coverAssetId(), actor, now);
         exams.saveAndFlush(exam);
+        if (request.coverAssetId() != null) covers.clearOrphaned(request.coverAssetId());
         audit.record(AuditEvent.builder("EXAM", "EXAM_LISTING_UPDATED")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
                 .before(before)
