@@ -78,9 +78,16 @@ export function ShortAnswerQuestion({
         </div>
         {mode === "answer" && (
           <p id={noteId} className="text-caption text-text-secondary">
-            {hints.length > 0
-              ? `${strings.hintPrefix} ${hints.join(" · ")}${strings.shortAnswerNote}`
-              : strings.shortAnswerNote}
+            {hints.length > 0 && (
+              <>
+                {strings.hintPrefix}{" "}
+                <strong data-exam-content className="font-semibold text-text">
+                  {hints.join(" · ")}
+                </strong>
+                {". "}
+              </>
+            )}
+            {strings.shortAnswerNote}
           </p>
         )}
         {mode === "review" && (resolved?.outcome === "BLANK" || text.trim() === "") && (

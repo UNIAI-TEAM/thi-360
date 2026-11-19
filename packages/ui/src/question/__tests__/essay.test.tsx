@@ -13,14 +13,15 @@ describe("Câu Tự luận (AC-13)", () => {
     render(<Live question={essay} onValue={onValue} />);
     await user.type(screen.getByRole("textbox", { name: t.essayEditorLabel }), "Người lính trẻ");
     expect(onValue).toHaveBeenLastCalledWith({ html: "<p>Người lính trẻ</p>", wordCount: 3 });
-    expect(screen.getByRole("status")).toHaveTextContent(t.wordCount(3));
+    expect(screen.getByRole("status")).toHaveTextContent(t.essayWordCount(3, 5));
   });
 
   it("wordLimit là tối thiểu: chưa đủ thì nhắc, đủ thì hết nhắc, không chặn gõ", async () => {
     const user = userEvent.setup();
     render(<Live question={essay} />);
     const box = screen.getByRole("textbox", { name: t.essayEditorLabel });
-    expect(screen.getByText(new RegExp(t.wordLimit(5).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(t.essayWordCount(0, 5));
+    expect(screen.getByText(t.wordsNeeded(5))).toBeInTheDocument();
     await user.type(box, "một hai ba bốn");
     expect(box).toBeEnabled();
     expect(screen.queryByText(t.wordLimitMet)).not.toBeInTheDocument();

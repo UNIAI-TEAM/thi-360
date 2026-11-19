@@ -100,6 +100,7 @@ export function MatchingQuestion({
                     <span className="text-caption font-medium whitespace-nowrap text-text-secondary">
                       {strings.matchWith}
                     </span>
+                    <span data-exam-content={picked != null ? "" : undefined} className="contents">
                     <Select
                       aria-label={strings.matchPickLeft(index + 1)}
                       value={picked ?? ""}
@@ -117,6 +118,7 @@ export function MatchingQuestion({
                       }
                       className="w-56 shrink-0"
                     />
+                    </span>
                     {picked != null && (
                       <button
                         type="button"
@@ -258,7 +260,7 @@ function MatchingPickBoard({
                 </div>
                 {pendingUsedByOther && usedBy[0] != null && pendingLeft != null && (
                   <p className="rounded-md border border-warning/60 bg-warning-bg px-2.5 py-1.5 text-caption text-warning">
-                    {strings.matchUsedBy(htmlToText(item.content), (leftIndex.get(usedBy[0]) ?? 0) + 1)}
+                    {strings.matchUsedBy((leftIndex.get(usedBy[0]) ?? 0) + 1)}
                   </p>
                 )}
               </li>

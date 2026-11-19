@@ -105,11 +105,11 @@ export function EssayQuestion({
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p id={countId} role="status" className="text-caption text-text-secondary tabular-nums">
-              {strings.wordCount(count)}
+              {strings.essayWordCount(count, min)}
             </p>
             {min !== null && (
               <p className={cn("text-caption font-medium", under ? "text-warning" : "text-success")}>
-                {under ? `${strings.wordLimit(min)} · ${strings.wordsNeeded(min - count)}` : strings.wordLimitMet}
+                {under ? strings.wordsNeeded(min - count) : strings.wordLimitMet}
               </p>
             )}
           </div>
@@ -250,9 +250,7 @@ function EssayBody({
         </button>
       )}
       {min !== null && count < min && (
-        <p className="text-caption text-warning">
-          {strings.wordLimit(min)} · {strings.wordsNeeded(Math.max(0, min - count))}
-        </p>
+        <p className="text-caption text-warning">{strings.wordsNeeded(Math.max(0, min - count))}</p>
       )}
     </div>
   );

@@ -82,7 +82,7 @@ describe("Bàn phím và tên truy cập (AC-17)", () => {
     await user.tab();
     await user.keyboard("một hai");
     expect(screen.getByRole("textbox")).toHaveAccessibleName(t.essayEditorLabel);
-    expect(screen.getByRole("status")).toHaveTextContent(t.wordCount(2));
+    expect(screen.getByRole("status")).toHaveTextContent(t.essayWordCount(2, 5));
   });
 
   it("Cờ đánh dấu xem lại: nút bấm có trạng thái và tên", async () => {

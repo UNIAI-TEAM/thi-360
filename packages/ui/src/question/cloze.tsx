@@ -219,7 +219,7 @@ function ClozeReviewTable({
                 <td className="py-2.5 pr-4 text-label text-text">
                   <span className="inline-flex items-center gap-2">
                     {part && <OutcomeGlyph outcome={part.outcome} />}
-                    {text === "" ? <span className="text-text-muted">{strings.blankFilledTag}</span> : text}
+                    {text === "" ? <span className="text-text-muted">{strings.blankFilledTag}</span> : <span data-exam-content>{text}</span>}
                   </span>
                 </td>
                 {showAnswers && (

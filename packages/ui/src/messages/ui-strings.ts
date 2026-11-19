@@ -72,11 +72,9 @@ export interface UiStrings {
     matchPickLeft: (leftNo: number) => string;
     matchPickRight: (letter: string, usedBy: string | null) => string;
     matchUsedTag: (leftNos: string) => string;
-    matchUsedBy: (rightText: string, leftNo: number) => string;
+    matchUsedBy: (leftNo: number) => string;
     essayEditorLabel: string;
     essayPlaceholder: string;
-    wordCount: (count: number) => string;
-    wordLimit: (min: number) => string;
     wordsNeeded: (count: number) => string;
     wordLimitMet: string;
     essayNote: string;
@@ -218,12 +216,10 @@ export const UI_STRINGS_VI: UiStrings = {
     matchPickRight: (letter, usedBy) =>
       usedBy ? `${letter}, đã ghép với mục ${usedBy}` : `Lựa chọn ${letter}`,
     matchUsedTag: (leftNos) => `Đã dùng · ${leftNos}`,
-    matchUsedBy: (rightText, leftNo) =>
-      `${rightText} đã ghép với mục ${NUMBER_FORMATTERS.vi.format(leftNo)}. Bỏ ghép mục ${NUMBER_FORMATTERS.vi.format(leftNo)} trước nếu muốn dùng cho mục khác.`,
+    matchUsedBy: (leftNo) =>
+      `Lựa chọn này đã ghép với mục ${NUMBER_FORMATTERS.vi.format(leftNo)}. Bỏ ghép mục ${NUMBER_FORMATTERS.vi.format(leftNo)} trước nếu muốn dùng cho mục khác.`,
     essayEditorLabel: "Bài viết của bạn",
     essayPlaceholder: "Viết bài của bạn tại đây",
-    wordCount: (count) => `${NUMBER_FORMATTERS.vi.format(count)} chữ`,
-    wordLimit: (min) => `tối thiểu ${NUMBER_FORMATTERS.vi.format(min)} chữ`,
     wordsNeeded: (count) => `Còn ${NUMBER_FORMATTERS.vi.format(count)} chữ nữa để đạt yêu cầu.`,
     wordLimitMet: "Đã đạt yêu cầu số chữ",
     essayNote:
@@ -373,12 +369,10 @@ export const UI_STRINGS_EN: UiStrings = {
     matchPickRight: (letter, usedBy) =>
       usedBy ? `${letter}, already matched with item ${usedBy}` : `Choice ${letter}`,
     matchUsedTag: (leftNos) => `Used · ${leftNos}`,
-    matchUsedBy: (rightText, leftNo) =>
-      `${rightText} is already matched with item ${NUMBER_FORMATTERS.en.format(leftNo)}. Unmatch item ${NUMBER_FORMATTERS.en.format(leftNo)} first to use it elsewhere.`,
+    matchUsedBy: (leftNo) =>
+      `This choice is already matched with item ${NUMBER_FORMATTERS.en.format(leftNo)}. Unmatch item ${NUMBER_FORMATTERS.en.format(leftNo)} first to use it elsewhere.`,
     essayEditorLabel: "Your essay",
     essayPlaceholder: "Write your essay here",
-    wordCount: (count) => `${NUMBER_FORMATTERS.en.format(count)} words`,
-    wordLimit: (min) => `at least ${NUMBER_FORMATTERS.en.format(min)} words`,
     wordsNeeded: (count) => `${NUMBER_FORMATTERS.en.format(count)} more words to reach the minimum.`,
     wordLimitMet: "Word minimum reached",
     essayNote:

@@ -5,6 +5,7 @@ import { useId } from "react";
 import { Checkbox } from "../components/checkbox";
 import { useUiStrings } from "../components/ui-strings";
 import { cn } from "../lib/cn";
+import { focusRing } from "../lib/styles";
 import { RichTextView } from "../rich-text";
 import { optionLetter, orderById } from "./helpers";
 import type { ChoiceOption, QuestionReview } from "./types";
@@ -91,7 +92,7 @@ export function ChoiceList({
                     // Bấm hay Space lên phương án đang chọn là bỏ chọn: giá trị về null (AC-7).
                     if (checked) onChange?.([]);
                   }}
-                  className="size-5 shrink-0 accent-primary-fill"
+                  className={cn("size-5 shrink-0 accent-primary-fill", focusRing)}
                 />
               )
             ) : (

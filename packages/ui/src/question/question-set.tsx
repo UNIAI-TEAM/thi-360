@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { useUiStrings } from "../components/ui-strings";
 import { cn } from "../lib/cn";
 import { RichTextView } from "../rich-text";
@@ -57,7 +58,7 @@ export function QuestionSet({
       <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <aside
           aria-label={strings.setPassageCaption(from, to)}
-          className="max-h-[75vh] overflow-y-auto rounded-xl border border-border bg-surface p-4 text-title text-text lg:sticky lg:top-4"
+          className="rounded-xl border border-border bg-surface p-4 text-title text-text lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto"
         >
           <div data-exam-content>
             <RichTextView html={question.body.passage} blankNumberStart={numberStart} />
@@ -67,20 +68,22 @@ export function QuestionSet({
           <HeadingTag id={`${question.id}-title`} className="sr-only">
             {strings.setPassageCaption(from, to)}
           </HeadingTag>
-          {children.map((child) =>
-            renderQuestion({
-              question: child,
-              mode,
-              value: childAnswers[child.id] ?? null,
-              onChange:
-                mode === "answer"
-                  ? (next: AnswerValue) =>
-                      onChange?.({ children: { ...childAnswers, [child.id]: next } })
-                  : undefined,
-              review: mode === "review" ? childReview(review, child.id) : null,
-              headingLevel: Math.min(3, (headingLevel ?? 2) + 1) as 1 | 2 | 3,
-            }),
-          )}
+          {children.map((child) => (
+            <Fragment key={child.id}>
+              {renderQuestion({
+                question: child,
+                mode,
+                value: childAnswers[child.id] ?? null,
+                onChange:
+                  mode === "answer"
+                    ? (next: AnswerValue) =>
+                        onChange?.({ children: { ...childAnswers, [child.id]: next } })
+                    : undefined,
+                review: mode === "review" ? childReview(review, child.id) : null,
+                headingLevel: Math.min(3, (headingLevel ?? 2) + 1) as 1 | 2 | 3,
+              })}
+            </Fragment>
+          ))}
         </div>
       </div>
     </div>
