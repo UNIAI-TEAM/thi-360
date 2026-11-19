@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import vn.unicom.thi360.shared.testapi.TestApiPaths;
 
 public class CookieAuthFilter extends OncePerRequestFilter {
 
@@ -34,7 +35,8 @@ public class CookieAuthFilter extends OncePerRequestFilter {
         String path = extractPath(request);
         return SKIP_EXACT_PATHS.contains(path)
                 || path.startsWith("/actuator/health")
-                || path.startsWith("/v3/api-docs");
+                || path.startsWith("/v3/api-docs")
+                || TestApiPaths.matches(path);
     }
 
     @Override
