@@ -1,0 +1,401 @@
+package vn.unicom.thi360.commerce.storefront.application;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.springframework.stereotype.Component;
+import vn.unicom.thi360.catalog.spi.CatalogItemView;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.storefront.api.DecimalRange;
+import vn.unicom.thi360.commerce.storefront.api.DetailBenefits;
+import vn.unicom.thi360.commerce.storefront.api.DetailChoiceGroup;
+import vn.unicom.thi360.commerce.storefront.api.DetailChoiceOption;
+import vn.unicom.thi360.commerce.storefront.api.DetailPart;
+import vn.unicom.thi360.commerce.storefront.api.DetailScoring;
+import vn.unicom.thi360.commerce.storefront.api.ExamKindRef;
+import vn.unicom.thi360.commerce.storefront.api.IntRange;
+import vn.unicom.thi360.commerce.storefront.api.LocalizedName;
+import vn.unicom.thi360.commerce.storefront.api.OmittedEssayGroup;
+import vn.unicom.thi360.commerce.storefront.api.ProductCard;
+import vn.unicom.thi360.commerce.storefront.api.ProductDetail;
+import vn.unicom.thi360.commerce.storefront.api.SubjectRef;
+import vn.unicom.thi360.commerce.storefront.domain.SaleState;
+import vn.unicom.thi360.commerce.storefront.domain.StorefrontRow;
+import vn.unicom.thi360.commerce.storefront.domain.StorefrontSearchText;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Combination;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Listing;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Option;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PathChoice;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPathPart;
+
+/**
+ * Builds the storefront row of an exam from what {@code PublishedExamPort.findServing} returns (TM 10.1, E24): sale data
+ * of the latest serving version, totals read from the serving paths (a range when the paths differ), the subjects and
+ * parts of the serving paths, and the prebuilt card and detail. It reads nothing but the argument and the catalog, and
+ * never carries questions, answers, question sources, witness papers or previews: the port has none.
+ */
+@Component
+public class StorefrontProjector {
+
+    public static final String COVER_URL_PREFIX = "/api/v1/public/storefront/covers/";
+    private static final String EXAM_GROUP = "EXAM";
+    private static final String SUBJECT_GROUP = "SUBJECT";
+    private static final String COMBINATION = "COMBINATION";
+
+    private final CatalogLookup catalog;
+    private final ObjectMapper mapper;
+
+    public StorefrontProjector(CatalogLookup catalog, ObjectMapper mapper) {
+        this.catalog = catalog;
+        this.mapper = mapper;
+    }
+
+    /** The row to store, or empty when the serving version cannot be sold (no listing, price, attempts, code or name). */
+    public Optional<StorefrontRow> build(ServingExam serving) {
+        PublishedVersion version = serving.version();
+        Listing listing = version.listing();
+        if (listing == null || listing.listPriceVnd() == null || listing.attemptsGranted() == null
+                || version.code() == null || version.name() == null || version.scope() == null
+                || version.kindCode() == null) {
+            return Optional.empty();
+        }
+        Map<String, CatalogItemView> subjectsByCode = subjectsByCode();
+        ExamKindRef kind = kindRef(version);
+        List<ServingPath> paths = serving.servingPaths();
+
+        IntRange questions = intRange(paths.stream().map(ServingPath::questionCount).toList());
+        IntRange minutes = intRange(paths.stream().map(ServingPath::durationMinutes).toList());
+        DecimalRange points = decimalRange(paths.stream().map(ServingPath::maxPoints).toList());
+
+        Set<UUID> subjectIds = new LinkedHashSet<>();
+        if (version.subjectItemId() != null) {
+            subjectIds.add(version.subjectItemId());
+        }
+        for (String code : subjectCodes(version, paths)) {
+            CatalogItemView item = subjectsByCode.get(key(code));
+            if (item != null) {
+                subjectIds.add(item.id());
+            }
+        }
+        List<String> partCodes = new ArrayList<>();
+        List<String> partNames = new ArrayList<>();
+        parts(version, partCodes, partNames);
+
+        LocalizedName scopeLabel = scopeLabel(version, subjectsByCode, partNames);
+        String coverUrl = listing.coverAssetId() == null ? null : COVER_URL_PREFIX + listing.coverAssetId();
+        String buildMode = "REVIEW".equals(version.buildMode()) ? "REVIEW" : "STANDARD";
+        long listPrice = listing.listPriceVnd();
+
+        ProductCard card = new ProductCard(version.code(), version.name(), listing.summary(), coverUrl, kind,
+                version.scope(), scopeLabel, buildMode, questions, minutes, listing.attemptsGranted(), listPrice,
+                listPrice, null, version.versionNo());
+        ProductDetail detail = new ProductDetail(version.code(), version.name(), listing.summary(), coverUrl, kind,
+                version.scope(), scopeLabel, buildMode, questions, minutes, points, listing.attemptsGranted(),
+                listPrice, listPrice, null, version.versionNo(),
+                blankToNull(listing.description()) != null ? listing.description() : listing.summary(),
+                listing.objectives(), listing.audience(), detailParts(version, paths), choices(version, paths,
+                        subjectsByCode),
+                new DetailScoring(version.timing(), version.maxScore(), version.referenceMax(),
+                        version.practiceScoring()),
+                version.omittedGroups().stream().map(g -> new OmittedEssayGroup(g.name(), g.points())).toList(),
+                new DetailBenefits(listing.benefitAiExplanation(), listing.benefitStrengthWeakness(),
+                        listing.benefitPractice(), listing.benefitNote()),
+                listing.resultView());
+
+        SaleState state = "DISCONTINUED".equals(serving.status()) ? SaleState.DISCONTINUED : SaleState.ON_SALE;
+        StorefrontRow unhashed = new StorefrontRow(serving.examId(), version.code(), key(version.code()),
+                version.versionNo(), state, version.name(), StorefrontSearchText.of(version.name(), version.code()),
+                version.kindItemId(), version.kindCode(), version.scope(), version.subjectItemId(),
+                List.copyOf(subjectIds), partCodes, partNames, questions == null ? null : questions.min(),
+                questions == null ? null : questions.max(), minutes == null ? null : minutes.min(),
+                minutes == null ? null : minutes.max(), points == null ? null : points.min(),
+                points == null ? null : points.max(), buildMode, listPrice, listing.attemptsGranted(),
+                listing.coverAssetId(), json(card), json(detail), "", version.publishedAt());
+        return Optional.of(withHash(unhashed));
+    }
+
+    // ------------------------------------------------------------------ catalog
+
+    private Map<String, CatalogItemView> subjectsByCode() {
+        Map<String, CatalogItemView> byCode = new LinkedHashMap<>();
+        for (CatalogItemView item : catalog.listGroupItems(SUBJECT_GROUP)) {
+            byCode.putIfAbsent(key(item.code()), item);
+        }
+        return byCode;
+    }
+
+    private ExamKindRef kindRef(PublishedVersion version) {
+        if (version.kindItemId() != null) {
+            Optional<CatalogItemView> item = catalog.findItem(version.kindItemId());
+            if (item.isPresent()) {
+                return new ExamKindRef(version.kindCode(), item.get().nameVi(), item.get().nameEn());
+            }
+        }
+        for (CatalogItemView item : catalog.listGroupItems(EXAM_GROUP)) {
+            if (key(item.code()).equals(key(version.kindCode()))) {
+                return new ExamKindRef(version.kindCode(), item.nameVi(), item.nameEn());
+            }
+        }
+        return new ExamKindRef(version.kindCode(), version.kindCode(), version.kindCode());
+    }
+
+    private static SubjectRef subjectRef(String code, Map<String, CatalogItemView> byCode) {
+        CatalogItemView item = byCode.get(key(code));
+        return item == null ? new SubjectRef(code, code, code) : new SubjectRef(code, item.nameVi(), item.nameEn());
+    }
+
+    // ----------------------------------------------------------- subjects, parts
+
+    /** Subject codes of the serving paths: fixed sections and pools, chosen options, and the codes' subjects in order. */
+    private static Set<String> subjectCodes(PublishedVersion version, List<ServingPath> paths) {
+        Set<String> servedOptions = servedOptionIds(paths);
+        Set<String> codes = new LinkedHashSet<>();
+        for (Part part : version.parts()) {
+            part.sections().forEach(s -> addCode(codes, s.subjectCode()));
+            part.subjectPool().forEach(s -> addCode(codes, s.subjectCode()));
+            for (Option option : part.options()) {
+                if (!servedOptions.contains(option.id())) {
+                    continue;
+                }
+                if ("SUBJECT".equals(option.kind())) {
+                    addCode(codes, option.code());
+                }
+                option.sections().forEach(s -> addCode(codes, s.subjectCode()));
+            }
+        }
+        for (ServingPath path : paths) {
+            for (Combination combination : path.combinations()) {
+                combination.subjects().forEach(s -> addCode(codes, s.code()));
+            }
+        }
+        return codes;
+    }
+
+    private static void addCode(Set<String> codes, String code) {
+        if (code != null && !code.isBlank()) {
+            codes.add(code.trim());
+        }
+    }
+
+    private static Set<String> servedOptionIds(List<ServingPath> paths) {
+        Set<String> ids = new LinkedHashSet<>();
+        for (ServingPath path : paths) {
+            for (PathChoice choice : path.choices()) {
+                ids.add(choice.optionId());
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Part codes and names for the "Phần" filter. A PART exam has the code of its scope; other exams use {@code P<order>},
+     * the convention of the part codes of templates cut by part. Codes only mean something inside one exam kind.
+     */
+    private static void parts(PublishedVersion version, List<String> codes, List<String> names) {
+        List<Part> parts = version.parts();
+        if ("PART".equals(version.scope()) && version.partCode() != null) {
+            codes.add(version.partCode());
+            names.add(parts.isEmpty() || parts.getFirst().name() == null ? version.partCode() : parts.getFirst().name());
+            return;
+        }
+        int position = 0;
+        for (Part part : parts) {
+            position++;
+            String code = "P" + (part.order() != null ? part.order() : position);
+            if (!codes.contains(code)) {
+                codes.add(code);
+                names.add(part.name() == null ? code : part.name());
+            }
+        }
+    }
+
+    private static LocalizedName scopeLabel(PublishedVersion version, Map<String, CatalogItemView> subjectsByCode,
+            List<String> partNames) {
+        if ("PART".equals(version.scope())) {
+            String name = partNames.isEmpty() ? version.partCode() : partNames.getFirst();
+            return name == null ? null : new LocalizedName(name, name);
+        }
+        if ("SUBJECT".equals(version.scope()) && version.subjectItemId() != null) {
+            for (CatalogItemView item : subjectsByCode.values()) {
+                if (item.id().equals(version.subjectItemId())) {
+                    return new LocalizedName(item.nameVi(), item.nameEn());
+                }
+            }
+        }
+        return null;
+    }
+
+    // ------------------------------------------------------------------- detail
+
+    private static List<DetailPart> detailParts(PublishedVersion version, List<ServingPath> paths) {
+        List<Part> ordered = new ArrayList<>(version.parts());
+        ordered.sort(Comparator.comparing(Part::order, Comparator.nullsLast(Comparator.naturalOrder())));
+        List<DetailPart> result = new ArrayList<>();
+        int position = 0;
+        for (Part part : ordered) {
+            position++;
+            List<ServingPathPart> served = new ArrayList<>();
+            for (ServingPath path : paths) {
+                for (ServingPathPart candidate : path.parts()) {
+                    if (part.id() != null && part.id().equals(candidate.partId())) {
+                        served.add(candidate);
+                    }
+                }
+            }
+            IntRange questions = served.isEmpty() ? single(part.questionCount())
+                    : intRange(served.stream().map(ServingPathPart::questionCount).toList());
+            IntRange minutes = served.isEmpty() ? single(part.durationMinutes())
+                    : intRange(served.stream().map(ServingPathPart::durationMinutes).toList());
+            DecimalRange points = served.isEmpty() ? singleDecimal(part.maxPoints())
+                    : decimalRange(served.stream().map(ServingPathPart::maxPoints).toList());
+            result.add(new DetailPart(part.order() != null ? part.order() : position, part.name(), questions, minutes,
+                    points, !"CHOICE".equals(part.participationMode())));
+        }
+        return result;
+    }
+
+    /** The choices of the serving paths, per part: the options a path stands for and the catalog codes (E25). */
+    private static List<DetailChoiceGroup> choices(PublishedVersion version, List<ServingPath> paths,
+            Map<String, CatalogItemView> subjectsByCode) {
+        List<DetailChoiceGroup> groups = new ArrayList<>();
+        for (Part part : version.parts()) {
+            List<DetailChoiceOption> options = new ArrayList<>();
+            Set<String> seen = new LinkedHashSet<>();
+            for (ServingPath path : paths) {
+                for (PathChoice choice : path.choices()) {
+                    if (!Objects.equals(part.id(), choice.partId()) || COMBINATION.equals(choice.kind())
+                            || !seen.add(choice.optionId())) {
+                        continue;
+                    }
+                    Option option = part.options().stream().filter(o -> choice.optionId().equals(o.id())).findFirst()
+                            .orElse(null);
+                    options.add(optionOf(choice, option, subjectsByCode));
+                }
+            }
+            Set<String> seenCombinations = new LinkedHashSet<>();
+            for (ServingPath path : paths) {
+                for (Combination combination : path.combinations()) {
+                    if (Objects.equals(part.id(), combination.partId())
+                            && seenCombinations.add(combination.partId() + ":" + combination.code())) {
+                        options.add(new DetailChoiceOption(COMBINATION, combination.code(),
+                                combination.name() == null ? combination.code() : combination.name(),
+                                combination.branch(), null, null, combination.subjects().stream()
+                                        .sorted(Comparator.comparingInt(s -> s.position()))
+                                        .map(s -> subjectRef(s.code(), subjectsByCode)).toList()));
+                    }
+                }
+            }
+            if (!options.isEmpty()) {
+                groups.add(new DetailChoiceGroup(part.name(), options));
+            }
+        }
+        return groups;
+    }
+
+    private static DetailChoiceOption optionOf(PathChoice choice, Option option,
+            Map<String, CatalogItemView> subjectsByCode) {
+        List<SubjectRef> subjects = new ArrayList<>();
+        Set<String> codes = new LinkedHashSet<>();
+        if (option != null) {
+            option.sections().forEach(s -> addCode(codes, s.subjectCode()));
+            if (codes.isEmpty() && "SUBJECT".equals(option.kind())) {
+                addCode(codes, option.code());
+            }
+        }
+        codes.forEach(code -> subjects.add(subjectRef(code, subjectsByCode)));
+        return new DetailChoiceOption(choice.kind(), choice.code(), choice.name() == null ? choice.code() : choice.name(),
+                null, option == null ? null : option.chooseSubjects(), option == null ? null : option.countsByPick(),
+                subjects);
+    }
+
+    // ------------------------------------------------------------------- ranges
+
+    private static IntRange single(Integer value) {
+        return value == null ? null : new IntRange(value, value);
+    }
+
+    private static DecimalRange singleDecimal(BigDecimal value) {
+        return value == null ? null : new DecimalRange(value, value);
+    }
+
+    /** Smallest and largest of the known values; null when none is known. */
+    private static IntRange intRange(List<Integer> values) {
+        Integer min = null;
+        Integer max = null;
+        for (Integer value : values) {
+            if (value == null) {
+                continue;
+            }
+            min = min == null || value < min ? value : min;
+            max = max == null || value > max ? value : max;
+        }
+        return min == null ? null : new IntRange(min, max);
+    }
+
+    private static DecimalRange decimalRange(List<BigDecimal> values) {
+        BigDecimal min = null;
+        BigDecimal max = null;
+        for (BigDecimal value : values) {
+            if (value == null) {
+                continue;
+            }
+            min = min == null || value.compareTo(min) < 0 ? value : min;
+            max = max == null || value.compareTo(max) > 0 ? value : max;
+        }
+        return min == null ? null : new DecimalRange(min, max);
+    }
+
+    // -------------------------------------------------------------------- misc
+
+    private static String key(String code) {
+        return code == null ? "" : code.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private String json(Object value) {
+        try {
+            return mapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialise storefront model", e);
+        }
+    }
+
+    /** SHA-256 over the JSON of every field the projection writes (the hash itself blank). */
+    private StorefrontRow withHash(StorefrontRow row) {
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+        String hash = HexFormat.of().formatHex(digest.digest(json(row).getBytes(StandardCharsets.UTF_8)));
+        return new StorefrontRow(row.examId(), row.code(), row.codeNormalized(), row.versionNo(), row.saleState(),
+                row.name(), row.searchText(), row.examItemId(), row.kindCode(), row.scope(), row.scopeItemId(),
+                row.subjectItemIds(), row.partCodes(), row.partNames(), row.questionCount(), row.questionCountMax(),
+                row.durationMinutes(), row.durationMinutesMax(), row.maxPoints(), row.maxPointsMax(), row.buildMode(),
+                row.listPriceVnd(), row.attemptsGranted(), row.coverAssetId(), row.card(), row.detail(), hash,
+                row.publishedAt());
+    }
+}
