@@ -69,13 +69,13 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
                 id, "{\"content\":\"q\",\"points\":1,\"body\":" + body + "}");
     }
 
-    /** One question set with three single-choice children, the shape of the HSA/QDA Toán set group. */
-    private void set(Subject subject) {
+    /** One question set with {@code size} single-choice children; the Toán set group takes three. */
+    private void set(Subject subject, int size) {
         UUID parent = UUID.randomUUID();
         jdbc.update("insert into questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) "
-                + "values (?,?,'QUESTION_SET','READY',?,1,3)", parent, "SET-" + parent, subject.id());
+                + "values (?,?,'QUESTION_SET','READY',?,1,?)", parent, "SET-" + parent, subject.id(), size);
         List<String> children = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < size; i++) {
             UUID child = UUID.randomUUID();
             children.add("{\"id\":\"" + child + "\"}");
             jdbc.update("insert into questionbank.question(id, code, type, status, parent_id, position, points) "
@@ -85,7 +85,7 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
                             + "\"options\":[{\"id\":\"a\",\"content\":\"A\",\"correct\":true},{\"id\":\"b\",\"content\":\"B\"}]}}");
         }
         jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
-                parent, "{\"content\":\"set\",\"points\":3,\"body\":{\"type\":\"QUESTION_SET\",\"passage\":\"passage\","
+                parent, "{\"content\":\"set\",\"points\":" + size + ",\"body\":{\"type\":\"QUESTION_SET\",\"passage\":\"passage\","
                         + "\"children\":[" + String.join(",", children) + "]}}");
     }
 
@@ -94,7 +94,7 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
         Subject subject = subject();
         for (int i = 0; i < 32; i++) single(subject, "SINGLE_CHOICE");
         for (int i = 0; i < 15; i++) single(subject, "SHORT_ANSWER");
-        set(subject);
+        set(subject, 3);
         return subject;
     }
 
@@ -269,6 +269,25 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
         JsonNode result = check(examId);
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
         assertThat(codes(result)).as("check issues: %s", codes(result)).contains("ANSWER_TYPE_SHORTAGE");
+    }
+
+    /** A set group needs three children; the only set has four, so no eligible set can fill the Bộ câu hỏi row. */
+    @Test
+    void aWrongSizeSetDoesNotFillTheQuestionSetRow() throws Exception {
+        Subject subject = subject();
+        for (int i = 0; i < 32; i++) single(subject, "SINGLE_CHOICE");
+        for (int i = 0; i < 15; i++) single(subject, "SHORT_ANSWER");
+        set(subject, 4);
+        UUID examId = exam(toanPart("HSA_SUBJECT_TOAN", subject, WITH_ROW));
+
+        JsonNode result = check(examId);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(codes(result)).as("check issues: %s", codes(result))
+                .containsAnyOf("SET_SHORTAGE", "ANSWER_TYPE_SHORTAGE", "SUBJECT_QUOTA_INFEASIBLE");
+        JsonNode answers = result.findValue("answerQuotas");
+        assertThat(answers).as(result.toString()).isNotNull();
+        // Unknown (null) or capacity-bounded (0 eligible sets): never the raw stock of four wrong-size children.
+        assertThat(row(answers, "answerType", "QUESTION_SET").path("achieved").asInt(0)).isLessThan(3);
     }
 
     @Test
