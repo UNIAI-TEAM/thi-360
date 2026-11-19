@@ -80,6 +80,7 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         assertThat(latest(base).path("invalidReason").isNull()).isTrue();
         assertThat(jdbc.queryForObject("SELECT result->>'rulesStamp' FROM exam.exam_check_run WHERE exam_id = ?", String.class, exam))
                 .isEqualTo("FTM_R12");
+        assertThat(latest(base).has("rulesStamp")).as("GET never shows the stored stamp, whatever the stored value").isFalse();
         publish(exam, "default").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
         assertThat(versions(exam)).isEqualTo(1);
     }
@@ -164,6 +165,81 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         assertThat(latest("/api/v1/admin/exams/" + exam).path("status").asText()).isEqualTo("INVALID");
     }
 
+    /**
+     * R1-10: a successful non-empty PART check on an unstamped science exam saves its units only. The whole-exam run
+     * keeps its id and its missing stamp, so GET and publish still say RULES_CHANGED.
+     */
+    @Test
+    void partCheckKeepsTheRunAndTheReason() throws Exception {
+        String base = realHsaScienceExam();
+        UUID exam = UUID.fromString(base.substring(base.lastIndexOf('/') + 1));
+        check(base, "{}");
+        removeStamp(exam);
+        UUID run = jdbc.queryForObject("SELECT id FROM exam.exam_check_run WHERE exam_id = ?", UUID.class, exam);
+        String partId = jdbc.queryForObject("SELECT parts #>> '{parts,0,id}' FROM exam.exam_structure WHERE exam_id = ?", String.class, exam);
+
+        JsonNode part = check(base, "{\"scope\":\"PART\",\"partId\":\"" + partId + "\"}");
+        assertThat(part.path("status").asText()).isEqualTo("VALID");
+        assertThat(part.path("paths")).as("a non-empty part check").isNotEmpty();
+
+        assertThat(jdbc.queryForObject("SELECT id FROM exam.exam_check_run WHERE exam_id = ?", UUID.class, exam)).isEqualTo(run);
+        assertThat(stamp(exam)).isNull();
+        assertThat(latest(base).path("invalidReason").asText()).isEqualTo("RULES_CHANGED");
+        publishRefusedWith(exam, "RULES_CHANGED", "default");
+        assertThat(versions(exam)).isZero();
+    }
+
+    /**
+     * AC-58a as one chain on a real QDA exam: a VALID result saved before the rules for a Lý section with three sets is
+     * refused with RULES_CHANGED; the real whole recheck then issues SECTION_SET_COUNT_RANGE at the Lý section, only the
+     * combinations with Lý fail, the result is stamped, and the valid combinations publish while no refused call moved
+     * the serving state. The old result is a real check of the same structure taken while the rules did not apply
+     * (a review exam skips them), without the stamp.
+     */
+    @Test
+    void oldValidQdaPhysicsThreeSetsRecheckedForReal() throws Exception {
+        UUID exam = qdaExamWithPhysicsThreeSets();
+        String base = "/api/v1/admin/exams/" + exam;
+        JsonNode old = check(base, "{}");
+        assertThat(old.path("status").asText()).as("old check: %s", old.path("groups")).isEqualTo("VALID");
+        removeStamp(exam);
+        jdbc.update("UPDATE exam.exam SET build_mode = 'STANDARD' WHERE id = ?", exam);
+        entityManager.clear();
+        List<String> allPaths = new java.util.ArrayList<>();
+        old.path("paths").forEach(path -> allPaths.add(path.path("pathId").asText()));
+        assertThat(allPaths).containsExactlyInAnyOrder("codes:QD01", "codes:QD02", "codes:QD03", "codes:QD04", "codes:QD05");
+        publishRefusedWith(exam, "RULES_CHANGED", allPaths.toArray(String[]::new));
+        assertThat(latestReason(exam)).isEqualTo("RULES_CHANGED");
+        assertThat(versions(exam)).isZero();
+
+        JsonNode again = check(base, "{}");
+        assertThat(again.path("status").asText()).isEqualTo("INVALID");
+        JsonNode range = null;
+        for (JsonNode list : again.path("groups").findValues("issues")) {
+            for (JsonNode item : list) if ("SECTION_SET_COUNT_RANGE".equals(item.path("code").asText())) range = item;
+        }
+        assertThat(range).as("SECTION_SET_COUNT_RANGE in %s", again.path("groups")).isNotNull();
+        assertThat(range.path("sectionId").asText()).isEqualTo("ly");
+        assertThat(range.path("subjectCode").asText()).isEqualTo("LY");
+        assertThat(range.path("required").asInt()).isEqualTo(2);
+        assertThat(range.path("available").asInt()).isEqualTo(3);
+        java.util.Map<String, String> outcome = new java.util.TreeMap<>();
+        for (JsonNode path : again.path("paths")) {
+            boolean carries = path.path("issues").toString().contains("SECTION_SET_COUNT_RANGE");
+            outcome.put(path.path("pathId").asText(), path.path("result").asText() + (carries ? "+RANGE" : ""));
+        }
+        // QD01 Lý+Hóa, QD03 Lý+Sinh hold the Lý section; QD02, QD04, QD05 do not.
+        assertThat(outcome).containsEntry("codes:QD01", "INVALID+RANGE").containsEntry("codes:QD03", "INVALID+RANGE")
+                .containsEntry("codes:QD02", "VALID").containsEntry("codes:QD04", "VALID").containsEntry("codes:QD05", "VALID");
+        assertThat(stamp(exam)).isEqualTo("FTM_R12");
+        assertThat(latestReason(exam)).isNull();
+
+        publish(exam, "codes:QD01").andExpect(status().isUnprocessableEntity());
+        assertThat(versions(exam)).isZero();
+        publish(exam, "codes:QD02", "codes:QD04", "codes:QD05").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+        assertThat(servedState(exam)).isEqualTo("1|SERVING|codes:QD02,codes:QD04,codes:QD05");
+    }
+
     // ---- not affected -------------------------------------------------------------------------------------
 
     @Test
@@ -174,6 +250,9 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         UUID review = newExam("QDA", QDA_SCIENCE);
         jdbc.update("UPDATE exam.exam SET build_mode = 'REVIEW' WHERE id = ?", review);
         saveOldCheck(review, paths("codes:QD01=VALID"));
+        // H-SCA is another kind without limits: a science subject there keeps its old result too.
+        UUID hsca = newExam("HSCA", HSA_SCIENCE);
+        saveOldCheck(hsca, paths("science=VALID", "english=VALID"));
         // A standard HSA exam with no limited subject keeps its old result, and so does a QDA exam without a pool subject.
         UUID noScience = newExam("HSA", ExamPublishAllPathsIT.HSA_PART3);
         saveOldCheck(noScience, paths("science=VALID", "english=VALID"));
@@ -184,12 +263,12 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         saveOldCheck(hsa, paths("science=VALID", "english=VALID"));
         UUID qda = newExam("QDA", QDA_SCIENCE);
         saveOldCheck(qda, paths("codes:QD01=VALID"));
-        for (UUID unaffected : List.of(bca, review, noScience, plainQda)) assertThat(latestReason(unaffected)).isNull();
+        for (UUID unaffected : List.of(bca, review, noScience, plainQda, hsca)) assertThat(latestReason(unaffected)).isNull();
         for (UUID affected : List.of(hsa, qda)) assertThat(latestReason(affected)).isEqualTo("RULES_CHANGED");
         // The list filter agrees with the assessment.
         List<String> valid = listed("VALID").findValuesAsText("id");
         List<String> recheck = listed("NEEDS_RECHECK").findValuesAsText("id");
-        for (UUID unaffected : List.of(bca, review, noScience, plainQda)) {
+        for (UUID unaffected : List.of(bca, review, noScience, plainQda, hsca)) {
             assertThat(valid).contains(unaffected.toString());
             assertThat(recheck).doesNotContain(unaffected.toString());
         }
@@ -201,9 +280,47 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         publish(noScience, "science", "english").andExpect(status().isOk());
         publish(plainQda, "codes:QD01").andExpect(status().isOk());
         publish(review, "codes:QD01").andExpect(status().isOk());
+        publish(hsca, "science", "english").andExpect(status().isOk());
     }
 
     // ---- helpers ------------------------------------------------------------------------------------------
+
+    /**
+     * A QDA FULL exam (review mode, so the R-12 rules do not apply to its first check) with five combinations of two
+     * subjects of 10 questions each and Lý built from three sets of 3 and one short answer. Each block has its own ref.
+     */
+    private UUID qdaExamWithPhysicsThreeSets() {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam (id, code, code_normalized, name, kind_item_id, scope, timing, question_count, duration_minutes, "
+                + "build_mode, has_unpublished_changes) VALUES (?, ?, ?, 'AC-58a', ?, 'FULL', 'SHARED', 20, 60, 'REVIEW', true)",
+                id, id.toString(), id.toString(), kind("QDA"));
+        String set3 = "{\"id\":\"%s-set\",\"questionType\":\"QUESTION_SET\",\"questionCount\":%d,\"setCount\":%d,\"setSize\":3,\"childAnswerType\":\"SINGLE_CHOICE\"}";
+        String single = "{\"id\":\"%s-single\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":%d}";
+        String fill = "{\"id\":\"%s-fill\",\"questionType\":\"SHORT_ANSWER\",\"questionCount\":1}";
+        String[][] sections = {
+                {"ly", "LY", "204", String.format(set3, "ly", 9, 3), String.format(fill, "ly")},
+                {"hoa", "HOA", "205", String.format(single, "hoa", 6), String.format(set3, "hoa", 3, 1), String.format(fill, "hoa")},
+                {"sinh", "SINH", "206", String.format(single, "sinh", 6), String.format(set3, "sinh", 3, 1), String.format(fill, "sinh")},
+                {"su", "SU", "207", String.format(single, "su", 7), String.format(set3, "su", 3, 1)},
+                {"dia", "DIA", "208", String.format(single, "dia", 7), String.format(set3, "dia", 3, 1)},
+                {"anh", "ANH", "203", String.format(single, "anh", 20)}};
+        StringBuilder pool = new StringBuilder();
+        for (String[] section : sections) {
+            String[] blocks = java.util.Arrays.copyOfRange(section, 3, section.length);
+            if (pool.length() > 0) pool.append(',');
+            pool.append("{\"id\":\"").append(section[0]).append("\",\"subjectCode\":\"").append(section[1]).append("\",\"questionCount\":")
+                    .append(section[0].equals("anh") ? 20 : 10).append(",\"blocks\":[").append(String.join(",", blocks)).append("]}");
+            for (String block : blocks) {
+                String blockId = block.substring(block.indexOf("\"id\":\"") + 6, block.indexOf('"', block.indexOf("\"id\":\"") + 6));
+                jdbc.update("INSERT INTO exam.exam_block_ref(id, exam_id, block_id, part_id, section_id, subject_item_id) VALUES (?, ?, ?, ?, ?, ?)",
+                        UUID.randomUUID(), id, blockId, "codes", section[0], UUID.fromString("00000000-0000-7000-8200-000000000" + section[2]));
+            }
+        }
+        jdbc.update("INSERT INTO exam.exam_structure (exam_id, parts, structure_hash) VALUES (?, ?::jsonb, 'ac-58a')", id,
+                "{\"parts\":[{\"id\":\"codes\",\"name\":\"Codes\",\"codeSource\":{\"source\":\"GLOBAL_LIST\"},\"subjectPool\":[" + pool + "]}]}");
+        ExamListingFixture.fill(jdbc, id);
+        return id;
+    }
 
     private String realHsaScienceExam() throws Exception {
         ObjectNode body = mapper.createObjectNode().put("kind", "HSA").put("scope", "SUBJECT").put("subjectCode", "LY")
