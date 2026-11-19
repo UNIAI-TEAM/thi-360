@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -47,7 +48,7 @@ public class AvailableQuestionCountController {
                                  @Schema(description = "SOURCE rules that all apply: an AND of OR-groups, one group per "
                                          + "applicable rule (the subject's and the group's); inside a group any node "
                                          + "(or a descendant) matches. nodeIds keeps the legacy single scope (UNI-2758)")
-                                 List<List<@NotNull UUID>> nodeGroups) {
+                                 List<@NotNull @Size(min = 1) List<@NotNull UUID>> nodeGroups) {
         public KnowledgeScope(List<UUID> nodeIds, List<String> competencyCodes, Boolean everyChildInScope) {
             this(nodeIds, competencyCodes, everyChildInScope, null, null, null);
         }
