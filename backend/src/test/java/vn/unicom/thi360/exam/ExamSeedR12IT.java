@@ -1,11 +1,15 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +38,7 @@ class ExamSeedR12IT extends AbstractIntegrationTest {
     private static final String HASH = "dev-hsa-structure-v4";
     private static final String FIRST_NEW_BLOCK = "00000000-0000-7000-8800-000000000080";
     private static final String LAST_NEW_BLOCK = "00000000-0000-7000-8800-000000000087";
+    private static final String REMOVED_BLOCK = "00000000-0000-7000-8800-000000000044";
     private static final List<String> FILL_SUBJECTS = List.of("LY", "HOA", "SINH");
 
     @Autowired private JdbcTemplate jdbc;
@@ -185,6 +190,60 @@ class ExamSeedR12IT extends AbstractIntegrationTest {
                 .isEqualTo(projected);
         assertThat(refs()).isEqualTo(blockRefs);
         assertThat(hash()).isEqualTo("edited-by-hand");
+    }
+
+    /**
+     * R1-9: a normal save through the structure API rewrites EVERY draft ref with a fresh id, the seeded originals
+     * included. When the seed file runs again (its checksum changed with a release) it must neither clash on the natural
+     * key of a ref the projector already wrote nor bring back the ref of a block the edit removed.
+     */
+    @Test
+    void rerunAfterANormalSaveThatRewroteEveryDraftRefKeepsTheEditedRefs() throws Exception {
+        String url = "/api/v1/admin/exams/" + EXAM + "/structure";
+        JsonNode current = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        ObjectNode edited = current.deepCopy();
+        assertThat(removeBlock(edited.path("parts"), REMOVED_BLOCK)).as("the block is in the seeded structure").isTrue();
+        ObjectNode body = mapper.createObjectNode().put("expectedRevision", current.path("revision").asLong());
+        body.set("parts", edited.path("parts"));
+        if (edited.has("examQuotas")) body.set("examQuotas", edited.path("examQuotas"));
+        mockMvc.perform(put(url).with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                .content(body.toString())).andExpect(status().isOk());
+
+        List<UUID> rewritten = jdbc.queryForList("SELECT id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL",
+                UUID.class, EXAM);
+        assertThat(rewritten).as("draft refs after the save").isNotEmpty();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ? AND id::text LIKE '00000000-0000-7000-8900-%'",
+                Long.class, EXAM)).as("no seeded ref id survives the save").isZero();
+        assertThat(blockRefCount(REMOVED_BLOCK)).as("the edit removed that block's ref").isZero();
+        String savedHash = hash();
+        String savedParts = parts();
+
+        runSeed();
+
+        assertThat(jdbc.queryForList("SELECT id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL", UUID.class, EXAM))
+                .as("the projector's refs survive, none is added").containsExactlyInAnyOrderElementsOf(rewritten);
+        assertThat(blockRefCount(REMOVED_BLOCK)).as("the ref of the removed block is not brought back").isZero();
+        assertThat(hash()).isEqualTo(savedHash);
+        assertThat(parts()).isEqualTo(savedParts);
+    }
+
+    private static boolean removeBlock(JsonNode node, String blockId) {
+        if (node.isArray()) {
+            ArrayNode array = (ArrayNode) node;
+            for (int i = 0; i < array.size(); i++) {
+                if (array.get(i).isObject() && blockId.equals(array.get(i).path("id").asText())) {
+                    array.remove(i);
+                    return true;
+                }
+            }
+        }
+        for (JsonNode child : node) if (removeBlock(child, blockId)) return true;
+        return false;
+    }
+
+    private long blockRefCount(String blockId) {
+        return jdbc.queryForObject("SELECT count(*) FROM exam.exam_block_ref WHERE exam_id = ? AND block_id = ?", Long.class, EXAM, blockId);
     }
 
     private JsonNode preview(String[] picks, int seed) throws Exception {
