@@ -25,7 +25,7 @@ class ExamAccessApiIT extends AbstractExamAccessIT {
         Product product = onSale();
         var line = grant(userId, product.examId(), 1);
         UUID attemptId = reserveAttempt(userId, line.entitlementId());
-        attempts().open(line.entitlementId(), attemptId, OpenAttemptState.IN_PROGRESS);
+        attempts().open(userId, line.entitlementId(), attemptId, OpenAttemptState.IN_PROGRESS);
         // A stuck paid order does not take the state away from the open attempt either.
         pendingOrders.add(userId, "ORD-STUCK1", product.examId());
 
@@ -43,7 +43,7 @@ class ExamAccessApiIT extends AbstractExamAccessIT {
         Product product = onSale();
         var line = grant(userId, product.examId(), 3);
         UUID attemptId = reserveAttempt(userId, line.entitlementId());
-        attempts().open(line.entitlementId(), attemptId, OpenAttemptState.STARTING);
+        attempts().open(userId, line.entitlementId(), attemptId, OpenAttemptState.STARTING);
 
         JsonNode item = only(queryAccess(learner(userId), product.code()));
 
