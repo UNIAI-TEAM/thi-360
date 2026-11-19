@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.devdata;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +14,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
@@ -20,6 +22,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.exam.application.ExamCheckOrchestrator;
+import vn.unicom.thi360.exam.application.ExamDiscontinueService;
+import vn.unicom.thi360.exam.application.ExamListingService;
+import vn.unicom.thi360.exam.application.ExamPublishService;
+import vn.unicom.thi360.exam.application.ExamService;
+import vn.unicom.thi360.exam.application.ExamTemplateService;
+import vn.unicom.thi360.identity.spi.UserDirectory;
+import vn.unicom.thi360.questionbank.application.QuestionAssetService;
+import vn.unicom.thi360.questionbank.application.QuestionService;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.questionbank.application.DevQuestionAssetSeeder;
@@ -46,6 +57,18 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
     @Autowired PublishedExamPort port;
     @Autowired QuestionSourcePort source;
     @Autowired ObjectStorage storage;
+    @Autowired ExamService exams;
+    @Autowired ExamListingService listings;
+    @Autowired ExamCheckOrchestrator checks;
+    @Autowired ExamPublishService publisher;
+    @Autowired ExamDiscontinueService discontinuer;
+    @Autowired ExamTemplateService templates;
+    @Autowired QuestionService questions;
+    @Autowired QuestionAssetService assets;
+    @Autowired DevQuestionAssetSeeder seeder;
+    @Autowired UserDirectory users;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactionManager;
+    @Autowired jakarta.persistence.EntityManager entityManager;
 
     private PublishedExamSetDefinition definition;
     private Built built;
@@ -89,6 +112,56 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void arabicLocaleRerunRetainsAsciiQuestionCodes() {
+        List<String> before = jdbc.queryForList("SELECT source_code FROM questionbank.question "
+                + "WHERE source_code LIKE 'DS-Q-%' ORDER BY source_code", String.class);
+        assertThat(before).contains("DS-Q-HSCA-HOA-SA-001", "DS-Q-HSCA-HOA-SA-012");
+        java.util.Locale previous = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar-EG"));
+            assertThat(context.getBean(PublishedQuestionPoolBuilder.class).build().created()).isZero();
+        } finally {
+            java.util.Locale.setDefault(previous);
+        }
+        assertThat(jdbc.queryForList("SELECT source_code FROM questionbank.question "
+                + "WHERE source_code LIKE 'DS-Q-%' ORDER BY source_code", String.class)).isEqualTo(before);
+    }
+
+    @Test
+    void imageReadyFailureRollsBackAndDraftCanResume() {
+        String code = "DS-Q-IMAGE-001";
+        UUID original = jdbc.queryForObject("SELECT id FROM questionbank.question WHERE source_code = ?", UUID.class, code);
+        var failingQuestions = Mockito.mock(QuestionService.class, org.mockito.AdditionalAnswers.delegatesTo(questions));
+        Mockito.doAnswer(call -> {
+            var request = (vn.unicom.thi360.questionbank.api.BulkQuestionStatusRequest) call.getArgument(1);
+            return new vn.unicom.thi360.questionbank.api.BulkQuestionStatusResult(List.of(), List.of(
+                    new vn.unicom.thi360.questionbank.api.BulkQuestionStatusResult.Skipped(
+                            request.ids().getFirst(), "NOT_READY", "injected")));
+        }).when(failingQuestions).bulkReady(Mockito.anyString(), Mockito.any());
+        var builder = new PublishedQuestionPoolBuilder(failingQuestions, assets, seeder, storage, users, jdbc,
+                mapper, transactionManager);
+        try {
+            jdbc.update("UPDATE questionbank.question SET source_code = ?, source_code_normalized = ? WHERE id = ?",
+                    "TEMP-IMAGE", "TEMP-IMAGE", original);
+            assertThatThrownBy(builder::build).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("cannot be taken to READY");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question WHERE source_code = ?",
+                    Integer.class, code)).isZero();
+        } finally {
+            jdbc.update("UPDATE questionbank.question SET source_code = ?, source_code_normalized = ? WHERE id = ?",
+                    code, code, original);
+        }
+        try {
+            jdbc.update("UPDATE questionbank.question SET status = 'DRAFT' WHERE id = ?", original);
+            context.getBean(PublishedQuestionPoolBuilder.class).build();
+            assertThat(jdbc.queryForObject("SELECT status FROM questionbank.question WHERE id = ?",
+                    String.class, original)).isEqualTo("READY");
+        } finally {
+            jdbc.update("UPDATE questionbank.question SET status = 'READY' WHERE id = ?", original);
+        }
+    }
+
+    @Test
     void resumesAfterPartialRun() {
         // A run that stopped leaves a complete exam, a draft, or nothing: take one exam back to a draft and remove another.
         UUID draft = examId("DS-SPT-INFORMATICS-MINI");
@@ -117,6 +190,63 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
             assertThat(port.findServing(examId(code))).as(code).isPresent();
         }
         assertThat(count("SELECT count(*) FROM (SELECT code FROM exam.exam GROUP BY code HAVING count(*) > 1) d")).isZero();
+    }
+
+    /**
+     * AC-4, R1-6: a real build interrupted by a failing exam commits the exams before it, leaves no partial exam or
+     * version behind for the failed one, and the next run finishes it with exactly one serving version.
+     */
+    @Test
+    void interruptedBuildLeavesNoPartialExamAndResumes() {
+        // Take the two exams the builder meets first back to nothing, so the next build really creates them.
+        var first = definition.exams().get(0);
+        var second = definition.exams().get(1);
+        List<String> questionCodes = jdbc.queryForList("SELECT source_code FROM questionbank.question "
+                + "WHERE source_code LIKE 'DS-Q-%' ORDER BY source_code", String.class);
+        for (var exam : List.of(first, second)) {
+            UUID id = examId(exam.code());
+            jdbc.update("DELETE FROM exam.exam_version WHERE exam_id = ?", id);
+            jdbc.update("DELETE FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NOT NULL", id);
+            jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id = ?", id);
+            jdbc.update("DELETE FROM exam.exam WHERE id = ?", id);
+        }
+        // The check of the second exam fails: its transaction rolls back after the first exam has committed.
+        ExamCheckOrchestrator spy = Mockito.spy(checks);
+        var checkCalls = new java.util.concurrent.atomic.AtomicInteger();
+        var failedId = new java.util.concurrent.atomic.AtomicReference<UUID>();
+        Mockito.doAnswer(call -> {
+            if (checkCalls.incrementAndGet() == 2) {
+                failedId.set(call.getArgument(0));
+                throw new IllegalStateException("injected check failure");
+            }
+            return call.callRealMethod();
+        }).when(spy).check(Mockito.any(UUID.class), Mockito.any(), Mockito.any(), Mockito.isNull());
+        var builder = new PublishedExamSetBuilder(exams, listings, spy, publisher, discontinuer, templates, users,
+                jdbc, mapper, transactionManager, entityManager);
+        try {
+            assertThatThrownBy(builder::build)
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining(second.code());
+            // Immediately after the failure: the first exam is complete, the second left nothing behind.
+            assertThat(jdbc.queryForObject("SELECT status FROM exam.exam WHERE code = ?", String.class, first.code()))
+                    .as("first exam committed").isEqualTo("PUBLISHED");
+            assertThat(count("SELECT count(*) FROM exam.exam WHERE code = '" + second.code() + "'"))
+                    .as("no partial exam of %s", second.code()).isZero();
+            assertThat(failedId.get()).isNotNull();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?",
+                    Integer.class, failedId.get())).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_listing WHERE exam_id = ?",
+                    Integer.class, failedId.get())).isZero();
+        } finally {
+            // Resume with the real builder; the failed exam finishes, nothing is duplicated.
+            context.getBean(PublishedExamSetBuilder.class).build();
+        }
+        for (var exam : definition.exams()) {
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = "
+                    + "(SELECT id FROM exam.exam WHERE code = ?) AND state = 'SERVING'",
+                    Integer.class, exam.code())).as("serving versions of %s", exam.code()).isEqualTo(1);
+        }
+        assertThat(jdbc.queryForList("SELECT source_code FROM questionbank.question "
+                + "WHERE source_code LIKE 'DS-Q-%' ORDER BY source_code", String.class)).isEqualTo(questionCodes);
     }
 
     @Test
@@ -368,14 +498,21 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
                 image.path("questionCode").asText(), examCode).isTrue();
     }
 
+
     @Test
     void hscaChemistryAnswersAreListedInTheConstants() throws Exception {
         JsonNode chemistry = mapper.readTree(new org.springframework.core.io.ClassPathResource(
                 PublishedExamSetDefinition.RESOURCE).getInputStream()).path("hscaChemistry");
         assertThat(serving(chemistry.path("examCode").asText()).status()).isEqualTo("PUBLISHED");
+        List<String> codes = List.of("DS-Q-HSCA-HOA-SA-001", "DS-Q-HSCA-HOA-SA-002",
+                "DS-Q-HSCA-HOA-SA-003", "DS-Q-HSCA-HOA-SA-004", "DS-Q-HSCA-HOA-SA-005",
+                "DS-Q-HSCA-HOA-SA-006", "DS-Q-HSCA-HOA-SA-007", "DS-Q-HSCA-HOA-SA-008",
+                "DS-Q-HSCA-HOA-SA-009", "DS-Q-HSCA-HOA-SA-010", "DS-Q-HSCA-HOA-SA-011",
+                "DS-Q-HSCA-HOA-SA-012");
+        assertThat(chemistry.path("answers").size()).isEqualTo(codes.size());
         int index = 0;
         for (JsonNode answer : chemistry.path("answers")) {
-            String code = String.format("DS-Q-%s-%03d", chemistry.path("familyCode").asText(), ++index);
+            String code = codes.get(index++);
             JsonNode snapshot = mapper.readTree(jdbc.queryForObject("SELECT v.snapshot::text FROM questionbank.question q "
                     + "JOIN questionbank.question_version v ON v.question_id = q.id AND v.version_no = q.current_version_no "
                     + "WHERE q.source_code = ?", String.class, code));
