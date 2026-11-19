@@ -143,10 +143,23 @@ public final class PaperSolver {
      * tay cho test).
      */
     public PathResult solvePath(SolvePath path, CandidateSource source, SolveMode mode) {
+        return solvePath(path, source, mode, newDeadline());
+    }
+
+    /**
+     * Hạn thời gian của một yêu cầu bắt đầu ngay bây giờ ({@code limits.timeout()}); truyền cùng một
+     * hạn cho nhiều lần giải của một yêu cầu để các lần giải lại không được cấp hạn mới (R3-1).
+     */
+    public Instant newDeadline() {
+        return clock.instant().plus(limits.timeout());
+    }
+
+    /** Như {@link #solvePath(SolvePath, CandidateSource, SolveMode)} nhưng dùng hạn cho trước (UNCONFIRMED khi quá hạn). */
+    public PathResult solvePath(SolvePath path, CandidateSource source, SolveMode mode, Instant deadline) {
         Objects.requireNonNull(path, "path must not be null");
         Objects.requireNonNull(source, "source must not be null");
         Objects.requireNonNull(mode, "mode must not be null");
-        Instant deadline = clock.instant().plus(limits.timeout());
+        Objects.requireNonNull(deadline, "deadline must not be null");
         Runnable check = deadlineCheck(deadline);
         try {
             return solvePath(path, memoized(source), mode, new HashMap<>(), check,

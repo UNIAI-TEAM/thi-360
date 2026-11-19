@@ -1,5 +1,6 @@
 package vn.unicom.thi360.exam.application;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -79,10 +80,12 @@ final class PreviewPathSolver {
         SectionOnPath section = path.sections().getFirst();
         TrimPolicy.Result blocked = null;
         // A witness of the full count may need every standalone question for the MAPID minimums of the subject;
-        // another one (next seeds) may not, exactly as PaperSolver.solvePick. Attempt 0 is the plain seed.
+        // another one (next seeds) may not, exactly as PaperSolver.solvePick. Attempt 0 is the plain seed. The retries
+        // share one deadline, as in solvePick: the request never runs longer than the solver timeout (R3-1).
+        Instant deadline = solver.newDeadline();
         for (int attempt = 0; attempt < PaperSolver.TRIM_ATTEMPTS; attempt++) {
             long attemptSeed = seed + attempt;
-            PathResult full = solver.solvePath(path, source, SolveMode.generate(attemptSeed));
+            PathResult full = solver.solvePath(path, source, SolveMode.generate(attemptSeed), deadline);
             if (!trim || full.status() != SolveStatus.VALID) return new Result(full, List.of());
             SubjectWitness witness = full.witness().getFirst();
             TrimPolicy.Result trimmed = TrimPolicy.trim(section, witness, source, attemptSeed);
