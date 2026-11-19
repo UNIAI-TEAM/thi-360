@@ -20,6 +20,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import vn.unicom.thi360.shared.testapi.TestApiPaths;
 
 @Configuration
 @EnableWebSecurity
@@ -103,6 +104,9 @@ public class SecurityConfig {
                                 "/actuator/health/**",
                                 "/v3/api-docs",
                                 "/v3/api-docs/**").permitAll()
+                        // /api/v1/test/**: chỉ profile e2e có handler (shared/testapi); profile khác không có
+                        // handler nên phải nhận 404, không phải 401 của anyRequest().authenticated().
+                        .requestMatchers(TestApiPaths.PATTERN).permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/admin/**").access((authentication, context) -> {
                             var authObj = authentication.get();
