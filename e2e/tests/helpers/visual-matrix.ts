@@ -130,6 +130,11 @@ export interface ElementOverflowFinding {
  * cả trang nên không thấy lỗi này. `scope` giới hạn trong một vùng; `ignore` là selector của phần tử được phép cuộn
  * (mặc định khối mã, ô nhập và công thức hiển thị của KaTeX); `allowAccessibleScroller` bỏ qua phần tử cuộn
  * được đúng luật bảng rộng (mặc định không: bảng xem lại phải vừa khung, không cuộn).
+ *
+ * Phần tử ẩn thị giác (kiểu `.sr-only`, `.katex-mathml`, `thead` ẩn ở khổ hẹp) luôn bị bỏ qua, xét theo style tính
+ * ra chứ không theo tên lớp: bản thân hoặc tổ tiên có `display: none`, `visibility: hidden`, `clip: rect(...)` rỗng,
+ * `clip-path: inset(...)` che hết, hoặc khung <= 1px x 1px có `overflow` khác `visible`. Chúng bị cắt có chủ ý và
+ * chỉ dành cho trình đọc màn hình, không phải lỗi bố cục.
  */
 export function auditElementOverflow(
   page: Page,
@@ -140,11 +145,48 @@ export function auditElementOverflow(
       const root = scope ? document.querySelector(scope) : document.body;
       if (!root) return [];
       const findings: ElementOverflowFinding[] = [];
+      const px = (value: string, basis: number) =>
+        value.endsWith("%") ? (Number.parseFloat(value) / 100) * basis : Number.parseFloat(value);
+      /** Chính phần tử này che hết nội dung của nó khỏi mắt người (chưa xét tổ tiên). */
+      const hidesItself = (el: Element): boolean => {
+        const style = getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return true;
+        const rect = el.getBoundingClientRect();
+        const clipsOverflow = style.overflowX !== "visible" || style.overflowY !== "visible";
+        if (clipsOverflow && rect.width <= 1 && rect.height <= 1) return true;
+        // `clip: rect(top, right, bottom, left)` chỉ có tác dụng với phần tử định vị tuyệt đối hoặc cố định.
+        const clip = /^rect\(([^)]*)\)$/.exec(style.clip);
+        if (clip && (style.position === "absolute" || style.position === "fixed")) {
+          const [top, right, bottom, left] = clip[1]!.split(/[\s,]+/).map(Number.parseFloat);
+          if (right! <= left! || bottom! <= top!) return true;
+        }
+        const inset = /^inset\(([^)]*)\)/.exec(style.clipPath);
+        if (inset) {
+          const [top, right = top, bottom = top, left = right] = inset[1]!
+            .split(/\s+round\s+/)[0]!
+            .trim()
+            .split(/\s+/);
+          const vertical = px(top!, rect.height) + px(bottom!, rect.height);
+          const horizontal = px(left!, rect.width) + px(right!, rect.width);
+          if (vertical >= rect.height || horizontal >= rect.width) return true;
+        }
+        return false;
+      };
+      const hiddenCache = new Map<Element, boolean>();
+      const isVisuallyHidden = (el: Element | null): boolean => {
+        if (!el) return false;
+        const known = hiddenCache.get(el);
+        if (known !== undefined) return known;
+        const result = hidesItself(el) || isVisuallyHidden(el.parentElement);
+        hiddenCache.set(el, result);
+        return result;
+      };
       for (const el of root.querySelectorAll("*")) {
         const style = getComputedStyle(el);
         if (style.display === "none" || style.display === "contents" || style.overflowX === "visible") continue;
         if (el.clientWidth === 0 || el.scrollWidth <= el.clientWidth + 1) continue;
         if (el.matches(ignore)) continue;
+        if (isVisuallyHidden(el)) continue;
         const named = Boolean(el.getAttribute("aria-label") || el.getAttribute("aria-labelledby"));
         const accessibleScroller =
           el.getAttribute("role") === "region" && named && (el as HTMLElement).tabIndex >= 0;

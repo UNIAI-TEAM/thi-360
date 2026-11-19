@@ -252,4 +252,31 @@ test.describe("phép kiểm lẫn ngôn ngữ của visual-matrix (AC-23)", () =
       await inBlank(`<div style="width:200px;overflow-x:auto"><p>Ngắn</p></div>`, (page) => auditElementOverflow(page)),
     ).toEqual([]);
   });
+
+  test("phép kiểm cấp phần tử bỏ qua phần tử ẩn thị giác nhưng vẫn bắt bảng bị cắt thật (TV2-1)", async () => {
+    const head = `<style>
+      .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
+      .math{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)}
+      .inset{position:absolute;width:100px;height:20px;overflow:hidden;clip-path:inset(50%)}
+    </style>`;
+    const wide = `<span style="display:inline-block;width:400px">Điểm rất dài</span>`;
+    const hidden = [
+      `<span class="sr-only">${wide}</span>`,
+      `<span class="math">${wide}</span>`,
+      `<span class="inset">${wide}</span>`,
+      `<table><thead class="sr-only"><tr><th style="min-width:400px">Cột</th></tr></thead></table>`,
+      `<div style="display:none;width:50px;overflow:hidden">${wide}</div>`,
+      `<div style="visibility:hidden;width:50px;overflow:hidden">${wide}</div>`,
+      `<div class="sr-only"><div style="width:50px;overflow-x:auto">${wide}</div></div>`,
+    ].join("");
+    expect(await inBlank(hidden, (page) => auditElementOverflow(page), { head })).toEqual([]);
+    // Ẩn thị giác nằm cạnh cột bị cắt thật: chỉ cột thật bị báo.
+    const clipped = await inBlank(
+      `${hidden}<div style="width:200px;overflow-x:hidden"><table><tr><td style="min-width:400px">Điểm</td></tr></table></div>`,
+      (page) => auditElementOverflow(page),
+      { head },
+    );
+    expect(clipped).toHaveLength(1);
+    expect(clipped[0]).toMatchObject({ element: "div", clientWidth: 200, accessibleScroller: false });
+  });
 });
