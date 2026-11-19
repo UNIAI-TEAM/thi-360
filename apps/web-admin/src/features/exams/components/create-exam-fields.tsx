@@ -501,20 +501,17 @@ export function ScopeFields({
 }
 
 /**
- * Ghi chú của mẫu đã nạp: tên mẫu, năm cấu trúc và năm ma trận; hai năm khác nhau thì ô xác nhận chuyên môn khi có
+ * Ghi chú của mẫu đã nạp: năm cấu trúc khác năm ma trận thì cảnh báo, kèm ô xác nhận chuyên môn khi có
  * `onYearsConfirmedChange` (chưa xác nhận thì kiểm tra cấu hình chặn công bố), không thì chỉ nhắc xác nhận sau khi tạo;
- * điều chuyên gia cần xác nhận (`expertNote`).
+ * điều chuyên gia cần xác nhận (`expertNote`). Không có gì để nói thì không dựng gì.
  */
 export function TemplateNotes({
   template,
-  name,
   yearsConfirmed = false,
   onYearsConfirmedChange,
   disabled,
 }: {
   template: ExamTemplate | undefined;
-  /** Tên đã dịch của mẫu; thiếu thì dùng `template.name` của dữ liệu. */
-  name?: string;
   yearsConfirmed?: boolean;
   onYearsConfirmedChange?: (confirmed: boolean) => void;
   disabled?: boolean;
@@ -523,28 +520,10 @@ export function TemplateNotes({
   const checkboxId = useId();
   const hintId = useId();
   if (!template) return null;
-  const hasYears = template.structureYear != null || template.matrixYear != null;
   const differ = yearsDiffer(template);
+  if (!differ && !template.expertNote) return null;
   return (
     <div className="flex flex-col gap-3">
-      <p className="flex items-start gap-2 text-body text-text-secondary">
-        <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
-        <span>
-          {t("loaded", { name: name ?? template.name })} {t("changeInStructure")}
-        </span>
-      </p>
-      {hasYears && (
-        <dl className="flex flex-wrap gap-x-6 gap-y-1 text-body">
-          <div className="flex gap-1.5">
-            <dt className="text-text-muted">{t("structureYear")}</dt>
-            <dd className="m-0 font-semibold text-text tabular-nums">{yearText(template.structureYear) || "—"}</dd>
-          </div>
-          <div className="flex gap-1.5">
-            <dt className="text-text-muted">{t("matrixYear")}</dt>
-            <dd className="m-0 font-semibold text-text tabular-nums">{yearText(template.matrixYear) || "—"}</dd>
-          </div>
-        </dl>
-      )}
       {differ && (
         <div data-field="yearsConfirmed" className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning-bg p-3">
           <p className="flex items-start gap-2 text-body font-medium text-text">

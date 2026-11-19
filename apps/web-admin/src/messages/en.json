@@ -5577,10 +5577,6 @@
         "noTemplate": "{subject} has no structure template yet. The initial structure starts empty: enter the questions and duration, and add parts if needed."
       },
       "templateNotes": {
-        "loaded": "The system loads the latest template: {name}.",
-        "changeInStructure": "To use another year's version, choose it in the Structure step.",
-        "structureYear": "Structure year",
-        "matrixYear": "Matrix year",
         "yearsDiffer": "The {structureYear} structure uses the {matrixYear} matrix: an expert must confirm the matrix targets before it is sold.",
         "yearsConfirm": "An expert has confirmed that the {matrixYear} matrix targets fit this structure",
         "yearsConfirmHint": "Until it is confirmed, the configuration check blocks publishing. You can confirm later in General information.",
@@ -5670,7 +5666,6 @@
         "title": "Overview structure",
         "description": "Numbers come from the default template “{template}”; edit them right on the row. Changing a number here does not reload the template.",
         "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
-        "versionAtStep2": "Structure version is chosen in step 2",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
         "regionLabel": "Exam structure overview table",
         "loading": "Loading the overview table",

@@ -691,8 +691,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                   : tOverview("descriptionNoTemplate")
             }
           >
-            <TemplateNotes template={template} name={templateName(template) ?? undefined} />
-            <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
+            <TemplateNotes template={template} />
             {lockedCounts && (
               <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
                 <Lock aria-hidden className="size-3.5" />

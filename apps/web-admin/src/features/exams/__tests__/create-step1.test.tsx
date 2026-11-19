@@ -125,7 +125,7 @@ describe("trang Tạo bài thi, bước 1: bảng tổng quan", () => {
     expect(countInputs()).toHaveLength(3);
     expect(summaryValue("Tổng số câu")).toBe("150");
     expect(summaryValue("Tổng thời gian")).toContain("195 phút");
-    expect(screen.getByText("Phiên bản cấu trúc chọn ở bước 2")).toBeInTheDocument();
+    expect(screen.queryByText("Phiên bản cấu trúc chọn ở bước 2")).toBeNull();
     expect(screen.queryByRole("combobox", { name: /phiên bản/i })).toBeNull();
   });
 
@@ -701,5 +701,45 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
       const row = screen.getAllByText(subject).map((el) => el.closest("tr")).find((tr) => tr !== null)!;
       expect(within(row).getAllByRole("cell").at(-1)!.textContent).toBe("—");
     }
+  }, 20_000);
+});
+
+describe("trang Tạo bài thi, bước 1: bỏ ghi chú nạp mẫu, năm và chip phiên bản (UNI-2750)", () => {
+  const REMOVED = [/Hệ thống nạp mẫu mới nhất/, /Muốn dùng phiên bản năm khác/, /Năm cấu trúc$/, /Năm ma trận$/, /Phiên bản cấu trúc chọn ở bước 2/];
+  const expectNoRemovedBlocks = () => {
+    for (const text of REMOVED) expect(screen.queryByText(text), String(text)).toBeNull();
+  };
+  const overviewSection = () => screen.getByRole("heading", { level: 2, name: "Cấu trúc tổng quan" }).closest("section")!;
+
+  it("HSA toàn bài: bảng tổng quan hiện, ba khối ghi chú không còn", async () => {
+    await renderPage();
+    expect(within(overviewSection()).getAllByRole("textbox", { name: /^Số câu của/ })).toHaveLength(3);
+    expectNoRemovedBlocks();
+  });
+
+  it("THPTQG Theo môn: không còn ba khối ghi chú", async () => {
+    const user = await renderWithTemplates(THPTQG_TEMPLATES);
+    await pickKind(user, "THPTQG");
+    await pickSubject(user, "Toán");
+    await screen.findAllByRole("textbox", { name: /^Số câu của/ });
+    expectNoRemovedBlocks();
+  }, 20_000);
+
+  it("mẫu có năm cấu trúc khác năm ma trận: vẫn hiện cảnh báo", async () => {
+    const [bca] = BCA_TEMPLATES as [Wire];
+    const differing = { ...bca, structureYear: 2026, matrixYear: 2025 };
+    const user = await renderWithTemplates([differing]);
+    await pickKind(user, "BCA");
+    await screen.findByText("Trắc nghiệm bắt buộc");
+    expect(screen.getByText(/Cấu trúc 2026 dùng ma trận 2025/)).toBeInTheDocument();
+    expectNoRemovedBlocks();
+  }, 20_000);
+
+  it("mẫu khóa số câu: vẫn hiện chip khóa", async () => {
+    const user = await renderWithTemplates(VACT_TEMPLATES);
+    await pickKind(user, "V-ACT");
+    await screen.findByRole("textbox", { name: /^Điểm của Sử dụng ngôn ngữ/ });
+    expect(screen.getByText("Mẫu đã khóa số câu")).toBeInTheDocument();
+    expectNoRemovedBlocks();
   }, 20_000);
 });

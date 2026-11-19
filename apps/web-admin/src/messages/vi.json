@@ -5577,10 +5577,6 @@
         "noTemplate": "{subject} chưa có mẫu cấu trúc. Cấu trúc khởi tạo để trống: nhập số câu, thời lượng và thêm phần nếu cần."
       },
       "templateNotes": {
-        "loaded": "Hệ thống nạp mẫu mới nhất: {name}.",
-        "changeInStructure": "Muốn dùng phiên bản năm khác, chọn ở bước Cấu trúc.",
-        "structureYear": "Năm cấu trúc",
-        "matrixYear": "Năm ma trận",
         "yearsDiffer": "Cấu trúc {structureYear} dùng ma trận {matrixYear}: chuyên gia cần xác nhận chỉ tiêu ma trận trước khi bán.",
         "yearsConfirm": "Chuyên gia đã xác nhận chỉ tiêu ma trận {matrixYear} dùng được cho cấu trúc này",
         "yearsConfirmHint": "Chưa xác nhận thì kiểm tra cấu hình chặn công bố. Có thể xác nhận sau ở Thông tin chung.",
@@ -5670,7 +5666,6 @@
         "title": "Cấu trúc tổng quan",
         "description": "Số lấy từ mẫu mặc định “{template}”, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
         "descriptionNoTemplate": "Chưa có mẫu mặc định: nhập số câu, thời lượng và điểm của các phần ngay trên dòng.",
-        "versionAtStep2": "Phiên bản cấu trúc chọn ở bước 2",
         "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
         "regionLabel": "Bảng cấu trúc tổng quan của bài thi",
         "loading": "Đang tải bảng tổng quan",
