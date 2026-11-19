@@ -21,6 +21,7 @@ import {
   resolveScope,
   sameSelection,
   scopeDefaults,
+  scopeTemplate,
   type ScopeSelection,
   yearsDiffer,
 } from "../create-exam-schema";
@@ -417,8 +418,8 @@ function ExamGeneralForm({
     return segments.length > 0 ? segments.join(" + ") : t("facts.pathsFixed");
   })();
 
-  /** Số của mẫu mới nhất của phạm vi đang chọn (chờ xác nhận nạp lại), chỉ đọc. */
-  const pendingTemplate = showPreview ? latestTemplate(templates, selection) : undefined;
+  /** Số của mẫu của phạm vi đang chọn (chờ xác nhận nạp lại), chỉ đọc; cùng quy tắc chọn mẫu và cắt phần với bước 1. */
+  const pendingTemplate = showPreview ? scopeTemplate(templates, kinds, selection) : undefined;
   const pendingRows = showPreview ? overviewRowsFromTemplate(pendingTemplate, selection.scope, selection.partCode) : [];
 
   const overviewBody = (() => {

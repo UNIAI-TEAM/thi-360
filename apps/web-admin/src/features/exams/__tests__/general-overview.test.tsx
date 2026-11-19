@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ContentReference } from "@/features/content/types";
 import { renderWithProviders } from "@/test/render";
 import { ExamGeneralView } from "../components/exam-general-view";
 import { ExamStructureView } from "../components/exam-structure-view";
@@ -14,9 +15,15 @@ import { sp2eVanExam } from "./sp2e-van-fixture";
  * (PUT /structure với `expectedRevision` của cấu trúc), rồi mới ghi thông tin (PATCH); lỗi ở PUT thì không gửi gì khác.
  */
 
+const referenceMock = vi.hoisted(() => ({ patch: null as null | ((reference: ContentReference) => void) }));
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
-  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
+  const { getContentReferenceFixture } = await import("@/test/fixtures/content-reference");
+  const getContentReference = async (locale?: "vi" | "en") => {
+    const reference = await getContentReferenceFixture(locale);
+    referenceMock.patch?.(reference);
+    return reference;
+  };
   return { ...actual, getContentReference, defaultContentApiDeps: { getContentReference } };
 });
 
@@ -123,6 +130,7 @@ function open() {
 }
 
 beforeEach(() => {
+  referenceMock.patch = null;
   window.history.replaceState(null, "", "/");
 });
 
@@ -325,5 +333,40 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     expect(within(table).getByRole("textbox", { name: "Số câu của Logic và phân tích số liệu" })).toHaveValue("12");
     expect(within(table).getByRole("textbox", { name: "Số câu của Suy luận khoa học" })).toHaveValue("18");
   }, 30_000);
-});
 
+  it("R1-3: THPTQG Toán Theo môn đổi sang Theo phần: bảng xem trước là phần cắt từ mẫu Theo môn, như bước 1 và hộp nạp lại", async () => {
+    referenceMock.patch = (reference) => {
+      reference.examKinds.find((kind) => kind.code === "THPTQG")!.scopes = ["SUBJECT", "PART"];
+    };
+    const hsaFull = FIXTURE_TEMPLATES.find((item) => item.code === "HSA_FULL")!;
+    const subjectTemplate = { ...structuredClone(hsaFull), code: "THPTQG_MATH", kind: "THPTQG" as const, scope: "SUBJECT" as const, subjectCode: "MATH", timing: "PER_PART" as const };
+    routerMock.push.mockReset();
+    backend = new ExamsBackend();
+    backend.server.on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [toWireTemplate(subjectTemplate)] });
+    backend.install();
+    seeded = {
+      ...backend.app("ex-hsa-f-001"),
+      id: EXAM_ID,
+      kind: "THPTQG",
+      scope: "SUBJECT",
+      subjectCode: "MATH",
+      partCode: null,
+      timing: "PER_PART",
+      templateCode: "THPTQG_MATH",
+      servingVersion: null,
+      parts: [hsaPart(1, MATH, 45, 75, "MATH"), hsaPart(2, LITERATURE, 50, 60, "MATH"), hsaPart(3, SCIENCE, 50, 60, "MATH")],
+    };
+    backend.seedExam(seeded);
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
+    expect(screen.queryByText(/Phạm vi mới chưa có mẫu/)).not.toBeInTheDocument();
+    const table = await tableRegion();
+    // Mẫu Theo môn cắt về đúng phần đã chọn: một dòng phần có số câu của phần đó, chỉ đọc.
+    const counts = within(table).getAllByRole("textbox", { name: /^Số câu của/ });
+    expect(counts).toHaveLength(1);
+    expect(counts[0]).toHaveAttribute("readonly");
+  }, 30_000);
+});
