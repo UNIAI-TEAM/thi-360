@@ -74,7 +74,11 @@ class MapidRuleCompilerTest {
     void sourceRulesNeverBecomeOneUnionedScopeOfTheSection() {
         // Every SOURCE row is its own condition (the compiled sources); the effective scope keeps no nodes, so the
         // rows cannot widen each other into one union (UNI-2758 R1-2).
-        var effective = compile(rule("s1", MapidRuleType.SOURCE, null, A, B), rule("s2", MapidRuleType.SOURCE, null, C));
+        var compiled = MapidRuleCompiler.compile(section(MapidMode.MATRIX, List.of(
+                rule("s1", MapidRuleType.SOURCE, null, A, B), rule("s2", MapidRuleType.SOURCE, null, C))));
+        var effective = compiled.effectiveSection();
+        assertThat(compiled.sourcesOf("g1")).containsExactly(List.of(A, B), List.of(C));
+        assertThat(compiled.sourcesOf("g2")).containsExactly(List.of(A, B), List.of(C));
         assertThat(effective.knowledgeScope().nodeIds()).isEmpty();
         assertThat(effective.knowledgeScope().competencyCodes()).containsExactly("SEC");
         assertThat(block(effective, "g2").knowledgeScope().nodeIds()).isEmpty();
@@ -82,7 +86,14 @@ class MapidRuleCompilerTest {
 
     @Test
     void sourceRulesOfAGroupNeverReplaceTheSubjectOnesInTheBlockScope() {
-        var effective = compile(rule("s1", MapidRuleType.SOURCE, "g2", A, B), rule("s2", MapidRuleType.SOURCE, "g1", C));
+        var compiled = MapidRuleCompiler.compile(section(MapidMode.MATRIX, List.of(
+                rule("s0", MapidRuleType.SOURCE, null, B), rule("s1", MapidRuleType.SOURCE, "g2", A, B),
+                rule("s2", MapidRuleType.SOURCE, "g1", C))));
+        var effective = compiled.effectiveSection();
+        // the subject's rule and the group's own rule both hold for the group (subject first)
+        assertThat(compiled.sourcesOf("g2")).containsExactly(List.of(B), List.of(A, B));
+        assertThat(compiled.sourcesOf("g1")).containsExactly(List.of(B), List.of(C));
+        assertThat(compiled.sourcesOf("g3")).containsExactly(List.of(B));
         QuestionBlock set = block(effective, "g2");
         assertThat(set.knowledgeScope().nodeIds()).isEmpty();
         assertThat(set.knowledgeScope().competencyCodes()).containsExactly("BLK");

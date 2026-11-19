@@ -91,6 +91,22 @@ class AvailableQuestionCountServiceTest {
         assertThat(component.getAccessor().invoke(filter.getValue())).isEqualTo(true);
     }
 
+    @Test
+    void nodeGroupsAreAnAndOfOrGroupsAndTheSameNodeModeAppliesToEachGroup() throws Exception {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper()
+                .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        var scope = json.readValue("{\"nodeGroups\":[[\"" + SCOPE + "\",\"" + OTHER + "\"],[\"" + EXCLUDED + "\"]],"
+                + "\"everyChildSameNode\":true}", KnowledgeScope.class);
+        service.count(query(scope));
+        var filter = ArgumentCaptor.forClass(QuestionSourcePort.Filter.class);
+        verify(source).count(filter.capture());
+        // one AND condition per SOURCE rule; A|B inside a rule is an OR of two subtrees
+        assertThat(filter.getValue().additionalKnowledgeGroups()).containsExactly(
+                List.of(List.of(SCOPE), List.of(OTHER)), List.of(List.of(EXCLUDED, EXCLUDED_CHILD)));
+        assertThat(filter.getValue().additionalEveryChildSameNode()).containsExactly(true, true);
+        assertThat(filter.getValue().knowledgeGroups()).isNullOrEmpty();
+    }
+
     /** Read from JSON, as the web sends it: {@code excludedNodeIds} is the new, optional field of the scope. */
     private static KnowledgeScope scope(List<UUID> nodeIds, List<UUID> excluded) {
         try {

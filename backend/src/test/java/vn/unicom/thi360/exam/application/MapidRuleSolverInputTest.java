@@ -84,6 +84,9 @@ class MapidRuleSolverInputTest {
         }
         assertThat(conditions).containsExactlyInAnyOrder(java.util.Set.of(ROOT, CHILD), java.util.Set.of(CHILD),
                 java.util.Set.of(LEGACY));
+        // a set must share one node of EVERY condition, not of their union
+        assertThat(built.everyChildSameNode()).isTrue();
+        assertThat(built.additionalEveryChildSameNode()).containsExactly(true, true);
     }
 
     @Test

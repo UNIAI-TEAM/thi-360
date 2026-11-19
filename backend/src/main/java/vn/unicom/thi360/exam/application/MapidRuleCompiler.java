@@ -56,8 +56,8 @@ public final class MapidRuleCompiler {
         for (QuestionBlock block : section.blocks()) {
             blocks.put(block.id(), block);
         }
-        Set<UUID> sectionSource = new LinkedHashSet<>();
-        Map<String, Set<UUID>> blockSource = new LinkedHashMap<>();
+        List<List<UUID>> subjectSources = new ArrayList<>();
+        Map<String, List<List<UUID>>> groupSources = new LinkedHashMap<>();
         List<TopicQuota> sectionQuotas = new ArrayList<>();
         Map<String, List<TopicQuota>> blockQuotas = new LinkedHashMap<>();
         List<Cap> caps = new ArrayList<>();
@@ -69,9 +69,13 @@ public final class MapidRuleCompiler {
                     continue;
                 }
                 switch (rule.type()) {
-                    case SOURCE -> (target == null ? sectionSource
-                            : blockSource.computeIfAbsent(target.id(), key -> new LinkedHashSet<>()))
-                            .addAll(rule.nodeIds());
+                    case SOURCE -> {
+                        if (!rule.nodeIds().isEmpty()) {
+                            (target == null ? subjectSources
+                                    : groupSources.computeIfAbsent(target.id(), key -> new ArrayList<>()))
+                                    .add(List.copyOf(rule.nodeIds()));
+                        }
+                    }
                     case PRESENT -> addQuota(rule, 1, target, sectionQuotas, blockQuotas);
                     case COUNT -> count(rule, section, target, sectionQuotas, blockQuotas, caps);
                     case ONLY_IN_GROUP -> {
@@ -94,33 +98,28 @@ public final class MapidRuleCompiler {
         boolean matrix = section.mapidMode() == MapidMode.MATRIX;
         List<QuestionBlock> effectiveBlocks = new ArrayList<>();
         for (QuestionBlock block : section.blocks()) {
-            Set<UUID> source = blockSource.get(block.id());
-            effectiveBlocks.add(withScopeAndQuotas(block,
-                    scope(block.knowledgeScope(), matrix, source, isSet(block)),
+            effectiveBlocks.add(withScopeAndQuotas(block, scope(block.knowledgeScope(), matrix),
                     blockQuotas.getOrDefault(block.id(), List.of())));
         }
         ExamSection effective = new ExamSection(section.id(), section.subjectCode(), section.questionCount(),
-                scope(section.knowledgeScope(), matrix, sectionSource, true), section.answerQuotas(),
+                scope(section.knowledgeScope(), matrix), section.answerQuotas(),
                 section.matrix(), section.choiceGroup(), effectiveBlocks, sectionQuotas,
                 section.audioRequirement(), section.mapidMode(), section.mapidRules());
         Map<String, List<UUID>> compiledExclusions = new LinkedHashMap<>();
         exclusions.forEach((blockId, nodes) -> compiledExclusions.put(blockId, List.copyOf(nodes)));
-        return new CompiledMapidRules(effective, caps, compiledExclusions);
+        return new CompiledMapidRules(effective, caps, compiledExclusions, subjectSources, groupSources);
     }
 
     /**
-     * Legacy nodes always go. In MATRIX the scope is rebuilt from the SOURCE rules ({@code source} may be null) and
-     * {@code everyChildInScope} only follows them; in ALL every other field is kept, as it has no node to act on.
+     * Legacy nodes always go; the SOURCE rules travel as {@link CompiledMapidRules#sourcesOf conditions}, never as
+     * one unioned scope. In MATRIX {@code everyChildInScope} goes with them; in ALL every other field is kept, as it
+     * has no node to act on.
      */
-    private static KnowledgeScope scope(KnowledgeScope legacy, boolean matrix, Set<UUID> source, boolean every) {
-        List<String> competencies = legacy == null ? List.of() : legacy.competencyCodes();
-        if (matrix && source != null && !source.isEmpty()) {
-            return new KnowledgeScope(List.copyOf(source), competencies, every ? Boolean.TRUE : null);
-        }
+    private static KnowledgeScope scope(KnowledgeScope legacy, boolean matrix) {
         if (legacy == null) {
             return null;
         }
-        return new KnowledgeScope(List.of(), competencies, matrix ? null : legacy.everyChildInScope());
+        return new KnowledgeScope(List.of(), legacy.competencyCodes(), matrix ? null : legacy.everyChildInScope());
     }
 
     private static void count(MapidRule rule, ExamSection section, QuestionBlock target,

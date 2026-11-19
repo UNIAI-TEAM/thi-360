@@ -2,6 +2,7 @@ package vn.unicom.thi360.exam.application;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,7 +18,6 @@ import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.KnowledgeScope;
-import vn.unicom.thi360.exam.domain.MapidMode;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.ParticipationMode;
 import vn.unicom.thi360.exam.domain.QuotaEnforcement;
@@ -125,8 +125,10 @@ public class SolverInputBuilder {
             var filter = filters.get(group);
             if (filter == null || filter.subjectId() == null) return -1;
             var singles = new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(), List.of(), null,
-                    null, null, List.of(), List.of(), null, null, List.of(), List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), QuestionSourcePort.AudioRequirement.ANY, filter.excludedKnowledge());
+                    null, null, List.of(), List.of(), null, null, List.of(), List.of(), List.of(),
+                    filter.additionalKnowledgeGroups(), List.of(), null, filter.additionalEveryChildInScope(),
+                    QuestionSourcePort.AudioRequirement.ANY, filter.excludedKnowledge(), null,
+                    filter.additionalEveryChildSameNode());
             var found = source.findCandidates(singles, fetchLimit);
             if (found.size() >= fetchLimit) return -1;
             return found.stream().filter(candidate -> candidate.setId() == null).count();
@@ -175,7 +177,8 @@ public class SolverInputBuilder {
                     filter.additionalCompetencyGroups(), filter.everyChildInScope(),
                     filter.additionalEveryChildInScope(),
                     dimension == FilterDimension.AUDIO ? QuestionSourcePort.AudioRequirement.ANY
-                            : filter.audioRequirement(), filter.excludedKnowledge(), filter.everyChildSameNode());
+                            : filter.audioRequirement(), filter.excludedKnowledge(), filter.everyChildSameNode(),
+                    filter.additionalEveryChildSameNode());
         }
 
         /**
@@ -345,7 +348,12 @@ public class SolverInputBuilder {
                             parent.requiredPointsPerUnit(), null, shared);
                     if (AnswerQuotaCounting.countsInSetRow(section, block)) setRowGroups.add(group);
                     KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(), section.knowledgeScope());
-                    List<List<UUID>> subtrees = expandScope(scope, knowledge, knowledgeById, descendants);
+                    // SOURCE rules (BA 3, "chỉ lấy"): every rule of the subject and of the group must match, A|B|C inside
+                    // one rule stays an OR. The first rule rides in knowledgeGroups, the others in additional groups.
+                    List<List<UUID>> allSources = compiled.sourcesOf(block.id());
+                    List<List<UUID>> subtrees = allSources.isEmpty()
+                            ? expandScope(scope, knowledge, knowledgeById, descendants)
+                            : expandNodes(allSources.getFirst(), knowledge, knowledgeById, descendants);
                     List<List<List<UUID>>> slotScopes = slot == null || slot.knowledgeScope() == null
                             || slot.knowledgeScope().nodeIds().isEmpty() ? List.of()
                             : List.of(expandScope(slot.knowledgeScope(), knowledge, knowledgeById, descendants));
@@ -359,19 +367,25 @@ public class SolverInputBuilder {
                     List<List<String>> slotCompetencies = slot == null || slot.knowledgeScope() == null
                             || slot.knowledgeScope().competencyCodes().isEmpty() ? List.of()
                             : List.of(slot.knowledgeScope().competencyCodes());
-                    boolean sourceScope = declared.mapidMode() == MapidMode.MATRIX && scope != null
-                            && !scope.nodeIds().isEmpty();
+                    List<List<List<UUID>>> additionalKnowledge = new ArrayList<>(slotScopes);
+                    List<Boolean> additionalEvery = new ArrayList<>(
+                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())));
+                    List<Boolean> additionalSameNode = new ArrayList<>(Collections.nCopies(slotScopes.size(), Boolean.FALSE));
+                    for (int s = 1; s < allSources.size(); s++) {
+                        additionalKnowledge.add(expandNodes(allSources.get(s), knowledge, knowledgeById, descendants));
+                        additionalEvery.add(Boolean.TRUE);
+                        additionalSameNode.add(Boolean.TRUE);
+                    }
                     List<UUID> excluded = withDescendants(compiled.exclusions().getOrDefault(block.id(), List.of()),
                             knowledge, knowledgeById, descendants);
                     filters.put(group, new QuestionSourcePort.Filter(subject, subtrees,
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                             shape, answerFormats(block), conditions,
-                            slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
-                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())),
-                            audio(section.audioRequirement()), excluded,
-                            // SOURCE rules (BA 5): a set counts when all children carry the SAME code of the rule.
-                            sourceScope ? Boolean.TRUE : null));
+                            slotTags, additionalKnowledge, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
+                            additionalEvery, audio(section.audioRequirement()), excluded,
+                            // BA 5: a set counts for a SOURCE rule when all its children carry the SAME code of it.
+                            allSources.isEmpty() ? null : Boolean.TRUE, additionalSameNode));
                     groups.add(group);
                 }
             }
@@ -418,6 +432,12 @@ public class SolverInputBuilder {
             return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                     .map(CatalogItemView::id).toList();
         })).toList();
+    }
+
+    /** One OR-group of a SOURCE rule: every node with its descendants (an unknown node is an empty subtree). */
+    static List<List<UUID>> expandNodes(List<UUID> nodes, List<CatalogItemView> knowledge,
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+        return expandScope(new KnowledgeScope(nodes, List.of(), null), knowledge, knowledgeById, descendants);
     }
 
     private static GroupQuota group(QuestionBlock block, List<CatalogItemView> knowledge,

@@ -375,6 +375,11 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                         && Boolean.TRUE.equals(f.additionalEveryChildInScope().get(j));
                 addEveryChildKnowledge(parts, params, p + "extraEveryChildKnowledge" + j,
                         f.additionalKnowledgeGroups().get(j), everyChild);
+                boolean sameNode = f.additionalEveryChildSameNode() != null
+                        && j < f.additionalEveryChildSameNode().size()
+                        && Boolean.TRUE.equals(f.additionalEveryChildSameNode().get(j));
+                addEveryChildSameNode(parts, params, p + "extraSameNode" + j + "_",
+                        f.additionalKnowledgeGroups().get(j), sameNode);
             }
         }
         addExcludedKnowledge(parts, params, p + "excludedKnowledge", f.excludedKnowledge());
