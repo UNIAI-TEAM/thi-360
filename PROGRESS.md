@@ -232,10 +232,16 @@
 
 - **Bắt đầu:** M.Trường yêu cầu ngày 2026-11-19 ("commit đi. và cook plan nhé. bộ roster thì vẫn như đợt 2b. chia task cho cả local, bro và cty nhé. tùy tải máy mà chia cho phù hợp"). Kỹ năng zone17-builder giai đoạn cook, Orca Run `run_c1ecbe5f9173`, thư mục run `.thi360-dev/dot-3/` (ngoài repo). Issue cha UNI-2702, issue con UNI-2703..2744, TS = UNI-2701, FU = UNI-2700; bảng task ở `TASK.md`.
 - **Nhánh tích hợp** `integration/dot-3` = `develop` `1774c74d` + tài liệu đợt 3. Review độc lập vòng 4 và 5 (Codex) cho phần plan sửa sau khi duyệt; đã sửa ở `12d23578`, `e948ce88`. Quyết định trong lúc cook: B1 thêm `examId` vào `describe`/`reserve` của `EntitlementPort` (`16214331`); E26 mức tối thiểu 10.000 đồng cho sandbox, 5.000 mặc định môi trường thật (`8c43c5f2`).
-- **Sóng 1 đang chạy:** C-0 (cty), C-0b (bro), ML (bro), TS (cty), FS-4 (cty). Đã nhận: VP-1.
-- **VP-1 (UNI-2709) merge 2026-11-19** (PR #121, `171ee506`): đo trên sandbox VNPAY; vector chữ ký cho CM-3b (khóa test tự đặt); TM 8.4, E26, Q12, Q14 ghi kết quả đo. Ngân hàng NCB của sandbox từ chối dưới 10.000 đồng. `querydr` luôn trả `99`, `refund` trả HTTP 500 dù yêu cầu khớp tài liệu (đối chiếu từng trường hai lần): AC-3, AC-12, AC-14 chưa đo, chờ VNPAY trả lời Q9, Q14; VP-2 đo lại.
-- **Vướng:** Q9, Q14 chờ VNPAY (M.Trường hỏi). Tải VPS bro cao khi hai lane chạy E2E tại chỗ; chưa đặt lane thứ ba lên bro.
-- **Tiến độ:** 1/138 điểm (0,7%).
+- **Đã merge vào `integration/dot-3` (2026-11-19):**
+  - VP-1 (UNI-2709, PR #121, `171ee506`): đo trên sandbox VNPAY; vector chữ ký cho CM-3b (khóa test tự đặt); TM 8.4, E26, Q12, Q14 ghi kết quả đo. Ngân hàng NCB của sandbox từ chối dưới 10.000 đồng. `querydr` luôn trả `99`, `refund` trả HTTP 500 dù yêu cầu khớp tài liệu (đối chiếu từng trường hai lần): AC-3, AC-12, AC-14 chưa đo, chờ VNPAY trả lời Q9, Q14; VP-2 đo lại.
+  - C-0b (UNI-2704, PR #123, `2b72ce26`): profile `e2e`, `MutableClock` và `POST /api/v1/test/clock` (404 ngoài profile `e2e`), `ForbiddenKeysAssert`. Cloud verify 995/995.
+  - FS-4 (UNI-2733, PR #122, `4f3820ab`): bộ thành phần câu hỏi 8 dạng trong `packages/ui`, chế độ xem lại có lời giải, ma trận ảnh. Advisor chạy lại web-admin 2156/2156.
+  - C-0 (UNI-2703, PR #124, `b64c9e14`): module `commerce`, `attempt`; `EntitlementPort` (6 hàm, có `examId`) và `AttemptStatusProvider`; bit quyền 18–26; `THI360_TOKEN_PEPPER`; giới hạn `GET /api/v1/public/**` 120/phút/IP, miễn IPN VNPAY. Cloud verify 886 + 1016, 0 lỗi.
+- **Đang chạy:** ML (bro), TS (cty), CM-4a (cty). Mọi task còn lại chờ TS (EX-1, EX-2), ML (ID-1, ID-2) hoặc các task sau chúng.
+- **Ngoài plan:** bốn lane sửa lỗi HSA (uniworkos UNI-1695, UniAI UNI-2749), bảng ở `TASK.md`. Xong lane nào thì merge vào `integration/dot-3`, cherry-pick sang hotfix từ `develop`, PR vào `develop` và dựng lại bản demo (M.Trường đồng ý 2026-11-19).
+- **Advisor:** từ 16:15 ngày 2026-11-19 chuyển sang phiên chat mới theo yêu cầu của M.Trường; checkpoint bàn giao ở `.thi360-dev/dot-3/reports/handover-2026-11-19.md`.
+- **Vướng:** Q9, Q14 chờ VNPAY (M.Trường hỏi). VPS bro tải cao (load5 khoảng 9), chưa đặt lane mới lên bro.
+- **Tiến độ:** 8/138 điểm (5,8%).
 
 ### Nhật ký đợt 1
 
