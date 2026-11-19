@@ -5742,10 +5742,6 @@
       "questionsValue": "{count, number} câu",
       "source": "nguồn {count, number}",
       "sourceShort": "nguồn {count, number}, thiếu",
-      "sourceLabel": "Nguồn phù hợp với bộ lọc của khối:",
-      "sourceTotal": "{count, number} câu Sẵn sàng",
-      "sourceLoading": "đang đếm…",
-      "sourceError": "không đếm được",
       "conversionTitle": "Quy đổi thành số câu · khối {count, number} câu",
       "conversionCaption": "Số câu sau quy đổi, khối {count, number} câu",
       "conversionValue": "{theoretical} → {result, number}",
@@ -5762,6 +5758,11 @@
       "separateNote": "Hệ thống chọn câu đáp ứng đồng thời cả hai: mỗi câu được chọn vừa tính vào khối lớp vừa tính vào độ khó của nó.",
       "allocated": "Đã phân bổ {allocated, number} / {count, number} câu",
       "allocatedMeter": "{allocated, number} trên {count, number} câu",
+      "meterOver": "{allocated, number} trên {count, number} câu, vượt {over, number} câu",
+      "meterUnder": "{allocated, number} trên {count, number} câu, thiếu {short, number} câu",
+      "meterExact": "{allocated, number} trên {count, number} câu, khớp",
+      "over": "Vượt {count, number} câu",
+      "under": "Thiếu {count, number} câu",
       "matches": "Khớp số câu của khối",
       "issues": {
         "invalidValue": "Ma trận có giá trị âm hoặc số câu không phải số nguyên.",
@@ -5836,7 +5837,11 @@
         "legend": "Mức của {name}",
         "REQUIRED": "Bắt buộc",
         "REFERENCE": "Tham khảo",
-        "basisLocked": "Phân bố bắt buộc phải tính theo câu. Đổi đơn vị sang câu trước."
+        "basisLocked": "Phân bố bắt buộc phải tính theo câu. Đổi đơn vị sang câu trước.",
+        "fixedRequired": "Kỳ thi HSA: sinh đề luôn theo ma trận",
+        "expertPending": "Chờ chuyên gia xác nhận: phân bố khối lớp Tiếng Anh chỉ để tham khảo.",
+        "normalized": "Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA. Lưu để áp dụng.",
+        "undeclared": "Phân bổ này chưa khai báo nên không ràng buộc sinh đề."
       },
       "totalChange": {
         "title": "Tổng đổi thành {total, number} câu (trước đó {old, number} câu). Số câu mới:",

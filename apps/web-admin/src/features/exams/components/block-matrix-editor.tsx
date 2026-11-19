@@ -20,6 +20,7 @@ import {
 import { ratePercent } from "../allocation";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { AvailableQuestionCounts, BlockMatrix, MatrixMode, MatrixUnit, QuestionBlock, QuotaBasis, QuotaEnforcement } from "../types";
+import { hsaMatrixUndeclared } from "../hsa-enforcement";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { EnforcementToggle } from "./enforcement-toggle";
@@ -195,6 +196,7 @@ export function BlockMatrixEditor({
             name={`${block.id}-enforcement`}
             value={gradeEnforcement}
             basis={matrix.basis}
+            undeclared={hsaMatrixUndeclared(matrix)}
             onChange={(value) => setEnforcement("both", value)}
           />
         )}
@@ -341,6 +343,7 @@ export function BlockMatrixEditor({
                   name={`${block.id}-${dimension.key}-enforcement`}
                   value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}
                   basis={matrix.basis}
+                  undeclared={hsaMatrixUndeclared(matrix, dimension.key === "byGrade" ? "grade" : "difficulty")}
                   onChange={(value) => setEnforcement(dimension.key === "byGrade" ? "grade" : "difficulty", value)}
                 />
                 <MatrixTable
@@ -500,10 +503,10 @@ export function BlockMatrixEditor({
           blockCount={block.questionCount}
           totals={[
             ...(matrix.mode === "COMBINED"
-              ? [{ label: null, total: allocation.total }]
+              ? [{ label: null, total: allocation.total, pending: referenceOnly && allocation.total === 0 }]
               : [
-                  { label: t("byGradeCaption"), total: allocation.gradeTotal },
-                  { label: t("byDifficultyCaption"), total: allocation.difficultyTotal },
+                  { label: t("byGradeCaption"), total: allocation.gradeTotal, pending: gradeEnforcement === "REFERENCE" && allocation.gradeTotal === 0 },
+                  { label: t("byDifficultyCaption"), total: allocation.difficultyTotal, pending: difficultyEnforcement === "REFERENCE" && allocation.difficultyTotal === 0 },
                 ]),
             ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
           ]}
@@ -516,36 +519,32 @@ export function BlockMatrixEditor({
                     ? t("byCompetencyCaption")
                     : t("byDifficultyCaption")
                 : null;
-            if (issue.code === "INVALID_VALUE") return t("issues.invalidValue");
+            if (issue.code === "INVALID_VALUE") return { text: t("issues.invalidValue"), over: false };
             if (issue.code === "PERCENT_TOTAL") {
-              return t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) });
+              return {
+                text: t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) }),
+                over: issue.actual > 100,
+              };
             }
             if (issue.code === "ALLOCATION_TOTAL") {
-              return t("issues.allocationTotal", {
-                dimension: dimension ?? t("matrixName"),
-                actual: issue.actual,
-                expected: issue.expected,
-              });
+              return {
+                text: t("issues.allocationTotal", {
+                  dimension: dimension ?? t("matrixName"),
+                  actual: issue.actual,
+                  expected: issue.expected,
+                }),
+                over: issue.actual > issue.expected,
+              };
             }
-            return "";
+            return { text: "", over: false };
           })}
+          declared={declared}
         />
       ) : (
         <p className="text-body text-text-secondary">
           {t("basisTotal", { total: number(allocation.inputTotal), unit: t(`basis${matrix.basis}`) })}
         </p>
       )}
-
-      <p className="flex flex-wrap items-center gap-x-1.5 text-body text-text-secondary">
-        {t("sourceLabel")}{" "}
-        <strong className="font-semibold text-text">
-          {availableState === "loading"
-            ? t("sourceLoading")
-            : availableState === "error"
-              ? t("sourceError")
-              : t("sourceTotal", { count: available?.total ?? 0 })}
-        </strong>
-      </p>
     </section>
   );
 }
@@ -696,33 +695,63 @@ function AllocationStatus({
   blockCount,
   totals,
   messages,
+  declared,
 }: {
   blockCount: number;
-  totals: Array<{ label: string | null; total: number }>;
-  messages: string[];
+  /** `pending`: chiều chỉ để tham khảo và chưa có số (ví dụ HSA Tiếng Anh chờ chuyên gia): không báo thiếu. */
+  totals: Array<{ label: string | null; total: number; pending?: boolean }>;
+  messages: Array<{ text: string; over: boolean }>;
+  /** `false`: chỉ tiêu riêng của nhóm chưa khai, chưa báo thiếu hay vượt. */
+  declared: boolean;
 }) {
   const t = useTranslations("exams.matrix");
   const ok = messages.length === 0;
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-      {totals.map(({ label, total }, index) => {
+      {totals.map(({ label, total, pending = false }, index) => {
         const meterId = `${index}-${label ?? "all"}`;
+        const difference = total - blockCount;
+        const state = !declared || pending ? "neutral" : difference > 0 ? "over" : difference < 0 ? "under" : "exact";
+        const valueText =
+          state === "over"
+            ? t("meterOver", { allocated: total, count: blockCount, over: difference })
+            : state === "under"
+              ? t("meterUnder", { allocated: total, count: blockCount, short: -difference })
+              : state === "exact"
+                ? t("meterExact", { allocated: total, count: blockCount })
+                : t("allocatedMeter", { allocated: total, count: blockCount });
+        const filled = blockCount > 0 ? Math.min(100, Math.max(0, (total / blockCount) * 100)) : total > 0 ? 100 : 0;
         return (
           <div key={meterId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="text-body text-text">
               {label ? `${label}: ` : ""}
               {t("allocated", { allocated: total, count: blockCount })}
             </span>
-            <meter
-              min={0}
-              max={Math.max(blockCount, total, 1)}
-              low={Math.max(blockCount - 1, 0)}
-              high={blockCount}
-              optimum={blockCount}
-              value={total}
+            <div
+              role="meter"
+              data-state={state}
               aria-label={t("allocatedMeter", { allocated: total, count: blockCount })}
-              className="h-2 w-40 max-w-full"
-            />
+              aria-valuemin={0}
+              aria-valuemax={Math.max(blockCount, total, 1)}
+              aria-valuenow={total}
+              aria-valuetext={valueText}
+              className="h-2 w-40 max-w-full overflow-hidden rounded-full bg-subtle"
+            >
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  state === "over" ? "bg-danger" : state === "exact" ? "bg-success" : state === "under" ? "bg-warning" : "bg-text-muted",
+                )}
+                style={{ width: `${filled}%` }}
+              />
+            </div>
+            {state === "over" && (
+              <span className="flex items-center gap-1 text-body font-medium text-danger">
+                <TriangleAlert aria-hidden className="size-4 shrink-0" />
+                {t("over", { count: difference })}
+              </span>
+            )}
+            {state === "under" && <span className="text-body font-medium text-warning">{t("under", { count: -difference })}</span>}
           </div>
         );
       })}
@@ -734,9 +763,9 @@ function AllocationStatus({
       ) : (
         <ul className="flex flex-col gap-1">
           {messages.map((message) => (
-            <li key={message} className="flex items-start gap-1.5 text-body text-warning">
+            <li key={message.text} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
               <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-              {message}
+              {message.text}
             </li>
           ))}
         </ul>
