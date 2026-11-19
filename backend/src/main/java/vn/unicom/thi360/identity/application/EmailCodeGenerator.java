@@ -2,10 +2,9 @@ package vn.unicom.thi360.identity.application;
 
 import java.security.SecureRandom;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
-/** Sinh mã OTP 6 số (E15). Profile {@code dev} có {@code THI360_DEV_EMAIL_CODE} thì dùng mã cố định đó. */
+/** Sinh mã OTP 6 số (E15). Profile {@code dev} (không kèm profile khác ngoài api, worker) có {@code THI360_DEV_EMAIL_CODE} thì dùng mã cố định đó. */
 @Component
 public class EmailCodeGenerator {
 
@@ -14,7 +13,7 @@ public class EmailCodeGenerator {
 
     public EmailCodeGenerator(Environment environment, DevEmailCodeProperties properties) {
         String code = properties.devCode();
-        this.fixedCode = environment.acceptsProfiles(Profiles.of("dev")) && code != null && !code.isBlank()
+        this.fixedCode = DevEmailCodeGuard.fixedCodeAllowed(environment) && code != null && !code.isBlank()
                 ? code.trim()
                 : null;
     }
