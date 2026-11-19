@@ -73,12 +73,13 @@ class TestExamSeedComplianceIT extends AbstractIntegrationTest {
         ERROR_FIXTURES.put("TEST-ERR-01", Expected.invalid("MATRIX_INCOMPLETE"));
         ERROR_FIXTURES.put("TEST-ERR-02", Expected.invalid("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
                 "MANUAL_GRADING_REQUIRED").orWarnings("EXAM_QUOTA_DEVIATION", "DISTRIBUTION_DEVIATION"));
-        // The reading group has one source slot per label, so a label with 2 sets for 5 slots is a slot shortage.
-        ERROR_FIXTURES.put("TEST-ERR-03", Expected.invalid("SLOT_SOURCE_SHORTAGE"));
+        // The Math context set has no slots, so a rare label leaves the whole set unsolvable.
+        ERROR_FIXTURES.put("TEST-ERR-03", Expected.invalid("SET_SHORTAGE"));
         ERROR_FIXTURES.put("TEST-ERR-04", Expected.invalid("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
                 "PATH_TOTAL_MISMATCH", "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         ERROR_FIXTURES.put("TEST-ERR-05", Expected.invalid("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
-        ERROR_FIXTURES.put("TEST-ERR-06", Expected.invalid("CELL_SHORTAGE"));
+        // The retyped block answers SINGLE_CHOICE, so the SHORT_ANSWER 15 quota is an orphan.
+        ERROR_FIXTURES.put("TEST-ERR-06", Expected.invalid("ANSWER_TYPE_SHORTAGE"));
         ERROR_FIXTURES.put("TEST-ERR-07", Expected.invalid("CELL_SHORTAGE"));
         // The valid control: one Physics group renamed, nothing to report.
         ERROR_FIXTURES.put("TEST-ERR-08", Expected.valid());

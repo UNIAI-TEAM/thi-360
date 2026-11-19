@@ -414,14 +414,14 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         invalid.put("TEST-THPTQG-02", Set.of("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED"));
         invalid.put("TEST-ERR-01", Set.of("MATRIX_INCOMPLETE"));
         invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "MANUAL_GRADING_REQUIRED"));
-        // The reading group now has one source slot per label: the shortage is a slot shortage.
-        invalid.put("TEST-ERR-03", Set.of("SLOT_SOURCE_SHORTAGE"));
+        // The Math context set carries the rare label; with no slots it is a set shortage.
+        invalid.put("TEST-ERR-03", Set.of("SET_SHORTAGE"));
         // 40 + 9 = 49 instead of 50; the solver also cannot satisfy the 50-unit matrix.
         invalid.put("TEST-ERR-04", Set.of("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
                 "PATH_TOTAL_MISMATCH", "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         // The 35 + 14 quota totals 49 for a 50-question section.
         invalid.put("TEST-ERR-05", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
-        invalid.put("TEST-ERR-06", Set.of("CELL_SHORTAGE"));
+        invalid.put("TEST-ERR-06", Set.of("ANSWER_TYPE_SHORTAGE"));
         invalid.put("TEST-ERR-09", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         // FU-BE4a-1: full-count totals are interim; the invalid 17 + 17 + 17 option also leaves the part empty.
         invalid.put("TEST-ERR-10", Set.of("SUBJECT_CHOICE_COUNTS_INVALID", "PART_EMPTY",
@@ -759,7 +759,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
 
     private static final Map<String, String> ERROR_BASES = Map.ofEntries(
             Map.entry("TEST-ERR-01", "TEST-THPTQG-01"), Map.entry("TEST-ERR-02", "TEST-BCA-01"),
-            Map.entry("TEST-ERR-03", "TEST-HSA-03"), Map.entry("TEST-ERR-04", "TEST-HSA-02"),
+            Map.entry("TEST-ERR-03", "TEST-HSA-02"), Map.entry("TEST-ERR-04", "TEST-HSA-02"),
             Map.entry("TEST-ERR-05", "TEST-HSA-02"), Map.entry("TEST-ERR-06", "TEST-HSA-02"),
             Map.entry("TEST-ERR-07", "TEST-HSA-04"), Map.entry("TEST-ERR-08", "TEST-HSA-04"),
             Map.entry("TEST-ERR-09", "TEST-HSA-04"), Map.entry("TEST-ERR-10", "TEST-HSA-04"),
@@ -1433,8 +1433,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             case "TEST-ERR-03" -> {
                 int block = blockIndex(softly, label, diffs, "^/parts\\[0]/sections\\[0]/blocks\\[(\\d+)]/tagCodes$");
                 JsonNode group = at(doc, "/parts[0]/sections[0]/blocks[" + block + "]");
-                softly.assertThat(group.path("templateGroupCode").asText()).as("%s: the reading group", label)
-                        .isEqualTo("HSA_VN_PASSAGE");
+                softly.assertThat(group.path("templateGroupCode").asText()).as("%s: the context set", label)
+                        .isEqualTo("HSA_MATH_CONTEXT");
                 softly.assertThat(group.path("tagCodes").toString()).as("%s: rare label", label).contains("TEST-HIEM");
             }
             case "TEST-ERR-04" -> {
@@ -1454,9 +1454,15 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                         .as("%s: 15 -> 14", label).isEqualTo("15->14");
             }
             case "TEST-ERR-06" -> {
-                blockIndex(softly, label, diffs, "^/parts\\[0]/sections\\[(0)]/knowledgeScope.*$");
-                softly.assertThat(at(doc, "/parts[0]/sections[0]/knowledgeScope/nodeIds").toString())
-                        .as("%s: the narrow Math node", label).contains(catalogIdByCode("TEST-TOAN-HEP").toString());
+                int block = blockIndex(softly, label, diffs,
+                        "^/parts\\[0]/sections\\[0]/blocks\\[(\\d+)]/questionType$");
+                JsonNode retyped = at(doc, "/parts[0]/sections[0]/blocks[" + block + "]");
+                softly.assertThat(retyped.path("templateGroupCode").asText()).as("%s: the Math group", label)
+                        .isEqualTo("HSA_MATH_SINGLE");
+                softly.assertThat(retyped.path("questionType").asText()).as("%s: retyped", label)
+                        .isEqualTo("SINGLE_CHOICE");
+                softly.assertThat(diffs.getFirst().before().asText()).as("%s: the short-answer group", label)
+                        .isEqualTo("SHORT_ANSWER");
             }
             case "TEST-ERR-07" -> {
                 int section = blockIndex(softly, label, diffs,
