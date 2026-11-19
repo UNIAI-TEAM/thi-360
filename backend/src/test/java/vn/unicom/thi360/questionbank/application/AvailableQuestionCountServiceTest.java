@@ -75,6 +75,22 @@ class AvailableQuestionCountServiceTest {
         assertThat(filter.getValue().excludedKnowledge()).isEmpty();
     }
 
+    @Test
+    void theSameNodeSourceModeOfTheScopeReachesTheSourceFilter() throws Exception {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper()
+                .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        var scope = json.readValue("{\"nodeIds\":[\"" + SCOPE + "\"],\"everyChildInScope\":true,"
+                + "\"everyChildSameNode\":true}", KnowledgeScope.class);
+        service.count(query(scope));
+        var filter = ArgumentCaptor.forClass(QuestionSourcePort.Filter.class);
+        verify(source).count(filter.capture());
+        // Read by name: the flag is the filter mode of a SOURCE rule (all children carry the same node).
+        var component = java.util.Arrays.stream(QuestionSourcePort.Filter.class.getRecordComponents())
+                .filter(c -> c.getName().equals("everyChildSameNode")).findFirst().orElse(null);
+        assertThat(component).as("Filter.everyChildSameNode").isNotNull();
+        assertThat(component.getAccessor().invoke(filter.getValue())).isEqualTo(true);
+    }
+
     /** Read from JSON, as the web sends it: {@code excludedNodeIds} is the new, optional field of the scope. */
     private static KnowledgeScope scope(List<UUID> nodeIds, List<UUID> excluded) {
         try {

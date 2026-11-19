@@ -266,6 +266,44 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void aSourceRuleDoesNotAcceptASetMixingTwoOfItsCodes() throws Exception {
+        arrange();
+        set(List.of(nodes.get(1)), List.of(nodes.get(2)));
+        String section = section(2, "MATRIX", "[" + rule("source", "SOURCE", "g1", a(), b(), c()) + "]",
+                setBlock("g1", 1, 2));
+        JsonNode mixed = check(exam(section));
+        assertThat(mixed.path("status").asText()).isEqualTo("INVALID");
+        JsonNode issue = issue(mixed, "SET_SHORTAGE");
+        assertThat(issue.path("requiredSets").asInt()).isEqualTo(1);
+        assertThat(issue.path("availableSets").asInt()).isZero();
+        set(List.of(nodes.get(1)), List.of(nodes.get(1)));
+        assertValid(check(exam(section)));
+    }
+
+    @Test
+    void aRuleOfAGoneGroupIsAnErrorThatNamesTheRuleAndDoesNotBreakCheckOrPreview() throws Exception {
+        arrange();
+        for (int i = 0; i < 4; i++) single("SINGLE_CHOICE");
+        UUID id = UUID.randomUUID();
+        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, duration_minutes, question_count) "
+                + "values (?, ?, ?, 'Stale', 'FULL', 'SHARED', 60, 2)", id, id.toString(), id.toString());
+        String document = "{\"parts\":[{\"id\":\"part\",\"order\":1,\"name\":\"Part\",\"questionCount\":2,"
+                + "\"participation\":{\"mode\":\"ALL\"},\"sections\":["
+                + section(2, "MATRIX", "[" + rule("stale", "PRESENT", "gone", a()) + "]", block("g1", "SINGLE_CHOICE", 2))
+                + "],\"options\":[]}]}";
+        jdbc.update("insert into exam.exam_structure (exam_id, parts, structure_hash) values (?, cast(? as jsonb), 'stale')",
+                id, document);
+        JsonNode check = check(id);
+        assertThat(check.path("status").asText()).isEqualTo("INVALID");
+        JsonNode issue = issue(check, "MAPID_RULE_GROUP_MISSING");
+        assertThat(issue.path("ruleId").asText()).isEqualTo("stale");
+        assertThat(issue.path("severity").asText()).isEqualTo("ERROR");
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/preview", id).with(asUser(Permissions.EXAM_VIEW))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":1}"))
+                .andExpect(status().is2xxSuccessful());
+    }
+
+    @Test
     void everyRuleTypeIsSavedAndReadBack() throws Exception {
         arrange();
         UUID exam = exam(section(8, "MATRIX", "[" + rule("p", "PRESENT", null, a()) + ","
