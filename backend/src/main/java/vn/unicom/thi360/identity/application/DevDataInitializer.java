@@ -59,8 +59,10 @@ public class DevDataInitializer implements ApplicationRunner {
         @Override
         public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
             var env = context.getEnvironment();
+            // Same canonical "true" match as the runners' @ConditionalOnProperty(havingValue = "true"):
+            // no Boolean conversion, so "on"/"1" keep both gates closed and typos never throw (R2-2).
             return env.acceptsProfiles(Profiles.of("dev"))
-                    || env.getProperty("thi360.devdata.published-exams.enabled", Boolean.class, false);
+                    || "true".equalsIgnoreCase(env.getProperty("thi360.devdata.published-exams.enabled"));
         }
     }
 
