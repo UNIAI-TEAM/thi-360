@@ -1270,7 +1270,9 @@
   },
   "nav": {
     "groups": {
+      "commerce": "Thương mại",
       "content": "Nội dung",
+      "learners": "Học viên",
       "overview": "Tổng quan",
       "system": "Hệ thống",
       "users": "Người dùng"
@@ -1311,6 +1313,22 @@
       "grading": {
         "description": "Lượt thi có câu tự luận chờ chấm và đã có điểm",
         "label": "Chấm tự luận"
+      },
+      "attempts": {
+        "description": "Lượt thi của học viên: trạng thái, điểm và thao tác vận hành",
+        "label": "Lượt thi"
+      },
+      "bundles": {
+        "description": "Bộ đề gồm nhiều bài thi, giá và công bố",
+        "label": "Bộ đề"
+      },
+      "orders": {
+        "description": "Đơn hàng, người mua, hoàn tiền và đối soát",
+        "label": "Đơn hàng"
+      },
+      "promotions": {
+        "description": "Khuyến mãi và voucher theo bài thi, kỳ thi",
+        "label": "Khuyến mãi"
       }
     }
   },

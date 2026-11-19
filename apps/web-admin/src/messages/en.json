@@ -1270,7 +1270,9 @@
   },
   "nav": {
     "groups": {
+      "commerce": "Commerce",
       "content": "Content",
+      "learners": "Students",
       "overview": "Overview",
       "system": "System",
       "users": "Users"
@@ -1311,6 +1313,22 @@
       "grading": {
         "description": "Attempts with essay questions to grade or already scored",
         "label": "Essay grading"
+      },
+      "attempts": {
+        "description": "Student attempts: status, scores and operations",
+        "label": "Attempts"
+      },
+      "bundles": {
+        "description": "Bundles of exams, pricing and publishing",
+        "label": "Bundles"
+      },
+      "orders": {
+        "description": "Orders, buyers, refunds and reconciliation",
+        "label": "Orders"
+      },
+      "promotions": {
+        "description": "Promotions and vouchers by exam or exam kind",
+        "label": "Promotions"
       }
     }
   },
