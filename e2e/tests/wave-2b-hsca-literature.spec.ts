@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { adminApi, loginAdmin } from "./helpers/editor-qa";
+import { ADMIN_URL, adminApi, loginAdmin } from "./helpers/editor-qa";
 import {
   allSections,
   blockingCodes,
@@ -8,19 +8,21 @@ import {
   countBySubject,
   createExamInUi,
   examCode,
+  expectPublishRefused,
   expectStructureQuestions,
   expectValidPaths,
   expectWellFormedPaper,
+  expectWritingSwitchLocked,
   fillExamStep1InUi,
+  forceBlockOmitted,
   generateInUi,
   getExam,
   getStructure,
   openBlockInUi,
   publishInUi,
-  saveStructureInUi,
+  renameFirstBlockAndSaveInUi,
   SCENARIO_TIMEOUT_MS,
   SOLVER_TIMEOUT_MS,
-  writingOmittedSwitch,
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
@@ -67,18 +69,21 @@ test("H-SCA Ngữ văn: công bố bài Đọc hiểu; phần Viết không bậ
   expect(writing.map((block) => block.omitted)).toEqual([true, true]);
   await expectStructureQuestions(page, /^20(\D|$)/);
 
-  // Mỗi nhóm Viết mở ra ở trạng thái "Tạm bỏ qua" đang bật, kèm nhãn "Tự luận – tạm bỏ qua".
+  // Mỗi nhóm Viết mở ra ở trạng thái "Tạm bỏ qua" bật sẵn, tắt (không bấm được) và có lý do đi kèm (R3-09).
   for (const block of writing) {
     await openBlockInUi(page, id, block.id!, block.name);
-    await expect(writingOmittedSwitch(page)).toBeChecked();
+    await expectWritingSwitchLocked(page);
     await expect(page.getByText("Tự luận – tạm bỏ qua")).toBeVisible();
   }
 
-  // Bật lại nhóm Viết bằng công tắc rồi lưu: máy chủ nhận, nhưng kiểm tra báo OMITTED_BLOCK_LOCKED và ở lại bước 2.
-  await openBlockInUi(page, id, writing[0]!.id!, writing[0]!.name);
-  await writingOmittedSwitch(page).click();
-  await expect(writingOmittedSwitch(page)).not.toBeChecked();
-  await saveStructureInUi(page, id);
+  // Lưu bước 2 qua giao diện bằng một giá trị sửa được (tên nhóm Đọc hiểu đầu tiên).
+  await renameFirstBlockAndSaveInUi(page, admin, id);
+
+  // Lưới an toàn của máy chủ: PUT ép bật lại nhóm Viết được nhận (200) nhưng kiểm tra báo OMITTED_BLOCK_LOCKED, ở lại
+  // bước 2, và công bố bị từ chối.
+  await forceBlockOmitted(admin, id, writing[0]!.id!, false);
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+  await expectStructureQuestions(page, /^\d+(\D|$)/);
   const reenabled = await continueToReviewInUi(page, id);
   expect(reenabled.status).toBe("INVALID");
   const locked = collectIssues(reenabled).filter((issue) => issue.code === "OMITTED_BLOCK_LOCKED");
@@ -86,12 +91,12 @@ test("H-SCA Ngữ văn: công bố bài Đọc hiểu; phần Viết không bậ
   expect(locked.every((issue) => issue.severity === "ERROR")).toBe(true);
   await expect(page).toHaveURL(/\/exams\/[^/]+\/structure/);
   await expect(page.getByText(/nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
+  await expectPublishRefused(page, admin, id, reenabled);
 
-  // Tắt lại theo lời nhắc của lỗi, lưu, kiểm tra đạt.
-  await openBlockInUi(page, id, writing[0]!.id!, writing[0]!.name);
-  await writingOmittedSwitch(page).click();
-  await expect(writingOmittedSwitch(page)).toBeChecked();
-  await saveStructureInUi(page, id);
+  // Trả nhóm về trạng thái tham chiếu (PUT), kiểm tra đạt.
+  await forceBlockOmitted(admin, id, writing[0]!.id!, true);
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+  await expectStructureQuestions(page, /^20(\D|$)/);
   const fixed = await continueToReviewInUi(page, id);
   expect(fixed.status, `lỗi chặn: ${blockingCodes(fixed).join(", ")}`).toBe("VALID");
   expect(collectIssues(fixed).map((issue) => issue.code)).not.toContain("OMITTED_BLOCK_LOCKED");

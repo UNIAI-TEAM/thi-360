@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { adminApi, loginAdmin } from "./helpers/editor-qa";
+import { ADMIN_URL, adminApi, loginAdmin } from "./helpers/editor-qa";
 import {
   allSections,
   blockingCodes,
@@ -8,16 +8,18 @@ import {
   createExamInUi,
   examCode,
   expectStructureQuestions,
+  expectPublishRefused,
   fillExamStep1InUi,
   getExam,
   getStructure,
   getStructureSummary,
   openBlockInUi,
   partCardNames,
-  saveStructureInUi,
+  renameFirstBlockAndSaveInUi,
   SOLVER_TIMEOUT_MS,
   SCENARIO_TIMEOUT_MS,
-  writingOmittedSwitch,
+  expectWritingSwitchLocked,
+  forceBlockOmitted,
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
@@ -31,13 +33,13 @@ test.setTimeout(SCENARIO_TIMEOUT_MS);
 test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Viết không bật lại được", async ({ context, page }) => {
   await loginAdmin(context, "vi");
 
-  // Mẫu để trống thời lượng (Q-35): nhập khi tạo. Thang 150 là thang người tạo đặt, lệch 30 điểm so với bài 120 điểm.
+  // Mẫu để trống thời lượng (Q-35): nhập khi tạo. Thang mặc định 120 = Phần I-III; thang 150 đặt sau (phần Viết 30 điểm).
   const id = await createExamInUi(page, {
     kind: "VSAT",
     scope: "SUBJECT",
     scopeLabel: /^Cả môn/,
     subject: "VAN",
-    overview: { durationMinutes: 60, maxScore: 150 },
+    overview: { durationMinutes: 60 },
     code: examCode("W2B-VSAT-VAN"),
     name: "V-SAT Ngữ văn thang 150 nghiệm thu 2B",
   });
@@ -46,7 +48,7 @@ test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Vi
   const exam = await getExam(admin, id);
   expect(exam.templateCode).toBe("VSAT_SUBJECT_VAN");
   expect(exam.questionCount).toBe(20);
-  expect(exam.maxScore).toBe(150);
+  expect(exam.maxScore).toBe(120);
   expect(exam.durationMinutes).toBe(60);
 
   // Cấu trúc: Phần I-III như mẫu, Phần IV Viết 0 câu với một nhóm Tự luận đã lược, 30 điểm.
@@ -67,7 +69,24 @@ test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Vi
   expect(summary.parts.slice(0, 3).reduce((sum, row) => sum + (row.commandCount ?? 0), 0), "số lệnh Phần I-III").toBe(62);
   await expectStructureQuestions(page, /^20(\D|$)/);
 
+  // Lưu bước 2 qua giao diện bằng một giá trị sửa được (tên nhóm Phần I).
+  await renameFirstBlockAndSaveInUi(page, admin, id);
+
+  // Đường cơ sở: thang 120 khớp bài (Phần I-III), kiểm tra đạt.
+  const baseline = await continueToReviewInUi(page, id);
+  expect(baseline.status, `lỗi chặn: ${blockingCodes(baseline).join(", ")}`).toBe("VALID");
+
+  // Đặt thang 150 (dữ liệu chuẩn bị, bước 1 không có ô thang cho môn có điểm theo phần): máy chủ nhận PATCH.
+  const patched = await admin.api.patch(`${ADMIN_URL}/api/v1/admin/exams/${id}`, {
+    headers: admin.headers,
+    data: { maxScore: 150, expectedRevision: (await getExam(admin, id)).revision },
+  });
+  expect(patched.status(), await patched.text()).toBe(200);
+  expect((await getExam(admin, id)).maxScore).toBe(150);
+
   // Kiểm tra: thang 150 lệch đúng 30 điểm của phần Viết đã lược, báo một lỗi chặn riêng thay cho POINTS_TOTAL_MISMATCH.
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+  await expectStructureQuestions(page, /^20(\D|$)/);
   const scale = await continueToReviewInUi(page, id);
   expect(scale.status).toBe("INVALID");
   const scaleIssues = collectIssues(scale).filter((issue) => issue.code === "SCALE_INCLUDES_EXCLUDED_PART");
@@ -81,19 +100,24 @@ test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Vi
   await expect(page).toHaveURL(/\/exams\/[^/]+\/structure/);
   await expect(page.getByText(/Chênh 30 điểm, đúng bằng điểm của phần đã lược/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
 
-  // Phần Viết không bật lại được: công tắc "Tạm bỏ qua" bật sẵn; tắt đi và lưu thì kiểm tra báo OMITTED_BLOCK_LOCKED.
+  // Phần Viết không bật lại được: công tắc "Tạm bỏ qua" bật sẵn, tắt và có lý do đi kèm (R3-09).
   await openBlockInUi(page, id, writing[0]!.id!, writing[0]!.name);
-  await expect(writingOmittedSwitch(page)).toBeChecked();
+  await expectWritingSwitchLocked(page);
   await expect(page.getByText("Tự luận – tạm bỏ qua")).toBeVisible();
-  await writingOmittedSwitch(page).click();
-  await expect(writingOmittedSwitch(page)).not.toBeChecked();
-  await saveStructureInUi(page, id);
+
+  // Lưới an toàn của máy chủ: PUT ép bật lại được nhận (200) nhưng kiểm tra báo OMITTED_BLOCK_LOCKED.
+  await forceBlockOmitted(admin, id, writing[0]!.id!, false);
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+  await expectStructureQuestions(page, /^\d+(\D|$)/);
   const reenabled = await continueToReviewInUi(page, id);
   expect(reenabled.status).toBe("INVALID");
   const locked = collectIssues(reenabled).filter((issue) => issue.code === "OMITTED_BLOCK_LOCKED");
   expect(locked.length, `không có OMITTED_BLOCK_LOCKED: ${JSON.stringify(blockingCodes(reenabled))}`).toBeGreaterThan(0);
   expect(locked.every((issue) => issue.severity === "ERROR")).toBe(true);
   await expect(page.getByText(/nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
+
+  // Công bố bị từ chối (R3-09): hộp thoại "Sẽ công bố 0 / N", máy chủ trả 422 PATH_NOT_VALID.
+  await expectPublishRefused(page, admin, id, reenabled);
 });
 
 test("V-SAT Ngữ văn theo phần: chỉ Phần I, II, III; không chào phần Viết", async ({ context, page }) => {

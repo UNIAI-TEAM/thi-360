@@ -711,6 +711,38 @@ export function writingOmittedSwitch(page: Page): Locator {
   return page.getByRole("switch", { name: "Tạm bỏ qua" });
 }
 
+/**
+ * Nhóm Viết của mẫu `omittedLocked` (H43, H49, R-144): công tắc "Tạm bỏ qua" bật sẵn nhưng tắt (không bấm được) và có lý
+ * do đi kèm qua `aria-describedby` (R3-09). Lời giải thích nhắc việc không bật lại được.
+ */
+export async function expectWritingSwitchLocked(page: Page): Promise<void> {
+  const omit = writingOmittedSwitch(page);
+  await expect(omit).toBeVisible();
+  await expect(omit).toBeChecked();
+  await expect(omit).toBeDisabled();
+  await expect(omit).toHaveAttribute("aria-describedby", /\S/);
+  await expect(omit).toHaveAccessibleDescription(/không bật lại được|chưa có trong V1/);
+}
+
+/**
+ * Ép `omitted` của một nhóm bằng PUT thẳng `/structure` (giao diện không cho bật lại nhóm Viết): máy chủ nhận cấu trúc,
+ * lỗi chỉ lộ ở kiểm tra (`OMITTED_BLOCK_LOCKED`) và công bố. Dùng để chứng minh lưới an toàn của máy chủ và để trả nhóm về
+ * trạng thái tham chiếu.
+ */
+export async function forceBlockOmitted(admin: AdminApi, examId: string, blockId: string, omitted: boolean): Promise<void> {
+  const structure = await getStructure(admin, examId);
+  const block = allSections(structure)
+    .flatMap((section) => section.blocks ?? [])
+    .find((item) => item.id === blockId);
+  expect(block, `không thấy nhóm ${blockId}`).toBeDefined();
+  block!.omitted = omitted;
+  const response = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${examId}/structure`, {
+    headers: admin.headers,
+    data: { parts: structure.parts, examQuotas: structure.examQuotas ?? [], expectedRevision: structure.revision },
+  });
+  expect(response.status(), await response.text()).toBe(200);
+}
+
 /* ---------- Ngân hàng câu hỏi: đính kèm tệp (điều chế dữ liệu nguồn) ---------- */
 
 export interface QuestionSummaryLite {
@@ -878,4 +910,29 @@ export async function s3RestoreSeedAsset(fileName: string): Promise<void> {
     body: bytes,
   });
   expect(response.status, await response.text()).toBe(200);
+}
+
+/**
+ * Công bố bị từ chối sau một kiểm tra không đạt: hộp thoại của trang Phiên bản và công bố báo "Sẽ công bố 0 / N", đường
+ * không chọn được, nút "Công bố 0 đường lựa chọn" tắt; gọi thẳng API (đường của kiểm tra) bị từ chối 422 `PATH_NOT_VALID`
+ * và bài không có phiên bản phục vụ.
+ */
+export async function expectPublishRefused(page: Page, admin: AdminApi, examId: string, check: CheckResult): Promise<void> {
+  await openEditorTab(page, "Phiên bản và công bố", /\/exams\/[^/]+\/versions/);
+  await page.getByRole("button", { name: "Công bố", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("status")).toHaveText(/^Sẽ công bố 0 \/ \d+ đường lựa chọn$/);
+  await expect(dialog.getByRole("checkbox").first()).toBeDisabled();
+  // Không đường nào hợp lệ thì nút xác nhận tắt (F-PUBLISH0, ADV:QA:11).
+  await expect(dialog.getByRole("button", { name: /^Công bố \d+ đường lựa chọn$/ })).toBeDisabled();
+  const refused = await publishApi(
+    admin,
+    examId,
+    check.paths.map((path) => path.pathId),
+  );
+  expect(refused.status(), await refused.text()).toBe(422);
+  const refusal: { code?: string } = await refused.json();
+  expect(refusal.code).toBe("PATH_NOT_VALID");
+  expect((await getExam(admin, examId)).servingVersion ?? null).toBeNull();
 }

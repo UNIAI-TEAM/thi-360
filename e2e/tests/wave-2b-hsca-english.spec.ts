@@ -15,7 +15,7 @@ import {
   hscaAudioKey,
   openBlockInUi,
   openEditorTab,
-  publishApi,
+  expectPublishRefused,
   publishInUi,
   renameFirstBlockAndSaveInUi,
   s3DeleteObject,
@@ -176,17 +176,8 @@ test("H-SCA Tiếng Anh Nghe: mất tệp nghe báo ATTACHMENT_MISSING và khôn
     await openEditorTab(page, "Kiểm tra và xem trước", /\/exams\/[^/]+\/review/);
     await expect(page.getByText(/có tệp đính kèm không đọc được/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
 
-    // Công bố bị từ chối: hộp thoại không cho chọn đường nào; máy chủ cũng từ chối 422 và không tạo phiên bản.
-    await openEditorTab(page, "Phiên bản và công bố", /\/exams\/[^/]+\/versions/);
-    await page.getByRole("button", { name: "Công bố", exact: true }).click();
-    await expect(page.getByRole("dialog").getByRole("checkbox").first()).toBeDisabled();
-    const refused = await publishApi(
-      admin,
-      id,
-      failed.paths.map((path) => path.pathId),
-    );
-    expect(refused.status(), await refused.text()).toBe(422);
-    expect((await getExam(admin, id)).servingVersion ?? null).toBeNull();
+    // Công bố bị từ chối: hộp thoại "Sẽ công bố 0 / N"; máy chủ trả 422 PATH_NOT_VALID và không tạo phiên bản.
+    await expectPublishRefused(page, admin, id, failed);
   } finally {
     // Trả lại đúng byte của tệp nguồn để các bài khác (cùng kho) không chịu ảnh hưởng.
     for (const file of AUDIO_FILES) await s3RestoreSeedAsset(file);
