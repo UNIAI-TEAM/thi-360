@@ -469,6 +469,7 @@ Hộp riêng (`insert/word/`) mở từ nút "Dán từ Word" của form soạn 
 - Vùng bấm tối thiểu 44×44px trên màn cảm ứng (mục 5.1).
 - Không truyền đạt trạng thái chỉ bằng màu: chip trạng thái luôn có chữ.
 - Ngôn ngữ mặc định tiếng Việt, có thêm tiếng Anh (quyết định 2026-11-14). Thanh trên cùng có hai nút icon 36px ngay bên trái avatar: chuyển sáng/tối (mặt trời khi đang sáng, mặt trăng khi đang tối) và chọn ngôn ngữ (icon dịch, mở danh sách Tiếng Việt / English); cả hai có `aria-label` và tooltip, lưu theo từng người bằng cookie. Trang đăng nhập và landing có hai nút này ở góc trên phải. Chuỗi hiển thị nằm trong file dịch (`next-intl`), hai tệp `vi.json` và `en.json` cùng bộ khóa. Ngày `dd/MM/yyyy`, số dùng dấu chấm phân tách nghìn.
+- Chỉ chữ giao diện là song ngữ. Nội dung đề (câu hỏi, tên bài, tên phần, mục, nhóm, phân đoạn lấy từ mẫu hoặc do admin gõ) hiện đúng như đã lưu, kể cả khi giao diện ở tiếng Anh (quyết định 2026-11-19). Vùng hiện nội dung đề gắn `data-exam-content` để phép kiểm lẫn ngôn ngữ bỏ qua. Tên lấy từ danh mục dùng chung (kỳ thi, môn…) vẫn song ngữ: giao diện tiếng Anh hiện tên tiếng Anh nếu có, chưa có thì tên tiếng Việt (`pickName`).
 
 ## 9. Tùy chỉnh giao diện
 

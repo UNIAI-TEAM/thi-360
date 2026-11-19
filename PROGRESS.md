@@ -170,6 +170,23 @@
   - Để lại: `reports/ED-QA/follow-ups.md` ở thư mục đợt chạy (32 mục, phần lớn mức thấp). Mức trung bình: FU-06, lưu câu chùm từ trình soạn ghi `passage = content`, câu chùm tạo qua API hoặc nhập có `content` khác `passage` sẽ mất đoạn đọc khi mở ra lưu lại. "Giữ làm hình" khi dán Word để đợt sau theo đặc tả 4.10.
   - Bản demo trên VPS chạy `develop` @ `5f2767c` từ 2026-11-17 (đã bỏ cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK`; Ngân hàng câu hỏi, Bài thi chạy trên backend thật với dữ liệu mẫu và 28 đề test; `/grading` vẫn là dữ liệu mẫu).
 
+### Đợt 3 · Nâng cấp plan thương mại và lượt thi (2026-11-18)
+
+- **UNI-2622**, nhánh `docs/UNI-2622-nang-cap-plan-dot-3` (từ `develop` @ `23c64377`), chưa commit. Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-05-13.md` nâng cấp theo định dạng zone17-builder: 36 task, 8 sóng, 103 điểm; mỗi task có đường dẫn sở hữu, nghiệm thu đánh mã, ảnh hưởng ngoài task, kế hoạch kiểm thử. `plan-lint` đạt 0 lỗi, 0 cảnh báo.
+  - Áp dụng cờ Giữ thứ tự phương án (UNI-2648) và phần bổ sung 2B (V-ACT, THPTQG). Đặc tả lượt thi sửa mục về `shuffleOptions = false`.
+  - Báo cáo audit và trạng thái đợt: `.thi360-dev/dot-3/` (ngoài kho mã).
+- **2026-11-19:** M.Trường trả lời 17 câu (OQ-1 đến OQ-15, phạm vi H-SCA/V-SAT, reviewer) và chính sách nghe. Câu trả lời ở `.thi360-dev/dot-3/decisions-2026-11-19.md`.
+  - Đặc tả bổ sung mới `docs/specs/2026-11-19-dot-3-bo-sung.md` (chưa commit); hai đặc tả TM, LT có dòng trỏ sang. Plan: 43 task, 9 sóng, 129 điểm (thêm AT-6, AT-7, AT-8, FS-7, FA-5, FA-6, LP). `plan-lint` 0 lỗi, 0 cảnh báo.
+  - Review độc lập bằng Codex qua Orca, ba vòng (báo cáo ở `.thi360-dev/dot-3/review-1119/`). Vòng 1: 5 blocking, 12 should-fix. Vòng 2: 5 blocking mới. Vòng 3: 0 blocking; 2 should-fix, 1 minor đã sửa; 1 needs-human do M.Trường quyết (lần nghe đã bấm được phát tiếp đến khi phần đóng).
+  - M.Trường đã duyệt G1b và G2, bỏ FA-6: nội dung đề không làm song ngữ, chỉ chữ giao diện là song ngữ (ghi ở `DESIGN.md` mục 8 và BS 18). Plan chốt 42 task, 9 sóng, 127 điểm.
+  - Danh mục dùng chung vẫn song ngữ trên web học viên (`pickName` vào `@thi360/web-kit`, FS-4).
+  - Việc tồn đọng đợt 2B (UNI-2700) đã đối chiếu, ghi ở phụ lục của plan. FU-QA-SEEDS thành cổng **G0c**: dựng lại seed `TEST-*` theo mẫu BA, merge về `develop` trước khi cook, không tính điểm đợt 3.
+  - M.Trường quyết UNI-2701 làm ở bước đầu của cook đợt 3: G0c thành **task TS** (sóng 1, 3 điểm), chỉ EX-1, EX-2 và các task sau chúng chờ TS. Plan: 43 task, 10 sóng, 130 điểm; `plan-lint` 0 lỗi, 1 cảnh báo chấp nhận (FS-2 nộp sau FS-1). DS nhận thêm việc tải ảnh mẫu cho câu có ảnh (seed dev chỉ có MP3, FU-BE10-ASSET).
+  - **G0b đã qua** ngày 2026-11-19: PR #120 của 2B merge vào `develop` (`1774c74d`). Bản demo trên `bro` đã chạy commit này từ 12:10 (Advisor 2B dựng lại, sao lưu DB trước, 20 migration, smoke đạt). Seed `TEST-*` trên demo còn bản cũ đến khi task TS merge.
+  - M.Trường giao 41 việc tồn đọng còn lại của UNI-2700 vào đợt 3 thành **task FU** (8 điểm, sóng 3, sau EX-1, EX-2, TS, không chặn task nào), theo dõi thẳng ở UNI-2700. Plan: 44 task, 10 sóng, 138 điểm; `plan-lint` 0 lỗi, 1 cảnh báo chấp nhận.
+  - **Chờ M.Trường:** cho phép commit tài liệu và ra lệnh cook. Chưa commit, chưa cook.
+  - Chưa kiểm chứng: các lệnh test trong plan chưa chạy thử.
+
 ### Nhật ký đợt 1
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
