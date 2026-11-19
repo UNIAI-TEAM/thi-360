@@ -25,6 +25,10 @@ public record ProfileResponse(
 
         @Schema(types = {"string", "null"}, description = "Đường dẫn ảnh đại diện (cần đăng nhập); null khi chưa có ảnh",
                 example = "/api/v1/avatars/0192f3a1-0000-7000-8000-000000000001")
-        String avatarUrl
+        String avatarUrl,
+
+        @Schema(types = {"string", "null"},
+                description = "Email mới đang chờ xác nhận (đổi email, TM 5.3); null khi không có yêu cầu đổi email")
+        String pendingEmail
 ) {
 }

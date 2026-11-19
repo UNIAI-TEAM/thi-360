@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,6 +27,7 @@ import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.PasswordResetTestSupport.Account;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.spi.UserDirectory;
+import vn.unicom.thi360.shared.mail.MailKind;
 
 /** {@code GET/PATCH /me/profile} (TM 5.5): AC-22 đến AC-27 của plan ID-2 và các ca rủi ro hồ sơ. */
 class MeProfileIT extends AbstractAvatarMinioIT {
@@ -103,11 +105,48 @@ class MeProfileIT extends AbstractAvatarMinioIT {
                 .andReturn().getResponse().getContentAsString());
 
         // Khớp lược đồ OpenAPI: các trường nullable có mặt và là null (không bị bỏ), không phải chuỗi rỗng.
-        for (String field : List.of("phone", "avatarAssetId", "avatarUrl")) {
+        for (String field : List.of("phone", "avatarAssetId", "avatarUrl", "pendingEmail")) {
             assertThat(body.has(field)).as("%s is present", field).isTrue();
             assertThat(body.get(field).isNull()).as("%s is null", field).isTrue();
         }
         assertThat(body.get("email").asText()).isEqualTo(account.email());
+    }
+
+    /** AC-22: {@code pendingEmail} là email đang chờ xác nhận của ID-1; null khi không có yêu cầu đổi email. */
+    @Test
+    void pendingEmailIsExposedOnlyWhileEmailChangeIsPending() throws Exception {
+        Account account = support.eligible("profile.pending");
+        String newEmail = "moi." + UUID.randomUUID().toString().substring(0, 8) + "@thi360-test.example";
+        assertThat(profileOf(account).get("pendingEmail").isNull()).as("no change requested").isTrue();
+
+        mockMvc.perform(post("/api/v1/me/email/change")
+                        .with(sessionOf(account))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newEmail\":\"" + newEmail + "\",\"currentPassword\":\"" + account.password() + "\"}"))
+                .andExpect(status().isAccepted());
+
+        JsonNode pending = profileOf(account);
+        assertThat(pending.get("pendingEmail").asText()).isEqualTo(newEmail);
+        assertThat(pending.get("email").asText()).as("old email stays until confirmed").isEqualTo(account.email());
+        JsonNode patched = objectMapper.readTree(patchAndGet(account, "{\"fullName\":\"Tên Khác\"}").getContentAsString());
+        assertThat(patched.get("pendingEmail").asText()).as("PATCH response").isEqualTo(newEmail);
+
+        mockMvc.perform(post("/api/v1/me/email/change/confirm")
+                        .with(sessionOf(account))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + support.emailCodeFromLatestMail(newEmail, MailKind.EMAIL_CHANGE) + "\"}"))
+                .andExpect(status().isNoContent());
+
+        JsonNode confirmed = profileOf(account);
+        assertThat(confirmed.get("pendingEmail").isNull()).as("change confirmed").isTrue();
+        assertThat(confirmed.get("email").asText()).isEqualTo(newEmail);
+        assertThat(confirmed.get("emailVerified").asBoolean()).isTrue();
+    }
+
+    private JsonNode profileOf(Account account) throws Exception {
+        return objectMapper.readTree(mockMvc.perform(get("/api/v1/me/profile").with(sessionOf(account)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
     }
 
     @Test

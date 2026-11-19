@@ -172,6 +172,7 @@ public class ProfileService {
                 user.getEmailVerifiedAt() != null,
                 user.getPhone(),
                 avatarAssetId,
-                avatarAssetId == null ? null : AVATAR_URL_PREFIX + avatarAssetId);
+                avatarAssetId == null ? null : AVATAR_URL_PREFIX + avatarAssetId,
+                user.getPendingEmail());
     }
 }

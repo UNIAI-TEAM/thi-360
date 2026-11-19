@@ -30,6 +30,7 @@ final class PasswordResetTestSupport {
 
     static final String PASSWORD = "Valid@1234";
     private static final Pattern TOKEN_IN_LINK = Pattern.compile("/reset-password\\?token=([A-Za-z0-9_-]+)");
+    private static final Pattern SIX_DIGITS = Pattern.compile("(?<!\\d)(\\d{6})(?!\\d)");
 
     record Account(UUID id, String username, String email, String password) {
     }
@@ -103,6 +104,19 @@ final class PasswordResetTestSupport {
         return matcher.group(1);
     }
 
+    /**
+     * Mã OTP 6 số trong thư {@code kind} mới nhất gửi tới {@code email} (đổi email của ID-1). Địa chỉ nhận được cắt khỏi
+     * thân thư trước khi tìm: hậu tố ngẫu nhiên của email dựng ở đây có thể chứa đúng 6 chữ số liền nhau.
+     */
+    String emailCodeFromLatestMail(String email, MailKind kind) {
+        String text = mailbox().require(email, kind).text().replaceAll("(?i)" + Pattern.quote(email), "");
+        Matcher matcher = SIX_DIGITS.matcher(text);
+        if (!matcher.find()) {
+            throw new AssertionError("No 6-digit code in the latest " + kind + " mail");
+        }
+        return matcher.group(1);
+    }
+
     /** HMAC-SHA256 hex của mã với pepper, cùng cách ứng dụng băm. */
     String hash(String rawToken) {
         try {
@@ -171,6 +185,7 @@ final class PasswordResetTestSupport {
             } catch (Exception ignored) {
                 // đã xóa trong test
             }
+            jdbc.update("DELETE FROM identity.email_code WHERE user_id = ?", account.id());
             jdbc.update("DELETE FROM identity.password_reset_token WHERE user_id = ?", account.id());
             jdbc.update("DELETE FROM identity.user_avatar WHERE user_id = ?", account.id());
             jdbc.update("DELETE FROM shared.email_message WHERE user_id = ?", account.id());

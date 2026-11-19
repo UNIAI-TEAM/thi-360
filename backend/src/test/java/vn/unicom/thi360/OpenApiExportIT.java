@@ -159,14 +159,14 @@ class OpenApiExportIT extends AbstractIntegrationTest {
         assertThat(root.at("/paths/~1api~1v1~1avatars~1{assetId}/get/responses/200/content/image~1png").isMissingNode())
                 .isFalse();
         JsonNode profile = schemas.path("ProfileResponse").path("properties");
-        for (String nullable : List.of("email", "phone", "avatarAssetId", "avatarUrl")) {
+        for (String nullable : List.of("email", "phone", "avatarAssetId", "avatarUrl", "pendingEmail")) {
             assertThat(profile.path(nullable).path("type")).as("ProfileResponse.%s type", nullable)
                     .extracting(JsonNode::asText).containsExactlyInAnyOrder("string", "null");
         }
         assertThat(profile.path("avatarAssetId").path("format").asText()).isEqualTo("uuid");
         assertThat(profile.path("username").path("type").asText()).isEqualTo("string");
         assertThat(schemas.path("ProfileResponse").path("required").toString())
-                .contains("username", "fullName", "emailVerified").doesNotContain("phone", "avatarUrl");
+                .contains("username", "fullName", "emailVerified").doesNotContain("phone", "avatarUrl", "pendingEmail");
 
         Path targetOut = Path.of("target", "openapi.json");
         Files.createDirectories(targetOut.getParent());

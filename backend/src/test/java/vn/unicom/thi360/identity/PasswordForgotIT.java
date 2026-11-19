@@ -302,6 +302,37 @@ class PasswordForgotIT extends AbstractKeycloakIntegrationTest {
         assertThat(mailbox.all(account.email(), MailKind.PASSWORD_RESET)).hasSize(1);
     }
 
+    /**
+     * AC-06.05: trong lúc đổi email (cột {@code pending_email} của ID-1), email cũ đã xác minh vẫn khôi phục được:
+     * đúng một thư PASSWORD_RESET tới email cũ; email đang chờ không nhận thư khôi phục và cùng thân 202.
+     */
+    @Test
+    void pendingEmailChangeKeepsOldAddressRecoverable() throws Exception {
+        Account account = support.eligible("forgot.pending");
+        String pending = "pending." + UUID.randomUUID().toString().substring(0, 8) + "@thi360-test.example";
+        mockMvc.perform(post("/api/v1/me/email/change")
+                        .with(asUser(account.id(), account.username()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newEmail\":\"" + pending + "\",\"currentPassword\":\"" + account.password() + "\"}"))
+                .andExpect(status().isAccepted());
+        assertThat(jdbc.queryForObject(
+                        "SELECT pending_email FROM identity.user_account WHERE id = ?", String.class, account.id()))
+                .isEqualTo(pending);
+
+        MvcResult toPending = forgot(pending);
+        MvcResult toOld = forgot(account.email());
+
+        assertThat(toPending.getResponse().getStatus()).isEqualTo(202);
+        assertThat(toOld.getResponse().getStatus()).isEqualTo(202);
+        assertThat(toPending.getResponse().getContentAsString()).isEqualTo(toOld.getResponse().getContentAsString());
+        assertThat(mailbox.all(account.email(), MailKind.PASSWORD_RESET)).hasSize(1);
+        assertThat(mailbox.all(pending, MailKind.PASSWORD_RESET)).isEmpty();
+        // Địa chỉ đang chờ chỉ nhận mã xác nhận đổi email của ID-1, không có thư nào khác.
+        assertThat(mailbox.count(pending)).isEqualTo(1);
+        assertThat(mailbox.require(pending, MailKind.EMAIL_CHANGE)).isNotNull();
+        assertThat(support.unusedTokenRows(account.id())).isEqualTo(1);
+    }
+
     /** Gán email cho tài khoản `platform` của realm master để chứng minh E27: có email trong Keycloak vẫn không có thư. */
     private String masterEmail() {
         String email = "platform." + UUID.randomUUID().toString().substring(0, 8) + "@thi360-test.example";
