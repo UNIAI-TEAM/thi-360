@@ -40,6 +40,7 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
     @Autowired ObjectMapper mapper;
     @Autowired CatalogLookup catalog;
     @Autowired QuestionUsageProvider provider;
+    @Autowired vn.unicom.thi360.exam.application.ExamCatalogUsageProvider catalogUsage;
 
     private String subjectCode;
     private UUID subjectId;
@@ -334,6 +335,40 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         String legacy = "{\"id\":\"section\",\"subjectCode\":\"" + subjectCode + "\",\"questionCount\":3,\"blocks\":["
                 + block("g1", "SINGLE_CHOICE", 3) + "]}";
         putStructure(bca, legacy).andExpect(status().isOk());
+    }
+
+    // ---- rule node references are validated like legacy scopes (review R1-8) ----------------------------------
+
+    @Test
+    void aRuleNodeThatIsUnknownInactiveOrNotKnowledgeIsRejectedAtPut() throws Exception {
+        arrange();
+        UUID exam = examRow("hsa");
+        jdbc.update("update catalog.catalog_item set status = 2 where id = ?", nodes.get(2));
+        for (String bad : List.of(UUID.randomUUID().toString(), subjectId.toString(), c())) {
+            putStructure(exam, section(3, "MATRIX", "[" + rule("o", "ONLY_IN_GROUP", "g1", bad) + "]",
+                    block("g1", "SINGLE_CHOICE", 3))).andExpect(status().isUnprocessableEntity());
+            putStructure(exam, section(3, "MATRIX", "[" + rule("s", "SOURCE", null, a(), bad) + "]",
+                    block("g1", "SINGLE_CHOICE", 3))).andExpect(status().isUnprocessableEntity());
+        }
+        assertThat(structure(exam).path("parts")).isEmpty();
+        putStructure(exam, section(3, "MATRIX", "[" + rule("o", "ONLY_IN_GROUP", "g1", a(), b()) + "]",
+                block("g1", "SINGLE_CHOICE", 3))).andExpect(status().isOk());
+    }
+
+    @Test
+    void aNodeOnlyNamedByARuleCountsAsUsedByTheExam() throws Exception {
+        arrange();
+        long before = usedBy(nodes.get(1));
+        UUID exam = exam(section(3, "MATRIX", "[" + count("c", null, "EXACT", 1, b()) + ","
+                + rule("o", "ONLY_IN_GROUP", "g1", c()) + "]", block("g1", "SINGLE_CHOICE", 3)));
+        assertThat(usedBy(nodes.get(1))).isEqualTo(before + 1);
+        assertThat(catalogUsage.findUsages("KNOWLEDGE", nodes.get(2)).stream()
+                .flatMap(usage -> usage.sampleLabels().stream())).contains(exam.toString());
+    }
+
+    private long usedBy(UUID node) {
+        return catalogUsage.findUsages("KNOWLEDGE", node).stream()
+                .mapToLong(vn.unicom.thi360.catalog.spi.CatalogUsage::count).sum();
     }
 
     @Test
