@@ -219,25 +219,28 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
 
     /**
      * Row 5: a LINEAR override on a subject-cut part exam survives both policies even
-     * though the part row points were edited.
+     * though the part row points were edited. The override is 40/40, distinct from the
+     * template's restored raw maximum 36 (R1-4), so a regression that writes the scale
+     * only on USE_TEMPLATE fails here.
      */
     @ParameterizedTest(name = "LINEAR subject cut keeps the scale under {0}")
     @ValueSource(strings = {"KEEP_EDITED", "USE_TEMPLATE"})
     void linearSubjectCutKeepsTheScale(String policy) throws Exception {
         JsonNode exam = created(create("VSAT", "PART", "P2", "TOAN", 45));
         String id = exam.path("id").asText();
-        patchLinear(id, 36);
+        patchLinear(id, 40);
         editOverview(id, null, 24);
         reload(id, "VSAT_SUBJECT_TOAN", policy);
         JsonNode detail = detail(id);
         assertThat(detail.path("practiceScoring").asText()).isEqualTo("LINEAR");
-        assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("36");
-        assertThat(detail.path("referenceMax").decimalValue()).isEqualByComparingTo("36");
+        assertThat(detail.path("maxScore").decimalValue()).isEqualByComparingTo("40");
+        assertThat(detail.path("referenceMax").decimalValue()).isEqualByComparingTo("40");
     }
 
     /**
      * Row 6: a LINEAR SUBJECT override stays under both policies while a RAW SUBJECT
-     * exam still takes the template maximum.
+     * exam still takes the template maximum — patched to 200 (not the template's 150,
+     * R1-4) so a regression that drops the RAW scale write fails.
      */
     @Test
     void linearSubjectReloadKeepsTheOverride() throws Exception {
@@ -253,8 +256,10 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
             assertThat(detail.path("referenceMax").decimalValue()).isEqualByComparingTo("160");
         }
         JsonNode raw = created(create("VSAT", "SUBJECT", null, "ANH", 60));
-        reload(raw.path("id").asText(), "VSAT_SUBJECT_ANH", "USE_TEMPLATE");
-        JsonNode rawDetail = detail(raw.path("id").asText());
+        String rawId = raw.path("id").asText();
+        patchMaxScore(rawId, 200);
+        reload(rawId, "VSAT_SUBJECT_ANH", "USE_TEMPLATE");
+        JsonNode rawDetail = detail(rawId);
         assertThat(rawDetail.path("practiceScoring").asText()).isEqualTo("RAW");
         assertThat(rawDetail.path("maxScore").decimalValue()).isEqualByComparingTo("150");
     }
@@ -345,6 +350,15 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
                         .content("{\"expectedRevision\":" + detail(id).path("revision").asLong()
                                 + ",\"practiceScoring\":\"LINEAR\",\"confirmScoring\":true,"
                                 + "\"maxScore\":" + scale + ",\"referenceMax\":" + scale + "}"))
+                .andExpect(status().isOk());
+    }
+
+    /** Edits only the stored scale; a RAW exam keeps its scoring and reference untouched. */
+    private void patchMaxScore(String id, int scale) throws Exception {
+        mockMvc.perform(patch("/api/v1/admin/exams/{id}", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedRevision\":" + detail(id).path("revision").asLong()
+                                + ",\"maxScore\":" + scale + "}"))
                 .andExpect(status().isOk());
     }
 
