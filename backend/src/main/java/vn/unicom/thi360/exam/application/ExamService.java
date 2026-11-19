@@ -911,12 +911,12 @@ public class ExamService {
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
         // BE-21 (R2-1, R2-2): a subject-tagged PART template (H41: V-SAT English P2-P4, the
         // only such templates) never derives the exam clock or the exam scale from the
-        // overview part row. The clock is the template's declared exam-level duration or, when
-        // the template declares none, the exam's existing one. Only a RAW exam takes its scale
-        // from the final part-row points (a dedicated template as fallback); a LINEAR (or
-        // other) scoring keeps maxScore/referenceMax untouched. Generic PART templates keep
-        // the original behavior (clock and declared scale come from the template), and the
-        // legacy cut of a part from a subject template still takes both values from the part row.
+        // overview part row; its clock is the declared exam-level duration or, when the
+        // template declares none, the exam's existing one. UNI-2699: the clock of a SHARED exam
+        // never comes from a part row — a PER_PART subject cut takes a positive part-row
+        // duration, anything else keeps the stored clock — and only a RAW exam takes a scale
+        // (the final part-row points for a subject tag or a subject cut, the declared maximum
+        // otherwise); a LINEAR or other scoring keeps maxScore/referenceMax on every scope.
         boolean partExam = "PART".equals(exam.getScope());
         boolean dedicated = partExam && "PART".equals(template.getScope()) && template.getSubjectCode() != null;
         // H41 (BE-21): a subject that has dedicated PART templates is never reloaded from the
@@ -974,10 +974,12 @@ public class ExamService {
                     messages.get(ExamErrorCodes.SCOPE_NOT_ALLOWED));
         }
         Integer loadDuration = dedicated ? firstNonNull(template.getDurationMinutes(), exam.getDurationMinutes())
-                : subjectPart ? doc.parts().getFirst().durationMinutes() : template.getDurationMinutes();
+                : !subjectPart ? template.getDurationMinutes()
+                : "SHARED".equals(firstNonNull(template.getTiming(), exam.getTiming())) ? null
+                : positivePart(doc.parts().getFirst().durationMinutes());
         boolean rawScoring = "RAW".equals(exam.getPracticeScoring());
-        BigDecimal loadScale = dedicated ? (rawScoring ? firstNonNull(doc.parts().getFirst().maxPoints(),
-                template.getMaxScore()) : null)
+        BigDecimal loadScale = !rawScoring ? null
+                : dedicated ? firstNonNull(doc.parts().getFirst().maxPoints(), template.getMaxScore())
                 : subjectPart ? doc.parts().getFirst().maxPoints() : template.getMaxScore();
         exam.applyTemplate(template.getCode(), template.getStructureYear(), template.getMatrixYear(),
                 template.getTiming(), loadDuration, loadScale, actor, now);
@@ -1544,6 +1546,12 @@ public class ExamService {
     private static <T> T firstNonNull(T first, T fallback) {
         return first != null ? first : fallback;
     }
+
+    /** A part row clocks a PER_PART exam only with a positive duration (UNI-2699). */
+    private static Integer positivePart(Integer durationMinutes) {
+        return durationMinutes != null && durationMinutes > 0 ? durationMinutes : null;
+    }
+
 
     /**
      * A review scores LINEAR against its own raw maximum (BE spec D11) and its check never requires a fixed raw

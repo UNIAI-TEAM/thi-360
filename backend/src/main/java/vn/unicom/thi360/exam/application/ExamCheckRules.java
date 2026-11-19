@@ -132,6 +132,11 @@ public final class ExamCheckRules {
             ObjectNode issue = issue("YEARS_UNCONFIRMED", "INFO", null, null, null);
             issue.put("required", exam.getStructureYear()); issue.put("available", exam.getMatrixYear()); found.add(issue);
         }
+        if ("SHARED".equals(exam.getTiming())
+                && (exam.getDurationMinutes() == null || exam.getDurationMinutes() <= 0)) {
+            // UNI-2699: a bad stored clock blocks publish; reload can no longer write one.
+            found.add(issue("SHARED_PART_DURATION", "STRUCTURE", null, null, null));
+        }
         for (ExamPart part : document.parts()) {
             if (isChoice(part) && part.codeSource() == null && part.options().isEmpty()) found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));
             if ("SHARED".equals(exam.getTiming()) && part.durationMinutes() != null && part.durationMinutes() != 0) {
