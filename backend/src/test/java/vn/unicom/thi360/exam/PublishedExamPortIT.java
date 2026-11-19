@@ -261,12 +261,57 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
         assertThat(serving.version().versionNo()).isEqualTo(2);
         assertThat(serving.servingPaths()).extracting(PublishedExamPort.ServingPath::pathId, PublishedExamPort.ServingPath::versionNo)
                 .containsExactly(org.assertj.core.api.Assertions.tuple("o1", 2), org.assertj.core.api.Assertions.tuple("default", 1));
-        // The totals of the path served by the older version are in that version, one loadVersion away.
+        // The same totals are also in the older version itself (loadVersion).
         var older = port.loadVersion(exam, serving.servingPaths().get(1).versionNo()).orElseThrow();
         assertThat(older.parts().getFirst().paths().getFirst().questionCount()).isEqualTo(24);
         assertThat(older.parts().getFirst().paths().getFirst().maxPoints()).isEqualByComparingTo("480");
         assertThat(serving.version().parts().getFirst().paths().getFirst().questionCount()).isEqualTo(30);
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(serving));
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(older));
+    }
+
+    private static final String CODE_PARTS = """
+            {"parts":[{"id":"codes","order":1,"name":"Phan ma de","durationMinutes":%d,"questionCount":%d,"participation":{"mode":"ALL"},
+              "maxPoints":%d,"sections":[],"options":[],
+              "paths":[{"pathId":"codes:%s","questionCount":%d,"maxPoints":%d,"durationMinutes":%d}]}]}
+            """;
+
+    /** R2-4 (AC-21): two disjoint combination codes on different serving versions; one findServing call has each path's totals and subjects. */
+    @Test
+    void findServingAloneCarriesEachPathsTotalsAndCombinationsFromItsOwnVersion() throws Exception {
+        UUID kindId = kind("BCA");
+        UUID exam = newExam("BCA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED', serving_version = 2 WHERE id = ?", exam);
+        String config1 = config(kindId, "Ten v1", 100000);
+        String config2 = config(kindId, "Ten v2", 200000).replace("QD01", "QD02")
+                .replace("\"TOAN\"", "\"HOA\"").replace("\"Toan\"", "\"Hoa\"").replace("\"LY\"", "\"SINH\"").replace("\"Ly\"", "\"Sinh\"");
+        version(exam, 1, "SERVING", "PUBLISHED", config1, CODE_PARTS.formatted(50, 24, 480, "QD01", 24, 480, 50), "codes:QD01");
+        version(exam, 2, "SERVING", "PUBLISHED", config2, CODE_PARTS.formatted(60, 30, 600, "QD02", 30, 600, 60), "codes:QD02");
+        entityManager.clear();
+        var serving = port.findServing(exam).orElseThrow();
+        assertThat(serving.servingPaths()).hasSize(2);
+        var second = serving.servingPaths().get(0);
+        var first = serving.servingPaths().get(1);
+        assertThat(second.pathId()).isEqualTo("codes:QD02");
+        assertThat(second.versionNo()).isEqualTo(2);
+        assertThat(second.questionCount()).isEqualTo(30);
+        assertThat(second.maxPoints()).isEqualByComparingTo("600");
+        assertThat(second.durationMinutes()).isEqualTo(60);
+        assertThat(second.parts()).extracting(PublishedExamPort.ServingPathPart::partId, PublishedExamPort.ServingPathPart::questionCount)
+                .containsExactly(org.assertj.core.api.Assertions.tuple("codes", 30));
+        assertThat(second.combinations()).extracting(PublishedExamPort.Combination::code).containsExactly("QD02");
+        assertThat(second.combinations().getFirst().subjects()).extracting(PublishedExamPort.CombinationSubject::code)
+                .containsExactly("HOA", "SINH");
+        assertThat(first.pathId()).isEqualTo("codes:QD01");
+        assertThat(first.versionNo()).isEqualTo(1);
+        assertThat(first.questionCount()).as("the older version's own totals, not the newest version's").isEqualTo(24);
+        assertThat(first.maxPoints()).isEqualByComparingTo("480");
+        assertThat(first.durationMinutes()).isEqualTo(50);
+        assertThat(first.combinations()).extracting(PublishedExamPort.Combination::code).containsExactly("QD01");
+        assertThat(first.combinations().getFirst().subjects()).extracting(PublishedExamPort.CombinationSubject::code)
+                .containsExactly("TOAN", "LY");
+        // The newest version alone carries only its own combination: the older one is not recoverable from it.
+        assertThat(serving.version().combinations()).extracting(PublishedExamPort.Combination::code).containsExactly("QD02");
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(serving));
     }
 }

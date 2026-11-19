@@ -55,10 +55,52 @@ public class PublishedExamReader implements PublishedExamPort {
             JsonNode parts = json(row.parts()).path("parts");
             JsonNode config = json(row.config());
             for (String pathId : row.servingPaths()) {
-                paths.putIfAbsent(pathId, new ServingPath(pathId, row.version(), choices(parts, config, pathId)));
+                paths.putIfAbsent(pathId, servingPath(row, parts, config, pathId));
             }
         }
         return Optional.of(new ServingExam(examId, serving.getFirst().examStatus(), latest, List.copyOf(paths.values())));
+    }
+
+    /** A serving path from the version that serves it: choices, totals, per-part totals and its combinations (R2-4). */
+    private ServingPath servingPath(Row row, JsonNode parts, JsonNode config, String pathId) {
+        List<ServingPathPart> pathParts = new ArrayList<>();
+        boolean complete = true;
+        Integer questions = 0;
+        BigDecimal points = BigDecimal.ZERO;
+        Integer minutes = 0;
+        for (JsonNode part : parts) {
+            JsonNode entry = null;
+            for (JsonNode candidate : part.path("paths")) {
+                if (pathId.equals(candidate.path("pathId").asText())) entry = candidate;
+            }
+            if (entry == null) {
+                complete = false;
+                continue;
+            }
+            Integer partQuestions = integer(entry, "questionCount");
+            BigDecimal partPoints = decimal(entry, "maxPoints");
+            Integer partMinutes = integer(entry, "durationMinutes");
+            pathParts.add(new ServingPathPart(text(part, "id"), text(part, "name"), partQuestions, partPoints, partMinutes));
+            questions = questions == null || partQuestions == null ? null : questions + partQuestions;
+            points = points == null || partPoints == null ? null : points.add(partPoints);
+            minutes = minutes == null || partMinutes == null ? null : minutes + partMinutes;
+        }
+        if (!complete || pathParts.isEmpty()) {
+            questions = null;
+            points = null;
+            minutes = null;
+        }
+        // A SHARED clock is the exam's; the snapshot only repeats it on a single-part exam.
+        if ("SHARED".equals(text(config, "timing")) && minutes == null && complete) minutes = integer(config, "durationMinutes");
+        List<String> selected = Arrays.asList(pathId.split("\\+", -1));
+        List<Combination> combinations = new ArrayList<>();
+        for (JsonNode combination : config.path("combinations")) {
+            if (selected.contains(combination.path("partId").asText() + ":" + combination.path("code").asText())) {
+                combinations.add(combination(combination));
+            }
+        }
+        return new ServingPath(pathId, row.version(), choices(parts, config, pathId), questions, points, minutes,
+                List.copyOf(pathParts), List.copyOf(combinations));
     }
 
     @Override

@@ -16,8 +16,8 @@ public interface PublishedExamPort {
     /**
      * The serving state of an exam: the latest version that still serves a path (E24) with its listing, and the
      * serving paths of EVERY serving version, each with the version that serves it (BCA and Informatics can keep older
-     * versions serving: one {@code ServingPath} per path, {@code versionNo} of the version that serves it). The
-     * per-part totals of a path served by an older version are in {@code loadVersion(examId, path.versionNo())}.
+     * versions serving: one {@code ServingPath} per path, {@code versionNo} of the version that serves it) and its
+     * totals, per-part totals and combinations taken from that version, so {@code loadVersion} is not needed for them.
      * {@code status} and the versions are read from one database snapshot. Empty for an exam that was never published.
      * A discontinued exam stays readable: {@code status} is {@code DISCONTINUED} and the last serving version is returned.
      */
@@ -36,8 +36,20 @@ public interface PublishedExamPort {
 
     record ServingExam(UUID examId, String status, PublishedVersion version, List<ServingPath> servingPaths) { }
 
-    /** A serving path, the version that serves it and its choices (option code and name, combination code and name). */
-    record ServingPath(String pathId, int versionNo, List<PathChoice> choices) { }
+    /**
+     * A serving path as the version that serves it froze it (R2-4): its choices, the totals of the whole path
+     * ({@code questionCount}, {@code maxPoints}, {@code durationMinutes}; null when that version's snapshot could not
+     * total them, a PER_PART path sums its parts' minutes, a SHARED one carries the exam's minutes), the same per part,
+     * and the combination codes the path stands for with their subjects. One {@code findServing} call is enough for
+     * AC-21, whichever serving version a path stays on.
+     */
+    record ServingPath(String pathId, int versionNo, List<PathChoice> choices, Integer questionCount,
+                       BigDecimal maxPoints, Integer durationMinutes, List<ServingPathPart> parts,
+                       List<Combination> combinations) { }
+
+    /** What one part contributes to a serving path, from the version that serves it. */
+    record ServingPathPart(String partId, String name, Integer questionCount, BigDecimal maxPoints,
+                           Integer durationMinutes) { }
 
     record PathChoice(String partId, String optionId, String kind, String code, String name) { }
 
