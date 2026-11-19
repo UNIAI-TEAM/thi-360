@@ -27,6 +27,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import vn.unicom.thi360.identity.application.AuthService;
 import vn.unicom.thi360.identity.application.PasswordForgotDispatcher;
 import vn.unicom.thi360.identity.application.PasswordResetService;
+import vn.unicom.thi360.identity.application.SelfRegistrationService;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
 import vn.unicom.thi360.shared.web.AppMessages;
 
@@ -66,7 +67,8 @@ class PasswordForgotDispatchTests {
     private Outcome forgot(Executor executor, String email) throws Exception {
         PasswordForgotDispatcher dispatcher = new PasswordForgotDispatcher(executor, passwordResetService);
         AuthController controller = new AuthController(
-                mock(AuthService.class), dispatcher, passwordResetService, clientIpResolver, messages);
+                mock(AuthService.class), mock(SelfRegistrationService.class), dispatcher, passwordResetService,
+                clientIpResolver, messages);
         MockHttpServletRequest request = new MockHttpServletRequest();
         currentResponse = new MockHttpServletResponse();
         AtomicReference<ResponseEntity<PasswordForgotResponse>> result = new AtomicReference<>();
@@ -154,7 +156,8 @@ class PasswordForgotDispatchTests {
     void flushFailureBeforeCommitDoesNotHandOffAndDoesNotFailTheCaller() throws Exception {
         PasswordForgotDispatcher dispatcher = new PasswordForgotDispatcher(capturingExecutor, passwordResetService);
         AuthController controller = new AuthController(
-                mock(AuthService.class), dispatcher, passwordResetService, clientIpResolver, messages);
+                mock(AuthService.class), mock(SelfRegistrationService.class), dispatcher, passwordResetService,
+                clientIpResolver, messages);
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse failing = new MockHttpServletResponse() {
             @Override
@@ -181,7 +184,8 @@ class PasswordForgotDispatchTests {
     void flushFailureAfterCommitStillHandsOff() throws Exception {
         PasswordForgotDispatcher dispatcher = new PasswordForgotDispatcher(capturingExecutor, passwordResetService);
         AuthController controller = new AuthController(
-                mock(AuthService.class), dispatcher, passwordResetService, clientIpResolver, messages);
+                mock(AuthService.class), mock(SelfRegistrationService.class), dispatcher, passwordResetService,
+                clientIpResolver, messages);
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse committedThenFails = new MockHttpServletResponse() {
             @Override
