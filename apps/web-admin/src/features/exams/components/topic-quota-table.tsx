@@ -66,6 +66,7 @@ export function TopicQuotaTable({
   readOnly = false,
 }: TopicQuotaTableProps) {
   const t = useTranslations("exams.topicQuota");
+  const matrixText = useTranslations("exams.matrix");
   const format = useFormatter();
   const headingId = useId();
   const [entry, setEntry] = useState<EntryMode>(() => topicEntryMode(quotas));
@@ -309,9 +310,17 @@ export function TopicQuotaTable({
               <tr className="font-semibold text-text">
                 <th scope="row" className="px-3 py-2 text-left">{t("total")}</th>
                 <td className={cn("px-2 py-2", view.over > 0 && "text-danger")} colSpan={2}>
-                  <output>
-                    {t("totalValue", { total: view.grandCount, count: total })} {rate(view.grandRate)}
-                  </output>
+                  <div className="flex flex-wrap items-center gap-x-2">
+                    <output>
+                      {t("totalValue", { total: view.grandCount, count: total })} {rate(view.grandRate)}
+                    </output>
+                    {view.over > 0 && (
+                      <span className="flex items-center gap-1">
+                        <TriangleAlert aria-hidden className="size-4 shrink-0" />
+                        {matrixText("over", { count: view.over })}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td colSpan={4} />
               </tr>

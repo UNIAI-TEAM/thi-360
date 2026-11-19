@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout.vi.html :: shell(~{::#mail-body})}">
+<body>
+<div id="mail-body">
+    <p style="margin:0 0 16px 0;">Xin chào <span th:text="${fullName}">Nguyễn Văn A</span>,</p>
+    <p style="margin:0 0 16px 0;">Bạn vừa yêu cầu đổi email của tài khoản sang
+        <strong th:text="${newEmail}">email.moi@example.test</strong>. Mã xác nhận của bạn là:</p>
+    <p style="margin:0 0 16px 0;padding:14px 20px;background-color:#ECFDF5;border:1px solid #A7E3C2;border-radius:10px;font-size:28px;line-height:36px;font-weight:700;letter-spacing:6px;color:#065F46;text-align:center;"
+       th:text="${code}">123456</p>
+    <p style="margin:0;color:#6B6B72;">Mã chỉ có hiệu lực trong thời gian ngắn. Nếu bạn không yêu cầu đổi email, hãy bỏ qua thư; email hiện tại của bạn được giữ nguyên.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout.vi.html :: shell(~{::#mail-body})}">
+<body>
+<div id="mail-body">
+    <p style="margin:0 0 16px 0;">Xin chào <span th:text="${fullName}">Nguyễn Văn A</span>,</p>
+    <p style="margin:0 0 16px 0;">Khoản hoàn <strong th:text="${refundAmount}">100.000 ₫</strong> cho đơn
+        <strong th:text="${orderCode}">DH-0001</strong> đã được ghi nhận.</p>
+    <p style="margin:0;color:#6B6B72;">Thời điểm tiền về tài khoản phụ thuộc vào ngân hàng của bạn.</p>
+</div>
+</body>
+</html>

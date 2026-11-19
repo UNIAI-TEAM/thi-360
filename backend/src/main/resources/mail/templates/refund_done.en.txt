@@ -1,0 +1,6 @@
+Thi 360 has refunded your order
+Hello [(${fullName})],
+
+A refund of [(${refundAmount})] for order [(${orderCode})] has been recorded. When the money reaches your account depends on your bank.
+
+Thi 360

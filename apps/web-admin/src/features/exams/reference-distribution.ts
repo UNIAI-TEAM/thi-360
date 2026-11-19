@@ -53,7 +53,7 @@ function otherDimensionConflicts(matrix: BlockMatrix | null, dimension: "GRADE" 
  * Phân bố khối lớp của HSA Tiếng Anh luôn chờ chuyên gia xác nhận (ADV:FE-3b:2): chip hiện cả khi đã có số (30/70); hai nút
  * chỉ khóa khi chưa có số.
  */
-function awaitsExpert(examKind: string | null, subjectCode: string, dimension: "GRADE" | "DIFFICULTY"): boolean {
+export function awaitsExpert(examKind: string | null, subjectCode: string, dimension: "GRADE" | "DIFFICULTY"): boolean {
   return examKind === "HSA" && subjectCode === "ANH" && dimension === "GRADE";
 }
 
