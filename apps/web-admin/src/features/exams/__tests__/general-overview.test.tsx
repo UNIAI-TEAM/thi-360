@@ -404,5 +404,77 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     expect((await screen.findAllByText("Đã lưu thông tin chung.")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/cần kiểm tra lại trước khi công bố/)).not.toBeInTheDocument();
   }, 30_000);
+
+  it("R1-6: chỉ sửa ô của bảng thì rời trang bị chặn; Hoàn tác trả số đã lưu và khóa nút", async () => {
+    setup();
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    const link = document.createElement("a");
+    link.href = "/exams";
+    link.textContent = "Danh sách bài thi";
+    document.body.append(link);
+    try {
+      await user.click(link);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      await user.clear(countOf(MATH));
+      await user.type(countOf(MATH), "40");
+      await user.click(link);
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText("Rời trang khi chưa lưu?")).toBeInTheDocument();
+      expect(routerMock.push).not.toHaveBeenCalled();
+      await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(countOf(MATH)).toHaveValue("40");
+
+      const form = screen.getByRole("form", { name: "Thông tin bài thi" });
+      const discard = within(form).getAllByRole("button", { name: "Hoàn tác" }).at(-1)!;
+      expect(discard).toBeEnabled();
+      await user.click(discard);
+      expect(countOf(MATH)).toHaveValue("45");
+      expect(discard).toBeDisabled();
+      await user.click(link);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    } finally {
+      link.remove();
+    }
+  }, 30_000);
+
+  it("R1-8: PUT cấu trúc bị 422 thì hiện câu giá trị không hợp lệ của cấu trúc, không gửi PATCH, giữ số đã gõ", async () => {
+    setup({ configure: (server) => server.server.on("PUT", STRUCTURE_PATH, { status: 422, body: { code: "VALIDATION_FAILED" } }) });
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.clear(countOf(MATH));
+    await user.type(countOf(MATH), "41");
+    const name = screen.getByRole("textbox", { name: /Tên bài thi/ });
+    await user.clear(name);
+    await user.type(name, "Tên mới giữ lại");
+    await user.click(screen.getByRole("button", { name: SAVE }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cấu trúc có giá trị không hợp lệ");
+    expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(1);
+    expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
+    expect(countOf(MATH)).toHaveValue("41");
+    expect(screen.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue("Tên mới giữ lại");
+  }, 30_000);
+
+  it("R1-9: sửa ô rồi đổi phạm vi và xác nhận nạp lại: chỉ PATCH thông tin, không PUT cấu trúc", async () => {
+    setup();
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.clear(countOf(MATH));
+    await user.type(countOf(MATH), "41");
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: SAVE }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
+
+    await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));
+    expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
+  }, 30_000);
 });
 
