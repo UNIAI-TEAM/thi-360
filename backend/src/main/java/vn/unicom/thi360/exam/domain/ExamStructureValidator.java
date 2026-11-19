@@ -156,6 +156,11 @@ public final class ExamStructureValidator {
             invalid("options.kind", "option kind is invalid or unsupported");
         }
         id(option.id(), "options.id", ids);
+        if (!option.blocks().isEmpty()) {
+            // The checker, the solver and the preview name the holder of the direct blocks "<option>:blocks", so no
+            // stored id of the same structure may take that name (it would be two sections of one path with one id).
+            id(option.id() + ":blocks", "options.blocks", ids);
+        }
         if (option.code() == null || option.code().isBlank()) {
             invalid("options.code", "option code is required");
         }

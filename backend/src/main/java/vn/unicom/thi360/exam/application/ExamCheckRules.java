@@ -102,16 +102,16 @@ public final class ExamCheckRules {
         this.issues = new ExamCheckIssues(mapper);
         for (ExamPart part : document.parts()) {
             parts.put(part.id(), part);
-            for (ExamSection section : part.sections()) sections.put(section.id(), new SectionContext(part, null, section));
-            for (ExamSection section : part.subjectPool()) sections.put(section.id(), new SectionContext(part, null, section));
+            for (ExamSection section : part.sections()) sections.put(section.id(), new SectionContext(part, null, section, false));
+            for (ExamSection section : part.subjectPool()) sections.put(section.id(), new SectionContext(part, null, section, false));
             for (ExamPartOption option : part.options()) {
                 options.put(option.id(), option);
-                for (ExamSection section : option.sections()) sections.put(section.id(), new SectionContext(part, option.id(), section));
+                for (ExamSection section : option.sections()) sections.put(section.id(), new SectionContext(part, option.id(), section, false));
                 if (!option.blocks().isEmpty()) {
                     int count = option.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
                             null, null, null, null, option.blocks());
-                    sections.put(synthetic.id(), new SectionContext(part, option.id(), synthetic));
+                    sections.put(synthetic.id(), new SectionContext(part, option.id(), synthetic, true));
                 }
             }
         }
@@ -1230,11 +1230,12 @@ public final class ExamCheckRules {
      * FTM R-12: the set count and set size of the science subjects of HSA and QDA, and the short-answer minimum of
      * Lý, Hóa, Sinh. Standard exams only; a review exam keeps its own shape. Located at the subject, not at a block.
      * The rule reads the sections of {@code sections}, {@code subjectPool} and {@code options[].sections}; the blocks
-     * a SUBJECT option holds directly ({@code options[].blocks}) carry no stored {@code subjectCode}, so they are no
-     * subject section here, and {@link ExamCheckValidity#rulesChanged} reads the same three arrays.
+     * a SUBJECT option holds directly ({@code options[].blocks}) carry no stored {@code subjectCode}, so the holder this
+     * class builds for them ({@code SectionContext.directBlocks}) is no subject section here, and
+     * {@link ExamCheckValidity#rulesChanged} reads the same three arrays.
      */
     private void subjectFormLimits(List<ObjectNode> found, SectionContext context, int count, int fixed) {
-        if (isReview() || isOptionBlocks(context)) return;
+        if (isReview() || context.directBlocks()) return;
         ExamSection section = context.section;
         SubjectFormLimits.Limit limit = SubjectFormLimits.of(kindCode, section.subjectCode()).orElse(null);
         if (limit == null) return;
@@ -1443,10 +1444,9 @@ public final class ExamCheckRules {
         found.forEach(issue -> result.putIfAbsent(issue.path("key").asText(), issue));
         return List.copyOf(result.values());
     }
-    private record SectionContext(ExamPart part, String optionId, ExamSection section) { }
-
-    /** The synthetic section of the blocks a SUBJECT option holds directly: not one of the persisted section arrays. */
-    private static boolean isOptionBlocks(SectionContext context) {
-        return context.optionId != null && (context.optionId + ":blocks").equals(context.section.id());
-    }
+    /**
+     * {@code directBlocks} is the provenance of the section: true only for the holder this class builds for the blocks a
+     * SUBJECT option holds directly, which is no persisted section. The id never says so; a stored section may carry any id.
+     */
+    private record SectionContext(ExamPart part, String optionId, ExamSection section, boolean directBlocks) { }
 }

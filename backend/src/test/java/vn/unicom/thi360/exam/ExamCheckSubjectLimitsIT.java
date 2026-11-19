@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -312,6 +313,71 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
                     + "[{\"id\":\"b1\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":10}]}]");
             assertThat(codes(check("/api/v1/admin/exams/" + section))).as(kind + " section control").contains(SET_CODE, SHORT_CODE);
         }
+    }
+
+    /**
+     * R2-1: whether a section is the synthetic holder of an option's direct blocks is decided by where the checker
+     * built it, never by its id. A stored section of an option without direct blocks whose id reads
+     * "{option}:blocks" is a real subject section: PUT keeps the id and the solver solves it, so both R-12 rules apply
+     * and the path that holds it cannot publish.
+     */
+    @Test
+    void aStoredOptionSectionWithTheSyntheticLookingIdIsStillChecked() throws Exception {
+        for (String kind : new String[] {"HSA", "QDA"}) for (String id : new String[] {"ly-opt:blocks", "ly-opt-sec"}) {
+            String base = create(kind, "SUBJECT", null, "LY", null);
+            JsonNode before = structure(base);
+            ObjectNode edited = before.deepCopy();
+            // The template's own Lý section (so points, totals and sources are in order), moved into a SUBJECT option
+            // that has no direct blocks, with both R-12 rules broken: three sets and no short answer.
+            ObjectNode part = (ObjectNode) edited.at("/parts/0");
+            ObjectNode stored = section(edited, "LY").deepCopy();
+            stored.put("id", id);
+            setShape(stored, 3, 3);
+            dropShortAnswer(stored);
+            part.putArray("sections");
+            part.putObject("participation").put("mode", "CHOICE").put("choose", 1);
+            part.putArray("options").addObject().put("id", "ly-opt").put("kind", "SUBJECT").put("code", "LY")
+                    .putArray("sections").add(stored);
+            save(base, before, edited);
+
+            JsonNode result = check(base);
+            String as = kind + " " + id;
+            JsonNode set = issue(result, SET_CODE);
+            assertThat(set.path("sectionId").asText()).as(as).isEqualTo(id);
+            assertThat(set.path("subjectCode").asText()).as(as).isEqualTo("LY");
+            assertThat(issue(result, SHORT_CODE).path("sectionId").asText()).as(as).isEqualTo(id);
+            assertThat(result.path("status").asText()).as(as).isEqualTo("INVALID");
+            JsonNode lyPath = java.util.stream.StreamSupport.stream(result.path("paths").spliterator(), false)
+                    .filter(path -> "ly-opt".equals(path.path("pathId").asText())).findFirst().orElseThrow();
+            assertThat(lyPath.path("result").asText()).as(as).isEqualTo("INVALID");
+            // Otherwise valid: the two R-12 errors are the only errors of the path.
+            java.util.Set<String> errors = new java.util.TreeSet<>();
+            for (JsonNode list : lyPath.findValues("issues")) for (JsonNode item : list) {
+                if ("ERROR".equals(item.path("severity").asText())) errors.add(item.path("code").asText());
+            }
+            assertThat(errors).as(as + " errors of the path").containsExactlyInAnyOrder(SET_CODE, SHORT_CODE);
+            publishRefused(base, result);
+        }
+    }
+
+    /**
+     * R2-1: a stored section may not take the id of the holder the checker and the solver build for the direct blocks of
+     * the same option, or two sections of one path would share an id: PUT refuses the structure.
+     */
+    @Test
+    void aStoredSectionCannotTakeTheIdOfTheDirectBlocksHolderOfItsOption() throws Exception {
+        String base = create("HSA", "SUBJECT", null, "LY", null);
+        JsonNode before = structure(base);
+        ObjectNode body = mapper.createObjectNode().put("expectedRevision", before.path("revision").asLong());
+        body.set("parts", mapper.readTree("[{\"id\":\"p\",\"name\":\"P\",\"questionCount\":10,"
+                + "\"participation\":{\"mode\":\"CHOICE\",\"choose\":1},\"options\":["
+                + "{\"id\":\"ly-opt\",\"kind\":\"SUBJECT\",\"code\":\"LY\",\"blocks\":[{\"id\":\"b1\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":10}],"
+                + "\"sections\":[{\"id\":\"ly-opt:blocks\",\"subjectCode\":\"LY\",\"questionCount\":10,"
+                + "\"blocks\":[{\"id\":\"b2\",\"questionType\":\"SINGLE_CHOICE\",\"questionCount\":10}]}]}]}]"));
+        JsonNode refused = json(put(base + "/structure").with(asUser(Permissions.EXAM_MODIFY))
+                .contentType(MediaType.APPLICATION_JSON).content(body.toString()), 422);
+        assertThat(refused.path("code").asText()).isEqualTo("EXAM_STRUCTURE_INVALID");
+        assertThat(structure(base).path("revision").asLong()).isEqualTo(before.path("revision").asLong());
     }
 
     // ---- fixtures -----------------------------------------------------------------------------------------
