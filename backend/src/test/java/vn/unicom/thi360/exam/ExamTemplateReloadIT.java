@@ -15,6 +15,7 @@ import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -157,6 +158,47 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
         entityManager.flush();
         jdbc.update("UPDATE exam.exam SET duration_minutes = NULL WHERE id = ?", UUID.fromString(id));
         entityManager.clear();
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        JsonNode missing = infoMissingIssues(result);
+        assertThat(missing).hasSize(1);
+        assertThat(missing.get(0).path("group").asText()).isEqualTo("INFO");
+        assertThat(missing.get(0).path("severity").asText()).isEqualTo("ERROR");
+
+        ObjectNode publish = mapper.createObjectNode()
+                .put("expectedRevision", detail(id).path("revision").asLong());
+        result.path("paths").forEach(path -> publish.putArray("pathIds").add(path.path("pathId").asText()));
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/publish", id)
+                        .with(asUser(Permissions.EXAM_PUBLISH))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(publish.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(r -> assertThat(mapper.readTree(r.getResponse().getContentAsString())
+                        .path("code").asText()).isEqualTo("PATH_NOT_VALID"));
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM exam.exam_version WHERE exam_id = ?",
+                Integer.class, UUID.fromString(id))).isZero();
+    }
+
+    /**
+     * Row 3 (R2-1): the reachable null-clock crossing through the API only. A SUBJECT
+     * review (default SP2E_REVIEW/BCA_REVIEW: PER_PART, no duration, created without a
+     * clock) reloaded with USE_TEMPLATE onto a SHARED subject template that declares no
+     * duration ends SHARED with a null stored clock; a fresh check reports exactly one
+     * INFO_MISSING finding (INFO, ERROR) and publish is refused without a version.
+     */
+    @ParameterizedTest(name = "a {0} review reloaded onto {2} blocks publish without a clock")
+    @CsvSource({"SP2E,VAN,SP2E_VAN_OLD", "BCA,TOAN,BCA_SUBJECT_TOAN"})
+    void reviewReloadOntoASharedTemplateWithoutADurationBlocksPublish(
+            String kind, String subject, String target) throws Exception {
+        JsonNode exam = created(createReview(kind, subject));
+        assertThat(exam.path("templateCode").asText()).isEqualTo(kind + "_REVIEW");
+        assertThat(exam.path("timing").asText()).isEqualTo("PER_PART");
+        String id = exam.path("id").asText();
+        reload(id, target, "USE_TEMPLATE");
+        assertThat(detail(id).path("timing").asText()).isEqualTo("SHARED");
+        assertThat(storedClock(id)).isNull();
+
         JsonNode result = check(id);
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
         JsonNode missing = infoMissingIssues(result);
@@ -387,6 +429,18 @@ class ExamTemplateReloadIT extends AbstractIntegrationTest {
         return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", id)
                         .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
+    }
+
+    /** Create a SUBJECT review on the kind's REVIEW default (PER_PART, no declared duration). */
+    private ResultActions createReview(String kind, String subject) throws Exception {
+        ObjectNode body = mapper.createObjectNode().put("kind", kind).put("scope", "SUBJECT")
+                .put("buildMode", "REVIEW")
+                .put("name", "R2699 " + kind + " REVIEW " + subject)
+                .put("code", "R-" + UUID.randomUUID().toString().substring(0, 8))
+                .put("subjectCode", subject);
+        return mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .contentType(MediaType.APPLICATION_JSON).content(body.toString()));
     }
 
     private ResultActions create(String kind, String scope, String partCode, String subject,
