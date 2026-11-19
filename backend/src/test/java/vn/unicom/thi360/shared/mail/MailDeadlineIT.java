@@ -158,8 +158,10 @@ class MailDeadlineIT extends AbstractMailIT {
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch checkReturned = new CountDownLatch(1);
         AtomicInteger checks = new AtomicInteger();
+        AtomicReference<Thread> sendThread = new AtomicReference<>();
         doAnswer(invocation -> {
                     if (checks.incrementAndGet() == 1) {
+                        sendThread.set(Thread.currentThread());
                         // Treo qua hạn 3 giây và bỏ qua lệnh ngắt, như một truy vấn bị kẹt không đáp lại ngắt.
                         while (release.getCount() > 0) {
                             try {
@@ -177,18 +179,26 @@ class MailDeadlineIT extends AbstractMailIT {
                 .when(store)
                 .stillHeld(any(), any());
 
-        assertThat(dispatcher.dispatchBatch()).as("nothing was sent").isZero();
+        try {
+            assertThat(dispatcher.dispatchBatch()).as("nothing was sent").isZero();
 
-        MailOutbox.Mail afterCutoff = outbox.require(to, MailKind.EMAIL_VERIFY);
-        assertThat(afterCutoff.lastError()).as("no timeout record for an attempt that never started").isNull();
-        assertThat(afterCutoff.attempts()).as("no attempt counted, no retry spent").isZero();
-        assertThat(afterCutoff.sentAt()).isNull();
-        assertThat(afterCutoff.failedAt()).isNull();
-        verify(transport, never()).send(any(), any(), any(), any(), any());
+            MailOutbox.Mail afterCutoff = outbox.require(to, MailKind.EMAIL_VERIFY);
+            assertThat(afterCutoff.lastError()).as("no timeout record for an attempt that never started").isNull();
+            assertThat(afterCutoff.attempts()).as("no attempt counted, no retry spent").isZero();
+            assertThat(afterCutoff.sentAt()).isNull();
+            assertThat(afterCutoff.failedAt()).isNull();
+        } finally {
+            // Thả kiểm tra kể cả khi đỏ: luồng gửi treo không đáp lại ngắt nên phải luôn được thả.
+            release.countDown();
+        }
 
-        // Thả kiểm tra: luồng gửi đã bị hủy phải bỏ lượt, không mở SMTP.
-        release.countDown();
+        // Đợi lượt gửi đã hủy kết thúc hẳn trước khi đếm lời gọi vận chuyển: một lượt bị hủy mà vẫn
+        // chạy tiếp khi được thả không được mở SMTP.
+        assertThat(sendThread.get()).isNotNull();
+        sendThread.get().join(Duration.ofSeconds(10));
+        assertThat(sendThread.get().isAlive()).as("the cancelled send task exits").isFalse();
         assertThat(checkReturned.await(10, TimeUnit.SECONDS)).isTrue();
+        verify(transport, never()).send(any(), any(), any(), any(), any());
 
         advance(Duration.ofMinutes(1));
         assertThat(dispatcher.dispatchBatch()).as("the next legitimate claim delivers").isEqualTo(1);
