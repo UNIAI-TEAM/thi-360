@@ -63,7 +63,7 @@ jobs:
           pnpm --filter @thi360/web-student --filter @thi360/web-admin build
       - name: Run Playwright E2E
         env:
-          E2E_BACKEND_CMD: java -jar target/thi360-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=api,worker,dev
+          E2E_BACKEND_CMD: java -jar target/thi360-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=api,worker,dev,e2e
           E2E_USE_BUILT: "1"
           # Passed through playwright.config.ts to the spawned backend: raises
           # the per-IP login rate limit (thi360.security.rate-limit.login-per-ip-limit)
