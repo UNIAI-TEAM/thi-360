@@ -71,7 +71,7 @@ import { hasSubjectFormRenderer, SubjectFormScreen } from "../subject-forms/form
 import { FullFormNotice } from "../subject-forms/full-form-notice";
 import { focusFormTarget, formTarget, type FormTarget } from "../subject-forms/navigation";
 import { createRawInputStore } from "../subject-forms/raw-input-store";
-import { pinnedForm, selectAllSubjectForms, type SubjectFormPins } from "../subject-forms/selection";
+import { applyEffectivePins, pinnedForm, selectAllSubjectForms, type SubjectFormPins } from "../subject-forms/selection";
 
 const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block" } as const;
 
@@ -270,8 +270,9 @@ function StructureEditor({
   const hsaNormalizing = useMemo(() => hsaNeedsNormalizing(hsa, baselineParts, quotaBaseline), [hsa, baselineParts, quotaBaseline]);
 
   // Biểu mẫu theo môn (FTM R-1, R-2): tính một lần khi mở và khi nạp mẫu (sau chuẩn hóa HSA-C), ghim trong phiên; sửa bản nháp không đổi.
-  const selectionExam = useMemo(() => ({ kind: exam.kind, buildMode: reviewMode ? ("REVIEW" as const) : exam.buildMode }), [exam.kind, exam.buildMode, reviewMode]);
-  const pinForms = (parts: readonly ExamPart[]): SubjectFormPins => selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : parts);
+  const selectionExam = useMemo(() => ({ kind: exam.kind, buildMode: exam.buildMode }), [exam.kind, exam.buildMode]);
+  const pinForms = (parts: readonly ExamPart[]): SubjectFormPins =>
+    applyEffectivePins(selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : parts));
   const [pinnedForms, setPinnedForms] = useState<SubjectFormPins>(() => pinForms(structure.parts));
   const [focusRequest, setFocusRequest] = useState<{ target: FormTarget; nonce: number } | null>(null);
   const formRegionRef = useRef<HTMLDivElement>(null);

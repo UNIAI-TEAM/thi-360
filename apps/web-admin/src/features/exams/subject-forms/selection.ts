@@ -2,6 +2,7 @@ import { rendersReviewPanel } from "../allocation";
 import { findSection, sectionGroups } from "../components/exam-structure-draft";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 import { fitsForm, type FitReason } from "./fit";
+import { hasSubjectFormRenderer } from "./form-renderers";
 import { subjectFormFor } from "./registry";
 
 /**
@@ -57,4 +58,16 @@ export function selectAllSubjectForms(exam: Pick<ExamDetail, "kind" | "buildMode
 /** Biểu mẫu đã ghim của môn; môn chưa có ghim (mục mới xuất hiện sau khi nạp lại dữ liệu) dùng MD không dòng chữ. */
 export function pinnedForm(pins: SubjectFormPins, sectionId: string): SubjectFormSelection {
   return pins[sectionId] ?? DEFAULT_FORM;
+}
+
+/**
+ * Ghim có hiệu lực (review R1-5): MT/DS được chọn mà chưa có màn đăng ký coi như MD cho cả vẽ, điều hướng và chặn lưu —
+ * `?block=` mở đúng nhóm và luật MT/DS không chạy trên mục đang vẽ bằng MD. Giữ `notice`/`reason` để dòng chữ nói đúng lý do.
+ */
+export function applyEffectivePins(pins: SubjectFormPins): SubjectFormPins {
+  const next: Record<string, SubjectFormSelection> = {};
+  for (const [sectionId, pin] of Object.entries(pins)) {
+    next[sectionId] = (pin.form === "MATRIX" || pin.form === "ROWS") && !hasSubjectFormRenderer(pin.form) ? { ...pin, form: "DEFAULT" } : pin;
+  }
+  return next;
 }

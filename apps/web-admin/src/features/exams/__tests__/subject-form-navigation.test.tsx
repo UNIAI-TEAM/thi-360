@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXAM_ID } from "./fake-exams-server";
-import { boot, installForms, openStructure } from "./subject-form-harness";
+import { boot, installForms, openStructure, qdaParts } from "./subject-form-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -127,5 +127,19 @@ describe("Điều hướng theo biểu mẫu (FTM R-15)", () => {
     expect(await screen.findByRole("heading", { level: 2, name: /LY/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
     expect(screen.queryByTestId("full-form-notice")).toBeNull();
+  });
+  it("(R1-5) dạng bật mà chưa có màn: ?block= mở màn nhóm MD và luật MT/DS không chặn lưu", async () => {
+    const user = userEvent.setup();
+    restore();
+    restore = installForms({ renderers: false });
+    const { server } = boot({ parts: qdaParts({ lySingle: 13 }) });
+    // ?block= của môn bật nhưng không có màn: vẫn mở editor nhóm đầy đủ của MD, không mở "môn".
+    openStructure("?block=sec-ly-single");
+    expect(await screen.findByRole("textbox", { name: "Tên nhóm" })).toBeInTheDocument();
+    // Luật MT coi 13 là sai, nhưng mục đang vẽ MD nên không bị xét: sửa chỗ khác (ở TOAN) rồi lưu được.
+    await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
+    await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", `/api/v1/admin/exams/${EXAM_ID}/structure`)).toHaveLength(1));
   });
 });

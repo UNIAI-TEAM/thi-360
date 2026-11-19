@@ -9,8 +9,11 @@ import {
   putCalls,
   qdaParts,
   sectionsOf,
+  wireBlock,
   wireScience,
+  wireSection,
   withoutMappingDefaults,
+  type Wire,
 } from "./subject-form-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
@@ -127,15 +130,26 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await waitFor(() => expect(checkCalls(server)).toHaveLength(1));
   });
 
-  it("(d) nháp trộn: mục MD có dữ liệu mà luật MT sẽ coi là sai không bị chặn; mục DS bên cạnh có lỗi thì bị chặn", async () => {
+  it("(d) nháp trộn: mục MD và mục bật-mà-lùi-MD không bị luật MT/DS xét; mục DS bên cạnh có lỗi thì bị chặn", async () => {
     const user = userEvent.setup();
-    const { server } = boot({ parts: qdaParts({ toanFirst: 13 }) });
-    openStructure("?section=sec-toan");
+    // HOA bật trong đăng ký nhưng 3 chùm vượt giới hạn R-12 → ghim MD kèm dòng chữ; dữ liệu đó luật MT/DS không được xét.
+    const hoaUnfit = wireSection("sec-hoa", "HOA", [
+      wireBlock("sec-hoa-single", { name: "sec-hoa don", questionCount: 13 }),
+      wireBlock("sec-hoa-set", { name: "sec-hoa chum", questionType: "QUESTION_SET", setCount: 3, setSize: 3, questionCount: 9 }),
+      wireBlock("sec-hoa-fill", { name: "sec-hoa dien", questionType: "SHORT_ANSWER", questionCount: 1 }),
+    ]);
+    const parts = qdaParts({ toanFirst: 13 });
+    parts[0]!.sections = (parts[0]!.sections as Wire[]).map((section) => (section.id === "sec-hoa" ? hoaUnfit : section));
+    const { server } = boot({ parts });
+    openStructure("?section=sec-hoa");
+    // Mục vẽ MD và vẫn báo "đang dùng thiết lập đầy đủ".
+    expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();
+    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
     await dirtyToan(user);
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
 
-    // Một lỗi nhập thô ở DS bên cạnh chặn lưu, dù mục Toán (MD) vẫn mang 13.
+    // Một lỗi nhập thô ở DS bên cạnh chặn Kiểm tra, dù mục Toán (MD) vẫn mang 13.
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /VAN/ }));
     await user.click(await screen.findByRole("button", { name: "Sua Van dong 2" }));
     const field = screen.getByRole("textbox", { name: "DS Van dong 2 so luong" });
