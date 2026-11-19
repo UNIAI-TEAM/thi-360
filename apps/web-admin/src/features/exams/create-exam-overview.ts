@@ -1,6 +1,6 @@
 import type { QuestionType } from "@/features/content/types";
 import { isAllOmittedPart } from "./omitted-part";
-import type { ExamOverviewRow, ExamTemplate, ExamTemplateBlock, ExamTemplateSection, ExamTiming, ItemShape } from "./types";
+import type { ExamOverviewRow, ExamTemplate, ExamTemplateBlock, ExamTiming, ItemShape, KnowledgeScope } from "./types";
 
 /**
  * "Bảng tổng quan" của bước 1 (2B 15.1): một dòng cho mỗi phần của mẫu và, khi phần cố định có nhiều môn (BCA Phần 2,
@@ -85,7 +85,14 @@ function partRow(part: ExamTemplate["parts"][number], index: number): OverviewRo
 }
 
 /** Năng lực đầu tiên của mục: phạm vi của mục, không thì của nhóm đầu (V-ACT hai mục cùng môn SCIENTIFIC_THINKING). */
-export function sectionCompetency(section: ExamTemplateSection | undefined): string | undefined {
+export function sectionCompetency(
+  section:
+    | {
+        knowledgeScope?: KnowledgeScope | null;
+        blocks?: ReadonlyArray<{ knowledgeScope?: KnowledgeScope | null }>;
+      }
+    | undefined,
+): string | undefined {
   return (
     section?.knowledgeScope?.competencyCodes?.[0] ??
     section?.blocks?.find((block) => block.knowledgeScope?.competencyCodes?.length)?.knowledgeScope?.competencyCodes?.[0]
@@ -131,7 +138,7 @@ function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sect
 
 
 /** Nhóm tạm bỏ qua của môn (SPT Toán: Tự luận): hiện mờ, chỉ đọc, không tính vào tổng và không vào `overview`. */
-function omittedRow(
+export function omittedRow(
   partIndex: number,
   sectionIndex: number,
   subjectCode: string,
