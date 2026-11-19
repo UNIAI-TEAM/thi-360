@@ -5,7 +5,7 @@ import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { RichTextView } from "../rich-text";
 import { formatScore, statementLetter } from "./helpers";
-import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
+import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import { coarseTarget } from "./touch";
@@ -189,7 +189,7 @@ function TrueFalseReview({
                   </td>
                   <td className="py-2.5 pr-4 text-label font-semibold whitespace-nowrap text-text">
                     <span className="inline-flex items-center gap-2">
-                      {part && <OutcomeGlyph outcome={part.outcome} />}
+                      {part && <PartOutcome outcome={part.outcome} />}
                       {picked === true ? strings.trueOption : picked === false ? strings.falseOption : (
                         <span className="font-normal text-text-muted">{strings.notAnswered}</span>
                       )}

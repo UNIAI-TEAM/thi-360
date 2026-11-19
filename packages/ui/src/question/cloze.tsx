@@ -7,7 +7,7 @@ import { useUiLocale, useUiStrings } from "../components/ui-strings";
 import { cn } from "../lib/cn";
 import { RichTextView } from "../rich-text";
 import { formatScore } from "./helpers";
-import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
+import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import { coarseFieldHeight, touchFieldText } from "./touch";
@@ -173,7 +173,7 @@ export function ClozeQuestion({
                   )}
                 />
                 {mode === "review" && part && (
-                  <OutcomeGlyph outcome={part.outcome} className="absolute -top-1.5 -right-1.5 size-3.5" />
+                  <PartOutcome outcome={part.outcome} className="absolute -top-1.5 -right-1.5 size-3.5" />
                 )}
               </span>
             );
@@ -239,7 +239,7 @@ function ClozeReviewTable({
                 </td>
                 <td className="py-2.5 pr-4 text-label text-text">
                   <span className="inline-flex items-center gap-2">
-                    {part && <OutcomeGlyph outcome={part.outcome} />}
+                    {part && <PartOutcome outcome={part.outcome} />}
                     {text === "" ? <span className="text-text-muted">{strings.blankFilledTag}</span> : <span data-exam-content>{text}</span>}
                   </span>
                 </td>

@@ -8,7 +8,7 @@ import { focusRing } from "../lib/styles";
 import { RichTextView } from "../rich-text";
 import { formatScore, matchLetter, orderById } from "./helpers";
 import { MatchOptionContent, MatchSelect } from "./match-select";
-import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
+import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import { coarseTarget } from "./touch";
@@ -307,6 +307,7 @@ function MatchingReviewTable({
   const pairs = value?.pairs ?? {};
   const showAnswers = answersVisible(review);
   const correct = new Map((question.body.pairs ?? []).map((pair) => [pair.leftId, pair.rightId]));
+  const pairPoints = new Map((question.body.pairs ?? []).map((pair) => [pair.leftId, pair.points]));
   const rightById = new Map(right.map((item, index) => [item.id, { item, letter: matchLetter(index) }]));
   return (
     <div className="overflow-x-auto">
@@ -340,7 +341,7 @@ function MatchingReviewTable({
                 </td>
                 <td className="py-2.5 pr-4 text-label text-text">
                   <span className="inline-flex items-center gap-2">
-                    {part && <OutcomeGlyph outcome={part.outcome} />}
+                    {part && <PartOutcome outcome={part.outcome} />}
                     {picked ? (
                       <MatchOptionContent letter={picked.letter} html={picked.item.content} wrap />
                     ) : (
@@ -359,7 +360,10 @@ function MatchingReviewTable({
                 )}
                 <td className="py-2.5 text-label whitespace-nowrap text-text tabular-nums">
                   {part?.earned != null
-                    ? strings.points(formatScore(part.earned, locale), formatScore(part.max ?? 1, locale))
+                    ? strings.points(
+                        formatScore(part.earned, locale),
+                        formatScore(part.max ?? pairPoints.get(item.id) ?? 1, locale),
+                      )
                     : "—"}
                 </td>
               </tr>

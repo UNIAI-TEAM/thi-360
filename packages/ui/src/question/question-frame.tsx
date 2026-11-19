@@ -176,6 +176,20 @@ export function OutcomeGlyph({ outcome, className }: { outcome: QuestionOutcome;
   }
 }
 
+/**
+ * Kết quả của một ý (ô trống, mệnh đề, cặp): icon kèm chữ cho trình đọc màn hình, vì icon và màu đứng
+ * một mình không báo được đúng/sai (DESIGN.md mục 8; chip của cả câu đã có chữ nhìn thấy).
+ */
+export function PartOutcome({ outcome, className }: { outcome: QuestionOutcome; className?: string }) {
+  const strings = useUiStrings().question;
+  return (
+    <>
+      <OutcomeGlyph outcome={outcome} className={className} />
+      <span className="sr-only">{strings.outcomes[outcome]}</span>
+    </>
+  );
+}
+
 /** "earned / max điểm" của câu ở review; điểm chưa có thì hiện "Chưa có điểm · tối đa m". */
 export function ReviewPoints({ earned, max }: { earned: number | null | undefined; max: number }) {
   const strings = useUiStrings().question;
