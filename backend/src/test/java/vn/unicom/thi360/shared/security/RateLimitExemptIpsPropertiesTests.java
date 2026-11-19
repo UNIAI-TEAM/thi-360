@@ -1,0 +1,77 @@
+package vn.unicom.thi360.shared.security;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.autoconfigure.context.ConfigurationPropertiesAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Configuration;
+
+/** AC-31 and the defaults of the public rate-limit policy (TM 10.2). */
+class RateLimitExemptIpsPropertiesTests {
+
+    @Configuration(proxyBeanMethods = false)
+    @EnableConfigurationProperties(SecurityProperties.class)
+    static class TestConfig {
+    }
+
+    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(ConfigurationPropertiesAutoConfiguration.class))
+            .withUserConfiguration(TestConfig.class);
+
+    @Test
+    void malformedEntryStopsStartup() {
+        for (String bad : List.of("not-an-ip", "10.0.0.0/33", "10.0.0.1/abc", "999.1.1.1", "10.0.0.0/-1", "::1/129")) {
+            runner.withPropertyValues("thi360.security.rate-limit.exempt-ips[0]=" + bad)
+                    .run(context -> {
+                        assertThat(context).as("entry '%s'", bad).hasFailed();
+                        assertThat(context.getStartupFailure())
+                                .hasStackTraceContaining("thi360.security.rate-limit.exempt-ips");
+                    });
+        }
+        // One bad entry among good ones is enough.
+        runner.withPropertyValues(
+                        "thi360.security.rate-limit.exempt-ips[0]=10.0.0.5",
+                        "thi360.security.rate-limit.exempt-ips[1]=10.0.0.0/8x")
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void addressesAndCidrRangesAreAccepted() {
+        runner.withPropertyValues("thi360.security.rate-limit.exempt-ips=10.0.0.5, 192.168.0.0/16 ,2001:db8::/32,::1")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    List<String> exempt = context.getBean(SecurityProperties.class).rateLimit().exemptIps();
+                    assertThat(exempt).hasSize(4);
+                    ExemptIpMatcher matcher = new ExemptIpMatcher(exempt);
+                    assertThat(matcher.matches("10.0.0.5")).isTrue();
+                    assertThat(matcher.matches("10.0.0.6")).isFalse();
+                    assertThat(matcher.matches("192.168.200.1")).isTrue();
+                    assertThat(matcher.matches("192.169.0.1")).isFalse();
+                    assertThat(matcher.matches("2001:db8:1::7")).isTrue();
+                    assertThat(matcher.matches("2001:db9::1")).isFalse();
+                });
+    }
+
+    @Test
+    void defaultsAre120PerMinuteAndNobodyExempt() {
+        runner.run(context -> {
+            assertThat(context).hasNotFailed();
+            SecurityProperties.RateLimitProperties rateLimit = context.getBean(SecurityProperties.class).rateLimit();
+            assertThat(rateLimit.publicPerIpLimit()).isEqualTo(120);
+            assertThat(rateLimit.publicPerIpWindow()).isEqualTo(java.time.Duration.ofMinutes(1));
+            assertThat(rateLimit.exemptIps()).isEmpty();
+            assertThat(new ExemptIpMatcher(rateLimit.exemptIps()).matches("127.0.0.1")).isFalse();
+        });
+    }
+
+    @Test
+    void emptyEnvironmentValueMeansNobodyExempt() {
+        runner.withPropertyValues("THI360_SECURITY_RATELIMIT_EXEMPTIPS=")
+                .run(context -> assertThat(context.getBean(SecurityProperties.class).rateLimit().exemptIps())
+                        .isEmpty());
+    }
+}

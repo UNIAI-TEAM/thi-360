@@ -18,8 +18,20 @@ public record SecurityProperties(
             @DefaultValue("20") int loginPerIpLimit,
             @DefaultValue("PT1M") Duration loginPerIpWindow,
             @DefaultValue("10") int uploadPerIpLimit,
-            @DefaultValue("PT1M") Duration uploadPerIpWindow
+            @DefaultValue("PT1M") Duration uploadPerIpWindow,
+            @DefaultValue("120") int publicPerIpLimit,
+            @DefaultValue("PT1M") Duration publicPerIpWindow,
+            List<String> exemptIps
     ) {
+
+        public RateLimitProperties {
+            // Chỉ miễn chính sách của GET /api/v1/public/** (TM 10.2); mục sai định dạng thì không khởi động.
+            exemptIps = exemptIps == null ? List.of() : List.copyOf(exemptIps);
+            exemptIps.stream()
+                    .filter(entry -> entry != null && !entry.isBlank())
+                    .map(String::trim)
+                    .forEach(ExemptIpMatcher::requireIpOrCidr);
+        }
     }
 
     public record LoginThrottleProperties(
