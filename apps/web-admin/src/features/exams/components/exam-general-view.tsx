@@ -188,6 +188,8 @@ function ExamGeneralForm({
   const [confirmReplace, setConfirmReplace] = useState<PendingInfoSave | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [cellEdits, setCellEdits] = useState<CellEdits>({});
+  /** Bài đã công bố: phạm vi và bảng tổng quan chỉ đọc (AC-6); sửa số liệu ở bước Cấu trúc, trên bản nháp. */
+  /** Bài đã công bố: phạm vi và bảng tổng quan chỉ đọc (AC-6); sửa số liệu ở bước Cấu trúc, trên bản nháp. */
   const lockScope = exam.servingVersion !== null;
 
   const form = useForm<ExamInfoFormValues>({
@@ -462,6 +464,7 @@ function ExamGeneralForm({
     if (structure.parts.length === 0) return <p className="text-body text-text-secondary">{t("overview.empty")}</p>;
     return (
       <ExamOverviewTable
+        readOnly={lockScope}
         rows={rows}
         timing={exam.timing}
         showPoints={rows.some((row) => row.kind === "part" && row.base.maxPoints !== null)}
@@ -499,7 +502,7 @@ function ExamGeneralForm({
                 <h3 id={overviewHeadingId} className="text-title font-semibold text-text">
                   {tOverview("title")}
                 </h3>
-                <p className="text-body text-text-muted">{showPreview ? t("overview.pendingDescription") : t("overview.description")}</p>
+                <p className="text-body text-text-muted">{showPreview ? t("overview.pendingDescription") : lockScope ? t("overview.publishedReadOnly") : t("overview.description")}</p>
               </div>
               {countsLocked && !showPreview && (
                 <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">

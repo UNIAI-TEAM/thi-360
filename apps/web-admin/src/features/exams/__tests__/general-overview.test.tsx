@@ -80,7 +80,7 @@ let backend: ExamsBackend;
 let seeded: ExamDetail;
 
 /** Bài HSA toàn bài đã sửa số câu Toán 50 → 45 lúc tạo (45 / 50 / 50). `configure` đăng ký phản hồi ghi đè trước khi cài. */
-function setup(options: { lockCounts?: boolean; configure?: (backend: ExamsBackend) => void } = {}) {
+function setup(options: { lockCounts?: boolean; servingVersion?: number; configure?: (backend: ExamsBackend) => void } = {}) {
   routerMock.push.mockReset();
   backend = new ExamsBackend();
   if (options.lockCounts) {
@@ -99,7 +99,7 @@ function setup(options: { lockCounts?: boolean; configure?: (backend: ExamsBacke
     scope: "FULL",
     timing: "PER_PART",
     templateCode: "HSA_FULL",
-    servingVersion: null,
+    servingVersion: options.servingVersion ?? null,
     parts: [hsaPart(1, MATH, 45, 75, "MATH"), hsaPart(2, LITERATURE, 50, 60, "LITERATURE"), hsaPart(3, SCIENCE, 50, 60, "PHYSICS")],
   };
   backend.seedExam(seeded);
@@ -210,6 +210,17 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     }
   }, 20_000);
 
+  it("AC-6: bài đã công bố (servingVersion 1) thì mọi ô của bảng chỉ đọc, có ghi chú, không hiện chip khóa của mẫu", async () => {
+    setup({ servingVersion: 1 });
+    open();
+    const table = await tableRegion();
+    expect(screen.getByText(/Bài đã công bố: bảng chỉ đọc ở đây/)).toBeInTheDocument();
+    const inputs = within(table).getAllByRole("textbox");
+    expect(inputs.length).toBeGreaterThan(0);
+    for (const input of inputs) expect(input).toHaveAttribute("readonly");
+    expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
+  }, 20_000);
+
   it("AC-10: PUT bị 412 thì hiện câu xung đột, không gửi PATCH và giữ nguyên giá trị đã gõ", async () => {
     setup({ configure: (server) => server.server.on("PUT", STRUCTURE_PATH, { status: 412, body: { code: "EXAM_REVISION_CONFLICT" } }) });
     const user = userEvent.setup();
@@ -280,7 +291,7 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
   }, 30_000);
 
   it("R1-1: phần mà mọi nhóm đều bỏ qua là dòng chỉ đọc, không lỗi khi tải; sửa Phần I rồi lưu giữ nguyên số câu 0 của Phần II", async () => {
-    setupExam(sp2eVanExam());
+    setupExam({ ...sp2eVanExam(), servingVersion: null });
     const user = userEvent.setup();
     open();
     const table = await tableRegion();
@@ -308,7 +319,7 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
       ...hsaPart(1, "Tư duy khoa học", 30, 0, "SCIENTIFIC_THINKING"),
       sections: [competent(1, "VACT-TD-LOGIC", 12), competent(2, "VACT-TD-SL", 18)],
     };
-    setupExam({ ...seeded0(), kind: "VACT", timing: "SHARED", templateCode: null, parts: [thinking] });
+    setupExam({ ...seeded0(), kind: "VACT", timing: "SHARED", templateCode: null, servingVersion: null, parts: [thinking] });
     open();
     const table = await tableRegion();
     expect(within(table).getByRole("textbox", { name: "Số câu của Logic và phân tích số liệu" })).toHaveValue("12");
