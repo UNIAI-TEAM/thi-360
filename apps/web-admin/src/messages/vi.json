@@ -4299,7 +4299,8 @@
           "alwaysShuffleSet": "Câu và chùm trong nhóm luôn được đảo; câu con giữ thứ tự.",
           "omitted": {
             "description": "Nhóm không vào đề, không tính vào tổng câu và điểm tối đa, không bị kiểm tra nguồn. Tắt để đưa nhóm vào đề và chấm tay.",
-            "label": "Tạm bỏ qua"
+            "label": "Tạm bỏ qua",
+            "lockedReason": "Mẫu đã khóa nhóm này: nhóm đã lược của mẫu không bật lại được."
           },
           "shuffle": {
             "description": "Chùm đã chọn đổi vị trí trong nhóm theo từng đề. Câu con trong chùm giữ thứ tự. Chỉ nhóm 5 của Văn HSA và Văn QDA có công tắc này.",

@@ -393,7 +393,7 @@ function PublishForm({
         <Button variant="secondary" onClick={onCancel} disabled={publish.isPending}>
           {t("cancel")}
         </Button>
-        <Button type="submit" loading={publish.isPending}>
+        <Button type="submit" loading={publish.isPending} disabled={selected.length === 0}>
           <ArrowUp />
           {t("submit", { count: selected.length })}
         </Button>

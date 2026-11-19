@@ -55,7 +55,7 @@ function setBlock(patch: Partial<QuestionBlock> = {}): QuestionBlock {
 }
 
 /** Giữ nhóm trong state như `ExamStructureView` và ghi lại nhóm mới nhất để kiểm tra giá trị lưu. */
-function renderEditor(initial: QuestionBlock, options: { examKind?: string } = {}) {
+function renderEditor(initial: QuestionBlock, options: { examKind?: string; omittedLocked?: boolean } = {}) {
   const latest = { block: initial };
   function Harness() {
     const [block, setBlock_] = useState(initial);
@@ -71,6 +71,7 @@ function renderEditor(initial: QuestionBlock, options: { examKind?: string } = {
         labels={{ grade: (code) => code, difficulty: (code) => code }}
         reference={reference as unknown as ContentReference}
         examKind={options.examKind}
+        omittedLocked={options.omittedLocked}
         scoringDefaults={null}
         competencies={[]}
         onChange={(next) => {
@@ -294,6 +295,47 @@ describe("biểu mẫu nhóm: công tắc và dải vị trí", () => {
     unmount();
     renderEditor(makeBlock());
     expect(screen.queryByRole("switch", { name: "Tạm bỏ qua" })).not.toBeInTheDocument();
+  });
+
+  describe("mẫu khóa nhóm đã lược (H43)", () => {
+    const TEMPLATE_GROUP = { questionType: "ESSAY", questionCount: 1, templateGroupCode: "HSCA_VAN_PARAGRAPH" } as const;
+
+    it("nhóm của mẫu đang tạm bỏ qua: công tắc khóa, lý do nối bằng aria-describedby", async () => {
+      const user = userEvent.setup();
+      const { latest } = renderEditor(makeBlock({ ...TEMPLATE_GROUP, omitted: true }), { omittedLocked: true });
+      const toggle = screen.getByRole("switch", { name: "Tạm bỏ qua" });
+      expect(toggle).toBeDisabled();
+      expect(toggle).toBeChecked();
+      const reason = screen.getByText("Mẫu đã khóa nhóm này: nhóm đã lược của mẫu không bật lại được.");
+      expect(toggle).toHaveAccessibleDescription(expect.stringContaining(reason.textContent!));
+      await user.click(toggle);
+      expect(latest.block.omitted).toBe(true);
+    });
+
+    it("nhóm đã bật từ bản nháp cũ vẫn tắt/bật được để sửa lại; tắt rồi thì khóa lại", async () => {
+      const user = userEvent.setup();
+      const { latest } = renderEditor(makeBlock({ ...TEMPLATE_GROUP, omitted: false }), { omittedLocked: true });
+      const toggle = screen.getByRole("switch", { name: "Tạm bỏ qua" });
+      expect(toggle).toBeEnabled();
+      expect(screen.queryByText(/Mẫu đã khóa nhóm này/)).not.toBeInTheDocument();
+      await user.click(toggle);
+      expect(latest.block.omitted).toBe(true);
+      expect(toggle).toBeDisabled();
+    });
+
+    it("mẫu không đặt cờ (ví dụ SP2E): công tắc vẫn bật tắt được", async () => {
+      const user = userEvent.setup();
+      const { latest } = renderEditor(makeBlock({ ...TEMPLATE_GROUP, omitted: true }), { omittedLocked: false });
+      const toggle = screen.getByRole("switch", { name: "Tạm bỏ qua" });
+      expect(toggle).toBeEnabled();
+      await user.click(toggle);
+      expect(latest.block.omitted).toBe(false);
+    });
+
+    it("nhóm thêm tay (không có mã nhóm mẫu) không bị khóa, như bộ kiểm tra", () => {
+      renderEditor(makeBlock({ questionType: "ESSAY", questionCount: 1, omitted: true }), { omittedLocked: true });
+      expect(screen.getByRole("switch", { name: "Tạm bỏ qua" })).toBeEnabled();
+    });
   });
 
   it("hiện dải vị trí do hệ thống tính", () => {

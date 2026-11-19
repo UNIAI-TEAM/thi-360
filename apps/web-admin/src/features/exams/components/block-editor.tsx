@@ -78,6 +78,8 @@ export interface BlockEditorProps {
   partTotal?: number | null;
   /** Mẫu khóa dòng (H42, R-135): số lượng, cách lấy và dạng chỉ đọc; nguồn câu, phạm vi và chỉ tiêu vẫn sửa được. */
   rowsLocked?: boolean;
+  /** Mẫu khóa nhóm đã lược (H43): nhóm của mẫu đang tạm bỏ qua không bật lại được. */
+  omittedLocked?: boolean;
   /** Số lệnh hỏi của nhóm do máy chủ tính (`structure/summary`); `null`: chưa có hoặc bản nháp đã đổi so với bản lưu. */
   commandCount?: number | null;
   /** Dòng nhập theo tỷ lệ đang sai (chùm không ra số nguyên): màn Cấu trúc không cho lưu cho đến khi sửa. */
@@ -113,6 +115,7 @@ export function BlockEditor({
   topicError = null,
   partTotal = null,
   rowsLocked = false,
+  omittedLocked = false,
   commandCount = null,
   onRateInvalid,
 }: BlockEditorProps) {
@@ -494,7 +497,7 @@ export function BlockEditor({
         </p>
       )}
 
-      <BlockSwitches block={block} onChange={update} />
+      <BlockSwitches block={block} onChange={update} omittedLocked={omittedLocked} />
 
       <KnowledgeScopeField
         value={block.knowledgeScope}

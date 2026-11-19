@@ -120,3 +120,15 @@ describe("hộp thoại công bố với đường là tổ hợp", () => {
     });
   });
 });
+
+describe("nút công bố theo số đường đã chọn (F-PUBLISH0)", () => {
+  it("không chọn đường nào: nút khóa; chọn một đường: nút mở", async () => {
+    const { user, dialog } = await openPublishDialog();
+    for (const [code] of COMBINATIONS) await user.click(within(dialog).getByRole("checkbox", { name: new RegExp(`^${code}`) }));
+
+    expect(within(dialog).getByRole("button", { name: "Công bố 0 đường lựa chọn" })).toBeDisabled();
+
+    await user.click(within(dialog).getByRole("checkbox", { name: /^QD02/ }));
+    expect(within(dialog).getByRole("button", { name: "Công bố 1 đường lựa chọn" })).toBeEnabled();
+  });
+});
