@@ -3,6 +3,7 @@ package vn.unicom.thi360.commerce.entitlement.access.infrastructure;
 import java.sql.Array;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -61,21 +62,29 @@ public class ExamAccessReadRepository {
                 rs.getTimestamp("created_at").toInstant()), userId);
     }
 
-    /** Union of the purchased option codes (E25) over every grant of each entitlement. */
-    public Map<UUID, Set<String>> findOptionCodes(Collection<UUID> entitlementIds) {
-        Map<UUID, Set<String>> codes = new HashMap<>();
+    /**
+     * The grants of each entitlement, oldest first (E21: lowest {@code seq} is the FIFO grant): whether a grant still has a
+     * usable attempt (the test {@code EntitlementDescriptionQuery} uses) and its purchased option codes (E25).
+     */
+    public Map<UUID, List<GrantOptions>> findGrantOptions(Collection<UUID> entitlementIds) {
+        Map<UUID, List<GrantOptions>> grants = new HashMap<>();
         if (entitlementIds.isEmpty()) {
-            return codes;
+            return grants;
         }
-        jdbc.query("SELECT entitlement_id, option_codes FROM commerce.entitlement_grant WHERE entitlement_id = ANY (?)",
+        jdbc.query("""
+                SELECT entitlement_id, option_codes,
+                       attempts - attempts_used - attempts_reserved - attempts_revoked > 0 AS usable
+                FROM commerce.entitlement_grant
+                WHERE entitlement_id = ANY (?)
+                ORDER BY entitlement_id, seq
+                """,
                 ps -> ps.setArray(1, ps.getConnection().createArrayOf("uuid", entitlementIds.toArray())),
                 rs -> {
                     Array array = rs.getArray("option_codes");
-                    Set<String> target = codes.computeIfAbsent(
-                            rs.getObject("entitlement_id", UUID.class), id -> new LinkedHashSet<>());
+                    Set<String> codes = new LinkedHashSet<>();
                     try {
                         for (Object code : (Object[]) array.getArray()) {
-                            target.add((String) code);
+                            codes.add((String) code);
                         }
                     } catch (SQLException e) {
                         throw new IllegalStateException("option_codes is not readable", e);
@@ -86,8 +95,10 @@ public class ExamAccessReadRepository {
                             // the array was read already
                         }
                     }
+                    grants.computeIfAbsent(rs.getObject("entitlement_id", UUID.class), id -> new ArrayList<>())
+                            .add(new GrantOptions(rs.getBoolean("usable"), codes));
                 });
-        return codes;
+        return grants;
     }
 
     private static final String PRODUCT_SELECT = """
@@ -101,6 +112,10 @@ public class ExamAccessReadRepository {
 
     /** One storefront row: the product code of an exam, whether it is still on sale, and its prebuilt card JSON. */
     public record ProductRef(UUID examId, String code, String codeNormalized, SaleState saleState, String card) {
+    }
+
+    /** One grant of an entitlement: whether it still has a usable attempt, and the option codes it bought. */
+    public record GrantOptions(boolean usable, Set<String> optionCodes) {
     }
 
     public record EntitlementRow(UUID id, UUID examId, int attemptsTotal, int attemptsUsed, int attemptsReserved,

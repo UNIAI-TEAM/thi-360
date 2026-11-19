@@ -9,6 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -21,6 +22,7 @@ import vn.unicom.thi360.commerce.entitlement.access.domain.ExamAccessState;
 import vn.unicom.thi360.commerce.entitlement.access.domain.MyExamAction;
 import vn.unicom.thi360.commerce.entitlement.access.infrastructure.ExamAccessReadRepository;
 import vn.unicom.thi360.commerce.entitlement.access.infrastructure.ExamAccessReadRepository.EntitlementRow;
+import vn.unicom.thi360.commerce.entitlement.access.infrastructure.ExamAccessReadRepository.GrantOptions;
 import vn.unicom.thi360.commerce.entitlement.access.infrastructure.ExamAccessReadRepository.ProductRef;
 import vn.unicom.thi360.commerce.entitlement.access.application.PendingOrderLookup.PendingOrder;
 import vn.unicom.thi360.commerce.spi.AttemptStatusProvider;
@@ -70,7 +72,7 @@ public class MyExamsService {
         pending.forEach(p -> examIds.add(p.examId()));
         Map<UUID, ProductRef> products = new HashMap<>();
         repository.findProductsByExamIds(examIds).forEach(p -> products.put(p.examId(), p));
-        Map<UUID, Set<String>> optionCodes = repository.findOptionCodes(entitlements.stream().map(EntitlementRow::id).toList());
+        Map<UUID, List<GrantOptions>> grants = repository.findGrantOptions(entitlements.stream().map(EntitlementRow::id).toList());
         Map<UUID, String> pendingByExam = new HashMap<>();
         pending.forEach(p -> pendingByExam.putIfAbsent(p.examId(), p.orderCode()));
 
@@ -86,7 +88,7 @@ public class MyExamsService {
                         order.orderCode(), order.examId());
                 continue;
             }
-            cards.add(card(product, null, Set.of(), null, null, order.orderCode()));
+            cards.add(card(product, null, null, null, null, order.orderCode()));
         }
         AttemptStatusProvider provider = attempts.get();
         for (int i = entitlements.size() - 1; i >= 0; i--) {
@@ -97,7 +99,7 @@ public class MyExamsService {
                         entitlement.examId());
                 continue;
             }
-            cards.add(card(product, entitlement, optionCodes.getOrDefault(entitlement.id(), Set.of()),
+            cards.add(card(product, entitlement, rangeScope(grants.getOrDefault(entitlement.id(), List.of())),
                     provider.findOpenAttempt(userId, entitlement.id()).orElse(null),
                     provider.findLatestResultAttempt(userId, entitlement.id()).orElse(null),
                     pendingByExam.get(entitlement.examId())));
@@ -105,7 +107,7 @@ public class MyExamsService {
         return cards;
     }
 
-    private MyExamCard card(ProductRef product, EntitlementRow entitlement, Set<String> purchasedOptions,
+    private MyExamCard card(ProductRef product, EntitlementRow entitlement, List<Set<String>> grantOptions,
             OpenAttempt open, ResultAttempt result, String pendingOrderCode) {
         ProductCard stored = read(product.card());
         boolean hasEntitlement = entitlement != null;
@@ -115,10 +117,15 @@ public class MyExamsService {
                 || (hasEntitlement && entitlement.attemptsUsed() + entitlement.attemptsReserved() > 0);
         boolean onSale = product.saleState() == SaleState.ON_SALE;
 
-        List<ServingPath> paths = exams.findServing(product.examId()).map(ServingExam::servingPaths)
-                .map(all -> purchasedPaths(all, purchasedOptions)).orElse(List.of());
-        IntRange questions = range(paths, ServingPath::questionCount);
-        IntRange minutes = range(paths, ServingPath::durationMinutes);
+        IntRange questions = stored.questionCount();
+        IntRange minutes = stored.durationMinutes();
+        Optional<ServingExam> serving = exams.findServing(product.examId());
+        if (serving.isPresent()) {
+            List<ServingPath> paths = eligiblePaths(serving.get().servingPaths(), grantOptions);
+            // Nothing the buyer can be given (E25): no range, and not the public catalog range either.
+            questions = paths.isEmpty() ? null : orElse(range(paths, ServingPath::questionCount), questions);
+            minutes = paths.isEmpty() ? null : orElse(range(paths, ServingPath::durationMinutes), minutes);
+        }
 
         return new MyExamCard(
                 hasEntitlement ? entitlement.id() : null,
@@ -129,8 +136,8 @@ public class MyExamsService {
                 stored.scopeLabel(),
                 stored.buildMode(),
                 stored.coverUrl(),
-                questions != null ? questions : stored.questionCount(),
-                minutes != null ? minutes : stored.durationMinutes(),
+                questions,
+                minutes,
                 attemptsLeft,
                 hasEntitlement ? entitlement.attemptsTotal() - entitlement.attemptsRevoked() : 0,
                 product.saleState(),
@@ -144,19 +151,43 @@ public class MyExamsService {
     }
 
     /**
-     * The serving paths the buyer can be given (E25): a path with choices counts when every choice is among the purchased
-     * option codes; a path with none always counts. When no path matches (a code that is no longer served) every serving
-     * path is kept, so the card still shows what the exam is.
+     * The grants whose serving paths the card shows (LT 5.1, E21): the grants that still have a usable attempt, as
+     * {@code prepare} picks its FIFO grant from them; when none has one left, the newest grant (the next purchase of
+     * attempts is the one that counts). Each entry is the option codes of one grant.
      */
-    private static List<ServingPath> purchasedPaths(List<ServingPath> servingPaths, Set<String> purchasedOptions) {
-        Set<String> purchased = new HashSet<>();
-        purchasedOptions.forEach(code -> purchased.add(code.trim().toLowerCase(Locale.ROOT)));
-        List<ServingPath> matching = servingPaths.stream()
-                .filter(path -> path.choices().stream()
+    private static List<Set<String>> rangeScope(List<GrantOptions> grants) {
+        List<Set<String>> usable = grants.stream().filter(GrantOptions::usable).map(GrantOptions::optionCodes).toList();
+        if (!usable.isEmpty() || grants.isEmpty()) {
+            return usable;
+        }
+        return List.of(grants.get(grants.size() - 1).optionCodes());
+    }
+
+    /**
+     * The serving paths one of the given grants can be served (E25): a path with choices is eligible for a grant when
+     * every choice is among that grant's option codes; a path with none is eligible for every grant. {@code null}
+     * grants (a paid order with no entitlement yet) keep every serving path. Empty when nothing is eligible.
+     */
+    private static List<ServingPath> eligiblePaths(List<ServingPath> servingPaths, List<Set<String>> grantOptions) {
+        if (grantOptions == null) {
+            return servingPaths;
+        }
+        List<Set<String>> normalized = grantOptions.stream().map(MyExamsService::normalizeCodes).toList();
+        return servingPaths.stream()
+                .filter(path -> normalized.stream().anyMatch(purchased -> path.choices().stream()
                         .allMatch(choice -> choice.code() != null
-                                && purchased.contains(choice.code().trim().toLowerCase(Locale.ROOT))))
+                                && purchased.contains(choice.code().trim().toLowerCase(Locale.ROOT)))))
                 .toList();
-        return matching.isEmpty() ? servingPaths : matching;
+    }
+
+    private static Set<String> normalizeCodes(Set<String> codes) {
+        Set<String> normalized = new HashSet<>();
+        codes.forEach(code -> normalized.add(code.trim().toLowerCase(Locale.ROOT)));
+        return normalized;
+    }
+
+    private static IntRange orElse(IntRange range, IntRange fallback) {
+        return range != null ? range : fallback;
     }
 
     private static IntRange range(List<ServingPath> paths, Function<ServingPath, Integer> value) {

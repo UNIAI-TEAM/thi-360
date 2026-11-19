@@ -206,6 +206,48 @@ class MyExamsApiIT extends AbstractExamAccessIT {
     }
 
     @Test
+    void rangeIsOverTheGrantsWithUsableAttemptsOnly() throws Exception {
+        UUID revokedFirst = activeAccount();
+        UUID depletedFirst = activeAccount();
+        UUID allDepleted = activeAccount();
+        Product product = onSale();
+        examPort.serve(ServingExams.serving(product.examId(), product.code(), "PUBLISHED",
+                ServingExams.optionPath("a", "A00", 48, 60), ServingExams.optionPath("b", "B00", 50, 75)));
+        // Old grant A (path a) is gone, the new grant B (path b) still has an attempt: only B's path counts.
+        grantService.revokeUnused(grant(revokedFirst, product.examId(), 1, List.of("A00"), 1).grantId());
+        grant(revokedFirst, product.examId(), 1, List.of("B00"), 1);
+        useAttempt(depletedFirst, grant(depletedFirst, product.examId(), 1, List.of("A00"), 1).entitlementId());
+        grant(depletedFirst, product.examId(), 1, List.of("B00"), 1);
+        // Nothing is left on either grant: the newest grant's options are shown.
+        useAttempt(allDepleted, grant(allDepleted, product.examId(), 1, List.of("A00"), 1).entitlementId());
+        useAttempt(allDepleted, grant(allDepleted, product.examId(), 1, List.of("B00"), 1).entitlementId());
+
+        for (UUID userId : List.of(revokedFirst, depletedFirst, allDepleted)) {
+            JsonNode card = only(myExams(learner(userId)));
+            assertThat(card.get("questionCount").get("min").asInt()).isEqualTo(50);
+            assertThat(card.get("questionCount").get("max").asInt()).isEqualTo(50);
+            assertThat(card.get("durationMinutes").get("min").asInt()).isEqualTo(75);
+            assertThat(card.get("durationMinutes").get("max").asInt()).isEqualTo(75);
+        }
+    }
+
+    @Test
+    void noEligibleServingPathGivesNoRangeNotTheCatalogOne() throws Exception {
+        UUID userId = activeAccount();
+        Product product = onSale();
+        // The exam was republished: the path A00 bought is gone, only B00 is served now.
+        examPort.serve(ServingExams.serving(product.examId(), product.code(), "PUBLISHED",
+                ServingExams.optionPath("b", "B00", 50, 75)));
+        grant(userId, product.examId(), 1, List.of("A00"), 1);
+
+        JsonNode card = only(myExams(learner(userId)));
+
+        assertThat(card.get("questionCount").isNull()).as("the projection's 50 is not what A00 can be served").isTrue();
+        assertThat(card.get("durationMinutes").isNull()).isTrue();
+        assertThat(card.get("state").asText()).isEqualTo("CAN_START");
+    }
+
+    @Test
     void emptyListIsOk() throws Exception {
         UUID userId = activeAccount();
 
