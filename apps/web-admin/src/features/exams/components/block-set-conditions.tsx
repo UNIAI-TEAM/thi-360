@@ -32,6 +32,8 @@ export interface BlockSetConditionsProps {
   commandCount?: number | null;
   /** Mẫu khóa dòng (H42): dạng câu con chỉ đọc; MAPID vẫn sửa được. */
   locked?: boolean;
+  /** Phần hiện: cả hai (màn nhóm của MD), chỉ điều kiện từng chùm, hoặc chỉ điều kiện theo vị trí câu con (mục riêng của "Thêm điều kiện" ở Danh sách dòng). */
+  show?: "all" | "slots" | "positions";
 }
 
 const ANY = "__ANY__";
@@ -53,14 +55,14 @@ function useKnowledgeRefs(reference: ContentReference | undefined) {
  * con (`childConditions`). Chùm không đặt gì dùng điều kiện của nhóm. Chùm cỡ linh hoạt (chỉ nhập tổng câu con) không
  * có cỡ chùm cố định nên không có hai bảng này; một dòng ghi lý do.
  */
-export function BlockSetConditions({ block, reference, subjectCode, onChange, commandCount = null, locked = false }: BlockSetConditionsProps) {
+export function BlockSetConditions({ block, reference, subjectCode, onChange, commandCount = null, locked = false, show = "all" }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.childConditions");
   if (isFlexibleSet(block)) return <p className="text-caption text-text-muted">{t("flexibleNote")}</p>;
   return (
     <>
-      <SlotsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} />
-      <ChildConditionsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} locked={locked} />
-      <PositionTable block={block} commandCount={commandCount} />
+      {show !== "positions" && <SlotsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} />}
+      {show !== "slots" && <ChildConditionsEditor block={block} reference={reference} subjectCode={subjectCode} onChange={onChange} locked={locked} />}
+      {show !== "slots" && <PositionTable block={block} commandCount={commandCount} />}
     </>
   );
 }

@@ -52,10 +52,21 @@ export function findFormTargetElement(root: ParentNode, target: FormTarget): HTM
 
 const FOCUSABLE = "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex='-1']), a[href]";
 
+/**
+ * Sự kiện báo dòng đích cho Danh sách dòng (R-15: mở màn sửa đúng dòng). Phát trên phần tử `data-form-row` của dòng; màn DS nhận ở
+ * khung của mình, mở màn sửa dòng rồi tự đặt focus (màn sửa vẽ sau khung, nên không đợi focus của khung), và gọi `preventDefault` để
+ * khung bỏ bước đặt focus vào nút của dòng.
+ */
+export const ROW_TARGET_EVENT = "thi360:form-row-target";
+
 /** Đặt focus vào phần tử đích; phần tử không nhận focus thì vào điều khiển đầu tiên bên trong, không có thì vào chính nó. */
 export function focusFormTarget(root: ParentNode, target: FormTarget): boolean {
   const element = findFormTargetElement(root, target);
   if (!element) return false;
+  if (target.kind === "ROW") {
+    const notHandled = element.dispatchEvent(new CustomEvent(ROW_TARGET_EVENT, { bubbles: true, cancelable: true, detail: { blockId: target.blockId } }));
+    if (!notHandled) return true;
+  }
   const control = element.matches(FOCUSABLE) ? element : (element.querySelector<HTMLElement>(FOCUSABLE) ?? element);
   if (control === element && !element.matches(FOCUSABLE)) element.tabIndex = -1;
   control.focus();

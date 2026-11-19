@@ -6065,6 +6065,119 @@
           "rowOmitted": "Dòng đang tạm bỏ qua",
           "templateTotal": "Số câu của mục theo mẫu, không đổi"
         }
+      },
+      "rows": {
+        "editor": {
+          "close": "Về danh sách",
+          "conditions": {
+            "difficulty": {
+              "hint": "Phân bố độ khó theo số câu của dòng",
+              "label": "Độ khó"
+            },
+            "grade": {
+              "hint": "Phân bố khối lớp theo số câu của dòng",
+              "label": "Khối lớp"
+            },
+            "positions": {
+              "hint": "Điều kiện MAPID cho từng vị trí câu con của chùm",
+              "label": "Theo vị trí câu con",
+              "template": "Do mẫu đặt, không thêm điều kiện này",
+              "unavailable": "Chỉ cho dòng câu chùm cỡ cố định"
+            },
+            "scope": {
+              "hint": "Chỉ lấy câu thuộc các MAPID đã chọn",
+              "label": "MAPID (lọc)"
+            },
+            "slots": {
+              "hint": "Nhãn hoặc MAPID riêng cho từng chùm",
+              "label": "Điều kiện từng chùm",
+              "unavailable": "Chỉ cho dòng câu chùm cỡ cố định"
+            },
+            "topicQuotas": {
+              "hint": "Số câu tối thiểu theo từng MAPID, nằm trong số câu của dòng",
+              "label": "Phân bổ theo MAPID"
+            }
+          },
+          "facts": {
+            "formats": "định dạng đáp án {formats}",
+            "line": "Theo mẫu: {facts}",
+            "matching": "ghép {left, number} ý trái, {right, number} lựa chọn phải",
+            "options": "{count, number} phương án",
+            "points": "{points} điểm mỗi câu",
+            "rule": {
+              "ALL_OR_NOTHING": "đúng hết mới có điểm",
+              "PARTIAL": "chấm từng phần"
+            },
+            "statements": "{count, number} ý",
+            "trueFalseTable": "bảng điểm theo số ý đúng {table}"
+          },
+          "lockedList": "Khóa của dòng",
+          "position": "Dòng {position, number} / {total, number}",
+          "title": "Sửa dòng: {name}",
+          "untitled": "Chưa đặt tên"
+        },
+        "notice": {
+          "ESSAY_SKIPPED": "Tự luận – tạm bỏ qua. Phần này không có ô sửa."
+        },
+        "reference": {
+          "caption": "Phân bố {dimension} của {subject}",
+          "cellAria": "{dimension}: {label}, số câu",
+          "declared": "Đã khai {total, number}/{count, number} câu",
+          "declaredNoTotal": "Đã khai {total, number} câu",
+          "difficultyTitle": "Độ khó",
+          "dimensionTitle": "{dimension} của {subject}",
+          "gradeTitle": "Khối lớp",
+          "hint": "Mức áp dụng theo kỳ thi",
+          "questions": "Số câu",
+          "title": "Phân bổ đối chiếu"
+        },
+        "table": {
+          "caption": "Các dòng lấy câu của {subject}",
+          "columns": {
+            "actions": "Thao tác",
+            "conditions": "Điều kiện",
+            "figures": "Chỉ số",
+            "kind": "Cách lấy",
+            "name": "Tên",
+            "order": "Thứ tự",
+            "quantity": "Số lượng"
+          },
+          "conditions": {
+            "difficulty": "Độ khó",
+            "grade": "Khối lớp",
+            "none": "Không có",
+            "positions": "Theo vị trí: {count, number}",
+            "scope": "MAPID: {count, number}",
+            "slots": "Từng chùm: {count, number}",
+            "tags": "Nhãn: {count, number}",
+            "topicQuotas": "Phân bổ MAPID: {count, number} dòng"
+          },
+          "countsLocked": "Số lượng khóa theo mẫu",
+          "edit": "Sửa",
+          "editAria": "Sửa dòng {name}",
+          "empty": "Môn chưa có dòng lấy câu.",
+          "figures": {
+            "plain": "{count, number} câu",
+            "plainPoints": "{count, number} câu · {points, number} điểm",
+            "trueFalse": "{count, number} câu Đ/S{hasStatements, select, yes { · {statements, number} ý} other {}}{hasPoints, select, yes { · thang {points, number} điểm} other {}}"
+          },
+          "kind": {
+            "set": "Câu chùm",
+            "setOf": "Câu chùm · {type}",
+            "single": "Câu đơn",
+            "singleOf": "Câu đơn · {type}"
+          },
+          "quantity": {
+            "flexible": "{count, number} câu (chùm cỡ linh hoạt)",
+            "sets": "{sets, number} chùm × {size, number} ({count, number} câu)",
+            "single": "{count, number} câu"
+          },
+          "range": "Câu {from, number}{same, select, yes {} other {–{to, number}}}",
+          "slot": "Chùm {index, number}{hasTags, select, yes {: {tags}} other {}}{nodes, plural, =0 {} other { · MAPID {nodes, number}}}",
+          "slotsLabel": "Điều kiện từng chùm của {name}",
+          "title": "Các dòng lấy câu",
+          "untitled": "Chưa đặt tên"
+        }
       }
     }
   },

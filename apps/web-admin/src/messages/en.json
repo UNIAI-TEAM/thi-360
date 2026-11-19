@@ -6065,6 +6065,119 @@
           "rowOmitted": "This row is temporarily skipped",
           "templateTotal": "The section total comes from the template and cannot change"
         }
+      },
+      "rows": {
+        "editor": {
+          "close": "Back to the list",
+          "conditions": {
+            "difficulty": {
+              "hint": "Difficulty distribution by the row question count",
+              "label": "Difficulty"
+            },
+            "grade": {
+              "hint": "Grade distribution by the row question count",
+              "label": "Grade"
+            },
+            "positions": {
+              "hint": "Knowledge-node condition for each child position of a set",
+              "label": "By child position",
+              "template": "Set by the template; this condition cannot be added",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "scope": {
+              "hint": "Only take questions under the selected knowledge nodes",
+              "label": "Knowledge nodes (filter)"
+            },
+            "slots": {
+              "hint": "Own tags or knowledge nodes for each set",
+              "label": "Conditions per set",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "topicQuotas": {
+              "hint": "Minimum questions per knowledge node, inside the row question count",
+              "label": "Allocation by knowledge node"
+            }
+          },
+          "facts": {
+            "formats": "answer format {formats}",
+            "line": "From the template: {facts}",
+            "matching": "matching {left, number} left, {right, number} right choices",
+            "options": "{count, number} options",
+            "points": "{points} points per question",
+            "rule": {
+              "ALL_OR_NOTHING": "all correct or nothing",
+              "PARTIAL": "partial credit"
+            },
+            "statements": "{count, number} statements",
+            "trueFalseTable": "points by number of correct statements {table}"
+          },
+          "lockedList": "Row locks",
+          "position": "Row {position, number} of {total, number}",
+          "title": "Edit row: {name}",
+          "untitled": "Untitled"
+        },
+        "notice": {
+          "ESSAY_SKIPPED": "Essay – skipped for now. This part has nothing to edit."
+        },
+        "reference": {
+          "caption": "{dimension} distribution of {subject}",
+          "cellAria": "{dimension}: {label}, question count",
+          "declared": "Declared {total, number}/{count, number} questions",
+          "declaredNoTotal": "Declared {total, number} questions",
+          "difficultyTitle": "Difficulty",
+          "dimensionTitle": "{dimension} of {subject}",
+          "gradeTitle": "Grade",
+          "hint": "Enforcement follows the exam kind",
+          "questions": "Questions",
+          "title": "Reference allocation"
+        },
+        "table": {
+          "caption": "Question rows of {subject}",
+          "columns": {
+            "actions": "Actions",
+            "conditions": "Conditions",
+            "figures": "Figures",
+            "kind": "Take as",
+            "name": "Name",
+            "order": "Order",
+            "quantity": "Quantity"
+          },
+          "conditions": {
+            "difficulty": "Difficulty",
+            "grade": "Grade",
+            "none": "None",
+            "positions": "By position: {count, number}",
+            "scope": "Knowledge nodes: {count, number}",
+            "slots": "Per set: {count, number}",
+            "tags": "Tags: {count, number}",
+            "topicQuotas": "Node allocation: {count, number} rows"
+          },
+          "countsLocked": "Quantity locked by the template",
+          "edit": "Edit",
+          "editAria": "Edit row {name}",
+          "empty": "This subject has no question rows.",
+          "figures": {
+            "plain": "{count, number} questions",
+            "plainPoints": "{count, number} questions · {points, number} points",
+            "trueFalse": "{count, number} true/false questions{hasStatements, select, yes { · {statements, number} statements} other {}}{hasPoints, select, yes { · {points, number} point scale} other {}}"
+          },
+          "kind": {
+            "set": "Set",
+            "setOf": "Set · {type}",
+            "single": "Single",
+            "singleOf": "Single · {type}"
+          },
+          "quantity": {
+            "flexible": "{count, number} questions (flexible-size set)",
+            "sets": "{sets, number} sets × {size, number} ({count, number} questions)",
+            "single": "{count, number} questions"
+          },
+          "range": "Q{from, number}{same, select, yes {} other {–{to, number}}}",
+          "slot": "Set {index, number}{hasTags, select, yes {: {tags}} other {}}{nodes, plural, =0 {} other { · nodes {nodes, number}}}",
+          "slotsLabel": "Conditions per set of {name}",
+          "title": "Question rows",
+          "untitled": "Untitled"
+        }
       }
     }
   },

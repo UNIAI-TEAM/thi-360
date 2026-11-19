@@ -13,6 +13,8 @@ export interface BlockSwitchesProps {
   onChange: (patch: Partial<QuestionBlock>) => void;
   /** Mẫu của bài; khi mẫu đặt `omittedLocked` (H43), bản sao nhóm đã lược của mẫu không bật lại được. */
   template?: ExamTemplate | null;
+  /** Danh sách dòng (R-7): nhóm đã lược theo mẫu không có công tắc bật lại, chỉ còn dòng chữ lý do. Mặc định: công tắc khóa (màn nhóm của MD). */
+  lockedOmittedAsText?: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ export interface BlockSwitchesProps {
  * (bản nháp lưu trước khi có khóa) vẫn tắt/bật được để sửa lại. Kiểm tra cấu hình (`OMITTED_BLOCK_LOCKED`) vẫn là lớp
  * chặn cuối cho ghi qua API và bản nháp cũ.
  */
-export function BlockSwitches({ block, onChange, template = null }: BlockSwitchesProps) {
+export function BlockSwitches({ block, onChange, template = null, lockedOmittedAsText = false }: BlockSwitchesProps) {
   const t = useTranslations("exams.structure.blockForm.switches");
   const shuffleId = useId();
   const omittedId = useId();
@@ -56,7 +58,13 @@ export function BlockSwitches({ block, onChange, template = null }: BlockSwitche
       ) : (
         shuffling && <p className="text-caption text-text-muted">{t(isSetBlock(block) ? "alwaysShuffleSet" : "alwaysShuffle")}</p>
       )}
-      {block.questionType === "ESSAY" && (
+      {block.questionType === "ESSAY" && omittedSwitchLocked && lockedOmittedAsText && (
+        <p className="flex flex-col gap-0.5 rounded-md border border-border p-4" data-omitted-locked>
+          <span className="text-label font-semibold text-text">{t("omitted.label")}</span>
+          <span className="text-caption text-text-muted">{t("omitted.lockedReason")}</span>
+        </p>
+      )}
+      {block.questionType === "ESSAY" && !(omittedSwitchLocked && lockedOmittedAsText) && (
         <div className="flex items-start justify-between gap-4 rounded-md border border-border p-4">
           <div className="flex min-w-0 flex-col gap-0.5">
             <span id={`${omittedId}-label`} className="text-label font-semibold text-text">

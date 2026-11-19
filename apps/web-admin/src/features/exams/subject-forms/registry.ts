@@ -6,6 +6,8 @@
  * Tra bằng mã canonical. Bí danh chỉ đổi mã **dùng để tra** và chỉ ở kỳ có mã canonical tương ứng; không trả và không ghi lại
  * mã đã đổi (mã môn gốc của bài giữ nguyên). Mã không có trong bảng, kể cả mã hệ thống cũ, không có mục (dùng MD).
  */
+// Nạp màn Danh sách dòng cho dạng ROWS cùng bảng đăng ký (CR-3): bảng và màn bật cờ cùng nơi.
+import "./row-form-register";
 
 export type SubjectFormKind = "MATRIX" | "ROWS";
 
@@ -60,6 +62,8 @@ interface KindRule {
   hideGrade: readonly string[];
   matrix: readonly string[];
   rows: readonly string[];
+  /** Cặp DS đã bật (B7): lát CR-3a bật HSA, QDA, BCA (`VAN`, `ANH`) và THPTQG; lát CR-3b bật phần còn lại. Cờ của MT thuộc CR-2. */
+  enabledRows?: readonly string[];
 }
 
 const SOCIAL_AND_ENGLISH = ["SU", "DIA", "ECON_LAW", "ANH"] as const;
@@ -88,6 +92,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: ["ANH"],
     matrix: SCIENCE_MATRIX,
     rows: ["VAN", "ANH"],
+    enabledRows: ["VAN", "ANH"],
   },
   QDA: {
     enforcement: "DECLARED_REQUIRED",
@@ -96,6 +101,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: SCIENCE_MATRIX,
     rows: ["VAN", "ANH"],
+    enabledRows: ["VAN", "ANH"],
   },
   BCA: {
     enforcement: "FIXED_REFERENCE",
@@ -104,6 +110,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: ["TOAN", "SU", "LY", "HOA", "SINH", "DIA"],
     rows: ["VAN", "ANH"],
+    enabledRows: ["VAN", "ANH"],
   },
   VACT: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -136,6 +143,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: SOCIAL_AND_ENGLISH,
     matrix: [],
     rows: TWELVE_SUBJECTS,
+    enabledRows: TWELVE_SUBJECTS,
   },
   HSCA: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -166,7 +174,7 @@ function buildEntry(kind: SubjectFormExamKind, subject: string, form: SubjectFor
   const limited = LIMITED_KINDS.includes(kind) && subject in SCIENCE_LIMITS;
   return {
     form,
-    enabled: false,
+    enabled: !matrix && (rule.enabledRows?.includes(subject) ?? false),
     percentEntry: rule.percent[form],
     enforcement: rule.enforcement,
     combinedMatrix: rule.combinedMatrix,
