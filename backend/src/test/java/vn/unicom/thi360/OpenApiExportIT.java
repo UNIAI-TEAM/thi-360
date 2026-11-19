@@ -136,6 +136,37 @@ class OpenApiExportIT extends AbstractIntegrationTest {
                     .as("%s %s response schema", errorResponse[0], errorResponse[1])
                     .contains("EmailCodeErrorResponse");
         }
+        // ID-2 (UNI-2711): mã trạng thái thành công thật của các API quên/đặt lại mật khẩu và ảnh đại diện.
+        JsonNode forgot = root.at("/paths/~1api~1v1~1auth~1password~1forgot/post");
+        assertThat(forgot.path("operationId").asText()).isEqualTo("forgotPassword");
+        assertThat(forgot.path("responses").has("202")).isTrue();
+        assertThat(forgot.path("responses").has("200")).as("forgot has no 200").isFalse();
+        assertThat(forgot.at("/responses/202/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/PasswordForgotResponse");
+        JsonNode resetPassword = root.at("/paths/~1api~1v1~1auth~1password~1reset/post");
+        assertThat(resetPassword.path("operationId").asText()).isEqualTo("resetPasswordByToken");
+        assertThat(resetPassword.path("responses").has("204")).isTrue();
+        assertThat(resetPassword.path("responses").has("200")).as("reset has no 200").isFalse();
+        assertThat(resetPassword.at("/responses/204/content").isMissingNode()).as("204 has no body").isTrue();
+        JsonNode removeAvatar = root.at("/paths/~1api~1v1~1me~1avatar/delete");
+        assertThat(removeAvatar.path("operationId").asText()).isEqualTo("removeMyAvatar");
+        assertThat(removeAvatar.path("responses").has("204")).isTrue();
+        assertThat(removeAvatar.path("responses").has("200")).as("delete avatar has no 200").isFalse();
+        assertThat(root.at("/paths/~1api~1v1~1me~1avatar/put/responses/200/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ProfileResponse");
+        assertThat(root.at("/paths/~1api~1v1~1me~1profile/get/operationId").asText()).isEqualTo("getMyProfile");
+        assertThat(root.at("/paths/~1api~1v1~1me~1profile/patch/operationId").asText()).isEqualTo("updateMyProfile");
+        assertThat(root.at("/paths/~1api~1v1~1avatars~1{assetId}/get/responses/200/content/image~1png").isMissingNode())
+                .isFalse();
+        JsonNode profile = schemas.path("ProfileResponse").path("properties");
+        for (String nullable : List.of("email", "phone", "avatarAssetId", "avatarUrl", "pendingEmail")) {
+            assertThat(profile.path(nullable).path("type")).as("ProfileResponse.%s type", nullable)
+                    .extracting(JsonNode::asText).containsExactlyInAnyOrder("string", "null");
+        }
+        assertThat(profile.path("avatarAssetId").path("format").asText()).isEqualTo("uuid");
+        assertThat(profile.path("username").path("type").asText()).isEqualTo("string");
+        assertThat(schemas.path("ProfileResponse").path("required").toString())
+                .contains("username", "fullName", "emailVerified").doesNotContain("phone", "avatarUrl", "pendingEmail");
 
         Path targetOut = Path.of("target", "openapi.json");
         Files.createDirectories(targetOut.getParent());

@@ -77,4 +77,21 @@ class CredentialRequestToStringTests {
         EmailCodeVerifyRequest verify = new EmailCodeVerifyRequest("482913");
         assertThat(verify.toString()).doesNotContain("482913").contains("code=[REDACTED]");
     }
+
+    @Test
+    void passwordResetRequest_toStringRedactsTokenAndPassword() {
+        String token = "tok3n-Abc_123-secret-reset-code";
+        String secret = "N3wS3cret!77";
+        PasswordResetRequest req = new PasswordResetRequest(token, secret);
+
+        assertThat(req.toString())
+                .doesNotContain(token)
+                .doesNotContain(secret)
+                .contains("token=[REDACTED]")
+                .contains("newPassword=[REDACTED]");
+
+        assertThat(new PasswordResetRequest(null, null).toString())
+                .contains("token=null")
+                .contains("newPassword=null");
+    }
 }

@@ -49,6 +49,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public static final String PUBLIC_KEY_PREFIX = "rl:public:ip:";
     // Separate namespace from the previous Bucket4j string values: this policy stores a sorted set.
     public static final String REGISTER_KEY_PREFIX = "rl:register:rolling:ip:";
+    public static final String FORGOT_KEY_PREFIX = "rl:forgot:ip:";
+    public static final String RESET_KEY_PREFIX = "rl:reset:ip:";
+    private static final List<String> FORGOT_SEGMENTS = List.of("api", "v1", "auth", "password", "forgot");
+    private static final List<String> RESET_SEGMENTS = List.of("api", "v1", "auth", "password", "reset");
     /** Decoded path segments (as Spring MVC matches them) of the public API prefix {@code /api/v1/public/**}. */
     private static final List<String> PUBLIC_SEGMENTS = List.of("api", "v1", "public");
     /** TM 8.4: VNPAY retries the IPN up to 10 times; limiting it would lose payments. */
@@ -95,6 +99,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             // Giới hạn API công khai chạy ở bộ lọc đứng trước xác thực (cùng bộ lọc với đăng nhập), đúng một lần mỗi yêu cầu.
             return !loginOnly || publicPolicy(request) == null;
         }
+        if (passwordResetPolicy(request) != null) {
+            return !loginOnly;
+        }
         String path = extractPath(request);
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
             return true;
@@ -120,6 +127,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         RateLimitPolicy policy = isReadMethod(request.getMethod())
                 ? publicPolicy(request)
                 : resolvePolicy(extractPath(request));
+        if (policy == null && !isReadMethod(request.getMethod())) {
+            policy = passwordResetPolicy(request);
+        }
         if (policy == null) {
             filterChain.doFilter(request, response);
             return;
@@ -242,7 +252,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 Duration maxWindow = Stream.of(
                                 securityProperties.rateLimit().loginPerIpWindow(),
                                 securityProperties.rateLimit().uploadPerIpWindow(),
-                                securityProperties.rateLimit().publicPerIpWindow())
+                                securityProperties.rateLimit().publicPerIpWindow(),
+                                securityProperties.rateLimit().forgotPerIpWindow(),
+                                securityProperties.rateLimit().resetPerIpWindow())
                         .max(Duration::compareTo)
                         .orElseThrow();
                 Duration maxTtl = maxWindow.multipliedBy(2);
@@ -299,6 +311,36 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** HEAD chạy vào cùng bộ xử lý GET nên phải chịu cùng giới hạn. */
     private static boolean isReadMethod(String method) {
         return "GET".equalsIgnoreCase(method) || "HEAD".equalsIgnoreCase(method);
+    }
+
+    /**
+     * Chính sách của {@code POST /auth/password/forgot|reset} (E16, TM 13), khớp theo các đoạn đường đã giải mã
+     * như Spring MVC để dạng mã hóa phần trăm không lọt qua bộ đếm. Chạy ở bộ lọc đứng trước xác thực.
+     */
+    private RateLimitPolicy passwordResetPolicy(HttpServletRequest request) {
+        if (!"POST".equalsIgnoreCase(request.getMethod())) {
+            return null;
+        }
+        List<String> segments = decodedSegments(request);
+        if (FORGOT_SEGMENTS.equals(segments)) {
+            return new RateLimitPolicy(
+                    FORGOT_KEY_PREFIX,
+                    securityProperties.rateLimit().forgotPerIpLimit(),
+                    securityProperties.rateLimit().forgotPerIpWindow(),
+                    "rate_limit.forgot_ip_exceeded",
+                    "Per-IP password forgot rate limit exceeded",
+                    false);
+        }
+        if (RESET_SEGMENTS.equals(segments)) {
+            return new RateLimitPolicy(
+                    RESET_KEY_PREFIX,
+                    securityProperties.rateLimit().resetPerIpLimit(),
+                    securityProperties.rateLimit().resetPerIpWindow(),
+                    "rate_limit.reset_ip_exceeded",
+                    "Per-IP password reset rate limit exceeded",
+                    false);
+        }
+        return null;
     }
 
     private RateLimitPolicy resolvePolicy(String path) {

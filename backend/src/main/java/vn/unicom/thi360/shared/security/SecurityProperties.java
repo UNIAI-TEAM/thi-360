@@ -26,7 +26,11 @@ public record SecurityProperties(
             @DefaultValue("30") int registerPerIpHourLimit,
             @DefaultValue("PT1H") Duration registerPerIpHourWindow,
             @DefaultValue("100") int registerPerIpDayLimit,
-            @DefaultValue("PT24H") Duration registerPerIpDayWindow
+            @DefaultValue("PT24H") Duration registerPerIpDayWindow,
+            @DefaultValue("60") int forgotPerIpLimit,
+            @DefaultValue("PT1M") Duration forgotPerIpWindow,
+            @DefaultValue("60") int resetPerIpLimit,
+            @DefaultValue("PT1M") Duration resetPerIpWindow
     ) {
 
         public RateLimitProperties {
@@ -44,6 +48,15 @@ public record SecurityProperties(
             requirePositive("register-per-ip-day-limit", registerPerIpDayLimit);
             requirePositiveDuration("register-per-ip-hour-window", registerPerIpHourWindow);
             requirePositiveDuration("register-per-ip-day-window", registerPerIpDayWindow);
+            // E16 / TM 13: giới hạn theo IP của forgot, reset; cửa sổ không dương bị bộ lọc nuốt lỗi như trên.
+            if (forgotPerIpWindow == null || forgotPerIpWindow.isZero() || forgotPerIpWindow.isNegative()) {
+                throw new IllegalArgumentException(
+                        "thi360.security.rate-limit.forgot-per-ip-window must be a positive duration");
+            }
+            if (resetPerIpWindow == null || resetPerIpWindow.isZero() || resetPerIpWindow.isNegative()) {
+                throw new IllegalArgumentException(
+                        "thi360.security.rate-limit.reset-per-ip-window must be a positive duration");
+            }
         }
 
         private static void requirePositive(String key, int value) {
