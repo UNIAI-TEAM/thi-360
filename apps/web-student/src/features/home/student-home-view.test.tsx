@@ -59,7 +59,7 @@ describe("StudentHomeView", () => {
     expect(menuButton.className).not.toContain("ring-primary-600/30");
     await userEvent.click(menuButton);
     expect(screen.queryByRole("menuitem", { name: "Trang quản trị" })).toBeNull();
-    expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Hồ sơ" })).toHaveAttribute("href", "/account/profile");
     expect(screen.getByRole("menuitem", { name: "Trang học viên" })).toHaveAttribute("href", "/home");
     expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
       "href",

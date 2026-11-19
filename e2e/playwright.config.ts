@@ -75,6 +75,12 @@ export default defineConfig({
         // from several specs and SessionStore evicts the oldest session
         // beyond the cap, which revoked the cached helper session.
         THI360_SECURITY_SESSION_MAXPERUSER: process.env.THI360_SECURITY_SESSION_MAXPERUSER ?? "50",
+        // Relax the per-IP register (E19: 30/hour, 100/day) and forgot/reset (E16: 60/min) limits: the account-*
+        // specs create a fresh account per test and the suite may be rerun within the hour.
+        THI360_REGISTER_IP_HOUR_LIMIT: process.env.THI360_REGISTER_IP_HOUR_LIMIT ?? "1000",
+        THI360_REGISTER_IP_DAY_LIMIT: process.env.THI360_REGISTER_IP_DAY_LIMIT ?? "5000",
+        THI360_FORGOT_PER_IP_LIMIT: process.env.THI360_FORGOT_PER_IP_LIMIT ?? "600",
+        THI360_RESET_PER_IP_LIMIT: process.env.THI360_RESET_PER_IP_LIMIT ?? "600",
       },
     },
     {

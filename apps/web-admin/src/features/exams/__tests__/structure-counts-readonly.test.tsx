@@ -52,7 +52,7 @@ function bootStandard() {
 function bootReview() {
   const part = { ...FIXED_PART, questionCount: 10, sections: [section("sec-1", "MATH", 10)] };
   return new FakeServer()
-    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_REVIEW" }) })
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_REVIEW", buildMode: "REVIEW" }) })
     .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [reviewTemplate] })
     .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [part] } })
     .install();
