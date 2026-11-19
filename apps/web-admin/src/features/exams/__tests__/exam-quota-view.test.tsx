@@ -108,26 +108,39 @@ describe("Chỉ tiêu cấp bài: lưu và chặn (R1-09, R1-16)", () => {
 });
 
 describe("Chỉ tiêu cấp bài khi đổi phiên bản cấu trúc (R1-10)", () => {
-  it("sửa chỉ tiêu rồi nạp phiên bản khác: màn hiện chỉ tiêu của phiên bản mới, không giữ số đã sửa", async () => {
-    const base = FIXTURE_TEMPLATES.find((template) => template.kind === "HSA" && template.scope === "FULL")!;
-    const now = { ...base, code: "T_NOW", label: "HSA hiện tại", structureYear: 2026 };
-    const other = { ...base, code: "T_OTHER", label: "HSA bản khác", structureYear: 2025, isDefault: false };
-    // Bài HSA luôn Bắt buộc (UNI-1701): chỉ tiêu Tham khảo cũ sẽ được chuyển sang Bắt buộc và làm bản nháp "chưa lưu", chặn nạp lại.
-    const required = (percents?: [number, number]) => ({ ...gradeQuota(percents), enforcement: "REQUIRED" });
-    const server = boot({ examQuotas: [required()], later: [required([20, 80])], kind: "HSA", templates: [now, other].map(toWireTemplate) });
-    const user = userEvent.setup();
-    open();
-    await setPercent(user, 0, "40");
-    await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
-    await user.click((await screen.findAllByRole("option"))[1]!);
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
-    await waitFor(() => expect(server.calls("POST", `${STRUCTURE}/template`)).toHaveLength(1));
-    await waitFor(() => {
-      const inputs = screen.getAllByRole("textbox", { name: /^Tỷ lệ/ }) as HTMLInputElement[];
-      expect(inputs.map((input) => input.value)).toEqual(["20", "80"]);
-    });
-  }, 20_000);
+  it.each([
+    { kind: "HSA", saved: "REQUIRED" },
+    { kind: "VACT", saved: "REFERENCE" },
+  ])(
+    "$kind: sửa chỉ tiêu Tham khảo rồi nạp phiên bản khác: màn hiện chỉ tiêu của phiên bản mới, không giữ số đã sửa, lưu gửi chỉ tiêu mới ($saved)",
+    async ({ kind, saved }) => {
+      const base = FIXTURE_TEMPLATES.find((template) => template.kind === "HSA" && template.scope === "FULL")!;
+      const now = { ...base, kind, code: "T_NOW", label: "HSA hiện tại", structureYear: 2026 };
+      const other = { ...base, kind, code: "T_OTHER", label: "HSA bản khác", structureYear: 2025, isDefault: false };
+      // Chỉ tiêu một môn ở Tham khảo: bài HSA chuyển nó sang Bắt buộc khi mở (UNI-1701), nhưng nạp phiên bản vẫn phải để lần tải
+      // lại kế tiếp đưa chỉ tiêu của mẫu mới vào (R2-2).
+      const server = boot({ examQuotas: [gradeQuota()], later: [{ ...gradeQuota([20, 80]), id: "q-later" }], kind, templates: [now, other].map(toWireTemplate) });
+      const user = userEvent.setup();
+      open();
+      await setPercent(user, 0, "40");
+      await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
+      await user.click((await screen.findAllByRole("option"))[1]!);
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
+      await waitFor(() => expect(server.calls("POST", `${STRUCTURE}/template`)).toHaveLength(1));
+      await waitFor(() => {
+        const inputs = screen.getAllByRole("textbox", { name: /^Tỷ lệ/ }) as HTMLInputElement[];
+        expect(inputs.map((input) => input.value)).toEqual(["20", "80"]);
+      });
+      await setPercent(user, 0, "25");
+      await setPercent(user, 1, "75");
+      await user.click(screen.getByRole("button", { name: "Lưu" }));
+      await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+      const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ id: string; enforcement: string }> };
+      expect(sent.examQuotas).toMatchObject([{ id: "q-later", enforcement: saved }]);
+    },
+    20_000,
+  );
 });
 
 describe("Chỉ tiêu cấp bài tính theo đơn vị không phải câu khóa mức Bắt buộc (R2-04)", () => {

@@ -130,6 +130,23 @@ export function hsaNeedsNormalizing(hsa: boolean, parts: readonly ExamPart[], qu
 }
 
 /**
+ * Bản đã lưu tạm sau khi nạp một phiên bản cấu trúc (R1-10): bài HSA chuyển mức ở cả hai, để bản nháp (đã chuyển mức) bằng bản đã
+ * lưu tạm. Nếu không, chỉ tiêu Tham khảo cũ làm bản nháp "chưa lưu" và lần tải lại kế tiếp không đưa chỉ tiêu của mẫu mới vào.
+ * Lần tải lại đó thay cả hai bản đã lưu bằng dữ liệu máy chủ.
+ */
+export function hsaLoadedBaselines(hsa: boolean, partsJson: string, quotaJson: string): { parts: string; quotas: string } {
+  if (!hsa) return { parts: partsJson, quotas: quotaJson };
+  const parts = JSON.parse(partsJson) as ExamPart[];
+  const quotas = JSON.parse(quotaJson) as ExamQuota[];
+  const nextParts = normalizeHsaParts(parts);
+  const nextQuotas = normalizeHsaQuotas(quotas);
+  return {
+    parts: nextParts === parts ? partsJson : JSON.stringify(nextParts),
+    quotas: nextQuotas === quotas ? quotaJson : JSON.stringify(nextQuotas),
+  };
+}
+
+/**
  * Giữ bản nháp HSA luôn ở mức cho phép, ở mọi lối ghi: mở bài, nạp lại, hủy thay đổi, nạp phiên bản, đổi đơn vị sang câu,
  * "Dùng ma trận tham khảo". Gọi trong lúc render (như đồng bộ `syncKey`); `normalize*` trả đúng mảng cũ khi không đổi nên
  * không lặp. Bản đã lưu giữ nguyên nên bản nháp đã chuyển hiện "có thay đổi chưa lưu" và lưu gửi đúng mức.

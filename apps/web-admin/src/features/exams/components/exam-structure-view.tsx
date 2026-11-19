@@ -10,7 +10,7 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
-import { HsaExamContext, hsaNeedsNormalizing, isHsaExam, useHsaNormalizedDraft } from "../hsa-enforcement";
+import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, useHsaNormalizedDraft } from "../hsa-enforcement";
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
@@ -582,11 +582,14 @@ function StructureEditor({
           currentParts={draft}
           onAnnounce={announce}
           onApplied={(parts) => {
+            // Bài HSA: bản đã lưu tạm của lần nạp này đã chuyển mức, để bản nháp sạch và lần tải lại kế tiếp thay được (R2-2).
+            const loaded = hsaLoadedBaselines(hsa, JSON.stringify(parts), quotaBaseline);
             setDraft(parts);
-            setBaseline(JSON.stringify(parts));
+            setBaseline(loaded.parts);
+            setQuotaBaseline(loaded.quotas);
             // Chỉ tiêu cấp bài đang sửa thuộc mẫu cũ: bỏ để lần tải lại cấu trúc kế tiếp đưa chỉ tiêu của mẫu mới vào, không
             // để lần lưu sau ghi đè `examQuotas` của mẫu mới (R1-10).
-            setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
+            setQuotas(JSON.parse(loaded.quotas) as ExamQuota[]);
             setConfirmedCounts({});
             setTopicFailure(null);
             // Phiên bản mới làm kết quả kiểm tra cũ hết hiệu lực: huy hiệu trạng thái tính lại từ đầu.
