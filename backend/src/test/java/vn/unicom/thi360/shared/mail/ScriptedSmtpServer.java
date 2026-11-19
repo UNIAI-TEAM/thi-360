@@ -23,6 +23,7 @@ final class ScriptedSmtpServer implements AutoCloseable {
     private volatile String rcptReply = "250 OK";
     private volatile String dataReply = "250 OK queued";
     private volatile boolean echoDataInReply;
+    private volatile boolean silentOnQuit;
 
     final AtomicInteger rcptCommands = new AtomicInteger();
     final AtomicInteger dataCommands = new AtomicInteger();
@@ -55,6 +56,12 @@ final class ScriptedSmtpServer implements AutoCloseable {
     ScriptedSmtpServer echoDataAfter(String prefix) {
         this.dataReply = prefix;
         this.echoDataInReply = true;
+        return this;
+    }
+
+    /** Không trả lời {@code QUIT}: máy chủ đã nhận thư nhưng việc đóng kết nối không bao giờ xong. */
+    ScriptedSmtpServer silentOnQuit() {
+        this.silentOnQuit = true;
         return this;
     }
 
@@ -101,6 +108,9 @@ final class ScriptedSmtpServer implements AutoCloseable {
                     lastData.set(data.toString());
                     reply(out, echoDataInReply ? dataReply + " " + data.toString().replace('\n', ' ') : dataReply);
                 } else if (command.startsWith("QUIT")) {
+                    if (silentOnQuit) {
+                        continue; // giữ kết nối mở, chờ phía gửi tự đóng khi hết thời gian chờ
+                    }
                     reply(out, "221 bye");
                     return;
                 } else if (command.startsWith("RSET") || command.startsWith("NOOP")) {

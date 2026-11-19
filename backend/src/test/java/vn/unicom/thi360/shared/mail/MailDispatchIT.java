@@ -22,6 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.core.io.ClassPathResource;
@@ -289,6 +291,51 @@ class MailDispatchIT extends AbstractMailIT {
             assertThat(output.getAll()).as("log must not contain the body").doesNotContain(secret);
         }
         assertThat(output.getAll()).as("the failure was logged").contains("Mail send failed");
+    }
+
+    /** R1-05: DATA đã được nhận, lệnh đóng kết nối ({@code QUIT}) không bao giờ được trả lời: thư vẫn là đã gửi. */
+    @Test
+    void aQuitThatNeverAnswersAfterAcceptedDataIsNotASendFailure() throws Exception {
+        try (ScriptedSmtpServer server = new ScriptedSmtpServer().silentOnQuit()) {
+            routeSmtpTo(server.port(), 1000);
+            String to = MailSamples.randomAddress();
+            enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+
+            assertThat(dispatcher.dispatchBatch()).isEqualTo(1);
+
+            MailOutbox.Mail mail = outbox.require(to, MailKind.EMAIL_VERIFY);
+            assertThat(mail.sentAt()).isEqualTo(START);
+            assertThat(mail.attempts()).isEqualTo(1);
+            assertThat(mail.failedAt()).isNull();
+            assertThat(mail.lastError()).isNull();
+
+            advance(Duration.ofDays(1));
+            assertThat(dispatcher.dispatchBatch()).isZero();
+            assertThat(server.dataCommands.get()).as("the accepted mail is never sent again").isEqualTo(1);
+        }
+    }
+
+    /** R1-06: chỉ mã trả lời và mã trạng thái mở rộng ở đầu câu trả lời vào {@code last_error}. */
+    @ParameterizedTest(name = "reply \"{0}\" is stored as \"{1}\"")
+    @CsvSource(
+            delimiter = '|',
+            value = {
+                "554 Rejected: body said 5.9.9 and more|smtp-554",
+                "554 5.6.0 Rejected: body said 5.9.9 and more|smtp-554 5.6.0",
+                "554 4.6.0 status class does not match the reply code|smtp-554",
+                "554 x5.6.0 glued to a word|smtp-554",
+                "554 5.6.0|smtp-554 5.6.0"
+            })
+    void lastErrorKeepsOnlyTheReplyCodeAndAValidPrefixStatus(String reply, String expected) throws Exception {
+        try (ScriptedSmtpServer server = new ScriptedSmtpServer().answerDataWith(reply)) {
+            routeSmtpTo(server.port());
+            String to = MailSamples.randomAddress();
+            enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+
+            assertThat(dispatcher.dispatchBatch()).isZero();
+
+            assertThat(outbox.require(to, MailKind.EMAIL_VERIFY).lastError()).isEqualTo(expected);
+        }
     }
 
     private static String firstLineOfTemplate(Sent sent) throws IOException {

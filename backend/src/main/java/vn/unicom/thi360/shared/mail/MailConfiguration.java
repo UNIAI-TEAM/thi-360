@@ -6,7 +6,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.util.StringUtils;
 
@@ -65,7 +64,7 @@ class MailConfiguration {
     }
 
     @Bean
-    MailTransport mailTransport(JavaMailSender sender, MailProperties mail) {
+    MailTransport mailTransport(JavaMailSenderImpl sender, MailProperties mail) {
         return new SmtpMailTransport(sender, mail.from());
     }
 }

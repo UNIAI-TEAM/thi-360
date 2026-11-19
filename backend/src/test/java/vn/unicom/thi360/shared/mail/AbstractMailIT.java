@@ -105,12 +105,17 @@ abstract class AbstractMailIT extends AbstractIntegrationTest {
 
     /** Chuyển việc gửi sang máy chủ SMTP kịch bản ở {@code port} (thay vì GreenMail). */
     protected void routeSmtpTo(int port) throws Exception {
+        routeSmtpTo(port, 5000);
+    }
+
+    /** Như {@link #routeSmtpTo(int)} với thời gian chờ đọc {@code readTimeoutMillis}. */
+    protected void routeSmtpTo(int port, int readTimeoutMillis) throws Exception {
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost("127.0.0.1");
         sender.setPort(port);
         sender.setDefaultEncoding("UTF-8");
         sender.getJavaMailProperties().put("mail.smtp.connectiontimeout", "3000");
-        sender.getJavaMailProperties().put("mail.smtp.timeout", "5000");
+        sender.getJavaMailProperties().put("mail.smtp.timeout", Integer.toString(readTimeoutMillis));
         SmtpMailTransport scripted = new SmtpMailTransport(sender, "Thi 360 <no-reply@thi360.local>");
         doAnswer(invocation -> {
                     scripted.send(
