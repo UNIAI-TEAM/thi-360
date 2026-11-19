@@ -12,7 +12,9 @@ CREATE TABLE shared.email_message (
     attempts int NOT NULL DEFAULT 0,
     sent_at timestamptz,
     failed_at timestamptz,
-    last_error text
+    last_error text,
+    -- Mã của lần giữ chỗ hiện tại: chỉ worker đang giữ đúng mã này mới ghi được kết quả.
+    claim_token uuid
 );
 
 CREATE INDEX idx_email_message_pending

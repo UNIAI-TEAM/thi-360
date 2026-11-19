@@ -1,10 +1,17 @@
 package vn.unicom.thi360.shared.mail;
 
+import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -13,19 +20,25 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.mail.EmailMessageStore.Claimed;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 /**
- * Gửi một lô thư (TM 4, plan ML), theo ba bước tách nhau để không gọi mạng khi giữ khóa dòng (B2):
+ * Gửi một lô thư (TM 4, plan ML). Mỗi thư đi qua ba bước tách nhau để không gọi mạng khi giữ khóa dòng (B2):
  *
  * <ol>
- *   <li>transaction 1: lấy tối đa {@code batchSize} thư đến hạn bằng {@code FOR UPDATE SKIP LOCKED}, đẩy
- *       {@code next_attempt_at} ra {@code claimLease} rồi commit. Hai worker không lấy cùng một thư;
- *   <li>không transaction: gửi từng thư qua SMTP;
- *   <li>transaction mới cho mỗi thư: ghi kết quả (đã gửi, hẹn gửi lại, hoặc thất bại).
+ *   <li>transaction ngắn: giữ chỗ một thư đến hạn bằng {@code FOR UPDATE SKIP LOCKED}, ghi mã giữ chỗ và đẩy
+ *       {@code next_attempt_at} ra {@code claimLease}, rồi commit. Hai worker không lấy cùng một thư;
+ *   <li>không transaction: gửi thư qua SMTP, tối đa {@code attemptTimeout};
+ *   <li>transaction mới: ghi kết quả, chỉ khi worker vẫn giữ đúng mã giữ chỗ.
  * </ol>
  *
- * Tiến trình chết sau khi SMTP nhận thư mà chưa ghi kết quả thì thư được gửi lại khi hết hạn giữ chỗ:
+ * <p>Giữ chỗ từng thư ngay trước khi gửi (không giữ cả lô) nên thời hạn giữ chỗ chỉ phải bao một lần gửi, mà
+ * {@code claimLease} dài hơn {@code attemptTimeout}. Thư chưa tới lượt không bị giữ, nên worker chậm không làm
+ * "treo" phần đuôi của lô. Nếu worker vẫn mất quyền giữ (tiến trình bị đứng quá hạn), kết quả của nó bị
+ * từ chối, không đè lên kết quả của worker lấy lại.
+ *
+ * <p>Tiến trình chết sau khi SMTP nhận thư mà chưa ghi kết quả thì thư được gửi lại khi hết hạn giữ chỗ:
  * gửi ít nhất một lần, không đòi đúng một lần.
  *
  * <p>Log chỉ ghi id thư, loại thư và mã lỗi; không ghi người nhận, thân thư, mã OTP.
@@ -35,30 +48,41 @@ class MailDispatcher {
 
     private static final Logger jobLog = LoggerFactory.getLogger("thi360.job");
 
-    private final EmailMessageRepository repository;
+    /** Lần gửi bị bỏ vì tiến trình đang tắt: không ghi gì, giữ chỗ tự hết hạn. */
+    private static final MailFailure ABANDONED = new MailFailure(false, "abandoned");
+
+    private final EmailMessageStore store;
     private final MailTransport transport;
     private final MailProperties properties;
     private final Clock clock;
     private final TransactionTemplate tx;
 
+    /**
+     * Mỗi lần gửi chạy trên một luồng ảo riêng để hủy được khi quá hạn: ngắt luồng ảo đang chờ socket làm
+     * đóng socket, còn luồng của worker thì không bị kẹt.
+     */
+    private final ExecutorService sendExecutor =
+            Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("mail-send-", 0).factory());
+
     MailDispatcher(
-            EmailMessageRepository repository,
+            EmailMessageStore store,
             MailTransport transport,
             MailProperties properties,
             Clock clock,
             PlatformTransactionManager transactionManager) {
-        this.repository = repository;
+        this.store = store;
         this.transport = transport;
         this.properties = properties;
         this.clock = clock;
         this.tx = new TransactionTemplate(transactionManager);
     }
 
-    /** Một thư đã giữ chỗ, mang đủ dữ liệu để gửi mà không cần giữ phiên JPA. */
-    private record Claimed(UUID id, String kind, String to, String subject, String html, String text) {
+    @PreDestroy
+    void shutdown() {
+        sendExecutor.shutdownNow();
     }
 
-    /** @return số thư đã gửi thành công trong lượt này */
+    /** @return số thư đã gửi thành công (và ghi được kết quả) trong lượt này */
     int dispatchBatch() {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Mail dispatch must run outside a transaction");
@@ -70,18 +94,20 @@ class MailDispatcher {
         MDC.put("job", "mail");
         MDC.put("jobId", Ids.newId().toString());
         try {
-            List<Claimed> claimed = claim();
+            int claimed = 0;
             int sent = 0;
-            for (Claimed mail : claimed) {
-                if (deliver(mail)) {
+            while (claimed < properties.batchSize() && !Thread.currentThread().isInterrupted()) {
+                Optional<Claimed> next = claimNext();
+                if (next.isEmpty()) {
+                    break;
+                }
+                claimed++;
+                if (deliver(next.get())) {
                     sent++;
                 }
             }
-            if (!claimed.isEmpty()) {
-                jobLog.atInfo()
-                        .addKeyValue("claimed", claimed.size())
-                        .addKeyValue("sent", sent)
-                        .log("Mail batch processed");
+            if (claimed > 0) {
+                jobLog.atInfo().addKeyValue("claimed", claimed).addKeyValue("sent", sent).log("Mail batch processed");
             }
             return sent;
         } finally {
@@ -91,49 +117,85 @@ class MailDispatcher {
         }
     }
 
-    private List<Claimed> claim() {
+    private Optional<Claimed> claimNext() {
         Instant now = Instant.now(clock);
-        return tx.execute(status -> {
-            List<EmailMessage> due = repository.findDueForUpdate(properties.batchSize(), now);
-            Instant heldUntil = now.plus(properties.claimLease());
-            due.forEach(message -> message.claim(heldUntil));
-            repository.saveAll(due);
-            return due.stream()
-                    .map(m -> new Claimed(m.getId(), m.getKind(), m.getToEmail(), m.getSubject(), m.getHtml(), m.getText()))
-                    .toList();
-        });
+        Instant heldUntil = now.plus(properties.claimLease());
+        UUID token = Ids.newId();
+        return tx.execute(status -> store.claimNext(now, heldUntil, token));
     }
 
     private boolean deliver(Claimed mail) {
-        try {
+        MailFailure failure = send(mail);
+        if (failure == ABANDONED) {
+            return false;
+        }
+        if (failure == null) {
+            return record(mail, () -> store.markSent(mail, Instant.now(clock)));
+        }
+        Instant at = Instant.now(clock);
+        int attemptsAfter = mail.attempts() + 1;
+        boolean recorded;
+        if (failure.permanent()) {
+            recorded = record(mail, () -> store.markFailed(mail, failure.code(), at));
+        } else if (MailRetrySchedule.hasRetryLeft(attemptsAfter)) {
+            Instant retryAt = at.plus(MailRetrySchedule.delayAfter(attemptsAfter));
+            recorded = record(mail, () -> store.markRetry(mail, failure.code(), retryAt));
+        } else {
+            recorded = record(mail, () -> store.markFailed(mail, failure.code(), at));
+        }
+        if (recorded) {
+            jobLog.atWarn()
+                    .addKeyValue("mailId", mail.id())
+                    .addKeyValue("kind", mail.kind())
+                    .addKeyValue("permanent", failure.permanent())
+                    .addKeyValue("error", failure.code())
+                    .log("Mail send failed");
+        }
+        return false;
+    }
+
+    /** @return {@code null} khi SMTP đã nhận thư, ngược lại lý do lỗi */
+    private MailFailure send(Claimed mail) {
+        Future<?> attempt = sendExecutor.submit(() -> {
             transport.send(mail.to(), mail.subject(), mail.html(), mail.text());
-        } catch (Exception ex) {
-            MailFailure failure = MailFailure.classify(ex);
-            boolean recorded = record(mail, message -> {
-                Instant at = Instant.now(clock);
-                if (failure.permanent()) {
-                    message.markFailedPermanently(failure.code(), at);
-                } else {
-                    message.recordFailure(failure.code(), at);
-                }
-            });
-            if (recorded) {
+            return null;
+        });
+        try {
+            attempt.get(properties.attemptTimeout().toMillis(), TimeUnit.MILLISECONDS);
+            return null;
+        } catch (TimeoutException ex) {
+            attempt.cancel(true);
+            return MailFailure.timeout();
+        } catch (ExecutionException ex) {
+            if (ex.getCause() instanceof Error error) {
+                throw error;
+            }
+            return MailFailure.classify(ex.getCause());
+        } catch (InterruptedException ex) {
+            // Đang tắt: bỏ lần gửi, giữ nguyên giữ chỗ để hết hạn rồi gửi lại.
+            attempt.cancel(true);
+            Thread.currentThread().interrupt();
+            return ABANDONED;
+        }
+    }
+
+    /**
+     * Ghi kết quả trong transaction mới. Lỗi ghi không làm hỏng các thư còn lại của lô: thư đó giữ nguyên
+     * giữ chỗ và được lấy lại khi hết hạn. Worker đã mất quyền giữ thì không ghi gì.
+     *
+     * @return {@code true} khi kết quả đã được ghi
+     */
+    private boolean record(Claimed mail, BooleanSupplier write) {
+        try {
+            Boolean written = tx.execute(status -> write.getAsBoolean());
+            if (!Boolean.TRUE.equals(written)) {
                 jobLog.atWarn()
                         .addKeyValue("mailId", mail.id())
                         .addKeyValue("kind", mail.kind())
-                        .addKeyValue("permanent", failure.permanent())
-                        .addKeyValue("error", failure.code())
-                        .log("Mail send failed");
+                        .addKeyValue("error", "claim-lost")
+                        .log("Mail result discarded: another worker holds the mail");
+                return false;
             }
-            return false;
-        }
-        return record(mail, message -> message.markSent(Instant.now(clock)));
-    }
-
-    /** Ghi kết quả trong transaction mới; lỗi ghi không làm hỏng các thư còn lại của lô. */
-    private boolean record(Claimed mail, Consumer<EmailMessage> update) {
-        try {
-            tx.executeWithoutResult(status -> repository.findById(mail.id()).ifPresent(update));
             return true;
         } catch (RuntimeException ex) {
             jobLog.atError()

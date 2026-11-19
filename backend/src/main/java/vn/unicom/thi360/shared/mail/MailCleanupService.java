@@ -14,17 +14,17 @@ class MailCleanupService {
 
     private static final Logger jobLog = LoggerFactory.getLogger("thi360.job");
 
-    private final EmailMessageRepository repository;
+    private final EmailMessageStore store;
     private final MailProperties properties;
     private final Clock clock;
     private final TransactionTemplate tx;
 
     MailCleanupService(
-            EmailMessageRepository repository,
+            EmailMessageStore store,
             MailProperties properties,
             Clock clock,
             PlatformTransactionManager transactionManager) {
-        this.repository = repository;
+        this.store = store;
         this.properties = properties;
         this.clock = clock;
         this.tx = new TransactionTemplate(transactionManager);
@@ -33,7 +33,7 @@ class MailCleanupService {
     /** @return số thư đã xóa */
     int deleteExpired() {
         Instant cutoff = Instant.now(clock).minus(properties.sentRetention());
-        Integer deleted = tx.execute(status -> repository.deleteSentBefore(cutoff));
+        Integer deleted = tx.execute(status -> store.deleteSentBefore(cutoff));
         int count = deleted == null ? 0 : deleted;
         if (count > 0) {
             jobLog.atInfo().addKeyValue("deleted", count).log("Sent mail cleaned up");

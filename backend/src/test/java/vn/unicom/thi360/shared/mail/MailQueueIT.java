@@ -8,21 +8,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.IllegalTransactionStateException;
 import vn.unicom.thi360.support.MailOutbox;
 
 class MailQueueIT extends AbstractMailIT {
-
-    @Autowired
-    private EmailMessageRepository repository;
 
     @Test
     void rollbackLeavesNoMail() {
         String markedRollback = MailSamples.randomAddress();
         tx.executeWithoutResult(status -> {
             queue.enqueue(MailKind.EMAIL_VERIFY, markedRollback, "vi", MailSamples.model(MailKind.EMAIL_VERIFY), null);
-            repository.flush();
             assertThat(outbox.count(markedRollback)).as("the mail is really written before the rollback").isEqualTo(1);
             status.setRollbackOnly();
         });
@@ -75,6 +70,28 @@ class MailQueueIT extends AbstractMailIT {
                             MailKind.EMAIL_VERIFY, bad, "vi", MailSamples.model(MailKind.EMAIL_VERIFY), null)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
+    }
+
+    @Test
+    void groupAndListAddressesAreRejectedButASingleMailboxWorks() {
+        String one = MailSamples.randomAddress();
+        String two = MailSamples.randomAddress();
+        for (String bad : new String[] {
+            "friends: " + one + ", " + two + ";", "undisclosed-recipients:;", one + ", " + two, one + " " + two
+        }) {
+            assertThatThrownBy(() -> tx.executeWithoutResult(status -> queue.enqueue(
+                            MailKind.PASSWORD_RESET, bad, "vi", MailSamples.model(MailKind.PASSWORD_RESET), null)))
+                    .as("'%s' must be refused", bad)
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(outbox.count(one)).isZero();
+        assertThat(outbox.count(two)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM shared.email_message", Integer.class)).isZero();
+
+        tx.executeWithoutResult(status -> queue.enqueue(
+                MailKind.PASSWORD_RESET, "  Người Dùng <" + one + ">  ", "vi", MailSamples.model(MailKind.PASSWORD_RESET), null));
+        assertThat(outbox.require(one, MailKind.PASSWORD_RESET).to()).isEqualTo(one);
+        assertThat(outbox.count(one)).isEqualTo(1);
     }
 
     @Test

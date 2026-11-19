@@ -18,12 +18,12 @@ import vn.unicom.thi360.shared.ids.Ids;
 @Service
 public class MailQueue {
 
-    private final EmailMessageRepository repository;
+    private final EmailMessageStore store;
     private final MailTemplateRenderer renderer;
     private final Clock clock;
 
-    MailQueue(EmailMessageRepository repository, MailTemplateRenderer renderer, Clock clock) {
-        this.repository = repository;
+    MailQueue(EmailMessageStore store, MailTemplateRenderer renderer, Clock clock) {
+        this.store = store;
         this.renderer = renderer;
         this.clock = clock;
     }
@@ -40,20 +40,31 @@ public class MailQueue {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public UUID enqueue(MailKind kind, String to, String locale, Map<String, Object> model, UUID userId) {
-        requireAddress(to);
+        String recipient = requireSingleMailbox(to);
         String normalizedLocale = MailLocale.normalize(locale);
         RenderedMail rendered = renderer.render(kind, normalizedLocale, model);
         UUID id = Ids.newId();
-        repository.save(new EmailMessage(id, kind, to.strip(), normalizedLocale, rendered, userId, Instant.now(clock)));
+        store.insert(id, kind, recipient, normalizedLocale, rendered, userId, Instant.now(clock));
         return id;
     }
 
-    private static void requireAddress(String to) {
+    /**
+     * Chỉ nhận đúng một hộp thư. Danh sách và "group address" của RFC 5322 ({@code g: a@x, b@y;}) bị từ chối:
+     * Jakarta Mail mở group thành nhiều người nhận, làm một thư chứa mã gửi tới nhiều hộp thư.
+     *
+     * @return địa chỉ thuần ({@code user@host}), không kèm tên hiển thị
+     */
+    private static String requireSingleMailbox(String to) {
         if (to == null || to.isBlank()) {
             throw new IllegalArgumentException("Mail recipient is required");
         }
         try {
-            new InternetAddress(to.strip(), true).validate();
+            InternetAddress[] parsed = InternetAddress.parse(to.strip(), true);
+            if (parsed.length != 1 || parsed[0].isGroup()) {
+                throw new IllegalArgumentException("Mail recipient must be exactly one mailbox");
+            }
+            parsed[0].validate();
+            return parsed[0].getAddress();
         } catch (AddressException ex) {
             throw new IllegalArgumentException("Mail recipient is not a valid address", ex);
         }
