@@ -64,9 +64,9 @@ describe("Môn dùng ma trận MAPID", () => {
 });
 
 describe("Chuyển dữ liệu cũ sang quy tắc (AC-10)", () => {
-  it("phạm vi môn, chỉ tiêu môn, phạm vi nhóm, chỉ tiêu nhóm thành bốn quy tắc, xóa trường cũ, chế độ MATRIX", () => {
+  it("chỉ tiêu môn, phạm vi nhóm, chỉ tiêu nhóm thành quy tắc, xóa trường cũ, chế độ MATRIX; lọc năng lực của môn giữ", () => {
     const legacy = section({
-      knowledgeScope: { nodeIds: ["n-a", "n-b"], everyChildInScope: true, competencyCodes: ["C1"] },
+      knowledgeScope: { nodeIds: [], competencyCodes: ["C1"] },
       topicQuotas: [quota(), quota({ id: "tq2", name: "Xác suất", nodeIds: ["n-xs"], count: 0, percent: 10 })],
       blocks: [
         block({ id: "b-short", knowledgeScope: { nodeIds: ["n-c"] }, topicQuotas: [quota({ id: "bq1", nodeIds: ["n-d"], count: 2 })] }),
@@ -76,7 +76,6 @@ describe("Chuyển dữ liệu cũ sang quy tắc (AC-10)", () => {
     const next = convertLegacySection(legacy);
     expect(next.mapidMode).toBe("MATRIX");
     expect(next.mapidRules).toEqual([
-      { id: "legacy-source", type: "SOURCE", groupId: null, nodeIds: ["n-a", "n-b"] },
       { id: "legacy-tq1", type: "COUNT", groupId: null, nodeIds: ["n-ham-so"], comparator: "AT_LEAST", count: 3 },
       { id: "legacy-tq2", type: "COUNT", groupId: null, nodeIds: ["n-xs"], comparator: "AT_LEAST", count: 0, percent: 10 },
       { id: "legacy-source-b-short", type: "SOURCE", groupId: "b-short", nodeIds: ["n-c"] },
@@ -87,6 +86,31 @@ describe("Chuyển dữ liệu cũ sang quy tắc (AC-10)", () => {
     expect(next.blocks[0]!.topicQuotas).toBeUndefined();
     expect(next.blocks[0]!.knowledgeScope).toBeNull();
     expect(next.blocks.map((item) => item.id)).toEqual(["b-short", "b-set"]);
+  });
+
+  it("phạm vi MAPID của môn (nhóm không có phạm vi riêng) thành quy tắc SOURCE cả môn", () => {
+    const legacy = section({
+      knowledgeScope: { nodeIds: ["n-a", "n-b"], everyChildInScope: true, competencyCodes: ["C1"] },
+      topicQuotas: [quota()],
+      blocks: [block({ id: "b-single", questionType: "SINGLE_CHOICE", questionCount: 50 })],
+    });
+    const next = convertLegacySection(legacy);
+    expect(next.mapidRules).toEqual([
+      { id: "legacy-source", type: "SOURCE", groupId: null, nodeIds: ["n-a", "n-b"] },
+      { id: "legacy-tq1", type: "COUNT", groupId: null, nodeIds: ["n-ham-so"], comparator: "AT_LEAST", count: 3 },
+    ]);
+    expect(next.knowledgeScope).toEqual({ nodeIds: [], competencyCodes: ["C1"] });
+  });
+
+  it("MAPID ở cả môn và phạm vi riêng của một nhóm: bản cũ chỉ theo phạm vi nhóm, SOURCE mới đòi cả hai (AND) nên giữ kiểu cũ (R1-2)", () => {
+    const legacy = section({
+      knowledgeScope: { nodeIds: ["n-a"] },
+      blocks: [block({ id: "b-short", knowledgeScope: { nodeIds: ["n-c"] } })],
+    });
+    expect(convertLegacySection(legacy)).toBe(legacy);
+    expect(mapidViewMode(legacy)).toBeNull();
+    const competencyOnly = section({ knowledgeScope: { nodeIds: ["n-a"] }, blocks: [block({ id: "b-short", questionType: "SINGLE_CHOICE", knowledgeScope: { nodeIds: [], competencyCodes: ["C1"] } })] });
+    expect(convertLegacySection(competencyOnly).mapidRules).toEqual([{ id: "legacy-source", type: "SOURCE", groupId: null, nodeIds: ["n-a"] }]);
   });
 
   it("không mất gì: mỗi MAPID, số câu, tỷ lệ của dòng cũ có mặt trong quy tắc mới", () => {
