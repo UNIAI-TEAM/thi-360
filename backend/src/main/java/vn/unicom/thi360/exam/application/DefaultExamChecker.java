@@ -19,7 +19,9 @@ import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
+import vn.unicom.thi360.exam.domain.solver.SolveOption;
 import vn.unicom.thi360.exam.domain.solver.SolveOutcome;
+import vn.unicom.thi360.exam.domain.solver.SolvePart;
 import vn.unicom.thi360.exam.domain.solver.SolveReason;
 import vn.unicom.thi360.exam.domain.solver.SolveStats;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
@@ -250,9 +252,10 @@ public class DefaultExamChecker implements ExamChecker {
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues)
                 .withRulesEvaluated(computed.complete());
         if (scope.kind() == ExamCheckScope.Kind.EXAM && evaluation.rulesEvaluated()) {
-            // Unused code-source pool entries belong to the saved structure, but not to any serving path.
+            // Pool entries whose subject is on no evaluated path belong to the saved structure, but not to any serving
+            // path (a subject kept only by combinations that lack another pool subject is on none).
             // Report their R-12 errors at the whole-exam level without making unrelated paths ineligible.
-            for (ObjectNode issue : rules.unusedPoolLimits()) {
+            for (ObjectNode issue : rules.unusedPoolLimits(evaluatedSubjects(input))) {
                 for (var group : evaluation.result().withArray("groups")) {
                     if (!issue.path("group").asText().equals(group.path("group").asText())) continue;
                     ((ObjectNode) group).withArray("issues").add(issue);
@@ -264,6 +267,20 @@ public class DefaultExamChecker implements ExamChecker {
             }
         }
         return evaluation.withUnits(markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
+    }
+
+    /** The subjects of the sections the solver received for the options of each part: placeholder options hold none. */
+    private static Map<String, Set<String>> evaluatedSubjects(SolverInputBuilder.SolverInput input) {
+        Map<String, Set<String>> subjects = new LinkedHashMap<>();
+        for (SolvePart part : input.parts()) {
+            if (!(part instanceof SolvePart.Choice choice)) continue;
+            for (SolveOption option : choice.options()) {
+                if (!(option instanceof SolveOption.Sections sections)) continue;
+                sections.sections().forEach(section -> subjects
+                        .computeIfAbsent(choice.partId(), ignored -> new java.util.LinkedHashSet<>()).add(section.subjectCode()));
+            }
+        }
+        return subjects;
     }
 
     private static List<ExamCheckRules.FilterEvidence> filterEvidence(PathResult result, ExamStructureDocument document,

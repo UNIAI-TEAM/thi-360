@@ -135,6 +135,42 @@ class ExamCheckSubjectLimitsTemplatesIT extends AbstractSubjectLimitsIT {
         assertThat(english.path("issues").toString()).doesNotContain(SET_CODE);
     }
 
+    /**
+     * R2-3: a subject can be in an active combination without being on any evaluated path. Lý is kept in the pool
+     * with three sets, but Hóa, Sinh, Sử and Địa are gone: every combination with Lý misses another subject, becomes a
+     * placeholder path, and Lý is solved on no path. Its located R-12 error is still reported at the check, and the
+     * English path stays valid.
+     */
+    @Test
+    void poolSectionOfASubjectOnNoEvaluatedPathIsReported() throws Exception {
+        String base = loadFullTemplate("QDA");
+        JsonNode before = structure(base);
+        ObjectNode edited = before.deepCopy();
+        ObjectNode physics = sectionIn(edited, "LY", "subjectPool");
+        setShape(physics, 3, 3);
+        for (JsonNode part : edited.path("parts")) {
+            if (!part.path("codeSource").isObject()) continue;
+            com.fasterxml.jackson.databind.node.ArrayNode kept = mapper.createArrayNode();
+            for (JsonNode section : part.path("subjectPool")) {
+                if (List.of("LY", "ANH").contains(section.path("subjectCode").asText())) kept.add(section);
+            }
+            ((ObjectNode) part).set("subjectPool", kept);
+        }
+        save(base, before, edited);
+
+        JsonNode result = check(base);
+        JsonNode found = issue(result, SET_CODE);
+        assertThat(found.path("sectionId").asText()).isEqualTo(physics.path("id").asText());
+        assertThat(found.path("subjectCode").asText()).isEqualTo("LY");
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        Map<String, String> outcome = new java.util.TreeMap<>();
+        for (JsonNode path : result.path("paths")) outcome.put(path.path("choices").path(0).path("code").asText(), path.path("result").asText());
+        assertThat(outcome).containsEntry("QD05", "VALID").containsEntry("QD01", "INVALID").containsEntry("QD03", "INVALID");
+        assertThat(java.util.stream.StreamSupport.stream(result.path("paths").spliterator(), false)
+                .filter(path -> "VALID".equals(path.path("result").asText()))
+                .map(path -> path.path("issues").toString()).toList()).noneMatch(issues -> issues.contains(SET_CODE));
+    }
+
     /** A template's first standard FULL exam of the kind, loaded; returns its URL. */
     private String loadFullTemplate(String kind) throws Exception {
         String code = jdbc.queryForObject("SELECT code FROM exam.exam_template WHERE kind_code = ? AND scope = 'FULL' AND active "

@@ -983,13 +983,17 @@ public final class ExamCheckRules {
         return failure;
     }
 
-    /** R-12 issues in saved code-source pool entries that no current combination selects. */
-    List<ObjectNode> unusedPoolLimits() {
+    /**
+     * R-12 issues in saved code-source pool entries whose subject is on no evaluated path. {@code evaluatedSubjects}
+     * maps a part to the subjects of the sections of its options that the solver actually received: a combination that
+     * lacks a pool subject is a placeholder with no sections, so a subject kept only by such combinations is unused
+     * too, although the active catalog lists it.
+     */
+    List<ObjectNode> unusedPoolLimits(Map<String, Set<String>> evaluatedSubjects) {
         List<ObjectNode> found = new ArrayList<>();
         for (ExamPart part : document.parts()) {
             if (part.codeSource() == null) continue;
-            Set<String> used = new java.util.HashSet<>();
-            combinationsByPart.getOrDefault(part.id(), Map.of()).values().forEach(used::addAll);
+            Set<String> used = evaluatedSubjects.getOrDefault(part.id(), Set.of());
             for (ExamSection section : part.subjectPool()) {
                 if (used.contains(section.subjectCode())) continue;
                 SectionContext context = sections.get(section.id());
