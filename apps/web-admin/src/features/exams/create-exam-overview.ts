@@ -202,7 +202,7 @@ export function overviewRowsFromTemplate(
       // H-SCA, V-SAT: từng dòng lấy câu của mẫu nằm dưới dòng phần, kèm lệnh hỏi và điểm (TaoBaiThiHscaVsat2B).
       if (template.kind === "HSCA" || template.kind === "VSAT") {
         sections.forEach((section, sectionIndex) =>
-          (section.blocks ?? []).forEach((block, blockIndex) => rows.push(blockRow(index, sectionIndex, block, blockIndex))),
+          (section.blocks ?? []).forEach((block, blockIndex) => rows.push(blockRow(index, sectionIndex, block, blockIndex, section))),
         );
       }
       sections.forEach((section, sectionIndex) =>
@@ -352,7 +352,7 @@ function commandsPerQuestion(type: QuestionType | null | undefined, shape?: Item
 }
 
 /** Lệnh hỏi của dòng: chùm trộn dạng tính theo dạng khai ở từng vị trí câu con (H39), vị trí không khai tính một lệnh. */
-function blockCommands(block: ExamTemplateBlock, questions: number): number {
+function blockCommands(block: ExamTemplateBlock, questions: number, section?: ExamTemplateSection): number {
   const typed = (block.childConditions ?? []).filter((condition) => condition.answerType !== undefined && condition.to >= condition.from);
   if (typed.length > 0 && block.setCount) {
     const covered = typed.reduce((total, condition) => total + (condition.to - condition.from + 1), 0);
@@ -362,11 +362,13 @@ function blockCommands(block: ExamTemplateBlock, questions: number): number {
     );
     return block.setCount * (perSet + Math.max(0, (block.setSize ?? covered) - covered));
   }
-  const type = block.questionType === "QUESTION_SET" ? block.childAnswerType : block.questionType;
+  // Môn khai dòng "Bộ câu hỏi" ở chỉ tiêu dạng trả lời: chùm là Bộ câu hỏi; không thì theo dạng của câu con (UNI-2754).
+  const setRow = section?.answerQuotas?.items.some((item) => item.answerType === "QUESTION_SET") ?? false;
+  const type = block.questionType === "QUESTION_SET" ? (setRow ? "QUESTION_SET" : block.childAnswerType) : block.questionType;
   return questions * commandsPerQuestion(type, block.itemShape);
 }
 
-function blockRow(partIndex: number, sectionIndex: number, block: ExamTemplateBlock, blockIndex: number): OverviewRow {
+function blockRow(partIndex: number, sectionIndex: number, block: ExamTemplateBlock, blockIndex: number, section?: ExamTemplateSection): OverviewRow {
   const sets = block.setCount ?? null;
   const setSize = block.setSize ?? null;
   const questions = block.questionCount ?? (sets !== null && setSize !== null ? sets * setSize : 0);
@@ -384,6 +386,6 @@ function blockRow(partIndex: number, sectionIndex: number, block: ExamTemplateBl
     choice: false,
     group: false,
     lockedCount: true,
-    block: { sets, setSize, questions, commands: blockCommands(block, questions), points },
+    block: { sets, setSize, questions, commands: blockCommands(block, questions, section), points },
   };
 }

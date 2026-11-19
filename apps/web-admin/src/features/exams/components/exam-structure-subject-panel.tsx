@@ -25,9 +25,6 @@ import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
-/** Dạng trả lời khai được ở chỉ tiêu cấp môn: mọi dạng trừ Bộ câu hỏi (đếm theo câu con, D22). */
-const QUOTA_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET");
-
 /** Chỉ tiêu dạng trả lời nhập theo tỷ lệ quy về số câu của tổng `total` (phần dư lớn nhất); nhập theo số câu giữ nguyên. */
 function toCountQuotas(quotas: AnswerQuotas | null, total: number): AnswerQuotas | null {
   if (quotas?.unit !== "PERCENT") return quotas;
@@ -99,7 +96,9 @@ export function ExamStructureSubjectPanel({
   const allocation = subjectAllocation(section, axes, count);
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
 
-  const quotaTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
+  const declaredTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
+  // Nhóm câu đơn mở không lấy câu chùm, nên truy vấn nguồn của nó không kể dòng "Bộ câu hỏi".
+  const quotaTypes = declaredTypes.filter((type) => type !== "QUESTION_SET");
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
     groups: section.blocks.map(
@@ -140,7 +139,7 @@ export function ExamStructureSubjectPanel({
   const quotaExpected = quotas?.unit === "PERCENT" ? 100 : count;
   const quotaMismatch = quotas !== null && quotaExpected !== null && quotas.items.length > 0 && quotaTotal !== quotaExpected;
   const quotaVaries = quotas?.unit === "COUNT" && varies;
-  const usedTypes = new Set(quotaTypes);
+  const usedTypes = new Set(declaredTypes);
   // Dạng mà nhóm dùng nhưng môn chưa khai chỉ tiêu: hiện thành hàng riêng, đã phân bổ vượt chỉ tiêu 0 (R1-6).
   const undeclaredRows = allocation.answerTypes?.filter((row) => !usedTypes.has(row.key as QuestionType)) ?? [];
 
@@ -457,7 +456,7 @@ export function ExamStructureSubjectPanel({
                   value=""
                   placeholder={t("answerTypes.addType")}
                   onValueChange={(value) => setQuotas({ ...quotas, items: [...quotas.items, { answerType: value as QuestionType, value: 0 }] })}
-                  options={QUOTA_TYPES.filter((type) => !usedTypes.has(type)).map((type) => ({ value: type, label: typeLabel(type) }))}
+                  options={QUESTION_TYPES.filter((type) => !usedTypes.has(type)).map((type) => ({ value: type, label: typeLabel(type) }))}
                 />
               </div>
             </>

@@ -96,10 +96,13 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
   const units = blockUnits(blocks, remainder);
   const allocated = sum(units);
 
+  // Môn khai dòng "Bộ câu hỏi" ở chỉ tiêu dạng trả lời (UNI-2754): câu con của nhóm chùm chỉ tính vào dòng này, không tính vào
+  // dạng của câu con. Môn không khai dòng này giữ cách tính cũ để bản nháp và bản đã công bố không đổi nghĩa.
+  const hasSetRow = section.answerQuotas?.items.some((item) => item.answerType === "QUESTION_SET") ?? false;
   const typed = new Map<string, number>();
   let openAllocated = 0;
   blocks.forEach((block, index) => {
-    const type = groupAnswerType(block);
+    const type = hasSetRow && block.questionType === "QUESTION_SET" ? "QUESTION_SET" : groupAnswerType(block);
     if (type === null) openAllocated += units[index] ?? 0;
     else typed.set(type, (typed.get(type) ?? 0) + (units[index] ?? 0));
   });
@@ -121,9 +124,11 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
       const used = typed.get(key) ?? 0;
       return { key, quota, allocated: used, missing: quota - used };
     });
-    openMissing = sum(answerTypes.map((row) => Math.max(0, row.missing))) - openAllocated;
+    // Nhóm câu đơn mở không bao giờ lấp dòng "Bộ câu hỏi": dòng này chỉ do nhóm chùm lấp.
+    const fillable = answerTypes.filter((row) => row.key !== "QUESTION_SET");
+    openMissing = sum(fillable.map((row) => Math.max(0, row.missing))) - openAllocated;
     if (openAllocated > 0 && openMissing === 0) {
-      openSplit = answerTypes.filter((row) => row.missing > 0).map((row) => ({ key: row.key, count: row.missing }));
+      openSplit = fillable.filter((row) => row.missing > 0).map((row) => ({ key: row.key, count: row.missing }));
     }
   }
 
