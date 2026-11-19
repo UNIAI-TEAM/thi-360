@@ -118,7 +118,7 @@ class ExamBlockScopeInheritanceIT extends AbstractIntegrationTest {
 
     private UUID exam(Pool pool, String blockScope, int count) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) VALUES (?,?,?,'Scope','FULL','SHARED',?)",
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count,duration_minutes) VALUES (?,?,?,'Scope','FULL','SHARED',?,60)",
                 id, id.toString(), id.toString(), count);
         String document = """
                 {"parts":[{"id":"p","questionCount":%d,"sections":[

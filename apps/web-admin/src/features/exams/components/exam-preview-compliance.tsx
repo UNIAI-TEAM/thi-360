@@ -5,22 +5,27 @@ import { Card, ListCard, StatusChip, Table, type StatusTone, type TableCards } f
 import { CircleCheck, Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import { useContentReference } from "@/features/content/queries";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
+import { EXAMS_QUERY_KEYS } from "../keys";
 import { useExamStructure } from "../queries";
 import {
   buildTopicQuotaIndex,
+  commandDenominators,
   competencyName,
   complianceDifference,
   complianceLevel,
   droppedCount,
   examQuotaNames,
+  isUnclassifiedRow,
   parseCriterion,
   parseScope,
   topicAssignments,
   topicQuotaPending,
   type ComplianceLevel,
 } from "../review-compliance";
+import type { ExamDetail } from "../types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "../review-types";
 import { useLookup } from "./exam-review-shared";
 
@@ -63,6 +68,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     const sections = new Map(paper.subjects.map((subject) => [subject.sectionId, subject]));
 
     const criterion = (row: PreviewCompliance) => {
+      if (isUnclassifiedRow(row)) return t("criterion.UNCLASSIFIED");
       const ref = parseCriterion(row.criterion);
       switch (ref.kind) {
         case "ANSWER_TYPE":
@@ -101,6 +107,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     const level = (row: PreviewCompliance) =>
       t("level", { enforcement: t(`enforcement.${row.enforcement}`), unit: t(`unit.${row.basis}`) });
     const required = (row: PreviewCompliance) => {
+      if (isUnclassifiedRow(row) || row.required === null) return t("requiredNone");
       const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
       const removed = droppedCount(row.note);
       const value = removed > 0 ? t("requiredDropped", { value: number(row.required), count: removed }) : number(row.required);
@@ -119,6 +126,13 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       return value < 0 ? `\u2212${shown}` : value > 0 ? `+${shown}` : shown;
     };
     const result = (row: PreviewCompliance) => {
+      if (isUnclassifiedRow(row)) {
+        return row.actual > 0 ? (
+          <StatusChip tone="neutral">{t("result.MISSING_LABEL")}</StatusChip>
+        ) : (
+          <StatusChip tone="success">{t("result.OK")}</StatusChip>
+        );
+      }
       if (topicQuotaPending(row, quotas)) return <StatusChip tone="neutral">{t("result.PENDING")}</StatusChip>;
       const value = complianceLevel(row);
       return <StatusChip tone={LEVEL_TONE[value]}>{t(`result.${value}`)}</StatusChip>;
@@ -168,6 +182,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
             <StatusChip tone={blocking ? "danger" : "warning"}>{t("deviations", { count: deviations.length })}</StatusChip>
           ))}
       </div>
+      {examId && <DenominatorNotes paper={paper} compliance={compliance} examId={examId} />}
       {dropped.length > 0 && (
         <ul className="flex flex-col gap-1">
           {dropped.map((question) => (
@@ -202,5 +217,37 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * Mẫu số của đối chiếu theo lệnh (D21): "Toán cả môn · 67 lệnh" với bài cả môn, "Toán · Phần II · 6 lệnh" với bài theo
+ * phần. Chỉ hiện cho bài `SUBJECT` và `PART`, vì đó là hai phạm vi có đối chiếu theo lệnh ở mức tham khảo.
+ */
+function DenominatorNotes({ paper, compliance, examId }: { paper: PreviewPaper; compliance: readonly PreviewCompliance[]; examId: string }) {
+  const t = useTranslations("exams.preview.compliance");
+  const lookup = useLookup();
+  // Chỉ đọc bản đã có trong bộ nhớ đệm (trang xem trước đã tải bài): không gọi thêm API chỉ để biết phạm vi.
+  const exam = useQuery<ExamDetail>({ queryKey: EXAMS_QUERY_KEYS.detail(examId), queryFn: skipToken }).data;
+  const denominators = useMemo(() => commandDenominators(compliance), [compliance]);
+  // Mã môn chung của đề (khi các mục môn cùng một môn): bài V-SAT có nhiều mục `paper.subjects` cùng `subjectCode`.
+  const sectionSubjectCodes = new Set(paper.subjects.map((subject) => subject.subjectCode));
+  if (!exam || (exam.scope !== "SUBJECT" && exam.scope !== "PART") || denominators.length === 0) return null;
+  return (
+    <ul className="flex flex-col gap-1">
+      {denominators.map((denominator) => {
+        const ref = parseScope(denominator.scope);
+        const section = ref.kind === "SECTION" ? paper.subjects.find((subject) => subject.sectionId === ref.id) : undefined;
+        // Scope cả bài không gắn mục môn: lấy `subjectCode` của bài, không có thì lấy môn chung duy nhất của các mục.
+        const subjectCode = section?.subjectCode ?? exam.subjectCode ?? (sectionSubjectCodes.size === 1 ? [...sectionSubjectCodes][0] : null);
+        const subject = subjectCode ? lookup.subject(subjectCode) : null;
+        const key = exam.scope === "PART" ? (subject ? "denominator.part" : "denominator.partNoSubject") : subject ? "denominator.whole" : "denominator.wholeNoSubject";
+        return (
+          <li key={denominator.scope} className="text-label font-semibold text-text">
+            {t(key, { part: paper.parts.map((part) => part.name).join(", "), count: denominator.total, ...(subject ? { subject } : {}) })}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

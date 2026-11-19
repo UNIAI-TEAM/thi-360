@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import vn.unicom.thi360.exam.domain.BlockMatrix;
+import vn.unicom.thi360.exam.domain.ChildCondition;
 import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
@@ -42,8 +43,13 @@ public final class ExamCheckRules {
      * subject whose standard template has {@code publishable = false}; {@code lockedTemplate} is the loaded
      * template's structure when it has {@code fixed_counts = true}. Either is null when it does not apply.
      */
-    public record TemplateFacts(String unpublishableSubject, ExamStructureDocument lockedTemplate) {
+    public record TemplateFacts(String unpublishableSubject, ExamStructureDocument lockedTemplate,
+                                ExamStructureDocument blockLockedTemplate, ExamStructureDocument omittedLockedTemplate) {
         public static final TemplateFacts NONE = new TemplateFacts(null, null);
+
+        public TemplateFacts(String unpublishableSubject, ExamStructureDocument lockedTemplate) {
+            this(unpublishableSubject, lockedTemplate, null, null);
+        }
     }
 
     private final Exam exam;
@@ -118,7 +124,10 @@ public final class ExamCheckRules {
         List<ObjectNode> found = new ArrayList<>();
         if (document.parts().isEmpty() || exam.getName() == null || exam.getName().isBlank()
                 || exam.getCode() == null || exam.getCode().isBlank()
-                || ("PART".equals(exam.getScope()) && (exam.getPartCode() == null || exam.getPartCode().isBlank()))) {
+                || ("PART".equals(exam.getScope()) && (exam.getPartCode() == null || exam.getPartCode().isBlank()))
+                // UNI-2699: a SHARED exam needs a positive exam clock; a bad stored clock blocks publish.
+                || ("SHARED".equals(exam.getTiming())
+                        && (exam.getDurationMinutes() == null || exam.getDurationMinutes() <= 0))) {
             found.add(issue("INFO_MISSING", "INFO", null, null, null));
         }
         if (exam.getStructureYear() != null && exam.getMatrixYear() != null
@@ -158,6 +167,9 @@ public final class ExamCheckRules {
             found.add(failure);
         }
         if (template.lockedTemplate() != null) found.addAll(lockedCountIssues(template.lockedTemplate()));
+        if (template.blockLockedTemplate() != null || template.omittedLockedTemplate() != null) {
+            found.addAll(lockedBlockIssues());
+        }
         return found;
     }
 
@@ -253,6 +265,272 @@ public final class ExamCheckRules {
             found.add(failure);
         }
         return changed;
+    }
+
+    /**
+     * Row locks of the loaded template (H42, H43). Sections are paired with the template as in
+     * {@link #lockedCountIssues}; inside a pair, groups are paired by id first and then by their kind. A template
+     * group that is omitted is not a row (H42): the exam group that switched it back on is reported once as
+     * {@code OMITTED_BLOCK_LOCKED} and is left out of the row comparison. That group is found by its provenance
+     * ({@link #reenabledBlocks}) anywhere in the exam, never through the section it sits in, so a copy with
+     * regenerated ids or a group moved to another section is still caught.
+     */
+    private List<ObjectNode> lockedBlockIssues() {
+        List<ObjectNode> found = new ArrayList<>();
+        Set<QuestionBlock> reenabled = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        if (template.omittedLockedTemplate() != null) {
+            reenabled.addAll(reenabledBlocks(template.omittedLockedTemplate()));
+            for (SectionContext context : sections.values()) {
+                for (QuestionBlock block : context.section.blocks()) {
+                    if (!reenabled.contains(block)) continue;
+                    ObjectNode failure = sectionIssue("OMITTED_BLOCK_LOCKED", "STRUCTURE", context, null);
+                    blockContext(failure, block);
+                    found.add(issues.key(failure));
+                }
+            }
+        }
+        if (template.blockLockedTemplate() != null) {
+            for (SectionPair pair : sectionPairs(template.blockLockedTemplate(), reenabled)) {
+                lockedRows(found, pair, reenabled);
+            }
+        }
+        return found;
+    }
+
+    private void lockedRows(List<ObjectNode> found, SectionPair pair, Set<QuestionBlock> reenabled) {
+        List<QuestionBlock> expected = pair.locked() == null ? List.of()
+                : pair.locked().blocks().stream().filter(block -> !Boolean.TRUE.equals(block.omitted())).toList();
+        List<QuestionBlock> actual = pair.current() == null ? List.of()
+                : pair.current().blocks().stream()
+                        .filter(block -> !Boolean.TRUE.equals(block.omitted()) && !reenabled.contains(block)).toList();
+        SectionContext context = pair.current() == null ? null : sections.get(pair.current().id());
+        for (Slot<QuestionBlock> slot : pair(expected, actual, QuestionBlock::id, ExamCheckRules::blockSignature,
+                null, ExamCheckRules::fixedCount)) {
+            ObjectNode failure;
+            if (slot.current() == null) {
+                failure = context == null ? issue("BLOCK_COUNT_LOCKED", "STRUCTURE", pair.part(), pair.optionId(), null)
+                        : sectionIssue("BLOCK_COUNT_LOCKED", "STRUCTURE", context, null);
+                failure.put("required", rowCount(slot.locked(), pair.locked()));
+                failure.put("available", 0);
+                failure.put("dimension", "COUNT");
+                issues.key(failure);
+                failure.put("key", failure.path("key").asText() + "|missing:" + slot.name(slot.locked().id())
+                        + (context == null ? "|" + (pair.locked() == null ? "" : pair.locked().id()) : ""));
+            } else if (context == null) {
+                continue;
+            } else if (slot.locked() == null) {
+                failure = sectionIssue("BLOCK_COUNT_LOCKED", "STRUCTURE", context, null);
+                blockContext(failure, slot.current());
+                failure.put("required", 0);
+                failure.put("available", rowCount(slot.current(), pair.current()));
+                failure.put("dimension", "COUNT");
+                issues.key(failure);
+            } else {
+                String changed = blockChange(slot.locked(), pair.locked(), slot.current(), pair.current());
+                if (changed == null) continue;
+                failure = sectionIssue("BLOCK_COUNT_LOCKED", "STRUCTURE", context, null);
+                blockContext(failure, slot.current());
+                failure.put("dimension", changed);
+                switch (changed) {
+                    case "SET_COUNT" -> {
+                        failure.put("required", slot.locked().setCount());
+                        failure.put("available", slot.current().setCount());
+                    }
+                    case "SET_SIZE" -> {
+                        failure.put("required", slot.locked().setSize());
+                        failure.put("available", slot.current().setSize());
+                    }
+                    default -> {
+                        failure.put("required", rowCount(slot.locked(), pair.locked()));
+                        failure.put("available", rowCount(slot.current(), pair.current()));
+                    }
+                }
+                issues.key(failure);
+            }
+            found.add(failure);
+        }
+    }
+
+    /**
+     * What a locked row has to keep: its type, then for sets the set count and size and the answer type of every child
+     * position (a mixed set keeps its type per position, H39), else the question count.
+     */
+    private static String blockChange(QuestionBlock locked, ExamSection lockedSection, QuestionBlock current,
+                                      ExamSection currentSection) {
+        if (locked.questionType() != current.questionType() || locked.childAnswerType() != current.childAnswerType()) {
+            return "TYPE";
+        }
+        if (isSet(locked) || isSet(current)) {
+            if (!Objects.equals(locked.setCount(), current.setCount())) return "SET_COUNT";
+            if (!Objects.equals(locked.setSize(), current.setSize())) return "SET_SIZE";
+            if (!childTypes(locked).equals(childTypes(current))) return "TYPE";
+            return fixedCount(locked) != fixedCount(current) ? "COUNT" : null;
+        }
+        return rowCount(locked, lockedSection) == rowCount(current, currentSection) ? null : "COUNT";
+    }
+
+    /**
+     * The answer type each child position of a mixed set is bound to, by position: how the typed intervals are cut
+     * does not matter, and conditions without an answer type (knowledge filters) are not part of it.
+     */
+    private static List<QuestionType> childTypes(QuestionBlock block) {
+        int size = block.setSize() == null ? 0 : Math.clamp(block.setSize(), 0, QuestionSourcePort.MAX_SET_CHILDREN);
+        List<QuestionType> types = new ArrayList<>(java.util.Collections.nCopies(size, (QuestionType) null));
+        for (ChildCondition condition : block.childConditions()) {
+            if (condition.answerType() == null || condition.from() == null || condition.to() == null) continue;
+            for (int position = Math.max(1, condition.from()); position <= Math.min(size, condition.to()); position++) {
+                types.set(position - 1, condition.answerType());
+            }
+        }
+        return types;
+    }
+
+    /** Questions a row takes: its explicit count, or what a "take the remainder" row leaves of the section. */
+    private static int rowCount(QuestionBlock block, ExamSection section) {
+        if (block.questionCount() != null || isSet(block)) return fixedCount(block);
+        int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+        return section.questionCount() == null ? 0 : Math.max(0, section.questionCount() - fixed);
+    }
+
+    /** A group is the same row when it has the same type, child type and template group code. */
+    private static String blockSignature(QuestionBlock block) {
+        return block.questionType() + "|" + block.childAnswerType() + "|" + block.templateGroupCode();
+    }
+
+    /**
+     * Groups are matched regardless of activation: id first, then template group code when it uniquely identifies
+     * one template group and one current group. Only after matching do we report active counterparts. Ambiguous
+     * codes match nothing; a row is never picked arbitrarily.
+     */
+    private Set<QuestionBlock> reenabledBlocks(ExamStructureDocument locked) {
+        List<QuestionBlock> omitted = new ArrayList<>();
+        Map<String, Integer> codes = new HashMap<>();
+        Set<String> templateIds = new LinkedHashSet<>();
+        for (QuestionBlock block : templateBlocks(locked)) {
+            if (block.id() != null) templateIds.add(block.id());
+            if (block.templateGroupCode() != null) codes.merge(block.templateGroupCode(), 1, Integer::sum);
+            if (Boolean.TRUE.equals(block.omitted())) omitted.add(block);
+        }
+        List<QuestionBlock> current = new ArrayList<>();
+        for (SectionContext context : sections.values()) current.addAll(context.section.blocks());
+        Set<QuestionBlock> matched = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        List<QuestionBlock> open = new ArrayList<>();
+        for (QuestionBlock block : omitted) {
+            boolean byId = false;
+            if (block.id() != null && !block.id().isBlank()) {
+                for (QuestionBlock candidate : current) {
+                    if (block.id().equals(candidate.id())) {
+                        if (!Boolean.TRUE.equals(candidate.omitted())) matched.add(candidate);
+                        byId = true;
+                    }
+                }
+            }
+            if (!byId) open.add(block);
+        }
+        for (QuestionBlock block : open) {
+            String code = block.templateGroupCode();
+            if (code == null || codes.getOrDefault(code, 0) != 1) continue;
+            List<QuestionBlock> same = current.stream()
+                    .filter(candidate -> code.equals(candidate.templateGroupCode())).toList();
+            if (same.size() == 1) {
+                QuestionBlock candidate = same.getFirst();
+                if (!Boolean.TRUE.equals(candidate.omitted())
+                        && (candidate.id() == null || !templateIds.contains(candidate.id()))) matched.add(candidate);
+            }
+        }
+        return matched;
+    }
+
+    /** Every group of a template structure, whatever part, section, subject pool or option holds it. */
+    private static List<QuestionBlock> templateBlocks(ExamStructureDocument locked) {
+        List<QuestionBlock> result = new ArrayList<>();
+        for (ExamPart part : locked.parts()) {
+            for (ExamSection section : part.sections()) result.addAll(section.blocks());
+            for (ExamSection section : part.subjectPool()) result.addAll(section.blocks());
+            for (ExamPartOption option : part.options()) {
+                for (ExamSection section : option.sections()) result.addAll(section.blocks());
+                result.addAll(option.blocks());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * A template section and the section of the exam it is paired with; either side is null when unmatched.
+     * {@code part} is the exam's part, or the template's when the exam has none.
+     */
+    private record SectionPair(ExamPart part, String optionId, ExamSection locked, ExamSection current) { }
+
+    /** Template sections paired with the exam's; groups in {@code ignored} do not take part in the pairing. */
+    private List<SectionPair> sectionPairs(ExamStructureDocument locked, Set<QuestionBlock> ignored) {
+        List<SectionPair> result = new ArrayList<>();
+        for (Slot<ExamPart> slot : pair(locked.parts(), document.parts(), ExamPart::id,
+                ExamCheckRules::partSignature, null, part -> part.questionCount() == null ? 0 : part.questionCount())) {
+            ExamPart base = slot.locked();
+            ExamPart part = slot.current();
+            ExamPart owner = part == null ? base : part;
+            sectionPairs(result, owner, null, base == null ? List.of() : base.sections(),
+                    part == null ? List.of() : part.sections(), ignored);
+            sectionPairs(result, owner, null, base == null ? List.of() : base.subjectPool(),
+                    part == null ? List.of() : part.subjectPool(), ignored);
+            for (Slot<ExamPartOption> optionSlot : pair(base == null ? List.<ExamPartOption>of() : base.options(),
+                    part == null ? List.<ExamPartOption>of() : part.options(), ExamPartOption::id,
+                    ExamCheckRules::optionSignature, null, option -> 0)) {
+                ExamPartOption lockedOption = optionSlot.locked();
+                ExamPartOption currentOption = optionSlot.current();
+                String optionId = currentOption == null ? lockedOption.id() : currentOption.id();
+                sectionPairs(result, owner, optionId, optionSections(lockedOption), optionSections(currentOption), ignored);
+            }
+        }
+        return result;
+    }
+
+    private void sectionPairs(List<SectionPair> out, ExamPart part, String optionId,
+                              List<ExamSection> expected, List<ExamSection> actual, Set<QuestionBlock> ignored) {
+        for (Slot<ExamSection> slot : pair(expected, actual, ExamSection::id,
+                section -> sectionSignature(section, ignored), section -> sectionLooseKey(section, ignored),
+                section -> section.questionCount() != null ? section.questionCount() : groupTotal(section))) {
+            out.add(new SectionPair(part, optionId, slot.locked(), slot.current()));
+        }
+    }
+
+    /** Sections of an option, with its direct groups as the synthetic section the rest of the checker uses. */
+    private static List<ExamSection> optionSections(ExamPartOption option) {
+        if (option == null) return List.of();
+        List<ExamSection> result = new ArrayList<>(option.sections());
+        if (!option.blocks().isEmpty()) {
+            result.add(new ExamSection(option.id() + ":blocks", option.code(),
+                    option.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum(),
+                    null, null, null, null, option.blocks()));
+        }
+        return result;
+    }
+
+    /**
+     * The scale lies above the paper by exactly the points of the groups a part has omitted (H49): the scale counts
+     * a part that is never graded. Only exams loaded from a template with {@code omitted_locked}; null otherwise.
+     */
+    private ObjectNode scaleIncludesExcludedPart(BigDecimal target, BigDecimal paperPoints) {
+        if (template.omittedLockedTemplate() == null) return null;
+        BigDecimal gap = target.subtract(paperPoints);
+        for (ExamPart part : document.parts()) {
+            BigDecimal excluded = BigDecimal.ZERO;
+            List<ExamSection> all = new ArrayList<>(part.sections());
+            all.addAll(part.subjectPool());
+            for (ExamPartOption option : part.options()) all.addAll(optionSections(option));
+            for (ExamSection section : all) for (QuestionBlock block : section.blocks()) {
+                if (!Boolean.TRUE.equals(block.omitted()) || block.requiredPointsPerQuestion() == null) continue;
+                int count = block.questionCount() != null ? block.questionCount()
+                        : block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
+                excluded = excluded.add(block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count)));
+            }
+            if (excluded.signum() > 0 && excluded.compareTo(gap) == 0) {
+                ObjectNode issue = issue("SCALE_INCLUDES_EXCLUDED_PART", "POINTS", part, null, null);
+                issue.put("excludedPoints", excluded);
+                return issue;
+            }
+        }
+        return null;
     }
 
     /**
@@ -355,10 +633,15 @@ public final class ExamCheckRules {
      * settings are left out: administrators and users may tune them inside a locked section (H27).
      */
     static String sectionSignature(ExamSection section) {
+        return sectionSignature(section, Set.of());
+    }
+
+    /** As {@link #sectionSignature(ExamSection)}, leaving out the groups in {@code ignored} (compared by identity). */
+    private static String sectionSignature(ExamSection section, Set<QuestionBlock> ignored) {
         Set<String> codes = new java.util.TreeSet<>();
         scopeCodes(codes, section.knowledgeScope());
         for (QuestionBlock block : section.blocks()) {
-            if (Boolean.TRUE.equals(block.omitted())) continue;
+            if (Boolean.TRUE.equals(block.omitted()) || ignored.contains(block)) continue;
             if (block.templateGroupCode() != null) codes.add("g:" + block.templateGroupCode());
             scopeCodes(codes, block.knowledgeScope());
             block.slots().forEach(slot -> scopeCodes(codes, slot.knowledgeScope()));
@@ -371,9 +654,15 @@ public final class ExamCheckRules {
      * competency filter was edited with its template section when that correspondence is unique in its parent.
      */
     private static String sectionLooseKey(ExamSection section) {
+        return sectionLooseKey(section, Set.of());
+    }
+
+    private static String sectionLooseKey(ExamSection section, Set<QuestionBlock> ignored) {
         Set<String> groups = new java.util.TreeSet<>();
         for (QuestionBlock block : section.blocks()) {
-            if (!Boolean.TRUE.equals(block.omitted()) && block.templateGroupCode() != null) groups.add(block.templateGroupCode());
+            if (!Boolean.TRUE.equals(block.omitted()) && !ignored.contains(block) && block.templateGroupCode() != null) {
+                groups.add(block.templateGroupCode());
+            }
         }
         return section.subjectCode() + "|" + groups;
     }
@@ -569,7 +858,7 @@ public final class ExamCheckRules {
     public record WitnessFact(EvidenceLocation location, String questionCode, Boolean hasAnswerKey,
                               Boolean hasScoringRule, Boolean attachmentsReadable) { }
 
-    public enum FilterKind { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION }
+    public enum FilterKind { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION, AUDIO, POINTS }
 
     /** Counts use the selection unit (individual questions or complete sets), with only this filter removed. */
     public record FilterEvidence(EvidenceLocation location, FilterKind kind, int required,
@@ -596,6 +885,8 @@ public final class ExamCheckRules {
                 case ITEM_SHAPE -> "ITEM_SHAPE_SHORTAGE";
                 case ANSWER_FORMAT -> "ANSWER_FORMAT_SHORTAGE";
                 case CHILD_CONDITION -> "CHILD_CONDITION_SHORTAGE";
+                case AUDIO -> "AUDIO_SHORTAGE";
+                case POINTS -> "POINTS_SHORTAGE";
             };
             ObjectNode failure = evidenceIssue(code, item.location());
             failure.put("required", item.required());
@@ -838,7 +1129,8 @@ public final class ExamCheckRules {
         }
         BigDecimal target = "LINEAR".equals(exam.getPracticeScoring()) ? exam.getReferenceMax() : exam.getMaxScore();
         if (target != null && !isReview() && missingPoints.isEmpty() && differs(totalPoints, target)) {
-            ObjectNode issue = issue("POINTS_TOTAL_MISMATCH", "POINTS", null, null, null);
+            ObjectNode issue = scaleIncludesExcludedPart(target, totalPoints);
+            if (issue == null) issue = issue("POINTS_TOTAL_MISMATCH", "POINTS", null, null, null);
             issue.put("required", target); issue.put("available", totalPoints); found.add(issue);
         }
     }

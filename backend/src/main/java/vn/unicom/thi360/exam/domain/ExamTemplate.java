@@ -52,6 +52,10 @@ public class ExamTemplate {
     private boolean publishable = true;
     @Column(name = "fixed_counts", nullable = false)
     private boolean fixedCounts;
+    @Column(name = "fixed_block_counts", nullable = false)
+    private boolean fixedBlockCounts;
+    @Column(name = "omitted_locked", nullable = false)
+    private boolean omittedLocked;
 
     protected ExamTemplate() {
     }
@@ -93,4 +97,6 @@ public class ExamTemplate {
     public boolean isActive() { return active; }
     public boolean isPublishable() { return publishable; }
     public boolean isFixedCounts() { return fixedCounts; }
+    public boolean isFixedBlockCounts() { return fixedBlockCounts; }
+    public boolean isOmittedLocked() { return omittedLocked; }
 }

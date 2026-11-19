@@ -75,8 +75,8 @@ class ExamContractStubIT extends AbstractIntegrationTest {
         jdbc.update("insert into questionbank.question_knowledge(question_id, knowledge_item_id, is_primary) "
                 + "values (?, ?, true) on conflict (question_id, knowledge_item_id) do update set is_primary = true",
                 seededQuestion, UUID.fromString("00000000-0000-7000-8200-000000001201"));
-        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, question_count) "
-                + "values (?, ?, ?, 'Preview', 'FULL', 'SHARED', 1)", examId, examId.toString(), examId.toString());
+        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, question_count, duration_minutes) "
+                + "values (?, ?, ?, 'Preview', 'FULL', 'SHARED', 1, 60)", examId, examId.toString(), examId.toString());
         String parts = """
                 {"parts":[{"id":"part","order":1,"name":"Part","questionCount":1,
                   "participation":{"mode":"ALL"},"sections":[{"id":"section","subjectCode":"TOAN",

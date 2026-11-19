@@ -54,7 +54,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             "VACT", "FULL",
             "SPT", "SUBJECT",
             "SP2E", "SUBJECT",
-            "THPTQG", "SUBJECT");
+            "THPTQG", "SUBJECT",
+            "HSCA", "SUBJECT,PART",
+            "VSAT", "SUBJECT,PART");
 
     private static final Map<String, String> EXPECTED_PROFILE_SCOPES = Map.of(
             "HSA", "FULL,PART,SUBJECT",
@@ -63,7 +65,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             "VACT", "FULL,PART,SUBJECT",
             "SPT", "SUBJECT,PART",
             "SP2E", "SUBJECT,PART",
-            "THPTQG", "SUBJECT,PART");
+            "THPTQG", "SUBJECT,PART",
+            "HSCA", "SUBJECT,PART",
+            "VSAT", "SUBJECT,PART");
 
     @Test
     void seededHsaMathContextHasKnownChildAnswerType() throws Exception {

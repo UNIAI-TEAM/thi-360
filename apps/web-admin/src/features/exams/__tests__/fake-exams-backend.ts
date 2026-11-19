@@ -249,6 +249,8 @@ export function toWireTemplate(template: ExamTemplate): WireTemplate {
     active: true,
     publishable: true,
     fixedCounts: false,
+    fixedBlockCounts: false,
+    omittedLocked: false,
     buildMode: "STANDARD",
     isDefault: true,
     code: template.code,

@@ -43,19 +43,74 @@ export function parseScope(raw: string): ScopeRef {
 }
 
 /**
+ * Mã của dòng "Chưa phân loại" ở bảng đối chiếu theo lệnh (D19, H44): câu thiếu nhãn khối lớp hoặc độ khó dồn vào dòng
+ * `GRADE:UNCLASSIFIED` hoặc `DIFFICULTY:UNCLASSIFIED`. Máy chủ chỉ gửi dòng này khi có lệnh thiếu nhãn (`actual > 0`),
+ * `required` là `null` và `note` là `UNCLASSIFIED`.
+ */
+export const UNCLASSIFIED_CODE = "UNCLASSIFIED";
+
+/** Dòng "Chưa phân loại": không có yêu cầu để so, chỉ báo số lệnh còn thiếu nhãn. */
+export function isUnclassifiedRow(row: PreviewCompliance): boolean {
+  const ref = parseCriterion(row.criterion);
+  return (ref.kind === "GRADE" || ref.kind === "DIFFICULTY") && ref.code === UNCLASSIFIED_CODE;
+}
+
+export interface CommandDenominator {
+  /** Phạm vi của các dòng (`SECTION:<id>`, `EXAM`): cùng chuỗi với `PreviewCompliance.scope`. */
+  scope: string;
+  /** Tổng số lệnh của mẫu: cộng yêu cầu của các dòng khối lớp, không có thì của các dòng độ khó (Địa lí, Tiếng Anh không có lớp). Phạm vi `EXAM` lấy tổng của chỉ tiêu cấp bài đầu tiên theo thứ tự máy chủ. */
+  total: number;
+}
+
+/**
+ * Mẫu số của bảng đối chiếu theo lệnh (VS §5.1, D21): mỗi phạm vi có dòng `PROMPT` ở mức tham khảo cho một mẫu số, ví dụ
+ * Toán cả môn 67 lệnh. Dòng "Chưa phân loại" và dòng chủ đề không có yêu cầu theo lệnh nên không góp vào mẫu số. Phạm
+ * vi `EXAM`: chỉ tiêu cấp bài `EXAM:<id>:<mã>` nhóm theo id, đề thường mang chỉ tiêu khối lớp lẫn độ khó (cùng tổng) nên
+ * lấy chỉ tiêu đầu tiên theo thứ tự máy chủ gửi (mẫu đặt khối lớp trước), không bao giờ cộng hai chỉ tiêu hay in hai dòng.
+ */
+export function commandDenominators(rows: readonly PreviewCompliance[]): CommandDenominator[] {
+  const byScope = new Map<string, { grade: number; difficulty: number; hasGrade: boolean; examQuotas: Map<string, number> }>();
+  for (const row of rows) {
+    if (row.basis !== "PROMPT" || row.enforcement !== "REFERENCE" || isUnclassifiedRow(row)) continue;
+    const ref = parseCriterion(row.criterion);
+    if (ref.kind === "EXAM" && parseScope(row.scope).kind === "EXAM") {
+      const entry = byScope.get(row.scope) ?? { grade: 0, difficulty: 0, hasGrade: false, examQuotas: new Map<string, number>() };
+      entry.examQuotas.set(ref.quotaId, (entry.examQuotas.get(ref.quotaId) ?? 0) + (row.required ?? 0));
+      byScope.set(row.scope, entry);
+      continue;
+    }
+    if (ref.kind !== "GRADE" && ref.kind !== "DIFFICULTY") continue;
+    const entry = byScope.get(row.scope) ?? { grade: 0, difficulty: 0, hasGrade: false, examQuotas: new Map<string, number>() };
+    if (ref.kind === "GRADE") {
+      entry.grade += row.required ?? 0;
+      entry.hasGrade = true;
+    } else {
+      entry.difficulty += row.required ?? 0;
+    }
+    byScope.set(row.scope, entry);
+  }
+  return [...byScope].map(([scope, entry]) => {
+    const firstQuota = entry.examQuotas.values().next();
+    return { scope, total: firstQuota.done ? (entry.hasGrade ? entry.grade : entry.difficulty) : firstQuota.value };
+  });
+}
+
+/**
  * Mức lệch của một dòng. Chỉ tiêu chủ đề là "ít nhất" (K6): thực tế nhiều hơn yêu cầu vẫn đạt, chỉ thiếu mới lệch. Dòng
  * Bắt buộc lệch là lỗi, dòng Tham khảo lệch là cảnh báo không chặn.
  */
 export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
+  if (isUnclassifiedRow(row)) return "OK";
   const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
-  const deviates = atLeast ? row.actual < row.required - EPSILON : Math.abs(row.actual - row.required) > EPSILON;
+  const required = row.required ?? 0;
+  const deviates = atLeast ? row.actual < required - EPSILON : Math.abs(row.actual - required) > EPSILON;
   if (!deviates) return "OK";
   return row.enforcement === "REQUIRED" ? "REQUIRED_DEVIATION" : "REFERENCE_DEVIATION";
 }
 
 /** Chênh lệch = Thực tế − Yêu cầu (R-124); chênh lệch nhỏ hơn `EPSILON` coi là 0 như quy tắc lệch ở trên. */
 export function complianceDifference(row: PreviewCompliance): number {
-  const difference = row.actual - row.required;
+  const difference = row.actual - (row.required ?? 0);
   return Math.abs(difference) > EPSILON ? difference : 0;
 }
 

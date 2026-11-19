@@ -99,8 +99,8 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
             int actual = basis.equals("PROMPT") ? 4 : 1;
             for (int required : java.util.List.of(actual, actual + 1)) {
                 UUID id = UUID.randomUUID();
-                jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
-                                + "VALUES (?,?,?,'Reference','FULL','SHARED',1)", id, id.toString(), id.toString());
+                jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count,duration_minutes) "
+                                + "VALUES (?,?,?,'Reference','FULL','SHARED',1,60)", id, id.toString(), id.toString());
                 String parts = """
                         {"parts":[{"id":"p","questionCount":1,"sections":[{"id":"s","subjectCode":"TOAN",
                         "questionCount":1,"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"%s",

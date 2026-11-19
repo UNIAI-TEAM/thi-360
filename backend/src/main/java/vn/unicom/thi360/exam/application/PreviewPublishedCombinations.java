@@ -50,7 +50,7 @@ final class PreviewPublishedCombinations {
             parts.add(new ExamPart(part.id(), part.order(), part.name(), part.durationMinutes(), part.questionCount(),
                     part.questionCountOnPaper(), part.questionCountRequired(),
                     new PartParticipation(ParticipationMode.CHOICE, 1), part.maxPoints(),
-                    part.sections(), options, List.of(), null));
+                    part.sections(), options, List.of(), null, part.displaySegments()));
         }
         return new ExamStructureDocument(parts, document.examQuotas());
     }

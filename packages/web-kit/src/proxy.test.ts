@@ -476,3 +476,195 @@ describe("proxyApiRequest tự làm mới phiên (UNI-2574)", () => {
     expect(anonymous.headers.get("etag")).toBe('"v1"');
   });
 });
+
+describe("proxyApiRequest byte range (UNI-2698)", () => {
+  beforeEach(() => {
+    resetSessionRefreshRegistry();
+  });
+
+  it("chuyển tiếp header Range tới upstream", async () => {
+    await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1", {
+        headers: { range: "bytes=0-99" },
+      }),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(lastHeaders().get("range")).toBe("bytes=0-99");
+  });
+
+  it("upstream trả 206: client nhận 206 kèm Content-Range, Accept-Ranges, Content-Length và đúng byte", async () => {
+    const partial = new Uint8Array([10, 20, 30, 40]);
+    fetchMock.mockResolvedValueOnce(
+      new Response(partial, {
+        status: 206,
+        headers: {
+          "content-type": "audio/mpeg",
+          "content-range": "bytes 0-3/10",
+          "accept-ranges": "bytes",
+          "content-length": "4",
+        },
+      }),
+    );
+
+    const res = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1", {
+        headers: { range: "bytes=0-3" },
+      }),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(res.status).toBe(206);
+    expect(res.headers.get("content-range")).toBe("bytes 0-3/10");
+    expect(res.headers.get("accept-ranges")).toBe("bytes");
+    expect(res.headers.get("content-length")).toBe("4");
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(partial);
+  });
+
+  it("upstream trả 200 kèm Accept-Ranges: bytes thì Content-Length và Accept-Ranges tới được client", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: {
+          "content-type": "audio/mpeg",
+          "accept-ranges": "bytes",
+          "content-length": "3",
+        },
+      }),
+    );
+
+    const res = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1"),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("accept-ranges")).toBe("bytes");
+    expect(res.headers.get("content-length")).toBe("3");
+  });
+
+  it("upstream nén (Content-Encoding khác identity) thì không chuyển tiếp Content-Length", async () => {
+    // Độ dài trên dây mô tả body còn nén; proxy gửi body đã giải mã nên length đó sai.
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: {
+          "content-type": "audio/mpeg",
+          "content-encoding": "gzip",
+          "accept-ranges": "bytes",
+          "content-length": "23",
+        },
+      }),
+    );
+
+    const res200 = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1"),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(res200.status).toBe(200);
+    expect(res200.headers.get("accept-ranges")).toBe("bytes");
+    expect(res200.headers.get("content-length")).toBeNull();
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([10, 20, 30, 40]), {
+        status: 206,
+        headers: {
+          "content-type": "audio/mpeg",
+          "content-encoding": "gzip",
+          "content-range": "bytes 0-3/10",
+          "accept-ranges": "bytes",
+          "content-length": "19",
+        },
+      }),
+    );
+
+    const res206 = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1", {
+        headers: { range: "bytes=0-3" },
+      }),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(res206.status).toBe(206);
+    expect(res206.headers.get("content-range")).toBe("bytes 0-3/10");
+    expect(res206.headers.get("content-length")).toBeNull();
+
+    // Content-Encoding: identity không đổi byte nào — Content-Length vẫn chuyển tiếp.
+    fetchMock.mockResolvedValueOnce(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: {
+          "content-type": "audio/mpeg",
+          "content-encoding": "identity",
+          "accept-ranges": "bytes",
+          "content-length": "3",
+        },
+      }),
+    );
+
+    const resIdentity = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1"),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(resIdentity.status).toBe(200);
+    expect(resIdentity.headers.get("content-length")).toBe("3");
+  });
+
+  it("phản hồi JSON thường không mang Accept-Ranges: Content-Length vẫn bị bỏ như cũ", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json", "content-length": "13" },
+      }),
+    );
+
+    const res = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/users"),
+      context("v1", "admin", "users"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ items: [] });
+    expect(res.headers.get("content-length")).toBeNull();
+    expect(res.headers.get("accept-ranges")).toBeNull();
+  });
+
+  it("thi360_at hết hạn: sau khi làm mới phiên, lượt gửi lại vẫn mang đúng Range", async () => {
+    const headers = new Headers();
+    headers.append("set-cookie", "thi360_at=at2; Path=/; Max-Age=300; HttpOnly");
+    headers.append("set-cookie", "thi360_rt=rt2; Path=/; Max-Age=28800; HttpOnly");
+    headers.append("set-cookie", "thi360_ctx=ctx2; Path=/; Max-Age=300; HttpOnly");
+    headers.append("set-cookie", "thi360_xsrf=x2; Path=/; Max-Age=28800");
+    fetchMock
+      .mockResolvedValueOnce(Response.json({ code: "UNAUTHENTICATED" }, { status: 401 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200, headers }))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([7]), {
+          status: 206,
+          headers: {
+            "content-range": "bytes 5-5/9",
+            "accept-ranges": "bytes",
+            "content-length": "1",
+          },
+        }),
+      );
+
+    const res = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/admin/question-assets/asset-1", {
+        headers: {
+          cookie: "thi360_at=at1; thi360_rt=rt1; thi360_xsrf=x1",
+          range: "bytes=5-5",
+        },
+      }),
+      context("v1", "admin", "question-assets", "asset-1"),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const retryHeaders = new Headers(fetchMock.mock.calls[2]?.[1]?.headers);
+    expect(retryHeaders.get("range")).toBe("bytes=5-5");
+    expect(res.status).toBe(206);
+    expect(res.headers.get("content-range")).toBe("bytes 5-5/9");
+  });
+});

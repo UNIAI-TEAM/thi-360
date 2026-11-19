@@ -168,6 +168,17 @@
       - 2026-11-18 18:34 (UTC+7): FE-4 phần thêm (UNI-2665, PR #105) merge: cột Chênh lệch, điểm tối đa từng câu trên đề thử, dòng chờ dữ liệu đối chiếu và câu thông báo riêng cho ba mã kiểm tra mới. Advisor chạy lại typecheck, lint, sinh API client và test web trên kết quả merge: 1.941/1.941.
       - 2026-11-18 14:23 (UTC+7): Duyệt phần bổ sung H-SCA, V-SAT (UNI-2687): thêm BE-16 đến BE-21, FE-6 đến FE-8, tổng đợt 160 điểm. Chốt: chỉ tiêu V-SAT theo lệnh chỉ để đối chiếu trong 2B. Đặc tả và kế hoạch ở `docs/specs`, `docs/plans` ngày 2026-11-18.
       - 2026-11-18 21:51 (UTC+7): FIX-QA (UNI-2686, PR #106) merge: sửa sáu lỗi QA tìm ra (bài ôn của cả bảy kỳ thi, bộ lọc năng lực của nhóm, thang LINEAR, phần tạm bỏ qua, công bố đường tổ hợp). Trước khi triển khai lên cơ sở dữ liệu đã có bài thi phải đếm lại các cấu trúc bị ảnh hưởng (FU-F3-CUTOVER).
+      - 2026-11-18 23:48 (UTC+7): BE-16 (UNI-2688, PR #108) merge: mở rộng hợp đồng cấu trúc đề cho H-SCA, V-SAT (audio, phân đoạn hiển thị, điều kiện câu con, khóa dòng), thêm mã kỳ thi, hai nhãn Địa lí và năm mã kiểm tra mới. Mở sóng 2: BE-17, BE-18, BE-20, FE-6.
+      - 2026-11-19 01:12 (UTC+7): FE-6 (UNI-2694, PR #109) merge: bước 1 tạo bài cho H-SCA, V-SAT theo mẫu và phạm vi, giữ nguyên các trường mới khi lưu. Màn H-SCA, V-SAT mới kiểm tra trên mẫu giả, QA chạy lại trên mẫu thật.
+      - 2026-11-19 02:16 (UTC+7): BE-17 (UNI-2689, PR #110) merge: nguồn câu lọc theo audio, dạng câu con theo vị trí, số phương án và điểm; bộ đếm khả dụng và tra cứu nơi dùng câu hỏi khớp với điều kiện sinh đề.
+      - 2026-11-18 20:18 (UTC+7): BE-19 (UNI-2691, PR #111) merge: dữ liệu câu mẫu H-SCA, V-SAT theo đặc tả 4.1 đến 4.3, 5.1, 5.2, 18 file MP3 tổng hợp và trình nạp tệp cho dev, test. Hàng 5 chờ BE-20 hoặc QA.
+      - 2026-11-18 21:13 (UTC+7): BE-20 (UNI-2692, PR #113) merge: kiểm tra khóa dòng, dòng lược bị khóa, tệp audio thiếu trên kho, thang điểm có phần bị loại, đối chiếu theo lệnh, tệp đính kèm và phân đoạn hiển thị khi sinh thử. Hàng 5 của BE-19 đã chứng minh trong lane này.
+      - 2026-11-18 21:32 (UTC+7): BE-18 (UNI-2690, PR #112) merge: mẫu H-SCA, V-SAT, hồ sơ kỳ thi, tạo bài theo phạm vi, chặn phân đoạn hiển thị trên bài theo phần và bài ôn. Cặp kiểm tra khóa dòng đạt trên code đã có BE-20, BE-21 đưa test này vào repo.
+      - 2026-11-18 21:58 (UTC+7): FE-7 (UNI-2695, PR #114) merge: bước 2 tạo bài H-SCA, V-SAT gồm nhãn audio, bảng nhóm theo phần, khóa dòng, điều kiện chùm trộn dạng, ví dụ chấm, bảng mạch đối chiếu. Hàng 6 chờ BE-21, QA chạy lại trên máy chủ thật.
+      - 2026-11-19 06:32 (UTC+7): FIX-AUDIO (UNI-2698, PR #115) merge: tệp đính kèm câu hỏi hỗ trợ HTTP Range, proxy web chuyển tiếp Range và phản hồi 206, để trình phát audio tua được.
+      - 2026-11-19 07:31 (UTC+7): BE-21 (UNI-2693, PR #116) merge: mẫu V-SAT Tiếng Anh cả môn và các phần P2 đến P4, bài đọc dùng chung câu 8 đến 15, tìm mẫu phần riêng trước khi cắt từ mẫu môn.
+      - 2026-11-19 08:07 (UTC+7): FE-8 (UNI-2696, PR #117) merge: trình phát audio trong đề sinh thử, tiêu đề Phần I đến IV theo phân đoạn, năm thông điệp kiểm tra mới và mẫu số đối chiếu theo lệnh.
+      - 2026-11-19 09:20 (UTC+7): FIX-RELOAD (UNI-2699, PR #118) merge: nạp lại mẫu giữ thời lượng của đề dùng chung đồng hồ và thang điểm LINEAR; đề thiếu thời lượng không xuất bản được.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)

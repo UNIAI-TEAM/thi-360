@@ -295,11 +295,18 @@
       },
       "AvailableQuestionsChildCondition" : {
         "properties" : {
+          "answerType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
           "from" : {
             "format" : "int32",
             "maximum" : 20,
             "minimum" : 1,
             "type" : "integer"
+          },
+          "itemShape" : {
+            "$ref" : "#/components/schemas/AvailableQuestionsItemShape"
           },
           "nodeIds" : {
             "items" : {
@@ -332,6 +339,10 @@
       "AvailableQuestionsItemShape" : {
         "properties" : {
           "leftItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "options" : {
             "format" : "int32",
             "type" : "integer"
           },
@@ -384,6 +395,10 @@
               "type" : "string"
             },
             "type" : "array"
+          },
+          "audioRequirement" : {
+            "enum" : [ "ANY", "REQUIRED", "FORBIDDEN" ],
+            "type" : "string"
           },
           "childAnswerType" : {
             "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
@@ -1636,9 +1651,16 @@
       },
       "ChildCondition" : {
         "properties" : {
+          "answerType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
           "from" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "itemShape" : {
+            "$ref" : "#/components/schemas/ItemShape"
           },
           "nodeIds" : {
             "items" : {
@@ -2601,6 +2623,34 @@
         "required" : [ "blockers", "deletable" ],
         "type" : "object"
       },
+      "DisplaySegment" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "commandCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "fromPosition" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "name" : {
+            "description" : "Tiêu đề hiển thị, không trống",
+            "type" : "string"
+          },
+          "toPosition" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "commandCount", "fromPosition", "maxPoints", "name", "toPosition" ],
+        "type" : "object"
+      },
       "Draft" : {
         "properties" : {
           "acceptedAnswers" : {
@@ -3010,6 +3060,9 @@
           },
           "dimension" : {
             "type" : "string"
+          },
+          "excludedPoints" : {
+            "type" : "number"
           },
           "gradeCode" : {
             "type" : "string"
@@ -3652,6 +3705,12 @@
           "codeSource" : {
             "$ref" : "#/components/schemas/CodeSource"
           },
+          "displaySegments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DisplaySegment"
+            },
+            "type" : "array"
+          },
           "durationMinutes" : {
             "format" : "int32",
             "type" : "integer"
@@ -3764,6 +3823,20 @@
           "required" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExamPreviewAttachment" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "mime" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -3904,8 +3977,7 @@
             "type" : "string"
           },
           "available" : {
-            "format" : "int32",
-            "type" : "integer"
+            "type" : "number"
           },
           "blockId" : {
             "type" : "string"
@@ -3953,11 +4025,14 @@
             "type" : "array"
           },
           "required" : {
-            "format" : "int32",
-            "type" : "integer"
+            "type" : "number"
           },
           "sectionId" : {
             "type" : "string"
+          },
+          "segmentCode" : {
+            "description" : "Display segment code of DISPLAY_SEGMENT_MISMATCH",
+            "type" : [ "string", "null" ]
           },
           "severity" : {
             "type" : "string"
@@ -3978,6 +4053,13 @@
       },
       "ExamPreviewItem" : {
         "properties" : {
+          "attachments" : {
+            "description" : "Attachments of the set's root question; empty for a single question",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewAttachment"
+            },
+            "type" : "array"
+          },
           "children" : {
             "items" : {
               "$ref" : "#/components/schemas/ExamPreviewQuestion"
@@ -4117,6 +4199,13 @@
             },
             "type" : "array"
           },
+          "displaySegments" : {
+            "description" : "Declared display segments of the part; empty when it has none",
+            "items" : {
+              "$ref" : "#/components/schemas/DisplaySegment"
+            },
+            "type" : "array"
+          },
           "durationMinutes" : {
             "format" : "int32",
             "type" : "integer"
@@ -4193,6 +4282,13 @@
               "type" : "string"
             },
             "type" : [ "array", "null" ]
+          },
+          "attachments" : {
+            "description" : "Attachments of a single question; empty for a child of a set",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamPreviewAttachment"
+            },
+            "type" : "array"
           },
           "body" : {
             "$ref" : "#/components/schemas/JsonNode"
@@ -4606,6 +4702,10 @@
           "answerQuotas" : {
             "$ref" : "#/components/schemas/AnswerQuotas"
           },
+          "audioRequirement" : {
+            "enum" : [ "ANY", "REQUIRED", "FORBIDDEN" ],
+            "type" : "string"
+          },
           "blocks" : {
             "items" : {
               "$ref" : "#/components/schemas/QuestionBlock"
@@ -4891,6 +4991,10 @@
             "description" : "Ghi chú của chuyên gia khi dựng mẫu",
             "type" : "string"
           },
+          "fixedBlockCounts" : {
+            "description" : "Mẫu khóa dạng, số câu, số chùm, cỡ chùm từng nhóm của bài phạm vi SUBJECT (kiểm tra báo BLOCK_COUNT_LOCKED); bài PART và bài ôn từ cùng mẫu không bị khóa",
+            "type" : "boolean"
+          },
           "fixedCounts" : {
             "description" : "Mẫu khóa số câu từng phần/mục (kiểm tra báo STRUCTURE_COUNT_LOCKED)",
             "type" : "boolean"
@@ -4915,6 +5019,10 @@
           "maxScore" : {
             "description" : "Thang điểm",
             "type" : "number"
+          },
+          "omittedLocked" : {
+            "description" : "Nhóm đã lược của mẫu (phần viết) không bật lại được (kiểm tra báo OMITTED_BLOCK_LOCKED); tạo bài PART chỉ gồm nhóm đã lược bị từ chối",
+            "type" : "boolean"
           },
           "partCode" : {
             "description" : "Mã phần khi scope = PART",
@@ -4950,7 +5058,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "active", "buildMode", "code", "fixedCounts", "isDefault", "kindCode", "publishable", "scope", "structure", "timing" ],
+        "required" : [ "active", "buildMode", "code", "fixedBlockCounts", "fixedCounts", "isDefault", "kindCode", "omittedLocked", "publishable", "scope", "structure", "timing" ],
         "type" : "object"
       },
       "ExamVersionChange" : {
@@ -5454,6 +5562,10 @@
       "ItemShape" : {
         "properties" : {
           "leftItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "options" : {
             "format" : "int32",
             "type" : "integer"
           },
@@ -21425,7 +21537,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "format" : "byte",
+                  "format" : "binary",
                   "type" : "string"
                 }
               }

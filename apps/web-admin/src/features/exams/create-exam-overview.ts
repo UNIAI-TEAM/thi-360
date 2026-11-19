@@ -1,5 +1,6 @@
+import type { QuestionType } from "@/features/content/types";
 import { isAllOmittedPart } from "./omitted-part";
-import type { ExamOverviewRow, ExamTemplate, ExamTemplateSection, ExamTiming } from "./types";
+import type { ExamOverviewRow, ExamTemplate, ExamTemplateBlock, ExamTemplateSection, ExamTiming, ItemShape } from "./types";
 
 /**
  * "Bảng tổng quan" của bước 1 (2B 15.1): một dòng cho mỗi phần của mẫu và, khi phần cố định có nhiều môn (BCA Phần 2,
@@ -8,7 +9,7 @@ import type { ExamOverviewRow, ExamTemplate, ExamTemplateSection, ExamTiming } f
  * hoặc `partCode`/`subjectCode`).
  */
 
-export type OverviewRowKind = "part" | "section" | "omitted";
+export type OverviewRowKind = "part" | "section" | "block" | "omitted";
 
 export interface OverviewRow {
   /** Khóa ổn định cho React và cho `onRowChange`: `p:<partId|index>` hoặc `p:<…>/s:<sectionId|subject>`. */
@@ -38,12 +39,17 @@ export interface OverviewRow {
   group: boolean;
   /** Mẫu `fixedCounts` (H27): ô số câu chỉ đọc — V-ACT toàn bài khóa số câu từng tiểu mục. */
   lockedCount: boolean;
+  /** Dòng lấy câu của mẫu H-SCA, V-SAT (`kind = "block"`): chỉ đọc, không vào `overview` và không vào tổng số câu. */
+  block?: OverviewBlockInfo;
 }
 
 export interface OverviewTotals {
   questions: number | null;
   durationMinutes: number | null;
   maxPoints: number | null;
+  /** Tổng lệnh hỏi và điểm tối đa của các dòng lấy câu; `null` khi bảng không có dòng lấy câu. */
+  commands: number | null;
+  blockPoints: number | null;
 }
 
 
@@ -149,7 +155,7 @@ function omittedRow(
 }
 
 /** Phần của mẫu mà mọi nhóm đều tạm bỏ qua (quy tắc chung ở `isAllOmittedPart`). */
-function isAllOmitted(part: ExamTemplate["parts"][number]): boolean {
+export function isAllOmittedTemplatePart(part: ExamTemplate["parts"][number]): boolean {
   return isAllOmittedPart(
     (part.sections ?? []).map((section) => ({ blockCount: section.blocks?.length ?? 0, omittedCount: section.omittedBlocks?.length ?? 0 })),
   );
@@ -159,7 +165,8 @@ function isAllOmitted(part: ExamTemplate["parts"][number]): boolean {
  * Dòng tổng quan của mẫu đã chọn. `scope = PART` gắn `partCode` của bài vào dòng phần (khóa so khớp của mẫu theo
  * phần). Phần cố định nhiều môn thêm dòng môn ngay sau dòng phần; dòng phần khi đó chỉ là dòng nhóm (tổng môn), ô
  * số câu của phần không sửa — sửa ở dòng môn. Mẫu `fixedCounts` (H27, V-ACT toàn bài) hiện dòng cho mọi tiểu mục
- * và khóa ô số câu của phần lẫn mục.
+ * và khóa ô số câu của phần lẫn mục. Mẫu `fixedBlockCounts` (H42, H-SCA, V-SAT) khóa ô số câu của phần chỉ khi bài là
+ * phạm vi `SUBJECT`: bài `PART` và bài ôn cùng mẫu vẫn nhập được.
  */
 export function overviewRowsFromTemplate(
   template: ExamTemplate | undefined | null,
@@ -167,10 +174,11 @@ export function overviewRowsFromTemplate(
   partCode = "",
 ): OverviewRow[] {
   if (!template) return [];
-  const locked = template.fixedCounts === true;
+  const fixedCounts = template.fixedCounts === true;
+  const locked = fixedCounts || (template.fixedBlockCounts === true && scope === "SUBJECT");
   const rows: OverviewRow[] = [];
   template.parts.forEach((part, index) => {
-    if (isAllOmitted(part)) {
+    if (isAllOmittedTemplatePart(part)) {
       // Chỉ đọc như nhóm tạm bỏ qua: không kiểm tra, không vào tổng, không vào `overview`.
       const omittedCount = (part.sections ?? []).reduce((total, section) => total + (section.omittedBlocks ?? []).reduce((sum, block) => sum + (block.questionCount ?? 0), 0), 0);
       rows.push(omittedRow(index, 0, part.sections?.[0]?.subjectCode ?? "", { name: part.name, questionCount: omittedCount }, 0));
@@ -181,16 +189,22 @@ export function overviewRowsFromTemplate(
     row.lockedCount = locked;
     rows.push(row);
     const sections = part.mode === "FIXED" ? (part.sections ?? []) : [];
-    if (sections.length > 1 || (locked && sections.length > 0)) {
+    if (sections.length > 1 || (fixedCounts && sections.length > 0)) {
       row.group = true;
       sections.forEach((section, sectionIndex) => {
-        rows.push({ ...sectionRow(part, index, sectionIndex, locked), lockedCount: locked });
+        rows.push({ ...sectionRow(part, index, sectionIndex, fixedCounts), lockedCount: locked });
         (section.omittedBlocks ?? []).forEach((block, blockIndex) =>
           rows.push(omittedRow(index, sectionIndex, section.subjectCode, block, blockIndex)),
         );
       });
     } else {
       // Một môn: nhóm tạm bỏ qua nằm ngay dưới dòng phần (SPT Toán: Tự luận).
+      // H-SCA, V-SAT: từng dòng lấy câu của mẫu nằm dưới dòng phần, kèm lệnh hỏi và điểm (TaoBaiThiHscaVsat2B).
+      if (template.kind === "HSCA" || template.kind === "VSAT") {
+        sections.forEach((section, sectionIndex) =>
+          (section.blocks ?? []).forEach((block, blockIndex) => rows.push(blockRow(index, sectionIndex, block, blockIndex))),
+        );
+      }
       sections.forEach((section, sectionIndex) =>
         (section.omittedBlocks ?? []).forEach((block, blockIndex) =>
           rows.push(omittedRow(index, sectionIndex, section.subjectCode, block, blockIndex)),
@@ -245,6 +259,7 @@ export function rowsDifferFromTemplate(rows: readonly OverviewRow[]): boolean {
 export function overviewDiff(rows: readonly OverviewRow[]): ExamOverviewRow[] {
   const diff: ExamOverviewRow[] = [];
   for (const row of rows) {
+    if (row.kind === "block") continue;
     const out: ExamOverviewRow = {};
     if (row.partId) out.partId = row.partId;
     if (row.partCode) out.partCode = row.partCode;
@@ -309,9 +324,66 @@ function sumColumn(values: ReadonlyArray<string>): number | null {
 export function overviewTotals(rows: readonly OverviewRow[], timing: ExamTiming, sharedDuration: string): OverviewTotals {
   const counted = rows.filter((row) => row.kind !== "omitted");
   const parts = counted.filter((row) => row.kind === "part");
+  const blocks = counted.filter((row) => row.block !== undefined);
+  const blockPoints = blocks.filter((row) => row.block?.points != null);
   return {
     questions: sumColumn(counted.filter((row) => !row.group).map((row) => row.questionCount)),
     durationMinutes: timing === "SHARED" ? numberOrNull(sharedDuration) : sumColumn(parts.map((row) => row.durationMinutes)),
     maxPoints: sumColumn(parts.map((row) => row.maxPoints)),
+    commands: blocks.length > 0 ? blocks.reduce((total, row) => total + (row.block?.commands ?? 0), 0) : null,
+    blockPoints: blockPoints.length > 0 ? Math.round(blockPoints.reduce((total, row) => total + (row.block?.points ?? 0), 0) * 100) / 100 : null,
+  };
+}
+
+/** Số liệu của một dòng lấy câu: số chùm × cỡ chùm (chùm), số câu, lệnh hỏi và điểm tối đa (`null`: mẫu không ghi điểm mỗi câu). */
+export interface OverviewBlockInfo {
+  sets: number | null;
+  setSize: number | null;
+  questions: number;
+  commands: number;
+  points: number | null;
+}
+
+/** Lệnh hỏi của một câu: câu Đúng/Sai tính theo số ý, Ghép đôi theo số ý trái, dạng khác một lệnh (VS §2). */
+function commandsPerQuestion(type: QuestionType | null | undefined, shape?: ItemShape | null): number {
+  if (type === "TRUE_FALSE") return shape?.statements ?? 1;
+  if (type === "MATCHING") return shape?.leftItems ?? 1;
+  return 1;
+}
+
+/** Lệnh hỏi của dòng: chùm trộn dạng tính theo dạng khai ở từng vị trí câu con (H39), vị trí không khai tính một lệnh. */
+function blockCommands(block: ExamTemplateBlock, questions: number): number {
+  const typed = (block.childConditions ?? []).filter((condition) => condition.answerType !== undefined && condition.to >= condition.from);
+  if (typed.length > 0 && block.setCount) {
+    const covered = typed.reduce((total, condition) => total + (condition.to - condition.from + 1), 0);
+    const perSet = typed.reduce(
+      (total, condition) => total + (condition.to - condition.from + 1) * commandsPerQuestion(condition.answerType, condition.itemShape),
+      0,
+    );
+    return block.setCount * (perSet + Math.max(0, (block.setSize ?? covered) - covered));
+  }
+  const type = block.questionType === "QUESTION_SET" ? block.childAnswerType : block.questionType;
+  return questions * commandsPerQuestion(type, block.itemShape);
+}
+
+function blockRow(partIndex: number, sectionIndex: number, block: ExamTemplateBlock, blockIndex: number): OverviewRow {
+  const sets = block.setCount ?? null;
+  const setSize = block.setSize ?? null;
+  const questions = block.questionCount ?? (sets !== null && setSize !== null ? sets * setSize : 0);
+  const points = block.requiredPointsPerQuestion != null ? Math.round(questions * block.requiredPointsPerQuestion * 100) / 100 : null;
+  return {
+    key: `p:${partIndex}/b:${sectionIndex}.${blockIndex}`,
+    parentKey: `p:${partIndex}`,
+    kind: "block",
+    label: block.name,
+    subjectCode: "",
+    questionCount: "",
+    durationMinutes: "",
+    maxPoints: "",
+    base: { questionCount: null, durationMinutes: null, maxPoints: null },
+    choice: false,
+    group: false,
+    lockedCount: true,
+    block: { sets, setSize, questions, commands: blockCommands(block, questions), points },
   };
 }

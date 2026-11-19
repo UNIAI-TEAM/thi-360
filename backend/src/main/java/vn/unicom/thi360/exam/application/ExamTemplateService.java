@@ -61,6 +61,21 @@ public class ExamTemplateService {
     }
 
     /**
+     * Whether the subject has any active dedicated PART template (H41). When it does, PART exams of
+     * that subject come only from those templates: a missing part code is {@code EXAM_PART_NOT_FOUND}
+     * instead of a cut from the subject template.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasPartTemplates(String kindCode, String subjectCode) {
+        if (subjectCode == null) {
+            return false;
+        }
+        return templateRepository
+                .findByKindCodeAndScopeAndSubjectCodeAndActiveTrue(kindCode, "PART", subjectCode)
+                .stream().anyMatch(t -> "STANDARD".equals(t.getBuildMode()));
+    }
+
+    /**
      * Mẫu mới nhất khớp kỳ thi + phạm vi; khi phạm vi PART/SUBJECT khớp thêm phần/môn.
      * Ưu tiên mẫu có {@code structureYear} bằng {@code year} (nếu truyền), sau đó năm lớn nhất.
      */
@@ -116,6 +131,8 @@ public class ExamTemplateService {
                 t.isActive(),
                 structure,
                 t.isPublishable(),
-                t.isFixedCounts());
+                t.isFixedCounts(),
+                t.isFixedBlockCounts(),
+                t.isOmittedLocked());
     }
 }
