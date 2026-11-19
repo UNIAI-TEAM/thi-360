@@ -45,6 +45,13 @@ import {
   useLookup,
   usePathLabel,
 } from "./exam-review-shared";
+import { useListingIssueText } from "../listing/issue-text";
+import {
+  ListingCheckSection,
+  ManualGradingSection,
+  REVIEW_LISTING_ANCHOR,
+  useListingStatusText,
+} from "./exam-review-listing";
 import { ExamReviewFindings } from "./exam-review-findings";
 
 export interface ExamReviewCheckProps {
@@ -147,6 +154,8 @@ export function ExamReviewCheck({ exam, onPreview, active = true, deps }: ExamRe
         onRun={run}
         onPreview={onPreview}
         onShowOverlap={showOverlap}
+        onReloadCheck={() => void checkQuery.refetch()}
+        reloadingCheck={checkQuery.isFetching}
         blocksRef={blocksRef}
         blockTab={blockTab}
         onBlockTabChange={setBlockTab}
@@ -171,6 +180,9 @@ interface CheckResultViewProps {
   onRun: () => void;
   onPreview: (pathId: string | null) => void;
   onShowOverlap: (pathId: string) => void;
+  /** Tải lại kết quả kiểm tra (nhóm Thông tin bán chưa tính được thì thử lại ở đây). */
+  onReloadCheck: () => void;
+  reloadingCheck: boolean;
   blocksRef: RefObject<HTMLHeadingElement | null>;
   blockTab: string | null;
   onBlockTabChange: (pathId: string) => void;
@@ -185,6 +197,8 @@ function CheckResultView({
   onRun,
   onPreview,
   onShowOverlap,
+  onReloadCheck,
+  reloadingCheck,
   blocksRef,
   blockTab,
   onBlockTabChange,
@@ -290,6 +304,8 @@ function CheckResultView({
       </dl>
 
       <ExamReviewFindings exam={exam} result={result} />
+      <ManualGradingSection exam={exam} result={result} />
+      <ListingCheckSection exam={exam} group={result.listingCheck} onReload={onReloadCheck} reloading={reloadingCheck} />
       <PathsSection
         exam={exam}
         result={result}
@@ -703,6 +719,9 @@ function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckRe
   const t = useTranslations("exams.review");
   const issueWithPath = useIssueWithPath(result.paths);
   const first = result.paths[0];
+  const listingStatusText = useListingStatusText();
+  const listingIssueText = useListingIssueText();
+  const listing = result.listingCheck;
 
   const passText = (group: CheckGroupResult) =>
     t(`groups.pass.${group.group}`, {
@@ -746,6 +765,35 @@ function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckRe
             </li>
           );
         })}
+        <li className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4">
+          <PathResultIcon
+            result={!listing ? "UNCONFIRMED" : listing.status === "PASS" ? "VALID" : listing.status === "FAIL" ? "INVALID" : "UNCONFIRMED"}
+            className="mt-0.5 size-[18px] shrink-0"
+          />
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-text">{t("listing.title")}</span>
+              {listing && (
+                <StatusChip tone={listing.status === "PASS" ? "success" : listing.status === "FAIL" ? "danger" : "warning"}>
+                  {listingStatusText(listing)}
+                </StatusChip>
+              )}
+              <a href={`#${REVIEW_LISTING_ANCHOR}`} className="rounded-sm text-label font-semibold text-primary-text hover:underline">
+                {t("listing.detailLink")}
+              </a>
+            </div>
+            <p className="text-body text-text-secondary">
+              {!listing
+                ? t("listing.unavailable")
+                : listing.issues.length
+                  ? listingIssueText(listing.issues.find((issue) => issue.severity === "ERROR") ?? listing.issues[0]!)
+                  : t("listing.tilePass")}
+            </p>
+            {listing && listing.issues.length > 1 && (
+              <p className="text-caption text-text-muted">{t("moreIssues", { count: listing.issues.length - 1 })}</p>
+            )}
+          </div>
+        </li>
       </ul>
     </section>
   );

@@ -22,14 +22,18 @@ import { useId, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { checkRequiredReason, errorCodeOf } from "../review-api";
+import { checkRequiredReason, errorCodeOf, ExamsApiError } from "../review-api";
 import { useExamCheck, useIdempotencyKey, usePublishExam } from "../review-queries";
 import type { ExamCheckResult, ExamVersionList, PathCheck, PublishExamResponse } from "../review-types";
 import type { ExamDetail } from "../types";
 import { examTabHref } from "../editor-tabs";
+import { useListingIssueText } from "../listing/issue-text";
 import { PathResultChip, reviewHref, useIssueText, usePathLabel } from "./exam-review-shared";
 
 export const PUBLISH_NOTE_MAX = 500;
+
+/** Lý do 422 `PUBLISH_ALL_PATHS_REQUIRED` của từng đường chặn (`fieldErrors[].code`, EX-1, E24). */
+const ALL_PATHS_REASONS: readonly string[] = ["PATH_SERVING_INVALID", "PATH_SERVING_MISSING_FROM_CHECK", "PATH_VALID_NOT_SELECTED"];
 
 export interface PublishExamDialogProps {
   open: boolean;
@@ -158,7 +162,15 @@ function PublishForm({
   const fieldsetId = useId();
   const errorId = useId();
   const idempotency = useIdempotencyKey();
-  const [serverError, setServerError] = useState<{ message: string; recheck: boolean } | null>(null);
+  const listingIssueText = useListingIssueText();
+  const [serverError, setServerError] = useState<{
+    message: string;
+    recheck: boolean;
+    /** Lý do từng đường (công bố mọi đường cùng lúc) hoặc từng lỗi của thông tin bán. */
+    details: string[];
+    /** Lỗi `LISTING_*`: dẫn sang tab Thông tin bán. */
+    listingLink: boolean;
+  } | null>(null);
 
   /** Đường của bản làm việc còn chờ công bố; công bố một phần trước đó thì chỉ còn các đường chưa chọn. */
   const pending = new Set(versions.workingCopy?.unpublishedPaths.map((path) => path.pathId) ?? []);
@@ -211,11 +223,45 @@ function PublishForm({
           onError: (error) => {
             const reason = checkRequiredReason(error);
             const code = errorCodeOf(error);
+            const fieldErrors = error instanceof ExamsApiError ? error.fieldErrors : [];
             if (reason !== null) {
               const known = ["NO_CHECK", "STRUCTURE_CHANGED", "CONFIG_CHANGED", "SOURCE_CHANGED", "PATH_NOT_VALID"];
               setServerError({
                 message: t(`errors.checkRequired.${known.includes(reason) ? reason : "UNKNOWN"}`),
                 recheck: true,
+                details: [],
+                listingLink: false,
+              });
+              return;
+            }
+            if (code === "PUBLISH_ALL_PATHS_REQUIRED") {
+              // Bài có lựa chọn sau khi bắt đầu thi: `fieldErrors` liệt kê từng đường chặn (mã lý do, id đường ở `message`).
+              const blocking = fieldErrors.map((item) => {
+                const path = check.paths.find((candidate) => candidate.pathId === item.message);
+                const name = path ? pathLabel(path) : t("errors.allPaths.unknownPath");
+                return ALL_PATHS_REASONS.includes(item.code ?? "") ? t(`errors.allPaths.${item.code}`, { path: name }) : name;
+              });
+              setServerError({
+                message: t("errors.PUBLISH_ALL_PATHS_REQUIRED"),
+                recheck: fieldErrors.some((item) => item.code !== "PATH_VALID_NOT_SELECTED"),
+                details: blocking,
+                listingLink: false,
+              });
+              return;
+            }
+            if (code?.startsWith("LISTING_")) {
+              // Thông tin bán chưa đủ: mỗi lỗi một dòng, mức giá tối thiểu lấy từ nhóm Thông tin bán của lần kiểm tra.
+              const codes = fieldErrors.length > 0 ? fieldErrors.map((item) => item.code ?? code) : [code];
+              setServerError({
+                message: t("errors.listing"),
+                recheck: false,
+                details: codes.map((item) =>
+                  listingIssueText({
+                    code: item,
+                    minPriceVnd: check.listingCheck?.issues.find((issue) => issue.code === item)?.minPriceVnd ?? null,
+                  }),
+                ),
+                listingLink: true,
               });
               return;
             }
@@ -229,6 +275,8 @@ function PublishForm({
                       ? t("errors.revisionConflict")
                       : t("errors.generic"),
               recheck: false,
+              details: [],
+              listingLink: false,
             });
           },
           onSettled: () => onSubmittingChange(false),
@@ -376,7 +424,21 @@ function PublishForm({
             role="alert"
             className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-2.5 text-body text-danger"
           >
-            <span className="min-w-0 flex-1">{serverError.message}</span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span>{serverError.message}</span>
+              {serverError.details.length > 0 && (
+                <ul className="m-0 flex list-disc flex-col gap-0.5 pl-5 text-text">
+                  {serverError.details.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {serverError.listingLink && (
+              <Link href={examTabHref(exam.id, "listing")} className="rounded-sm font-medium text-primary-text hover:underline">
+                {t("errors.listingLink")}
+              </Link>
+            )}
             {serverError.recheck && (
               <Link href={reviewHref(exam.id)} className="rounded-sm font-medium text-primary-text hover:underline">
                 {t("errors.recheck")}

@@ -32,6 +32,8 @@ import {
 import { useExamStructure } from "../queries";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
 import type { ExamDetail, ExamSectionState } from "../types";
+import { examTabHref } from "../editor-tabs";
+import { listingErrorCount } from "./exam-review-listing";
 import { useIssueText, useLookup } from "./exam-review-shared";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
 
@@ -47,13 +49,15 @@ export interface ExamReviewFindingsProps {
  */
 export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
   const t = useTranslations("exams.review.findings");
+  const tListing = useTranslations("exams.review.listing");
   const [grouping, setGrouping] = useState<IssueGrouping>("subject");
   const structure = useExamStructure(exam.id);
   const issues = useMemo(() => collectCheckIssues(result), [result]);
   const { errors, unconfirmed, warnings } = useMemo(() => splitBySeverity(issues), [issues]);
   const states = result.sectionStates ?? null;
   const checked = states?.filter((item) => item.state === "CHECKED").length ?? 0;
-  const blocked = errors.length > 0 || unconfirmed.length > 0;
+  const listingErrors = listingErrorCount(result.listingCheck);
+  const blocked = errors.length > 0 || unconfirmed.length > 0 || listingErrors > 0;
 
   return (
     <section aria-labelledby="review-findings-title" className="flex flex-col gap-4">
@@ -76,11 +80,21 @@ export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
               ? t("blocked", { count: errors.length })
               : unconfirmed.length > 0
                 ? t("unconfirmedHeadline", { count: unconfirmed.length })
-                : t("passed")}
+                : listingErrors > 0
+                  ? t("listingBlocked", { count: listingErrors })
+                  : t("passed")}
           </p>
           <p className="text-body text-text-secondary">
             {warnings.length > 0 ? t("warningsNote", { count: warnings.length }) : t("noWarnings")}
             {issues.length > 0 && ` ${t("openHint")}`}
+            {listingErrors > 0 && errors.length === 0 && (
+              <>
+                {" "}
+                <Link href={examTabHref(exam.id, "listing")} className="rounded-sm font-medium text-primary-text hover:underline">
+                  {tListing("edit")}
+                </Link>
+              </>
+            )}
           </p>
         </div>
       </div>

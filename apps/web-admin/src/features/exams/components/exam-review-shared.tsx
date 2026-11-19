@@ -313,7 +313,8 @@ export function useChangeWhere(exam: ExamDetail) {
       const labels = target.steps.map((step) =>
         step.id === null ? t(`all.${step.level}`) : (names[step.level].get(step.id) ?? t(`item.${step.level}`)),
       );
-      if (target.config) labels.unshift(t("config"));
+      // Thông tin bán nằm trong bản chụp ở `config/listing/<trường>`: mở đầu bằng "Thông tin bán" thay vì "Cấu hình bài thi".
+      if (target.config) labels.unshift(t(target.fields[0] === "listing" ? "listing" : "config"));
       const field = target.fields.find((name) => t.has(`field.${name}`));
       if (field) labels.push(t(`field.${field}`));
       return labels.length > 0 ? labels.join(" · ") : t("structure");

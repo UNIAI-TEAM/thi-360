@@ -73,7 +73,8 @@ export class FakeServer {
           method: input.method,
           url: new URL(input.url),
           headers: input.headers,
-          body: text ? (JSON.parse(text) as unknown) : undefined,
+          // JSON thành đối tượng; tải tệp (multipart, ví dụ ảnh bìa) giữ nguyên chữ để test đọc tên tệp và nội dung.
+          body: text ? (input.headers.get("content-type")?.includes("multipart/form-data") ? text : (JSON.parse(text) as unknown)) : undefined,
         };
         this.requests.push(recorded);
         await this.held.get(`${recorded.method} ${recorded.url.pathname}`)?.promise;
