@@ -80,6 +80,8 @@ import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.api.VersionConflictException;
+import vn.unicom.thi360.shared.idempotency.IdempotencyKeyId;
+import vn.unicom.thi360.shared.idempotency.IdempotencyKeyRepository;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
@@ -108,6 +110,7 @@ public class ExamService {
     private final UserDirectory userDirectory;
     private final AuditRecorder auditRecorder;
     private final IdempotentCommand idempotentCommand;
+    private final IdempotencyKeyRepository idempotencyKeys;
     private final CurrentUserProvider currentUserProvider;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -130,6 +133,7 @@ public class ExamService {
             UserDirectory userDirectory,
             AuditRecorder auditRecorder,
             IdempotentCommand idempotentCommand,
+            IdempotencyKeyRepository idempotencyKeys,
             CurrentUserProvider currentUserProvider,
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
@@ -151,6 +155,7 @@ public class ExamService {
         this.userDirectory = userDirectory;
         this.auditRecorder = auditRecorder;
         this.idempotentCommand = idempotentCommand;
+        this.idempotencyKeys = idempotencyKeys;
         this.currentUserProvider = currentUserProvider;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -1143,12 +1148,18 @@ public class ExamService {
      * POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. The cover object is copied
      * before the transaction opens, so a slow or failing object store cannot hold the command's locks and a missing
      * cover object fails the command instead of producing a copy without it. The staged object is removed again when
-     * the transaction does not keep it (replayed key, rollback, any failure).
+     * the transaction does not keep it (rollback, lost race, any failure). A key that already has a stored response is
+     * resolved before any object-store call: the committed response comes back as recorded (also when the source
+     * object is gone or storage is down) and a different body under the key is the shared 409. The authoritative
+     * check stays inside the transaction, under the key's advisory lock.
      */
     public ExamDetailResponse duplicateExam(String idempotencyKey, UUID examId,
             DuplicateExamRequest request) {
-        // Without a key the command is refused inside, so nothing is staged for it.
-        ExamCoverService.StagedCover staged = idempotencyKey == null || idempotencyKey.isBlank()
+        // A missing key is refused here, before anything is staged; a recorded key is resolved without storage I/O.
+        String key = idempotentCommand.requireKey(idempotencyKey);
+        String scope = IdempotentCommand.scope(currentUserProvider.requireCurrentUser(), "exam.duplicate",
+                examId.toString());
+        ExamCoverService.StagedCover staged = idempotencyKeys.existsById(new IdempotencyKeyId(scope, key))
                 ? null : listings.stageCoverCopy(examId);
         boolean kept = false;
         try {

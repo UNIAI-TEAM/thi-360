@@ -3,6 +3,8 @@ package vn.unicom.thi360.exam;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -147,28 +149,52 @@ class ExamDuplicateCoverIT extends AbstractIntegrationTest {
         assertThat(copiesNamed(name)).as("no copy without the cover that was asked for").isZero();
     }
 
+    /** R2-1: a committed replay is resolved from the stored response before any object-store call. */
     @Test
-    void replayedKeyLeavesNoSecondObject() throws Exception {
+    void committedReplayReturnsTheRecordedResponseWithoutTouchingStorage() throws Exception {
         UUID source = newExam("Dup source " + UUID.randomUUID());
-        cover(source, true, new byte[] {7, 7, 7});
+        UUID sourceAsset = cover(source, true, new byte[] {7, 7, 7});
         String key = UUID.randomUUID().toString();
         String name = "Dup copy " + UUID.randomUUID();
-        UUID copy = created(duplicate(source, key, name));
-        List<String> before = jdbc.queryForList("SELECT object_key FROM exam.exam_cover_asset WHERE exam_id = ?", String.class, copy);
-        assertThat(before).hasSize(1);
-        Mockito.clearInvocations(storage);
-        List<String> staged = new CopyOnWriteArrayList<>();
-        doAnswer(call -> {
-            staged.add(call.getArgument(0));
-            return call.callRealMethod();
-        }).when(storage).put(anyString(), org.mockito.ArgumentMatchers.any(), anyString());
-        UUID again = UUID.fromString(mapper.readTree(duplicate(source, key, name).andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString()).path("id").asText());
-        assertThat(again).as("the stored response comes back").isEqualTo(copy);
+        String first = duplicate(source, key, name).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        UUID copy = UUID.fromString(mapper.readTree(first).path("id").asText());
+        exams.add(copy);
+        List<String> copyObjects = jdbc.queryForList("SELECT object_key FROM exam.exam_cover_asset WHERE exam_id = ?", String.class, copy);
+        assertThat(copyObjects).hasSize(1);
+        // The source object is gone and the store is down: neither may matter to a replay.
+        storage.delete("exam-covers/" + sourceAsset);
+        Mockito.reset(storage);
+        doThrow(new IllegalStateException("storage down")).when(storage).get(anyString());
+        doThrow(new IllegalStateException("storage down")).when(storage).put(anyString(), org.mockito.ArgumentMatchers.any(), anyString());
+        String again = duplicate(source, key, name).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(again)).as("the exact stored response").isEqualTo(mapper.readTree(first));
         assertThat(copiesNamed(name)).isEqualTo(1);
-        assertThat(staged).as("the replay staged a copy first ...").hasSize(1);
-        assertThat(storage.exists(staged.getFirst())).as("... and removed it again").isFalse();
-        assertThat(storage.exists(before.getFirst())).isTrue();
+        Mockito.verify(storage, never()).get(anyString());
+        Mockito.verify(storage, never()).put(anyString(), org.mockito.ArgumentMatchers.any(), anyString());
+        Mockito.verify(storage, never()).delete(anyString());
+        Mockito.reset(storage);
+        assertThat(storage.exists(copyObjects.getFirst())).as("the copy's own object is untouched").isTrue();
+    }
+
+    /** R2-1: another body under a recorded key is the contractual 409, decided before any object-store call. */
+    @Test
+    void recordedKeyWithAnotherBodyConflictsWithoutTouchingStorage() throws Exception {
+        UUID source = newExam("Dup source " + UUID.randomUUID());
+        cover(source, true, new byte[] {8, 8, 8});
+        String key = UUID.randomUUID().toString();
+        String name = "Dup copy " + UUID.randomUUID();
+        created(duplicate(source, key, name));
+        Mockito.reset(storage);
+        doThrow(new IllegalStateException("storage down")).when(storage).get(anyString());
+        doThrow(new IllegalStateException("storage down")).when(storage).put(anyString(), org.mockito.ArgumentMatchers.any(), anyString());
+        String other = "Dup other body " + UUID.randomUUID();
+        duplicate(source, key, other).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+        assertThat(copiesNamed(other)).isZero();
+        assertThat(copiesNamed(name)).isEqualTo(1);
+        Mockito.verify(storage, never()).get(anyString());
+        Mockito.verify(storage, never()).put(anyString(), org.mockito.ArgumentMatchers.any(), anyString());
+        Mockito.verify(storage, never()).delete(anyString());
     }
 
     @Test
