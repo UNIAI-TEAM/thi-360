@@ -312,11 +312,17 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
                 .isGreaterThanOrEqualTo(50);
     }
 
+    /**
+     * AC-21, R1-3: the pictured question is reachable through the serving version of the named exam — a real block of
+     * {@code DS-HSA-SUBJECT-TOAN}, turned back into the source filter the solver would build, accepts it — and each
+     * declared image is stored under its own role and reads bytes.
+     */
     @Test
     void imageQuestionHasStoredAssets() throws Exception {
         JsonNode image = mapper.readTree(new org.springframework.core.io.ClassPathResource(
                 PublishedExamSetDefinition.RESOURCE).getInputStream()).path("imageQuestion");
-        assertThat(serving(image.path("examCode").asText()).status()).isEqualTo("PUBLISHED");
+        String examCode = image.path("examCode").asText();
+        assertThat(serving(examCode).status()).isEqualTo("PUBLISHED");
         UUID question = jdbc.queryForObject("SELECT id FROM questionbank.question WHERE source_code = ?", UUID.class,
                 image.path("questionCode").asText());
         JsonNode snapshot = mapper.readTree(jdbc.queryForObject("SELECT v.snapshot::text FROM questionbank.question q "
@@ -325,26 +331,41 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
         String prompt = snapshot.path("content").asText();
         String solution = snapshot.path("solution").asText();
         String option = snapshot.path("body").path("options").toString();
-        for (String html : List.of(prompt, solution, option)) {
-            assertThat(html).contains("data-asset-id");
-        }
-        Set<String> files = new HashSet<>();
+        // Each declared image sits in its own role in the snapshot and its bytes read back from storage.
         for (JsonNode asset : image.path("assets")) {
-            files.add(asset.path("fileName").asText());
-        }
-        for (String file : files) {
+            String file = asset.path("fileName").asText();
             var row = jdbc.queryForMap("SELECT id, object_key FROM questionbank.question_asset WHERE file_name = ? "
                     + "AND kind = 'IMAGE'", file);
-            assertThat(storage.exists((String) row.get("object_key"))).as(file).isTrue();
             String id = row.get("id").toString();
-            assertThat(prompt + solution + option).as("question uses %s", file).contains(id);
+            byte[] expected = new org.springframework.core.io.ClassPathResource("devdata/assets/" + file)
+                    .getInputStream().readAllBytes();
+            assertThat(storage.get((String) row.get("object_key"))).as(file).isPresent()
+                    .hasValueSatisfying(bytes -> assertThat(bytes).as(file).isEqualTo(expected));
+            String html = switch (asset.path("role").asText()) {
+                case "PROMPT" -> prompt;
+                case "OPTION" -> option;
+                case "SOLUTION" -> solution;
+                default -> throw new IllegalStateException("role");
+            };
+            assertThat(html).as("%s uses %s", asset.path("role").asText(), file).contains(id);
         }
-        // The question is a plain one-point Toan single choice: an eligible source of the Toan group of DS-HSA-SUBJECT-TOAN.
-        UUID toan = jdbc.queryForObject("SELECT id FROM catalog.catalog_item WHERE code = 'TOAN' AND group_id = "
-                + "'00000000-0000-7000-8100-000000000002'", UUID.class);
-        var filter = new QuestionSourcePort.Filter(toan, List.of(), List.of(), QuestionType.SINGLE_CHOICE, null, null,
-                List.of(), List.of(), BigDecimal.ONE, null, List.of(), List.of());
-        assertThat(source.matching(filter, List.of(question))).containsExactly(question);
+        // Ask the real solver input builder for candidates from the serving snapshot, not a hand-built filter.
+        String parts = jdbc.queryForObject("SELECT v.parts::text FROM exam.exam_version v "
+                + "JOIN exam.exam e ON e.id = v.exam_id WHERE e.code = ? AND v.state = 'SERVING'",
+                String.class, examCode);
+        var document = new vn.unicom.thi360.exam.domain.ExamStructureCodec(mapper).read(parts);
+        var input = context.getBean(vn.unicom.thi360.exam.application.SolverInputBuilder.class)
+                .build(serving(examCode).version().kindItemId(), document);
+        boolean reachable = input.parts().stream()
+                .filter(vn.unicom.thi360.exam.domain.solver.SolvePart.Fixed.class::isInstance)
+                .map(vn.unicom.thi360.exam.domain.solver.SolvePart.Fixed.class::cast)
+                .flatMap(part -> part.sections().stream())
+                .filter(section -> "TOAN".equals(section.subjectCode()))
+                .flatMap(section -> section.groups().stream())
+                .flatMap(group -> input.candidates().candidatesFor(group).stream())
+                .anyMatch(candidate -> candidate.questionId().equals(question.toString()));
+        assertThat(reachable).as("%s is eligible for a real serving block of %s",
+                image.path("questionCode").asText(), examCode).isTrue();
     }
 
     @Test
