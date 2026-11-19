@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +69,10 @@ class MailDispatcher {
      * để bắt đầu SMTP: không ghi gì, thư được lấy lại đúng hạn của nó.
      */
     private static final MailFailure CLAIM_LOST = new MailFailure(false, "claim-lost");
+
+    private static final int PENDING = 0;
+    private static final int STARTED = 1;
+    private static final int CANCELLED = 2;
 
     private final EmailMessageStore store;
     private final MailTransport transport;
@@ -189,10 +194,15 @@ class MailDispatcher {
         if (deadline.expired()) {
             return skipped(mail);
         }
+        AtomicInteger phase = new AtomicInteger(PENDING);
         Future<MailFailure> attempt = sendExecutor.submit(() -> {
             // Hàng rào: kiểm tra quyền giữ trước, rồi mới lấy hạn còn lại, để thời gian đứng ở
             // bước kiểm tra bị trừ vào hạn. Còn lại duy nhất là khoảng đứng giữa đây và byte SMTP đầu.
             if (!store.stillHeld(mail, Instant.now(clock)) || deadline.expired()) {
+                return CLAIM_LOST;
+            }
+            // Chỉ bước chuyển PENDING -> STARTED này cho phép SMTP; nếu người gọi đã hủy trước đó thì không gửi.
+            if (!phase.compareAndSet(PENDING, STARTED)) {
                 return CLAIM_LOST;
             }
             transport.send(mail.to(), mail.subject(), mail.html(), mail.text(), deadline);
@@ -202,8 +212,11 @@ class MailDispatcher {
             MailFailure result = attempt.get(deadline.remaining().toNanos(), TimeUnit.NANOSECONDS);
             return result == CLAIM_LOST ? skipped(mail) : result;
         } catch (TimeoutException ex) {
+            // Hạn tuyệt đối hết trước khi SMTP bắt đầu (đang chờ kiểm tra quyền giữ): như claim-lost, không tính
+            // lần gửi, không tốn lượt gửi lại. Đã bắt đầu SMTP thì đây là timeout thật.
+            boolean smtpStarted = !phase.compareAndSet(PENDING, CANCELLED);
             attempt.cancel(true);
-            return MailFailure.timeout();
+            return smtpStarted ? MailFailure.timeout() : skipped(mail);
         } catch (ExecutionException ex) {
             if (ex.getCause() instanceof SendDeadline.ExpiredException) {
                 return skipped(mail);

@@ -3,10 +3,16 @@ package vn.unicom.thi360.shared.mail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -136,6 +142,63 @@ class MailDeadlineIT extends AbstractMailIT {
                         .isBetween(1L, 1000L);
             }
         }
+    }
+
+    /**
+     * R4-02: hạn tuyệt đối hết trong lúc kiểm tra quyền giữ còn treo, trước khi SMTP bắt đầu. Phải xử lý như
+     * {@code claim-lost}: không có lời gọi vận chuyển, không tính lần gửi, không ghi {@code timeout}, không tốn
+     * lượt gửi lại. Luồng gửi bị hủy mà vẫn chạy tiếp khi kiểm tra được thả thì cũng không được mở SMTP; lần lấy
+     * lại hợp lệ kế tiếp gửi đúng một thư.
+     */
+    @Test
+    void aCutoffThatPassesWhileTheHoldCheckIsPendingIsClaimLostNotATimeout() throws Exception {
+        String to = MailSamples.randomAddress();
+        enqueue(MailKind.EMAIL_VERIFY, "vi", to);
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch checkReturned = new CountDownLatch(1);
+        AtomicInteger checks = new AtomicInteger();
+        doAnswer(invocation -> {
+                    if (checks.incrementAndGet() == 1) {
+                        // Treo qua hạn 3 giây và bỏ qua lệnh ngắt, như một truy vấn bị kẹt không đáp lại ngắt.
+                        while (release.getCount() > 0) {
+                            try {
+                                release.await();
+                            } catch (InterruptedException ignored) {
+                                // vẫn treo tới khi được thả
+                            }
+                        }
+                        Object held = invocation.callRealMethod();
+                        checkReturned.countDown();
+                        return held;
+                    }
+                    return invocation.callRealMethod();
+                })
+                .when(store)
+                .stillHeld(any(), any());
+
+        assertThat(dispatcher.dispatchBatch()).as("nothing was sent").isZero();
+
+        MailOutbox.Mail afterCutoff = outbox.require(to, MailKind.EMAIL_VERIFY);
+        assertThat(afterCutoff.lastError()).as("no timeout record for an attempt that never started").isNull();
+        assertThat(afterCutoff.attempts()).as("no attempt counted, no retry spent").isZero();
+        assertThat(afterCutoff.sentAt()).isNull();
+        assertThat(afterCutoff.failedAt()).isNull();
+        verify(transport, never()).send(any(), any(), any(), any(), any());
+
+        // Thả kiểm tra: luồng gửi đã bị hủy phải bỏ lượt, không mở SMTP.
+        release.countDown();
+        assertThat(checkReturned.await(10, TimeUnit.SECONDS)).isTrue();
+
+        advance(Duration.ofMinutes(1));
+        assertThat(dispatcher.dispatchBatch()).as("the next legitimate claim delivers").isEqualTo(1);
+
+        MailOutbox.Mail mail = outbox.require(to, MailKind.EMAIL_VERIFY);
+        assertThat(mail.sentAt()).isNotNull();
+        assertThat(mail.attempts()).isEqualTo(1);
+        assertThat(mail.lastError()).isNull();
+        verify(transport, times(1)).send(any(), any(), any(), any(), any());
+        assertThat(receivedAtLeast(1)).extracting(Received::to).containsExactly(to);
+        assertThat(receivedCount()).as("exactly one delivery").isEqualTo(1);
     }
 
     /**
