@@ -29,7 +29,8 @@ async function backToStep1AndEdit(page: Page, spec: UiExamSpec, newCount: number
 
   await count.fill(String(newCount));
   await page.getByRole("button", { name: "Lưu thông tin" }).click();
-  await expect(page.getByText("Đã lưu thông tin chung.")).toBeVisible();
+  // Chỉ thông báo nổi: cùng câu còn nằm trong vùng đọc màn hình ẩn (sr-only), nên getByText trần vi phạm strict mode.
+  await expect(page.locator("[data-sonner-toast]").getByText("Đã lưu thông tin chung.")).toBeVisible();
 
   const after = await getStructure(admin, id);
   expect(after.parts[0]!.questionCount).toBe(newCount);
