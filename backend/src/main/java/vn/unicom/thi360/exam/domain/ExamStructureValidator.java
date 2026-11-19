@@ -135,6 +135,12 @@ public final class ExamStructureValidator {
 
     private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas,
             int maxMapidRules) {
+        validateSection(section, ids, maxTopicQuotas, maxMapidRules, null);
+    }
+
+    /** {@code choiceUnits}: the largest count of the subject-choice option the section belongs to, or null. */
+    private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas,
+            int maxMapidRules, Integer choiceUnits) {
         if (section == null) {
             invalid("sections", "section must not be null");
         }
@@ -158,14 +164,14 @@ public final class ExamStructureValidator {
         for (QuestionBlock block : section.blocks()) {
             validateBlock(block, ids, maxTopicQuotas);
         }
-        validateMapidRules(section, maxMapidRules);
+        validateMapidRules(section, maxMapidRules, choiceUnits);
     }
 
     /**
      * Shape of the MAPID rules of one section (UNI-1704 v2). Whether the rules contradict each other or the
      * data is a check matter. Every error names {@code sections.mapidRules}.
      */
-    private static void validateMapidRules(ExamSection section, int max) {
+    private static void validateMapidRules(ExamSection section, int max, Integer choiceUnits) {
         String field = "sections.mapidRules";
         List<MapidRule> rules = section.mapidRules();
         if (rules.isEmpty()) {
@@ -181,6 +187,11 @@ public final class ExamStructureValidator {
         for (QuestionBlock block : section.blocks()) {
             blockIds.add(block.id());
         }
+        // A number above the units of the whole section can never be met and, summed over rules, would overflow the
+        // solver's int arithmetic (UNI-2758 R1-7). A rule above its own group is a conflict the check reports, so it
+        // stays saveable; rules of an ALL section are dormant drafts and are not bounded.
+        Integer sectionUnits = section.mapidMode() != MapidMode.MATRIX ? null
+                : section.questionCount() != null ? section.questionCount() : choiceUnits;
         Set<String> ids = new HashSet<>();
         for (MapidRule rule : rules) {
             if (rule == null || rule.type() == null || rule.id() == null || rule.id().isBlank()
@@ -195,6 +206,9 @@ public final class ExamStructureValidator {
             }
             if (rule.count() != null && rule.count() < 0) {
                 invalid(field, "rule count must not be negative");
+            }
+            if (rule.count() != null && sectionUnits != null && rule.count() > sectionUnits) {
+                invalid(field, "rule count exceeds the question count of the section");
             }
             if (rule.percent() != null
                     && (rule.percent().signum() < 0 || rule.percent().compareTo(ONE_HUNDRED) > 0)) {
@@ -253,8 +267,11 @@ public final class ExamStructureValidator {
                 invalid("options.chooseSubjects", "chooseSubjects exceeds subject count");
             }
         }
+        Integer choiceUnits = option.kind() == OptionKind.SUBJECT_CHOICE && option.countsByPick() != null
+                ? option.countsByPick().stream().filter(java.util.Objects::nonNull).max(Integer::compare).orElse(null)
+                : null;
         for (ExamSection section : option.sections()) {
-            validateSection(section, ids, maxTopicQuotas, maxMapidRules);
+            validateSection(section, ids, maxTopicQuotas, maxMapidRules, choiceUnits);
         }
         for (QuestionBlock block : option.blocks()) {
             validateBlock(block, ids, maxTopicQuotas);

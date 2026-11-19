@@ -373,10 +373,10 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
                 .containsExactly("exact", "source");
     }
 
-    // ---- counts are bounded by the units of their scope (review R1-7) -------------------------------------------
+    // ---- counts are bounded by the question count of their section (review R1-7) -------------------------------------------
 
     @Test
-    void aCountBeyondTheUnitsOfItsScopeIsRejectedAtPutAndTheBoundaryIsAccepted() throws Exception {
+    void aCountBeyondTheQuestionCountOfItsSectionIsRejectedAtPutAndTheBoundaryIsAccepted() throws Exception {
         arrange();
         UUID exam = examRow("hsa");
         for (int tooMany : List.of(7, 1_073_741_824, Integer.MAX_VALUE)) {

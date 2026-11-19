@@ -233,12 +233,15 @@ final class TopicAssignments {
             int source = 0, unitBase = 1, quotaBase = unitBase + units.size();
             int sink = quotaBase + scope.quotas().size();
             MaxFlow.Dinic flow = new MaxFlow.Dinic(sink + 1);
-            int total = 0;
+            // Every unit fills at most one quota of a scope, so the minimums can never need more flow than there are
+            // units; the sum is a long so several large counts cannot wrap an int to zero (UNI-2758 R1-7).
+            long total = 0;
             for (int q = 0; q < scope.quotas().size(); q++) {
                 int count = scope.quotas().get(q).count();
                 total += count;
-                flow.addEdge(quotaBase + q, sink, count);
+                flow.addEdge(quotaBase + q, sink, Math.min(count, units.size()));
             }
+            if (total > units.size()) return null;
             List<int[]> edges = new ArrayList<>();
             for (int u = 0; u < units.size(); u++) {
                 if ((u & 1023) == 0) deadline.run();
@@ -249,7 +252,7 @@ final class TopicAssignments {
                     }
                 }
             }
-            if (flow.maxFlow(source, sink, deadline) != total) return null;
+            if (flow.maxFlow(source, sink, deadline) != (int) total) return null;
             for (int[] edge : edges) {
                 if (flow.flow(edge[2]) == 0) continue;
                 Unit unit = units.get(edge[0]);

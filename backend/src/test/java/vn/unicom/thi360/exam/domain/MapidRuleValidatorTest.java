@@ -102,9 +102,9 @@ class MapidRuleValidatorTest {
     }
 
     @Test
-    void aCountNeverExceedsTheUnitsOfItsScope() {
-        // The section has 4 units and group g draws 4: a bigger number can never be met and, summed over several
-        // rules, would overflow an int in the solver (UNI-2758 R1-7).
+    void aCountNeverExceedsTheQuestionCountOfItsSection() {
+        // The section has 4 questions: a bigger number can never be met and, summed over several rules, would overflow
+        // an int in the solver (UNI-2758 R1-7). Only a MATRIX section is bounded: ALL keeps its rules as dormant drafts.
         for (int tooMany : List.of(5, 1_073_741_824, Integer.MAX_VALUE)) {
             for (String group : new String[] {null, "g"}) {
                 for (var type : List.of(MapidRuleType.COUNT, MapidRuleType.ONLY_IN_GROUP)) {
@@ -113,6 +113,9 @@ class MapidRuleValidatorTest {
                             MapidComparator.AT_LEAST, tooMany, null))));
                 }
             }
+            assertThatCode(() -> ExamStructureValidator.validate(document(MapidMode.ALL, List.of(
+                    rule("r", MapidRuleType.COUNT, null, MapidComparator.AT_LEAST, tooMany, null)))))
+                    .doesNotThrowAnyException();
         }
         for (String group : new String[] {null, "g"}) {
             assertThatCode(() -> ExamStructureValidator.validate(document(MapidMode.MATRIX, List.of(
