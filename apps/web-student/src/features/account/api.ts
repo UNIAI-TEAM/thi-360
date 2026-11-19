@@ -90,10 +90,15 @@ export async function updateProfile(body: ProfileUpdateRequest): Promise<Profile
   return data;
 }
 
-/** Gửi hoặc gửi lại mã xác minh tới email hiện tại; lỗi giữ `retryAfter` của 429. */
+/**
+ * Gửi hoặc gửi lại mã xác minh tới email hiện tại; lỗi giữ `retryAfter` của 429.
+ *
+ * Backend trả 202 không có thân. Proxy `/api` bỏ `Content-Length` nên `openapi-fetch` không nhận ra thân rỗng và gọi
+ * `response.json()`, ném `SyntaxError` dù yêu cầu đã thành công; đọc dạng `text` để thân rỗng là hợp lệ.
+ */
 export async function sendVerificationCode(): Promise<void> {
   const client = createBrowserApiClient();
-  const { error, response } = await client.POST("/api/v1/me/email/verification");
+  const { error, response } = await client.POST("/api/v1/me/email/verification", { parseAs: "text" });
   if (!response.ok) {
     throw toEmailCodeStatusError(response.status, error);
   }
@@ -114,6 +119,7 @@ export async function requestEmailChange(newEmail: string, currentPassword: stri
   const client = createBrowserApiClient();
   const { error, response } = await client.POST("/api/v1/me/email/change", {
     body: { newEmail, currentPassword },
+    parseAs: "text",
   });
   if (!response.ok) {
     throw toEmailCodeStatusError(response.status, error);
