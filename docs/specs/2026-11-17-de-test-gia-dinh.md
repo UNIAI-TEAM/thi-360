@@ -293,7 +293,7 @@ Mạch đối chiếu (`TopicQuota` cấp mục, `basis = PROMPT`, `REFERENCE`, 
 
 ### 2.10 Bài ôn và phạm vi
 
-Nguồn: `V202611180456`, `V202611181305`, `V202611182210`, `V202611182211`. Mỗi kỳ thi có một mẫu `<KỲ>_REVIEW` (HSA, QDA, BCA, SP2E, SPT, THPTQG, VACT, HSCA, VSAT): `build_mode = REVIEW`, `scope = SUBJECT`, không số câu, không điểm, quản trị viên nhập. `VACT_REVIEW` bật `everyChildInScope`. Phạm vi của hồ sơ kỳ thi (`exam_kind_profile.scopes`): HSA, QDA, BCA, V-ACT `FULL, PART, SUBJECT`; SPT, SP2E, THPTQG, HSCA, VSAT `SUBJECT, PART` (test `examKindProfilesSeedScopesPerSpec2B`).
+Nguồn: `V202611180456`, `V202611181305`, `V202611182210`, `V202611182211`. Mỗi kỳ thi có một mẫu `<KỲ>_REVIEW` (HSA, QDA, BCA, SP2E, SPT, THPTQG, VACT, HSCA, VSAT): `build_mode = REVIEW`, `scope = SUBJECT`, không số câu, không điểm, quản trị viên nhập. `VACT_REVIEW`, `HSCA_REVIEW` và `VSAT_REVIEW` đều bật `everyChildInScope` ở phạm vi của môn; cả hai mẫu mới này `timing = SHARED`, không đặt trước `duration_minutes` (quản trị viên nhập như mọi mẫu ôn). Phạm vi của hồ sơ kỳ thi (`exam_kind_profile.scopes`): HSA, QDA, BCA, V-ACT `FULL, PART, SUBJECT`; SPT, SP2E, THPTQG, HSCA, VSAT `SUBJECT, PART` (test `examKindProfilesSeedScopesPerSpec2B`).
 
 ## 3. Số còn là giả định
 
@@ -310,7 +310,7 @@ Số nào mẫu còn ghi chờ chuyên gia (cột `expert_note`), hoặc do đ�
 | THPTQG bài theo phần | bật `PART` | spec bổ sung Q-29 |
 | H-SCA bốn môn tự nhiên | phân bố lớp 10/11/12: định hướng BA 70–80% lớp 12, mức đối chiếu nạp số đề mẫu (Q-33); Toán 26/40 và Hóa 12/40 dưới 28 câu | `expert_note` của `HSCA_SUBJECT_*`, chờ BA |
 | H-SCA Ngữ văn, Tiếng Anh | thang điểm bằng số câu, 1 điểm/câu (Q-39); số phương án của phần Nghe không ràng buộc | `expert_note` |
-| V-SAT cơ cấu bốn phần | 9 + 6 + 5 + 5 (Q-36, tạm) | `expert_note` của mọi `VSAT_SUBJECT_*`, chờ BA |
+| V-SAT cơ cấu bốn phần | 9 + 6 + 5 + 5 (Q-36, tạm) | `expert_note` của `VSAT_SUBJECT_{TOAN,LY,HOA,SINH,SU,DIA}` và `VSAT_SUBJECT_HOA_50`, chờ BA |
 | V-SAT Ngữ văn thời lượng | để trống, nhập khi tạo (Q-35); V-SAT Hóa 50' là biến thể tạm (Q-34) | `expert_note` |
 
 Số còn lại của mẫu là số BA (không có `expert_note`). Không bịa thêm: chỗ BA chưa nêu, để trống và ghi vào mục câu hỏi mở của spec.
@@ -431,7 +431,7 @@ Số liệu dưới đây là đối chiếu giữa `R__seed_test_exam_data.sql`
 
 ### 4.5 Câu mẫu cho H-SCA và V-SAT (UNI-2691, spec `2026-11-18-pbi04-dot-2b-bo-sung-hsca-vsat.md` mục 4, 5)
 
-Nằm trong `R__seed_questionbank_dev_data.sql`, mã câu `SEED-HSCA-*` và `SEED-VSAT-*`, trạng thái `READY`. Mỗi dòng có nhiều hơn mức mẫu cần để bộ giải còn chỗ chọn. Mọi nội dung là chữ ASCII ngắn do đội tự soạn, không lấy từ đề thật. Câu trắc nghiệm dùng bốn phương án; lớp và độ khó rải đều ba lớp 10, 11, 12 và ba mức NB, TH, VD (Văn, Tiếng Anh của H-SCA dùng lớp 12, mức TH vì hai môn này tắt lớp và độ khó).
+Nằm trong `R__seed_questionbank_dev_data.sql`, mã câu `SEED-HSCA-*` và `SEED-VSAT-*`, trạng thái `READY`. Mỗi dòng có nhiều hơn mức mẫu cần để bộ giải còn chỗ chọn. Mọi nội dung là chữ ASCII ngắn do đội tự soạn, không lấy từ đề thật. Câu trắc nghiệm dùng bốn phương án; lớp và độ khó rải đều ba lớp 10, 11, 12 và ba mức NB, TH, VD. Câu Văn và Tiếng Anh của H-SCA seed nhãn lớp 12, mức TH: Văn vì mẫu tắt đối chiếu cấp lớp của cả bài (không có `examQuotas`; ba nhóm Đọc hiểu vẫn giữ ma trận độ khó `REFERENCE` của riêng mình, mục 2.8), còn Tiếng Anh vì mẫu không đặt phân bố lớp lẫn độ khó nào.
 
 **H-SCA** (điểm theo Q-39, chùm theo Q-40):
 
@@ -439,7 +439,7 @@ Nằm trong `R__seed_questionbank_dev_data.sql`, mã câu `SEED-HSCA-*` và `SEE
 |---|---|---|---|
 | Toán, Vật lí, Hóa học, Sinh học (mỗi môn) | Chọn một, bốn phương án, 0,25 | 24 câu đơn | 20 |
 | | Chọn nhiều, 0,25 (`PARTIAL`) | 8 câu đơn | 5 |
-| | Chùm phần 2 | 4 bộ, mỗi bộ 5 câu con chọn một 0,25 | 1 bộ, tổng 5 câu con |
+| | Chùm phần 2 | 4 bộ, mỗi bộ 5 câu con chọn một 0,25 | 5 câu con từ các chùm nguyên; không chốt số/cỡ chùm |
 | | Trả lời ngắn, 0,25 | 12 câu đơn | 10 |
 | Ngữ văn | Chùm `VAN_THONG_TIN`, `VAN_NGHI_LUAN`, `VAN_THO` | mỗi nhãn 3 bộ: 5, 7, 8 câu con chọn một 1 điểm | 1 bộ mỗi nhãn |
 | Tiếng Anh, Nghe | 8 câu đơn có audio | 10 câu đơn chọn một 1 điểm, mỗi câu một tệp audio | 8 |
@@ -455,13 +455,13 @@ Nằm trong `R__seed_questionbank_dev_data.sql`, mã câu `SEED-HSCA-*` và `SEE
 | | Ghép hợp, 4 mục mỗi bên, 1,5 điểm mỗi cặp | 10 câu đơn (6 điểm mỗi câu) | 5 |
 | Toán, Lí, Hóa, Sinh, Sử, Địa | Trả lời ngắn, 6 điểm | 10 câu đơn | 5 |
 | | Phần II, chùm 3 câu con chọn một, 6 điểm mỗi câu con | 4 bộ | 2 |
-| Địa lí | Phần II hai vị trí theo nhãn | 4 bộ: 2 bộ gốc gắn `DIA_BANG_SO_LIEU`, 2 bộ gốc gắn `DIA_BIEU_DO`; câu con không nhãn | 2 mỗi nhãn |
+| Địa lí | Phần II hai vị trí theo nhãn | 4 bộ: 2 bộ gốc gắn `DIA_BANG_SO_LIEU`, 2 bộ gốc gắn `DIA_BIEU_DO`; câu con không nhãn | 1 bộ mỗi nhãn (2 bộ tổng) |
 | Ngữ văn I–III | Phần II, chùm 3 câu con | 3 bộ `VAN_THO`, 3 bộ `VAN_TRUYEN` | 1 mỗi nhãn |
 | Tiếng Anh | Bài đọc dùng chung câu 8–15 | 3 bộ 8 câu con: vị trí 1–2 Đúng/Sai bốn ý, vị trí 3–8 chọn một, 6 điểm mỗi câu con | 1 |
 | | Phần II theo phần | 3 bộ 6 câu con chọn một, 6 điểm | 1 |
 | | Cloze | 3 câu, 5 vị trí, 6 điểm mỗi vị trí | 1 |
 
-**Audio.** 18 tệp MP3 đơn kênh trong `backend/src/main/resources/db/devdata/assets/` (`hsca-en-listening-single-01..10`, `-set4-01..04`, `-set5-01..04`), mỗi tệp 2 giây âm đơn tự sinh, đúng 6.264 byte, cộng 112.752 byte. Dòng `question_asset` (`kind = ATTACHMENT`, `mime = audio/mpeg`, `object_key = questions/dev-seed/<tên tệp>`) cùng `question_asset_ref` phiên bản 1 nằm trong tệp `R__` ở trên; `DevQuestionAssetSeeder` (hồ sơ `dev`, `test`) ghi từng tệp vào kho lưu trữ theo `object_key` của các dòng đó, bỏ qua tệp đã có. Tệp audio chỉ gắn vào câu gốc: câu đơn Nghe có một tệp, chùm Nghe có một tệp ở câu gốc, câu con không có tệp.
+**Audio.** 18 tệp MP3 đơn kênh trong `backend/src/main/resources/db/devdata/assets/` (`hsca-en-listening-single-01..10`, `-set4-01..04`, `-set5-01..04`), mỗi tệp khoảng 2 giây âm đơn tự sinh (luồng báo 2,088 s, `ffprobe`), đúng 6.264 byte, cộng 112.752 byte. Dòng `question_asset` (`kind = ATTACHMENT`, `mime = audio/mpeg`, `object_key = questions/dev-seed/<tên tệp>`) cùng `question_asset_ref` phiên bản 1 nằm trong tệp `R__` ở trên; `DevQuestionAssetSeeder` (hồ sơ `dev`, `test`) ghi từng tệp vào kho lưu trữ theo `object_key` của các dòng đó, bỏ qua tệp đã có. Tệp audio chỉ gắn vào câu gốc: câu đơn Nghe có một tệp, chùm Nghe có một tệp ở câu gốc, câu con không có tệp.
 
 ## 5. Khi chuyên gia trả lời
 
