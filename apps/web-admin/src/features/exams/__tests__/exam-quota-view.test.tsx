@@ -37,12 +37,14 @@ interface Boot {
   examQuotas: unknown[];
   later?: unknown[];
   templates?: unknown[];
+  /** Kỳ thi của bài: mặc định khác HSA, vì bài HSA cố định mức Bắt buộc (UNI-1701). */
+  kind?: string;
 }
 
-function boot({ examQuotas, later, templates = [] }: Boot) {
+function boot({ examQuotas, later, templates = [], kind = "VACT" }: Boot) {
   const structure = (quotas: unknown[], revision: number) => ({ status: 200, body: { examId: EXAM_ID, revision, parts: [FIXED_PART], examQuotas: quotas } });
   return new FakeServer()
-    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_NOW" }) })
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ kind, questionCount: 10, templateCode: "T_NOW" }) })
     .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: templates })
     .on("GET", STRUCTURE, structure(examQuotas, 7), ...(later ? [structure(later, 8)] : []))
     .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
@@ -110,7 +112,7 @@ describe("Chỉ tiêu cấp bài khi đổi phiên bản cấu trúc (R1-10)", (
     const base = FIXTURE_TEMPLATES.find((template) => template.kind === "HSA" && template.scope === "FULL")!;
     const now = { ...base, code: "T_NOW", label: "HSA hiện tại", structureYear: 2026 };
     const other = { ...base, code: "T_OTHER", label: "HSA bản khác", structureYear: 2025, isDefault: false };
-    const server = boot({ examQuotas: [gradeQuota()], later: [gradeQuota([20, 80])], templates: [now, other].map(toWireTemplate) });
+    const server = boot({ examQuotas: [gradeQuota()], later: [gradeQuota([20, 80])], kind: "HSA", templates: [now, other].map(toWireTemplate) });
     const user = userEvent.setup();
     open();
     await setPercent(user, 0, "40");
@@ -141,5 +143,28 @@ describe("Chỉ tiêu cấp bài tính theo đơn vị không phải câu khóa 
     open();
     const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
     expect(within(section).getByRole("radio", { name: "Bắt buộc" })).toBeEnabled();
+  });
+});
+
+describe("Chỉ tiêu cấp bài của kỳ thi HSA có mức cố định (UNI-1701)", () => {
+  it("một môn, tính theo câu: Bắt buộc cố định, không còn nút radio, và bản nháp lưu Bắt buộc", async () => {
+    const server = boot({ examQuotas: [gradeQuota()], kind: "HSA" });
+    const user = userEvent.setup();
+    open();
+    const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
+    expect(within(section).queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
+    expect(within(section).getByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ enforcement: string }> };
+    expect(sent.examQuotas.map((quota) => quota.enforcement)).toEqual(["REQUIRED"]);
+  });
+
+  it("H6: trải nhiều môn vẫn Tham khảo cố định kèm lý do", async () => {
+    boot({ examQuotas: [{ ...gradeQuota(), subjectCodes: ["MATH", "LITERATURE"], excludeSubjectCodes: [] }], kind: "HSA" });
+    open();
+    const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
+    expect(within(section).queryByRole("radio")).not.toBeInTheDocument();
+    expect(within(section).getByText("Chỉ tiêu trải nhiều môn chỉ ở mức Tham khảo.")).toBeInTheDocument();
   });
 });

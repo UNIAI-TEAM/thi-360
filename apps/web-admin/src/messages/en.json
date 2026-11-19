@@ -5837,7 +5837,9 @@
         "legend": "Level of {name}",
         "REQUIRED": "Required",
         "REFERENCE": "Reference",
-        "basisLocked": "A required distribution must count questions. Change the unit to questions first."
+        "basisLocked": "A required distribution must count questions. Change the unit to questions first.",
+        "fixedRequired": "HSA exam: papers are always generated from the matrix",
+        "normalized": "Reference levels were switched to Required as HSA rules demand. Save to apply."
       },
       "totalChange": {
         "title": "The total changed to {total, number} questions (was {old, number}). New counts:",

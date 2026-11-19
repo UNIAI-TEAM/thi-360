@@ -10,6 +10,7 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
+import { HsaExamContext, isHsaExam, normalizeHsaParts, normalizeHsaQuotas } from "../hsa-enforcement";
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
@@ -24,6 +25,7 @@ import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamStructure, ExamT
 import { BlockEditor } from "./block-editor";
 import { blockCountsLocked } from "./block-form";
 import type { TopicQuotaServerError } from "./topic-quota-table";
+import { HsaNormalizedNote } from "./enforcement-toggle";
 import {
   selectionScope,
   addBlock,
@@ -174,14 +176,16 @@ export function ExamStructureView({ examId }: { examId: string }) {
   }
 
   return (
-    <StructureEditor
-      exam={examQuery.data}
-      structure={structureQuery.data}
-      syncKey={structureQuery.dataUpdatedAt}
-      reference={referenceQuery.data}
-      templates={templatesQuery.data ?? []}
-      template={templatesQuery.data?.find((item) => item.code === examQuery.data.templateCode) ?? null}
-    />
+    <HsaExamContext.Provider value={isHsaExam(examQuery.data.kind)}>
+      <StructureEditor
+        exam={examQuery.data}
+        structure={structureQuery.data}
+        syncKey={structureQuery.dataUpdatedAt}
+        reference={referenceQuery.data}
+        templates={templatesQuery.data ?? []}
+        template={templatesQuery.data?.find((item) => item.code === examQuery.data.templateCode) ?? null}
+      />
+    </HsaExamContext.Provider>
   );
 }
 
@@ -220,8 +224,13 @@ function StructureEditor({
   const summaryQuery = useExamStructureSummary(exam.id);
   const [checkResult, setCheckResult] = useState<ExamCheckResult | null>(null);
 
-  const [draft, setDraft] = useState<ExamPart[]>(structure.parts);
-  const [quotas, setQuotas] = useState<ExamQuota[]>(structure.examQuotas ?? []);
+  // Kỳ thi HSA sinh đề luôn theo ma trận (UNI-1701): bản nháp mở ra đã đổi mức Tham khảo sang Bắt buộc, còn bản đã lưu giữ
+  // nguyên để màn báo "có thay đổi chưa lưu" cho tới khi lưu.
+  const hsa = isHsaExam(exam.kind);
+  const draftOf = (parts: ExamPart[]) => (hsa ? normalizeHsaParts(parts) : parts);
+  const quotasOf = (items: ExamQuota[]) => (hsa ? normalizeHsaQuotas(items) : items);
+  const [draft, setDraft] = useState<ExamPart[]>(() => draftOf(structure.parts));
+  const [quotas, setQuotas] = useState<ExamQuota[]>(() => quotasOf(structure.examQuotas ?? []));
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
   const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
@@ -231,9 +240,9 @@ function StructureEditor({
   if (syncKey !== syncedKey) {
     setSyncedKey(syncKey);
     if (!dirty) {
-      setDraft(structure.parts);
+      setDraft(draftOf(structure.parts));
       setBaseline(JSON.stringify(structure.parts));
-      setQuotas(structure.examQuotas ?? []);
+      setQuotas(quotasOf(structure.examQuotas ?? []));
       setQuotaBaseline(JSON.stringify(structure.examQuotas ?? []));
     }
   }
@@ -248,6 +257,12 @@ function StructureEditor({
   // Tổng số câu của mục đã xác nhận sau khi đổi (R-121): bảng nhập theo tỷ lệ chờ xác nhận khi tổng khác số này.
   const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
   const baselineParts = useMemo(() => JSON.parse(baseline) as ExamPart[], [baseline]);
+  // Bản đã lưu còn mức Tham khảo mà HSA không cho: ghi chú hiện cho tới khi lưu.
+  const hsaNormalizing = useMemo(() => {
+    if (!hsa) return false;
+    const savedQuotas = JSON.parse(quotaBaseline) as ExamQuota[];
+    return normalizeHsaParts(baselineParts) !== baselineParts || normalizeHsaQuotas(savedQuotas) !== savedQuotas;
+  }, [hsa, baselineParts, quotaBaseline]);
 
   const [selection, setSelection] = useState<StructureSelection | null>(() => {
     const fromUrl = readSelectionFromUrl();
@@ -326,8 +341,8 @@ function StructureEditor({
   };
 
   const discardAll = () => {
-    setDraft(JSON.parse(baseline) as ExamPart[]);
-    setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
+    setDraft(draftOf(JSON.parse(baseline) as ExamPart[]));
+    setQuotas(quotasOf(JSON.parse(quotaBaseline) as ExamQuota[]));
     setConfirmedCounts({});
     setTopicFailure(null);
   };
@@ -498,6 +513,7 @@ function StructureEditor({
 
   return (
     <div className="@container flex flex-col gap-4">
+      {hsaNormalizing && <HsaNormalizedNote />}
       <ExamEditorActions>
         {dirty && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
         <Button type="button" variant="secondary" disabled={!dirty || save.isPending} onClick={() => setConfirmDiscard(true)}>
@@ -571,7 +587,7 @@ function StructureEditor({
           currentParts={draft}
           onAnnounce={announce}
           onApplied={(parts) => {
-            setDraft(parts);
+            setDraft(draftOf(parts));
             setBaseline(JSON.stringify(parts));
             // Chỉ tiêu cấp bài đang sửa thuộc mẫu cũ: bỏ để lần tải lại cấu trúc kế tiếp đưa chỉ tiêu của mẫu mới vào, không
             // để lần lưu sau ghi đè `examQuotas` của mẫu mới (R1-10).

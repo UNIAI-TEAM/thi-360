@@ -5837,7 +5837,9 @@
         "legend": "Mức của {name}",
         "REQUIRED": "Bắt buộc",
         "REFERENCE": "Tham khảo",
-        "basisLocked": "Phân bố bắt buộc phải tính theo câu. Đổi đơn vị sang câu trước."
+        "basisLocked": "Phân bố bắt buộc phải tính theo câu. Đổi đơn vị sang câu trước.",
+        "fixedRequired": "Kỳ thi HSA: sinh đề luôn theo ma trận",
+        "normalized": "Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA. Lưu để áp dụng."
       },
       "totalChange": {
         "title": "Tổng đổi thành {total, number} câu (trước đó {old, number} câu). Số câu mới:",
