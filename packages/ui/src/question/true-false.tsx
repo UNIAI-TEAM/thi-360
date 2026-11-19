@@ -146,7 +146,9 @@ function TrueFalseReview({
 }) {
   const strings = useUiStrings().question;
   const statements = value?.statements ?? {};
-  const showAnswers = answersVisible(review);
+  // Không có khóa `answer` ở ý nào thì không hiện cột đáp án (tránh hiện "Sai" cho mọi ý vì dữ liệu thiếu).
+  const showAnswers =
+    answersVisible(review) && question.body.statements.some((statement) => statement.answer !== undefined);
   const perStatement = question.body.scoringMethod === "PER_STATEMENT";
   const graded = question.body.statements.filter(
     (statement) => review?.gradingDetail?.[statement.id] != null,
@@ -172,7 +174,8 @@ function TrueFalseReview({
             {question.body.statements.map((statement, index) => {
               const part = review?.gradingDetail?.[statement.id];
               const picked = statements[statement.id];
-              const answerLabel = statement.answer === true ? strings.trueOption : strings.falseOption;
+              const answerLabel =
+                statement.answer === undefined ? "—" : statement.answer ? strings.trueOption : strings.falseOption;
               return (
                 <tr key={statement.id} className="border-b border-border/60 last:border-0 align-top">
                   <td className="py-2.5 pr-4">

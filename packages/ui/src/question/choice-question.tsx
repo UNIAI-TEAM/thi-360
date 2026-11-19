@@ -36,7 +36,12 @@ export function ChoiceList({
   const strings = useUiStrings().question;
   const name = useId();
   const ordered = orderById(options, optionOrder);
-  const showAnswers = review === undefined ? false : (review.showAnswers ?? true);
+  // Không có khóa đáp án (`option.correct` thiếu ở mọi phương án) thì không có gì để so: ẩn đáp án, tránh
+  // chip "Bạn chọn · Sai" tự suy ra từ dữ liệu thiếu.
+  const showAnswers =
+    review !== undefined &&
+    (review.showAnswers ?? true) &&
+    options.some((option) => option.correct !== undefined);
   return (
     <fieldset
       aria-label={groupLabel}
