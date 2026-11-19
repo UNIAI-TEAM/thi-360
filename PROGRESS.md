@@ -228,6 +228,15 @@
   - **Chờ M.Trường:** cho phép commit tài liệu và ra lệnh cook. Chưa commit, chưa cook.
   - Chưa kiểm chứng: các lệnh test trong plan chưa chạy thử.
 
+### Đợt 3 · Cook thương mại và lượt thi (bắt đầu 2026-11-19)
+
+- **Bắt đầu:** M.Trường yêu cầu ngày 2026-11-19 ("commit đi. và cook plan nhé. bộ roster thì vẫn như đợt 2b. chia task cho cả local, bro và cty nhé. tùy tải máy mà chia cho phù hợp"). Kỹ năng zone17-builder giai đoạn cook, Orca Run `run_c1ecbe5f9173`, thư mục run `.thi360-dev/dot-3/` (ngoài repo). Issue cha UNI-2702, issue con UNI-2703..2744, TS = UNI-2701, FU = UNI-2700; bảng task ở `TASK.md`.
+- **Nhánh tích hợp** `integration/dot-3` = `develop` `1774c74d` + tài liệu đợt 3. Review độc lập vòng 4 và 5 (Codex) cho phần plan sửa sau khi duyệt; đã sửa ở `12d23578`, `e948ce88`. Quyết định trong lúc cook: B1 thêm `examId` vào `describe`/`reserve` của `EntitlementPort` (`16214331`); E26 mức tối thiểu 10.000 đồng cho sandbox, 5.000 mặc định môi trường thật (`8c43c5f2`).
+- **Sóng 1 đang chạy:** C-0 (cty), C-0b (bro), ML (bro), TS (cty), FS-4 (cty). Đã nhận: VP-1.
+- **VP-1 (UNI-2709) merge 2026-11-19** (PR #121, `171ee506`): đo trên sandbox VNPAY; vector chữ ký cho CM-3b (khóa test tự đặt); TM 8.4, E26, Q12, Q14 ghi kết quả đo. Ngân hàng NCB của sandbox từ chối dưới 10.000 đồng. `querydr` luôn trả `99`, `refund` trả HTTP 500 dù yêu cầu khớp tài liệu (đối chiếu từng trường hai lần): AC-3, AC-12, AC-14 chưa đo, chờ VNPAY trả lời Q9, Q14; VP-2 đo lại.
+- **Vướng:** Q9, Q14 chờ VNPAY (M.Trường hỏi). Tải VPS bro cao khi hai lane chạy E2E tại chỗ; chưa đặt lane thứ ba lên bro.
+- **Tiến độ:** 1/138 điểm (0,7%).
+
 ### Nhật ký đợt 1
 
 - T02 (UNI-2539) đã nghiệm thu và merge vào `integration/dot-1` (PR #4, `dda1504`).
