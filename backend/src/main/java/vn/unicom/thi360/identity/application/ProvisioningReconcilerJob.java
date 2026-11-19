@@ -32,6 +32,7 @@ import vn.unicom.thi360.identity.domain.RoleStatus;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.domain.UserIdentity;
 import vn.unicom.thi360.identity.domain.UserRole;
+import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
@@ -228,6 +229,13 @@ public class ProvisioningReconcilerJob {
             }
 
             Optional<UUID> kcIdOpt = keycloakClient.findUserIdByUsername(account.getUsername());
+            // AD-55: self-registration may recover only a subject whose username and email both match.
+            if (account.getSource() == UserSource.SELF_REGISTERED && kcIdOpt.isPresent()
+                    && !keycloakClient.matchesRegistrationIdentity(
+                            kcIdOpt.get(), account.getUsernameNormalized(), account.getEmailNormalized())) {
+                userAccountRepository.deleteById(provisionalId);
+                return ItemOutcome.DELETED;
+            }
             if (account.isIdpCleanupPending()) {
                 kcIdOpt.ifPresent(keycloakClient::deleteUser);
                 userAccountRepository.deleteById(provisionalId);

@@ -355,6 +355,17 @@ public class KeycloakIdentityClient {
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
+    /** Compare the full Keycloak subject with the normalized local identity before recovery. */
+    public boolean matchesRegistrationIdentity(UUID userId, String usernameNormalized, String emailNormalized) {
+        try {
+            UserRepresentation user = appRealm().users().get(userId.toString()).toRepresentation();
+            return usernameNormalized != null && emailNormalized != null
+                    && usernameNormalized.equals(vn.unicom.thi360.identity.domain.Normalizer.normalize(user.getUsername()))
+                    && emailNormalized.equals(vn.unicom.thi360.identity.domain.Normalizer.normalize(user.getEmail()));
+        } catch (RuntimeException ex) {
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
 
     public TokenResult passwordGrant(String realm, String username, String password) {
         ClientCredentials creds = resolveClientCredentials(realm);

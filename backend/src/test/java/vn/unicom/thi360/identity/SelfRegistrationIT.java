@@ -758,4 +758,92 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
             pool.shutdownNow();
         }
     }
+    @Test
+    void lostCreateResponseWithMatchingIdentityPromotesSubject() throws Exception {
+        String username = "reg.owned." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        doAnswer(invocation -> {
+            UUID id = (UUID) invocation.callRealMethod();
+            keycloakClient.setPassword(id, SelfRegistrationSupport.PASSWORD, false);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
+        }).when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway());
+        Mockito.reset(keycloakClient);
+        UUID provisional = support.accountId(username);
+        UUID subject = keycloakClient.findUserIdByUsername(username).orElseThrow();
+        assertThat(keycloakClient.matchesRegistrationIdentity(subject, username, email)).isTrue();
+        jdbcTemplate.update("UPDATE identity.user_account SET created_at = now() - interval '11 minutes' WHERE id = ?",
+                provisional);
+        reconcilerJob.reconcile();
+        assertThat(support.accountId(username)).isEqualTo(subject);
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT r.code_normalized FROM identity.user_role ur JOIN identity.role r ON r.id = ur.role_id"
+                        + " WHERE ur.user_id = ?", String.class, subject)).containsExactly("student");
+    }
+
+    @Test
+    void recoveredRegistrationMatchesEmailIgnoringCase() throws Exception {
+        String username = "reg.case." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        doAnswer(invocation -> {
+            UUID subject = (UUID) invocation.callRealMethod();
+            keycloakClient.setPassword(subject, SelfRegistrationSupport.PASSWORD, false);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
+        }).when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway());
+        Mockito.reset(keycloakClient);
+        UUID provisional = support.accountId(username);
+        UUID subject = keycloakClient.findUserIdByUsername(username).orElseThrow();
+        jdbcTemplate.update("UPDATE identity.user_account SET email = ?, created_at = now() - interval '11 minutes'"
+                        + " WHERE id = ?",
+                email.toUpperCase(java.util.Locale.ROOT), provisional);
+        assertThat(keycloakClient.matchesRegistrationIdentity(subject, username, email)).isTrue();
+        reconcilerJob.reconcile();
+        assertThat(support.accountId(username)).isEqualTo(subject);
+    }
+
+    @Test
+    void lostConflictResponseNeverClaimsOrDeletesUnrelatedSubject() throws Exception {
+        String username = "reg.unrelated." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        support.track(username, email);
+        UUID unrelated = keycloakClient.createUser(new CreateUserCommand(
+                username, "different." + email, "Other", "Person", null, true, false, false));
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null))
+                .when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway());
+        Mockito.reset(keycloakClient);
+        UUID provisional = support.accountId(username);
+        assertThat(keycloakClient.matchesRegistrationIdentity(unrelated, username, email)).isFalse();
+        jdbcTemplate.update("UPDATE identity.user_account SET created_at = now() - interval '11 minutes' WHERE id = ?",
+                provisional);
+        reconcilerJob.reconcile();
+        assertThat(support.liveAccountCount(username)).isZero();
+        assertThat(keycloakClient.findUserIdByUsername(username)).contains(unrelated);
+        keycloakClient.deleteUser(unrelated);
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void adminProvisioningKeepsExistingRecoveryBehavior() throws Exception {
+        String username = "reg.admin." + SelfRegistrationSupport.suffix();
+        String email = username + "@thi360.vn";
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null))
+                .when(keycloakClient).createSelfRegisteredUser(any(CreateUserCommand.class));
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway());
+        Mockito.reset(keycloakClient);
+        UUID provisional = support.accountId(username);
+        jdbcTemplate.update("UPDATE identity.user_account SET source = 1, created_at = now() - interval '11 minutes'"
+                + " WHERE id = ?", provisional);
+        UUID adminSubject = keycloakClient.createUser(new CreateUserCommand(
+                username, email, "Admin", "Created", null, true, false, false));
+        keycloakClient.setPassword(adminSubject, SelfRegistrationSupport.PASSWORD, false);
+        reconcilerJob.reconcile();
+        assertThat(support.accountId(username)).isEqualTo(adminSubject);
+    }
 }

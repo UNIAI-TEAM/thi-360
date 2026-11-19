@@ -305,6 +305,14 @@ public class SelfRegistrationService {
                     keycloakClient.deleteUser(stale.getId());
                     requiresNewTx.executeWithoutResult(status ->
                             userAccountRepository.updateIdpCleanupPending(stale.getId(), false, Instant.now(clock)));
+                } else if (stale.getSource() == UserSource.SELF_REGISTERED) {
+                    var subject = keycloakClient.findUserIdByUsername(stale.getUsername());
+                    if (subject.isPresent()
+                            && keycloakClient.matchesRegistrationIdentity(
+                                    subject.get(), stale.getUsernameNormalized(), stale.getEmailNormalized())) {
+                        keycloakClient.deleteUser(subject.get());
+                    }
+                    userAdminService.deleteProvisionalUserQuietly(stale.getId());
                 } else {
                     userAdminService.cleanupOwnedRegistrationBeforeRetry(stale);
                 }
