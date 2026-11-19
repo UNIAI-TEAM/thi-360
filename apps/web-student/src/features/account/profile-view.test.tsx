@@ -92,9 +92,11 @@ describe("ProfileView trạng thái màn", () => {
     mocks.loadProfile.mockResolvedValue(profile({ avatarUrl: null, avatarAssetId: null, phone: null }));
     renderView();
 
-    expect(await screen.findByRole("img", { name: "Chưa có ảnh đại diện, đang hiện chữ cái đầu tên" })).toHaveTextContent(
-      "NA",
-    );
+    const fallback = await screen.findByRole("img", { name: "Chưa có ảnh đại diện, đang hiện chữ cái đầu tên" });
+    expect(fallback).toHaveTextContent("NA");
+    // Cặp token của nền chính đặc: chữ trên nền sáng ở chế độ tối vẫn đọc được; không dùng màu trắng hay dải màu.
+    expect(fallback).toHaveClass("bg-primary-fill", "text-on-primary");
+    expect(fallback.className).not.toMatch(/text-white|gradient|from-|to-/);
     expect(screen.getByText("Bạn chưa nhập số điện thoại.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Xóa ảnh" })).toBeNull();
   });

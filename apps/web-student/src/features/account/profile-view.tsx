@@ -261,7 +261,7 @@ function AvatarCard({
         <span
           role="img"
           aria-label={t("currentEmpty")}
-          className="flex size-28 items-center justify-center rounded-full bg-gradient-to-br from-primary-800 to-primary-600 text-h2 font-bold text-white ring-4 ring-primary-50"
+          className="flex size-28 items-center justify-center rounded-full bg-primary-fill text-h2 font-bold text-on-primary ring-4 ring-primary-50"
         >
           {initials}
         </span>
