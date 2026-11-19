@@ -177,10 +177,11 @@ final class ScriptedSmtpServer implements AutoCloseable {
                         return; // đóng trước dấu kết thúc thân thư: không trả lời, không tính là đã nhận
                     }
                     lastData.set(data.toString());
-                    reply(out, echoDataInReply ? dataReply + " " + data.toString().replace('\n', ' ') : dataReply);
+                    // Đếm TRƯỚC khi xả 250: phía gửi thấy 250 thì bộ đếm đã có (R4-03).
                     if (dataReply.startsWith("250")) {
                         dataAccepted.incrementAndGet();
                     }
+                    reply(out, echoDataInReply ? dataReply + " " + data.toString().replace('\n', ' ') : dataReply);
                 } else if (command.startsWith("QUIT")) {
                     if (silentOnQuit) {
                         continue; // giữ kết nối mở, chờ phía gửi tự đóng khi hết thời gian chờ
