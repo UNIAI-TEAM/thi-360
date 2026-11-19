@@ -143,11 +143,15 @@ class PublishedExamSetIT extends AbstractIntegrationTest {
         try {
             jdbc.update("UPDATE questionbank.question SET source_code = ?, source_code_normalized = ? WHERE id = ?",
                     "TEMP-IMAGE", "TEMP-IMAGE", original);
+            jdbc.update("UPDATE questionbank.question_source_code_claim SET source_code_normalized = ? "
+                    + "WHERE question_id = ?", "TEMP-IMAGE", original);
             assertThatThrownBy(builder::build).isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("cannot be taken to READY");
             assertThat(jdbc.queryForObject("SELECT count(*) FROM questionbank.question WHERE source_code = ?",
                     Integer.class, code)).isZero();
         } finally {
+            jdbc.update("UPDATE questionbank.question_source_code_claim SET source_code_normalized = ? "
+                    + "WHERE question_id = ?", code, original);
             jdbc.update("UPDATE questionbank.question SET source_code = ?, source_code_normalized = ? WHERE id = ?",
                     code, code, original);
         }
