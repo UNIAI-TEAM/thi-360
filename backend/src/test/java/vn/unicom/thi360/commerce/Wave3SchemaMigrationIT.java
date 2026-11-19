@@ -73,7 +73,7 @@ class Wave3SchemaMigrationIT extends AbstractIntegrationTest {
                     "SELECT to_jsonb(u.*)::text FROM identity.user_account u WHERE id = ?",
                     String.class, userId);
 
-            flyway(url, null).migrate();
+            flyway(url, "202611191253").migrate();
 
             Map<String, Object> row = isolated.queryForMap(
                     "SELECT preferred_locale, (to_jsonb(u.*) - 'preferred_locale')::text AS rest"
