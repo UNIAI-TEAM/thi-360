@@ -2,10 +2,12 @@
 
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
+import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { fieldBase } from "../lib/styles";
 
-export type SelectOption = { value: string; label: string; disabled?: boolean };
+/** `label` nhận nút React để bọc phần chữ là nội dung đề (`data-exam-content`); chữ thuần vẫn dùng như trước. */
+export type SelectOption = { value: string; label: ReactNode; disabled?: boolean };
 
 export type SelectProps = {
   options: SelectOption[];

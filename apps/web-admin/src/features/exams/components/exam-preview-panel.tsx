@@ -16,7 +16,7 @@ import {
 import { ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, RefreshCw, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueStructureHref } from "../check";
 import { errorCodeOf } from "../review-api";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
@@ -27,7 +27,7 @@ import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
-import { useChoiceNameResolver, useIssueText, useLookup, usePathLabel } from "./exam-review-shared";
+import { richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
   exam: ExamDetail;
@@ -71,6 +71,7 @@ export function ExamPreviewPanel({
   const format = useFormatter();
   const lookup = useLookup();
   const pathLabel = usePathLabel(exam.id);
+  const pathNode = usePathNode(exam.id);
   const nameOf = useChoiceNameResolver();
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);
@@ -200,10 +201,11 @@ export function ExamPreviewPanel({
     start();
   });
 
-  const optionLabel = (option: PathOption) => {
-    const label = pathLabel(option.path);
-    if (option.result === "INVALID") return t("pathOptionInvalid", { path: label });
-    if (option.result === "UNCONFIRMED") return t("pathOptionUnconfirmed", { path: label });
+  /** Tên đường trong ô chọn: tên lựa chọn của mẫu nằm trong `ExamName`, chữ "(không sinh được)" ở ngoài. */
+  const optionLabel = (option: PathOption): ReactNode => {
+    const label = pathNode(option.path);
+    if (option.result === "INVALID") return richNodes(t, "pathOptionInvalid", { path: label });
+    if (option.result === "UNCONFIRMED") return richNodes(t, "pathOptionUnconfirmed", { path: label });
     return label;
   };
 

@@ -5,8 +5,9 @@ import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { mapExamDetail } from "../api-mapping";
 import { ExamReviewCheck } from "../components/exam-review-check";
+import { ExamReviewView } from "../components/exam-review-view";
 import { ExamVersionsView } from "../components/exam-versions-view";
-import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
+import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 import { HSA_001_CHECK } from "./review-fixtures";
 
 vi.mock("next/navigation", () => ({
@@ -116,6 +117,87 @@ describe("tab Kiểm tra bản en: tên của mẫu nằm trong data-exam-conten
     expect(fix).toHaveAccessibleName("Go to the matrix row to fix for Khoa học");
     expect(fix.getAttribute("aria-label")).toBe("Go to the matrix row to fix for");
     expect(screen.getAllByRole("link", { name: /^Open block / }).length).toBeGreaterThan(0);
+  });
+});
+
+/** Nhóm có vấn đề gắn `optionId`: câu "Phần (Lựa chọn): …" và "Lựa chọn: …" dựng từ `useIssueWithPath`. */
+const CHECK_WITH_OPTION_ISSUES = {
+  ...CHECK_WITH_MANUAL,
+  groups: (CHECK_WITH_MANUAL.groups ?? []).map((group) => {
+    const issue = (code: string, extra: Record<string, unknown>) => ({
+      key: `${code}|${group.group}`,
+      code,
+      severity: "UNCONFIRMED",
+      group: group.group,
+      partId: "part-33",
+      ...extra,
+    });
+    if (group.group === "STRUCTURE") {
+      // Câu mở đầu bằng tên phần, tên phần không chứa tên lựa chọn: "Tự luận Ngữ văn (Tiếng Anh): …".
+      return { ...group, status: "WARN", issues: [issue("OPTION_UNCONFIRMED", { partName: "Tự luận Ngữ văn", optionId: "opt-30" })] };
+    }
+    if (group.group === "MATRIX") {
+      // Câu không mở đầu bằng tên phần: "Khoa học: Block …".
+      return {
+        ...group,
+        status: "WARN",
+        issues: [issue("CELL_SHORTAGE", { subjectCode: "MATH", blockId: "blk-1", blockName: "Hàm số bậc hai", optionId: "opt-sci-1", required: 4, available: 2 })],
+      };
+    }
+    return group;
+  }),
+};
+
+describe("tab Kiểm tra bản en: vấn đề có optionId", () => {
+  it("tên phần và tên lựa chọn nằm trong vùng nội dung, câu giao diện ở ngoài", async () => {
+    new FakeServer().on("GET", CHECK_PATH, { status: 200, body: CHECK_WITH_OPTION_ISSUES }).install();
+    const { container } = renderWithProviders(<ExamReviewCheck exam={mapExamDetail(examDetailWire())} onPreview={() => {}} active />, {
+      locale: "en",
+      messages: en,
+    });
+    await screen.findByRole("heading", { name: "Details by block" });
+
+    // Thẻ nhóm dựng câu bằng `useIssueWithPath`; danh sách lỗi bên dưới dùng `useIssueNode` nên không ở trong phép kiểm này.
+    const groups = within(document.querySelector<HTMLElement>('section[aria-labelledby="review-groups-title"]')!);
+    const partSentences = groups.getAllByText(/the per-subject counts of this option await expert confirmation/, { selector: "p" });
+    expect(partSentences.length).toBeGreaterThan(0);
+    for (const sentence of partSentences) {
+      expect(sentence.textContent).toMatch(/^Tự luận Ngữ văn \(Tiếng Anh\): /);
+      expect([...sentence.querySelectorAll("[data-exam-content]")].map((node) => node.textContent)).toEqual(["Tự luận Ngữ văn", "Tiếng Anh"]);
+    }
+
+    const pathSentences = groups.getAllByText((_, element) => element?.tagName === "P" && /^Khoa học: /.test(element.textContent ?? ""));
+    expect(pathSentences.length).toBeGreaterThan(0);
+    for (const sentence of pathSentences) expect(sentence.querySelector("[data-exam-content]")?.textContent).toBe("Khoa học");
+    expect(vietnameseOutsideExamContent(container)).toEqual([]);
+  });
+});
+
+describe("tab Kiểm tra bản en: ô Đường lựa chọn của Đề xem trước", () => {
+  it("tên đường đang chọn và các lựa chọn nằm trong vùng nội dung, chữ giao diện ở ngoài", async () => {
+    new FakeServer()
+      .on("GET", EXAM_PATH, {
+        status: 200,
+        body: examDetailWire({ parts: [{ ...FIXED_PART, participation: { mode: "CHOICE", choose: 1 } }] as never }),
+      })
+      .on("GET", CHECK_PATH, { status: 200, body: CHECK_WITH_MANUAL })
+      .install();
+    const { container } = renderWithProviders(<ExamReviewView examId={EXAM_ID} />, { locale: "en", messages: en });
+    await screen.findByRole("heading", { name: "Details by block" });
+
+    // Tab Đề xem trước giữ trong DOM (ẩn) khi đang ở tab Kiểm tra: kiểm lẫn ngôn ngữ vẫn quét nó.
+    const combobox = screen.getByRole("combobox", { name: "Choice path", hidden: true });
+    expect(combobox.querySelector("[data-exam-content]")?.textContent).toMatch(/^(Khoa học|Tiếng Anh)$/);
+    expect(vietnameseOutsideExamContent(container)).toEqual([]);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "Preview paper" }));
+    await user.click(screen.getByRole("combobox", { name: "Choice path" }));
+    const options = within(await screen.findByRole("listbox")).getAllByRole("option");
+    const texts = options.map((option) => option.textContent);
+    expect(texts).toContain("Khoa học (cannot generate)");
+    expect(options.every((option) => option.querySelector("[data-exam-content]"))).toBe(true);
+    expect(vietnameseOutsideExamContent(document.body)).toEqual([]);
   });
 });
 
