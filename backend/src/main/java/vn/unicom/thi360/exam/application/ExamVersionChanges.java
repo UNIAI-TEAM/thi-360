@@ -32,6 +32,9 @@ public final class ExamVersionChanges {
             }
             for (String name : names) {
                 if ("resolvedQuotas".equals(name)) continue;
+                // Who saved the listing and when is history, and kindCode only freezes kindItemId: not changes.
+                if ("config/listing".equals(path) && ExamListingSnapshot.METADATA.contains(name)) continue;
+                if ("config".equals(path) && "kindCode".equals(name)) continue;
                 if ("paths".equals(name) && path.startsWith("parts/parts/")) continue;
                 compare(before.get(name), after.get(name), path + "/" + name, blockId, out);
             }

@@ -30,6 +30,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
 @Transactional
 class VsatEnglishPartExamIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     /** Row 7: PART P2 of V-SAT English is one six-question choice set with the passage. */
     @Test
@@ -217,6 +218,7 @@ class VsatEnglishPartExamIT extends AbstractIntegrationTest {
                 .put("expectedRevision", detail.path("revision").asLong());
         var pathIds = publish.putArray("pathIds");
         result.path("paths").forEach(path -> pathIds.add(path.path("pathId").asText()));
+        ExamListingFixture.fill(jdbc, UUID.fromString(id));
         mockMvc.perform(post("/api/v1/admin/exams/{id}/publish", id)
                         .with(asUser(Permissions.EXAM_PUBLISH))
                         .header("Idempotency-Key", UUID.randomUUID().toString())

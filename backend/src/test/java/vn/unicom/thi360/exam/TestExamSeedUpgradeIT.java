@@ -385,6 +385,7 @@ class TestExamSeedUpgradeIT extends AbstractIntegrationTest {
         ArrayNode pathIds = body.putArray("pathIds");
         result.path("paths").forEach(path -> pathIds.add(path.path("pathId").asText()));
         body.put("expectedRevision", jdbc.queryForObject("SELECT revision FROM exam.exam WHERE code = ?", Long.class, code));
+        ExamListingFixture.fill(jdbc, idOf(code));
         mockMvc.perform(post("/api/v1/admin/exams/{id}/publish", idOf(code))
                         .with(asUser(Permissions.EXAM_PUBLISH, Permissions.EXAM_MODIFY, Permissions.EXAM_VIEW))
                         .header("Idempotency-Key", UUID.randomUUID().toString())

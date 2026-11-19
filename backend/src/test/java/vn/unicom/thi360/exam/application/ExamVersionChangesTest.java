@@ -48,4 +48,17 @@ class ExamVersionChangesTest {
         assertThat(changes.getFirst().kind()).isEqualTo("BLOCK_ADDED");
         assertThat(changes.getFirst().blockId()).isEqualTo("b");
     }
+
+    @Test
+    void listingChangeIsReported() throws Exception {
+        var before = mapper.readTree("{\"listing\":{\"listPriceVnd\":100000,\"summary\":\"Same\",\"coverAssetId\":null}}");
+        var after = mapper.readTree("{\"listing\":{\"listPriceVnd\":120000,\"summary\":\"Same\",\"coverAssetId\":null}}");
+        var changes = ExamVersionChanges.between(before, null, after, null);
+        assertThat(changes).hasSize(1);
+        assertThat(changes.getFirst().where()).isEqualTo("config/listing/listPriceVnd");
+        assertThat(changes.getFirst().before()).isEqualTo("100000");
+        assertThat(changes.getFirst().after()).isEqualTo("120000");
+        // A listing that did not change is not a change.
+        assertThat(ExamVersionChanges.between(before, null, before, null)).isEmpty();
+    }
 }

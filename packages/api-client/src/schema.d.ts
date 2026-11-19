@@ -667,6 +667,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/exams/{examId}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tải ảnh bìa (jpg, png, webp; tối đa 2 MB, 4.096 px; cạnh ngắn từ 480 px)
+         * @description Chỉ tạo ảnh. PUT listing mới gắn ảnh vào bài.
+         */
+        post: operations["uploadExamCover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{examId}/cover/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xem ảnh bìa bản nháp */
+        get: operations["getExamCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/exams/{examId}/discontinue": {
         parameters: {
             query?: never;
@@ -677,6 +714,24 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["discontinueExam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{examId}/listing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thông tin bán: bản làm việc, bản đang bán, lỗi kiểm tra */
+        get: operations["getExamListing"];
+        /** Lưu thông tin bán của bài thi */
+        put: operations["updateExamListing"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3874,6 +3929,8 @@ export interface components {
             invalidReason?: string;
             /** Format: int32 */
             issueCount?: number;
+            /** @description Nhóm Thông tin bán, tính lúc đọc từ bản làm việc; không nằm trong groups[] và không lưu vào kết quả kiểm tra */
+            listingCheck?: components["schemas"]["ExamListingCheckGroup"];
             maxScore?: number;
             /** Format: int32 */
             partCount?: number;
@@ -3935,6 +3992,12 @@ export interface components {
             issueCount: number;
             /** @description UNCHECKED | VALID | INVALID | NEEDS_RECHECK */
             status: string;
+        };
+        ExamCoverUpload: {
+            /** Format: uuid */
+            assetId?: string;
+            /** @description Opens the image; the cover is attached by PUT listing, not by this upload */
+            url?: string;
         };
         /** @description Chi tiết bài thi kèm cấu trúc làm việc (spec 9.2 ExamDetail) */
         ExamDetailResponse: {
@@ -4062,6 +4125,101 @@ export interface components {
             timing: string;
             /** @description Bảng điểm Đúng/Sai nhiều ý (số điểm theo số ý đúng) */
             trueFalseScoring?: components["schemas"]["JsonNode"];
+        };
+        ExamListing: {
+            /**
+             * Format: int32
+             * @description Attempts granted by one purchase, 1 to 100
+             */
+            attemptsGranted?: number;
+            audience?: string;
+            benefitAiExplanation?: boolean;
+            benefitNote?: string;
+            benefitPractice?: boolean;
+            benefitStrengthWeakness?: boolean;
+            /** @description Listing issues of the working copy, computed now */
+            checkIssues?: components["schemas"]["ExamListingCheckIssue"][];
+            /** Format: uuid */
+            coverAssetId?: string;
+            /** @description Where the admin web reads the draft cover */
+            coverUrl?: string;
+            /** @description exam.description; lives on the exam row */
+            description?: string;
+            /** Format: uuid */
+            examId?: string;
+            hasUnpublishedChanges?: boolean;
+            /**
+             * Format: int64
+             * @description List price in VND, tax and fees included
+             */
+            listPriceVnd?: number;
+            /**
+             * Format: int64
+             * @description Smallest price accepted at publish (THI360_VNPAY_MIN_AMOUNT)
+             */
+            minPriceVnd?: number;
+            objectives?: string;
+            /** @description Listing of the latest version that still serves a path (E24); null when there is none or that version predates the listing */
+            published?: components["schemas"]["ExamListingPublished"];
+            /** @enum {string} */
+            resultView?: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+            /**
+             * Format: int64
+             * @description Exam revision; send it back as expectedRevision
+             */
+            revision?: number;
+            summary?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ExamListingCheckGroup: {
+            /** @enum {string} */
+            group?: "LISTING";
+            issues?: components["schemas"]["ExamListingCheckIssue"][];
+            /** @enum {string} */
+            status?: "PASS" | "WARN" | "FAIL";
+        };
+        ExamListingCheckIssue: {
+            /** @description LISTING_PRICE_MISSING, LISTING_PRICE_ZERO, LISTING_PRICE_BELOW_MIN, LISTING_ATTEMPTS_MISSING, LISTING_DESCRIPTION_MISSING or LISTING_COVER_MISSING */
+            code?: string;
+            /** @description Listing field the issue is about */
+            field?: string;
+            group?: string;
+            key?: string;
+            /**
+             * Format: int64
+             * @description Minimum price in VND, only on LISTING_PRICE_BELOW_MIN
+             */
+            minPriceVnd?: number;
+            /** @enum {string} */
+            severity?: "ERROR" | "WARNING";
+        };
+        ExamListingPublished: {
+            listing?: components["schemas"]["ExamListingSale"];
+            /** Format: date-time */
+            publishedAt?: string;
+            /** Format: int32 */
+            versionNo?: number;
+        };
+        ExamListingSale: {
+            /** Format: int32 */
+            attemptsGranted?: number;
+            audience?: string;
+            benefitAiExplanation?: boolean;
+            benefitNote?: string;
+            benefitPractice?: boolean;
+            benefitStrengthWeakness?: boolean;
+            /** Format: uuid */
+            coverAssetId?: string;
+            coverUrl?: string;
+            description?: string;
+            /** Format: int64 */
+            listPriceVnd?: number;
+            name?: string;
+            objectives?: string;
+            /** @enum {string} */
+            resultView?: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+            summary?: string;
         };
         /** @description Cập nhật tổng quan bài thi */
         ExamOverviewRequest: {
@@ -6373,6 +6531,49 @@ export interface components {
             timing: string;
             /** @description Bảng điểm Đúng/Sai nhiều ý; null khi kỳ thi không dùng */
             trueFalseScoring?: components["schemas"]["JsonNode"];
+        };
+        UpdateExamListingRequest: {
+            /**
+             * Format: int32
+             * @description 1 to 100; null clears
+             */
+            attemptsGranted?: number;
+            /** @description At most 2.000 characters; blank clears */
+            audience?: string;
+            /** @description null counts as false */
+            benefitAiExplanation?: boolean;
+            /** @description At most 1.000 characters; blank clears */
+            benefitNote?: string;
+            /** @description null counts as false */
+            benefitPractice?: boolean;
+            /** @description null counts as false */
+            benefitStrengthWeakness?: boolean;
+            /**
+             * Format: uuid
+             * @description A cover uploaded for this exam; null clears
+             */
+            coverAssetId?: string;
+            /** @description exam.description, at most 4.000 characters; blank clears */
+            description?: string;
+            /**
+             * Format: int64
+             * @description Revision being edited; a different one gives 412 EXAM_REVISION_CONFLICT
+             */
+            expectedRevision: number;
+            /**
+             * Format: int64
+             * @description VND, 0 or more; null clears
+             */
+            listPriceVnd?: number;
+            /** @description At most 2.000 characters; blank clears */
+            objectives?: string;
+            /**
+             * @description SCORE, SCORE_AND_ANSWERS or FULL_SOLUTION; null keeps SCORE_AND_ANSWERS
+             * @enum {string}
+             */
+            resultView?: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+            /** @description At most 300 characters; blank clears */
+            summary?: string;
         };
         /** @description Thay toàn bộ cấu trúc bản làm việc (PUT /exams/{id}/structure, spec 9.2) */
         UpdateExamStructureRequest: {
@@ -13888,6 +14089,277 @@ export interface operations {
             };
         };
     };
+    uploadExamCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Tệp ảnh; loại nhận theo chữ ký byte, không theo đuôi
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamCoverUpload"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getExamCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image bytes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     discontinueExam: {
         parameters: {
             query?: never;
@@ -13912,6 +14384,270 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ExamDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getExamListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamListing"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateExamListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExamListingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamListing"];
                 };
             };
             /** @description Bad Request */

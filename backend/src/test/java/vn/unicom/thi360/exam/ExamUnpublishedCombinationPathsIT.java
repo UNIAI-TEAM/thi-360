@@ -62,20 +62,27 @@ class ExamUnpublishedCombinationPathsIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void publishingOnePathLeavesTheOtherFour() throws Exception {
+    void publishingEveryCodeTogetherLeavesNoPathUnpublished() throws Exception {
+        // E24 (BS 8): a QDA exam publishes every valid code together, so one code alone is refused and nothing is published.
         String base = create("QDA", "FULL", null, null, "STANDARD");
         JsonNode check = check(base);
         List<String> all = ids(check);
         assertThat(all).hasSize(5);
-        String published = all.getFirst();
-        assertThat(pathResult(check, published)).as("path result of %s in %s", published, check).isEqualTo("VALID");
+        all.forEach(path -> assertThat(pathResult(check, path)).as("path result of %s in %s", path, check).isEqualTo("VALID"));
         JsonNode exam = json(get(base).with(asUser(Permissions.EXAM_VIEW)), 200);
-        var body = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
-        body.putArray("pathIds").add(published);
+        ExamListingFixture.fill(jdbc, UUID.fromString(exam.path("id").asText()));
+        var one = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
+        one.putArray("pathIds").add(all.getFirst());
         json(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString())
-                .contentType(MediaType.APPLICATION_JSON).content(body.toString()), 200);
-        assertThat(unpublishedIds(base)).isEqualTo(all.subList(1, 5));
+                .contentType(MediaType.APPLICATION_JSON).content(one.toString()), 422);
+        assertThat(unpublishedIds(base)).isEqualTo(all);
+        var everyCode = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
+        all.forEach(everyCode.putArray("pathIds")::add);
+        json(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .contentType(MediaType.APPLICATION_JSON).content(everyCode.toString()), 200);
+        assertThat(unpublishedIds(base)).isEmpty();
     }
 
     @Test

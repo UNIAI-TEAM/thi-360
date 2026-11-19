@@ -135,6 +135,7 @@ class ExamReviewAnyAnswerTypeIT extends AbstractIntegrationTest {
         entityManager.flush();
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, UUID.fromString(id));
         String path = check.path("paths").get(0).path("pathId").asText();
+        ExamListingFixture.fill(jdbc, UUID.fromString(id));
         mockMvc.perform(post("/api/v1/admin/exams/{id}/publish", id)
                         .with(asUser(UUID.randomUUID(), "publisher", Permissions.EXAM_PUBLISH))
                         .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
