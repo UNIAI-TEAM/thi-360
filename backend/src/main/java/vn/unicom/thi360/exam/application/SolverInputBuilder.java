@@ -37,6 +37,7 @@ import vn.unicom.thi360.exam.domain.solver.SlotParentQuota;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
 import vn.unicom.thi360.exam.domain.solver.SubjectChoice;
 import vn.unicom.thi360.exam.domain.solver.SubjectQuota;
+import vn.unicom.thi360.exam.domain.solver.TopicCap;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
@@ -157,7 +158,7 @@ public class SolverInputBuilder {
                     filter.additionalCompetencyGroups(), filter.everyChildInScope(),
                     filter.additionalEveryChildInScope(),
                     dimension == FilterDimension.AUDIO ? QuestionSourcePort.AudioRequirement.ANY
-                            : filter.audioRequirement());
+                            : filter.audioRequirement(), filter.excludedKnowledge());
         }
 
         /**
@@ -341,19 +342,21 @@ public class SolverInputBuilder {
                     List<List<String>> slotCompetencies = slot == null || slot.knowledgeScope() == null
                             || slot.knowledgeScope().competencyCodes().isEmpty() ? List.of()
                             : List.of(slot.knowledgeScope().competencyCodes());
+                    List<UUID> excluded = withDescendants(compiled.exclusions().getOrDefault(block.id(), List.of()),
+                            knowledge, knowledgeById, descendants);
                     filters.put(group, new QuestionSourcePort.Filter(subject, subtrees,
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                             shape, answerFormats(block), conditions,
                             slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
                             slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())),
-                            audio(section.audioRequirement())));
+                            audio(section.audioRequirement()), excluded));
                     groups.add(group);
                 }
             }
             result.add(new SectionOnPath(section.subjectCode(), section.id(), choice ? null : section.questionCount(),
                     subjectQuota(section, knowledge, knowledgeById, descendants,
-                            examQuotas.getOrDefault(section.subjectCode(), List.of())), groups,
+                            examQuotas.getOrDefault(section.subjectCode(), List.of()), compiled.caps()), groups,
                     section.choiceGroup() == null ? null : section.choiceGroup().name()));
         }
         return result;
@@ -419,7 +422,8 @@ public class SolverInputBuilder {
 
     private static SubjectQuota subjectQuota(ExamSection section, List<CatalogItemView> knowledge,
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
-            List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota> examQuotas) {
+            List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota> examQuotas,
+            List<CompiledMapidRules.Cap> caps) {
         SubjectQuota.AnswerQuotas answers = null;
         if (section.answerQuotas() != null) {
             answers = new SubjectQuota.AnswerQuotas(section.answerQuotas().items().stream()
@@ -428,7 +432,22 @@ public class SolverInputBuilder {
                             : QuotaUnit.valueOf(section.answerQuotas().unit().name()));
         }
         return new SubjectQuota(answers, matrix(section.matrix()),
-                topics(section.topicQuotas(), knowledge, knowledgeById, descendants), examQuotas);
+                topics(section.topicQuotas(), knowledge, knowledgeById, descendants), examQuotas,
+                caps.stream().map(cap -> new TopicCap(cap.ruleId(),
+                        cap.scope() == CompiledMapidRules.Cap.Scope.GROUP ? cap.groupId() : null,
+                        withDescendants(cap.nodeIds(), knowledge, knowledgeById, descendants).stream()
+                                .map(UUID::toString).toList(), cap.max())).toList());
+    }
+
+    /** The nodes and every descendant of each, without duplicates; unknown nodes stay out, as for topic quotas. */
+    private static List<UUID> withDescendants(List<UUID> nodes, List<CatalogItemView> knowledge,
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+        return nodes.stream().flatMap(id -> descendants.computeIfAbsent(id, key -> {
+            CatalogItemView root = knowledgeById.get(key);
+            if (root == null) return List.of();
+            return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                    .map(CatalogItemView::id).toList();
+        }).stream()).distinct().toList();
     }
 
     private static List<vn.unicom.thi360.exam.domain.solver.TopicQuota> topics(

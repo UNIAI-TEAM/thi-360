@@ -166,11 +166,24 @@ class MapidCapSolverTest {
         for (int i = 0; i < 3; i++) add(QuestionType.SHORT_ANSWER, candidate("ab" + i, QuestionType.SHORT_ANSWER, A, B));
         for (int i = 0; i < 3; i++) add(QuestionType.SHORT_ANSWER, candidate("w" + i, QuestionType.SHORT_ANSWER));
         ExamSection section = section(3, List.of(single("g1", QuestionType.SHORT_ANSWER, 3)),
-                exact("capA", null, 1, A),
+                exact("capA", null, 0, A),
                 new MapidRule("minB", MapidRuleType.COUNT, null, List.of(B), MapidComparator.AT_LEAST, 3, null));
         PathResult result = solve(section, SolveMode.check());
         assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
         assertThat(result.failingQuota()).isNotNull();
+        assertThat(result.failingQuota().kind()).isEqualTo("TOPIC_CAP");
+        assertThat(result.failingQuota().key()).isEqualTo("capA");
+    }
+
+    @Test
+    void aGroupShortOfCapFreeSourceNamesTheRule() {
+        for (int i = 0; i < 3; i++) add(QuestionType.SHORT_ANSWER, candidate("a" + i, QuestionType.SHORT_ANSWER, A));
+        for (int i = 0; i < 2; i++) add(QuestionType.SHORT_ANSWER, candidate("w" + i, QuestionType.SHORT_ANSWER));
+        ExamSection section = section(3, List.of(single("g1", QuestionType.SHORT_ANSWER, 3)),
+                exact("capA", null, 0, A));
+        PathResult result = solve(section, SolveMode.check());
+        assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
+        assertThat(result.groupId()).isEqualTo("g1");
         assertThat(result.failingQuota().kind()).isEqualTo("TOPIC_CAP");
         assertThat(result.failingQuota().key()).isEqualTo("capA");
     }

@@ -13,13 +13,20 @@ import java.util.Set;
  * @param answerQuotas chỉ tiêu theo dạng trả lời (D22), ví dụ Toán HSA SINGLE_CHOICE 35 +
  *                     SHORT_ANSWER 15; null khi môn không kiểm soát dạng trả lời
  * @param matrix       chỉ tiêu lớp × độ khó của môn; null khi không kiểm soát
+ * @param caps         cận trên số đơn vị mang một MAPID (UNI-2758), của cả môn hoặc của một nhóm
  */
 public record SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas,
-        List<ExamDimensionQuota> examQuotas) {
+        List<ExamDimensionQuota> examQuotas, List<TopicCap> caps) {
 
     public SubjectQuota {
         topicQuotas = topicQuotas == null ? List.of() : List.copyOf(topicQuotas);
         examQuotas = examQuotas == null ? List.of() : List.copyOf(examQuotas);
+        caps = caps == null ? List.of() : List.copyOf(caps);
+    }
+
+    public SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas,
+            List<ExamDimensionQuota> examQuotas) {
+        this(answerQuotas, matrix, topicQuotas, examQuotas, List.of());
     }
 
     public SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas) {

@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
-import vn.unicom.thi360.exam.application.CompiledMapidRules.Cap;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
@@ -91,17 +90,6 @@ class MapidRuleSolverInputTest {
         verify(source).findCandidates(filter.capture(), anyInt());
         assertThat(filter.getValue().knowledgeGroups()).singleElement()
                 .satisfies(nodes -> assertThat(nodes).containsExactly(LEGACY));
-    }
-
-    @Test
-    void capsCarriedNotYetEnforced() {
-        var input = build(section(MapidMode.MATRIX, List.of(
-                new MapidRule("exact", MapidRuleType.COUNT, null, List.of(ROOT), MapidComparator.EXACT, 3, null),
-                new MapidRule("only", MapidRuleType.ONLY_IN_GROUP, "g", List.of(CHILD), null, null, null))));
-        var compiled = input.mapid().get("s");
-        assertThat(compiled.caps()).containsExactly(new Cap("exact", Cap.Scope.SUBJECT, null, List.of(ROOT), 3));
-        assertThat(compiled.exclusions()).isEmpty();
-        assertThat(input.withParts(input.parts()).mapid()).isEqualTo(input.mapid());
     }
 
     private SolverInputBuilder.SolverInput build(ExamSection section) {

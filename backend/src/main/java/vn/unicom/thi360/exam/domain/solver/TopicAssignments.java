@@ -15,6 +15,7 @@ final class TopicAssignments {
     private record Scope(String level, String id, List<TopicQuota> quotas) {}
 
     static boolean hasQuotas(Prep.SubproblemContext ctx) {
+        if (!ctx.caps().isEmpty()) return true;
         for (SectionOnPath section : ctx.sections()) {
             if (!section.subjectQuota().topicQuotas().isEmpty()
                     || !section.subjectQuota().examQuotas().isEmpty()) return true;
@@ -36,7 +37,7 @@ final class TopicAssignments {
      * khác có cùng tập khóa đã chọn. {@code assign()} cũng dùng cùng cặp phạm vi này để gom đơn
      * vị vào từng scope.
      */
-    static String signature(Prep.SubproblemContext ctx, int g, PathCandidate candidate) {
+    static String signature(Prep.SubproblemContext ctx, int g, int index, PathCandidate candidate) {
         GroupQuota group = ctx.groups().get(g).group();
         String id = group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
         SectionOnPath section = ctx.sections().get(ctx.sectionOf()[g]);
@@ -53,6 +54,7 @@ final class TopicAssignments {
                 signature.append(':').append(unit.gradeCode()).append(':').append(unit.difficultyCode());
             }
         }
+        if (!ctx.caps().isEmpty()) signature.append('#').append(java.util.Arrays.toString(ctx.capUse()[g][index]));
         return signature.toString();
     }
 
@@ -72,6 +74,38 @@ final class TopicAssignments {
     /** Null means the selected units cannot meet all quotas. */
     static Map<Pick, List<TopicAssignment>> assign(Prep.SubproblemContext ctx,
             List<List<Integer>> selected, Runnable deadline) {
+        return assign(ctx, selected, deadline, null);
+    }
+
+    /** Id of the topic scope of a group: the block itself, or the parent block for the slots of a slot parent. */
+    static String scopeId(GroupQuota group) {
+        return group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
+    }
+
+    /**
+     * The caps the selection exceeds: the final witness check of the upper bounds. {@code relaxed} (nullable)
+     * marks caps to ignore, used only to find which cap makes a section infeasible.
+     */
+    static boolean capsMet(Prep.SubproblemContext ctx, List<List<Integer>> selected, boolean[] relaxed) {
+        int caps = ctx.caps().size();
+        if (caps == 0) return true;
+        int[] used = new int[caps];
+        for (int g = 0; g < ctx.groups().size(); g++) {
+            for (int i : selected.get(g)) {
+                int[] use = ctx.capUse()[g][i];
+                for (int k = 0; k < caps; k++) used[k] += use[k];
+            }
+        }
+        for (int k = 0; k < caps; k++) {
+            if ((relaxed == null || !relaxed[k]) && used[k] > ctx.caps().get(k).cap().max()) return false;
+        }
+        return true;
+    }
+
+    /** Null means the selected units cannot meet all quotas, or exceed a cap that is not {@code relaxed}. */
+    static Map<Pick, List<TopicAssignment>> assign(Prep.SubproblemContext ctx,
+            List<List<Integer>> selected, Runnable deadline, boolean[] relaxed) {
+        if (!capsMet(ctx, selected, relaxed)) return null;
         if (!examQuotasMet(ctx, selected, deadline)) return null;
         Map<Scope, List<Unit>> scopes = new LinkedHashMap<>();
         for (int s = 0; s < ctx.sections().size(); s++) {

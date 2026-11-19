@@ -375,6 +375,7 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                         f.additionalKnowledgeGroups().get(j), everyChild);
             }
         }
+        addExcludedKnowledge(parts, params, p + "excludedKnowledge", f.excludedKnowledge());
         if (f.itemShape() != null) {
             String rootShape = shapePredicate("q.type", "v.snapshot", p + "shape", f.itemShape(), params);
             String childShape = shapePredicate("c.type", "cv.snapshot", p + "childShape", f.itemShape(), params);
@@ -510,6 +511,20 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                     + "and k.knowledge_item_id in (:" + key + "))");
         }
         parts.add("(" + String.join(" or ", alternatives) + ")");
+    }
+
+    /**
+     * A candidate carrying an excluded node is dropped: the question itself, or for a set any live child (or the
+     * set root), exactly the rows the scope filter reads, so a set with one excluded child goes as a whole.
+     */
+    private static void addExcludedKnowledge(List<String> parts, MapSqlParameterSource params, String key,
+            List<UUID> excluded) {
+        if (excluded == null || excluded.isEmpty()) return;
+        params.addValue(key, excluded);
+        parts.add("not exists (select 1 from questionbank.question_knowledge k "
+                + "join questionbank.question x on x.id=k.question_id "
+                + "where (x.id=q.id or (x.parent_id=q.id and x.deleted_at is null)) "
+                + "and k.knowledge_item_id in (:" + key + "))");
     }
 
     private String shapePredicate(String type, String snapshot, String prefix,

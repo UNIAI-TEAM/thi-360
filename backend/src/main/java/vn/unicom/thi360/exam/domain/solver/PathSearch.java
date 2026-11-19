@@ -63,9 +63,20 @@ final class PathSearch {
     private final Set<String> usedKeys = new HashSet<>();
     private long steps;
 
+    // upper bounds (TopicCap): cap vector of each class, cap budget still free, caps to ignore (diagnosis only)
+    private final List<int[]> classCaps = new ArrayList<>();
+    private int[] capRem;
+    private final boolean[] relaxed;
+
     PathSearch(Prep.SubproblemContext ctx, Runnable deadlineCheck) {
+        this(ctx, deadlineCheck, null);
+    }
+
+    /** {@code relaxed[k]} true ignores cap k: only to tell which cap makes an infeasible section infeasible. */
+    PathSearch(Prep.SubproblemContext ctx, Runnable deadlineCheck, boolean[] relaxed) {
         this.ctx = ctx;
         this.deadlineCheck = deadlineCheck;
+        this.relaxed = relaxed;
     }
 
     /**
@@ -87,6 +98,10 @@ final class PathSearch {
             remUnits[g] = ctx.groups().get(g).units();
         }
         consumed = new int[classVecs.size()];
+        capRem = new int[ctx.caps().size()];
+        for (int k = 0; k < capRem.length; k++) {
+            capRem[k] = relaxed != null && relaxed[k] ? Integer.MAX_VALUE / 2 : ctx.caps().get(k).cap().max();
+        }
         @SuppressWarnings("unchecked")
         List<int[]>[] ch = new List[nPairs];
         chosen = ch;
@@ -129,11 +144,11 @@ final class PathSearch {
                 if ((i & 0x3FF) == 0) {
                     deadlineCheck.run();
                 }
-                if (!ctx.usable()[g][i]) {
+                if (!usable(g, i)) {
                     continue;
                 }
                 int[] vec = ctx.contrib()[g][i];
-                String topicSet = TopicAssignments.signature(ctx, g, pool.get(i));
+                String topicSet = TopicAssignments.signature(ctx, g, i, pool.get(i));
                 String signature = topicSet + Arrays.toString(vec);
                 Integer c = classOf.get(signature);
                 if (c == null) {
@@ -141,11 +156,32 @@ final class PathSearch {
                     classOf.put(signature, c);
                     classVecs.add(vec);
                     classTopicSets.add(topicSet);
+                    classCaps.add(ctx.capUse()[g][i]);
                     members.add(new ArrayList<>());
                 }
                 members.get(c).add(new int[]{g, i});
             }
         }
+    }
+
+    /**
+     * Usable for the search: a candidate that only a relaxed cap kept out of the pool counts as usable again,
+     * so the diagnosis can tell whether that cap is what makes the section infeasible.
+     */
+    private boolean usable(int g, int i) {
+        if (ctx.usable()[g][i]) {
+            return true;
+        }
+        if (relaxed == null || ctx.capBlock()[g][i] < 0) {
+            return false;
+        }
+        int[] use = ctx.capUse()[g][i];
+        for (int k = 0; k < use.length; k++) {
+            if (use[k] > ctx.caps().get(k).cap().max() && !relaxed[k]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -326,6 +362,7 @@ final class PathSearch {
         final int c;
         final int[] vec;
         final int perUnits;
+        final int[] capVec;
         int nextT;      // số take sẽ thử tiếp (giảm dần), -1 khi khung hết nhánh
         int appliedT;   // số take đã áp lên trạng thái mà chưa thu hồi
 
@@ -335,6 +372,7 @@ final class PathSearch {
             this.c = pairClass[p];
             this.vec = pairVec[p];
             this.perUnits = pairUnits[p];
+            this.capVec = classCaps.get(pairClass[p]);
             // số take tối đa: theo thành viên của cặp, thành viên còn lại của lớp, đơn vị còn
             // thiếu của nhóm và từng chỉ tiêu còn thiếu
             int maxTake = Math.min(pairMembers[p].size(), remUnits[g] / perUnits);
@@ -343,12 +381,20 @@ final class PathSearch {
                     maxTake = Math.min(maxTake, rem[r] / vec[r]);
                 }
             }
+            for (int k = 0; k < capVec.length; k++) {
+                if (capVec[k] > 0) {
+                    maxTake = Math.min(maxTake, capRem[k] / capVec[k]);
+                }
+            }
             this.nextT = Math.min(maxTake, members.get(c).size() - consumed[c]);
         }
 
         void apply(int t) {
             for (int r = 0; r < vec.length; r++) {
                 rem[r] -= vec[r] * t;
+            }
+            for (int k = 0; k < capVec.length; k++) {
+                capRem[k] -= capVec[k] * t;
             }
             remUnits[g] -= perUnits * t;
             consumed[c] += t;
@@ -361,6 +407,9 @@ final class PathSearch {
             }
             for (int r = 0; r < vec.length; r++) {
                 rem[r] += vec[r] * appliedT;
+            }
+            for (int k = 0; k < capVec.length; k++) {
+                capRem[k] += capVec[k] * appliedT;
             }
             remUnits[g] += perUnits * appliedT;
             consumed[c] -= appliedT;
@@ -400,7 +449,7 @@ final class PathSearch {
                 }
             }
             if (TopicAssignments.hasQuotas(ctx)
-                    && TopicAssignments.assign(ctx, selectedIndices(), deadlineCheck) == null) {
+                    && TopicAssignments.assign(ctx, selectedIndices(), deadlineCheck, relaxed) == null) {
                 return;
             }
             terminalOk = true;
@@ -464,13 +513,25 @@ final class PathSearch {
                 max = Math.min(max, rem[r] / vec[r]);
             }
         }
+        int[] caps = classCaps.get(pairClass[p]);
+        for (int k = 0; k < caps.length; k++) {
+            if (caps[k] > 0) {
+                max = Math.min(max, capRem[k] / caps[k]);
+            }
+        }
         for (int t = max; t >= 0; t--) {
             for (int r = 0; r < vec.length; r++) {
                 rem[r] -= vec[r] * t;
             }
+            for (int k = 0; k < caps.length; k++) {
+                capRem[k] -= caps[k] * t;
+            }
             remUnits[g] -= pairUnits[p] * t;
             boolean feasible = classFeasible(p + 1);
             remUnits[g] += pairUnits[p] * t;
+            for (int k = 0; k < caps.length; k++) {
+                capRem[k] += caps[k] * t;
+            }
             for (int r = 0; r < vec.length; r++) {
                 rem[r] += vec[r] * t;
             }
