@@ -62,6 +62,7 @@ Mã cổng G1, G2, G3 ở bảng này là mã của plan (đã được nhiều 
 
 - TM Q1–Q10, Q12, Q13, Q16, Q17; LT R1–R4, R7–R10.
 - TM Q9, Q14 (VNPAY): M.Trường đang hỏi VNPAY. Đợt vẫn chạy theo cách tạm; phải có trả lời trước khi lên môi trường thật.
+- TM E26, mức tối thiểu (M.Trường chốt 2026-11-19 sau khi VP-1 đo: ngân hàng NCB của sandbox từ chối 1.000, 4.999, 5.000, 9.999 đồng, nhận 10.000): "khi test thì cứ chạy min 10k để pass sandbox, còn chạy thật thì đặt 5k min. lúc đấy sẽ setup tùy bank". Mặc định trong code của `THI360_VNPAY_MIN_AMOUNT` giữ 5.000 (môi trường thật). Mọi môi trường nối VNPAY sandbox đặt 10.000: `.env.example` (dev), profile `e2e`, cấu hình bản demo. Giá bài trong dữ liệu dev, DS và E2E dùng cho thanh toán qua VNPAY từ 10.000 trở lên. Test biên (EX-1 AC-7, CM-2, CM-3a AC-14) đặt mức qua thuộc tính của test, không phụ thuộc mặc định. Advisor AD-10.
 - Đã chốt, không còn mở: TM Q11, Q15; LT R5, R11, R12 (bỏ theo 2B K2), R6 (kết quả V-ACT, BS 3), R13 (làm tuần tự theo LT L7, riêng THPTQG chuyển tự do theo BS 4), R14 (theo BE mục 12, LT F22 và cờ Giữ thứ tự phương án); sinh đề chạy nền (LT L8).
 
 **Câu hỏi của bản nâng cấp ngày 2026-11-18: M.Trường đã trả lời hết ngày 2026-11-19.** Không còn cách tạm nào ở các mục này; nội dung đầy đủ ở BS.
@@ -271,9 +272,10 @@ Cộng theo nhóm: Nền 21, Tài khoản 5, Thương mại 29, Lượt thi 31, 
 
 - **Hợp đồng SPI giữa `commerce` và `attempt`** do C-0 khai đủ ngay từ đầu, trong `commerce/spi`:
   - `EntitlementPort` (commerce cài, attempt gọi). Theo TM 8.5, cộng một hàm đọc cho bước chuẩn bị (LT 5.1):
-    - `describe(userId, entitlementId)` → lượt còn lại, lần cấp sẽ dùng (E21), `option_codes`, nguồn (mua hay cấp bù, mã đơn, ngày);
-    - `reserve(userId, entitlementId, attemptId)` → `grantId`, quyền lợi, `option_codes`;
+    - `describe(userId, entitlementId)` → `examId` của quyền dùng, lượt còn lại, lần cấp sẽ dùng (E21), `option_codes`, nguồn (mua hay cấp bù, mã đơn, ngày);
+    - `reserve(userId, entitlementId, attemptId)` → `examId`, `grantId`, quyền lợi, `option_codes`;
     - `confirmUse(attemptId)`, `release(attemptId)`, `benefitsOf(attemptId)`, `compensate(attemptId, adminId, reason)`.
+    - Ngữ nghĩa (Advisor AD-8, review C-0 R1-1, R1-7): `reserve`, `confirmUse`, `release` idempotent theo `attemptId`; `release` cho lượt chưa giữ là no-op; `confirmUse`, `benefitsOf`, `compensate` cho lượt không có `entitlement_usage` ném lỗi không tìm thấy; `compensate` lần hai nhận 409 `ALREADY_COMPENSATED`. AT-1 lấy `examId` từ `describe` (chuẩn bị) và `reserve` (bắt đầu), không đọc chéo schema.
   - `AttemptStatusProvider` (attempt cài, commerce gọi), kèm bản rỗng mặc định. `commerce` lấy bản cài qua `ObjectProvider`.
   - Các hàm chỉ `commerce` dùng (`grantForOrder`, `revokeUnused`) nằm ở service nội bộ `commerce.entitlement.application`, **không** ở `spi`.
   - Đổi chữ ký trong `commerce/spi` sau khi C-0 merge phải qua Advisor; lane đổi phải sửa mọi nơi gọi trong cùng PR.
