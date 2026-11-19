@@ -213,7 +213,15 @@ public class ExamPreviewService {
         Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
                 PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
                         actualPath, paper));
-        if (regeneration != null) selectedParts.putAll(regeneration.retained());
+        if (regeneration != null) {
+            // A retained part keeps its picks and option order but is saved with the presentation of the paper just
+            // returned: an earlier part regenerated at another length moves its numbers, and the timing is the new one.
+            Map<String, PreviewPart> finalParts = new HashMap<>();
+            for (PreviewPart part : paper.parts()) finalParts.put(part.partId(), part);
+            regeneration.retained().forEach((partId, kept) -> selectedParts.put(partId, new PreviewSnapshotStore.PartSnapshot(
+                    kept.groups(), kept.candidates(), kept.versions(), kept.droppedQuestions(),
+                    finalParts.getOrDefault(partId, kept.presentation()), kept.allocations())));
+        }
         List<Compliance> compliance = PreviewCompliance.evaluate(document, actualPath, groups, candidates, allDropped, knowledge);
         // BS 9: the trial extension reads the duration from here, never from the draft. SHARED is the exam's own
         // duration; PER_PART (or a SHARED exam with none) is the sum of the parts this path generated.
