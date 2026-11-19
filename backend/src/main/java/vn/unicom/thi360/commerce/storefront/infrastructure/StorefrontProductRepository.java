@@ -43,7 +43,10 @@ public class StorefrontProductRepository {
                 attempts_granted = EXCLUDED.attempts_granted, cover_asset_id = EXCLUDED.cover_asset_id,
                 card = EXCLUDED.card, detail = EXCLUDED.detail, projection_hash = EXCLUDED.projection_hash,
                 published_at = EXCLUDED.published_at, updated_at = EXCLUDED.updated_at
-            WHERE commerce.storefront_product.version_no <= EXCLUDED.version_no
+            WHERE (commerce.storefront_product.version_no < EXCLUDED.version_no
+                   OR (commerce.storefront_product.version_no = EXCLUDED.version_no
+                       AND NOT (commerce.storefront_product.sale_state = 'DISCONTINUED'
+                                AND EXCLUDED.sale_state = 'ON_SALE')))
               AND commerce.storefront_product.projection_hash <> EXCLUDED.projection_hash
             """;
 
@@ -54,8 +57,9 @@ public class StorefrontProductRepository {
     }
 
     /**
-     * Inserts the row, or updates the row of the same exam when it holds the same or an older version and different
-     * content. A newer stored version is never overwritten.
+     * Inserts the row, or updates the row of the same exam when it holds an older version, or the same version and
+     * different content. A newer stored version is never overwritten, and a stale same-version ON_SALE write never
+     * relists a DISCONTINUED row (a discontinue does not raise the version).
      *
      * @return true when a row was inserted or updated
      */
@@ -111,10 +115,6 @@ public class StorefrontProductRepository {
     /** The stored product with this normalised code, any sale state. */
     public Optional<StoredProduct> findByCode(String codeNormalized) {
         return jdbc.query(STORED_SELECT + " WHERE code_normalized = ?", this::stored, codeNormalized).stream().findFirst();
-    }
-
-    public Optional<StoredProduct> findByExamId(UUID examId) {
-        return jdbc.query(STORED_SELECT + " WHERE exam_id = ?", this::stored, examId).stream().findFirst();
     }
 
     /** True when the asset is the current cover of a storefront row (any sale state): the only images served publicly. */

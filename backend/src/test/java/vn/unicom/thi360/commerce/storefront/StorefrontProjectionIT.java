@@ -1,6 +1,7 @@
 package vn.unicom.thi360.commerce.storefront;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Timestamp;
@@ -10,6 +11,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import vn.unicom.thi360.commerce.storefront.application.StorefrontProjector;
+import vn.unicom.thi360.commerce.storefront.domain.StorefrontRow;
 import vn.unicom.thi360.commerce.storefront.domain.StorefrontSort;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.ListQuery;
@@ -18,11 +21,13 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort.Combination;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.PathChoice;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
+import vn.unicom.thi360.shared.ids.Ids;
 
 /** CM-1 AC-7 to AC-12 and AC-22: the handlers of ExamPublished and ExamDiscontinued over a fake exam port. */
 class StorefrontProjectionIT extends AbstractStorefrontIT {
 
     @Autowired StorefrontProductRepository repository;
+    @Autowired StorefrontProjector projector;
 
     @Test
     void replayedEventChangesNothing() {
@@ -82,6 +87,47 @@ class StorefrontProjectionIT extends AbstractStorefrontIT {
         assertThat(listed(exam.code)).as("discontinued: not listed").isZero();
         assertThat(onSaleOfKind("HSA")).as("and not counted by the filters").isEqualTo(onSaleBefore);
         assertThat(repository.countByPart()).noneMatch(p -> p.code().equals(partCode));
+    }
+
+    /**
+     * R1-1, pinned interleaving: projection A read PUBLISHED v2 and pauses; the exam is discontinued (the version does not
+     * move) and projection B stores DISCONTINUED v2; then A completes its write. The stale same-version ON_SALE write
+     * must not relist the product; a genuinely newer version may, and a same-state repair still works.
+     */
+    @Test
+    void staleSameVersionOnSaleWriteDoesNotRelistDiscontinuedRow() throws Exception {
+        TestExam published = exam().asVersion(2, "Ten phien ban 2", 250_000L);
+        serve(published);
+        emit(ExamEventTopics.PUBLISHED, published.examId, 2);
+        // Projection A: the row it computed from its read of PUBLISHED v2, held back before the write.
+        StorefrontRow staleOnSale = projector.build(published.build()).orElseThrow();
+
+        TestExam stopped = published.asVersion(2, "Ten phien ban 2", 250_000L).discontinued();
+        serve(stopped);
+        emit(ExamEventTopics.DISCONTINUED, published.examId, 2);
+        assertThat(row(published.examId)).containsEntry("sale_state", "DISCONTINUED").containsEntry("version_no", 2);
+
+        // Projection A completes.
+        assertThat(repository.upsert(Ids.newId(), staleOnSale, Instant.now())).as("the stale write is refused").isFalse();
+
+        assertThat(row(published.examId)).containsEntry("sale_state", "DISCONTINUED").containsEntry("version_no", 2);
+        assertThat(listed(published.code)).as("not listed").isZero();
+        assertThat(repository.countByPart()).noneMatch(p -> p.code().equals(published.defaultPartCode()));
+        publicGet("/api/v1/public/storefront/products/" + published.code, newClientIp()).andExpect(status().isGone());
+
+        // A same-state repair at the same version still works: the stopped row is rewritten with the corrected name.
+        TestExam repaired = published.asVersion(2, "Ten da sua", 250_000L).discontinued();
+        serve(repaired);
+        assertThat(repository.upsert(Ids.newId(), projector.build(repaired.build()).orElseThrow(), Instant.now()))
+                .as("same-state repair is accepted").isTrue();
+        assertThat(row(published.examId)).containsEntry("sale_state", "DISCONTINUED").containsEntry("name", "Ten da sua");
+
+        // A newer version published again may return to sale.
+        TestExam v3 = published.asVersion(3, "Ten phien ban 3", 300_000L);
+        serve(v3);
+        emit(ExamEventTopics.PUBLISHED, published.examId, 3);
+        assertThat(row(published.examId)).containsEntry("sale_state", "ON_SALE").containsEntry("version_no", 3);
+        assertThat(listed(published.code)).isEqualTo(1);
     }
 
     @Test
