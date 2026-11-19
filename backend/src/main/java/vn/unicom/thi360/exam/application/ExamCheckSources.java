@@ -71,6 +71,25 @@ final class ExamCheckSources {
         return List.copyOf(distinct.values());
     }
 
+    /**
+     * Children that can really fill the QUESTION_SET quota row: only those of sets whose size is exactly the group's
+     * set size, since the solver never selects another size. Raw child stock of wrong-size sets is not counted.
+     */
+    List<CountingUnit> setRowUnits(List<GroupQuota> groups) {
+        Map<String, CountingUnit> distinct = new LinkedHashMap<>();
+        for (GroupQuota group : groups) {
+            if (group.kind() != GroupQuota.GroupKind.SET || group.setSize() == null) continue;
+            for (PathCandidate candidate : pool(group).candidates()) {
+                if (candidate.setId() == null || candidate.units().size() != group.setSize()) continue;
+                for (CountingUnit unit : candidate.units()) {
+                    if (!AnswerQuotaCounting.QUESTION_SET.equals(unit.quotaAnswerType())) continue;
+                    distinct.putIfAbsent(unit.childId() == null ? candidate.questionId() : unit.childId(), unit);
+                }
+            }
+        }
+        return List.copyOf(distinct.values());
+    }
+
     boolean complete(List<GroupQuota> groups) {
         return groups.stream().allMatch(group -> pool(group).complete());
     }

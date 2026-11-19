@@ -406,7 +406,9 @@ final class ExamCheckPathPresenter {
             int[] values = ExamCheckQuantities.resolve(quota.items().stream().map(item -> item.value()).toList(), quota.unit(), count);
             if (values != null) for (int i = 0; i < values.length; i++) {
                 String type = quota.items().get(i).answerType().name();
-                long have = units.stream().filter(unit -> type.equals(unit.quotaAnswerType())).count();
+                // Without a witness the Bộ câu hỏi row only counts children of sets of the group's exact size.
+                long have = AnswerQuotaCounting.QUESTION_SET.equals(type) ? sources.setRowUnits(section.groups()).size()
+                        : units.stream().filter(unit -> type.equals(unit.quotaAnswerType())).count();
                 BigDecimal witnessHave = paper == null ? null : paper.basis(QuotaBasis.QUESTION).answerTypes().getOrDefault(type, BigDecimal.ZERO);
                 ObjectNode entry = answers.addObject(); entry.put("answerType", type); entry.put("required", values[i]);
                 if (witnessHave != null) entry.put("achieved", witnessHave);
