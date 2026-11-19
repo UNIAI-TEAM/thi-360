@@ -9,10 +9,7 @@ import {
 } from "../components/block-scoring-editor";
 import {
   addBranch,
-  confirmOption,
   optionQuestionCount,
-  setPartQuestionCount,
-  setSectionCount,
 } from "../components/exam-structure-draft";
 import {
   choiceGroups,
@@ -234,19 +231,6 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
   });
 });
 
-describe("tổ hợp của phần tự chọn", () => {
-  it("sửa số câu môn của lựa chọn đã xác nhận thì phải xác nhận lại", () => {
-    const exam = sample("ex-qda-f-001");
-    const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const option = choice.options.find((item) => item.kind === "COMBINATION")!;
-    const confirmed = confirmOption(exam.parts, choice.id, option.id);
-    const optionOf = (parts: ExamPart[]) => parts.find((part) => part.id === choice.id)!.options.find((item) => item.id === option.id)!;
-    expect(optionOf(confirmed).expertConfirmed).toBe(true);
-    const edited = setSectionCount(confirmed, { partId: choice.id, optionId: option.id, sectionId: option.sections[0]!.id }, 18);
-    expect(optionOf(edited).expertConfirmed).toBe(false);
-  });
-});
-
 describe("nhánh của phần tự chọn có phần chung", () => {
   it("thêm nhánh: mã BR-n, đủ số câu còn lại sau phần chung", () => {
     const exam = sample("ex-thptqg-tin-001");
@@ -256,14 +240,6 @@ describe("nhánh của phần tự chọn có phần chung", () => {
     const added = parts.find((part) => part.id === choice.id)!.options.at(-1)!;
     expect(added).toMatchObject({ kind: "BRANCH", code: "BR-3", name: "Lập trình" });
     expect(added.sections.map((section) => section.questionCount)).toEqual([2]);
-  });
-
-  it("đổi số câu phần giữ phần chung, nhánh một môn nhận phần còn lại", () => {
-    const exam = sample("ex-thptqg-tin-001");
-    const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const next = setPartQuestionCount(choice, 5);
-    expect(next.sections[0]!.questionCount).toBe(2);
-    expect(next.options.map((option) => option.sections[0]!.questionCount)).toEqual([3, 3]);
   });
 });
 

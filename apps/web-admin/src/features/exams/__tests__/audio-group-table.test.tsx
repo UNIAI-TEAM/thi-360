@@ -79,6 +79,7 @@ function renderPanel(current: ExamSection, options: { english?: boolean; partTot
   const part = { id: "p1", name: "Nghe", questionCount: options.partTotal ?? 35, sections: [current], options: [] } as unknown as ExamPart;
   renderWithProviders(
     <ExamStructureSubjectPanel
+      examId="exam-1"
       context={{ part, option: null, section: current, location: { partId: "p1", optionId: null, sectionId: "s1" } }}
       subjectName="Tiếng Anh"
       axes={axes}

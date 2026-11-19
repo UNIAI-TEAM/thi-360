@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""FU/be-seed (UNI-2634): phát sinh devdata cho đề test giả định.
+"""UNI-2701 (FU-QA-SEEDS, FU-SEEDGEN-1): phát sinh devdata cho đề test giả định.
 
-Nguồn: docs/specs/2026-11-17-de-test-gia-dinh.md (số liệu "giả định" của mục 2-3).
+Nguồn: docs/specs/2026-11-17-de-test-gia-dinh.md (mục 4).
 Chạy từ gốc repo:  python scripts/generate_test_exam_seed.py
-Phát sinh:
-  - Đọc cấu trúc mới từ migration mẫu THPTQG/V-ACT đã sinh.
-  - backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql
-Không ghi groupOrder/shuffle (slice be-api bỏ các trường này).
+Phát sinh backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql:
+  - 14 bài hợp lệ `TEST-*` dựng từ cấu trúc mẫu hiện hành: đọc nguyên văn (cả id) từ migration
+    mẫu V202611180652 (HSA, QDA, BCA, SPT, SP2E) và V202611181305 (THPTQG, V-ACT), cộng bản vá
+    điểm SP2E ở V202611181234. Không sửa, không chuẩn hóa thêm.
+  - 13 bài lỗi `TEST-ERR-*` dựng từ bài hợp lệ, mỗi bài đổi đúng một chỗ.
+  - bước nâng cấp cho cơ sở dữ liệu đã nạp seed đợt 2B (dấu `seed-<mã>` -> `seed3-<mã>`).
+  - 1.695+ câu `TESTQ-*` dùng chung cho các nguồn.
+Không ghi groupOrder/shuffle/task_type_item_id (cấu trúc v2); chạy lại phải ra cùng byte.
 """
 
+import copy
 import hashlib
 import json
 import re
@@ -17,7 +22,10 @@ import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE_MIGRATION = ROOT / "backend/src/main/resources/db/migration/exam/V202611181305__exam_templates_thptqg_vact.sql"
+MIGRATIONS = ROOT / "backend/src/main/resources/db/migration/exam"
+# Thứ tự áp dụng: tệp sau ghi đè mẫu cùng mã của tệp trước.
+TEMPLATE_MIGRATIONS = ("V202611180652__exam_templates_ba_numbers.sql",
+                       "V202611181305__exam_templates_thptqg_vact.sql")
 SEED = ROOT / "backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql"
 
 NS = uuid.UUID("00000000-0000-7000-8000-000000000000")
@@ -85,7 +93,6 @@ TASK = {
     "WORD_USAGE_ERROR": "00000000-0000-7000-8600-000000000605",
     "PASSAGE_READING": "00000000-0000-7000-8600-000000000606",
 }
-TASK_SENTENCE = mid5("catalog", "task", "sentence-completion")  # migration mới
 TAG_HIEM = mid5("catalog", "tag", "test-hiem")
 KNOW_TOAN_HEP = mid5("catalog", "knowledge", "test-toan-hep")
 KNOW_DIA_HEP = mid5("catalog", "knowledge", "test-dia-hep")
@@ -93,385 +100,85 @@ COMBO_QD05 = mid5("catalog", "combination", "qd05")
 COMBO_QD05_VERSION = mid5("catalog", "combination-version", "qd05")
 
 # =====================================================================
-# 1) JSON cấu trúc (dùng chung cho migration exam_template và devdata exam)
+# 1) Mẫu cấu trúc hiện hành, đọc từ migration
 # =====================================================================
 
-def blk(bid, name, qtype, qcount=None, sets=None, size=None, task=None,
-        child=None, group=None, rppq=1, tags=None, expected=None, locked=None,
-        matrix=None, scope=None):
-    if qcount is None and sets is not None and size is not None:
-        qcount = sets * size
-    return {"id": bid, "name": name, "questionType": qtype, "questionCount": qcount,
-            "setCount": sets, "setSize": size, "knowledgeScope": scope, "matrix": matrix,
-            "childAnswerType": child, "templateGroupCode": group,
-            "answerTypeLocked": locked, "requiredPointsPerQuestion": rppq,
-            "tagCodes": tags, "expectedScoring": expected}
-
-def scope_nodes(node_ids):
-    return {"nodeIds": node_ids, "competencyCodes": []}
-
-def section(sid, subject, qcount, blocks, scope=None, quotas=None, matrix=None,
-            choice=None):
-    return {"id": sid, "subjectCode": subject, "questionCount": qcount,
-            "knowledgeScope": scope, "answerQuotas": quotas, "matrix": matrix,
-            "choiceGroup": choice, "blocks": blocks}
-
-def part(pid, name, duration, qcount, sections=None, options=None, max_points=None,
-         choose=None, paper=None):
-    return {"id": pid, "order": None, "name": name, "durationMinutes": duration,
-            "questionCount": qcount, "questionCountOnPaper": paper if paper is not None else qcount,
-            "questionCountRequired": qcount,
-            "participation": {"mode": "CHOICE" if choose else "ALL",
-                              "choose": choose},
-            "maxPoints": max_points, "sections": sections or [],
-            "options": options or [], "mode": "CHOICE" if choose else "FIXED"}
-
-def option(oid, kind, code, name=None, sections=None, blocks=None,
-           choose_subjects=None, counts=None, confirmed=None):
-    return {"id": oid, "kind": kind, "code": code, "name": name,
-            "chooseSubjects": choose_subjects, "countsByPick": counts,
-            "expertConfirmed": confirmed, "sections": sections or [],
-            "blocks": blocks or []}
-
-def doc(parts):
-    return {"parts": [{**part, "order": i} for i, part in enumerate(parts, start=1)]}
-
-SCIENCE_SUBJECTS = [("LY", "Vật lí", "NATURAL"), ("HOA", "Hóa học", "NATURAL"),
-                    ("SINH", "Sinh học", "NATURAL"), ("SU", "Lịch sử", "SOCIAL"),
-                    ("DIA", "Địa lí", "SOCIAL")]
-
-SCI_QUOTA = {"unit": "COUNT", "items": [
-    {"answerType": "SINGLE_CHOICE", "value": 13},
-    {"answerType": "SHORT_ANSWER", "value": 4}]}
-SCI_MATRIX = {"mode": "SEPARATE", "unit": "COUNT", "cells": [],
-              "byGrade": [{"code": "G10", "value": 3}, {"code": "G11", "value": 5},
-                          {"code": "G12", "value": 9}],
-              "byDifficulty": [{"code": "NB", "value": 3}, {"code": "TH", "value": 7},
-                               {"code": "VD", "value": 5}, {"code": "VDC", "value": 2}]}
-MATH_QUOTA = {"unit": "COUNT", "items": [
-    {"answerType": "SINGLE_CHOICE", "value": 35},
-    {"answerType": "SHORT_ANSWER", "value": 15}]}
-MATH_MATRIX = {"mode": "SEPARATE", "unit": "COUNT", "cells": [],
-               "byGrade": [{"code": "G10", "value": 3}, {"code": "G11", "value": 20},
-                           {"code": "G12", "value": 27}],
-               "byDifficulty": [{"code": "NB", "value": 2}, {"code": "TH", "value": 21},
-                                {"code": "VD", "value": 20}, {"code": "VDC", "value": 7}]}
+_TEMPLATE_UPDATE = re.compile(
+    r"UPDATE exam\.exam_template SET\n(?P<set>.*?)\nWHERE code = '(?P<code>[A-Z0-9_]+)';", re.S)
+_TEMPLATE_COLUMN = re.compile(r"^  (?P<name>[a-z_]+) = (?P<value>.*?),?$")
 
 
-def hsa_math_section(sec_id="s-math", single_count=41, quota=None, scope=None):
-    return section(sec_id, "TOAN", 50, [
-        blk("b-math-single", "Câu đơn Toán", None, qcount=single_count,
-            task="SINGLE", group="HSA_MATH_SINGLE"),
-        blk("b-math-set", "Chùm ngữ cảnh Toán", "QUESTION_SET", sets=3, size=3,
-            task="CLUSTER", child="SINGLE_CHOICE", group="HSA_MATH_CONTEXT",
-            locked=True)],
-        scope=scope, quotas=quota if quota is not None else MATH_QUOTA,
-        matrix=MATH_MATRIX)
+def _integer(literal):
+    return None if literal == "NULL" else int(literal)
 
 
-def hsa_lit_section(sec_id="s-lit", tag=None):
-    return section(sec_id, "VAN", 50, [
-        blk("b-lit-word", "Nhận diện lỗi dùng từ", "SINGLE_CHOICE", 10,
-            task="WORD_USAGE_ERROR", group="HSA_VN_WORD_USAGE", locked=True),
-        blk("b-lit-single", "Câu đơn khác", "SINGLE_CHOICE", 15,
-            group="HSA_VN_SINGLE"),
-        blk("b-lit-passage", "Đọc ngữ liệu", "QUESTION_SET", sets=5, size=5,
-            task="PASSAGE_READING", child="SINGLE_CHOICE",
-            group="HSA_VN_PASSAGE", tags=["TEST-HIEM"] if tag else None)])
+def _read_templates():
+    rows = {}
+    for name in TEMPLATE_MIGRATIONS:
+        sql = (MIGRATIONS / name).read_text(encoding="utf-8")
+        for match in _TEMPLATE_UPDATE.finditer(sql):
+            columns = {}
+            for line in match.group("set").split("\n"):
+                column = _TEMPLATE_COLUMN.match(line)
+                if column:
+                    columns[column.group("name")] = column.group("value")
+            structure = columns["structure"]
+            assert structure.startswith("'") and structure.endswith("'::jsonb"), match.group("code")
+            rows[match.group("code")] = {
+                "doc": json.loads(structure[1:-len("'::jsonb")].replace("''", "'")),
+                "timing": columns["timing"].strip("'"),
+                "duration": _integer(columns["duration_minutes"]),
+                "max_score": _integer(columns["max_score"]),
+                "structure_year": _integer(columns["structure_year"]),
+                "matrix_year": _integer(columns["matrix_year"]),
+            }
+    return rows
 
 
-def hsa_eng_section(sec_id="s-eng", sentence_group=True):
-    groups = [
-        blk("b-eng-syn", "Từ đồng nghĩa", "SINGLE_CHOICE", 5, task="SYNONYM",
-            group="HSA_EN_SYNONYM", locked=True),
-        blk("b-eng-ant", "Từ trái nghĩa", "SINGLE_CHOICE", 5, task="ANTONYM",
-            group="HSA_EN_ANTONYM", locked=True),
-        blk("b-eng-dlg", "Hoàn thành hội thoại", "SINGLE_CHOICE", 5,
-            task="DIALOGUE_COMPLETION", group="HSA_EN_DIALOGUE", locked=True)]
-    if sentence_group:
-        groups.append(blk("b-eng-sentence", "Hoàn thành câu", "SINGLE_CHOICE", 20,
-                          task="SENTENCE_COMPLETION", group="HSA_EN_SENTENCE"))
-    else:
-        groups[0]["questionCount"] = 12
-        groups[1]["questionCount"] = 12
-        groups[2]["questionCount"] = 11
-    groups.append(blk("b-eng-read", "Đọc hiểu", "QUESTION_SET", sets=3, size=5,
-                      task="READING_COMPREHENSION", child="SINGLE_CHOICE",
-                      group="HSA_EN_READING", locked=True))
-    return section(sec_id, "ANH", 50, groups)
+TEMPLATE_ROWS = _read_templates()
 
 
-def hsa_science_option(oid="o-sci", dia_scope=None):
-    secs = []
-    for i, (code, name, grp) in enumerate(SCIENCE_SUBJECTS):
-        scope = scope_nodes([KNOW_DIA_HEP]) if (code == "DIA" and dia_scope) else None
-        secs.append(section(f"s-sci-{code.lower()}", code, 17, [
-            blk(f"b-sci-{code.lower()}-cluster", f"{name} · chùm", "QUESTION_SET",
-                sets=2, size=3, child="SINGLE_CHOICE",
-                group=f"HSA_{code}_CLUSTER"),
-            blk(f"b-sci-{code.lower()}-rest", f"{name} · câu đơn", None, qcount=11)],
-            scope=scope, quotas=SCI_QUOTA, matrix=SCI_MATRIX, choice=grp))
-    return option(oid, "SUBJECT_CHOICE", "SCIENCE", "Khoa học", sections=secs,
-                  choose_subjects=3, counts=[17, 17, 16])
+def apply_sp2e_points_fix(code, doc):
+    """V202611181234 (FU-BA-Q15): 50 prompts and ten points for these three 2026 subjects."""
+    for index, part in enumerate(doc["parts"], start=1):
+        part["maxPoints"] = 10.0 if code == "SP2E_ANH_2026" else 5.2 if index == 1 else 4.8
+        for section in part["sections"]:
+            for block in section["blocks"]:
+                if block["questionType"] == "TRUE_FALSE":
+                    block["requiredPointsPerQuestion"] = 0.8
+                    block["expectedScoring"] = {"trueFalseMethod": "PER_STATEMENT"}
+                else:
+                    block["requiredPointsPerQuestion"] = 0.2
 
 
-def hsa_part3(dia_scope=None):
-    return part("p3", "Phần 3 · Khoa học hoặc Tiếng Anh", 60, 50,
-                options=[hsa_science_option(dia_scope=dia_scope),
-                         option("o-eng", "SUBJECT", "ANH", "Tiếng Anh",
-                                sections=[hsa_eng_section("s-eng3")])],
-                max_points=50, choose=1)
+QUESTION_SET_QUOTA_TEMPLATES = ("HSA_FULL", "HSA_PART_MATH", "HSA_SUBJECT_TOAN",
+                                "QDA_FULL", "QDA_PART_MATH", "QDA_SUBJECT_TOAN")
+OLD_TOAN_QUOTAS = [{"answerType": "SINGLE_CHOICE", "value": 35}, {"answerType": "SHORT_ANSWER", "value": 15}]
+NEW_TOAN_QUOTAS = {"unit": "COUNT", "items": [{"answerType": "SINGLE_CHOICE", "value": 32},
+                                              {"answerType": "SHORT_ANSWER", "value": 15},
+                                              {"answerType": "QUESTION_SET", "value": 3}]}
 
 
-def template_hsa_full():
-    return doc([
-        part("p1", "Phần 1 · Toán học và Xử lí số liệu", 75, 50,
-             sections=[hsa_math_section("s-math1")], max_points=50),
-        part("p2", "Phần 2 · Văn học – Ngôn ngữ", 60, 50,
-             sections=[hsa_lit_section("s-lit2")], max_points=50),
-        hsa_part3(),
-    ])
+def apply_answer_quota_question_set(code, doc):
+    """V202611190100 (UNI-2754): a Toán section whose quotas are exactly SC 35 / SA 15 and that has a
+    QUESTION_SET block gets SC 32 / SA 15 / QUESTION_SET 3 (same six templates, same exact match)."""
+    if code not in QUESTION_SET_QUOTA_TEMPLATES:
+        return
+    for part in doc["parts"]:
+        for section in part.get("sections", []):
+            quotas = section.get("answerQuotas")
+            if (section.get("subjectCode") == "TOAN" and quotas and quotas.get("items") == OLD_TOAN_QUOTAS
+                    and any(block.get("questionType") == "QUESTION_SET" for block in section.get("blocks", []))):
+                section["answerQuotas"] = copy.deepcopy(NEW_TOAN_QUOTAS)
 
 
-def template_hsa_part_math():
-    return doc([part("p1", "Toán học và Xử lí số liệu", 75, 50,
-                     sections=[hsa_math_section("s-math1")], max_points=50)])
-
-
-def template_hsa_part_lit():
-    return doc([part("p2", "Văn học – Ngôn ngữ", 60, 50,
-                     sections=[hsa_lit_section("s-lit2")], max_points=50)])
-
-
-def template_hsa_part_science():
-    return doc([hsa_part3()])
-
-
-def template_qda_full():
-    return doc([
-        part("p1", "Phần 1 · Toán học và Xử lí số liệu", 80, 50,
-             sections=[section("s-qda-toan", "TOAN", 50,
-                               [blk("b-qda-toan", "Trắc nghiệm", "SINGLE_CHOICE", 50)])],
-             max_points=50),
-        part("p2", "Phần 2 · Ngôn ngữ – Văn học", 55, 50,
-             sections=[section("s-qda-van", "VAN", 50,
-                               [blk("b-qda-van", "Trắc nghiệm", "SINGLE_CHOICE", 50)])],
-             max_points=50),
-        part("p3", "Phần 3 · Khoa học (3A: QĐ01–QĐ04) hoặc Tiếng Anh (3B: QĐ05)",
-             60, 50, choose=1, max_points=50, options=[
-                option("o-qd01", "COMBINATION", "QD01", "QĐ01",
-                       sections=[section("s-qd01-ly", "LY", 25,
-                                         [blk("b-qd01-ly", "Trắc nghiệm", "SINGLE_CHOICE", 25)]),
-                                 section("s-qd01-hoa", "HOA", 25,
-                                         [blk("b-qd01-hoa", "Trắc nghiệm", "SINGLE_CHOICE", 25)])]),
-                option("o-qd02", "COMBINATION", "QD02", "QĐ02",
-                       sections=[section("s-qd02-hoa", "HOA", 25,
-                                         [blk("b-qd02-hoa", "Trắc nghiệm", "SINGLE_CHOICE", 25)]),
-                                 section("s-qd02-sinh", "SINH", 25,
-                                         [blk("b-qd02-sinh", "Trắc nghiệm", "SINGLE_CHOICE", 25)])]),
-                option("o-qd03", "COMBINATION", "QD03", "QĐ03",
-                       sections=[section("s-qd03-ly", "LY", 25,
-                                         [blk("b-qd03-ly", "Trắc nghiệm", "SINGLE_CHOICE", 25)]),
-                                 section("s-qd03-sinh", "SINH", 25,
-                                         [blk("b-qd03-sinh", "Trắc nghiệm", "SINGLE_CHOICE", 25)])]),
-                option("o-qd04", "COMBINATION", "QD04", "QĐ04",
-                       sections=[section("s-qd04-su", "SU", 25,
-                                         [blk("b-qd04-su", "Trắc nghiệm", "SINGLE_CHOICE", 25)]),
-                                 section("s-qd04-dia", "DIA", 25,
-                                         [blk("b-qd04-dia", "Trắc nghiệm", "SINGLE_CHOICE", 25)])]),
-                option("o-qd05", "COMBINATION", "QD05", "QĐ05",
-                       sections=[section("s-qd05-anh", "ANH", 50,
-                                         [blk("b-qd05-anh", "Trắc nghiệm", "SINGLE_CHOICE", 50)])]),
-             ]),
-    ])
-
-
-def template_bca_full(english_points=0.75, part2_max=60):
-    return doc([
-        part("p1", "Phần 1 · Tự luận Ngữ văn", None, 1, max_points=25,
-             sections=[section("s-bca-van", "VAN", 1, [
-                 blk("b-bca-essay", "Nghị luận xã hội (tối thiểu 500 chữ)",
-                     "ESSAY", 1, rppq=25)])]),
-        part("p2", "Phần 2 · Trắc nghiệm bắt buộc", None, 65, max_points=part2_max,
-             sections=[
-                 section("s-bca-toan", "TOAN", 35, [
-                     blk("b-bca-toan-mc", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 25),
-                     blk("b-bca-toan-sa", "Trả lời ngắn", "SHORT_ANSWER", 10)]),
-                 section("s-bca-su", "SU", 10, [
-                     blk("b-bca-su", "Trắc nghiệm", "SINGLE_CHOICE", 10)]),
-                 section("s-bca-anh", "ANH", 20, [
-                     blk("b-bca-anh", "Trắc nghiệm", "SINGLE_CHOICE", 20,
-                         rppq=english_points)])]),
-        part("p3", "Phần 3 · Tự chọn", None, 15, choose=1, max_points=15, options=[
-            option(f"o-ca{i}", "COMBINATION", f"CA{i}", f"CA{i}",
-                   sections=[section(f"s-ca{i}", subj, 15,
-                                     [blk(f"b-ca{i}", "Trắc nghiệm",
-                                          "SINGLE_CHOICE", 15)])])
-            for i, subj in enumerate(("LY", "HOA", "SINH", "DIA"), start=1)]),
-    ])
-
-
-def template_vact_full():
-    return doc([
-        part("p1", "Phần 1 · Sử dụng ngôn ngữ", None, 60, max_points=600,
-             sections=[
-                 section("s-va-vie", "VIETNAMESE", 30,
-                         [blk("b-va-vie", "Tiếng Việt", "SINGLE_CHOICE", 30, rppq=10)]),
-                 section("s-va-anh", "ANH", 30,
-                         [blk("b-va-anh", "Tiếng Anh", "SINGLE_CHOICE", 30, rppq=10)])]),
-        part("p2", "Phần 2 · Toán học", None, 30, max_points=300,
-             sections=[section("s-va-toan", "TOAN", 30,
-                               [blk("b-va-toan", "Toán học", "SINGLE_CHOICE", 30, rppq=10)])]),
-        part("p3", "Phần 3 · Tư duy khoa học", None, 30, max_points=300,
-             sections=[section("s-va-st", "SCIENTIFIC_THINKING", 30, [
-                 blk("b-va-st-1", "Logic, phân tích số liệu", "SINGLE_CHOICE", 12, rppq=10),
-                 blk("b-va-st-2", "Suy luận khoa học", "SINGLE_CHOICE", 18, rppq=10)])]),
-    ])
-
-
-def subject_doc(subject, name, duration, qcount, blocks, paper=None):
-    return doc([part("p1", name, duration, qcount,
-                     sections=[section("s1", subject, qcount, blocks)],
-                     max_points=10, paper=paper)])
-
-
-TEMPLATES = {
-    # (structure_doc, duration_minutes giữ nguyên nếu None, expert_note giữ)
-    "QDA_FULL": (template_qda_full(), 195, None),
-    "BCA_FULL": (template_bca_full(), 180, None),
-    "VACT_FULL": (template_vact_full(), 150, None),
-    "SP2E_MATH_2025": (subject_doc("TOAN", "Toán", 90, 22, [
-        blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 12, rppq=0.25),
-        blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-        blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 6, rppq=0.5)]), 90,
-        "Chia dạng câu 12–4–6 và điểm 0,25/1/0,5 là giả định (đề test giả định mục 2.3)."),
-    "SP2E_MATH_2026": (subject_doc("TOAN", "Toán", 90, 40, [
-        blk("b1", "Lựa chọn một đáp án", "SINGLE_CHOICE", 20, rppq=0.25),
-        blk("b2", "Lựa chọn nhiều đáp án", "MULTIPLE_CHOICE", 5, rppq=0.25),
-        blk("b3", "Dữ liệu tổng hợp", "QUESTION_SET", sets=1, size=5, rppq=0.25),
-        blk("b4", "Trả lời ngắn", "SHORT_ANSWER", 10, rppq=0.25)]), 90,
-        "Điểm 0,25/câu và thời lượng 90 phút là giả định (đề test giả định mục 2.2, 2.3)."),
-    "THPTQG_LITERATURE_2025": (subject_doc("VAN", "Ngữ văn", 120, 7, [
-        blk("b1", "Đọc hiểu", "QUESTION_SET", sets=1, size=5, child="ESSAY", rppq=0.8),
-        blk("b2", "Viết đoạn văn (khoảng 200 chữ)", "ESSAY", 1, rppq=2),
-        blk("b3", "Viết bài văn (khoảng 600 chữ)", "ESSAY", 1, rppq=4)]), 120,
-        "Đọc hiểu là chùm 5 câu con Tự luận, tổng 4 điểm; điểm theo hướng dẫn chấm."),
-    "THPTQG_INFORMATICS_2025": (doc([
-        part("p1", "Phần I · Trắc nghiệm chọn một", None, 24, max_points=6,
-             sections=[section("s-tin-1", "INFORMATICS", 24,
-                               [blk("b-tin-mc", "Trắc nghiệm chọn một",
-                                    "SINGLE_CHOICE", 24, rppq=0.25)])]),
-        part("p2", "Phần II · Đúng/Sai", None, 4, max_points=4, choose=1, paper=6,
-             sections=[section("s-tin-tf", "INFORMATICS", 2,
-                               [blk("b-tin-tf", "Đúng/Sai chung", "TRUE_FALSE", 2)])],
-             options=[
-                 option("o-cs", "BRANCH", "CS", "Khoa học máy tính",
-                        sections=[section("s-tin-cs", "INFORMATICS", 2,
-                                          [blk("b-tin-cs", "Đúng/Sai Khoa học máy tính",
-                                               "TRUE_FALSE", 2)])]),
-                 option("o-ict", "BRANCH", "ICT", "Tin học ứng dụng",
-                        sections=[section("s-tin-ict", "INFORMATICS", 2,
-                                          [blk("b-tin-ict", "Đúng/Sai Tin học ứng dụng",
-                                               "TRUE_FALSE", 2)])])]),
-    ]), 50, "Đề in 30 câu (6 câu Đúng/Sai trên đề: 2 chung + 2 CS + 2 ICT); học viên làm 28."),
-    "HSA_FULL": (template_hsa_full(), 195, None),
-    "HSA_PART_MATH": (template_hsa_part_math(), 75, None),
-    "HSA_PART_LITERATURE": (template_hsa_part_lit(), 60, None),
-    "HSA_PART_SCIENCE": (template_hsa_part_science(), 60, None),
-}
-
-SPT_BLOCKS = {
-    "VAN": [blk("b1", "Đọc hiểu", "QUESTION_SET", sets=2, size=5,
-                child="SINGLE_CHOICE", rppq=0.4),
-            blk("b2", "Viết đoạn", "ESSAY", 1, rppq=2),
-            blk("b3", "Viết bài", "ESSAY", 1, rppq=4)],
-    "ANH": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 20, rppq=0.25),
-            blk("b2", "Đọc hiểu", "QUESTION_SET", sets=2, size=6,
-                child="SINGLE_CHOICE", rppq=0.25),
-            blk("b3", "Viết", "ESSAY", 1, rppq=2)],
-    "LY": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 12, rppq=0.25),
-           blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-           blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 4, rppq=0.5),
-           blk("b4", "Tự luận", "ESSAY", 1, rppq=1)],
-    "HOA": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 18, rppq=0.25),
-            blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-            blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 5, rppq=0.3)],
-    "SINH": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 12, rppq=0.25),
-             blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-             blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 6, rppq=0.5)],
-    "SU": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 20, rppq=0.25),
-           blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-           blk("b3", "Tự luận", "ESSAY", 1, rppq=1)],
-    "DIA": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 8, rppq=0.25),
-            blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-            blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 8, rppq=0.5)],
-    "ECON_LAW": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 16, rppq=0.25),
-                 blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                 blk("b3", "Tự luận", "ESSAY", 1, rppq=2)],
-    "INFORMATICS": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 20, rppq=0.25),
-                    blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                    blk("b3", "Tự luận", "ESSAY", 1, rppq=1)],
-    "TECH_INDUSTRY": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 16, rppq=0.25),
-                      blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                      blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 4, rppq=0.5)],
-    "TECH_AGRICULTURE": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 16, rppq=0.25),
-                         blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                         blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 4, rppq=0.5)],
-}
-SPT_META = {  # code -> (subject, duration, questionCount, tên môn)
-    "SPT_VAN_2025": ("VAN", 90, 12, "Ngữ văn"),
-    "SPT_ANH_2025": ("ANH", 60, 33, "Tiếng Anh"),
-    "SPT_LY_2025": ("LY", 60, 21, "Vật lí"),
-    "SPT_HOA_2025": ("HOA", 60, 27, "Hóa học"),
-    "SPT_SINH_2025": ("SINH", 60, 22, "Sinh học"),
-    "SPT_SU_2025": ("SU", 60, 25, "Lịch sử"),
-    "SPT_DIA_2025": ("DIA", 60, 20, "Địa lí"),
-    "SPT_ECON_LAW_2025": ("ECON_LAW", 60, 21, "GD kinh tế và pháp luật"),
-    "SPT_INFORMATICS_2025": ("INFORMATICS", 60, 25, "Tin học"),
-    "SPT_TECH_INDUSTRY_2025": ("TECH_INDUSTRY", 60, 24, "Công nghệ – công nghiệp"),
-    "SPT_TECH_AGRICULTURE_2025": ("TECH_AGRICULTURE", 60, 24, "Công nghệ – nông nghiệp"),
-}
-SP2E_BLOCKS = {
-    "VAN": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 10, rppq=0.2),
-            blk("b2", "Đọc hiểu", "QUESTION_SET", sets=2, size=5,
-                child="SINGLE_CHOICE", rppq=0.2),
-            blk("b3", "Viết đoạn", "ESSAY", 1, rppq=2),
-            blk("b4", "Viết bài", "ESSAY", 1, rppq=4)],
-    "ANH": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 30, rppq=0.2),
-            blk("b2", "Đọc hiểu", "QUESTION_SET", sets=2, size=5,
-                child="SINGLE_CHOICE", rppq=0.2),
-            blk("b3", "Điền khuyết", "CLOZE", sets=1, size=10, rppq=0.2)],
-    "LY_HOA_SINH_DIA": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 16, rppq=0.25),
-                        blk("b2", "Nhiều đáp án", "MULTIPLE_CHOICE", 4, rppq=0.25),
-                        blk("b3", "Ghép đôi", "MATCHING", 2, rppq=1),
-                        blk("b4", "Trả lời ngắn", "SHORT_ANSWER", 6, rppq=0.5)],
-    "SU_ECON": [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 24, rppq=0.25),
-                blk("b2", "Nhiều đáp án", "MULTIPLE_CHOICE", 4, rppq=0.25),
-                blk("b3", "Ghép đôi", "MATCHING", 2, rppq=1),
-                blk("b4", "Trả lời ngắn", "SHORT_ANSWER", 2, rppq=0.5)],
-}
-SP2E_META = {
-    "SP2E_VAN_2026": ("VAN", 90, 22, "Ngữ văn", "VAN"),
-    "SP2E_ANH_2026": ("ANH", 60, 50, "Tiếng Anh", "ANH"),
-    "SP2E_LY_2026": ("LY", 60, 28, "Vật lí", "LY_HOA_SINH_DIA"),
-    "SP2E_HOA_2026": ("HOA", 60, 28, "Hóa học", "LY_HOA_SINH_DIA"),
-    "SP2E_SINH_2026": ("SINH", 60, 28, "Sinh học", "LY_HOA_SINH_DIA"),
-    "SP2E_DIA_2026": ("DIA", 60, 28, "Địa lí", "LY_HOA_SINH_DIA"),
-    "SP2E_SU_2026": ("SU", 60, 32, "Lịch sử", "SU_ECON"),
-    "SP2E_ECON_LAW_2026": ("ECON_LAW", 60, 32, "GD kinh tế và pháp luật", "SU_ECON"),
-}
-SPT_MATH = ("TOAN", 90, 25, "Toán", [blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 16, rppq=0.25),
-                                     blk("b2", "Đúng/Sai", "TRUE_FALSE", 2, rppq=1),
-                                     blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 4, rppq=0.25),
-                                     blk("b4", "Tự luận", "ESSAY", 3, rppq=1)])
-for code, (subj, dur, qc, name) in SPT_META.items():
-    TEMPLATES[code] = (subject_doc(subj, name, dur, qc, SPT_BLOCKS[subj]), dur,
-                       "Chia khối và điểm là giả định (đề test giả định mục 2.4).")
-for code, (subj, dur, qc, name, key) in SP2E_META.items():
-    TEMPLATES[code] = (subject_doc(subj, name, dur, qc, SP2E_BLOCKS[key]), dur,
-                       "Chia khối và điểm là giả định (đề test giả định mục 2.4).")
-TEMPLATES["SPT_MATH_2025"] = (subject_doc(SPT_MATH[0], SPT_MATH[3], SPT_MATH[1],
-                                          SPT_MATH[2], SPT_MATH[4]), 90, None)
+def template_row(code):
+    """The template as the database holds it after every migration, as an independent copy."""
+    row = copy.deepcopy(TEMPLATE_ROWS[code])
+    if code in ("SP2E_ANH_2026", "SP2E_SU_2026", "SP2E_ECON_LAW_2026"):
+        apply_sp2e_points_fix(code, row["doc"])
+    apply_answer_quota_question_set(code, row["doc"])
+    return row
 
 
 def dump(d):
@@ -480,34 +187,6 @@ def dump(d):
 
 def sql_quote(s):
     return "'" + s.replace("'", "''") + "'"
-
-
-def emit_template_migration():
-    lines = ["-- FU/be-seed (UNI-2634): hoàn thiện mẫu theo đề test giả định",
-             "-- (docs/specs/2026-11-17-de-test-gia-dinh.md). Số liệu \"giả định\" chờ chuyên gia.",
-             "-- Không ghi groupOrder/shuffle: các trường đảo bị bỏ ở lane này.",
-             ""]
-    for code, (doc_obj, duration, note) in TEMPLATES.items():
-        cols = f"structure = {sql_quote(dump(doc_obj))}::jsonb"
-        cols += f", duration_minutes = {duration if duration is not None else 'NULL'}"
-        if note is not None:
-            cols += f", expert_note = {sql_quote(note)}"
-        lines.append(f"UPDATE exam.exam_template SET {cols} WHERE code = {sql_quote(code)};")
-    return "\n".join(lines) + "\n"
-
-
-def emit_catalog_migration():
-    return f"""-- FU/be-seed (UNI-2634): dạng bài "Hoàn thành câu" của phần Tiếng Anh HSA
--- (đề test giả định mục 2.1). Nhóm Hoàn thành câu dùng dạng bài này thay vì chia 12/12/11.
-INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
-SELECT '{TASK_SENTENCE}', '{G_TASK}', 'SENTENCE_COMPLETION', 'sentence_completion',
-       GREATEST(9, g.last_value + 1, COALESCE((SELECT MAX(value) + 1 FROM catalog.catalog_item WHERE group_id = g.id), 1)),
-       'Hoàn thành câu', 'Sentence completion', '[MẪU] Dạng bài hoàn thành câu (HSA Tiếng Anh)', 8, 1, false, NULL, 1, '/{TASK_SENTENCE}/'
-FROM catalog.catalog_group g WHERE g.id = '{G_TASK}'
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
-
-UPDATE catalog.catalog_group g SET last_value = GREATEST(g.last_value, COALESCE((SELECT MAX(value) FROM catalog.catalog_item WHERE group_id = g.id), 0)) WHERE g.id = '{G_TASK}';
-"""
 
 
 # =====================================================================
@@ -761,6 +440,14 @@ def build_pool():
                   for _ in range(48)]
     QUESTIONS += [qrow("TIN-TF1", fam := fam + 1, "INFORMATICS", "TRUE_FALSE", 1)
                   for _ in range(8)]
+    # --- UNI-2701, TEST-ERR-07: Địa lí mới có 14 câu MĐ + 1 chùm (ma trận lớp 2/4/11, độ khó 5/9/3).
+    # Cộng với 6 câu MĐ đã có (một câu G12/VDC không dùng được) nút TEST-DIA-HEP có 13 câu MĐ dùng được:
+    # lớp 1/3/9 và độ khó 4/7/2, đủ cho bài 16 câu (chùm TESTQ-DIA-CTX-HEP-S001 + 13 câu) và thiếu
+    # đúng một câu MĐ cho bài 17 câu. Chỉ thêm ở cuối: mã câu đánh số theo `fam`, các mã cũ giữ nguyên.
+    for g, l in (("G11", "TH"), ("G11", "TH"), ("G12", "NB"), ("G12", "NB"),
+                 ("G12", "VD"), ("G12", "TH"), ("G12", "TH"), ("G12", "TH")):
+        QUESTIONS.append(qrow("DIA-MC1-HEP", fam := fam + 1, "DIA", "SINGLE_CHOICE", 1,
+                              grade=g, level=l, knowledge=[KNOW_DIA_HEP]))
     # decoys: mỗi họ chính thêm 1 DRAFT + 1 RETIRED (không được đếm)
     seen = set()
     decoys = []
@@ -873,11 +560,13 @@ def emit_seed():
     out.append("-- (docs/specs/2026-11-17-de-test-gia-dinh.md mục 3.3, 3.1, 3.2).")
     out.append("-- Phát sinh bằng scripts/generate_test_exam_seed.py; id cố định, ON CONFLICT DO NOTHING.")
     out.append("-- Mọi số \"giả định\" chờ chuyên gia xác nhận.")
+    out.append("-- Nâng cấp đợt 2B -> 3: bước nâng cấp giả định không có tiến trình API cũ nào ghi trong lúc Flyway")
+    out.append("-- chạy (dev/demo triển khai lại tạo container mới); chỉ đề còn nguyên cấu trúc và tiêu đề 2B mới được thay.")
     out.append("")
-    out.append("-- QUESTION_TAG + nút MAPID dùng cho bài lỗi TEST-ERR-03/06/07.")
+    out.append("-- QUESTION_TAG + nút MAPID dùng cho bài lỗi TEST-ERR-03/07 và phạm vi MAPID hẹp của Toán.")
     items = [
         (TAG_HIEM, G_TAG, "TEST-HIEM", "test-hiem", "Nhãn test hiếm", "Rare test tag", "[MẪU] Nhãn cho TEST-ERR-03", 0),
-        (KNOW_TOAN_HEP, G_KNOW, "TEST-TOAN-HEP", "test-toan-hep", "Chương test hẹp Toán", "Narrow test chapter Math", "[MẪU] Nút MAPID cho TEST-ERR-06", 0),
+        (KNOW_TOAN_HEP, G_KNOW, "TEST-TOAN-HEP", "test-toan-hep", "Chương test hẹp Toán", "Narrow test chapter Math", "[MẪU] Nút MAPID hẹp của Toán (nguồn thu hẹp, dùng ở phạm vi thử)", 0),
         (KNOW_DIA_HEP, G_KNOW, "TEST-DIA-HEP", "test-dia-hep", "Chương test hẹp Địa lí", "Narrow test chapter Geography", "[MẪU] Nút MAPID cho TEST-ERR-07", 1),
     ]
     for item_id, group_id, code, normalized, name_vi, name_en, description, order in items:
@@ -909,6 +598,8 @@ def emit_seed():
     out.append("    COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0));")
     out.append("")
     # ---------- question pool ----------
+    out.append("-- A repeatable script may run twice in one transaction (tests): ON COMMIT DROP has not fired yet.")
+    out.append("DROP TABLE IF EXISTS pg_temp.testq_rows;")
     out.append("CREATE TEMP TABLE testq_rows (")
     out.append("    id uuid PRIMARY KEY, code text NOT NULL, type text NOT NULL,")
     out.append("    subject_id uuid NOT NULL, grade_id uuid NOT NULL, level_id uuid NOT NULL,")
@@ -1012,293 +703,365 @@ def pg_array(ids):
 # 3) 14 bài hợp lệ + 13 bài lỗi
 # =====================================================================
 
-def exam_row(code, name, kind, scope, parts_doc, timing, duration=None,
-             max_score=None, reference_max=None, practice="RAW", part_code=None,
-             subject=None, template=None, structure_year=None, matrix_year=None,
-             years_confirmed=True, description=None):
-    return {"code": code, "name": name, "kind": kind, "scope": scope, "doc": parts_doc,
-            "timing": timing, "duration": duration, "max_score": max_score,
+# Header (admin-editable columns) of every TEST-* exam as the 2B seed wrote it, frozen from
+# backend/src/test/resources/exam/seed-2b/R__seed_test_exam_data.sql:
+# (name, description, instructions, duration_minutes, max_score, reference_max, practice_scoring, years_confirmed)
+WAVE_2B_HEADERS = {
+    'TEST-HSA-01': ('TEST · HSA toàn bài', 'Đề test giả định (UNI-2634).', None, 195, 150, None, 'RAW', True),
+    'TEST-HSA-02': ('TEST · HSA phần Toán', 'Đề test giả định (UNI-2634).', None, 75, 50, None, 'RAW', True),
+    'TEST-HSA-03': ('TEST · HSA phần Văn', 'Đề test giả định (UNI-2634).', None, 60, 50, None, 'RAW', True),
+    'TEST-HSA-04': ('TEST · HSA phần Khoa học/Tiếng Anh', 'Đề test giả định (UNI-2634).', None, 60, 50, None, 'RAW', True),
+    'TEST-QDA-01': ('TEST · QDA toàn bài', 'Đề test giả định (UNI-2634).', None, 195, 150, None, 'RAW', True),
+    'TEST-BCA-01': ('TEST · BCA toàn bài', 'Đề test giả định (UNI-2634).', None, 180, 100, None, 'RAW', True),
+    'TEST-VACT-01': ('TEST · V-ACT toàn bài', 'Đề test giả định (UNI-2634).', None, 150, None, 1200, 'LINEAR', True),
+    'TEST-SPT-01': ('TEST · SPT Toán 2025', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-SP2E-01': ('TEST · SP2E Toán 2025', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-SP2E-02': ('TEST · SP2E Toán 2026', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-SP2E-03': ('TEST · SP2E Tiếng Anh 2026', 'Đề test giả định (UNI-2634).', None, 60, 10, None, 'RAW', True),
+    'TEST-THPTQG-01': ('TEST · THPTQG Toán 2025', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-THPTQG-02': ('TEST · THPTQG Ngữ văn 2025', 'Đề test giả định (UNI-2634).', None, 120, 10, None, 'RAW', True),
+    'TEST-THPTQG-03': ('TEST · THPTQG Tin học 2025', 'Đề test giả định (UNI-2634).', None, 50, 10, None, 'RAW', True),
+    'TEST-ERR-01': ('TEST · ERR ma trận thiếu cách áp', 'Lỗi: khối MĐ có matrix nhưng chưa chọn cách áp (mode null) -> MATRIX_INCOMPLETE.', None, 90, 10, None, 'RAW', True),
+    'TEST-ERR-02': ('TEST · ERR điểm phần 2 BCA', 'Lỗi: khối Tiếng Anh 1đ (tổng phần 65 > max 60) -> PART_POINTS_MISMATCH + POINTS_TOTAL_MISMATCH.', None, 180, 100, None, 'RAW', True),
+    'TEST-ERR-03': ('TEST · ERR chùm hiếm', 'Lỗi: nhóm Đọc ngữ liệu lọc nhãn TEST-HIEM (2 < 5 bộ) -> SET_SHORTAGE.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-04': ('TEST · ERR tổng môn 49', 'Lỗi: nhóm câu đơn 40 (môn 49) -> SECTION_TOTAL_MISMATCH.', None, 75, 50, None, 'RAW', True),
+    'TEST-ERR-05': ('TEST · ERR chỉ tiêu TLN 14', 'Lỗi: chỉ tiêu Trả lời ngắn 14 (tổng 49) -> ANSWER_QUOTA_TOTAL_MISMATCH.', None, 75, 50, None, 'RAW', True),
+    'TEST-ERR-06': ('TEST · ERR MAPID hẹp Toán', 'Lỗi: phạm vi MAPID TEST-TOAN-HEP (10 TLN < 15) -> ANSWER_TYPE_SHORTAGE.', None, 75, 50, None, 'RAW', True),
+    'TEST-ERR-07': ('TEST · ERR Địa lí chỉ đủ 16', 'Lỗi: Địa lí đủ đúng 16, thiếu khi nhận 17 -> INVALID ở 3 selections.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-08': ('TEST · ERR Vật lí thiếu nhóm còn lại', 'Vật lí gồm 6 câu chùm và 11 câu đơn; giải đủ 17 câu trước khi bỏ một câu.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-09': ('TEST · ERR Hóa học chỉ tiêu số câu', 'Lỗi: chỉ tiêu Hóa học có tổng 16 câu thay vì 17 câu.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-10': ('TEST · ERR countsByPick 17-17-17', 'Lỗi: countsByPick 17/17/17 -> SUBJECT_CHOICE_COUNTS_INVALID.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-11': ('TEST · ERR ô G12×VDC thiếu', 'Lỗi: ô Lớp 12 × VDC đặt 12, bộ mẫu tối đa 4 -> CELL_SHORTAGE.', None, 90, 10, None, 'RAW', True),
+    'TEST-ERR-12': ('TEST · ERR khối TLN bỏ điểm', 'Lỗi: khối Trả lời ngắn bỏ điểm mỗi câu -> POINTS_TOTAL_MISMATCH.', None, 90, 10, None, 'RAW', True),
+    'TEST-ERR-13': ('TEST · ERR năm chưa xác nhận', 'Lỗi: cấu trúc 2026, ma trận 2025, chưa xác nhận -> YEARS_UNCONFIRMED.', None, 90, 10, None, 'RAW', False),
+}
+
+
+def exam_row(code, name, kind, scope, template_code, *, part_code=None, subject=None,
+             duration="template", max_score="template", reference_max=None, practice="RAW",
+             matrix_year=None, years_confirmed=True, description=None):
+    """A valid exam: the template's own structure, ids and numbers (de-test 4.4)."""
+    template = template_row(template_code)
+    doc = template["doc"]
+    return {"code": code, "name": name, "kind": kind, "scope": scope,
+            "doc": {"parts": doc["parts"]}, "exam_quotas": doc.get("examQuotas") or [],
+            "timing": template["timing"],
+            "duration": template["duration"] if duration == "template" else duration,
+            "max_score": template["max_score"] if max_score == "template" else max_score,
             "reference_max": reference_max, "practice": practice,
-            "part_code": part_code, "subject": subject, "template": template,
-            "structure_year": structure_year, "matrix_year": matrix_year,
+            "part_code": part_code, "subject": subject, "template": template_code,
+            "structure_year": template["structure_year"],
+            "matrix_year": matrix_year or template["matrix_year"],
             "years_confirmed": years_confirmed,
-            "description": description or "Đề test giả định (UNI-2634)."}
+            "description": description or f"Đề test giả định dựng từ mẫu {template_code} (UNI-2701)."}
+
+
+def error_row(base, code, name, description, mutate=None, **overrides):
+    """A fixture: a copy of a valid exam with exactly one change (the mutation or the override)."""
+    row = copy.deepcopy(next(e for e in EXAMS if e["code"] == base))
+    row.update(code=code, name=name, description=description)
+    if mutate:
+        mutate(row["doc"])
+    row.update(overrides)
+    return row
+
+
+def blocks_of(node):
+    """Every block below a part, section or option, in document order."""
+    found = []
+    for section in node.get("sections", []) + node.get("subjectPool", []):
+        found += section["blocks"]
+    found += node.get("blocks", [])
+    for option in node.get("options", []):
+        found += blocks_of(option)
+    return found
+
+
+def scope_nodes(node_ids):
+    return {"nodeIds": node_ids, "competencyCodes": []}
+
+
+def block_of(doc, group, question_type=None):
+    matches = [block for part in doc["parts"] for block in blocks_of(part)
+               if block.get("templateGroupCode") == group
+               and question_type in (None, block["questionType"])]
+    assert len(matches) == 1, (group, question_type, len(matches))
+    return matches[0]
+
+
+def section_of(doc, subject):
+    matches = [section for part in doc["parts"]
+               for section in part.get("sections", []) + part.get("subjectPool", [])
+               + [s for o in part.get("options", []) for s in o["sections"]]
+               if section["subjectCode"] == subject]
+    assert len(matches) == 1, (subject, len(matches))
+    return matches[0]
+
+
+def option_of(doc, code):
+    matches = [o for part in doc["parts"] for o in part.get("options", []) if o["code"] == code]
+    assert len(matches) == 1, (code, len(matches))
+    return matches[0]
 
 
 EXAMS = [
-    exam_row("TEST-HSA-01", "TEST · HSA toàn bài", "HSA", "FULL",
-             template_hsa_full(), "PER_PART", 195, 150,
-             template="HSA_FULL", structure_year=2026, matrix_year=2026),
-    exam_row("TEST-HSA-02", "TEST · HSA phần Toán", "HSA", "PART",
-             template_hsa_part_math(), "PER_PART", 75, 50,
-             part_code="TOAN", template="HSA_PART_MATH",
-             structure_year=2026, matrix_year=2026),
-    exam_row("TEST-HSA-03", "TEST · HSA phần Văn", "HSA", "PART",
-             template_hsa_part_lit(), "PER_PART", 60, 50,
-             part_code="VAN", template="HSA_PART_LITERATURE",
-             structure_year=2026, matrix_year=2026),
-    exam_row("TEST-HSA-04", "TEST · HSA phần Khoa học/Tiếng Anh", "HSA", "PART",
-             template_hsa_part_science(), "PER_PART", 60, 50,
-             part_code="SCIENCE", template="HSA_PART_SCIENCE",
-             structure_year=2026, matrix_year=2026),
-    exam_row("TEST-QDA-01", "TEST · QDA toàn bài", "QDA", "FULL",
-             template_qda_full(), "PER_PART", 195, 150, template="QDA_FULL"),
-    exam_row("TEST-BCA-01", "TEST · BCA toàn bài", "BCA", "FULL",
-             template_bca_full(), "SHARED", 180, 100, template="BCA_FULL"),
-    exam_row("TEST-VACT-01", "TEST · V-ACT toàn bài", "VACT", "FULL",
-             template_vact_full(), "SHARED", 150, None, reference_max=1200,
-             practice="LINEAR", template="VACT_FULL"),
-    exam_row("TEST-SPT-01", "TEST · SPT Toán 2025", "SPT", "SUBJECT",
-             TEMPLATES["SPT_MATH_2025"][0], "PER_PART", 90, 10,
-             subject="TOAN", template="SPT_MATH_2025",
-             structure_year=2025, matrix_year=2025),
-    exam_row("TEST-SP2E-01", "TEST · SP2E Toán 2025", "SP2E", "SUBJECT",
-             TEMPLATES["SP2E_MATH_2025"][0], "PER_PART", 90, 10,
-             subject="TOAN", template="SP2E_MATH_2025",
-             structure_year=2025, matrix_year=2025),
-    exam_row("TEST-SP2E-02", "TEST · SP2E Toán 2026", "SP2E", "SUBJECT",
-             TEMPLATES["SP2E_MATH_2026"][0], "PER_PART", 90, 10,
-             subject="TOAN", template="SP2E_MATH_2026",
-             structure_year=2026, matrix_year=2025, years_confirmed=True),
-    exam_row("TEST-SP2E-03", "TEST · SP2E Tiếng Anh 2026", "SP2E", "SUBJECT",
-             TEMPLATES["SP2E_ANH_2026"][0], "PER_PART", 60, 10,
-             subject="ANH", template="SP2E_ANH_2026",
-             structure_year=2026, matrix_year=2026),
+    exam_row("TEST-HSA-01", "TEST · HSA toàn bài", "HSA", "FULL", "HSA_FULL"),
+    exam_row("TEST-HSA-02", "TEST · HSA phần Toán", "HSA", "PART", "HSA_PART_MATH",
+             part_code="TOAN"),
+    exam_row("TEST-HSA-03", "TEST · HSA phần Văn", "HSA", "PART", "HSA_PART_LITERATURE",
+             part_code="VAN"),
+    exam_row("TEST-HSA-04", "TEST · HSA phần Khoa học", "HSA", "PART", "HSA_PART_SCIENCE",
+             part_code="SCIENCE"),
+    exam_row("TEST-QDA-01", "TEST · QDA toàn bài", "QDA", "FULL", "QDA_FULL"),
+    exam_row("TEST-BCA-01", "TEST · BCA toàn bài", "BCA", "FULL", "BCA_FULL"),
+    exam_row("TEST-VACT-01", "TEST · V-ACT toàn bài", "VACT", "FULL", "VACT_FULL",
+             max_score=None, reference_max=1200, practice="LINEAR"),
+    exam_row("TEST-SPT-01", "TEST · SPT Toán 2025", "SPT", "SUBJECT", "SPT_MATH_2025",
+             subject="TOAN", duration=90),
+    exam_row("TEST-SP2E-01", "TEST · SP2E Toán 2025", "SP2E", "SUBJECT", "SP2E_MATH_2025",
+             subject="TOAN"),
+    # Cấu trúc 2026 trên ma trận 2025, đã xác nhận: bài hợp lệ làm gốc của TEST-ERR-13.
+    exam_row("TEST-SP2E-02", "TEST · SP2E Toán 2026", "SP2E", "SUBJECT", "SP2E_MATH_2026",
+             subject="TOAN", matrix_year=2025),
+    exam_row("TEST-SP2E-03", "TEST · SP2E Tiếng Anh 2026", "SP2E", "SUBJECT", "SP2E_ANH_2026",
+             subject="ANH"),
     exam_row("TEST-THPTQG-01", "TEST · THPTQG Toán 2025", "THPTQG", "SUBJECT",
-             subject_doc("TOAN", "Toán", 90, 22, [
-                 blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 12, rppq=0.25),
-                 blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                 blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 6, rppq=0.5)]),
-             "PER_PART", 90, 10, subject="TOAN", template="THPTQG_MATH_2025",
-             structure_year=2025, matrix_year=2025),
+             "THPTQG_MATH_2025", subject="TOAN"),
     exam_row("TEST-THPTQG-02", "TEST · THPTQG Ngữ văn 2025", "THPTQG", "SUBJECT",
-             subject_doc("VAN", "Ngữ văn", 120, 7, [
-                 blk("b1", "Đọc hiểu", "QUESTION_SET", sets=1, size=5,
-                     child="ESSAY", rppq=0.8),
-                 blk("b2", "Viết đoạn văn (khoảng 200 chữ)", "ESSAY", 1, rppq=2),
-                 blk("b3", "Viết bài văn (khoảng 600 chữ)", "ESSAY", 1, rppq=4)]),
-             "PER_PART", 120, 10, subject="VAN", template="THPTQG_LITERATURE_2025",
-             structure_year=2025, matrix_year=2025),
+             "THPTQG_LITERATURE_2025", subject="VAN"),
     exam_row("TEST-THPTQG-03", "TEST · THPTQG Tin học 2025", "THPTQG", "SUBJECT",
-             TEMPLATES["THPTQG_INFORMATICS_2025"][0], "SHARED", 50, 10,
-             subject="INFORMATICS", template="THPTQG_INFORMATICS_2025",
-             structure_year=2025, matrix_year=2025),
-    # ---- 13 bài lỗi ----
-    exam_row("TEST-ERR-01", "TEST · ERR ma trận thiếu cách áp", "THPTQG", "SUBJECT",
-             subject_doc("TOAN", "Toán", 90, 22, [
-                 blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 12, rppq=0.25,
-                     matrix={"mode": None, "unit": "COUNT", "cells": [],
-                             "byGrade": [{"code": "G12", "value": 12}],
-                             "byDifficulty": []}),
-                 blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                 blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 6, rppq=0.5)]),
-             "PER_PART", 90, 10, subject="TOAN", template="THPTQG_MATH_2025",
-             structure_year=2025, matrix_year=2025,
-             description="Lỗi: khối MĐ có matrix nhưng chưa chọn cách áp (mode null) -> MATRIX_INCOMPLETE."),
-    exam_row("TEST-ERR-02", "TEST · ERR điểm phần 2 BCA", "BCA", "FULL",
-             template_bca_full(english_points=1, part2_max=60), "SHARED", 180, 100,
-             template="BCA_FULL",
-             description="Lỗi: khối Tiếng Anh 1đ (tổng phần 65 > max 60) -> PART_POINTS_MISMATCH + POINTS_TOTAL_MISMATCH."),
-    exam_row("TEST-ERR-03", "TEST · ERR chùm hiếm", "HSA", "PART",
-             doc([part("p2", "Văn học – Ngôn ngữ", 60, 50,
-                       sections=[hsa_lit_section("s-lit2", tag=True)],
-                       max_points=50)]),
-             "PER_PART", 60, 50, part_code="VAN", template="HSA_PART_LITERATURE",
-             structure_year=2026, matrix_year=2026,
-             description="Lỗi: nhóm Đọc ngữ liệu lọc nhãn TEST-HIEM (2 < 5 bộ) -> SET_SHORTAGE."),
-    exam_row("TEST-ERR-04", "TEST · ERR tổng môn 49", "HSA", "PART",
-             doc([part("p1", "Toán học và Xử lí số liệu", 75, 50,
-                       sections=[hsa_math_section("s-math1", single_count=40)],
-                       max_points=50)]),
-             "PER_PART", 75, 50, part_code="TOAN", template="HSA_PART_MATH",
-             structure_year=2026, matrix_year=2026,
-             description="Lỗi: nhóm câu đơn 40 (môn 49) -> SECTION_TOTAL_MISMATCH."),
-    exam_row("TEST-ERR-05", "TEST · ERR chỉ tiêu TLN 14", "HSA", "PART",
-             doc([part("p1", "Toán học và Xử lí số liệu", 75, 50,
-                       sections=[hsa_math_section("s-math1", quota={
-                           "unit": "COUNT", "items": [
-                               {"answerType": "SINGLE_CHOICE", "value": 35},
-                               {"answerType": "SHORT_ANSWER", "value": 14}]})],
-                       max_points=50)]),
-             "PER_PART", 75, 50, part_code="TOAN", template="HSA_PART_MATH",
-             structure_year=2026, matrix_year=2026,
-             description="Lỗi: chỉ tiêu Trả lời ngắn 14 (tổng 49) -> ANSWER_QUOTA_TOTAL_MISMATCH."),
-    exam_row("TEST-ERR-06", "TEST · ERR MAPID hẹp Toán", "HSA", "PART",
-             doc([part("p1", "Toán học và Xử lí số liệu", 75, 50,
-                       sections=[hsa_math_section(
-                           "s-math1", scope=scope_nodes([KNOW_TOAN_HEP]))],
-                       max_points=50)]),
-             "PER_PART", 75, 50, part_code="TOAN", template="HSA_PART_MATH",
-             structure_year=2026, matrix_year=2026,
-             description="Lỗi: phạm vi MAPID TEST-TOAN-HEP (10 TLN < 15) -> ANSWER_TYPE_SHORTAGE."),
-    exam_row("TEST-ERR-07", "TEST · ERR Địa lí chỉ đủ 16", "HSA", "PART",
-             doc([part("p3", "Khoa học hoặc Tiếng Anh", 60, 50,
-                       options=[hsa_science_option(dia_scope=True),
-                                option("o-eng", "SUBJECT", "ANH", "Tiếng Anh",
-                                       sections=[hsa_eng_section("s-eng3")])],
-                       max_points=50, choose=1)]),
-             "PER_PART", 60, 50, part_code="SCIENCE", template="HSA_PART_SCIENCE",
-             structure_year=2026, matrix_year=2026,
-             description="Lỗi: Địa lí đủ đúng 16, thiếu khi nhận 17 -> INVALID ở 3 selections."),
-    exam_row("TEST-ERR-08", "TEST · ERR Vật lí thiếu nhóm còn lại", "HSA", "PART",
-             doc([part("p3", "Khoa học hoặc Tiếng Anh", 60, 50,
-                       options=[option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học",
-                                       sections=[
-                                           section("s-sci-ly", "LY", 17, [
-                                               blk("b-sci-ly-cluster", "Vật lí · chùm",
-                                                   "QUESTION_SET", sets=2, size=3,
-                                                   task="CLUSTER", child="SINGLE_CHOICE",
-                                                   group="HSA_LY_CLUSTER"),
-                                               blk("b-sci-ly-fixed", "Vật lí · cố định 11",
-                                                   None, qcount=11)],
-                                               quotas=SCI_QUOTA, matrix=SCI_MATRIX,
-                                               choice="NATURAL"),
-                                           *hsa_science_option()["sections"][1:]],
-                                       choose_subjects=3, counts=[17, 17, 16]),
-                                option("o-eng", "SUBJECT", "ANH", "Tiếng Anh",
-                                       sections=[hsa_eng_section("s-eng3")])],
-                       max_points=50, choose=1)]),
-             "PER_PART", 60, 50, part_code="SCIENCE", template="HSA_PART_SCIENCE",
-             structure_year=2026, matrix_year=2026,
-             description="Vật lí gồm 6 câu chùm và 11 câu đơn; giải đủ 17 câu trước khi bỏ một câu."),
-    exam_row("TEST-ERR-09", "TEST · ERR Hóa học chỉ tiêu số câu", "HSA", "PART",
-             doc([part("p3", "Khoa học hoặc Tiếng Anh", 60, 50,
-                       options=[option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học",
-                                       sections=[
-                                           hsa_science_option()["sections"][0],
-                                           section("s-sci-hoa", "HOA", 17, [
-                                               blk("b-sci-hoa-cluster", "Hóa học · chùm",
-                                                   "QUESTION_SET", sets=2, size=3,
-                                                   task="CLUSTER", child="SINGLE_CHOICE",
-                                                   group="HSA_HOA_CLUSTER"),
-                                               blk("b-sci-hoa-rest", "Hóa học · câu đơn",
-                                                   None, qcount=11)],
-                                               quotas={"unit": "COUNT", "items": [
-                                                   {"answerType": "SINGLE_CHOICE", "value": 12},
-                                                   {"answerType": "SHORT_ANSWER", "value": 4}]},
-                                               matrix=SCI_MATRIX, choice="NATURAL"),
-                                           *hsa_science_option()["sections"][2:]],
-                                       choose_subjects=3, counts=[17, 17, 16]),
-                                option("o-eng", "SUBJECT", "ANH", "Tiếng Anh",
-                                       sections=[hsa_eng_section("s-eng3")])],
-                       max_points=50, choose=1)]),
-             "PER_PART", 60, 50, part_code="SCIENCE", template="HSA_PART_SCIENCE",
-             structure_year=2026, matrix_year=2026,
-             description="Lỗi: chỉ tiêu Hóa học có tổng 16 câu thay vì 17 câu."),
-    exam_row("TEST-ERR-10", "TEST · ERR countsByPick 17-17-17", "HSA", "PART",
-             doc([part("p3", "Khoa học hoặc Tiếng Anh", 60, 50,
-                       options=[option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học",
-                                       sections=hsa_science_option()["sections"],
-                                       choose_subjects=3, counts=[17, 17, 17]),
-                                option("o-eng", "SUBJECT", "ANH", "Tiếng Anh",
-                                       sections=[hsa_eng_section("s-eng3")])],
-                       max_points=50, choose=1)]),
-             "PER_PART", 60, 50, part_code="SCIENCE", template="HSA_PART_SCIENCE",
-             structure_year=2026, matrix_year=2026,
-             description="Lỗi: countsByPick 17/17/17 -> SUBJECT_CHOICE_COUNTS_INVALID."),
-    exam_row("TEST-ERR-11", "TEST · ERR ô G12×VDC thiếu", "THPTQG", "SUBJECT",
-             subject_doc("TOAN", "Toán", 90, 22, [
-                 blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 12, rppq=0.25,
-                     matrix={"mode": "COMBINED", "unit": "COUNT",
-                             "cells": [{"gradeCode": "G12", "difficultyCode": "VDC",
-                                        "value": 12}],
-                             "byGrade": [], "byDifficulty": []}),
-                 blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                 blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 6, rppq=0.5)]),
-             "PER_PART", 90, 10, subject="TOAN", template="THPTQG_MATH_2025",
-             structure_year=2025, matrix_year=2025,
-             description="Lỗi: ô Lớp 12 × VDC đặt 12, bộ mẫu tối đa 4 -> CELL_SHORTAGE."),
-    exam_row("TEST-ERR-12", "TEST · ERR khối TLN bỏ điểm", "THPTQG", "SUBJECT",
-             subject_doc("TOAN", "Toán", 90, 22, [
-                 blk("b1", "Trắc nghiệm chọn một", "SINGLE_CHOICE", 12, rppq=0.25),
-                 blk("b2", "Đúng/Sai", "TRUE_FALSE", 4, rppq=1),
-                 blk("b3", "Trả lời ngắn", "SHORT_ANSWER", 6, rppq=None)]),
-             "PER_PART", 90, 10, subject="TOAN", template="THPTQG_MATH_2025",
-             structure_year=2025, matrix_year=2025,
-             description="Lỗi: khối Trả lời ngắn bỏ điểm mỗi câu -> POINTS_TOTAL_MISMATCH."),
-    exam_row("TEST-ERR-13", "TEST · ERR năm chưa xác nhận", "SP2E", "SUBJECT",
-             TEMPLATES["SP2E_MATH_2026"][0], "PER_PART", 90, 10,
-             subject="TOAN", template="SP2E_MATH_2026",
-             structure_year=2026, matrix_year=2025, years_confirmed=False,
-             description="Lỗi: cấu trúc 2026, ma trận 2025, chưa xác nhận -> YEARS_UNCONFIRMED."),
+             "THPTQG_INFORMATICS_2025", subject="INFORMATICS"),
 ]
 
-def generated_template(code):
-    """Read the exact IDs and structure applied by the generated template migration."""
-    sql = TEMPLATE_MIGRATION.read_text(encoding="utf-8")
-    match = re.search(r"structure = '((?:''|[^'])*)'::jsonb\nWHERE code = "
-                      + re.escape(sql_quote(code)) + r";", sql)
-    if not match:
-        raise ValueError(f"Template not found in generated migration: {code}")
-    return json.loads(match.group(1).replace("''", "'"))
+
+def err01(doc):
+    first = doc["parts"][0]["sections"][0]["blocks"][0]
+    first["matrix"] = {"mode": None, "unit": "COUNT", "cells": [],
+                       "byGrade": [{"code": "G12", "value": 12}], "byDifficulty": []}
 
 
-MATRIX_DEFAULTS = {"gradeEnforcement": "REQUIRED", "difficultyEnforcement": "REQUIRED",
-                   "basis": "QUESTION"}
-BLOCK_DEFAULTS = {"shuffleUnits": True, "shuffleEditable": False, "slots": [],
-                  "childConditions": [], "answerFormats": [], "omitted": False,
-                  "topicQuotas": []}
+def err02(doc):
+    for block in section_of(doc, "ANH")["blocks"]:
+        assert block["requiredPointsPerQuestion"] == 0.75
+        block["requiredPointsPerQuestion"] = 1
 
 
-def normalize_structure(exam):
-    """Write the stored v2 representation used by the integration seed.
-
-    Blocks and sections carry the v2 defaults explicitly, matrices their effective
-    enforcement and basis, and a part whose sections are chosen from the Global List
-    stores the subject pool with codeSource GLOBAL_LIST instead of COMBINATION options.
-    """
-    exam["combination_count"] = 0
-    for part_doc in exam["doc"]["parts"]:
-        combinations = [o for o in part_doc.get("options", []) if o["kind"] == "COMBINATION"]
-        if combinations:
-            exam["combination_count"] += len(combinations)
-            pool, seen = [], set()
-            for option_doc in combinations:
-                for section_doc in option_doc["sections"]:
-                    if section_doc["subjectCode"] not in seen:
-                        seen.add(section_doc["subjectCode"])
-                        pool.append(section_doc)
-            del part_doc["options"]
-            part_doc["subjectPool"] = pool
-            part_doc["codeSource"] = {"source": "GLOBAL_LIST", "branch": None}
-        sections = (part_doc.get("sections", []) + part_doc.get("subjectPool", [])
-                    + [s for o in part_doc.get("options", []) for s in o["sections"]])
-        blocks = [b for s in sections for b in s["blocks"]]
-        blocks += [b for o in part_doc.get("options", []) for b in o["blocks"]]
-        for section_doc in sections:
-            section_doc["topicQuotas"] = []
-            if section_doc.get("matrix") is not None:
-                section_doc["matrix"] = {**section_doc["matrix"], **MATRIX_DEFAULTS}
-        for block_doc in blocks:
-            block_doc.update(BLOCK_DEFAULTS)
+def err03(doc):
+    block = block_of(doc, "HSA_MATH_CONTEXT")
+    assert block["questionType"] == "QUESTION_SET" and not block.get("slots")
+    block["tagCodes"] = ["TEST-HIEM"]
 
 
-for exam in EXAMS:
-    if exam["code"] == "TEST-VACT-01":
-        exam["doc"] = generated_template("VACT_FULL")
-    elif exam["code"] in {"TEST-THPTQG-01", "TEST-ERR-01", "TEST-ERR-11", "TEST-ERR-12"}:
-        old_blocks = exam["doc"]["parts"][0]["sections"][0]["blocks"]
-        exam["doc"] = generated_template("THPTQG_MATH_2025")
-        exam["timing"] = "SHARED"
-        for index, old in enumerate(old_blocks):
-            block = exam["doc"]["parts"][index]["sections"][0]["blocks"][0]
-            if old.get("matrix") is not None:
-                block["matrix"] = old["matrix"]
-            if old.get("requiredPointsPerQuestion") is None:
-                block["requiredPointsPerQuestion"] = None
-    else:
-        normalize_structure(exam)
+def err04(doc):
+    block = block_of(doc, "HSA_MATH_SINGLE", "SINGLE_CHOICE")
+    assert block["questionCount"] == 32
+    block["questionCount"] = 31
 
+
+def err05(doc):
+    quotas = section_of(doc, "TOAN")["answerQuotas"]["items"]
+    assert quotas[1] == {"answerType": "SHORT_ANSWER", "value": 15}
+    quotas[1]["value"] = 14
+
+
+def err06(doc):
+    block = block_of(doc, "HSA_MATH_SINGLE", "SHORT_ANSWER")
+    assert block["questionCount"] == 15
+    block["questionType"] = "SINGLE_CHOICE"
+
+
+def err07(doc):
+    section_of(doc, "DIA")["knowledgeScope"] = scope_nodes([KNOW_DIA_HEP])
+
+
+def err08(doc):
+    del block_of(doc, "HSA_LY_FLEX", "SHORT_ANSWER")["templateGroupCode"]
+
+
+def err09(doc):
+    section_of(doc, "HOA")["answerQuotas"] = {"unit": "COUNT", "items": [
+        {"answerType": "SINGLE_CHOICE", "value": 12}, {"answerType": "SHORT_ANSWER", "value": 4}]}
+
+
+def err10(doc):
+    option_of(doc, "SCIENCE")["countsByPick"] = [17, 17, 17]
+
+
+def err11(doc):
+    doc["parts"][0]["sections"][0]["blocks"][0]["matrix"] = {
+        "mode": "COMBINED", "unit": "COUNT",
+        "cells": [{"gradeCode": "G12", "difficultyCode": "VDC", "value": 12}],
+        "byGrade": [], "byDifficulty": []}
+
+
+def err12(doc):
+    doc["parts"][2]["sections"][0]["blocks"][0]["requiredPointsPerQuestion"] = None
+
+
+EXAMS += [
+    error_row("TEST-THPTQG-01", "TEST-ERR-01", "TEST · ERR ma trận thiếu cách áp",
+              "Lỗi: nhóm MĐ có matrix nhưng chưa chọn cách áp (mode null) -> MATRIX_INCOMPLETE.", err01),
+    error_row("TEST-BCA-01", "TEST-ERR-02", "TEST · ERR điểm phần 2 BCA",
+              "Lỗi: các nhóm Tiếng Anh 1đ thay 0,75đ (phần 2: 65 > 60) -> PART_POINTS_MISMATCH.", err02),
+    error_row("TEST-HSA-02", "TEST-ERR-03", "TEST · ERR chùm hiếm",
+              "Lỗi: nhóm Ngữ cảnh Toán (1 bộ) thêm nhãn TEST-HIEM, không bộ Toán nào mang nhãn -> SET_SHORTAGE.", err03),
+    error_row("TEST-HSA-02", "TEST-ERR-04", "TEST · ERR tổng môn 49",
+              "Lỗi: nhóm MĐ 31 thay 32 (môn 49) -> SECTION_TOTAL_MISMATCH.", err04),
+    error_row("TEST-HSA-02", "TEST-ERR-05", "TEST · ERR chỉ tiêu TLN 14",
+              "Lỗi: chỉ tiêu Trả lời ngắn 14 (tổng 49) -> ANSWER_QUOTA_TOTAL_MISMATCH.", err05),
+    error_row("TEST-HSA-02", "TEST-ERR-06", "TEST · ERR chỉ tiêu TLN mồ côi",
+              "Lỗi: khối Trả lời ngắn của Toán đổi thành Một đáp án; chỉ tiêu Trả lời ngắn 15 không còn khối nào nhận -> ANSWER_TYPE_SHORTAGE.", err06),
+    error_row("TEST-HSA-04", "TEST-ERR-07", "TEST · ERR Địa lí thiếu khi nhận 17",
+              "Lỗi: Địa lí đặt phạm vi TEST-DIA-HEP, thiếu nguồn khi nhận 17 câu -> CELL_SHORTAGE, INVALID ở 6 trong 10 bộ ba.",
+              err07),
+    error_row("TEST-HSA-04", "TEST-ERR-08", "TEST · ERR Vật lí nhóm TLN mất mã mẫu",
+              "Đối chứng: nhóm Trả lời ngắn của Vật lí bỏ mã nhóm mẫu (nhóm còn lại).", err08),
+    error_row("TEST-HSA-04", "TEST-ERR-09", "TEST · ERR Hóa học chỉ tiêu số câu",
+              "Lỗi: chỉ tiêu Hóa học có tổng 16 câu thay vì 17 câu.", err09),
+    error_row("TEST-HSA-04", "TEST-ERR-10", "TEST · ERR countsByPick 17-17-17",
+              "Lỗi: countsByPick 17/17/17 -> SUBJECT_CHOICE_COUNTS_INVALID.", err10),
+    error_row("TEST-THPTQG-01", "TEST-ERR-11", "TEST · ERR ô G12×VDC thiếu",
+              "Lỗi: ô Lớp 12 × VDC đặt 12, bộ mẫu tối đa 4 -> CELL_SHORTAGE.", err11),
+    error_row("TEST-THPTQG-01", "TEST-ERR-12", "TEST · ERR khối TLN bỏ điểm",
+              "Lỗi: khối Trả lời ngắn bỏ điểm mỗi câu -> POINTS_TOTAL_MISMATCH.", err12),
+    error_row("TEST-SP2E-02", "TEST-ERR-13", "TEST · ERR năm chưa xác nhận",
+              "Lỗi: cấu trúc 2026, ma trận 2025, chưa xác nhận -> YEARS_UNCONFIRMED.",
+              years_confirmed=False),
+]
+
+
+
+def has_essay_block(blocks, section):
+    """ExamBlockRefProjector.hasEssay: an ESSAY block or child type, or an ESSAY answer quota."""
+    if any(b.get("questionType") == "ESSAY" or b.get("childAnswerType") == "ESSAY" for b in blocks):
+        return True
+    quotas = (section or {}).get("answerQuotas")
+    return bool(quotas) and any(q["answerType"] == "ESSAY" for q in quotas["items"])
+
+
+def summarize(exam):
+    """ExamBlockRefProjector.summarize + ExamService.summarize: the statistics columns of exam.exam."""
+    parts = exam["doc"]["parts"]
+    has_essay = has_english = False
+    for part in parts:
+        options = part.get("options", [])
+        for section in (part.get("sections", []) + part.get("subjectPool", [])
+                        + [s for o in options for s in o["sections"]]):
+            has_essay |= has_essay_block(section["blocks"], section)
+            has_english |= section["subjectCode"] == "ANH"
+        for option in options:
+            has_english |= option["kind"] == "SUBJECT" and option["code"] == "ANH"
+            has_essay |= has_essay_block(option.get("blocks", []), None)
+    question_count = sum(part["questionCount"] or 0 for part in parts)
+    return question_count, has_essay, has_english, combination_count_sql(exam)
+
+
+# Every place a blocks[] array can sit in structure v2 (jsonpath, lax mode unwraps the arrays).
+BLOCK_MEMBER_PATHS = ("$.parts.sections.blocks", "$.parts.subjectPool.blocks",
+                      "$.parts.options.sections.blocks", "$.parts.options.blocks")
+
+
+def seed_marker(code):
+    return f"seed3-{code.lower()}"
+
+
+def header_unchanged(code, exam_alias):
+    """The exam row still holds the 2B seed's admin-editable header: PATCH exam info (name,
+    description, instructions, duration, scale, scoring, years confirmation, code) changes
+    these columns without touching the structure row, so the structure hash alone cannot tell."""
+    name, description, instructions, duration, max_score, reference_max, practice, years = WAVE_2B_HEADERS[code]
+    values = (("code", code), ("name", name), ("description", description), ("instructions", instructions),
+              ("duration_minutes", duration), ("max_score", max_score), ("reference_max", reference_max),
+              ("practice_scoring", practice), ("years_confirmed", years))
+    terms = []
+    for column, value in values:
+        if value is None:
+            terms.append(f"{exam_alias}.{column} IS NULL")
+        elif isinstance(value, bool):
+            terms.append(f"{exam_alias}.{column} = {'true' if value else 'false'}")
+        elif isinstance(value, int):
+            terms.append(f"{exam_alias}.{column} = {value}")
+        else:
+            terms.append(f"{exam_alias}.{column} = {sql_quote(value)}")
+    return " AND ".join(terms)
+
+
+def upgradable(code):
+    """An exam still exactly as the 2B seed wrote it: the literal structure hash `seed-<code>`
+    (every API structure write replaces it with a SHA-256 and sets `edited`), the 2B header
+    (see header_unchanged), a draft that was never published. Admin-edited (structure or
+    header), published, versioned or already upgraded rows never match. Aliases: s = exam_structure,
+    e = exam."""
+    return (f"s.structure_hash = 'seed-{code.lower()}' AND NOT s.edited AND e.status = 'DRAFT'"
+            f" AND NOT EXISTS (SELECT 1 FROM exam.exam_version v WHERE v.exam_id = e.id)"
+            f" AND {header_unchanged(code, 'e')}")
+
+
+def combination_count_sql(exam):
+    """ExamService.summarize: the distinct codes of the current active SUBJECT_COMBINATION list
+    for the exam kind (CatalogLookupImpl.listCombinations), counted only for an exam with a
+    code-source part. The value is read from the catalog when the seed runs."""
+    if not any(part.get("codeSource") for part in exam["doc"]["parts"]):
+        return "0"
+    return ("(SELECT count(DISTINCT n.code) FROM catalog.catalog_item n"
+            " JOIN catalog.catalog_group g ON g.id = n.group_id AND g.code_normalized = 'subject_combination'"
+            " AND g.status = 1 AND g.kind = 2"
+            " JOIN catalog.combination_version cv ON cv.item_id = n.id AND cv.is_current"
+            f" JOIN catalog.catalog_item x ON x.id = cv.exam_item_id AND x.status = 1"
+            f" WHERE cv.exam_item_id = '{KIND[exam['kind']]}' AND n.status = 1"
+            " AND NOT EXISTS (SELECT 1 FROM catalog.catalog_item anc WHERE anc.group_id = n.group_id"
+            " AND n.path LIKE anc.path || '%' AND anc.status <> 1))")
+
+
+def upgrade_statements(exam, eid, question_count, has_essay, has_english, combinations):
+    """One statement per exam that inserts the fresh structure or, on a database holding the 2B
+    seed, upgrades it (docs: de-test 4.4). Eligibility is evaluated once, in `upgrading`, before
+    anything in the statement changes: a data-modifying CTE sees the snapshot taken at the start.
+    An eligible row gets the new structure, drops its working block refs, takes the fixture's
+    name, description and statistics, and moves to revision + 1 (check_status only to
+    NEEDS_RECHECK). The 2B copy being unchanged is part of the guard, so rewriting name and
+    description never overwrites admin text."""
+    code = exam["code"]
+    parts = sql_quote(dump(exam["doc"]))
+    quotas = sql_quote(dump(exam["exam_quotas"]))
+    return [
+        "WITH seeded(exam_id, parts, exam_quotas, structure_hash) AS (VALUES",
+        f"  ('{eid}'::uuid,{parts}::jsonb,{quotas}::jsonb,'{seed_marker(code)}'::text)),",
+        "fresh AS (INSERT INTO exam.exam_structure (exam_id, parts, exam_quotas, structure_hash, base_version,",
+        "    updated_by) SELECT d.exam_id, d.parts, d.exam_quotas, d.structure_hash, NULL, NULL FROM seeded d",
+        "    WHERE NOT EXISTS (SELECT 1 FROM exam.exam_structure x WHERE x.exam_id = d.exam_id) RETURNING exam_id),",
+        "upgrading AS (SELECT s.exam_id FROM exam.exam_structure s JOIN exam.exam e ON e.id = s.exam_id",
+        f"    WHERE s.exam_id = '{eid}' AND {upgradable(code)}),",
+        "dropped AS (DELETE FROM exam.exam_block_ref r USING upgrading u",
+        "    WHERE r.exam_id = u.exam_id AND r.version_no IS NULL RETURNING r.id),",
+        "replaced AS (UPDATE exam.exam_structure s SET parts = d.parts, exam_quotas = d.exam_quotas,",
+        "    structure_hash = d.structure_hash, edited = false, updated_at = now()",
+        "    FROM upgrading u JOIN seeded d ON d.exam_id = u.exam_id WHERE s.exam_id = u.exam_id RETURNING s.exam_id)",
+        f"UPDATE exam.exam e SET name = {sql_quote(exam['name'])}, description = {sql_quote(exam['description'])},",
+        f"    kind_item_id = '{KIND[exam['kind']]}', scope = '{exam['scope']}',",
+        f"    part_code = {sql_quote(exam['part_code']) if exam['part_code'] else 'NULL'},",
+        f"    subject_item_id = {sql_quote(SUBJECT[exam['subject']]) if exam['subject'] else 'NULL'},",
+        f"    template_code = {sql_quote(exam['template'])},",
+        f"    structure_year = {exam['structure_year'] or 'NULL'}, matrix_year = {exam['matrix_year'] or 'NULL'},",
+        f"    years_confirmed = {'true' if exam['years_confirmed'] else 'false'},",
+        f"    timing = '{exam['timing']}', duration_minutes = {exam['duration'] or 'NULL'},",
+        f"    max_score = {exam['max_score'] if exam['max_score'] is not None else 'NULL'},",
+        f"    reference_max = {exam['reference_max'] if exam['reference_max'] is not None else 'NULL'},",
+        f"    practice_scoring = '{exam['practice']}',",
+        f"    question_count = {question_count}, has_essay = {'true' if has_essay else 'false'},",
+        f"    has_english_option = {'true' if has_english else 'false'}, combination_count = {combinations},",
+        "    check_status = CASE WHEN e.check_status = 'UNCHECKED' THEN 'UNCHECKED' ELSE 'NEEDS_RECHECK' END,",
+        "    revision = e.revision + 1, updated_at = now()",
+        "FROM upgrading u WHERE e.id = u.exam_id;",
+        "",
+    ]
 
 
 def emit_exam(exam):
     eid = uid("exam", exam["code"])
     out = []
     code = exam["code"]
-    qc = sum(p["questionCount"] or 0 for p in exam["doc"]["parts"])
-    has_essay = json.dumps(exam["doc"], ensure_ascii=False).find('"ESSAY"') >= 0
-    has_eng = '"ANH"' in json.dumps(exam["doc"])
-    combination_count = exam.get("combination_count", 0)
+    qc, has_essay, has_eng, combination_count = summarize(exam)
     cols = (f"'{eid}','{code}','{code.lower()}',{sql_quote(exam['name'])},"
             f"{sql_quote(exam['description'])},NULL,'{KIND[exam['kind']]}','{exam['scope']}',"
             f"{sql_quote(exam['part_code']) if exam['part_code'] else 'NULL'},"
@@ -1322,9 +1085,7 @@ def emit_exam(exam):
     out.append(f"  ({cols})")
     out.append("ON CONFLICT (id) DO NOTHING;")
     out.append("")
-    out.append("INSERT INTO exam.exam_structure (exam_id, parts, structure_hash, base_version, updated_by) VALUES")
-    out.append(f"  ('{eid}',{sql_quote(dump(exam['doc']))}::jsonb,'seed-{code.lower()}',NULL,NULL)")
-    out.append("ON CONFLICT (exam_id) DO NOTHING;")
+    out.extend(upgrade_statements(exam, eid, qc, has_essay, has_eng, combination_count))
     out.append("")
     # block refs
     rows = []
@@ -1348,15 +1109,18 @@ def emit_exam(exam):
         out.append("    tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES")
         out.append(",\n".join(rows) + "\nON CONFLICT DO NOTHING;")
         out.append("")
-        # The structure above is never replaced once stored, so the refs must follow the stored one:
-        # drop seeded rows for blocks it does not contain. A unique index on (exam, version, block)
+        # The refs must follow the stored structure: drop seeded rows for blocks it does not contain.
+        # A unique index on (exam, version, block)
         # already keeps the projection of a later edit and the seeded rows from coexisting.
+        # FU-BE13-2: only an id that is a member of a blocks[] array counts; a part, section or
+        # option id (or any other nested id) that equals a removed block id must not keep its ref.
         seeded_ids = ",".join(f"'{uid('ref', eid, b['id'])}'" for b in all_blocks(exam["doc"]))
         out.append("DELETE FROM exam.exam_block_ref r")
         out.append(f"WHERE r.exam_id = '{eid}' AND r.version_no IS NULL AND r.id IN ({seeded_ids})")
         out.append("  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id")
-        out.append("      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',")
-        out.append("          jsonb_build_object('block', r.block_id)));")
+        out.append("      AND (" + "\n        OR ".join(
+            f"jsonb_path_exists(s.parts, '{path} ? (@.id == $block)', "
+            "jsonb_build_object('block', r.block_id))" for path in BLOCK_MEMBER_PATHS) + "));")
         out.append("")
     return out
 
@@ -1410,10 +1174,23 @@ def ref_row(eid, p, o, s, b):
             "NULL)")
 
 
+REMOVED_V2_KEYS = ("taskTypeCode", "match", "includeDescendants", "groupOrder", "shuffle",
+                   "blockShuffleRule", "task_type_item_id")
+
+
+def assert_structure_v2():
+    """FU-SEEDGEN-1: a regeneration must never bring back a key structure v2 removed."""
+    for exam in EXAMS:
+        text = json.dumps(exam["doc"])
+        for key in REMOVED_V2_KEYS:
+            assert f'"{key}"' not in text, f"{exam['code']} carries removed v2 key {key}"
+
+
 TASK_TAG_IDS = {"TEST-HIEM": TAG_HIEM}
 
 
 def main():
+    assert_structure_v2()
     SEED.write_text(emit_seed().rstrip("\n") + "\n", encoding="utf-8", newline="\n")
     n_q = len(QUESTIONS) + sum(len(s["children"]) + 1 for s in SETS)
     print(f"wrote {SEED.name}; questions={n_q}, exams={len(EXAMS)}")

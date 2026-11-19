@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -70,10 +69,7 @@ class CatalogSeedUpgradeIT {
         FlywayMigrationStrategy upgradeFromBase() {
             return flyway -> {
                 DataSource dataSource = flyway.getConfiguration().getDataSource();
-                Flyway.configure().dataSource(dataSource).defaultSchema("shared")
-                        .schemas("shared", "identity", "catalog", "audit", "classroom", "questionbank", "exam")
-                        .placeholders(flyway.getConfiguration().getPlaceholders())
-                        .locations("classpath:db/migration").load().migrate();
+                CatalogUpgradeSupport.migrateUpToBeforeSystemValues(dataSource, flyway.getConfiguration().getPlaceholders());
                 JdbcTemplate db = new JdbcTemplate(dataSource);
                 db.execute("""
                     INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, display_order, status, is_system, depth, path) VALUES

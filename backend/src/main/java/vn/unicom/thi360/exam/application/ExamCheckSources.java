@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,11 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Unit;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
-/** Source details used for display; the solver, not these counts, decides feasibility. */
+/**
+ * Source details used for display; the solver, not these counts, decides feasibility. Counts this class reports
+ * without a witness paper (e.g. {@link #setRowCapacity}) are upper bounds of selectable children, never a proof
+ * that a shared-pool assignment exists.
+ */
 final class ExamCheckSources {
     record Pool(List<PathCandidate> candidates, boolean complete) {
         Pool { candidates = List.copyOf(candidates); }
@@ -69,6 +74,39 @@ final class ExamCheckSources {
             }
         }
         return List.copyOf(distinct.values());
+    }
+
+    /**
+     * Upper bound of the Bộ câu hỏi row without a witness paper: per set group min(distinct children of its eligible
+     * sets, authored cap), summed and capped by the distinct children of all groups; not a proof that an assignment
+     * exists. Eligible: exact {@code setSize} sets for a SET group (cap {@code setCount * setSize}), sets no larger
+     * than {@code questionCount} for a FLEXIBLE_SET group (cap {@code questionCount}). O(candidate children), no
+     * subset-sum and no clock read, so the value is the same before and after the check deadline.
+     */
+    long setRowCapacity(List<GroupQuota> groups) {
+        Set<String> all = new LinkedHashSet<>();
+        long sum = 0;
+        for (GroupQuota group : groups) {
+            boolean fixed = group.kind() == GroupQuota.GroupKind.SET;
+            if (!fixed && group.kind() != GroupQuota.GroupKind.FLEXIBLE_SET) continue;
+            Set<String> eligible = new HashSet<>();
+            for (PathCandidate candidate : pool(group).candidates()) {
+                if (candidate.setId() == null) continue;
+                int size = candidate.units().size();
+                if (fixed ? group.setSize() == null || size != group.setSize()
+                        : group.questionCount() != null && size > group.questionCount()) continue;
+                for (CountingUnit unit : candidate.units()) {
+                    if (!AnswerQuotaCounting.QUESTION_SET.equals(unit.quotaAnswerType())) continue;
+                    eligible.add(unit.childId() == null ? candidate.questionId() : unit.childId());
+                }
+            }
+            long cap = fixed ? (group.setCount() == null || group.setSize() == null ? 0
+                    : (long) group.setCount() * group.setSize())
+                    : group.questionCount() == null ? Long.MAX_VALUE : group.questionCount();
+            sum = Math.min(Integer.MAX_VALUE, sum + Math.min(eligible.size(), cap));
+            all.addAll(eligible);
+        }
+        return Math.min(sum, all.size());
     }
 
     boolean complete(List<GroupQuota> groups) {

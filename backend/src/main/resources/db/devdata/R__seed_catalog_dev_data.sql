@@ -1,5 +1,5 @@
 -- B13 catalog sample data (dev & test profiles only; never run in prod/default).
--- All sample values have is_system = false so admins can edit/delete them.
+-- Values of the six fixed groups (EXAM, SUBJECT, GRADE, QUESTION_LEVEL, QUESTION_FORMAT, TASK_TYPE) are system values (is_system = true, UNI-2759); the other sample values have is_system = false so admins can edit/delete them.
 -- Descriptions of QUESTION_FORMAT, TASK_TYPE, SUBJECT_COMBINATION, and KNOWLEDGE start with "[MẪU]".
 
 -- Retire old sample codes without deleting their versions or references.
@@ -12,57 +12,57 @@ WHERE group_id = '00000000-0000-7000-8100-000000000007'
 -- 1. EXAM (HSA, QDA)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8200-000000000101', '00000000-0000-7000-8100-000000000001', 'HSA', 'hsa', 1, 'Đánh giá năng lực ĐHQGHN (HSA)', 'VNU Hanoi Competency Assessment (HSA)', NULL, 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000101/'),
-    ('00000000-0000-7000-8200-000000000102', '00000000-0000-7000-8100-000000000001', 'QDA', 'qda', 2, 'Đánh giá năng lực ĐHSPHN (QDA)', 'QDA Competency Assessment', NULL, 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000102/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8200-000000000101', '00000000-0000-7000-8100-000000000001', 'HSA', 'hsa', 1, 'Đánh giá năng lực ĐHQGHN (HSA)', 'VNU Hanoi Competency Assessment (HSA)', NULL, 0, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000101/'),
+    ('00000000-0000-7000-8200-000000000102', '00000000-0000-7000-8100-000000000001', 'QDA', 'qda', 2, 'Đánh giá năng lực ĐHSPHN (QDA)', 'QDA Competency Assessment', NULL, 1, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000102/')
+ON CONFLICT DO NOTHING;
 
 -- 2. SUBJECT: 12 môn của kỳ thi tốt nghiệp THPT (TOAN, VAN, ANH, LY, HOA, SINH, SU, DIA, TIN, GDKTPL, CNCN, CNNN)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8200-000000000201', '00000000-0000-7000-8100-000000000002', 'TOAN', 'toan', 1, 'Toán học', 'Mathematics', NULL, 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000201/'),
-    ('00000000-0000-7000-8200-000000000202', '00000000-0000-7000-8100-000000000002', 'VAN', 'van', 2, 'Ngữ văn', 'Literature', NULL, 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000202/'),
-    ('00000000-0000-7000-8200-000000000203', '00000000-0000-7000-8100-000000000002', 'ANH', 'anh', 3, 'Tiếng Anh', 'English', NULL, 2, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000203/'),
-    ('00000000-0000-7000-8200-000000000204', '00000000-0000-7000-8100-000000000002', 'LY', 'ly', 4, 'Vật lí', 'Physics', NULL, 3, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000204/'),
-    ('00000000-0000-7000-8200-000000000205', '00000000-0000-7000-8100-000000000002', 'HOA', 'hoa', 5, 'Hóa học', 'Chemistry', NULL, 4, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000205/'),
-    ('00000000-0000-7000-8200-000000000206', '00000000-0000-7000-8100-000000000002', 'SINH', 'sinh', 6, 'Sinh học', 'Biology', NULL, 5, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000206/'),
-    ('00000000-0000-7000-8200-000000000207', '00000000-0000-7000-8100-000000000002', 'SU', 'su', 7, 'Lịch sử', 'History', NULL, 6, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000207/'),
-    ('00000000-0000-7000-8200-000000000208', '00000000-0000-7000-8100-000000000002', 'DIA', 'dia', 8, 'Địa lí', 'Geography', NULL, 7, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000208/'),
-    ('00000000-0000-7000-8200-000000000209', '00000000-0000-7000-8100-000000000002', 'TIN', 'tin', 9, 'Tin học', 'Informatics', NULL, 8, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000209/'),
-    ('00000000-0000-7000-8200-000000000210', '00000000-0000-7000-8100-000000000002', 'GDKTPL', 'gdktpl', 10, 'Giáo dục kinh tế và pháp luật', 'Economic and Legal Education', NULL, 9, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000210/'),
-    ('00000000-0000-7000-8200-000000000211', '00000000-0000-7000-8100-000000000002', 'CNCN', 'cncn', 11, 'Công nghệ (định hướng công nghiệp)', 'Technology (industrial)', NULL, 10, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000211/'),
-    ('00000000-0000-7000-8200-000000000212', '00000000-0000-7000-8100-000000000002', 'CNNN', 'cnnn', 12, 'Công nghệ (định hướng nông nghiệp)', 'Technology (agricultural)', NULL, 11, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000212/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8200-000000000201', '00000000-0000-7000-8100-000000000002', 'TOAN', 'toan', 1, 'Toán học', 'Mathematics', NULL, 0, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000201/'),
+    ('00000000-0000-7000-8200-000000000202', '00000000-0000-7000-8100-000000000002', 'VAN', 'van', 2, 'Ngữ văn', 'Literature', NULL, 1, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000202/'),
+    ('00000000-0000-7000-8200-000000000203', '00000000-0000-7000-8100-000000000002', 'ANH', 'anh', 3, 'Tiếng Anh', 'English', NULL, 2, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000203/'),
+    ('00000000-0000-7000-8200-000000000204', '00000000-0000-7000-8100-000000000002', 'LY', 'ly', 4, 'Vật lí', 'Physics', NULL, 3, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000204/'),
+    ('00000000-0000-7000-8200-000000000205', '00000000-0000-7000-8100-000000000002', 'HOA', 'hoa', 5, 'Hóa học', 'Chemistry', NULL, 4, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000205/'),
+    ('00000000-0000-7000-8200-000000000206', '00000000-0000-7000-8100-000000000002', 'SINH', 'sinh', 6, 'Sinh học', 'Biology', NULL, 5, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000206/'),
+    ('00000000-0000-7000-8200-000000000207', '00000000-0000-7000-8100-000000000002', 'SU', 'su', 7, 'Lịch sử', 'History', NULL, 6, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000207/'),
+    ('00000000-0000-7000-8200-000000000208', '00000000-0000-7000-8100-000000000002', 'DIA', 'dia', 8, 'Địa lí', 'Geography', NULL, 7, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000208/'),
+    ('00000000-0000-7000-8200-000000000209', '00000000-0000-7000-8100-000000000002', 'TIN', 'tin', 9, 'Tin học', 'Informatics', NULL, 8, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000209/'),
+    ('00000000-0000-7000-8200-000000000210', '00000000-0000-7000-8100-000000000002', 'GDKTPL', 'gdktpl', 10, 'Giáo dục kinh tế và pháp luật', 'Economic and Legal Education', NULL, 9, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000210/'),
+    ('00000000-0000-7000-8200-000000000211', '00000000-0000-7000-8100-000000000002', 'CNCN', 'cncn', 11, 'Công nghệ (định hướng công nghiệp)', 'Technology (industrial)', NULL, 10, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000211/'),
+    ('00000000-0000-7000-8200-000000000212', '00000000-0000-7000-8100-000000000002', 'CNNN', 'cnnn', 12, 'Công nghệ (định hướng nông nghiệp)', 'Technology (agricultural)', NULL, 11, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000212/')
+ON CONFLICT DO NOTHING;
 
 -- 3. GRADE (G10, G11, G12)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8200-000000000301', '00000000-0000-7000-8100-000000000003', 'G10', 'g10', 1, 'Lớp 10', 'Grade 10', NULL, 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000301/'),
-    ('00000000-0000-7000-8200-000000000302', '00000000-0000-7000-8100-000000000003', 'G11', 'g11', 2, 'Lớp 11', 'Grade 11', NULL, 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000302/'),
-    ('00000000-0000-7000-8200-000000000303', '00000000-0000-7000-8100-000000000003', 'G12', 'g12', 3, 'Lớp 12', 'Grade 12', NULL, 2, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000303/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8200-000000000301', '00000000-0000-7000-8100-000000000003', 'G10', 'g10', 1, 'Lớp 10', 'Grade 10', NULL, 0, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000301/'),
+    ('00000000-0000-7000-8200-000000000302', '00000000-0000-7000-8100-000000000003', 'G11', 'g11', 2, 'Lớp 11', 'Grade 11', NULL, 1, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000302/'),
+    ('00000000-0000-7000-8200-000000000303', '00000000-0000-7000-8100-000000000003', 'G12', 'g12', 3, 'Lớp 12', 'Grade 12', NULL, 2, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000303/')
+ON CONFLICT DO NOTHING;
 
 -- 4. QUESTION_LEVEL (NB, TH, VD, VDC)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8200-000000000401', '00000000-0000-7000-8100-000000000004', 'NB', 'nb', 1, 'Nhận biết', 'Remembering', NULL, 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000401/'),
-    ('00000000-0000-7000-8200-000000000402', '00000000-0000-7000-8100-000000000004', 'TH', 'th', 2, 'Thông hiểu', 'Understanding', NULL, 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000402/'),
-    ('00000000-0000-7000-8200-000000000403', '00000000-0000-7000-8100-000000000004', 'VD', 'vd', 3, 'Vận dụng', 'Applying', NULL, 2, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000403/'),
-    ('00000000-0000-7000-8200-000000000404', '00000000-0000-7000-8100-000000000004', 'VDC', 'vdc', 4, 'Vận dụng cao', 'High-level Applying', NULL, 3, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000404/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8200-000000000401', '00000000-0000-7000-8100-000000000004', 'NB', 'nb', 1, 'Nhận biết', 'Remembering', NULL, 0, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000401/'),
+    ('00000000-0000-7000-8200-000000000402', '00000000-0000-7000-8100-000000000004', 'TH', 'th', 2, 'Thông hiểu', 'Understanding', NULL, 1, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000402/'),
+    ('00000000-0000-7000-8200-000000000403', '00000000-0000-7000-8100-000000000004', 'VD', 'vd', 3, 'Vận dụng', 'Applying', NULL, 2, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000403/'),
+    ('00000000-0000-7000-8200-000000000404', '00000000-0000-7000-8100-000000000004', 'VDC', 'vdc', 4, 'Vận dụng cao', 'High-level Applying', NULL, 3, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000404/')
+ON CONFLICT DO NOTHING;
 
 -- 5. QUESTION_FORMAT (SINGLE_CHOICE, SHORT_ANSWER)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8200-000000000501', '00000000-0000-7000-8100-000000000005', 'SINGLE_CHOICE', 'single_choice', 1, 'Trắc nghiệm một đáp án', 'Single choice', '[MẪU] Dạng câu hỏi trắc nghiệm một đáp án đúng', 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000501/'),
-    ('00000000-0000-7000-8200-000000000502', '00000000-0000-7000-8100-000000000005', 'SHORT_ANSWER', 'short_answer', 2, 'Trả lời ngắn', 'Short answer', '[MẪU] Dạng câu hỏi điền đáp án ngắn', 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000502/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8200-000000000501', '00000000-0000-7000-8100-000000000005', 'SINGLE_CHOICE', 'single_choice', 1, 'Trắc nghiệm một đáp án', 'Single choice', '[MẪU] Dạng câu hỏi trắc nghiệm một đáp án đúng', 0, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000501/'),
+    ('00000000-0000-7000-8200-000000000502', '00000000-0000-7000-8100-000000000005', 'SHORT_ANSWER', 'short_answer', 2, 'Trả lời ngắn', 'Short answer', '[MẪU] Dạng câu hỏi điền đáp án ngắn', 1, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000502/')
+ON CONFLICT DO NOTHING;
 
 -- 6. TASK_TYPE (SINGLE, CLUSTER) — last 3 groups start description with "[MẪU]"
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8200-000000000601', '00000000-0000-7000-8100-000000000006', 'SINGLE', 'single', 1, 'Câu đơn', 'Single question', '[MẪU] Câu hỏi độc lập', 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000601/'),
-    ('00000000-0000-7000-8200-000000000602', '00000000-0000-7000-8100-000000000006', 'CLUSTER', 'cluster', 2, 'Câu chùm', 'Question cluster', '[MẪU] Nhóm câu hỏi dùng chung ngữ liệu', 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000602/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8200-000000000601', '00000000-0000-7000-8100-000000000006', 'SINGLE', 'single', 1, 'Câu đơn', 'Single question', '[MẪU] Câu hỏi độc lập', 0, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000601/'),
+    ('00000000-0000-7000-8200-000000000602', '00000000-0000-7000-8100-000000000006', 'CLUSTER', 'cluster', 2, 'Câu chùm', 'Question cluster', '[MẪU] Nhóm câu hỏi dùng chung ngữ liệu', 1, 1, true, NULL, 1, '/00000000-0000-7000-8200-000000000602/')
+ON CONFLICT DO NOTHING;
 
 
 -- 8. KNOWLEDGE (TREE: 3 chapters 0D1/0D2/0D3; 0D1 has 3 lessons + 14 leaves; 0D2 & 0D3 each have 2 lessons x 3 leaves = 6 leaves)
@@ -148,12 +148,12 @@ SET last_value = GREATEST(
 -- 9. EXAM: 5 kỳ thi còn lại (BCA, VACT, SPT, SP2E, THPTQG) theo spec mục 6
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8400-000000000103', '00000000-0000-7000-8100-000000000001', 'BCA', 'bca', 3, 'Đánh giá tuyển sinh Công an nhân dân (BCA)', 'People''s Public Security admission assessment (BCA)', NULL, 2, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000103/'),
-    ('00000000-0000-7000-8400-000000000104', '00000000-0000-7000-8100-000000000001', 'VACT', 'vact', 4, 'Đánh giá năng lực ĐHQG TP.HCM (V-ACT)', 'VNU-HCM Competency Assessment (V-ACT)', NULL, 3, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000104/'),
-    ('00000000-0000-7000-8400-000000000105', '00000000-0000-7000-8100-000000000001', 'SPT', 'spt', 5, 'Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)', 'HNUE competency assessment (SPT)', NULL, 4, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000105/'),
-    ('00000000-0000-7000-8400-000000000106', '00000000-0000-7000-8100-000000000001', 'SP2E', 'sp2e', 6, 'Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)', 'HNUE2 competency assessment (SP2E)', NULL, 5, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000106/'),
-    ('00000000-0000-7000-8400-000000000107', '00000000-0000-7000-8100-000000000001', 'THPTQG', 'thptqg', 7, 'Tốt nghiệp THPT (THPTQG)', 'National high school graduation exam (THPTQG)', NULL, 6, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000107/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8400-000000000103', '00000000-0000-7000-8100-000000000001', 'BCA', 'bca', 3, 'Đánh giá tuyển sinh Công an nhân dân (BCA)', 'People''s Public Security admission assessment (BCA)', NULL, 2, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000103/'),
+    ('00000000-0000-7000-8400-000000000104', '00000000-0000-7000-8100-000000000001', 'VACT', 'vact', 4, 'Đánh giá năng lực ĐHQG TP.HCM (V-ACT)', 'VNU-HCM Competency Assessment (V-ACT)', NULL, 3, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000104/'),
+    ('00000000-0000-7000-8400-000000000105', '00000000-0000-7000-8100-000000000001', 'SPT', 'spt', 5, 'Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)', 'HNUE competency assessment (SPT)', NULL, 4, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000105/'),
+    ('00000000-0000-7000-8400-000000000106', '00000000-0000-7000-8100-000000000001', 'SP2E', 'sp2e', 6, 'Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)', 'HNUE2 competency assessment (SP2E)', NULL, 5, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000106/'),
+    ('00000000-0000-7000-8400-000000000107', '00000000-0000-7000-8100-000000000001', 'THPTQG', 'thptqg', 7, 'Tốt nghiệp THPT (THPTQG)', 'National high school graduation exam (THPTQG)', NULL, 6, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000107/')
+ON CONFLICT DO NOTHING;
 
 -- 9b. EXAM: H-SCA, V-SAT (UNI-2688, spec H36). Tên viết tắt theo ghi chú BA, chưa có tên đầy đủ chính thức.
 -- `value` cấp trên mốc cao nhất của nhóm (kể cả mục quản trị đã tạo sau bảy kỳ đầu) và không cấp lại khi chạy lại;
@@ -178,43 +178,47 @@ WITH seed(ordinal, code, name_vi, name_en, id) AS (
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 SELECT m.id, g.id, m.code, lower(m.code),
        GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
-       m.name_vi, m.name_en, NULL, 6 + m.ordinal, 1, false, NULL, 1, '/' || m.id::text || '/'
+       m.name_vi, m.name_en, NULL, 6 + m.ordinal, 1, true, NULL, 1, '/' || m.id::text || '/'
 FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000001'
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
--- Chuẩn lại tên hai kỳ đã seed ở đợt 1 theo spec mục 6
-UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực ĐHQG Hà Nội (HSA)', name_en = 'VNU Hanoi Competency Assessment (HSA)'
-WHERE id = '00000000-0000-7000-8200-000000000101';
-UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực Bộ Quốc phòng (QDA)', name_en = 'Ministry of Defence Competency Assessment (QDA)'
-WHERE id = '00000000-0000-7000-8200-000000000102';
+-- Chuẩn lại tên hai kỳ đã seed ở đợt 1 theo spec mục 6. Mỗi cột chỉ đổi khi còn đúng bản seed cũ:
+-- tên admin đã sửa không bị ghi đè khi seed chạy lại (AD-35), DB cũ vẫn nhận tên mới.
+-- (HSA en: bản cũ trùng bản mới nên không cần đổi.)
+UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực ĐHQG Hà Nội (HSA)'
+WHERE id = '00000000-0000-7000-8200-000000000101' AND name_vi = 'Đánh giá năng lực ĐHQGHN (HSA)';
+UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực Bộ Quốc phòng (QDA)'
+WHERE id = '00000000-0000-7000-8200-000000000102' AND name_vi = 'Đánh giá năng lực ĐHSPHN (QDA)';
+UPDATE catalog.catalog_item SET name_en = 'Ministry of Defence Competency Assessment (QDA)'
+WHERE id = '00000000-0000-7000-8200-000000000102' AND name_en = 'QDA Competency Assessment';
 
 -- 10. SUBJECT: 6 môn bổ sung (mã mới theo spec mục 6; không đổi mã các môn đợt 1)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8400-000000000213', '00000000-0000-7000-8100-000000000002', 'VIETNAMESE', 'vietnamese', 13, 'Tiếng Việt', 'Vietnamese', NULL, 12, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000213/'),
-    ('00000000-0000-7000-8400-000000000214', '00000000-0000-7000-8100-000000000002', 'ECON_LAW', 'econ_law', 14, 'Giáo dục kinh tế và pháp luật', 'Economic and Legal Education', NULL, 13, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000214/'),
-    ('00000000-0000-7000-8400-000000000215', '00000000-0000-7000-8100-000000000002', 'INFORMATICS', 'informatics', 15, 'Tin học', 'Informatics', NULL, 14, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000215/'),
-    ('00000000-0000-7000-8400-000000000216', '00000000-0000-7000-8100-000000000002', 'TECH_INDUSTRY', 'tech_industry', 16, 'Công nghệ (định hướng công nghiệp)', 'Technology (industrial)', NULL, 15, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000216/'),
-    ('00000000-0000-7000-8400-000000000217', '00000000-0000-7000-8100-000000000002', 'TECH_AGRICULTURE', 'tech_agriculture', 17, 'Công nghệ (định hướng nông nghiệp)', 'Technology (agricultural)', NULL, 16, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000217/'),
-    ('00000000-0000-7000-8400-000000000218', '00000000-0000-7000-8100-000000000002', 'SCIENTIFIC_THINKING', 'scientific_thinking', 18, 'Tư duy khoa học', 'Scientific thinking', NULL, 17, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000218/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8400-000000000213', '00000000-0000-7000-8100-000000000002', 'VIETNAMESE', 'vietnamese', 13, 'Tiếng Việt', 'Vietnamese', NULL, 12, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000213/'),
+    ('00000000-0000-7000-8400-000000000214', '00000000-0000-7000-8100-000000000002', 'ECON_LAW', 'econ_law', 14, 'Giáo dục kinh tế và pháp luật', 'Economic and Legal Education', NULL, 13, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000214/'),
+    ('00000000-0000-7000-8400-000000000215', '00000000-0000-7000-8100-000000000002', 'INFORMATICS', 'informatics', 15, 'Tin học', 'Informatics', NULL, 14, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000215/'),
+    ('00000000-0000-7000-8400-000000000216', '00000000-0000-7000-8100-000000000002', 'TECH_INDUSTRY', 'tech_industry', 16, 'Công nghệ (định hướng công nghiệp)', 'Technology (industrial)', NULL, 15, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000216/'),
+    ('00000000-0000-7000-8400-000000000217', '00000000-0000-7000-8100-000000000002', 'TECH_AGRICULTURE', 'tech_agriculture', 17, 'Công nghệ (định hướng nông nghiệp)', 'Technology (agricultural)', NULL, 16, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000217/'),
+    ('00000000-0000-7000-8400-000000000218', '00000000-0000-7000-8100-000000000002', 'SCIENTIFIC_THINKING', 'scientific_thinking', 18, 'Tư duy khoa học', 'Scientific thinking', NULL, 17, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000218/')
+ON CONFLICT DO NOTHING;
 
 -- 11. GRADE: Liên lớp (V-ACT, câu dùng kiến thức nhiều lớp)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8400-000000000304', '00000000-0000-7000-8100-000000000003', 'GRADE_MIXED', 'grade_mixed', 4, 'Liên lớp', 'Mixed grade', NULL, 3, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000304/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8400-000000000304', '00000000-0000-7000-8100-000000000003', 'GRADE_MIXED', 'grade_mixed', 4, 'Liên lớp', 'Mixed grade', NULL, 3, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000304/')
+ON CONFLICT DO NOTHING;
 
 -- 12. QUESTION_FORMAT: 6 dạng còn lại của B6 (SINGLE_CHOICE, SHORT_ANSWER đã có ở đợt 1)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
-    ('00000000-0000-7000-8400-000000000503', '00000000-0000-7000-8100-000000000005', 'MULTIPLE_CHOICE', 'multiple_choice', 3, 'Trắc nghiệm nhiều đáp án', 'Multiple choice', '[MẪU] Dạng câu hỏi trắc nghiệm nhiều đáp án đúng', 2, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000503/'),
-    ('00000000-0000-7000-8400-000000000504', '00000000-0000-7000-8100-000000000005', 'CLOZE', 'cloze', 4, 'Điền khuyết', 'Cloze', '[MẪU] Dạng câu hỏi điền khuyết', 3, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000504/'),
-    ('00000000-0000-7000-8400-000000000505', '00000000-0000-7000-8100-000000000005', 'QUESTION_SET', 'question_set', 5, 'Bộ câu hỏi', 'Question set', '[MẪU] Dạng câu hỏi bộ câu hỏi', 4, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000505/'),
-    ('00000000-0000-7000-8400-000000000506', '00000000-0000-7000-8100-000000000005', 'TRUE_FALSE', 'true_false', 6, 'Đúng/Sai', 'True/False', '[MẪU] Dạng câu hỏi đúng sai', 5, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000506/'),
-    ('00000000-0000-7000-8400-000000000507', '00000000-0000-7000-8100-000000000005', 'MATCHING', 'matching', 7, 'Ghép đôi', 'Matching', '[MẪU] Dạng câu hỏi ghép đôi', 6, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000507/'),
-    ('00000000-0000-7000-8400-000000000508', '00000000-0000-7000-8100-000000000005', 'ESSAY', 'essay', 8, 'Tự luận', 'Essay', '[MẪU] Dạng câu hỏi tự luận', 7, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000508/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
+    ('00000000-0000-7000-8400-000000000503', '00000000-0000-7000-8100-000000000005', 'MULTIPLE_CHOICE', 'multiple_choice', 3, 'Trắc nghiệm nhiều đáp án', 'Multiple choice', '[MẪU] Dạng câu hỏi trắc nghiệm nhiều đáp án đúng', 2, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000503/'),
+    ('00000000-0000-7000-8400-000000000504', '00000000-0000-7000-8100-000000000005', 'CLOZE', 'cloze', 4, 'Điền khuyết', 'Cloze', '[MẪU] Dạng câu hỏi điền khuyết', 3, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000504/'),
+    ('00000000-0000-7000-8400-000000000505', '00000000-0000-7000-8100-000000000005', 'QUESTION_SET', 'question_set', 5, 'Bộ câu hỏi', 'Question set', '[MẪU] Dạng câu hỏi bộ câu hỏi', 4, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000505/'),
+    ('00000000-0000-7000-8400-000000000506', '00000000-0000-7000-8100-000000000005', 'TRUE_FALSE', 'true_false', 6, 'Đúng/Sai', 'True/False', '[MẪU] Dạng câu hỏi đúng sai', 5, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000506/'),
+    ('00000000-0000-7000-8400-000000000507', '00000000-0000-7000-8100-000000000005', 'MATCHING', 'matching', 7, 'Ghép đôi', 'Matching', '[MẪU] Dạng câu hỏi ghép đôi', 6, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000507/'),
+    ('00000000-0000-7000-8400-000000000508', '00000000-0000-7000-8100-000000000005', 'ESSAY', 'essay', 8, 'Tự luận', 'Essay', '[MẪU] Dạng câu hỏi tự luận', 7, 1, true, NULL, 1, '/00000000-0000-7000-8400-000000000508/')
+ON CONFLICT DO NOTHING;
 
 -- 13. SUBJECT_COMBINATION: QD01..QD05 (QDA), CA1..4 (BCA)
 WITH seed(id, group_id, code, code_normalized, seed_value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path) AS (

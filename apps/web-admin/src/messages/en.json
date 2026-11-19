@@ -237,7 +237,7 @@
       "CATALOG_GROUP_SYSTEM": "Cannot edit, deactivate, or delete a system catalog.",
       "CATALOG_ITEM_IN_USE": "Cannot complete action because the catalog value is currently in use.",
       "CATALOG_ITEM_NOT_FOUND": "Catalog node was not found (it may have been deleted before confirmation).",
-      "CATALOG_ITEM_SYSTEM": "Cannot change code or delete a system value.",
+      "CATALOG_ITEM_SYSTEM": "Cannot change the code, deactivate, move, or delete a system value.",
       "CATALOG_LEVELS_LOCKED": "Cannot add or remove levels when the catalog already has values.",
       "CATALOG_NODE_HAS_CHILDREN": "Cannot delete a node that still has child nodes.",
       "CATALOG_PARENT_INACTIVE": "Cannot add or move a node under an inactive parent.",
@@ -383,6 +383,7 @@
       "saveAndAddMore": "Save and add another",
       "statusLabel": "Status",
       "subtitle": "General settings",
+      "systemHint": "System value: only the name can be edited.",
       "updateSuccess": "Updated value {code}."
     },
     "itemsErrorDescription": "Could not load values. Please try again.",
@@ -452,7 +453,6 @@
     },
     "systemBadge": "System",
     "systemGroupHint": "System catalog: cannot be edited or deleted. Values inside can still be managed.",
-    "systemItemLocked": "System value: cannot be deleted.",
     "systemSection": "System",
     "title": "General settings",
     "tree": {
@@ -3819,6 +3819,17 @@
         "essay": "Essay",
         "essayValue": "Has essay questions, graded by hand"
       },
+      "overview": {
+        "description": "Numbers come from the exam's saved structure; edit them on the row, then press Save. Changing a number here does not change the question groups or the matrix: if a part's count no longer matches its allocation, the Structure step flags the mismatch for you to redistribute.",
+        "pendingDescription": "You picked another scope: the table shows the latest template's numbers, read-only. They load when you confirm reloading the structure.",
+        "pendingEmpty": "The new scope has no template yet: after reloading, the structure is empty.",
+        "empty": "The exam has no parts yet. Add parts in the Structure step.",
+        "loadErrorTitle": "Could not load the saved structure.",
+        "loadErrorDescription": "General information can still be saved; try again to edit the parts' questions, durations and points.",
+        "infoNotSaved": "The parts' questions, durations and points were saved, but the general information was not. Check the fields and press Save again.",
+        "publishedReadOnly": "The exam is published: the table is read-only here. Edit questions, durations and points in the Structure step (working version).",
+        "savedRecheck": "Saved the parts' questions, durations and points. The exam needs to be rechecked before publishing."
+      },
       "loadErrorTitle": "Could not load the catalog and structure templates",
       "loadErrorDescription": "Check your connection and try again.",
       "retry": "Try again"
@@ -3897,6 +3908,10 @@
       "discardConfirm": "Discard changes",
       "discarded": "Unsaved changes discarded.",
       "issuesSummary": "Issues to fix ({count, number})",
+      "gap": {
+        "over": "Over by {count, number} questions",
+        "under": "Short by {count, number} questions"
+      },
       "issueGo": "Go to it",
       "newBlockName": "{subject} · New group",
       "blockAdded": "Added group {name}.",
@@ -4041,7 +4056,6 @@
         "singleSectionHint": "This part has one subject: its question count equals the part's.",
         "subject": "Subject",
         "sectionCount": "Questions",
-        "sectionCountAria": "Questions for {subject}",
         "countLocked": "The template locks the question count",
         "allocated": "Allocated to groups",
         "allocatedValue": "{allocated, number} / {count, number}",
@@ -4388,12 +4402,10 @@
         "allocatedValue": "{allocated, number} / {count, plural, one {# question} other {# questions}}",
         "allocatedUnknown": "{allocated, plural, one {# question} other {# questions}}",
         "matches": "Matches the subject's question count",
-        "missing": "{count, plural, one {# question} other {# questions}} missing",
-        "over": "{count, plural, one {# question} other {# questions}} over",
         "sourceEnough": "Enough source questions for the matrix",
         "countField": {
           "label": "Questions in this subject",
-          "hint": "Edit the subject's question count; the part and its groups must match.",
+          "hint": "The question count comes from the overview; the part and its groups must match.",
           "locked": "Template locks the count",
           "lockedHint": "The template keeps the question count of each subject. The allocation inside the subject can still be edited."
         },
@@ -5354,8 +5366,6 @@
       "scopeSubject": "By subject",
       "scopeSubjectDescription": "All parts of one subject",
       "scopeOnly": "This exam type only has this scope",
-      "part": "Exam part",
-      "partHint": "A by-part exam has only the chosen part",
       "partName": {
         "MATH": "Math",
         "LITERATURE": "Literature",
@@ -5540,28 +5550,6 @@
         "pointsPositive": "Part points must be greater than 0.",
         "commonTooLarge": "The common part has {common, plural, one {# question} other {# questions}}, leaving none for the options out of the part's {total, number}."
       },
-      "preview": {
-        "title": "Structure to load · {name}",
-        "titleEmpty": "Structure to load · no template",
-        "editable": "Editable in Structure and matrix",
-        "caption": "Structure template for the selected exam type and format",
-        "part": "Part",
-        "questions": "Questions",
-        "duration": "Duration",
-        "questionsValue": "{count, plural, one {# question} other {# questions}}",
-        "durationValue": "{count, number} min",
-        "total": "Total",
-        "choiceNote": "Learners choose English or a Science combination; adjust per-subject counts in Structure",
-        "subjectPending": "No subject chosen",
-        "emptyNote": "Set the questions and duration in Structure",
-        "note": "The template is only a starting point. Check the configuration before publishing. Learners see the questions and duration of the published structure.",
-        "points": "Points",
-        "pointsValue": "{count, plural, one {# point} other {# points}}",
-        "durationShared": "shared",
-        "durationSharedValue": "{count, number} min shared",
-        "choiceOptionsNote": "Learners choose one of {count, plural, one {# preset option} other {# preset options}}",
-        "sectionsNote": "{count, plural, one {# subject} other {# subjects}} in this part"
-      },
       "kindHintKind": "{kind}: one structure template for the whole exam type · {timing}",
       "kindHintSubject": "{kind}: structure templates by subject and year · {timing}",
       "timingMode": {
@@ -5569,23 +5557,11 @@
         "SHARED": "one shared duration"
       },
       "noSubject": "no subject chosen",
-      "subjectField": {
-        "subject": "Exam subject",
-        "hint": "{count, plural, one {# subject has} other {# subjects have}} a structure template; subjects without one start with an empty structure",
-        "placeholder": "Choose a subject",
-        "withTemplates": "{subject} · {count, plural, one {# template} other {# templates}}",
-        "noTemplate": "{subject} has no structure template yet. The initial structure starts empty: enter the questions and duration, and add parts if needed."
-      },
       "templateNotes": {
-        "loaded": "The system loads the latest template: {name}.",
-        "changeInStructure": "To use another year's version, choose it in the Structure step.",
-        "structureYear": "Structure year",
-        "matrixYear": "Matrix year",
         "yearsDiffer": "The {structureYear} structure uses the {matrixYear} matrix: an expert must confirm the matrix targets before it is sold.",
         "yearsConfirm": "An expert has confirmed that the {matrixYear} matrix targets fit this structure",
         "yearsConfirmHint": "Until it is confirmed, the configuration check blocks publishing. You can confirm later in General information.",
-        "yearsConfirmLater": "An expert confirms the matrix targets in General information after the exam is created.",
-        "expertNote": "Template note"
+        "yearsConfirmLater": "An expert confirms the matrix targets in General information after the exam is created."
       },
       "timing": {
         "sharedDuration": "Shared duration (min)",
@@ -5670,7 +5646,6 @@
         "title": "Overview structure",
         "description": "Numbers come from the default template “{template}”; edit them right on the row. Changing a number here does not reload the template.",
         "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
-        "versionAtStep2": "Structure version is chosen in step 2",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
         "regionLabel": "Exam structure overview table",
         "loading": "Loading the overview table",
@@ -5939,8 +5914,13 @@
       "type": "Question type",
       "typeAny": "Any",
       "count": "Quantity",
-      "countHint": "Matches the question count in step 1.",
-      "countMismatch": "The quantity differs from step 1. Step 1 sets {step1, number} questions, here it is {count, number}. Fix one of the two.",
+      "countHint": "Set in step 1; edit it in the overview.",
+      "duration": "Duration (minutes)",
+      "more": "More options (optional)",
+      "scale": "Score scale",
+      "step1Title": "Values from step 1",
+      "countMismatch": "The quantity differs from step 1. Step 1 sets {step1, number} questions, here it is {count, number}.",
+      "useStep1Count": "Use the step 1 count",
       "distribution": "Grade and difficulty distribution",
       "set": "set",
       "unset": "not set",

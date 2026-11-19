@@ -703,6 +703,9 @@ public class CatalogAdminService {
         if (!Objects.equals(item.getVersion(), request.version())) {
             throw new VersionConflictException();
         }
+        if (item.isSystem()) {
+            requireSystemItemStaysActive(item, request);
+        }
 
         CatalogStatus previousStatus = item.getStatus();
         boolean deactivating = previousStatus == CatalogStatus.ACTIVE && request.status() == CatalogStatus.INACTIVE;
@@ -1202,6 +1205,9 @@ public class CatalogAdminService {
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
         CatalogItem item = catalogItemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        if (item.isSystem()) {
+            throw new ConflictException(ERR_ITEM_SYSTEM);
+        }
 
         if (group.getKind() != CatalogGroupKind.TREE) {
             throw new ConflictException(ERR_PARENT_INVALID);
@@ -1641,6 +1647,18 @@ public class CatalogAdminService {
                 group.getVersion(),
                 group.getCreatedAt(),
                 group.getUpdatedAt());
+    }
+
+    /**
+     * A system value stays active; the request has no value field, so the value cannot change.
+     * The code check lives with the code validation in {@link #updateItem}.
+     */
+    private static void requireSystemItemStaysActive(CatalogItem item, UpdateCatalogItemRequest request) {
+        boolean deactivating =
+                request.status() == CatalogStatus.INACTIVE && item.getStatus() != CatalogStatus.INACTIVE;
+        if (deactivating) {
+            throw new ConflictException(ERR_ITEM_SYSTEM);
+        }
     }
 
     private String validateAndTrimCode(String rawCode) {

@@ -9,6 +9,7 @@ import {
   ConfirmDialog,
   focusRing,
   IconButton,
+  Input,
   Label,
   ListCard,
   StatusChip,
@@ -19,13 +20,16 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
 import { countOf, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamPartOption } from "../types";
-import { BlockNumberInput } from "./block-number-input";
+import { EditOverviewLink } from "./edit-overview-link";
 import { BranchDialog } from "./exam-structure-branch-dialog";
 import { ENGLISH_CODE, firstBlockId, optionQuestionCount } from "./exam-structure-draft";
 import type { StructureNames } from "./exam-structure-issues";
+import { LOCKED_FIELD } from "./locked-field";
 
 export interface PartOptionsProps {
   part: ExamPart;
+  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" cạnh số câu từng môn chỉ đọc của các nhánh (UNI-2753). */
+  examId: string;
   names: StructureNames;
   issues: readonly StructureIssue[];
   /** Hiện ô bật nhánh Tiếng Anh (HSA); kỳ thi có lựa chọn gắn sẵn trong mẫu (THPTQG) thì không. */
@@ -36,7 +40,6 @@ export interface PartOptionsProps {
   onAddBranch: (branch: { name: string; subjectCode: string }) => void;
   onConfirm: (optionId: string) => void;
   onRemove: (optionId: string) => void;
-  onSectionCount: (optionId: string, sectionId: string, questionCount: number) => void;
   onEditBlocks: (blockId: string) => void;
 }
 
@@ -55,6 +58,7 @@ function optionIssueCount(issues: readonly StructureIssue[], optionId: string): 
  */
 export function PartOptions({
   part,
+  examId,
   names,
   issues,
   showEnglish,
@@ -63,7 +67,6 @@ export function PartOptions({
   onAddBranch,
   onConfirm,
   onRemove,
-  onSectionCount,
   onEditBlocks,
 }: PartOptionsProps) {
   const t = useTranslations("exams.combinations");
@@ -141,7 +144,7 @@ export function PartOptions({
           }
           onConfirm={onConfirm}
           onRemove={setRemoving}
-          onSectionCount={onSectionCount}
+          examId={examId}
           onEditBlocks={onEditBlocks}
           names={names}
         />
@@ -245,6 +248,7 @@ function OptionGroup({
   empty,
   options,
   part,
+  examId,
   commonCount,
   issues,
   names,
@@ -253,7 +257,6 @@ function OptionGroup({
   actions,
   onConfirm,
   onRemove,
-  onSectionCount,
   onEditBlocks,
 }: {
   title: string;
@@ -261,6 +264,7 @@ function OptionGroup({
   empty: string;
   options: readonly ExamPartOption[];
   part: ExamPart;
+  examId: string;
   commonCount: number;
   issues: readonly StructureIssue[];
   names: StructureNames;
@@ -269,7 +273,6 @@ function OptionGroup({
   actions: ReactNode;
   onConfirm: (optionId: string) => void;
   onRemove: (option: ExamPartOption) => void;
-  onSectionCount: (optionId: string, sectionId: string, questionCount: number) => void;
   onEditBlocks: (blockId: string) => void;
 }) {
   const t = useTranslations("exams.combinations");
@@ -282,10 +285,11 @@ function OptionGroup({
         return (
           <label key={section.id} className="flex items-center gap-2 rounded-md border border-border py-1 pr-1 pl-2.5 text-label">
             <span className="whitespace-nowrap text-text">{t("subjectPosition", { position: index + 1, subject })}</span>
-            <BlockNumberInput
-              className="h-8 w-14 px-2"
-              value={section.questionCount ?? 0}
-              onValueChange={(value) => onSectionCount(option.id, section.id, value)}
+            <Input
+              className={cn("h-8 w-14 px-2 tabular-nums", LOCKED_FIELD)}
+              value={String(section.questionCount ?? 0)}
+              readOnly
+              aria-readonly="true"
               aria-label={t("subjectCountAria", { code: label(option), subject })}
             />
           </label>
@@ -321,7 +325,10 @@ function OptionGroup({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-label font-semibold text-text">{title}</h4>
-        <div className="flex flex-wrap gap-2">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <EditOverviewLink examId={examId} />
+          {actions}
+        </div>
       </div>
       <div ref={cardsRef}>
         {options.length === 0 ? (

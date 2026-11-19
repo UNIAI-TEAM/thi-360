@@ -9,9 +9,12 @@ import type { ExamPart, ExamSectionState, ExamSection, ExamTiming, StructureComb
 import { BlockNumberInput } from "./block-number-input";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { CodedPartPanel } from "./coded-part-panel";
+import { AllocationGap } from "./allocation-gap";
 import { OptionalNumberInput } from "./create-exam-fields";
+import { EditOverviewLink } from "./edit-overview-link";
 import { PartOptions, type PartOptionsProps } from "./part-options";
 import { SubjectChoiceOptions } from "./subject-choice-options";
+import { LOCKED_FIELD } from "./locked-field";
 import type { StructureNames } from "./exam-structure-issues";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import type { TopicQuotaServerError } from "./topic-quota-table";
@@ -27,15 +30,15 @@ export interface PartPanelProps
   structureCombinations: readonly StructureCombination[];
   axes: MatrixAxes;
   labels: MatrixLabels;
-  /** Mẫu khóa số câu từng mục (H27): ô số câu của mục chỉ đọc. */
-  countLocked?: boolean;
+  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" của các ô số câu chỉ đọc. */
+  examId: string;
+  /** Mẫu khóa số câu từng mục (H27): thêm dòng "Mẫu đã khóa số câu" cạnh các ô số câu (luôn chỉ đọc, kể cả khi không khóa). */
+  templateLocked?: boolean;
   /** Thêm môn còn thiếu của một mã vào danh sách môn của phần theo mã (D12). */
   onAddSubject: (subjectCode: string) => void;
   issues: readonly StructureIssue[];
   issueText: (issue: StructureIssue) => string;
   onChange: (update: (part: ExamPart) => ExamPart) => void;
-  onQuestionCount: (questionCount: number) => void;
-  onSectionCount: (optionId: string | null, sectionId: string, questionCount: number) => void;
   onAddBlock: (optionId: string | null, section: ExamSection) => void;
   onToggleEnglish: (enabled: boolean) => void;
   onRemoveOption: (optionId: string) => void;
@@ -45,7 +48,6 @@ export interface PartPanelProps
   /** Mở môn để soạn chỉ tiêu cấp môn và các nhóm. */
   onSelectSection: (sectionId: string) => void;
   onPoints: (points: number | null) => void;
-  onOnPaper: (questionCountOnPaper: number) => void;
   onChoose: (choose: number) => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra phần"). */
   headerAction?: ReactNode;
@@ -65,13 +67,12 @@ export function ExamStructurePartPanel({
   structureCombinations,
   axes,
   labels,
-  countLocked = false,
+  examId,
+  templateLocked = false,
   onAddSubject,
   issues,
   issueText,
   onChange,
-  onQuestionCount,
-  onSectionCount,
   onAddBlock,
   onToggleEnglish,
   onRemoveOption,
@@ -79,7 +80,6 @@ export function ExamStructurePartPanel({
   onSelectSection,
   sectionStates,
   onPoints,
-  onOnPaper,
   onChoose,
   showEnglish,
   branchSubjects,
@@ -140,13 +140,9 @@ export function ExamStructurePartPanel({
           hint={t("questionCountOnPaperHint")}
           error={paperInvalid ? t("paperInvalid") : undefined}
         >
-          {(controlProps) =>
-            countLocked ? (
-              <LockedCount {...controlProps} value={part.questionCountOnPaper} />
-            ) : (
-              <BlockNumberInput {...controlProps} value={part.questionCountOnPaper} onValueChange={onOnPaper} />
-            )
-          }
+          {(controlProps) => (
+            <LockedCount {...controlProps} value={part.questionCountOnPaper} examId={examId} templateLocked={templateLocked} />
+          )}
         </FormField>
         <FormField
           label={t("questionCount")}
@@ -154,13 +150,9 @@ export function ExamStructurePartPanel({
           hint={t("questionCountHint")}
           error={countInvalid ? t("countInvalid") : undefined}
         >
-          {(controlProps) =>
-            countLocked ? (
-              <LockedCount {...controlProps} value={part.questionCount} />
-            ) : (
-              <BlockNumberInput {...controlProps} value={part.questionCount} onValueChange={onQuestionCount} />
-            )
-          }
+          {(controlProps) => (
+            <LockedCount {...controlProps} value={part.questionCount} examId={examId} templateLocked={templateLocked} />
+          )}
         </FormField>
         {shared ? (
           <div className="flex flex-col gap-1.5">
@@ -239,8 +231,8 @@ export function ExamStructurePartPanel({
         <SectionsTable
           part={part}
           names={names}
-          countLocked={countLocked}
-          onSectionCount={onSectionCount}
+          examId={examId}
+          templateLocked={templateLocked}
           onAddBlock={onAddBlock}
           onSelectSection={onSelectSection}
         />
@@ -251,8 +243,8 @@ export function ExamStructurePartPanel({
               part={part}
               names={names}
               common
-              countLocked={countLocked}
-              onSectionCount={onSectionCount}
+              examId={examId}
+              templateLocked={templateLocked}
               onAddBlock={onAddBlock}
               onSelectSection={onSelectSection}
             />
@@ -272,6 +264,7 @@ export function ExamStructurePartPanel({
             ))}
           <PartOptions
             part={part}
+            examId={examId}
             names={names}
             issues={issues}
             showEnglish={showEnglish}
@@ -280,7 +273,6 @@ export function ExamStructurePartPanel({
             onAddBranch={onAddBranch}
             onConfirm={onConfirm}
             onRemove={onRemoveOption}
-            onSectionCount={(optionId, sectionId, value) => onSectionCount(optionId, sectionId, value)}
             onEditBlocks={onSelectBlock}
           />
         </>
@@ -294,16 +286,16 @@ function SectionsTable({
   part,
   names,
   common = false,
-  countLocked = false,
-  onSectionCount,
+  examId,
+  templateLocked,
   onAddBlock,
   onSelectSection,
 }: {
   part: ExamPart;
   names: StructureNames;
   common?: boolean;
-  countLocked?: boolean;
-  onSectionCount: PartPanelProps["onSectionCount"];
+  examId: string;
+  templateLocked: boolean;
   onAddBlock: PartPanelProps["onAddBlock"];
   onSelectSection: PartPanelProps["onSelectSection"];
 }) {
@@ -314,7 +306,10 @@ function SectionsTable({
   const totalMismatch = !common && total !== part.questionCount;
   return (
     <section className="flex flex-col gap-2" aria-label={title}>
-      <h3 className="text-title font-semibold text-text">{title}</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-title font-semibold text-text">{title}</h3>
+        <EditOverviewLink examId={examId} />
+      </div>
       {single && <p className="text-caption text-text-muted">{t("singleSectionHint")}</p>}
       {common && <p className="text-caption text-text-muted">{t("commonHint")}</p>}
       <div role="region" tabIndex={0} aria-label={title} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
@@ -360,28 +355,20 @@ function SectionsTable({
                     </span>
                   </th>
                   <td className="border-b border-border px-2 py-2 text-right">
-                    {single || countLocked ? (
-                      <span className="inline-flex items-center justify-end gap-1.5">
-                        {countLocked && <Lock aria-hidden className="size-3.5 text-text-muted" />}
-                        <span>{section.questionCount ?? 0}</span>
-                        {countLocked && <span className="sr-only">{t("countLocked")}</span>}
-                      </span>
-                    ) : (
-                      <BlockNumberInput
-                        className="ml-auto h-9 w-20"
-                        value={section.questionCount ?? 0}
-                        onValueChange={(value) => onSectionCount(null, section.id, value)}
-                        aria-label={t("sectionCountAria", { subject })}
-                      />
-                    )}
+                    {/* Số câu của môn đặt ở thông tin tổng quan (UNI-2753): chỉ đọc, đường dẫn sửa ở đầu bảng. */}
+                    <span className="inline-flex items-center justify-end gap-1.5">
+                      {templateLocked && <Lock aria-hidden className="size-3.5 text-text-muted" />}
+                      <span>{section.questionCount ?? 0}</span>
+                      {templateLocked && <span className="sr-only">{t("countLocked")}</span>}
+                    </span>
                   </td>
-                  <td
-                    className={cn(
-                      "border-b border-border px-2 py-2 text-right whitespace-nowrap",
-                      allocated !== section.questionCount && "font-semibold text-danger",
-                    )}
-                  >
+                  <td className="border-b border-border px-2 py-2 text-right whitespace-nowrap">
                     {t("allocatedValue", { allocated, count: section.questionCount ?? 0 })}
+                    {allocated !== (section.questionCount ?? 0) && (
+                      <span className="block text-caption">
+                        <AllocationGap missing={(section.questionCount ?? 0) - allocated} />
+                      </span>
+                    )}
                   </td>
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button
@@ -404,12 +391,17 @@ function SectionsTable({
               <th scope="row" className="px-3 py-2 text-left">
                 {t("total")}
               </th>
-              <td className={cn("px-2 py-2 text-right", totalMismatch && "text-danger")}>
+              <td className="px-2 py-2 text-right">
                 <output>
                   {common
                     ? t("commonTotal", { count: total })
                     : t("allocatedValue", { allocated: total, count: part.questionCount })}
                 </output>
+                {totalMismatch && (
+                  <span className="block text-caption">
+                    <AllocationGap missing={part.questionCount - total} />
+                  </span>
+                )}
               </td>
               <td colSpan={2} />
             </tr>
@@ -420,16 +412,24 @@ function SectionsTable({
   );
 }
 
-/** Số câu của phần khi mẫu khóa số câu (H27): chỉ đọc kèm biểu tượng khóa, như ô số câu của mục. */
-function LockedCount({ value, ...controlProps }: { value: number } & Omit<ComponentProps<typeof Input>, "value">) {
+/** Số câu của phần ở bước 2: chỉ đọc (đặt ở thông tin tổng quan, UNI-2753), kèm đường dẫn sửa; mẫu khóa số câu thì thêm dòng nêu lý do (H27). */
+function LockedCount({
+  value,
+  examId,
+  templateLocked,
+  ...controlProps
+}: { value: number; examId: string; templateLocked: boolean } & Omit<ComponentProps<typeof Input>, "value">) {
   const t = useTranslations("exams.structure.part");
   return (
-    <span className="flex items-center gap-2">
-      <Input {...controlProps} value={String(value)} readOnly aria-readonly="true" className="w-24 tabular-nums" />
-      <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
-        <Lock aria-hidden className="size-3.5" />
-        {t("countLocked")}
-      </span>
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <Input {...controlProps} value={String(value)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
+      {templateLocked && (
+        <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
+          <Lock aria-hidden className="size-3.5" />
+          {t("countLocked")}
+        </span>
+      )}
+      <EditOverviewLink examId={examId} className="h-auto p-0" />
     </span>
   );
 }

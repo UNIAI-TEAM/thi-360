@@ -7,11 +7,13 @@ import type { ContentReference } from "@/features/content/types";
 import type * as ContentApi from "@/features/content/api";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
+import { ExamStructureSubjectPanel } from "../components/exam-structure-subject-panel";
 import { ExamStructureView } from "../components/exam-structure-view";
+import { saveBlockers } from "../allocation";
 import { ReferenceDistributions } from "../components/subject-allocation-extras";
 import { TopicQuotaTable } from "../components/topic-quota-table";
 import { referenceEntries } from "../reference-distribution";
-import type { ExamQuota, ExamSection, TopicQuota } from "../types";
+import type { ExamPart, ExamQuota, ExamSection, TopicQuota } from "../types";
 import { checkResultWire, EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -87,93 +89,107 @@ describe("Row 5: tổng tỷ lệ khác 100% (R-118)", () => {
 });
 
 describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
-  async function changeTotal() {
-    const user = userEvent.setup();
-    open();
-    const count = await screen.findByRole("textbox", { name: "Số câu của mục" });
-    await user.clear(count);
-    await user.type(count, "20");
-    return user;
-  }
-  const section = () => ({
-    matrix: percentMatrix(100, [25, 50, 25, 0]),
-    topicQuotas: [{ id: "t1", name: "Xác suất", nodeIds: [], count: 3, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" }],
+  // Số câu của mục chỉ đọc ở bước 2 (UNI-2753): màn không còn ô nào đổi tổng của môn. Hộp "Áp dụng số mới / Giữ số cũ" vẫn là
+  // phần của panel môn khi tổng khác số đã xác nhận, nên các phép thử đưa thẳng tổng mới (20) và số đã xác nhận (30) vào panel.
+  const section = (over: Partial<ExamSection> = {}): ExamSection => ({
+    id: "sec-1",
+    subjectCode: "MATH",
+    questionCount: 20,
+    knowledgeScope: null,
+    answerQuotas: null,
+    matrix: { ...percentMatrix(100, [25, 50, 25, 0]), cells: [] } as unknown as ExamSection["matrix"],
+    choiceGroup: null,
+    topicQuotas: [{ id: "t1", name: "Xác suất", nodeIds: [], count: 3, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" }] as TopicQuota[],
+    blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 30, setCount: null, setSize: null, requiredPointsPerQuestion: 1, knowledgeScope: null, tagCodes: [], matrix: null, childAnswerType: null, templateGroupCode: null, answerTypeLocked: false }],
+    ...over,
   });
+  const name = (list: ReadonlyArray<{ code: string; name: string }>) => (code: string) => list.find((item) => item.code === code)?.name ?? code;
 
-  it("hiện thông báo với số câu mới theo tỷ lệ", async () => {
-    boot({ section: section() });
-    await changeTotal();
-    const notice = await screen.findByRole("alert");
+  function renderPanel(initial: ExamSection) {
+    const latest = { section: initial };
+    function Harness() {
+      const [current, setCurrent] = useState(initial);
+      const [confirmed, setConfirmed] = useState(30);
+      return (
+        <ExamStructureSubjectPanel
+          examId={EXAM_ID}
+          context={{ part: { id: "part-1", sections: [current], options: [] } as unknown as ExamPart, option: null, section: current, location: { partId: "part-1", optionId: null, sectionId: "sec-1" } }}
+          subjectName="Toán học"
+          axes={axes}
+          labels={{ grade: name(reference.grades), difficulty: name(reference.difficulties) }}
+          reference={reference}
+          onChange={(update) => {
+            latest.section = update(latest.section);
+            setCurrent(latest.section);
+          }}
+          onSelectBlock={() => {}}
+          onAddBlock={() => {}}
+          confirmedCount={confirmed}
+          onConfirmCount={setConfirmed}
+        />
+      );
+    }
+    renderWithProviders(<Harness />);
+    return latest;
+  }
+
+  it("hiện thông báo với số câu mới theo tỷ lệ", () => {
+    renderPanel(section());
+    const notice = screen.getByRole("alert");
     expect(notice).toHaveTextContent("Tổng đổi thành 20 câu (trước đó 30 câu)");
     expect(notice).toHaveTextContent("Độ khó: Nhận biết 5 · Thông hiểu 10 · Vận dụng 5 · Vận dụng cao 0");
     expect(notice).toHaveTextContent("Xác suất 2");
   });
 
-  it("Áp dụng số mới: bảng tỷ lệ tính lại, chỉ tiêu chủ đề đổi count và giữ percent", async () => {
-    const server = boot({ section: section() });
-    const user = await changeTotal();
-    await user.click(await screen.findByRole("button", { name: "Áp dụng số mới" }));
+  it("Áp dụng số mới: chỉ tiêu chủ đề đổi count và giữ percent, ma trận vẫn theo tỷ lệ", async () => {
+    const user = userEvent.setup();
+    const latest = renderPanel(section());
+    await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
     expect(screen.queryByText(/Tổng đổi thành/)).not.toBeInTheDocument();
     expect(screen.getByText("2 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ matrix: { unit: string }; topicQuotas: TopicQuota[] }> }> };
-    expect(sent.parts[0]!.sections[0]!.matrix.unit).toBe("PERCENT");
-    expect(sent.parts[0]!.sections[0]!.topicQuotas[0]).toMatchObject({ count: 2, percent: 10 });
+    expect(latest.section.matrix?.unit).toBe("PERCENT");
+    expect(latest.section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
   });
 
   it("Giữ số cũ: bảng đổi sang số câu của tổng 30 và chỉ tiêu chủ đề giữ 3 câu, bỏ percent", async () => {
-    const server = boot({ section: section() });
-    const user = await changeTotal();
-    await user.click(await screen.findByRole("button", { name: "Giữ số cũ" }));
+    const user = userEvent.setup();
+    const latest = renderPanel(section());
+    await user.click(screen.getByRole("button", { name: "Giữ số cũ" }));
     expect(screen.queryByText(/Tổng đổi thành/)).not.toBeInTheDocument();
-    const difficulty = ["Nhận biết", "Thông hiểu", "Vận dụng"].map((name) => (screen.getByRole("textbox", { name: new RegExp(`${name} · số câu`) }) as HTMLInputElement).value);
+    const difficulty = ["Nhận biết", "Thông hiểu", "Vận dụng"].map((label) => (screen.getByRole("textbox", { name: new RegExp(`${label} · số câu`) }) as HTMLInputElement).value);
     expect(difficulty).toEqual(["8", "15", "7"]);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ matrix: { unit: string }; topicQuotas: TopicQuota[] }> }> };
-    expect(sent.parts[0]!.sections[0]!.matrix.unit).toBe("COUNT");
-    expect(sent.parts[0]!.sections[0]!.topicQuotas[0]).toMatchObject({ count: 3 });
-    expect(sent.parts[0]!.sections[0]!.topicQuotas[0]!.percent).toBeUndefined();
+    expect(latest.section.matrix?.unit).toBe("COUNT");
+    expect(latest.section.topicQuotas?.[0]).toMatchObject({ count: 3 });
+    expect(latest.section.topicQuotas?.[0]?.percent).toBeUndefined();
   });
 
-  it("R1-02: Lưu khi chưa chọn Áp dụng hay Giữ: không gửi, mở môn, thông báo còn đó; chọn xong thì gửi count 2", async () => {
-    const server = boot({ section: section() });
-    const user = await changeTotal();
-    await screen.findByRole("alert");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
-    expect(await screen.findByText(/tổng số câu của môn .* đã đổi/)).toBeInTheDocument();
-    expect(screen.getByText(/Tổng đổi thành 20 câu/)).toBeInTheDocument();
-
+  it("R1-02: chưa chọn Áp dụng hay Giữ thì môn chặn lưu; chọn xong thì hết chặn", async () => {
+    const user = userEvent.setup();
+    const initial = section();
+    const part = { id: "part-1", sections: [initial], options: [] } as unknown as ExamPart;
+    expect(saveBlockers([part], axes, () => 30)).toContainEqual({ kind: "TOTAL_CHANGE", sectionId: "sec-1", blockId: null });
+    expect(saveBlockers([part], axes, () => 20)).toEqual([]);
+    renderPanel(initial);
     await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ topicQuotas: TopicQuota[] }> }> };
-    expect(sent.parts[0]!.sections[0]!.topicQuotas[0]).toMatchObject({ count: 2, percent: 10 });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("R2-07: sau Áp dụng số mới hoặc Giữ số cũ tiêu điểm về ô Số câu của mục, không rơi về thân trang", async () => {
     for (const action of ["Áp dụng số mới", "Giữ số cũ"]) {
-      boot({ section: section() });
-      const user = await changeTotal();
-      await user.click(await screen.findByRole("button", { name: action }));
+      const user = userEvent.setup();
+      renderPanel(section());
+      await user.click(screen.getByRole("button", { name: action }));
       await waitFor(() => expect(screen.getByRole("textbox", { name: "Số câu của mục" })).toHaveFocus());
       cleanup();
     }
   });
 
   it("R1-25: chỉ tiêu dạng trả lời nhập theo tỷ lệ cũng hiện trong thông báo; Giữ số cũ đổi sang số câu của tổng 30", async () => {
-    const server = boot({
-      section: { answerQuotas: { unit: "PERCENT", items: [{ answerType: "SINGLE_CHOICE", value: 50 }, { answerType: "TRUE_FALSE", value: 50 }] } },
-    });
-    const user = await changeTotal();
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Dạng trả lời: .* 10 · .* 10/);
+    const user = userEvent.setup();
+    const latest = renderPanel(section({ answerQuotas: { unit: "PERCENT", items: [{ answerType: "SINGLE_CHOICE", value: 50 }, { answerType: "TRUE_FALSE", value: 50 }] } }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/Dạng trả lời: .* 10 · .* 10/);
     await user.click(screen.getByRole("button", { name: "Giữ số cũ" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ answerQuotas: { unit: string; items: Array<{ value: number }> } }> }> };
-    expect(sent.parts[0]!.sections[0]!.answerQuotas).toMatchObject({ unit: "COUNT", items: [{ value: 15 }, { value: 15 }] });
+    expect(latest.section.answerQuotas).toMatchObject({ unit: "COUNT", items: [{ value: 15 }, { value: 15 }] });
   });
 });
 
@@ -269,14 +285,15 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     expect(groupCount).not.toHaveAttribute("readonly");
   });
 
-  it("mẫu không khóa: ô số câu của mục sửa được", async () => {
+  it("mẫu không khóa: ô số câu của mục cũng chỉ đọc (số câu chỉ sửa ở thông tin tổng quan), không có dòng 'Mẫu đã khóa số câu'", async () => {
     boot({ template: template(false) });
     open();
     const count = await screen.findByRole("textbox", { name: "Số câu của mục" });
-    expect(count).not.toHaveAttribute("readonly");
+    expect(count).toHaveAttribute("readonly");
+    expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
   });
 
-  it("R1-11: mẫu khóa số câu thì ô số câu của phần và số câu trên đề cũng chỉ đọc; mẫu không khóa thì sửa được", async () => {
+  it("R1-11: ô số câu của phần và số câu trên đề chỉ đọc cho mọi bài; chỉ mẫu khóa số câu mới có dòng nêu lý do", async () => {
     boot({ template: template(true) });
     const locked = open("?part=part-1");
     for (const name of [/^Số câu trên đề/, /^Số câu phải làm/]) {
@@ -288,8 +305,9 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     boot({ template: template(false) });
     open("?part=part-1");
     for (const name of [/^Số câu trên đề/, /^Số câu phải làm/]) {
-      expect(await screen.findByRole("textbox", { name })).not.toHaveAttribute("readonly");
+      expect(await screen.findByRole("textbox", { name })).toHaveAttribute("readonly");
     }
+    expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
   });
 });
 

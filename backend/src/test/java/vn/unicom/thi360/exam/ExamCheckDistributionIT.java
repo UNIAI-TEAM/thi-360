@@ -55,6 +55,8 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
         JsonNode before = structure(bca());
         var parts = (com.fasterxml.jackson.databind.node.ArrayNode) before.path("parts").deepCopy();
         ObjectNode section = (ObjectNode) parts.get(0).path("sections").get(0);
+        String sectionId = section.path("id").asText();
+        assertThat(sectionId).as("the edited section of the seeded BCA exam has an id").isNotBlank();
         ObjectNode matrix = section.putObject("matrix");
         matrix.put("mode", "SEPARATE");
         matrix.put("unit", "COUNT");
@@ -78,7 +80,7 @@ class ExamCheckDistributionIT extends AbstractIntegrationTest {
         assertThat(result.path("paths")).isNotEmpty();
         for (var path : result.path("paths")) {
             var subjects = java.util.stream.StreamSupport.stream(path.path("subjects").spliterator(), false)
-                    .filter(subject -> "s-bca-van".equals(subject.path("sectionId").asText())).toList();
+                    .filter(subject -> sectionId.equals(subject.path("sectionId").asText())).toList();
             assertThat(subjects).hasSize(1);
             var rows = java.util.stream.StreamSupport.stream(subjects.getFirst().path("byGrade").spliterator(), false)
                     .filter(row -> "G10".equals(row.path("code").asText())).toList();
