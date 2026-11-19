@@ -7,6 +7,7 @@ import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import type { StructureIssue } from "../matrix";
 import type { ExamCheckResult } from "../review-types";
 import type { ExamStructureSummary, ExamStructureSummaryRow } from "../types";
+import { AllocationGap } from "./allocation-gap";
 import type { StructureSelection } from "./exam-structure-draft";
 import { issueTarget } from "./exam-structure-issues";
 import { ExamStructureCheckResult, type CheckResultNames } from "./exam-structure-check-result";
@@ -162,15 +163,8 @@ export function ExamStructureSummaryRegion({
                     <td className="border-b border-border px-2 py-1 text-right">
                       {row.allocated === null ? "—" : format.number(row.allocated, DISPLAY_NUMBER_FORMAT)}
                     </td>
-                    <td
-                      className={cn(
-                        "border-b border-border px-2 py-1 text-right",
-                        difference !== 0 && row.target !== null && "font-semibold text-warning",
-                      )}
-                    >
-                      {row.target === null || row.allocated === null
-                        ? "—"
-                        : format.number(difference, { ...DISPLAY_NUMBER_FORMAT, signDisplay: "exceptZero" })}
+                    <td className="border-b border-border px-2 py-1 text-right">
+                      {row.target === null || row.allocated === null ? "—" : <AllocationGap missing={-difference} />}
                     </td>
                     <td className="border-b border-border px-3 py-1 text-right">
                       {row.maxPoints === null ? "—" : format.number(row.maxPoints, DISPLAY_NUMBER_FORMAT)}

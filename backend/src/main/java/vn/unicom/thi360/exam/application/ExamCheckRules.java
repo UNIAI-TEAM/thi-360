@@ -1163,7 +1163,9 @@ public final class ExamCheckRules {
             ObjectNode issue = sectionIssue("SECTION_TOTAL_MISMATCH", "STRUCTURE", context, varies ? count : null);
             issue.put("required", count); issue.put("available", fixed); found.add(issues.key(issue));
         }
-        if (section.answerQuotas() == null) for (QuestionBlock block : section.blocks()) {
+        // A standard exam must name an answer type per block. A review exam's "Bất kỳ" (questionType null, no answer
+        // quotas) means any type, which SolverInputBuilder already generates, so the rule does not apply to it.
+        if (!isReview() && section.answerQuotas() == null) for (QuestionBlock block : section.blocks()) {
             if (Boolean.TRUE.equals(block.omitted())) continue;
             if (block.questionType() == null && !isSet(block)) {
                 ObjectNode issue = sectionIssue("GROUP_ANSWER_TYPE_MISSING", "STRUCTURE", context, varies ? count : null);

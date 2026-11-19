@@ -1,0 +1,8 @@
+Mã xác minh email Thi 360
+Xin chào [(${fullName})],
+
+Mã xác minh email của bạn là: [(${code})]
+
+Mã chỉ có hiệu lực trong thời gian ngắn. Nếu bạn không yêu cầu mã này, hãy bỏ qua thư.
+
+Thi 360

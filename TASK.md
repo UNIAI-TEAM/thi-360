@@ -222,18 +222,18 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 |---|---|---|---|---|---|---|
 | C-0 | UNI-2703 | Khung module `commerce`, `attempt`; quyền bit 18–26; hợp đồng SPI; `StudentLearningProvider` nhận danh sách; pepper; ngôn ngữ ưa dùng; danh sách IP miễn giới hạn tần suất |  |  | 3 | đang làm |
 | C-0b | UNI-2704 | Profile `e2e`, đồng hồ thử, `/api/v1/test/**`, `ForbiddenKeysAssert` |  |  | 1 | đang làm |
-| ML | UNI-2705 | Gửi thư `shared/mail` (hàng thư, worker, SMTP, mẫu vi/en, endpoint đọc thư cho E2E) |  | C-0b | 3 | đang làm |
+| ML | UNI-2705 | Gửi thư `shared/mail` (hàng thư, worker, SMTP, mẫu vi/en, endpoint đọc thư cho E2E) |  | C-0b | 3 | merge PR #127 (`265ea998`) |
 | TS | UNI-2701 | Dựng lại seed đề test `TEST-*` theo mẫu BA (UNI-2701, cổng G0c cũ) | G0b |  | 3 | đang làm |
 | FU | UNI-2700 | Việc tồn đọng của đợt 2B (UNI-2700, 41 mục) | EX-1, EX-2, TS | FA-1 | 8 | chưa mở |
 | EX-1 | UNI-2706 | Module `exam`: thông tin bán, ảnh bìa (kèm dọn ảnh bỏ), kiểm tra khi công bố, quy tắc E24, sự kiện, `PublishedExamPort`, đọc giờ qua `Clock` | G0b, TS | C-0b | 4 | chưa mở |
 | EX-2 | UNI-2707 | Module `exam`: `PaperSolverPort` trên mô hình 2B, `PreviewPaperPort`, đo hiệu năng | G0b, TS |  | 2 | chưa mở |
 | DS | UNI-2708 | Bộ dữ liệu bài đã công bố cho 9 kỳ thi, dùng cho test, dev, E2E | EX-1 | EX-2 | 4 | chưa mở |
 | VP-1 | UNI-2709 | Thử VNPAY sandbox trước khi làm cổng thật; vector chữ ký thật | G2 |  | 1 | đã merge vào `integration/dot-3` (PR #121, `171ee506`, 2026-11-19); AC-3, AC-12 chờ VNPAY (Q9), VP-2 đo lại |
-| ID-1 | UNI-2710 | Đăng ký, xác minh email, đổi email | C-0, ML |  | 3 | chưa mở |
-| ID-2 | UNI-2711 | Quên và đặt lại mật khẩu, hồ sơ, ảnh đại diện | C-0, ML |  | 2 | chưa mở |
+| ID-1 | UNI-2710 | Đăng ký, xác minh email, đổi email | C-0, ML |  | 3 | đang làm (bro) |
+| ID-2 | UNI-2711 | Quên và đặt lại mật khẩu, hồ sơ, ảnh đại diện | C-0, ML |  | 2 | đang làm (cty) |
 | CM-1 | UNI-2712 | Bảng chiếu sản phẩm, API công khai | C-0, C-0b, EX-1 | DS | 3 | chưa mở |
 | CM-2 | UNI-2713 | Khuyến mãi, voucher, tính giá, cảnh báo giá sàn, tổng tiền đã giảm, lịch sử thay đổi | CM-1 |  | 5 | chưa mở |
-| CM-4a | UNI-2714 | Bảng quyền dùng, `EntitlementPort`, cấp quyền nội bộ | C-0 |  | 2 | chưa mở |
+| CM-4a | UNI-2714 | Bảng quyền dùng, `EntitlementPort`, cấp quyền nội bộ | C-0 |  | 2 | merge PR #128 (`55994db7`) |
 | CM-4b | UNI-2715 | `exam-access`, `/me/exams` | CM-1, CM-4a |  | 2 | chưa mở |
 | CM-3a | UNI-2716 | Đơn hàng, cổng giả lập, IPN, trang quay lại, đơn 0 đồng, cấp quyền sau thu tiền, quy tắc một khoản được tính mỗi đơn | CM-2, CM-4b, ML |  | 5 | chưa mở |
 | CM-3b | UNI-2717 | Cổng VNPAY thật, `querydr`, đơn hết hạn, tiền về muộn sau hết hạn | CM-3a | VP-1 | 3 | chưa mở |
@@ -269,10 +269,11 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 
 | Lane | Issue UniAI | uniworkos | Việc | Trạng thái |
 |---|---|---|---|---|
-| HSA-A | UNI-2750, UNI-2751 | 1696, 1697 | Bước 1 tạo bài thi: bỏ các dòng thừa; bảng tổng quan sửa được ở tab Thông tin chung | đang làm |
-| HSA-B | UNI-2752, UNI-2753, UNI-2754 | 1698, 1699, 1700 | Bước cấu trúc: kiểm tra bài ôn tập, số câu trên đề chỉ đọc, gọn bảng chỉ tiêu, dòng "Bộ câu hỏi" trong chỉ tiêu dạng trả lời | đang làm |
-| HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | đang làm |
-| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | pha 0 (đề xuất), code sau khi HSA-B, HSA-C merge |
+| HSA-A | UNI-2750, UNI-2751 | 1696, 1697 | Bước 1 tạo bài thi: bỏ các dòng thừa; bảng tổng quan sửa được ở tab Thông tin chung | merge PR #129 (`8c9eb3e6`); vào `develop`: PR #130 (`e0240ffd`) |
+| HSA-B | UNI-2752, UNI-2753, UNI-2754 | 1698, 1699, 1700 | Bước cấu trúc: kiểm tra bài ôn tập, số câu trên đề chỉ đọc, gọn bảng chỉ tiêu, dòng "Bộ câu hỏi" trong chỉ tiêu dạng trả lời | merge PR #133 (`469c034e`); vào `develop`: PR #134 (`12ec91a8`) |
+| HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | merge PR #125 (`ed52d43e`); vào `develop`: PR #126 (`fd67d223`) |
+| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | tạm dừng sau pha 0: gộp vào đặc tả form thiết lập theo môn (AD-34) |
+| HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | merge PR #131 (`cf789ed9`); vào `develop`: PR #132 (`9b8a7e2e`) |
 
 Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
 

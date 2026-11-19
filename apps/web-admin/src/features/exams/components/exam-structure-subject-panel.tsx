@@ -17,14 +17,13 @@ import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { AllocationGap } from "./allocation-gap";
+import { EditOverviewLink } from "./edit-overview-link";
 import { LOCKED_FIELD } from "./locked-field";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
-
-/** Dạng trả lời khai được ở chỉ tiêu cấp môn: mọi dạng trừ Bộ câu hỏi (đếm theo câu con, D22). */
-const QUOTA_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET");
 
 /** Chỉ tiêu dạng trả lời nhập theo tỷ lệ quy về số câu của tổng `total` (phần dư lớn nhất); nhập theo số câu giữ nguyên. */
 function toCountQuotas(quotas: AnswerQuotas | null, total: number): AnswerQuotas | null {
@@ -44,10 +43,10 @@ export interface SubjectPanelProps {
   onAddBlock: () => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
   headerAction?: ReactNode;
-  /** Mẫu khóa số câu từng phần, mục (H27): ô "Số câu của mục" chỉ đọc; phân bổ bên trong mục vẫn sửa được. */
-  countLocked?: boolean;
-  /** Sửa số câu của mục; bỏ trống: ô chỉ đọc. */
-  onCount?: (count: number) => void;
+  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" cạnh ô số câu chỉ đọc (UNI-2753). */
+  examId: string;
+  /** Mẫu khóa số câu từng phần, mục (H27): thêm dòng "Mẫu đã khóa số câu"; ô "Số câu của mục" chỉ đọc cho mọi bài. */
+  templateLocked?: boolean;
   /** Môn đã kiểm tra đạt và chưa sửa gì từ đó: hiện "Đủ nguồn theo ma trận" (R-122). */
   sourceVerified?: boolean;
   /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của môn (H20). */
@@ -77,8 +76,8 @@ export function ExamStructureSubjectPanel({
   onSelectBlock,
   onAddBlock,
   headerAction,
-  countLocked = false,
-  onCount,
+  examId,
+  templateLocked = false,
   sourceVerified = false,
   topicError = null,
   confirmedCount = null,
@@ -88,6 +87,7 @@ export function ExamStructureSubjectPanel({
   examKind = null,
 }: SubjectPanelProps) {
   const t = useTranslations("exams.structure.subject");
+  const tGap = useTranslations("exams.structure.gap");
   const tContent = useTranslations("content");
   const { section, option } = context;
   const cases = sectionCaseCounts(section, option);
@@ -97,7 +97,9 @@ export function ExamStructureSubjectPanel({
   const allocation = subjectAllocation(section, axes, count);
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
 
-  const quotaTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
+  const declaredTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
+  // Nhóm câu đơn mở không lấy câu chùm, nên truy vấn nguồn của nó không kể dòng "Bộ câu hỏi".
+  const quotaTypes = declaredTypes.filter((type) => type !== "QUESTION_SET");
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
     groups: section.blocks.map(
@@ -138,7 +140,7 @@ export function ExamStructureSubjectPanel({
   const quotaExpected = quotas?.unit === "PERCENT" ? 100 : count;
   const quotaMismatch = quotas !== null && quotaExpected !== null && quotas.items.length > 0 && quotaTotal !== quotaExpected;
   const quotaVaries = quotas?.unit === "COUNT" && varies;
-  const usedTypes = new Set(quotaTypes);
+  const usedTypes = new Set(declaredTypes);
   // Dạng mà nhóm dùng nhưng môn chưa khai chỉ tiêu: hiện thành hàng riêng, đã phân bổ vượt chỉ tiêu 0 (R1-6).
   const undeclaredRows = allocation.answerTypes?.filter((row) => !usedTypes.has(row.key as QuestionType)) ?? [];
 
@@ -146,6 +148,9 @@ export function ExamStructureSubjectPanel({
     ? { ...newBlock(subjectName), id: section.id, questionCount: count ?? 0, matrix: section.matrix }
     : null;
   const matrixVaries = section.matrix?.unit === "COUNT" && varies;
+  // Hai bảng "Theo khối lớp / Theo độ khó" (đã phân bổ ở nhóm, còn thiếu) chỉ có nghĩa khi một nhóm khai chỉ tiêu riêng; không thì
+  // chỉ lặp lại chỉ tiêu ở trên, nên ẩn (AD-15).
+  const groupQuotaDeclared = [...(allocation.grades ?? []), ...(allocation.difficulties ?? [])].some((row) => row.allocated > 0);
 
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));
   // Ô "Mọi câu con thuộc chủ đề" của phạm vi môn (mẫu VACT_REVIEW bật sẵn ở máy chủ): chùm kế thừa phạm vi này khi
@@ -253,12 +258,12 @@ export function ExamStructureSubjectPanel({
                 : t("allocatedValue", { allocated: allocation.allocated, count: allocation.count })}
             </span>
             {allocation.missing !== null && (
-              <StatusChip tone={allocation.missing === 0 ? "success" : "warning"}>
+              <StatusChip tone={allocation.missing === 0 ? "success" : allocation.missing < 0 ? "danger" : "warning"}>
                 {allocation.missing === 0
                   ? t("matches")
                   : allocation.missing > 0
-                    ? t("missing", { count: allocation.missing })
-                    : t("over", { count: -allocation.missing })}
+                    ? tGap("under", { count: allocation.missing })
+                    : tGap("over", { count: -allocation.missing })}
               </StatusChip>
             )}
             {sourceVerified && allocation.missing === 0 && <StatusChip tone="success">{t("sourceEnough")}</StatusChip>}
@@ -271,23 +276,20 @@ export function ExamStructureSubjectPanel({
         <div ref={countRef} className="flex max-w-md flex-col gap-1.5">
           <FormField
             label={t("countField.label")}
-            hint={countLocked ? t("countField.lockedHint") : t("countField.hint")}
+            hint={templateLocked ? t("countField.lockedHint") : t("countField.hint")}
           >
-            {(controlProps) =>
-              countLocked || !onCount ? (
-                <span className="flex items-center gap-2">
-                  <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
-                  {countLocked && (
-                    <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
-                      <Lock aria-hidden className="size-3.5" />
-                      {t("countField.locked")}
-                    </span>
-                  )}
-                </span>
-              ) : (
-                <BlockNumberInput {...controlProps} className="w-24" value={sectionCount} onValueChange={onCount} />
-              )
-            }
+            {(controlProps) => (
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
+                {templateLocked && (
+                  <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
+                    <Lock aria-hidden className="size-3.5" />
+                    {t("countField.locked")}
+                  </span>
+                )}
+                <EditOverviewLink examId={examId} className="h-auto p-0" />
+              </span>
+            )}
           </FormField>
         </div>
       )}
@@ -376,8 +378,8 @@ export function ExamStructureSubjectPanel({
                           </td>
                           <td className="border-b border-border px-2 py-2 text-right">{row ? row.quota : "—"}</td>
                           <td className="border-b border-border px-2 py-2 text-right">{row ? row.allocated : "—"}</td>
-                          <td className={cn("border-b border-border px-2 py-2 text-right font-semibold", row && row.missing !== 0 && "text-warning")}>
-                            {row ? row.missing : "—"}
+                          <td className="border-b border-border px-2 py-2 text-right">
+                            {row ? <AllocationGap missing={row.missing} /> : "—"}
                           </td>
                           <td className="border-b border-border px-2 py-2 text-right text-text-muted">
                             {availableState === "ready" && source !== undefined ? source : "—"}
@@ -401,7 +403,9 @@ export function ExamStructureSubjectPanel({
                         <td className="border-b border-border px-2 py-2 text-right text-text-muted">—</td>
                         <td className="border-b border-border px-2 py-2 text-right">{row.quota}</td>
                         <td className="border-b border-border px-2 py-2 text-right">{row.allocated}</td>
-                        <td className="border-b border-border px-2 py-2 text-right font-semibold text-warning">{row.missing}</td>
+                        <td className="border-b border-border px-2 py-2 text-right">
+                          <AllocationGap missing={row.missing} />
+                        </td>
                         <td className="border-b border-border px-2 py-2 text-right text-text-muted">
                           {availableState === "ready" && sourceOf(row.key) !== undefined ? sourceOf(row.key) : "—"}
                         </td>
@@ -412,7 +416,7 @@ export function ExamStructureSubjectPanel({
                   <tfoot>
                     <tr className="font-semibold text-text">
                       <th scope="row" className="px-3 py-2 text-left">{t("total")}</th>
-                      <td className={cn("px-2 py-2 text-right", quotaMismatch && "text-danger")}>
+                      <td className={cn("px-2 py-2 text-right", quotaMismatch && quotas.unit === "PERCENT" && "text-danger")}>
                         <output>
                           {quotas.unit === "PERCENT"
                             ? t("totalPercent", { total: quotaTotal })
@@ -420,6 +424,11 @@ export function ExamStructureSubjectPanel({
                               ? quotaTotal
                               : t("totalOf", { total: quotaTotal, count })}
                         </output>
+                        {quotas.unit === "COUNT" && quotaMismatch && count !== null && (
+                          <span className="block text-caption">
+                            <AllocationGap missing={count - quotaTotal} />
+                          </span>
+                        )}
                       </td>
                       <td colSpan={5} />
                     </tr>
@@ -448,7 +457,7 @@ export function ExamStructureSubjectPanel({
                   value=""
                   placeholder={t("answerTypes.addType")}
                   onValueChange={(value) => setQuotas({ ...quotas, items: [...quotas.items, { answerType: value as QuestionType, value: 0 }] })}
-                  options={QUOTA_TYPES.filter((type) => !usedTypes.has(type)).map((type) => ({ value: type, label: typeLabel(type) }))}
+                  options={QUESTION_TYPES.filter((type) => !usedTypes.has(type)).map((type) => ({ value: type, label: typeLabel(type) }))}
                 />
               </div>
             </>
@@ -482,8 +491,12 @@ export function ExamStructureSubjectPanel({
                 available={availableQuery.data}
                 availableState={availableState}
               />
-              <DimensionTable title={t("matrix.gradeTitle")} rows={allocation.grades} label={labels.grade} />
-              <DimensionTable title={t("matrix.difficultyTitle")} rows={allocation.difficulties} label={labels.difficulty} />
+              {groupQuotaDeclared && (
+                <>
+                  <DimensionTable title={t("matrix.gradeTitle")} rows={allocation.grades} label={labels.grade} />
+                  <DimensionTable title={t("matrix.difficultyTitle")} rows={allocation.difficulties} label={labels.difficulty} />
+                </>
+              )}
             </>
           ) : (
             <p className="text-body text-text-muted">{t("matrix.none")}</p>
@@ -551,7 +564,9 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
               <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text last-of-type:border-b-0">{label(row.key)}</th>
               <td className="border-b border-border px-2 py-2 text-right">{row.quota}</td>
               <td className="border-b border-border px-2 py-2 text-right">{row.allocated}</td>
-              <td className={cn("border-b border-border px-3 py-2 text-right font-semibold", row.missing !== 0 && "text-warning")}>{row.missing}</td>
+              <td className="border-b border-border px-3 py-2 text-right">
+                <AllocationGap missing={row.missing} />
+              </td>
             </tr>
           ))}
         </tbody>

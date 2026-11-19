@@ -1,0 +1,10 @@
+Đơn hàng Thi 360 đã hoàn tất
+Xin chào [(${fullName})],
+
+Đơn [(${orderCode})] đã thanh toán thành công và quyền làm bài đã được cấp cho:
+
+[# th:each="item : ${items}"]- [(${item['name']})]
+[/]
+Vào mục "Bài thi của tôi" để bắt đầu: [(${webUrl})]/home
+
+Thi 360

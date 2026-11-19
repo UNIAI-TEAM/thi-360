@@ -18,7 +18,7 @@ import {
   templateCountBySubject,
 } from "../create-exam-schema";
 import type { ExamBuildMode, ExamScope, ExamTemplate } from "../types";
-import { ChoiceCardGroup, type ChoiceCardOption, ScopeField, useKindLabel, usePartNames } from "./create-exam-fields";
+import { ChoiceCardGroup, type ChoiceCardOption, KindField, ScopeField, useKindLabel, usePartNames } from "./create-exam-fields";
 
 /** Giá trị thẻ "Nghe và Đọc" trong nhóm phạm vi tách theo audio; thẻ còn lại mang mã phần (`P<thứ tự>`). */
 const WHOLE_SUBJECT = "SUBJECT";
@@ -32,6 +32,7 @@ const WHOLE_SUBJECT = "SUBJECT";
  *   Đọc; phần viết đã lược (`omittedLocked`) và phần không có bài riêng không có trong danh sách phần;
  * - hai thẻ `build_mode` chỉ hiện khi phạm vi là Theo môn;
  * - không chọn phiên bản cấu trúc ở bước 1 (K8): phiên bản mặc định do máy chủ nạp.
+ * - `showBuildMode = false` (tab Thông tin chung): kiểu xây bài không đổi được ở đó nên hai thẻ đó không hiện.
  * Component chỉ báo thay đổi qua `onChange`; trang quyết định nạp lại ngay hay hỏi xác nhận.
  */
 export function CreateExamScopeFields({
@@ -41,6 +42,7 @@ export function CreateExamScopeFields({
   selection,
   errors,
   disabled,
+  showBuildMode = true,
   onChange,
 }: {
   kinds: readonly ExamKindOption[];
@@ -49,6 +51,7 @@ export function CreateExamScopeFields({
   selection: ScopeSelection;
   errors: { partCode?: string; subjectCode?: string };
   disabled?: boolean;
+  showBuildMode?: boolean;
   onChange: (change: Partial<ScopeSelection>) => void;
 }) {
   const t = useTranslations("exams.create.step1");
@@ -265,7 +268,7 @@ export function CreateExamScopeFields({
           {text}
         </p>
       ))}
-      {selection.scope === "SUBJECT" && (
+      {selection.scope === "SUBJECT" && showBuildMode && (
         <ChoiceCardGroup
           legend={t("buildModeLegend")}
           name="buildMode"
@@ -276,6 +279,46 @@ export function CreateExamScopeFields({
           onChange={(buildMode) => onChange({ buildMode })}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Kỳ thi và phạm vi của tab Thông tin chung: cùng nhóm chọn phạm vi, môn, phần với bước 1 (`CreateExamScopeFields`: phần
+ * của môn theo mẫu Theo môn, môn chọn trước phần, thẻ Nghe, Đọc), thêm thẻ chọn kỳ thi; không có thẻ kiểu xây bài.
+ */
+export function ExamKindScopeFields({
+  kinds,
+  subjects,
+  templates,
+  selection,
+  errors,
+  disabled,
+  onChange,
+}: {
+  kinds: readonly ExamKindOption[];
+  subjects: readonly CatalogOption[];
+  templates: readonly ExamTemplate[];
+  selection: ScopeSelection;
+  errors: { partCode?: string; subjectCode?: string };
+  disabled?: boolean;
+  onChange: (change: Partial<ScopeSelection>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div data-field="kind">
+        <KindField kinds={kinds} value={selection.kind} disabled={disabled} onChange={(kind) => onChange({ kind })} />
+      </div>
+      <CreateExamScopeFields
+        kinds={kinds}
+        subjects={subjects}
+        templates={templates}
+        selection={selection}
+        errors={errors}
+        disabled={disabled}
+        showBuildMode={false}
+        onChange={onChange}
+      />
     </div>
   );
 }

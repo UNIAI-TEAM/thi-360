@@ -251,6 +251,10 @@ public class ExamBlockRefProjector {
             if (b.questionType() == QuestionType.ESSAY || b.childAnswerType() == QuestionType.ESSAY) {
                 return true;
             }
+            // Positional child types of a mixed set count by themselves, whichever quota row holds the child counts.
+            if (b.childConditions().stream().anyMatch(c -> c != null && c.answerType() == QuestionType.ESSAY)) {
+                return true;
+            }
         }
         if (section != null && section.answerQuotas() != null) {
             return section.answerQuotas().items().stream()

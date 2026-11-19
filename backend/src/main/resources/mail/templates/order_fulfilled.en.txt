@@ -1,0 +1,10 @@
+Your Thi 360 order is complete
+Hello [(${fullName})],
+
+Order [(${orderCode})] was paid successfully and you now have access to:
+
+[# th:each="item : ${items}"]- [(${item['name']})]
+[/]
+Open "My exams" to get started: [(${webUrl})]/home
+
+Thi 360

@@ -20,6 +20,10 @@ import java.util.Objects;
  * @param mapidIds        id các nút MAPID (kiến thức) mà đơn vị gắn; rỗng nếu không gắn
  * @param competencyCodes mã năng lực; rỗng nếu không gắn
  * @param points          điểm của đơn vị (điểm câu con / điểm vị trí); null nếu không xét điểm
+ * @param quotaAnswerType mã dạng mà đơn vị đóng góp vào chỉ tiêu dạng trả lời cấp môn. Bằng
+ *                        {@code answerType} trừ câu con của bộ câu hỏi trong môn có dòng QUESTION_SET
+ *                        (UNI-2754): đơn vị đó chỉ đếm vào dòng "Bộ câu hỏi". Bộ lọc của nhóm
+ *                        ({@code childAnswerType}, {@code answerType}) luôn dùng {@code answerType} thật.
  */
 public record CountingUnit(
         String childId,
@@ -28,12 +32,20 @@ public record CountingUnit(
         String difficultyCode,
         List<String> mapidIds,
         List<String> competencyCodes,
-        BigDecimal points) {
+        BigDecimal points,
+        String quotaAnswerType) {
 
     public CountingUnit {
         Objects.requireNonNull(answerType, "answerType must not be null (D22)");
         mapidIds = mapidIds == null ? List.of() : List.copyOf(mapidIds);
         competencyCodes = competencyCodes == null ? List.of() : List.copyOf(competencyCodes);
+        quotaAnswerType = quotaAnswerType == null ? answerType : quotaAnswerType;
+    }
+
+    /** Đơn vị đếm chỉ tiêu dạng trả lời theo đúng {@code answerType} của nó. */
+    public CountingUnit(String childId, String answerType, String gradeCode, String difficultyCode,
+            List<String> mapidIds, List<String> competencyCodes, BigDecimal points) {
+        this(childId, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes, points, null);
     }
 
     /** Đơn vị đơn giản của câu độc lập: dạng trả lời, khối lớp, độ khó và điểm. */

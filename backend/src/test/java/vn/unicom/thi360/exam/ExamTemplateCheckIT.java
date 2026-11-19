@@ -30,7 +30,7 @@ class ExamTemplateCheckIT extends AbstractIntegrationTest {
                     .flatMap(list -> java.util.stream.StreamSupport.stream(list.spliterator(), false))
                     .filter(issue -> "ERROR".equals(issue.path("severity").asText()))
                     .map(issue -> issue.path("code").asText()).collect(Collectors.toSet());
-            assertThat(errors).as(kind).containsExactlyInAnyOrder("GROUP_ANSWER_TYPE_MISSING", "PART_EMPTY");
+            assertThat(errors).as(kind).containsExactlyInAnyOrder("PART_EMPTY");
         }
     }
 

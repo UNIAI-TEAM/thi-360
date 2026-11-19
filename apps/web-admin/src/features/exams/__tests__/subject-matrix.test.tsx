@@ -138,7 +138,7 @@ describe("màn môn (Toán HSA)", () => {
     await user.click(await screen.findByRole("option", { name: "Một đáp án" }));
     await user.click(screen.getByRole("button", { name: "Về màn môn" }));
     const after = tableRow(await screen.findByRole("region", { name: "Dạng trả lời" }), "Một đáp án");
-    expect(after.getAllByRole("cell").map((cell) => cell.textContent)).toEqual(expect.arrayContaining(["35", "10", "25"]));
+    expect(after.getAllByRole("cell").map((cell) => cell.textContent)).toEqual(expect.arrayContaining(["35", "10", "Thiếu 25 câu"]));
     expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
   }, 20_000);
 
@@ -189,7 +189,7 @@ describe("màn môn (Toán HSA)", () => {
     expect(tableRow(groups, "Tiếng Việt").queryByText(/kiến thức riêng/)).not.toBeInTheDocument();
   }, 20_000);
 
-  it("nhóm dùng dạng chưa khai chỉ tiêu: bảng hiện hàng riêng, đã phân bổ 10, thiếu -10 (R1-6)", async () => {
+  it("nhóm dùng dạng chưa khai chỉ tiêu: bảng hiện hàng riêng, đã phân bổ 10, vượt 10 câu (R1-6)", async () => {
     backend.mutate("ex-hsa-f-001", (exam) => {
       exam.parts[0]!.sections![0]!.blocks!.find((block) => block.questionType === "QUESTION_SET")!.childAnswerType = "MULTIPLE_CHOICE";
     });
@@ -197,7 +197,7 @@ describe("màn môn (Toán HSA)", () => {
     const quota = await screen.findByRole("region", { name: "Dạng trả lời" });
     const extra = tableRow(quota, /^Nhiều đáp án/);
     expect(extra.getByText("Chưa khai chỉ tiêu")).toBeInTheDocument();
-    expect(extra.getAllByRole("cell").map((cell) => cell.textContent)).toEqual(expect.arrayContaining(["10", "-10"]));
+    expect(extra.getAllByRole("cell").map((cell) => cell.textContent)).toEqual(expect.arrayContaining(["10", "Vượt 10 câu"]));
     expect(within(quota).queryByRole("textbox", { name: "Chỉ tiêu Nhiều đáp án" })).not.toBeInTheDocument();
   }, 20_000);
 
@@ -283,7 +283,7 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
     const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
     expect(screen.getByText(/Môn có 2 nhóm lấy phần còn lại, chỉ được một nhóm/)).toBeInTheDocument();
     expect(within(groups).getAllByText("Phần còn lại (chưa chia được)")).toHaveLength(2);
-    expect(screen.getByText("Còn thiếu 16 câu")).toBeInTheDocument();
+    expect(screen.getByText("Thiếu 16 câu")).toBeInTheDocument();
   }, 20_000);
 
   it("đường dẫn ?section= mở lại đúng môn; tải lại không mất vị trí", async () => {

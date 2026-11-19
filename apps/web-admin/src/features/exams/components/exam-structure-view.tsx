@@ -10,6 +10,7 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
+import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, useHsaNormalizedDraft } from "../hsa-enforcement";
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
@@ -24,6 +25,7 @@ import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamStructure, ExamT
 import { BlockEditor } from "./block-editor";
 import { blockCountsLocked } from "./block-form";
 import type { TopicQuotaServerError } from "./topic-quota-table";
+import { HsaNormalizedNote } from "./enforcement-toggle";
 import {
   selectionScope,
   addBlock,
@@ -42,10 +44,7 @@ import {
   selectionExists,
   setEnglishOption,
   setPartChoose,
-  setPartOnPaper,
   setPartPoints,
-  setPartQuestionCount,
-  setSectionCount,
   type StructureSelection,
   updateBlock,
   updatePart,
@@ -174,14 +173,16 @@ export function ExamStructureView({ examId }: { examId: string }) {
   }
 
   return (
-    <StructureEditor
-      exam={examQuery.data}
-      structure={structureQuery.data}
-      syncKey={structureQuery.dataUpdatedAt}
-      reference={referenceQuery.data}
-      templates={templatesQuery.data ?? []}
-      template={templatesQuery.data?.find((item) => item.code === examQuery.data.templateCode) ?? null}
-    />
+    <HsaExamContext.Provider value={isHsaExam(examQuery.data.kind)}>
+      <StructureEditor
+        exam={examQuery.data}
+        structure={structureQuery.data}
+        syncKey={structureQuery.dataUpdatedAt}
+        reference={referenceQuery.data}
+        templates={templatesQuery.data ?? []}
+        template={templatesQuery.data?.find((item) => item.code === examQuery.data.templateCode) ?? null}
+      />
+    </HsaExamContext.Provider>
   );
 }
 
@@ -204,7 +205,7 @@ function StructureEditor({
   const reviewMode = template?.buildMode === "REVIEW";
   // H42, R-135: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT`; bài `PART` và bài ôn từ cùng mẫu vẫn sửa được.
   const rowsLocked = blockCountsLocked(template, exam.scope, reviewMode);
-  const countLocked = template?.fixedCounts === true || rowsLocked;
+  const templateLocked = template?.fixedCounts === true || rowsLocked;
   // Bài ôn mới tạo có nhóm duy nhất chưa khai số câu: điền số câu bước 1 để màn, tổng và nội dung lưu cùng một số (V-01b).
   const structure = useMemo(
     () => (reviewMode ? { ...loadedStructure, parts: fillReviewCounts(loadedStructure.parts) } : loadedStructure),
@@ -220,8 +221,12 @@ function StructureEditor({
   const summaryQuery = useExamStructureSummary(exam.id);
   const [checkResult, setCheckResult] = useState<ExamCheckResult | null>(null);
 
+  // Kỳ thi HSA sinh đề luôn theo ma trận (UNI-1701): bản nháp luôn ở mức cho phép, bản đã lưu giữ nguyên để màn báo "có
+  // thay đổi chưa lưu" cho tới khi lưu.
+  const hsa = isHsaExam(exam.kind);
   const [draft, setDraft] = useState<ExamPart[]>(structure.parts);
   const [quotas, setQuotas] = useState<ExamQuota[]>(structure.examQuotas ?? []);
+  useHsaNormalizedDraft(hsa, draft, setDraft, quotas, setQuotas);
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
   const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
@@ -248,12 +253,19 @@ function StructureEditor({
   // Tổng số câu của mục đã xác nhận sau khi đổi (R-121): bảng nhập theo tỷ lệ chờ xác nhận khi tổng khác số này.
   const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
   const baselineParts = useMemo(() => JSON.parse(baseline) as ExamPart[], [baseline]);
+  // Bản đã lưu còn mức Tham khảo mà HSA không cho: ghi chú hiện cho tới khi lưu.
+  const hsaNormalizing = useMemo(() => hsaNeedsNormalizing(hsa, baselineParts, quotaBaseline), [hsa, baselineParts, quotaBaseline]);
 
   const [selection, setSelection] = useState<StructureSelection | null>(() => {
     const fromUrl = readSelectionFromUrl();
     return fromUrl && selectionExists(structure.parts, fromUrl) ? fromUrl : defaultSelection(structure.parts);
   });
-  const current = selection && selectionExists(draft, selection) ? selection : defaultSelection(draft);
+  const requested = selection && selectionExists(draft, selection) ? selection : defaultSelection(draft);
+  // Bài ôn (UNI-2752): chỗ sửa của khối duy nhất là màn bài ôn. `?block=`, "Đến chỗ sửa" và lỗi kiểm tra trỏ tới khối đó đều mở
+  // môn, không mở màn nhóm đầy đủ (Tên nhóm, Cách lấy, Ma trận riêng...) mà bài ôn rút gọn để ẩn.
+  const reviewBlock = reviewMode && requested?.kind === "block" ? findBlock(draft, requested.blockId) : null;
+  const current: StructureSelection | null =
+    reviewBlock && rendersReviewPanel(reviewBlock.section, reviewMode) ? { kind: "section", sectionId: reviewBlock.section.id } : requested;
   const [liveMessage, setLiveMessage] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const guard = useUnsavedChangesGuard(dirty);
@@ -498,6 +510,7 @@ function StructureEditor({
 
   return (
     <div className="@container flex flex-col gap-4">
+      {hsaNormalizing && <HsaNormalizedNote />}
       <ExamEditorActions>
         {dirty && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
         <Button type="button" variant="secondary" disabled={!dirty || save.isPending} onClick={() => setConfirmDiscard(true)}>
@@ -571,11 +584,14 @@ function StructureEditor({
           currentParts={draft}
           onAnnounce={announce}
           onApplied={(parts) => {
+            // Bài HSA: bản đã lưu tạm của lần nạp này đã chuyển mức, để bản nháp sạch và lần tải lại kế tiếp thay được (R2-2).
+            const loaded = hsaLoadedBaselines(hsa, JSON.stringify(parts), quotaBaseline);
             setDraft(parts);
-            setBaseline(JSON.stringify(parts));
+            setBaseline(loaded.parts);
+            setQuotaBaseline(loaded.quotas);
             // Chỉ tiêu cấp bài đang sửa thuộc mẫu cũ: bỏ để lần tải lại cấu trúc kế tiếp đưa chỉ tiêu của mẫu mới vào, không
             // để lần lưu sau ghi đè `examQuotas` của mẫu mới (R1-10).
-            setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
+            setQuotas(JSON.parse(loaded.quotas) as ExamQuota[]);
             setConfirmedCounts({});
             setTopicFailure(null);
             // Phiên bản mới làm kết quả kiểm tra cũ hết hiệu lực: huy hiệu trạng thái tính lại từ đầu.
@@ -653,6 +669,9 @@ function StructureEditor({
               reference={reference}
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               step1Count={sectionContext.part.questionCount}
+              examId={exam.id}
+              minutes={roundForDisplay(totals.totalMinutes)}
+              maxScore={exam.maxScore}
               headerAction={checkAction}
               topicError={topicError}
             />
@@ -668,8 +687,8 @@ function StructureEditor({
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
               onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
               headerAction={checkAction}
-              countLocked={countLocked}
-              onCount={(count) => setDraft((parts) => setSectionCount(parts, sectionContext.location, count))}
+              examId={exam.id}
+              templateLocked={templateLocked}
               sourceVerified={sourceVerified(sectionContext.section)}
               topicError={topicError}
               confirmedCount={confirmedCounts[sectionContext.section.id] ?? savedCountOf(sectionContext.section.id)}
@@ -727,7 +746,8 @@ function StructureEditor({
               structureCombinations={structure.combinations ?? []}
               axes={axes}
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              countLocked={countLocked}
+              examId={exam.id}
+              templateLocked={templateLocked}
               onAddSubject={(subjectCode) => {
                 setDraft((parts) => addPoolSection(parts, selectedPart.id, subjectCode));
                 announce(t("subjectAdded", { subject: lookup.subject(subjectCode) }));
@@ -740,9 +760,6 @@ function StructureEditor({
               }
               branchSubjects={branchSubjects}
               onPoints={(points) => setDraft((parts) => setPartPoints(parts, selectedPart.id, points))}
-              onOnPaper={(count) =>
-                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartOnPaper(part, count)))
-              }
               onChoose={(choose) =>
                 setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartChoose(part, choose)))
               }
@@ -760,12 +777,6 @@ function StructureEditor({
               )}
               issueText={issueText}
               onChange={(update) => setDraft((parts) => updatePart(parts, selectedPart.id, update))}
-              onQuestionCount={(count) =>
-                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartQuestionCount(part, count)))
-              }
-              onSectionCount={(optionId, sectionId, questionCount) =>
-                setDraft((parts) => setSectionCount(parts, { partId: selectedPart.id, optionId, sectionId }, questionCount))
-              }
               onAddBlock={(optionId, section) => handleAddBlock({ partId: selectedPart.id, optionId, sectionId: section.id }, section)}
               onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
               onRemoveOption={(optionId) => {

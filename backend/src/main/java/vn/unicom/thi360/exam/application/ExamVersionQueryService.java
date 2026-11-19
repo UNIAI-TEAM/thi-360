@@ -152,8 +152,9 @@ public class ExamVersionQueryService {
     }
 
     private JsonNode currentConfig(UUID examId) {
+        // Same representation as publish: STANDARD is omitted, REVIEW is kept; a snapshot without the key is STANDARD.
         String config = jdbc.queryForObject("""
-                select jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description,
+                select (jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description,
                 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope,
                 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code,
                 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed,
@@ -162,7 +163,9 @@ public class ExamVersionQueryService {
                 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing,
                 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring,
                 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule),
-                'examQuotas', s.exam_quotas)::text
+                'examQuotas', s.exam_quotas)
+                || case when e.build_mode <> 'STANDARD' then jsonb_build_object('buildMode', e.build_mode)
+                   else '{}'::jsonb end)::text
                 from exam.exam e join exam.exam_structure s on s.exam_id=e.id
                 left join exam.exam_kind_profile p on p.exam_item_id=e.kind_item_id where e.id=?
                 """, String.class, examId);
