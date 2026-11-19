@@ -168,6 +168,10 @@ thi360:
       orphan-age: P7D
       interval: PT24H
       batch-size: 100
+    solver:
+      generate:
+        # LT F5: deadline of paper generation, separate from the check/preview limits (thi360.exam.solver.*).
+        deadline: ${THI360_EXAM_SOLVER_GENERATE_DEADLINE:30s}
   mail:
     from: ${THI360_MAIL_FROM:Thi 360 <no-reply@thi360.local>}
     tls: ${THI360_SMTP_TLS:starttls}

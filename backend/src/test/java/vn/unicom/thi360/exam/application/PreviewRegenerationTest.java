@@ -22,7 +22,7 @@ class PreviewRegenerationTest {
                 """);
         var empty = new SectionOnPath("A", "empty-section", 0, null, List.of());
         var active = new SectionOnPath("B", "active", 1, null, List.of(GroupQuota.single("g", 1)));
-        var base = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), null, 1, Map.of());
+        var base = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), null, 1, Map.of(), null, "SHARED", 60);
 
         var selected = PreviewRegeneration.prepare(document, new PreviewPartIndex(document),
                 SolvePath.of(0, List.of(empty, active)), base, List.of("changed"));

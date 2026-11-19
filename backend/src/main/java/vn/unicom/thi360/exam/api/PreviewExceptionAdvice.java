@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import vn.unicom.thi360.exam.application.PreviewExpiredException;
+import vn.unicom.thi360.exam.spi.PreviewPaperPort.PreviewGoneException;
 import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
@@ -23,7 +23,7 @@ class PreviewExceptionAdvice {
         this.messages = messages;
     }
 
-    @ExceptionHandler(PreviewExpiredException.class)
+    @ExceptionHandler(PreviewGoneException.class)
     ResponseEntity<ApiError> expired(HttpServletRequest request) {
         String traceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         if (traceId == null || traceId.isBlank()) {
