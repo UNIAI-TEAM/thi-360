@@ -94,12 +94,14 @@ export function ShortAnswerQuestion({
           <p className="text-caption text-text-secondary">{strings.notAnswered}</p>
         )}
         {mode === "review" && answersVisible(resolved) && body.answers.length > 0 && (
-          <p className="text-caption text-text-secondary" data-exam-content>
+          <p className="text-caption text-text-secondary">
             <span className="font-semibold text-text">{strings.correctAnswerPrefix} </span>
             {body.answers.map((answer, index) => (
               <span key={answer}>
                 {index > 0 && " · "}
-                <strong className={index === 0 ? "font-semibold text-text" : "font-normal"}>{answer}</strong>
+                <strong data-exam-content className={index === 0 ? "font-semibold text-text" : "font-normal"}>
+                  {answer}
+                </strong>
               </span>
             ))}
             {resolved?.earned != null && (

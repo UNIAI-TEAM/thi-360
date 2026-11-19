@@ -59,6 +59,25 @@ export function ClozePassage({
         });
         node.replaceWith(fragment);
       }
+      // Ô nhập (tên truy cập, placeholder) là chữ giao diện nên không được nằm trong vùng `data-exam-content`
+      // (DESIGN.md mục 8). Vì ô nằm lẫn trong đoạn chữ, chỉ gắn thuộc tính lên từng đoạn chữ của ngữ liệu
+      // (công thức thì gắn lên chính phần tử công thức), không gắn lên khối bao ngoài.
+      const marker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const bare: Text[] = [];
+      while (marker.nextNode()) bare.push(marker.currentNode as Text);
+      for (const node of bare) {
+        const parent = node.parentElement;
+        if (!parent || !node.data.trim() || parent.closest("[data-exam-content], [data-cloze-slot]")) continue;
+        const math = parent.closest<HTMLElement>("span.math-inline, span.math-block");
+        if (math) {
+          math.dataset.examContent = "";
+          continue;
+        }
+        const wrapper = document.createElement("span");
+        wrapper.dataset.examContent = "";
+        node.replaceWith(wrapper);
+        wrapper.append(node);
+      }
       const found = [...root.querySelectorAll<HTMLElement>("[data-cloze-slot]")];
       setSlots((current) =>
         current.length === found.length &&
@@ -127,7 +146,7 @@ export function ClozeQuestion({
           </p>
         </div>
       )}
-      <div data-exam-content>
+      <div>
         <ClozePassage
           html={body.passage}
           renderBlank={(blankId, ordinal) => {

@@ -212,7 +212,7 @@ function TrueFalseReview({
         </table>
       </div>
       {!perStatement && review?.earned != null && (
-        <p className="text-caption text-text-secondary" data-exam-content>
+        <p className="text-caption text-text-secondary">
           <strong className="font-semibold text-text">
             {strings.countTableSummary(
               correctCount,

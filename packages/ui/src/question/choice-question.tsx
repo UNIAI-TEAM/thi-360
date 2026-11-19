@@ -69,7 +69,6 @@ export function ChoiceList({
               review === undefined && (checked ? "border-primary-600 bg-success-bg" : "border-border bg-surface hover:border-border-strong"),
               review !== undefined && optionReviewClass(checked, isCorrect, showAnswers),
             )}
-            data-exam-content
           >
             {review === undefined ? (
               multiple ? (
@@ -104,7 +103,9 @@ export function ChoiceList({
               <OptionMarker kind={multiple ? "checkbox" : "radio"} filled={checked} correct={isCorrect && showAnswers} />
             )}
             <span className="font-semibold">{letter}.</span>
-            <RichTextView className="min-w-0 flex-1 wrap-break-word" html={option.content} />
+            <div data-exam-content className="min-w-0 flex-1 wrap-break-word">
+              <RichTextView html={option.content} />
+            </div>
             {review !== undefined && checked && (
               <ReviewTag
                 label={isCorrect || !showAnswers ? strings.yourPickTag : strings.yourPickWrongTag}

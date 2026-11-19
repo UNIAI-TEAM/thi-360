@@ -2,12 +2,12 @@
 
 import { X } from "lucide-react";
 import { useState } from "react";
-import { Select } from "../components/select";
 import { useUiLocale, useUiStrings } from "../components/ui-strings";
 import { cn } from "../lib/cn";
 import { focusRing } from "../lib/styles";
 import { RichTextView } from "../rich-text";
-import { formatScore, htmlToText, matchLetter, orderById } from "./helpers";
+import { formatScore, matchLetter, orderById } from "./helpers";
+import { MatchOptionContent, MatchSelect } from "./match-select";
 import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
@@ -100,25 +100,19 @@ export function MatchingQuestion({
                     <span className="text-caption font-medium whitespace-nowrap text-text-secondary">
                       {strings.matchWith}
                     </span>
-                    <span data-exam-content={picked != null ? "" : undefined} className="contents">
-                    <Select
+                    <MatchSelect
                       aria-label={strings.matchPickLeft(index + 1)}
                       value={picked ?? ""}
                       placeholder={strings.matchPlaceholder}
-                      options={right.map((option, optionIndex) => {
-                        const usedElsewhere = !reuse && picked !== option.id && (rightUsedBy.get(option.id)?.length ?? 0) > 0;
-                        return {
-                          value: option.id,
-                          label: `${matchLetter(optionIndex)}. ${htmlToText(option.content)}`,
-                          disabled: usedElsewhere,
-                        };
-                      })}
-                      onValueChange={(next) =>
-                        onChange?.({ pairs: { ...pairs, [item.id]: next || null } })
-                      }
+                      options={right.map((option, optionIndex) => ({
+                        value: option.id,
+                        letter: matchLetter(optionIndex),
+                        html: option.content,
+                        disabled: !reuse && picked !== option.id && (rightUsedBy.get(option.id)?.length ?? 0) > 0,
+                      }))}
+                      onValueChange={(next) => onChange?.({ pairs: { ...pairs, [item.id]: next || null } })}
                       className="w-56 shrink-0"
                     />
-                    </span>
                     {picked != null && (
                       <button
                         type="button"
@@ -326,22 +320,16 @@ function MatchingReviewTable({
                   <span className="inline-flex items-center gap-2">
                     {part && <OutcomeGlyph outcome={part.outcome} />}
                     {picked ? (
-                      <span data-exam-content>
-                        <strong className="font-semibold">{picked.letter}.</strong>{" "}
-                        {htmlToText(picked.item.content)}
-                      </span>
+                      <MatchOptionContent letter={picked.letter} html={picked.item.content} wrap />
                     ) : (
                       <span className="text-text-muted">{strings.notMatched}</span>
                     )}
                   </span>
                 </td>
                 {showAnswers && (
-                  <td className="py-2.5 pr-4 text-label text-text" data-exam-content>
+                  <td className="py-2.5 pr-4 text-label text-text">
                     {correctRight ? (
-                      <>
-                        <strong className="font-semibold">{correctRight.letter}.</strong>{" "}
-                        {htmlToText(correctRight.item.content)}
-                      </>
+                      <MatchOptionContent letter={correctRight.letter} html={correctRight.item.content} wrap />
                     ) : (
                       "—"
                     )}
