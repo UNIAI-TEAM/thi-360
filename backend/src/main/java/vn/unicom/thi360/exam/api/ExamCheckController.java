@@ -25,6 +25,7 @@ import vn.unicom.thi360.exam.application.ExamCheckCompletion;
 import vn.unicom.thi360.exam.application.ExamCheckOrchestrator;
 import vn.unicom.thi360.exam.application.ExamCheckResultQuery;
 import vn.unicom.thi360.exam.application.ExamCheckScope;
+import vn.unicom.thi360.exam.application.ExamListingChecks;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
@@ -39,11 +40,14 @@ public class ExamCheckController {
     private final ExamCheckOrchestrator checks;
     private final ExamCheckResultQuery query;
     private final CurrentUserProvider users;
+    private final ExamListingChecks listingChecks;
 
-    public ExamCheckController(ExamCheckOrchestrator checks, ExamCheckResultQuery query, CurrentUserProvider users) {
+    public ExamCheckController(ExamCheckOrchestrator checks, ExamCheckResultQuery query, CurrentUserProvider users,
+            ExamListingChecks listingChecks) {
         this.checks = checks;
         this.query = query;
         this.users = users;
+        this.listingChecks = listingChecks;
     }
 
     @GetMapping
@@ -56,7 +60,7 @@ public class ExamCheckController {
         if (result != null && !result.has("sectionStates")) {
             result.putNull("sectionStates");
         }
-        return result == null ? NullNode.getInstance() : result;
+        return result == null ? NullNode.getInstance() : listingChecks.withListingCheck(result, examId);
     }
 
     @Schema(name = "ExamCheckStarted")
@@ -86,7 +90,7 @@ public class ExamCheckController {
         if (deep) {
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(new Started(checks.startDeep(examId, scope, actor, traceId)));
         }
-        return ResponseEntity.ok(checks.check(examId, scope, actor, traceId));
+        return ResponseEntity.ok(listingChecks.withListingCheck(checks.check(examId, scope, actor, traceId), examId));
     }
 
     @GetMapping("/runs/{runId}")
@@ -95,7 +99,12 @@ public class ExamCheckController {
     @ApiResponse(responseCode = "200", description = "Background check state",
             content = @Content(schema = @Schema(implementation = ExamCheckApiModels.Run.class)))
     public ExamCheckOrchestrator.Run run(@PathVariable UUID examId, @PathVariable UUID runId) {
-        return checks.run(examId, runId, actor(), MDC.get(TraceIdFilter.MDC_TRACE_ID));
+        var run = checks.run(examId, runId, actor(), MDC.get(TraceIdFilter.MDC_TRACE_ID));
+        if (run.result() instanceof ObjectNode result) {
+            return new ExamCheckOrchestrator.Run(run.runId(), run.state(),
+                    listingChecks.withListingCheck(result, examId), run.errorCode());
+        }
+        return run;
     }
 
     private ExamCheckCompletion.Actor actor() {

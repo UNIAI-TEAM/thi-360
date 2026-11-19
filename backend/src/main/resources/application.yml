@@ -155,6 +155,13 @@ thi360:
   exam:
     structure:
       max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
+    listing:
+      # Giá bán thấp nhất khi công bố bài thi; cùng biến với mức tối thiểu của VNPAY (TM E26).
+      min-price-vnd: ${THI360_VNPAY_MIN_AMOUNT:5000}
+    cover-cleanup:
+      orphan-age: P7D
+      interval: PT24H
+      batch-size: 100
   mail:
     from: ${THI360_MAIL_FROM:Thi 360 <no-reply@thi360.local>}
     tls: ${THI360_SMTP_TLS:starttls}
