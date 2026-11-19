@@ -2,8 +2,10 @@ package vn.unicom.thi360.shared.testapi;
 
 /**
  * Quy tắc chung của {@code /api/v1/test/**} (plan A6, B6, B9). Chỉ profile {@code e2e} đăng ký
- * handler dưới tiền tố này; profile khác không có handler nên gọi vào nhận 404. Bảo mật mở tiền tố
- * này cho người gọi ẩn danh (để không trả 401 thay cho 404) và {@code CookieAuthFilter} bỏ qua nó.
+ * handler dưới tiền tố này; profile khác không có handler và chuỗi bảo mật riêng
+ * ({@link TestApiAbsentSecurityConfig}) cho mọi yêu cầu vào tiền tố này tới MVC mà không xét xác
+ * thực, nên nhận 404 kể cả khi kèm Bearer hay cookie sai. Ở profile {@code e2e} chuỗi chính mở tiền
+ * tố này cho người gọi ẩn danh và {@code CookieAuthFilter} bỏ qua nó.
  *
  * <p>Task thêm endpoint thử (ML: {@code /mail}, CM-3a: cổng giả lập) chỉ cần gắn
  * {@link TestApiController}; không sửa lại hai chỗ trên.

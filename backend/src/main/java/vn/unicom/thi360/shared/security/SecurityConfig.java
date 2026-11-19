@@ -104,8 +104,9 @@ public class SecurityConfig {
                                 "/actuator/health/**",
                                 "/v3/api-docs",
                                 "/v3/api-docs/**").permitAll()
-                        // /api/v1/test/**: chỉ profile e2e có handler (shared/testapi); profile khác không có
-                        // handler nên phải nhận 404, không phải 401 của anyRequest().authenticated().
+                        // /api/v1/test/**: chỉ profile e2e có handler (shared/testapi), nên chuỗi này chỉ thấy
+                        // tiền tố ở profile e2e (ẩn danh gọi được). Profile khác do chuỗi riêng
+                        // TestApiAbsentSecurityConfig trả 404 trước khi xét xác thực.
                         .requestMatchers(TestApiPaths.PATTERN).permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/admin/**").access((authentication, context) -> {
