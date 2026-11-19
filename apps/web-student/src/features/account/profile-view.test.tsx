@@ -294,8 +294,9 @@ describe("ProfileView email (AC-17)", () => {
     await user.type(screen.getByLabelText(/^Mật khẩu hiện tại/), "Thi360@dev");
     await user.click(screen.getByRole("button", { name: "Gửi mã xác minh" }));
 
-    const submit = await screen.findByRole("button", { name: "Gửi mã xác minh sau 02:00" });
+    const submit = await screen.findByRole("button", { name: "Gửi mã xác minh" });
     expect(submit).toBeDisabled();
+    expect(screen.getByText("Gửi mã xác minh sau 02:00")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Bạn gửi mã quá nhanh hoặc quá số lần cho phép.");
     expect(screen.getByText("Có thể gửi lại mã sau 02:00.")).toBeInTheDocument();
   });

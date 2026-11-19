@@ -698,11 +698,13 @@ function EmailSection({
               {t("cancel")}
             </Button>
             <Button type="submit" loading={changeForm.formState.isSubmitting} disabled={secondsLeft > 0}>
-              {secondsLeft > 0 && secondsLeft < LONG_COOLDOWN_SECONDS
-                ? t("sendCodeIn", { time: formatClock(secondsLeft) })
-                : t("sendCode")}
+              {t("sendCode")}
             </Button>
           </div>
+          {/* Thời gian chờ là chữ thường bên ngoài nút khóa: chữ trong nút khóa bị nhạt, dưới 4.5:1. */}
+          {secondsLeft > 0 && secondsLeft < LONG_COOLDOWN_SECONDS && (
+            <p className="text-body text-text-muted tabular-nums">{t("sendCodeIn", { time: formatClock(secondsLeft) })}</p>
+          )}
         </form>
       )}
 
@@ -766,11 +768,13 @@ function EmailSection({
               onClick={() => openChangeForm(profile.pendingEmail ?? undefined)}
               className="tabular-nums"
             >
-              {secondsLeft > 0 && secondsLeft < LONG_COOLDOWN_SECONDS
-                ? t("resendIn", { time: formatClock(secondsLeft) })
-                : t("resend")}
+              {t("resend")}
             </Button>
           </div>
+          {/* Thời gian chờ là chữ thường bên ngoài nút khóa: chữ trong nút khóa bị nhạt, dưới 4.5:1. */}
+          {secondsLeft > 0 && secondsLeft < LONG_COOLDOWN_SECONDS && (
+            <p className="text-body text-text-muted tabular-nums">{t("resendIn", { time: formatClock(secondsLeft) })}</p>
+          )}
         </form>
       )}
 

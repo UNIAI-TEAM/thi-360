@@ -149,9 +149,11 @@ export function ForgotPasswordView({
               onClick={() => void send(getValues("email"))}
               className="tabular-nums"
             >
-              {secondsLeft > 0 ? t("resendIn", { time: formatClock(secondsLeft) }) : t("resend")}
+              {t("resend")}
             </Button>
           </div>
+          {/* Thời gian chờ là chữ thường, không nằm trong nhãn nút bị khóa (nút khóa làm nhạt chữ, kém 4.5:1). */}
+          {secondsLeft > 0 && <p className="text-body text-text-muted tabular-nums">{t("resendIn", { time: formatClock(secondsLeft) })}</p>}
           <LiveStatus
             message={cooldownAnnouncement(cooldown, {
               start: (time) => t("cooldownStart", { time }),

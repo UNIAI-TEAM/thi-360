@@ -77,7 +77,9 @@ describe("ForgotPasswordView", () => {
 
     await user.type(screen.getByLabelText(/Email/), "an@thi360.vn");
     await user.click(screen.getByRole("button", { name: "Gửi hướng dẫn" }));
-    expect(await screen.findByRole("button", { name: "Gửi lại sau 01:00" })).toBeDisabled();
+    // Đếm ngược là chữ thường dưới nút (đủ tương phản), nút giữ nhãn thường và bị khóa.
+    expect(await screen.findByText("Gửi lại sau 01:00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gửi lại" })).toBeDisabled();
     // Một vùng thông báo: câu lúc bắt đầu chờ (không đọc từng giây).
     expect(screen.getByText("Có thể gửi lại sau 01:00.")).toBeInTheDocument();
 

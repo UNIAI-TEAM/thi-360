@@ -113,11 +113,12 @@ describe("VerifyEmailView", () => {
     mocks.sendCode.mockResolvedValueOnce(undefined);
     await user.click(screen.getByRole("button", { name: "Gửi lại mã" }));
     expect(await screen.findByText("Đã gửi mã mới. Mã cũ không còn dùng được.")).toBeInTheDocument();
-    const countdown = screen.getByRole("button", { name: "Gửi lại mã sau 01:00" });
-    expect(countdown).toBeDisabled();
+    // Đếm ngược là chữ thường dưới nút (đủ tương phản), nút giữ nhãn thường và bị khóa.
+    expect(screen.getByText("Gửi lại mã sau 01:00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gửi lại mã" })).toBeDisabled();
     expect(screen.getByText("Có thể gửi lại mã sau 01:00.")).toBeInTheDocument();
     nowMs += 42_000;
-    await waitFor(() => expect(screen.getByRole("button", { name: "Gửi lại mã sau 00:18" })).toBeDisabled(), {
+    await waitFor(() => expect(screen.getByText("Gửi lại mã sau 00:18")).toBeInTheDocument(), {
       timeout: 2000,
     });
     nowMs += 18_000;
@@ -129,7 +130,8 @@ describe("VerifyEmailView", () => {
       new EmailCodeStatusError(new ApiStatusError(429, "x", { code: "RATE_LIMITED" }), { retryAfter: 30 }),
     );
     await user.click(screen.getByRole("button", { name: "Gửi lại mã" }));
-    expect(await screen.findByRole("button", { name: "Gửi lại mã sau 00:30" })).toBeDisabled();
+    expect(await screen.findByText("Gửi lại mã sau 00:30")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gửi lại mã" })).toBeDisabled();
 
     // Hết lượt trong ngày: retryAfter cỡ nhiều giờ, hiện cảnh báo kèm thời điểm thử lại.
     nowMs += 31_000;

@@ -312,11 +312,13 @@ export function VerifyEmailView({
             onClick={() => void onResend()}
             className="tabular-nums"
           >
-            {resendSecondsLeft > 0 && !dailyLimitUntil
-              ? t("resendIn", { time: formatClock(resendSecondsLeft) })
-              : t("resend")}
+            {t("resend")}
           </Button>
         </div>
+        {/* Thời gian chờ là chữ thường bên ngoài nút khóa: chữ trong nút khóa bị nhạt, dưới 4.5:1. */}
+        {resendSecondsLeft > 0 && !dailyLimitUntil && (
+          <p className="text-body text-text-muted tabular-nums">{t("resendIn", { time: formatClock(resendSecondsLeft) })}</p>
+        )}
         <LiveStatus
           message={cooldownAnnouncement(cooldown, {
             start: (time) => t("cooldownStart", { time }),
