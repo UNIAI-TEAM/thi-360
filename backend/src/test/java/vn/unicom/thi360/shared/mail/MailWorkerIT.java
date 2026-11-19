@@ -41,6 +41,7 @@ import vn.unicom.thi360.support.MailOutbox;
             "thi360.mail.poll-delay=PT0.1S",
             "thi360.mail.attempt-timeout=PT3S",
             "thi360.mail.claim-lease=PT30S",
+            "thi360.mail.cleanup-cron=*/1 * * * * *",
             "THI360_SMTP_HOST=127.0.0.1",
             "thi360.mail.tls=none"
         })
@@ -164,6 +165,42 @@ class MailWorkerIT extends AbstractIntegrationTest {
         assertThat(mail.sentAt()).isNull();
         assertThat(mail.failedAt()).isNull();
         assertThat(mail.nextAttemptAt()).isEqualTo(AbstractMailIT.START.plus(Duration.ofMinutes(1)));
+    }
+
+    /**
+     * R2-05: lịch dọn thật (cron mỗi giây, đồng hồ đứng yên) xóa thư đã gửi quá hạn giữ, không xóa thư đã
+     * gửi gần đây, chưa gửi hay đã thất bại. Test không gọi {@link MailCleanupService} trực tiếp.
+     */
+    @Test
+    void theScheduledCleanupDeletesOnlyExpiredSentMail() throws Exception {
+        java.time.Instant now = AbstractMailIT.START;
+        java.util.UUID expired = insertMail(now.minus(Duration.ofDays(60)), now.minus(Duration.ofDays(31)), null, now.plus(Duration.ofDays(900)));
+        java.util.UUID recent = insertMail(now.minus(Duration.ofDays(60)), now.minus(Duration.ofDays(29)), null, now.plus(Duration.ofDays(900)));
+        java.util.UUID unsent = insertMail(now.minus(Duration.ofDays(60)), null, null, now.plus(Duration.ofDays(900)));
+        java.util.UUID failed = insertMail(now.minus(Duration.ofDays(60)), null, now.minus(Duration.ofDays(50)), now.plus(Duration.ofDays(900)));
+
+        Awaitility.await().atMost(Duration.ofSeconds(15)).until(() -> jdbc.queryForObject(
+                        "SELECT count(*) FROM shared.email_message WHERE id = ?", Integer.class, expired) == 0);
+
+        assertThat(jdbc.queryForList("SELECT id FROM shared.email_message", java.util.UUID.class))
+                .containsExactlyInAnyOrder(recent, unsent, failed);
+    }
+
+    private java.util.UUID insertMail(java.time.Instant createdAt, java.time.Instant sentAt, java.time.Instant failedAt, java.time.Instant nextAttemptAt) {
+        java.util.UUID id = java.util.UUID.randomUUID();
+        jdbc.update(
+                """
+                INSERT INTO shared.email_message
+                    (id, kind, to_email, locale, subject, html, text, created_at, next_attempt_at, attempts, sent_at, failed_at)
+                VALUES (?, 'EMAIL_VERIFY', ?, 'vi', 's', '<p>h</p>', 't', ?, ?, 1, ?, ?)
+                """,
+                id,
+                MailSamples.randomAddress(),
+                java.sql.Timestamp.from(createdAt),
+                java.sql.Timestamp.from(nextAttemptAt),
+                sentAt == null ? null : java.sql.Timestamp.from(sentAt),
+                failedAt == null ? null : java.sql.Timestamp.from(failedAt));
+        return id;
     }
 
     private void enqueue(String to) {
