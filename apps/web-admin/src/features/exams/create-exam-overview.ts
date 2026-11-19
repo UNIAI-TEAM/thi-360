@@ -131,7 +131,7 @@ function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sect
 
 
 /** Nhóm tạm bỏ qua của môn (SPT Toán: Tự luận): hiện mờ, chỉ đọc, không tính vào tổng và không vào `overview`. */
-function omittedRow(
+export function omittedRow(
   partIndex: number,
   sectionIndex: number,
   subjectCode: string,

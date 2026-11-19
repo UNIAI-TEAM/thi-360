@@ -7,6 +7,7 @@ import { ExamStructureView } from "../components/exam-structure-view";
 import type { ExamDetail, ExamPart, ExamSection, QuestionBlock } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
+import { sp2eVanExam } from "./sp2e-van-fixture";
 
 /**
  * UNI-2751: tab Thông tin chung có "Cấu trúc tổng quan" như bước 1, dựng từ cấu trúc đã lưu. Lưu ghi cấu trúc trước
@@ -101,6 +102,15 @@ function setup(options: { lockCounts?: boolean; configure?: (backend: ExamsBacke
     servingVersion: null,
     parts: [hsaPart(1, MATH, 45, 75, "MATH"), hsaPart(2, LITERATURE, 50, 60, "LITERATURE"), hsaPart(3, SCIENCE, 50, 60, "PHYSICS")],
   };
+  backend.seedExam(seeded);
+}
+
+/** Cài bài có sẵn (không qua mẫu HSA) để thử hình dạng riêng của một kỳ thi. */
+function setupExam(exam: ExamDetail) {
+  routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.install();
+  seeded = { ...exam, id: EXAM_ID };
   backend.seedExam(seeded);
 }
 
@@ -264,5 +274,25 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     expect((await screen.findAllByText("Ngữ văn: các khối có 50 câu, môn cần 30 câu.")).length).toBeGreaterThan(0);
     // Khối lấy câu không bị tự giảm: máy chủ vẫn giữ 50 câu ở nhóm, lệch này do người dùng tự chia lại ở bước Cấu trúc.
     expect(backend.app(EXAM_ID).parts[1]!.sections[0]!.blocks[0]!.questionCount).toBe(50);
+  }, 30_000);
+
+  it("R1-1: phần mà mọi nhóm đều bỏ qua là dòng chỉ đọc, không lỗi khi tải; sửa Phần I rồi lưu giữ nguyên số câu 0 của Phần II", async () => {
+    setupExam(sp2eVanExam());
+    const user = userEvent.setup();
+    open();
+    const table = await tableRegion();
+    expect(screen.queryByText("Số câu phải là số nguyên dương.")).not.toBeInTheDocument();
+    expect(within(table).queryByRole("textbox", { name: /Phần II/ })).not.toBeInTheDocument();
+    expect(within(table).getByText(/Phần II · Viết/)).toBeInTheDocument();
+    const count = within(table).getByRole("textbox", { name: "Số câu của Phần I · Đọc hiểu" });
+    await user.clear(count);
+    await user.type(count, "28");
+    await user.click(screen.getByRole("button", { name: SAVE }));
+
+    await waitFor(() => expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(1));
+    const body = backend.calls("PUT", STRUCTURE_PATH)[0]!.body as { parts: ExamPart[] };
+    expect(body.parts[0]).toMatchObject({ id: "p1", questionCount: 28 });
+    expect(body.parts[1]).toMatchObject({ id: "p2", questionCount: 0 });
+    expect(body.parts[1]!.sections[0]).toMatchObject({ questionCount: 0 });
   }, 30_000);
 });

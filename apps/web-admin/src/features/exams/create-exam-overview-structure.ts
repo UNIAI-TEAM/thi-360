@@ -1,10 +1,12 @@
-import { type OverviewRow, overviewDiff } from "./create-exam-overview";
+import { type OverviewRow, omittedRow, overviewDiff } from "./create-exam-overview";
+import { isAllOmittedStructurePart } from "./matrix";
 import type { ExamPart, ExamSection } from "./types";
 
 /**
  * "Bảng tổng quan" dựng từ cấu trúc ĐÃ LƯU của bài (tab Thông tin chung), cùng hình dạng dòng với bảng ở bước 1 để dùng
  * chung `ExamOverviewTable`, `validateOverview` và `overviewDiff`. `base` là số đang lưu, nên dòng "khác" là dòng người
- * dùng vừa sửa. Chỉ hiện dòng phần và, với phần cố định nhiều môn (hoặc mọi phần của mẫu `fixedCounts`), dòng môn; dòng
+ * dùng vừa sửa. Phần mà mọi nhóm đều tạm bỏ qua (SP2E Ngữ văn Phần II · Viết, số câu 0 theo thiết kế) là dòng `omitted` chỉ
+ * đọc như ở bước 1: không kiểm tra, không vào tổng, không vào `overviewDiff`. Chỉ hiện dòng phần và, với phần cố định nhiều môn (hoặc mọi phần của mẫu `fixedCounts`), dòng môn; dòng
  * lấy câu và nhóm không vào bảng này.
  */
 export function overviewRowsFromParts(
@@ -14,6 +16,14 @@ export function overviewRowsFromParts(
   const text = (value: number | null | undefined) => (value == null ? "" : String(value));
   const rows: OverviewRow[] = [];
   parts.forEach((part, index) => {
+    if (isAllOmittedStructurePart(part)) {
+      const omittedCount = part.sections.reduce(
+        (total, section) => total + section.blocks.reduce((sum, block) => sum + (block.omitted ? (block.questionCount ?? 0) : 0), 0),
+        0,
+      );
+      rows.push(omittedRow(index, 0, part.sections[0]?.subjectCode ?? "", { name: part.name, questionCount: omittedCount }, 0));
+      return;
+    }
     const sections = part.mode === "FIXED" ? part.sections : [];
     const group = sections.length > 1 || (options.fixedCounts && sections.length > 0);
     const base = {
