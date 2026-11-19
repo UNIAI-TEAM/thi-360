@@ -46,4 +46,35 @@ class CredentialRequestToStringTests {
         ResetPasswordRequest nullPasswordReq = new ResetPasswordRequest(null, false, null);
         assertThat(nullPasswordReq.toString()).contains("password=null");
     }
+
+    @Test
+    void registerRequest_toStringRedactsPassword() {
+        String secret = "Reg1sterS3cret!77";
+        RegisterRequest req = new RegisterRequest(
+                "alice.03", "Nguyen Alice", "alice@thi360.vn", secret, true, "2026-11", "/checkout/ABC");
+
+        String rendered = req.toString();
+        assertThat(rendered)
+                .doesNotContain(secret)
+                .contains("password=[REDACTED]")
+                .contains("username=alice.03")
+                .contains("acceptTerms=true");
+
+        RegisterRequest nullPasswordReq = new RegisterRequest("alice.04", null, null, null, null, null, null);
+        assertThat(nullPasswordReq.toString()).contains("password=null");
+    }
+
+    @Test
+    void emailChangeRequests_toStringRedactSecrets() {
+        String secret = "Chang3S3cret!66";
+        EmailCodeChangeRequest change = new EmailCodeChangeRequest("moi@thi360.vn", secret);
+        assertThat(change.toString())
+                .doesNotContain(secret)
+                .contains("currentPassword=[REDACTED]")
+                .contains("newEmail=moi@thi360.vn");
+        assertThat(new EmailCodeChangeRequest("moi@thi360.vn", null).toString()).contains("currentPassword=null");
+
+        EmailCodeVerifyRequest verify = new EmailCodeVerifyRequest("482913");
+        assertThat(verify.toString()).doesNotContain("482913").contains("code=[REDACTED]");
+    }
 }

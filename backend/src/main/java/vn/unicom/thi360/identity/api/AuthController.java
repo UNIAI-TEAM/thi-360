@@ -8,13 +8,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import vn.unicom.thi360.identity.application.AuthService;
+import vn.unicom.thi360.identity.application.SelfRegistrationService;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 
 @RestController
@@ -23,9 +26,11 @@ import vn.unicom.thi360.shared.security.AuthCookieService;
 public class AuthController {
 
     private final AuthService authService;
+    private final SelfRegistrationService selfRegistrationService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, SelfRegistrationService selfRegistrationService) {
         this.authService = authService;
+        this.selfRegistrationService = selfRegistrationService;
     }
 
     @PostMapping(value = "/auth/login", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -42,6 +47,20 @@ public class AuthController {
                 readCookie(httpRequest, AuthService.LOCALE_COOKIE),
                 response);
         return new LoginResponse(result.redirectTo(), result.mustChangePassword());
+    }
+
+    @PostMapping(value = "/auth/register", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+            summary = "Tự đăng ký tài khoản học viên",
+            description = "Công khai. Tạo tài khoản và user Keycloak, đặt phiên (cookie HttpOnly), xếp thư mã OTP xác minh email.")
+    public RegisterResponse register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+        String redirectTo = selfRegistrationService.register(
+                request, readCookie(httpRequest, AuthService.LOCALE_COOKIE), response);
+        return new RegisterResponse(redirectTo);
     }
 
     @PostMapping("/auth/refresh")

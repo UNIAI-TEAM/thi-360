@@ -39,6 +39,10 @@ public class CsrfFilter extends OncePerRequestFilter {
         if ("POST".equals(method) && LOGIN_PATH.equals(extractPath(request))) {
             return true;
         }
+        // Đăng ký công khai (TM 5.1): trình duyệt còn cookie cũ mà không có XSRF vẫn đăng ký được (AC-9).
+        if (RateLimitFilter.RegistrationRoute.matches(request)) {
+            return true;
+        }
         if (hasExplicitBearer(request)) {
             return true;
         }
