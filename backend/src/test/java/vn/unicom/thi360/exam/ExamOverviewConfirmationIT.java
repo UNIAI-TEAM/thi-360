@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Locale;
@@ -85,13 +86,17 @@ class ExamOverviewConfirmationIT extends AbstractIntegrationTest {
         return mapper.readTree(response).findValuesAsText("code");
     }
 
-    private Boolean confirmed(UUID id, String optionId) throws Exception {
+    private JsonNode option(UUID id, String optionId) throws Exception {
         JsonNode parts = mapper.readTree(jdbc.queryForObject(
                 "select parts::text from exam.exam_structure where exam_id=?", String.class, id));
         for (JsonNode option : parts.path("parts").get(0).path("options")) {
-            if (optionId.equals(option.path("id").asText())) return option.path("expertConfirmed").asBoolean();
+            if (optionId.equals(option.path("id").asText())) return option;
         }
         throw new AssertionError("Missing option " + optionId);
+    }
+
+    private Boolean confirmed(UUID id, String optionId) throws Exception {
+        return option(id, optionId).path("expertConfirmed").asBoolean();
     }
 
     @Test
@@ -110,6 +115,29 @@ class ExamOverviewConfirmationIT extends AbstractIntegrationTest {
         overview(id, List.of(Map.of("partId", "p", "questionCount", 6),
                 Map.of("partId", "p", "sectionId", "s1", "questionCount", 5)));
         assertThat(confirmed(id, "o1")).isTrue();
+        assertThat(confirmed(id, "o2")).isTrue();
+        assertThat(checkCodes(id)).doesNotContain("OPTION_UNCONFIRMED");
+    }
+
+    /**
+     * An option stored without expertConfirmed (legacy drafts) stays unconfirmed-but-absent when an overview edit
+     * touches it: the flag is not rewritten to false, so the check does not start asking for a confirmation that
+     * was never given. R4-5.
+     */
+    @Test
+    void anOptionWithoutTheFlagStaysUnflaggedThroughTheOverview() throws Exception {
+        String s1 = subject(), s2 = subject();
+        ObjectNode parts = (ObjectNode) mapper.readTree(PARTS.formatted(s1, s2));
+        ((ObjectNode) parts.path("parts").get(0).path("options").get(0)).remove("expertConfirmed");
+        UUID id = UUID.randomUUID();
+        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, duration_minutes) "
+                + "values (?, ?, ?, 'Overview confirmation', 'FULL', 'SHARED', 60)", id, id.toString(), id.toString());
+        jdbc.update("insert into exam.exam_structure (exam_id, parts, structure_hash) values (?, cast(? as jsonb), 'test')",
+                id, parts.toString());
+
+        overview(id, List.of(Map.of("partId", "p", "sectionId", "s1", "questionCount", 6)));
+        JsonNode flag = option(id, "o1").get("expertConfirmed");
+        assertThat(flag == null || flag.isNull()).as("o1 flag after edit: %s", option(id, "o1")).isTrue();
         assertThat(confirmed(id, "o2")).isTrue();
         assertThat(checkCodes(id)).doesNotContain("OPTION_UNCONFIRMED");
     }
