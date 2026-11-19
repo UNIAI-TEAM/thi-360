@@ -21,7 +21,12 @@ public record SecurityProperties(
             @DefaultValue("PT1M") Duration uploadPerIpWindow,
             @DefaultValue("120") int publicPerIpLimit,
             @DefaultValue("PT1M") Duration publicPerIpWindow,
-            List<String> exemptIps
+            List<String> exemptIps,
+            // E19 (plan ID-1): đăng ký tối đa 30 lần mỗi giờ và 100 lần mỗi ngày cho mỗi IP (ngày = 24 giờ trượt).
+            @DefaultValue("30") int registerPerIpHourLimit,
+            @DefaultValue("PT1H") Duration registerPerIpHourWindow,
+            @DefaultValue("100") int registerPerIpDayLimit,
+            @DefaultValue("PT24H") Duration registerPerIpDayWindow
     ) {
 
         public RateLimitProperties {
@@ -34,6 +39,23 @@ public record SecurityProperties(
             // Chỉ miễn chính sách của GET /api/v1/public/** (TM 10.2); mục sai định dạng thì không khởi động.
             exemptIps = exemptIps == null ? List.of() : List.copyOf(exemptIps);
             exemptIps.forEach(ExemptIpMatcher::requireIpOrCidr);
+            // E19: mỗi cửa sổ phải dương, nếu không bộ lọc nuốt lỗi Bucket4j và cho đăng ký không giới hạn.
+            requirePositive("register-per-ip-hour-limit", registerPerIpHourLimit);
+            requirePositive("register-per-ip-day-limit", registerPerIpDayLimit);
+            requirePositiveDuration("register-per-ip-hour-window", registerPerIpHourWindow);
+            requirePositiveDuration("register-per-ip-day-window", registerPerIpDayWindow);
+        }
+
+        private static void requirePositive(String key, int value) {
+            if (value <= 0) {
+                throw new IllegalArgumentException("thi360.security.rate-limit." + key + " must be positive");
+            }
+        }
+
+        private static void requirePositiveDuration(String key, Duration value) {
+            if (value == null || value.isZero() || value.isNegative()) {
+                throw new IllegalArgumentException("thi360.security.rate-limit." + key + " must be a positive duration");
+            }
         }
     }
 

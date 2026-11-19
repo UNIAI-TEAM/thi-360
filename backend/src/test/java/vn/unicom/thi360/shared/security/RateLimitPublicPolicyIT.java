@@ -346,7 +346,9 @@ class RateLimitPublicPolicyIT extends AbstractIntegrationTest {
         return new SecurityProperties.RateLimitProperties(
                 base.loginPerIpLimit(), base.loginPerIpWindow(),
                 base.uploadPerIpLimit(), base.uploadPerIpWindow(),
-                publicLimit, window, exempt);
+                publicLimit, window, exempt,
+                base.registerPerIpHourLimit(), base.registerPerIpHourWindow(),
+                base.registerPerIpDayLimit(), base.registerPerIpDayWindow());
     }
 
     /** The instance in front of authentication: login and public GET. */

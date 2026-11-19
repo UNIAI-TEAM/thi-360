@@ -2841,6 +2841,76 @@
         "required" : [ "effectiveAccess", "hasManageRole", "inactiveDirectPermissions", "permissions", "userId" ],
         "type" : "object"
       },
+      "EmailCodeChangeRequest" : {
+        "description" : "Yêu cầu đổi email: gửi mã xác nhận tới email mới",
+        "properties" : {
+          "currentPassword" : {
+            "description" : "Mật khẩu hiện tại",
+            "format" : "password",
+            "type" : "string"
+          },
+          "newEmail" : {
+            "description" : "Email mới",
+            "example" : "moi@thi360.vn",
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "currentPassword", "newEmail" ],
+        "type" : "object"
+      },
+      "EmailCodeErrorResponse" : {
+        "description" : "Lỗi của API mã OTP email: lỗi chung kèm retryAfter và remainingAttempts",
+        "properties" : {
+          "code" : {
+            "description" : "Mã lỗi",
+            "example" : "EMAIL_CODE_INVALID",
+            "type" : "string"
+          },
+          "fieldErrors" : {
+            "description" : "Danh sách lỗi theo từng trường",
+            "items" : {
+              "$ref" : "#/components/schemas/FieldError"
+            },
+            "type" : "array"
+          },
+          "message" : {
+            "description" : "Thông báo lỗi theo ngôn ngữ yêu cầu",
+            "type" : "string"
+          },
+          "remainingAttempts" : {
+            "description" : "422 EMAIL_CODE_INVALID: số lần nhập còn lại",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "retryAfter" : {
+            "description" : "429: số giây phải chờ trước khi gửi lại",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "traceId" : {
+            "description" : "Mã định danh yêu cầu",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "fieldErrors", "message", "traceId" ],
+        "type" : "object"
+      },
+      "EmailCodeVerifyRequest" : {
+        "description" : "Mã OTP 6 số gửi qua email",
+        "properties" : {
+          "code" : {
+            "description" : "Mã OTP",
+            "example" : 123456,
+            "maxLength" : 16,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "code" ],
+        "type" : "object"
+      },
       "EssayBody" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/QuestionBody"
@@ -7249,6 +7319,70 @@
           }
         },
         "required" : [ "sourceBlocks", "usedIn" ],
+        "type" : "object"
+      },
+      "RegisterRequest" : {
+        "description" : "Yêu cầu đăng ký tài khoản học viên",
+        "properties" : {
+          "acceptTerms" : {
+            "description" : "Đã chấp nhận điều khoản sử dụng; phải là true",
+            "type" : "boolean"
+          },
+          "callbackUrl" : {
+            "description" : "Đường dẫn chuyển hướng sau đăng ký (tương đối hoặc thuộc tên miền cho phép)",
+            "maxLength" : 2048,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "email" : {
+            "description" : "Email, dùng để xác minh và khôi phục tài khoản",
+            "example" : "an@thi360.vn",
+            "maxLength" : 256,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "fullName" : {
+            "description" : "Họ và tên",
+            "example" : "Nguyễn Văn An",
+            "maxLength" : 256,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "password" : {
+            "description" : "Mật khẩu đạt quy tắc bảo mật",
+            "format" : "password",
+            "maxLength" : 256,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "termsVersion" : {
+            "description" : "Phiên bản điều khoản đã hiển thị cho người dùng, lưu đúng giá trị gửi lên",
+            "example" : "2026-11",
+            "maxLength" : 64,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "username" : {
+            "description" : "Tên đăng nhập (4-30 ký tự, a-z0-9._@-, bắt đầu bằng chữ hoặc số)",
+            "example" : "nguyen.van.an",
+            "maxLength" : 256,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "acceptTerms", "email", "fullName", "password", "termsVersion", "username" ],
+        "type" : "object"
+      },
+      "RegisterResponse" : {
+        "description" : "Kết quả đăng ký: phiên đã được tạo (cookie HttpOnly)",
+        "properties" : {
+          "redirectTo" : {
+            "description" : "Đường dẫn chuyển hướng sau đăng ký: callbackUrl hợp lệ hoặc /home",
+            "example" : "http://localhost:3000/home",
+            "type" : "string"
+          }
+        },
+        "required" : [ "redirectTo" ],
         "type" : "object"
       },
       "ReorderCatalogItemsRequest" : {
@@ -30180,6 +30314,156 @@
         "tags" : [ "Auth" ]
       }
     },
+    "/api/v1/auth/register" : {
+      "post" : {
+        "description" : "Công khai. Tạo tài khoản và user Keycloak, đặt phiên (cookie HttpOnly), xếp thư mã OTP xác minh email.",
+        "operationId" : "register",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RegisterResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tự đăng ký tài khoản học viên",
+        "tags" : [ "Auth" ]
+      }
+    },
     "/api/v1/catalog/items/{id}" : {
       "get" : {
         "operationId" : "getItem_1",
@@ -30963,6 +31247,574 @@
         "tags" : [ "Auth" ]
       }
     },
+    "/api/v1/me/email/change" : {
+      "post" : {
+        "operationId" : "requestChange",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmailCodeChangeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Đã xếp thư mã xác nhận tới email mới"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Email đã thuộc tài khoản khác (EMAIL_TAKEN)"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "Gửi quá nhanh hoặc quá 5 lần mỗi ngày: có Retry-After và retryAfter"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Yêu cầu đổi email: gửi mã tới email mới",
+        "tags" : [ "Me" ]
+      }
+    },
+    "/api/v1/me/email/change/confirm" : {
+      "post" : {
+        "operationId" : "confirmChange",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmailCodeVerifyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Email đã đổi, đã xác minh, đã đồng bộ Keycloak"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Email bị tài khoản khác lấy trong lúc chờ (EMAIL_TAKEN)"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "Không đồng bộ được email sang Keycloak; không có thay đổi nào"
+          }
+        },
+        "summary" : "Xác nhận đổi email bằng mã OTP",
+        "tags" : [ "Me" ]
+      }
+    },
+    "/api/v1/me/email/verification" : {
+      "post" : {
+        "operationId" : "sendVerification",
+        "responses" : {
+          "202" : {
+            "description" : "Đã xếp thư mã xác minh"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Tài khoản chưa có email (EMAIL_REQUIRED)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "Gửi quá nhanh hoặc quá 5 lần mỗi ngày: có Retry-After và retryAfter"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Gửi hoặc gửi lại mã xác minh tới email hiện tại",
+        "tags" : [ "Me" ]
+      }
+    },
+    "/api/v1/me/email/verify" : {
+      "post" : {
+        "operationId" : "verify",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmailCodeVerifyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Email đã được xác minh"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xác minh email hiện tại bằng mã OTP",
+        "tags" : [ "Me" ]
+      }
+    },
     "/api/v1/ping" : {
       "get" : {
         "operationId" : "ping",
@@ -31164,6 +32016,9 @@
   }, {
     "description" : "Xác thực và phiên đăng nhập",
     "name" : "Auth"
+  }, {
+    "description" : "Tài khoản đang đăng nhập",
+    "name" : "Me"
   }, {
     "description" : "Quản trị cấu hình giao diện toàn hệ thống",
     "name" : "Admin Appearance"

@@ -271,6 +271,36 @@ public class AuthService {
             throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
         }
 
+        return completeAppLogin(
+                account, normalizedIdentifier, tokens, revocationGeneration, callbackUrl, localeCookieValue, response);
+    }
+
+    /**
+     * Tạo phiên cho tài khoản vừa tự đăng ký (TM 5.1): cùng bước tạo phiên với đăng nhập, nhưng không đụng bộ đếm
+     * đăng nhập sai vì chưa có định danh đăng nhập nào bị đếm.
+     *
+     * @return đường dẫn chuyển hướng: {@code callbackUrl} hợp lệ hoặc trang chủ học viên
+     */
+    public String openSessionForRegisteredAccount(
+            UserAccount account,
+            String password,
+            String callbackUrl,
+            String localeCookieValue,
+            HttpServletResponse response) {
+        long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
+        TokenResult tokens = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
+        return completeAppLogin(account, null, tokens, revocationGeneration, callbackUrl, localeCookieValue, response)
+                .redirectTo();
+    }
+
+    private LoginResult completeAppLogin(
+            UserAccount account,
+            String normalizedIdentifier,
+            TokenResult tokens,
+            long revocationGeneration,
+            String callbackUrl,
+            String localeCookieValue,
+            HttpServletResponse response) {
         Jwt jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
         String sid = requireSid(jwt);
         Instant now = Instant.now(clock);
@@ -287,7 +317,9 @@ public class AuthService {
                     MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "SESSION_REVOKED"));
             throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
-        loginThrottle.reset(normalizedIdentifier);
+        if (normalizedIdentifier != null) {
+            loginThrottle.reset(normalizedIdentifier);
+        }
         // Mọi bước có thể ném lỗi (đọc quyền, ký ctx, chọn trang đích) xong TRƯỚC khi commit ngôn ngữ
         // và nhật ký thành công: nếu không, đăng nhập báo lỗi mà ngôn ngữ thư đã bị đổi (R1-5).
         SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
