@@ -176,4 +176,64 @@ class PasswordResetContactChangeIT extends AbstractKeycloakIntegrationTest {
         login(account, NEW_PASSWORD).andExpect(status().isOk());
         login(account, account.password()).andExpect(status().isUnauthorized());
     }
+
+    /**
+     * R5-2: không gửi liên kết cũ giữa hai lần đổi, nên lần 422 duy nhất là của liên kết còn nguyên trong CSDL. Chỉ
+     * vòng đổi email và đổi ngược (qua endpoint thật của ID-1) mới có thể làm nó hết quyền.
+     */
+    @Test
+    void roundTripEmailChangeRevokesOldLinkWithoutAnyRedeemInBetween() throws Exception {
+        clock.freeze();
+        Account account = support.eligible("reset.roundtrip");
+        String oldEmail = account.email();
+        String newEmail = "vong." + UUID.randomUUID().toString().substring(0, 8) + "@thi360-test.example";
+        forgot(oldEmail);
+        String oldLink = support.tokenFromLatestMail(oldEmail);
+        assertThat(tokenStillUsable(account, oldLink)).isTrue();
+
+        clock.advance(Duration.ofSeconds(61));
+        requestEmailChange(account, newEmail);
+        confirmEmailChange(account, newEmail);
+        assertThat(currentEmail(account)).isEqualTo(newEmail);
+
+        clock.advance(Duration.ofSeconds(61));
+        requestEmailChange(account, oldEmail);
+        confirmEmailChange(account, oldEmail);
+        assertThat(currentEmail(account)).isEqualTo(oldEmail);
+
+        // Liên kết chưa từng được gửi lên: hàng vẫn chưa dùng, chưa vô hiệu; chỉ lần xác minh mới làm nó hết quyền.
+        assertThat(tokenStillUsable(account, oldLink)).as("row untouched before the first redeem").isTrue();
+        reset(oldLink, NEW_PASSWORD)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("RESET_TOKEN_INVALID"));
+        login(account, account.password()).andExpect(status().isOk());
+        login(account, NEW_PASSWORD).andExpect(status().isUnauthorized());
+
+        clock.advance(Duration.ofSeconds(61));
+        forgot(oldEmail);
+        String newLink = support.tokenFromLatestMail(oldEmail);
+        assertThat(newLink).isNotEqualTo(oldLink);
+        reset(newLink, NEW_PASSWORD).andExpect(status().isNoContent());
+        login(account, NEW_PASSWORD).andExpect(status().isOk());
+        login(account, account.password()).andExpect(status().isUnauthorized());
+    }
+
+    /** R5-1: trong lúc đổi email còn chờ xác nhận, liên kết cũ vẫn dùng được thật (không chỉ còn hàng trong CSDL). */
+    @Test
+    void oldLinkRedeemsWhileEmailChangeIsPending() throws Exception {
+        clock.freeze();
+        Account account = support.eligible("reset.pending");
+        String oldEmail = account.email();
+        String newEmail = "cho." + UUID.randomUUID().toString().substring(0, 8) + "@thi360-test.example";
+        forgot(oldEmail);
+        String oldLink = support.tokenFromLatestMail(oldEmail);
+
+        clock.advance(Duration.ofSeconds(61));
+        requestEmailChange(account, newEmail);
+        assertThat(currentEmail(account)).isEqualTo(oldEmail);
+
+        reset(oldLink, NEW_PASSWORD).andExpect(status().isNoContent());
+        login(account, NEW_PASSWORD).andExpect(status().isOk());
+        login(account, account.password()).andExpect(status().isUnauthorized());
+    }
 }
