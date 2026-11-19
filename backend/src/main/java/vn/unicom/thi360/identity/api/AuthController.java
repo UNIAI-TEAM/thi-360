@@ -92,8 +92,8 @@ public class AuthController {
     @Operation(summary = "Yêu cầu liên kết đặt lại mật khẩu (công khai, luôn 202 cùng một thân)")
     public ResponseEntity<PasswordForgotResponse> forgot(
             @Valid @RequestBody PasswordForgotRequest request, HttpServletRequest httpRequest) {
-        // Chỉ giao việc rồi trả ngay: tra tài khoản và xếp thư chạy sau, nên thời gian phản hồi không lộ email có hay không.
-        passwordForgotDispatcher.dispatch(request.email(), clientIpResolver.resolve(httpRequest));
+        // Chỉ ghi nhận việc rồi trả ngay: bộ lọc giao việc sau khi 202 đã commit, nên thời gian phản hồi không lộ email có hay không.
+        passwordForgotDispatcher.dispatch(httpRequest, request.email(), clientIpResolver.resolve(httpRequest));
         return ResponseEntity.accepted()
                 .body(new PasswordForgotResponse(appMessages.get("PASSWORD_FORGOT_ACCEPTED")));
     }

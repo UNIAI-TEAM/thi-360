@@ -1,5 +1,6 @@
 package vn.unicom.thi360.identity.application;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
@@ -9,15 +10,17 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
- * Cửa vào của {@code POST /auth/password/forgot} (TM 5.4): chỉ giao việc cho bộ thực thi riêng rồi trở về ngay.
- * Việc tra tài khoản, tạo mã và xếp thư chạy sau khi phản hồi đã trả, nên thời gian phản hồi không phân biệt email
- * có tài khoản hay không. Hàng đợi đầy hoặc việc lỗi thì chỉ ghi log (không có email, không có mã): phản hồi của
- * caller vẫn là 202 cùng một thân.
+ * Cửa vào của {@code POST /auth/password/forgot} (TM 5.4): controller chỉ <b>ghi nhận</b> việc cần làm vào request;
+ * {@code PasswordForgotHandoffFilter} giao việc cho bộ thực thi riêng sau khi phản hồi 202 đã được ghi và commit
+ * (không phải chỉ "khác luồng"), nên việc tra tài khoản, tạo mã và xếp thư không thể chạy trước phản hồi và thời
+ * gian phản hồi không phân biệt email có tài khoản hay không. Hàng đợi đầy hoặc việc lỗi thì chỉ ghi log (không có
+ * email, không có mã): phản hồi của caller vẫn là 202 cùng một thân.
  */
 @Service
 public class PasswordForgotDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordForgotDispatcher.class);
+    public static final String PENDING_ATTRIBUTE = PasswordForgotDispatcher.class.getName() + ".pending";
 
     private final Executor executor;
     private final PasswordResetService passwordResetService;
@@ -29,15 +32,28 @@ public class PasswordForgotDispatcher {
         this.passwordResetService = Objects.requireNonNull(passwordResetService, "passwordResetService must not be null");
     }
 
-    /** Giao việc và trở về; không bao giờ ném lỗi cho caller. */
-    public void dispatch(String email, String clientIp) {
+    /** Ghi nhận việc chờ giao; chưa chạy gì. Không bao giờ ném lỗi cho caller. */
+    public void dispatch(HttpServletRequest request, String email, String clientIp) {
+        request.setAttribute(PENDING_ATTRIBUTE, new Pending(email, clientIp));
+    }
+
+    /**
+     * Giao việc đã ghi nhận của {@code request} cho bộ thực thi (gọi sau khi phản hồi đã commit). Hàng đợi đầy
+     * thì bỏ việc và ghi log. Trả {@code true} khi có việc chờ.
+     */
+    public boolean handOff(HttpServletRequest request) {
+        if (!(request.getAttribute(PENDING_ATTRIBUTE) instanceof Pending pending)) {
+            return false;
+        }
+        request.removeAttribute(PENDING_ATTRIBUTE);
         try {
-            executor.execute(() -> process(email, clientIp));
+            executor.execute(() -> process(pending.email(), pending.clientIp()));
         } catch (RejectedExecutionException ex) {
             log.atWarn()
                     .addKeyValue("event", "password_reset.queue_full")
                     .log("Password forgot request dropped: executor queue is full");
         }
+        return true;
     }
 
     private void process(String email, String clientIp) {
@@ -49,5 +65,8 @@ public class PasswordForgotDispatcher {
                     .addKeyValue("event", "password_reset.issue_failed")
                     .log("Password forgot request failed in background");
         }
+    }
+
+    private record Pending(String email, String clientIp) {
     }
 }

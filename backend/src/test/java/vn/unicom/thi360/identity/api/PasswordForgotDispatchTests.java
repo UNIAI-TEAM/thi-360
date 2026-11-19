@@ -9,16 +9,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import vn.unicom.thi360.identity.application.AuthService;
 import vn.unicom.thi360.identity.application.PasswordForgotDispatcher;
@@ -28,13 +32,17 @@ import vn.unicom.thi360.shared.web.AppMessages;
 
 /**
  * AC-2, AC-3 (plan ID-2): {@code forgot} trả phản hồi trước khi tra tài khoản và không phân biệt email; hàng đợi
- * đầy vẫn 202 cùng thân. Test cấu trúc: bộ thực thi và service là mock, nên không phụ thuộc đo thời gian.
+ * đầy vẫn 202 cùng thân. Việc chỉ được giao cho bộ thực thi sau khi phản hồi đã commit: test chạy controller trong
+ * {@link PasswordForgotHandoffFilter} thật với request/response servlet và ghi lại thời điểm giao so với commit,
+ * không đo thời gian.
  */
 class PasswordForgotDispatchTests {
 
     private PasswordResetService passwordResetService;
     private ClientIpResolver clientIpResolver;
     private final List<Runnable> queued = new ArrayList<>();
+    private final List<Boolean> committedWhenHandedOff = new ArrayList<>();
+    private MockHttpServletResponse currentResponse;
     private Executor capturingExecutor;
     private final AppMessages messages = AppMessages.defaultInstance();
 
@@ -44,36 +52,48 @@ class PasswordForgotDispatchTests {
         clientIpResolver = mock(ClientIpResolver.class);
         when(clientIpResolver.resolve(org.mockito.ArgumentMatchers.any())).thenReturn("203.0.113.7");
         queued.clear();
-        capturingExecutor = queued::add;
+        committedWhenHandedOff.clear();
+        capturingExecutor = task -> {
+            committedWhenHandedOff.add(currentResponse.isCommitted());
+            queued.add(task);
+        };
     }
 
-    private AuthController controller(Executor executor) {
-        return new AuthController(
-                mock(AuthService.class),
-                new PasswordForgotDispatcher(executor, passwordResetService),
-                passwordResetService,
-                clientIpResolver,
-                messages);
+    private record Outcome(ResponseEntity<PasswordForgotResponse> response, int queuedBeforeResponseCompleted) {
     }
 
-    private ResponseEntity<PasswordForgotResponse> forgot(AuthController controller, String email) {
-        return controller.forgot(new PasswordForgotRequest(email), new MockHttpServletRequest());
+    /** Chạy một yêu cầu forgot qua bộ lọc giao việc thật; ghi lại số việc đã giao khi controller vừa trả về. */
+    private Outcome forgot(Executor executor, String email) throws Exception {
+        PasswordForgotDispatcher dispatcher = new PasswordForgotDispatcher(executor, passwordResetService);
+        AuthController controller = new AuthController(
+                mock(AuthService.class), dispatcher, passwordResetService, clientIpResolver, messages);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        currentResponse = new MockHttpServletResponse();
+        AtomicReference<ResponseEntity<PasswordForgotResponse>> result = new AtomicReference<>();
+        AtomicInteger queuedInChain = new AtomicInteger(-1);
+        int queuedBefore = queued.size();
+        new PasswordForgotHandoffFilter(dispatcher).doFilter(request, currentResponse, (req, res) -> {
+            result.set(controller.forgot(new PasswordForgotRequest(email), (HttpServletRequest) req));
+            res.getWriter().write("accepted");
+            queuedInChain.set(queued.size() - queuedBefore);
+        });
+        return new Outcome(result.get(), queuedInChain.get());
     }
 
     @Test
-    void respondsBeforeLookup() {
-        AuthController controller = controller(capturingExecutor);
+    void respondsBeforeLookup() throws Exception {
+        Outcome existing = forgot(capturingExecutor, "has.account@thi360.vn");
+        Outcome unknown = forgot(capturingExecutor, "nobody@thi360.vn");
 
-        ResponseEntity<PasswordForgotResponse> existing = forgot(controller, "has.account@thi360.vn");
-        ResponseEntity<PasswordForgotResponse> unknown = forgot(controller, "nobody@thi360.vn");
-
-        // Phản hồi đã trả mà chưa có lần tra tài khoản nào: việc nằm trong hàng đợi của bộ thực thi.
+        // Khi controller trả về chưa có việc nào được giao; việc chỉ được giao sau khi phản hồi đã commit.
+        assertThat(existing.queuedBeforeResponseCompleted()).isZero();
+        assertThat(unknown.queuedBeforeResponseCompleted()).isZero();
+        assertThat(committedWhenHandedOff).containsExactly(true, true);
+        assertThat(existing.response().getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(unknown.response().getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(unknown.response().getBody()).isEqualTo(existing.response().getBody());
+        assertThat(existing.response().getBody().message()).isNotBlank();
         verifyNoInteractions(passwordResetService);
-        assertThat(queued).hasSize(2);
-        assertThat(existing.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat(unknown.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat(unknown.getBody()).isEqualTo(existing.getBody());
-        assertThat(existing.getBody().message()).isNotBlank();
 
         // Cả hai đi cùng một đường mã: đúng một lần giao việc mỗi yêu cầu, rồi cùng gọi issue.
         queued.forEach(Runnable::run);
@@ -83,17 +103,16 @@ class PasswordForgotDispatchTests {
     }
 
     @Test
-    void fullQueueStillAccepted() {
+    void fullQueueStillAccepted() throws Exception {
         Executor full = task -> {
             throw new RejectedExecutionException("queue is full");
         };
-        AuthController controller = controller(full);
 
-        ResponseEntity<PasswordForgotResponse> response = forgot(controller, "has.account@thi360.vn");
+        Outcome saturated = forgot(full, "has.account@thi360.vn");
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat(response.getBody()).isEqualTo(
-                forgot(controller(capturingExecutor), "other@thi360.vn").getBody());
+        assertThat(saturated.response().getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(saturated.response().getBody())
+                .isEqualTo(forgot(capturingExecutor, "other@thi360.vn").response().getBody());
         verifyNoInteractions(passwordResetService);
     }
 
@@ -110,10 +129,9 @@ class PasswordForgotDispatchTests {
             real.execute(() -> awaitQuietly(release));
             real.execute(() -> awaitQuietly(release));
 
-            AuthController controller = controller(real);
-            ResponseEntity<PasswordForgotResponse> response = forgot(controller, "has.account@thi360.vn");
+            Outcome outcome = forgot(real, "has.account@thi360.vn");
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(outcome.response().getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         } finally {
             release.countDown();
             real.shutdown();
@@ -121,12 +139,12 @@ class PasswordForgotDispatchTests {
     }
 
     @Test
-    void backgroundFailureIsContainedInTheTask() {
+    void backgroundFailureIsContainedInTheTask() throws Exception {
         doThrow(new IllegalStateException("mail queue down")).when(passwordResetService)
                 .issue(anyString(), anyString());
-        AuthController controller = controller(capturingExecutor);
 
-        assertThat(forgot(controller, "has.account@thi360.vn").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(forgot(capturingExecutor, "has.account@thi360.vn").response().getStatusCode())
+                .isEqualTo(HttpStatus.ACCEPTED);
         queued.forEach(Runnable::run);
 
         verify(passwordResetService).issue("has.account@thi360.vn", "203.0.113.7");
