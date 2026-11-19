@@ -24,7 +24,6 @@ import type {
   ExamStructureSummaryRow,
   ExamVersion,
   KnowledgeScope,
-  MapidMode,
   MapidRule,
   MatrixDimensionValue,
   QuestionBlock,
@@ -38,12 +37,7 @@ import type {
 
 type Schemas = components["schemas"];
 type ApiPart = Schemas["ExamPart"];
-/**
- * `mapidMode` và `mapidRules` (UNI-1704 v2) khớp record `ExamSection`, `MapidRule` của máy chủ; kiểu sinh chưa có cho tới khi
- * tạo lại `packages/api-client`, nên khai tay ở đây.
- */
-type ApiMapidRule = Omit<MapidRule, "groupId" | "count" | "percent"> & { groupId?: string | null; count?: number | null; percent?: number | null };
-type ApiSection = Schemas["ExamSection"] & { mapidMode?: MapidMode | null; mapidRules?: ApiMapidRule[] | null };
+type ApiSection = Schemas["ExamSection"];
 type ApiOption = Schemas["ExamPartOption"];
 type ApiBlock = Schemas["QuestionBlock"];
 type ApiMatrix = Schemas["BlockMatrix"];
@@ -266,10 +260,10 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
   };
 }
 
-function mapMapidRules(rules: readonly ApiMapidRule[]): MapidRule[] {
+function mapMapidRules(rules: readonly Schemas["MapidRule"][]): MapidRule[] {
   return rules.map((rule) => ({
     id: rule.id ?? "",
-    type: rule.type,
+    type: rule.type ?? "PRESENT",
     groupId: rule.groupId ?? null,
     nodeIds: rule.nodeIds ?? [],
     ...(rule.comparator ? { comparator: rule.comparator } : {}),

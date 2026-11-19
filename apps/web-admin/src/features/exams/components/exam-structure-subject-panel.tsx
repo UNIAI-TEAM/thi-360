@@ -10,7 +10,7 @@ import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor, totalCh
 import { apportionByPercent, computeAllocation, convertMatrixUnit, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
-import { effectiveScope, effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
+import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
 import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
@@ -24,7 +24,7 @@ import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./bloc
 import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
 import { useHsaExam, isHsaExam } from "../hsa-enforcement";
-import { deletedGroupRules, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
+import { deletedGroupRules, groupCountScope, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
 import { MapidRulesTable, useMapidRuleText } from "./mapid-rules-table";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
@@ -114,7 +114,7 @@ export function ExamStructureSubjectPanel({
         questionType: block.questionType,
         answerTypes: block.questionType === null ? quotaTypes : [],
         childAnswerType: block.childAnswerType,
-        knowledgeScope: effectiveScope(block, section),
+        knowledgeScope: groupCountScope(block, section),
         tagCodes: block.tagCodes,
         requiredPointsPerQuestion: block.requiredPointsPerQuestion,
         itemShape: block.itemShape,

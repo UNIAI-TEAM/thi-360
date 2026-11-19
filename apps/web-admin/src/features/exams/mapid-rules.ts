@@ -1,7 +1,18 @@
 import { countFromPercent } from "./allocation";
 import { isSetBlock } from "./matrix";
+import { effectiveScope } from "./subject-matrix";
 import type { QuestionType } from "@/features/content/types";
-import type { ExamSection, MapidComparator, MapidMode, MapidRule, MapidRuleType, QuestionBlock, TopicQuota } from "./types";
+import type {
+  CountKnowledgeScope,
+  ExamSection,
+  KnowledgeScope,
+  MapidComparator,
+  MapidMode,
+  MapidRule,
+  MapidRuleType,
+  QuestionBlock,
+  TopicQuota,
+} from "./types";
 
 /**
  * Quy tắc MAPID của môn HSA (UNI-1704 v2, UNI-2758): dữ liệu và phép tính thuần của bảng "Quy tắc MAPID". Hình dạng dữ liệu khớp
@@ -381,4 +392,39 @@ export function revealMapidRulesTable(root: ParentNode = document, frames = 30):
   };
   requestAnimationFrame(look);
   return promise;
+}
+
+// ---------------------------------------------------------------- phạm vi đếm nguồn
+
+const unique = (items: readonly string[]): string[] => [...new Set(items)];
+
+function compiledScope(legacy: KnowledgeScope | null, source: readonly string[], everyChild: boolean): KnowledgeScope | null {
+  const competencyCodes = legacy?.competencyCodes ?? [];
+  if (source.length > 0) return { nodeIds: [...source], competencyCodes, ...(everyChild ? { everyChildInScope: true } : {}) };
+  return legacy ? { nodeIds: [], competencyCodes } : null;
+}
+
+/**
+ * Phạm vi để đếm nguồn của một nhóm, khớp cách máy chủ biên dịch khi sinh đề (`MapidRuleCompiler`): môn có `mapidMode` thì MAPID
+ * cũ của môn và nhóm bị bỏ; ở MATRIX phạm vi là các quy tắc "Chỉ lấy từ" (của nhóm, không có thì của cả môn; chùm đòi cả chùm cùng
+ * phạm vi) và `excludedNodeIds` là MAPID mà quy tắc "Chỉ xuất hiện ở nhóm này" của nhóm khác loại khỏi nhóm này. Môn chưa có
+ * `mapidMode` (kỳ thi khác, Văn, Anh) giữ phạm vi kiểu cũ.
+ */
+export function groupCountScope(block: QuestionBlock, section: ExamSection): CountKnowledgeScope | null {
+  if (section.mapidMode === undefined) return effectiveScope(block, section);
+  const matrix = section.mapidMode === "MATRIX";
+  const rules = matrix ? (section.mapidRules ?? []) : [];
+  const sourceOf = (groupId: string | null) =>
+    unique(rules.filter((rule) => rule.type === "SOURCE" && (rule.groupId ?? null) === groupId).flatMap((rule) => rule.nodeIds));
+  const scope = effectiveScope(
+    { knowledgeScope: compiledScope(block.knowledgeScope, sourceOf(block.id), isSetBlock(block)) },
+    { knowledgeScope: compiledScope(section.knowledgeScope, sourceOf(null), true) },
+  );
+  const groups = new Set(section.blocks.map((item) => item.id));
+  const excluded = unique(
+    rules
+      .filter((rule) => rule.type === "ONLY_IN_GROUP" && rule.groupId && rule.groupId !== block.id && groups.has(rule.groupId))
+      .flatMap((rule) => rule.nodeIds),
+  );
+  return excluded.length > 0 ? { ...(scope ?? { nodeIds: [] }), excludedNodeIds: excluded } : scope;
 }

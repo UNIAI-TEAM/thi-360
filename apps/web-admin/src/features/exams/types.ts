@@ -774,6 +774,14 @@ export interface SuggestExamCodeQuery {
 }
 
 /**
+ * Phạm vi của một lần đếm: phạm vi MAPID có hiệu lực kèm các MAPID mà quy tắc "Chỉ xuất hiện ở nhóm khác" của môn loại khỏi nhóm
+ * này (`excludedNodeIds`, UNI-2758). Chỉ gửi lên khi đếm, không lưu vào cấu trúc.
+ */
+export interface CountKnowledgeScope extends KnowledgeScope {
+  excludedNodeIds?: string[];
+}
+
+/**
  * Bộ lọc nguồn của một nhóm: môn, dạng trả lời, phạm vi kiến thức có hiệu lực (của nhóm, hoặc của môn khi nhóm kế
  * thừa). Chỉ đếm câu Sẵn sàng.
  */
@@ -786,7 +794,7 @@ export interface AvailableQuestionsQuery {
   /** Nhóm chùm: dạng của câu con; `null`: không giới hạn. */
   childAnswerType: QuestionType | null;
   /** Phạm vi có hiệu lực; `null`: không giới hạn MAPID. */
-  knowledgeScope: KnowledgeScope | null;
+  knowledgeScope: CountKnowledgeScope | null;
   tagCodes?: string[];
   competencyCodes?: string[];
   /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */
