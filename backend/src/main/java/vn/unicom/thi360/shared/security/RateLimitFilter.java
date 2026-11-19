@@ -43,6 +43,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public static final String KEY_PREFIX = "rl:login:ip:";
     public static final String UPLOAD_KEY_PREFIX = "rl:upload:ip:";
     public static final String PUBLIC_KEY_PREFIX = "rl:public:ip:";
+    private static final String REGISTER_PATH = "/api/v1/auth/register";
+    public static final String REGISTER_KEY_PREFIX = "rl:register:ip:";
     /** Decoded path segments (as Spring MVC matches them) of the public API prefix {@code /api/v1/public/**}. */
     private static final List<String> PUBLIC_SEGMENTS = List.of("api", "v1", "public");
     /** TM 8.4: VNPAY retries the IPN up to 10 times; limiting it would lose payments. */
@@ -82,8 +84,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        return loginOnly ? !LOGIN_PATH.equals(path)
-                : LOGIN_PATH.equals(path) || resolvePolicy(path) == null;
+        boolean beforeAuthentication = LOGIN_PATH.equals(path) || REGISTER_PATH.equals(path);
+        return loginOnly ? !beforeAuthentication
+                : beforeAuthentication || resolvePolicy(path) == null;
     }
 
     @Override
@@ -114,12 +117,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
         ConsumptionProbe probe;
         try {
             ProxyManager<String> manager = getOrCreateProxyManager();
-            Supplier<BucketConfiguration> configSupplier = () -> BucketConfiguration.builder()
-                    .addLimit(Bandwidth.builder()
-                            .capacity(limit)
-                            .refillIntervally(limit, window)
-                            .build())
-                    .build();
+            Supplier<BucketConfiguration> configSupplier = () -> {
+                var builder = BucketConfiguration.builder()
+                        .addLimit(Bandwidth.builder()
+                                .capacity(limit)
+                                .refillIntervally(limit, window)
+                                .build());
+                for (WindowLimit extra : policy.extraWindows()) {
+                    int extraLimit = Math.max(1, extra.limit());
+                    builder.addLimit(Bandwidth.builder()
+                            .capacity(extraLimit)
+                            .refillIntervally(extraLimit, extra.window())
+                            .build());
+                }
+                return builder.build();
+            };
             Bucket bucket = manager.builder().build(policy.keyPrefix() + clientIp, configSupplier);
             probe = bucket.tryConsumeAndReturnRemaining(1);
         } catch (RuntimeException ex) {
@@ -173,7 +185,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 Duration maxWindow = Stream.of(
                                 securityProperties.rateLimit().loginPerIpWindow(),
                                 securityProperties.rateLimit().uploadPerIpWindow(),
-                                securityProperties.rateLimit().publicPerIpWindow())
+                                securityProperties.rateLimit().publicPerIpWindow(),
+                                securityProperties.rateLimit().registerPerIpHourWindow(),
+                                securityProperties.rateLimit().registerPerIpDayWindow())
                         .max(Duration::compareTo)
                         .orElseThrow();
                 Duration maxTtl = maxWindow.multipliedBy(2);
@@ -253,16 +267,45 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     "Per-IP import upload rate limit exceeded",
                     false);
         }
+        if (REGISTER_PATH.equals(path)) {
+            SecurityProperties.RateLimitProperties rateLimit = securityProperties.rateLimit();
+            return new RateLimitPolicy(
+                    REGISTER_KEY_PREFIX,
+                    rateLimit.registerPerIpHourLimit(),
+                    rateLimit.registerPerIpHourWindow(),
+                    "rate_limit.register_ip_exceeded",
+                    "Per-IP registration rate limit exceeded",
+                    false,
+                    List.of(new WindowLimit(rateLimit.registerPerIpDayLimit(), rateLimit.registerPerIpDayWindow())));
+        }
         return null;
     }
 
+    /**
+     * @param extraWindows các cửa sổ thêm của cùng một chính sách (E19: 30 lần mỗi giờ và 100 lần mỗi ngày); yêu cầu
+     *                     chỉ qua khi mọi cửa sổ còn lượt, và {@code Retry-After} lấy theo cửa sổ phải chờ lâu nhất
+     */
     private record RateLimitPolicy(
             String keyPrefix,
             int limit,
             Duration window,
             String exceededEvent,
             String exceededMessage,
-            boolean exemptible) {
+            boolean exemptible,
+            List<WindowLimit> extraWindows) {
+
+        RateLimitPolicy(
+                String keyPrefix,
+                int limit,
+                Duration window,
+                String exceededEvent,
+                String exceededMessage,
+                boolean exemptible) {
+            this(keyPrefix, limit, window, exceededEvent, exceededMessage, exemptible, List.of());
+        }
+    }
+
+    private record WindowLimit(int limit, Duration window) {
     }
     private static String extractPath(HttpServletRequest request) {
         String uri = request.getRequestURI();

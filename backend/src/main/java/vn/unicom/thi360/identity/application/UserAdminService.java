@@ -129,7 +129,7 @@ public class UserAdminService {
     private static final String ERROR_USER_HAS_TRANSACTIONS = "USER_HAS_TRANSACTIONS";
     private static final String BULK_IDEMPOTENCY_ENDPOINT = "POST:/api/v1/admin/users/bulk-actions";
 
-    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+    static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$");
 
     private final UserAccountRepository userAccountRepository;
@@ -1790,7 +1790,7 @@ public class UserAdminService {
                 .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
     }
 
-    private static RuntimeException mapUniqueConstraintViolation(DataIntegrityViolationException ex) {
+    static RuntimeException mapUniqueConstraintViolation(DataIntegrityViolationException ex) {
         Throwable cursor = ex;
         while (cursor != null) {
             if (cursor instanceof ConstraintViolationException cve && cve.getConstraintName() != null) {
@@ -1858,7 +1858,7 @@ public class UserAdminService {
         return trimmed;
     }
 
-    private static String[] splitFullName(String fullName) {
+    static String[] splitFullName(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             return new String[] {null, null};
         }

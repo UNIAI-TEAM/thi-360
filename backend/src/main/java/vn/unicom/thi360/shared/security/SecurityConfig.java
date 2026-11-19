@@ -96,6 +96,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
+                                "/api/v1/auth/register",
                                 "/api/v1/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/ping",
