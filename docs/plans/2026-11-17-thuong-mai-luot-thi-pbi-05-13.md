@@ -228,6 +228,7 @@ Cộng theo nhóm: Nền 21, Tài khoản 5, Thương mại 29, Lượt thi 31, 
    - chỉ dùng token của `packages/ui`;
    - đúng ở **cả sáng và tối**;
    - **không lẫn ngôn ngữ** ở chữ giao diện (mọi khóa có ở `vi.json` và `en.json`). Nội dung đề không làm song ngữ (M.Trường, 2026-11-19): câu hỏi, tên bài, tên phần, mục, nhóm, phân đoạn lấy từ mẫu hoặc do admin gõ luôn hiện như đã lưu, không tính là lẫn ngôn ngữ. Tên lấy từ danh mục dùng chung (kỳ thi, môn) vẫn song ngữ, hiện bằng `pickName` của `@thi360/web-kit`;
+   - **lane có màn hiện tên danh mục dùng chung hoặc nội dung đề** (FS-1, FS-3, FS-5, FS-6, FS-7, FB, FA-4, FA-5, LP) tự nối ở màn của mình (review vòng 4, P4-9): gọi `pickName` cho tên danh mục; gắn `data-exam-content` đúng vào phần tử chứa nội dung đề, không bọc cả khung có nhãn giao diện. Test của lane (E2E hoặc test thành phần) dùng một mục có `nameEn` khác `nameVi` và một mục `nameEn` trống, kiểm ở `en`; phép quét lẫn ngôn ngữ của `visual-matrix.ts` vẫn bắt một nhãn giao diện tiếng Việt ngoài vùng nội dung đề;
    - đúng ở 390px và 1280px.
 8. `ApplicationModules.verify()` đạt.
 9. Không còn `TODO` thiếu mã issue, không còn mã chết.
@@ -417,6 +418,7 @@ Cộng theo nhóm: Nền 21, Tài khoản 5, Thương mại 29, Lượt thi 31, 
   - AT-2a sở hữu `AttemptLifecycleService` (chuyển phần, đóng lượt). AT-2b làm `AttemptChoiceService` riêng, chỉ gọi `AttemptLifecycleService` qua hàm công khai và điểm mở AT-2a để sẵn.
   - AT-3 sở hữu `AnswerService`, `EditSessionService`, và bản thật của `FinalAnswerWriter` (B1). AT-2a, AT-2b, AT-3 chỉ kiểm phần đang mở và hạn qua `AttemptGuard`.
   - AT-4 sở hữu bộ chấm từng câu (service nội bộ, hàm thuần, không cần dòng `attempt`). AT-5 dùng bộ chấm này cho API chấm đề làm thử; API nằm trong module `attempt`, không nằm trong `exam`.
+- **Ngoại lệ của vùng `exam/**` cho TS và FU** (review vòng 4, P4-1): TS sửa trình sinh seed và seed `TEST-*`; FU sửa phần kiểm tra đề, tóm tắt, xem trước, API soạn đề của đợt 2B sau khi EX-1, EX-2 đã merge, không đụng `listing`, `publish`, `PublishedExamPort`, `PaperSolverPort`, `PreviewPaperPort` của EX-1, EX-2.
 - **Bộ dựng dữ liệu của DS:** DS sở hữu `exam/devdata` và `questionbank/devdata` (ngoại lệ của vùng `exam/**`). Bộ SP2E 3 môn nằm ở `commerce/bundle/devdata` của CM-6, chạy sau DS bằng `@Order`, vì `exam` không được phụ thuộc `commerce`. Task khác cần thêm dữ liệu thì báo Advisor.
 - **`questionbank/spi`:** AT-3 thêm cổng `QuestionAssetContentPort` để đọc nội dung ảnh của lượt.
 - **`e2e/tests/helpers/visual-matrix.ts`:** FS-4 tạo; lane web khác chỉ dùng.
@@ -446,7 +448,7 @@ Tổng điểm: 138
 | C-0b | | | 1 | 1 | chuẩn |
 | ML | | C-0b | 1 | 3 | chuẩn |
 | TS | G0b | | 1 | 3 | chuẩn |
-| FU | EX-1, EX-2, TS | | 3 | 8 | chuẩn |
+| FU | EX-1, EX-2, TS | FA-1 | 3 | 8 | cao |
 | EX-1 | G0b, TS | C-0b | 2 | 4 | cao |
 | EX-2 | G0b, TS | | 2 | 2 | cao |
 | FS-4 | | | 1 | 3 | chuẩn |
@@ -1201,6 +1203,8 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 - Trình sinh chỉ khớp id là thành viên của `blocks[]`, không khớp mọi id lồng nhau; id nhóm đã xóa mà section dùng lại không giữ tham chiếu cũ (FU-BE13-2).
 - Dựng lại bài `TEST-*` của HSA (01–04), QDA-01, BCA-01, SPT-01, SP2E (01–03), THPTQG-02, THPTQG-03 theo mẫu BA hiện hành, đúng từng dòng lệch ở mục 4.4 của tài liệu đề test.
 - Thống nhất mã QDA của seed với tên và bản vẽ (`QĐ02` hay `QD02`, theo mã của danh mục; FU-FE4-D9).
+- Dựng lại các bài lỗi có chủ ý `TEST-ERR-*` từ bài nền mới (review vòng 4, P4-8): mỗi bài lỗi là một bài nền cộng đúng một biến đổi ghi ở mục 4.2 của tài liệu đề test, kèm tập mã lỗi mong đợi lấy từ lần chạy thật. Bài đối chứng hợp lệ (như `TEST-ERR-08`, nếu tài liệu vẫn ghi vậy) giữ vai đối chứng. Trình sinh tạo lại cả bài nền và bài lỗi.
+- Nâng DB đã có seed của đợt 2B (review vòng 4, P4-5). Seed ghi theo id cố định với `ON CONFLICT DO NOTHING`, nên tệp mới không tự thay bài cũ. Task thêm bước nâng: bài `TEST-*` còn đúng cấu trúc seed 2B (chưa ai sửa; nhận bằng dấu phiên bản seed hoặc so nội dung, task chọn và ghi lý do) được thay bằng cấu trúc mới; bài admin đã sửa được giữ, như `TestExamSeedIT` đang khẳng định. Không sửa migration đã merge. Bản demo: Advisor chạy lại seed sau khi merge; G3 cho phép bỏ dữ liệu cũ của demo.
 - Cập nhật `docs/specs/2026-11-17-de-test-gia-dinh.md` theo số mới; DS lấy số HSA, QDA, BCA, SP2E, SPT từ tài liệu này.
 
 **Đường dẫn sở hữu:**
@@ -1209,17 +1213,19 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 - `backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql` (sinh lại)
 - `docs/specs/2026-11-17-de-test-gia-dinh.md`
 - thêm vào: `backend/src/test/java/vn/unicom/thi360/exam/TestExamSeedIT.java`
-- `backend/src/test/java/vn/unicom/thi360/exam/TestExamSeedComplianceIT.java` (mới)
+- `backend/src/test/java/vn/unicom/thi360/exam/TestExamSeedComplianceIT.java` (mới), `TestExamSeedUpgradeIT.java` (mới), `backend/src/test/resources/exam/seed-2b/**` (mới, bản seed 2B dùng làm điểm xuất phát của AC-7)
 
-**Ngoài phạm vi:** Seed câu hỏi của ngân hàng (`R__seed_questionbank_dev_data.sql`) trừ khi bài `TEST-*` thiếu câu để đủ ma trận. Tệp đính kèm cho câu BCA (FU-BE10-ASSET). Bài đã công bố của đợt 3 (DS). Sửa luật kiểm tra của đợt 2B.
+**Ngoài phạm vi:** Seed câu hỏi của ngân hàng (`R__seed_questionbank_dev_data.sql`) trừ khi bài `TEST-*` thiếu câu để đủ ma trận; khi đó task chỉ thêm câu vào cuối tệp này (thêm vào, review vòng 4, P4-1) và ghi lý do trong PR. Tệp đính kèm cho câu BCA (FU-BE10-ASSET). Bài đã công bố của đợt 3 (DS). Sửa luật kiểm tra của đợt 2B.
 
 **Nghiệm thu:**
 
-- AC-1: Mỗi bài `TEST-*` khớp mẫu BA hiện hành: số câu, nhóm, nhãn, chùm, ma trận, `timing`, `templateGroupCode`, `omitted` như cột "Mẫu hiện hành" của mục 4.4 — bằng chứng: `TestExamSeedIT#everyTestExamMatchesTemplate` (mới)
+- AC-1: Mỗi bài nền `TEST-*` (không gồm bài lỗi `TEST-ERR-*`) khớp mẫu BA hiện hành: số câu, nhóm, nhãn, chùm, ma trận, `timing`, `templateGroupCode`, `omitted` như cột "Mẫu hiện hành" của mục 4.4 — bằng chứng: `TestExamSeedIT#everyTestExamMatchesTemplate` (mới)
 - AC-2: Trên server thật, mỗi bài `TEST-*` chạy kiểm tra cho đúng kết quả mà tài liệu đề test ghi (hợp lệ, hoặc đúng mã lỗi đã ghi) và sinh thử được khi hợp lệ — bằng chứng: `TestExamSeedComplianceIT#everyTestExamChecksAsDocumented`, `#validTestExamsGeneratePreview` (mới)
 - AC-3: Chạy lại `scripts/generate_test_exam_seed.py` trên nhánh của task không làm đổi `backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql`: tệp seed là đầu ra của script, không sửa tay — bằng chứng: lệnh sinh lại seed và `git diff --exit-code` (mới)
 - AC-4: Trình sinh chỉ thay id trong `blocks[]`: id nhóm đã xóa mà một section dùng lại không còn tham chiếu cũ sau khi sinh lại — bằng chứng: `TestExamSeedIT#generatorMatchesBlockMembersOnly` (mới)
 - AC-5: Mã QDA trong seed khớp mã của danh mục và cách viết trên màn tạo bài — bằng chứng: `TestExamSeedIT#qdaCodesMatchCatalog` (mới)
+- AC-6: Mỗi bài lỗi `TEST-ERR-*` bằng bài nền mới cộng đúng một biến đổi đã ghi; kiểm tra trả đúng tập mã lỗi mong đợi của bài đó, không thêm lỗi khác; bài đối chứng hợp lệ đạt kiểm tra; sinh lại không làm mất bài lỗi nào — bằng chứng: `TestExamSeedIT#errorFixturesDifferByOneChange`, `TestExamSeedComplianceIT#errorFixturesReportExactCodes` (mới)
+- AC-7: DB đã nạp seed của đợt 2B (không phải DB trắng): sau khi chạy seed mới, bài `TEST-*` chưa ai sửa mang cấu trúc mới; một bài admin đã sửa giữ nguyên — bằng chứng: `TestExamSeedUpgradeIT#upgradesUneditedWave2BSeed`, `#keepsAdminEditedExam` (mới)
 
 **Ảnh hưởng ngoài task:**
 
@@ -1235,13 +1241,16 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 - AC-3: lệnh sinh lại seed, kiểm tra, `python scripts/generate_test_exam_seed.py && git diff --exit-code backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql`
 - AC-4: `TestExamSeedIT#generatorMatchesBlockMembersOnly` (mới), unit, `cd backend && ./mvnw -B -ntp test -Dtest=TestExamSeedIT`
 - AC-5: `TestExamSeedIT#qdaCodesMatchCatalog` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=TestExamSeedIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
+- AC-6: `TestExamSeedIT#errorFixturesDifferByOneChange`, `TestExamSeedComplianceIT#errorFixturesReportExactCodes` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=TestExamSeedIT,TestExamSeedComplianceIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
+- AC-7: `TestExamSeedUpgradeIT#upgradesUneditedWave2BSeed`, `#keepsAdminEditedExam` (mới), tích hợp: nạp seed của `develop` `1774c74d` trước rồi chạy seed mới, `cd backend && ./mvnw -B -ntp verify -Dit.test=TestExamSeedUpgradeIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - Hồi quy: chạy mọi dòng Ảnh hưởng ngoài task:
   - `cd backend && ./mvnw -B -ntp verify -Dit.test=TestExamSeedIT,QuestionSeedIT,SampleQuestionCoverageIT,VactThptSampleDataIT,TestExamSeedComplianceIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
   - `cd backend && ./mvnw -B -ntp verify`; `pnpm --filter @thi360/e2e test`
 - Kiểm thử rủi ro:
   - biên: bài có phần `omitted`, nhóm có nhãn, chùm có `slots`, `SHARED` và `PER_PART`, năm ma trận 2025 và 2026;
   - sinh lại hai lần liên tiếp cho cùng kết quả;
-  - đỏ trước: AC-1, AC-2, AC-4.
+  - dữ liệu đã có: DB mang seed 2B, một bài `TEST-*` admin đã sửa;
+  - đỏ trước: AC-1, AC-2, AC-4, AC-6, AC-7.
 - Dữ liệu test: migration đầy đủ của đợt 2B; câu trong ngân hàng do seed dev nạp; server thật trong Testcontainers.
 - Không kiểm: nội dung chuyên môn của câu hỏi; tốc độ kiểm tra trên dữ liệu lớn.
 
@@ -4079,7 +4088,7 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 **Sản phẩm:**
 
 - Bảng `attempt_audio_play` và bốn API `plays`, `resume`, `progress`, `end` theo BS 17.2, đều kiểm `AttemptGuard` và `X-Attempt-Session`. Số lần nghe tối đa là hằng số 2 trong mã. `lease` 45 giây, dung sai 3 giây đặt ở `thi360.attempt.audio.*`, đọc lúc mở lần nghe.
-- Mỗi lần nghe có `play_id`, `last_request_id` cho gửi lại, mốc đoạn phát, ngân sách dung sai (`segment_excess_ms`, `tolerance_used_ms`), `lease_until`. Mọi thay đổi trạng thái chạy dưới khóa dòng `attempt_audio_play`, xét theo thứ tự năm bước của BS 17.2; bước kiểm phần đã đóng áp cho mọi API audio, `AttemptState` và đường tải tệp. Lần nghe đã bấm được phát tiếp đến khi phần đóng, không có hạn riêng. Máy chủ không tự mở lần nghe mới.
+- Mỗi lần nghe có `play_id`, `last_request_id` cho gửi lại, mốc đoạn phát, ngân sách dung sai (`segment_excess_ms`, `tolerance_used_ms`), `lease_until`. Mọi thay đổi trạng thái chạy dưới khóa dòng `attempt_audio_play`, xét theo thứ tự năm bước của BS 17.2. Khi phần đã đóng, mọi đường đưa lần nghe dở về `ENDED` với `CLOSED` dưới khóa dòng, rồi trả phản hồi theo bảng "Khi phần đã đóng" của BS 17.2: `plays`, `resume`, `progress` 409; `end` 200 không đổi dữ liệu; tải tệp 404; `AttemptState` trả bình thường với audio `CLOSED` (review vòng 4, S4-1). Lần nghe đã bấm được phát tiếp đến khi phần đóng, không có hạn riêng. Máy chủ không tự mở lần nghe mới.
 - Đường tài nguyên của lượt phục vụ audio khi `playId` đúng lần đang `PLAYING`, còn hạn và phần còn mở, có `Range` (206), `Cache-Control: no-store`. Phần đóng, nộp bài, hết giờ đưa lần nghe dở về `ENDED` với `CLOSED`.
 - `AttemptState` có `audioPolicy: {maxPlays: 2, seekable: false}`, tệp đính kèm của câu gốc `attachments[]` và trạng thái nghe của từng audio (`durationMs`, `playsUsed`, `playsLeft`, `state`, `endReason`, lần nghe dở). `prepare` có `answerFormats[]` và `listeningPolicy` (BS 17.1).
 - Kiểm tệp audio sau khi ghép đề và trước transaction lưu đề, qua giao diện nội bộ `AudioFileProbe`, bản thật gọi `questionbank/spi/QuestionAttachmentPort` với `verifyStorage = true`: thiếu tệp thì `ABORTED` với `AUDIO_ASSET_MISSING`, `retryable = true`, trả lượt; kho lỗi kết nối thì `GENERATION_FAILED`, trả lượt.
@@ -4122,6 +4131,7 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 - AC-16: Đường `/api/v1/test/audio-faults/**` có ở profile `e2e`, trả 404 ở profile khác — bằng chứng: `AttemptAudioFileCheckIT#faultEndpointOnlyInE2eProfile` (mới)
 - AC-17: `prepare` của bài có audio trả `listeningPolicy` hai lần nghe, không tua và `answerFormats`; bài không có audio có `listeningPolicy` trống — bằng chứng: `AttemptPrepareIT#listeningPolicyOnlyWithAudio` (mới)
 - AC-18: `ForbiddenKeysAssert` đạt trên phản hồi thành công và lỗi của `plays`, `resume`, `progress`, `end` và trên `AttemptState` có `attachments[]` — bằng chứng: `AttemptAudioIT#forbiddenKeysAbsent` (mới)
+- AC-19: Phần Nghe đã đóng khi còn lần nghe dở (học viên đang ở phần Đọc), sau khi nộp và sau khi hết giờ: `GET` lượt trả `AttemptState` bình thường với audio đó `state = ENDED`, `endReason = CLOSED`; `progress` nhận 409 `PART_CLOSED` hoặc `TIME_UP`, vị trí không đổi; `end` trả 200, không đổi dữ liệu; tải tệp nhận 404; `play_count` không đổi ở mọi đường — bằng chứng: `AttemptAudioIT#stateAfterListeningClosed`, `#progressAndEndAfterClose` (mới)
 
 **Ảnh hưởng ngoài task:**
 
@@ -4153,6 +4163,7 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 - AC-16: `AttemptAudioFileCheckIT#faultEndpointOnlyInE2eProfile` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=AttemptAudioFileCheckIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - AC-17: `AttemptPrepareIT#listeningPolicyOnlyWithAudio` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=AttemptPrepareIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - AC-18: `AttemptAudioIT#forbiddenKeysAbsent` (mới), hợp đồng, `cd backend && ./mvnw -B -ntp verify -Dit.test=AttemptAudioIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
+- AC-19: `AttemptAudioIT#stateAfterListeningClosed`, `#progressAndEndAfterClose` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=AttemptAudioIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - Hồi quy: chạy mọi dòng Ảnh hưởng ngoài task:
   - `cd backend && ./mvnw -B -ntp verify -Dit.test=AttemptAssetIT,AttemptGenerationFailureIT,AttemptStartIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
   - `cd backend && ./mvnw -B -ntp test -Dtest=MessageBundlesTest,ModularityTest`
@@ -4163,7 +4174,7 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
   - biên: đúng lần nghe thứ hai, vị trí đúng biên dung sai còn lại và vượt 1 mili giây, ngay trước, đúng, sau `lease_until` và lúc đóng phần, `positionMs` bằng `duration_ms`, `Range` đầu tệp, cuối tệp và sai định dạng;
   - quyền: tài khoản khác, không đăng nhập, `MANAGE`, phiên bị thu hồi;
   - migration: bảng mới chạy trên DB đã có lượt của AT-1 đến AT-4;
-  - đỏ trước: AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-11, AC-13.
+  - đỏ trước: AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-11, AC-13, AC-19.
 - Dữ liệu test: bài H-SCA Tiếng Anh, Toán và V-SAT của DS; ba tệp mẫu mới của task này trong `backend/src/test/resources/attempt/audio/` (`silence-30s-cbr.mp3`, `silence-30s-vbr-xing.mp3`, `header-only.mp3`), được `AudioAssetFixture` nạp vào kho trong bộ nhớ với mã tệp mới, `sha256`, kích thước khớp nội dung, không ghi đè tệp có sẵn; tệp nghe 2B `hsca-en-listening-single-01.mp3` (2,088 giây) dùng cho ca đối chiếu; xóa tệp khỏi kho của test để tạo ca thiếu tệp; `MutableClock` điều khiển thời gian; tài khoản riêng cho từng test, dọn dữ liệu sau mỗi test.
 - Không kiểm: phát âm thanh thật trên trình duyệt (FS-7); tệp hỏng nhưng vẫn có trong kho.
 
@@ -4651,7 +4662,7 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 - Trang thử `/dev/question-kit` trong web-student, chỉ có khi chạy dev.
 - Trợ thủ kiểm giao diện `e2e/tests/helpers/visual-matrix.ts` cho các lane web của đợt: sáng và tối, vi và en, 390px và 1280px; chụp ảnh, kiểm tràn ngang, độ tương phản chữ ≥ 4,5, lẫn ngôn ngữ, `lang` của trang. Phép kiểm lẫn ngôn ngữ bỏ qua vùng nội dung đề có thuộc tính `data-exam-content`; thành phần câu hỏi của `@thi360/ui/question` và mọi chỗ hiện tên bài, phần, mục, phân đoạn gắn thuộc tính này.
 - Hàm đếm chữ dùng chung `countWords(html)` trong `@thi360/ui/question` theo cách đếm của BS 6.
-- Hàm chọn tên theo ngôn ngữ `pickName(item, locale)` trong `@thi360/web-kit` (chép từ `apps/web-admin/src/features/catalog/utils.ts`): giao diện `en` hiện `nameEn` nếu có, không thì `nameVi`. Mọi chỗ trên web học viên hiện tên lấy từ danh mục dùng chung (kỳ thi, môn) dùng hàm này. Web-admin giữ bản của mình trong đợt này.
+- Hàm chọn tên theo ngôn ngữ `pickName(item, locale)` trong `@thi360/web-kit` (chép từ `apps/web-admin/src/features/catalog/utils.ts`): giao diện `en` hiện `nameEn` nếu có, không thì `nameVi`. FS-4 tạo hàm, quy ước `data-exam-content` và phép kiểm trong `visual-matrix.ts`; việc nối vào từng màn thuộc lane làm màn đó (A7 mục 7, review vòng 4, P4-9). Web-admin giữ bản của mình trong đợt này.
 
 **Đường dẫn sở hữu:**
 
@@ -4712,6 +4723,7 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 - Kiểu API sinh tự động (`packages/api-client/src/schema.d.ts`) → task không sửa; props của thành phần theo LT 4, lane dùng tự ánh xạ, `pnpm typecheck` ở lane đó [chủ: FS-5, FS-6, FA-4]
 - Thành phần câu hỏi và chỗ cắm trình soạn là hợp đồng của lane sau → đổi API qua Advisor (B8); FS-5, FS-6, FA-4 chạy `pnpm typecheck` [chủ: FS-5, FS-6, FA-4]
 - Trợ thủ `visual-matrix.ts` (mới) được các lane web dùng lại → lane sau chỉ gọi, muốn đổi thì qua Advisor [chủ: FS-1, FS-3, FS-5, FS-6, FB]
+- `pickName` và quy ước `data-exam-content` (mới) được các màn dùng → mỗi lane màn nối và kiểm theo A7 mục 7 [chủ: FS-1, FS-3, FS-5, FS-6, FS-7, FB, FA-4, FA-5, LP]
 
 **Kế hoạch kiểm thử:**
 
@@ -5692,10 +5704,10 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 
 **Sản phẩm:**
 
-- Làm 41 mục còn mở của UNI-2700, trừ các mục đã sang TS (FU-QA-SEEDS, FU-SEEDGEN-1, FU-BE13-2, FU-FE4-D9) và các mục đóng vì đúng thiết kế (FU-TEMPLATE-I18N, FU-FE1-1, F-7 của FU-FE2-3, V1-01 của FU-FE3AA-V1). Lead có thể chia cho worker backend, giao diện và tài liệu chạy song song.
-- **Kiểm tra đề, đúng và hiệu năng (10):** FU-BE15-R6-1 (tóm tắt và bộ kiểm dùng chung một luật nhóm phần dư), FU-BE15-R1-5 (đọc phép chiếu theo khóa `publishable`, `fixed_counts` thay vì cả JSON mẫu), FU-BE15-R2-3..5 (phát hiện mẫu đổi giữa lúc kiểm và lúc lưu), FU-BE15-OPTION-BLOCKS, FU-BE9-1 (sửa danh mục chỉ giải lại môn bị ảnh hưởng), FU-BE9-2 (0,2 điểm mỗi ý đúng sai SP2E), FU-BE12-1, FU-BE12-2, FU-BE13-3, FU-QA-OMIT-LOCK-SHAPES (khóa nhóm bỏ ở bước 2 khớp `ExamCheckRules.reenabledBlocks`).
+- Danh sách nguồn có 45 dòng (review vòng 4, P4-7): 4 dòng sang TS (FU-QA-SEEDS, FU-SEEDGEN-1, FU-BE13-2, FU-FE4-D9), 1 dòng đóng vì đúng thiết kế (FU-FE1-1; FU-TEMPLATE-I18N cũng đóng theo cùng quyết định), còn **40 dòng do FU xử lý**. Hai tiểu mục F-7 của FU-FE2-3 và V1-01 của FU-FE3AA-V1 cũng đóng vì đúng thiết kế, không phải dòng riêng. Lead có thể chia cho worker backend, giao diện và tài liệu chạy song song.
+- **Kiểm tra đề, đúng và hiệu năng (10):** FU-BE15-R6-1 (tóm tắt và bộ kiểm dùng chung một luật nhóm phần dư), FU-BE15-R1-5 (đọc phép chiếu theo khóa `publishable`, `fixed_counts` thay vì cả JSON mẫu), FU-BE15-R2-3..5 (phát hiện mẫu đổi giữa lúc kiểm và lúc lưu), FU-BE15-OPTION-BLOCKS, FU-BE9-1 (sửa danh mục chỉ giải lại môn bị ảnh hưởng), FU-BE9-2 (0,2 điểm mỗi ý đúng sai SP2E: chỉ kiểm khi câu được chọn vào khối Đúng/Sai của bài SP2E, ở bộ lọc nguồn và ở bộ kiểm tra đề; không kiểm lúc lưu ngân hàng, nên kỳ thi khác không bị áp), FU-BE12-1, FU-BE12-2, FU-BE13-3 (R3-1: bài V-ACT chấm thô nạp mẫu bài ôn thì giữ cách chấm, `scoringReset = false`), FU-QA-OMIT-LOCK-SHAPES (khóa nhóm bỏ ở bước 2 khớp `ExamCheckRules.reenabledBlocks`).
 - **Hợp đồng API và thông điệp (4):** FU-QA-PREVIEW-LEGACY (`GeneratePreviewRequest` từ chối `pathId`, `subjectCodes` ở gốc bằng 400), FU-QA-ERROR-MESSAGES, FU-QA-OPENAPI-TYPES, FU-BE5-2 (con đệ quy của `ExamStructureSummaryRow` có trong OpenAPI, web-admin bỏ kiểu khai báo tay).
-- **Giao diện soạn đề (13):** FU-NAVTABS-REVEAL, FU-FE5-R2-01, FU-FE3B-V03, FU-FE4A-R1-4, FU-FE4A-R1-7, FU-FE2-3 (FE2-R2-01, FE2-R2-02, F-8), FU-FE3AA-V1 (V1-02 đến V1-04), FU-FE5-R3-01, FU-FE3B-1..3, FU-FE4-D3D4, FU-FE4-PREVIEW (kèm trường backend cần thêm), FU-FE2-1.
+- **Giao diện soạn đề (12):** FU-NAVTABS-REVEAL, FU-FE5-R2-01, FU-FE3B-V03, FU-FE4A-R1-4, FU-FE4A-R1-7, FU-FE2-3 (FE2-R2-01, FE2-R2-02, F-8), FU-FE3AA-V1 (V1-02 đến V1-04), FU-FE5-R3-01, FU-FE3B-1..3, FU-FE4-D3D4, FU-FE4-PREVIEW (kèm trường backend cần thêm: đếm ngược thời gian giữ, giá trị gốc của câu bị bỏ, tên chủ đề; bấm lỗi mở đúng ô; `mapBlock` ánh xạ đủ ba trường lọc), FU-FE2-1 (API trả dạng câu của từng phần mẫu để DoiPhienBan2B hiện dòng thay đổi theo dạng câu; nút xác nhận chuyên gia **không** làm, ngoài phạm vi như ở 2B).
 - **Dữ liệu và mẫu (5):** FU-FE1-2 (ô chọn môn ở bước 1 chỉ có môn có mẫu, không trùng), FU-BE6-3 (mẫu đang dùng còn id phần không phải UUID thì bù bằng migration), V1-04 (dữ liệu MAPID cho môn ngoài Toán), FU-BE7-1 (ghi lại cho BA, không đổi mô hình), FU-BE10-ASSET (câu BCA trong seed có tệp đính kèm thật).
 - **Tài liệu và bản vẽ (5):** FU-QA-DOC-R2-01, FU-QA-DOC-R2-02, FU-DESIGN-1, FU-DESIGN-2, FU-G2B-CANVAS.
 - **Cần bằng chứng hoặc BA (2):** FU-QA-PREVIEW-COMPLIANCE-VERSION: viết test chứng minh trước, có lỗi thì sửa, không có thì giữ test làm hồi quy. FU-RELOAD-EXAM-CLOCK: không sửa mã (M.Trường giữ hành vi hiện tại), chỉ ghi chờ BA.
@@ -5706,12 +5718,15 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 
 - thêm vào: `backend/src/main/java/vn/unicom/thi360/exam/**` (kiểm tra đề, tóm tắt, xem trước, API soạn đề)
 - thêm vào: `backend/src/main/resources/db/migration/exam/V<yyyyMMddHHmm>__backfill_template_part_ids.sql` (mới, nếu FU-BE6-3 còn mẫu cần bù)
-- thêm vào: `backend/src/main/resources/db/devdata/R__seed_questionbank_dev_data.sql` (tệp của câu BCA, dữ liệu MAPID)
+- thêm vào: `backend/src/main/resources/db/devdata/R__seed_questionbank_dev_data.sql` (siêu dữ liệu tệp của câu BCA, dữ liệu MAPID)
+- `backend/src/main/resources/db/devdata/assets/bca/**` (mới, byte tệp của câu BCA); thêm vào: `backend/src/main/java/vn/unicom/thi360/questionbank/devdata/DevQuestionAssetSeeder.java` nếu cần đọc thư mục mới (review vòng 4, P4-1)
 - thêm vào: `backend/src/main/resources/messages.properties`, `messages_vi.properties`, `messages_en.properties`
 - `backend/src/test/java/vn/unicom/thi360/exam/followup/**` (mới)
-- thêm vào: `apps/web-admin/src/features/exams/**` (trừ phần EX-1, FA-1 đã đổi, sửa trên bản đã merge)
+- thêm vào: `apps/web-admin/src/features/exams/**` (trừ phần EX-1, FA-1 đã đổi; nộp sau khi FA-1 merge và đã merge nhánh tích hợp, xem C1)
 - `apps/web-admin/src/features/exams/__tests__/follow-ups-2b.test.tsx` (mới), `e2e/tests/exam-authoring-followups.spec.ts` (mới)
 - thêm vào: thành phần `NavTabs` của web-admin
+- thêm vào: `apps/web-admin/src/messages/vi.json`, `en.json` (khối riêng, khi đổi nhãn hay gợi ý soạn đề)
+- sửa (review vòng 4, P4-3): `backend/src/test/java/vn/unicom/thi360/exam/**/ExamPreview*IT.java` có lời gọi dùng `pathId`, `subjectCodes` ở gốc: chuyển các ca sinh đề và phiên bản hợp lệ sang `target`, giữ assert cũ về đề sinh ra; ca riêng kiểm thân cũ nhận 400
 - thêm vào: `docs/specs/2026-11-17-pbi04-dot-2b.md` (hai câu chữ), `docs/design/dot-2b/**` (`support.js`)
 - sinh lại: `packages/api-client/openapi.json`, `packages/api-client/src/schema.d.ts`
 
@@ -5720,20 +5735,23 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 **Nghiệm thu:**
 
 - AC-1: Bộ kiểm và tóm tắt cho cùng kết quả với nháp có nhóm phần dư; khối ở mức phương án được so với mẫu khi khóa số câu; khóa nhóm bỏ ở bước 2 khớp `reenabledBlocks` với nhóm bỏ trong `subjectPool`, khối phương án, section phương án không đứng đầu, mã trùng; mẫu đổi giữa lúc kiểm và lúc lưu thì kết quả kiểm không được lưu như hợp lệ — bằng chứng: `ExamCheckFollowUpIT#summaryAndCheckerShareRemainderRule`, `#optionBlocksComparedForCountLock`, `#omitLockMatchesReenabledBlocks`, `#templateChangeBetweenCheckAndSaveDetected` (mới)
-- AC-2: Chẩn đoán thiếu câu của bộ lọc linh hoạt dừng ở hạn kiểm tra và giữ lỗi thiếu cơ bản; mục tiêu linh hoạt lớn với bộ lọc theo vị trí và ít câu cho `INVALID`, `SET_SHORTAGE`, không gán sai cho bộ lọc; câu đúng sai SP2E trong ngân hàng phải 0,2 điểm mỗi ý; ca R3-1 của BE-13 — bằng chứng: `ExamCheckFollowUpIT#flexibleDiagnosticStopsAtDeadline`, `#largeFlexibleTargetReportsSetShortage`, `#sp2eTrueFalseStatementPoints`, `#be13R31Regression` (mới)
+- AC-2: Chẩn đoán thiếu câu của bộ lọc linh hoạt dừng ở hạn kiểm tra và giữ lỗi thiếu cơ bản; mục tiêu linh hoạt lớn với bộ lọc theo vị trí và ít câu cho `INVALID`, `SET_SHORTAGE`, không gán sai cho bộ lọc; câu Đúng/Sai chia điểm đều 0,2 mỗi ý được chọn vào bài SP2E, câu chia lệch bị bộ lọc nguồn bỏ qua và bộ kiểm báo lỗi, cùng câu chia lệch vẫn dùng được ở THPTQG; bài V-ACT chấm thô nạp mẫu bài ôn giữ cách chấm, `scoringReset = false` (R3-1 của BE-13) — bằng chứng: `ExamCheckFollowUpIT#flexibleDiagnosticStopsAtDeadline`, `#largeFlexibleTargetReportsSetShortage`, `#sp2eTrueFalseStatementPoints`, `#unevenStatementsAllowedOutsideSp2e`, `#be13R31Regression` (mới)
 - AC-3: Kiểm tra đọc mẫu bằng phép chiếu theo khóa, không tải cả JSON; sửa một mục danh mục chỉ giải lại các môn dùng mục đó — bằng chứng: `ExamCheckPerformanceIT#checkReadsKeyedTemplateProjection`, `#catalogEditResolvesAffectedSubjectsOnly` (mới)
 - AC-4: Xem trước tuân thủ của một phiên bản đã công bố đọc cấu trúc của phiên bản đó, không đọc bản đang sửa (test viết trước, đỏ nếu lỗi có thật) — bằng chứng: `PreviewComplianceVersionIT#publishedVersionPreviewReadsPublishedStructure` (mới)
 - AC-5: `GeneratePreviewRequest` có `pathId` hoặc `subjectCodes` ở gốc nhận 400; `trueFalseScoring`, `structure` và con đệ quy của `ExamStructureSummaryRow` có kiểu rõ trong OpenAPI — bằng chứng: `ExamApiFollowUpIT#legacyPreviewFieldsRejected`, `#openApiHasTypedStructureFields` (mới)
 - AC-6: `CHECK_RUN_SCOPE_CONFLICT`, `SECTION_NOT_FOUND` có thông điệp ở cả ba tệp — bằng chứng: `MessageBundlesTest#followUpCodesHaveMessages` (mới)
 - AC-7: Các lỗi giao diện soạn đề của 2B đã sửa: NavTabs cuộn thẻ đang chọn vào khung ở 390px, vùng `role=status` của Ngữ văn được đọc khi nội dung đổi, hàng tham chiếu đang tải không hiện như lệch, danh sách thay đổi của nháp chỉ đổi thứ tự không rỗng, không nháy hàng thao tác, bảng ma trận không ẩn `PERCENT_TOTAL` khi còn chặn lưu, form về đúng chế độ sau khi xóa chip cuối, bước 1 tìm phần không phải tách khóa hàng, web-admin dùng kiểu sinh từ OpenAPI — bằng chứng: `follow-ups-2b.test.tsx` "lỗi soạn đề 2B" (mới)
 - AC-8: Ở 390px và 1280px, sáng và tối, vi và en: thẻ câu hỏi, bảng nhóm câu, bảng tóm tắt, bảng chỉ tiêu, bảng môn không tràn ngang; KiemTra2B và SinhThu2B khớp bản vẽ (thanh thẻ, nút đầu trang, dải tóm tắt, phạm vi dạng thẻ chọn); xem trước có đếm ngược và giá trị gốc của câu bị bỏ — bằng chứng: `exam-authoring-followups.spec.ts` "giao diện soạn đề 2B" (mới)
-- AC-9: Sau migration, không mẫu đang dùng nào còn id phần không phải UUID; ô chọn môn của bước 1 chỉ có môn có mẫu, không trùng; mỗi nút MAPID chọn được ở ít nhất một môn ngoài Toán có câu; câu BCA trong seed có tệp đọc được trong kho — bằng chứng: `ExamDataFollowUpIT#activeTemplatesUseUuidPartIds`, `#stepOneSubjectsHaveTemplates`, `#mapidNodesHaveQuestions`, `#bcaSeedAttachmentsAreStored` (mới)
+- AC-12: Xem trước hiện tên chủ đề từng hàng; bấm một lỗi đưa tiêu điểm vào đúng ô của lỗi đó (không chỉ mở khối); `mapBlock` ánh xạ đủ ba trường lọc; DoiPhienBan2B hiện dòng thay đổi theo dạng câu của từng phần lấy từ API — bằng chứng: `follow-ups-2b.test.tsx` "xem trước và đổi phiên bản 2B" (mới), `ExamApiFollowUpIT#templatePartQuestionTypesExposed` (mới)
+- AC-9: Sau migration, không mẫu đang dùng nào còn id phần không phải UUID; ô chọn môn của bước 1 chỉ có môn có mẫu, không trùng; mỗi nút MAPID chọn được ở ít nhất một môn ngoài Toán có câu; câu BCA trong seed có tệp đọc được trong kho — bằng chứng: `ExamDataFollowUpIT#activeTemplatesUseUuidPartIds`, `#stepOneSubjectsHaveTemplates`, `#mapidNodesHaveQuestions`, `#bcaSeedAttachmentsAreStored`, `#emptyStoreReseedsWithoutError` (mới)
 - AC-10: Hai câu chữ của đặc tả BE đợt 2B được sửa (FU-QA-DOC-R2-01, FU-QA-DOC-R2-02); trang thiết kế `docs/design/dot-2b` có `support.js` trong repo nên hiện đủ dữ liệu, không còn `{{...}}` thô (FU-DESIGN-1, FU-DESIGN-2); sáu bản vẽ G2b có trên canvas thiết kế chung (FU-G2B-CANVAS) — bằng chứng: ảnh chụp các trang thiết kế trong báo cáo lane (mới)
-- AC-11: Mỗi mục trong 41 mục có kết quả ghi ở bảng đóng việc và bình luận `[agent]` trên UNI-2700: đã sửa (kèm tên test), đã kiểm và đóng (kèm bằng chứng), hoặc chờ BA (FU-RELOAD-EXAM-CLOCK, FU-BE7-1); không mục nào bỏ trống — bằng chứng: `reports/FU/close-list.md` trong thư mục đợt và bình luận trên UNI-2700 (mới)
+- AC-11: Mỗi dòng trong 40 dòng FU xử lý có kết quả ghi ở bảng đóng việc và bình luận `[agent]` trên UNI-2700: đã sửa (kèm tên test), đã kiểm và đóng (kèm bằng chứng), hoặc chờ BA (FU-RELOAD-EXAM-CLOCK, FU-BE7-1); không mục nào bỏ trống — bằng chứng: `reports/FU/close-list.md` trong thư mục đợt và bình luận trên UNI-2700 (mới)
 
 **Ảnh hưởng ngoài task:**
 
 - Luật kiểm tra đề của đợt 2B đổi → chạy lại mọi `ExamCheck*IT`, `ExamPreview*IT` và E2E soạn đề của đợt 2B [chủ: task này]
+- Bỏ thân xem trước cũ (`pathId`, `subjectCodes` ở gốc) → tìm mọi nơi gọi (`git grep` trong `backend/src/test`, `apps/web-admin`, `e2e`), phân loại trong báo cáo, chuyển ca hợp lệ sang `target` mà không đổi assert về đề sinh ra [chủ: task này]
+- FA-1 cùng sửa màn soạn đề ở sóng 3 → FU nộp sau FA-1, chạy lại `pnpm --filter @thi360/web-admin test` và E2E soạn đề trên SHA có EX-1, EX-2, FA-1 và FU [chủ: task này]
 - EX-1, EX-2 đã merge sửa cùng module `exam` → chạy `PublishedExamPortIT`, `PreviewPaperPortIT` trên SHA có cả hai [chủ: task này]
 - TS đã dựng lại seed `TEST-*` → chạy `TestExamSeedIT`, `TestExamSeedComplianceIT`; dữ liệu MAPID, tệp BCA không đổi số câu của bài `TEST-*` [chủ: task này]
 - OpenAPI đổi → `OpenApiExportIT`, `pnpm --filter @thi360/api-client generate && pnpm typecheck` [chủ: task này]
@@ -5743,22 +5761,26 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 **Kế hoạch kiểm thử:**
 
 - AC-1: `ExamCheckFollowUpIT#summaryAndCheckerShareRemainderRule`, `#optionBlocksComparedForCountLock`, `#omitLockMatchesReenabledBlocks`, `#templateChangeBetweenCheckAndSaveDetected` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamCheckFollowUpIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
-- AC-2: `ExamCheckFollowUpIT#flexibleDiagnosticStopsAtDeadline`, `#largeFlexibleTargetReportsSetShortage`, `#sp2eTrueFalseStatementPoints`, `#be13R31Regression` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamCheckFollowUpIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
+- AC-2: `ExamCheckFollowUpIT#flexibleDiagnosticStopsAtDeadline`, `#largeFlexibleTargetReportsSetShortage`, `#sp2eTrueFalseStatementPoints`, `#unevenStatementsAllowedOutsideSp2e`, `#be13R31Regression` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamCheckFollowUpIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - AC-3: `ExamCheckPerformanceIT#checkReadsKeyedTemplateProjection`, `#catalogEditResolvesAffectedSubjectsOnly` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamCheckPerformanceIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - AC-4: `PreviewComplianceVersionIT#publishedVersionPreviewReadsPublishedStructure` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=PreviewComplianceVersionIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - AC-5: `ExamApiFollowUpIT#legacyPreviewFieldsRejected`, `#openApiHasTypedStructureFields` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamApiFollowUpIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - AC-6: `MessageBundlesTest#followUpCodesHaveMessages` (mới), unit, `cd backend && ./mvnw -B -ntp test -Dtest=MessageBundlesTest`
 - AC-7: `follow-ups-2b.test.tsx` "lỗi soạn đề 2B", unit, `pnpm --filter @thi360/web-admin test src/features/exams/__tests__/follow-ups-2b.test.tsx`
 - AC-8: `exam-authoring-followups.spec.ts` "giao diện soạn đề 2B", E2E, `pnpm --filter @thi360/e2e test tests/exam-authoring-followups.spec.ts`
-- AC-9: `ExamDataFollowUpIT#activeTemplatesUseUuidPartIds`, `#stepOneSubjectsHaveTemplates`, `#mapidNodesHaveQuestions`, `#bcaSeedAttachmentsAreStored` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamDataFollowUpIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
+- AC-9: `ExamDataFollowUpIT#activeTemplatesUseUuidPartIds`, `#stepOneSubjectsHaveTemplates`, `#mapidNodesHaveQuestions`, `#bcaSeedAttachmentsAreStored`, `#emptyStoreReseedsWithoutError` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamDataFollowUpIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
+- AC-12: `follow-ups-2b.test.tsx` "xem trước và đổi phiên bản 2B", unit, `pnpm --filter @thi360/web-admin test src/features/exams/__tests__/follow-ups-2b.test.tsx`; `ExamApiFollowUpIT#templatePartQuestionTypesExposed` (mới), tích hợp, `cd backend && ./mvnw -B -ntp verify -Dit.test=ExamApiFollowUpIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
 - AC-10: ảnh chụp các trang thiết kế, kiểm tra tay của Advisor, `git grep -n "{{" docs/design/dot-2b` không còn chỗ hiện thô
-- AC-11: `reports/FU/close-list.md` "đủ 41 mục", kiểm tra tay của Advisor, đối chiếu bảng với `D:/.Vietants_Project/.thi360-dev/dot-2b-cook/reports/final/follow-ups.md`
+- AC-11: `reports/FU/close-list.md` "đủ 45 dòng nguồn: 4 TS, 1 đóng, 40 FU", kiểm tra tay của Advisor, đối chiếu bảng với `D:/.Vietants_Project/.thi360-dev/dot-2b-cook/reports/final/follow-ups.md`
 - Hồi quy: chạy mọi dòng Ảnh hưởng ngoài task:
   - `cd backend && ./mvnw -B -ntp verify -Dit.test=PublishedExamPortIT,PreviewPaperPortIT,TestExamSeedIT,TestExamSeedComplianceIT,OpenApiExportIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false`
   - `cd backend && ./mvnw -B -ntp verify`; `pnpm --filter @thi360/web-admin test`; `pnpm --filter @thi360/e2e test`
 - Kiểm thử rủi ro:
-  - đỏ trước: AC-1, AC-2, AC-4, AC-5;
+  - đỏ trước: AC-1, AC-2, AC-4, AC-5, AC-9 (id phần), AC-12;
   - biên: nhóm phần dư rỗng, mẫu đổi đúng lúc lưu, hạn kiểm tra đúng mốc, 390px;
+  - dữ liệu đã có: migration bù id phần chạy trên mẫu id không phải UUID đang có bài dùng; bài giữ tham chiếu đúng sau migration (`ExamDataFollowUpIT#backfillKeepsExamReferences`, mới);
+  - đồng thời: kiểm tra đua với lưu khi mẫu đổi (`ExamCheckFollowUpIT#templateChangeBetweenCheckAndSaveDetected`);
+  - quyền: API xem trước và API soạn đề đổi vẫn trả 401, 403 như cũ (`ExamApiFollowUpIT#accessUnchanged`, mới);
   - hiệu năng: đo thời gian kiểm tra bài HSA FULL trước và sau, ghi vào báo cáo lane.
 - Dữ liệu test: seed dev sau TS; mẫu do migration nạp; tài khoản `sys.admin`, `content.admin`; MinIO trong Testcontainers cho tệp BCA.
 - Không kiểm: câu trả lời của BA cho FU-RELOAD-EXAM-CLOCK, FU-BE7-1.
@@ -6034,3 +6056,4 @@ M.Trường trả lời từng câu ngày 2026-11-19 sau khi đã kiểm lại P
 - **Review độc lập vòng 2 (Codex, 2026-11-19, delta):** 18 phát hiện cũ: 14 đã đóng, 2 còn mở, 2 được thay bằng phát hiện mới. Phát hiện mới: 5 blocking, 1 should-fix, 1 minor. Đã sửa cả 7, không từ chối: máy chủ đọc thời lượng MP3 thay vì tin trình duyệt; tách mở lần nghe (có `requestId`) khỏi phát tiếp, phát tiếp không tốn lượt, máy chủ không tự mở lần nghe mới; dung sai 3 giây là một ngân sách cho cả lần nghe; tách hai ma trận cạnh tranh của đối soát; bản lưu Redis của EX-2 được phép đổi hình dạng và hạn; phần nửa điểm H-SCA khi làm thử chuyển từ AT-5 sang AT-7. Báo cáo `D:/.Vietants_Project/.thi360-dev/dot-3/review-1119/codex-round2.md`.
 - **Review độc lập vòng 3 (Codex, 2026-11-19, delta, vòng cuối):** 7 phát hiện vòng 2: 6 đã đóng, 1 thành câu hỏi cho người. Phát hiện mới: 0 blocking, 2 should-fix, 1 minor, 1 needs-human, 1 bị bác. M.Trường quyết needs-human S3-1: lần nghe đã bấm được phát tiếp đến khi phần đóng, bỏ hạn riêng của lần nghe. Đã sửa P3-1 (ba tệp MP3 mẫu có chủ, đối chiếu tệp 2B 2,088 giây), P3-2 (thứ tự năm bước khi mở lần nghe, kiểm phần đã đóng trước), P3-3 (đủ bốn API trong phép quét khóa cấm). Không mở vòng 4. Báo cáo `D:/.Vietants_Project/.thi360-dev/dot-3/review-1119/codex-round3.md`.
 - **M.Trường duyệt (2026-11-19):** duyệt G1b (BS) và G2 (plan). Bỏ FA-6 (dịch tiếng Anh chữ của mẫu đề, 2 điểm): nội dung đề không làm song ngữ, tên phần, mục, phân đoạn của mẫu luôn hiện tiếng Việt kể cả khi giao diện ở tiếng Anh. Plan chốt 42 task, 9 sóng, 127 điểm.
+- **Review độc lập vòng 4 (Codex, 2026-11-19, delta các thay đổi sau khi duyệt: TS, FU, bỏ FA-6, ảnh DS, S3-1):** 1 blocking, 8 should-fix, 1 minor, 3 bị bác. Đã sửa cả 10, không từ chối: BS 17.2 có bảng phản hồi riêng từng đường khi phần đã đóng, `AttemptState` không lỗi vì audio, tải tệp vẫn 404, AT-6 thêm AC-19 (S4-1); TS dựng lại cả bài lỗi `TEST-ERR-*` từ bài nền mới và nâng DB đã có seed 2B, thêm AC-6, AC-7 (P4-8, P4-5); A7 mục 7 giao việc nối `pickName`, `data-exam-content` cho từng lane màn (P4-9); FU: đường sở hữu cho byte tệp BCA, bộ chuỗi web-admin, các IT xem trước dùng thân cũ, ngoại lệ B9 cho TS và FU, luật 0,2 điểm chỉ áp khi chọn câu cho bài SP2E, AC-12 cho xem trước và đổi phiên bản, R3-1 chép rõ, mềm FA-1, rủi ro cao với ca dữ liệu cũ, đồng thời, quyền, số đếm 45 dòng nguồn = 4 TS + 1 đóng + 40 FU (P4-1 đến P4-7). Các lane C-0, C-0b, ML, VP-1 không chịu ảnh hưởng nên mở trước khi sửa xong.
