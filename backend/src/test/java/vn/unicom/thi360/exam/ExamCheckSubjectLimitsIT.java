@@ -256,6 +256,18 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
             assertThat(found.path("available").asInt()).isZero();
             assertThat(codes(result)).doesNotContain(SET_CODE);
         }
+        if (quota.equals("PERCENT:QUESTION_SET=12,SHORT_ANSWER=3,SINGLE_CHOICE=85")) {
+            assertThat(result.path("status").asText()).as("3/1/21 check: %s", result.path("groups")).isEqualTo("VALID");
+            UUID id = UUID.fromString(base.substring(base.lastIndexOf('/') + 1));
+            ExamListingFixture.fill(jdbc, id);
+            JsonNode exam = json(get(base).with(asUser(Permissions.EXAM_VIEW)), 200);
+            ObjectNode body = mapper.createObjectNode().put("expectedRevision", exam.path("revision").asLong());
+            ArrayNode paths = body.putArray("pathIds");
+            result.path("paths").forEach(path -> paths.add(path.path("pathId").asText()));
+            json(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                    .header("Idempotency-Key", UUID.randomUUID().toString())
+                    .contentType(MediaType.APPLICATION_JSON).content(body.toString()), 200);
+        }
     }
 
     // ---- undetermined size, option blocks (R1-16, R1-13) ------------------------------------------------------
