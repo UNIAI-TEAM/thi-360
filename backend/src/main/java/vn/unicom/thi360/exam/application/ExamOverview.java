@@ -12,6 +12,7 @@ import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
+import vn.unicom.thi360.exam.domain.ParticipationMode;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 
 /** Applies partial overview changes without replacing blocks or quotas. */
@@ -69,12 +70,23 @@ final class ExamOverview {
             }
             return new ExamPart(part.id(), part.order(), part.name(),
                     change != null && change.durationChanged() ? row.durationMinutes() : part.durationMinutes(),
-                    count, part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
+                    count, onPaper(part, change != null && change.countChanged(), count), part.questionCountRequired(),
+                    part.participation(),
                     change != null && change.pointsChanged() ? row.maxPoints() : part.maxPoints(), fixed, options,
                     pool, part.codeSource(), part.displaySegments());
         }).toList();
         if (matched.size() != parts.size() + sections.size()) throw invalid();
         return new ExamStructureDocument(result, document.examQuotas());
+    }
+
+    /**
+     * The printed count of a FIXED (ALL) part follows an overview count that grows past it; a smaller count and
+     * every non-FIXED part keep the stored value, as before.
+     */
+    private static Integer onPaper(ExamPart part, boolean countChanged, Integer count) {
+        Integer onPaper = part.questionCountOnPaper();
+        boolean fixed = part.participation() == null || part.participation().mode() != ParticipationMode.CHOICE;
+        return countChanged && fixed && onPaper != null && count != null && onPaper < count ? count : onPaper;
     }
 
     static List<ExamOverviewRequest.Row> rows(ExamStructureDocument document) {
