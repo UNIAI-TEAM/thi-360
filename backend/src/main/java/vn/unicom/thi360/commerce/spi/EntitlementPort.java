@@ -6,23 +6,36 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 
 /**
  * Port of the commerce module the attempt module calls (TM 8.5, LT 5.1, LT 12).
- * Implemented inside {@code commerce.entitlement}; every mutating call is
- * idempotent per {@code attemptId}: repeating a call with the same attempt
- * returns the same result and changes nothing else.
+ * Implemented inside {@code commerce.entitlement}.
  *
- * <p>Contract for implementations (checked by CM-4a / AT-1 tests):
+ * <p>Repeat and missing-usage behavior (decision AD-8; CM-4a implements, C-0 only
+ * states it):
+ * <ul>
+ *   <li>{@link #reserve}, {@link #confirmUse} and {@link #release} are idempotent per
+ *       {@code attemptId}: a repeat returns the same result and does not change any
+ *       count (CM-4a AC-5/6/7).</li>
+ *   <li>{@link #release} for an {@code attemptId} with no usage is a no-op.</li>
+ *   <li>{@link #confirmUse}, {@link #benefitsOf} and {@link #compensate} for an
+ *       {@code attemptId} with no usage throw {@link NotFoundException}.</li>
+ *   <li>{@link #compensate} a second time for the same attempt fails with 409
+ *       {@code ALREADY_COMPENSATED} (CM-4a AC-19). This is not an idempotent
+ *       replay: an HTTP replay with the same idempotency key is AT-5 AC-14, a
+ *       different layer.</li>
+ * </ul>
+ *
+ * <p>Other failures:
  * <ul>
  *   <li>{@link #describe} and {@link #reserve} throw {@link NotFoundException}
- *       when the entitlement does not exist or belongs to another account.</li>
+ *       when the entitlement does not exist or belongs to another account; the
+ *       ownership check is part of {@code describe}.</li>
  *   <li>{@link #reserve} throws {@link ConflictException}
  *       ({@code NO_ATTEMPTS_LEFT}) when the entitlement has no usable attempt.</li>
- *   <li>Calls for an unknown {@code attemptId} or out-of-order usage state
- *       ({@code release} after {@code USED}, {@code confirmUse} after
- *       {@code RELEASED}) change nothing and do not fail.</li>
  *   <li>{@link #compensate} throws {@link ConflictException}
- *       ({@code ALREADY_COMPENSATED} for a second grant on the same attempt,
- *       {@code GRANT_REFUNDED} when the grant the attempt drew from was fully
- *       refunded).</li>
+ *       ({@code GRANT_REFUNDED}) when the grant the attempt drew from was fully
+ *       refunded.</li>
+ *   <li>Usage that exists but is in a state the call no longer applies to
+ *       ({@code release} after {@code USED}, {@code confirmUse} after
+ *       {@code RELEASED}) changes nothing and does not fail.</li>
  * </ul>
  *
  * <p>Attempts are consumed in grant order: oldest grant with attempts left
@@ -32,16 +45,16 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 public interface EntitlementPort {
 
     /**
-     * Reads the entitlement for the prepare step (LT 5.1): attempts left and
-     * the grant the next {@code reserve} would consume, with its source
+     * Reads the entitlement for the prepare step (LT 5.1): the exam it is for,
+     * attempts left and the grant the next {@code reserve} would consume, with its source
      * (purchase order code and date, or compensation).
      */
     EntitlementDescription describe(UUID userId, UUID entitlementId);
 
     /**
      * Reserves one attempt on the oldest grant with attempts left. Returns the
-     * benefits snapshot of that grant; the same {@code attemptId} always returns
-     * the same reservation.
+     * benefits snapshot of that grant, including the exam of the grant; the same
+     * {@code attemptId} always returns the same reservation.
      */
     EntitlementBenefits reserve(UUID userId, UUID entitlementId, UUID attemptId);
 

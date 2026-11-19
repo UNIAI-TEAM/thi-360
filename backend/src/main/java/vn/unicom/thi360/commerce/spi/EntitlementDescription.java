@@ -9,6 +9,10 @@ import java.util.UUID;
  * how many attempts are left and which grant (oldest with attempts, E21) the
  * next {@code reserve} will consume.
  *
+ * @param examId exam the entitlement (and every grant of it) is for, i.e.
+ *               {@code entitlement_grant.exam_id}; never {@code null}. The attempt
+ *               module needs it to find the published exam it serves and to persist
+ *               {@code exam_id} on the attempt (LT 4), without a second port.
  * @param attemptsLeft attempts still usable on the entitlement
  * @param grantId the grant the next {@code reserve} would draw from, or
  *                {@code null} when nothing is left
@@ -18,6 +22,7 @@ import java.util.UUID;
  * @param optionCodes purchased serving options of that grant (E25)
  */
 public record EntitlementDescription(
+        UUID examId,
         int attemptsLeft,
         UUID grantId,
         GrantSource source,

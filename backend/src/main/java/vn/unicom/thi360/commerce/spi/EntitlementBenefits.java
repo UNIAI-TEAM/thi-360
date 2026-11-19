@@ -10,6 +10,7 @@ import java.util.UUID;
  * serving options and the exam version snapshot of the grant.
  *
  * @param grantId grant the attempt draws from
+ * @param examId exam of the grant ({@code entitlement_grant.exam_id}); never {@code null}
  * @param benefits benefit flags of the grant (may be empty, never {@code null})
  * @param resultView result-view level of the grant
  * @param optionCodes purchased serving options (E25)
@@ -17,6 +18,7 @@ import java.util.UUID;
  */
 public record EntitlementBenefits(
         UUID grantId,
+        UUID examId,
         Map<String, Object> benefits,
         String resultView,
         List<String> optionCodes,
