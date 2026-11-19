@@ -217,7 +217,9 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                             ? List.of() : List.of(slotScope.competencyCodes()),
                     scope == null ? null : scope.everyChildInScope(),
                     slotGroups.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slotScope.everyChildInScope())),
-                    generated.audio(), excluded);
+                    generated.audio(), excluded,
+                    section != null && section.mapidMode() == vn.unicom.thi360.exam.domain.MapidMode.MATRIX
+                            && scope != null && !scope.nodeIds().isEmpty() ? Boolean.TRUE : null);
             return matches.computeIfAbsent(filter,
                     key -> source.matching(key, List.of(questionId)).contains(questionId));
         });

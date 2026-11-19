@@ -23,6 +23,9 @@ public interface QuestionSourcePort {
      * Each knowledge subtree contains a selected node and its descendants; additional groups are ANDed.
      * {@code excludedKnowledge} lists nodes (already expanded to their descendants) that a candidate must not
      * carry: a question is dropped when it, or for a set any live child or the set itself, is tagged with one.
+     * {@code everyChildSameNode} (a MAPID SOURCE rule) keeps a set only when ONE knowledge subtree of the first
+     * group list holds a node of every child; it is stricter than {@code everyChildInScope}, which accepts a mix
+     * of the subtrees.
      */
     record Filter(
             UUID subjectId,
@@ -43,10 +46,25 @@ public interface QuestionSourcePort {
             Boolean everyChildInScope,
             List<Boolean> additionalEveryChildInScope,
             AudioRequirement audioRequirement,
-            List<UUID> excludedKnowledge) {
+            List<UUID> excludedKnowledge,
+            Boolean everyChildSameNode) {
         public Filter {
             audioRequirement = audioRequirement == null ? AudioRequirement.ANY : audioRequirement;
             excludedKnowledge = excludedKnowledge == null ? List.of() : List.copyOf(excludedKnowledge);
+        }
+        /** Without the same-node mode: a set keeps its legacy {@code everyChildInScope} (union) meaning. */
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope, AudioRequirement audioRequirement,
+                List<UUID> excludedKnowledge) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, audioRequirement, excludedKnowledge, null);
         }
         public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
                 QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,

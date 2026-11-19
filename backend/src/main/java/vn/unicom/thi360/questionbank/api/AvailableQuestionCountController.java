@@ -39,9 +39,13 @@ public class AvailableQuestionCountController {
                                  Boolean everyChildInScope,
                                  @Schema(description = "MAPID nodes (and their descendants) the group must not draw from: "
                                          + "ONLY_IN_GROUP of another group (UNI-2758)")
-                                 List<@NotNull UUID> excludedNodeIds) {
+                                 List<@NotNull UUID> excludedNodeIds,
+                                 @Schema(description = "SOURCE rule of a MAPID matrix: a set counts only when all its "
+                                         + "children carry the same node of the scope (a descendant counts); "
+                                         + "stricter than everyChildInScope (UNI-2758)")
+                                 Boolean everyChildSameNode) {
         public KnowledgeScope(List<UUID> nodeIds, List<String> competencyCodes, Boolean everyChildInScope) {
-            this(nodeIds, competencyCodes, everyChildInScope, null);
+            this(nodeIds, competencyCodes, everyChildInScope, null, null);
         }
     }
 

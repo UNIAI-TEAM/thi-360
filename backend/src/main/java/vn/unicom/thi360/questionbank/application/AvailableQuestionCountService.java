@@ -63,7 +63,8 @@ public class AvailableQuestionCountService {
                 null, query.childAnswerType(), query.tagCodes(), competencies,
                 query.requiredPointsPerQuestion(), itemShape(query.itemShape()), query.answerFormats(),
                 childConditions, List.of(), List.of(), List.of(),
-                scope == null ? null : scope.everyChildInScope(), List.of(), query.audioRequirement(), excluded);
+                scope == null ? null : scope.everyChildInScope(), List.of(), query.audioRequirement(), excluded,
+                scope == null ? null : scope.everyChildSameNode());
     }
 
     /** The node and every descendant; an unknown node is empty, as for generation. */

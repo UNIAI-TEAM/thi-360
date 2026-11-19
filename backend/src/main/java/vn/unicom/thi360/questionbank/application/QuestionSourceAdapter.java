@@ -364,6 +364,8 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         addKnowledgeGroup(parts, params, p + "knowledge", f.knowledgeGroups());
         addEveryChildKnowledge(parts, params, p + "everyChildKnowledge", f.knowledgeGroups(),
                 Boolean.TRUE.equals(f.everyChildInScope()));
+        addEveryChildSameNode(parts, params, p + "sameNodeKnowledge", f.knowledgeGroups(),
+                Boolean.TRUE.equals(f.everyChildSameNode()));
         if (f.additionalKnowledgeGroups() != null) {
             for (int j = 0; j < f.additionalKnowledgeGroups().size(); j++) {
                 addKnowledgeGroup(parts, params, p + "extraKnowledge" + j + "_",
@@ -463,6 +465,27 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         }
         return "(q.type = 'QUESTION_SET' and not exists (select 1 from generate_series(:" + from + ", :" + to
                 + ") pos where not exists (select 1 from " + source + " where " + String.join(" and ", where) + ")))";
+    }
+
+    /**
+     * A set stays only when one knowledge subtree holds a node of EVERY live child (a MAPID SOURCE rule: the
+     * children carry the same code, a descendant of it counts). Standalone questions are not affected.
+     */
+    private static void addEveryChildSameNode(List<String> parts, MapSqlParameterSource params,
+            String prefix, List<List<UUID>> groups, boolean enabled) {
+        if (!enabled || groups == null || groups.isEmpty()) return;
+        List<String> alternatives = new ArrayList<>();
+        for (int j = 0; j < groups.size(); j++) {
+            if (groups.get(j).isEmpty()) continue;
+            String key = prefix + j;
+            params.addValue(key, groups.get(j));
+            alternatives.add("not exists (select 1 from questionbank.question c "
+                    + "where c.parent_id=q.id and c.deleted_at is null and not exists "
+                    + "(select 1 from questionbank.question_knowledge ck where ck.question_id=c.id "
+                    + "and ck.knowledge_item_id in (:" + key + ")))");
+        }
+        parts.add(alternatives.isEmpty() ? "false"
+                : "(q.type <> 'QUESTION_SET' or (" + String.join(" or ", alternatives) + "))");
     }
 
     private static void addEveryChildKnowledge(List<String> parts, MapSqlParameterSource params,
