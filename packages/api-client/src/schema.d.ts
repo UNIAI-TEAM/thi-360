@@ -2129,6 +2129,8 @@ export interface components {
         AvailableQuestionsKnowledgeScope: {
             competencyCodes?: string[];
             everyChildInScope?: boolean;
+            /** @description SOURCE rule of a MAPID matrix: a set counts only when all its children carry the same node of the scope (a descendant counts); stricter than everyChildInScope (UNI-2758) */
+            everyChildSameNode?: boolean;
             /** @description MAPID nodes (and their descendants) the group must not draw from: ONLY_IN_GROUP of another group (UNI-2758) */
             excludedNodeIds?: string[];
             nodeIds?: string[];
