@@ -68,7 +68,8 @@ final class ExamOverview {
                     && !sections.containsKey(part.id() + "\u0000" + fixed.getFirst().id())) {
                 ExamSection s = fixed.getFirst();
                 fixed = List.of(new ExamSection(s.id(), s.subjectCode(), count, s.knowledgeScope(), s.answerQuotas(),
-                        s.matrix(), s.choiceGroup(), s.blocks(), s.topicQuotas(), s.audioRequirement()));
+                        s.matrix(), s.choiceGroup(), s.blocks(), s.topicQuotas(), s.audioRequirement(),
+                        s.mapidMode(), s.mapidRules()));
             }
             return new ExamPart(part.id(), part.order(), part.name(),
                     change != null && change.durationChanged() ? row.durationMinutes() : part.durationMinutes(),

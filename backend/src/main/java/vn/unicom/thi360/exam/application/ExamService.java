@@ -1091,6 +1091,7 @@ public class ExamService {
                 templateDoc);
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
                 structureProperties.maxMapidRules());
+        rejectMapidOutsideHsa(exam, doc);
         validateStructureReferences(doc);
         List<String> changedPartIds = changedPartIds(storedDoc, doc);
         writeStructure(exam, doc, true, actor, now);
@@ -1241,6 +1242,31 @@ public class ExamService {
                 code -> catalogLookup.findActiveItem(SUBJECT_GROUP, code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("COMPETENCY", code).map(CatalogItemView::id).orElse(null),
                 code -> catalogLookup.findActiveItem("QUESTION_TAG", code).map(CatalogItemView::id).orElse(null));
+    }
+
+    /** MAPID rules are an HSA feature (UNI-2758, Q4): any other exam kind cannot save a {@code mapidMode}. */
+    private void rejectMapidOutsideHsa(Exam exam, ExamStructureDocument doc) {
+        String kindCode = exam.getKindItemId() == null ? null
+                : catalogLookup.findItem(exam.getKindItemId()).map(CatalogItemView::code).orElse(null);
+        if ("HSA".equals(kindCode)) {
+            return;
+        }
+        List<ExamStructureInvalidException.Detail> details = new ArrayList<>();
+        for (int p = 0; p < doc.parts().size(); p++) {
+            ExamPart part = doc.parts().get(p);
+            List<ExamSection> sections = new ArrayList<>(part.sections());
+            sections.addAll(part.subjectPool());
+            part.options().forEach(option -> sections.addAll(option.sections()));
+            for (ExamSection section : sections) {
+                if (section.mapidMode() != null) {
+                    details.add(new ExamStructureInvalidException.Detail("parts[" + p + "].sections.mapidMode",
+                            "MAPID_KIND_NOT_ALLOWED", "STRUCTURE_FIELD_INVALID", List.of("sections.mapidMode")));
+                }
+            }
+        }
+        if (!details.isEmpty()) {
+            throw new ExamStructureInvalidException("MAPID rules are only available for the HSA exam kind", details);
+        }
     }
 
     private void validateStructureReferences(ExamStructureDocument doc) {
