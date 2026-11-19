@@ -63,20 +63,12 @@ public class Entitlement {
         return id;
     }
 
-    public UUID getUserId() {
-        return userId;
-    }
-
     public UUID getExamId() {
         return examId;
     }
 
     public EntitlementSource getSource() {
         return source;
-    }
-
-    public UUID getSourceRef() {
-        return sourceRef;
     }
 
     public int getAttemptsTotal() {
@@ -93,14 +85,6 @@ public class Entitlement {
 
     public int getAttemptsRevoked() {
         return attemptsRevoked;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
     }
 
     public int attemptsLeft() {

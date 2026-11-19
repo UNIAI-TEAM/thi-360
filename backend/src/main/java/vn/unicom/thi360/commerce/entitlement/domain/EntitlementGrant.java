@@ -147,16 +147,8 @@ public class EntitlementGrant {
         return orderId;
     }
 
-    public String getOrderCode() {
-        return orderCode;
-    }
-
     public UUID getExamId() {
         return examId;
-    }
-
-    public UUID getCompensationAttemptId() {
-        return compensationAttemptId;
     }
 
     public List<String> getOptionCodes() {
@@ -165,18 +157,6 @@ public class EntitlementGrant {
 
     public int getAttempts() {
         return attempts;
-    }
-
-    public int getAttemptsUsed() {
-        return attemptsUsed;
-    }
-
-    public int getAttemptsReserved() {
-        return attemptsReserved;
-    }
-
-    public int getAttemptsRevoked() {
-        return attemptsRevoked;
     }
 
     public Map<String, Object> getBenefits() {
@@ -189,22 +169,6 @@ public class EntitlementGrant {
 
     public int getExamVersionNo() {
         return examVersionNo;
-    }
-
-    public Instant getGrantedAt() {
-        return grantedAt;
-    }
-
-    public String getGrantedBy() {
-        return grantedBy;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public Instant getRevokedAt() {
-        return revokedAt;
     }
 
     /** True once the whole grant was refunded: its attempts never become usable again. */

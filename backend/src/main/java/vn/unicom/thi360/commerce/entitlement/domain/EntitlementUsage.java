@@ -50,16 +50,8 @@ public class EntitlementUsage {
         this.updatedAt = now;
     }
 
-    public UUID getId() {
-        return id;
-    }
-
     public UUID getGrantId() {
         return grantId;
-    }
-
-    public UUID getAttemptId() {
-        return attemptId;
     }
 
     public UsageState getState() {
