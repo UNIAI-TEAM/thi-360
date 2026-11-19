@@ -369,6 +369,14 @@
           "everyChildInScope" : {
             "type" : "boolean"
           },
+          "excludedNodeIds" : {
+            "description" : "MAPID nodes (and their descendants) the group must not draw from: ONLY_IN_GROUP of another group (UNI-2758)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "nodeIds" : {
             "items" : {
               "format" : "uuid",
@@ -3043,6 +3051,16 @@
           "available" : {
             "type" : "number"
           },
+          "availableSets" : {
+            "description" : "Whole sets the source holds for the group",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "availableSingles" : {
+            "description" : "Single questions of the subject that match the group's source nodes",
+            "format" : "int64",
+            "type" : "integer"
+          },
           "blockId" : {
             "type" : "string"
           },
@@ -3053,6 +3071,10 @@
             "type" : "string"
           },
           "competencyCode" : {
+            "type" : "string"
+          },
+          "conflictKind" : {
+            "description" : "Kind of a MAPID_RULE_CONFLICT",
             "type" : "string"
           },
           "difficultyCode" : {
@@ -3076,6 +3098,13 @@
           "location" : {
             "$ref" : "#/components/schemas/ExamIssueLocation"
           },
+          "nodeIds" : {
+            "description" : "Node ids of the rule a shortage names",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "optionId" : {
             "type" : "string"
           },
@@ -3093,6 +3122,22 @@
           },
           "required" : {
             "type" : "number"
+          },
+          "requiredSets" : {
+            "description" : "Whole sets the group needs (set-unit shortage of a SOURCE rule)",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "ruleId" : {
+            "description" : "MAPID rule (UNI-2758) the issue names; the web scrolls to mapid-rule-<ruleId>",
+            "type" : "string"
+          },
+          "ruleIds" : {
+            "description" : "Every rule of a MAPID_RULE_CONFLICT, in declaration order",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "sectionId" : {
             "type" : "string"
@@ -4009,6 +4054,13 @@
           "location" : {
             "$ref" : "#/components/schemas/ExamIssueLocation"
           },
+          "nodeIds" : {
+            "description" : "Node ids of the rule the failure names",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "optionId" : {
             "type" : "string"
           },
@@ -4026,6 +4078,10 @@
           },
           "required" : {
             "type" : "number"
+          },
+          "ruleId" : {
+            "description" : "MAPID rule (UNI-2758) the failure names; the web scrolls to mapid-rule-<ruleId>",
+            "type" : "string"
           },
           "sectionId" : {
             "type" : "string"
@@ -4721,6 +4777,16 @@
           },
           "knowledgeScope" : {
             "$ref" : "#/components/schemas/KnowledgeScope"
+          },
+          "mapidMode" : {
+            "enum" : [ "ALL", "MATRIX" ],
+            "type" : "string"
+          },
+          "mapidRules" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MapidRule"
+            },
+            "type" : "array"
           },
           "matrix" : {
             "$ref" : "#/components/schemas/BlockMatrix"
@@ -5749,6 +5815,39 @@
           }
         },
         "required" : [ "mustChangePassword", "redirectTo" ],
+        "type" : "object"
+      },
+      "MapidRule" : {
+        "properties" : {
+          "comparator" : {
+            "enum" : [ "EXACT", "AT_LEAST" ],
+            "type" : "string"
+          },
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "groupId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "nodeIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "percent" : {
+            "type" : "number"
+          },
+          "type" : {
+            "enum" : [ "PRESENT", "COUNT", "ONLY_IN_GROUP", "SOURCE" ],
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "MatchingBody" : {
