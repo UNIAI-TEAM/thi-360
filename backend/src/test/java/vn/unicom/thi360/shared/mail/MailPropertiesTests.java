@@ -126,6 +126,29 @@ class MailPropertiesTests {
                 });
     }
 
+    /** R4-01: below the 1 s minimum every claim would be claim-lost, so startup rejects it; exactly 1 s starts. */
+    @ParameterizedTest(name = "attempt-timeout={0} stops the application")
+    @ValueSource(strings = {"PT0.001S", "PT0.999S"})
+    void anAttemptTimeoutBelowTheUsableMinimumStopsStartup(String value) {
+        runner.withPropertyValues("thi360.mail.attempt-timeout=" + value).run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(rootMessage(context.getStartupFailure())).contains("thi360.mail.attempt-timeout");
+        });
+    }
+
+    @Test
+    void theMinimumAttemptTimeoutStartsAndLeavesAFreshClaimUsableBudget() {
+        runner.withPropertyValues("thi360.mail.attempt-timeout=PT1S", "thi360.mail.claim-lease=PT6S").run(context -> {
+            assertThat(context).hasNotFailed();
+            MailProperties mail = context.getBean(MailProperties.class);
+            java.time.Instant claimedAt = java.time.Instant.parse("2027-01-01T00:00:00Z");
+            java.time.Clock clock = java.time.Clock.fixed(claimedAt, java.time.ZoneOffset.UTC);
+            SendDeadline fresh = new SendDeadline(clock, claimedAt.plus(mail.claimLease()), mail.attemptTimeout());
+            assertThat(fresh.expired()).isFalse();
+            assertThat(fresh.remainingMillis()).isBetween(900, 1000);
+        });
+    }
+
     @Test
     void defaultIsStarttls() {
         runner.run(context -> assertThat(context.getBean(MailProperties.class).tls()).isEqualTo(SmtpTls.STARTTLS));

@@ -13,8 +13,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param tls        chế độ mã hóa SMTP ({@code THI360_SMTP_TLS}): {@code starttls} (mặc định), {@code tls}, {@code none}
  * @param connectTimeout thời gian chờ kết nối SMTP; số mili giây dương, vừa một {@code int}
  * @param readTimeout    thời gian chờ đọc, ghi SMTP; số mili giây dương, vừa một {@code int}
- * @param attemptTimeout hạn cứng của một lần gửi (kết nối, mọi lệnh, thân thư); số mili giây dương vừa
- *                       một {@code int} — dưới 1 ms đổi ra 0 ms và khóa mọi lần gửi
+ * @param attemptTimeout hạn cứng của một lần gửi (kết nối, mọi lệnh, thân thư); từ {@link #MIN_ATTEMPT_TIMEOUT}
+ *                       (1 giây) đến một {@code int} mili giây — ngắn hơn thì hạn còn lại đã dưới 1 ms ngay sau
+ *                       lúc giữ chỗ và mọi lần gửi bị bỏ như {@code claim-lost}
  * @param batchSize  số thư tối đa mỗi lượt, từ 1 đến {@value #MAX_BATCH_SIZE}
  * @param claimLease thời gian giữ chỗ một thư trong lúc gửi, ít nhất {@code attemptTimeout} cộng
  *                   {@link #SAFETY_MARGIN}; hết hạn mà chưa có kết quả thì thư được lấy lại
@@ -51,6 +52,9 @@ public record MailProperties(
      */
     static final Duration SAFETY_MARGIN = Duration.ofSeconds(5);
 
+    /** Hạn một lần gửi tối thiểu: đủ để kiểm tra quyền giữ và mở một phiên SMTP; dưới mức này khởi động bị từ chối. */
+    static final Duration MIN_ATTEMPT_TIMEOUT = Duration.ofSeconds(1);
+
     private static final Duration ONE_MILLI = Duration.ofMillis(1);
     private static final Duration MAX_INT_MILLIS = Duration.ofMillis(Integer.MAX_VALUE);
 
@@ -58,6 +62,10 @@ public record MailProperties(
         requireInProviderRange("thi360.mail.connect-timeout", connectTimeout);
         requireInProviderRange("thi360.mail.read-timeout", readTimeout);
         requireInProviderRange("thi360.mail.attempt-timeout", attemptTimeout);
+        if (attemptTimeout.compareTo(MIN_ATTEMPT_TIMEOUT) < 0) {
+            throw new IllegalArgumentException("thi360.mail.attempt-timeout must be at least " + MIN_ATTEMPT_TIMEOUT
+                    + " so a claim can start SMTP (was " + attemptTimeout + ")");
+        }
         requireInProviderRange("thi360.mail.claim-lease", claimLease);
         requirePositive("thi360.mail.sent-retention", sentRetention);
         requirePositive("thi360.mail.poll-delay", pollDelay);
