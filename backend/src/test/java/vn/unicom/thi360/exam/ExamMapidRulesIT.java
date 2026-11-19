@@ -373,6 +373,24 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
                 .containsExactly("exact", "source");
     }
 
+    // ---- counts are bounded by the units of their scope (review R1-7) -------------------------------------------
+
+    @Test
+    void aCountBeyondTheUnitsOfItsScopeIsRejectedAtPutAndTheBoundaryIsAccepted() throws Exception {
+        arrange();
+        UUID exam = examRow("hsa");
+        for (int tooMany : List.of(7, 1_073_741_824, Integer.MAX_VALUE)) {
+            putStructure(exam, section(6, "MATRIX", "[" + count("big", null, "EXACT", tooMany, a()) + "]",
+                    block("g1", "SINGLE_CHOICE", 6))).andExpect(status().isUnprocessableEntity());
+            putStructure(exam, section(6, "MATRIX", "[" + count("bigGroup", "g1", "AT_LEAST", tooMany, a()) + "]",
+                    block("g1", "SINGLE_CHOICE", 4), block("g2", "SINGLE_CHOICE", 2)))
+                    .andExpect(status().isUnprocessableEntity());
+        }
+        putStructure(exam, section(6, "MATRIX", "[" + count("edge", null, "EXACT", 6, a()) + ","
+                + count("edgeGroup", "g1", "AT_LEAST", 4, b()) + "]",
+                block("g1", "SINGLE_CHOICE", 4), block("g2", "SINGLE_CHOICE", 2))).andExpect(status().isOk());
+    }
+
     // ---- Q4: the rules are an API boundary of the HSA kind, not only a UI rollout boundary --------------------
 
     @Test

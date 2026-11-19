@@ -102,6 +102,26 @@ class MapidRuleValidatorTest {
     }
 
     @Test
+    void aCountNeverExceedsTheUnitsOfItsScope() {
+        // The section has 4 units and group g draws 4: a bigger number can never be met and, summed over several
+        // rules, would overflow an int in the solver (UNI-2758 R1-7).
+        for (int tooMany : List.of(5, 1_073_741_824, Integer.MAX_VALUE)) {
+            for (String group : new String[] {null, "g"}) {
+                for (var type : List.of(MapidRuleType.COUNT, MapidRuleType.ONLY_IN_GROUP)) {
+                    if (type == MapidRuleType.ONLY_IN_GROUP && group == null) continue;
+                    assertRejected(document(MapidMode.MATRIX, List.of(rule("r", type, group,
+                            MapidComparator.AT_LEAST, tooMany, null))));
+                }
+            }
+        }
+        for (String group : new String[] {null, "g"}) {
+            assertThatCode(() -> ExamStructureValidator.validate(document(MapidMode.MATRIX, List.of(
+                    rule("r", MapidRuleType.COUNT, group, MapidComparator.EXACT, 4, null)))))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Test
     void countNeedsComparatorAndANumber() {
         assertRejected(document(MapidMode.MATRIX, List.of(rule("r", MapidRuleType.COUNT, null, null, 1, null))));
         assertRejected(document(MapidMode.MATRIX, List.of(

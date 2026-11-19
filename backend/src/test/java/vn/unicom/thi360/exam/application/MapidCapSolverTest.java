@@ -146,6 +146,30 @@ class MapidCapSolverTest {
     }
 
     @Test
+    void minimumsThatSumPastAnIntCannotWrapToZeroAndPassAnUnmappedPaper() {
+        // 4 x 2^30 wraps an int sum to 0; the single unmapped question carries none of them (UNI-2758 R1-7).
+        add(QuestionType.SHORT_ANSWER, candidate("unmapped", QuestionType.SHORT_ANSWER));
+        List<MapidRule> rules = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            rules.add(new MapidRule("huge" + i, MapidRuleType.COUNT, null, List.of(A), MapidComparator.AT_LEAST,
+                    1_073_741_824, null));
+        }
+        ExamSection atLeast = section(1, List.of(single("g1", QuestionType.SHORT_ANSWER, 1)),
+                rules.toArray(MapidRule[]::new));
+        for (SolveMode mode : modes()) {
+            assertThat(solve(atLeast, mode).status()).as("%s", mode).isEqualTo(SolveStatus.INVALID);
+        }
+        List<MapidRule> exact = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            exact.add(new MapidRule("exact" + i, MapidRuleType.COUNT, null, List.of(A), MapidComparator.EXACT,
+                    1_073_741_824, null));
+        }
+        ExamSection exactly = section(1, List.of(single("g1", QuestionType.SHORT_ANSWER, 1)),
+                exact.toArray(MapidRule[]::new));
+        assertThat(solve(exactly, SolveMode.check()).status()).isEqualTo(SolveStatus.INVALID);
+    }
+
+    @Test
     void capZeroDropsEverySingleAndEverySetThatCarriesTheNode() {
         add(QuestionType.SHORT_ANSWER, candidate("carrier", QuestionType.SHORT_ANSWER, A1));
         for (int i = 0; i < 3; i++) add(QuestionType.SHORT_ANSWER, candidate("n" + i, QuestionType.SHORT_ANSWER));
