@@ -1,6 +1,8 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,10 +18,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.exam.application.ExamCheckCompletion;
 import vn.unicom.thi360.exam.application.ExamCheckResultStore;
 import vn.unicom.thi360.exam.application.ExamCheckScope;
+import vn.unicom.thi360.exam.application.ExamCheckUnitEngine;
+import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
+import vn.unicom.thi360.exam.domain.solver.SolveOutcome;
+import vn.unicom.thi360.exam.domain.solver.SolveReason;
+import vn.unicom.thi360.exam.domain.solver.SolveStats;
+import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.identity.spi.Permissions;
 
 /**
@@ -38,6 +47,7 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
     private static final String QDA_PATHS_PLAIN = "[{\"id\":\"codes\",\"codeSource\":{\"source\":\"GLOBAL_LIST\"},\"subjectPool\":[]}]";
 
     @Autowired private ExamCheckCompletion completion;
+    @MockitoSpyBean private ExamCheckUnitEngine units;
 
     // ---- the chain on a real exam: check, publish, GET, one-subject check, whole check --------------------
 
@@ -238,6 +248,56 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         assertThat(versions(exam)).isZero();
         publish(exam, "codes:QD02", "codes:QD04", "codes:QD05").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
         assertThat(servedState(exam)).isEqualTo("1|SERVING|codes:QD02,codes:QD04,codes:QD05");
+    }
+
+    /**
+     * R2-2 on a real QDA exam: Sử and Địa share QD04. One unit of that tuple is proved invalid and the other is left
+     * unconfirmed, so the path folds to INVALID and no path or selection says UNCONFIRMED, while an earlier combination
+     * is VALID. The run is incomplete: no stamp, GET and publish keep RULES_CHANGED, nothing publishes. A run whose
+     * only extra is a unit proved invalid is complete and stamps.
+     */
+    @Test
+    void anInvalidAndAnUnconfirmedUnitOfOneTupleKeepTheOldResultUnstamped() throws Exception {
+        UUID exam = qdaExamWithPhysicsThreeSets();
+        String base = "/api/v1/admin/exams/" + exam;
+        JsonNode old = check(base, "{}");
+        assertThat(old.path("status").asText()).as("old check: %s", old.path("groups")).isEqualTo("VALID");
+        removeStamp(exam);
+        jdbc.update("UPDATE exam.exam SET build_mode = 'STANDARD' WHERE id = ?", exam);
+        entityManager.clear();
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD02");
+
+        java.util.Map<String, SolveStatus> forced = new java.util.concurrent.ConcurrentHashMap<>();
+        doAnswer(call -> {
+            java.util.List<SectionOnPath> sections = call.getArgument(0);
+            SolveStatus status = forced.get(sections.getFirst().subjectCode());
+            if (status == null) return call.callRealMethod();
+            return new SolveOutcome(status, status == SolveStatus.UNCONFIRMED ? SolveReason.DEADLINE_EXCEEDED : null,
+                    List.of(), SolveStats.EMPTY);
+        }).when(units).solveUnit(any(), any(), any());
+
+        // The units of the first check are VALID and would be reused: forget them so that every unit is solved again.
+        jdbc.update("DELETE FROM exam.exam_check_unit WHERE exam_id = ?", exam);
+        entityManager.clear();
+        forced.put("SU", SolveStatus.INVALID);
+        forced.put("DIA", SolveStatus.UNCONFIRMED);
+        JsonNode incomplete = check(base, "{}");
+        java.util.Map<String, String> outcome = new java.util.TreeMap<>();
+        for (JsonNode path : incomplete.path("paths")) outcome.put(path.path("pathId").asText(), path.path("result").asText());
+        assertThat(outcome).as("QD04 folds to INVALID, QD02 is valid").containsEntry("codes:QD04", "INVALID").containsEntry("codes:QD02", "VALID");
+        assertThat(stamp(exam)).as("an incomplete run never stamps").isNull();
+        assertThat(latestReason(exam)).isEqualTo("RULES_CHANGED");
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD02");
+        assertThat(versions(exam)).isZero();
+
+        // Control: the same run with only the invalid unit is complete and stamps.
+        forced.remove("DIA");
+        JsonNode complete = check(base, "{}");
+        assertThat(complete.path("paths")).isNotEmpty();
+        assertThat(stamp(exam)).isEqualTo("FTM_R12");
+        assertThat(latestReason(exam)).isNull();
+        // QDA codes are chosen after the attempt starts (E24): the publish names every valid path of the check.
+        publish(exam, "codes:QD02", "codes:QD05").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
     }
 
     // ---- not affected -------------------------------------------------------------------------------------

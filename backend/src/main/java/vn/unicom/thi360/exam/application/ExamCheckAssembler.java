@@ -105,17 +105,9 @@ final class ExamCheckAssembler {
         result.set("totalPoints", paths.isEmpty() ? mapper.valueToTree(BigDecimal.ZERO) : paths.get(0).path("totalPoints"));
         result.put("printedQuestions", document.parts().stream().mapToInt(ExamCheckAssembler::printedQuestions).sum());
         if (exam.getMaxScore() == null) result.putNull("maxScore"); else result.put("maxScore", exam.getMaxScore());
-        return new ExamChecker.Evaluation(result, witnesses, List.of(), input != null && rulesEvaluated(outcome));
-    }
-
-    /** A request-level failure or any unconfirmed path/selection makes the whole run incomplete. */
-    static boolean rulesEvaluated(SolveOutcome outcome) {
-        if (outcome.reason() != null || outcome.results().isEmpty()
-                || outcome.status() == vn.unicom.thi360.exam.domain.solver.SolveStatus.UNCONFIRMED) return false;
-        return outcome.results().stream().noneMatch(path ->
-                path.status() == vn.unicom.thi360.exam.domain.solver.SolveStatus.UNCONFIRMED
-                || path.selections().stream().anyMatch(selection ->
-                        selection.status() == vn.unicom.thi360.exam.domain.solver.SolveStatus.UNCONFIRMED));
+        // Whether the run vouches for the rules is the unit engine's to say (unit verdicts, before they fold into
+        // paths); a result assembled without that knowledge never does.
+        return new ExamChecker.Evaluation(result, witnesses, List.of(), false);
     }
 
     private static int printedQuestions(ExamPart part) {

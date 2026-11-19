@@ -247,7 +247,8 @@ public class DefaultExamChecker implements ExamChecker {
                 witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(topicIssues);
             }
         }
-        var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
+        var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues)
+                .withRulesEvaluated(computed.complete());
         if (scope.kind() == ExamCheckScope.Kind.EXAM && evaluation.rulesEvaluated()) {
             // Unused code-source pool entries belong to the saved structure, but not to any serving path.
             // Report their R-12 errors at the whole-exam level without making unrelated paths ineligible.
