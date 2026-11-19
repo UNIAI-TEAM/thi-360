@@ -45,6 +45,8 @@ export interface TopicQuotaTableProps {
   labels: MatrixLabels;
   serverError?: TopicQuotaServerError;
   readOnly?: boolean;
+  /** `COUNT_ONLY` ẩn nút Số câu / Tỷ lệ (R-9: HSA, QDA, BCA, THPTQG không nhập %); mặc định giữ hành vi MD, MT. */
+  entry?: "COUNT_ONLY";
 }
 
 /**
@@ -64,6 +66,7 @@ export function TopicQuotaTable({
   labels,
   serverError = null,
   readOnly = false,
+  entry: entryRestriction,
 }: TopicQuotaTableProps) {
   const t = useTranslations("exams.topicQuota");
   const matrixText = useTranslations("exams.matrix");
@@ -71,7 +74,8 @@ export function TopicQuotaTable({
   const headingId = useId();
   const [entry, setEntry] = useState<EntryMode>(() => topicEntryMode(quotas));
   const [picking, setPicking] = useState<string | null>(null);
-  const mode: EntryMode = quotas.length === 0 ? entry : topicEntryMode(quotas);
+  const countOnly = entryRestriction === "COUNT_ONLY";
+  const mode: EntryMode = countOnly ? "COUNT" : quotas.length === 0 ? entry : topicEntryMode(quotas);
   const percentMode = mode === "PERCENT";
   const view = topicQuotaView(quotas, total);
   const knowledgeIndex = useMemo(() => indexKnowledge(reference.knowledgeTree), [reference]);
@@ -119,7 +123,7 @@ export function TopicQuotaTable({
         </div>
         {!readOnly && (
           <div className="flex flex-wrap items-end gap-3">
-            {total > 0 && (
+            {total > 0 && !countOnly && (
               <ChoiceCardGroup
                 variant="pill"
                 legend={t("entry")}

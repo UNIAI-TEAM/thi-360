@@ -80,6 +80,8 @@ describe("Danh sách dòng: màn sửa dòng", () => {
     await user.click(await screen.findByRole("button", { name: /Thêm chỉ tiêu chủ đề/ }));
     // Chỉ mục Phân bổ theo MAPID đang mở; mục lọc chưa thêm nên không có phạm vi kiến thức của dòng.
     expect(document.querySelector('[data-condition="topicQuotas"]')).not.toBeNull();
+    // R-9: HSA, QDA, BCA, THPTQG không nhập tỷ lệ, bảng chỉ tiêu không có nút Số câu / Tỷ lệ (AD-89 D2).
+    expect(screen.queryByRole("radio", { name: "Tỷ lệ" })).toBeNull();
     expect(document.querySelector('[data-condition="scope"]')).toBeNull();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
