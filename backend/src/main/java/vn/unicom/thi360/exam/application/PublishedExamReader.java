@@ -1,0 +1,214 @@
+package vn.unicom.thi360.exam.application;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.catalog.spi.CatalogItemView;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.exam.spi.PublishedExamPort;
+
+/**
+ * {@link PublishedExamPort} over {@code exam.exam_version}. Everything comes from the frozen snapshot (config and
+ * parts); the only live reads are the exam status and the catalog code of the exam kind, which never changes. The
+ * parts are projected, not copied: blocks, quotas, matrices, knowledge scopes and witnesses stay behind.
+ */
+@Service
+public class PublishedExamReader implements PublishedExamPort {
+    private final JdbcTemplate jdbc;
+    private final ObjectMapper mapper;
+    private final CatalogLookup catalog;
+    private final ExamCoverService covers;
+
+    public PublishedExamReader(JdbcTemplate jdbc, ObjectMapper mapper, CatalogLookup catalog, ExamCoverService covers) {
+        this.jdbc = jdbc;
+        this.mapper = mapper;
+        this.catalog = catalog;
+        this.covers = covers;
+    }
+
+    private record Row(int version, String state, String status, Instant publishedAt, String config, String parts,
+                       List<String> publishedPaths, List<String> servingPaths) { }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ServingExam> findServing(UUID examId) {
+        List<String> status = jdbc.queryForList("SELECT status FROM exam.exam WHERE id = ?", String.class, examId);
+        if (status.isEmpty() || "DRAFT".equals(status.getFirst())) return Optional.empty();
+        List<Row> serving = rows("WHERE exam_id = ? AND state = 'SERVING' ORDER BY version_no DESC", examId);
+        if (serving.isEmpty()) return Optional.empty();
+        PublishedVersion latest = version(examId, serving.getFirst());
+        Map<String, ServingPath> paths = new LinkedHashMap<>();
+        for (Row row : serving) {
+            JsonNode parts = json(row.parts()).path("parts");
+            JsonNode config = json(row.config());
+            for (String pathId : row.servingPaths()) {
+                paths.putIfAbsent(pathId, new ServingPath(pathId, row.version(), choices(parts, config, pathId)));
+            }
+        }
+        return Optional.of(new ServingExam(examId, status.getFirst(), latest, List.copyOf(paths.values())));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<PublishedVersion> loadVersion(UUID examId, int versionNo) {
+        return rows("WHERE exam_id = ? AND version_no = " + versionNo, examId).stream().findFirst()
+                .map(row -> version(examId, row));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> listPublishedExamIds() {
+        return jdbc.queryForList("SELECT e.id FROM exam.exam e WHERE e.status IN ('PUBLISHED', 'DISCONTINUED') "
+                + "AND EXISTS (SELECT 1 FROM exam.exam_version v WHERE v.exam_id = e.id) ORDER BY e.code", UUID.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CoverImage> openCover(UUID assetId) {
+        return covers.open(assetId).map(cover -> new CoverImage(cover.contentType(), cover.content()));
+    }
+
+    private List<Row> rows(String where, UUID examId) {
+        return jdbc.query("SELECT version_no, state, status, published_at, config::text, parts::text, "
+                        + "published_path_ids, serving_path_ids FROM exam.exam_version " + where,
+                (rs, n) -> new Row(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getTimestamp(4).toInstant(),
+                        rs.getString(5), rs.getString(6), Arrays.asList((String[]) rs.getArray(7).getArray()),
+                        Arrays.asList((String[]) rs.getArray(8).getArray())), examId);
+    }
+
+    private PublishedVersion version(UUID examId, Row row) {
+        JsonNode config = json(row.config());
+        JsonNode parts = json(row.parts()).path("parts");
+        UUID kind = uuid(config, "kindItemId");
+        String kindCode = kind == null ? null : catalog.findItem(kind).map(CatalogItemView::code).orElse(null);
+        List<Part> mappedParts = new ArrayList<>();
+        for (JsonNode part : parts) mappedParts.add(part(part));
+        List<Combination> combinations = new ArrayList<>();
+        for (JsonNode combination : config.path("combinations")) combinations.add(combination(combination));
+        List<OmittedGroup> omitted = new ArrayList<>();
+        for (JsonNode group : config.path("omittedGroups")) omitted.add(new OmittedGroup(text(group, "name"), decimal(group, "points")));
+        return new PublishedVersion(examId, row.version(), row.state(), row.status(), row.publishedAt(),
+                text(config, "code"), text(config, "name"), kind, kindCode, text(config, "scope"), text(config, "partCode"),
+                uuid(config, "subjectItemId"), config.hasNonNull("buildMode") ? config.path("buildMode").asText() : "STANDARD",
+                text(config, "timing"), integer(config, "durationMinutes"), decimal(config, "maxScore"),
+                decimal(config, "referenceMax"), text(config, "practiceScoring"), listing(config),
+                List.copyOf(mappedParts), List.copyOf(combinations), List.copyOf(omitted),
+                List.copyOf(row.publishedPaths()), List.copyOf(row.servingPaths()));
+    }
+
+    private Listing listing(JsonNode config) {
+        JsonNode listing = config.path("listing");
+        if (!listing.isObject()) return null;
+        return new Listing(text(listing, "summary"), text(listing, "objectives"), text(listing, "audience"),
+                listing.hasNonNull("listPriceVnd") ? listing.path("listPriceVnd").asLong() : null,
+                integer(listing, "attemptsGranted"), listing.path("benefitAiExplanation").asBoolean(false),
+                listing.path("benefitStrengthWeakness").asBoolean(false), listing.path("benefitPractice").asBoolean(false),
+                text(listing, "benefitNote"), text(listing, "resultView"), text(listing, "description"),
+                uuid(listing, "coverAssetId"));
+    }
+
+    private Part part(JsonNode part) {
+        List<Segment> segments = new ArrayList<>();
+        for (JsonNode segment : part.path("displaySegments")) {
+            segments.add(new Segment(text(segment, "code"), text(segment, "name"), integer(segment, "fromPosition"),
+                    integer(segment, "toPosition"), integer(segment, "commandCount"), decimal(segment, "maxPoints")));
+        }
+        List<Option> options = new ArrayList<>();
+        for (JsonNode option : part.path("options")) {
+            List<Integer> counts = null;
+            if (option.path("countsByPick").isArray()) {
+                counts = new ArrayList<>();
+                for (JsonNode count : option.path("countsByPick")) counts.add(count.asInt());
+            }
+            options.add(new Option(text(option, "id"), text(option, "kind"), text(option, "code"), text(option, "name"),
+                    integer(option, "chooseSubjects"), counts == null ? null : List.copyOf(counts), sections(option.path("sections"))));
+        }
+        List<PartPath> paths = new ArrayList<>();
+        for (JsonNode path : part.path("paths")) {
+            paths.add(new PartPath(text(path, "pathId"), integer(path, "questionCount"), decimal(path, "maxPoints"),
+                    integer(path, "durationMinutes")));
+        }
+        JsonNode participation = part.path("participation");
+        return new Part(text(part, "id"), integer(part, "order"), text(part, "name"), integer(part, "durationMinutes"),
+                integer(part, "questionCount"), integer(part, "questionCountOnPaper"), integer(part, "questionCountRequired"),
+                text(participation, "mode"), integer(participation, "choose"), decimal(part, "maxPoints"),
+                List.copyOf(segments), sections(part.path("sections")), sections(part.path("subjectPool")),
+                List.copyOf(options), List.copyOf(paths));
+    }
+
+    private static List<Section> sections(JsonNode sections) {
+        List<Section> result = new ArrayList<>();
+        for (JsonNode section : sections) {
+            result.add(new Section(text(section, "id"), text(section, "subjectCode"), integer(section, "questionCount"),
+                    section.hasNonNull("audioRequirement") ? section.path("audioRequirement").asText() : "ANY"));
+        }
+        return List.copyOf(result);
+    }
+
+    private static Combination combination(JsonNode combination) {
+        List<CombinationSubject> subjects = new ArrayList<>();
+        for (JsonNode subject : combination.path("subjects")) {
+            subjects.add(new CombinationSubject(text(subject, "code"), text(subject, "name"), subject.path("position").asInt()));
+        }
+        return new Combination(text(combination, "partId"), text(combination, "code"), text(combination, "name"),
+                text(combination, "branch"), integer(combination, "versionNo"), List.copyOf(subjects));
+    }
+
+    /** The choices a path stands for: its options by id, and its catalog codes as {@code partId:code}. */
+    private static List<PathChoice> choices(JsonNode parts, JsonNode config, String pathId) {
+        List<String> selected = Arrays.asList(pathId.split("\\+", -1));
+        List<PathChoice> choices = new ArrayList<>();
+        for (JsonNode part : parts) {
+            String partId = part.path("id").asText();
+            for (JsonNode option : part.path("options")) {
+                if (selected.contains(option.path("id").asText())) {
+                    choices.add(new PathChoice(partId, text(option, "id"), text(option, "kind"), text(option, "code"), text(option, "name")));
+                }
+            }
+            for (JsonNode combination : config.path("combinations")) {
+                String code = combination.path("code").asText();
+                if (partId.equals(combination.path("partId").asText()) && selected.contains(partId + ":" + code)) {
+                    choices.add(new PathChoice(partId, partId + ":" + code, "COMBINATION", code,
+                            combination.hasNonNull("name") ? combination.path("name").asText() : code));
+                }
+            }
+        }
+        return List.copyOf(choices);
+    }
+
+    private JsonNode json(String value) {
+        try {
+            return mapper.readTree(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Invalid exam version snapshot", e);
+        }
+    }
+
+    private static String text(JsonNode node, String name) {
+        return node.hasNonNull(name) ? node.path(name).asText() : null;
+    }
+
+    private static Integer integer(JsonNode node, String name) {
+        return node.path(name).isIntegralNumber() ? node.path(name).intValue() : null;
+    }
+
+    private static BigDecimal decimal(JsonNode node, String name) {
+        return node.path(name).isNumber() ? node.path(name).decimalValue() : null;
+    }
+
+    private static UUID uuid(JsonNode node, String name) {
+        return node.hasNonNull(name) ? UUID.fromString(node.path(name).asText()) : null;
+    }
+}
