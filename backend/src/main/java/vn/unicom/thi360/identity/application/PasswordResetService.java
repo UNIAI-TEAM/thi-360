@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -16,6 +17,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,6 +35,7 @@ import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.PasswordResetTokenRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
+import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.mail.MailKind;
 import vn.unicom.thi360.shared.mail.MailQueue;
@@ -47,7 +50,12 @@ import vn.unicom.thi360.shared.security.TokenPepperProperties;
  * yêu cầu đồng thời của một tài khoản chạy lần lượt và chỉ một mã còn hiệu lực.
  *
  * <p>{@link #reset}: không giữ khóa dòng khi gọi Keycloak (plan B2). Chiếm mã bằng một câu UPDATE có điều kiện
- * (đúng một người thắng khi hai yêu cầu cùng mã), gọi Keycloak ngoài transaction, lỗi thì trả mã về chưa dùng.
+ * (đúng một người thắng khi hai yêu cầu cùng mã) rồi gọi Keycloak ngoài transaction. Chỉ khi Keycloak từ chối
+ * <b>rõ ràng</b> việc ghi mật khẩu thì mã mới được trả về chưa dùng (AC-21), và chỉ khi dòng vẫn là mã hiện hành
+ * (chưa bị yêu cầu mới thay). Ghi thành công hoặc không loại trừ được việc đã ghi (hết thời gian, 5xx) thì mã dùng
+ * xong vĩnh viễn: một mã đã cho phép đổi mật khẩu không bao giờ được cấp lại quyền. Dùng xong và audit thành công
+ * cùng một transaction; thu hồi phiên cũ lỗi thì ghi dấu chờ và {@link #retryPendingRevocations} thử lại mà không
+ * lặp lại việc ghi mật khẩu.
  */
 @Service
 public class PasswordResetService {
@@ -58,6 +66,8 @@ public class PasswordResetService {
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final int TOKEN_BYTES = 32;
     private static final String RESET_PATH = "/reset-password?token=";
+    private static final Duration REVOCATION_RETRY_WINDOW = Duration.ofHours(24);
+    private static final int REVOCATION_BATCH = 50;
 
     private final PasswordResetTokenRepository tokenRepository;
     private final UserAccountRepository userAccountRepository;
@@ -146,20 +156,26 @@ public class PasswordResetService {
         }
 
         String rawToken = newRawToken();
-        tokenRepository.invalidateAllUnusedOfUser(user.getId(), now);
+        tokenRepository.invalidateAllLiveOfUser(user.getId(), now);
         tokenRepository.saveAndFlush(new PasswordResetToken(
                 Ids.newId(),
                 user.getId(),
                 hash(rawToken),
                 now.plus(properties.tokenTtl()),
                 now,
-                requestIp));
+                requestIp,
+                user.getEmailNormalized()));
         mailQueue.enqueue(
                 MailKind.PASSWORD_RESET,
                 user.getEmail(),
                 user.getPreferredLocale(),
                 Map.of("fullName", user.getFullName(), "resetUrl", resetUrlPrefix + rawToken),
                 user.getId());
+        auditRecorder.record(AuditEvent.builder(MODULE, "PASSWORD_RESET_REQUESTED")
+                .actorType(AuditActorType.SYSTEM)
+                .target("USER", user.getId().toString(), user.getUsername())
+                .outcome(AuditOutcome.SUCCESS)
+                .build());
     }
 
     /**
@@ -191,18 +207,87 @@ public class PasswordResetService {
 
         try {
             keycloakClient.setPassword(claim.userId(), newPassword, false);
-            userAdminService.revokeAllSessionsFailClosed(claim.userId());
         } catch (RuntimeException ex) {
-            releaseClaim(token.getId(), claim.claimedAt());
+            if (isDefiniteRejection(ex)) {
+                releaseClaim(claim);
+            } else {
+                log.atError()
+                        .setCause(ex)
+                        .addKeyValue("event", "password_reset.write_indeterminate")
+                        .addKeyValue("tokenId", claim.tokenId().toString())
+                        .addKeyValue("userId", claim.userId().toString())
+                        .log("Password write outcome unknown; reset token stays consumed");
+            }
             throw ex;
         }
 
-        transactionTemplate.executeWithoutResult(status -> auditRecorder.record(
-                AuditEvent.builder(MODULE, "PASSWORD_RESET")
+        finalizeReset(claim);
+        revokeSessions(claim.tokenId(), claim.userId());
+    }
+
+    /**
+     * Thử lại việc thu hồi phiên của các lần đặt lại đã đổi mật khẩu nhưng chưa thu hồi xong (Redis hoặc Keycloak
+     * lỗi sau khi ghi). Không đụng tới mật khẩu. Trả số dòng đã hoàn tất.
+     */
+    public int retryPendingRevocations() {
+        Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+        List<PasswordResetToken> pending = tokenRepository.findPendingRevocations(
+                now.minus(REVOCATION_RETRY_WINDOW), PageRequest.of(0, REVOCATION_BATCH));
+        int done = 0;
+        for (PasswordResetToken token : pending) {
+            if (revokeSessions(token.getId(), token.getUserId())) {
+                done++;
+            }
+        }
+        return done;
+    }
+
+    /** Lỗi chắc chắn chưa ghi mật khẩu: chính sách mật khẩu của Keycloak hoặc yêu cầu bị từ chối/không tới nơi. */
+    private static boolean isDefiniteRejection(RuntimeException ex) {
+        return ex instanceof ValidationException
+                || ex instanceof KeycloakIdentityClient.PasswordWriteRejectedException;
+    }
+
+    /**
+     * Sau khi Keycloak nhận mật khẩu: đánh dấu mã dùng xong và ghi audit thành công trong cùng một transaction.
+     * Lỗi DB ở bước này chỉ được ghi log (mật khẩu đã đổi, không thể báo thất bại); phiên vẫn bị thu hồi sau đó.
+     */
+    private void finalizeReset(Claim claim) {
+        try {
+            transactionTemplate.executeWithoutResult(status -> {
+                tokenRepository.markPasswordChanged(claim.tokenId(), Instant.now(clock).truncatedTo(ChronoUnit.MICROS));
+                auditRecorder.record(AuditEvent.builder(MODULE, "PASSWORD_RESET")
                         .actor(claim.userId(), claim.username(), List.of(), AuditActorType.USER)
                         .target("USER", claim.userId().toString(), claim.username())
                         .outcome(AuditOutcome.SUCCESS)
-                        .build()));
+                        .build());
+            });
+        } catch (RuntimeException ex) {
+            log.atError()
+                    .setCause(ex)
+                    .addKeyValue("event", "password_reset.finalize_failed")
+                    .addKeyValue("tokenId", claim.tokenId().toString())
+                    .addKeyValue("userId", claim.userId().toString())
+                    .log("Password was changed but the success audit could not be recorded");
+        }
+    }
+
+    /** Thu hồi mọi phiên của tài khoản rồi ghi dấu hoàn tất; lỗi thì để dòng ở trạng thái chờ cho job thử lại. */
+    private boolean revokeSessions(UUID tokenId, UUID userId) {
+        try {
+            userAdminService.revokeAllSessionsFailClosed(userId);
+            transactionTemplate.executeWithoutResult(status ->
+                    tokenRepository.markSessionsRevoked(tokenId, Instant.now(clock).truncatedTo(ChronoUnit.MICROS)));
+            return true;
+        } catch (RuntimeException ex) {
+            log.atError()
+                    .setCause(ex)
+                    .addKeyValue("event", "password_reset.revocation_pending")
+                    .addKeyValue("tokenId", tokenId.toString())
+                    .addKeyValue("userId", userId.toString())
+                    .log("Password changed but old sessions are not revoked yet; retry is scheduled");
+            return false;
+        }
     }
 
     /**
@@ -221,27 +306,48 @@ public class PasswordResetService {
         UserAccount user = userAccountRepository.findById(token.getUserId()).orElse(null);
         if (user == null || user.isDeleted() || user.getStatus() != UserStatus.ACTIVE) {
             // Tài khoản bị khóa: không mở khóa, mã bị hủy và trả cùng lỗi (TM 5.4 bước 2).
-            tokenRepository.claimUsable(tokenId, now);
+            tokenRepository.invalidate(tokenId, now);
             return null;
         }
-        if (token.getUsedAt() != null || !token.getExpiresAt().isAfter(now)) {
+        if (token.getUsedAt() != null || token.getInvalidatedAt() != null || !token.getExpiresAt().isAfter(now)) {
+            return null;
+        }
+        if (!recoveryContactUnchanged(user, token)) {
+            // Email nhận liên kết đã bị đổi/xóa/chưa xác minh sau khi phát hành: liên kết cũ hết quyền.
+            tokenRepository.invalidate(tokenId, now);
             return null;
         }
         passwordPolicy.validate("newPassword", newPassword, user.getUsername());
         if (tokenRepository.claimUsable(tokenId, now) != 1) {
             return null;
         }
-        return new Claim(user.getId(), user.getUsername(), now);
+        return new Claim(tokenId, user.getId(), user.getUsername(), now);
     }
 
-    private void releaseClaim(UUID tokenId, Instant claimedAt) {
+    /** Tài khoản vẫn dùng đúng địa chỉ đã nhận liên kết và địa chỉ đó còn xác minh. */
+    private static boolean recoveryContactUnchanged(UserAccount user, PasswordResetToken token) {
+        return user.getEmail() != null
+                && user.getEmailVerifiedAt() != null
+                && token.getRecoveryEmailNormalized().equals(user.getEmailNormalized());
+    }
+
+    /**
+     * Trả mã về chưa dùng sau khi Keycloak từ chối rõ ràng. Dưới cùng khóa dòng tài khoản với phát hành, và chỉ khi
+     * dòng vẫn là mã hiện hành chưa bị thay (câu UPDATE có điều kiện), nên yêu cầu mới trong lúc gọi không bị
+     * hồi sinh mã cũ.
+     */
+    private void releaseClaim(Claim claim) {
         try {
-            transactionTemplate.executeWithoutResult(status -> tokenRepository.releaseClaim(tokenId, claimedAt));
+            transactionTemplate.executeWithoutResult(status -> {
+                jdbcTemplate.query(
+                        "SELECT id FROM identity.user_account WHERE id = ? FOR UPDATE", rs -> {}, claim.userId());
+                tokenRepository.releaseClaim(claim.tokenId(), claim.claimedAt());
+            });
         } catch (RuntimeException ex) {
             log.atError()
                     .setCause(ex)
                     .addKeyValue("event", "password_reset.release_failed")
-                    .addKeyValue("tokenId", tokenId.toString())
+                    .addKeyValue("tokenId", claim.tokenId().toString())
                     .log("Failed to release password reset token after downstream failure");
         }
     }
@@ -275,6 +381,6 @@ public class PasswordResetService {
         return url.substring(0, end);
     }
 
-    private record Claim(UUID userId, String username, Instant claimedAt) {
+    private record Claim(UUID tokenId, UUID userId, String username, Instant claimedAt) {
     }
 }

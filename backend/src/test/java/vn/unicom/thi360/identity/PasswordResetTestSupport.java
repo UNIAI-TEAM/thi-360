@@ -118,15 +118,17 @@ final class PasswordResetTestSupport {
     String insertToken(UUID userId, Instant createdAt, Instant expiresAt, Instant usedAt) {
         String raw = "t" + UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
         jdbc.update(
-                "INSERT INTO identity.password_reset_token (id, user_id, token_hash, expires_at, used_at, created_at, request_ip)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO identity.password_reset_token (id, user_id, token_hash, expires_at, used_at, created_at, request_ip,"
+                        + " recovery_email_normalized)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(email_normalized, '') FROM identity.user_account WHERE id = ?))",
                 UUID.randomUUID(),
                 userId,
                 hash(raw),
                 Timestamp.from(expiresAt),
                 usedAt == null ? null : Timestamp.from(usedAt),
                 Timestamp.from(createdAt),
-                "198.51.100.9");
+                "198.51.100.9",
+                userId);
         return raw;
     }
 

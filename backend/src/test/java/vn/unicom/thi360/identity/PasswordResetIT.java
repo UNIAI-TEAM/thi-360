@@ -40,12 +40,14 @@ import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.PasswordResetTestSupport.Account;
+import vn.unicom.thi360.identity.application.PasswordResetService;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.KeycloakProperties;
 import vn.unicom.thi360.shared.security.RateLimitFilter;
 import vn.unicom.thi360.shared.security.TokenPepperProperties;
 
@@ -66,12 +68,17 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
     private StringRedisTemplate redis;
     @Autowired
     private TokenPepperProperties pepper;
+    @Autowired
+    private KeycloakProperties keycloakProperties;
+    @Autowired
+    private PasswordResetService passwordResetService;
     @MockitoSpyBean
     private KeycloakIdentityClient keycloakClient;
     @MockitoSpyBean
     private AuditRecorder auditRecorder;
 
     private PasswordResetTestSupport support;
+    private org.keycloak.admin.client.Keycloak adminClient;
 
     @BeforeEach
     void setUp() {
@@ -81,6 +88,10 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
 
     @AfterEach
     void cleanup() {
+        if (adminClient != null) {
+            adminClient.close();
+            adminClient = null;
+        }
         support.cleanup();
         clearBuckets();
     }
@@ -266,22 +277,29 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
     @Test
     void revokesAllSessions() throws Exception {
         Account account = support.eligible("reset.sessions");
-        MvcResult session = login(account, account.password());
-        assertThat(session.getResponse().getStatus()).isEqualTo(200);
-        Cookie access = session.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
-        Cookie refresh = session.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
-        Cookie xsrf = session.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+        MvcResult first = login(account, account.password());
+        MvcResult second = login(account, account.password());
+        assertThat(first.getResponse().getStatus()).isEqualTo(200);
+        assertThat(second.getResponse().getStatus()).isEqualTo(200);
+        Cookie access = first.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie refresh = first.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE);
+        Cookie xsrf = first.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+        Cookie access2 = second.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
         mockMvc.perform(get("/api/v1/me").cookie(access)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/me").cookie(access2)).andExpect(status().isOk());
         assertThat(redis.hasKey("user-sess:" + account.id())).isTrue();
+        assertThat(keycloakSessions(account)).as("two Keycloak sessions before reset").hasSizeGreaterThanOrEqualTo(2);
 
         assertThat(reset(freshToken(account), NEW_PASSWORD).getResponse().getStatus()).isEqualTo(204);
 
         mockMvc.perform(get("/api/v1/me").cookie(access)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/me").cookie(access2)).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .cookie(refresh, xsrf)
                         .header(AuthCookieService.XSRF_HEADER, xsrf.getValue()))
                 .andExpect(status().isUnauthorized());
         assertThat(redis.hasKey("user-sess:" + account.id())).as("Redis session key deleted").isFalse();
+        assertThat(keycloakSessions(account)).as("Keycloak sessions are gone, not just the Redis gate").isEmpty();
     }
 
     @Test
@@ -323,16 +341,134 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
         MvcResult session = login(account, account.password());
         Cookie access = session.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
         String token = freshToken(account);
-        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, new RuntimeException("keycloak down")))
+        doThrow(new KeycloakIdentityClient.PasswordWriteRejectedException(new RuntimeException("connection refused")))
                 .when(keycloakClient).setPassword(eq(account.id()), anyString(), anyBoolean());
 
         MvcResult result = reset(token, NEW_PASSWORD);
 
         assertThat(result.getResponse().getStatus()).isEqualTo(502);
-        assertThat(support.unusedTokenRows(account.id())).as("token released").isEqualTo(1);
+        assertThat(support.unusedTokenRows(account.id())).as("definite rejection: token released").isEqualTo(1);
         mockMvc.perform(get("/api/v1/me").cookie(access)).andExpect(status().isOk());
         assertThat(passwordResetAudits(auditRecorder, account)).isZero();
         assertThat(login(account, account.password()).getResponse().getStatus()).as("old password still valid").isEqualTo(200);
         verify(keycloakClient, never()).logoutAllSessions(any());
+    }
+
+    @Test
+    void indeterminateKeycloakFailureConsumesToken() throws Exception {
+        Account account = support.eligible("reset.unknown");
+        String token = freshToken(account);
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, new RuntimeException("read timed out")))
+                .when(keycloakClient).setPassword(eq(account.id()), anyString(), anyBoolean());
+
+        assertThat(reset(token, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(502);
+
+        // Không loại trừ được việc Keycloak đã nhận mật khẩu: mã không được cấp lại quyền.
+        assertThat(support.unusedTokenRows(account.id())).as("token stays consumed").isZero();
+        org.mockito.Mockito.doCallRealMethod().when(keycloakClient).setPassword(any(), anyString(), anyBoolean());
+        MvcResult replay = reset(token, NEW_PASSWORD);
+        assertThat(replay.getResponse().getStatus()).isEqualTo(422);
+        assertThat(replay.getResponse().getContentAsString()).contains("RESET_TOKEN_INVALID");
+        assertThat(passwordResetAudits(auditRecorder, account)).isZero();
+    }
+
+    @Test
+    void failedRevocationAfterWriteKeepsTokenUsedAndAudits() throws Exception {
+        Account account = support.eligible("reset.revoke");
+        MvcResult session = login(account, account.password());
+        Cookie access = session.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        String token = freshToken(account);
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, new RuntimeException("logout down")))
+                .when(keycloakClient).logoutAllSessions(account.id());
+
+        // Mật khẩu đã đổi nên kết quả vẫn là thành công; thu hồi phiên lỗi chỉ để lại dấu chờ thử lại.
+        assertThat(reset(token, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(204);
+
+        MvcResult replay = reset(token, "Another#Pass2026");
+        assertThat(replay.getResponse().getStatus()).as("token cannot be replayed").isEqualTo(422);
+        assertThat(passwordResetAudits(auditRecorder, account)).as("success audit recorded").isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                        "SELECT count(*) FROM identity.password_reset_token WHERE user_id = ?"
+                                + " AND password_changed_at IS NOT NULL AND sessions_revoked_at IS NULL",
+                        Integer.class,
+                        account.id()))
+                .as("revocation is pending")
+                .isEqualTo(1);
+
+        // Việc thử lại không ghi lại mật khẩu: chỉ thu hồi phiên.
+        org.mockito.Mockito.doCallRealMethod().when(keycloakClient).logoutAllSessions(any());
+        org.mockito.Mockito.clearInvocations(keycloakClient);
+        assertThat(passwordResetService.retryPendingRevocations()).isEqualTo(1);
+
+        verify(keycloakClient, never()).setPassword(any(), anyString(), anyBoolean());
+        assertThat(keycloakSessions(account)).isEmpty();
+        mockMvc.perform(get("/api/v1/me").cookie(access)).andExpect(status().isUnauthorized());
+        assertThat(passwordResetService.retryPendingRevocations()).as("nothing left to retry").isZero();
+    }
+
+    @Test
+    void issuanceDuringRejectedWriteLeavesOnlyNewestLinkUsable() throws Exception {
+        Account account = support.eligible("reset.fence");
+        Instant now = Instant.now();
+        // Quá cooldown để lần phát hành giữa chừng được phép.
+        String oldToken = support.insertToken(account.id(), now.minusSeconds(120), now.plus(Duration.ofHours(1)), null);
+        org.mockito.Mockito.doAnswer(invocation -> {
+                    passwordResetService.issue(account.email(), IP);
+                    throw new KeycloakIdentityClient.PasswordWriteRejectedException(new RuntimeException("refused"));
+                })
+                .doCallRealMethod()
+                .when(keycloakClient).setPassword(eq(account.id()), anyString(), anyBoolean());
+
+        assertThat(reset(oldToken, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(502);
+
+        String newToken = support.tokenFromLatestMail(account.email());
+        assertThat(newToken).isNotEqualTo(oldToken);
+        assertThat(support.unusedTokenRows(account.id())).as("only the newest link is usable").isEqualTo(1);
+        MvcResult old = reset(oldToken, NEW_PASSWORD);
+        assertThat(old.getResponse().getStatus()).isEqualTo(422);
+        assertThat(old.getResponse().getContentAsString()).contains("RESET_TOKEN_INVALID");
+        assertThat(reset(newToken, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(204);
+    }
+
+    @Test
+    void linkIsBoundToTheRecoveryContact() throws Exception {
+        // Đổi sang địa chỉ khác (đã xác minh): liên kết gửi tới địa chỉ cũ hết hiệu lực.
+        Account replaced = support.eligible("reset.contact.replaced");
+        String replacedToken = freshToken(replaced);
+        jdbc.update("UPDATE identity.user_account SET email = ?, email_normalized = ?, email_verified_at = now() WHERE id = ?",
+                "new." + replaced.email(), "new." + replaced.email(), replaced.id());
+        // Xóa địa chỉ.
+        Account cleared = support.eligible("reset.contact.cleared");
+        String clearedToken = freshToken(cleared);
+        jdbc.update("UPDATE identity.user_account SET email = NULL, email_normalized = NULL, email_verified_at = NULL WHERE id = ?",
+                cleared.id());
+        // Đường quản trị: địa chỉ giữ nguyên nhưng bị bỏ xác minh.
+        Account unverified = support.eligible("reset.contact.unverified");
+        String unverifiedToken = freshToken(unverified);
+        jdbc.update("UPDATE identity.user_account SET email_verified_at = NULL WHERE id = ?", unverified.id());
+
+        for (var entry : java.util.Map.of(replaced, replacedToken, cleared, clearedToken, unverified, unverifiedToken)
+                .entrySet()) {
+            MvcResult result = reset(entry.getValue(), NEW_PASSWORD);
+            assertThat(result.getResponse().getStatus()).isEqualTo(422);
+            assertThat(result.getResponse().getContentAsString()).contains("RESET_TOKEN_INVALID");
+            assertThat(support.unusedTokenRows(entry.getKey().id())).as("link is invalidated").isZero();
+            verify(keycloakClient, never()).setPassword(eq(entry.getKey().id()), anyString(), anyBoolean());
+            assertThat(login(entry.getKey(), entry.getKey().password()).getResponse().getStatus())
+                    .as("password not changed").isEqualTo(200);
+        }
+    }
+
+    private List<org.keycloak.representations.idm.UserSessionRepresentation> keycloakSessions(Account account) {
+        if (adminClient == null) {
+            adminClient = org.keycloak.admin.client.KeycloakBuilder.builder()
+                    .serverUrl(keycloakProperties.url())
+                    .realm(keycloakProperties.realm())
+                    .grantType(org.keycloak.OAuth2Constants.CLIENT_CREDENTIALS)
+                    .clientId(keycloakProperties.clientId())
+                    .clientSecret(keycloakProperties.clientSecret())
+                    .build();
+        }
+        return adminClient.realm(keycloakProperties.realm()).users().get(account.id().toString()).getUserSessions();
     }
 }

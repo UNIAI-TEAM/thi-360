@@ -246,6 +246,10 @@ thi360:
     import-batch:
       scheduling:
         enabled: false
+    password-reset:
+      revocation-retry:
+        scheduling:
+          enabled: false
   s3:
     access-key: ${THI360_S3_ACCESS_KEY:thi360}
     secret-key: ${THI360_S3_SECRET_KEY:thi360-dev-only}

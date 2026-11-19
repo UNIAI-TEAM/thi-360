@@ -162,11 +162,29 @@ public class KeycloakIdentityClient {
                         null,
                         List.of(new FieldError("password", "PASSWORD_WEAK", messages.get("PASSWORD_WEAK"))));
             }
+            if (status >= 400 && status < 500 && status != 408 && status != 429) {
+                throw new PasswordWriteRejectedException(ex);
+            }
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (RuntimeException ex) {
             logExternal("setPassword", targetRealm, "exception", startNanos);
+            if (neverReachedServer(ex)) {
+                throw new PasswordWriteRejectedException(ex);
+            }
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
+    }
+
+    /** Kết nối bị từ chối hoặc không phân giải được máy chủ: yêu cầu chưa tới Keycloak nên chắc chắn chưa ghi gì. */
+    private static boolean neverReachedServer(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
+            if (cause instanceof java.net.ConnectException
+                    || cause instanceof java.net.UnknownHostException
+                    || cause instanceof java.net.NoRouteToHostException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void setEnabled(UUID userId, boolean enabled) {
@@ -545,6 +563,17 @@ public class KeycloakIdentityClient {
         USER_DISABLED,
         ACCOUNT_LOCKED,
         INVALID_TOKEN
+    }
+
+    /**
+     * Keycloak từ chối rõ ràng việc ghi mật khẩu (phản hồi 4xx trừ 408/429, hoặc yêu cầu chưa tới được máy chủ):
+     * mật khẩu chắc chắn chưa đổi. Mọi lỗi khác của {@link #setPassword} (5xx, hết thời gian, mất kết nối giữa
+     * chừng) không loại trừ được việc đã ghi.
+     */
+    public static class PasswordWriteRejectedException extends ExternalServiceException {
+        public PasswordWriteRejectedException(Throwable cause) {
+            super("IDENTITY_PROVIDER_ERROR", null, cause);
+        }
     }
 
     public static class KeycloakAuthException extends RuntimeException {

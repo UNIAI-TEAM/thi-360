@@ -48,7 +48,7 @@ class PasswordResetLimitsTests {
 
     private static PasswordResetToken tokenCreatedAt(Instant createdAt) {
         return new PasswordResetToken(
-                UUID.randomUUID(), UUID.randomUUID(), "hash-" + createdAt, createdAt.plusSeconds(3600), createdAt, null);
+                UUID.randomUUID(), UUID.randomUUID(), "hash-" + createdAt, createdAt.plusSeconds(3600), createdAt, null, "user@thi360.vn");
     }
 
     @Test
