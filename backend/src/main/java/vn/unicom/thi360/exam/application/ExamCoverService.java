@@ -13,8 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import vn.unicom.thi360.audit.spi.AuditEvent;
@@ -132,31 +130,65 @@ public class ExamCoverService {
     }
 
     /**
-     * Copies a cover for a duplicated exam: a new row and a new object, so each exam's cleanup acts on its own
-     * object. Runs in the caller's transaction; the new object is deleted again if that transaction rolls back.
-     * Returns empty when the source cover has no object left.
+     * A copy of a cover whose object is already written, waiting for the transaction that creates the duplicated
+     * exam. Made by {@link #stageCopy} outside any transaction, so storage latency never extends the time the
+     * command holds database locks (plan B2); {@link #attach} gives it a row inside that transaction.
      */
-    public Optional<UUID> copyForDuplicate(UUID sourceAssetId, UUID newExamId) {
-        Optional<ExamCoverAsset> source = covers.findById(sourceAssetId);
-        if (source.isEmpty()) return Optional.empty();
-        Optional<byte[]> content = storage.get(source.get().getObjectKey());
-        if (content.isEmpty()) return Optional.empty();
+    public static final class StagedCover {
+        private final UUID sourceAssetId;
+        private final UUID assetId;
+        private final ExamCoverAsset template;
+        private boolean attached;
+
+        private StagedCover(UUID sourceAssetId, ExamCoverAsset template) {
+            this.sourceAssetId = sourceAssetId;
+            this.assetId = template.getId();
+            this.template = template;
+        }
+
+        /** The cover this copy was made from. */
+        public UUID sourceAssetId() {
+            return sourceAssetId;
+        }
+
+        /** Whether the row of the copy was written: the object must stay then (if the transaction commits). */
+        public boolean attached() {
+            return attached;
+        }
+    }
+
+    /**
+     * Copies the object of a cover for a duplicated exam under a new key, so each exam's cleanup acts on its own
+     * object. Call it outside a transaction. A cover whose row or object is gone is an error, never a silent drop.
+     */
+    public StagedCover stageCopy(UUID sourceAssetId) {
+        ExamCoverAsset source = covers.findById(sourceAssetId).orElseThrow(this::coverMissing);
+        byte[] content = storage.get(source.getObjectKey()).orElseThrow(this::coverMissing);
         UUID assetId = Ids.newId();
         String key = ExamCoverAsset.KEY_PREFIX + assetId;
-        storage.put(key, content.get(), source.get().getContentType());
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCompletion(int status) {
-                    if (status != STATUS_COMMITTED) deleteQuietly(key);
-                }
-            });
-        }
-        ExamCoverAsset copy = new ExamCoverAsset(assetId, newExamId, key, source.get().getContentType(),
-                source.get().getSizeBytes(), source.get().getWidth(), source.get().getHeight(), Instant.now(clock),
-                currentUser.requireCurrentUser().id());
-        covers.save(copy);
-        return Optional.of(assetId);
+        storage.put(key, content, source.getContentType());
+        // The row is built now only to carry the copy's metadata; it belongs to no exam until attach.
+        return new StagedCover(sourceAssetId, new ExamCoverAsset(assetId, null, key, source.getContentType(),
+                source.getSizeBytes(), source.getWidth(), source.getHeight(), Instant.now(clock), null));
+    }
+
+    /** Gives the staged copy its row as a cover of {@code newExamId}. Runs in the transaction that creates that exam. */
+    public UUID attach(StagedCover staged, UUID newExamId) {
+        ExamCoverAsset t = staged.template;
+        covers.save(new ExamCoverAsset(t.getId(), newExamId, t.getObjectKey(), t.getContentType(), t.getSizeBytes(),
+                t.getWidth(), t.getHeight(), t.getCreatedAt(), currentUser.requireCurrentUser().id()));
+        staged.attached = true;
+        return staged.assetId;
+    }
+
+    /** Removes the object of a staged copy that did not become a cover (replay, rollback, refused command). */
+    public void discard(StagedCover staged) {
+        deleteQuietly(staged.template.getObjectKey());
+    }
+
+    private BusinessRuleException coverMissing() {
+        return new BusinessRuleException(ExamErrorCodes.LISTING_INVALID, messages.get(ExamErrorCodes.LISTING_INVALID),
+                List.of(new FieldError("coverAssetId", "COVER_NOT_FOUND", messages.get("EXAM_LISTING_FIELD_COVER_NOT_FOUND"))));
     }
 
     private Optional<Cover> read(ExamCoverAsset asset) {

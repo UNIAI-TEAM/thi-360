@@ -3,6 +3,8 @@ package vn.unicom.thi360.exam.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,10 +53,12 @@ public class ExamListingService {
     private final AppMessages messages;
     private final Clock clock;
     private final ExamCoverService coverService;
+    private final EntityManager entityManager;
 
     public ExamListingService(ExamRepository exams, ExamListingRepository listings, ExamCoverAssetRepository covers,
             ExamListingChecks checks, JdbcTemplate jdbc, ObjectMapper mapper, AuditRecorder audit,
-            CurrentUserProvider currentUser, AppMessages messages, Clock clock, ExamCoverService coverService) {
+            CurrentUserProvider currentUser, AppMessages messages, Clock clock, ExamCoverService coverService,
+            EntityManager entityManager) {
         this.exams = exams;
         this.listings = listings;
         this.covers = covers;
@@ -66,6 +70,7 @@ public class ExamListingService {
         this.messages = messages;
         this.clock = clock;
         this.coverService = coverService;
+        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -117,6 +122,11 @@ public class ExamListingService {
         listings.save(listing);
         exam.changeListing(description, request.coverAssetId(), actor, now);
         exams.saveAndFlush(exam);
+        // The revision is what two editors race on, so every save moves it: not only when the exam row happens to differ
+        // (same editor, same clock instant, only listing columns changed leaves the row clean) (R1-5).
+        if (exam.getRevision() == null || exam.getRevision() == current) {
+            entityManager.lock(exam, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
+        }
         if (request.coverAssetId() != null) covers.clearOrphaned(request.coverAssetId());
         audit.record(AuditEvent.builder("EXAM", "EXAM_LISTING_UPDATED")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
@@ -127,22 +137,40 @@ public class ExamListingService {
     }
 
     /**
-     * Gives a duplicated exam the sale listing and cover of its source (TM 6.2). The cover is copied as a new image
-     * so each exam's cover cleanup acts on its own object. The copy has no published version, hence no {@code published}.
+     * Copies the object of the source exam's cover for a duplicate. Call it outside a transaction (the object store is
+     * slow and must not run under the command's database locks); null when the source has no cover. A cover whose
+     * row or object is gone fails the command instead of dropping the cover.
+     */
+    public ExamCoverService.StagedCover stageCoverCopy(UUID sourceExamId) {
+        UUID cover = exams.findById(sourceExamId).map(Exam::getCoverAssetId).orElse(null);
+        return cover == null ? null : coverService.stageCopy(cover);
+    }
+
+    /** Removes the object of a staged copy that was not used. */
+    public void discardStagedCover(ExamCoverService.StagedCover staged) {
+        coverService.discard(staged);
+    }
+
+    /**
+     * Gives a duplicated exam the sale listing and cover of its source (TM 6.2). The cover is the copy staged before the
+     * transaction as a new image, so each exam's cover cleanup acts on its own object. The copy has no published
+     * version, hence no {@code published}. If the source's cover changed between staging and now, the command fails
+     * with a revision conflict (retry copies the current cover) instead of copying a cover the source no longer has.
      */
     @Transactional
-    public void copyInto(Exam source, Exam copy, UUID actor, Instant now) {
+    public void copyInto(Exam source, Exam copy, UUID actor, Instant now, ExamCoverService.StagedCover staged) {
         listings.findById(source.getId()).ifPresent(original -> {
             ExamListing duplicate = new ExamListing(copy.getId(), now);
             duplicate.copyFrom(original, actor, now);
             listings.save(duplicate);
         });
-        if (source.getCoverAssetId() != null) {
-            coverService.copyForDuplicate(source.getCoverAssetId(), copy.getId()).ifPresent(asset -> {
-                copy.changeListing(copy.getDescription(), asset, actor, now);
-                exams.saveAndFlush(copy);
-            });
+        if (source.getCoverAssetId() == null) return;
+        if (staged == null || !staged.sourceAssetId().equals(source.getCoverAssetId())) {
+            throw new VersionConflictException(ExamErrorCodes.REVISION_CONFLICT, messages.get(ExamErrorCodes.REVISION_CONFLICT));
         }
+        UUID asset = coverService.attach(staged, copy.getId());
+        copy.changeListing(copy.getDescription(), asset, actor, now);
+        exams.saveAndFlush(copy);
     }
 
     private ExamListingResponse response(Exam exam, ExamListing listing) {

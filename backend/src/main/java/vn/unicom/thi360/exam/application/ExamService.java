@@ -20,7 +20,9 @@ import java.util.stream.Stream;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
@@ -115,6 +117,7 @@ public class ExamService {
     private final CombinationLookup combinationLookup;
     private final Clock clock;
     private final ExamListingService listings;
+    private final TransactionTemplate transaction;
     public ExamService(
             ExamRepository examRepository,
             ExamStructureRepository structureRepository,
@@ -135,7 +138,8 @@ public class ExamService {
             ExamStructureProperties structureProperties,
             CombinationLookup combinationLookup,
             Clock clock,
-            ExamListingService listings) {
+            ExamListingService listings,
+            PlatformTransactionManager transactionManager) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -156,6 +160,7 @@ public class ExamService {
         this.combinationLookup = combinationLookup;
         this.clock = clock;
         this.listings = listings;
+        this.transaction = new TransactionTemplate(transactionManager);
     }
     private ExamStructureCodec codec() {
         return new ExamStructureCodec(objectMapper);
@@ -1134,16 +1139,32 @@ public class ExamService {
         }
     }
 
-    /** POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. */
-    @Transactional
+    /**
+     * POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. The cover object is copied
+     * before the transaction opens, so a slow or failing object store cannot hold the command's locks and a missing
+     * cover object fails the command instead of producing a copy without it. The staged object is removed again when
+     * the transaction does not keep it (replayed key, rollback, any failure).
+     */
     public ExamDetailResponse duplicateExam(String idempotencyKey, UUID examId,
             DuplicateExamRequest request) {
-        return idempotentCommand.execute(idempotencyKey, "exam.duplicate", examId.toString(), request,
-                new com.fasterxml.jackson.core.type.TypeReference<ExamDetailResponse>() {},
-                () -> doDuplicate(examId, request));
+        // Without a key the command is refused inside, so nothing is staged for it.
+        ExamCoverService.StagedCover staged = idempotencyKey == null || idempotencyKey.isBlank()
+                ? null : listings.stageCoverCopy(examId);
+        boolean kept = false;
+        try {
+            ExamDetailResponse result = transaction.execute(status -> idempotentCommand.execute(
+                    idempotencyKey, "exam.duplicate", examId.toString(), request,
+                    new com.fasterxml.jackson.core.type.TypeReference<ExamDetailResponse>() {},
+                    () -> doDuplicate(examId, request, staged)));
+            kept = staged != null && staged.attached();
+            return result;
+        } finally {
+            if (staged != null && !kept) listings.discardStagedCover(staged);
+        }
     }
 
-    private ExamDetailResponse doDuplicate(UUID examId, DuplicateExamRequest request) {
+    private ExamDetailResponse doDuplicate(UUID examId, DuplicateExamRequest request,
+            ExamCoverService.StagedCover staged) {
         Exam source = examRepository.findById(examId).orElseThrow(() -> examNotFound(examId));
         Instant now = Instant.now(clock);
         UUID actor = actorId();
@@ -1163,7 +1184,7 @@ public class ExamService {
             throw codeTaken();
         }
         // The sale listing and cover are part of the exam (TM 6.2); the copy has no published version yet.
-        listings.copyInto(source, copy, actor, now);
+        listings.copyInto(source, copy, actor, now, staged);
 
         ExamStructure sourceStructure = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = sourceStructure == null
