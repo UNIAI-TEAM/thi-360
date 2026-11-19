@@ -2,6 +2,7 @@ package vn.unicom.thi360.shared.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +20,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import vn.unicom.thi360.AbstractIntegrationTest;
 
 /**
@@ -102,30 +103,116 @@ class RateLimitPublicPolicyIT extends AbstractIntegrationTest {
         String ip = "198.51.100.31";
         RateLimitFilter filter = publicFilter(defaults());
         int total = 130;
-        ExecutorService pool = Executors.newFixedThreadPool(32);
+        // One thread per caller: all 130 are alive and parked on the barrier before any request starts.
+        ExecutorService pool = Executors.newFixedThreadPool(total);
+        CountDownLatch ready = new CountDownLatch(total);
         CountDownLatch start = new CountDownLatch(1);
-        AtomicInteger passed = new AtomicInteger();
-        AtomicInteger blocked = new AtomicInteger();
+        List<MockHttpServletResponse> responses = new ArrayList<>();
+        long begin;
+        long end;
         try {
-            List<Future<?>> futures = new ArrayList<>();
+            List<Future<MockHttpServletResponse>> futures = new ArrayList<>();
             for (int i = 0; i < total; i++) {
                 futures.add(pool.submit(() -> {
+                    ready.countDown();
                     start.await();
-                    int status = get(filter, PUBLIC_PATH, ip).getStatus();
-                    (status == 200 ? passed : blocked).incrementAndGet();
-                    return null;
+                    return get(filter, PUBLIC_PATH, ip);
                 }));
             }
+            assertThat(ready.await(30, TimeUnit.SECONDS)).as("all callers ready").isTrue();
+            begin = System.nanoTime();
             start.countDown();
-            for (Future<?> future : futures) {
-                future.get(60, TimeUnit.SECONDS);
+            for (Future<MockHttpServletResponse> future : futures) {
+                responses.add(future.get(60, TimeUnit.SECONDS));
             }
+            end = System.nanoTime();
         } finally {
             pool.shutdownNow();
         }
 
-        assertThat(passed.get()).isEqualTo(120);
-        assertThat(blocked.get()).isEqualTo(total - 120);
+        // The burst must fit well inside the 1-minute window, or a refill could hide a broken limit.
+        assertThat(Duration.ofNanos(end - begin)).isLessThan(Duration.ofSeconds(30));
+        // Any status other than 200 or 429 fails the test.
+        assertThat(responses).extracting(MockHttpServletResponse::getStatus)
+                .containsOnly(200, 429);
+        long passed = responses.stream().filter(r -> r.getStatus() == 200).count();
+        List<MockHttpServletResponse> blocked = responses.stream().filter(r -> r.getStatus() == 429).toList();
+        assertThat(passed).isEqualTo(120);
+        assertThat(blocked).hasSize(total - 120);
+        for (MockHttpServletResponse response : blocked) {
+            assertThat(response.getContentAsString()).contains("RATE_LIMITED");
+        }
+    }
+
+    @Test
+    void encodedEquivalentPublicPathSharesTheCanonicalBucket() throws Exception {
+        String ip = "198.51.100.101";
+        RateLimitFilter filter = publicFilter(rateLimit(4, Duration.ofMinutes(1), List.of()));
+
+        assertThat(get(filter, PUBLIC_PATH, ip).getStatus()).isEqualTo(200);
+        assertThat(get(filter, "/api/v1/%70ublic/storefront/products", ip).getStatus()).isEqualTo(200);
+        assertThat(get(filter, "/api/v1/public/storefront/%70roducts", ip).getStatus()).isEqualTo(200);
+        assertThat(get(filter, "/api/v1/public;v=1/storefront/products", ip).getStatus()).isEqualTo(200);
+        assertThat(get(filter, "/api/v1/%70ublic/storefront/products", ip).getStatus()).isEqualTo(429);
+        assertThat(get(filter, PUBLIC_PATH, ip).getStatus()).isEqualTo(429);
+        assertThat(redisTemplate.hasKey(RateLimitFilter.PUBLIC_KEY_PREFIX + ip)).isTrue();
+    }
+
+    @Test
+    void encodedEquivalentIpnIsExemptAndEncodedReturnPathIsLimited() throws Exception {
+        String ip = "198.51.100.102";
+        RateLimitFilter filter = publicFilter(rateLimit(2, Duration.ofMinutes(1), List.of()));
+
+        for (String ipn : List.of(
+                "/api/v1/public/payments/vnpay/%69pn",
+                "/api/v1/%70ublic/payments/vnpay/ipn/",
+                "/api/v1/public/payments/vnpay/ipn;x=1")) {
+            for (int i = 1; i <= 5; i++) {
+                assertThat(get(filter, ipn, ip).getStatus()).as("%s #%d", ipn, i).isEqualTo(200);
+            }
+        }
+        assertThat(redisTemplate.hasKey(RateLimitFilter.PUBLIC_KEY_PREFIX + ip)).isFalse();
+
+        // A sibling path that only looks like the IPN is still an ordinary public path.
+        assertThat(get(filter, "/api/v1/public/payments/vnpay/%72eturn", ip).getStatus()).isEqualTo(200);
+        assertThat(get(filter, RETURN_PATH, ip).getStatus()).isEqualTo(200);
+        assertThat(get(filter, "/api/v1/public/payments/vnpay/%72eturn", ip).getStatus()).isEqualTo(429);
+        assertThat(get(filter, "/api/v1/public/payments/vnpay/ipn/extra", ip).getStatus()).isEqualTo(429);
+    }
+
+    /** Through the real security chain (firewall, filters, MVC): canonical and encoded forms share one counter. */
+    @Test
+    void realChainCountsCanonicalAndEncodedFormsTogether() throws Exception {
+        String ip = "198.51.100.103";
+        for (int i = 1; i <= 60; i++) {
+            assertThat(chainStatus(PUBLIC_PATH, ip)).as("canonical %d", i).isNotEqualTo(429);
+            assertThat(chainStatus("/api/v1/%70ublic/storefront/products", ip))
+                    .as("encoded %d", i).isNotEqualTo(429);
+        }
+        assertThat(chainStatus(PUBLIC_PATH, ip)).isEqualTo(429);
+        assertThat(chainStatus("/api/v1/%70ublic/storefront/products", ip)).isEqualTo(429);
+    }
+
+    @Test
+    void realChainNeverLimitsCanonicalOrEncodedIpn() throws Exception {
+        String ip = "198.51.100.104";
+        for (int i = 1; i <= 130; i++) {
+            assertThat(chainStatus(IPN_PATH, ip)).as("ipn %d", i).isNotEqualTo(429);
+            assertThat(chainStatus("/api/v1/public/payments/vnpay/%69pn", ip)).isNotEqualTo(429);
+        }
+        assertThat(redisTemplate.hasKey(RateLimitFilter.PUBLIC_KEY_PREFIX + ip)).isFalse();
+        for (int i = 1; i <= 120; i++) {
+            assertThat(chainStatus(RETURN_PATH, ip)).isNotEqualTo(429);
+        }
+        assertThat(chainStatus(RETURN_PATH, ip)).isEqualTo(429);
+    }
+
+    private int chainStatus(String rawPath, String remoteAddr) throws Exception {
+        return mockMvc.perform(MockMvcRequestBuilders.get(URI.create(rawPath)).with(request -> {
+                    request.setRemoteAddr(remoteAddr);
+                    return request;
+                }))
+                .andReturn().getResponse().getStatus();
     }
 
     @Test
