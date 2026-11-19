@@ -1034,8 +1034,8 @@ function apportion(rows: Array<{ code: string; value: number }>, unit: string | 
   return floored.map(({ code, count }) => ({ code, count }));
 }
 
-/** Dãy mã dài `total` theo chỉ tiêu của chiều (ví dụ G10×3, G11×20, G12×27); thiếu tổng thì đệm `filler`. */
-function expandCodes(rows: Array<{ code: string; count: number }>, total: number, filler: string | null = "G12"): Array<string | null> {
+/** Dãy mã dài `total` theo chỉ tiêu của chiều (ví dụ G10×3, G11×20, G12×27); thiếu tổng thì đệm `filler` của chính chiều đó. */
+function expandCodes(rows: Array<{ code: string; count: number }>, total: number, filler: string | null): Array<string | null> {
   const result: Array<string | null> = [];
   for (const row of rows) for (let i = 0; i < row.count; i += 1) result.push(row.code);
   while (result.length < total) result.push(rows[0]?.code ?? filler);
@@ -1092,12 +1092,14 @@ export function planQuestionsForSections(structure: Structure, subjectCode: stri
         ? apportion(matrix.cells.map((cell) => ({ code: cell.gradeCode ?? "G12", value: cell.value ?? 0 })), matrix.unit, total)
         : apportion((matrix?.byGrade ?? []).filter((row) => row.value != null).map((row) => ({ code: row.code, value: row.value ?? 0 })), matrix?.unit, total),
       total,
+      "G12",
     );
     const difficulties = expandCodes(
       matrix?.mode === "COMBINED" && matrix.cells?.length
         ? apportion(matrix.cells.map((cell) => ({ code: cell.difficultyCode ?? "TH", value: cell.value ?? 0 })), matrix.unit, total)
         : apportion((matrix?.byDifficulty ?? []).filter((row) => row.value != null).map((row) => ({ code: row.code, value: row.value ?? 0 })), matrix?.unit, total),
       total,
+      "TH",
     );
     const competencyRows = (section.blocks ?? []).flatMap((block) =>
       (block.matrix?.byCompetency ?? []).filter((row) => row.value != null).map((row) => ({ code: row.code, value: row.value ?? 0 })));
@@ -1113,6 +1115,7 @@ export function planQuestionsForSections(structure: Structure, subjectCode: stri
         total,
       ),
       total,
+      "SINGLE_CHOICE",
     );
     const sectionTopicNodes = (section.topicQuotas ?? []).flatMap((quota) => quota.nodeIds ?? []);
     const remain = { units: total };
