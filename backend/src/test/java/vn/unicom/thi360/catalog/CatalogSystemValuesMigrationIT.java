@@ -7,12 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Objects;
 import javax.sql.DataSource;
-import org.flywaydb.core.Flyway;
-import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
@@ -43,7 +38,6 @@ import vn.unicom.thi360.shared.security.TestSecurity;
 @Import({CatalogSystemValuesMigrationIT.PreparedRows.class, TestSecurity.class})
 class CatalogSystemValuesMigrationIT {
 
-    private static final String MIGRATION_VERSION = "202611191730";
     private static final String MIGRATION_SCRIPT = "db/migration/catalog/V202611191730__catalog_system_values.sql";
     private static final String CATALOG_SEED = "db/devdata/R__seed_catalog_dev_data.sql";
 
@@ -103,19 +97,7 @@ class CatalogSystemValuesMigrationIT {
         FlywayMigrationStrategy migrateInTwoSteps() {
             return flyway -> {
                 DataSource dataSource = flyway.getConfiguration().getDataSource();
-                var base = Flyway.configure().dataSource(dataSource).defaultSchema("shared")
-                        .schemas("shared", "identity", "catalog", "audit", "classroom", "questionbank", "exam")
-                        .placeholders(flyway.getConfiguration().getPlaceholders())
-                        .locations("classpath:db/migration");
-                MigrationVersion ours = MigrationVersion.fromVersion(MIGRATION_VERSION);
-                // The newest versioned migration that sorts before ours, whatever lands next to it later.
-                MigrationVersion before = Arrays.stream(base.load().info().all())
-                        .map(info -> info.getVersion())
-                        .filter(Objects::nonNull)
-                        .filter(version -> version.compareTo(ours) < 0)
-                        .max(Comparator.naturalOrder())
-                        .orElseThrow();
-                base.target(before).load().migrate();
+                CatalogUpgradeSupport.migrateUpToBeforeSystemValues(dataSource, flyway.getConfiguration().getPlaceholders());
                 JdbcTemplate db = new JdbcTemplate(dataSource);
                 db.execute(
                         "INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi,"
