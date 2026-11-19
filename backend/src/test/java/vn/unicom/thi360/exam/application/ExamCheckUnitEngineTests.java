@@ -55,7 +55,7 @@ class ExamCheckUnitEngineTests {
         var engine = spy(new ExamCheckUnitEngine(store,
                 new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock));
         var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog, source, org.mockito.Mockito.mock(vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.class), engine, new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
-        var exam = new Exam(UUID.randomUUID(), "UNIT", "Unit", null, "FULL", "SHARED", null,
+        var exam = new Exam(UUID.randomUUID(), "UNIT", "Unit", null, "FULL", "SHARED", 60,
                 null, "RAW", clock.instant(), UUID.randomUUID());
         exam.applyStructureSummary(2, false, false, 0);
         var config = mapper.valueToTree(ExamCheckFingerprint.Config.from(exam));
@@ -154,7 +154,7 @@ class ExamCheckUnitEngineTests {
         var builder = new SolverInputBuilder(catalog, source, limits);
         var engine = new ExamCheckUnitEngine(store, fingerprints, catalog, mapper, limits, clock);
         var checker = new DefaultExamChecker(builder, limits, clock, mapper, catalog, source, org.mockito.Mockito.mock(vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.class), engine, new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
-        var exam = new Exam(UUID.randomUUID(), "CODES", "Codes", null, "FULL", "SHARED", null,
+        var exam = new Exam(UUID.randomUUID(), "CODES", "Codes", null, "FULL", "SHARED", 60,
                 null, "RAW", clock.instant(), UUID.randomUUID());
         exam.applyStructureSummary(1, false, false, 0);
         var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",

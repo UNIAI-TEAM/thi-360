@@ -200,7 +200,7 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
         single(subject, asset(true), 3, UUID.fromString("00000000-0000-7000-8000-000000000003"));
         single(subject, asset(true), 2, UUID.fromString("00000000-0000-7000-8000-000000000005"));
         UUID exam = UUID.randomUUID();
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) VALUES (?,?,?,'Attachment','FULL','SHARED',3)",
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count,duration_minutes) VALUES (?,?,?,'Attachment','FULL','SHARED',3,60)",
                 exam, exam.toString(), exam.toString());
         String document = "{\"parts\":[{\"id\":\"p\",\"questionCount\":3,\"participation\":{\"mode\":\"CHOICE\",\"choose\":1},"
                 + "\"sections\":[" + section("shared", code, 1, "bs", null) + "],\"options\":["
@@ -310,7 +310,7 @@ class ExamAttachmentCheckIT extends AbstractIntegrationTest {
     private UUID exam(UUID subject, int count, String block) {
         String code = jdbc.queryForObject("SELECT code FROM catalog.catalog_item WHERE id = ?", String.class, subject);
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) VALUES (?,?,?,'Attachment','FULL','SHARED',?)",
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count,duration_minutes) VALUES (?,?,?,'Attachment','FULL','SHARED',?,60)",
                 id, id.toString(), id.toString(), count);
         String document = "{\"parts\":[{\"id\":\"p\",\"questionCount\":" + count + ",\"sections\":[{\"id\":\"s\",\"subjectCode\":\""
                 + code + "\",\"questionCount\":" + count + ",\"blocks\":[" + block + "]}]}]}";

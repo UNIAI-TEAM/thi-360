@@ -124,7 +124,10 @@ public final class ExamCheckRules {
         List<ObjectNode> found = new ArrayList<>();
         if (document.parts().isEmpty() || exam.getName() == null || exam.getName().isBlank()
                 || exam.getCode() == null || exam.getCode().isBlank()
-                || ("PART".equals(exam.getScope()) && (exam.getPartCode() == null || exam.getPartCode().isBlank()))) {
+                || ("PART".equals(exam.getScope()) && (exam.getPartCode() == null || exam.getPartCode().isBlank()))
+                // UNI-2699: a SHARED exam needs a positive exam clock; a bad stored clock blocks publish.
+                || ("SHARED".equals(exam.getTiming())
+                        && (exam.getDurationMinutes() == null || exam.getDurationMinutes() <= 0))) {
             found.add(issue("INFO_MISSING", "INFO", null, null, null));
         }
         if (exam.getStructureYear() != null && exam.getMatrixYear() != null

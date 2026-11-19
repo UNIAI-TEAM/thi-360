@@ -72,8 +72,8 @@ class SubjectMatrixCheckIT extends AbstractIntegrationTest {
 
     private UUID exam(String document, int count) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count) "
-                + "VALUES (?,?,?,'Subject checks','FULL','SHARED',?)", id, id.toString(), id.toString(), count);
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'Subject checks','FULL','SHARED',?,60)", id, id.toString(), id.toString(), count);
         jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,?)", id, document, id.toString());
         return id;
     }
