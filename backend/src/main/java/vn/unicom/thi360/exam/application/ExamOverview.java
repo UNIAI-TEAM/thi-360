@@ -83,11 +83,13 @@ final class ExamOverview {
 
     /**
      * The printed count of a FIXED (ALL) part follows an overview count that grows past it; a smaller count and
-     * every non-FIXED part keep the stored value, as before.
+     * every non-FIXED part (CHOICE, or coded with a codeSource) keep the stored value, as before.
      */
     private static Integer onPaper(ExamPart part, boolean countChanged, Integer count) {
         Integer onPaper = part.questionCountOnPaper();
-        boolean fixed = part.participation() == null || part.participation().mode() != ParticipationMode.CHOICE;
+        // A coded (QDA/BCA) part is stored as ALL but its catalog choice paths decide the printed count.
+        boolean fixed = part.codeSource() == null
+                && (part.participation() == null || part.participation().mode() != ParticipationMode.CHOICE);
         return countChanged && fixed && onPaper != null && count != null && onPaper < count ? count : onPaper;
     }
 
