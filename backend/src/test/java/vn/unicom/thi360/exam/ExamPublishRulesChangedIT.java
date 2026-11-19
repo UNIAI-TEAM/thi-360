@@ -137,6 +137,33 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         assertThat(servedState(exam)).isEqualTo(served);
     }
 
+    /**
+     * R1-12: a whole-exam run that never evaluated the paths against the rules cannot vouch for them. It neither
+     * clears RULES_CHANGED on an old result nor drops the stamp of a current one; a completed run still stamps.
+     */
+    @Test
+    void incompleteWholeRunDoesNotStamp() throws Exception {
+        ExamCheckScope whole = ExamCheckScope.from(null, null, null);
+        UUID exam = newExam("QDA", QDA_SCIENCE);
+        saveOldCheck(exam, paths("codes:QD01=VALID", "codes:QD02=VALID"));
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD01");
+
+        completeCheck(exam, paths("codes:QD01=INVALID", "codes:QD02=INVALID"), whole, false);
+        assertThat(stamp(exam)).isNull();
+        assertThat(latestReason(exam)).isEqualTo("RULES_CHANGED");
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD01");
+
+        completeCheck(exam, paths("codes:QD01=VALID", "codes:QD02=INVALID"), whole, true);
+        assertThat(stamp(exam)).isEqualTo("FTM_R12");
+        assertThat(latestReason(exam)).isNull();
+
+        // An incomplete run after a current one keeps the current stamp: the exam is not asked to recheck for rules.
+        completeCheck(exam, paths("codes:QD01=INVALID", "codes:QD02=INVALID"), whole, false);
+        assertThat(stamp(exam)).isEqualTo("FTM_R12");
+        assertThat(latestReason(exam)).isNull();
+        assertThat(latest("/api/v1/admin/exams/" + exam).path("status").asText()).isEqualTo("INVALID");
+    }
+
     // ---- not affected -------------------------------------------------------------------------------------
 
     @Test
@@ -240,8 +267,15 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
                 + "ORDER BY version_no) FROM exam.exam_version WHERE exam_id = ?", String.class, exam);
     }
 
-    /** Saves a check the way production does: through {@link ExamCheckCompletion}, which stamps whole-exam results only. */
     private void completeCheck(UUID examId, Map<String, String> pathResults, ExamCheckScope scope) {
+        completeCheck(examId, pathResults, scope, true);
+    }
+
+    /**
+     * Saves a check the way production does: through {@link ExamCheckCompletion}, which stamps whole-exam results only.
+     * {@code rulesEvaluated = false} is a run whose checker never evaluated the paths (spent budget, path limit).
+     */
+    private void completeCheck(UUID examId, Map<String, String> pathResults, ExamCheckScope scope, boolean rulesEvaluated) {
         entityManager.flush();
         entityManager.clear();
         var exam = exams.findById(examId).orElseThrow();
@@ -263,7 +297,7 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
                     .addObject().put("questionId", question().toString()).put("versionNo", 1);
         }
         outcome.put("status", allValid ? "VALID" : "INVALID").put("issueCount", 0);
-        var done = completion.complete(input, null, outcome, witnesses, List.of(), scope, Instant.now(), 1,
+        var done = completion.complete(input, null, outcome, witnesses, List.of(), rulesEvaluated, scope, Instant.now(), 1,
                 new ExamCheckCompletion.Actor(UUID.randomUUID(), "tester", AuditActorType.SYSTEM), "trace-test");
         assertThat(done.accepted()).isTrue();
         entityManager.clear();

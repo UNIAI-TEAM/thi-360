@@ -213,8 +213,7 @@ public class DefaultExamChecker implements ExamChecker {
                     var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), null,
                             new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
                             deadline, budget, common, rules::path);
-                    return new Evaluation(evaluation.result(), evaluation.witness(),
-                            units.invalidUnits(snapshot, input, scope, related));
+                    return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, related));
                 }
             } catch (ExamCheckUnitPlanner.TooManyPaths | ExamCheckUnitPlanner.TooManyChoiceSubjects ignored) {
                 // The unit engine reports the solver limit without attempting these units.
@@ -249,8 +248,7 @@ public class DefaultExamChecker implements ExamChecker {
             }
         }
         var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
-        return new Evaluation(evaluation.result(), evaluation.witness(),
-                markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
+        return evaluation.withUnits(markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
     }
 
     private static List<ExamCheckRules.FilterEvidence> filterEvidence(PathResult result, ExamStructureDocument document,
@@ -373,8 +371,7 @@ public class DefaultExamChecker implements ExamChecker {
                 maskInvalidOptions(ExamCheckDraftInputs.maskSections(snapshot.structure(), sections), options), parts);
         try {
             var input = builder.build(snapshot.exam().getKindItemId(), document);
-            return new Evaluation(evaluation.result(), evaluation.witness(),
-                    units.invalidUnits(snapshot, input, scope, common));
+            return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, common));
         } catch (IllegalArgumentException | ExamCheckUnitPlanner.TooManyPaths
                 | ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {
             // A draft without a representable unit is reflected directly by structural section states.

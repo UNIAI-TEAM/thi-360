@@ -639,7 +639,27 @@ class ExamCheckerTests {
         }
     }
 
+    /** CR-4 R1-12: only a check that reached the paths vouches for the rules; a spent budget must not. */
+    @Test
+    void checkWithoutEvaluatedPathsDoesNotVouchForTheRules() throws Exception {
+        Exam exam = exam(1, BigDecimal.ONE, "RAW");
+        subject("MATH", 1);
+        ExamStructureDocument document = document(singleStructure(1, "1", null));
+        var complete = check(exam, document);
+        assertThat(complete.rulesEvaluated()).isTrue();
+        assertThat(complete.result().path("paths")).isNotEmpty();
+
+        var spent = check(exam, document, clock.instant());
+        assertThat(spent.rulesEvaluated()).isFalse();
+        assertThat(spent.result().path("paths")).isEmpty();
+        assertThat(spent.result().path("status").asText()).isEqualTo("INVALID");
+    }
+
     private ExamChecker.Evaluation check(Exam exam, ExamStructureDocument document) {
+        return check(exam, document, clock.instant().plusSeconds(30));
+    }
+
+    private ExamChecker.Evaluation check(Exam exam, ExamStructureDocument document, Instant deadline) {
         when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
         when(catalog.findActiveItem(eq("SUBJECT"), any())).thenAnswer(invocation -> {
             UUID id = subjects.get(invocation.getArgument(1));
@@ -659,7 +679,7 @@ class ExamCheckerTests {
         var input = new ExamCheckResultStore.Input(exam.getId(), exam.getRevision() == null ? 0 : exam.getRevision(), "hash",
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, catalog.revision(), "hash", mapper.createObjectNode());
         return checker.check(new ExamCheckSnapshotReader.Snapshot(exam, document, input, null),
-                clock.instant().plusSeconds(30), Duration.ofSeconds(30), ExamCheckScope.from(null, null, null));
+                deadline, Duration.ofSeconds(30), ExamCheckScope.from(null, null, null));
     }
 
     private Exam exam(int count, BigDecimal max, String scoring) {

@@ -105,7 +105,7 @@ final class ExamCheckAssembler {
         result.set("totalPoints", paths.isEmpty() ? mapper.valueToTree(BigDecimal.ZERO) : paths.get(0).path("totalPoints"));
         result.put("printedQuestions", document.parts().stream().mapToInt(ExamCheckAssembler::printedQuestions).sum());
         if (exam.getMaxScore() == null) result.putNull("maxScore"); else result.put("maxScore", exam.getMaxScore());
-        return new ExamChecker.Evaluation(result, witnesses, List.of());
+        return new ExamChecker.Evaluation(result, witnesses, List.of(), outcome.reason() == null);
     }
 
     private static int printedQuestions(ExamPart part) {
