@@ -184,6 +184,101 @@ class PaperGenerationChoiceIT extends PaperGenerationBaseIT {
         verify(sourceSpy, never()).findCandidates(any(), anyInt());
     }
 
+    /** PA offers M or P and PB offers M or C: the two parts share M, and a part's pick is its own. */
+    private String overlappingPools(Subject m, Subject p, Subject c) {
+        return """
+                {"parts":[
+                 {"id":"pa","order":1,"name":"PA","questionCount":2,"participation":{"mode":"CHOICE","choose":1},
+                  "sections":[],"options":[
+                   {"id":"sa","kind":"SUBJECT_CHOICE","code":"SA","chooseSubjects":1,"countsByPick":[2],"sections":[
+                     {"id":"sa1","subjectCode":"%s","choiceGroup":"NATURAL",
+                      "blocks":[{"id":"ba1","questionType":"SINGLE_CHOICE","questionCount":2}]},
+                     {"id":"sa2","subjectCode":"%s","choiceGroup":"NATURAL",
+                      "blocks":[{"id":"ba2","questionType":"SINGLE_CHOICE","questionCount":2}]}]}]},
+                 {"id":"pb","order":2,"name":"PB","questionCount":2,"participation":{"mode":"CHOICE","choose":1},
+                  "sections":[],"options":[
+                   {"id":"sb","kind":"SUBJECT_CHOICE","code":"SB","chooseSubjects":1,"countsByPick":[2],"sections":[
+                     {"id":"sb1","subjectCode":"%s","choiceGroup":"NATURAL",
+                      "blocks":[{"id":"bb1","questionType":"SINGLE_CHOICE","questionCount":2}]},
+                     {"id":"sb2","subjectCode":"%s","choiceGroup":"NATURAL",
+                      "blocks":[{"id":"bb2","questionType":"SINGLE_CHOICE","questionCount":2}]}]}]}]}
+                """.formatted(m.code(), p.code(), m.code(), c.code());
+    }
+
+    @Test
+    void partsThatOfferTheSameSubjectKeepTheirOwnPick() throws Exception {
+        Subject m = pool(), p = pool(), c = pool();
+        Published published = insertVersion(overlappingPools(m, p, c), null, "sa+sb");
+        List<String> both = List.of("pa", "pb");
+
+        // PA takes M, PB takes C: M is offered by both parts but only PA chose it.
+        GeneratedPaper split = port.generate(published.examId(), 1, both, List.of(
+                Selection.subjects("pa", "SA", List.of(m.code())),
+                Selection.subjects("pb", "SB", List.of(c.code()))), 5L, Set.of());
+        assertThat(part(split, "pa").sections()).extracting(s -> s.subjectCode()).containsExactly(m.code());
+        assertThat(part(split, "pb").sections()).extracting(s -> s.subjectCode()).containsExactly(c.code());
+        assertThat(roots(split)).hasSize(4).doesNotHaveDuplicates();
+
+        // The other way round, and both parts on the shared subject.
+        GeneratedPaper swapped = port.generate(published.examId(), 1, both, List.of(
+                Selection.subjects("pa", "SA", List.of(p.code())),
+                Selection.subjects("pb", "SB", List.of(m.code()))), 5L, Set.of());
+        assertThat(part(swapped, "pa").sections()).extracting(s -> s.subjectCode()).containsExactly(p.code());
+        assertThat(part(swapped, "pb").sections()).extracting(s -> s.subjectCode()).containsExactly(m.code());
+        GeneratedPaper shared = port.generate(published.examId(), 1, both, List.of(
+                Selection.subjects("pa", "SA", List.of(m.code())),
+                Selection.subjects("pb", "SB", List.of(m.code()))), 5L, Set.of());
+        assertThat(roots(shared)).hasSize(4).doesNotHaveDuplicates();
+
+        // A subject a part does not offer is still refused before any source read.
+        clearInvocations(sourceSpy);
+        refusedPair(published, both, Selection.subjects("pa", "SA", List.of(c.code())),
+                Selection.subjects("pb", "SB", List.of(m.code())));
+        verify(sourceSpy, never()).findCandidates(any(), anyInt());
+    }
+
+    /** PA = OA or OB and PB = OX or OY; the version published OA+OX and OB+OY only. */
+    private String twoByTwo(Subject a, Subject b, Subject x, Subject y) {
+        return """
+                {"parts":[
+                 {"id":"pa","order":1,"name":"PA","questionCount":2,"participation":{"mode":"CHOICE","choose":1},
+                  "sections":[],"options":[%s,%s]},
+                 {"id":"pb","order":2,"name":"PB","questionCount":2,"participation":{"mode":"CHOICE","choose":1},
+                  "sections":[],"options":[%s,%s]}]}
+                """.formatted(normalOption("oa", a), normalOption("ob", b), normalOption("ox", x),
+                normalOption("oy", y));
+    }
+
+    private static String normalOption(String id, Subject subject) {
+        return """
+                {"id":"%s","kind":"SUBJECT","code":"%s","sections":[
+                  {"id":"%s1","subjectCode":"%s","questionCount":2,
+                   "blocks":[{"id":"b%s1","questionType":"SINGLE_CHOICE","questionCount":2}]}]}
+                """.formatted(id, id.toUpperCase(), id, subject.code(), id);
+    }
+
+    @Test
+    void optionsOfDifferentPathsOfOneVersionAreNotCombined() throws Exception {
+        Subject a = pool(), b = pool(), x = pool(), y = pool();
+        Published published = insertVersion(twoByTwo(a, b, x, y), null, "oa+ox", "ob+oy");
+        List<String> both = List.of("pa", "pb");
+
+        // OA and OY are each published, but never together: refused before any source read.
+        clearInvocations(sourceSpy);
+        refusedPair(published, both, Selection.option("pa", "OA"), Selection.option("pb", "OY"));
+        refusedPair(published, both, Selection.option("pa", "OB"), Selection.option("pb", "OX"));
+        verify(sourceSpy, never()).findCandidates(any(), anyInt());
+
+        GeneratedPaper first = port.generate(published.examId(), 1, both,
+                List.of(Selection.option("pa", "OA"), Selection.option("pb", "OX")), 5L, Set.of());
+        assertThat(part(first, "pa").sections()).extracting(s -> s.subjectCode()).containsExactly(a.code());
+        assertThat(part(first, "pb").sections()).extracting(s -> s.subjectCode()).containsExactly(x.code());
+        GeneratedPaper second = port.generate(published.examId(), 1, both,
+                List.of(Selection.option("pa", "OB"), Selection.option("pb", "OY")), 5L, Set.of());
+        assertThat(part(second, "pa").sections()).extracting(s -> s.subjectCode()).containsExactly(b.code());
+        assertThat(part(second, "pb").sections()).extracting(s -> s.subjectCode()).containsExactly(y.code());
+    }
+
     private void refusedPair(Published published, List<String> parts, Selection first, Selection second) {
         refused(() -> port.generate(published.examId(), 1, parts, List.of(first, second), 5L, Set.of()));
     }

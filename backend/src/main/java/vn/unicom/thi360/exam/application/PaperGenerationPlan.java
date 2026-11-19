@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,9 +36,11 @@ final class PaperGenerationPlan {
      *                     never built (an unchosen option may be unpublished or incomplete)
      * @param partIds      ids of the requested parts, in structure order
      * @param pathId       chosen option ids joined as the resolver reads them, or {@code default}
-     * @param subjectCodes chosen subjects of every chosen subject-choice option, validated per selection
+     * @param subjectsByOption chosen subjects of each chosen subject-choice option, keyed by option id and validated
+     *                     per selection: two parts that offer the same subject do not share a pick
      */
-    record Plan(ExamStructureDocument document, List<String> partIds, String pathId, List<String> subjectCodes) {}
+    record Plan(ExamStructureDocument document, List<String> partIds, String pathId,
+            Map<String, List<String>> subjectsByOption) {}
 
     private PaperGenerationPlan() {}
 
@@ -69,7 +72,7 @@ final class PaperGenerationPlan {
         List<ExamPart> parts = new ArrayList<>();
         List<String> partIds = new ArrayList<>();
         List<String> optionIds = new ArrayList<>();
-        List<String> subjectCodes = new ArrayList<>();
+        Map<String, List<String>> subjectsByOption = new LinkedHashMap<>();
         for (ExamPart part : document.parts().stream().sorted(Comparator.comparing(ExamPart::order,
                 Comparator.nullsLast(Comparator.naturalOrder()))).toList()) {
             if (!requested.contains(part.id())) continue;
@@ -82,7 +85,7 @@ final class PaperGenerationPlan {
             }
             if (selection == null) throw failed("part " + part.id() + " needs a selection");
             List<ExamPartOption> chosen = chosenOptions(part, selection);
-            subjectCodes.addAll(subjectCodes(part, chosen, selection));
+            subjectsByOption.putAll(subjectCodes(part, chosen, selection));
             Set<String> chosenIds = new HashSet<>();
             chosen.forEach(option -> {
                 chosenIds.add(option.id());
@@ -92,7 +95,7 @@ final class PaperGenerationPlan {
         }
         requirePublished(optionIds, publishedPathIds);
         return new Plan(new ExamStructureDocument(parts, document.examQuotas()), List.copyOf(partIds),
-                optionIds.isEmpty() ? "default" : String.join("+", optionIds), List.copyOf(subjectCodes));
+                optionIds.isEmpty() ? "default" : String.join("+", optionIds), Map.copyOf(subjectsByOption));
     }
 
     private static boolean isChoice(ExamPart part) {
@@ -120,11 +123,13 @@ final class PaperGenerationPlan {
     }
 
     /**
-     * The subjects of one selection. They must be distinct, belong to exactly one chosen subject-choice option of the
-     * same part, and fill each such option to its {@code chooseSubjects}; a part with no such option takes none. The
-     * shared resolver only sees the union over all parts, so it would reassign a subject to whichever part owns it.
+     * The subjects of one selection, by the option that chose them. They must be distinct, belong to exactly one
+     * chosen subject-choice option of the same part, and fill each such option to its {@code chooseSubjects}; a part
+     * with no such option takes none. Ownership is decided per part, so a subject that another part also offers
+     * stays with the option that chose it.
      */
-    private static List<String> subjectCodes(ExamPart part, List<ExamPartOption> chosen, Selection selection) {
+    private static Map<String, List<String>> subjectCodes(ExamPart part, List<ExamPartOption> chosen,
+            Selection selection) {
         List<String> codes = selection.subjectCodes();
         Set<String> distinct = new HashSet<>();
         for (String code : codes) {
@@ -134,9 +139,10 @@ final class PaperGenerationPlan {
         List<ExamPartOption> choices = chosen.stream().filter(option -> option.kind() == OptionKind.SUBJECT_CHOICE).toList();
         if (choices.isEmpty()) {
             if (!codes.isEmpty()) throw failed("part " + part.id() + " takes no subjects");
-            return List.of();
+            return Map.of();
         }
-        int[] received = new int[choices.size()];
+        List<List<String>> received = new ArrayList<>();
+        for (int i = 0; i < choices.size(); i++) received.add(new ArrayList<>());
         for (String code : codes) {
             int owner = -1;
             for (int i = 0; i < choices.size(); i++) {
@@ -146,16 +152,19 @@ final class PaperGenerationPlan {
                 }
             }
             if (owner < 0) throw failed("subject " + code + " is not in the choice of part " + part.id());
-            received[owner]++;
+            received.get(owner).add(code);
         }
         for (int i = 0; i < choices.size(); i++) {
             Integer wanted = choices.get(i).chooseSubjects();
             if (wanted == null || wanted < 1) throw failed("option " + choices.get(i).id() + " has no subject count");
-            if (received[i] != wanted) {
-                throw failed("option " + choices.get(i).id() + " needs " + wanted + " subject(s), got " + received[i]);
+            if (received.get(i).size() != wanted) {
+                throw failed("option " + choices.get(i).id() + " needs " + wanted + " subject(s), got "
+                        + received.get(i).size());
             }
         }
-        return codes;
+        Map<String, List<String>> byOption = new LinkedHashMap<>();
+        for (int i = 0; i < choices.size(); i++) byOption.put(choices.get(i).id(), List.copyOf(received.get(i)));
+        return byOption;
     }
 
     /** The part with every option but the chosen ones emptied: an option nobody chose is not built or solved. */

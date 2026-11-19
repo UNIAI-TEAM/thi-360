@@ -60,6 +60,11 @@ public class PaperGenerationService implements PaperSolverPort {
         } catch (PaperGenerationException ex) {
             throw ex;
         } catch (RuntimeException ex) {
+            // An infrastructure failure after the deadline is the deadline's doing (a read cut short by the clock).
+            if (!clock.instant().isBefore(deadline)) {
+                throw new PaperGenerationException(Reason.GENERATION_TIMEOUT,
+                        "Generation ran past its deadline: " + ex.getClass().getSimpleName(), ex);
+            }
             throw new PaperGenerationException(Reason.GENERATION_FAILED,
                     "Generation failed: " + ex.getClass().getSimpleName(), ex);
         }
@@ -94,7 +99,7 @@ public class PaperGenerationService implements PaperSolverPort {
                     properties.limits(remaining(deadline)));
             requireTime(deadline, "in the build");
             resolved = PreviewPathResolver.resolve(plan.document(), input.parts(), plan.pathId(),
-                    plan.subjectCodes(), seed, solvers.get().allocator());
+                    plan.subjectsByOption(), seed, solvers.get().allocator());
         } catch (IllegalArgumentException | NotFoundException | BusinessRuleException ex) {
             requireTime(deadline, "in the build");
             throw PaperGenerationPlan.failed("selection or structure is not valid: " + ex.getMessage());

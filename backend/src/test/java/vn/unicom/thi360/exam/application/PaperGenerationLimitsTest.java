@@ -22,9 +22,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
+import org.springframework.dao.QueryTimeoutException;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.catalog.spi.CatalogStatus;
@@ -158,6 +160,47 @@ class PaperGenerationLimitsTest {
                         ex -> assertThat(ex.reason()).isEqualTo(Reason.GENERATION_TIMEOUT));
     }
 
+    /** A read that crosses the deadline and then fails (a JDBC query timeout) is the deadline's doing. */
+    @Test
+    void aReadThatFailsPastTheDeadlineIsATimeoutAndOneWithinItAFailure() throws Exception {
+        SteppingClock late = new SteppingClock(START);
+        QuestionSourcePort slow = failingSource(late, Duration.ofSeconds(40));
+        PaperSolverPort pastDeadline = service(slow, THIRTY, late, PARTS, Duration.ZERO, "TOAN");
+        assertThatThrownBy(() -> pastDeadline.generate(EXAM, 1, List.of("p1"), List.of(), 7L, Set.of()))
+                .isInstanceOfSatisfying(PaperGenerationException.class,
+                        ex -> assertThat(ex.reason()).isEqualTo(Reason.GENERATION_TIMEOUT));
+        verify(slow).findCandidates(any(), anyInt());
+
+        // The same failure with 10 s of the 30 s spent is an ordinary failure.
+        SteppingClock inTime = new SteppingClock(START);
+        PaperSolverPort withinBudget = service(failingSource(inTime, Duration.ofSeconds(10)), THIRTY, inTime, PARTS,
+                Duration.ZERO, "TOAN");
+        assertThatThrownBy(() -> withinBudget.generate(EXAM, 1, List.of("p1"), List.of(), 7L, Set.of()))
+                .isInstanceOfSatisfying(PaperGenerationException.class,
+                        ex -> assertThat(ex.reason()).isEqualTo(Reason.GENERATION_FAILED));
+    }
+
+    /** The solve returns VALID in time; building the paper from it is what takes too long. */
+    @Test
+    void aPaperThatLeavesTheAssemblyPastTheDeadlineIsATimeoutAndOneWithinItIsReturned() throws Exception {
+        SteppingClock late = new SteppingClock(START);
+        AtomicBoolean lateAssembled = new AtomicBoolean();
+        PaperSolverPort slow = service(assemblySource(late, Duration.ofSeconds(40), lateAssembled), THIRTY, late, PARTS,
+                Duration.ZERO, "TOAN");
+        assertThatThrownBy(() -> slow.generate(EXAM, 1, List.of("p1"), List.of(), 7L, Set.of()))
+                .isInstanceOfSatisfying(PaperGenerationException.class,
+                        ex -> assertThat(ex.reason()).isEqualTo(Reason.GENERATION_TIMEOUT));
+        assertThat(lateAssembled).isTrue();
+
+        // Identical, but the assembly costs 5 s of the 30 s: the paper is returned.
+        SteppingClock inTime = new SteppingClock(START);
+        AtomicBoolean assembled = new AtomicBoolean();
+        PaperSolverPort fast = service(assemblySource(inTime, Duration.ofSeconds(5), assembled), THIRTY, inTime, PARTS,
+                Duration.ZERO, "TOAN");
+        assertThat(fast.generate(EXAM, 1, List.of("p1"), List.of(), 7L, Set.of()).parts()).hasSize(1);
+        assertThat(assembled).isTrue();
+    }
+
     private PaperSolverPort service(QuestionSourcePort source, ExamGenerationSolverProperties limits) throws Exception {
         return service(source, limits, clock, PARTS, Duration.ZERO, "TOAN");
     }
@@ -210,6 +253,40 @@ class PaperGenerationLimitsTest {
             }
             return candidates(otherCount);
         });
+        return source;
+    }
+
+    /** A source whose read costs {@code delay} on the clock and then fails as a JDBC query timeout would. */
+    private static QuestionSourcePort failingSource(SteppingClock clock, Duration delay) {
+        QuestionSourcePort source = mock(QuestionSourcePort.class);
+        when(source.findCandidates(any(), anyInt())).thenAnswer(call -> {
+            clock.advance(delay);
+            throw new QueryTimeoutException("statement timed out");
+        });
+        return source;
+    }
+
+    /**
+     * A source that answers at once with one valid candidate whose units cost {@code cost} on the clock the first
+     * time the assembler reads them: the solve is in time, only the paper's materialization is slow.
+     */
+    private static QuestionSourcePort assemblySource(SteppingClock clock, Duration cost, AtomicBoolean touched) {
+        QuestionSourcePort source = mock(QuestionSourcePort.class);
+        UUID id = UUID.randomUUID();
+        QuestionSourcePort.Unit unit = new QuestionSourcePort.Unit(id, null, QuestionType.SINGLE_CHOICE, null, null,
+                List.of(), List.of(), BigDecimal.ONE);
+        List<QuestionSourcePort.Unit> units = new java.util.AbstractList<>() {
+            @Override public QuestionSourcePort.Unit get(int index) { return unit; }
+
+            @Override public int size() {
+                boolean assembling = StackWalker.getInstance().walk(frames -> frames
+                        .anyMatch(frame -> frame.getClassName().endsWith("PaperGenerationAssembler")));
+                if (assembling && touched.compareAndSet(false, true)) clock.advance(cost);
+                return 1;
+            }
+        };
+        QuestionSourcePort.Candidate candidate = new QuestionSourcePort.Candidate(id, 1, null, units, null, null);
+        when(source.findCandidates(any(), anyInt())).thenReturn(List.of(candidate));
         return source;
     }
 
