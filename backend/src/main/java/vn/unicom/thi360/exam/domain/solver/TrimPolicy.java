@@ -10,7 +10,20 @@ import java.util.Random;
 public final class TrimPolicy {
     private TrimPolicy() {}
 
-    public record Result(SubjectWitness witness, QuestionPick droppedQuestion) {}
+    /**
+     * {@code witness}/{@code droppedQuestion} are null when {@code blockedBy} says the subject cannot lose a question:
+     * every standalone drop would break a topic minimum (a MAPID rule among them). {@code blockedBy} names the first
+     * broken minimum and may be null when the break is only visible to the assignment, not to a plain count.
+     */
+    public record Result(SubjectWitness witness, QuestionPick droppedQuestion, QuotaRef blockedBy) {
+        Result(SubjectWitness witness, QuestionPick droppedQuestion) {
+            this(witness, droppedQuestion, null);
+        }
+
+        public boolean blocked() {
+            return witness == null;
+        }
+    }
 
     public static Result trim(SectionOnPath section, SubjectWitness witness,
             CandidateSource source, long seed) {
@@ -38,6 +51,7 @@ public final class TrimPolicy {
         boolean preserveFill = "NATURAL".equals(section.choiceGroup())
                 && section.subjectQuota().answerQuotas() != null && fillCount == 1;
         List<QuestionPick> eligible = new ArrayList<>();
+        List<QuestionPick> keeping = new ArrayList<>();
         List<QuestionPick> preferred = new ArrayList<>();
         Map<QuestionPick, Map<TopicAssignments.Pick, List<TopicAssignment>>> reassigned = new HashMap<>();
         for (GroupWitness group : witness.groups()) {
@@ -50,14 +64,17 @@ public final class TrimPolicy {
                 eligible.add(pick);
                 Map<TopicAssignments.Pick, List<TopicAssignment>> assignment =
                         TopicAssignments.reassign(section, witness, selected, pick);
-                if (!contributesRequiredTopic(quota, unit) && assignment != null) {
-                    preferred.add(pick);
-                    reassigned.put(pick, assignment);
-                }
+                if (assignment == null) continue; // the minimums of the subject would no longer hold
+                keeping.add(pick);
+                reassigned.put(pick, assignment);
+                if (!contributesRequiredTopic(quota, unit)) preferred.add(pick);
             }
         }
-        List<QuestionPick> choices = preferred.isEmpty() ? eligible : preferred;
-        if (choices.isEmpty()) return null;
+        if (eligible.isEmpty()) return null;
+        if (keeping.isEmpty()) {
+            return new Result(null, null, brokenMinimum(section, witness, selected, eligible.getFirst()));
+        }
+        List<QuestionPick> choices = preferred.isEmpty() ? keeping : preferred;
         QuestionPick dropped = choices.get(new Random(seed).nextInt(choices.size()));
         List<GroupWitness> trimmed = new ArrayList<>();
         Map<TopicAssignments.Pick, List<TopicAssignment>> assignment = reassigned.get(dropped);
@@ -80,5 +97,45 @@ public final class TrimPolicy {
     private static boolean contributesRequiredTopic(GroupQuota group, CountingUnit unit) {
         return group.mapidGroups().stream().anyMatch(q -> q.quota() > 0
                 && unit.mapidIds().stream().anyMatch(q.nodeIds()::contains));
+    }
+
+    /** The first topic minimum (a MAPID rule among them) that the paper loses when {@code dropped} goes, or null. */
+    private static QuotaRef brokenMinimum(SectionOnPath section, SubjectWitness witness,
+            Map<String, PathCandidate> selected, QuestionPick dropped) {
+        Map<String, GroupQuota> groups = new HashMap<>();
+        for (GroupQuota group : section.groups()) groups.put(group.groupId(), group);
+        for (TopicQuota quota : section.subjectQuota().topicQuotas()) {
+            if (remaining(witness, groups, selected, dropped, quota, null) < quota.count()) {
+                return new QuotaRef(section.subjectCode(), section.sectionId(), "TOPIC", quota.id());
+            }
+        }
+        for (GroupQuota group : section.groups()) {
+            String scope = TopicAssignments.scopeId(group);
+            List<TopicQuota> quotas = group.slotParent() == null ? group.topicQuotas()
+                    : group.slotParent().topicQuotas();
+            for (TopicQuota quota : quotas) {
+                if (remaining(witness, groups, selected, dropped, quota, scope) < quota.count()) {
+                    return new QuotaRef(section.subjectCode(), section.sectionId(), "TOPIC", quota.id());
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Units still matching {@code quota} without {@code dropped}, in one topic scope or in the whole section. */
+    private static int remaining(SubjectWitness witness, Map<String, GroupQuota> groups,
+            Map<String, PathCandidate> selected, QuestionPick dropped, TopicQuota quota, String scopeId) {
+        int count = 0;
+        for (GroupWitness groupWitness : witness.groups()) {
+            String scope = TopicAssignments.scopeId(groups.get(groupWitness.groupId()));
+            if (scopeId != null && !scopeId.equals(scope)) continue;
+            for (QuestionPick pick : groupWitness.picks()) {
+                if (pick.equals(dropped)) continue;
+                for (CountingUnit unit : selected.get(pick.questionId()).units()) {
+                    if (quota.matches(scope, unit)) count++;
+                }
+            }
+        }
+        return count;
     }
 }

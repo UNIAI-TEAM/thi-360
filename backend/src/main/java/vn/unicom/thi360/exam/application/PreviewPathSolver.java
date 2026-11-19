@@ -80,9 +80,10 @@ final class PreviewPathSolver {
         SectionOnPath section = path.sections().getFirst();
         SubjectWitness witness = full.witness().getFirst();
         TrimPolicy.Result trimmed = TrimPolicy.trim(section, witness, source, seed);
-        if (trimmed == null) {
+        if (trimmed == null || trimmed.blocked()) {
             return new Result(new PathResult(path, SolveStatus.INVALID, SolveReason.NO_JOINT_SOLUTION,
-                    section.subjectCode(), null, List.of(), List.of(), null), List.of());
+                    section.subjectCode(), null, List.of(), List.of(), trimmed == null ? null : trimmed.blockedBy()),
+                    List.of());
         }
         SolvePath actual = SolvePath.of(path.pathIndex(), List.of(section.withQuestionCount(section.questionCount() - 1)));
         return new Result(new PathResult(actual, SolveStatus.VALID, null, null, null,
