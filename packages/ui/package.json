@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./question": "./src/question/index.ts",
+    "./rich-text": "./src/rich-text/index.ts",
     "./styles/tokens.css": "./src/styles/tokens.css"
   },
   "scripts": {
@@ -25,6 +27,7 @@
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "katex": "0.19.1",
     "lucide-react": "^1.72.0",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.5.0"
