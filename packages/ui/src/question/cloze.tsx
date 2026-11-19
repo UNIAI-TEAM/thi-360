@@ -8,6 +8,7 @@ import { cn } from "../lib/cn";
 import { RichTextView } from "../rich-text";
 import { formatScore } from "./helpers";
 import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
+import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import { coarseFieldHeight, touchFieldText } from "./touch";
@@ -215,51 +216,47 @@ function ClozeReviewTable({
   const showAnswers = answersVisible(review);
   const hasPoints = question.body.blanks.some((blank) => review?.gradingDetail?.[blank.id]?.earned != null);
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.itemCol}</th>
-            <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.youChoseCol}</th>
-            {showAnswers && (
-              <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.acceptedCol}</th>
-            )}
-            {hasPoints && <th className="py-2 text-caption font-semibold text-text-secondary">{strings.pointsCol}</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {question.body.blanks.map((blank, ordinal) => {
-            const part = review?.gradingDetail?.[blank.id];
-            const text = blanks[blank.id] ?? "";
-            const number = question.displayNo + ordinal;
-            return (
-              <tr key={blank.id} className="border-b border-border/60 last:border-0">
-                <td className="py-2.5 pr-4 text-label font-semibold text-text tabular-nums">
-                  {strings.questionLabel(number)}
-                </td>
-                <td className="py-2.5 pr-4 text-label text-text">
-                  <span className="inline-flex items-center gap-2">
-                    {part && <PartOutcome outcome={part.outcome} />}
-                    {text === "" ? <span className="text-text-muted">{strings.blankFilledTag}</span> : <span data-exam-content>{text}</span>}
-                  </span>
-                </td>
-                {showAnswers && (
-                  <td className="py-2.5 pr-4 text-label text-text" data-exam-content>
-                    {blank.answers.join(" · ")}
-                  </td>
-                )}
-                {hasPoints && (
-                  <td className="py-2.5 text-label text-text tabular-nums">
-                    {part?.earned != null
-                      ? strings.points(formatScore(part.earned, locale), formatScore(part.max ?? blank.points ?? 1, locale))
-                      : "—"}
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <ReviewTable>
+      <ReviewHead>
+        <ReviewTh>{strings.itemCol}</ReviewTh>
+        <ReviewTh>{strings.youChoseCol}</ReviewTh>
+        {showAnswers && <ReviewTh>{strings.acceptedCol}</ReviewTh>}
+        {hasPoints && <ReviewTh last>{strings.pointsCol}</ReviewTh>}
+      </ReviewHead>
+      <ReviewBody>
+        {question.body.blanks.map((blank, ordinal) => {
+          const part = review?.gradingDetail?.[blank.id];
+          const text = blanks[blank.id] ?? "";
+          const number = question.displayNo + ordinal;
+          return (
+            <ReviewRow key={blank.id}>
+              <ReviewCell className="font-semibold tabular-nums">{strings.questionLabel(number)}</ReviewCell>
+              <ReviewCell label={strings.youChoseCol}>
+                <span className="inline-flex items-center gap-2">
+                  {part && <PartOutcome outcome={part.outcome} />}
+                  {text === "" ? (
+                    <span className="text-text-muted">{strings.blankFilledTag}</span>
+                  ) : (
+                    <span data-exam-content>{text}</span>
+                  )}
+                </span>
+              </ReviewCell>
+              {showAnswers && (
+                <ReviewCell label={strings.acceptedCol}>
+                  <span data-exam-content>{blank.answers.join(" · ")}</span>
+                </ReviewCell>
+              )}
+              {hasPoints && (
+                <ReviewCell label={strings.pointsCol} last className="tabular-nums">
+                  {part?.earned != null
+                    ? strings.points(formatScore(part.earned, locale), formatScore(part.max ?? blank.points ?? 1, locale))
+                    : "—"}
+                </ReviewCell>
+              )}
+            </ReviewRow>
+          );
+        })}
+      </ReviewBody>
+    </ReviewTable>
   );
 }

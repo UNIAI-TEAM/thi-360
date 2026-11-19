@@ -6,6 +6,7 @@ import { focusRing } from "../lib/styles";
 import { RichTextView } from "../rich-text";
 import { formatScore, statementLetter } from "./helpers";
 import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
+import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import { coarseTarget } from "./touch";
@@ -159,59 +160,51 @@ function TrueFalseReview({
   ).length;
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.itemCol}</th>
-              <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.youChoseCol}</th>
-              {showAnswers && (
-                <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.answerCol}</th>
-              )}
-              <th className="py-2 text-caption font-semibold text-text-secondary">{strings.pointsCol}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {question.body.statements.map((statement, index) => {
-              const part = review?.gradingDetail?.[statement.id];
-              const picked = statements[statement.id];
-              const answerLabel =
-                statement.answer === undefined ? "—" : statement.answer ? strings.trueOption : strings.falseOption;
-              return (
-                <tr key={statement.id} className="border-b border-border/60 last:border-0 align-top">
-                  <td className="py-2.5 pr-4">
-                    <span className="flex items-baseline gap-2 text-label text-text">
-                      <strong className="shrink-0 font-semibold">{statementLetter(index)})</strong>
-                      <span data-exam-content className="wrap-break-word">
-                        <RichTextView html={statement.content} />
-                      </span>
+      <ReviewTable>
+        <ReviewHead>
+          <ReviewTh>{strings.itemCol}</ReviewTh>
+          <ReviewTh>{strings.youChoseCol}</ReviewTh>
+          {showAnswers && <ReviewTh>{strings.answerCol}</ReviewTh>}
+          <ReviewTh last>{strings.pointsCol}</ReviewTh>
+        </ReviewHead>
+        <ReviewBody>
+          {question.body.statements.map((statement, index) => {
+            const part = review?.gradingDetail?.[statement.id];
+            const picked = statements[statement.id];
+            const answerLabel =
+              statement.answer === undefined ? "—" : statement.answer ? strings.trueOption : strings.falseOption;
+            return (
+              <ReviewRow key={statement.id}>
+                <ReviewCell>
+                  <span className="flex items-baseline gap-2">
+                    <strong className="shrink-0 font-semibold">{statementLetter(index)})</strong>
+                    <span data-exam-content className="wrap-break-word">
+                      <RichTextView html={statement.content} />
                     </span>
-                  </td>
-                  <td className="py-2.5 pr-4 text-label font-semibold whitespace-nowrap text-text">
-                    <span className="inline-flex items-center gap-2">
-                      {part && <PartOutcome outcome={part.outcome} />}
-                      {picked === true ? strings.trueOption : picked === false ? strings.falseOption : (
-                        <span className="font-normal text-text-muted">{strings.notAnswered}</span>
-                      )}
-                    </span>
-                  </td>
-                  {showAnswers && (
-                    <td className="py-2.5 pr-4 text-label text-text">{answerLabel}</td>
-                  )}
-                  <td className="py-2.5 text-label text-text tabular-nums">
-                    {part?.earned != null
-                      ? strings.points(
-                          formatScore(part.earned, locale),
-                          formatScore(part.max ?? statement.points ?? 1, locale),
-                        )
-                      : "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  </span>
+                </ReviewCell>
+                <ReviewCell label={strings.youChoseCol} className="font-semibold whitespace-nowrap">
+                  <span className="inline-flex items-center gap-2">
+                    {part && <PartOutcome outcome={part.outcome} />}
+                    {picked === true ? strings.trueOption : picked === false ? strings.falseOption : (
+                      <span className="font-normal text-text-muted">{strings.notAnswered}</span>
+                    )}
+                  </span>
+                </ReviewCell>
+                {showAnswers && <ReviewCell label={strings.answerCol}>{answerLabel}</ReviewCell>}
+                <ReviewCell label={strings.pointsCol} last className="tabular-nums">
+                  {part?.earned != null
+                    ? strings.points(
+                        formatScore(part.earned, locale),
+                        formatScore(part.max ?? statement.points ?? 1, locale),
+                      )
+                    : "—"}
+                </ReviewCell>
+              </ReviewRow>
+            );
+          })}
+        </ReviewBody>
+      </ReviewTable>
       {!perStatement && review?.earned != null && (
         <p className="text-caption text-text-secondary">
           <strong className="font-semibold text-text">

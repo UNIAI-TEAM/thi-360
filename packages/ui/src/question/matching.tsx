@@ -9,6 +9,7 @@ import { RichTextView } from "../rich-text";
 import { formatScore, matchLetter, orderById } from "./helpers";
 import { MatchOptionContent, MatchSelect } from "./match-select";
 import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
+import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import { coarseTarget } from "./touch";
@@ -310,67 +311,61 @@ function MatchingReviewTable({
   const pairPoints = new Map((question.body.pairs ?? []).map((pair) => [pair.leftId, pair.points]));
   const rightById = new Map(right.map((item, index) => [item.id, { item, letter: matchLetter(index) }]));
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.itemCol}</th>
-            <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.youChoseCol}</th>
-            {showAnswers && (
-              <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.answerCol}</th>
-            )}
-            <th className="py-2 text-caption font-semibold text-text-secondary">{strings.pointsCol}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {left.map((item, index) => {
-            const part = review?.gradingDetail?.[item.id];
-            const pickedId = pairs[item.id];
-            const picked = pickedId != null ? rightById.get(pickedId) : undefined;
-            const correctId = correct.get(item.id);
-            const correctRight = correctId != null ? rightById.get(correctId) : undefined;
-            return (
-              <tr key={item.id} className="border-b border-border/60 align-top last:border-0">
-                <td className="py-2.5 pr-4">
-                  <span className="flex items-baseline gap-2 text-label text-text">
-                    <strong className="shrink-0 font-semibold tabular-nums">{index + 1}.</strong>
-                    <span data-exam-content className="wrap-break-word">
-                      <RichTextView html={item.content} />
-                    </span>
+    <ReviewTable>
+      <ReviewHead>
+        <ReviewTh>{strings.itemCol}</ReviewTh>
+        <ReviewTh>{strings.youChoseCol}</ReviewTh>
+        {showAnswers && <ReviewTh>{strings.answerCol}</ReviewTh>}
+        <ReviewTh last>{strings.pointsCol}</ReviewTh>
+      </ReviewHead>
+      <ReviewBody>
+        {left.map((item, index) => {
+          const part = review?.gradingDetail?.[item.id];
+          const pickedId = pairs[item.id];
+          const picked = pickedId != null ? rightById.get(pickedId) : undefined;
+          const correctId = correct.get(item.id);
+          const correctRight = correctId != null ? rightById.get(correctId) : undefined;
+          return (
+            <ReviewRow key={item.id}>
+              <ReviewCell>
+                <span className="flex items-baseline gap-2">
+                  <strong className="shrink-0 font-semibold tabular-nums">{index + 1}.</strong>
+                  <span data-exam-content className="wrap-break-word">
+                    <RichTextView html={item.content} />
                   </span>
-                </td>
-                <td className="py-2.5 pr-4 text-label text-text">
-                  <span className="inline-flex items-center gap-2">
-                    {part && <PartOutcome outcome={part.outcome} />}
-                    {picked ? (
-                      <MatchOptionContent letter={picked.letter} html={picked.item.content} wrap />
-                    ) : (
-                      <span className="text-text-muted">{strings.notMatched}</span>
-                    )}
-                  </span>
-                </td>
-                {showAnswers && (
-                  <td className="py-2.5 pr-4 text-label text-text">
-                    {correctRight ? (
-                      <MatchOptionContent letter={correctRight.letter} html={correctRight.item.content} wrap />
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                )}
-                <td className="py-2.5 text-label whitespace-nowrap text-text tabular-nums">
-                  {part?.earned != null
-                    ? strings.points(
-                        formatScore(part.earned, locale),
-                        formatScore(part.max ?? pairPoints.get(item.id) ?? 1, locale),
-                      )
-                    : "—"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                </span>
+              </ReviewCell>
+              <ReviewCell label={strings.youChoseCol}>
+                <span className="inline-flex items-center gap-2">
+                  {part && <PartOutcome outcome={part.outcome} />}
+                  {picked ? (
+                    <MatchOptionContent letter={picked.letter} html={picked.item.content} wrap />
+                  ) : (
+                    <span className="text-text-muted">{strings.notMatched}</span>
+                  )}
+                </span>
+              </ReviewCell>
+              {showAnswers && (
+                <ReviewCell label={strings.answerCol}>
+                  {correctRight ? (
+                    <MatchOptionContent letter={correctRight.letter} html={correctRight.item.content} wrap />
+                  ) : (
+                    "—"
+                  )}
+                </ReviewCell>
+              )}
+              <ReviewCell label={strings.pointsCol} last className="whitespace-nowrap tabular-nums">
+                {part?.earned != null
+                  ? strings.points(
+                      formatScore(part.earned, locale),
+                      formatScore(part.max ?? pairPoints.get(item.id) ?? 1, locale),
+                    )
+                  : "—"}
+              </ReviewCell>
+            </ReviewRow>
+          );
+        })}
+      </ReviewBody>
+    </ReviewTable>
   );
 }

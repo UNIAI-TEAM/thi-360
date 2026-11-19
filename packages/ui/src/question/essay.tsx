@@ -9,6 +9,7 @@ import { RichTextView } from "../rich-text";
 import { countWords, textForWordCount } from "./count-words";
 import { formatScore, htmlToPlainText, plainTextToHtml } from "./helpers";
 import { QuestionFrame, ReviewPoints } from "./question-frame";
+import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
 import { coarseTarget, touchFieldText } from "./touch";
@@ -171,30 +172,28 @@ function EssayReview({
         <EssayBody html={html} count={count} min={min} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
       </div>
       {grading?.criteria && grading.criteria.length > 0 && (
-        <div className="overflow-x-auto">
+        <div>
           <p className="mb-1.5 text-label font-semibold text-text">{strings.criteriaLabel}</p>
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="py-2 pr-4 text-caption font-semibold text-text-secondary">{strings.criterionCol}</th>
-                <th className="py-2 text-caption font-semibold text-text-secondary">{strings.pointsCol}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <ReviewTable>
+            <ReviewHead>
+              <ReviewTh>{strings.criterionCol}</ReviewTh>
+              <ReviewTh last>{strings.pointsCol}</ReviewTh>
+            </ReviewHead>
+            <ReviewBody>
               {grading.criteria.map((criterion, index) => (
-                <tr key={index} className="border-b border-border/60 last:border-0">
-                  <td className="py-2.5 pr-4 text-label text-text" data-exam-content>
-                    {criterion.description}
-                  </td>
-                  <td className="py-2.5 text-label whitespace-nowrap text-text tabular-nums">
+                <ReviewRow key={index}>
+                  <ReviewCell>
+                    <span data-exam-content>{criterion.description}</span>
+                  </ReviewCell>
+                  <ReviewCell label={strings.pointsCol} last className="whitespace-nowrap tabular-nums">
                     {criterion.earned != null
                       ? strings.points(formatScore(criterion.earned, locale), formatScore(criterion.max, locale))
                       : "—"}
-                  </td>
-                </tr>
+                  </ReviewCell>
+                </ReviewRow>
               ))}
-            </tbody>
-          </table>
+            </ReviewBody>
+          </ReviewTable>
         </div>
       )}
       {grading?.comment != null && grading.comment !== "" && (
