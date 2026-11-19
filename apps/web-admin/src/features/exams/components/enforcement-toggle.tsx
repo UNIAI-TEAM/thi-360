@@ -18,11 +18,8 @@ export interface EnforcementToggleProps {
   basis?: QuotaBasis;
   /** Chỉ tiêu trải nhiều môn không đặt Bắt buộc được (H6): khóa nút kèm lý do riêng. */
   lockRequiredReason?: string;
-  /**
-   * Mức cố định, chỉ đọc: hiện chip chữ thay cho hai nút radio. Bỏ trống: trong bài HSA (`HsaExamContext`) mức cố định theo
-   * quy tắc HSA (Bắt buộc, trừ khi H6 hoặc H7 khóa thì Tham khảo); kỳ thi khác giữ hai nút.
-   */
-  fixedValue?: QuotaEnforcement;
+  /** Chỉ tiêu chờ chuyên gia xác nhận (HSA Tiếng Anh): trong bài HSA cố định Tham khảo kèm lý do chờ chuyên gia. */
+  expertPending?: boolean;
   disabled?: boolean;
 }
 
@@ -38,7 +35,7 @@ export function EnforcementToggle({
   onChange,
   basis,
   lockRequiredReason,
-  fixedValue,
+  expertPending = false,
   disabled = false,
 }: EnforcementToggleProps) {
   const t = useTranslations("exams.allocation.enforcement");
@@ -47,10 +44,10 @@ export function EnforcementToggle({
   const basisLocked = !canRequire(basis);
   const reason = lockRequiredReason ?? (basisLocked ? t("basisLocked") : null);
   const requiredLocked = reason !== null;
-  const fixed = fixedValue ?? (hsaExam ? hsaFixedEnforcement(basis, requiredLocked) : undefined);
+  const fixed = hsaExam ? (expertPending ? "REFERENCE" : hsaFixedEnforcement(basis, requiredLocked)) : undefined;
 
   if (fixed !== undefined) {
-    const caption = fixed === "REQUIRED" ? t("fixedRequired") : reason;
+    const caption = fixed === "REQUIRED" ? t("fixedRequired") : expertPending ? t("expertPending") : reason;
     return (
       <div role="group" aria-label={t("legend", { name: legend })} aria-describedby={caption ? reasonId : undefined} data-fixed={fixed} className="flex min-w-0 flex-col gap-1">
         <Chip variant="tag" className="w-fit">

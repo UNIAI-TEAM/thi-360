@@ -7,6 +7,7 @@ import { useId } from "react";
 import { ratePercent } from "../allocation";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { bucketCounts, canRequireQuota, hasChoicePath, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
+import { hsaQuotaAwaitsExpert } from "../hsa-enforcement";
 import { sum } from "../matrix";
 import type { ExamPart, ExamQuota, StructureCombination } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
@@ -141,6 +142,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                   value={quota.enforcement}
                   basis={quota.basis}
                   lockRequiredReason={canRequireQuota(quota) ? undefined : t("multiSubjectLocked")}
+                  expertPending={hsaQuotaAwaitsExpert(quota)}
                   onChange={(enforcement) => patch(quota.id, (current) => ({ ...current, enforcement }))}
                 />
               </div>

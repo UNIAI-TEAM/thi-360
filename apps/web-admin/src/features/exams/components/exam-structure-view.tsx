@@ -10,7 +10,7 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
-import { HsaExamContext, isHsaExam, normalizeHsaParts, normalizeHsaQuotas } from "../hsa-enforcement";
+import { HsaExamContext, hsaNeedsNormalizing, isHsaExam, useHsaNormalizedDraft } from "../hsa-enforcement";
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
@@ -224,13 +224,12 @@ function StructureEditor({
   const summaryQuery = useExamStructureSummary(exam.id);
   const [checkResult, setCheckResult] = useState<ExamCheckResult | null>(null);
 
-  // Kỳ thi HSA sinh đề luôn theo ma trận (UNI-1701): bản nháp mở ra đã đổi mức Tham khảo sang Bắt buộc, còn bản đã lưu giữ
-  // nguyên để màn báo "có thay đổi chưa lưu" cho tới khi lưu.
+  // Kỳ thi HSA sinh đề luôn theo ma trận (UNI-1701): bản nháp luôn ở mức cho phép, bản đã lưu giữ nguyên để màn báo "có
+  // thay đổi chưa lưu" cho tới khi lưu.
   const hsa = isHsaExam(exam.kind);
-  const draftOf = (parts: ExamPart[]) => (hsa ? normalizeHsaParts(parts) : parts);
-  const quotasOf = (items: ExamQuota[]) => (hsa ? normalizeHsaQuotas(items) : items);
-  const [draft, setDraft] = useState<ExamPart[]>(() => draftOf(structure.parts));
-  const [quotas, setQuotas] = useState<ExamQuota[]>(() => quotasOf(structure.examQuotas ?? []));
+  const [draft, setDraft] = useState<ExamPart[]>(structure.parts);
+  const [quotas, setQuotas] = useState<ExamQuota[]>(structure.examQuotas ?? []);
+  useHsaNormalizedDraft(hsa, draft, setDraft, quotas, setQuotas);
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
   const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
@@ -240,9 +239,9 @@ function StructureEditor({
   if (syncKey !== syncedKey) {
     setSyncedKey(syncKey);
     if (!dirty) {
-      setDraft(draftOf(structure.parts));
+      setDraft(structure.parts);
       setBaseline(JSON.stringify(structure.parts));
-      setQuotas(quotasOf(structure.examQuotas ?? []));
+      setQuotas(structure.examQuotas ?? []);
       setQuotaBaseline(JSON.stringify(structure.examQuotas ?? []));
     }
   }
@@ -258,11 +257,7 @@ function StructureEditor({
   const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
   const baselineParts = useMemo(() => JSON.parse(baseline) as ExamPart[], [baseline]);
   // Bản đã lưu còn mức Tham khảo mà HSA không cho: ghi chú hiện cho tới khi lưu.
-  const hsaNormalizing = useMemo(() => {
-    if (!hsa) return false;
-    const savedQuotas = JSON.parse(quotaBaseline) as ExamQuota[];
-    return normalizeHsaParts(baselineParts) !== baselineParts || normalizeHsaQuotas(savedQuotas) !== savedQuotas;
-  }, [hsa, baselineParts, quotaBaseline]);
+  const hsaNormalizing = useMemo(() => hsaNeedsNormalizing(hsa, baselineParts, quotaBaseline), [hsa, baselineParts, quotaBaseline]);
 
   const [selection, setSelection] = useState<StructureSelection | null>(() => {
     const fromUrl = readSelectionFromUrl();
@@ -341,8 +336,8 @@ function StructureEditor({
   };
 
   const discardAll = () => {
-    setDraft(draftOf(JSON.parse(baseline) as ExamPart[]));
-    setQuotas(quotasOf(JSON.parse(quotaBaseline) as ExamQuota[]));
+    setDraft(JSON.parse(baseline) as ExamPart[]);
+    setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
     setConfirmedCounts({});
     setTopicFailure(null);
   };
@@ -587,7 +582,7 @@ function StructureEditor({
           currentParts={draft}
           onAnnounce={announce}
           onApplied={(parts) => {
-            setDraft(draftOf(parts));
+            setDraft(parts);
             setBaseline(JSON.stringify(parts));
             // Chỉ tiêu cấp bài đang sửa thuộc mẫu cũ: bỏ để lần tải lại cấu trúc kế tiếp đưa chỉ tiêu của mẫu mới vào, không
             // để lần lưu sau ghi đè `examQuotas` của mẫu mới (R1-10).

@@ -8,7 +8,7 @@ import { renderWithProviders } from "@/test/render";
 import { BlockMatrixEditor } from "../components/block-matrix-editor";
 import { EnforcementToggle } from "../components/enforcement-toggle";
 import { TopicQuotaTable } from "../components/topic-quota-table";
-import { HsaExamContext, normalizeHsaParts, normalizeHsaQuotas } from "../hsa-enforcement";
+import { HsaExamContext, hsaNeedsNormalizing, hsaQuotaAwaitsExpert, normalizeHsaParts, normalizeHsaQuotas } from "../hsa-enforcement";
 import { emptyMatrix } from "../matrix";
 import type { BlockMatrix, ExamPart, ExamQuota, QuestionBlock, QuotaEnforcement, TopicQuota } from "../types";
 
@@ -170,9 +170,9 @@ describe("normalizeHsaParts, normalizeHsaQuotas (UNI-1701 AC-4)", () => {
     questionCount: 10,
     knowledgeScope: null,
     answerQuotas: null,
-    matrix: referenceMatrix(),
+    matrix: referenceMatrix({ cells: [{ gradeCode: "GRADE_10", difficultyCode: "RECOGNITION", value: 5 }] }),
     choiceGroup: null,
-    blocks: [{ ...block(referenceMatrix({ basis: "PROMPT" })), topicQuotas: [topic(), topic({ id: "q2", basis: "POINTS" })] }],
+    blocks: [{ ...block(referenceMatrix({ basis: "PROMPT", cells: [{ gradeCode: "GRADE_10", difficultyCode: "RECOGNITION", value: 5 }] })), topicQuotas: [topic(), topic({ id: "q2", basis: "POINTS" })] }],
     topicQuotas: [topic({ id: "q3" })],
     ...over,
   });
@@ -195,9 +195,88 @@ describe("normalizeHsaParts, normalizeHsaQuotas (UNI-1701 AC-4)", () => {
     expect(normalizeHsaParts(already)).toBe(already);
   });
 
+  const filled = (over: Partial<BlockMatrix>): BlockMatrix => referenceMatrix({ mode: "SEPARATE", ...over });
+  const matrixOf = (matrix: BlockMatrix) => normalizeHsaParts([part([section({ matrix, topicQuotas: [], blocks: [] })])])[0]!.sections[0]!.matrix!;
+
+  it("R1-2: ma trận Tiếng Anh của mẫu HSA (hai chiều Tham khảo, chưa có số) giữ nguyên, bản nháp không đổi", () => {
+    const parts = [part([section({ matrix: filled({ basis: "QUESTION" }), topicQuotas: [], blocks: [] })])];
+    expect(normalizeHsaParts(parts)).toBe(parts);
+  });
+
+  it("R1-2: ma trận riêng chỉ có số ở chiều lớp: chỉ chiều lớp thành Bắt buộc, chiều độ khó trống ở lại Tham khảo", () => {
+    const matrix = matrixOf(filled({ byGrade: [{ code: "GRADE_10", value: 10 }] }));
+    expect(matrix).toMatchObject({ gradeEnforcement: "REQUIRED", difficultyEnforcement: "REFERENCE" });
+    const other = matrixOf(filled({ byDifficulty: [{ code: "RECOGNITION", value: 10 }] }));
+    expect(other).toMatchObject({ gradeEnforcement: "REFERENCE", difficultyEnforcement: "REQUIRED" });
+  });
+
+  it("R1-2: ma trận kết hợp chưa có ô nào lớn hơn 0 giữ nguyên", () => {
+    expect(matrixOf(referenceMatrix({ cells: [{ gradeCode: "GRADE_10", difficultyCode: "RECOGNITION", value: 0 }] }))).toMatchObject({
+      gradeEnforcement: "REFERENCE",
+      difficultyEnforcement: "REFERENCE",
+    });
+  });
+
+  it("R1-4: hsaNeedsNormalizing báo khi bản đã lưu còn Tham khảo mà HSA không cho, và không báo ngoài HSA", () => {
+    const saved = [part([section()])];
+    expect(hsaNeedsNormalizing(true, saved, "[]")).toBe(true);
+    expect(hsaNeedsNormalizing(false, saved, "[]")).toBe(false);
+    const clean = [part([section({ matrix: null, topicQuotas: [], blocks: [] })])];
+    expect(hsaNeedsNormalizing(true, clean, "[]")).toBe(false);
+    const quota = { id: "q", name: "q", dimension: "GRADE", buckets: [], basis: "QUESTION", enforcement: "REFERENCE", subjectCodes: ["MATH"] };
+    expect(hsaNeedsNormalizing(true, clean, JSON.stringify([quota]))).toBe(true);
+  });
+
   it("chỉ tiêu cấp bài: một môn thành Bắt buộc, nhiều môn ở lại Tham khảo (H6)", () => {
     const quota = (id: string, subjectCodes: string[]): ExamQuota => ({ id, name: id, dimension: "GRADE", buckets: [], basis: "QUESTION", enforcement: "REFERENCE", subjectCodes });
     const result = normalizeHsaQuotas([quota("one", ["MATH"]), quota("many", ["MATH", "LIT"])]);
     expect(result.map((item) => item.enforcement)).toEqual(["REQUIRED", "REFERENCE"]);
+  });
+
+  describe("R1-1: chỉ tiêu chờ chuyên gia của mẫu HSA (ADV:FE-3b:2, AD-29)", () => {
+    /** Đúng như migration V202611180652: ba mẫu mang cùng một chỉ tiêu và không chỉ tiêu nào khác. */
+    const englishGrade: ExamQuota = {
+      id: "hsa-english-grade",
+      name: "Lớp Tiếng Anh tham khảo",
+      dimension: "GRADE",
+      basis: "QUESTION",
+      enforcement: "REFERENCE",
+      subjectCodes: ["ANH"],
+      buckets: [
+        { codes: ["G10", "G11"], percent: 30 },
+        { codes: ["G12"], percent: 70 },
+      ],
+    };
+    const mathDifficulty: ExamQuota = { ...englishGrade, id: "toan-difficulty", name: "Độ khó Toán", dimension: "DIFFICULTY", subjectCodes: ["TOAN"] };
+
+    it.each(["HSA_FULL", "HSA_PART_ENGLISH", "HSA_SUBJECT_ANH"])("%s: chỉ tiêu khối lớp Tiếng Anh ở lại Tham khảo, bản nháp không đổi", () => {
+      const quotas = [englishGrade];
+      expect(normalizeHsaQuotas(quotas)).toBe(quotas);
+      expect(hsaNeedsNormalizing(true, [], JSON.stringify(quotas))).toBe(false);
+    });
+
+    it("mọi chỉ tiêu một môn khác vẫn thành Bắt buộc, chỉ chỉ tiêu Tiếng Anh khối lớp ở lại Tham khảo", () => {
+      expect(normalizeHsaQuotas([englishGrade, mathDifficulty]).map((item) => item.enforcement)).toEqual(["REFERENCE", "REQUIRED"]);
+      expect(normalizeHsaQuotas([{ ...englishGrade, dimension: "DIFFICULTY" }]).map((item) => item.enforcement)).toEqual(["REQUIRED"]);
+      expect(normalizeHsaQuotas([{ ...englishGrade, subjectCodes: ["VAN"] }]).map((item) => item.enforcement)).toEqual(["REQUIRED"]);
+    });
+
+    it("hsaQuotaAwaitsExpert: đúng một môn Tiếng Anh, chiều khối lớp", () => {
+      expect(hsaQuotaAwaitsExpert(englishGrade)).toBe(true);
+      expect(hsaQuotaAwaitsExpert({ ...englishGrade, subjectCodes: ["ANH", "VAN"] })).toBe(false);
+      expect(hsaQuotaAwaitsExpert(mathDifficulty)).toBe(false);
+    });
+
+    it("EnforcementToggle: Tham khảo cố định kèm lý do chờ chuyên gia, không nút radio", () => {
+      renderWithProviders(
+        <HsaExamContext.Provider value>
+          <EnforcementToggle legend="Lớp Tiếng Anh" name="e" value="REFERENCE" basis="QUESTION" expertPending onChange={() => {}} />
+        </HsaExamContext.Provider>,
+      );
+      expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+      expect(screen.getByText("Tham khảo")).toBeInTheDocument();
+      expect(screen.getByText(/Chờ chuyên gia xác nhận/)).toBeInTheDocument();
+      expect(screen.queryByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).not.toBeInTheDocument();
+    });
   });
 });

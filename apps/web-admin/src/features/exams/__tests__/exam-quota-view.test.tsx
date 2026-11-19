@@ -112,7 +112,9 @@ describe("Chỉ tiêu cấp bài khi đổi phiên bản cấu trúc (R1-10)", (
     const base = FIXTURE_TEMPLATES.find((template) => template.kind === "HSA" && template.scope === "FULL")!;
     const now = { ...base, code: "T_NOW", label: "HSA hiện tại", structureYear: 2026 };
     const other = { ...base, code: "T_OTHER", label: "HSA bản khác", structureYear: 2025, isDefault: false };
-    const server = boot({ examQuotas: [gradeQuota()], later: [gradeQuota([20, 80])], kind: "HSA", templates: [now, other].map(toWireTemplate) });
+    // Bài HSA luôn Bắt buộc (UNI-1701): chỉ tiêu Tham khảo cũ sẽ được chuyển sang Bắt buộc và làm bản nháp "chưa lưu", chặn nạp lại.
+    const required = (percents?: [number, number]) => ({ ...gradeQuota(percents), enforcement: "REQUIRED" });
+    const server = boot({ examQuotas: [required()], later: [required([20, 80])], kind: "HSA", templates: [now, other].map(toWireTemplate) });
     const user = userEvent.setup();
     open();
     await setPercent(user, 0, "40");

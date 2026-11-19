@@ -500,10 +500,10 @@ export function BlockMatrixEditor({
           blockCount={block.questionCount}
           totals={[
             ...(matrix.mode === "COMBINED"
-              ? [{ label: null, total: allocation.total }]
+              ? [{ label: null, total: allocation.total, pending: referenceOnly && allocation.total === 0 }]
               : [
-                  { label: t("byGradeCaption"), total: allocation.gradeTotal },
-                  { label: t("byDifficultyCaption"), total: allocation.difficultyTotal },
+                  { label: t("byGradeCaption"), total: allocation.gradeTotal, pending: gradeEnforcement === "REFERENCE" && allocation.gradeTotal === 0 },
+                  { label: t("byDifficultyCaption"), total: allocation.difficultyTotal, pending: difficultyEnforcement === "REFERENCE" && allocation.difficultyTotal === 0 },
                 ]),
             ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
           ]}
@@ -695,7 +695,8 @@ function AllocationStatus({
   declared,
 }: {
   blockCount: number;
-  totals: Array<{ label: string | null; total: number }>;
+  /** `pending`: chiều chỉ để tham khảo và chưa có số (ví dụ HSA Tiếng Anh chờ chuyên gia): không báo thiếu. */
+  totals: Array<{ label: string | null; total: number; pending?: boolean }>;
   messages: Array<{ text: string; over: boolean }>;
   /** `false`: chỉ tiêu riêng của nhóm chưa khai, chưa báo thiếu hay vượt. */
   declared: boolean;
@@ -704,10 +705,10 @@ function AllocationStatus({
   const ok = messages.length === 0;
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-      {totals.map(({ label, total }, index) => {
+      {totals.map(({ label, total, pending = false }, index) => {
         const meterId = `${index}-${label ?? "all"}`;
         const difference = total - blockCount;
-        const state = !declared ? "neutral" : difference > 0 ? "over" : difference < 0 ? "under" : "exact";
+        const state = !declared || pending ? "neutral" : difference > 0 ? "over" : difference < 0 ? "under" : "exact";
         const valueText =
           state === "over"
             ? t("meterOver", { allocated: total, count: blockCount, over: difference })

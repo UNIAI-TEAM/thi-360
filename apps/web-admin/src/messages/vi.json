@@ -5839,6 +5839,7 @@
         "REFERENCE": "Tham khảo",
         "basisLocked": "Phân bố bắt buộc phải tính theo câu. Đổi đơn vị sang câu trước.",
         "fixedRequired": "Kỳ thi HSA: sinh đề luôn theo ma trận",
+        "expertPending": "Chờ chuyên gia xác nhận: phân bố khối lớp Tiếng Anh chỉ để tham khảo.",
         "normalized": "Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA. Lưu để áp dụng."
       },
       "totalChange": {
