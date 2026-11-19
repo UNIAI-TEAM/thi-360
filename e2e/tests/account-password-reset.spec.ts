@@ -33,7 +33,8 @@ test.describe("Quên và đặt lại mật khẩu", () => {
 
     // Mật khẩu cũ không còn dùng được, mật khẩu mới đăng nhập được.
     await submitLoginForm(page, account.username, account.password);
-    await expect(page.getByRole("alert")).toHaveText("Tên đăng nhập hoặc mật khẩu không đúng.");
+    // `main`: Next.js thêm một vùng `role=alert` rỗng ngoài `main` (route announcer).
+    await expect(page.locator("main").getByRole("alert")).toHaveText("Tên đăng nhập hoặc mật khẩu không đúng.");
     await submitLoginForm(page, account.username, NEW_PASSWORD);
     await expect(page).toHaveURL(`${WEB_URL}/home`);
 

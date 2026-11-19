@@ -82,7 +82,7 @@ for (const cell of matrixCells()) {
 
         // Lỗi gắn ô: gửi biểu mẫu trống.
         await page.locator("form button[type=submit]").click();
-        await expect(page.locator("[role=alert]").first()).toBeVisible();
+        await expect(page.locator("main [role=alert]").first()).toBeVisible();
         await expectMatrixClean(page, "register-errors", cell);
 
         // Đang gửi: nút khóa và quay; yêu cầu bị giữ rồi hủy để không tạo tài khoản.
@@ -102,7 +102,13 @@ for (const cell of matrixCells()) {
         // Hộp thoại điều khoản.
         await page.goto(`${WEB_URL}/register`);
         await page.getByRole("button", { name: cell.lang === "vi" ? "Xem Điều khoản sử dụng" : "View the Terms of Use" }).click();
-        await expect(page.getByRole("dialog")).toBeVisible();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        // Chờ hiệu ứng mở xong: giữa chừng chữ còn mờ (độ đục < 1) nên kiểm tương phản đọc ra 3,3 đến 3,8 dù màu
+        // `text-muted` đạt 4,5:1.
+        await dialog.evaluate((element) =>
+          Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+        );
         await expectMatrixClean(page, "register-terms", cell);
 
         await page.goto(`${WEB_URL}/forgot-password`);
@@ -113,7 +119,7 @@ for (const cell of matrixCells()) {
         await failApi(page, "**/api/v1/auth/password/forgot", 500, SERVER_ERROR);
         await page.getByLabel(/^Email/).fill("an@e2e.thi360.vn");
         await page.locator("form button[type=submit]").click();
-        await expect(page.locator("[role=alert]")).toBeVisible();
+        await expect(page.locator("main [role=alert]")).toBeVisible();
         await expectMatrixClean(page, "forgot-password-error", cell);
         await page.unroute("**/api/v1/auth/password/forgot");
 
