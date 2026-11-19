@@ -14,9 +14,12 @@ import java.util.UUID;
 public interface PublishedExamPort {
 
     /**
-     * The serving state of an exam: the latest version that still serves a path (E24) with its listing, and every
-     * serving path with the version that serves it. Empty for an exam that was never published. A discontinued exam
-     * stays readable: {@code status} is {@code DISCONTINUED} and the last serving version is returned.
+     * The serving state of an exam: the latest version that still serves a path (E24) with its listing, and the
+     * serving paths of EVERY serving version, each with the version that serves it (BCA and Informatics can keep older
+     * versions serving: one {@code ServingPath} per path, {@code versionNo} of the version that serves it). The
+     * per-part totals of a path served by an older version are in {@code loadVersion(examId, path.versionNo())}.
+     * {@code status} and the versions are read from one database snapshot. Empty for an exam that was never published.
+     * A discontinued exam stays readable: {@code status} is {@code DISCONTINUED} and the last serving version is returned.
      */
     Optional<ServingExam> findServing(UUID examId);
 

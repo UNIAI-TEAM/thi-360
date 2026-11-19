@@ -21,8 +21,10 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort;
 
 /**
  * {@link PublishedExamPort} over {@code exam.exam_version}. Everything comes from the frozen snapshot (config and
- * parts); the only live reads are the exam status and the catalog code of the exam kind, which never changes. The
- * parts are projected, not copied: blocks, quotas, matrices, knowledge scopes and witnesses stay behind.
+ * parts), including the kind code of versions published after EX-1; the only live reads are the exam status, read in
+ * the same statement as the serving versions so one answer never mixes two moments, and the catalog code of the exam
+ * kind for a version that predates {@code kindCode} in the snapshot. The parts are projected, not copied: blocks,
+ * quotas, matrices, knowledge scopes and witnesses stay behind.
  */
 @Service
 public class PublishedExamReader implements PublishedExamPort {
@@ -39,14 +41,13 @@ public class PublishedExamReader implements PublishedExamPort {
     }
 
     private record Row(int version, String state, String status, Instant publishedAt, String config, String parts,
-                       List<String> publishedPaths, List<String> servingPaths) { }
+                       List<String> publishedPaths, List<String> servingPaths, String examStatus) { }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<ServingExam> findServing(UUID examId) {
-        List<String> status = jdbc.queryForList("SELECT status FROM exam.exam WHERE id = ?", String.class, examId);
-        if (status.isEmpty() || "DRAFT".equals(status.getFirst())) return Optional.empty();
-        List<Row> serving = rows("WHERE exam_id = ? AND state = 'SERVING' ORDER BY version_no DESC", examId);
+        // One statement, one snapshot: the exam status and the serving versions cannot come from different moments.
+        List<Row> serving = rows("WHERE v.exam_id = ? AND v.state = 'SERVING' AND e.status <> 'DRAFT' ORDER BY v.version_no DESC", examId);
         if (serving.isEmpty()) return Optional.empty();
         PublishedVersion latest = version(examId, serving.getFirst());
         Map<String, ServingPath> paths = new LinkedHashMap<>();
@@ -57,13 +58,13 @@ public class PublishedExamReader implements PublishedExamPort {
                 paths.putIfAbsent(pathId, new ServingPath(pathId, row.version(), choices(parts, config, pathId)));
             }
         }
-        return Optional.of(new ServingExam(examId, status.getFirst(), latest, List.copyOf(paths.values())));
+        return Optional.of(new ServingExam(examId, serving.getFirst().examStatus(), latest, List.copyOf(paths.values())));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<PublishedVersion> loadVersion(UUID examId, int versionNo) {
-        return rows("WHERE exam_id = ? AND version_no = " + versionNo, examId).stream().findFirst()
+        return rows("WHERE v.exam_id = ? AND v.version_no = " + versionNo, examId).stream().findFirst()
                 .map(row -> version(examId, row));
     }
 
@@ -81,18 +82,21 @@ public class PublishedExamReader implements PublishedExamPort {
     }
 
     private List<Row> rows(String where, UUID examId) {
-        return jdbc.query("SELECT version_no, state, status, published_at, config::text, parts::text, "
-                        + "published_path_ids, serving_path_ids FROM exam.exam_version " + where,
+        return jdbc.query("SELECT v.version_no, v.state, v.status, v.published_at, v.config::text, v.parts::text, "
+                        + "v.published_path_ids, v.serving_path_ids, e.status FROM exam.exam_version v "
+                        + "JOIN exam.exam e ON e.id = v.exam_id " + where,
                 (rs, n) -> new Row(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getTimestamp(4).toInstant(),
                         rs.getString(5), rs.getString(6), Arrays.asList((String[]) rs.getArray(7).getArray()),
-                        Arrays.asList((String[]) rs.getArray(8).getArray())), examId);
+                        Arrays.asList((String[]) rs.getArray(8).getArray()), rs.getString(9)), examId);
     }
 
     private PublishedVersion version(UUID examId, Row row) {
         JsonNode config = json(row.config());
         JsonNode parts = json(row.parts()).path("parts");
         UUID kind = uuid(config, "kindItemId");
-        String kindCode = kind == null ? null : catalog.findItem(kind).map(CatalogItemView::code).orElse(null);
+        // Frozen at publish; only a version published before that falls back to the catalog.
+        String kindCode = config.hasNonNull("kindCode") ? config.path("kindCode").asText()
+                : kind == null ? null : catalog.findItem(kind).map(CatalogItemView::code).orElse(null);
         List<Part> mappedParts = new ArrayList<>();
         for (JsonNode part : parts) mappedParts.add(part(part));
         List<Combination> combinations = new ArrayList<>();

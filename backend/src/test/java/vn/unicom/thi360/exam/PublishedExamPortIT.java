@@ -225,4 +225,48 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
             assertThat(after.name()).isEqualTo("E24 test");
         }
     }
+
+    /** R1-10: the kind code is the one frozen at publish; the catalog is only the fallback for a version without it. */
+    @Test
+    void kindCodeIsReadFromTheSnapshot() throws Exception {
+        UUID exam = newExam("HSA", PLAIN);
+        saveCheck(exam, paths("default=VALID"));
+        publish(exam, "default").andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT config->>'kindCode' FROM exam.exam_version WHERE exam_id = ?", String.class, exam))
+                .isEqualTo("HSA");
+        // Only the snapshot decides: a frozen code that differs from the catalog item the version points at wins.
+        jdbc.update("UPDATE exam.exam_version SET config = jsonb_set(config, '{kindCode}', '\"FROZEN\"') WHERE exam_id = ?", exam);
+        entityManager.clear();
+        assertThat(port.loadVersion(exam, 1).orElseThrow().kindCode()).isEqualTo("FROZEN");
+        assertThat(port.findServing(exam).orElseThrow().version().kindCode()).isEqualTo("FROZEN");
+        // A version published before kindCode was frozen falls back to the catalog.
+        jdbc.update("UPDATE exam.exam_version SET config = config - 'kindCode' WHERE exam_id = ?", exam);
+        entityManager.clear();
+        assertThat(port.loadVersion(exam, 1).orElseThrow().kindCode()).isEqualTo("HSA");
+    }
+
+    /** R1-11: BCA can keep an older version serving another code: every serving path is reported with its own version. */
+    @Test
+    void servingPathsOfEveryServingVersionAreReported() throws Exception {
+        UUID kindId = kind("BCA");
+        UUID exam = newExam("BCA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED', serving_version = 2 WHERE id = ?", exam);
+        String olderParts = RICH_PARTS.replace("{\"pathId\":\"default\",\"questionCount\":30,\"maxPoints\":600,\"durationMinutes\":60}",
+                "{\"pathId\":\"default\",\"questionCount\":24,\"maxPoints\":480,\"durationMinutes\":50}");
+        assertThat(olderParts).isNotEqualTo(RICH_PARTS);
+        version(exam, 1, "SERVING", "PUBLISHED", config(kindId, "Ten v1", 100000), olderParts, "default");
+        version(exam, 2, "SERVING", "PUBLISHED", config(kindId, "Ten v2", 200000), RICH_PARTS, "o1");
+        entityManager.clear();
+        var serving = port.findServing(exam).orElseThrow();
+        assertThat(serving.version().versionNo()).isEqualTo(2);
+        assertThat(serving.servingPaths()).extracting(PublishedExamPort.ServingPath::pathId, PublishedExamPort.ServingPath::versionNo)
+                .containsExactly(org.assertj.core.api.Assertions.tuple("o1", 2), org.assertj.core.api.Assertions.tuple("default", 1));
+        // The totals of the path served by the older version are in that version, one loadVersion away.
+        var older = port.loadVersion(exam, serving.servingPaths().get(1).versionNo()).orElseThrow();
+        assertThat(older.parts().getFirst().paths().getFirst().questionCount()).isEqualTo(24);
+        assertThat(older.parts().getFirst().paths().getFirst().maxPoints()).isEqualByComparingTo("480");
+        assertThat(serving.version().parts().getFirst().paths().getFirst().questionCount()).isEqualTo(30);
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(serving));
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(older));
+    }
 }
