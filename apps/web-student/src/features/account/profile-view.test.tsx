@@ -150,6 +150,37 @@ describe("ProfileView thông tin cá nhân (AC-16)", () => {
     expect(mocks.updateProfile).not.toHaveBeenCalled();
   });
 
+  it("số cũ của quản trị viên không đúng quy tắc học viên: đổi họ tên không gửi và không kiểm số điện thoại", async () => {
+    mocks.loadProfile.mockResolvedValue(profile({ phone: "+84 912 345 678" }));
+    mocks.updateProfile.mockImplementation(async (body: { fullName?: string }) =>
+      profile({ fullName: body.fullName ?? "", phone: "+84 912 345 678" }),
+    );
+    const user = userEvent.setup();
+    renderView();
+
+    const name = await screen.findByLabelText(/Họ và tên/);
+    await user.clear(name);
+    await user.type(name, "Nguyễn Văn Bình");
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalledWith({ fullName: "Nguyễn Văn Bình" }));
+    expect(mocks.updateProfile.mock.calls[0]![0]).not.toHaveProperty("phone");
+    expect(screen.queryByText("Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.")).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText(/Số điện thoại/)).toHaveValue("+84 912 345 678"));
+  });
+
+  it("sửa số điện thoại thì gửi số mới, xóa trống thì gửi chuỗi rỗng", async () => {
+    mocks.updateProfile.mockImplementation(async () => profile({ phone: null }));
+    const user = userEvent.setup();
+    renderView();
+
+    const phone = await screen.findByLabelText(/Số điện thoại/);
+    await user.clear(phone);
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalledWith({ fullName: "Nguyễn Văn An", phone: "" }));
+  });
+
   it("máy chủ từ chối số điện thoại: báo lỗi tại ô và đưa focus về ô đó", async () => {
     mocks.updateProfile.mockRejectedValue(
       new ApiStatusError(422, "x", {

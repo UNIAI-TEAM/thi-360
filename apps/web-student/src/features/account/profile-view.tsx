@@ -326,6 +326,8 @@ function InfoForm({
   const t = useTranslations("account.profile.info");
   const [hasServerError, setHasServerError] = useState(false);
 
+  // Số cũ do quản trị viên nhập theo quy tắc rộng hơn (tối đa 30 ký tự) được giữ nguyên khi người dùng không sửa ô này.
+  const currentPhone = (profile.phone ?? "").trim();
   const schema = useMemo(
     () =>
       z.object({
@@ -337,9 +339,12 @@ function InfoForm({
         phone: z
           .string()
           .trim()
-          .refine((value) => value === "" || PHONE_PATTERN.test(value), "phoneInvalid" satisfies InfoErrorKey),
+          .refine(
+            (value) => value === currentPhone || value === "" || PHONE_PATTERN.test(value),
+            "phoneInvalid" satisfies InfoErrorKey,
+          ),
       }),
-    [],
+    [currentPhone],
   );
 
   const defaults: InfoValues = { fullName: profile.fullName, phone: profile.phone ?? "" };
@@ -365,7 +370,10 @@ function InfoForm({
   async function onSubmit(values: InfoValues) {
     setHasServerError(false);
     try {
-      const next = await updateProfile({ fullName: values.fullName.trim(), phone: values.phone.trim() });
+      const fullName = values.fullName.trim();
+      const phone = values.phone.trim();
+      // Không gửi `phone` khi không đổi: máy chủ giữ nguyên số cũ.
+      const next = await updateProfile({ fullName, ...(phone !== currentPhone ? { phone } : {}) });
       onProfileChange(next);
       notify.success(t("saved"));
     } catch (error) {
