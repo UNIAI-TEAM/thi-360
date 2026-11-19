@@ -50,7 +50,7 @@ class StudentLearningProviderTests {
         UUID userId = UUID.randomUUID();
         when(userRepo.findById(userId)).thenReturn(Optional.of(activeAccount(userId)));
 
-        UserAdminService service = createService(userRepo, null);
+        UserAdminService service = createService(userRepo, List.of());
 
         StudentLearningResponse response = service.getUserLearning(userId);
 
@@ -77,7 +77,7 @@ class StudentLearningProviderTests {
                 List.of(),
                 List.of(),
                 List.of()));
-        UserAdminService service = createService(userRepo, provider);
+        UserAdminService service = createService(userRepo, List.of(provider));
 
         StudentLearningResponse response = service.getUserLearning(userId);
 
@@ -86,6 +86,67 @@ class StudentLearningProviderTests {
         assertThat(response.entitlements()).hasSize(1);
         assertThat(response.attempts()).isEmpty();
         verify(provider).loadForUser(userId);
+    }
+
+    @Test
+    void mergesResultsOfTwoProviders() {
+        UserAccountRepository userRepo = mock(UserAccountRepository.class);
+        UUID userId = UUID.randomUUID();
+        when(userRepo.findById(userId)).thenReturn(Optional.of(activeAccount(userId)));
+
+        // commerce contributes entitlements only; attempt contributes attempts and
+        // dataAvailable on its own side — merged response concatenates every list.
+        StudentLearningProvider commerceProvider = mock(StudentLearningProvider.class);
+        when(commerceProvider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
+                false,
+                List.of(Map.of("entitlementId", "E-1"), Map.of("entitlementId", "E-2")),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()));
+        StudentLearningProvider attemptProvider = mock(StudentLearningProvider.class);
+        when(attemptProvider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
+                true,
+                List.of(),
+                List.of(Map.of("attemptId", "A-1")),
+                List.of(),
+                List.of(),
+                List.of(Map.of("ticket", "S-1"))));
+
+        UserAdminService service = createService(userRepo, List.of(commerceProvider, attemptProvider));
+
+        StudentLearningResponse response = service.getUserLearning(userId);
+
+        assertThat(response.dataAvailable()).isTrue();
+        assertThat(response.entitlements()).hasSize(2);
+        assertThat(response.attempts()).hasSize(1);
+        assertThat(response.assessments()).isEmpty();
+        assertThat(response.practice()).isEmpty();
+        assertThat(response.supportRequests()).hasSize(1);
+    }
+
+    @Test
+    void noProviderOrNullResultIsEmpty() {
+        UserAccountRepository userRepo = mock(UserAccountRepository.class);
+        UUID userId = UUID.randomUUID();
+        when(userRepo.findById(userId)).thenReturn(Optional.of(activeAccount(userId)));
+
+        StudentLearningProvider nullProvider = mock(StudentLearningProvider.class);
+        when(nullProvider.loadForUser(userId)).thenReturn(null);
+
+        UserAdminService withoutProvider = createService(userRepo, List.of());
+        UserAdminService withNullProvider = createService(userRepo, List.of(nullProvider));
+
+        for (StudentLearningResponse response : List.of(
+                withoutProvider.getUserLearning(userId),
+                withNullProvider.getUserLearning(userId))) {
+            assertThat(response.dataAvailable()).isFalse();
+            assertThat(response.entitlements()).isEmpty();
+            assertThat(response.attempts()).isEmpty();
+            assertThat(response.assessments()).isEmpty();
+            assertThat(response.practice()).isEmpty();
+            assertThat(response.supportRequests()).isEmpty();
+        }
     }
 
     @Test
@@ -108,7 +169,7 @@ class StudentLearningProviderTests {
                 null)));
 
         StudentLearningProvider provider = mock(StudentLearningProvider.class);
-        UserAdminService service = createService(userRepo, provider);
+        UserAdminService service = createService(userRepo, List.of(provider));
 
         assertThatThrownBy(() -> service.getUserLearning(missingId)).isInstanceOf(NotFoundException.class);
         assertThatThrownBy(() -> service.getUserLearning(provId)).isInstanceOf(NotFoundException.class);
@@ -131,7 +192,7 @@ class StudentLearningProviderTests {
     }
 
     private static UserAdminService createService(
-            UserAccountRepository userRepo, StudentLearningProvider learningProvider) {
+            UserAccountRepository userRepo, List<StudentLearningProvider> learningProviders) {
         return new UserAdminService(
                 userRepo,
                 mock(UserIdentityRepository.class),
@@ -149,7 +210,7 @@ class StudentLearningProviderTests {
                 List.of(),
                 List.of(),
                 mock(ClassMembershipPort.class),
-                learningProvider,
+                learningProviders,
                 mock(KeycloakIdentityClient.class),
                 mock(CurrentUserProvider.class),
                 mock(AuditRecorder.class),
