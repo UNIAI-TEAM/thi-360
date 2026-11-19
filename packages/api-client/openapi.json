@@ -388,6 +388,8 @@
                 "format" : "uuid",
                 "type" : "string"
               },
+              "maxItems" : 2147483647,
+              "minItems" : 1,
               "type" : "array"
             },
             "type" : "array"
