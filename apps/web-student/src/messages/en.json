@@ -323,21 +323,107 @@
     "sectionTitle": "My exams"
   },
   "landing": {
-    "badge": "HSA · QDA Prep",
-    "ctaHeader": "Sign in",
-    "ctaHero": "Explore exams",
-    "features": {
-      "analysisDescription": "Section scores, correct, incorrect, and skipped items shown right after submission.",
-      "analysisTitle": "Instant scores and breakdown",
-      "practiceDescription": "Targeted topic recommendations and progress tracking across attempts.",
-      "practiceTitle": "Focus on weak areas",
-      "structureDescription": "Full-length or section practice exams with server-tracked timing.",
-      "structureTitle": "Authentic exam structure"
+    "faq": {
+      "intro": "Question counts, durations, attempts and benefits differ between exams. See the detail page of the exam you choose.",
+      "items": {
+        "attempts": {
+          "answer": "The number of attempts per purchase is shown on the card and on the detail page of each exam. While you still have attempts you can buy more; the extra attempts are added to the exam you already have in My exams.",
+          "question": "How many attempts does one purchase give? How do I buy more?"
+        },
+        "formats": {
+          "answer": "A FULL exam has every section of the paper, taken one after another in one attempt. A section exam has a single section, for example HSA Mathematics and Data Processing. A subject exam is for exams organized by subject, such as SPT, SP2E and the high school graduation exam. The section or subject of each exam is shown on its card.",
+          "question": "How do FULL, section and subject exams differ?"
+        },
+        "otherAccount": {
+          "answer": "[ANSWER PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+          "question": "Can I buy for another account?"
+        },
+        "paidNoExam": {
+          "answer": "[ANSWER PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+          "question": "My payment succeeded but I cannot see the exam. What now?"
+        },
+        "refund": {
+          "answer": "[REFUND POLICY PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+          "question": "When can I get a refund?"
+        },
+        "voucher": {
+          "answer": "Enter the code at the purchase confirmation step, before you go to payment. The system recalculates the price and shows the amount to pay before you confirm.",
+          "question": "How do I use a discount code?"
+        }
+      },
+      "title": "Frequently asked questions"
     },
-    "featuresTitle": "How Thi 360 helps you prepare",
-    "footerNote": "Online practice portal for HSA and QDA exams",
-    "heroDescription": "Thi 360 is the online exam preparation portal for the VNU Hanoi (HSA) and Ministry of Defense (QDA) aptitude tests.",
-    "heroTitle": "Practice like the real exam, see what to improve right away"
+    "hero": {
+      "cta": "Explore exams",
+      "description": "Take a full paper to practice under exam timing, or pick single sections to focus on what you want to improve. For candidates preparing for aptitude, admission and high school graduation exams.",
+      "formats": {
+        "full": {
+          "description": "All sections in one attempt, with the real exam duration.",
+          "title": "FULL exam"
+        },
+        "part": {
+          "description": "Practice one section of the paper, for example HSA Mathematics and Data Processing.",
+          "title": "Section exam"
+        },
+        "subject": {
+          "description": "Practice one subject of a subject-based exam, for example Mathematics in SPT or the graduation exam.",
+          "title": "Subject exam"
+        }
+      },
+      "formatsTitle": "Three ways to practice",
+      "kindsLabel": "Exams",
+      "title": "Online practice that follows the real exam structure"
+    },
+    "steps": {
+      "cta": "Choose an exam",
+      "items": {
+        "choose": {
+          "description": "See the structure, price and access rights of the exam.",
+          "title": "Choose an exam"
+        },
+        "pay": {
+          "description": "The exam is granted to the account you are signed in with. Pay through VNPAY.",
+          "title": "Sign in and pay"
+        },
+        "result": {
+          "description": "See your score on the platform once the exam is graded.",
+          "title": "See your result"
+        },
+        "start": {
+          "description": "Open the exam you bought in My exams and start when you are ready.",
+          "title": "Take the exam"
+        }
+      },
+      "title": "From choosing an exam to seeing your result"
+    },
+    "support": {
+      "contact": "Contact support",
+      "description": "Contact us if you have trouble buying, paying or opening an exam you bought. For payment issues, have your order code (for example DH261117AB12CD) or the VNPAY transaction code ready so we can look it up quickly.",
+      "labels": {
+        "email": "Email",
+        "hours": "Support hours",
+        "phone": "Phone"
+      },
+      "pending": "Contact information is being updated.",
+      "title": "Need help?"
+    },
+    "why": {
+      "items": {
+        "choose": {
+          "description": "Pick a FULL exam, or a section or subject exam that fits your goal.",
+          "title": "Practice the part you need"
+        },
+        "results": {
+          "description": "See your score after grading and follow every attempt in History.",
+          "title": "Review your results"
+        },
+        "structure": {
+          "description": "Take exams with the question counts, section order and durations published for each exam.",
+          "title": "Follow the exam structure"
+        }
+      },
+      "title": "Why practice here?"
+    }
   },
   "login": {
     "backHome": "Home",
@@ -369,8 +455,8 @@
     "title": "Sign in"
   },
   "metadata": {
-    "description": "Online practice portal for HSA and QDA aptitude exams",
-    "title": "Thi 360 — HSA & QDA Exam Prep",
+    "description": "Online practice that follows the real exam structure: HSA, QDA, BCA, V-ACT, SPT, SP2E, high school graduation",
+    "title": "Thi 360 — Online exam practice",
     "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {

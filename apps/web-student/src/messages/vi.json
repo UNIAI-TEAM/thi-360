@@ -323,21 +323,107 @@
     "sectionTitle": "Bài thi của tôi"
   },
   "landing": {
-    "badge": "Luyện thi HSA · QDA",
-    "ctaHeader": "Đăng nhập",
-    "ctaHero": "Khám phá bài thi",
-    "features": {
-      "analysisDescription": "Điểm từng phần, câu đúng, câu sai, câu bỏ trống hiển thị sau khi nộp.",
-      "analysisTitle": "Điểm và phân tích ngay",
-      "practiceDescription": "Gợi ý chủ đề cần củng cố và theo dõi tiến bộ qua từng lần làm.",
-      "practiceTitle": "Luyện đúng phần còn yếu",
-      "structureDescription": "Bài thi đầy đủ hoặc từng phần, thời gian tính theo máy chủ.",
-      "structureTitle": "Đề thi theo đúng cấu trúc"
+    "faq": {
+      "intro": "Số câu, thời lượng, số lượt và quyền lợi khác nhau giữa các bài. Hãy xem trang chi tiết của bài thi bạn chọn.",
+      "items": {
+        "attempts": {
+          "answer": "Số lượt của một lần mua ghi trên thẻ và trang chi tiết của từng bài. Còn lượt bạn vẫn mua thêm được; lượt mua thêm được cộng vào bài thi bạn đã có ở Bài thi của tôi.",
+          "question": "Một lần mua được làm bao nhiêu lượt? Mua thêm lượt thế nào?"
+        },
+        "formats": {
+          "answer": "Bài thi FULL gồm mọi phần của đề, làm liên tiếp trong một lượt. Bài thi theo phần chỉ gồm một phần, ví dụ Toán học và Xử lí số liệu của HSA. Bài thi theo môn dành cho kỳ thi tổ chức theo môn như SPT, SP2E, tốt nghiệp THPT. Phần hoặc môn của mỗi bài ghi trên thẻ.",
+          "question": "Bài thi FULL, theo phần, theo môn khác nhau thế nào?"
+        },
+        "otherAccount": {
+          "answer": "[NỘI DUNG TRẢ LỜI CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+          "question": "Tôi có thể mua cho tài khoản khác không?"
+        },
+        "paidNoExam": {
+          "answer": "[NỘI DUNG TRẢ LỜI CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+          "question": "Thanh toán thành công nhưng chưa thấy bài thì làm gì?"
+        },
+        "refund": {
+          "answer": "[CHÍNH SÁCH HOÀN TIỀN CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+          "question": "Khi nào được hoàn tiền?"
+        },
+        "voucher": {
+          "answer": "Nhập mã ở bước xác nhận mua, trước khi chuyển sang thanh toán. Hệ thống tính lại giá và cho bạn xem số tiền phải trả trước khi xác nhận.",
+          "question": "Mã giảm giá dùng thế nào?"
+        }
+      },
+      "title": "Câu hỏi thường gặp"
     },
-    "featuresTitle": "Thi 360 giúp bạn điều gì",
-    "footerNote": "Cổng luyện thi đánh giá năng lực HSA và QDA",
-    "heroDescription": "Thi 360 là cổng luyện thi trực tuyến cho kỳ thi đánh giá năng lực của ĐHQG Hà Nội (HSA) và Bộ Quốc phòng (QDA).",
-    "heroTitle": "Thi thử như thi thật, biết ngay mình cần luyện gì"
+    "hero": {
+      "cta": "Khám phá bài thi",
+      "description": "Làm đề đầy đủ để luyện theo thời gian thi hoặc chọn từng phần để tập trung vào nội dung bạn muốn cải thiện. Dành cho thí sinh chuẩn bị các kỳ thi đánh giá năng lực, tuyển sinh và tốt nghiệp THPT.",
+      "formats": {
+        "full": {
+          "description": "Các phần thi liên tiếp trong một lượt, đúng thời lượng của kỳ thi.",
+          "title": "Bài thi FULL"
+        },
+        "part": {
+          "description": "Luyện riêng một phần của đề, ví dụ Toán học và Xử lí số liệu của HSA.",
+          "title": "Bài thi theo phần"
+        },
+        "subject": {
+          "description": "Luyện một môn của kỳ thi theo môn, ví dụ Toán của SPT hoặc tốt nghiệp THPT.",
+          "title": "Bài thi theo môn"
+        }
+      },
+      "formatsTitle": "Ba hình thức luyện thi",
+      "kindsLabel": "Các kỳ thi",
+      "title": "Luyện thi trực tuyến theo đúng cấu trúc đề"
+    },
+    "steps": {
+      "cta": "Chọn bài thi",
+      "items": {
+        "choose": {
+          "description": "Xem cấu trúc, giá và quyền sử dụng của bài thi.",
+          "title": "Chọn bài"
+        },
+        "pay": {
+          "description": "Bài thi được cấp cho tài khoản đang đăng nhập. Thanh toán qua VNPAY.",
+          "title": "Đăng nhập và thanh toán"
+        },
+        "result": {
+          "description": "Xem điểm trực tiếp trên hệ thống sau khi bài được chấm.",
+          "title": "Xem kết quả"
+        },
+        "start": {
+          "description": "Mở bài thi đã mua tại Bài thi của tôi và bắt đầu khi bạn sẵn sàng.",
+          "title": "Vào làm bài"
+        }
+      },
+      "title": "Từ chọn bài đến xem kết quả"
+    },
+    "support": {
+      "contact": "Liên hệ hỗ trợ",
+      "description": "Liên hệ khi gặp lỗi mua bài, thanh toán hoặc truy cập bài đã mua. Với lỗi thanh toán, hãy chuẩn bị mã đơn (ví dụ DH261117AB12CD) hoặc mã giao dịch VNPAY để chúng tôi tra cứu nhanh.",
+      "labels": {
+        "email": "Email",
+        "hours": "Giờ hỗ trợ",
+        "phone": "Điện thoại"
+      },
+      "pending": "Thông tin liên hệ đang được cập nhật.",
+      "title": "Bạn cần hỗ trợ?"
+    },
+    "why": {
+      "items": {
+        "choose": {
+          "description": "Chọn bài thi FULL hoặc bài thi theo phần, theo môn phù hợp với mục tiêu của bạn.",
+          "title": "Chọn phần cần luyện"
+        },
+        "results": {
+          "description": "Xem điểm sau khi bài được chấm và theo dõi mọi lượt đã làm trong Lịch sử.",
+          "title": "Xem lại kết quả"
+        },
+        "structure": {
+          "description": "Làm bài theo số câu, thứ tự các phần và thời lượng đã công bố của từng kỳ thi.",
+          "title": "Luyện theo cấu trúc đề"
+        }
+      },
+      "title": "Vì sao luyện thi tại đây?"
+    }
   },
   "login": {
     "backHome": "Trang chủ",
@@ -369,8 +455,8 @@
     "title": "Đăng nhập"
   },
   "metadata": {
-    "description": "Cổng luyện thi đánh giá năng lực HSA và QDA",
-    "title": "Thi 360 — Luyện thi HSA, QDA",
+    "description": "Luyện thi trực tuyến theo đúng cấu trúc đề: HSA, QDA, BCA, V-ACT, SPT, SP2E, tốt nghiệp THPT",
+    "title": "Thi 360 — Luyện thi trực tuyến",
     "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {

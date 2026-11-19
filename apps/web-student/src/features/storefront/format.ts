@@ -1,6 +1,9 @@
 import { APP_TIME_ZONE } from "@thi360/web-kit/preferences";
 import type { DecimalRange, IntRange } from "./types";
 
+/** Nhãn "Bài ôn" khi bài xây từ chế độ ôn tập (`buildMode = REVIEW`, BS 2). */
+export const REVIEW_BUILD_MODE = "REVIEW";
+
 // `en-GB` luôn cho "dd/MM"; mẫu của `vi` là "dd-MM", không đúng quy ước ngày của DESIGN.md mục 8.
 const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", timeZone: APP_TIME_ZONE });
 

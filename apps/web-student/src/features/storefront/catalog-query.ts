@@ -5,6 +5,8 @@
 export const CATALOG_FORMATS = ["FULL", "PART", "SUBJECT"] as const;
 export const CATALOG_SORTS = ["NEWEST", "PRICE_ASC", "PRICE_DESC"] as const;
 export const CATALOG_PAGE_SIZE = 12;
+/** Neo của khối danh mục trên trang giới thiệu (`/#exams`). */
+export const CATALOG_ANCHOR_ID = "exams";
 export const DEFAULT_CATALOG_SORT = "NEWEST";
 
 export type CatalogFormat = (typeof CATALOG_FORMATS)[number];

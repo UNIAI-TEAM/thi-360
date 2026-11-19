@@ -4,12 +4,9 @@ import { pickName } from "@/lib/pick-name";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { rangeText } from "./format";
+import { REVIEW_BUILD_MODE, rangeText } from "./format";
 import { ProductPrice } from "./product-price";
 import type { ProductCard as ProductCardData } from "./types";
-
-/** Nhãn "Bài ôn" khi bài xây từ chế độ ôn tập (`buildMode = REVIEW`, BS 2). */
-export const REVIEW_BUILD_MODE = "REVIEW";
 
 const chipBase = "rounded-full px-2.5 py-0.5 text-caption leading-[1.1875rem]";
 

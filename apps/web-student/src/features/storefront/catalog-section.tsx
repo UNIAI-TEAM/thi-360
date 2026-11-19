@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { touchFieldText } from "@/lib/styles";
 import { AccessAction } from "./access-action";
 import {
+  CATALOG_ANCHOR_ID,
   CATALOG_FORMATS,
   CATALOG_PAGE_SIZE,
   CATALOG_SORTS,
@@ -23,9 +24,6 @@ import type { Loaded, ProductPage, StorefrontFilters } from "./types";
 
 const ALL = "ALL";
 const SEARCH_DEBOUNCE_MS = 400;
-
-/** Neo của khối danh mục trên trang giới thiệu (`/#exams`). */
-export const CATALOG_ANCHOR_ID = "exams";
 
 export type CatalogView =
   | { kind: "loading" }

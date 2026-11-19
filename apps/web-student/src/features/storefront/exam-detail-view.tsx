@@ -4,8 +4,8 @@ import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BuyPanel } from "./buy-panel";
-import { rangeText } from "./format";
-import { FormatChip, REVIEW_BUILD_MODE } from "./product-card";
+import { REVIEW_BUILD_MODE, rangeText } from "./format";
+import { FormatChip } from "./product-card";
 import { hasSupportContact, readSupportContact } from "./support";
 import type { AnswerTypeGroup, DetailChoiceOption, ProductDetail } from "./types";
 
