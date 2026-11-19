@@ -35,15 +35,27 @@ class ExamOverviewOnPaperIT extends AbstractIntegrationTest {
                  {"id":"choice-s","subjectCode":"TOAN","questionCount":10,"blocks":[]}],"blocks":[]}]}
             ]}""";
 
+    /** A coded (QDA/BCA style) part is stored as ALL, but its catalog choice paths decide the printed count. */
+    private static final String CODED = """
+            {"parts":[
+              {"id":"coded","order":1,"name":"Coded","questionCount":10,"questionCountOnPaper":10,
+               "participation":{"mode":"ALL"},"codeSource":{"source":"GLOBAL_LIST"},"sections":[],
+               "subjectPool":[{"id":"coded-s","subjectCode":"TOAN","questionCount":10,"blocks":[]}]}
+            ]}""";
+
     @Autowired private ObjectMapper mapper;
     @Autowired private JdbcTemplate jdbc;
 
     private UUID exam() {
+        return exam(PARTS);
+    }
+
+    private UUID exam(String parts) {
         UUID id = UUID.randomUUID();
         jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, duration_minutes) "
                 + "values (?, ?, ?, 'Overview on paper', 'FULL', 'SHARED', 60)", id, id.toString(), id.toString());
         jdbc.update("insert into exam.exam_structure (exam_id, parts, structure_hash) values (?, cast(? as jsonb), 'test')",
-                id, PARTS);
+                id, parts);
         return id;
     }
 
@@ -86,5 +98,12 @@ class ExamOverviewOnPaperIT extends AbstractIntegrationTest {
         assertThat(part(detail, "choice").path("questionCountOnPaper").asInt()).isEqualTo(10);
         assertThat(part(detail, "fixed").path("questionCount").asInt()).isEqualTo(10);
         assertThat(part(detail, "fixed").path("questionCountOnPaper").asInt()).isEqualTo(10);
+    }
+
+    @Test
+    void aCodedPartStoredAsAllKeepsItsPrintedCountWhenItsCountGrows() throws Exception {
+        JsonNode detail = overview(exam(CODED), "coded", 12);
+        assertThat(part(detail, "coded").path("questionCount").asInt()).isEqualTo(12);
+        assertThat(part(detail, "coded").path("questionCountOnPaper").asInt()).isEqualTo(10);
     }
 }
