@@ -24,10 +24,13 @@ public interface PaperSolverPort {
      *
      * @param examId            exam id
      * @param versionNo         published version number
-     * @param partCodes         ids of the parts of the snapshot to generate now; must not be empty
+     * @param partCodes         ids of the parts of the snapshot to generate now; must not be empty. The result
+     *                          lists them in structure order, whatever the order given here
      * @param selections        the choices of the choice parts listed in {@code partCodes}: one entry per part
      *                          whose participation is {@code CHOICE} (HSA science or English, QDA combination code,
-     *                          BCA code, Informatics branch); none for parts every student takes
+     *                          BCA code, Informatics branch); none for parts every student takes. The chosen
+     *                          options must lie on one path the version published ({@code published_path_ids}), and
+     *                          the subjects of each selection must belong to that selection's own options
      * @param seed              generation seed
      * @param excludeQuestionIds root and child question ids already issued in the attempt; none of them is picked
      * @return every requested question, grouped by part, section (subject) and group, plus the single questions a
@@ -65,7 +68,11 @@ public interface PaperSolverPort {
     /** A serving question version, the unit of {@code (questionId, versionNo)}. A question set is one root. */
     record GeneratedQuestion(UUID questionId, int versionNo) {}
 
-    /** Questions picked for one group (a block of the structure), in the order the solver picked them. */
+    /**
+     * Questions picked for one authored block of the published snapshot, in the order the solver picked them.
+     * {@code groupId} is the block id of the snapshot, once per section. A block with passage slots (HSA / QDA
+     * Literature) is one group: the picks of all its slots, whole roots, in slot order.
+     */
     record GeneratedGroup(String groupId, List<GeneratedQuestion> questions) {
         public GeneratedGroup {
             questions = List.copyOf(questions);

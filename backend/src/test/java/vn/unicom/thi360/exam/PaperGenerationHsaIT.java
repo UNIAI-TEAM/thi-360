@@ -38,6 +38,19 @@ class PaperGenerationHsaIT extends PaperGenerationBaseIT {
     }
 
     @Test
+    void literaturePassageBlockIsOneGroupOfItsAuthoredId() throws Exception {
+        Published published = publishTemplate("HSA", "FULL", null, null, null);
+        List<String> parts = partIds(published);
+
+        GeneratedPaper paper = port.generate(published.examId(), published.versionNo(),
+                List.of(parts.get(0), parts.get(1)), List.of(), 11L, Set.of());
+
+        // The Literature passage block (five passages of five children) is one group, not five synthetic slot groups.
+        assertGroupsAreAuthoredBlocks(published, paper);
+        assertThat(slottedBlocks(published)).isNotEmpty();
+    }
+
+    @Test
     void scienceSubjectReceivesSixteenBySeed() throws Exception {
         Published published = publishTemplate("HSA", "FULL", null, null, null);
         String part = partIds(published).get(2);

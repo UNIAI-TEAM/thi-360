@@ -80,11 +80,14 @@ final class PaperGenerationAssembler {
 
     private static GeneratedSection section(SectionOnPath section, Map<String, GroupWitness> witnesses,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates) {
-        List<GeneratedGroup> groups = new ArrayList<>();
+        // A block with passage slots is solved as one synthetic group per slot; the port speaks authored blocks, so the
+        // slot picks join, in slot order, under the id of the block they came from (as the preview consolidates them).
+        Map<String, List<GeneratedQuestion>> byBlock = new LinkedHashMap<>();
         long units = 0;
         for (GroupQuota group : section.groups()) {
             GroupWitness witness = witnesses.get(group.groupId());
-            List<GeneratedQuestion> questions = new ArrayList<>();
+            String blockId = group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
+            List<GeneratedQuestion> questions = byBlock.computeIfAbsent(blockId, id -> new ArrayList<>());
             if (witness != null) {
                 for (QuestionPick pick : witness.picks()) {
                     questions.add(question(pick));
@@ -96,8 +99,9 @@ final class PaperGenerationAssembler {
                     units += candidate.units().size();
                 }
             }
-            groups.add(new GeneratedGroup(group.groupId(), questions));
         }
+        List<GeneratedGroup> groups = new ArrayList<>();
+        byBlock.forEach((blockId, questions) -> groups.add(new GeneratedGroup(blockId, questions)));
         if (section.questionCount() != null && units != section.questionCount()) {
             throw PaperGenerationPlan.failed("section " + section.sectionId() + " holds " + units
                     + " of " + section.questionCount() + " questions");

@@ -20,6 +20,17 @@ import vn.unicom.thi360.exam.spi.PaperSolverPort.Selection;
 class PaperGenerationQdaIT extends PaperGenerationBaseIT {
 
     @Test
+    void literaturePassageBlockIsOneGroupOfItsAuthoredId() throws Exception {
+        Published published = publishTemplate("QDA", "FULL", null, null, null);
+        List<String> parts = partIds(published);
+
+        GeneratedPaper paper = port.generate(published.examId(), published.versionNo(),
+                parts.subList(0, parts.size() - 1), List.of(), 17L, Set.of());
+
+        assertGroupsAreAuthoredBlocks(published, paper);
+    }
+
+    @Test
     void combinationOrderComesFromSnapshot() throws Exception {
         Published published = publishTemplate("QDA", "FULL", null, null, null);
         String codes = partIds(published).getLast();
