@@ -178,6 +178,7 @@
       - 2026-11-18 23:32 (UTC+7): FIX-AUDIO (UNI-2698, PR #115) merge: tệp đính kèm câu hỏi hỗ trợ HTTP Range, proxy web chuyển tiếp Range và phản hồi 206, để trình phát audio tua được.
       - 2026-11-19 00:31 (UTC+7): BE-21 (UNI-2693, PR #116) merge: mẫu V-SAT Tiếng Anh cả môn và các phần P2 đến P4, bài đọc dùng chung câu 8 đến 15, tìm mẫu phần riêng trước khi cắt từ mẫu môn.
       - 2026-11-19 01:07 (UTC+7): FE-8 (UNI-2696, PR #117) merge: trình phát audio trong đề sinh thử, tiêu đề Phần I đến IV theo phân đoạn, năm thông điệp kiểm tra mới và mẫu số đối chiếu theo lệnh.
+      - 2026-11-19 02:20 (UTC+7): FIX-RELOAD (UNI-2699, PR #118) merge: nạp lại mẫu giữ thời lượng của đề dùng chung đồng hồ và thang điểm LINEAR; đề thiếu thời lượng không xuất bản được.
     - **Tiếp theo:** M.Trường duyệt bản vẽ (G2) và các chỗ cần chốt ở `docs/design/dot-2b/README.md`, `docs/design/dot-3/README.md`; rồi PR. Chưa cook.
 
 ### Đợt 2 · Mở rộng 7 kỳ thi và chấm tự luận (2026-11-16)
