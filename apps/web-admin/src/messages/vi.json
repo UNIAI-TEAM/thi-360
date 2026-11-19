@@ -5758,6 +5758,11 @@
       "separateNote": "Hệ thống chọn câu đáp ứng đồng thời cả hai: mỗi câu được chọn vừa tính vào khối lớp vừa tính vào độ khó của nó.",
       "allocated": "Đã phân bổ {allocated, number} / {count, number} câu",
       "allocatedMeter": "{allocated, number} trên {count, number} câu",
+      "meterOver": "{allocated, number} trên {count, number} câu, vượt {over, number} câu",
+      "meterUnder": "{allocated, number} trên {count, number} câu, thiếu {short, number} câu",
+      "meterExact": "{allocated, number} trên {count, number} câu, khớp",
+      "over": "Vượt {count, number} câu",
+      "under": "Thiếu {count, number} câu",
       "matches": "Khớp số câu của khối",
       "issues": {
         "invalidValue": "Ma trận có giá trị âm hoặc số câu không phải số nguyên.",

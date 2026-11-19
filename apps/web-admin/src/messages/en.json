@@ -5758,6 +5758,11 @@
       "separateNote": "The system picks questions that satisfy both at once: each selected question counts toward its grade and its difficulty.",
       "allocated": "Allocated {allocated, number} / {count, number} questions",
       "allocatedMeter": "{allocated, number} of {count, number} questions",
+      "meterOver": "{allocated, number} of {count, number} questions, over by {over, number}",
+      "meterUnder": "{allocated, number} of {count, number} questions, short by {short, number}",
+      "meterExact": "{allocated, number} of {count, number} questions, matches",
+      "over": "{count, plural, one {Over by # question} other {Over by # questions}}",
+      "under": "{count, plural, one {Short by # question} other {Short by # questions}}",
       "matches": "Matches the block's question count",
       "issues": {
         "invalidValue": "The matrix has negative values or non-whole question counts.",
