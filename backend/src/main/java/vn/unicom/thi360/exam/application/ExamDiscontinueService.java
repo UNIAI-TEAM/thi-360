@@ -29,9 +29,11 @@ public class ExamDiscontinueService {
     private final CurrentUserProvider currentUser;
     private final AuditRecorder audit;
     private final Clock clock;
+    private final ExamEventOutbox events;
 
     public ExamDiscontinueService(JdbcTemplate jdbc, EntityManager entities, ExamService exams,
-            IdempotentCommand idempotency, CurrentUserProvider currentUser, AuditRecorder audit, Clock clock) {
+            IdempotentCommand idempotency, CurrentUserProvider currentUser, AuditRecorder audit, Clock clock,
+            ExamEventOutbox events) {
         this.jdbc = jdbc;
         this.entities = entities;
         this.exams = exams;
@@ -39,6 +41,7 @@ public class ExamDiscontinueService {
         this.currentUser = currentUser;
         this.audit = audit;
         this.clock = clock;
+        this.events = events;
     }
 
     @Transactional
@@ -62,6 +65,9 @@ public class ExamDiscontinueService {
         jdbc.update("update exam.exam_version set status = 'DISCONTINUED', discontinued_at = ?, discontinued_by = ? "
                         + "where exam_id = ? and status = 'PUBLISHED'",
                 java.sql.Timestamp.from(now), actor, id);
+        int lastServing = jdbc.queryForObject("select coalesce(max(version_no), 0) from exam.exam_version "
+                + "where exam_id = ? and state = 'SERVING'", Integer.class, id);
+        events.discontinued(id, lastServing);
         audit.record(AuditEvent.success("EXAM", "EXAM.DISCONTINUE", "exam", id.toString(), row.name(),
                 Map.of("status", "DISCONTINUED")));
         Exam managed = entities.find(Exam.class, id);

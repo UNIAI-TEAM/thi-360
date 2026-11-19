@@ -114,6 +114,7 @@ public class ExamService {
     private final ExamStructureProperties structureProperties;
     private final CombinationLookup combinationLookup;
     private final Clock clock;
+    private final ExamListingService listings;
     public ExamService(
             ExamRepository examRepository,
             ExamStructureRepository structureRepository,
@@ -133,7 +134,8 @@ public class ExamService {
             ExamCheckValidity checkValidity,
             ExamStructureProperties structureProperties,
             CombinationLookup combinationLookup,
-            Clock clock) {
+            Clock clock,
+            ExamListingService listings) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -153,6 +155,7 @@ public class ExamService {
         this.structureProperties = structureProperties;
         this.combinationLookup = combinationLookup;
         this.clock = clock;
+        this.listings = listings;
     }
     private ExamStructureCodec codec() {
         return new ExamStructureCodec(objectMapper);
@@ -1159,6 +1162,8 @@ public class ExamService {
         } catch (DataIntegrityViolationException ex) {
             throw codeTaken();
         }
+        // The sale listing and cover are part of the exam (TM 6.2); the copy has no published version yet.
+        listings.copyInto(source, copy, actor, now);
 
         ExamStructure sourceStructure = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = sourceStructure == null

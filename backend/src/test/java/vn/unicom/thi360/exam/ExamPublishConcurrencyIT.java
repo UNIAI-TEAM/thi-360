@@ -74,6 +74,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
             jdbc.update("DELETE FROM exam.exam_version WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id IN (?, ?)", first, second);
+            jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM exam.exam WHERE id IN (?, ?)", first, second);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id IN (?, ?)", question, otherQuestion);
             jdbc.update("DELETE FROM questionbank.question WHERE id IN (?, ?)", question, otherQuestion);
@@ -119,6 +120,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
             reset(sourceSpy);
             jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id = ?", exam);
             jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id = ?", exam);
+            jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id = ?", exam);
             jdbc.update("DELETE FROM exam.exam WHERE id = ?", exam);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id = ?", question);
             jdbc.update("DELETE FROM questionbank.question WHERE id = ?", question);
@@ -169,6 +171,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
             reset(catalogSpy);
             jdbc.update("DELETE FROM exam.exam_check_run WHERE exam_id=?", exam);
             jdbc.update("DELETE FROM exam.exam_structure WHERE exam_id=?", exam);
+            jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id=?", exam);
             jdbc.update("DELETE FROM exam.exam WHERE id=?", exam);
             jdbc.update("DELETE FROM questionbank.question_version WHERE question_id=?", question);
             jdbc.update("DELETE FROM questionbank.question WHERE id=?", question);

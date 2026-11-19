@@ -264,7 +264,9 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pathIds\":[\"codes:QD06\"],\"expectedRevision\":" + revision + "}"))
+                // E24 (QDA, BS 8): the new code is published together with the codes already serving, in one version.
+                .content("{\"pathIds\":[\"codes:QD01\",\"codes:QD02\",\"codes:QD03\",\"codes:QD04\",\"codes:QD05\",\"codes:QD06\"],"
+                        + "\"expectedRevision\":" + revision + "}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
         assertThat(jdbc.queryForObject("SELECT has_unpublished_changes FROM exam.exam WHERE id=?", Boolean.class, id)).isFalse();
         var config = mapper.readTree(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=2", String.class, id));

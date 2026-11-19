@@ -148,6 +148,8 @@ public class ExamVersionQueryService {
         }
         if (old.has("omittedGroups")) config.set("omittedGroups", snapshot.omittedGroups(parts));
         if (!old.has("examQuotas")) config.remove("examQuotas");
+        // A version saved before EX-1 has no listing: compare as if the field did not exist.
+        if (!old.has("listing")) config.remove("listing");
         return config;
     }
 
@@ -163,12 +165,13 @@ public class ExamVersionQueryService {
                 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing,
                 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring,
                 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule),
+                'listing', %s,
                 'examQuotas', s.exam_quotas)
                 || case when e.build_mode <> 'STANDARD' then jsonb_build_object('buildMode', e.build_mode)
                    else '{}'::jsonb end)::text
                 from exam.exam e join exam.exam_structure s on s.exam_id=e.id
                 left join exam.exam_kind_profile p on p.exam_item_id=e.kind_item_id where e.id=?
-                """, String.class, examId);
+                """.formatted(ExamListingSnapshot.WORKING_JSON_SQL), String.class, examId);
         return json(config);
     }
 

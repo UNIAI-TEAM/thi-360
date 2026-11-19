@@ -83,14 +83,16 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)", question, leaf.id());
         UUID exam = UUID.randomUUID();
         jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Usage exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)", exam, exam.toString(), exam.toString());
+        // The options are BRANCH (chosen before the attempt starts): E24 does not apply, so the partial publications
+        // below stay partial. A SUBJECT_CHOICE option would require every valid path in each publish (BS 8).
         String json = """
                 {"parts":[{"id":"p","name":"Part","participation":{"mode":"CHOICE","choose":1},"sections":[
                   {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"]},
                    "blocks":[{"id":"inherited","name":"Inherited","questionType":"SINGLE_CHOICE"},
                              {"id":"wrong-type","name":"Wrong type","questionType":"SHORT_ANSWER"}]}],
-                  "options":[{"id":"choice","code":"SCIENCE","name":"Science","kind":"SUBJECT_CHOICE",
+                  "options":[{"id":"choice","code":"SCIENCE","name":"Science","kind":"BRANCH",
                     "sections":[{"id":"choice-s","subjectCode":"TEST","blocks":[{"id":"choice-b","name":"Choice block","questionType":"SINGLE_CHOICE"}]}]},
-                    {"id":"draft-option","name":"Draft","kind":"SUBJECT_CHOICE",
+                    {"id":"draft-option","name":"Draft","kind":"BRANCH",
                      "sections":[{"id":"draft-s","subjectCode":"TEST","blocks":[{"id":"draft-b","name":"Draft block","questionType":"SINGLE_CHOICE"}]}]}]}]}
                 """.formatted(parent.id());
         var document = new ExamStructureCodec(mapper).read(json);
