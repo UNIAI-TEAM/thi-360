@@ -2,7 +2,6 @@ package vn.unicom.thi360.commerce.entitlement.access.infrastructure;
 
 import java.sql.Array;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -52,14 +51,13 @@ public class ExamAccessReadRepository {
     /** Every purchase entitlement of the account (source {@code PURCHASE}, no source reference), oldest first. */
     public List<EntitlementRow> findPurchaseEntitlements(UUID userId) {
         return jdbc.query("""
-                SELECT id, exam_id, attempts_total, attempts_used, attempts_reserved, attempts_revoked, created_at
+                SELECT id, exam_id, attempts_total, attempts_used, attempts_reserved, attempts_revoked
                 FROM commerce.entitlement
                 WHERE user_id = ? AND source = 'PURCHASE' AND source_ref IS NULL
                 ORDER BY created_at, id
                 """, (rs, row) -> new EntitlementRow(rs.getObject("id", UUID.class),
                 rs.getObject("exam_id", UUID.class), rs.getInt("attempts_total"), rs.getInt("attempts_used"),
-                rs.getInt("attempts_reserved"), rs.getInt("attempts_revoked"),
-                rs.getTimestamp("created_at").toInstant()), userId);
+                rs.getInt("attempts_reserved"), rs.getInt("attempts_revoked")), userId);
     }
 
     /**
@@ -119,7 +117,7 @@ public class ExamAccessReadRepository {
     }
 
     public record EntitlementRow(UUID id, UUID examId, int attemptsTotal, int attemptsUsed, int attemptsReserved,
-                                 int attemptsRevoked, Instant createdAt) {
+                                 int attemptsRevoked) {
 
         public int attemptsLeft() {
             return attemptsTotal - attemptsUsed - attemptsReserved - attemptsRevoked;

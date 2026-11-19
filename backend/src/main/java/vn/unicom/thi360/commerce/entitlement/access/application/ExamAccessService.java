@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.commerce.entitlement.access.api.ExamAccessItem;
 import vn.unicom.thi360.commerce.entitlement.access.domain.ExamAccessState;
@@ -36,7 +37,11 @@ public class ExamAccessService {
         this.attempts = attempts;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Repeatable read: entitlements, attempt status and pending orders come from one snapshot (see
+     * {@link MyExamsService#list}).
+     */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public List<ExamAccessItem> query(UUID userId, List<String> codes) {
         Map<String, String> requested = new LinkedHashMap<>();
         for (String code : codes) {

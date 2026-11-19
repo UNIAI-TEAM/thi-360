@@ -31,7 +31,6 @@ import vn.unicom.thi360.commerce.entitlement.application.GrantLine;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderCommand;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
-import vn.unicom.thi360.commerce.storefront.FakePublishedExamPort;
 import vn.unicom.thi360.commerce.storefront.api.ExamKindRef;
 import vn.unicom.thi360.commerce.storefront.api.IntRange;
 import vn.unicom.thi360.commerce.storefront.api.LocalizedName;
@@ -51,8 +50,8 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
     static class FakesConfig {
         @Bean
         @Primary
-        FakePublishedExamPort fakePublishedExamPort() {
-            return new FakePublishedExamPort();
+        CountingExamPort fakePublishedExamPort() {
+            return new CountingExamPort();
         }
 
         @Bean
@@ -68,7 +67,7 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
     @Autowired protected ObjectMapper mapper;
     @Autowired protected EntitlementGrantService grantService;
     @Autowired protected EntitlementPort entitlementPort;
-    @Autowired protected FakePublishedExamPort examPort;
+    @Autowired protected CountingExamPort examPort;
     @Autowired protected FakePendingOrderLookup pendingOrders;
     @Autowired private ConfigurableApplicationContext context;
 

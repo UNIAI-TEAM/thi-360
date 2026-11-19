@@ -16,6 +16,7 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.commerce.entitlement.access.api.MyExamCard;
 import vn.unicom.thi360.commerce.entitlement.access.domain.ExamAccessState;
@@ -62,7 +63,12 @@ public class MyExamsService {
         this.mapper = mapper;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Repeatable read: entitlements, grants, attempt status and pending orders of one request come from one snapshot, so
+     * a fulfillment that commits between the reads (paid order becomes an entitlement) shows as one side of the commit,
+     * never as neither.
+     */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public List<MyExamCard> list(UUID userId) {
         List<EntitlementRow> entitlements = repository.findPurchaseEntitlements(userId);
         List<PendingOrder> pending = pendingOrders.findPaidUnfulfilled(userId);
@@ -76,6 +82,8 @@ public class MyExamsService {
         Map<UUID, String> pendingByExam = new HashMap<>();
         pending.forEach(p -> pendingByExam.putIfAbsent(p.examId(), p.orderCode()));
 
+        Map<UUID, Optional<ServingExam>> servingByExam = new HashMap<>();
+        Function<UUID, Optional<ServingExam>> serving = examId -> servingByExam.computeIfAbsent(examId, exams::findServing);
         List<MyExamCard> cards = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (PendingOrder order : pending) {
@@ -88,7 +96,7 @@ public class MyExamsService {
                         order.orderCode(), order.examId());
                 continue;
             }
-            cards.add(card(product, null, null, null, null, order.orderCode()));
+            cards.add(card(product, null, null, null, null, order.orderCode(), serving));
         }
         AttemptStatusProvider provider = attempts.get();
         for (int i = entitlements.size() - 1; i >= 0; i--) {
@@ -102,13 +110,14 @@ public class MyExamsService {
             cards.add(card(product, entitlement, rangeScope(grants.getOrDefault(entitlement.id(), List.of())),
                     provider.findOpenAttempt(userId, entitlement.id()).orElse(null),
                     provider.findLatestResultAttempt(userId, entitlement.id()).orElse(null),
-                    pendingByExam.get(entitlement.examId())));
+                    pendingByExam.get(entitlement.examId()), serving));
         }
         return cards;
     }
 
     private MyExamCard card(ProductRef product, EntitlementRow entitlement, List<Set<String>> grantOptions,
-            OpenAttempt open, ResultAttempt result, String pendingOrderCode) {
+            OpenAttempt open, ResultAttempt result, String pendingOrderCode,
+            Function<UUID, Optional<ServingExam>> serving) {
         ProductCard stored = read(product.card());
         boolean hasEntitlement = entitlement != null;
         int attemptsLeft = hasEntitlement ? entitlement.attemptsLeft() : 0;
@@ -119,9 +128,9 @@ public class MyExamsService {
 
         IntRange questions = stored.questionCount();
         IntRange minutes = stored.durationMinutes();
-        Optional<ServingExam> serving = exams.findServing(product.examId());
-        if (serving.isPresent()) {
-            List<ServingPath> paths = eligiblePaths(serving.get().servingPaths(), grantOptions);
+        Optional<ServingExam> servingExam = serving.apply(product.examId());
+        if (servingExam.isPresent()) {
+            List<ServingPath> paths = eligiblePaths(servingExam.get().servingPaths(), grantOptions);
             // Nothing the buyer can be given (E25): no range, and not the public catalog range either.
             questions = paths.isEmpty() ? null : orElse(range(paths, ServingPath::questionCount), questions);
             minutes = paths.isEmpty() ? null : orElse(range(paths, ServingPath::durationMinutes), minutes);
