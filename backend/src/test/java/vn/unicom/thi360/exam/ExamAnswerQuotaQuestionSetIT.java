@@ -393,6 +393,55 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
         assertThat(row(answers, "answerType", "QUESTION_SET").path("achieved").asInt(0)).isLessThan(3);
     }
 
+    /**
+     * A flexible set group can supply its three children, but a standalone group in the same section is short, so
+     * there is no witness paper. The Bộ câu hỏi row must report the capacity of the flexible group, not a false zero.
+     */
+    @Test
+    void aFlexibleSetGroupThatCanSupplyItsChildrenIsNotReportedAsZeroWithoutAWitness() throws Exception {
+        Subject subject = subject();
+        set(subject, 3);
+        UUID examId = exam("""
+                [{"id":"p","questionCount":8,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%s",
+                  "questionCount":8,"answerQuotas":{"unit":"COUNT","items":[
+                    {"answerType":"SINGLE_CHOICE","value":5},{"answerType":"QUESTION_SET","value":3}]},
+                  "blocks":[
+                    {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":3,"childAnswerType":"SINGLE_CHOICE"},
+                    {"id":"single","name":"Single","questionType":"SINGLE_CHOICE","questionCount":5}]}]}]
+                """.formatted(subject.code()), 8);
+
+        JsonNode result = check(examId);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        JsonNode answers = result.findValue("answerQuotas");
+        assertThat(answers).as(result.toString()).isNotNull();
+        JsonNode set = row(answers, "answerType", "QUESTION_SET");
+        assertThat(set.path("required").asInt()).isEqualTo(3);
+        assertThat(set.path("achieved").asInt(-1)).isEqualTo(3);
+    }
+
+    /** A one-set group takes one three-child set even when the bank holds two; a quota of six is not reachable. */
+    @Test
+    void theQuestionSetRowWithoutAWitnessIsBoundedBySetCountOfTheGroup() throws Exception {
+        Subject subject = subject();
+        set(subject, 3);
+        set(subject, 3);
+        UUID examId = exam("""
+                [{"id":"p","questionCount":6,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%s",
+                  "questionCount":6,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":6}]},
+                  "blocks":[
+                    {"id":"set","name":"Set","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,
+                     "childAnswerType":"SINGLE_CHOICE"},
+                    {"id":"single","name":"Single","questionType":"SINGLE_CHOICE","questionCount":3}]}]}]
+                """.formatted(subject.code()), 6);
+
+        JsonNode result = check(examId);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        JsonNode answers = result.findValue("answerQuotas");
+        assertThat(answers).as(result.toString()).isNotNull();
+        assertThat(row(answers, "answerType", "QUESTION_SET").path("required").asInt()).isEqualTo(6);
+        assertThat(row(answers, "answerType", "QUESTION_SET").path("achieved").asInt(0)).isLessThanOrEqualTo(3);
+    }
+
     @Test
     void subjectWithoutTheRowKeepsCountingSetChildrenAsTheirOwnType() throws Exception {
         Subject subject = toanPool();
