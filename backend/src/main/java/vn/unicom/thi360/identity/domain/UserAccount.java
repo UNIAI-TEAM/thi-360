@@ -13,6 +13,8 @@ import java.util.UUID;
 @Table(name = "user_account", schema = "identity")
 public class UserAccount {
 
+    public static final String DEFAULT_LOCALE = "vi";
+
     @Id
     private UUID id;
 
@@ -58,6 +60,9 @@ public class UserAccount {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Column(name = "preferred_locale", nullable = false)
+    private String preferredLocale = DEFAULT_LOCALE;
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
@@ -129,6 +134,18 @@ public class UserAccount {
     public void markLoggedIn(Instant now) {
         this.lastLoginAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedAt = now;
+    }
+
+    /** Stores the language of the last successful login; returns whether the value changed. */
+    public boolean changePreferredLocale(String locale) {
+        if (!"vi".equals(locale) && !"en".equals(locale)) {
+            throw new IllegalArgumentException("Unsupported locale: " + locale);
+        }
+        if (locale.equals(this.preferredLocale)) {
+            return false;
+        }
+        this.preferredLocale = locale;
+        return true;
     }
 
     public void clearMustChangePassword(Instant now, UUID actorId) {
@@ -295,6 +312,10 @@ public class UserAccount {
 
     public Instant getLastLoginAt() {
         return lastLoginAt;
+    }
+
+    public String getPreferredLocale() {
+        return preferredLocale;
     }
 
     public Instant getDeletedAt() {

@@ -1,0 +1,684 @@
+{
+  "chrome": {
+    "vi": {
+      "title": "Thử bộ câu hỏi",
+      "intro": "Trang thử của nhà phát triển: 8 dạng câu ở hai chế độ. Chỉ có khi chạy dev.",
+      "modeLabel": "Chế độ",
+      "modeAnswer": "Làm bài",
+      "modeReview": "Xem lại",
+      "matchUiLabel": "Cách ghép đôi",
+      "matchUiSelect": "Danh sách chọn",
+      "matchUiPick": "Bấm hai lượt",
+      "valueLabel": "Giá trị trả ra"
+    },
+    "en": {
+      "title": "Question kit",
+      "intro": "Developer sandbox: the 8 question types in both modes. Available only in dev.",
+      "modeLabel": "Mode",
+      "modeAnswer": "Answer",
+      "modeReview": "Review",
+      "matchUiLabel": "Matching input",
+      "matchUiSelect": "Select list",
+      "matchUiPick": "Two-step pick",
+      "valueLabel": "Emitted value"
+    }
+  },
+  "samples": [
+    {
+      "key": "single",
+      "question": {
+        "id": "demo-single",
+        "displayNo": 19,
+        "points": 1,
+        "stem": "<p>Tính <span class=\"math-inline\">\\(\\lim_{x \\to 1} \\frac{2x - \\sqrt{3x + 1}}{x^2 - 1}\\)</span>, ta được kết quả là:</p>",
+        "optionOrder": [
+          "s3",
+          "s1",
+          "s4",
+          "s2"
+        ],
+        "body": {
+          "type": "SINGLE_CHOICE",
+          "options": [
+            {
+              "id": "s1",
+              "content": "<p><span class=\"math-inline\">\\(\\frac{3}{4}\\)</span></p>",
+              "correct": true
+            },
+            {
+              "id": "s2",
+              "content": "<p><span class=\"math-inline\">\\(\\frac{1}{2}\\)</span></p>"
+            },
+            {
+              "id": "s3",
+              "content": "<p><span class=\"math-inline\">\\(-\\frac{1}{4}\\)</span></p>"
+            },
+            {
+              "id": "s4",
+              "content": "<p>Không tồn tại giới hạn</p>"
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "optionId": "s2"
+      },
+      "review": {
+        "solutionHtml": "<p>Nhân liên hợp tử và mẫu rồi rút gọn <strong>x − 1</strong>: giới hạn bằng <span class=\"math-inline\">\\(\\frac{3}{4}\\)</span>. Chọn phương án đầu tiên.</p>",
+        "outcome": "WRONG",
+        "earned": 0,
+        "max": 1,
+        "showAnswers": true
+      }
+    },
+    {
+      "key": "singleNoKey",
+      "question": {
+        "id": "demo-single-nokey",
+        "displayNo": 34,
+        "points": 1,
+        "stem": "<p>Thủ đô của Việt Nam là thành phố nào? (xem lại khi dữ liệu không có khóa đáp án)</p>",
+        "body": {
+          "type": "SINGLE_CHOICE",
+          "options": [
+            {
+              "id": "k1",
+              "content": "<p>Huế</p>"
+            },
+            {
+              "id": "k2",
+              "content": "<p>Hà Nội</p>"
+            },
+            {
+              "id": "k3",
+              "content": "<p>Đà Nẵng</p>"
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "optionId": "k3"
+      },
+      "review": {
+        "solutionHtml": "<p>Hà Nội là thủ đô của nước Cộng hòa xã hội chủ nghĩa Việt Nam.</p>",
+        "outcome": "WRONG",
+        "earned": 0,
+        "max": 1
+      }
+    },
+    {
+      "key": "multiple",
+      "question": {
+        "id": "demo-multi",
+        "displayNo": 20,
+        "points": 1,
+        "stem": "<p>Những hàm số nào sau đây là hàm số chẵn?</p>",
+        "optionOrder": [
+          "m1",
+          "m2",
+          "m3",
+          "m4"
+        ],
+        "body": {
+          "type": "MULTIPLE_CHOICE",
+          "scoringRule": "ALL_OR_NOTHING",
+          "options": [
+            {
+              "id": "m1",
+              "content": "<p><span class=\"math-inline\">\\(y = x^2\\)</span></p>",
+              "correct": true
+            },
+            {
+              "id": "m2",
+              "content": "<p><span class=\"math-inline\">\\(y = x^3\\)</span></p>"
+            },
+            {
+              "id": "m3",
+              "content": "<p><span class=\"math-inline\">\\(y = \\cos x\\)</span></p>",
+              "correct": true
+            },
+            {
+              "id": "m4",
+              "content": "<p><span class=\"math-inline\">\\(y = \\sin x\\)</span></p>"
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "optionIds": [
+          "m1"
+        ]
+      },
+      "review": {
+        "solutionHtml": "<p>Hàm số chẵn thỏa <span class=\"math-inline\">\\(f(-x) = f(x)\\)</span>: chỉ <span class=\"math-inline\">\\(y = x^2\\)</span> và <span class=\"math-inline\">\\(y = \\cos x\\)</span>. Chọn đủ hai phương án mới được trọn điểm.</p>",
+        "outcome": "PARTIAL",
+        "earned": 0.5,
+        "max": 1
+      }
+    },
+    {
+      "key": "short",
+      "question": {
+        "id": "demo-short",
+        "displayNo": 21,
+        "points": 1,
+        "stem": "<p>Một nghiên cứu về thời gian giải trí cho biết trung bình mỗi nhân viên văn phòng dành <strong>6,5 giờ</strong> mỗi tuần. Hỏi mỗi nhân viên dành bao nhiêu phút mỗi ngày (làm tròn đến hàng đơn vị)?</p>",
+        "body": {
+          "type": "SHORT_ANSWER",
+          "answers": [
+            "56",
+            "56 phút"
+          ],
+          "inputHint": "Số nguyên, không ghi đơn vị",
+          "answerFormat": "INTEGER"
+        }
+      },
+      "submitted": {
+        "text": "56"
+      },
+      "review": {
+        "solutionHtml": "<p>6,5 giờ × 60 phút ÷ 7 ngày ≈ <strong>56 phút</strong> mỗi ngày.</p>",
+        "outcome": "CORRECT",
+        "earned": 1,
+        "max": 1
+      }
+    },
+    {
+      "key": "cloze",
+      "question": {
+        "id": "demo-cloze",
+        "displayNo": 22,
+        "points": 2,
+        "stem": "<p>Điền vào ô trống.</p>",
+        "body": {
+          "type": "CLOZE",
+          "passage": "<p>Phản ứng <span class=\"math-inline\">\\(\\ce{2H2 + O2 -> 2H2O}\\)</span> tỏa nhiệt. Nước tinh khiết sôi ở [[b1]] độ C và đông đặc ở [[b2]] độ C ở áp suất khí quyển.</p>",
+          "blanks": [
+            {
+              "id": "b1",
+              "answers": [
+                "100"
+              ],
+              "points": 1
+            },
+            {
+              "id": "b2",
+              "answers": [
+                "0"
+              ],
+              "points": 1
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "blanks": {
+          "b1": "100",
+          "b2": "4"
+        }
+      },
+      "review": {
+        "solutionHtml": "<p>Nước tinh khiết sôi ở <strong>100</strong> độ C và đông đặc ở <strong>0</strong> độ C ở áp suất khí quyển.</p>",
+        "outcome": "PARTIAL",
+        "earned": 1,
+        "max": 2,
+        "gradingDetail": {
+          "b1": {
+            "key": "b1",
+            "outcome": "CORRECT",
+            "earned": 1,
+            "max": 1
+          },
+          "b2": {
+            "key": "b2",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 1
+          }
+        }
+      }
+    },
+    {
+      "key": "clozeText",
+      "question": {
+        "id": "demo-cloze-text",
+        "displayNo": 33,
+        "points": 2,
+        "stem": "<p>Điền từ thích hợp vào ô trống.</p>",
+        "body": {
+          "type": "CLOZE",
+          "passage": "<p>Sông [[b1]] chảy qua Hà Nội, còn thành phố [[b2]] là trung tâm kinh tế lớn nhất phía Nam.</p>",
+          "blanks": [
+            {
+              "id": "b1",
+              "answers": [
+                "Hồng",
+                "sông Hồng"
+              ],
+              "points": 1
+            },
+            {
+              "id": "b2",
+              "answers": [
+                "Hồ Chí Minh",
+                "TP. Hồ Chí Minh"
+              ],
+              "points": 1
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "blanks": {
+          "b1": "Hồng",
+          "b2": "Đà Nẵng"
+        }
+      },
+      "review": {
+        "solutionHtml": "<p>Sông Hồng chảy qua Hà Nội; thành phố Hồ Chí Minh là trung tâm kinh tế lớn nhất phía Nam.</p>",
+        "outcome": "PARTIAL",
+        "earned": 1,
+        "max": 2,
+        "gradingDetail": {
+          "b1": {
+            "key": "b1",
+            "outcome": "CORRECT",
+            "earned": 1,
+            "max": 1
+          },
+          "b2": {
+            "key": "b2",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 1
+          }
+        }
+      }
+    },
+    {
+      "key": "trueFalse",
+      "question": {
+        "id": "demo-tf",
+        "displayNo": 24,
+        "points": 1,
+        "stem": "<p>Mỗi phát biểu sau đúng hay sai?</p>",
+        "body": {
+          "type": "TRUE_FALSE",
+          "scoringMethod": "PER_STATEMENT",
+          "statements": [
+            {
+              "id": "t1",
+              "content": "<p>Hai đường thẳng song song thì đồng phẳng.</p>",
+              "answer": true,
+              "points": 0.25
+            },
+            {
+              "id": "t2",
+              "content": "<p>Hai đường thẳng chéo nhau thì có điểm chung.</p>",
+              "answer": false,
+              "points": 0.25
+            },
+            {
+              "id": "t3",
+              "content": "<p>Qua hai điểm phân biệt có duy nhất một đường thẳng.</p>",
+              "answer": true,
+              "points": 0.25
+            },
+            {
+              "id": "t4",
+              "content": "<p>Ba điểm bất kỳ luôn thẳng hàng.</p>",
+              "answer": false,
+              "points": 0.25
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "statements": {
+          "t1": true,
+          "t2": true,
+          "t3": true,
+          "t4": null
+        }
+      },
+      "review": {
+        "solutionHtml": "<p>Chỉ phát biểu 1 và 3 đúng. Hai đường thẳng chéo nhau thì <strong>không</strong> có điểm chung; ba điểm bất kỳ <strong>không</strong> luôn thẳng hàng.</p>",
+        "outcome": "PARTIAL",
+        "earned": 0.5,
+        "max": 1,
+        "gradingDetail": {
+          "t1": {
+            "key": "t1",
+            "outcome": "CORRECT",
+            "earned": 0.25,
+            "max": 0.25
+          },
+          "t2": {
+            "key": "t2",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 0.25
+          },
+          "t3": {
+            "key": "t3",
+            "outcome": "CORRECT",
+            "earned": 0.25,
+            "max": 0.25
+          },
+          "t4": {
+            "key": "t4",
+            "outcome": "BLANK",
+            "earned": 0,
+            "max": 0.25
+          }
+        }
+      }
+    },
+    {
+      "key": "trueFalseNoKey",
+      "question": {
+        "id": "demo-tf-nokey",
+        "displayNo": 35,
+        "points": 1,
+        "stem": "<p>Mỗi phát biểu sau đúng hay sai? (xem lại khi kết quả chưa cho xem đáp án: mệnh đề không có khóa đáp án)</p>",
+        "body": {
+          "type": "TRUE_FALSE",
+          "scoringMethod": "PER_STATEMENT",
+          "statements": [
+            {
+              "id": "n1",
+              "content": "<p>Hai đường thẳng song song thì đồng phẳng.</p>",
+              "points": 0.5
+            },
+            {
+              "id": "n2",
+              "content": "<p>Hai đường thẳng chéo nhau thì có điểm chung.</p>",
+              "points": 0.5
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "statements": {
+          "n1": true,
+          "n2": true
+        }
+      },
+      "review": {
+        "outcome": "PARTIAL",
+        "earned": 0.5,
+        "max": 1,
+        "showAnswers": false,
+        "gradingDetail": {
+          "n1": {
+            "key": "n1",
+            "outcome": "CORRECT",
+            "earned": 0.5,
+            "max": 0.5
+          },
+          "n2": {
+            "key": "n2",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 0.5
+          }
+        }
+      }
+    },
+    {
+      "key": "matching",
+      "question": {
+        "id": "demo-match",
+        "displayNo": 25,
+        "points": 1,
+        "stem": "<p>Ghép mỗi đơn vị với đại lượng tương ứng.</p>",
+        "optionOrder": [
+          "r2",
+          "r1",
+          "r4",
+          "r3",
+          "r5"
+        ],
+        "body": {
+          "type": "MATCHING",
+          "reuseRight": false,
+          "left": [
+            {
+              "id": "l1",
+              "content": "<p>Pa (pascal)</p>"
+            },
+            {
+              "id": "l2",
+              "content": "<p>J (joule)</p>"
+            },
+            {
+              "id": "l3",
+              "content": "<p>W (watt)</p>"
+            },
+            {
+              "id": "l4",
+              "content": "<p>Hz (hertz)</p>"
+            }
+          ],
+          "right": [
+            {
+              "id": "r1",
+              "content": "<p>Áp suất</p>"
+            },
+            {
+              "id": "r2",
+              "content": "<p>Năng lượng</p>"
+            },
+            {
+              "id": "r3",
+              "content": "<p>Công suất</p>"
+            },
+            {
+              "id": "r4",
+              "content": "<p>Tần số</p>"
+            },
+            {
+              "id": "r5",
+              "content": "<p>Điện trở</p>"
+            }
+          ],
+          "pairs": [
+            {
+              "leftId": "l1",
+              "rightId": "r1"
+            },
+            {
+              "leftId": "l2",
+              "rightId": "r2"
+            },
+            {
+              "leftId": "l3",
+              "rightId": "r3"
+            },
+            {
+              "leftId": "l4",
+              "rightId": "r4"
+            }
+          ]
+        }
+      },
+      "submitted": {
+        "pairs": {
+          "l1": "r1",
+          "l2": "r3",
+          "l3": "r3",
+          "l4": null
+        }
+      },
+      "review": {
+        "solutionHtml": "<p>Pa đo áp suất, J đo năng lượng, W đo công suất, Hz đo tần số. Điện trở (đơn vị ôm) là lựa chọn dư.</p>",
+        "outcome": "PARTIAL",
+        "earned": 0.25,
+        "max": 1,
+        "gradingDetail": {
+          "l1": {
+            "key": "l1",
+            "outcome": "CORRECT",
+            "earned": 0.25,
+            "max": 0.25
+          },
+          "l2": {
+            "key": "l2",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 0.25
+          },
+          "l3": {
+            "key": "l3",
+            "outcome": "CORRECT",
+            "earned": 0.25,
+            "max": 0.25
+          },
+          "l4": {
+            "key": "l4",
+            "outcome": "BLANK",
+            "earned": 0,
+            "max": 0.25
+          }
+        }
+      }
+    },
+    {
+      "key": "essay",
+      "question": {
+        "id": "demo-essay",
+        "displayNo": 27,
+        "points": 25,
+        "stem": "<p>Phân tích hình tượng người lính trong bài thơ đã học. Nêu rõ luận điểm và dẫn chứng.</p>",
+        "body": {
+          "type": "ESSAY",
+          "wordLimit": 20
+        }
+      },
+      "submitted": {
+        "html": "<p>Hình tượng người lính trong bài thơ hiện lên giản dị mà kiên cường. Trước hết, đó là những con người sinh ra từ làng quê nghèo, mang theo nỗi nhớ nhà nhưng vẫn lên đường vì lý tưởng chung.</p><p>Bên cạnh đó, tình đồng đội là điểm sáng xuyên suốt: cái nắm tay giữa những ngày giá rét đã trở thành sức mạnh nâng đỡ họ qua mọi gian khổ của chiến trường.</p><p>Tóm lại, người lính hiện lên như biểu tượng cho vẻ đẹp của tinh thần yêu nước và lòng nhân hậu của dân tộc.</p>",
+        "wordCount": 86
+      },
+      "review": {
+        "solutionHtml": "<p>Bài văn tốt nêu rõ luận điểm ở mở bài, mỗi đoạn thân bài có dẫn chứng cụ thể từ văn bản và kết bài khái quát lại vẻ đẹp của hình tượng người lính.</p>",
+        "outcome": "PARTIAL",
+        "earned": 20,
+        "max": 25,
+        "essay": {
+          "state": "GRADED",
+          "wordCount": 86,
+          "criteria": [
+            {
+              "description": "Nêu đúng luận điểm",
+              "earned": 8,
+              "max": 10
+            },
+            {
+              "description": "Dẫn chứng phù hợp",
+              "earned": 7,
+              "max": 10
+            },
+            {
+              "description": "Diễn đạt, trình bày",
+              "earned": 5,
+              "max": 5
+            }
+          ],
+          "comment": "Bài viết mạch lạc, cần thêm dẫn chứng cụ thể từ văn bản."
+        }
+      }
+    },
+    {
+      "key": "set",
+      "question": {
+        "id": "demo-set",
+        "displayNo": 31,
+        "points": 2,
+        "body": {
+          "type": "QUESTION_SET",
+          "blankNumberStart": 1,
+          "passage": "<p>Đọc đoạn trích và bảng số liệu dưới đây, rồi trả lời các câu hỏi.</p><figure class=\"data-table\"><figcaption>TRỊ GIÁ XUẤT, NHẬP KHẨU CỦA HOA KÌ</figcaption><table><thead><tr><th scope=\"col\">Năm</th><th scope=\"col\">2000</th><th scope=\"col\">2020</th></tr></thead><tbody><tr><th scope=\"row\">Xuất khẩu</th><td class=\"num\">1096,1</td><td class=\"num\">2148,6</td></tr><tr><th scope=\"row\">Nhập khẩu</th><td class=\"num\">1477,2</td><td class=\"num\">2776,1</td></tr></tbody></table><p class=\"figure-note\">Đơn vị: Tỉ USD</p><p class=\"figure-source\">Nguồn: World Bank, 2022</p></figure><p>Ngoại thương của Hoa Kì tăng đều trong hai thập kỷ, trong đó nhập khẩu luôn lớn hơn xuất khẩu.</p><p>Ngoại thương của Hoa Kì tăng đều trong hai thập kỷ, trong đó nhập khẩu luôn lớn hơn xuất khẩu.</p><p>Ngoại thương của Hoa Kì tăng đều trong hai thập kỷ, trong đó nhập khẩu luôn lớn hơn xuất khẩu.</p><p>Ngoại thương của Hoa Kì tăng đều trong hai thập kỷ, trong đó nhập khẩu luôn lớn hơn xuất khẩu.</p><p>Ngoại thương của Hoa Kì tăng đều trong hai thập kỷ, trong đó nhập khẩu luôn lớn hơn xuất khẩu.</p><p>Ngoại thương của Hoa Kì tăng đều trong hai thập kỷ, trong đó nhập khẩu luôn lớn hơn xuất khẩu.</p>",
+          "childIds": [
+            "demo-set-a",
+            "demo-set-b"
+          ]
+        }
+      },
+      "children": [
+        {
+          "id": "demo-set-a",
+          "displayNo": 31,
+          "points": 1,
+          "stem": "<p>Theo đoạn trích, nhận định nào đúng?</p>",
+          "body": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "s1",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{3}{4}\\)</span></p>",
+                "correct": true
+              },
+              {
+                "id": "s2",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{1}{2}\\)</span></p>"
+              },
+              {
+                "id": "s3",
+                "content": "<p><span class=\"math-inline\">\\(-\\frac{1}{4}\\)</span></p>"
+              },
+              {
+                "id": "s4",
+                "content": "<p>Không tồn tại giới hạn</p>"
+              }
+            ]
+          }
+        },
+        {
+          "id": "demo-set-b",
+          "displayNo": 32,
+          "points": 1,
+          "stem": "<p>Số liệu nào của năm 2020 được nêu trong bảng (đơn vị tỉ USD)?</p>",
+          "body": {
+            "type": "SHORT_ANSWER",
+            "answers": [
+              "56",
+              "56 phút"
+            ],
+            "inputHint": "Số nguyên, không ghi đơn vị",
+            "answerFormat": "INTEGER"
+          }
+        }
+      ],
+      "submitted": {
+        "children": {
+          "demo-set-a": {
+            "optionId": "s1"
+          },
+          "demo-set-b": {
+            "text": "2148,6"
+          }
+        }
+      },
+      "review": {
+        "solutionHtml": "<p>Đọc kỹ bảng số liệu rồi lần lượt đối chiếu từng câu con.</p>",
+        "outcome": "PARTIAL",
+        "earned": 1,
+        "max": 2,
+        "children": {
+          "demo-set-a": {
+            "solutionHtml": "<p>Nhận định đúng là phương án đầu tiên.</p>",
+            "outcome": "CORRECT",
+            "earned": 1,
+            "max": 1
+          },
+          "demo-set-b": {
+            "solutionHtml": "<p>Số liệu năm 2020 trong bảng: xuất khẩu 2148,6, nhập khẩu 2776,1 (tỉ USD).</p>",
+            "outcome": "WRONG",
+            "earned": 0,
+            "max": 1
+          }
+        }
+      }
+    }
+  ]
+}

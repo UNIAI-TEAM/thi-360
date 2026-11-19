@@ -28,6 +28,8 @@ spring:
       - classroom
       - questionbank
       - exam
+      - commerce
+      - attempt
     table: flyway_schema_history
     locations:
       - classpath:db/migration
@@ -143,6 +145,9 @@ thi360:
   exam:
     structure:
       max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
+  token:
+    # Pepper của HMAC mã OTP và mã đặt lại mật khẩu (plan B6). Thiếu thì ứng dụng không khởi động.
+    pepper: ${THI360_TOKEN_PEPPER:}
 ---
 spring:
   config:
@@ -183,6 +188,8 @@ thi360:
     auto-create-bucket: ${THI360_S3_AUTO_CREATE_BUCKET:true}
   file:
     enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
+  token:
+    pepper: ${THI360_TOKEN_PEPPER:dev-only-token-pepper-do-not-use}
 ---
 spring:
   config:
@@ -227,6 +234,8 @@ thi360:
   exam:
     scheduling:
       enabled: false
+  token:
+    pepper: ${THI360_TOKEN_PEPPER:dev-only-token-pepper-do-not-use}
 ---
 spring:
   config:
@@ -234,3 +243,19 @@ spring:
       on-profile: openapi
   main:
     web-application-type: servlet
+---
+spring:
+  config:
+    activate:
+      on-profile: e2e
+  flyway:
+    fail-on-missing-locations: false
+    locations:
+      - classpath:db/migration
+      - classpath:db/devdata
+
+# C-0b: giá trị công khai, chỉ dùng cho E2E trên CI và máy dev (plan B6); bản demo dùng giá trị riêng trong .env.
+# Cùng khóa thi360.token.pepper với TokenPepperProperties (C-0).
+thi360:
+  token:
+    pepper: ${THI360_TOKEN_PEPPER:dev-only-e2e-token-pepper-not-a-secret}
