@@ -1,8 +1,6 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
 import java.util.Map;
@@ -11,13 +9,11 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
-import vn.unicom.thi360.identity.spi.Permissions;
 
 /**
  * BE-16 R1-1, R1-2: the HSCA / VSAT dev seeds on a database that already holds admin-created EXAM items. The repeatable
@@ -75,13 +71,9 @@ class ExamKindSeedUpgradeIT extends AbstractIntegrationTest {
      */
     @Test
     void renamedSeedItemKeepsItsIdValueAndCodeWhenTheRepeatablesRerun() throws Exception {
-        long version = jdbc.queryForObject(
-                "SELECT version FROM catalog.catalog_item WHERE id = ?::uuid", Long.class, SEED_HSCA);
-        mockMvc.perform(patch("/api/v1/admin/catalog/items/{id}", SEED_HSCA)
-                        .with(asUser(Permissions.CATALOG_MODIFY))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"HSCA_RENAMED\",\"version\":" + version + "}"))
-                .andExpect(status().isOk());
+        // PATCH đổi mã giá trị hệ thống nay bị từ chối (409, xem CatalogSystemValuesIT); dựng trạng thái cũ bằng SQL (test rollback).
+        jdbc.update("UPDATE catalog.catalog_item SET code = 'HSCA_RENAMED', code_normalized = 'hsca_renamed' WHERE id = ?::uuid",
+                SEED_HSCA);
 
         runSeeds();
         runSeeds();

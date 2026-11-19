@@ -866,13 +866,13 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
       },
       {
         id: "required",
-        header: t("blocks.columns.required"),
-        cell: ({ row }) => <span className="tabular-nums">{required(row.original)}</span>,
+        header: () => <span className="block text-right">{t("blocks.columns.required")}</span>,
+        cell: ({ row }) => <span className="block text-right whitespace-nowrap">{required(row.original)}</span>,
       },
       {
         id: "source",
-        header: t("blocks.columns.source"),
-        cell: ({ row }) => <span className="tabular-nums">{source(row.original)}</span>,
+        header: () => <span className="block text-right">{t("blocks.columns.source")}</span>,
+        cell: ({ row }) => <span className="block text-right whitespace-nowrap">{source(row.original)}</span>,
       },
       {
         id: "result",

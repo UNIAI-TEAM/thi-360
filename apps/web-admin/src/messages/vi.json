@@ -237,7 +237,7 @@
       "CATALOG_GROUP_SYSTEM": "Không thể sửa, ngừng hoặc xóa nhóm danh mục hệ thống.",
       "CATALOG_ITEM_IN_USE": "Không thể thực hiện thao tác vì giá trị danh mục đang được sử dụng.",
       "CATALOG_ITEM_NOT_FOUND": "Không tìm thấy nút danh mục (có thể đã bị xóa trước khi xác nhận).",
-      "CATALOG_ITEM_SYSTEM": "Không thể sửa mã hoặc xóa giá trị hệ thống.",
+      "CATALOG_ITEM_SYSTEM": "Không thể sửa mã, ngừng, chuyển hoặc xóa giá trị hệ thống.",
       "CATALOG_LEVELS_LOCKED": "Không thể thêm hoặc bớt cấp khi nhóm danh mục đã có giá trị.",
       "CATALOG_NODE_HAS_CHILDREN": "Không thể xóa nút đang có nút con.",
       "CATALOG_PARENT_INACTIVE": "Không thể thêm hoặc chuyển nút dưới nút cha đang ngừng sử dụng.",
@@ -383,6 +383,7 @@
       "saveAndAddMore": "Lưu và thêm tiếp",
       "statusLabel": "Trạng thái",
       "subtitle": "Cấu hình chung",
+      "systemHint": "Giá trị hệ thống: chỉ sửa được tên.",
       "updateSuccess": "Đã cập nhật giá trị {code}."
     },
     "itemsErrorDescription": "Không tải được danh sách giá trị. Hãy thử lại.",
@@ -452,7 +453,6 @@
     },
     "systemBadge": "Hệ thống",
     "systemGroupHint": "Danh mục hệ thống: không sửa, không xóa. Vẫn quản lý được giá trị bên trong.",
-    "systemItemLocked": "Giá trị hệ thống: không thể xóa.",
     "systemSection": "Hệ thống",
     "title": "Cấu hình chung",
     "tree": {
@@ -3819,6 +3819,17 @@
         "essay": "Tự luận",
         "essayValue": "Có câu tự luận, chấm tay"
       },
+      "overview": {
+        "description": "Số lấy từ cấu trúc đã lưu của bài, sửa ngay trên dòng rồi bấm Lưu thông tin. Đổi số ở đây không đổi nhóm lấy câu và ma trận: số câu của phần lệch với phân bổ thì bước Cấu trúc báo lệch để bạn tự chia lại.",
+        "pendingDescription": "Đang chọn phạm vi khác: bảng là số của mẫu mới nhất, chỉ đọc. Số này được nạp khi bạn xác nhận nạp lại cấu trúc.",
+        "pendingEmpty": "Phạm vi mới chưa có mẫu: sau khi nạp lại, cấu trúc để trống.",
+        "empty": "Bài chưa có phần nào. Thêm phần ở bước Cấu trúc.",
+        "loadErrorTitle": "Không tải được cấu trúc đã lưu.",
+        "loadErrorDescription": "Vẫn lưu được thông tin chung; thử lại để sửa số câu, thời lượng, điểm của các phần.",
+        "infoNotSaved": "Số câu, thời lượng, điểm của các phần đã được lưu, nhưng thông tin chung chưa lưu được. Kiểm tra lại các ô rồi bấm Lưu thông tin.",
+        "publishedReadOnly": "Bài đã công bố: bảng chỉ đọc ở đây. Sửa số câu, thời lượng, điểm ở bước Cấu trúc (bản nháp).",
+        "savedRecheck": "Đã lưu số câu, thời lượng, điểm của các phần. Bài thi cần kiểm tra lại trước khi công bố."
+      },
       "loadErrorTitle": "Không tải được danh mục và mẫu cấu trúc",
       "loadErrorDescription": "Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại"
@@ -3897,6 +3908,10 @@
       "discardConfirm": "Hủy thay đổi",
       "discarded": "Đã hủy các thay đổi chưa lưu.",
       "issuesSummary": "Lỗi cần xử lý ({count, number})",
+      "gap": {
+        "over": "Vượt {count, number} câu",
+        "under": "Thiếu {count, number} câu"
+      },
       "issueGo": "Đến chỗ sửa",
       "newBlockName": "{subject} · Nhóm mới",
       "blockAdded": "Đã thêm nhóm {name}.",
@@ -4041,7 +4056,6 @@
         "singleSectionHint": "Phần có một môn: số câu của môn bằng số câu của phần.",
         "subject": "Môn",
         "sectionCount": "Số câu",
-        "sectionCountAria": "Số câu của môn {subject}",
         "countLocked": "Mẫu đã khóa số câu",
         "allocated": "Đã phân bổ vào nhóm",
         "allocatedValue": "{allocated, number} / {count, number}",
@@ -4388,12 +4402,10 @@
         "allocatedValue": "{allocated, number} / {count, number} câu",
         "allocatedUnknown": "{allocated, number} câu",
         "matches": "Khớp số câu của môn",
-        "missing": "Còn thiếu {count, number} câu",
-        "over": "Vượt {count, number} câu",
         "sourceEnough": "Đủ nguồn theo ma trận",
         "countField": {
           "label": "Số câu của mục",
-          "hint": "Sửa số câu của mục; phần và các nhóm phải khớp.",
+          "hint": "Số câu lấy từ thông tin tổng quan; phần và các nhóm phải khớp.",
           "locked": "Mẫu đã khóa số câu",
           "lockedHint": "Mẫu giữ nguyên số câu của từng mục. Phân bổ bên trong mục vẫn sửa được."
         },
@@ -5354,8 +5366,6 @@
       "scopeSubject": "Theo môn",
       "scopeSubjectDescription": "Đủ các phần của một môn",
       "scopeOnly": "Kỳ thi này chỉ có phạm vi này",
-      "part": "Phần thi",
-      "partHint": "Bài Theo phần chỉ gồm phần được chọn",
       "partName": {
         "MATH": "Toán",
         "LITERATURE": "Văn",
@@ -5540,28 +5550,6 @@
         "pointsPositive": "Điểm của phần phải lớn hơn 0.",
         "commonTooLarge": "Phần chung có {common, number} câu, không còn câu cho lựa chọn trong {total, number} câu của phần."
       },
-      "preview": {
-        "title": "Cấu trúc sẽ nạp · {name}",
-        "titleEmpty": "Cấu trúc sẽ nạp · không dùng mẫu",
-        "editable": "Sửa được ở Cấu trúc và ma trận",
-        "caption": "Mẫu cấu trúc theo kỳ thi và hình thức đã chọn",
-        "part": "Phần",
-        "questions": "Số câu",
-        "duration": "Thời lượng",
-        "questionsValue": "{count, number} câu",
-        "durationValue": "{count, number} phút",
-        "total": "Tổng",
-        "choiceNote": "Học viên chọn Tiếng Anh hoặc một tổ hợp Khoa học; số câu từng môn chỉnh ở Cấu trúc",
-        "subjectPending": "Chưa chọn môn",
-        "emptyNote": "Khai báo số câu và thời lượng ở Cấu trúc",
-        "note": "Mẫu chỉ là cấu hình ban đầu. Bạn phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố.",
-        "points": "Điểm",
-        "pointsValue": "{count, number} điểm",
-        "durationShared": "chung",
-        "durationSharedValue": "{count, number} phút chung",
-        "choiceOptionsNote": "Học viên chọn một trong {count, number} lựa chọn gắn sẵn",
-        "sectionsNote": "{count, number} môn trong phần"
-      },
       "kindHintKind": "{kind}: một mẫu cấu trúc cho cả kỳ thi · {timing}",
       "kindHintSubject": "{kind}: mẫu cấu trúc theo môn và năm · {timing}",
       "timingMode": {
@@ -5569,23 +5557,11 @@
         "SHARED": "thời lượng chung cho cả bài"
       },
       "noSubject": "chưa chọn môn",
-      "subjectField": {
-        "subject": "Môn của bài thi",
-        "hint": "{count, number} môn có mẫu cấu trúc; môn chưa có mẫu thì tạo cấu trúc trống",
-        "placeholder": "Chọn môn",
-        "withTemplates": "{subject} · {count, number} mẫu",
-        "noTemplate": "{subject} chưa có mẫu cấu trúc. Cấu trúc khởi tạo để trống: nhập số câu, thời lượng và thêm phần nếu cần."
-      },
       "templateNotes": {
-        "loaded": "Hệ thống nạp mẫu mới nhất: {name}.",
-        "changeInStructure": "Muốn dùng phiên bản năm khác, chọn ở bước Cấu trúc.",
-        "structureYear": "Năm cấu trúc",
-        "matrixYear": "Năm ma trận",
         "yearsDiffer": "Cấu trúc {structureYear} dùng ma trận {matrixYear}: chuyên gia cần xác nhận chỉ tiêu ma trận trước khi bán.",
         "yearsConfirm": "Chuyên gia đã xác nhận chỉ tiêu ma trận {matrixYear} dùng được cho cấu trúc này",
         "yearsConfirmHint": "Chưa xác nhận thì kiểm tra cấu hình chặn công bố. Có thể xác nhận sau ở Thông tin chung.",
-        "yearsConfirmLater": "Chuyên gia xác nhận chỉ tiêu ma trận ở Thông tin chung sau khi tạo bài.",
-        "expertNote": "Lưu ý của mẫu"
+        "yearsConfirmLater": "Chuyên gia xác nhận chỉ tiêu ma trận ở Thông tin chung sau khi tạo bài."
       },
       "timing": {
         "sharedDuration": "Thời lượng chung (phút)",
@@ -5670,7 +5646,6 @@
         "title": "Cấu trúc tổng quan",
         "description": "Số lấy từ mẫu mặc định “{template}”, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
         "descriptionNoTemplate": "Chưa có mẫu mặc định: nhập số câu, thời lượng và điểm của các phần ngay trên dòng.",
-        "versionAtStep2": "Phiên bản cấu trúc chọn ở bước 2",
         "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
         "regionLabel": "Bảng cấu trúc tổng quan của bài thi",
         "loading": "Đang tải bảng tổng quan",
@@ -5939,8 +5914,13 @@
       "type": "Dạng câu",
       "typeAny": "Bất kỳ",
       "count": "Số lượng",
-      "countHint": "Khớp số câu ở bước 1.",
-      "countMismatch": "Số lượng khác bước 1. Bước 1 đặt {step1, number} câu, ở đây đang {count, number}. Sửa một trong hai chỗ.",
+      "countHint": "Số câu đặt ở bước 1, chỉ sửa ở thông tin tổng quan.",
+      "duration": "Thời lượng (phút)",
+      "more": "Tùy chọn thêm (không bắt buộc)",
+      "scale": "Thang điểm",
+      "step1Title": "Giá trị từ bước 1",
+      "countMismatch": "Số lượng khác bước 1. Bước 1 đặt {step1, number} câu, ở đây đang {count, number}.",
+      "useStep1Count": "Dùng số của bước 1",
       "distribution": "Phân bố khối lớp và độ khó",
       "set": "đã đặt",
       "unset": "chưa đặt",

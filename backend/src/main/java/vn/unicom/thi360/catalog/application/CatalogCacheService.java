@@ -25,9 +25,15 @@ import vn.unicom.thi360.catalog.api.CatalogTreeNodeResponse;
 @Service
 public class CatalogCacheService {
 
-    public static final String OPT_KEY_PREFIX = "catalog:opt:";
-    public static final String TREE_KEY_PREFIX = "catalog:tree:";
-    public static final String GEN_KEY_PREFIX = "catalog:gen:";
+    /**
+     * Key namespace. Bump the version when a data migration changes what the options and tree lists hold
+     * (UNI-2759 added and re-coded system values), so the deploy that carries it starts on fresh keys
+     * instead of serving the old lists from a warm Redis for up to {@link #CACHE_TTL}.
+     */
+    private static final String KEY_NAMESPACE = "catalog:v2:";
+    public static final String OPT_KEY_PREFIX = KEY_NAMESPACE + "opt:";
+    public static final String TREE_KEY_PREFIX = KEY_NAMESPACE + "tree:";
+    public static final String GEN_KEY_PREFIX = KEY_NAMESPACE + "gen:";
     private static final Duration CACHE_TTL = Duration.ofHours(6);
     private static final Duration GEN_TTL = Duration.ofHours(24);
 

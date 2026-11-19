@@ -841,16 +841,18 @@ function ItemActionsMenu({
           <Pencil aria-hidden />
           <span>{t("editItem", { name: displayName })}</span>
         </DropdownMenuItem>
-        {item.status === "ACTIVE" && (
+        {item.status === "ACTIVE" && !item.system && (
           <DropdownMenuItem onSelect={onStop}>
             <Ban aria-hidden />
             <span>{t("stopItem", { name: displayName })}</span>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem destructive disabled={item.system} onSelect={onDelete}>
-          <Trash2 aria-hidden />
-          <span>{item.system ? t("systemItemLocked") : t("deleteItem", { name: displayName })}</span>
-        </DropdownMenuItem>
+        {!item.system && (
+          <DropdownMenuItem destructive onSelect={onDelete}>
+            <Trash2 aria-hidden />
+            <span>{t("deleteItem", { name: displayName })}</span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -910,7 +912,10 @@ function SortableItemRow({
       </td>
       <td className="px-3 py-2 font-medium text-text">
         {/* Tối đa hai dòng (DESIGN.md mục 5.13); tên đầy đủ có trong ngăn chi tiết. */}
-        <span className="line-clamp-2 wrap-break-word">{item.nameVi}</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="line-clamp-2 wrap-break-word">{item.nameVi}</span>
+          {item.system && <Badge>{t("systemBadge")}</Badge>}
+        </div>
         {item.combination && (
           <span
             className={cn(
@@ -1020,7 +1025,7 @@ function SortableItemRow({
                 onClick={onEdit}
                 className="text-primary-text"
               />
-              {item.status === "ACTIVE" && (
+              {item.status === "ACTIVE" && !item.system && (
                 <IconButton
                   icon={<Ban />}
                   aria-label={t("stopItem", { name: displayName })}
@@ -1029,16 +1034,15 @@ function SortableItemRow({
                   className="text-warning"
                 />
               )}
-              <IconButton
-                icon={<Trash2 />}
-                tone="danger"
-                aria-label={t("deleteItem", { name: displayName })}
-                tooltip={
-                  item.system ? t("systemItemLocked") : t("deleteItem", { name: displayName })
-                }
-                disabled={item.system}
-                onClick={onDelete}
-              />
+              {!item.system && (
+                <IconButton
+                  icon={<Trash2 />}
+                  tone="danger"
+                  aria-label={t("deleteItem", { name: displayName })}
+                  tooltip={t("deleteItem", { name: displayName })}
+                  onClick={onDelete}
+                />
+              )}
             </>
           )}
         </div>
@@ -1123,6 +1127,7 @@ function SortableItemCard({
               </span>
               {/* Mở ngăn chi tiết, nơi có tên đầy đủ (tiêu đề tối đa hai dòng, DESIGN.md mục 5.13). */}
               <ListCardTitleButton onClick={onView}>{item.nameVi}</ListCardTitleButton>
+              {item.system && <Badge>{t("systemBadge")}</Badge>}
             </span>
           }
           actions={
