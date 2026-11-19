@@ -21,7 +21,7 @@ async function backToStep1AndEdit(page: Page, spec: UiExamSpec, newCount: number
   const admin = await adminApi();
   const before = await getStructure(admin, id);
 
-  await page.getByRole("link", { name: "Sửa thông tin tổng quan" }).click();
+  await page.getByLabel("Tổng hợp cấu trúc").locator("..").getByRole("link", { name: "Sửa thông tin tổng quan" }).click();
   await page.waitForURL(new RegExp(`/exams/${id}$`));
   const count = overviewCount(page);
   await expect(count).toBeVisible();
