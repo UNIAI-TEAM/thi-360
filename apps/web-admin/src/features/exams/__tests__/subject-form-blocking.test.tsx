@@ -60,10 +60,15 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await dirtyToan(user);
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
     const dialog = await screen.findByRole("dialog");
+    // Hộp thoại vẫn gọi đúng mục sẽ rời (TOAN), không gọi môn của lỗi.
+    expect(dialog).toHaveTextContent(/TOAN|Toán/);
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Còn lỗi cần sửa trước khi lưu hoặc kiểm tra.");
     expect(putCalls(server)).toHaveLength(0);
-    await waitFor(() => expect(window.location.search).toBe("?section=sec-ly"));
+    // "Ở lại": đóng hộp thoại rồi đưa focus tới ô lỗi của môn MT.
+    await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
+    await waitFor(() => expect(lyInput()).resolves.toHaveFocus());
+    expect(window.location.search).toBe("?section=sec-ly");
   });
 
   it("(a) Kiểm tra toàn bài và Tiếp tục: không gửi PUT hay kiểm tra, focus về ô lỗi", async () => {

@@ -384,6 +384,9 @@ function StructureEditor({
       setFocusRequest({ target, nonce: focusNonce.current });
     }
   };
+  /** Lỗi chặn lưu đang chờ trong hộp thoại chuyển mục: chỉ đưa tới lỗi khi người dùng bấm "Ở lại" (R1-2). Đặt focus sau khi
+   * hộp thoại đóng, còn chữ của hộp thoại vẫn gọi đúng mục sẽ rời. */
+  const [pendingBlockedIssue, setPendingBlockedIssue] = useState<BlockingIssue | null>(null);
   /**
    * Lỗi chặn lưu của MT/DS tính trên bản nháp của mọi môn cộng nhập thô (R-15): chạy trước mọi `PUT` và trước Kiểm tra, Tiếp tục kể cả
    * khi bản nháp không đổi. Còn lỗi thì đưa tới lỗi đầu tiên, không gửi request, và trả `true`.
@@ -392,13 +395,13 @@ function StructureEditor({
     const issue = formBlockingIssues({ exam: selectionExam, draft, pinnedForms, rawInputs: rawEntries })[0];
     if (!issue) return false;
     const message = commonT("blocked");
-    goToIssue(issue);
+    if (onFailed) setPendingBlockedIssue(issue);
+    else goToIssue(issue);
     if (!onFailed) notify.error(message);
     announce(message);
     onFailed?.(message);
     return true;
   };
-
   const discardAll = () => {
     setDraft(JSON.parse(baseline) as ExamPart[]);
     setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
@@ -505,11 +508,15 @@ function StructureEditor({
     setPendingSelection(null);
     setLeaveError(null);
     guard.stay();
+    const issue = pendingBlockedIssue;
+    setPendingBlockedIssue(null);
+    if (issue) goToIssue(issue);
   };
   const proceedLeave = () => {
     const next = pendingSelection;
     setPendingSelection(null);
     setLeaveError(null);
+    setPendingBlockedIssue(null);
     if (next) selectNow(next);
     else guard.leave();
   };
