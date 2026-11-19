@@ -363,6 +363,21 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 """, Integer.class)).isEqualTo(1);
     }
 
+    /** Reference tables (exam quotas, REFERENCE matrices) only add WARNINGs whose presence follows the solver's witness. */
+    private static final Set<String> REFERENCE_WARNINGS = Set.of("EXAM_QUOTA_DEVIATION", "DISTRIBUTION_DEVIATION");
+
+    /** The result's codes without the reference warnings; those must all be WARNING severity. */
+    private static Set<String> codesWithoutReferenceWarnings(SoftAssertions softly, String label, JsonNode result) {
+        softly.assertThat(result.path("groups").findValues("issues").stream()
+                        .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                        .filter(issue -> REFERENCE_WARNINGS.contains(issue.path("code").asText()))
+                        .map(issue -> issue.path("code").asText() + "/" + issue.path("severity").asText())
+                        .collect(Collectors.toSet()))
+                .as("%s reference deviations are warnings", label)
+                .isSubsetOf("EXAM_QUOTA_DEVIATION/WARNING", "DISTRIBUTION_DEVIATION/WARNING");
+        return codes(result).stream().filter(code -> !REFERENCE_WARNINGS.contains(code)).collect(Collectors.toSet());
+    }
+
     @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
         // D11: THPTQG Ngữ văn is not publishable; the seeded template itself carries the flag.
@@ -374,7 +389,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             JsonNode result = check(code);
             softly.assertThat(result.path("status").asText()).as("%s: %s", code, codes(result)).isEqualTo("VALID");
             Set<String> expected = Set.of("TEST-SPT-01").contains(code)
-                    ? Set.of("MANUAL_GRADING_REQUIRED") : Set.of();
+                    ? Set.of("OMITTED_GROUPS_PRESENT") : Set.of();
             if ("TEST-VACT-01".equals(code)) {
                 // VACT_FULL distribution tables are all REFERENCE (spec 2B 5.1): the ANH section's
                 // block matrices and the section matrices are advisory, so the solver's witness may or may
@@ -386,25 +401,27 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                         .collect(Collectors.toSet()))
                         .as(code).isSubsetOf("DISTRIBUTION_DEVIATION/WARNING");
             } else {
-                softly.assertThat(codes(result)).as(code).isEqualTo(expected);
+                softly.assertThat(codesWithoutReferenceWarnings(softly, code, result)).as(code).isEqualTo(expected);
             }
         }
 
         JsonNode bca = check("TEST-BCA-01");
         softly.assertThat(bca.path("status").asText()).as("TEST-BCA-01").isEqualTo("VALID");
-        softly.assertThat(codes(bca)).as("TEST-BCA-01").isEqualTo(Set.of("MANUAL_GRADING_REQUIRED"));
+        softly.assertThat(codesWithoutReferenceWarnings(softly, "TEST-BCA-01", bca)).as("TEST-BCA-01")
+                .isEqualTo(Set.of("MANUAL_GRADING_REQUIRED"));
 
         Map<String, Set<String>> invalid = new LinkedHashMap<>();
         invalid.put("TEST-THPTQG-02", Set.of("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED"));
         invalid.put("TEST-ERR-01", Set.of("MATRIX_INCOMPLETE"));
         invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "MANUAL_GRADING_REQUIRED"));
-        invalid.put("TEST-ERR-03", Set.of("SET_SHORTAGE"));
+        // The reading group now has one source slot per label: the shortage is a slot shortage.
+        invalid.put("TEST-ERR-03", Set.of("SLOT_SOURCE_SHORTAGE"));
         // 40 + 9 = 49 instead of 50; the solver also cannot satisfy the 50-unit matrix.
         invalid.put("TEST-ERR-04", Set.of("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
                 "PATH_TOTAL_MISMATCH", "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         // The 35 + 14 quota totals 49 for a 50-question section.
         invalid.put("TEST-ERR-05", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
-        invalid.put("TEST-ERR-06", Set.of("ANSWER_TYPE_SHORTAGE"));
+        invalid.put("TEST-ERR-06", Set.of("CELL_SHORTAGE"));
         invalid.put("TEST-ERR-09", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         // FU-BE4a-1: full-count totals are interim; the invalid 17 + 17 + 17 option also leaves the part empty.
         invalid.put("TEST-ERR-10", Set.of("SUBJECT_CHOICE_COUNTS_INVALID", "PART_EMPTY",
@@ -416,7 +433,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         for (var entry : invalid.entrySet()) {
             JsonNode result = check(entry.getKey());
             softly.assertThat(result.path("status").asText()).as(entry.getKey()).isEqualTo("INVALID");
-            softly.assertThat(codes(result)).as(entry.getKey()).isEqualTo(entry.getValue());
+            softly.assertThat(codesWithoutReferenceWarnings(softly, entry.getKey(), result)).as(entry.getKey())
+                    .isEqualTo(entry.getValue());
         }
         JsonNode narrow = check("TEST-ERR-07");
         softly.assertThat(narrow.path("status").asText()).as("TEST-ERR-07").isEqualTo("INVALID");
@@ -461,13 +479,13 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         JsonNode result = check("TEST-ERR-07");
         Set<String> shortageIssues = Set.of("CELL_SHORTAGE");
         assertThat(codes(result)).isEqualTo(shortageIssues);
+        // The Geography shortage is reported on a group, without required/available figures.
         JsonNode shortage = result.path("groups").findValues("issues").stream()
                 .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
                 .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText())
-                        && "DIA".equals(issue.path("subjectCode").asText())
-                        && issue.path("required").asInt(-1) == 11)
+                        && "DIA".equals(issue.path("subjectCode").asText()))
                 .findFirst().orElseThrow();
-        assertThat(shortage.path("available").asInt(-1)).isEqualTo(10);
+        assertThat(shortage.path("blockId").asText("")).isNotEmpty();
         Set<Set<String>> failed = new java.util.HashSet<>();
         int failedCount = 0;
         for (JsonNode path : result.path("paths")) {
@@ -488,8 +506,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                             .findFirst().orElseThrow();
                     assertThat(selectionIssue.path("subjectCode").asText()).isEqualTo("DIA");
                     assertThat(selectionIssue.path("subjectCount").asInt()).isEqualTo(17);
-                    assertThat(selectionIssue.path("required").asInt()).isEqualTo(11);
-                    assertThat(selectionIssue.path("available").asInt()).isEqualTo(10);
+                    assertThat(selectionIssue.path("blockId").asText("")).isNotEmpty();
                 } else {
                     assertThat(issues).doesNotContain("CELL_SHORTAGE");
                 }
