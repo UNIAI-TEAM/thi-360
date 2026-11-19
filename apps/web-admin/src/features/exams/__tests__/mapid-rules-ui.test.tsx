@@ -234,6 +234,52 @@ describe("Thêm quy tắc qua hộp thoại", () => {
   });
 });
 
+describe("Mẫu số của nhóm lấy phần còn lại (R1-5)", () => {
+  const remainder = (over: Partial<ExamSection> = {}) =>
+    makeSection({
+      mapidMode: "MATRIX",
+      questionCount: 10,
+      blocks: [block({ id: "b-fixed", name: "Cố định", questionType: "SINGLE_CHOICE", questionCount: 4 }), block({ id: "b-rem", name: "Phần còn lại", questionType: "SINGLE_CHOICE", questionCount: null })],
+      ...over,
+    });
+
+  it("tỷ lệ 50% của nhóm còn lại: hộp thoại nêu mẫu số 6 và 3 câu, lưu cả percent và count, câu mô tả 3/6 (50%)", async () => {
+    const u = user();
+    const latest = renderPanel(remainder());
+    const dialog = await openAdd(u);
+    expect(within(dialog).getByRole("radio", { name: /^Phần còn lại/ })).toHaveAccessibleName(/lấy phần còn lại.*6\/10 câu/);
+    await u.click(within(dialog).getByRole("radio", { name: /^Phần còn lại/ }));
+    await u.click(within(dialog).getByRole("radio", { name: /^Số lượng/ }));
+    await pickTopic(u);
+    await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Đúng" }));
+    await u.click(within(dialog).getByRole("radio", { name: "Tỷ lệ" }));
+    const percent = within(dialog).getByTestId("mapid-rule-percent");
+    await u.clear(percent);
+    await u.type(percent, "50");
+    expect(dialog).toHaveTextContent("Mẫu số: 6 câu của Phần còn lại");
+    expect(within(dialog).getByTestId("mapid-rule-percent-result")).toHaveTextContent("= 3 câu trên mẫu số 6");
+    await u.click(within(dialog).getByTestId("mapid-rule-save"));
+    expect(latest.section.mapidRules![0]).toMatchObject({ type: "COUNT", groupId: "b-rem", comparator: "EXACT", count: 3, percent: 50 });
+    expect(table()).toHaveTextContent("Phần còn lại · Đúng 3/6 (50%) câu thuộc Mệnh đề và tập hợp");
+  });
+
+  it("môn chưa có số câu: tỷ lệ báo chưa biết mẫu số và khóa nút Lưu; nhập theo số câu thì lưu được", async () => {
+    const u = user();
+    const latest = renderPanel(remainder({ questionCount: null }));
+    const dialog = await openAdd(u);
+    await u.click(within(dialog).getByRole("radio", { name: /^Phần còn lại/ }));
+    await u.click(within(dialog).getByRole("radio", { name: /^Số lượng/ }));
+    await pickTopic(u);
+    await u.click(within(dialog).getByRole("radio", { name: "Tỷ lệ" }));
+    expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Chưa biết mẫu số");
+    await u.click(within(dialog).getByRole("radio", { name: "Số câu" }));
+    expect(within(dialog).getByTestId("mapid-rule-save")).toBeEnabled();
+    await u.click(within(dialog).getByTestId("mapid-rule-save"));
+    expect(latest.section.mapidRules![0]).toMatchObject({ type: "COUNT", groupId: "b-rem", count: 1 });
+  });
+});
+
 describe("Bảng quy tắc", () => {
   const rule = (index: number): MapidRule => ({ id: `r${index}`, type: "PRESENT", groupId: null, nodeIds: [TOPIC.id] });
 

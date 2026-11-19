@@ -7,8 +7,10 @@ import {
   groupEffectiveRules,
   mapidViewMode,
   normalizeMapidSection,
+  groupSize,
   recomputeMapidRules,
   ruleFromForm,
+  ruleUnits,
   formFromRule,
   ruleFormIssues,
   ruleNeedsNumber,
@@ -68,7 +70,7 @@ describe("Chuyển dữ liệu cũ sang quy tắc (AC-10)", () => {
       topicQuotas: [quota(), quota({ id: "tq2", name: "Xác suất", nodeIds: ["n-xs"], count: 0, percent: 10 })],
       blocks: [
         block({ id: "b-short", knowledgeScope: { nodeIds: ["n-c"] }, topicQuotas: [quota({ id: "bq1", nodeIds: ["n-d"], count: 2 })] }),
-        block({ id: "b-set", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3 }),
+        block({ id: "b-set", questionType: "SINGLE_CHOICE", questionCount: 3 }),
       ],
     });
     const next = convertLegacySection(legacy);
@@ -145,6 +147,107 @@ describe("Chuyển dữ liệu cũ sang quy tắc (AC-10)", () => {
     expect(next!.sections[0]!.mapidMode).toBe("MATRIX");
     expect(next!.sections[0]!.topicQuotas).toBeUndefined();
     expect(normalizeHsaParts([next!])[0]).toBe(next);
+  });
+});
+
+describe("Chuyển dữ liệu cũ không đổi nguồn của chùm (R1-3)", () => {
+  const setBlock = (over: Partial<QuestionBlock> = {}) => block({ id: "b-set", name: "Chùm cuối", questionType: "QUESTION_SET", questionCount: 3, setCount: 1, setSize: 3, ...over });
+  const withSet = (over: Partial<ExamSection>, setOver: Partial<QuestionBlock> = {}) => section({ blocks: [block({ id: "b-single", questionType: "SINGLE_CHOICE", questionCount: 47 }), setBlock(setOver)], ...over });
+
+  it("phạm vi riêng của chùm có hai MAPID {A,B}: máy chủ đòi một nhánh chung nên giữ kiểu cũ (chùm trộn A và B vẫn hợp lệ ở bản cũ)", () => {
+    const legacy = withSet({}, { knowledgeScope: { nodeIds: ["n-a", "n-b"], everyChildInScope: true } });
+    expect(convertLegacySection(legacy)).toBe(legacy);
+    expect(mapidViewMode(legacy)).toBeNull();
+  });
+
+  it("phạm vi của chùm không đòi mọi câu con (everyChildInScope false hoặc thiếu), dù một MAPID: giữ kiểu cũ", () => {
+    for (const everyChildInScope of [false, undefined]) {
+      const legacy = withSet({}, { knowledgeScope: { nodeIds: ["n-a"], ...(everyChildInScope === undefined ? {} : { everyChildInScope }) } });
+      expect(convertLegacySection(legacy)).toBe(legacy);
+    }
+  });
+
+  it("chùm thừa kế phạm vi của môn: cùng điều kiện, hai MAPID hoặc không đòi mọi câu con thì giữ kiểu cũ", () => {
+    const many = withSet({ knowledgeScope: { nodeIds: ["n-a", "n-b"], everyChildInScope: true } });
+    expect(convertLegacySection(many)).toBe(many);
+    const loose = withSet({ knowledgeScope: { nodeIds: ["n-a"], everyChildInScope: false } });
+    expect(convertLegacySection(loose)).toBe(loose);
+  });
+
+  it("một MAPID và mọi câu con đúng phạm vi (không đổi điều kiện): chuyển thành SOURCE của chùm", () => {
+    const legacy = withSet({}, { knowledgeScope: { nodeIds: ["n-a"], everyChildInScope: true } });
+    const next = convertLegacySection(legacy);
+    expect(next.mapidRules).toEqual([{ id: "legacy-source-b-set", type: "SOURCE", groupId: "b-set", nodeIds: ["n-a"] }]);
+  });
+
+  it("nhóm câu đơn nhiều MAPID, không đòi mọi câu con: vẫn chuyển (hợp của các MAPID, không đổi điều kiện)", () => {
+    const legacy = section({ blocks: [block({ id: "b-single", questionType: "SINGLE_CHOICE", questionCount: 50, knowledgeScope: { nodeIds: ["n-a", "n-b"] } })] });
+    expect(convertLegacySection(legacy).mapidRules).toEqual([{ id: "legacy-source-b-single", type: "SOURCE", groupId: "b-single", nodeIds: ["n-a", "n-b"] }]);
+  });
+
+  it("chỉ tiêu chủ đề cũ vẫn chuyển khi chùm không có phạm vi MAPID", () => {
+    const legacy = withSet({ topicQuotas: [quota()] });
+    expect(convertLegacySection(legacy).mapidRules).toEqual([expect.objectContaining({ id: "legacy-tq1", type: "COUNT" })]);
+  });
+});
+
+describe("Mẫu số của nhóm lấy phần còn lại (R1-5)", () => {
+  const remainderBlock = block({ id: "b-rem", name: "Phần còn lại", questionType: "SINGLE_CHOICE", questionCount: null });
+  const ten = (over: Partial<ExamSection> = {}) =>
+    section({ questionCount: 10, blocks: [block({ id: "b-fixed", name: "Cố định", questionType: "SINGLE_CHOICE", questionCount: 4 }), remainderBlock], ...over });
+
+  it("mẫu số = số câu của môn trừ số câu của các nhóm khác (cùng cách máy chủ tính): 10 - 4 = 6", () => {
+    expect(ruleUnits(ten(), { groupId: "b-rem" })).toBe(6);
+    expect(groupSize(ten(), remainderBlock)).toMatchObject({ units: 6, total: 10, remainder: true });
+  });
+
+  it("chùm của nhóm khác tính theo số chùm × số câu con", () => {
+    const s = ten({ blocks: [block({ id: "b-set", questionType: "QUESTION_SET", questionCount: 3, setCount: 1, setSize: 3 }), block({ id: "b-fixed", questionCount: 1 }), remainderBlock] });
+    expect(ruleUnits(s, { groupId: "b-rem" })).toBe(6);
+  });
+
+  it("một nhóm lấy phần còn lại khác không bị trừ đi (máy chủ không trừ nhóm cùng loại)", () => {
+    const s = ten({ blocks: [block({ id: "b-fixed", questionType: "SINGLE_CHOICE", questionCount: 4 }), remainderBlock, { ...remainderBlock, id: "b-rem2" }] });
+    expect(ruleUnits(s, { groupId: "b-rem" })).toBe(6);
+    expect(ruleUnits(s, { groupId: "b-rem2" })).toBe(6);
+  });
+
+  it("chưa biết thì null: môn chưa có số câu, hoặc nhóm khác chưa biết số câu (chùm chưa khai cỡ), hoặc các nhóm khác vượt số câu của môn", () => {
+    expect(ruleUnits(ten({ questionCount: null }), { groupId: "b-rem" })).toBeNull();
+    const unsized = ten({ blocks: [block({ id: "b-set", questionType: "QUESTION_SET", questionCount: null, setCount: null, setSize: null }), remainderBlock] });
+    expect(ruleUnits(unsized, { groupId: "b-rem" })).toBeNull();
+    expect(ruleUnits(ten({ questionCount: 3 }), { groupId: "b-rem" })).toBeNull();
+  });
+
+  it("nhóm khai số câu, cả môn: mẫu số không đổi", () => {
+    expect(ruleUnits(ten(), { groupId: "b-fixed" })).toBe(4);
+    expect(ruleUnits(ten(), { groupId: null })).toBe(10);
+    expect(groupSize(ten(), ten().blocks[0]!)).toMatchObject({ units: 4, remainder: false });
+  });
+
+  it("Đúng 50% của nhóm còn lại: ghi 3 câu và percent 50; câu mô tả 3/6 (50%)", () => {
+    const s = ten();
+    const form = { ...formFromRule({ id: "r", type: "COUNT", groupId: "b-rem", nodeIds: ["n"], comparator: "EXACT", count: 1 }), entry: "PERCENT" as const, percent: 50 };
+    expect(ruleFromForm(form, s)).toEqual({ id: "r", type: "COUNT", groupId: "b-rem", nodeIds: ["n"], comparator: "EXACT", count: 3, percent: 50 });
+    expect(describeRule(s, ruleFromForm(form, s)).amount).toBe("3/6 (50%)");
+  });
+
+  it("Ít nhất theo tỷ lệ cũng quy đổi theo phần còn lại, và đổi số câu của nhóm khác thì tính lại", () => {
+    const rule: MapidRule = { id: "r", type: "COUNT", groupId: "b-rem", nodeIds: ["n"], comparator: "AT_LEAST", count: 3, percent: 50 };
+    const s = ten({ mapidMode: "MATRIX", mapidRules: [rule] });
+    expect(recomputeMapidRules(s)).toBe(s);
+    const moved = { ...s, blocks: s.blocks.map((item) => (item.id === "b-fixed" ? { ...item, questionCount: 6 } : item)) };
+    expect(recomputeMapidRules(moved).mapidRules![0]!.count).toBe(2);
+  });
+
+  it("tỷ lệ mà chưa biết mẫu số thì chặn lưu có lý do, không ghi số 0 âm thầm; nhập theo số câu hoặc đã biết mẫu số thì không chặn", () => {
+    const form = { ...formFromRule({ id: "r", type: "COUNT", groupId: "b-rem", nodeIds: ["n"], comparator: "EXACT", count: 1 }), entry: "PERCENT" as const, percent: 50 };
+    const unknown = ten({ questionCount: null });
+    expect(ruleFormIssues(form, unknown)).toEqual(["PERCENT_DENOMINATOR_UNKNOWN"]);
+    expect(ruleFormIssues({ ...form, entry: "COUNT" }, unknown)).toEqual([]);
+    expect(ruleFormIssues(form, ten())).toEqual([]);
+    expect(ruleFormIssues({ ...form, groupId: null }, unknown)).toEqual(["PERCENT_DENOMINATOR_UNKNOWN"]);
+    expect(ruleFormIssues({ ...form, type: "PRESENT" }, unknown)).toEqual([]);
   });
 });
 
