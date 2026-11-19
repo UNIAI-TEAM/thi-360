@@ -26,7 +26,20 @@ public final class MutableClock extends Clock {
     public static final Instant SUPPORTED_MAX = Instant.parse("9000-01-01T00:00:00Z");
 
     private final Clock base;
-    private final AtomicReference<Duration> offset = new AtomicReference<>(Duration.ZERO);
+    private final AtomicReference<State> state = new AtomicReference<>(new State(Duration.ZERO));
+
+    /**
+     * Trạng thái của một lần chuyển. Mỗi lần ghi tạo một đối tượng mới và so sánh bằng tham chiếu,
+     * nên đặt rồi đặt lại về cùng một độ lệch (ví dụ {@code reset()} hai lần quanh một lần đặt) vẫn là
+     * hai trạng thái khác nhau: không có ABA.
+     */
+    private static final class State {
+        final Duration offset;
+
+        State(Duration offset) {
+            this.offset = offset;
+        }
+    }
 
     public MutableClock() {
         this(Clock.systemUTC());
@@ -66,17 +79,17 @@ public final class MutableClock extends Clock {
     }
 
     /**
-     * Mẫu đồng hồ nền rồi chỉ trả về nếu độ lệch chưa đổi trong lúc đó: giá trị trả về luôn thuộc
-     * đúng một trạng thái (trước hoặc sau một lần đặt), không lai giữa giờ nền của trạng thái này
-     * với độ lệch của trạng thái kia.
+     * Mẫu đồng hồ nền rồi chỉ trả về nếu trạng thái chưa đổi (kể cả đổi rồi đổi lại cùng độ lệch)
+     * trong lúc đó: giá trị trả về luôn thuộc đúng một trạng thái, không lai giữa giờ nền của trạng
+     * thái này với độ lệch của trạng thái kia.
      */
     @Override
     public Instant instant() {
         while (true) {
-            Duration current = offset.get();
+            State current = state.get();
             Instant baseNow = base.instant();
-            if (offset.get() == current) {
-                return baseNow.plus(current);
+            if (state.get() == current) {
+                return baseNow.plus(current.offset);
             }
         }
     }
@@ -104,7 +117,7 @@ public final class MutableClock extends Clock {
 
     /** Độ lệch hiện tại so với đồng hồ nền. */
     public Duration offset() {
-        return offset.get();
+        return state.get().offset;
     }
 
     /**
@@ -116,18 +129,18 @@ public final class MutableClock extends Clock {
      */
     private Instant transition(BiFunction<Instant, Duration, Duration> next) {
         while (true) {
-            Duration current = offset.get();
+            State current = state.get();
             Instant baseNow = base.instant();
             Duration updated;
             Instant result;
             try {
-                updated = next.apply(baseNow, current);
+                updated = next.apply(baseNow, current.offset);
                 result = baseNow.plus(updated);
             } catch (DateTimeException | ArithmeticException e) {
                 throw new OutOfRangeException();
             }
             requireInRange(result);
-            if (offset.compareAndSet(current, updated)) {
+            if (state.compareAndSet(current, new State(updated))) {
                 return result;
             }
         }

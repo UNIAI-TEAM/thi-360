@@ -54,6 +54,9 @@ class MutableClockTests {
 
         private volatile Instant now = START;
         private final AtomicBoolean armed = new AtomicBoolean();
+        private volatile boolean staged;
+        private final CountDownLatch arrived = new CountDownLatch(1);
+        private final CountDownLatch proceed = new CountDownLatch(1);
         private final CountDownLatch sampled = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
 
@@ -68,6 +71,24 @@ class MutableClockTests {
 
         void awaitSampled() throws InterruptedException {
             assertThat(sampled.await(5, TimeUnit.SECONDS)).isTrue();
+        }
+
+        /**
+         * Như {@link #armNextSample()}, nhưng lần gọi kế tiếp còn dừng <em>trước</em> khi lấy mẫu (tới
+         * {@link #proceed()}), để test chen các lần ghi vào giữa lúc người đọc đã đọc trạng thái và
+         * lúc nó lấy mẫu giờ nền.
+         */
+        void armStagedSample() {
+            staged = true;
+            armed.set(true);
+        }
+
+        void awaitArrived() throws InterruptedException {
+            assertThat(arrived.await(5, TimeUnit.SECONDS)).isTrue();
+        }
+
+        void proceed() {
+            proceed.countDown();
         }
 
         void release() {
@@ -86,17 +107,26 @@ class MutableClockTests {
 
         @Override
         public Instant instant() {
+            boolean gated = armed.compareAndSet(true, false);
+            if (gated && staged) {
+                arrived.countDown();
+                await(proceed);
+            }
             Instant value = now;
-            if (armed.compareAndSet(true, false)) {
+            if (gated) {
                 sampled.countDown();
-                try {
-                    assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException(e);
-                }
+                await(release);
             }
             return value;
+        }
+
+        private static void await(CountDownLatch latch) {
+            try {
+                assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
         }
     }
 
@@ -305,6 +335,39 @@ class MutableClockTests {
                 future.get(30, TimeUnit.SECONDS);
             }
             assertThat(clock.offset()).isEqualTo(Duration.ofSeconds((long) threads * perThread));
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    // R2-02: đặt rồi đặt lại về cùng độ lệch (0 -> khác 0 -> 0) quanh một lần đọc không được để người
+    // đọc nhận mẫu giờ nền của trạng thái giữa cộng với độ lệch của trạng thái đầu.
+    @Test
+    void setThenResetAcrossAReadNeverYieldsAMixture() throws Exception {
+        GatedBase base = new GatedBase();
+        MutableClock clock = new MutableClock(base);
+        Instant afterSet = GatedBase.START.plusSeconds(100);
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            base.armStagedSample();
+            Future<Instant> read = pool.submit(clock::instant);
+            base.awaitArrived(); // người đọc đã đọc trạng thái đầu (độ lệch 0), chưa lấy mẫu giờ nền
+
+            assertThat(clock.setAt(afterSet)).isEqualTo(afterSet); // trạng thái giữa
+            base.set(GatedBase.START.plusSeconds(10));
+            base.proceed();
+            base.awaitSampled(); // mẫu giờ nền được lấy khi trạng thái giữa đang hiệu lực
+
+            base.set(GatedBase.START.plusSeconds(20));
+            Instant afterReset = clock.reset(); // về độ lệch 0 như trạng thái đầu
+            assertThat(afterReset).isEqualTo(GatedBase.START.plusSeconds(20));
+            base.release();
+
+            Instant read1 = read.get(5, TimeUnit.SECONDS);
+            // Giờ đồng hồ thực sự có: START+110 (trạng thái giữa tại mẫu) hoặc START+20 (sau khi về 0).
+            // START+10 là mẫu của trạng thái giữa cộng độ lệch 0 của trạng thái đầu: chưa từng có.
+            assertThat(read1).isIn(GatedBase.START.plusSeconds(110), GatedBase.START.plusSeconds(20));
+            assertThat(read1).isNotEqualTo(GatedBase.START.plusSeconds(10));
         } finally {
             pool.shutdownNow();
         }
