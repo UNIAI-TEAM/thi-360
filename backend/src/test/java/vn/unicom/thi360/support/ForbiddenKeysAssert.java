@@ -2,8 +2,12 @@ package vn.unicom.thi360.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -26,8 +30,10 @@ public final class ForbiddenKeysAssert {
      * điểm từng ý của Đúng/Sai ({@code scoreTable}), lời giải ({@code solution}),
      * {@code gradingGuide}, {@code rubric}, {@code sampleAnswer}, {@code commonMistakes},
      * MAPID ({@code knowledge}, {@code knowledgeItemIds}, {@code mapId(s)}) và độ khó
-     * ({@code levelItemId}, {@code difficulty(…)}). {@code points}, {@code inputHint},
-     * {@code wordLimit} được phép nên không nằm trong danh sách.
+     * ({@code levelItemId}, {@code difficulty(…)}, kể cả tên phục vụ {@code mapidIds} và
+     * {@code trueFalseTable}). {@code points} của câu, {@code inputHint}, {@code wordLimit} được
+     * phép nên không nằm trong danh sách; {@code points} của từng mệnh đề Đúng/Sai bị cấm theo
+     * đường dẫn ({@link #ATTEMPT_FORBIDDEN_SCOPED_KEYS}).
      */
     public static final Set<String> ATTEMPT_FORBIDDEN_KEYS = Set.of(
             "correct",
@@ -35,6 +41,7 @@ public final class ForbiddenKeysAssert {
             "answers",
             "pairs",
             "scoreTable",
+            "trueFalseTable",
             "solution",
             "gradingGuide",
             "rubric",
@@ -44,17 +51,31 @@ public final class ForbiddenKeysAssert {
             "knowledgeItemIds",
             "mapId",
             "mapIds",
+            "mapidIds",
             "levelItemId",
             "difficulty",
             "difficultyCode");
 
     /**
+     * Khóa cấm theo vị trí, dạng {@code mảng[].khóa}: khóa chỉ bị báo khi nó là trường trực tiếp
+     * của một phần tử trong mảng tên {@code mảng}. {@code statements[].points} là điểm từng ý của
+     * Đúng/Sai (LT 7.3), còn {@code points} ở cấp câu vẫn được phép.
+     */
+    public static final Set<String> ATTEMPT_FORBIDDEN_SCOPED_KEYS = Set.of("statements[].points");
+
+    /**
      * TM 10.1 — phản hồi của bảng chiếu không bao giờ chứa: id hoặc nội dung câu
      * hỏi ({@code question(s)…}, {@code body}, {@code snapshot}), đáp án và lời giải
      * (toàn bộ danh sách lượt thi), nguồn câu của khối ({@code source…}), đề chứng
-     * minh ({@code evidence}, {@code witness…}) và đề xem trước ({@code preview…}).
+     * minh ({@code evidence}, {@code witness…}) và đề xem trước ({@code preview…}). Nguồn câu của
+     * khối gồm cả các trường ràng buộc của {@code QuestionBlock}: {@code knowledgeScope},
+     * {@code tagCodes}, {@code slots}, {@code childConditions}. Danh sách này cũng chứa mọi khóa của
+     * danh sách lượt thi.
      */
     public static final Set<String> STOREFRONT_FORBIDDEN_KEYS;
+
+    /** Khóa cấm theo vị trí của bảng chiếu: gồm {@link #ATTEMPT_FORBIDDEN_SCOPED_KEYS}. */
+    public static final Set<String> STOREFRONT_FORBIDDEN_SCOPED_KEYS = ATTEMPT_FORBIDDEN_SCOPED_KEYS;
 
     static {
         Set<String> storefront = new LinkedHashSet<>(ATTEMPT_FORBIDDEN_KEYS);
@@ -70,6 +91,10 @@ public final class ForbiddenKeysAssert {
                 "source",
                 "sourceCode",
                 "sourceRevision",
+                "knowledgeScope",
+                "tagCodes",
+                "slots",
+                "childConditions",
                 "evidence",
                 "witness",
                 "witnessPicks",
@@ -79,29 +104,33 @@ public final class ForbiddenKeysAssert {
         STOREFRONT_FORBIDDEN_KEYS = Set.copyOf(storefront);
     }
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    /** Chỉ nhận một tài liệu JSON trọn vẹn: không khóa trùng, không dữ liệu thừa sau gốc. */
+    private static final ObjectMapper STRICT_MAPPER = JsonMapper.builder()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .build();
 
     private ForbiddenKeysAssert() {
     }
 
     /** Phân tích chuỗi JSON rồi kiểm theo danh sách lượt thi (LT 7.3). */
     public static void assertNoAttemptForbiddenKeys(String json) {
-        assertNoForbiddenKeys(parse(json), ATTEMPT_FORBIDDEN_KEYS, "attempt");
+        assertNoAttemptForbiddenKeys(parse(json));
     }
 
     /** Kiểm theo danh sách lượt thi (LT 7.3) trên nút JSON đã phân tích. */
     public static void assertNoAttemptForbiddenKeys(JsonNode node) {
-        assertNoForbiddenKeys(node, ATTEMPT_FORBIDDEN_KEYS, "attempt");
+        assertNoForbiddenKeys(node, ATTEMPT_FORBIDDEN_KEYS, ATTEMPT_FORBIDDEN_SCOPED_KEYS, "attempt");
     }
 
     /** Phân tích chuỗi JSON rồi kiểm theo danh sách bảng chiếu (TM 10.1). */
     public static void assertNoStorefrontForbiddenKeys(String json) {
-        assertNoForbiddenKeys(parse(json), STOREFRONT_FORBIDDEN_KEYS, "storefront");
+        assertNoStorefrontForbiddenKeys(parse(json));
     }
 
     /** Kiểm theo danh sách bảng chiếu (TM 10.1) trên nút JSON đã phân tích. */
     public static void assertNoStorefrontForbiddenKeys(JsonNode node) {
-        assertNoForbiddenKeys(node, STOREFRONT_FORBIDDEN_KEYS, "storefront");
+        assertNoForbiddenKeys(node, STOREFRONT_FORBIDDEN_KEYS, STOREFRONT_FORBIDDEN_SCOPED_KEYS, "storefront");
     }
 
     /**
@@ -109,38 +138,75 @@ public final class ForbiddenKeysAssert {
      * sách hoặc một danh sách mở rộng mà task vẫn khai ở đây.
      */
     public static void assertNoForbiddenKeys(JsonNode node, Set<String> forbiddenKeys, String listName) {
+        assertNoForbiddenKeys(node, forbiddenKeys, Set.of(), listName);
+    }
+
+    /** Như trên, kèm khóa cấm theo vị trí (dạng {@code mảng[].khóa}). */
+    public static void assertNoForbiddenKeys(
+            JsonNode node, Set<String> forbiddenKeys, Set<String> forbiddenScopedKeys, String listName) {
+        requireContainer(node);
         Set<String> violations = new TreeSet<>();
-        collect(node, "$", forbiddenKeys, violations);
+        collect(node, "$", null, forbiddenKeys, forbiddenScopedKeys, violations);
         assertThat(violations)
                 .as("forbidden keys under the '%s' list (JSON paths only, values withheld)", listName)
                 .isEmpty();
     }
 
+    /**
+     * {@code owningArrayKey}: tên khóa của mảng chứa trực tiếp nút này (nút là phần tử của mảng đó),
+     * hoặc null nếu nút không phải phần tử của mảng có tên.
+     */
     private static void collect(
-            JsonNode node, String path, Set<String> forbiddenKeys, Set<String> violations) {
-        if (node == null) {
-            return;
-        }
+            JsonNode node, String path, String owningArrayKey,
+            Set<String> forbiddenKeys, Set<String> forbiddenScopedKeys, Set<String> violations) {
         if (node.isObject()) {
             for (Map.Entry<String, JsonNode> field : node.properties()) {
-                String childPath = path + "." + field.getKey();
-                if (forbiddenKeys.contains(field.getKey())) {
+                String key = field.getKey();
+                String childPath = path + "." + key;
+                if (forbiddenKeys.contains(key)
+                        || (owningArrayKey != null && forbiddenScopedKeys.contains(owningArrayKey + "[]." + key))) {
                     violations.add(childPath);
                 }
-                collect(field.getValue(), childPath, forbiddenKeys, violations);
+                JsonNode value = field.getValue();
+                if (value.isArray()) {
+                    for (int i = 0; i < value.size(); i++) {
+                        collect(value.get(i), childPath + "[" + i + "]", key, forbiddenKeys,
+                                forbiddenScopedKeys, violations);
+                    }
+                } else {
+                    collect(value, childPath, null, forbiddenKeys, forbiddenScopedKeys, violations);
+                }
             }
         } else if (node.isArray()) {
+            // Mảng gốc hoặc mảng lồng mảng: phần tử không thuộc mảng có tên.
             for (int i = 0; i < node.size(); i++) {
-                collect(node.get(i), path + "[" + i + "]", forbiddenKeys, violations);
+                collect(node.get(i), path + "[" + i + "]", null, forbiddenKeys, forbiddenScopedKeys, violations);
             }
         }
     }
 
-    private static JsonNode parse(String json) {
-        try {
-            return MAPPER.readTree(json);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("ForbiddenKeysAssert got malformed JSON", e);
+    private static void requireContainer(JsonNode node) {
+        if (node == null || !(node.isObject() || node.isArray())) {
+            throw new AssertionError("expected a JSON object or array document to scan, got none");
         }
+    }
+
+    /**
+     * Thông báo và nguyên nhân không mang nội dung phản hồi: Jackson đưa đoạn dữ liệu lỗi vào
+     * thông báo, nên ngoại lệ gốc bị bỏ.
+     */
+    private static JsonNode parse(String json) {
+        if (json == null) {
+            throw new AssertionError("expected a JSON document to scan, got null");
+        }
+        JsonNode node;
+        try {
+            node = STRICT_MAPPER.readTree(json);
+        } catch (JsonProcessingException e) {
+            throw new AssertionError(
+                    "not one complete JSON document (malformed, trailing data or duplicate keys); content withheld");
+        }
+        requireContainer(node);
+        return node;
     }
 }
