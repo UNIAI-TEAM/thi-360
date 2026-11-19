@@ -15,8 +15,7 @@ import { ExamEditorActionsSlot } from "./exam-editor-actions";
 
 /**
  * Khung chung của trang soạn bài thi `/exams/[id]/...`: tiêu đề, chip trạng thái, dải tóm tắt (`<dl>`), thanh
- * NavTabs năm trang con (Thông tin chung · Cấu trúc và ma trận · Thông tin bán · Kiểm tra và xem trước · Phiên bản và
- * công bố).
+ * NavTabs bốn trang con (Thông tin chung · Cấu trúc và ma trận · Kiểm tra và xem trước · Phiên bản và công bố).
  * Trang con đọc bài thi bằng `useExam(id)` (cùng khóa truy vấn, không gọi lại).
  */
 export function ExamEditorLayout({ examId, children }: { examId: string; children: ReactNode }) {
