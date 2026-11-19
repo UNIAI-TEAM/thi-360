@@ -159,7 +159,7 @@ describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVER
 });
 
 describe("Cấu trúc: phần thi", () => {
-  it("phần tự chọn có quy tắc tham gia; số câu trên đề không được ít hơn số câu phải làm", async () => {
+  it("phần tự chọn có quy tắc tham gia; số câu trên đề và số câu phải làm chỉ đọc", async () => {
     const user = userEvent.setup();
     openStructure("ex-qda-f-001", "?part=part-49");
     expect(await screen.findByRole("heading", { name: "Quy tắc tham gia" })).toBeInTheDocument();
@@ -169,17 +169,12 @@ describe("Cấu trúc: phần thi", () => {
     await user.type(choose, "9");
     expect((await screen.findAllByText(/số phương án phải chọn là 9/)).length).toBeGreaterThan(0);
 
-    const paper = screen.getByRole("textbox", { name: /Số câu trên đề/ });
-    const required = screen.getByRole("textbox", { name: /Số câu phải làm/ });
-    expect(paper).toHaveValue("50");
-    expect(required).toHaveValue("50");
-    await user.clear(required);
-    await user.type(required, "40");
-    // Số câu trên đề đi theo khi hai số đang bằng nhau.
-    expect(paper).toHaveValue("40");
-    await user.clear(paper);
-    await user.type(paper, "30");
-    expect((await screen.findAllByText(/số câu trên đề \(30\) ít hơn số câu phải làm \(40\)/)).length).toBeGreaterThan(0);
+    // Số câu trên đề và số câu phải làm chỉ đọc ở bước 2 (UNI-2753), sửa ở thông tin tổng quan.
+    for (const name of [/Số câu trên đề/, /Số câu phải làm/]) {
+      const field = screen.getByRole("textbox", { name });
+      expect(field).toHaveValue("50");
+      expect(field).toHaveAttribute("readonly");
+    }
   });
 
   it("điểm tối đa của phần để trống được; nhập thì lưu vào phần", async () => {

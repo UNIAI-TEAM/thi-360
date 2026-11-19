@@ -44,9 +44,17 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 final class ExamCheckDistribution {
     private static final LargestRemainderApportioner APPORTIONER = new LargestRemainderApportioner();
 
-    /** One question placed on the proof paper, attributed to its block and section. */
+    /**
+     * One question placed on the proof paper, attributed to its block and section. {@code quotaAnswerType} is the
+     * subject answer-quota row it counts under (UNI-2754); null means its own answer type.
+     */
     public record PickedUnit(String subjectCode, String sectionId, Integer sectionCount,
-                             boolean fixed, String blockId, QuestionSourcePort.Unit unit) { }
+                             boolean fixed, String blockId, QuestionSourcePort.Unit unit, String quotaAnswerType) {
+        public PickedUnit(String subjectCode, String sectionId, Integer sectionCount,
+                          boolean fixed, String blockId, QuestionSourcePort.Unit unit) {
+            this(subjectCode, sectionId, sectionCount, fixed, blockId, unit, null);
+        }
+    }
 
     /** Proved paper of one path plus the code labels it represents. */
     public record PathEvidence(PathResult path, String pathId, List<String> codes,
@@ -181,7 +189,9 @@ final class ExamCheckDistribution {
                         if (candidate == null || candidate.units() == null) continue;
                         for (QuestionSourcePort.Unit unit : candidate.units()) {
                             out.add(new PickedUnit(section.subjectCode(), section.sectionId(),
-                                    section.questionCount(), fixed, blockId, unit));
+                                    section.questionCount(), fixed, blockId, unit,
+                                    unit.answerType() == null ? null
+                                            : AnswerQuotaCounting.key(section, quota, unit.answerType())));
                         }
                     }
                 }
@@ -392,7 +402,10 @@ final class ExamCheckDistribution {
                 if (u.gradeCode() != null && u.difficultyCode() != null) {
                     cells.merge(List.of(u.gradeCode(), u.difficultyCode()), weight, BigDecimal::add);
                 }
-                if (u.answerType() != null) answers.merge(u.answerType().name(), weight, BigDecimal::add);
+                if (u.answerType() != null) {
+                    answers.merge(unit.quotaAnswerType() == null ? u.answerType().name() : unit.quotaAnswerType(),
+                            weight, BigDecimal::add);
+                }
             }
             out.put(basis, new DimensionCounts(grade, difficulty, cells, answers, total));
         }

@@ -78,7 +78,7 @@ async function expectSetGroupOpens(page: Page, id: string, subject: { index?: nu
   await expect(list).toBeVisible();
   if (subject.name) await list.getByRole("button", { name: subject.name }).first().click();
   else await list.locator("button[data-list-item]").nth(subject.index ?? 2).click();
-  const row = page.locator("tr", { hasText: "Bộ câu hỏi" }).first();
+  const row = page.getByRole("table", { name: /Các nhóm lấy câu/ }).getByRole("row", { name: /Bộ câu hỏi/ }).first();
   await expect(row).toBeVisible();
   await row.getByRole("button", { name: /Mở nhóm/ }).click();
   await expect(page.getByRole("radio", { name: "Câu chùm" })).toBeChecked();

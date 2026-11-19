@@ -99,19 +99,26 @@ function AllocationMatrix({ block, name }: { block: PreviewBlock; name: string }
         aria-labelledby={captionId}
         className="overflow-x-auto rounded-md border border-border"
       >
-        <table className="w-full border-collapse text-body tabular-nums">
+        <table className="w-full min-w-3xl table-fixed border-collapse text-body tabular-nums">
           <caption className="sr-only">{t("tableLabel", { block: name })}</caption>
+          <colgroup>
+            <col className="w-32" />
+            {levels.map((level) => (
+              <col key={level} />
+            ))}
+            <col />
+          </colgroup>
           <thead>
             <tr className="bg-table-head text-field-label text-text-muted">
               <th scope="col" className="px-3 py-2 text-left font-semibold">
                 {t("grade")}
               </th>
               {levels.map((level) => (
-                <th key={level} scope="col" className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                <th key={level} scope="col" className="px-3 py-2 text-right font-semibold break-words">
                   {lookup.difficulty(level)}
                 </th>
               ))}
-              <th scope="col" className="px-3 py-2 text-right font-semibold">
+              <th scope="col" className="px-3 py-2 text-right font-semibold break-words">
                 {t("total")}
               </th>
             </tr>
@@ -119,7 +126,7 @@ function AllocationMatrix({ block, name }: { block: PreviewBlock; name: string }
           <tbody>
             {grades.map((grade) => (
               <tr key={grade} className="border-t border-border">
-                <th scope="row" className="px-3 py-2 text-left font-medium whitespace-nowrap text-text">
+                <th scope="row" className="px-3 py-2 text-left font-medium break-words text-text">
                   {lookup.grade(grade)}
                 </th>
                 {levels.map((level) => {
@@ -141,7 +148,7 @@ function AllocationMatrix({ block, name }: { block: PreviewBlock; name: string }
               </tr>
             ))}
             <tr className="border-t border-border bg-table-head font-semibold">
-              <th scope="row" className="px-3 py-2 text-left text-text">
+              <th scope="row" className="px-3 py-2 text-left break-words text-text">
                 {t("total")}
               </th>
               {levels.map((level) => (

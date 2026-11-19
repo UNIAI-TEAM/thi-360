@@ -183,6 +183,8 @@ spring:
     activate:
       on-profile: dev
   flyway:
+    # hotfix migrations from develop may sort below wave migrations already applied on local/lane DBs
+    out-of-order: true
     fail-on-missing-locations: false
     locations:
       - classpath:db/migration
@@ -211,6 +213,8 @@ spring:
     activate:
       on-profile: test
   flyway:
+    # hotfix migrations from develop may sort below wave migrations already applied on local/lane DBs
+    out-of-order: true
     fail-on-missing-locations: false
     locations:
       - classpath:db/migration

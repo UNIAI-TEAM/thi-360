@@ -165,7 +165,7 @@ class ExamTemplateIT extends AbstractIntegrationTest {
     @Test
     void hsaMathSetGroupsDeclareSingleChoiceChildren() {
         // BA 2026-11-17 (spec 12): chùm Toán HSA chỉ chứa câu Một đáp án; mẫu phải
-        // khai childAnswerType để màn ma trận chia sẵn chỉ tiêu 35/15.
+        // khai childAnswerType để bộ lọc nhóm chỉ nhận câu con Một đáp án (UNI-2754: chỉ tiêu cấp môn đếm chúng ở dòng Bộ câu hỏi).
         for (String code : List.of("HSA_FULL", "HSA_PART_MATH")) {
             String json = jdbc.queryForObject(
                     "SELECT structure::text FROM exam.exam_template WHERE code = ?",
