@@ -4,6 +4,18 @@
   "test_tmn_code": "TEST-TMN",
   "hash_algorithm": "HmacSHA512, lower-case hex, 128 chars",
   "rules": {
+    "pay_source": {
+      "path": "dot-3/reference/vnpay-docs.md",
+      "sections": ["Pay (hash rule, required params)", "Return URL and IPN (return hash input)"],
+      "date": "2026-11-19",
+      "note": "The reference leaves the encoder open for ! ' ( ) * ~; the Java form was fixed by measurement on the sandbox (dot-3/vnpay/min-amount.md section Q9 r5)"
+    },
+    "querydr_refund_source": {
+      "path": "dot-3/reference/vnpay-docs.md",
+      "sections": ["querydr and refund (request hash order, response hash order, algorithm)"],
+      "date": "2026-11-19",
+      "note": "The reference says the hash values are raw (not URL-encoded) and OrderInfo is ASCII; the hash was not confirmed by a signed sandbox response (querydr 99, refund HTTP 500)"
+    },
     "pay": "sign string = params sorted ascending by name, empty values dropped, vnp_SecureHash and vnp_SecureHashType excluded, each name and value URL-encoded like java.net.URLEncoder (UTF-8: space to '+', '*' '-' '.' '_' left raw, '~' to %7E, other bytes %XX upper-case hex), joined as name=value with '&'. Measured on the VNPAY sandbox on 2026-11-19 for the pay request URL and for the browser return URL (dot-3/vnpay/pay-params.json, return-params.json). Applying the same rule to the IPN (VNPAY to merchant) comes from the VNPAY docs and has NOT been tested on the sandbox (VP-2)",
     "querydr_refund": "sign string = the values joined by '|' in the field order of VNPAY docs 2.1.0 (TM 8.4); missing optional values are empty strings. NOT measured on the sandbox: the merchant API gave querydr 99 (HTTP 200) and refund HTTP 500 (HTML page) to every well-formed call, both with loopback vnp_IpAddr (r1) and with the machine's real public IP (r2), so the hash function was not confirmed; HMAC-SHA512 assumed like pay (dot-3/vnpay/querydr.json, refund.json)"
   },
