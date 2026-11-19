@@ -34,10 +34,11 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
 
 /**
- * {@code GET /me/exams} (TM 12): one card per purchase entitlement of the account, plus a "checking" card for each paid
- * order that has no entitlement yet. Attempt counts come from the granted entitlement (never from the product on sale),
- * the open and the result attempt from {@link AttemptStatusProvider}, the sale state and the names from the storefront
- * projection, the question count and duration from the serving paths of {@link PublishedExamPort}. Read-only.
+ * {@code GET /me/exams} (TM 12): one card per purchase entitlement of the account, plus a "checking" card for every paid
+ * unfulfilled order (also when the exam is already owned). Attempt counts come from the granted entitlement (never
+ * from the product on sale), the open and the result attempt from {@link AttemptStatusProvider}, the sale state and
+ * the names from the storefront projection, the question count and duration from the serving paths of
+ * {@link PublishedExamPort}. Read-only.
  */
 @Service
 public class MyExamsService {
@@ -72,13 +73,11 @@ public class MyExamsService {
         Map<UUID, Set<String>> optionCodes = repository.findOptionCodes(entitlements.stream().map(EntitlementRow::id).toList());
         Map<UUID, String> pendingByExam = new HashMap<>();
         pending.forEach(p -> pendingByExam.putIfAbsent(p.examId(), p.orderCode()));
-        Set<UUID> entitledExams = new HashSet<>();
-        entitlements.forEach(e -> entitledExams.add(e.examId()));
 
         List<MyExamCard> cards = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (PendingOrder order : pending) {
-            if (entitledExams.contains(order.examId()) || !seen.add(order.orderCode() + "|" + order.examId())) {
+            if (!seen.add(order.orderCode() + "|" + order.examId())) {
                 continue;
             }
             ProductRef product = products.get(order.examId());

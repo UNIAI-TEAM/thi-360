@@ -127,18 +127,31 @@ class MyExamsApiIT extends AbstractExamAccessIT {
     }
 
     @Test
-    void stuckTopUpMarksTheEntitlementCardInsteadOfAddingOne() throws Exception {
+    void everyStuckTopUpGetsItsOwnCheckingCardBesideTheEntitlementCard() throws Exception {
         UUID userId = activeAccount();
         Product product = onSale();
-        grant(userId, product.examId(), 2);
+        var line = grant(userId, product.examId(), 2);
         pendingOrders.add(userId, "ORD-TOPUP1", product.examId());
+        pendingOrders.add(userId, "ORD-TOPUP2", product.examId());
 
-        JsonNode card = only(myExams(learner(userId)));
+        JsonNode items = myExams(learner(userId)).get("items");
 
-        assertThat(card.get("state").asText()).isEqualTo("CAN_START");
-        assertThat(card.get("hasPendingFulfillment").asBoolean()).isTrue();
-        assertThat(card.get("pendingOrderCode").asText()).isEqualTo("ORD-TOPUP1");
-        assertThat(actions(card)).containsExactly("START", "BUY_MORE");
+        assertThat(items).as("two paid orders and the entitlement: three cards").hasSize(3);
+        assertThat(items.get(0).get("state").asText()).isEqualTo("CHECKING");
+        assertThat(items.get(0).get("pendingOrderCode").asText()).isEqualTo("ORD-TOPUP1");
+        assertThat(items.get(1).get("state").asText()).isEqualTo("CHECKING");
+        assertThat(items.get(1).get("pendingOrderCode").asText()).isEqualTo("ORD-TOPUP2");
+        for (int i = 0; i < 2; i++) {
+            assertThat(items.get(i).get("code").asText()).isEqualTo(product.code());
+            assertThat(items.get(i).get("entitlementId").isNull()).as("a paid order has no entitlement yet").isTrue();
+            assertThat(actions(items.get(i))).containsExactly("CHECKING");
+        }
+        JsonNode entitlementCard = items.get(2);
+        assertThat(entitlementCard.get("entitlementId").asText()).isEqualTo(line.entitlementId().toString());
+        assertThat(entitlementCard.get("state").asText()).isEqualTo("CAN_START");
+        assertThat(entitlementCard.get("hasPendingFulfillment").asBoolean()).isTrue();
+        assertThat(entitlementCard.get("pendingOrderCode").asText()).isEqualTo("ORD-TOPUP1");
+        assertThat(actions(entitlementCard)).containsExactly("START", "BUY_MORE");
     }
 
     @Test
