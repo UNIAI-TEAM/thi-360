@@ -244,6 +244,27 @@ class MapidRuleCompilerTest {
         });
     }
 
+    @Test
+    void aPercentOfATakeTheRemainderGroupUsesTheUnitsTheSolverGivesIt() {
+        // 10 questions, g2 takes 4, so the remainder group g1 draws 6 (Prep.prepare): 50% = 3, not 0.
+        ExamSection exact = remainderSection(count("c", "g1", MapidComparator.EXACT, null, "50", A));
+        var compiled = MapidRuleCompiler.compile(exact);
+        assertThat(block(compiled.effectiveSection(), "g1").topicQuotas()).singleElement()
+                .satisfies(quota -> assertThat(quota.count()).isEqualTo(3));
+        assertThat(compiled.caps()).containsExactly(new Cap("c", Cap.Scope.GROUP, "g1", List.of(A), 3));
+        var atLeast = MapidRuleCompiler.compile(remainderSection(count("c", "g1", MapidComparator.AT_LEAST, null, "50", A)));
+        assertThat(block(atLeast.effectiveSection(), "g1").topicQuotas()).singleElement()
+                .satisfies(quota -> assertThat(quota.count()).isEqualTo(3));
+    }
+
+    /** Section of 10 questions: g2 draws 4 and g1 (no count) takes the remainder. */
+    private static ExamSection remainderSection(MapidRule... rules) {
+        return new ExamSection("s", "MATH", 10, null, null, null, null,
+                List.of(block("g1", QuestionType.SHORT_ANSWER, null, null, null),
+                        block("g2", QuestionType.SINGLE_CHOICE, 4, null, null)),
+                List.of(), null, MapidMode.MATRIX, List.of(rules));
+    }
+
     private static ExamSection compile(MapidRule... rules) {
         return MapidRuleCompiler.compile(section(MapidMode.MATRIX, List.of(rules))).effectiveSection();
     }

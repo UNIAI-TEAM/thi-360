@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -186,6 +187,26 @@ class MapidCapSolverTest {
         assertThat(result.groupId()).isEqualTo("g1");
         assertThat(result.failingQuota().kind()).isEqualTo("TOPIC_CAP");
         assertThat(result.failingQuota().key()).isEqualTo("capA");
+    }
+
+    @Test
+    void aPercentOnTheTakeTheRemainderGroupIsHeldByTheSolver() {
+        for (int i = 0; i < 8; i++) add(QuestionType.SHORT_ANSWER, candidate("a" + i, QuestionType.SHORT_ANSWER, A));
+        for (int i = 0; i < 8; i++) add(QuestionType.SHORT_ANSWER, candidate("w" + i, QuestionType.SHORT_ANSWER));
+        for (int i = 0; i < 6; i++) add(QuestionType.SINGLE_CHOICE, candidate("c" + i, QuestionType.SINGLE_CHOICE));
+        QuestionBlock remainder = new QuestionBlock("g1", "g1", QuestionType.SHORT_ANSWER, null, null, null, null,
+                null, null, null, false, null, List.of(), null, true, false, List.of(), List.of(), null, List.of(),
+                false, List.of(), null);
+        // 10 questions, g2 draws 4: the remainder group g1 draws 6 and 50% of it is exactly 3 carriers of A.
+        ExamSection section = section(10, List.of(remainder, single("g2", QuestionType.SINGLE_CHOICE, 4)),
+                new MapidRule("half", MapidRuleType.COUNT, "g1", List.of(A), MapidComparator.EXACT, null,
+                        BigDecimal.valueOf(50)));
+        for (SolveMode mode : modes()) {
+            PathResult result = solve(section, mode);
+            assertThat(result.status()).as("%s", mode).isEqualTo(SolveStatus.VALID);
+            assertThat(picked(result, "g1")).hasSize(6);
+            assertThat(carriers(result, "g1", A, A1)).as("%s", mode).isEqualTo(3);
+        }
     }
 
     // ---------------------------------------------------------------- fixtures
