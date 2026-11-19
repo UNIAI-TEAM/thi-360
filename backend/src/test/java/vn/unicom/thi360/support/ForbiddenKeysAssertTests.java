@@ -9,12 +9,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.RecordComponent;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import vn.unicom.thi360.exam.domain.QuestionBlock;
 
 class ForbiddenKeysAssertTests {
 
@@ -66,7 +68,7 @@ class ForbiddenKeysAssertTests {
                 .contains(
                         "questionId", "questionVersionId", "question", "questions", "body",
                         "snapshot", "source", "sourceCode", "sourceRevision",
-                        "knowledgeScope", "tagCodes", "slots", "childConditions",
+                        "knowledgeScope", "matrix", "topicQuotas", "tagCodes", "slots", "childConditions",
                         "evidence", "witness", "witnessPicks",
                         "preview", "previewId", "previewPaper");
 
@@ -208,7 +210,16 @@ class ForbiddenKeysAssertTests {
                         """, "$.product.detail.blocks[0].slots"),
                 Arguments.of("""
                         {"product": {"detail": {"blocks": [{"name": "Khối 1", "childConditions": [{"from": 1}]}]}}}
-                        """, "$.product.detail.blocks[0].childConditions"));
+                        """, "$.product.detail.blocks[0].childConditions"),
+                // R2-01: hạn ngạch chọn câu của khối; mỗi ca chỉ có đúng một khóa cấm.
+                Arguments.of("""
+                        {"product": {"detail": {"blocks": [{"name": "Khối 1", "topicQuotas": [
+                          {"id": "tq1", "nodeIds": ["3f6c2d3e-0b2f-4c2d-8c5e-0a1b2c3d4e5f"], "count": 3}]}]}}}
+                        """, "$.product.detail.blocks[0].topicQuotas"),
+                Arguments.of("""
+                        {"product": {"detail": {"blocks": [{"name": "Khối 1", "matrix": {
+                          "byGrade": [{"value": "G10", "count": 5}, {"value": "G11", "count": 5}]}}]}}}
+                        """, "$.product.detail.blocks[0].matrix"));
     }
 
     @ParameterizedTest
@@ -217,6 +228,29 @@ class ForbiddenKeysAssertTests {
         assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(json))
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining(expectedPath);
+    }
+
+    // R2-01: mọi trường của QuestionBlock phải được xếp: hoặc là nguồn câu bị cấm, hoặc được phép kèm lý do.
+    @Test
+    void everyQuestionBlockFieldIsEitherForbiddenSourceOrAllowedWithAReason() {
+        List<String> forbiddenSourceFields = List.of(
+                "knowledgeScope", "matrix", "topicQuotas", "tagCodes", "slots", "childConditions");
+        List<String> components = Stream.of(QuestionBlock.class.getRecordComponents())
+                .map(RecordComponent::getName)
+                .toList();
+
+        assertThat(ForbiddenKeysAssert.STOREFRONT_FORBIDDEN_KEYS).containsAll(forbiddenSourceFields);
+        assertThat(ForbiddenKeysAssert.STOREFRONT_ALLOWED_BLOCK_FIELDS.keySet())
+                .doesNotContainAnyElementsOf(forbiddenSourceFields);
+        assertThat(ForbiddenKeysAssert.STOREFRONT_ALLOWED_BLOCK_FIELDS.values())
+                .allSatisfy(reason -> assertThat(reason).isNotBlank());
+        // Cả hai phía phủ đúng toàn bộ trường: không sót, không thừa trường không còn trong record.
+        assertThat(components).containsExactlyInAnyOrderElementsOf(
+                Stream.concat(forbiddenSourceFields.stream(),
+                        ForbiddenKeysAssert.STOREFRONT_ALLOWED_BLOCK_FIELDS.keySet().stream()).toList());
+        // Khóa được phép không bị danh sách cấm chặn nhầm.
+        assertThat(ForbiddenKeysAssert.STOREFRONT_FORBIDDEN_KEYS)
+                .doesNotContainAnyElementsOf(ForbiddenKeysAssert.STOREFRONT_ALLOWED_BLOCK_FIELDS.keySet());
     }
 
     @Test

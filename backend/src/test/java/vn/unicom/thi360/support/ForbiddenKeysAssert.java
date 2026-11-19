@@ -68,14 +68,42 @@ public final class ForbiddenKeysAssert {
      * hỏi ({@code question(s)…}, {@code body}, {@code snapshot}), đáp án và lời giải
      * (toàn bộ danh sách lượt thi), nguồn câu của khối ({@code source…}), đề chứng
      * minh ({@code evidence}, {@code witness…}) và đề xem trước ({@code preview…}). Nguồn câu của
-     * khối gồm cả các trường ràng buộc của {@code QuestionBlock}: {@code knowledgeScope},
-     * {@code tagCodes}, {@code slots}, {@code childConditions}. Danh sách này cũng chứa mọi khóa của
-     * danh sách lượt thi.
+     * khối gồm mọi trường ràng buộc chọn câu của {@code QuestionBlock}: {@code knowledgeScope},
+     * {@code matrix}, {@code topicQuotas}, {@code tagCodes}, {@code slots}, {@code childConditions}
+     * ({@code matrix} và {@code topicQuotas} là hạn ngạch chọn câu theo MAPID/khối lớp/độ khó: bị cấm
+     * ở mọi vị trí vì chi tiết sản phẩm theo TM 10.1 không có khóa nào trùng tên). Các trường còn
+     * lại của khối được phép, mỗi trường kèm lý do ở {@link #STOREFRONT_ALLOWED_BLOCK_FIELDS}. Danh
+     * sách này cũng chứa mọi khóa của danh sách lượt thi.
      */
     public static final Set<String> STOREFRONT_FORBIDDEN_KEYS;
 
     /** Khóa cấm theo vị trí của bảng chiếu: gồm {@link #ATTEMPT_FORBIDDEN_SCOPED_KEYS}. */
     public static final Set<String> STOREFRONT_FORBIDDEN_SCOPED_KEYS = ATTEMPT_FORBIDDEN_SCOPED_KEYS;
+
+    /**
+     * Trường của {@code QuestionBlock} được phép hiện ở bảng chiếu, kèm lý do. Cùng với phần nguồn
+     * câu ở {@link #STOREFRONT_FORBIDDEN_KEYS} phải phủ đủ mọi trường của record: thêm trường mới vào
+     * {@code QuestionBlock} thì {@code ForbiddenKeysAssertTests} đỏ cho tới khi trường đó được xếp vào
+     * một trong hai nơi.
+     */
+    public static final Map<String, String> STOREFRONT_ALLOWED_BLOCK_FIELDS = Map.ofEntries(
+            Map.entry("id", "định danh khối, không chỉ tới câu hỏi"),
+            Map.entry("name", "tên phần hiển thị cho học viên"),
+            Map.entry("questionType", "dạng câu: TM 10.1 hiển thị dạng câu và số câu từng dạng"),
+            Map.entry("questionCount", "số câu: TM 10.1 hiển thị số câu"),
+            Map.entry("setCount", "số bộ câu: một dạng số câu"),
+            Map.entry("setSize", "số câu mỗi bộ: một dạng số câu"),
+            Map.entry("childAnswerType", "dạng câu con của bộ câu: cùng loại với questionType"),
+            Map.entry("requiredPointsPerQuestion", "điểm mỗi câu: TM 10.1 hiển thị thang điểm"),
+            Map.entry("expectedScoring", "cách chấm dự kiến: TM 10.1 hiển thị cách chấm"),
+            Map.entry("itemShape", "hình dạng câu (số mệnh đề, số lựa chọn): mô tả dạng câu, không chỉ nguồn"),
+            Map.entry("answerFormats", "kiểu đáp án cho phép: mô tả dạng câu, không chỉ nguồn"),
+            Map.entry("templateGroupCode", "mã nhóm mẫu: nhãn dựng bài, không chọn câu theo kiến thức hay thẻ"),
+            Map.entry("answerTypeLocked", "cờ khóa của trình soạn, không có dữ liệu câu"),
+            Map.entry("shuffleUnits", "cờ trộn, không có dữ liệu câu"),
+            Map.entry("shuffleEditable", "cờ trộn, không có dữ liệu câu"),
+            Map.entry("omitted", "cờ phần tạm bỏ qua: TM 10.1 ghi chú nhóm tự luận bỏ qua"),
+            Map.entry("positionRange", "khoảng vị trí câu trong phần: thứ tự làm bài"));
 
     static {
         Set<String> storefront = new LinkedHashSet<>(ATTEMPT_FORBIDDEN_KEYS);
@@ -92,6 +120,8 @@ public final class ForbiddenKeysAssert {
                 "sourceCode",
                 "sourceRevision",
                 "knowledgeScope",
+                "matrix",
+                "topicQuotas",
                 "tagCodes",
                 "slots",
                 "childConditions",
