@@ -209,6 +209,55 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
         assertThat(groupIssue.path("dimension").asText()).isEqualTo("DIFFICULTY");
     }
 
+    // ---- answer-type quota of the short-answer minimum: same semantics as the solver (R1-1..R1-3) ----------
+
+    /**
+     * The template's QDA Lý section (25 questions: 21 single choice, one set of 3, one short answer) with an
+     * answer-type quota on top. The check resolves the quota with the solver's own conversion: COUNT as declared
+     * (a missing unit is COUNT), PERCENT by largest remainder with ties in declaration order.
+     */
+    @ParameterizedTest(name = "{0} -> short answers {1}")
+    @CsvSource(delimiter = '|', value = {
+            // reviewer R1-1: 12% / 3% / 85% of 25 resolves to 3 / 1 / 21 (the set row counts the set children)
+            "PERCENT:QUESTION_SET=12,SHORT_ANSWER=3,SINGLE_CHOICE=85 | 1",
+            // R1-3: no unit is COUNT, a value of 1 is one question and not 1 percent
+            "NONE:QUESTION_SET=3,SHORT_ANSWER=1,SINGLE_CHOICE=21 | 1",
+            "COUNT:QUESTION_SET=3,SHORT_ANSWER=1,SINGLE_CHOICE=21 | 1",
+            // R1-2: 3 % of 25 is 0.75, the largest remainder takes the missing question (a floor would give 0)
+            "PERCENT:SINGLE_CHOICE=97,SHORT_ANSWER=3 | 1",
+            // exact tie at .5: the earlier declared row takes the missing question
+            "PERCENT:SHORT_ANSWER=2,SINGLE_CHOICE=98 | 1",
+            "PERCENT:SINGLE_CHOICE=98,SHORT_ANSWER=2 | 0",
+            // a genuine zero apportionment
+            "PERCENT:SINGLE_CHOICE=99,SHORT_ANSWER=1 | 0",
+            "COUNT:SINGLE_CHOICE=25,SHORT_ANSWER=0 | 0"})
+    void shortAnswerMinimumFollowsTheSolversQuotaResolution(String quota, int resolvedShortAnswers) throws Exception {
+        String base = create("QDA", "SUBJECT", null, "LY", null);
+        JsonNode before = structure(base);
+        ObjectNode edited = before.deepCopy();
+        ObjectNode physics = section(edited, "LY");
+        assertThat(physics.path("questionCount").asInt()).isEqualTo(25);
+        String[] unitAndRows = quota.split(":");
+        ObjectNode quotas = physics.putObject("answerQuotas");
+        if (!"NONE".equals(unitAndRows[0])) quotas.put("unit", unitAndRows[0]);
+        ArrayNode items = quotas.putArray("items");
+        for (String row : unitAndRows[1].split(",")) {
+            String[] pair = row.split("=");
+            items.addObject().put("answerType", pair[0]).put("value", Integer.parseInt(pair[1]));
+        }
+        save(base, before, edited);
+
+        JsonNode result = check(base);
+        if (resolvedShortAnswers >= 1) {
+            assertThat(codes(result)).as("check issues").doesNotContain(SHORT_CODE, SET_CODE);
+        } else {
+            JsonNode found = issue(result, SHORT_CODE);
+            assertThat(found.path("sectionId").asText()).isEqualTo(physics.path("id").asText());
+            assertThat(found.path("available").asInt()).isZero();
+            assertThat(codes(result)).doesNotContain(SET_CODE);
+        }
+    }
+
     // ---- fixtures -----------------------------------------------------------------------------------------
 
     private String matrixExam(String kind, String subject, int count, String byDifficulty) {

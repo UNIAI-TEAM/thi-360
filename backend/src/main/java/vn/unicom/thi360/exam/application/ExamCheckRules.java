@@ -1235,8 +1235,8 @@ public final class ExamCheckRules {
             failure.put("available", outOfRange ? sets : size);
             found.add(issues.key(failure));
         }
-        int shortAnswers = shortAnswerCount(section, count, fixed);
-        if (shortAnswers < limit.shortAnswerMin()) {
+        Integer shortAnswers = shortAnswerCount(section, count, fixed);
+        if (shortAnswers != null && shortAnswers < limit.shortAnswerMin()) {
             ObjectNode failure = sectionIssue("SHORT_ANSWER_MIN", "STRUCTURE", context, null);
             failure.put("required", limit.shortAnswerMin());
             failure.put("available", shortAnswers);
@@ -1244,16 +1244,19 @@ public final class ExamCheckRules {
         }
     }
 
-    /** Questions of the short-answer type that the section requires: by block type, or by the answer-type quota. */
-    private static int shortAnswerCount(ExamSection section, int count, int fixed) {
+    /**
+     * Questions of the short-answer type that the section requires: by block type, or by the answer-type quota, resolved
+     * with the solver's own quota conversion ({@link ExamCheckQuantities#rows}). Null when the quota cannot be resolved
+     * (missing or fractional value, PERCENT not adding up to 100); the answer-quota rules report that case.
+     */
+    private static Integer shortAnswerCount(ExamSection section, int count, int fixed) {
         if (section.answerQuotas() != null) {
-            for (var item : section.answerQuotas().items()) {
-                if (item.answerType() != QuestionType.SHORT_ANSWER || item.value() == null) continue;
-                BigDecimal value = section.answerQuotas().unit() == MatrixUnit.COUNT ? item.value()
-                        : item.value().multiply(BigDecimal.valueOf(count)).divide(BigDecimal.valueOf(100), java.math.RoundingMode.FLOOR);
-                return value.setScale(0, java.math.RoundingMode.FLOOR).intValue();
-            }
-            return 0;
+            var items = section.answerQuotas().items();
+            int[] rows = ExamCheckQuantities.rows(items.stream().map(item -> item.value()).toList(), section.answerQuotas().unit(), count);
+            if (rows == null) return null;
+            int total = 0;
+            for (int i = 0; i < rows.length; i++) if (items.get(i).answerType() == QuestionType.SHORT_ANSWER) total += rows[i];
+            return total;
         }
         int total = 0;
         for (QuestionBlock block : section.blocks()) {
