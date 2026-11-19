@@ -47,7 +47,9 @@ import vn.unicom.thi360.shared.storage.ObjectStorage;
  * {@link QuestionService} and {@link QuestionAssetService}: sample questions that the 2B sample bank lacks for three
  * disjoint attempts of every published exam ({@link PublishedQuestionPool}), the sample audio used by the new listening
  * questions, and the question with images of the constants file. Every question has a stable source code
- * {@code DS-Q-*}; a rerun creates only the ones that are missing. It never calls the exam half.
+ * {@code DS-Q-*}; a rerun creates only the ones that are missing. It never calls the exam half. Single builder: one JVM
+ * builds a database — two dev/e2e instances against the same half-seeded database would race on the missing codes, and
+ * the loser stops its startup (R1-9).
  */
 @Component
 @Profile({"dev", "e2e", "test"})
@@ -59,7 +61,7 @@ public class PublishedQuestionPoolBuilder {
     static final String AUDIO_FILE = "hsca-en-listening-single-01.mp3";
     static final String AUDIO_NAME = "ds-listening.mp3";
     private static final int CHUNK = 20;
-    private static final int THREADS = 4;
+    private static final int THREADS = 6;
 
     private static final String[] GRADES = {"G10", "G11", "G12"};
     private static final String[] LEVELS = {"NB", "TH", "VD", "VDC"};
@@ -112,7 +114,7 @@ public class PublishedQuestionPoolBuilder {
         List<PoolSpec> specs = specs();
         int present = 0;
         UUID audio = specs.stream().anyMatch(spec -> spec.audio) ? ensureAudio() : null;
-        List<Runnable> chunks = new ArrayList<>();
+        var chunksBySubject = new java.util.LinkedHashMap<String, List<Runnable>>();
         int created = 0;
         for (PoolSpec spec : specs) {
             List<Integer> missing = new ArrayList<>();
@@ -125,11 +127,16 @@ public class PublishedQuestionPoolBuilder {
             }
             for (int from = 0; from < missing.size(); from += CHUNK) {
                 List<Integer> chunk = missing.subList(from, Math.min(missing.size(), from + CHUNK));
-                chunks.add(() -> transaction.executeWithoutResult(status -> createChunk(spec, chunk, audio)));
+                chunksBySubject.computeIfAbsent(spec.subject, ignored -> new ArrayList<>())
+                        .add(() -> transaction.executeWithoutResult(status -> createChunk(spec, chunk, audio)));
                 created += chunk.size();
             }
         }
-        runChunks(chunks);
+        List<Runnable> subjects = new ArrayList<>();
+        for (List<Runnable> chunks : chunksBySubject.values()) {
+            subjects.add(() -> chunks.forEach(Runnable::run));
+        }
+        runChunks(subjects);
         created += ensureImageQuestion(existing) ? 1 : 0;
         log.atInfo().addKeyValue("event", "published_question_pool.built").addKeyValue("created", created)
                 .addKeyValue("existing", present).log("Published exam set questions verified");
@@ -137,8 +144,8 @@ public class PublishedQuestionPoolBuilder {
     }
 
     /**
-     * Runs the chunks on a few threads: each chunk is its own transaction on its own family (one subject), so they only
-     * wait for one another on the per-subject source revision row. The actor is set on every thread.
+     * Each subject is processed sequentially because its source revision row serializes writes; different subjects
+     * run concurrently. Every chunk remains a separate transaction and each worker receives the actor context.
      */
     private void runChunks(List<Runnable> chunks) {
         if (chunks.isEmpty()) {
@@ -209,7 +216,8 @@ public class PublishedQuestionPoolBuilder {
     // ------------------------------------------------------------------------------------------ requests
 
     static String code(PoolSpec spec, int n) {
-        return CODE_PREFIX + spec.family + "-" + String.format("%03d", n);
+        // ROOT: the source codes are keys, so the default locale must never change the digits (R1-5).
+        return CODE_PREFIX + spec.family + "-" + String.format(java.util.Locale.ROOT, "%03d", n);
     }
 
     private SaveQuestionRequest request(PoolSpec spec, int n, UUID audioId) {
@@ -352,7 +360,11 @@ public class PublishedQuestionPoolBuilder {
         return assets.upload(uploadKind, new BytesMultipartFile(fileName, mime, read(resource))).id();
     }
 
-    /** The question of the constants file with an image in its prompt, in one option and in its solution (AC-21). */
+    /**
+     * The question of the constants file with an image in its prompt, in one option and in its solution (AC-21). A row
+     * left in DRAFT by an earlier interrupted run is taken to READY; a READY transition that is skipped fails the build
+     * instead of silently keeping an unusable question (R1-4).
+     */
     private boolean ensureImageQuestion(Set<String> existing) {
         JsonNode image = constants().path("imageQuestion");
         String code = image.path("questionCode").asText();
@@ -372,7 +384,15 @@ public class PublishedQuestionPoolBuilder {
             }
         }
         if (existing.contains(code)) {
-            return false;
+            String status = jdbc.queryForObject("SELECT status FROM questionbank.question WHERE source_code = ? "
+                    + "AND parent_id IS NULL", String.class, code);
+            if (!"DRAFT".equals(status)) {
+                return false;
+            }
+            UUID id = jdbc.queryForObject("SELECT id FROM questionbank.question WHERE source_code = ? "
+                    + "AND parent_id IS NULL", UUID.class, code);
+            transaction.executeWithoutResult(tx -> markReady(id));
+            return true;
         }
         Objects.requireNonNull(prompt, "PROMPT image");
         Objects.requireNonNull(option, "OPTION image");
@@ -381,15 +401,25 @@ public class PublishedQuestionPoolBuilder {
                 new ChoiceOption("a", "<p>Option a <img data-asset-id='" + option + "' alt='option'></p>", true),
                 new ChoiceOption("b", "<p>Option b</p>", false), new ChoiceOption("c", "<p>Option c</p>", false),
                 new ChoiceOption("d", "<p>Option d</p>", false));
-        SaveQuestionRequest request = new SaveQuestionRequest(QuestionType.SINGLE_CHOICE, "TOAN", "G12", "TH", null, null,
-                BigDecimal.ONE, List.of(), List.of(), "<p>" + code + " <img data-asset-id='" + prompt + "' alt='prompt'></p>",
+        SaveQuestionRequest request = new SaveQuestionRequest(QuestionType.SINGLE_CHOICE, "TOAN", "G12", "TH", null,
+                null, BigDecimal.ONE, List.of(), List.of(),
+                "<p>" + code + " <img data-asset-id='" + prompt + "' alt='prompt'></p>",
                 "<p>Solution <img data-asset-id='" + solution + "' alt='solution'></p>", List.of(), List.of(),
                 new QuestionBody.SingleChoiceBody(QuestionType.SINGLE_CHOICE, options, true), code);
         transaction.executeWithoutResult(status -> {
             QuestionDetail detail = questions.create(UUID.randomUUID().toString(), request);
-            questions.bulkReady(UUID.randomUUID().toString(), new BulkQuestionStatusRequest(List.of(detail.summary().id())));
+            markReady(detail.summary().id());
         });
         return true;
+    }
+
+    /** Takes the question to READY through the bulk transition and fails the transaction when it is skipped. */
+    private void markReady(UUID id) {
+        var result = questions.bulkReady(UUID.randomUUID().toString(), new BulkQuestionStatusRequest(List.of(id)));
+        if (!result.skipped().isEmpty()) {
+            throw new IllegalStateException("The image question " + id + " cannot be taken to READY: "
+                    + result.skipped());
+        }
     }
 
     JsonNode constants() {

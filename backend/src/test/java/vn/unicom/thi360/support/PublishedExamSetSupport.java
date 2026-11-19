@@ -85,7 +85,7 @@ public final class PublishedExamSetSupport {
             String email = account.username() + "@thi360.vn";
             jdbc.update("INSERT INTO identity.user_account (id, code, username, username_normalized, full_name, email, "
                     + "email_normalized, source, status, must_change_password) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 2, false)",
-                    UUID.randomUUID(), String.format("U%06d", next), account.username(), account.username(),
+                    UUID.randomUUID(), String.format(java.util.Locale.ROOT, "U%06d", next), account.username(), account.username(),
                     account.username(), email, email);
         }
     }
