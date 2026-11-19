@@ -372,6 +372,22 @@ export function focusMapidRule(ruleId: string, root: ParentNode = document): boo
 }
 
 /**
+ * Từ vấn đề của kiểm tra, xem thử sang dòng quy tắc: màn môn dựng sau khi mở môn, nên chờ tối đa `frames` khung hình cho tới khi
+ * dòng xuất hiện rồi cuộn tới và đưa tiêu điểm vào. Trả `false` khi không có dòng (môn ở chế độ Toàn bài, quy tắc đã xóa).
+ */
+export function focusMapidRuleWhenReady(ruleId: string, root: ParentNode = document, frames = 30): Promise<boolean> {
+  const { promise, resolve } = Promise.withResolvers<boolean>();
+  let left = frames;
+  const look = () => {
+    if (focusMapidRule(ruleId, root)) resolve(true);
+    else if (--left <= 0) resolve(false);
+    else requestAnimationFrame(look);
+  };
+  requestAnimationFrame(look);
+  return promise;
+}
+
+/**
  * Từ màn nhóm sang bảng "Quy tắc MAPID" của môn: màn môn dựng sau khi chuyển, nên chờ tối đa `frames` khung hình cho tới khi
  * bảng xuất hiện rồi cuộn tới và đưa tiêu điểm vào. Trả `false` khi không có bảng (môn ở chế độ Toàn bài).
  */
@@ -398,9 +414,11 @@ export function revealMapidRulesTable(root: ParentNode = document, frames = 30):
 
 const unique = (items: readonly string[]): string[] => [...new Set(items)];
 
-function compiledScope(legacy: KnowledgeScope | null, source: readonly string[], everyChild: boolean): KnowledgeScope | null {
+function compiledScope(legacy: KnowledgeScope | null, source: readonly string[], everyChild: boolean): CountKnowledgeScope | null {
   const competencyCodes = legacy?.competencyCodes ?? [];
-  if (source.length > 0) return { nodeIds: [...source], competencyCodes, ...(everyChild ? { everyChildInScope: true } : {}) };
+  if (source.length > 0) {
+    return { nodeIds: [...source], competencyCodes, ...(everyChild ? { everyChildInScope: true, everyChildSameNode: true } : {}) };
+  }
   return legacy ? { nodeIds: [], competencyCodes } : null;
 }
 

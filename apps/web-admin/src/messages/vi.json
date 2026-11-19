@@ -4822,7 +4822,9 @@
         "BLOCK_COUNT_LOCKED": "Khối {block}: mẫu khóa {dimension, select, COUNT {số câu của dòng} SET_COUNT {số chùm của dòng} SET_SIZE {số câu mỗi chùm} TYPE {dạng của dòng} other {dạng và số lượng của dòng}}{hasCount, select, yes {; mẫu giữ {required, number}, hiện có {available, number}} other {}}. Đưa dòng về đúng như mẫu.",
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
-        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}."
+        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
+        "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
+        "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -5850,6 +5852,13 @@
         "title": "Nguồn câu theo MAPID"
       },
       "hint": "Chỉ khai báo những chủ đề muốn kiểm soát. Các vị trí còn lại được lấy ngẫu nhiên trong phạm vi còn hợp lệ.",
+      "issue": {
+        "goToRule": "Đi tới quy tắc",
+        "goToRuleAria": "Đi tới quy tắc: {issue}",
+        "quoted": "«{sentence}»",
+        "setShortage": "{group} cần {requiredSets, number} chùm có {setSize, number} câu con cùng chủ đề. Hiện có {availableSingles, number} câu đơn và {availableSets, number} chùm phù hợp.",
+        "shortage": "Quy tắc {rule} thiếu nguồn{hasCount, select, yes {: cần {required, number} câu, hiện có {available, number} câu, còn thiếu {missing, number} câu} other {}}{hasTopics, select, yes { (MAPID {topics})} other {}}."
+      },
       "limit": "Đã đủ {max, number} quy tắc.",
       "mode": {
         "all": "Toàn bài (không giới hạn MAPID)",

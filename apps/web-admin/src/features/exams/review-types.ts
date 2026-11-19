@@ -155,6 +155,8 @@ export const CHECK_ISSUE_CODES = [
   "OMITTED_BLOCK_LOCKED",
   "SCALE_INCLUDES_EXCLUDED_PART",
   "DISPLAY_SEGMENT_MISMATCH",
+  "MAPID_RULE_CONFLICT",
+  "MAPID_RULE_GROUP_MISSING",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
@@ -220,6 +222,18 @@ export interface CheckIssue {
   childPosition?: number | null;
   /** Phân đoạn hiển thị của `DISPLAY_SEGMENT_MISMATCH` (BE-20, `ExamPreviewIssue.segmentCode`); tên tra theo `displaySegments` của phần, không in mã. */
   segmentCode?: string | null;
+  /** Quy tắc MAPID của môn mà vấn đề nêu (UNI-2758): mỏ neo `mapid-rule-<ruleId>`; `null`: vấn đề không gắn quy tắc. */
+  ruleId?: string | null;
+  /** Mọi quy tắc của `MAPID_RULE_CONFLICT`, theo thứ tự khai báo. */
+  ruleIds?: string[] | null;
+  /** Loại xung đột của `MAPID_RULE_CONFLICT` (`GROUP_MINIMUM_ABOVE_GROUP_UNITS`...); chuỗi lạ vẫn nhận, câu mô tả rơi về câu chung. */
+  conflictKind?: string | null;
+  /** MAPID khai báo của quy tắc bị thiếu nguồn (id nút cây kiến thức). */
+  nodeIds?: string[] | null;
+  /** Chùm cần, chùm phù hợp và câu đơn có sẵn của `SET_SHORTAGE` dưới quy tắc "Chỉ lấy từ". */
+  requiredSets?: number | null;
+  availableSets?: number | null;
+  availableSingles?: number | null;
 }
 
 /** Số câu cần của một ô (ma trận kết hợp) sau khi quy đổi tỷ lệ. */

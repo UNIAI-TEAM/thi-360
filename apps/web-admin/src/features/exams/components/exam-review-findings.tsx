@@ -23,6 +23,7 @@ import {
   collectCheckIssues,
   findBlockContext,
   groupIssues,
+  issueRuleHref,
   issueStructureHref,
   splitBySeverity,
   worstSectionState,
@@ -190,10 +191,12 @@ function IssueList({
 
 function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
   const t = useTranslations("exams.review.findings");
+  const tMapid = useTranslations("exams.mapidRules.issue");
   const issueText = useIssueText(exam);
   const lookup = useLookup();
   const message = issueText(issue);
-  const href = issueStructureHref(exam.id, issue);
+  const ruleHref = issueRuleHref(exam.id, issue);
+  const href = ruleHref ?? issueStructureHref(exam.id, issue);
   const where = findBlockContext(exam, issue.blockId);
   const location = [
     issue.partName ?? where?.part.name ?? exam.parts.find((part) => part.id === issue.partId)?.name ?? null,
@@ -213,8 +216,8 @@ function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
         </div>
         {href && (
           <Button asChild variant="link" size="sm">
-            <Link href={href} aria-label={t("openAria", { issue: message })}>
-              {t("open")}
+            <Link href={href} aria-label={ruleHref ? tMapid("goToRuleAria", { issue: message }) : t("openAria", { issue: message })}>
+              {ruleHref ? tMapid("goToRule") : t("open")}
               <ArrowRight />
             </Link>
           </Button>

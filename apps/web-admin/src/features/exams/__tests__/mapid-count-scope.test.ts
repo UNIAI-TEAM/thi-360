@@ -73,8 +73,8 @@ describe("phạm vi đếm nguồn của nhóm ở môn MATRIX", () => {
   it("phạm vi là quy tắc 'Chỉ lấy từ': của nhóm trước, không có thì của cả môn; chùm đòi cả chùm cùng phạm vi", () => {
     const s = section([source("s-all", null, ["m1", "m2"]), source("s-set", "set", ["m3"]), source("s-set2", "set", ["m4"])]);
 
-    expect(groupCountScope(single, s)).toEqual({ nodeIds: ["m1", "m2"], competencyCodes: [], everyChildInScope: true });
-    expect(groupCountScope(set, s)).toEqual({ nodeIds: ["m3", "m4"], competencyCodes: [], everyChildInScope: true });
+    expect(groupCountScope(single, s)).toEqual({ nodeIds: ["m1", "m2"], competencyCodes: [], everyChildInScope: true, everyChildSameNode: true });
+    expect(groupCountScope(set, s)).toEqual({ nodeIds: ["m3", "m4"], competencyCodes: [], everyChildInScope: true, everyChildSameNode: true });
   });
 
   it("MAPID cũ của môn và nhóm bị bỏ, lọc năng lực giữ", () => {
@@ -114,7 +114,7 @@ describe("thân yêu cầu đếm nguồn", () => {
     backend.install();
   });
 
-  it("count và count-subject gửi excludedNodeIds và everyChildInScope; không có thì bỏ khỏi thân", async () => {
+  it("count và count-subject gửi excludedNodeIds, everyChildInScope và everyChildSameNode; không có thì bỏ khỏi thân", async () => {
     backend.seedCounts("count", { status: 200, body: { total: 1, cells: [], byAnswerType: [] } });
     backend.seedCounts("count-subject", { status: 200, body: { total: 1, cells: [], byAnswerType: [] } });
     const s = section([source("s-all", null, ["m1"]), only("r1", "short", ["n-ham-so"])]);
@@ -127,16 +127,17 @@ describe("thân yêu cầu đếm nguồn", () => {
 
     const [call] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count");
     expect(call?.body).toMatchObject({
-      knowledgeScope: { nodeIds: ["m1"], everyChildInScope: true, excludedNodeIds: ["n-ham-so"] },
+      knowledgeScope: { nodeIds: ["m1"], everyChildInScope: true, everyChildSameNode: true, excludedNodeIds: ["n-ham-so"] },
     });
     const [subject] = backend.calls("POST", "/api/v1/admin/exams/available-questions/count-subject");
     const groups = (subject?.body as { groups: Array<{ knowledgeScope?: Record<string, unknown> }> }).groups;
-    expect(groups[0]?.knowledgeScope).toEqual({ nodeIds: ["m1"], competencyCodes: [], everyChildInScope: true });
+    expect(groups[0]?.knowledgeScope).toEqual({ nodeIds: ["m1"], competencyCodes: [], everyChildInScope: true, everyChildSameNode: true });
     expect(groups[0]?.knowledgeScope).not.toHaveProperty("excludedNodeIds");
     expect(groups[1]?.knowledgeScope).toEqual({
       nodeIds: ["m1"],
       competencyCodes: [],
       everyChildInScope: true,
+      everyChildSameNode: true,
       excludedNodeIds: ["n-ham-so"],
     });
   });

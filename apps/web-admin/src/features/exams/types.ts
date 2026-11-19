@@ -779,6 +779,8 @@ export interface SuggestExamCodeQuery {
  */
 export interface CountKnowledgeScope extends KnowledgeScope {
   excludedNodeIds?: string[];
+  /** Nhóm dưới quy tắc "Chỉ lấy từ": chùm chỉ tính khi mọi câu con cùng nằm trong một nhánh MAPID của quy tắc (chặt hơn `everyChildInScope`). */
+  everyChildSameNode?: boolean;
 }
 
 /**

@@ -11,6 +11,7 @@ import { type ChangeLevel, parseChangeWhere } from "../change-where";
 import { roundForDisplay } from "../display-number";
 import { useExamStructure } from "../queries";
 import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
+import { useMapidIssueText } from "./use-mapid-issue-text";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */
@@ -120,6 +121,7 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
   const tFormat = useTranslations("questions.detail.body.answerFormats");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
+  const mapidIssue = useMapidIssueText(exam);
   return useCallback(
     (issue: CheckIssue) => {
       const where = exam ? findBlockContext(exam, issue.blockId) : null;
@@ -193,12 +195,15 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
         segment,
         hasSegment: segment ? "yes" : "no",
       };
+      const mapid = mapidIssue(issue, where, values);
+      if (mapid.text !== null) return mapid.text;
+      const withMapid = { ...values, ...mapid.values };
       // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
       const noCount = issue.required == null || issue.available == null;
-      if (noCount && COUNT_ISSUE_CODES[issue.code]) return tNoCount(issue.code, values);
-      return t(issue.code, values);
+      if (noCount && COUNT_ISSUE_CODES[issue.code]) return tNoCount(issue.code, withMapid);
+      return t(issue.code, withMapid);
     },
-    [t, tNoCount, tContent, tFormat, lookup, competencies, exam],
+    [t, tNoCount, tContent, tFormat, lookup, competencies, exam, mapidIssue],
   );
 }
 

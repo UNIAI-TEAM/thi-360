@@ -2,7 +2,10 @@
 
 import { Button, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
+import { focusMapidRuleWhenReady } from "../mapid-rules";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
+import type { ExamPart } from "../types";
 import type { StructureSelection } from "./exam-structure-draft";
 import { useIssueText } from "./exam-review-shared";
 
@@ -13,6 +16,8 @@ export interface CheckResultNames {
 export interface ExamStructureCheckResultProps {
   result: ExamCheckResult;
   names: CheckResultNames;
+  /** Cấu trúc đang sửa: để gọi quy tắc MAPID của vấn đề bằng câu mô tả của nó. */
+  parts?: ExamPart[];
   onSelect: (selection: StructureSelection) => void;
 }
 
@@ -46,10 +51,12 @@ function groupBySubject(issues: readonly CheckIssue[]): IssueGroup[] {
  * Kết quả kiểm tra gần nhất ở vùng tổng hợp (spec 15.2): lỗi và cảnh báo tách riêng, gom theo môn, kèm các mã bài thi bị
  * ảnh hưởng (`affectedCodes`, R-24). Chi tiết đầy đủ nằm ở tab Kiểm tra và xem trước.
  */
-export function ExamStructureCheckResult({ result, names, onSelect }: ExamStructureCheckResultProps) {
+export function ExamStructureCheckResult({ result, names, parts, onSelect }: ExamStructureCheckResultProps) {
   const t = useTranslations("exams.structure.check");
   const structureT = useTranslations("exams.structure");
-  const issueText = useIssueText();
+  const tMapid = useTranslations("exams.mapidRules.issue");
+  const exam = useMemo(() => (parts ? { parts } : undefined), [parts]);
+  const issueText = useIssueText(exam);
 
   const seen = new Set<string>();
   const issues = result.groups
@@ -68,20 +75,38 @@ export function ExamStructureCheckResult({ result, names, onSelect }: ExamStruct
           <ul className="flex flex-col gap-1.5 border-l border-border pl-3">
             {group.issues.map((issue) => {
               const target = checkIssueTarget(issue);
+              const text = issueText(issue);
+              const ruleId = issue.ruleId ?? null;
+              const sectionId = issue.sectionId ?? null;
               return (
                 <li key={issue.key} className="flex flex-wrap items-start justify-between gap-2 text-body text-text">
                   <span className="min-w-0 flex-1">
-                    {issueText(issue)}
+                    {text}
                     {issue.affectedCodes && issue.affectedCodes.length > 0 && (
                       <span className="ml-1.5 text-caption text-text-muted">
                         {t("codes", { codes: issue.affectedCodes.join(", ") })}
                       </span>
                     )}
                   </span>
-                  {target && (
-                    <Button type="button" variant="link" size="sm" onClick={() => onSelect(target)}>
-                      {structureT("issueGo")}
+                  {ruleId && sectionId ? (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      aria-label={tMapid("goToRuleAria", { issue: text })}
+                      onClick={() => {
+                        onSelect({ kind: "section", sectionId });
+                        void focusMapidRuleWhenReady(ruleId);
+                      }}
+                    >
+                      {tMapid("goToRule")}
                     </Button>
+                  ) : (
+                    target && (
+                      <Button type="button" variant="link" size="sm" onClick={() => onSelect(target)}>
+                        {structureT("issueGo")}
+                      </Button>
+                    )
                   )}
                 </li>
               );

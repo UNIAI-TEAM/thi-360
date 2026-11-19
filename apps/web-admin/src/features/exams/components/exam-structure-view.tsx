@@ -5,7 +5,8 @@ import { ArrowRight, ClipboardCheck, Info, LayoutList, Save, TriangleAlert } fro
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { focusMapidRuleWhenReady } from "../mapid-rules";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -67,7 +68,7 @@ import { ReviewSubjectPanel } from "./review-subject-panel";
 import { ScoringExamples, StrandReference } from "./scoring-examples";
 import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 
-const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block" } as const;
+const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block", rule: "rule" } as const;
 
 function readSelectionFromUrl(): StructureSelection | null {
   if (typeof window === "undefined") return null;
@@ -91,6 +92,7 @@ function writeSelectionToUrl(selection: StructureSelection): void {
   url.searchParams.delete(SELECTION_PARAMS.section);
   url.searchParams.delete(SELECTION_PARAMS.option);
   url.searchParams.delete(SELECTION_PARAMS.part);
+  url.searchParams.delete(SELECTION_PARAMS.rule);
   if (selection.kind === "exam") url.searchParams.set(SELECTION_PARAMS.exam, "1");
   else if (selection.kind === "block") url.searchParams.set(SELECTION_PARAMS.block, selection.blockId);
   else if (selection.kind === "section") url.searchParams.set(SELECTION_PARAMS.section, selection.sectionId);
@@ -260,6 +262,11 @@ function StructureEditor({
     const fromUrl = readSelectionFromUrl();
     return fromUrl && selectionExists(structure.parts, fromUrl) ? fromUrl : defaultSelection(structure.parts);
   });
+  // `?rule=` (liên kết "Đi tới quy tắc" của kiểm tra và xem thử): cuộn tới dòng quy tắc MAPID một lần khi mở trang.
+  useEffect(() => {
+    const ruleId = new URLSearchParams(window.location.search).get(SELECTION_PARAMS.rule);
+    if (ruleId) void focusMapidRuleWhenReady(ruleId);
+  }, []);
   const requested = selection && selectionExists(draft, selection) ? selection : defaultSelection(draft);
   // Bài ôn (UNI-2752): chỗ sửa của khối duy nhất là màn bài ôn. `?block=`, "Đến chỗ sửa" và lỗi kiểm tra trỏ tới khối đó đều mở
   // môn, không mở màn nhóm đầy đủ (Tên nhóm, Cách lấy, Ma trận riêng...) mà bài ôn rút gọn để ẩn.
@@ -810,6 +817,7 @@ function StructureEditor({
             issueText={issueText}
             checkResult={checkResult}
             names={names}
+            parts={draft}
             onSelect={select}
           />
         </div>

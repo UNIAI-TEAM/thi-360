@@ -276,6 +276,7 @@ function toCountBody(query: AudioCountQuery): ApiAvailableQuestionsQuery {
           competencyCodes: query.knowledgeScope.competencyCodes,
           // Chùm của quy tắc "Chỉ lấy từ" chỉ đếm khi cả chùm cùng phạm vi; loại trừ của nhóm khác (UNI-2758) chỉ gửi khi có.
           ...(query.knowledgeScope.everyChildInScope ? { everyChildInScope: true } : {}),
+          ...(query.knowledgeScope.everyChildSameNode ? { everyChildSameNode: true } : {}),
           ...(query.knowledgeScope.excludedNodeIds?.length ? { excludedNodeIds: query.knowledgeScope.excludedNodeIds } : {}),
         }
       : undefined,

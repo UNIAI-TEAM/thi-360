@@ -382,7 +382,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
   const t = useTranslations("exams.review.selections");
   const tReview = useTranslations("exams.review");
   const lookup = useLookup();
-  const issueText = useIssueText();
+  const issueText = useIssueText(exam);
   const pathLabel = usePathLabel(exam.id);
   const choice = path.choices.find((item) => item.kind === "SUBJECT_CHOICE");
   const option = exam.parts
@@ -573,7 +573,7 @@ function PathsSection({
   const t = useTranslations("exams.review");
   const pathLabel = usePathLabel(exam.id);
   const pathSub = usePathSub();
-  const issueText = useIssueText();
+  const issueText = useIssueText(exam);
   const partsList = [...exam.parts]
     .sort((a, b) => a.order - b.order)
     .map((part) => part.order)
@@ -806,7 +806,7 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
   const t = useTranslations("exams.review");
   const format = useFormatter();
   const lookup = useLookup();
-  const issueText = useIssueText();
+  const issueText = useIssueText(exam);
 
   const { columns, cards } = useMemo(() => {
     const name = (block: BlockCheck) => `${lookup.subject(block.subjectCode)} · ${block.blockName}`;
