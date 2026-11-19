@@ -6,6 +6,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.identity.application.AuthService;
 import vn.unicom.thi360.identity.application.PasswordForgotDispatcher;
@@ -89,7 +91,8 @@ public class AuthController {
     }
 
     @PostMapping(value = "/auth/password/forgot", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Yêu cầu liên kết đặt lại mật khẩu (công khai, luôn 202 cùng một thân)")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(operationId = "forgotPassword", summary = "Yêu cầu liên kết đặt lại mật khẩu (công khai, luôn 202 cùng một thân)")
     public ResponseEntity<PasswordForgotResponse> forgot(
             @Valid @RequestBody PasswordForgotRequest request, HttpServletRequest httpRequest) {
         // Chỉ ghi nhận việc rồi trả ngay: bộ lọc giao việc sau khi 202 đã commit, nên thời gian phản hồi không lộ email có hay không.
@@ -99,10 +102,10 @@ public class AuthController {
     }
 
     @PostMapping(value = "/auth/password/reset", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Đặt lại mật khẩu bằng mã trong thư (công khai, không đăng nhập)")
-    public ResponseEntity<Void> reset(@Valid @RequestBody PasswordResetRequest request) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "resetPasswordByToken", summary = "Đặt lại mật khẩu bằng mã trong thư (công khai, không đăng nhập)")
+    public void reset(@Valid @RequestBody PasswordResetRequest request) {
         passwordResetService.reset(request.token(), request.newPassword());
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")

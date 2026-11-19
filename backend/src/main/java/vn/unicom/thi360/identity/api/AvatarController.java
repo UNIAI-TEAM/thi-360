@@ -10,6 +10,7 @@ import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import vn.unicom.thi360.identity.application.AvatarImageProcessor;
@@ -51,7 +53,7 @@ public class AvatarController {
             value = "/me/avatar",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Đặt ảnh đại diện (jpg, png, webp, ≤5 MB, ≤4.096 px; lưu PNG 256px)")
+    @Operation(operationId = "replaceMyAvatar", summary = "Đặt ảnh đại diện (jpg, png, webp, ≤5 MB, ≤4.096 px; lưu PNG 256px)")
     public ProfileResponse replace(@RequestParam(name = "file", required = false) MultipartFile file) {
         var userId = ProfileOwner.requireAccountId(currentUserProvider);
         if (file == null || file.isEmpty()) {
@@ -69,14 +71,14 @@ public class AvatarController {
     }
 
     @DeleteMapping("/me/avatar")
-    @Operation(summary = "Xóa ảnh đại diện (không có ảnh thì không làm gì)")
-    public ResponseEntity<Void> remove() {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "removeMyAvatar", summary = "Xóa ảnh đại diện (không có ảnh thì không làm gì)")
+    public void remove() {
         avatarService.remove(ProfileOwner.requireAccountId(currentUserProvider));
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping(value = "/avatars/{assetId}", produces = MediaType.IMAGE_PNG_VALUE)
-    @Operation(summary = "Phục vụ ảnh đại diện (PNG 256px) cho tài khoản đã đăng nhập")
+    @Operation(operationId = "getAvatar", summary = "Phục vụ ảnh đại diện (PNG 256px) cho tài khoản đã đăng nhập")
     @ApiResponse(
             responseCode = "200",
             content = @Content(mediaType = MediaType.IMAGE_PNG_VALUE, schema = @Schema(type = "string", format = "binary")))

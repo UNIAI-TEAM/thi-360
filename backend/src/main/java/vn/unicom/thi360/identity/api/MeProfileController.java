@@ -29,13 +29,13 @@ public class MeProfileController {
     }
 
     @GetMapping
-    @Operation(summary = "Đọc hồ sơ của tài khoản đang đăng nhập")
+    @Operation(operationId = "getMyProfile", summary = "Đọc hồ sơ của tài khoản đang đăng nhập")
     public ProfileResponse get() {
         return profileService.get(ProfileOwner.requireAccountId(currentUserProvider));
     }
 
     @PatchMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Sửa họ tên, số điện thoại của tài khoản đang đăng nhập")
+    @Operation(operationId = "updateMyProfile", summary = "Sửa họ tên, số điện thoại của tài khoản đang đăng nhập")
     public ProfileResponse update(@RequestBody ProfileUpdateRequest request) {
         return profileService.update(ProfileOwner.requireAccountId(currentUserProvider), request);
     }
