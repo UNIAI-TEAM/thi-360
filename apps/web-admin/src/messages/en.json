@@ -6033,6 +6033,39 @@
         "cancel": "Cancel",
         "submit": "Add branch"
       }
+    },
+    "subjectForm": {
+      "common": {
+        "blocked": "Fix the remaining errors before saving or checking.",
+        "countPercent": {
+          "count": "Questions",
+          "invalidNumber": "Enter a non-negative number.",
+          "percent": "Percent (%)",
+          "preview": "{percent, number}% of {total, plural, one {# question} other {# questions}} = {count, plural, one {# question} other {# questions}}",
+          "setNotWhole": "This percentage gives {count, plural, one {# question} other {# questions}}, which cannot be split into sets of {size, plural, one {# question} other {# questions}}",
+          "share": "{percent, number}%"
+        },
+        "enforcement": {
+          "apply": "Apply when generating",
+          "legend": "Enforcement of {name}",
+          "notDeclared": "Not declared",
+          "reference": "Reference",
+          "referenceOnly": "For comparison only",
+          "required": "Required"
+        },
+        "fullFormNotice": "This subject uses the full setup because it has settings the compact form cannot show.",
+        "lock": {
+          "answerType": "The question type is set by the template and cannot change",
+          "multiSubject": "A quota across several subjects is for comparison only",
+          "omitted": "This group is omitted by the template and cannot be turned back on",
+          "promptBasis": "A distribution by prompt is for comparison only",
+          "rowCounts": "Standard exam template: the quantity cannot change",
+          "rowHasConditions": "This row has its own conditions; remove them before splitting",
+          "rowNoSetSize": "This row has no fixed set size",
+          "rowOmitted": "This row is temporarily skipped",
+          "templateTotal": "The section total comes from the template and cannot change"
+        }
+      }
     }
   },
   "grading": {

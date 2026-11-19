@@ -6033,6 +6033,39 @@
         "cancel": "Hủy",
         "submit": "Thêm nhánh"
       }
+    },
+    "subjectForm": {
+      "common": {
+        "blocked": "Còn lỗi cần sửa trước khi lưu hoặc kiểm tra.",
+        "countPercent": {
+          "count": "Số câu",
+          "invalidNumber": "Nhập một số không âm.",
+          "percent": "Tỷ lệ (%)",
+          "preview": "{percent, number}% của {total, number} câu = {count, number} câu",
+          "setNotWhole": "Tỷ lệ này ra {count, number} câu, không chia được thành chùm {size, number} câu",
+          "share": "{percent, number}%"
+        },
+        "enforcement": {
+          "apply": "Áp dụng khi sinh đề",
+          "legend": "Mức áp dụng của {name}",
+          "notDeclared": "Chưa khai báo",
+          "reference": "Tham khảo",
+          "referenceOnly": "Chỉ đối chiếu",
+          "required": "Bắt buộc"
+        },
+        "fullFormNotice": "Môn này đang dùng thiết lập đầy đủ vì có thiết lập mà biểu mẫu gọn không hiển thị được.",
+        "lock": {
+          "answerType": "Dạng câu do mẫu đặt, không đổi",
+          "multiSubject": "Chỉ tiêu nhiều môn chỉ dùng để đối chiếu",
+          "omitted": "Nhóm đã lược theo mẫu, không bật lại",
+          "promptBasis": "Phân bố theo lệnh hỏi chỉ dùng để đối chiếu",
+          "rowCounts": "Theo mẫu đề chuẩn, không đổi số lượng",
+          "rowHasConditions": "Dòng có điều kiện riêng; bỏ điều kiện trước khi tách",
+          "rowNoSetSize": "Dòng không có cỡ chùm cố định",
+          "rowOmitted": "Dòng đang tạm bỏ qua",
+          "templateTotal": "Số câu của mục theo mẫu, không đổi"
+        }
+      }
     }
   },
   "grading": {
