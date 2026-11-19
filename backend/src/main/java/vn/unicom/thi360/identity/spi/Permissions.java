@@ -20,6 +20,15 @@ public final class Permissions {
     public static final String EXAM_VIEW = "EXAM.VIEW";
     public static final String EXAM_MODIFY = "EXAM.MODIFY";
     public static final String EXAM_PUBLISH = "EXAM.PUBLISH";
+    public static final String PROMOTION_VIEW = "PROMOTION.VIEW";
+    public static final String PROMOTION_MODIFY = "PROMOTION.MODIFY";
+    public static final String ORDER_VIEW = "ORDER.VIEW";
+    public static final String ORDER_REFUND = "ORDER.REFUND";
+    public static final String ORDER_RECOVER = "ORDER.RECOVER";
+    public static final String GRADING_VIEW = "GRADING.VIEW";
+    public static final String GRADING_MODIFY = "GRADING.MODIFY";
+    public static final String ATTEMPT_VIEW = "ATTEMPT.VIEW";
+    public static final String ATTEMPT_COMPENSATE = "ATTEMPT.COMPENSATE";
 
     private Permissions() {
     }

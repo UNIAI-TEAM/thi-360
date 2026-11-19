@@ -97,7 +97,9 @@ Module khác chỉ được dùng `spi/` và sự kiện đã công bố. Test `
 | `audit` | `audit` | `audit_event` (chỉ ghi thêm, phân vùng theo quý), `audit_event_archive` (phân vùng theo năm) | 1 |
 | `questionbank` | `questionbank` | Câu hỏi và phiên bản: `question`, `question_version`, `question_knowledge`, `question_tag`, `question_source_code_claim`; độ mới nguồn cho kiểm tra bài thi: `question_source_revision`; nơi dùng: `question_usage_ledger`; tài sản (ảnh, tệp đính kèm, kiểm chữ ký tệp, giới hạn kích thước và tần suất): `question_asset`, `question_asset_ref`, `question_asset_pending_delete`; nhập từ Excel (tải lên, bản nháp, ghi): `question_import`, `question_import_upload` | 2 |
 | `exam` | `exam` | Bài thi và cấu trúc: `exam_kind_profile`, `exam_template`, `exam`, `exam_structure`, `exam_block_ref`; kiểm tra và kiểm tra sâu (chạy nền, kết quả lỗi thời khi nguồn đổi): `exam_check_run`, `exam_check_job`; phiên bản công bố (giữ thời lượng cũ, ngừng): `exam_version`. Chỉ dùng `questionbank/spi` (`QuestionSourcePort` đọc câu hỏi; `ExamQuestionUsageProvider` cài `QuestionUsageProvider` để màn câu hỏi xem nơi dùng) | 2 |
-| `attempt`, `scoring`, `commerce`, `ai`, `support`, `report` | theo tên | — | sau |
+| `commerce` | `commerce` | Khung module và `commerce/spi` (`EntitlementPort`, `AttemptStatusProvider`); bảng sản phẩm, khuyến mãi, đơn, thanh toán, quyền dùng do các task sau thêm. Chỉ dùng `exam/spi`, `catalog/spi`, `identity/spi` | 3 |
+| `attempt` | `attempt` | Khung module; bảng lượt thi, sinh đề, chấm, kết quả do các task sau thêm. Dùng `commerce/spi`, `exam/spi`, `questionbank/spi`, `identity/spi` | 3 |
+| `scoring`, `ai`, `support`, `report` | theo tên | — | sau |
 
 ## 5. Luồng dữ liệu
 

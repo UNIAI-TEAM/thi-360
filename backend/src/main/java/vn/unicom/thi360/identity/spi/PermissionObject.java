@@ -9,7 +9,11 @@ public enum PermissionObject {
     AUDIT("AUDIT", "Nhật ký"),
     APPEARANCE("APPEARANCE", "Giao diện"),
     QUESTION("QUESTION", "Ngân hàng câu hỏi"),
-    EXAM("EXAM", "Bài thi");
+    EXAM("EXAM", "Bài thi"),
+    PROMOTION("PROMOTION", "Khuyến mãi"),
+    ORDER("ORDER", "Đơn hàng"),
+    GRADING("GRADING", "Chấm bài"),
+    ATTEMPT("ATTEMPT", "Lượt thi");
 
     private final String code;
     private final String displayName;

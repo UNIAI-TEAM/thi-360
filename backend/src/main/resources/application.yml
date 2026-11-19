@@ -28,6 +28,8 @@ spring:
       - classroom
       - questionbank
       - exam
+      - commerce
+      - attempt
     table: flyway_schema_history
     locations:
       - classpath:db/migration
@@ -156,6 +158,9 @@ thi360:
   mail:
     from: ${THI360_MAIL_FROM:Thi 360 <no-reply@thi360.local>}
     tls: ${THI360_SMTP_TLS:starttls}
+  token:
+    # Pepper của HMAC mã OTP và mã đặt lại mật khẩu (plan B6). Thiếu thì ứng dụng không khởi động.
+    pepper: ${THI360_TOKEN_PEPPER:}
 ---
 spring:
   config:
@@ -198,6 +203,8 @@ thi360:
     enc-key: ${THI360_FILE_ENC_KEY:dGhpMzYwLWRldi1vbmx5LWFlcy0yNTYta2V5LTAwMDA=}
   mail:
     tls: ${THI360_SMTP_TLS:none}
+  token:
+    pepper: ${THI360_TOKEN_PEPPER:dev-only-token-pepper-do-not-use}
 ---
 spring:
   config:
@@ -246,6 +253,8 @@ thi360:
     tls: ${THI360_SMTP_TLS:none}
     scheduling:
       enabled: false
+  token:
+    pepper: ${THI360_TOKEN_PEPPER:dev-only-token-pepper-do-not-use}
 ---
 spring:
   config:

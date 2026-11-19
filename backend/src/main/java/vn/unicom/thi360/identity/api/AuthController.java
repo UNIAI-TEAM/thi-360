@@ -2,6 +2,8 @@ package vn.unicom.thi360.identity.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -30,11 +32,14 @@ public class AuthController {
     @Operation(summary = "Đăng nhập bằng tên đăng nhập hoặc email")
     public LoginResponse login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
+        // Đọc cookie ngôn ngữ trực tiếp từ request để không thêm tham số vào OpenAPI.
         AuthService.LoginResult result = authService.login(
                 request.identifier(),
                 request.password(),
                 request.callbackUrl(),
+                readCookie(httpRequest, AuthService.LOCALE_COOKIE),
                 response);
         return new LoginResponse(result.redirectTo(), result.mustChangePassword());
     }
@@ -77,5 +82,18 @@ public class AuthController {
                 result.access(),
                 result.permissions(),
                 result.homeUrl());
+    }
+
+    private static String readCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }
