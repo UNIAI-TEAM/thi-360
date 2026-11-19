@@ -5199,7 +5199,9 @@
         },
         "denominator": {
           "part": "Denominator: {subject} · {part} · {count, plural, one {# command} other {# commands}}",
-          "whole": "Denominator: {subject}, whole subject · {count, plural, one {# command} other {# commands}}"
+          "partNoSubject": "Denominator: {part} · {count, plural, one {# command} other {# commands}}",
+          "whole": "Denominator: {subject}, whole subject · {count, plural, one {# command} other {# commands}}",
+          "wholeNoSubject": "Denominator: whole subject · {count, plural, one {# command} other {# commands}}"
         },
         "deviations": "{count, plural, one {# row deviates} other {# rows deviate}}",
         "droppedQuestion": "Dropped question {code} · {type}, {grade}, {difficulty}.",

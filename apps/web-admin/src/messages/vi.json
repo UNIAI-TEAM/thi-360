@@ -5199,7 +5199,9 @@
         },
         "denominator": {
           "part": "Mẫu số: {subject} · {part} · {count, number} lệnh",
-          "whole": "Mẫu số: {subject} cả môn · {count, number} lệnh"
+          "partNoSubject": "Mẫu số: {part} · {count, number} lệnh",
+          "whole": "Mẫu số: {subject} cả môn · {count, number} lệnh",
+          "wholeNoSubject": "Mẫu số: cả môn · {count, number} lệnh"
         },
         "deviations": "{count, number} dòng lệch",
         "droppedQuestion": "Đã bỏ câu {code} · {type}, {grade}, {difficulty}.",

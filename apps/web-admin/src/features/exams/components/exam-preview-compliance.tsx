@@ -230,22 +230,21 @@ function DenominatorNotes({ paper, compliance, examId }: { paper: PreviewPaper; 
   // Chỉ đọc bản đã có trong bộ nhớ đệm (trang xem trước đã tải bài): không gọi thêm API chỉ để biết phạm vi.
   const exam = useQuery<ExamDetail>({ queryKey: EXAMS_QUERY_KEYS.detail(examId), queryFn: skipToken }).data;
   const denominators = useMemo(() => commandDenominators(compliance), [compliance]);
+  // Mã môn chung của đề (khi các mục môn cùng một môn): bài V-SAT có nhiều mục `paper.subjects` cùng `subjectCode`.
+  const sectionSubjectCodes = new Set(paper.subjects.map((subject) => subject.subjectCode));
   if (!exam || (exam.scope !== "SUBJECT" && exam.scope !== "PART") || denominators.length === 0) return null;
   return (
     <ul className="flex flex-col gap-1">
       {denominators.map((denominator) => {
         const ref = parseScope(denominator.scope);
-        const section =
-          ref.kind === "SECTION"
-            ? paper.subjects.find((subject) => subject.sectionId === ref.id)
-            : paper.subjects.length === 1
-              ? paper.subjects[0]
-              : undefined;
-        const subject = lookup.subject(section?.subjectCode ?? "");
-        const key = exam.scope === "PART" ? "denominator.part" : "denominator.whole";
+        const section = ref.kind === "SECTION" ? paper.subjects.find((subject) => subject.sectionId === ref.id) : undefined;
+        // Scope cả bài không gắn mục môn: lấy `subjectCode` của bài, không có thì lấy môn chung duy nhất của các mục.
+        const subjectCode = section?.subjectCode ?? exam.subjectCode ?? (sectionSubjectCodes.size === 1 ? [...sectionSubjectCodes][0] : null);
+        const subject = subjectCode ? lookup.subject(subjectCode) : null;
+        const key = exam.scope === "PART" ? (subject ? "denominator.part" : "denominator.partNoSubject") : subject ? "denominator.whole" : "denominator.wholeNoSubject";
         return (
           <li key={denominator.scope} className="text-label font-semibold text-text">
-            {t(key, { subject, part: paper.parts.map((part) => part.name).join(", "), count: denominator.total })}
+            {t(key, { part: paper.parts.map((part) => part.name).join(", "), count: denominator.total, ...(subject ? { subject } : {}) })}
           </li>
         );
       })}

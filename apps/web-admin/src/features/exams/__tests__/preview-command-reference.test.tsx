@@ -6,7 +6,7 @@ import { mapExamDetail } from "../api-mapping";
 import { ExamPreviewCompliance } from "../components/exam-preview-compliance";
 import { EXAMS_QUERY_KEYS } from "../keys";
 import { commandDenominators, complianceLevel, isUnclassifiedRow } from "../review-compliance";
-import type { PreviewCompliance, PreviewPaper } from "../review-types";
+import type { PreviewCompliance, PreviewPaper, PreviewSubject } from "../review-types";
 import type { ExamScope } from "../types";
 import { EXAM_ID, examDetailWire } from "./fake-exams-server";
 import { paperOf, partOf } from "./preview-paper-fixtures";
@@ -42,16 +42,35 @@ const COMMAND_ROWS: PreviewCompliance[] = [
   row("DIFFICULTY:UNCLASSIFIED", null, 4, { note: "UNCLASSIFIED" }),
 ];
 
+/** Chỉ tiêu cấp bài của đề V-SAT Toán thật (visual r3): khối lớp rồi độ khó, cùng tổng 67 ở scope cả bài. */
+const VSAT_EXAM_ROWS: PreviewCompliance[] = [
+  row("EXAM:vsat-toan-grade:G10", 0, 0, { scope: "EXAM" }),
+  row("EXAM:vsat-toan-grade:G11", 17, 16, { scope: "EXAM" }),
+  row("EXAM:vsat-toan-grade:G12", 50, 47, { scope: "EXAM" }),
+  row("EXAM:vsat-toan-difficulty:NB", 13, 13, { scope: "EXAM" }),
+  row("EXAM:vsat-toan-difficulty:TH", 35, 33, { scope: "EXAM" }),
+  row("EXAM:vsat-toan-difficulty:VD", 19, 17, { scope: "EXAM" }),
+  row("GRADE:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
+];
+
+const subject = (sectionId: string, subjectCode: string): PreviewSubject => ({ sectionId, subjectCode, questionCount: 25, quotas: [] });
+
 const paper: PreviewPaper = {
   ...paperOf([partOf({ partId: "p-ii", name: "Phan II", blocks: [] })]),
   subjects: [{ sectionId: "sec-math", subjectCode: "MATH", questionCount: 25, quotas: [] }],
 };
 
-function renderTable(rows: PreviewCompliance[], scope: ExamScope = "SUBJECT", locale?: "en") {
-  const exam = mapExamDetail(examDetailWire({ scope }));
+/** Đề V-SAT Toán thật: 4 mục môn cùng `subjectCode` nên `paper.subjects.length` không còn là 1. */
+const vsatPaper: PreviewPaper = {
+  ...paper,
+  subjects: [subject("sec-1", "MATH"), subject("sec-2", "MATH"), subject("sec-3", "MATH"), subject("sec-4", "MATH")],
+};
+
+function renderTable(rows: PreviewCompliance[], scope: ExamScope = "SUBJECT", options: { locale?: "en"; paper?: PreviewPaper; subjectCode?: string } = {}) {
+  const exam = mapExamDetail(examDetailWire({ scope, ...(options.subjectCode !== undefined ? { subjectCode: options.subjectCode } : {}) }));
   const view = renderWithProviders(
-    <ExamPreviewCompliance paper={paper} compliance={rows} dropped={[]} examId={EXAM_ID} />,
-    locale ? { locale, messages: en } : undefined,
+    <ExamPreviewCompliance paper={options.paper ?? paper} compliance={rows} dropped={[]} examId={EXAM_ID} />,
+    options.locale ? { locale: options.locale, messages: en } : undefined,
   );
   view.client.setQueryData(EXAMS_QUERY_KEYS.detail(EXAM_ID), exam);
   return view;
@@ -66,7 +85,7 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
   });
 
   it("en: 'Math, whole subject · 67 commands'", async () => {
-    renderTable(COMMAND_ROWS, "SUBJECT", "en");
+    renderTable(COMMAND_ROWS, "SUBJECT", { locale: "en" });
 
     expect(await screen.findByText("Denominator: Mathematics, whole subject · 67 commands")).toBeInTheDocument();
   });
@@ -142,16 +161,7 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
 
   it("đề V-SAT cả môn (chỉ tiêu cấp bài): mẫu số 'Toán cả môn · 67 lệnh' đúng một lần, không phải 134", async () => {
     // Hai chỉ tiêu cấp bài (khối lớp 67, độ khó 67) vẫn chỉ sinh một dòng mẫu số.
-    const examRows: PreviewCompliance[] = [
-      row("EXAM:vsat-toan-grade:G10", 0, 0, { scope: "EXAM" }),
-      row("EXAM:vsat-toan-grade:G11", 17, 16, { scope: "EXAM" }),
-      row("EXAM:vsat-toan-grade:G12", 50, 47, { scope: "EXAM" }),
-      row("EXAM:vsat-toan-difficulty:NB", 13, 13, { scope: "EXAM" }),
-      row("EXAM:vsat-toan-difficulty:TH", 35, 33, { scope: "EXAM" }),
-      row("EXAM:vsat-toan-difficulty:VD", 19, 17, { scope: "EXAM" }),
-      row("GRADE:UNCLASSIFIED", null, 4, { scope: "EXAM", note: "UNCLASSIFIED" }),
-    ];
-    renderTable(examRows);
+    renderTable(VSAT_EXAM_ROWS);
 
     expect(await screen.findAllByText("Mẫu số: Toán cả môn · 67 lệnh")).toHaveLength(1);
     expect(document.body.textContent).not.toMatch(/134 lệnh/);
@@ -162,9 +172,53 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
       row("EXAM:vsat-toan-grade:G10,G11,G12", 67, 63, { scope: "EXAM" }),
       row("EXAM:vsat-toan-difficulty:NB,TH,VD", 67, 63, { scope: "EXAM" }),
     ];
-    renderTable(examRows, "SUBJECT", "en");
+    renderTable(examRows, "SUBJECT", { locale: "en" });
 
     expect(await screen.findAllByText("Denominator: Mathematics, whole subject · 67 commands")).toHaveLength(1);
+  });
+
+  it("đề V-SAT nhiều mục cùng môn: mẫu số cả bài lấy môn chung của các mục, không bỏ trống tên", async () => {
+    // Hình dạng thật của VSAT_SUBJECT_TOAN: 4 phần đều là môn Toán nên `paper.subjects` có 4 mục một `subjectCode`.
+    renderTable(VSAT_EXAM_ROWS, "SUBJECT", { paper: vsatPaper });
+
+    expect(await screen.findAllByText("Mẫu số: Toán cả môn · 67 lệnh")).toHaveLength(1);
+  });
+
+  it("en: đề V-SAT nhiều mục cùng môn hiện 'Mathematics, whole subject · 67 commands'", async () => {
+    renderTable(VSAT_EXAM_ROWS, "SUBJECT", { paper: vsatPaper, locale: "en" });
+
+    expect(await screen.findAllByText("Denominator: Mathematics, whole subject · 67 commands")).toHaveLength(1);
+  });
+
+  it("đề V-SAT nhiều mục cùng môn: ưu tiên `subjectCode` của bài khi có", async () => {
+    // Khi bài mang sẵn `subjectCode` thì dùng nó ngay cả khi đề có nhiều mục khác môn (dữ liệu lạ).
+    const mixedPaper: PreviewPaper = { ...paper, subjects: [subject("sec-1", "MATH"), subject("sec-2", "LITERATURE")] };
+    renderTable(VSAT_EXAM_ROWS, "SUBJECT", { paper: mixedPaper, subjectCode: "MATH" });
+
+    expect(await screen.findAllByText("Mẫu số: Toán cả môn · 67 lệnh")).toHaveLength(1);
+  });
+
+  it("nhiều môn khác nhau và bài không `subjectCode`: mẫu số không tên môn, không ô trống", async () => {
+    const mixedPaper: PreviewPaper = { ...paper, subjects: [subject("sec-1", "MATH"), subject("sec-2", "LITERATURE")] };
+    renderTable(VSAT_EXAM_ROWS, "SUBJECT", { paper: mixedPaper });
+
+    expect(await screen.findAllByText("Mẫu số: cả môn · 67 lệnh")).toHaveLength(1);
+  });
+
+  it("en: nhiều môn khác nhau và bài không `subjectCode` hiện 'whole subject' không dấu phẩy đầu", async () => {
+    const mixedPaper: PreviewPaper = { ...paper, subjects: [subject("sec-1", "MATH"), subject("sec-2", "LITERATURE")] };
+    renderTable(VSAT_EXAM_ROWS, "SUBJECT", { paper: mixedPaper, locale: "en" });
+
+    expect(await screen.findAllByText("Denominator: whole subject · 67 commands")).toHaveLength(1);
+    expect(screen.queryByText(/^Denominator: ,/)).not.toBeInTheDocument();
+  });
+
+  it("mẫu số theo mục môn (SECTION) trên đề nhiều mục vẫn lấy đúng môn của mục", async () => {
+    // Ma trận một môn/mục không đổi: dòng SECTION vẫn tra `sectionId` chứ không cần môn của bài.
+    const mixedPaper: PreviewPaper = { ...paper, subjects: [subject("sec-math", "MATH"), subject("sec-lit", "LITERATURE")] };
+    renderTable(COMMAND_ROWS, "SUBJECT", { paper: mixedPaper });
+
+    expect(await screen.findAllByText("Mẫu số: Toán cả môn · 67 lệnh")).toHaveLength(1);
   });
 
   it("bài theo lệnh không đặt phạm vi môn hoặc phần (cả bài): không có dòng mẫu số", async () => {
