@@ -4391,8 +4391,6 @@
         "allocatedValue": "{allocated, number} / {count, plural, one {# question} other {# questions}}",
         "allocatedUnknown": "{allocated, plural, one {# question} other {# questions}}",
         "matches": "Matches the subject's question count",
-        "missing": "{count, plural, one {# question} other {# questions}} missing",
-        "over": "{count, plural, one {# question} other {# questions}} over",
         "sourceEnough": "Enough source questions for the matrix",
         "countField": {
           "label": "Questions in this subject",

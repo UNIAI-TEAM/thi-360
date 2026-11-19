@@ -283,7 +283,7 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
     const groups = await screen.findByRole("region", { name: "Nhóm lấy câu" });
     expect(screen.getByText(/Môn có 2 nhóm lấy phần còn lại, chỉ được một nhóm/)).toBeInTheDocument();
     expect(within(groups).getAllByText("Phần còn lại (chưa chia được)")).toHaveLength(2);
-    expect(screen.getByText("Còn thiếu 16 câu")).toBeInTheDocument();
+    expect(screen.getByText("Thiếu 16 câu")).toBeInTheDocument();
   }, 20_000);
 
   it("đường dẫn ?section= mở lại đúng môn; tải lại không mất vị trí", async () => {

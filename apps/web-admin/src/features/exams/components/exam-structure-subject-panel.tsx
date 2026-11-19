@@ -87,6 +87,7 @@ export function ExamStructureSubjectPanel({
   examKind = null,
 }: SubjectPanelProps) {
   const t = useTranslations("exams.structure.subject");
+  const tGap = useTranslations("exams.structure.gap");
   const tContent = useTranslations("content");
   const { section, option } = context;
   const cases = sectionCaseCounts(section, option);
@@ -261,8 +262,8 @@ export function ExamStructureSubjectPanel({
                 {allocation.missing === 0
                   ? t("matches")
                   : allocation.missing > 0
-                    ? t("missing", { count: allocation.missing })
-                    : t("over", { count: -allocation.missing })}
+                    ? tGap("under", { count: allocation.missing })
+                    : tGap("over", { count: -allocation.missing })}
               </StatusChip>
             )}
             {sourceVerified && allocation.missing === 0 && <StatusChip tone="success">{t("sourceEnough")}</StatusChip>}

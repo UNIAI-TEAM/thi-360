@@ -134,7 +134,7 @@ describe("Đầu màn môn: chip chênh lệch", () => {
     expect(chip(OVER(5))).toHaveAttribute("data-tone", "danger");
     view.unmount();
     const under = renderSubject(sectionOf({ blocks: [block({ questionCount: 7 })] }));
-    expect(chip("Còn thiếu 3 câu")).toHaveAttribute("data-tone", "warning");
+    expect(chip(UNDER(3))).toHaveAttribute("data-tone", "warning");
     under.unmount();
     renderSubject(sectionOf({ blocks: [block({ questionCount: 10 })] }));
     expect(within(screen.getByRole("status")).getByText("Khớp số câu của môn")).toHaveAttribute("data-tone", "success");

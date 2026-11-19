@@ -4391,8 +4391,6 @@
         "allocatedValue": "{allocated, number} / {count, number} câu",
         "allocatedUnknown": "{allocated, number} câu",
         "matches": "Khớp số câu của môn",
-        "missing": "Còn thiếu {count, number} câu",
-        "over": "Vượt {count, number} câu",
         "sourceEnough": "Đủ nguồn theo ma trận",
         "countField": {
           "label": "Số câu của mục",
