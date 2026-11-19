@@ -21,13 +21,17 @@ public interface PreviewPaperPort {
 
     /**
      * Raises the expiry of the preview to {@code max(current expiry, now + paper duration + 30 minutes)} in one
-     * atomic step and returns the new expiry. Repeated or concurrent calls never shorten an expiry already granted.
-     * A preview never extended keeps its 30 minutes.
+     * atomic step and returns the expiry the store holds afterwards, read from the store in that same step. Repeated
+     * or concurrent calls never shorten an expiry already granted; calls with the same {@code now} get the same
+     * value. A preview never extended keeps its 30 minutes.
      */
     Instant extendForTrial(UUID examId, UUID previewId);
 
-    /** Same meaning as the exam module's {@code PREVIEW_EXPIRED}; the consumer maps it to 410. */
-    class PreviewGoneException extends vn.unicom.thi360.exam.application.PreviewExpiredException {
+    /**
+     * Same meaning as the exam module's {@code PREVIEW_EXPIRED}; the consumer maps it to 410. Self-contained in the
+     * SPI: the exam module's own {@code PreviewExpiredException} derives from it, never the other way round.
+     */
+    class PreviewGoneException extends RuntimeException {
     }
 
     /**
