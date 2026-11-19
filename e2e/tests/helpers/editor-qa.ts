@@ -322,7 +322,7 @@ export async function generateExamPreview(page: Page, admin: AdminApi, block: Ex
                 ? { questionCount: count * block.setSize, setCount: count, setSize: block.setSize }
                 : { questionCount: 1 }),
               requiredPointsPerQuestion: block.points / (block.setCount && block.setSize ? block.setCount * block.setSize : 1),
-              knowledgeScope: { nodeIds: [block.leafId], match: "ANY" },
+              knowledgeScope: { nodeIds: [block.leafId] },
             },
           ],
         },

@@ -522,8 +522,11 @@ export interface ExamTemplatePart {
 export interface ExamTemplateSection {
   /** Id ổn định của môn trong mẫu khi BE gán (đối chiếu `overview`); `null`: so khớp theo `subjectCode`. */
   sectionId?: string | null;
-  /** Nhóm tạm bỏ qua của mẫu (SPT Toán: Tự luận, 2B 3.3): hiện mờ ở bảng tổng quan, không tính vào tổng. */
-  omittedBlocks?: Array<{ name: string; questionCount: number | null }>;
+  /**
+   * Nhóm tạm bỏ qua của mẫu (SPT Toán: Tự luận, 2B 3.3): hiện mờ ở bảng tổng quan, không tính vào tổng. `id` và
+   * `templateGroupCode` là dấu vết để nhận ra bản sao của nhóm đó trong bài (`isTemplateOmittedGroup`, H43).
+   */
+  omittedBlocks?: Array<{ id?: string | null; templateGroupCode?: string | null; name: string; questionCount: number | null }>;
   subjectCode: string;
   /** `null` trong `SUBJECT_CHOICE`. */
   questionCount: number | null;

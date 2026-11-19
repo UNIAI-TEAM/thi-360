@@ -683,6 +683,7 @@ function StructureEditor({
               topicError={topicError}
               partTotal={blockContext.part.questionCount}
               rowsLocked={rowsLocked}
+              template={template}
               commandCount={dirty ? null : (summaryQuery.data?.rows.find((row) => row.blockId === blockContext.block.id)?.commandCount ?? null)}
               onRateInvalid={setRateInvalid}
               key={blockContext.block.id}

@@ -16,7 +16,7 @@ import type { MatrixAxes } from "../matrix";
 import { roundForDisplay } from "../display-number";
 import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock } from "../matrix";
 import { useAvailableQuestions } from "../queries";
-import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
+import type { ExamSection, ExamTemplate, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, droppedSlotIndexes, rateSetMismatch, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
 import { blockFieldAnchor, type BlockField } from "./block-form-fields";
 import { BlockConditions } from "./block-conditions";
@@ -78,6 +78,8 @@ export interface BlockEditorProps {
   partTotal?: number | null;
   /** Mẫu khóa dòng (H42, R-135): số lượng, cách lấy và dạng chỉ đọc; nguồn câu, phạm vi và chỉ tiêu vẫn sửa được. */
   rowsLocked?: boolean;
+  /** Mẫu của bài; khi mẫu khóa nhóm đã lược (H43), nhóm là bản sao nhóm đã lược của mẫu thì không bật lại được. */
+  template?: ExamTemplate | null;
   /** Số lệnh hỏi của nhóm do máy chủ tính (`structure/summary`); `null`: chưa có hoặc bản nháp đã đổi so với bản lưu. */
   commandCount?: number | null;
   /** Dòng nhập theo tỷ lệ đang sai (chùm không ra số nguyên): màn Cấu trúc không cho lưu cho đến khi sửa. */
@@ -113,6 +115,7 @@ export function BlockEditor({
   topicError = null,
   partTotal = null,
   rowsLocked = false,
+  template = null,
   commandCount = null,
   onRateInvalid,
 }: BlockEditorProps) {
@@ -494,7 +497,7 @@ export function BlockEditor({
         </p>
       )}
 
-      <BlockSwitches block={block} onChange={update} />
+      <BlockSwitches block={block} onChange={update} template={template} />
 
       <KnowledgeScopeField
         value={block.knowledgeScope}

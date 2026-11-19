@@ -4299,7 +4299,8 @@
           "alwaysShuffleSet": "Questions and sets in the group are always shuffled; sub-questions keep their order.",
           "omitted": {
             "description": "The group does not enter the paper, the question total or the maximum score, and is not source-checked. Turn off to put the group in the paper and grade it by hand.",
-            "label": "Temporarily skip"
+            "label": "Temporarily skip",
+            "lockedReason": "The template locks this group: a group the template omits cannot be turned back on."
           },
           "shuffle": {
             "description": "Chosen sets change position within the group for each paper. Sub-questions inside a set keep their order. Only group 5 of HSA Literature and QDA Literature has this switch.",
