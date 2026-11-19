@@ -203,6 +203,7 @@ Bổ sung H-SCA, V-SAT (UNI-2687, kế hoạch `docs/plans/2026-11-18-pbi04-dot-
 - FE-7 UNI-2695, PR #114 (`c0adb5d9`), 2026-11-19.
 - FIX-AUDIO UNI-2698, PR #115 (`9f9f9c07`), 2026-11-19.
 - BE-21 UNI-2693, PR #116 (`d6511a38`), 2026-11-19.
+- FE-8 UNI-2696, PR #117 (`91baffa8`), 2026-11-19.
 
 ### Thứ tự làm
 
