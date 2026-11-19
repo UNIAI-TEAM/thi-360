@@ -179,18 +179,16 @@ class ContentReferenceIT extends AbstractIntegrationTest {
     @Test
     void mixedCaseQuestionFormatStillResolvesByNormalizedCode() throws Exception {
         // R1-2: mã lưu lẫn hoa/thường vẫn khớp enum theo code_normalized (định danh danh mục).
+        // PATCH đổi mã/ngừng giá trị hệ thống nay bị từ chối (409, xem CatalogSystemValuesIT); dựng trạng thái bằng SQL (test rollback).
         String essayId = "00000000-0000-7000-8400-000000000508";
-        long version = readItemVersion(essayId);
-
-        patchItem(essayId, "{\"code\":\"eSsAy\",\"nameVi\":\"Bài tự luận mẫu\",\"version\":" + version + "}");
-        version++;
+        jdbcTemplate.update("UPDATE catalog.catalog_item SET code = 'eSsAy', name_vi = 'Bài tự luận mẫu' WHERE id = ?::uuid", essayId);
 
         mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.questionTypes[?(@.code=='ESSAY' && @.active==true && @.name=='Bài tự luận mẫu')]").value(org.hamcrest.Matchers.hasSize(1)));
 
-        // Ngừng giá trị bắt buộc kèm lý do; mã lưu lẫn hoa/thường vẫn phải chặn đúng dạng.
-        patchItem(essayId, "{\"status\":\"INACTIVE\",\"reason\":\"test ngừng dạng\",\"version\":" + version + "}");
+        // Ngừng giá trị; mã lưu lẫn hoa/thường vẫn phải chặn đúng dạng.
+        jdbcTemplate.update("UPDATE catalog.catalog_item SET status = 2 WHERE id = ?::uuid", essayId);
 
         mockMvc.perform(get(URL).with(asUser(Permissions.QUESTION_VIEW)))
                 .andExpect(status().isOk())
