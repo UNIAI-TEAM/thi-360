@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Request } from "@playwright/test";
 import { ADMIN_URL, adminApi, loginAdmin, RUN_ID } from "./helpers/editor-qa";
 
 /**
@@ -67,4 +67,149 @@ test("?block= mở màn nhóm đầy đủ khi biểu mẫu theo môn đang tắ
   await page.goto(`${ADMIN_URL}/exams/${id}/structure?block=${blockId}`);
   await expect(page.getByRole("textbox", { name: "Tên nhóm" })).toBeVisible();
   await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
+});
+
+/* ---------- FTM AC 6 / plan B4: wire của PUT khi lưu trên stack thật ---------- */
+
+type Wire = Record<string, unknown>;
+
+/**
+ * Loại trừ có tên của wire (plan B4). Hai nhóm đầu là của `defaultFormSaveIsIdentity` (jsdom); hai nhóm sau chỉ lộ ra trên stack
+ * thật, do `toApiParts` (api-mapping.ts, không sửa trong CR-1) làm hôm nay:
+ *  1. `null`/`undefined` (thiếu trường ≡ null);
+ *  2. `tagCodes: []`, `answerTypeLocked: false` mà `mapBlock` điền khi máy chủ bỏ trống;
+ *  3. mảng rỗng `[]` ≡ thiếu trường: máy chủ trả `[]`, `toApiParts` không gửi trường rỗng;
+ *  4. `positionRange`: trường dẫn xuất chỉ có ở GET, máy chủ tính lại từ thứ tự khối, không nhận trong `PUT`.
+ */
+const MAPPING_DEFAULTED_FIELDS: Readonly<Record<string, unknown>> = { tagCodes: [], answerTypeLocked: false };
+const DERIVED_READONLY_FIELDS: readonly string[] = ["positionRange"];
+
+function withoutMappingDefaults(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutMappingDefaults);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Wire)
+      .filter(
+        ([key, item]) =>
+          item !== null &&
+          item !== undefined &&
+          !(Array.isArray(item) && item.length === 0) &&
+          !DERIVED_READONLY_FIELDS.includes(key) &&
+          !(key in MAPPING_DEFAULTED_FIELDS && JSON.stringify(item) === JSON.stringify(MAPPING_DEFAULTED_FIELDS[key])),
+      )
+      .map(([key, item]) => [key, withoutMappingDefaults(item)] as const),
+  );
+}
+
+/** Khác biệt hai wire theo đường dẫn, sau khi bỏ các điểm loại trừ có tên (bản y như `diffWire` của jsdom). */
+function diffWire(before: unknown, after: unknown, path = "$"): string[] {
+  const a = withoutMappingDefaults(before);
+  const b = withoutMappingDefaults(after);
+  if (JSON.stringify(a) === JSON.stringify(b)) return [];
+  if (Array.isArray(a) && Array.isArray(b) && a.length === b.length) {
+    return a.flatMap((item, index) => diffWire(item, b[index], `${path}[${index}]`));
+  }
+  if (a && b && typeof a === "object" && typeof b === "object" && !Array.isArray(a) && !Array.isArray(b)) {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    return [...keys].flatMap((key) => diffWire((a as Wire)[key], (b as Wire)[key], `${path}.${key}`));
+  }
+  return [`${path}: ${JSON.stringify(a)} -> ${JSON.stringify(b)}`];
+}
+
+async function createStructureExam(
+  admin: { api: APIRequestContext; headers: Record<string, string> },
+  data: Record<string, unknown>,
+): Promise<string> {
+  const created = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams`, {
+    headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
+    data,
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  return ((await created.json()) as { id: string }).id;
+}
+
+async function getStructureWire(
+  admin: { api: APIRequestContext; headers: Record<string, string> },
+  id: string,
+): Promise<{ revision: number; parts: unknown[]; examQuotas?: unknown[] }> {
+  const response = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`, { headers: admin.headers });
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()) as { revision: number; parts: unknown[]; examQuotas?: unknown[] };
+}
+
+/**
+ * FTM AC 6 (plan B4) trên stack thật: PUT `/structure` do giao diện gửi khi lưu giữ nguyên toàn bộ wire đã nạp (GET), trừ
+ * đúng trường người dùng sửa và các loại trừ có tên của `defaultFormSaveIsIdentity` (null/undefined; `tagCodes: []`,
+ * `answerTypeLocked: false` mà `api-mapping.ts` điền; chuẩn hóa HSA-C Tham khảo -> Bắt buộc chỉ ở bài HSA). Đọc lại sau lưu
+ * phải khớp body đã gửi. Bốn bài: HSA FULL (có `options`, `choiceGroup`), H-SCA Anh (cặp DS), SPT môn GDKTPL (`ECON_LAW` trên
+ * wire; MD vì cờ SPT tắt) và QDA FULL (MD).
+ *
+ * Nút "Lưu" chỉ bật khi có thay đổi chưa lưu (kiểm ở đầu mỗi bài: tắt, không có PUT nào khi mở màn), nên "lưu không sửa gì"
+ * không đi qua giao diện được: mỗi bài sửa đúng một ô, "Điểm tối đa của phần" của phần đầu, như ca đầu của tệp này.
+ */
+test("PUT wire giữ nguyên GET đã nạp, chỉ đổi ô đã sửa (HSA FULL, H-SCA Anh, SPT GDKTPL, QDA)", async ({ context, page }) => {
+  test.setTimeout(240_000);
+  await loginAdmin(context, "vi");
+  const admin = await adminApi();
+
+  const cases: Array<{ name: string; data: Record<string, unknown>; hsa: boolean }> = [
+    { name: "HSA FULL", data: { kind: "HSA", scope: "FULL" }, hsa: true },
+    { name: "H-SCA Anh", data: { kind: "HSCA", scope: "SUBJECT", subjectCode: "ANH", durationMinutes: 60 }, hsa: false },
+    { name: "SPT GDKTPL", data: { kind: "SPT", scope: "SUBJECT", subjectCode: "ECON_LAW" }, hsa: false },
+    { name: "QDA FULL", data: { kind: "QDA", scope: "FULL" }, hsa: false },
+  ];
+
+  const putRequests: Request[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && /\/api\/v1\/admin\/exams\/[^/]+\/structure$/.test(request.url())) {
+      putRequests.push(request);
+    }
+  });
+
+  for (const item of cases) {
+    const id = await createStructureExam(admin, {
+      code: `E2E-WIRE-${item.data.kind}-${RUN_ID}`.toUpperCase().slice(0, 30),
+      name: `${item.name} wire ${RUN_ID}`,
+      ...item.data,
+    });
+    const before = await getStructureWire(admin, id);
+    expect(before.parts.length, `${item.name}: không có phần`).toBeGreaterThan(0);
+
+    putRequests.length = 0;
+    await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+    const list = page.getByRole("navigation", { name: "Cấu trúc" });
+    await expect(list).toBeVisible();
+    const saveButton = page.getByRole("button", { name: "Lưu", exact: true });
+    await expect(saveButton, `${item.name}: nút Lưu bật khi chưa sửa`).toBeDisabled();
+    expect(putRequests, `${item.name}: có PUT khi mở màn`).toHaveLength(0);
+
+    // Sửa đúng một ô: điểm tối đa của phần đầu (mục thứ hai của danh sách, sau "Tổng quan bài").
+    await list.locator(":scope > ol > li:not(:first-child) > button[data-list-item]").nth(0).click();
+    const points = page.getByRole("textbox", { name: /Điểm tối đa của phần/ });
+    await expect(points).toBeVisible();
+    const edited = (await points.inputValue()) === "77" ? "78" : "77";
+    await points.fill(edited);
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await expect.poll(() => putRequests.length, { timeout: 20_000 }).toBe(1);
+    await expect(page.getByText("Có thay đổi chưa lưu")).toHaveCount(0);
+
+    const sent = putRequests[0]!.postDataJSON() as { parts: Wire[]; examQuotas?: unknown[]; expectedRevision: number };
+    expect(sent.expectedRevision, `${item.name}: expectedRevision`).toBe(before.revision);
+
+    // Kỳ vọng: wire đã nạp, chỉ khác `parts[0].maxPoints`.
+    const expected = structuredClone({ parts: before.parts, examQuotas: before.examQuotas ?? [] }) as { parts: Wire[]; examQuotas: unknown[] };
+    expected.parts[0]!.maxPoints = Number(edited);
+    const diffs = diffWire(expected, { parts: sent.parts, examQuotas: sent.examQuotas ?? [] });
+    const allowed = item.hsa ? diffs.filter((line) => !/\.enforcement: "REFERENCE" -> "REQUIRED"$/.test(line)) : diffs;
+    expect(allowed, `${item.name}: PUT khác GET ngoài ô đã sửa`).toEqual([]);
+
+    const after = await getStructureWire(admin, id);
+    expect(
+      diffWire({ parts: sent.parts, examQuotas: sent.examQuotas ?? [] }, { parts: after.parts, examQuotas: after.examQuotas ?? [] }),
+      `${item.name}: GET sau lưu khác body đã gửi`,
+    ).toEqual([]);
+    expect(putRequests, `${item.name}: gửi PUT nhiều lần`).toHaveLength(1);
+    console.log(`[wire] ${item.name}: parts=${sent.parts.length} diffVsExpected=${JSON.stringify(diffs)}`);
+  }
 });
