@@ -786,7 +786,9 @@ public final class ExamCheckRules {
                 }
             }
             fractionalMatrix(found, context, null, section.matrix());
-            topicQuotas(found, context, null, section.topicQuotas());
+            // With a MAPID mode the rules are the source of truth: the legacy topic quotas are ignored (UNI-2758).
+            if (section.mapidMode() == null) topicQuotas(found, context, null, section.topicQuotas());
+            found.addAll(mapidConflicts(context));
             for (QuestionBlock block : section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
                 if (block.childConditions().stream().anyMatch(condition -> condition.from() == null || condition.to() == null
@@ -802,9 +804,32 @@ public final class ExamCheckRules {
                     ObjectNode invalid = sectionIssue("SET_SIZE_MISMATCH", "QUESTION_SET", context, null);
                     blockContext(invalid, block); found.add(issues.key(invalid));
                 }
-                topicQuotas(found, context, block, block.topicQuotas());
+                if (section.mapidMode() == null) topicQuotas(found, context, block, block.topicQuotas());
                 fractionalMatrix(found, context, block, block.matrix());
             }
+        }
+        return found;
+    }
+
+    /** MAPID_RULE_CONFLICT (UNI-2758): one error per set of rules that cannot hold together; blocks publish. */
+    private List<ObjectNode> mapidConflicts(SectionContext context) {
+        List<ObjectNode> found = new ArrayList<>();
+        for (MapidRuleConflicts.Conflict conflict : MapidRuleConflicts.find(context.section, topicParents)) {
+            ObjectNode failure = sectionIssue("MAPID_RULE_CONFLICT", "MATRIX", context, null);
+            if (conflict.blockId() != null) {
+                for (QuestionBlock block : context.section.blocks()) {
+                    if (conflict.blockId().equals(block.id())) blockContext(failure, block);
+                }
+            }
+            failure.put("ruleId", conflict.ruleIds().getFirst());
+            ArrayNode ruleIds = failure.putArray("ruleIds");
+            conflict.ruleIds().forEach(ruleIds::add);
+            failure.put("conflictKind", conflict.kind());
+            if (conflict.required() != null) failure.put("required", conflict.required());
+            if (conflict.available() != null) failure.put("available", conflict.available());
+            issues.key(failure);
+            failure.put("key", failure.path("key").asText() + "|" + conflict.kind() + "|" + String.join(",", conflict.ruleIds()));
+            found.add(failure);
         }
         return found;
     }
