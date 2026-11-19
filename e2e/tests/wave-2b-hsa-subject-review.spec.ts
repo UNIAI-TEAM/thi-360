@@ -91,8 +91,11 @@ test.describe("HSA theo môn và bài ôn", () => {
     // không ghi trường cấu trúc nào khác (số câu giữ như bước 1; bài ôn không đặt điểm mỗi câu).
     await expectStructureQuestions(page, /^10(\D|$)/);
     const typeField = page.getByRole("combobox", { name: /^Dạng câu/ });
-    if (!(await typeField.isVisible())) await page.getByRole("navigation", { name: "Cấu trúc" }).getByRole("button", { name: /^Môn Toán học/ }).click();
-    await expect(page.getByRole("heading", { name: /^Bài ôn · Toán học · 10 câu/ })).toBeVisible();
+    const reviewHeading = page.getByRole("heading", { name: /^Bài ôn · Toán học · 10 câu/ });
+    if (!(await reviewHeading.isVisible())) await page.getByRole("navigation", { name: "Cấu trúc" }).getByRole("button", { name: /^Môn Toán học/ }).click();
+    await expect(reviewHeading).toBeVisible();
+    // Ba giá trị của bước 1 chỉ đọc; "Dạng câu" nằm trong vùng đóng "Tùy chọn thêm" (UNI-2752).
+    await page.getByText("Tùy chọn thêm (không bắt buộc)").click();
     await typeField.click();
     await page.getByRole("option", { name: "Một đáp án", exact: true }).click();
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();

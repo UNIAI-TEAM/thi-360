@@ -11,6 +11,7 @@ import { hsaQuotaAwaitsExpert } from "../hsa-enforcement";
 import { sum } from "../matrix";
 import type { ExamPart, ExamQuota, StructureCombination } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
+import { AllocationGap } from "./allocation-gap";
 import { BlockNumberInput } from "./block-number-input";
 import { EnforcementToggle } from "./enforcement-toggle";
 import type { StructureNames } from "./exam-structure-issues";
@@ -177,9 +178,17 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                 })}
               </ul>
               {mismatch && (
-                <p role={percent ? "alert" : undefined} className={cn("flex items-start gap-1.5 text-caption", percent ? "text-danger" : "text-warning")}>
+                <p role={percent ? "alert" : undefined} className={cn("flex items-start gap-1.5 text-caption", percent || total > scope.count ? "text-danger" : "text-warning")}>
                   <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                  {percent ? t("percentMismatch", { total: number(total) }) : t("countMismatch", { total: number(total), count: scope.count })}
+                  <span>
+                    {percent ? t("percentMismatch", { total: number(total) }) : t("countMismatch", { total: number(total), count: scope.count })}
+                    {!percent && (
+                      <>
+                        {" "}
+                        <AllocationGap missing={scope.count - total} />
+                      </>
+                    )}
+                  </span>
                 </p>
               )}
               <p className="flex flex-wrap items-center gap-2 text-caption text-text-muted">

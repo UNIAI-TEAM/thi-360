@@ -532,6 +532,7 @@ public class ExamPreviewService {
             SectionOnPath resolved = sections.get(section.id());
             if (resolved == null) return;
             List<QuestionSourcePort.Unit> sectionUnits = new ArrayList<>();
+            List<String> sectionQuotaTypes = new ArrayList<>();
             for (QuestionBlock block : section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
                 List<QuestionPick> picks = new ArrayList<>();
@@ -560,6 +561,7 @@ public class ExamPreviewService {
                     items.add(item(version, candidate, section.subjectCode(), pick));
                 }
                 sectionUnits.addAll(units);
+                for (var unit : units) sectionQuotaTypes.add(AnswerQuotaCounting.key(section, block, unit.answerType()));
                 var requirement = requirement(block.matrix(), units);
                 var allocation = allocation(requirement, units);
                 out.add(new PreviewBlock(block.id(), block.name(), section.subjectCode(),
@@ -568,7 +570,7 @@ public class ExamPreviewService {
                         first, number - 1, units.size(), block.setCount(), block.setSize(), requirement, allocation, items));
                 manual |= blockManual;
             }
-            subjects.add(subject(section, resolved.questionCount(), optionId, sectionUnits));
+            subjects.add(subject(section, resolved.questionCount(), optionId, sectionUnits, sectionQuotaTypes));
         }
 
         private PreviewItem item(QuestionSourcePort.Version version, QuestionSourcePort.Candidate candidate,
@@ -729,7 +731,7 @@ public class ExamPreviewService {
         }
 
         private static SubjectAllocation subject(ExamSection section, Integer count, String optionId,
-                List<QuestionSourcePort.Unit> units) {
+                List<QuestionSourcePort.Unit> units, List<String> quotaTypes) {
             List<SubjectQuotaRow> answers = new ArrayList<>();
             if (section.answerQuotas() != null) {
                 var quotas = section.answerQuotas();
@@ -737,7 +739,7 @@ public class ExamPreviewService {
                 for (int i = 0; i < quotas.items().size(); i++) {
                     String code = quotas.items().get(i).answerType().name();
                     answers.add(new SubjectQuotaRow(code, values.get(i),
-                            (int) units.stream().filter(u -> u.answerType().name().equals(code)).count()));
+                            (int) quotaTypes.stream().filter(code::equals).count()));
                 }
             }
             List<SubjectDimensionRow> grades = new ArrayList<>();

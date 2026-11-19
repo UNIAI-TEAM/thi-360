@@ -89,7 +89,8 @@ final class PreviewCompliance {
                     String type = quotas.items().get(i).answerType().name();
                     addRow(result, "ANSWER_TYPE:" + type, "SECTION:" + section.id(), required.get(i),
                             QuotaEnforcement.REQUIRED, QuotaBasis.QUESTION, units,
-                            datum -> type.equals(datum.unit().answerType().name()));
+                            datum -> type.equals(AnswerQuotaCounting.key(section, blocks.get(datum.blockId()),
+                                    datum.unit().answerType())));
                 }
             }
             matrix(result, "SECTION:" + section.id(), section.matrix(), units);

@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -173,6 +174,41 @@ class ExamVersionLifecycleIT extends AbstractIntegrationTest {
         mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("default"));
+    }
+
+    /** UNI-2752: publish stores buildMode REVIEW, so the unchanged review draft must compare equal to its serving version. */
+    @Test
+    void reviewVersionIdenticalToItsDraftIsNotPendingAndShowsNoBuildModeChange() throws Exception {
+        UUID id = exam("PUBLISHED");
+        jdbc.update("update exam.exam set build_mode='REVIEW',has_unpublished_changes=true,serving_version=1 where id=?", id);
+        jdbc.update("""
+                update exam.exam_structure set parts=cast(? as jsonb) where exam_id=?
+                """, """
+                {"parts":[{"id":"p","sections":[{"id":"s","groupOrder":"FIXED","blocks":[{"id":"a"}]}]}]}
+                """, id);
+        snapshot(id, 1, "array['default']", "array['default']", "SERVING", "null");
+        jdbc.update("update exam.exam_version set config = config || jsonb_build_object('buildMode','REVIEW') where exam_id=?", id);
+        mockMvc.perform(get("/api/v1/admin/exams/" + id + "/versions").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workingCopy.unpublishedPaths").isEmpty())
+                .andExpect(jsonPath("$.changes[?(@.where=='config/buildMode')]").isEmpty());
+    }
+
+    /** A version without the key is STANDARD; it is never read as the draft's mode, so a REVIEW draft differs from it. */
+    @Test
+    void versionWithoutAStoredModeIsStandardAgainstAReviewDraft() throws Exception {
+        UUID id = exam("PUBLISHED");
+        jdbc.update("update exam.exam set build_mode='REVIEW',has_unpublished_changes=true,serving_version=1 where id=?", id);
+        jdbc.update("""
+                update exam.exam_structure set parts=cast(? as jsonb) where exam_id=?
+                """, """
+                {"parts":[{"id":"p","sections":[{"id":"s","groupOrder":"FIXED","blocks":[{"id":"a"}]}]}]}
+                """, id);
+        snapshot(id, 1, "array['default']", "array['default']", "SERVING", "null");
+        mockMvc.perform(get("/api/v1/admin/exams/" + id + "/versions").with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workingCopy.unpublishedPaths[0].pathId").value("default"))
+                .andExpect(jsonPath("$.changes[?(@.where=='config/buildMode')].after", contains("REVIEW")));
     }
 
     private void snapshot(UUID id, int number, String published, String serving, String state, String duration) {

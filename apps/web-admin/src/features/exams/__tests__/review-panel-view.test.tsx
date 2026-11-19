@@ -92,23 +92,52 @@ beforeEach(() => {
 });
 
 describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
-  it("R1-17: đổi dạng câu và số lượng, lưu gửi đúng dạng và số câu của môn lẫn nhóm; lệch bước 1 thì cảnh báo", async () => {
+  it("R1-17: đổi dạng câu, lưu gửi đúng dạng và số câu của môn lẫn nhóm; Số lượng chỉ đọc", async () => {
     const server = boot();
     const user = userEvent.setup();
     open();
     await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
     await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
-    const count = screen.getByRole("textbox", { name: /^Số lượng/ });
-    await user.clear(count);
-    await user.type(count, "12");
-    expect(await screen.findByText(/Bước 1 đặt 10 câu, ở đây đang 12/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveAttribute("readonly");
 
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const section = sentOf(server).parts[0]!.sections[0]!;
-    expect(section.questionCount).toBe(12);
+    expect(section.questionCount).toBe(10);
     expect(section.blocks).toHaveLength(1);
-    expect(section.blocks[0]).toMatchObject({ questionType: "SHORT_ANSWER", questionCount: 12 });
+    expect(section.blocks[0]).toMatchObject({ questionType: "SHORT_ANSWER", questionCount: 10 });
+  });
+
+  it("R1-17: nhóm lưu từ trước lệch bước 1 thì cảnh báo; ô Số lượng chỉ đọc, sửa ở thông tin tổng quan", async () => {
+    boot({ questionCount: 12 });
+    open();
+    expect(await screen.findByText(/Bước 1 đặt 10 câu, ở đây đang 12/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveAttribute("readonly");
+  });
+
+  it("R1-F2: nhóm không chùm lệch bước 1: 'Dùng số của bước 1' đặt số câu của môn và nhóm về 10, hết cảnh báo, lưu gửi 10", async () => {
+    const server = boot({ questionCount: 12 }, 200, { questionCount: 12 });
+    const user = userEvent.setup();
+    open();
+    expect(await screen.findByText(/Bước 1 đặt 10 câu, ở đây đang 12/)).toBeInTheDocument();
+    expect(screen.queryByText(/Sửa một trong hai chỗ/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Dùng số của bước 1" }));
+    expect(screen.queryByText(/Bước 1 đặt/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Dùng số của bước 1" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveValue("10");
+
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const section = sentOf(server).parts[0]!.sections[0]!;
+    expect(section.questionCount).toBe(10);
+    expect(section.blocks[0]).toMatchObject({ questionCount: 10 });
+  });
+
+  it("R1-F2: nhóm không lệch thì không có nút 'Dùng số của bước 1'", async () => {
+    boot();
+    open();
+    await screen.findByRole("combobox", { name: "Dạng câu" });
+    expect(screen.queryByRole("button", { name: "Dùng số của bước 1" })).not.toBeInTheDocument();
   });
 
   it("R1-17: khớp bước 1 thì không có cảnh báo lệch", async () => {
@@ -183,21 +212,6 @@ describe("Bài ôn vừa tạo từ mẫu: nhóm chưa khai số câu (V-01b)", 
 describe("Bài ôn: đổi số câu khi bảng nhập theo tỷ lệ (R2-01)", () => {
   const topic = { id: "t1", name: "Xác suất", nodeIds: [], count: 1, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" };
 
-  it("ma trận theo tỷ lệ và chỉ tiêu chủ đề 10%: đổi Số lượng 10 → 20 rồi Lưu gửi ngay, số câu chỉ tiêu tính lại theo 20", async () => {
-    const server = boot({}, 200, { matrix: percentMatrix, topicQuotas: [topic] });
-    const user = userEvent.setup();
-    open();
-    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
-    await user.clear(count);
-    await user.type(count, "20");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-    const section = sentOf(server).parts[0]!.sections[0]!;
-    expect(section.questionCount).toBe(20);
-    expect(section.matrix?.unit).toBe("PERCENT");
-    expect(section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
-  });
-
   it("đổi số chùm cũng không bị chặn: số câu và chỉ tiêu chủ đề tính lại theo số chùm × số câu con", async () => {
     const server = boot({ questionType: "QUESTION_SET", setCount: 2, setSize: 5, questionCount: 10 }, 200, { matrix: percentMatrix, topicQuotas: [topic] });
     const user = userEvent.setup();
@@ -212,21 +226,12 @@ describe("Bài ôn: đổi số câu khi bảng nhập theo tỷ lệ (R2-01)", 
     expect(section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
   });
 
-  it("đối chứng: bài ôn có hai nhóm vẽ màn môn thường, vẫn hỏi Áp dụng số mới hay Giữ số cũ trước khi lưu", async () => {
+  it("đối chứng: bài ôn có hai nhóm vẽ màn môn thường, Số câu của mục cũng chỉ đọc", async () => {
     const group = (id: string) => ({ id, name: id, questionType: "SINGLE_CHOICE", questionCount: 5, requiredPointsPerQuestion: 1 });
-    const server = boot({}, 200, { blocks: [group("blk-1"), group("blk-2")], matrix: percentMatrix, topicQuotas: [topic] });
-    const user = userEvent.setup();
+    boot({}, 200, { blocks: [group("blk-1"), group("blk-2")], matrix: percentMatrix, topicQuotas: [topic] });
     open();
-    const count = await screen.findByRole("textbox", { name: "Số câu của mục" });
-    await user.clear(count);
-    await user.type(count, "20");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Tổng đổi thành 20 câu (trước đó 10 câu)");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
-    await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-    expect(sentOf(server).parts[0]!.sections[0]!.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
+    expect(await screen.findByRole("textbox", { name: "Số câu của mục" })).toHaveAttribute("readonly");
+    expect(screen.queryByRole("textbox", { name: /^Số lượng/ })).not.toBeInTheDocument();
   });
 });
 
@@ -248,15 +253,14 @@ describe("Bài ôn: tải mẫu và phạm vi (R2-03, R2-05, R2-02)", () => {
     const server = boot();
     const user = userEvent.setup();
     const { client } = open();
-    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
-    await user.clear(count);
-    await user.type(count, "12");
+    await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
+    await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
     // Từ lần gọi sau mẫu trả 500.
     server.on("GET", "/api/v1/admin/exam-templates", { status: 500, body: { code: "BOOM" } });
     await client.refetchQueries({ queryKey: EXAMS_QUERY_KEYS.templates() }).catch(() => undefined);
     await waitFor(() => expect(server.calls("GET", "/api/v1/admin/exam-templates").length).toBeGreaterThan(1));
     expect(screen.queryByRole("button", { name: "Thử lại" })).not.toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveValue("12");
+    expect(screen.getByRole("combobox", { name: "Dạng câu" })).toHaveTextContent("Trả lời ngắn");
   });
 
   it("R2-05: bỏ phạm vi MAPID của môn ở màn bài ôn rồi lưu: bản gửi không còn nút MAPID nào", async () => {
@@ -316,18 +320,6 @@ describe("Bài ôn: lưu không ghi điểm mỗi câu, đầu trang chỉ nêu 
     expect(block.questionType).toBe("SHORT_ANSWER");
     expect(block.requiredPointsPerQuestion ?? null).toBeNull();
     expect(screen.queryByText(/Mỗi câu .* điểm/)).not.toBeInTheDocument();
-  });
-
-  it("đổi số lượng rồi lưu vẫn không ghi điểm mỗi câu", async () => {
-    const server = boot(fresh, 200, {}, { maxScore: 100 });
-    const user = userEvent.setup();
-    open();
-    const count = await screen.findByRole("textbox", { name: /^Số lượng/ });
-    await user.clear(count);
-    await user.type(count, "8");
-    const block = await chooseTypeAndSave(server, user);
-    expect(block).toMatchObject({ questionCount: 8 });
-    expect(block.requiredPointsPerQuestion ?? null).toBeNull();
   });
 
   it("đầu trang: có thang thì chỉ nêu thang, không so tổng điểm với thang (không 10 / 150)", async () => {
