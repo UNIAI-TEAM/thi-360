@@ -18,7 +18,7 @@ import {
 import { ArrowRight, ArrowUp, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { getErrorStatus } from "@/lib/api/query-client";
@@ -171,6 +171,12 @@ function PublishForm({
     /** Lỗi `LISTING_*`: dẫn sang tab Thông tin bán. */
     listingLink: boolean;
   } | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  // Lỗi sau khi bấm Công bố nằm cuối vùng cuộn của hộp thoại, dưới khung nhìn ở màn hẹp: chuyển focus vào vùng lỗi
+  // (role="alert") để trình duyệt cuộn nó vào tầm nhìn và trình đọc màn hình đọc ngay.
+  useEffect(() => {
+    if (serverError) errorRef.current?.focus();
+  }, [serverError]);
 
   /** Đường của bản làm việc còn chờ công bố; công bố một phần trước đó thì chỉ còn các đường chưa chọn. */
   const pending = new Set(versions.workingCopy?.unpublishedPaths.map((path) => path.pathId) ?? []);
@@ -425,8 +431,10 @@ function PublishForm({
 
         {serverError && (
           <div
+            ref={errorRef}
             role="alert"
-            className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-2.5 text-body text-danger"
+            tabIndex={-1}
+            className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-2.5 text-body text-danger outline-hidden"
           >
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <span>{serverError.message}</span>

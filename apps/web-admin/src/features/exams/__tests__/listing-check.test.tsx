@@ -186,6 +186,14 @@ describe("hộp thoại công bố: lỗi LISTING_*", () => {
     const dialog = await submitPublish();
     expect(await within(dialog).findByText("Chưa nhập giá bán.")).toBeInTheDocument();
   });
+
+  it("lỗi sau khi bấm Công bố: focus chuyển vào vùng lỗi để cuộn nó vào tầm nhìn (màn 390 px không thấy lỗi ở cuối hộp thoại)", async () => {
+    publishServer(rejection("LISTING_PRICE_MISSING", [{ field: "listPriceVnd", code: "LISTING_PRICE_MISSING", message: "x" }]));
+    const dialog = await submitPublish();
+
+    const alert = await within(dialog).findByRole("alert");
+    await waitFor(() => expect(alert).toHaveFocus());
+  });
 });
 
 describe("hộp thoại công bố: PUBLISH_ALL_PATHS_REQUIRED", () => {
