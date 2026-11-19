@@ -70,6 +70,19 @@ class ExamAccessApiIT extends AbstractExamAccessIT {
     }
 
     @Test
+    void lastRemainingAttemptCanStart() throws Exception {
+        UUID userId = activeAccount();
+        Product product = onSale();
+        var line = grant(userId, product.examId(), 2);
+        useAttempt(userId, line.entitlementId());
+
+        JsonNode item = only(queryAccess(learner(userId), product.code()));
+
+        assertThat(item.get("attemptsLeft").asInt()).as("the boundary: exactly one attempt left").isEqualTo(1);
+        assertThat(item.get("state").asText()).isEqualTo("CAN_START");
+    }
+
+    @Test
     void paidOrderWithoutAttemptsIsChecking() throws Exception {
         UUID userId = activeAccount();
         Product product = onSale();
@@ -126,8 +139,10 @@ class ExamAccessApiIT extends AbstractExamAccessIT {
         Product refundedProduct = onSale();
         var refundedLine = grant(refunded, refundedProduct.examId(), 2);
         grantService.revokeUnused(refundedLine.grantId());
-        assertThat(only(queryAccess(learner(refunded), refundedProduct.code())).get("state").asText())
-                .isEqualTo("EXHAUSTED");
+        JsonNode revoked = only(queryAccess(learner(refunded), refundedProduct.code()));
+        assertThat(revoked.get("state").asText()).isEqualTo("EXHAUSTED");
+        assertThat(revoked.get("attemptsLeft").asInt()).as("revoked attempts are not negative or usable").isZero();
+        assertThat(revoked.get("entitlementId").asText()).isEqualTo(refundedLine.entitlementId().toString());
     }
 
     @Test

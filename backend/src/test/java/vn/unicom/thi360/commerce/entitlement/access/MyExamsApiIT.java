@@ -29,7 +29,7 @@ class MyExamsApiIT extends AbstractExamAccessIT {
         UUID userId = activeAccount();
         Product product = discontinued();
         examPort.serve(ServingExams.serving(product.examId(), product.code(), "DISCONTINUED",
-                ServingExams.fixedPath("default", 50, 75)));
+                ServingExams.fixedPath("default", 44, 66)));
         grant(userId, product.examId(), 2);
 
         JsonNode card = only(myExams(learner(userId)));
@@ -37,7 +37,38 @@ class MyExamsApiIT extends AbstractExamAccessIT {
         assertThat(card.get("saleState").asText()).isEqualTo("DISCONTINUED");
         assertThat(card.get("state").asText()).isEqualTo("CAN_START");
         assertThat(actions(card)).containsExactly("START").doesNotContain("BUY_MORE", "REBUY");
-        assertThat(card.get("questionCount").get("min").asInt()).as("the last serving version is still read").isEqualTo(50);
+        // The projection says 50 questions and 75 minutes; the frozen serving version says 44 and 66.
+        assertThat(card.get("questionCount").get("min").asInt()).as("the last serving version is still read").isEqualTo(44);
+        assertThat(card.get("questionCount").get("max").asInt()).isEqualTo(44);
+        assertThat(card.get("durationMinutes").get("min").asInt()).isEqualTo(66);
+        assertThat(card.get("durationMinutes").get("max").asInt()).isEqualTo(66);
+    }
+
+    @Test
+    void lastRemainingAttemptShowsStart() throws Exception {
+        UUID userId = activeAccount();
+        Product product = onSale();
+        useAttempt(userId, grant(userId, product.examId(), 2).entitlementId());
+
+        JsonNode card = only(myExams(learner(userId)));
+
+        assertThat(card.get("attemptsLeft").asInt()).as("the boundary: exactly one attempt left").isEqualTo(1);
+        assertThat(card.get("state").asText()).isEqualTo("CAN_START");
+        assertThat(actions(card)).containsExactly("START", "HISTORY", "BUY_MORE");
+    }
+
+    @Test
+    void fullyRevokedOnSaleIsExhaustedAndCanRebuy() throws Exception {
+        UUID userId = activeAccount();
+        Product product = onSale();
+        grantService.revokeUnused(grant(userId, product.examId(), 2).grantId());
+
+        JsonNode card = only(myExams(learner(userId)));
+
+        assertThat(card.get("attemptsLeft").asInt()).isZero();
+        assertThat(card.get("attemptsTotal").asInt()).as("granted minus revoked").isZero();
+        assertThat(card.get("state").asText()).isEqualTo("EXHAUSTED");
+        assertThat(actions(card)).containsExactly("HISTORY", "REBUY");
     }
 
     @Test
