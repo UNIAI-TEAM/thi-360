@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam.application;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -112,6 +113,7 @@ public class ExamService {
     private final ExamCheckValidity checkValidity;
     private final ExamStructureProperties structureProperties;
     private final CombinationLookup combinationLookup;
+    private final Clock clock;
     public ExamService(
             ExamRepository examRepository,
             ExamStructureRepository structureRepository,
@@ -130,7 +132,8 @@ public class ExamService {
             AppMessages messages,
             ExamCheckValidity checkValidity,
             ExamStructureProperties structureProperties,
-            CombinationLookup combinationLookup) {
+            CombinationLookup combinationLookup,
+            Clock clock) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -149,6 +152,7 @@ public class ExamService {
         this.checkValidity = checkValidity;
         this.structureProperties = structureProperties;
         this.combinationLookup = combinationLookup;
+        this.clock = clock;
     }
     private ExamStructureCodec codec() {
         return new ExamStructureCodec(objectMapper);
@@ -444,7 +448,7 @@ public class ExamService {
     }
 
     private ExamDetailResponse doCreate(CreateExamRequest request) {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         String code = requireCode(request.code());
 
@@ -700,7 +704,7 @@ public class ExamService {
                     messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
         }
         Map<String, Object> before = examInfoSnapshot(exam);
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
 
         boolean scopeRequested = request.kind() != null || request.scope() != null
@@ -873,7 +877,7 @@ public class ExamService {
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = ExamOverview.apply(workingDocument(examId), request.overview());
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
-        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now());
+        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now(clock));
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.OVERVIEW_UPDATE")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
                 .build());
@@ -905,7 +909,7 @@ public class ExamService {
                 && !Set.of("USE_TEMPLATE", "KEEP_EDITED").contains(request.overviewPolicy())) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
@@ -1063,7 +1067,7 @@ public class ExamService {
         Exam exam = examRepository.findByIdForUpdate(examId)
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
 
         ExamStructureDocument incoming = ExamStructureOps.assignMissingIds(
@@ -1138,7 +1142,7 @@ public class ExamService {
 
     private ExamDetailResponse doDuplicate(UUID examId, DuplicateExamRequest request) {
         Exam source = examRepository.findById(examId).orElseThrow(() -> examNotFound(examId));
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         String kindCode = catalogLookup.findItem(source.getKindItemId())
                 .map(CatalogItemView::code)

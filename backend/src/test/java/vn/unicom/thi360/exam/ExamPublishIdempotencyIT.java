@@ -46,6 +46,7 @@ class ExamPublishIdempotencyIT extends AbstractIntegrationTest {
         var exam = exams.findById(examId).orElseThrow();
         var profile = profiles.findById(exam.getKindItemId()).orElseThrow();
         jdbc.update("UPDATE exam.exam_structure SET structure_hash = 'publish-test' WHERE exam_id = ?", examId);
+        ExamListingFixture.fill(jdbc, examId);
         var input = new ExamCheckResultStore.Input(examId, exam.getRevision(), "publish-test",
                 mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), profile.getRevision(), catalog.revision(),
                 "test", mapper.valueToTree(source.sourceRevisions(List.of(SUBJECT))));

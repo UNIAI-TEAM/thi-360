@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.application;
 
 import jakarta.persistence.EntityManager;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -27,15 +28,17 @@ public class ExamDiscontinueService {
     private final IdempotentCommand idempotency;
     private final CurrentUserProvider currentUser;
     private final AuditRecorder audit;
+    private final Clock clock;
 
     public ExamDiscontinueService(JdbcTemplate jdbc, EntityManager entities, ExamService exams,
-            IdempotentCommand idempotency, CurrentUserProvider currentUser, AuditRecorder audit) {
+            IdempotentCommand idempotency, CurrentUserProvider currentUser, AuditRecorder audit, Clock clock) {
         this.jdbc = jdbc;
         this.entities = entities;
         this.exams = exams;
         this.idempotency = idempotency;
         this.currentUser = currentUser;
         this.audit = audit;
+        this.clock = clock;
     }
 
     @Transactional
@@ -53,7 +56,7 @@ public class ExamDiscontinueService {
         if (row.revision() != request.expectedRevision()) throw new VersionConflictException("EXAM_REVISION_CONFLICT", null);
         if (!"PUBLISHED".equals(row.status())) throw new ConflictException("EXAM_NOT_PUBLISHED");
         UUID actor = currentUser.requireCurrentUser().id();
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         jdbc.update("update exam.exam set status = 'DISCONTINUED', updated_at = ?, updated_by = ?, revision = revision + 1 where id = ?",
                 java.sql.Timestamp.from(now), actor, id);
         jdbc.update("update exam.exam_version set status = 'DISCONTINUED', discontinued_at = ?, discontinued_by = ? "

@@ -182,6 +182,7 @@ class ExamPublishConcurrencyIT extends AbstractIntegrationTest {
         UUID kind = jdbc.queryForObject("SELECT kind_item_id FROM exam.exam WHERE id = ?", UUID.class, SEEDED_EXAM);
         jdbc.update("INSERT INTO exam.exam (id, code, code_normalized, name, kind_item_id, scope, timing, has_unpublished_changes) VALUES (?, ?, ?, 'Concurrent', ?, 'FULL', 'SHARED', true)", id, id.toString(), id.toString(), kind);
         jdbc.update("INSERT INTO exam.exam_structure (exam_id, parts, structure_hash) VALUES (?, '{\"parts\":[]}'::jsonb, 'concurrent')", id);
+        ExamListingFixture.fill(jdbc, id);
         var exam = exams.findById(id).orElseThrow();
         var profile = profiles.findById(kind).orElseThrow();
         var input = new ExamCheckResultStore.Input(id, exam.getRevision(), "concurrent", mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), profile.getRevision(), catalog.revision(), "test", mapper.valueToTree(source.sourceRevisions(List.of(SUBJECT))));

@@ -472,6 +472,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
             path.putArray("witness").addObject().put("questionId", witness.toString()).put("versionNo", 1);
         }
         assertThat(checks.save(input, "VALID", 0, Instant.now(), 1, outcome, witnesses)).isTrue();
+        ExamListingFixture.fill(jdbc, exam);
         var request = mapper.createObjectNode().put("expectedRevision", examEntity.getRevision());
         request.set("pathIds", mapper.valueToTree(selected));
         mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/publish")

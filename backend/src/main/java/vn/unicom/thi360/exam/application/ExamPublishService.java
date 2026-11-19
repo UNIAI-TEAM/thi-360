@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Array;
 import java.sql.PreparedStatement;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -41,10 +42,11 @@ public class ExamPublishService {
     private final IdempotentCommand idempotency;
     private final CurrentUserProvider currentUser;
     private final AuditRecorder audit;
+    private final Clock clock;
 
     public ExamPublishService(JdbcTemplate jdbc, ObjectMapper mapper, ExamCheckValidity validity,
             QuestionSourcePort source, CatalogLookup catalog, IdempotentCommand idempotency, CurrentUserProvider currentUser,
-            AuditRecorder audit) {
+            AuditRecorder audit, Clock clock) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.validity = validity;
@@ -53,6 +55,7 @@ public class ExamPublishService {
         this.idempotency = idempotency;
         this.currentUser = currentUser;
         this.audit = audit;
+        this.clock = clock;
     }
 
     @Transactional
@@ -161,7 +164,7 @@ public class ExamPublishService {
         }
         String sql = "INSERT INTO exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by, note) "
                 + "SELECT ?, e.id, ?, " + configSql + " || ?::jsonb, ?::jsonb, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id WHERE e.id = ?";
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         int inserted = jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql);
             Array paths = connection.createArrayOf("text", selected.toArray());

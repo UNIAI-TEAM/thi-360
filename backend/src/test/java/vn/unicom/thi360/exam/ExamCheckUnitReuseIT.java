@@ -374,6 +374,7 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         var request = mapper.createObjectNode();
         request.set("pathIds", paths);
         request.put("expectedRevision", revision);
+        ExamListingFixture.fill(jdbc, id);
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
                 .content(request.toString())).andExpect(status().isOk());
@@ -413,6 +414,7 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT witness::text FROM exam.exam_check_run WHERE exam_id=?",
                 String.class, id)).contains("QD05");
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
+        ExamListingFixture.fill(jdbc, id);
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                         .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pathIds\":[\"codes:QD05\"],\"expectedRevision\":" + revision + "}"))
