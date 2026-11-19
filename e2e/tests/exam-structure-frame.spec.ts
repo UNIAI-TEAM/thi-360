@@ -44,3 +44,27 @@ test("sửa phần rồi chuyển phần: hộp thoại ba nút, Bỏ thay đổ
   await expect(page.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue(saved);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+/**
+ * `?block=` đi qua `navigation.ts` (FTM R-15): khi mọi dạng biểu mẫu theo môn đang tắt, đường dẫn tới một nhóm vẫn mở màn nhóm đầy đủ
+ * như trước, không có dòng chữ "thiết lập đầy đủ". Bài HSA Toàn bài tạo bằng API; id nhóm lấy từ cấu trúc đã lưu.
+ */
+test("?block= mở màn nhóm đầy đủ khi biểu mẫu theo môn đang tắt", async ({ context, page }) => {
+  await loginAdmin(context, "vi");
+  const admin = await adminApi();
+  const created = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams`, {
+    headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
+    data: { code: `HSA-B-E2E-${RUN_ID}`.toUpperCase(), name: `HSA nhóm ${RUN_ID}`, kind: "HSA", scope: "FULL" },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const { id } = (await created.json()) as { id: string };
+  const structure = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`);
+  expect(structure.status(), await structure.text()).toBe(200);
+  const { parts } = (await structure.json()) as { parts: Array<{ sections?: Array<{ blocks?: Array<{ id: string }> }> }> };
+  const blockId = parts.flatMap((part) => part.sections ?? []).flatMap((section) => section.blocks ?? [])[0]?.id;
+  expect(blockId).toBeTruthy();
+
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure?block=${blockId}`);
+  await expect(page.getByRole("textbox", { name: "Tên nhóm" })).toBeVisible();
+  await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
+});
