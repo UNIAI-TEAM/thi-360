@@ -237,7 +237,7 @@
       "CATALOG_GROUP_SYSTEM": "Cannot edit, deactivate, or delete a system catalog.",
       "CATALOG_ITEM_IN_USE": "Cannot complete action because the catalog value is currently in use.",
       "CATALOG_ITEM_NOT_FOUND": "Catalog node was not found (it may have been deleted before confirmation).",
-      "CATALOG_ITEM_SYSTEM": "Cannot change code or delete a system value.",
+      "CATALOG_ITEM_SYSTEM": "Cannot change the code, deactivate, move, or delete a system value.",
       "CATALOG_LEVELS_LOCKED": "Cannot add or remove levels when the catalog already has values.",
       "CATALOG_NODE_HAS_CHILDREN": "Cannot delete a node that still has child nodes.",
       "CATALOG_PARENT_INACTIVE": "Cannot add or move a node under an inactive parent.",
@@ -383,6 +383,7 @@
       "saveAndAddMore": "Save and add another",
       "statusLabel": "Status",
       "subtitle": "General settings",
+      "systemHint": "System value: only the name can be edited.",
       "updateSuccess": "Updated value {code}."
     },
     "itemsErrorDescription": "Could not load values. Please try again.",
@@ -452,7 +453,6 @@
     },
     "systemBadge": "System",
     "systemGroupHint": "System catalog: cannot be edited or deleted. Values inside can still be managed.",
-    "systemItemLocked": "System value: cannot be deleted.",
     "systemSection": "System",
     "title": "General settings",
     "tree": {

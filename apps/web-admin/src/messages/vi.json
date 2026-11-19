@@ -237,7 +237,7 @@
       "CATALOG_GROUP_SYSTEM": "Không thể sửa, ngừng hoặc xóa nhóm danh mục hệ thống.",
       "CATALOG_ITEM_IN_USE": "Không thể thực hiện thao tác vì giá trị danh mục đang được sử dụng.",
       "CATALOG_ITEM_NOT_FOUND": "Không tìm thấy nút danh mục (có thể đã bị xóa trước khi xác nhận).",
-      "CATALOG_ITEM_SYSTEM": "Không thể sửa mã hoặc xóa giá trị hệ thống.",
+      "CATALOG_ITEM_SYSTEM": "Không thể sửa mã, ngừng, chuyển hoặc xóa giá trị hệ thống.",
       "CATALOG_LEVELS_LOCKED": "Không thể thêm hoặc bớt cấp khi nhóm danh mục đã có giá trị.",
       "CATALOG_NODE_HAS_CHILDREN": "Không thể xóa nút đang có nút con.",
       "CATALOG_PARENT_INACTIVE": "Không thể thêm hoặc chuyển nút dưới nút cha đang ngừng sử dụng.",
@@ -383,6 +383,7 @@
       "saveAndAddMore": "Lưu và thêm tiếp",
       "statusLabel": "Trạng thái",
       "subtitle": "Cấu hình chung",
+      "systemHint": "Giá trị hệ thống: chỉ sửa được tên.",
       "updateSuccess": "Đã cập nhật giá trị {code}."
     },
     "itemsErrorDescription": "Không tải được danh sách giá trị. Hãy thử lại.",
@@ -452,7 +453,6 @@
     },
     "systemBadge": "Hệ thống",
     "systemGroupHint": "Danh mục hệ thống: không sửa, không xóa. Vẫn quản lý được giá trị bên trong.",
-    "systemItemLocked": "Giá trị hệ thống: không thể xóa.",
     "systemSection": "Hệ thống",
     "title": "Cấu hình chung",
     "tree": {
