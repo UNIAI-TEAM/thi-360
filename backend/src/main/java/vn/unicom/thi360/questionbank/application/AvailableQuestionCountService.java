@@ -43,13 +43,15 @@ public class AvailableQuestionCountService {
     private QuestionSourcePort.Filter filter(AvailableQuestionCountController.Query query, UUID subjectId) {
         var scope = query.knowledgeScope();
         List<List<UUID>> groups = null;
-        if (scope != null && scope.nodeIds() != null && !scope.nodeIds().isEmpty()) {
+        List<UUID> excluded = List.of();
+        boolean scoped = scope != null && scope.nodeIds() != null && !scope.nodeIds().isEmpty();
+        boolean excluding = scope != null && scope.excludedNodeIds() != null && !scope.excludedNodeIds().isEmpty();
+        if (scoped || excluding) {
             List<CatalogItemView> nodes = catalog.listActiveGroupItems("KNOWLEDGE");
-            groups = scope.nodeIds().stream().map(id -> {
-                var root = nodes.stream().filter(node -> node.id().equals(id)).findFirst();
-                return root.map(item -> nodes.stream().filter(node -> node.path().startsWith(item.path()))
-                        .map(CatalogItemView::id).toList()).orElse(List.of());
-            }).toList();
+            if (scoped) groups = scope.nodeIds().stream().map(id -> subtree(nodes, id)).toList();
+            // The same expansion generation uses (SolverInputBuilder.withDescendants).
+            if (excluding) excluded = scope.excludedNodeIds().stream().flatMap(id -> subtree(nodes, id).stream())
+                    .distinct().toList();
         }
         List<String> competencies = query.competencyCodes();
         if (competencies == null && scope != null) competencies = scope.competencyCodes();
@@ -61,7 +63,15 @@ public class AvailableQuestionCountService {
                 null, query.childAnswerType(), query.tagCodes(), competencies,
                 query.requiredPointsPerQuestion(), itemShape(query.itemShape()), query.answerFormats(),
                 childConditions, List.of(), List.of(), List.of(),
-                scope == null ? null : scope.everyChildInScope(), List.of(), query.audioRequirement());
+                scope == null ? null : scope.everyChildInScope(), List.of(), query.audioRequirement(), excluded);
+    }
+
+    /** The node and every descendant; an unknown node is empty, as for generation. */
+    private static List<UUID> subtree(List<CatalogItemView> nodes, UUID id) {
+        return nodes.stream().filter(node -> node.id().equals(id)).findFirst()
+                .map(root -> nodes.stream().filter(node -> node.path().startsWith(root.path()))
+                        .map(CatalogItemView::id).toList())
+                .orElse(List.of());
     }
 
     private static QuestionSourcePort.ItemShape itemShape(AvailableQuestionCountController.ItemShape shape) {

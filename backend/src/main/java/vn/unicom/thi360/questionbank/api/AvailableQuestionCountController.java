@@ -36,7 +36,14 @@ public class AvailableQuestionCountController {
 
     @Schema(name = "AvailableQuestionsKnowledgeScope", description = "Phạm vi kiến thức có hiệu lực của nhóm")
     public record KnowledgeScope(List<@NotNull UUID> nodeIds, List<String> competencyCodes,
-                                 Boolean everyChildInScope) {}
+                                 Boolean everyChildInScope,
+                                 @Schema(description = "MAPID nodes (and their descendants) the group must not draw from: "
+                                         + "ONLY_IN_GROUP of another group (UNI-2758)")
+                                 List<@NotNull UUID> excludedNodeIds) {
+        public KnowledgeScope(List<UUID> nodeIds, List<String> competencyCodes, Boolean everyChildInScope) {
+            this(nodeIds, competencyCodes, everyChildInScope, null);
+        }
+    }
 
     @Schema(name = "AvailableQuestionsItemShape")
     public record ItemShape(Integer statements, Integer leftItems, Integer rightItems, Integer options) {}

@@ -166,8 +166,24 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
             List<CatalogItemView> knowledge, Map<UUID, CatalogItemView> knowledgeById,
             Map<UUID, List<UUID>> descendants, Map<QuestionSourcePort.Filter, Boolean> matches) {
         if (block == null || !Objects.equals(block.id(), ref.getBlockId())) return;
-        KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(),
-                section == null ? null : section.knowledgeScope());
+        // The section's MAPID rules, not its legacy scope, decide what generation draws (UNI-2758).
+        CompiledMapidRules compiled;
+        try {
+            compiled = section == null ? null : MapidRuleCompiler.compile(section);
+        } catch (IllegalArgumentException malformed) {
+            return; // generation rejects this section as well: it selects nothing
+        }
+        QuestionBlock sourceBlock = compiled == null ? block : compiled.effectiveSection().blocks().stream()
+                .filter(candidate -> Objects.equals(candidate.id(), block.id())).findFirst().orElse(block);
+        KnowledgeScope scope = EffectiveKnowledgeScope.of(sourceBlock.knowledgeScope(),
+                compiled == null ? null : compiled.effectiveSection().knowledgeScope());
+        List<UUID> excluded = compiled == null ? List.of() : compiled.exclusions().getOrDefault(block.id(), List.<UUID>of())
+                .stream().flatMap(id -> descendants.computeIfAbsent(id, key -> {
+                    CatalogItemView root = knowledgeById.get(key);
+                    if (root == null) return List.<UUID>of();
+                    return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                            .map(CatalogItemView::id).toList();
+                }).stream()).distinct().toList();
         List<List<UUID>> groups = scope == null ? List.of() : scope.nodeIds().stream().map(id ->
                 descendants.computeIfAbsent(id, key -> {
                     CatalogItemView root = knowledgeById.get(key);
@@ -201,7 +217,7 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                             ? List.of() : List.of(slotScope.competencyCodes()),
                     scope == null ? null : scope.everyChildInScope(),
                     slotGroups.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slotScope.everyChildInScope())),
-                    generated.audio());
+                    generated.audio(), excluded);
             return matches.computeIfAbsent(filter,
                     key -> source.matching(key, List.of(questionId)).contains(questionId));
         });
