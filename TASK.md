@@ -271,8 +271,9 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 |---|---|---|---|---|
 | HSA-A | UNI-2750, UNI-2751 | 1696, 1697 | Bước 1 tạo bài thi: bỏ các dòng thừa; bảng tổng quan sửa được ở tab Thông tin chung | đang làm |
 | HSA-B | UNI-2752, UNI-2753, UNI-2754 | 1698, 1699, 1700 | Bước cấu trúc: kiểm tra bài ôn tập, số câu trên đề chỉ đọc, gọn bảng chỉ tiêu, dòng "Bộ câu hỏi" trong chỉ tiêu dạng trả lời | đang làm |
-| HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | đang làm |
-| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | pha 0 (đề xuất), code sau khi HSA-B, HSA-C merge |
+| HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | merge PR #125 (`ed52d43e`); cherry-pick vào `develop`: PR #126 |
+| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | tạm dừng sau pha 0: gộp vào đặc tả form thiết lập theo môn (AD-34) |
+| HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | đang làm (cty) |
 
 Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
 

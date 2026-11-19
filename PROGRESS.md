@@ -238,7 +238,7 @@
   - FS-4 (UNI-2733, PR #122, `4f3820ab`): bộ thành phần câu hỏi 8 dạng trong `packages/ui`, chế độ xem lại có lời giải, ma trận ảnh. Advisor chạy lại web-admin 2156/2156.
   - C-0 (UNI-2703, PR #124, `b64c9e14`): module `commerce`, `attempt`; `EntitlementPort` (6 hàm, có `examId`) và `AttemptStatusProvider`; bit quyền 18–26; `THI360_TOKEN_PEPPER`; giới hạn `GET /api/v1/public/**` 120/phút/IP, miễn IPN VNPAY. Cloud verify 886 + 1016, 0 lỗi.
 - **Đang chạy:** ML (bro), TS (cty), CM-4a (cty). Mọi task còn lại chờ TS (EX-1, EX-2), ML (ID-1, ID-2) hoặc các task sau chúng.
-- **Ngoài plan:** bốn lane sửa lỗi HSA (uniworkos UNI-1695, UniAI UNI-2749), bảng ở `TASK.md`. Xong lane nào thì merge vào `integration/dot-3`, cherry-pick sang hotfix từ `develop`, PR vào `develop` và dựng lại bản demo (M.Trường đồng ý 2026-11-19).
+- **Ngoài plan:** năm lane sửa lỗi HSA (uniworkos UNI-1695, UniAI UNI-2749), bảng ở `TASK.md`. Xong lane nào thì merge vào `integration/dot-3`, cherry-pick sang hotfix từ `develop`, PR vào `develop` và dựng lại bản demo (M.Trường đồng ý 2026-11-19). 2026-11-19 17:46 (UTC+7): HSA-C merge PR #125 (`ed52d43e`); Advisor chạy lại typecheck, lint, test web phần đề thi trên `27573141` (5 test quá giờ do máy bận, chạy lại 4 tệp: 102/102); cherry-pick vào `develop` là PR #126. Mở HSA-E (UNI-2760, uniworkos UNI-1705: cột lệch ở bước Kiểm tra và Xem trước) trên cty.
 - **Advisor:** từ 16:15 ngày 2026-11-19 chuyển sang phiên chat mới theo yêu cầu của M.Trường; checkpoint bàn giao ở `.thi360-dev/dot-3/reports/handover-2026-11-19.md`.
 - **Vướng:** Q9, Q14 chờ VNPAY (M.Trường hỏi). VPS bro tải cao (load5 khoảng 9), chưa đặt lane mới lên bro.
 - **Tiến độ:** 8/138 điểm (5,8%).
