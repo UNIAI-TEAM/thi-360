@@ -161,4 +161,26 @@ describe("Chỉ tiêu Tiếng Anh chờ chuyên gia của mẫu HSA (UNI-1701 R1
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ id: string; enforcement: string }> };
     expect(sent.examQuotas).toMatchObject([{ id: "hsa-english-grade", enforcement: "REFERENCE" }]);
   });
+
+  it("R2-1: Áp dụng phân bổ này đặt Bắt buộc rồi lưu: bản lưu gửi Bắt buộc", async () => {
+    const server = boot("HSA", emptyEnglishMatrix, "ANH", [englishGradeQuota]);
+    const user = userEvent.setup();
+    open();
+    const apply = (await screen.findAllByRole("button", { name: /Áp dụng phân bổ này/ })).find((button) => !(button as HTMLButtonElement).disabled)!;
+    await user.click(apply);
+    await user.click(screen.getByRole("button", { name: /Tổng quan/ }));
+    await user.click(await screen.findByRole("button", { name: "Lưu và chuyển" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ id: string; enforcement: string }> };
+    expect(sent.examQuotas).toMatchObject([{ id: "hsa-english-grade", enforcement: "REQUIRED" }]);
+  });
+
+  it("R2-1: chỉ tiêu Tiếng Anh đã Bắt buộc (sau khi áp dụng): chip ở tổng quan là Bắt buộc cố định, không còn lý do chờ chuyên gia", async () => {
+    boot("HSA", emptyEnglishMatrix, "ANH", [{ ...englishGradeQuota, enforcement: "REQUIRED" }]);
+    open("exam=1");
+    const group = await screen.findByRole("group", { name: /Lớp Tiếng Anh tham khảo/ });
+    expect(group).toHaveAttribute("data-fixed", "REQUIRED");
+    expect(within(group).queryByText(reason)).not.toBeInTheDocument();
+    expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
+  });
 });

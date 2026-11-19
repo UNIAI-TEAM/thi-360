@@ -142,7 +142,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                   value={quota.enforcement}
                   basis={quota.basis}
                   lockRequiredReason={canRequireQuota(quota) ? undefined : t("multiSubjectLocked")}
-                  expertPending={hsaQuotaAwaitsExpert(quota)}
+                  expertPending={hsaQuotaAwaitsExpert(quota) && quota.enforcement === "REFERENCE"}
                   onChange={(enforcement) => patch(quota.id, (current) => ({ ...current, enforcement }))}
                 />
               </div>
