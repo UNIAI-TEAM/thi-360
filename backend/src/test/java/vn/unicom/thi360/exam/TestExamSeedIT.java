@@ -426,7 +426,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         // 40 + 9 = 49 instead of 50; the solver also cannot satisfy the 50-unit matrix.
         invalid.put("TEST-ERR-04", Set.of("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
                 "PATH_TOTAL_MISMATCH", "POINTS_TOTAL_MISMATCH", "CELL_SHORTAGE"));
-        // The 35 + 14 quota totals 49 for a 50-question section.
+        // The 32 + 14 + 3 quota totals 49 for a 50-question section.
         invalid.put("TEST-ERR-05", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         invalid.put("TEST-ERR-06", Set.of("ANSWER_TYPE_SHORTAGE"));
         invalid.put("TEST-ERR-09", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
@@ -794,7 +794,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     // Chữ ký các mẫu theo spec đề test mục 2.1-2.7 và 4.4; xem signature() cho cách đọc từng dòng.
     private static final String SIG_HSA_MATH = """
             P ALL q=50 on=50 req=50 pts=50
-              S TOAN 50 matrix[SEPARATE G:G10=3,G11=20,G12=27 D:NB=2,TH=21,VD=20,VDC=7 C:] quotas SINGLE_CHOICE=35,SHORT_ANSWER=15
+              S TOAN 50 matrix[SEPARATE G:G10=3,G11=20,G12=27 D:NB=2,TH=21,VD=20,VDC=7 C:] quotas SINGLE_CHOICE=32,SHORT_ANSWER=15,QUESTION_SET=3
                 B HSA_MATH_SINGLE SINGLE_CHOICE 32 pts 1
                 B HSA_MATH_SINGLE SHORT_ANSWER 15 pts 1
                 B HSA_MATH_CONTEXT QUESTION_SET 3 set 1x3 pts 1 child SINGLE_CHOICE
@@ -848,7 +848,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     private static final String SIG_HSA_FULL_QUOTAS = "Q GRADE/QUESTION/REFERENCE\n";
     private static final String SIG_QDA_FULL = """
             P ALL q=50 on=50 req=50 pts=50
-              S TOAN 50 matrix[SEPARATE G:G10=5,G11=15,G12=30 D: C:] quotas SINGLE_CHOICE=35,SHORT_ANSWER=15
+              S TOAN 50 matrix[SEPARATE G:G10=5,G11=15,G12=30 D: C:] quotas SINGLE_CHOICE=32,SHORT_ANSWER=15,QUESTION_SET=3
                 B QDA_TOAN_SINGLE SINGLE_CHOICE 32 pts 1
                 B QDA_TOAN_CONTEXT QUESTION_SET 3 set 1x3 pts 1 child SINGLE_CHOICE
                 B QDA_TOAN_SINGLE SHORT_ANSWER 15 pts 1
