@@ -145,6 +145,8 @@ export interface PreviewQuestionLite {
   code?: string;
   number?: number;
   points?: number;
+  /** Câu điền chỗ trống (`body.type = CLOZE`) hiện một lần trên đề nhưng mỗi chỗ trống chiếm một số câu: `body.blanks`. */
+  body?: { type?: string; blanks?: unknown[] } | null;
   /** Tệp đính kèm của câu đơn (câu con của bộ luôn rỗng). */
   attachments?: PreviewAttachmentLite[];
 }
@@ -330,7 +332,11 @@ export interface PaperQuestion {
   points: number;
 }
 
-/** Mọi câu của đề thử theo thứ tự (câu con của chùm được trải ra), kèm phần, nhóm và môn. */
+/**
+ * Mọi câu của đề thử theo thứ tự (câu con của chùm được trải ra), kèm phần, nhóm và môn. Câu điền chỗ trống (CLOZE) hiện
+ * một lần nhưng mỗi chỗ trống là một số câu: nó trải thành đúng số chỗ trống, chỗ đầu mang mã và điểm của câu, các chỗ sau
+ * mang mã `<mã>#<thứ tự chỗ>` và điểm 0 (đề thử không trả điểm từng chỗ).
+ */
 export function paperQuestions(result: PreviewResultLite): PaperQuestion[] {
   const out: PaperQuestion[] = [];
   result.paper.parts.forEach((part, partIndex) => {
@@ -338,14 +344,17 @@ export function paperQuestions(result: PreviewResultLite): PaperQuestion[] {
       for (const item of block.items ?? []) {
         const questions = item.kind === "SET" ? (item.children ?? []) : item.question ? [item.question] : [];
         for (const question of questions) {
-          out.push({
-            partIndex,
-            blockName: block.blockName ?? "",
-            subjectCode: block.subjectCode ?? "",
-            code: question.code ?? "",
-            number: question.number ?? 0,
-            points: question.points ?? 0,
-          });
+          const blanks = question.body?.type === "CLOZE" ? (question.body.blanks?.length ?? 0) : 0;
+          for (let blank = 0; blank < Math.max(blanks, 1); blank += 1) {
+            out.push({
+              partIndex,
+              blockName: block.blockName ?? "",
+              subjectCode: block.subjectCode ?? "",
+              code: blank === 0 ? (question.code ?? "") : `${question.code ?? ""}#${blank + 1}`,
+              number: (question.number ?? 0) + blank,
+              points: blank === 0 ? (question.points ?? 0) : 0,
+            });
+          }
         }
       }
     }
@@ -743,6 +752,44 @@ export async function forceBlockOmitted(admin: AdminApi, examId: string, blockId
   expect(response.status(), await response.text()).toBe(200);
 }
 
+/**
+ * Đặt thang điểm của bài qua tab "Thông tin chung": ô "Thang điểm" rồi "Lưu thông tin", đợi máy chủ nhận (200) và đọc lại
+ * `maxScore` ở API để xác nhận giá trị đã lưu.
+ */
+export async function setMaxScoreInGeneralTab(page: Page, admin: AdminApi, examId: string, maxScore: number): Promise<void> {
+  await openEditorTab(page, "Thông tin chung", /\/exams\/[^/]+$/);
+  const field = page.getByRole("textbox", { name: /^Thang điểm/ });
+  await expect(field).toBeVisible();
+  await field.fill(String(maxScore));
+  const [response] = await Promise.all([
+    page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}`) && item.request().method() !== "GET", {
+      timeout: SOLVER_TIMEOUT_MS,
+    }),
+    page.getByRole("button", { name: "Lưu thông tin", exact: true }).click(),
+  ]);
+  expect(response.status(), await response.text()).toBe(200);
+  expect((await getExam(admin, examId)).maxScore).toBe(maxScore);
+}
+
+/**
+ * Trả nhóm Viết bị ép bật lại (`forceBlockOmitted`) về trạng thái tham chiếu bằng giao diện: mở nhóm (công tắc "Tạm bỏ qua"
+ * tắt và bấm được, vì nhóm đã bật từ bản nháp cũ vẫn sửa được), bật công tắc, thấy nó khóa kèm lý do, rồi Lưu. Chứng minh
+ * đường sửa lại của ADV:QA:11 từ đầu đến cuối.
+ */
+export async function restoreOmittedBlockInUi(page: Page, admin: AdminApi, examId: string, blockId: string, name?: string): Promise<void> {
+  await openBlockInUi(page, examId, blockId, name);
+  const omit = writingOmittedSwitch(page);
+  await expect(omit).toBeEnabled();
+  await expect(omit).not.toBeChecked();
+  await omit.click();
+  await expectWritingSwitchLocked(page);
+  await saveStructureInUi(page, examId);
+  const saved = allSections(await getStructure(admin, examId))
+    .flatMap((section) => section.blocks ?? [])
+    .find((item) => item.id === blockId);
+  expect(saved?.omitted, "nhóm Viết đã trả về tạm bỏ qua").toBe(true);
+}
+
 /* ---------- Ngân hàng câu hỏi: đính kèm tệp (điều chế dữ liệu nguồn) ---------- */
 
 export interface QuestionSummaryLite {
@@ -795,12 +842,19 @@ export async function uploadQuestionAsset(admin: AdminApi, name: string, mime: s
 }
 
 /**
- * Gắn tệp vào câu đang Sẵn sàng: PUT tạo phiên bản mới kèm `attachmentIds` (giữ nguyên mọi trường của bản đang phục vụ)
- * rồi `ready` để bản mới phục vụ bộ giải.
+ * Đổi danh sách tệp đính kèm của câu đang Sẵn sàng: PUT tạo phiên bản mới kèm `attachmentIds` (giữ nguyên mọi trường của
+ * bản đang phục vụ) rồi `ready` để bản mới phục vụ bộ giải. `change` trả danh sách mới, hoặc `null` khi không cần đổi
+ * (không tạo phiên bản).
  */
-async function attachAssetToQuestion(admin: AdminApi, questionId: string, assetId: string): Promise<boolean> {
+async function changeQuestionAttachments(
+  admin: AdminApi,
+  questionId: string,
+  change: (current: string[]) => string[] | null,
+): Promise<boolean> {
   const detail = await body<QuestionDetailLite>(await admin.api.get(`${ADMIN_URL}/api/v1/admin/questions/${questionId}`, { headers: admin.headers }), 200);
   const summary = detail.summary;
+  const attachmentIds = change(detail.attachmentIds ?? []);
+  if (attachmentIds === null) return true;
   const updated = await admin.api.put(`${ADMIN_URL}/api/v1/admin/questions/${questionId}`, {
     headers: admin.headers,
     data: {
@@ -817,7 +871,7 @@ async function attachAssetToQuestion(admin: AdminApi, questionId: string, assetI
       content: detail.content,
       solution: detail.solution,
       commonMistakes: detail.commonMistakes ?? [],
-      attachmentIds: [...(detail.attachmentIds ?? []), assetId],
+      attachmentIds,
       body: detail.body,
       sourceCode: summary.sourceCode,
     },
@@ -831,20 +885,40 @@ async function attachAssetToQuestion(admin: AdminApi, questionId: string, assetI
   return ready.status() === 200;
 }
 
-/** Gắn cùng một tệp vào mọi câu của danh sách (tám luồng song song); trả số câu gắn được và số câu lỗi. */
-export async function attachAssetToQuestions(admin: AdminApi, questions: QuestionSummaryLite[], assetId: string): Promise<{ ok: number; failed: number }> {
+/** Chạy `task` cho mọi câu của danh sách (tám luồng song song); trả số câu thành công và số câu lỗi. */
+async function forEachQuestion(
+  questions: QuestionSummaryLite[],
+  task: (question: QuestionSummaryLite) => Promise<boolean>,
+): Promise<{ ok: number; failed: number }> {
   let next = 0;
   let ok = 0;
   let failed = 0;
   const worker = async () => {
     while (next < questions.length) {
       const question = questions[next++]!;
-      if (await attachAssetToQuestion(admin, question.id, assetId)) ok += 1;
+      if (await task(question)) ok += 1;
       else failed += 1;
     }
   };
   await Promise.all(Array.from({ length: 8 }, worker));
   return { ok, failed };
+}
+
+/** Gắn cùng một tệp vào mọi câu của danh sách; trả số câu gắn được và số câu lỗi. */
+export async function attachAssetToQuestions(admin: AdminApi, questions: QuestionSummaryLite[], assetId: string): Promise<{ ok: number; failed: number }> {
+  return forEachQuestion(questions, (question) =>
+    changeQuestionAttachments(admin, question.id, (current) => [...current, assetId]),
+  );
+}
+
+/**
+ * Gỡ tệp đã gắn bằng `attachAssetToQuestions`, trả mỗi câu về danh sách đính kèm ban đầu (câu không mang tệp thì bỏ qua,
+ * nên gọi được cả khi lần gắn dở chừng). Mỗi câu có thêm phiên bản mới nhưng đính kèm và nội dung không đổi.
+ */
+export async function detachAssetFromQuestions(admin: AdminApi, questions: QuestionSummaryLite[], assetId: string): Promise<{ ok: number; failed: number }> {
+  return forEachQuestion(questions, (question) =>
+    changeQuestionAttachments(admin, question.id, (current) => (current.includes(assetId) ? current.filter((id) => id !== assetId) : null)),
+  );
 }
 
 /* ---------- Kho lưu trữ S3/MinIO: xóa và khôi phục tệp nguồn (kịch bản ATTACHMENT_MISSING) ---------- */

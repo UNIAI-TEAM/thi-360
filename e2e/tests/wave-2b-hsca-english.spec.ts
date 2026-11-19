@@ -162,9 +162,9 @@ test("H-SCA Tiếng Anh Nghe: mất tệp nghe báo ATTACHMENT_MISSING và khôn
   await expect(page.getByLabel("Tổng hợp cấu trúc")).toBeVisible();
 
   // Xóa toàn bộ tệp nghe khỏi kho lưu trữ: mọi câu Nghe đều mất tệp nên kiểm tra chắc chắn bắt được.
-  for (const file of AUDIO_FILES) await s3DeleteObject(hscaAudioKey(file));
-
+  // Vòng xóa nằm trong `try`: xóa dở chừng thì `finally` vẫn trả lại mọi tệp.
   try {
+    for (const file of AUDIO_FILES) await s3DeleteObject(hscaAudioKey(file));
     const failed = await continueToReviewInUi(page, id);
     const missing = collectIssues(failed).filter((issue) => issue.code === "ATTACHMENT_MISSING");
     expect(missing.length, `không có ATTACHMENT_MISSING: ${JSON.stringify(failed)}`).toBeGreaterThan(0);

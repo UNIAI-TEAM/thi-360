@@ -16,6 +16,7 @@ import {
   openBlockInUi,
   partCardNames,
   renameFirstBlockAndSaveInUi,
+  setMaxScoreInGeneralTab,
   SOLVER_TIMEOUT_MS,
   SCENARIO_TIMEOUT_MS,
   expectWritingSwitchLocked,
@@ -76,13 +77,9 @@ test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Vi
   const baseline = await continueToReviewInUi(page, id);
   expect(baseline.status, `lỗi chặn: ${blockingCodes(baseline).join(", ")}`).toBe("VALID");
 
-  // Đặt thang 150 (dữ liệu chuẩn bị, bước 1 không có ô thang cho môn có điểm theo phần): máy chủ nhận PATCH.
-  const patched = await admin.api.patch(`${ADMIN_URL}/api/v1/admin/exams/${id}`, {
-    headers: admin.headers,
-    data: { maxScore: 150, expectedRevision: (await getExam(admin, id)).revision },
-  });
-  expect(patched.status(), await patched.text()).toBe(200);
-  expect((await getExam(admin, id)).maxScore).toBe(150);
+  // Đặt thang 150 qua tab "Thông tin chung" (ô "Thang điểm" luôn hiện, lưu bằng "Lưu thông tin"): thang là đầu vào của
+  // kết quả kiểm tra đang thử, nên đi qua màn hình chứ không ghi thẳng bằng API.
+  await setMaxScoreInGeneralTab(page, admin, id, 150);
 
   // Kiểm tra: thang 150 lệch đúng 30 điểm của phần Viết đã lược, báo một lỗi chặn riêng thay cho POINTS_TOTAL_MISMATCH.
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);

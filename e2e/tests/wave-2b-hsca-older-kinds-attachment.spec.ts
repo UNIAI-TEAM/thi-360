@@ -3,6 +3,7 @@ import { ADMIN_URL, adminApi, loginAdmin } from "./helpers/editor-qa";
 import {
   attachAssetToQuestions,
   collectIssues,
+  detachAssetFromQuestions,
   continueToReviewInUi,
   examCode,
   fillExamStep1InUi,
@@ -69,8 +70,9 @@ async function recheck(page: Page, id: string): Promise<CheckResult> {
 /**
  * Nghiệm thu bổ sung H-SCA/V-SAT (QA addendum mục 8, H48): bảy kỳ thi cũ, mỗi kỳ một bài theo môn Toán. Kiểm tra trước khi
  * có câu đính kèm, rồi gắn một tệp PDF đọc được vào mọi câu Sẵn sàng của môn Toán (nên chắc chắn có câu đính kèm trong đề
- * chứng minh) và kiểm tra lại: kết quả giống hệt và không có ATTACHMENT_MISSING. Tệp đã gắn không được gỡ (câu mới có phiên
- * bản mới); chỉ cần đọc được nên không ảnh hưởng kịch bản khác.
+ * chứng minh) và kiểm tra lại: kết quả giống hệt và không có ATTACHMENT_MISSING. Câu Toán là dữ liệu dùng chung của kho nên
+ * tệp được gỡ trong `finally` (mỗi câu trả về danh sách đính kèm ban đầu, kể cả khi kịch bản hỏng giữa chừng); kho chỉ có
+ * thêm phiên bản của câu, đính kèm và nội dung không đổi giữa các lần chạy.
  */
 test("Bảy kỳ thi cũ: kết quả kiểm tra không đổi khi câu có tệp đính kèm", async ({ context, page }) => {
   await loginAdmin(context, "vi");
@@ -89,13 +91,18 @@ test("Bảy kỳ thi cũ: kết quả kiểm tra không đổi khi câu có tệ
   const questions = await listReadyQuestions(admin, "TOAN");
   expect(questions.length, "không có câu Toán Sẵn sàng để gắn tệp").toBeGreaterThan(0);
   const assetId = await uploadQuestionAsset(admin, "w2b-att.pdf", "application/pdf", PDF);
-  const attached = await attachAssetToQuestions(admin, questions, assetId);
-  expect(attached.failed, `gắn tệp lỗi ở ${attached.failed}/${questions.length} câu`).toBe(0);
-  expect(attached.ok).toBe(questions.length);
+  try {
+    const attached = await attachAssetToQuestions(admin, questions, assetId);
+    expect(attached.failed, `gắn tệp lỗi ở ${attached.failed}/${questions.length} câu`).toBe(0);
+    expect(attached.ok).toBe(questions.length);
 
-  for (const kind of OLDER_KINDS) {
-    const check = await recheck(page, ids.get(kind)!);
-    expect(collectIssues(check).map((issue) => issue.code), `${kind}: ATTACHMENT_MISSING`).not.toContain("ATTACHMENT_MISSING");
-    expect(digest(check), `${kind}: kết quả kiểm tra sau khi gắn tệp`).toEqual(before.get(kind));
+    for (const kind of OLDER_KINDS) {
+      const check = await recheck(page, ids.get(kind)!);
+      expect(collectIssues(check).map((issue) => issue.code), `${kind}: ATTACHMENT_MISSING`).not.toContain("ATTACHMENT_MISSING");
+      expect(digest(check), `${kind}: kết quả kiểm tra sau khi gắn tệp`).toEqual(before.get(kind));
+    }
+  } finally {
+    const detached = await detachAssetFromQuestions(admin, questions, assetId);
+    expect(detached.failed, `gỡ tệp lỗi ở ${detached.failed}/${questions.length} câu`).toBe(0);
   }
 });

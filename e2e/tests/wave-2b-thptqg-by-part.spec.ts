@@ -49,7 +49,9 @@ test("THPTQG Ngữ văn theo phần: thời lượng nạp sẵn 120, tạo và 
   expect(exam.scope).toBe("PART");
   expect(exam.questionCount).toBe(7);
   expect(exam.maxScore).toBe(10);
-  expect(exam.durationMinutes).toBe(120);
+  // THPTQG Ngữ văn theo phần có `timing = PER_PART`: đồng hồ nằm ở phần, không ở bài.
+  expect(exam.durationMinutes).toBeNull();
+  expect((await getStructure(admin, id)).parts[0]!.durationMinutes).toBe(120);
 
   await expectStructureQuestions(page, /^7(\D|$)/);
   await renameFirstBlockAndSaveInUi(page, admin, id);
@@ -70,7 +72,9 @@ test("THPTQG Tiếng Anh theo phần: thời lượng nạp sẵn 50, kiểm tra
   const exam = await getExam(admin, id);
   expect(exam.scope).toBe("PART");
   expect(exam.questionCount).toBe(40);
-  expect(exam.durationMinutes).toBe(50);
+  // `timing = PER_PART`: đồng hồ nằm ở phần, không ở bài.
+  expect(exam.durationMinutes).toBeNull();
+  expect((await getStructure(admin, id)).parts[0]!.durationMinutes).toBe(50);
 
   await renameFirstBlockAndSaveInUi(page, admin, id);
   const check = await continueToReviewInUi(page, id);

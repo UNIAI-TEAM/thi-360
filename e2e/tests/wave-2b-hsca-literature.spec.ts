@@ -21,6 +21,7 @@ import {
   openBlockInUi,
   publishInUi,
   renameFirstBlockAndSaveInUi,
+  restoreOmittedBlockInUi,
   SCENARIO_TIMEOUT_MS,
   SOLVER_TIMEOUT_MS,
 } from "./helpers/wave-2b";
@@ -93,8 +94,9 @@ test("H-SCA Ngữ văn: công bố bài Đọc hiểu; phần Viết không bậ
   await expect(page.getByText(/nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
   await expectPublishRefused(page, admin, id, reenabled);
 
-  // Trả nhóm về trạng thái tham chiếu (PUT), kiểm tra đạt.
-  await forceBlockOmitted(admin, id, writing[0]!.id!, true);
+  // Trả nhóm về trạng thái tham chiếu bằng giao diện: bật "Tạm bỏ qua" (còn bấm được vì nhóm đang được bật lại), thấy công
+  // tắc khóa kèm lý do, Lưu; rồi kiểm tra đạt.
+  await restoreOmittedBlockInUi(page, admin, id, writing[0]!.id!, writing[0]!.name);
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
   await expectStructureQuestions(page, /^20(\D|$)/);
   const fixed = await continueToReviewInUi(page, id);
