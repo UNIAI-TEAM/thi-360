@@ -46,15 +46,27 @@ async function openCell(cell: MatrixCell, signedIn: boolean): Promise<{ context:
 /**
  * Giữ lại yêu cầu tới `pattern` tới khi gọi `release()`: chụp được khung chờ hay nút đang gửi mà không phụ thuộc tốc
  * độ máy. `abort` thay cho `continue` khi yêu cầu có tác dụng thật (đăng ký tài khoản).
+ *
+ * `release()` mở cổng, chờ mọi yêu cầu đang giữ được xử lý đúng một lần rồi mới gỡ route: gỡ route hay điều hướng khi
+ * yêu cầu còn treo làm `route.abort` báo "Route is already handled!".
  */
-async function holdApi(page: Page, pattern: string, finish: "continue" | "abort" = "continue"): Promise<() => void> {
-  const { promise: gate, resolve: release } = Promise.withResolvers<void>();
-  await page.route(pattern, async (route) => {
-    await gate;
-    if (finish === "abort") await route.abort();
-    else await route.continue();
+async function holdApi(
+  page: Page,
+  pattern: string,
+  finish: "continue" | "abort" = "continue",
+): Promise<() => Promise<void>> {
+  const { promise: gate, resolve: open } = Promise.withResolvers<void>();
+  const handled: Promise<void>[] = [];
+  await page.route(pattern, (route) => {
+    const once = gate.then(() => (finish === "abort" ? route.abort() : route.continue()));
+    handled.push(once);
+    return once;
   });
-  return release;
+  return async () => {
+    open();
+    await Promise.all(handled);
+    await page.unroute(pattern);
+  };
 }
 
 async function failApi(page: Page, pattern: string, status: number, body: object): Promise<void> {
@@ -96,8 +108,7 @@ for (const cell of matrixCells()) {
         await page.locator("form button[type=submit]").click();
         await expectSubmitting(page);
         await expectMatrixClean(page, "register-submitting", cell);
-        releaseRegister();
-        await page.unroute("**/api/v1/auth/register");
+        await releaseRegister();
 
         // Hộp thoại điều khoản.
         await page.goto(`${WEB_URL}/register`);
@@ -128,8 +139,7 @@ for (const cell of matrixCells()) {
         await page.locator("form button[type=submit]").click();
         await expectSubmitting(page);
         await expectMatrixClean(page, "forgot-password-submitting", cell);
-        releaseForgot();
-        await page.unroute("**/api/v1/auth/password/forgot");
+        await releaseForgot();
 
         // Đã gửi.
         await page.goto(`${WEB_URL}/forgot-password`);
@@ -156,8 +166,7 @@ for (const cell of matrixCells()) {
         await page.locator("form button[type=submit]").click();
         await expectSubmitting(page);
         await expectMatrixClean(page, "reset-password-submitting", cell);
-        releaseReset();
-        await page.unroute("**/api/v1/auth/password/reset");
+        await releaseReset();
 
         await page.goto(`${WEB_URL}/reset-password`);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -175,16 +184,15 @@ for (const cell of matrixCells()) {
         await page.goto(`${WEB_URL}/verify-email`, { waitUntil: "commit" });
         await expect(page.locator("[role=status][aria-label]")).toBeVisible();
         await expectMatrixClean(page, "verify-email-loading", cell);
-        releaseVerify();
+        await releaseVerify();
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expect(page.locator("input[autocomplete=one-time-code]")).toBeVisible();
         await expectMatrixClean(page, "verify-email", cell);
-        await page.unroute("**/api/v1/me/profile");
 
         // Xác minh email: lỗi tải hồ sơ.
         await failApi(page, "**/api/v1/me/profile", 500, SERVER_ERROR);
         await page.goto(`${WEB_URL}/verify-email`);
-        await expect(page.locator("main").getByRole("button")).toBeVisible();
+        await expect(page.getByRole("button", { name: cell.lang === "vi" ? "Thử lại" : "Retry", exact: true })).toBeVisible();
         await expectMatrixClean(page, "verify-email-error", cell);
         await page.unroute("**/api/v1/me/profile");
 
@@ -193,13 +201,12 @@ for (const cell of matrixCells()) {
         await page.goto(`${WEB_URL}/account/profile`, { waitUntil: "commit" });
         await expect(page.locator("[role=status][aria-label]")).toBeVisible();
         await expectMatrixClean(page, "profile-loading", cell);
-        releaseProfile();
+        await releaseProfile();
 
         // Hồ sơ: dữ liệu ở trạng thái rỗng (chưa có ảnh, chưa số điện thoại, email chưa xác minh).
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expect(page.locator("#profile-email-title")).toBeVisible();
         await expectMatrixClean(page, "profile-empty", cell);
-        await page.unroute("**/api/v1/me/profile");
 
         // Hồ sơ: có ảnh đại diện, số điện thoại và email mới đang chờ xác minh.
         await page.route("**/api/v1/me/profile", (route) =>
@@ -230,7 +237,7 @@ for (const cell of matrixCells()) {
         // Hồ sơ: lỗi tải.
         await failApi(page, "**/api/v1/me/profile", 500, SERVER_ERROR);
         await page.goto(`${WEB_URL}/account/profile`);
-        await expect(page.locator("main").getByRole("button")).toBeVisible();
+        await expect(page.getByRole("button", { name: cell.lang === "vi" ? "Thử lại" : "Retry", exact: true })).toBeVisible();
         await expectMatrixClean(page, "profile-error", cell);
       } finally {
         await context.close();
