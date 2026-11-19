@@ -90,9 +90,21 @@ class E2eClockApiIT extends AbstractIntegrationTest {
         assertThat(serverNow()).isBetween(before, Instant.now().plusSeconds(1));
     }
 
+    private void assertRejectedAndClockUnchanged(String[] bodies) throws Exception {
+        MutableClock mutable = (MutableClock) clock;
+        Duration offsetBefore = mutable.offset();
+        for (String body : bodies) {
+            mockMvc.perform(post(CLOCK).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+            assertThat(mutable.offset()).as("clock state after rejected body %s", body).isEqualTo(offsetBefore);
+        }
+    }
+
     @Test
     void invalidBodyAnswers400() throws Exception {
-        for (String body : new String[] {
+        postClock("{\"advanceSeconds\":100}");
+        assertRejectedAndClockUnchanged(new String[] {
                 "{}",
                 "{\"reset\":false}",
                 "{\"at\":\"2031-05-06T07:08:09Z\",\"advanceSeconds\":5}",
@@ -104,16 +116,70 @@ class E2eClockApiIT extends AbstractIntegrationTest {
                 "{\"advanceSeconds\":\"soon\"}",
                 "{\"advanceSeconds\":-5}",
                 "{\"unknown\":1}",
-                "[]"}) {
-            mockMvc.perform(post(CLOCK).contentType(MediaType.APPLICATION_JSON).content(body))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
-        }
+                "[]",
+                "7",
+                "null",
+                "{\"reset\":"});
         // Thân rỗng hẳn.
         mockMvc.perform(post(CLOCK).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
-        // Mọi yêu cầu lỗi đều không đổi đồng hồ.
-        assertThat(Duration.between(Instant.now(), serverNow()).abs()).isLessThan(Duration.ofSeconds(10));
+        // Mọi yêu cầu lỗi đều không đổi đồng hồ: vẫn là lần tua 100 giây.
+        assertThat(((MutableClock) clock).offset()).isEqualTo(Duration.ofSeconds(100));
+        assertThat(Duration.between(Instant.now(), serverNow()).abs()).isLessThan(Duration.ofSeconds(110));
+    }
+
+    /** R1-05, R1-09: một thao tác hợp lệ kèm trường thừa, trường null/false, sai kiểu hoặc khóa trùng. */
+    @Test
+    void validOperationWithExtraFieldsOrWrongTypesAnswers400AndKeepsClock() throws Exception {
+        postClock("{\"advanceSeconds\":100}");
+        assertRejectedAndClockUnchanged(new String[] {
+                // thao tác hợp lệ cộng trường thứ hai bị bỏ qua nếu chỉ đếm giá trị hiệu lực
+                "{\"reset\":true,\"at\":null}",
+                "{\"reset\":true,\"advanceSeconds\":null}",
+                "{\"advanceSeconds\":5,\"reset\":false}",
+                "{\"advanceSeconds\":5,\"reset\":null}",
+                "{\"at\":\"2031-05-06T07:08:09Z\",\"reset\":false}",
+                "{\"at\":\"2031-05-06T07:08:09Z\",\"unknown\":1}",
+                "{\"reset\":true,\"unknown\":false}",
+                "{\"advanceSeconds\":5,\"extra\":null}",
+                // sai kiểu mà mapper mặc định ép được
+                "{\"advanceSeconds\":3600.5}",
+                "{\"advanceSeconds\":1e3}",
+                "{\"advanceSeconds\":\"60\"}",
+                "{\"advanceSeconds\":true}",
+                "{\"advanceSeconds\":null}",
+                "{\"reset\":\"true\"}",
+                "{\"reset\":1}",
+                "{\"reset\":null}",
+                "{\"at\":1767225600}",
+                "{\"at\":true}",
+                "{\"at\":null}",
+                // khóa trùng và dữ liệu thừa sau gốc
+                "{\"reset\":true,\"reset\":true}",
+                "{\"advanceSeconds\":5,\"advanceSeconds\":6}",
+                "{\"reset\":true} {}",
+                "{\"reset\":true}x"});
+        assertThat(Duration.between(Instant.now(), serverNow()).abs()).isLessThan(Duration.ofSeconds(110));
+    }
+
+    /** R1-04: giờ kết quả ngoài khoảng đọc được bị từ chối trước khi ghi; đồng hồ vẫn đọc được. */
+    @Test
+    void outOfRangeTimesAnswer400AndKeepTheClockReadable() throws Exception {
+        Instant advanced = postClock("{\"advanceSeconds\":100}");
+        assertRejectedAndClockUnchanged(new String[] {
+                "{\"advanceSeconds\":9223372036854775807}",
+                "{\"advanceSeconds\":99999999999999999999}",
+                "{\"advanceSeconds\":252000000000}",
+                "{\"at\":\"+999999999-12-31T23:59:59Z\"}",
+                "{\"at\":\"-999999999-01-01T00:00:00Z\"}",
+                "{\"at\":\"9000-01-01T00:00:01Z\"}",
+                "{\"at\":\"0000-12-31T23:59:59Z\"}"});
+
+        // GET vẫn đọc được, vẫn ở độ lệch trước đó; tua hợp lệ tiếp theo chạy bình thường.
+        Instant read = serverNow();
+        assertThat(Duration.between(advanced, read).abs()).isLessThan(Duration.ofSeconds(10));
+        Instant again = postClock("{\"advanceSeconds\":60}");
+        assertThat(Duration.between(read, again)).isBetween(Duration.ofSeconds(60), Duration.ofSeconds(70));
     }
 
     @Test
