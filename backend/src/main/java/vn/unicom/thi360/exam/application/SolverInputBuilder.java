@@ -115,6 +115,22 @@ public class SolverInputBuilder {
             return Map.copyOf(loaded);
         }
 
+        /**
+         * Single questions of the subject that match the source nodes of {@code group} (the group's own knowledge
+         * scope and exclusions, no other condition): what the admin has when the group needs whole sets and
+         * only scattered questions carry the code (UNI-2758). -1 when the pool is truncated and so unknown.
+         */
+        public long singlesFor(GroupQuota group) {
+            var filter = filters.get(group);
+            if (filter == null || filter.subjectId() == null) return -1;
+            var singles = new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(), List.of(), null,
+                    null, null, List.of(), List.of(), null, null, List.of(), List.of(), List.of(), List.of(), List.of(),
+                    null, List.of(), QuestionSourcePort.AudioRequirement.ANY, filter.excludedKnowledge());
+            var found = source.findCandidates(singles, fetchLimit);
+            if (found.size() >= fetchLimit) return -1;
+            return found.stream().filter(candidate -> candidate.setId() == null).count();
+        }
+
         public enum FilterDimension { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION, AUDIO, POINTS }
 
         /** Source counts in selection units, with one declared filter removed at a time. */

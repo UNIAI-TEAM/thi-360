@@ -942,6 +942,9 @@ public final class ExamCheckRules {
             failure.put("available", item.available());
             issues.key(failure);
             if (item.quotaId() != null) failure.put("key", failure.path("key").asText() + "|" + item.quotaId());
+            SectionContext context = sections.get(item.location().sectionId());
+            // A compiled quota carries its MAPID rule's id: the shortage names the rule and its nodes (UNI-2758).
+            if (context != null) MapidRuleNaming.name(failure, context.section, item.quotaId());
             found.add(failure);
         }
         return found;
