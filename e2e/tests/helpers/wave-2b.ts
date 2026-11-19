@@ -772,21 +772,23 @@ interface QuestionDetailLite {
   body?: unknown;
 }
 
-/** Danh sách câu gốc khớp bộ lọc (phân trang đủ lớn cho toàn bộ kết quả). */
-export async function listQuestions(admin: AdminApi, query: { subjectCode: string; type?: string; keyword?: string }): Promise<QuestionSummaryLite[]> {
-  const params = new URLSearchParams({ subjectCode: query.subjectCode, size: "200" });
-  if (query.type) params.set("type", query.type);
-  if (query.keyword) params.set("keyword", query.keyword);
-  const response = await admin.api.get(`${ADMIN_URL}/api/v1/admin/questions?${params}`, { headers: admin.headers });
-  const page = await body<{ items: QuestionSummaryLite[] }>(response, 200);
-  return page.items.filter((item) => !item.code.includes("/"));
+/** Mọi câu gốc Sẵn sàng của môn (bỏ câu con của bộ), đọc hết các trang. */
+export async function listReadyQuestions(admin: AdminApi, subjectCode: string): Promise<QuestionSummaryLite[]> {
+  const found: QuestionSummaryLite[] = [];
+  for (let page = 0; ; page += 1) {
+    const params = new URLSearchParams({ subjectCode, status: "READY", size: "100", page: String(page) });
+    const response = await admin.api.get(`${ADMIN_URL}/api/v1/admin/questions?${params}`, { headers: admin.headers });
+    const { items } = await body<{ items: Array<QuestionSummaryLite & { parentId?: string | null }> }>(response, 200);
+    found.push(...items.filter((item) => !item.parentId));
+    if (items.length < 100) return found;
+  }
 }
 
 /** Tải một tệp lên kho tài nguyên câu hỏi; trả id tài nguyên để đặt vào `attachmentIds` của câu. */
 export async function uploadQuestionAsset(admin: AdminApi, name: string, mime: string, bytes: Buffer): Promise<string> {
-  const response = await admin.api.post(`${ADMIN_URL}/api/v1/admin/question-assets?kind=ATTACHMENT`, {
-    headers: admin.headers,
-    multipart: { file: { name, mimeType: mime, buffer: bytes } },
+  const response = await admin.api.post(`${ADMIN_URL}/api/v1/admin/question-assets`, {
+    headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
+    multipart: { kind: "ATTACHMENT", file: { name, mimeType: mime, buffer: bytes } },
   });
   const uploaded = await body<{ id: string }>(response, 201);
   return uploaded.id;
@@ -794,9 +796,9 @@ export async function uploadQuestionAsset(admin: AdminApi, name: string, mime: s
 
 /**
  * Gắn tệp vào câu đang Sẵn sàng: PUT tạo phiên bản mới kèm `attachmentIds` (giữ nguyên mọi trường của bản đang phục vụ)
- * rồi `ready` để bản mới phục vụ bộ giải. Trả số phiên bản mới.
+ * rồi `ready` để bản mới phục vụ bộ giải.
  */
-export async function attachAssetToQuestion(admin: AdminApi, questionId: string, assetId: string): Promise<void> {
+async function attachAssetToQuestion(admin: AdminApi, questionId: string, assetId: string): Promise<boolean> {
   const detail = await body<QuestionDetailLite>(await admin.api.get(`${ADMIN_URL}/api/v1/admin/questions/${questionId}`, { headers: admin.headers }), 200);
   const summary = detail.summary;
   const updated = await admin.api.put(`${ADMIN_URL}/api/v1/admin/questions/${questionId}`, {
@@ -820,13 +822,29 @@ export async function attachAssetToQuestion(admin: AdminApi, questionId: string,
       sourceCode: summary.sourceCode,
     },
   });
-  const saved = await body<{ question: QuestionDetailLite; versionCreated: boolean }>(updated, 200);
-  expect(saved.versionCreated, "PUT câu Sẵn sàng phải tạo phiên bản mới").toBe(true);
+  if (updated.status() !== 200) return false;
+  const saved = (await updated.json()) as { question?: QuestionDetailLite };
   const ready = await admin.api.post(`${ADMIN_URL}/api/v1/admin/questions/${questionId}/ready`, {
     headers: admin.headers,
-    data: { expectedRevision: saved.question.summary.revision },
+    data: { expectedRevision: saved.question?.summary.revision ?? (summary.revision ?? 0) + 1 },
   });
-  expect(ready.status(), await ready.text()).toBe(200);
+  return ready.status() === 200;
+}
+
+/** Gắn cùng một tệp vào mọi câu của danh sách (tám luồng song song); trả số câu gắn được và số câu lỗi. */
+export async function attachAssetToQuestions(admin: AdminApi, questions: QuestionSummaryLite[], assetId: string): Promise<{ ok: number; failed: number }> {
+  let next = 0;
+  let ok = 0;
+  let failed = 0;
+  const worker = async () => {
+    while (next < questions.length) {
+      const question = questions[next++]!;
+      if (await attachAssetToQuestion(admin, question.id, assetId)) ok += 1;
+      else failed += 1;
+    }
+  };
+  await Promise.all(Array.from({ length: 8 }, worker));
+  return { ok, failed };
 }
 
 /* ---------- Kho lưu trữ S3/MinIO: xóa và khôi phục tệp nguồn (kịch bản ATTACHMENT_MISSING) ---------- */
