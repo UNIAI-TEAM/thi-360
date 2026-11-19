@@ -61,8 +61,12 @@ export interface UiStrings {
     trueFalseHelp: string;
     leftColumn: string;
     rightColumn: string;
+    /** Hướng dẫn của cách bấm hai lượt ("pick"): chỉ nói những gì cách đó hiện (nút Ghép với, nút X). */
     matchHelp: string;
+    /** Luật dùng một lần của cách chọn trong danh sách ("select"): lựa chọn đã ghép bị làm mờ. */
     matchExclusive: string;
+    /** Luật dùng một lần của cách bấm hai lượt ("pick"): lựa chọn đã ghép hiện nhãn "Đã dùng". */
+    matchExclusivePick: string;
     matchReusable: string;
     matchWith: string;
     matchPlaceholder: string;
@@ -202,9 +206,11 @@ export const UI_STRINGS_VI: UiStrings = {
     leftColumn: "Cột trái",
     rightColumn: "Cột phải",
     matchHelp:
-      "Hai cách ghép: chọn trong danh sách ở từng mục, hoặc bấm một mục ở cột trái rồi bấm lựa chọn ở cột phải. Dùng Tab để di chuyển, Enter hoặc Space để bấm.",
+      "Bấm một mục ở cột trái, rồi bấm “Ghép với” ở lựa chọn bên cột phải. Bấm dấu X cạnh mục đã ghép để bỏ ghép. Dùng Tab để di chuyển, Enter hoặc Space để bấm.",
     matchExclusive:
-      "Mỗi lựa chọn ở cột phải chỉ dùng một lần. Lựa chọn đã ghép hiện “Đã dùng” và không chọn được cho mục khác; bỏ ghép để dùng lại.",
+      "Chọn lựa chọn cho từng mục trong danh sách. Mỗi lựa chọn chỉ dùng một lần: lựa chọn đã ghép bị làm mờ trong danh sách của các mục khác; bỏ ghép để dùng lại.",
+    matchExclusivePick:
+      "Mỗi lựa chọn chỉ dùng một lần: lựa chọn đã ghép hiện “Đã dùng”; bỏ ghép mục đó để dùng lại.",
     matchReusable: "Một lựa chọn ở cột phải có thể ghép với nhiều mục.",
     matchWith: "Ghép với",
     matchPlaceholder: "Chọn…",
@@ -355,9 +361,11 @@ export const UI_STRINGS_EN: UiStrings = {
     leftColumn: "Left column",
     rightColumn: "Right column",
     matchHelp:
-      "Two ways to match: pick from the list on each item, or click an item on the left then a choice on the right. Use Tab to move, Enter or Space to activate.",
+      "Click an item on the left, then “Match with” on a choice on the right. Click the X next to a matched item to unmatch it. Use Tab to move, Enter or Space to activate.",
     matchExclusive:
-      "Each right-column choice can be used once. A matched choice shows “Used” and cannot be picked for another item; unmatch to reuse it.",
+      "Pick a choice for each item from its list. Each choice can be used once: a matched choice is dimmed in the other items’ lists; unmatch it to reuse it.",
+    matchExclusivePick:
+      "Each choice can be used once: a matched choice shows “Used”; unmatch that item to reuse it.",
     matchReusable: "A right-column choice can match multiple items.",
     matchWith: "Match with",
     matchPlaceholder: "Select…",

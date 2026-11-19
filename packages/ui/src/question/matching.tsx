@@ -78,7 +78,11 @@ export function MatchingQuestion({
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-caption text-text-secondary">
-              {matchUi === "pick" ? strings.matchHelp : reuse ? strings.matchReusable : strings.matchExclusive}
+              {matchUi === "pick"
+                ? `${strings.matchHelp} ${reuse ? strings.matchReusable : strings.matchExclusivePick}`
+                : reuse
+                  ? strings.matchReusable
+                  : strings.matchExclusive}
             </p>
             <p role="status" className="text-caption font-medium text-text-secondary tabular-nums">
               {strings.matchDone(done, left.length)}
