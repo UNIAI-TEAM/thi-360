@@ -231,6 +231,22 @@ class MapidCapSolverTest {
     }
 
     @Test
+    void aShortageIsNotBlamedOnACapThatNeedsTheOtherCapRelaxedToo() {
+        // Two A+B singles fill the group of two. Each is individually over capA only (capB = 1 holds one), but
+        // relaxing capA alone leaves the pair over capB: neither cap alone explains the shortage (UNI-2758 R2-3).
+        for (int i = 0; i < 2; i++) add(QuestionType.SHORT_ANSWER, candidate("d" + i, QuestionType.SHORT_ANSWER, A, B));
+        for (MapidRule[] order : new MapidRule[][] {
+                {exact("capA", null, 0, A), exact("capB", null, 1, B)},
+                {exact("capB", null, 1, B), exact("capA", null, 0, A)}}) {
+            PathResult result = solve(section(2, List.of(single("g1", QuestionType.SHORT_ANSWER, 2)), order),
+                    SolveMode.check());
+            assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
+            assertThat(result.groupId()).isEqualTo("g1");
+            assertThat(result.failingQuota()).as("%s first", order[0].id()).isNull();
+        }
+    }
+
+    @Test
     void aCapThatAloneKeepsEnoughCandidatesOutIsStillNamedInEitherOrder() {
         // a0/a1 are over capA only, d0 over both: relaxing capA frees a0 and a1, which closes the gap.
         for (int i = 0; i < 2; i++) add(QuestionType.SHORT_ANSWER, candidate("a" + i, QuestionType.SHORT_ANSWER, A));
