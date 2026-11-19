@@ -33,9 +33,6 @@ import vn.unicom.thi360.shared.api.NotFoundException;
  *   <li>{@link #compensate} throws {@link ConflictException}
  *       ({@code GRANT_REFUNDED}) when the grant the attempt drew from was fully
  *       refunded.</li>
- *   <li>Usage that exists but is in a state the call no longer applies to
- *       ({@code release} after {@code USED}, {@code confirmUse} after
- *       {@code RELEASED}) changes nothing and does not fail.</li>
  * </ul>
  *
  * <p>Attempts are consumed in grant order: oldest grant with attempts left
