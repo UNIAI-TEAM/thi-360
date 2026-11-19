@@ -116,6 +116,33 @@ function diffWire(before: unknown, after: unknown, path = "$"): string[] {
   return [`${path}: ${JSON.stringify(a)} -> ${JSON.stringify(b)}`];
 }
 
+/** Đọc giá trị theo đường dẫn `$.a[2].b` mà `diffWire` in ra. */
+function valueAtPath(root: unknown, path: string): unknown {
+  return path
+    .replace(/^\$\.?/, "")
+    .replace(/\[(\d+)\]/g, ".$1")
+    .split(".")
+    .filter(Boolean)
+    .reduce<unknown>((node, key) => (node && typeof node === "object" ? (node as Wire)[key] : undefined), root);
+}
+
+/**
+ * Chênh lệch thuộc đúng đường dẫn HSA-C không (review R1-1): `.matrix.gradeEnforcement`, `.matrix.difficultyEnforcement`
+ * của mục hoặc khối, và `.topicQuotas[i].enforcement` CHỈ khi chỉ tiêu đó gắn đúng một môn. `examQuotas` (đường dẫn
+ * `$.examQuotas[i]...`) và chỉ tiêu chủ đề nhiều môn (H6) không bao giờ được cho phép.
+ */
+function hsaCEnforcementPath(expected: { parts: Wire[]; examQuotas: unknown[] }, line: string): boolean {
+  const match = /^(\$.+?)\.(gradeEnforcement|difficultyEnforcement|enforcement): "REFERENCE" -> "REQUIRED"$/.exec(line);
+  if (!match) return false;
+  const [, base, field] = match as unknown as [string, string, string];
+  if (base.endsWith(".matrix")) return true;
+  if (field !== "enforcement") return false;
+  const quotaMatch = /^(.*\.topicQuotas)\[(\d+)\]$/.exec(base);
+  if (!quotaMatch) return false;
+  const quota = valueAtPath(expected, `${quotaMatch[1]}[${quotaMatch[2]}]`) as { subjectCodes?: string[] } | undefined;
+  return quota?.subjectCodes === undefined || quota.subjectCodes.length === 1;
+}
+
 async function createStructureExam(
   admin: { api: APIRequestContext; headers: Record<string, string> },
   data: Record<string, unknown>,
@@ -201,8 +228,21 @@ test("PUT wire giữ nguyên GET đã nạp, chỉ đổi ô đã sửa (HSA FUL
     const expected = structuredClone({ parts: before.parts, examQuotas: before.examQuotas ?? [] }) as { parts: Wire[]; examQuotas: unknown[] };
     expected.parts[0]!.maxPoints = Number(edited);
     const diffs = diffWire(expected, { parts: sent.parts, examQuotas: sent.examQuotas ?? [] });
-    const allowed = item.hsa ? diffs.filter((line) => !/\.enforcement: "REFERENCE" -> "REQUIRED"$/.test(line)) : diffs;
+    // Chỉ cho phép đúng đường dẫn HSA-C: mức enforcement của ma trận và của chỉ tiêu chủ đề MỘT môn. Không bao giờ cho
+    // `examQuotas` (chỉ tiêu Anh chờ chuyên gia, AC-56) và chỉ tiêu nhiều môn (H6), và không cho đường dẫn nào khác.
+    const allowed = item.hsa ? diffs.filter((line) => !hsaCEnforcementPath(expected, line)) : diffs;
     expect(allowed, `${item.name}: PUT khác GET ngoài ô đã sửa`).toEqual([]);
+
+    // FTM AC-56: chỉ tiêu cấp bài của Tiếng Anh (chờ chuyên gia) phải còn Tham khảo và không đổi khi lưu.
+    if (item.hsa) {
+      const englishQuotas = (sent.examQuotas ?? []).filter(
+        (quota) => (quota as { subjectCodes?: string[] }).subjectCodes?.length === 1 && (quota as { subjectCodes?: string[] }).subjectCodes?.[0] === "ANH",
+      );
+      for (const quota of englishQuotas) {
+        expect((quota as { enforcement?: string }).enforcement, `${item.name}: chỉ tiêu Anh đổi sang Bắt buộc`).toBe("REFERENCE");
+      }
+      expect(diffWire(before.examQuotas ?? [], sent.examQuotas ?? []), `${item.name}: examQuotas đổi`).toEqual([]);
+    }
 
     const after = await getStructureWire(admin, id);
     expect(
