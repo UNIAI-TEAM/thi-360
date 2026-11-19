@@ -51,7 +51,9 @@ public record UpdateCatalogItemRequest(
         List<UUID> subjectItemIds,
         @Schema(description = "Ghi chú nguồn quy ước mới (chỉ cho nhóm COMBINATION)")
         @Size(max = 500, message = "{validation.catalog.combination.sourceNote.size}")
-        String sourceNote
+        String sourceNote,
+        @Schema(description = "Số thứ tự giá trị bất biến; chỉ để đối chiếu. Giá trị hệ thống khác số hiện tại bị từ chối (CATALOG_ITEM_SYSTEM), giá trị thường bỏ qua trường này")
+        Integer value
 ) {
     public UpdateCatalogItemRequest(
             String code,
@@ -63,7 +65,7 @@ public record UpdateCatalogItemRequest(
             List<UUID> refItemIds,
             String reason,
             Long version) {
-        this(code, nameVi, nameEn, description, displayOrder, status, refItemIds, reason, version, null, null, null, null);
+        this(code, nameVi, nameEn, description, displayOrder, status, refItemIds, reason, version, null, null, null, null, null);
     }
 
     public record BranchUpdate(CombinationBranch value) {
