@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AccountApi from "@/features/account/api";
@@ -280,6 +280,48 @@ describe("ProfileView email (AC-17)", () => {
     expect(await screen.findByText("Email này đã thuộc tài khoản khác.")).toBeInTheDocument();
     expect(mocks.requestEmailChange).toHaveBeenCalledWith("da.co@thi360.vn", "Thi360@dev");
     expect(screen.getByLabelText(/Email mới/)).toHaveValue("da.co@thi360.vn");
+  });
+
+  it("gửi mã đổi email bị 429 kèm retryAfter: hiện thời gian chờ, khóa nút gửi và báo qua vùng thông báo (R1-6, R1-7)", async () => {
+    mocks.requestEmailChange.mockRejectedValue(
+      new EmailCodeStatusError(new ApiStatusError(429, "x", { code: "RATE_LIMITED" }), { retryAfter: 120 }),
+    );
+    const user = userEvent.setup();
+    renderView();
+
+    await user.click(await screen.findByRole("button", { name: "Đổi email" }));
+    await user.type(screen.getByLabelText(/Email mới/), "moi@thi360.vn");
+    await user.type(screen.getByLabelText(/^Mật khẩu hiện tại/), "Thi360@dev");
+    await user.click(screen.getByRole("button", { name: "Gửi mã xác minh" }));
+
+    const submit = await screen.findByRole("button", { name: "Gửi mã xác minh sau 02:00" });
+    expect(submit).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Bạn gửi mã quá nhanh hoặc quá số lần cho phép.");
+    expect(screen.getByText("Có thể gửi lại mã sau 02:00.")).toBeInTheDocument();
+  });
+
+  it("hết giờ chờ: nút gửi mở lại và vùng thông báo nói đã gửi lại được (R1-7)", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    try {
+      mocks.requestEmailChange.mockRejectedValue(
+        new EmailCodeStatusError(new ApiStatusError(429, "x", { code: "RATE_LIMITED" }), { retryAfter: 30 }),
+      );
+      renderView();
+      fireEvent.click(await screen.findByRole("button", { name: "Đổi email" }));
+      fireEvent.change(screen.getByLabelText(/Email mới/), { target: { value: "moi@thi360.vn" } });
+      fireEvent.change(screen.getByLabelText(/^Mật khẩu hiện tại/), { target: { value: "Thi360@dev" } });
+      fireEvent.click(screen.getByRole("button", { name: "Gửi mã xác minh" }));
+      expect(await screen.findByText("Có thể gửi lại mã sau 00:30.")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(31_000);
+      });
+
+      expect(screen.getByText("Bạn có thể gửi lại mã bây giờ.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Gửi mã xác minh" })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("gửi mã đổi email xong hiện khối đang chờ xác minh; xác nhận đúng mã đổi sang email mới đã xác minh", async () => {

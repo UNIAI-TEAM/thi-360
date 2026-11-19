@@ -2,6 +2,8 @@
   "account": {
     "forgotPassword": {
       "backToLogin": "Back to sign in",
+      "cooldownEnd": "You can send it again now.",
+      "cooldownStart": "You can send it again in {time}.",
       "createAccount": "Create a new account",
       "description": "Enter your registered email. If the email is verified, you will receive a link to reset your password.",
       "emailInvalid": "Email format is not valid.",
@@ -60,6 +62,8 @@
           "SYNC_FAILED": "Unable to change the email; your current email is unchanged. Please try again later.",
           "generic": "Unable to confirm the new email. Please try again."
         },
+        "cooldownEnd": "You can resend the code now.",
+        "cooldownStart": "You can resend the code in {time}.",
         "currentPasswordLabel": "Current password",
         "currentPasswordRequired": "Please enter your current password.",
         "newEmailInvalid": "Email format is not valid.",
@@ -74,6 +78,7 @@
         "resend": "Resend code",
         "resendIn": "Resend code in {time}",
         "sendCode": "Send verification code",
+        "sendCodeIn": "Send verification code in {time}",
         "title": "Email",
         "unverified": "Not verified",
         "verified": "Verified",
@@ -207,6 +212,8 @@
       "codeRequired": "Please enter the 6-digit code.",
       "codeResent": "A new code was sent. The previous code no longer works.",
       "continue": "Continue",
+      "cooldownEnd": "You can resend the code now.",
+      "cooldownStart": "You can resend the code in {time}.",
       "dailyLimit": "You have resent the code too many times. Try again after {time}.",
       "errorLoad": "Unable to load account details. Please try again.",
       "errorLoadTitle": "Unable to load page",

@@ -8,6 +8,7 @@ import {
   EmptyState,
   FormField,
   Input,
+  LiveStatus,
   LocaleSwitcher,
   Skeleton,
   ThemeToggle,
@@ -17,7 +18,7 @@ import { AlertCircle, CheckCircle2, Clock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -28,6 +29,7 @@ import {
   sendVerificationCode,
   verifyEmailCode,
 } from "@/features/account/api";
+import { cooldownAnnouncement, formatClock, LONG_COOLDOWN_SECONDS, useCooldown } from "@/features/account/cooldown";
 import { ApiStatusError } from "@/lib/api/client";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
 
@@ -43,12 +45,6 @@ type VerifyValues = { code: string };
 
 /** Đếm ngược (giây) giữa hai lần gửi mã, theo chính sách E15/E17 của máy chủ khi không có `retryAfter`. */
 const DEFAULT_RESEND_SECONDS = 60;
-
-function formatClock(seconds: number): string {
-  const mm = Math.floor(seconds / 60);
-  const ss = seconds % 60;
-  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-}
 
 export function VerifyEmailView({
   navigate = (url: string) => window.location.assign(url),
@@ -79,21 +75,12 @@ export function VerifyEmailView({
   // Đích sau xác minh thành công và nút "Để sau": callbackUrl hợp lệ, không thì về /home.
   const [verified, setVerified] = useState(false);
   const [alert, setAlert] = useState<VerifyAlertCode | null>(null);
-  // Thời điểm (epoch ms) hết giờ chờ gửi lại; `null` = gửi được ngay.
-  const [resendBlockedUntil, setResendBlockedUntil] = useState<number | null>(null);
   // Vượt giới hạn ngày: khóa gửi lại tới thời điểm máy chủ trả trong `retryAfter`.
   const [dailyLimitUntil, setDailyLimitUntil] = useState<number | null>(null);
   const [codeSentNote, setCodeSentNote] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
-  const [clock, setClock] = useState(now);
-
-  const resendSecondsLeft = resendBlockedUntil ? Math.max(0, Math.ceil((resendBlockedUntil - clock) / 1000)) : 0;
-
-  useEffect(() => {
-    if (!resendBlockedUntil) return;
-    const timer = setInterval(() => setClock(now()), 500);
-    return () => clearInterval(timer);
-  }, [resendBlockedUntil, now]);
+  const cooldown = useCooldown(now);
+  const resendSecondsLeft = cooldown.secondsLeft;
 
   const schema = useMemo(
     () =>
@@ -149,17 +136,17 @@ export function VerifyEmailView({
     try {
       await sendCodeApi();
       setCodeSentNote(true);
-      setResendBlockedUntil(now() + DEFAULT_RESEND_SECONDS * 1000);
+      cooldown.start(DEFAULT_RESEND_SECONDS);
       clearErrors("code");
       setRemainingAttempts(null);
     } catch (error) {
       if (error instanceof EmailCodeStatusError && error.status === 429) {
         const retryAfter = error.retryAfter ?? DEFAULT_RESEND_SECONDS;
         // 60 giây chờ → đếm ngược trên nút; giới hạn ngày (giờ trở lên) → cảnh báo kèm giờ thử lại.
-        if (retryAfter >= 3600) {
+        if (retryAfter >= LONG_COOLDOWN_SECONDS) {
           setDailyLimitUntil(now() + retryAfter * 1000);
         }
-        setResendBlockedUntil(now() + retryAfter * 1000);
+        cooldown.start(retryAfter);
         return;
       }
       setAlert("resendFailed");
@@ -325,9 +312,17 @@ export function VerifyEmailView({
             onClick={() => void onResend()}
             className="tabular-nums"
           >
-            {resendSecondsLeft > 0 ? t("resendIn", { time: formatClock(resendSecondsLeft) }) : t("resend")}
+            {resendSecondsLeft > 0 && !dailyLimitUntil
+              ? t("resendIn", { time: formatClock(resendSecondsLeft) })
+              : t("resend")}
           </Button>
         </div>
+        <LiveStatus
+          message={cooldownAnnouncement(cooldown, {
+            start: (time) => t("cooldownStart", { time }),
+            end: t("cooldownEnd"),
+          })}
+        />
         {codeSentNote && (
           <p role="status" className="text-caption text-success">
             {t("codeResent")}

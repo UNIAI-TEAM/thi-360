@@ -9,7 +9,7 @@ test.describe("Quên và đặt lại mật khẩu", () => {
     await page.goto(`${WEB_URL}/forgot-password`);
     await page.getByLabel(/^Email/).fill(account.email);
     await page.getByRole("button", { name: "Gửi hướng dẫn" }).click();
-    await expect(page.getByRole("status")).toHaveText(
+    await expect(page.getByRole("status").filter({ hasText: "Nếu email này" })).toHaveText(
       "Nếu email này đủ điều kiện khôi phục tài khoản, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.",
     );
 

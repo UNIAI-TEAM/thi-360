@@ -53,14 +53,14 @@ describe("ForgotPasswordView", () => {
     const first = renderView();
     await user.type(screen.getByLabelText(/Email/), "co.tai.khoan@thi360.vn");
     await user.click(screen.getByRole("button", { name: "Gửi hướng dẫn" }));
-    const firstMessage = (await screen.findByRole("status")).textContent;
+    const firstMessage = (await screen.findByText(/^Nếu email này đủ điều kiện/)).textContent;
     const firstHtml = screen.getByRole("region", { name: "Hãy kiểm tra hộp thư" }).innerHTML;
     first.unmount();
 
     renderView();
     await user.type(screen.getByLabelText(/Email/), "khong.ton.tai@thi360.vn");
     await user.click(screen.getByRole("button", { name: "Gửi hướng dẫn" }));
-    expect((await screen.findByRole("status")).textContent).toBe(firstMessage);
+    expect((await screen.findByText(/^Nếu email này đủ điều kiện/)).textContent).toBe(firstMessage);
     expect(screen.getByRole("region", { name: "Hãy kiểm tra hộp thư" }).innerHTML).toBe(firstHtml);
 
     expect(firstMessage).toBe(
@@ -78,10 +78,14 @@ describe("ForgotPasswordView", () => {
     await user.type(screen.getByLabelText(/Email/), "an@thi360.vn");
     await user.click(screen.getByRole("button", { name: "Gửi hướng dẫn" }));
     expect(await screen.findByRole("button", { name: "Gửi lại sau 01:00" })).toBeDisabled();
+    // Một vùng thông báo: câu lúc bắt đầu chờ (không đọc từng giây).
+    expect(screen.getByText("Có thể gửi lại sau 01:00.")).toBeInTheDocument();
 
     nowMs += 60_000;
     const resend = await screen.findByRole("button", { name: "Gửi lại" }, { timeout: 2000 });
     await waitFor(() => expect(resend).toBeEnabled());
+    expect(screen.getByText("Bạn có thể gửi lại bây giờ.")).toBeInTheDocument();
+    expect(screen.queryByText("Có thể gửi lại sau 01:00.")).toBeNull();
     await user.click(resend);
     await waitFor(() => expect(mocks.requestApi).toHaveBeenCalledTimes(2));
     expect(mocks.requestApi).toHaveBeenLastCalledWith("an@thi360.vn");

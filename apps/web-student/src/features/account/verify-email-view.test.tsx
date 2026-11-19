@@ -115,12 +115,14 @@ describe("VerifyEmailView", () => {
     expect(await screen.findByText("Đã gửi mã mới. Mã cũ không còn dùng được.")).toBeInTheDocument();
     const countdown = screen.getByRole("button", { name: "Gửi lại mã sau 01:00" });
     expect(countdown).toBeDisabled();
+    expect(screen.getByText("Có thể gửi lại mã sau 01:00.")).toBeInTheDocument();
     nowMs += 42_000;
     await waitFor(() => expect(screen.getByRole("button", { name: "Gửi lại mã sau 00:18" })).toBeDisabled(), {
       timeout: 2000,
     });
     nowMs += 18_000;
     await waitFor(() => expect(screen.getByRole("button", { name: "Gửi lại mã" })).toBeEnabled(), { timeout: 2000 });
+    expect(screen.getByText("Bạn có thể gửi lại mã bây giờ.")).toBeInTheDocument();
 
     // 429 theo retryAfter của máy chủ (30 giây).
     mocks.sendCode.mockRejectedValueOnce(
@@ -145,6 +147,21 @@ describe("VerifyEmailView", () => {
     await user.click(screen.getByRole("button", { name: "Xác minh" }));
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/checkout/BCA-FULL"));
     expect(await screen.findByText("Email đã được xác minh. Bạn có thể tiếp tục.")).toBeInTheDocument();
+  });
+
+  it("giới hạn theo ngày (retryAfter 86000 s): nút khóa nhưng không đếm ngược mm:ss quá lớn (R1-10)", async () => {
+    mocks.sendCode.mockRejectedValue(
+      new EmailCodeStatusError(new ApiStatusError(429, "x", { code: "RATE_LIMITED" }), { retryAfter: 86_000 }),
+    );
+    const user = userEvent.setup();
+    renderView();
+
+    await user.click(await screen.findByRole("button", { name: "Gửi lại mã" }));
+
+    expect(await screen.findByText(/Bạn đã gửi lại mã quá số lần cho phép\. Thử lại sau/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gửi lại mã" })).toBeDisabled();
+    expect(document.body.textContent).not.toMatch(/\d{3,}:\d{2}/);
+    expect(screen.queryByText(/Có thể gửi lại mã sau/)).toBeNull();
   });
 
   it("nút Để sau đi theo callbackUrl hợp lệ, callbackUrl ngoài hệ thống bị bỏ qua về /home (AC-7)", async () => {

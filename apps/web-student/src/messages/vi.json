@@ -2,6 +2,8 @@
   "account": {
     "forgotPassword": {
       "backToLogin": "Quay lại đăng nhập",
+      "cooldownEnd": "Bạn có thể gửi lại bây giờ.",
+      "cooldownStart": "Có thể gửi lại sau {time}.",
       "createAccount": "Tạo tài khoản mới",
       "description": "Nhập email đã đăng ký. Nếu email đã được xác minh, bạn sẽ nhận liên kết đặt lại mật khẩu.",
       "emailInvalid": "Email chưa đúng định dạng.",
@@ -60,6 +62,8 @@
           "SYNC_FAILED": "Chưa đổi được email, email hiện tại giữ nguyên. Vui lòng thử lại sau.",
           "generic": "Không xác nhận được email mới. Vui lòng thử lại."
         },
+        "cooldownEnd": "Bạn có thể gửi lại mã bây giờ.",
+        "cooldownStart": "Có thể gửi lại mã sau {time}.",
         "currentPasswordLabel": "Mật khẩu hiện tại",
         "currentPasswordRequired": "Vui lòng nhập mật khẩu hiện tại.",
         "newEmailInvalid": "Email chưa đúng định dạng.",
@@ -74,6 +78,7 @@
         "resend": "Gửi lại mã",
         "resendIn": "Gửi lại mã sau {time}",
         "sendCode": "Gửi mã xác minh",
+        "sendCodeIn": "Gửi mã xác minh sau {time}",
         "title": "Email",
         "unverified": "Chưa xác minh",
         "verified": "Đã xác minh",
@@ -207,6 +212,8 @@
       "codeRequired": "Vui lòng nhập mã gồm 6 chữ số.",
       "codeResent": "Đã gửi mã mới. Mã cũ không còn dùng được.",
       "continue": "Tiếp tục",
+      "cooldownEnd": "Bạn có thể gửi lại mã bây giờ.",
+      "cooldownStart": "Có thể gửi lại mã sau {time}.",
       "dailyLimit": "Bạn đã gửi lại mã quá số lần cho phép. Thử lại sau {time}.",
       "errorLoad": "Không tải được thông tin tài khoản. Hãy thử lại.",
       "errorLoadTitle": "Không tải được trang",

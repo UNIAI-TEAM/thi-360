@@ -80,7 +80,7 @@ for (const cell of matrixCells()) {
 
         await page.getByLabel(/^Email/).fill("an@e2e.thi360.vn");
         await page.locator("form button[type=submit]").click();
-        await expect(page.getByRole("status")).toBeVisible();
+        await expect(page.locator("#forgot-sent-title")).toBeVisible();
         await expectMatrixClean(page, "forgot-password-sent", cell);
 
         await page.goto(`${WEB_URL}/reset-password?token=khong-co-that`);

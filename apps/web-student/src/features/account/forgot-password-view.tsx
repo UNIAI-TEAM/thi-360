@@ -1,17 +1,18 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, cn, FormField, Input, LocaleSwitcher, ThemeToggle } from "@thi360/ui";
+import { Button, cn, FormField, Input, LiveStatus, LocaleSwitcher, ThemeToggle } from "@thi360/ui";
 import { validateCallbackUrl } from "@thi360/web-kit/redirect";
 import { AlertCircle, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { withCallbackUrl } from "@/features/account/account-links";
 import { requestPasswordReset } from "@/features/account/api";
+import { cooldownAnnouncement, formatClock, useCooldown } from "@/features/account/cooldown";
 import { ApiStatusError } from "@/lib/api/client";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
 
@@ -29,12 +30,6 @@ type ForgotAlertCode = "RATE_LIMITED" | "generic";
 
 type ForgotValues = { email: string };
 
-function formatClock(seconds: number): string {
-  const mm = Math.floor(seconds / 60);
-  const ss = seconds % 60;
-  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-}
-
 export function ForgotPasswordView({
   requestApi = requestPasswordReset,
   now = () => Date.now(),
@@ -51,15 +46,8 @@ export function ForgotPasswordView({
   // Sau khi gửi, mọi email đều cho cùng một nội dung (AC-06.04): không lộ email có tài khoản hay không.
   const [sent, setSent] = useState(false);
   const [alert, setAlert] = useState<ForgotAlertCode | null>(null);
-  const [resendUntil, setResendUntil] = useState<number | null>(null);
-  const [clock, setClock] = useState(now);
-  const secondsLeft = resendUntil ? Math.max(0, Math.ceil((resendUntil - clock) / 1000)) : 0;
-
-  useEffect(() => {
-    if (!resendUntil) return;
-    const timer = setInterval(() => setClock(now()), 500);
-    return () => clearInterval(timer);
-  }, [resendUntil, now]);
+  const cooldown = useCooldown(now);
+  const secondsLeft = cooldown.secondsLeft;
 
   const schema = useMemo(
     () =>
@@ -93,8 +81,7 @@ export function ForgotPasswordView({
     try {
       await requestApi(email.trim());
       setSent(true);
-      setResendUntil(now() + RESEND_SECONDS * 1000);
-      setClock(now());
+      cooldown.start(RESEND_SECONDS);
     } catch (error) {
       setAlert(error instanceof ApiStatusError && error.status === 429 ? "RATE_LIMITED" : "generic");
     }
@@ -165,6 +152,12 @@ export function ForgotPasswordView({
               {secondsLeft > 0 ? t("resendIn", { time: formatClock(secondsLeft) }) : t("resend")}
             </Button>
           </div>
+          <LiveStatus
+            message={cooldownAnnouncement(cooldown, {
+              start: (time) => t("cooldownStart", { time }),
+              end: t("cooldownEnd"),
+            })}
+          />
         </section>
       </main>
     );

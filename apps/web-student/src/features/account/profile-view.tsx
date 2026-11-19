@@ -2,7 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, cn, EmptyState, FormField, Input, notify, PasswordField, Skeleton, StatusChip } from "@thi360/ui";
+import {
+  Button,
+  cn,
+  EmptyState,
+  FormField,
+  Input,
+  LiveStatus,
+  notify,
+  PasswordField,
+  Skeleton,
+  StatusChip,
+} from "@thi360/ui";
 import { initialsOf } from "@thi360/web-kit/client";
 import { AlertCircle, CircleAlert, Clock, Lock, TriangleAlert, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -22,6 +33,7 @@ import {
   updateProfile,
   uploadAvatar,
 } from "@/features/account/api";
+import { cooldownAnnouncement, formatClock, LONG_COOLDOWN_SECONDS, useCooldown } from "@/features/account/cooldown";
 import { StudentUserMenu, StudentUserMenuPlaceholder } from "@/features/home/student-user-menu";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
@@ -61,12 +73,6 @@ function avatarErrorCode(error: unknown): AvatarErrorCode {
 type InfoValues = { fullName: string; phone: string };
 type ChangeValues = { newEmail: string; currentPassword: string };
 type CodeValues = { code: string };
-
-function formatClock(seconds: number): string {
-  const mm = Math.floor(seconds / 60);
-  const ss = seconds % 60;
-  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-}
 
 export function ProfileView({ loadCurrentSession = loadSession }: { loadCurrentSession?: SessionLoader }) {
   const t = useTranslations("account.profile");
@@ -497,16 +503,9 @@ function EmailSection({
   const [changeAlert, setChangeAlert] = useState<"RATE_LIMITED" | "generic" | null>(null);
   const [confirmAlert, setConfirmAlert] = useState<"EXPIRED" | "EMAIL_TAKEN" | "SYNC_FAILED" | "generic" | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
-  const [resendUntil, setResendUntil] = useState<number | null>(null);
-  const [clock, setClock] = useState(currentTimeMs);
+  const cooldown = useCooldown(currentTimeMs);
+  const secondsLeft = cooldown.secondsLeft;
   const changeId = useId();
-
-  const secondsLeft = resendUntil ? Math.max(0, Math.ceil((resendUntil - clock) / 1000)) : 0;
-  useEffect(() => {
-    if (!resendUntil) return;
-    const timer = setInterval(() => setClock(currentTimeMs()), 500);
-    return () => clearInterval(timer);
-  }, [resendUntil]);
 
   const changeSchema = useMemo(
     () =>
@@ -555,10 +554,11 @@ function EmailSection({
       codeForm.reset({ code: "" });
       setConfirmAlert(null);
       setRemainingAttempts(null);
-      setResendUntil(currentTimeMs() + DEFAULT_RESEND_SECONDS * 1000);
-      setClock(currentTimeMs());
+      cooldown.start(DEFAULT_RESEND_SECONDS);
     } catch (error) {
       if (error instanceof EmailCodeStatusError && error.status === 429) {
+        // 429: chờ đúng `retryAfter` của máy chủ, nút gửi khóa tới hết thời gian đó (R1-6).
+        cooldown.start(error.retryAfter ?? DEFAULT_RESEND_SECONDS);
         setChangeAlert("RATE_LIMITED");
         return;
       }
@@ -697,8 +697,10 @@ function EmailSection({
             <Button type="button" variant="secondary" onClick={() => setChanging(false)}>
               {t("cancel")}
             </Button>
-            <Button type="submit" loading={changeForm.formState.isSubmitting}>
-              {t("sendCode")}
+            <Button type="submit" loading={changeForm.formState.isSubmitting} disabled={secondsLeft > 0}>
+              {secondsLeft > 0 && secondsLeft < LONG_COOLDOWN_SECONDS
+                ? t("sendCodeIn", { time: formatClock(secondsLeft) })
+                : t("sendCode")}
             </Button>
           </div>
         </form>
@@ -764,11 +766,20 @@ function EmailSection({
               onClick={() => openChangeForm(profile.pendingEmail ?? undefined)}
               className="tabular-nums"
             >
-              {secondsLeft > 0 ? t("resendIn", { time: formatClock(secondsLeft) }) : t("resend")}
+              {secondsLeft > 0 && secondsLeft < LONG_COOLDOWN_SECONDS
+                ? t("resendIn", { time: formatClock(secondsLeft) })
+                : t("resend")}
             </Button>
           </div>
         </form>
       )}
+
+      <LiveStatus
+        message={cooldownAnnouncement(cooldown, {
+          start: (time) => t("cooldownStart", { time }),
+          end: t("cooldownEnd"),
+        })}
+      />
     </section>
   );
 }
