@@ -61,15 +61,24 @@ public class ExamPreviewStore {
     /** Reconstruct the checker inputs from the immutable published configuration and structure. */
     @Transactional(readOnly = true)
     public Snapshot loadVersion(UUID id, int version, String pathId) {
-        return loadVersionSnapshot(id, version, pathId, null);
+        return loadVersionSnapshot(id, version, pathId, null, true);
     }
 
     @Transactional(readOnly = true)
     public Snapshot loadVersionForSection(UUID id, int version, String sectionId) {
-        return loadVersionSnapshot(id, version, null, sectionId);
+        return loadVersionSnapshot(id, version, null, sectionId, true);
     }
 
-    private Snapshot loadVersionSnapshot(UUID id, int version, String pathId, String sectionId) {
+    /**
+     * Reads the immutable snapshot of one published version for generation. No path is asked for, so the published
+     * path check does not apply; a missing version is {@code VERSION_NOT_FOUND}.
+     */
+    @Transactional(readOnly = true)
+    public Snapshot loadVersion(UUID id, int version) {
+        return loadVersionSnapshot(id, version, null, null, false);
+    }
+
+    private Snapshot loadVersionSnapshot(UUID id, int version, String pathId, String sectionId, boolean requirePath) {
         var rows = jdbc.query("select config::text, parts::text, published_path_ids from exam.exam_version "
                         + "where exam_id = ? and version_no = ?",
                 (rs, n) -> new VersionRow(rs.getString(1), rs.getString(2),
@@ -84,8 +93,8 @@ public class ExamPreviewStore {
             if (parts instanceof ObjectNode object && config.has("examQuotas")) {
                 object.set("examQuotas", config.path("examQuotas").deepCopy());
             }
-            boolean published = sectionId == null ? rows.getFirst().paths().contains(pathId)
-                    : publishedSection(parts, config, rows.getFirst().paths(), sectionId);
+            boolean published = !requirePath || (sectionId == null ? rows.getFirst().paths().contains(pathId)
+                    : publishedSection(parts, config, rows.getFirst().paths(), sectionId));
             if (!published) throw new NotFoundException("PATH_NOT_FOUND", "Exam version path not found");
             Integer duration = integer(config, "durationMinutes");
             BigDecimal max = decimal(config, "maxScore");
