@@ -49,8 +49,17 @@ final class SelfRegistrationSupport {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Hậu tố ngẫu nhiên không có chữ số: tên đăng nhập và email xuất hiện trong thân thư, nên chữ số ở đó có thể bị
+     * nhận nhầm là mã OTP 6 số khi test tách mã khỏi thư.
+     */
     static String suffix() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        String hex = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        StringBuilder letters = new StringBuilder();
+        for (char c : hex.toCharArray()) {
+            letters.append(Character.isDigit(c) ? (char) ('g' + (c - '0')) : c);
+        }
+        return letters.toString();
     }
 
     /** Một IP riêng cho mỗi lần gọi để giới hạn đăng ký theo IP không lẫn giữa các test. */

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,6 +40,7 @@ import org.keycloak.representations.idm.UserRepresentation;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.spi.UserDirectory;
+import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.mail.MailKind;
@@ -444,6 +446,44 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
         assertThat(accountRow(account).get("email")).isEqualTo(newEmail);
         assertThat(mailOutbox.all(account.email(), MailKind.EMAIL_CHANGED_NOTICE)).hasSize(1);
         assertThat(auditCount("EMAIL_CHANGED", account.id())).isEqualTo(1);
+    }
+
+    /**
+     * Câu hỏi mở 4 (tạm): admin sửa email khi tài khoản đang có pending_email thì giữ pending_email; bước xác nhận
+     * kiểm trùng lại và ghi đè email do admin đặt. Admin sửa email xóa trạng thái đã xác minh (không đổi hành vi cũ).
+     */
+    @Test
+    void adminEmailEditKeepsPendingEmail() throws Exception {
+        Account account = newAccount();
+        String pending = newEmail();
+        String adminEmail = newEmail();
+        // Đã xác minh email hiện tại trước khi đổi.
+        mockMvc.perform(post("/api/v1/me/email/verify")
+                        .with(asUser(account.id(), account.username()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code(account.email(), MailKind.EMAIL_VERIFY) + "\"}"))
+                .andExpect(status().isNoContent());
+        requestChange(account, pending).andExpect(status().isAccepted());
+        long version = jdbcTemplate.queryForObject(
+                "SELECT version FROM identity.user_account WHERE id = ?", Long.class, account.id());
+
+        mockMvc.perform(patch("/api/v1/admin/users/{id}", account.id())
+                        .with(asUser(Permissions.USER_MODIFY))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + adminEmail + "\",\"version\":" + version + "}"))
+                .andExpect(status().isOk());
+
+        Map<String, Object> afterAdmin = accountRow(account);
+        assertThat(afterAdmin.get("email")).isEqualTo(adminEmail);
+        assertThat(afterAdmin.get("email_verified_at")).isNull();
+        assertThat(afterAdmin.get("pending_email")).isEqualTo(pending);
+
+        confirm(account, code(pending, MailKind.EMAIL_CHANGE)).andExpect(status().isNoContent());
+        Map<String, Object> confirmed = accountRow(account);
+        assertThat(confirmed.get("email")).isEqualTo(pending);
+        assertThat(confirmed.get("email_verified_at")).isNotNull();
+        assertThat(confirmed.get("pending_email")).isNull();
+        assertThat(mailOutbox.all(adminEmail, MailKind.EMAIL_CHANGED_NOTICE)).hasSize(1);
     }
 
     /** Dữ liệu cũ: tài khoản không có ba cột mới vẫn đăng nhập được và không bị coi là đã chấp nhận điều khoản. */
