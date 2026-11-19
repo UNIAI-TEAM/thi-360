@@ -42,7 +42,8 @@ class PreviewSnapshotStoreTest {
                 new vn.unicom.thi360.exam.api.ExamPreviewController.PreviewPart(
                         "part-1", "Part", 1, null, 1, 1, java.math.BigDecimal.ONE, null, List.of(), List.of()),
                 Map.of("science", List.of(17, 16)));
-        var snapshot = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), 2, 42L, Map.of("part-1", part));
+        var snapshot = new PreviewSnapshotStore.Snapshot(UUID.randomUUID(), 2, 42L, Map.of("part-1", part),
+                "VACT", "SHARED", 150);
 
         UUID id = store.save(snapshot);
         var serialized = ArgumentCaptor.forClass(String.class);
@@ -70,5 +71,20 @@ class PreviewSnapshotStoreTest {
         when(values.get("exam:preview:" + oldDroppedId)).thenReturn(withoutDroppedAssignments.toString());
         assertThat(store.find(oldDroppedId)).isNull();
         assertThat(store.find(UUID.randomUUID())).isNull();
+        for (String missing : List.of("kindCode", "timing", "durationMinutes")) {
+            var withoutField = new ObjectMapper().valueToTree(snapshot);
+            ((com.fasterxml.jackson.databind.node.ObjectNode) withoutField).remove(missing);
+            UUID withoutFieldId = UUID.randomUUID();
+            when(values.get("exam:preview:" + withoutFieldId)).thenReturn(withoutField.toString());
+            assertThat(store.find(withoutFieldId)).as("snapshot without " + missing).isNull();
+        }
+        var withoutKind = new PreviewSnapshotStore.Snapshot(snapshot.examId(), 2, 42L, snapshot.parts(),
+                null, "PER_PART", 40);
+        UUID withoutKindId = store.save(withoutKind);
+        verify(values).set(org.mockito.ArgumentMatchers.eq("exam:preview:" + withoutKindId), serialized.capture(),
+                org.mockito.ArgumentMatchers.eq(Duration.ofMinutes(30)));
+        when(values.get("exam:preview:" + withoutKindId)).thenReturn(serialized.getValue());
+        assertThat(store.find(withoutKindId)).as("an exam without a kind is not a legacy snapshot")
+                .isEqualTo(withoutKind);
     }
 }

@@ -215,8 +215,17 @@ public class ExamPreviewService {
                         actualPath, paper));
         if (regeneration != null) selectedParts.putAll(regeneration.retained());
         List<Compliance> compliance = PreviewCompliance.evaluate(document, actualPath, groups, candidates, allDropped, knowledge);
+        // BS 9: the trial extension reads the duration from here, never from the draft. SHARED is the exam's own
+        // duration; PER_PART (or a SHARED exam with none) is the sum of the parts this path generated.
+        int generatedPartMinutes = selectedParts.values().stream().filter(part -> part.presentation() != null)
+                .mapToInt(part -> part.presentation().durationMinutes() == null ? 0
+                        : part.presentation().durationMinutes()).sum();
+        int trialMinutes = "SHARED".equals(snapshot.timing()) && snapshot.durationMinutes() != null
+                ? snapshot.durationMinutes() : generatedPartMinutes;
+        String kindCode = snapshot.exam().getKindItemId() == null ? null
+                : catalog.findItem(snapshot.exam().getKindItemId()).map(CatalogItemView::code).orElse(null);
         UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
-                request.seed(), selectedParts));
+                request.seed(), selectedParts, kindCode, snapshot.timing(), trialMinutes));
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
         return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                 "GENERATED", paper, null, null, previewId, compliance, droppedQuestions);
