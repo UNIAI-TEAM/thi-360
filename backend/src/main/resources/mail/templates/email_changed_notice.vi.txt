@@ -1,0 +1,8 @@
+Email tài khoản Thi 360 đã được đổi
+Xin chào [(${fullName})],
+
+Email của tài khoản Thi 360 vừa được đổi sang [(${newEmail})].
+
+Nếu không phải bạn thực hiện, hãy liên hệ bộ phận hỗ trợ ngay để được bảo vệ tài khoản.
+
+Thi 360
