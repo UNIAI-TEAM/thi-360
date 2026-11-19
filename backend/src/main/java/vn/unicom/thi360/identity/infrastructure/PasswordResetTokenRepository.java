@@ -102,16 +102,6 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
             """)
     int markSessionsRevoked(@Param("tokenId") UUID tokenId, @Param("now") Instant now);
 
-    /** Các mã đã đổi mật khẩu mà phiên cũ chưa thu hồi xong, cũ nhất trước (job thử lại). */
-    @Query("""
-            SELECT t FROM PasswordResetToken t
-            WHERE t.passwordChangedAt IS NOT NULL
-              AND t.sessionsRevokedAt IS NULL
-              AND t.passwordChangedAt > :since
-            ORDER BY t.passwordChangedAt ASC
-            """)
-    List<PasswordResetToken> findPendingRevocations(@Param("since") Instant since, Pageable pageable);
-
     /**
      * Dấu ghi trước: commit (transaction riêng) trước khi gọi Keycloak. Chỉ khi dòng vẫn do lần chiếm này giữ và chưa
      * bị yêu cầu mới vô hiệu; trả 0 thì không được ghi mật khẩu.

@@ -384,29 +384,79 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
         doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, new RuntimeException("logout down")))
                 .when(keycloakClient).logoutAllSessions(account.id());
 
-        // Mật khẩu đã đổi nên kết quả vẫn là thành công; thu hồi phiên lỗi chỉ để lại dấu chờ thử lại.
+        // Mật khẩu đã đổi (204) nhưng thu hồi lỗi: dòng chưa chốt, còn dấu ghi trước; chưa có audit thành công.
         assertThat(reset(token, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(204);
 
         MvcResult replay = reset(token, "Another#Pass2026");
         assertThat(replay.getResponse().getStatus()).as("token cannot be replayed").isEqualTo(422);
-        assertThat(passwordResetAudits(auditRecorder, account)).as("success audit recorded").isEqualTo(1);
-        assertThat(jdbc.queryForObject(
-                        "SELECT count(*) FROM identity.password_reset_token WHERE user_id = ?"
-                                + " AND password_changed_at IS NOT NULL AND sessions_revoked_at IS NULL",
-                        Integer.class,
-                        account.id()))
-                .as("revocation is pending")
-                .isEqualTo(1);
+        assertThat(support.unusedTokenRows(account.id())).as("token stays consumed").isZero();
+        assertThat(passwordResetAudits(auditRecorder, account)).as("not finalized before revocation").isZero();
+        assertThat(writeMarkRow(account).get("password_write_started_at")).isNotNull();
+        assertThat(writeMarkRow(account).get("password_changed_at")).isNull();
+        assertThat(writeMarkRow(account).get("finalized_at")).isNull();
+        assertThat(writeMarkRow(account).get("sessions_revoked_at")).isNull();
 
-        // Việc thử lại không ghi lại mật khẩu: chỉ thu hồi phiên.
+        // Đối soát chỉ thu hồi và chốt, không ghi lại mật khẩu.
         org.mockito.Mockito.doCallRealMethod().when(keycloakClient).logoutAllSessions(any());
         org.mockito.Mockito.clearInvocations(keycloakClient);
-        assertThat(passwordResetService.retryPendingRevocations()).isEqualTo(1);
+        support.backdateWriteMark(account.id());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).isEqualTo(1);
 
         verify(keycloakClient, never()).setPassword(any(), anyString(), anyBoolean());
         assertThat(keycloakSessions(account)).isEmpty();
         mockMvc.perform(get("/api/v1/me").cookie(access)).andExpect(status().isUnauthorized());
-        assertThat(passwordResetService.retryPendingRevocations()).as("nothing left to retry").isZero();
+        assertThat(writeMarkRow(account).get("finalized_at")).isNotNull();
+        assertThat(writeMarkRow(account).get("sessions_revoked_at")).isNotNull();
+        assertThat(passwordResetAudits(auditRecorder, account)).as("one indeterminate audit").isEqualTo(1);
+        assertThat(reset(token, "Another#Pass2026").getResponse().getStatus()).as("still unusable").isEqualTo(422);
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).as("nothing left").isZero();
+    }
+
+    @Test
+    void crashAfterConfirmedWriteBeforeFinalizeIsRevokedAndFinalizedByReconciliation() throws Exception {
+        Account account = support.eligible("reset.crash.confirmed");
+        MvcResult first = login(account, account.password());
+        MvcResult second = login(account, account.password());
+        Cookie access1 = first.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie access2 = second.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        String token = freshToken(account);
+        // Keycloak ĐÃ đổi mật khẩu rồi tiến trình chết trước khi thu hồi và chốt (Error không bị service bắt).
+        org.mockito.Mockito.doAnswer(invocation -> {
+                    invocation.callRealMethod();
+                    throw new SimulatedCrash();
+                })
+                .when(keycloakClient).setPassword(eq(account.id()), anyString(), anyBoolean());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> passwordResetService.reset(token, NEW_PASSWORD))
+                .isInstanceOf(SimulatedCrash.class);
+
+        assertThat(redis.hasKey("user-sess:" + account.id())).as("old sessions still live").isTrue();
+        assertThat(keycloakSessions(account)).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(writeMarkRow(account).get("password_write_started_at")).isNotNull();
+        assertThat(writeMarkRow(account).get("finalized_at")).isNull();
+        assertThat(support.unusedTokenRows(account.id())).as("token stays consumed").isZero();
+        assertThat(reset(token, "Another#Pass2026").getResponse().getStatus()).as("no replay").isEqualTo(422);
+
+        support.backdateWriteMark(account.id());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).isEqualTo(1);
+
+        assertThat(redis.hasKey("user-sess:" + account.id())).as("Redis session key deleted").isFalse();
+        assertThat(keycloakSessions(account)).as("provider sessions revoked").isEmpty();
+        mockMvc.perform(get("/api/v1/me").cookie(access1)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/me").cookie(access2)).andExpect(status().isUnauthorized());
+        assertThat(writeMarkRow(account).get("finalized_at")).isNotNull();
+        assertThat(writeMarkRow(account).get("sessions_revoked_at")).isNotNull();
+        assertThat(reset(token, "Another#Pass2026").getResponse().getStatus()).as("token still unusable").isEqualTo(422);
+        verify(keycloakClient, times(1)).setPassword(eq(account.id()), anyString(), anyBoolean());
+        assertThat(login(account, NEW_PASSWORD).getResponse().getStatus()).as("write was applied").isEqualTo(200);
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).as("nothing left").isZero();
+    }
+
+    /** Mô phỏng tiến trình chết: một Error không bị {@code catch (RuntimeException)} của service bắt. */
+    private static final class SimulatedCrash extends Error {
+        SimulatedCrash() {
+            super("simulated process exit");
+        }
     }
 
     @Test

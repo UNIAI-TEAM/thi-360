@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -53,9 +52,10 @@ import vn.unicom.thi360.shared.security.TokenPepperProperties;
  * (đúng một người thắng khi hai yêu cầu cùng mã) rồi gọi Keycloak ngoài transaction. Chỉ khi Keycloak từ chối
  * <b>rõ ràng</b> việc ghi mật khẩu thì mã mới được trả về chưa dùng (AC-21), và chỉ khi dòng vẫn là mã hiện hành
  * (chưa bị yêu cầu mới thay). Ghi thành công hoặc không loại trừ được việc đã ghi (hết thời gian, 5xx) thì mã dùng
- * xong vĩnh viễn: một mã đã cho phép đổi mật khẩu không bao giờ được cấp lại quyền. Dùng xong và audit thành công
- * cùng một transaction; thu hồi phiên cũ lỗi thì ghi dấu chờ và {@link #retryPendingRevocations} thử lại mà không
- * lặp lại việc ghi mật khẩu.
+ * xong vĩnh viễn: một mã đã cho phép đổi mật khẩu không bao giờ được cấp lại quyền. Khi Keycloak xác nhận đã ghi,
+ * phiên cũ được thu hồi (Redis và Keycloak, fail-closed) TRƯỚC khi chốt mã và audit thành công; thu hồi lỗi hoặc
+ * tiến trình chết trước khi chốt thì dòng còn dấu ghi trước mà chưa chốt, và {@link #reconcileUnfinalizedWrites}
+ * thu hồi rồi chốt mà không ghi lại mật khẩu (người dùng yêu cầu liên kết mới nếu cần).
  *
  * <p>Ghi trước: dấu {@code password_write_started_at} được commit (transaction riêng) trước khi gọi Keycloak. Mọi kết
  * quả khác "từ chối rõ ràng" (thành công, hết thời gian, 5xx, ngoại lệ, tiến trình chết) để mã không dùng lại được và
@@ -72,7 +72,6 @@ public class PasswordResetService {
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final int TOKEN_BYTES = 32;
     private static final String RESET_PATH = "/reset-password?token=";
-    private static final Duration REVOCATION_RETRY_WINDOW = Duration.ofHours(24);
     private static final int REVOCATION_BATCH = 50;
 
     private final PasswordResetTokenRepository tokenRepository;
@@ -235,32 +234,18 @@ public class PasswordResetService {
             throw ex;
         }
 
-        finalizeReset(claim);
-        revokeSessions(claim.tokenId(), claim.userId());
-    }
-
-    /**
-     * Thử lại việc thu hồi phiên của các lần đặt lại đã đổi mật khẩu nhưng chưa thu hồi xong (Redis hoặc Keycloak
-     * lỗi sau khi ghi). Không đụng tới mật khẩu. Trả số dòng đã hoàn tất.
-     */
-    public int retryPendingRevocations() {
-        Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        List<PasswordResetToken> pending = tokenRepository.findPendingRevocations(
-                now.minus(REVOCATION_RETRY_WINDOW), PageRequest.of(0, REVOCATION_BATCH));
-        int done = 0;
-        for (PasswordResetToken token : pending) {
-            if (revokeSessions(token.getId(), token.getUserId())) {
-                done++;
-            }
+        // Keycloak đã xác nhận ghi: thu hồi phiên TRƯỚC khi chốt. Thu hồi lỗi hoặc tiến trình chết ở đây thì dòng còn
+        // dấu ghi trước, chưa chốt; job đối soát thu hồi rồi chốt. Mã không bao giờ được mở lại.
+        if (revokeSessions(claim.tokenId(), claim.userId())) {
+            finalizeReset(claim);
         }
-        return done;
     }
 
     /**
      * Đối soát các lần ghi mật khẩu có dấu ghi trước mà chưa hoàn tất sau thời gian chờ (tiến trình chết sau khi ghi,
-     * transaction hoàn tất lỗi, Keycloak trả lời muộn hoặc không trả lời). Kết quả Keycloak không biết nên fail-closed:
-     * thu hồi mọi phiên của tài khoản (Redis và Keycloak), ghi audit {@code PASSWORD_RESET} với kết quả chưa xác định
-     * rồi hoàn tất. Không bao giờ ghi lại mật khẩu. Trả số dòng đã hoàn tất.
+     * thu hồi phiên hoặc hoàn tất lỗi, Keycloak trả lời muộn hoặc không trả lời). Kết quả không chắc chắn nên
+     * fail-closed: thu hồi mọi phiên của tài khoản (Redis và Keycloak), ghi audit {@code PASSWORD_RESET} với kết quả
+     * chưa xác định rồi hoàn tất. Không bao giờ ghi lại mật khẩu. Trả số dòng đã hoàn tất.
      */
     public int reconcileUnfinalizedWrites() {
         Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
@@ -313,9 +298,9 @@ public class PasswordResetService {
     }
 
     /**
-     * Sau khi Keycloak nhận mật khẩu: đánh dấu mã dùng xong và ghi audit thành công trong cùng một transaction.
-     * Lỗi DB ở bước này chỉ được ghi log (mật khẩu đã đổi, không thể báo thất bại): dòng còn dấu ghi trước mà chưa
-     * hoàn tất nên {@link #reconcileUnfinalizedWrites} thu hồi phiên và ghi audit. Audit chỉ ghi một lần (người
+     * Sau khi Keycloak nhận mật khẩu và phiên cũ đã thu hồi: đánh dấu mã dùng xong và ghi audit thành công trong cùng
+     * một transaction. Lỗi DB ở bước này chỉ được ghi log (mật khẩu đã đổi, không thể báo thất bại): dòng còn dấu
+     * ghi trước mà chưa hoàn tất nên {@link #reconcileUnfinalizedWrites} ghi audit. Audit chỉ ghi một lần (người
      * hoàn tất dòng trước).
      */
     private void finalizeReset(Claim claim) {
@@ -341,7 +326,10 @@ public class PasswordResetService {
         }
     }
 
-    /** Thu hồi mọi phiên của tài khoản rồi ghi dấu hoàn tất; lỗi thì để dòng ở trạng thái chờ cho job thử lại. */
+    /**
+     * Thu hồi mọi phiên của tài khoản (fail-closed) rồi ghi dấu đã thu hồi. Lỗi thì ghi log
+     * {@code password_reset.indeterminate} (không có bí mật), để dòng chưa chốt cho job đối soát và không mở lại mã.
+     */
     private boolean revokeSessions(UUID tokenId, UUID userId) {
         try {
             userAdminService.revokeAllSessionsFailClosed(userId);
@@ -351,10 +339,10 @@ public class PasswordResetService {
         } catch (RuntimeException ex) {
             log.atError()
                     .setCause(ex)
-                    .addKeyValue("event", "password_reset.revocation_pending")
+                    .addKeyValue("event", "password_reset.indeterminate")
                     .addKeyValue("tokenId", tokenId.toString())
                     .addKeyValue("userId", userId.toString())
-                    .log("Password changed but old sessions are not revoked yet; retry is scheduled");
+                    .log("Password reset indeterminate: old sessions not revoked yet; reconciliation will revoke and finalize");
             return false;
         }
     }
