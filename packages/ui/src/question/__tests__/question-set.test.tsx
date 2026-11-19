@@ -82,4 +82,32 @@ describe("Bộ câu hỏi (AC-14)", () => {
     render(<Live question={questionSet} children={[setChildA, setChildB]} />);
     expect(screen.queryByRole("button", { name: t.flagForReview })).toBeNull();
   });
+
+  // R1-16: review của con thiếu (FS-6 chỉ ánh xạ dòng của chùm) không được bịa chip "Bỏ trống".
+  it("xem lại thiếu review.children: câu con không có chip kết quả bịa ra", () => {
+    render(
+      <Live
+        question={questionSet}
+        children={[setChildA, setChildB]}
+        mode="review"
+        initial={{ children: { "q-set-a": { optionId: "o1" }, "q-set-b": { text: "42" } } }}
+        review={{ outcome: "CORRECT", earned: 2, max: 2 }}
+      />,
+    );
+    expect(screen.queryByText(t.outcomes.BLANK)).toBeNull();
+  });
+
+  it("thiếu review của con vẫn giữ showAnswers=false của chùm: không lộ đáp án", () => {
+    render(
+      <Live
+        question={questionSet}
+        children={[setChildA, setChildB]}
+        mode="review"
+        initial={{ children: { "q-set-a": { optionId: "o2" }, "q-set-b": { text: "41" } } }}
+        review={{ outcome: "WRONG", earned: 0, max: 2, showAnswers: false }}
+      />,
+    );
+    expect(screen.queryByText(t.correctAnswerTag)).toBeNull();
+    expect(screen.queryByText(t.correctAnswerPrefix)).toBeNull();
+  });
 });

@@ -174,7 +174,8 @@ export interface EssayGrading {
  * Mọi trường điểm tùy chọn: không có thì không hiện số (không hiện "0").
  */
 export interface QuestionReview {
-  outcome: QuestionOutcome;
+  /** Kết quả của câu; thiếu thì không hiện chip kết quả (ví dụ câu con chưa có dòng chấm riêng trong `children`). */
+  outcome?: QuestionOutcome | null;
   /** Điểm đạt của câu; `null`/`undefined` thì không hiện điểm. */
   earned?: number | null;
   /** Điểm tối đa; mặc định `question.points` ?? 1. */

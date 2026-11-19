@@ -24,11 +24,14 @@ export function resolveReview(review: QuestionReview | null | undefined): Questi
   return review ?? null;
 }
 
-/** Review riêng của câu con `id` trong `review` của Bộ câu hỏi. */
+/**
+ * Review riêng của câu con `id` trong `review` của Bộ câu hỏi. Thiếu dòng của con thì không bịa kết quả
+ * (không có chip "Bỏ trống"): chỉ giữ `showAnswers` của cha để không lộ đáp án.
+ */
 export function childReview(review: QuestionReview | null | undefined, id: string): QuestionReview | null {
   const direct = review?.children?.[id];
   if (direct) return direct;
-  return review ? { outcome: "BLANK" as const, showAnswers: review.showAnswers } : null;
+  return review ? { showAnswers: review.showAnswers } : null;
 }
 
 /** Tập `correctAnswer` được phép hiện: mặc định hiện; tắt bằng `showAnswers: false`. */
