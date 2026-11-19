@@ -214,6 +214,39 @@ class MapidCapSolverTest {
     }
 
     @Test
+    void aCapIsBlamedOnlyWhenRelaxingItAloneClosesTheGap() {
+        // The three carriers sit over BOTH caps: relaxing either one leaves them out, so no single rule explains the
+        // shortage, whatever order the rules are declared in (UNI-2758 R1-9).
+        for (int i = 0; i < 3; i++) add(QuestionType.SHORT_ANSWER, candidate("d" + i, QuestionType.SHORT_ANSWER, A, B));
+        for (int i = 0; i < 2; i++) add(QuestionType.SHORT_ANSWER, candidate("w" + i, QuestionType.SHORT_ANSWER));
+        for (MapidRule[] order : new MapidRule[][] {
+                {exact("capA", null, 0, A), exact("capB", null, 0, B)},
+                {exact("capB", null, 0, B), exact("capA", null, 0, A)}}) {
+            PathResult result = solve(section(3, List.of(single("g1", QuestionType.SHORT_ANSWER, 3)), order),
+                    SolveMode.check());
+            assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
+            assertThat(result.groupId()).isEqualTo("g1");
+            assertThat(result.failingQuota()).as("%s first", order[0].id()).isNull();
+        }
+    }
+
+    @Test
+    void aCapThatAloneKeepsEnoughCandidatesOutIsStillNamedInEitherOrder() {
+        // a0/a1 are over capA only, d0 over both: relaxing capA frees a0 and a1, which closes the gap.
+        for (int i = 0; i < 2; i++) add(QuestionType.SHORT_ANSWER, candidate("a" + i, QuestionType.SHORT_ANSWER, A));
+        add(QuestionType.SHORT_ANSWER, candidate("d0", QuestionType.SHORT_ANSWER, A, B));
+        add(QuestionType.SHORT_ANSWER, candidate("w0", QuestionType.SHORT_ANSWER));
+        for (MapidRule[] order : new MapidRule[][] {
+                {exact("capA", null, 0, A), exact("capB", null, 0, B)},
+                {exact("capB", null, 0, B), exact("capA", null, 0, A)}}) {
+            PathResult result = solve(section(3, List.of(single("g1", QuestionType.SHORT_ANSWER, 3)), order),
+                    SolveMode.check());
+            assertThat(result.status()).isEqualTo(SolveStatus.INVALID);
+            assertThat(result.failingQuota().key()).as("%s first", order[0].id()).isEqualTo("capA");
+        }
+    }
+
+    @Test
     void aPercentOnTheTakeTheRemainderGroupIsHeldByTheSolver() {
         for (int i = 0; i < 8; i++) add(QuestionType.SHORT_ANSWER, candidate("a" + i, QuestionType.SHORT_ANSWER, A));
         for (int i = 0; i < 8; i++) add(QuestionType.SHORT_ANSWER, candidate("w" + i, QuestionType.SHORT_ANSWER));
