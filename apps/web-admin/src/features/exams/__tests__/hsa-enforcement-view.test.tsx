@@ -183,4 +183,25 @@ describe("Chỉ tiêu Tiếng Anh chờ chuyên gia của mẫu HSA (UNI-1701 R1
     expect(within(group).queryByText(reason)).not.toBeInTheDocument();
     expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
   });
+
+  it("R2-3 (AD-29, phương án B): ma trận Tiếng Anh có số ở chiều khối lớp thành Bắt buộc cố định, chỉ chỉ tiêu cấp bài ở lại Tham khảo", async () => {
+    const englishMatrix = { ...emptyEnglishMatrix, byGrade: [{ code: "GRADE_12", value: 30 }] };
+    const server = boot("HSA", englishMatrix, "ANH", [englishGradeQuota]);
+    const user = userEvent.setup();
+    const view = open();
+    const grade = await screen.findByRole("group", { name: /Mức của Theo khối lớp/ });
+    expect(grade).toHaveAttribute("data-fixed", "REQUIRED");
+    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ matrix: Record<string, unknown> }> }>; examQuotas: Array<{ enforcement: string }> };
+    expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ gradeEnforcement: "REQUIRED", difficultyEnforcement: "REFERENCE" });
+    expect(sent.examQuotas.map((quota) => quota.enforcement)).toEqual(["REFERENCE"]);
+    view.unmount();
+
+    open("exam=1");
+    const quota = await screen.findByRole("group", { name: /Lớp Tiếng Anh tham khảo/ });
+    expect(quota).toHaveAttribute("data-fixed", "REFERENCE");
+    expect(within(quota).getByText(reason)).toBeInTheDocument();
+  });
 });
