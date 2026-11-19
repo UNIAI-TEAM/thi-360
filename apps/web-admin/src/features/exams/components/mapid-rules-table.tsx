@@ -28,19 +28,28 @@ export function useMapidRuleText(reference: ContentReference | undefined) {
   const format = useFormatter();
   const knowledgeIndex = useMemo(() => indexKnowledge(reference?.knowledgeTree ?? []), [reference]);
   const topics = useCallback(
-    (nodeIds: readonly string[]) =>
-      format.list(
+    (nodeIds: readonly string[]) => {
+      // Danh mục chưa tải (đang tải hoặc lỗi): chưa có tên nên không hiện mã nút thô (UUID) mà hiện chữ giữ chỗ (R1-F9).
+      if (!reference) return t("topicsPending");
+      return format.list(
         nodeIds.map((nodeId) => {
           const node = knowledgeIndex.get(nodeId)?.node;
           return node?.name || node?.code || nodeId;
         }),
         { type: "disjunction" },
-      ),
-    [format, knowledgeIndex],
+      );
+    },
+    [format, knowledgeIndex, reference, t],
   );
-  const groupName = useCallback((group: QuestionBlock | null) => (group ? group.name || t("untitledGroup") : t("scopeDeleted")), [t]);
+  const groupName = useCallback(
+    (group: QuestionBlock | null, deletedName: string | null = null) => {
+      if (group) return group.name || t("untitledGroup");
+      return deletedName ? t("groupDeleted", { name: deletedName }) : t("scopeDeleted");
+    },
+    [t],
+  );
   const scopeText = useCallback(
-    (sentence: RuleSentence) => (sentence.scope === "SUBJECT" ? t("scopeSubject") : groupName(sentence.group)),
+    (sentence: RuleSentence) => (sentence.scope === "SUBJECT" ? t("scopeSubject") : groupName(sentence.group, sentence.deletedGroupName)),
     [groupName, t],
   );
   const sentence = useCallback(
@@ -48,7 +57,7 @@ export function useMapidRuleText(reference: ContentReference | undefined) {
       const data = describeRule(section, rule);
       return t(`sentence.${data.kind}`, {
         scope: scopeText(data),
-        group: groupName(data.group),
+        group: groupName(data.group, data.deletedGroupName),
         topics: topics(rule.nodeIds),
         amount: data.amount ?? "",
       });
@@ -153,7 +162,7 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
                       <span className="wrap-anywhere">{sentence}</span>
                       {deleted.has(rule.id) && (
                         <span className="mt-1 flex flex-wrap items-center gap-2">
-                          <StatusChip tone="danger">{t("deletedGroup")}</StatusChip>
+                          <StatusChip tone="danger">{rule.deletedGroupName ? t("deletedGroupNamed", { name: rule.deletedGroupName }) : t("deletedGroup")}</StatusChip>
                           <span className="text-caption text-danger">{t("deletedGroupFix")}</span>
                         </span>
                       )}

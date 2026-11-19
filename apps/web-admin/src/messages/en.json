@@ -3917,6 +3917,7 @@
       "blockAdded": "Added group {name}.",
       "blockRemoved": "Removed group {name}. Save to apply.",
       "allocationBlocked": "Not saved: an allocation table still has an error. Fix it in the table and save again.",
+      "mapidGroupBlocked": "Not saved: the rule “{rule}” points to {hasGroup, select, yes {the deleted group “{group}”} other {a deleted group}}. Change its scope or delete the rule, then save again.",
       "totalChangeBlocked": "Not saved: the question count of {subject} changed. Choose Apply new numbers or Keep old numbers for this subject, then save again.",
       "rateBlocked": "Not saved: a row entered by percentage does not give whole sets. Fix the percentage in that row and save again.",
       "overviewSummary": "{count, number} questions · {minutes, number} min{shared, select, yes { shared} other {}} · {points} points",
@@ -5772,6 +5773,7 @@
       "deleteAria": "Delete rule: {sentence}",
       "deletedGroup": "Deleted group",
       "deletedGroupFix": "This rule points to a group that no longer exists. Change its scope or delete it before saving.",
+      "deletedGroupNamed": "Deleted group «{name}»",
       "dialog": {
         "cancel": "Cancel",
         "close": "Close",
@@ -5782,17 +5784,20 @@
         },
         "count": "Questions",
         "countAria": "Question count of the rule",
-        "denominator": "Denominator: {units, number} questions of {scope}",
+        "denominator": "Denominator: {units, plural, one {# question} other {# questions}} of {scope}",
         "denominatorUnknown": "Denominator: the question count of {scope} is not known",
         "description": "Rule for {subject}. The remaining positions are drawn at random within the scope that is still valid.",
         "entry": "Enter as",
         "entryCount": "Questions",
         "entryPercent": "Percent",
         "issues": {
+          "COUNT_ABOVE_TOTAL": "The count is above the question count of the subject ({total, number}). Enter a number that is not larger than the question count of the subject.",
           "GROUP_MISSING": "The selected group no longer exists. Choose the scope again.",
           "NO_NODES": "Pick at least one MAPID.",
+          "NUMBER_INVALID": "The number is not valid. Fix it before saving.",
           "ONLY_IN_GROUP_NEEDS_GROUP": "This rule only applies to one group. Choose a group.",
           "PERCENT_DENOMINATOR_UNKNOWN": "The denominator is not known, so the percent cannot be converted. Enter the question counts of the subject and the other groups, or switch to entering a count.",
+          "PERCENT_POOL": "Percent is not available for an elective subject because its question count depends on the subjects the student picks. Switch to entering a question count.",
           "PERCENT_RANGE": "Percent must be between 0 and 100."
         },
         "nodeRemove": "Remove MAPID {code} {name}",
@@ -5800,7 +5805,7 @@
         "nodesLegend": "MAPID",
         "percent": "Percent (%)",
         "percentAria": "Percent of the rule",
-        "percentResult": "= {count, number} questions out of {units, number}",
+        "percentResult": "= {count, plural, one {# question} other {# questions}} out of {units, number}",
         "percentUnknown": "The question count of the group is not known yet, so the percent cannot be turned into questions.",
         "pick": "Pick MAPID",
         "pickEdit": "Change MAPID",
@@ -5818,10 +5823,10 @@
         "size": {
           "remainder": "takes the remainder",
           "remainderUnits": "takes the remainder = {units, number}/{total, number} questions",
-          "sets": "{sets, number} set × {size, number} child questions = {units, number}/{total, number} questions",
-          "setsNoTotal": "{sets, number} set × {size, number} child questions = {units, number} questions",
+          "sets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, number}/{total, number} questions",
+          "setsNoTotal": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, plural, one {# question} other {# questions}}",
           "single": "{units, number}/{total, number} questions",
-          "singleNoTotal": "{units, number} questions"
+          "singleNoTotal": "{units, plural, one {# question} other {# questions}}"
         },
         "title": "Add rule",
         "titleEdit": "Edit rule",
@@ -5858,6 +5863,7 @@
         "open": "Open the MAPID rules table",
         "title": "MAPID source"
       },
+      "groupDeleted": "{name} (deleted)",
       "hint": "Declare only the topics you want to control. The remaining positions are drawn at random within the scope that is still valid.",
       "issue": {
         "goToRule": "Go to rule",
@@ -5873,9 +5879,9 @@
         "legend": "Knowledge scope",
         "matrix": "By MAPID matrix",
         "matrixHint": "Add rules for the whole subject or for one question group. The remaining positions are drawn at random.",
-        "paused": "{count, number} rules paused",
+        "paused": "{count, plural, one {# rule paused} other {# rules paused}}",
         "pausedHint": "The rules stay in the draft; choose “By MAPID matrix” again to apply them.",
-        "pausedInvalid": "{count, number} rules point to deleted groups. Switch to “By MAPID matrix” to fix or delete them before saving."
+        "pausedInvalid": "{count, plural, one {# rule points to a deleted group} other {# rules point to deleted groups}}. Switch to “By MAPID matrix” to fix or delete the rules before saving."
       },
       "rule": "Rule",
       "scopeDeleted": "Deleted group",
@@ -5900,6 +5906,7 @@
         "SOURCE": "Source only from {topics}"
       },
       "title": "MAPID rules",
+      "topicsPending": "(loading MAPID)",
       "untitledGroup": "Untitled group"
     },
     "scopeField": {

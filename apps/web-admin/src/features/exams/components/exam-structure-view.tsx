@@ -53,6 +53,7 @@ import {
   validateDraft,
 } from "./exam-structure-draft";
 import { ExamEditorActions } from "./exam-editor-actions";
+import { useMapidRuleText } from "./mapid-rules-table";
 import { ExamOverviewPanel } from "./exam-overview-panel";
 import { optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
 import { describeStructureChanges } from "./exam-structure-changes";
@@ -218,6 +219,7 @@ function StructureEditor({
   const format = useFormatter();
   const router = useRouter();
   const lookup = useReferenceLookup(reference);
+  const mapidText = useMapidRuleText(reference);
   const save = useUpdateExamStructure(exam.id);
   const check = useRunExamCheck(exam.id);
   const summaryQuery = useExamStructureSummary(exam.id);
@@ -364,7 +366,18 @@ function StructureEditor({
     const quotaBlocked = blocker ? false : examQuotaBlockers(quotas).length > 0;
     if (blocker || quotaBlocked) {
       const found = blocker?.kind === "TOTAL_CHANGE" ? findSection(draft, blocker.sectionId) : null;
-      const message = found ? t("totalChangeBlocked", { subject: lookup.subject(found.section.subjectCode) }) : t("allocationBlocked");
+      // Quy tắc MAPID trỏ tới nhóm đã xóa: nêu câu của quy tắc và tên nhóm đã xóa, không đẩy người dùng sang bảng phân bổ (R1-F4).
+      const orphanSection = blocker?.kind === "MAPID_GROUP" ? findSection(draft, blocker.sectionId)?.section : undefined;
+      const orphan = orphanSection?.mapidRules?.find((rule) => rule.id === blocker?.ruleId);
+      const message = found
+        ? t("totalChangeBlocked", { subject: lookup.subject(found.section.subjectCode) })
+        : orphanSection && orphan
+          ? t("mapidGroupBlocked", {
+              rule: mapidText.sentence(orphanSection, orphan),
+              hasGroup: orphan.deletedGroupName ? "yes" : "no",
+              group: orphan.deletedGroupName ?? "",
+            })
+          : t("allocationBlocked");
       if (!blocker) selectNow({ kind: "exam" });
       else selectNow(blocker.blockId ? { kind: "block", blockId: blocker.blockId } : { kind: "section", sectionId: blocker.sectionId });
       if (!options.onFailed) notify.error(message);

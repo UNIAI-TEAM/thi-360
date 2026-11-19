@@ -16,6 +16,7 @@ import {
   type MapidRuleForm,
   ruleFromForm,
   ruleNeedsNumber,
+  type RuleIssue,
   ruleUnits,
 } from "../mapid-rules";
 import type { ExamSection, MapidComparator, MapidRule, MapidRuleType, QuestionBlock } from "../types";
@@ -64,10 +65,17 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
   const withNumberId = useId();
   const [form, setForm] = useState<MapidRuleForm>(() => (rule ? formFromRule(rule) : emptyRuleForm(draftId("mr"))));
   const [picking, setPicking] = useState(false);
+  /** Ô số đang giữ chữ sai định dạng: `BlockNumberInput` giữ giá trị hợp lệ cuối, nên bản lưu sẽ khác số đang hiện nếu không khóa nút Lưu (R1-F7). */
+  const [numberInvalid, setNumberInvalid] = useState(false);
+  const issuesId = useId();
   const view = useMemo(() => ({ ...section, blocks: [...groups] }), [section, groups]);
   const knowledgeIndex = useMemo(() => indexKnowledge(reference.knowledgeTree), [reference]);
 
-  const patch = (change: Partial<MapidRuleForm>) => setForm((current) => ({ ...current, ...change }));
+  const patch = (change: Partial<MapidRuleForm>) => {
+    // Đổi loại, kiểu nhập hay bật số lượng thì ô số cũ không còn trên màn: bỏ cờ chữ sai của nó.
+    if ("type" in change || "entry" in change || "withNumber" in change) setNumberInvalid(false);
+    setForm((current) => ({ ...current, ...change }));
+  };
   const refs: KnowledgeRef[] = form.nodeIds.map((nodeId) => {
     const node = knowledgeIndex.get(nodeId)?.node;
     return { nodeId, code: node?.code ?? nodeId, name: node?.name ?? "", primary: false };
@@ -76,7 +84,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
   const scopeName = group ? group.name || tGroups("untitled") : subjectName;
   const scopeValue = form.groupId === null ? SUBJECT_SCOPE : group ? group.id : "";
   const units = ruleUnits(view, form);
-  const issues = ruleFormIssues(form, view);
+  const issues: Array<RuleIssue | "NUMBER_INVALID"> = [...(numberInvalid ? (["NUMBER_INVALID"] as const) : []), ...ruleFormIssues(form, view)];
   const needsNumber = ruleNeedsNumber(form.type, form.withNumber);
 
   const sizeText = (block: QuestionBlock): string => {
@@ -99,11 +107,14 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
       label: t("scope.subject"),
       description: section.questionCount === null ? t("scope.subjectHint", { subject: subjectName }) : t("scope.subjectHintCount", { subject: subjectName, total: section.questionCount }),
     },
-    ...groups.map((block) => ({
-      value: block.id,
-      label: block.name || tGroups("untitled"),
-      description: t("scope.groupHint", { type: typeText(block), size: sizeText(block) }),
-    })),
+    // Nhóm đã bỏ (H43) không phải nhóm của môn: máy chủ không tính vào bài, nên không là đích của quy tắc mới (R1-F2).
+    ...groups
+      .filter((block) => block.omitted !== true || block.id === form.groupId)
+      .map((block) => ({
+        value: block.id,
+        label: block.name || tGroups("untitled"),
+        description: t("scope.groupHint", { type: typeText(block), size: sizeText(block) }),
+      })),
   ];
   const typeOptions = RULE_TYPES.map((type) => ({ value: type, label: t(`type.${type}.label`), description: t(`type.${type}.description`) }));
 
@@ -211,6 +222,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                       aria-label={t("countAria")}
                       value={form.count}
                       onValueChange={(count) => patch({ count })}
+                      onInvalidChange={setNumberInvalid}
                     />
                   )}
                 </FormField>
@@ -225,6 +237,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                       allowDecimal
                       value={form.percent}
                       onValueChange={(percent) => patch({ percent })}
+                      onInvalidChange={setNumberInvalid}
                     />
                   )}
                 </FormField>
@@ -241,8 +254,8 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
           </div>
         )}
         {issues.length > 0 && (
-          <p role="status" className="text-caption text-text-muted">
-            {t(`issues.${issues[0]!}`)}
+          <p id={issuesId} role="status" className="text-caption text-danger">
+            {t(`issues.${issues[0]!}`, { total: section.questionCount ?? 0 })}
           </p>
         )}
       </div>
@@ -250,7 +263,13 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
         <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
           {t("cancel")}
         </Button>
-        <Button type="button" data-testid="mapid-rule-save" disabled={issues.length > 0} onClick={() => onSave(ruleFromForm(form, view))}>
+        <Button
+          type="button"
+          data-testid="mapid-rule-save"
+          disabled={issues.length > 0}
+          aria-describedby={issues.length > 0 ? issuesId : undefined}
+          onClick={() => onSave(ruleFromForm(form, view))}
+        >
           {t("save")}
         </Button>
       </DialogFooter>

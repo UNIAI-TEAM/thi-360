@@ -3917,6 +3917,7 @@
       "blockAdded": "Đã thêm nhóm {name}.",
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
       "allocationBlocked": "Chưa lưu được: bảng phân bổ còn lỗi. Sửa ở bảng rồi lưu lại.",
+      "mapidGroupBlocked": "Chưa lưu được: quy tắc «{rule}» trỏ tới {hasGroup, select, yes {nhóm «{group}» đã bị xóa} other {một nhóm đã bị xóa}}. Sửa phạm vi hoặc xóa quy tắc rồi lưu lại.",
       "totalChangeBlocked": "Chưa lưu được: tổng số câu của môn {subject} đã đổi. Chọn Áp dụng số mới hoặc Giữ số cũ ở môn này rồi lưu lại.",
       "rateBlocked": "Chưa lưu được: một dòng nhập theo tỷ lệ chưa ra chùm nguyên. Sửa tỷ lệ ở dòng đó rồi lưu lại.",
       "overviewSummary": "{count, number} câu · {minutes, number} phút{shared, select, yes { chung} other {}} · {points} điểm",
@@ -5772,6 +5773,7 @@
       "deleteAria": "Xóa quy tắc: {sentence}",
       "deletedGroup": "Nhóm đã xóa",
       "deletedGroupFix": "Quy tắc trỏ tới nhóm không còn. Sửa phạm vi hoặc xóa quy tắc trước khi lưu.",
+      "deletedGroupNamed": "Nhóm «{name}» đã xóa",
       "dialog": {
         "cancel": "Hủy",
         "close": "Đóng",
@@ -5789,10 +5791,13 @@
         "entryCount": "Số câu",
         "entryPercent": "Tỷ lệ",
         "issues": {
+          "COUNT_ABOVE_TOTAL": "Số câu vượt số câu của môn ({total, number}). Nhập số nhỏ hơn hoặc bằng số câu của môn.",
           "GROUP_MISSING": "Nhóm đã chọn không còn. Chọn lại phạm vi áp dụng.",
           "NO_NODES": "Chọn ít nhất một MAPID.",
+          "NUMBER_INVALID": "Số nhập chưa đúng. Sửa lại trước khi lưu.",
           "ONLY_IN_GROUP_NEEDS_GROUP": "Quy tắc này chỉ áp dụng cho một nhóm. Chọn một nhóm.",
           "PERCENT_DENOMINATOR_UNKNOWN": "Chưa biết mẫu số nên chưa tính được tỷ lệ. Nhập số câu của môn và của các nhóm khác, hoặc chuyển sang nhập theo số câu.",
+          "PERCENT_POOL": "Môn tự chọn chưa dùng được tỷ lệ vì số câu của môn tính theo số môn học viên chọn. Chuyển sang nhập theo số câu.",
           "PERCENT_RANGE": "Tỷ lệ phải từ 0 đến 100."
         },
         "nodeRemove": "Bỏ MAPID {code} {name}",
@@ -5858,6 +5863,7 @@
         "open": "Mở bảng Quy tắc MAPID",
         "title": "Nguồn câu theo MAPID"
       },
+      "groupDeleted": "{name} (đã xóa)",
       "hint": "Chỉ khai báo những chủ đề muốn kiểm soát. Các vị trí còn lại được lấy ngẫu nhiên trong phạm vi còn hợp lệ.",
       "issue": {
         "goToRule": "Đi tới quy tắc",
@@ -5900,6 +5906,7 @@
         "SOURCE": "Chỉ lấy từ {topics}"
       },
       "title": "Quy tắc MAPID",
+      "topicsPending": "(đang tải MAPID)",
       "untitledGroup": "Nhóm chưa đặt tên"
     },
     "scopeField": {

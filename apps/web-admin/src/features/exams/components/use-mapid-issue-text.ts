@@ -38,7 +38,8 @@ export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">) {
         return t("quoted", { sentence: section && rule ? sentence(section, rule) : ruleId });
       };
       const ruleIds = issue.ruleIds?.length ? issue.ruleIds : issue.ruleId ? [issue.ruleId] : [];
-      const topics = (issue.nodeIds ?? []).map((nodeId) => knowledge.get(nodeId)?.node.code || nodeId).join(", ");
+      // Danh mục chưa tải: không có mã để nêu, bỏ phần "(MAPID …)" thay vì in UUID của nút (R1-F9).
+      const topics = reference ? (issue.nodeIds ?? []).map((nodeId) => knowledge.get(nodeId)?.node.code || nodeId).join(", ") : "";
       const setSize = where?.block.setSize ?? 0;
       const values = {
         rule: issue.ruleId ? ruleLabel(issue.ruleId) : "",
@@ -61,6 +62,6 @@ export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">) {
       }
       return { values, text: null };
     },
-    [exam, t, format, sentence, knowledge],
+    [exam, t, format, sentence, knowledge, reference],
   );
 }
