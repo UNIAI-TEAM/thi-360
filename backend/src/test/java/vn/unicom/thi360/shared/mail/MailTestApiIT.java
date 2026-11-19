@@ -9,8 +9,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,6 +112,14 @@ class MailTestApiIT extends AbstractIntegrationTest {
                     .execute(status -> e2eQueue.enqueue(kind, to, "vi", model, null));
         }
 
+        /** Đồng hồ e2e dùng chung cả ngữ cảnh: trả về giờ hệ thống sau mỗi ca. */
+        @AfterEach
+        void resetBusinessClock() {
+            ((MutableClock) clock).reset();
+        }
+
+        private static final Instant ORDER_BASE = Instant.parse("2031-05-06T07:08:09Z");
+
         /** AC-18: thư mới nhất kèm mã OTP trong thân; không có thư thì 404. */
         @Test
         void returnsLatestMail() throws Exception {
@@ -121,11 +131,14 @@ class MailTestApiIT extends AbstractIntegrationTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("NOT_FOUND"));
 
+            // Thứ tự do giờ nghiệp vụ điều khiển, không do thời gian chạy: mỗi thư cách nhau 10 giây trên đồng hồ e2e.
+            MutableClock mutable = (MutableClock) clock;
+            mutable.setAt(ORDER_BASE);
             enqueue(MailKind.EMAIL_VERIFY, to, MailSamples.model(MailKind.EMAIL_VERIFY, "111111"));
-            Thread.sleep(20);
+            mutable.setAt(ORDER_BASE.plusSeconds(10));
             UUID newest = enqueue(MailKind.EMAIL_VERIFY, to, MailSamples.model(MailKind.EMAIL_VERIFY, "222222"));
-            // Thư loại khác và thư của người khác không được lẫn vào.
-            Thread.sleep(20);
+            // Thư loại khác và thư của người khác, muộn hơn, không được lẫn vào.
+            mutable.setAt(ORDER_BASE.plusSeconds(20));
             enqueue(MailKind.PASSWORD_RESET, to, MailSamples.model(MailKind.PASSWORD_RESET));
             enqueue(MailKind.EMAIL_VERIFY, MailSamples.randomAddress(), MailSamples.model(MailKind.EMAIL_VERIFY, "333333"));
 
