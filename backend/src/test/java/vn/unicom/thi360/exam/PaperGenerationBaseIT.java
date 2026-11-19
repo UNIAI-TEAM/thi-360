@@ -113,20 +113,83 @@ abstract class PaperGenerationBaseIT extends AbstractIntegrationTest {
 
     /**
      * Insert a published version row directly (no check, no ledger): enough for the port, which reads only
-     * {@code exam_version}. {@code combinations} is the JSON array of {@code config.combinations}, or null.
+     * {@code exam_version}. {@code combinations} is the JSON array of {@code config.combinations}, or null. The
+     * only published path is {@code default}.
      */
     protected Published insertVersion(String partsJson, String combinations) {
+        return insertVersion(partsJson, combinations, "default");
+    }
+
+    /** As above with the given published path ids ({@code optionId+optionId}); none at all is allowed. */
+    protected Published insertVersion(String partsJson, String combinations, String... pathIds) {
         UUID examId = UUID.randomUUID();
         jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,duration_minutes) "
                 + "VALUES (?,?,?,'EX2 direct','FULL','SHARED',60)", examId, examId.toString(), examId.toString());
+        insertVersionRow(examId, 1, partsJson, combinations, pathIds);
+        return new Published(examId, 1);
+    }
+
+    /** Another published version of an exam created by {@link #insertVersion}, with its own structure and paths. */
+    protected Published insertVersionRow(UUID examId, int versionNo, String partsJson, String combinations,
+            String... pathIds) {
         String config = "{\"code\":\"" + examId + "\",\"name\":\"EX2 direct\",\"scope\":\"FULL\",\"timing\":\"SHARED\","
                 + "\"durationMinutes\":60,\"practiceScoring\":\"RAW\""
                 + (combinations == null ? "" : ",\"combinations\":" + combinations) + "}";
+        String paths = String.join(",", pathIds);
         jdbc.update("INSERT INTO exam.exam_version(id,exam_id,version_no,config,parts,published_path_ids,"
                 + "serving_path_ids,check_run_id,state,status,published_at,published_by) "
-                + "VALUES (?,?,1,?::jsonb,?::jsonb,ARRAY['default'],ARRAY['default'],?,'SERVING','PUBLISHED',now(),?)",
-                UUID.randomUUID(), examId, config, partsJson, UUID.randomUUID(), UUID.randomUUID());
-        return new Published(examId, 1);
+                + "VALUES (?,?,?,?::jsonb,?::jsonb,string_to_array(?,','),string_to_array(?,','),?,'SERVING',"
+                + "'PUBLISHED',now(),?)", UUID.randomUUID(), examId, versionNo, config, partsJson, paths, paths,
+                UUID.randomUUID(), UUID.randomUUID());
+        return new Published(examId, versionNo);
+    }
+
+    /** Ids of every authored block of the published snapshot (sections, option sections and subject pools). */
+    protected Set<String> blockIds(Published published) throws Exception {
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonNode blocks : snapshotParts(published).findValues("blocks")) {
+            blocks.forEach(block -> ids.add(block.path("id").asText()));
+        }
+        return ids;
+    }
+
+    /** The blocks of the published snapshot that are passage-slot blocks (HSA / QDA Literature). */
+    protected List<JsonNode> slottedBlocks(Published published) throws Exception {
+        List<JsonNode> blocks = new ArrayList<>();
+        for (JsonNode holder : snapshotParts(published).findParents("slots")) {
+            if (holder.path("slots").size() > 0) blocks.add(holder);
+        }
+        return blocks;
+    }
+
+    private JsonNode snapshotParts(Published published) throws Exception {
+        return mapper.readTree(jdbc.queryForObject("SELECT parts::text FROM exam.exam_version "
+                + "WHERE exam_id = ? AND version_no = ?", String.class, published.examId(), published.versionNo()));
+    }
+
+    /**
+     * Every group of the paper is an authored block of the snapshot, and each passage-slot block it holds appears
+     * once, carrying all of its slot picks as whole roots: {@code setCount} roots, {@code setCount * setSize} children.
+     */
+    protected void assertGroupsAreAuthoredBlocks(Published published, GeneratedPaper paper) throws Exception {
+        Set<String> blocks = blockIds(published);
+        List<PaperSolverPort.GeneratedGroup> groups = paper.parts().stream().flatMap(part -> part.sections().stream())
+                .flatMap(section -> section.groups().stream()).toList();
+        assertThat(groups).extracting(PaperSolverPort.GeneratedGroup::groupId)
+                .doesNotHaveDuplicates().allSatisfy(id -> assertThat(blocks).as("authored block %s", id).contains(id))
+                .noneMatch(id -> id.contains(":slot:"));
+        int checked = 0;
+        for (JsonNode block : slottedBlocks(published)) {
+            var group = groups.stream().filter(g -> g.groupId().equals(block.path("id").asText())).findFirst();
+            if (group.isEmpty()) continue;
+            checked++;
+            int setCount = block.path("setCount").asInt();
+            int setSize = block.path("setSize").asInt();
+            assertThat(group.get().questions()).as("roots of block %s", block.path("id").asText()).hasSize(setCount);
+            assertThat(group.get().questions().stream().mapToInt(question -> units(question.questionId())).sum())
+                    .as("children of block %s", block.path("id").asText()).isEqualTo(setCount * setSize);
+        }
+        assertThat(checked).as("passage-slot blocks in the paper").isPositive();
     }
 
     /** One part {@code p1}, one section {@code s1} of the subject, one single-choice group {@code b1}. */

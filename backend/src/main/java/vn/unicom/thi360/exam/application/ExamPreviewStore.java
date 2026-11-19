@@ -43,9 +43,10 @@ public class ExamPreviewStore {
         this.mapper = mapper;
     }
 
+    /** @param publishedPathIds {@code published_path_ids} of a version snapshot; empty for the working copy */
     public record Snapshot(UUID id, String code, String timing, Integer durationMinutes,
                            String practiceScoring, BigDecimal maxScore, JsonNode parts, Exam exam,
-                           JsonNode publishedCombinations) {}
+                           JsonNode publishedCombinations, List<String> publishedPathIds) {}
 
     @Transactional(readOnly = true)
     public Snapshot load(UUID id) {
@@ -55,7 +56,7 @@ public class ExamPreviewStore {
         ObjectNode parts = ((ObjectNode) structure.getParts()).deepCopy();
         if (structure.getExamQuotas() != null) parts.set("examQuotas", structure.getExamQuotas().deepCopy());
         return new Snapshot(exam.getId(), exam.getCode(), exam.getTiming(), exam.getDurationMinutes(),
-                exam.getPracticeScoring(), exam.getMaxScore(), parts, exam, null);
+                exam.getPracticeScoring(), exam.getMaxScore(), parts, exam, null, List.of());
     }
 
     /** Reconstruct the checker inputs from the immutable published configuration and structure. */
@@ -115,7 +116,7 @@ public class ExamPreviewStore {
             for (JsonNode part : parts.path("parts")) questionCount += part.path("questionCount").asInt();
             exam.applyStructureSummary(questionCount, false, false, 0);
             return new Snapshot(id, exam.getCode(), timing, duration, scoring, max, parts, exam,
-                    config.path("combinations"));
+                    config.path("combinations"), rows.getFirst().paths());
         } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
             throw new IllegalStateException("Invalid exam version snapshot", ex);
         }

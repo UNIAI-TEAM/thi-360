@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +47,19 @@ class PaperGenerationLimitsTest {
                 "blocks":[{"id":"b1","questionType":"SINGLE_CHOICE","questionCount":1}]}],
               "options":[]}]}
             """;
+    private static final String TRIM_PARTS = """
+            {"parts":[{"id":"p1","order":1,"name":"P1","questionCount":3,
+              "participation":{"mode":"CHOICE","choose":1},"sections":[],
+              "options":[{"id":"sc","kind":"SUBJECT_CHOICE","code":"SC","chooseSubjects":2,"countsByPick":[2,1],
+                "sections":[
+                  {"id":"sa","subjectCode":"TOAN","choiceGroup":"NATURAL",
+                   "blocks":[{"id":"ba","questionType":"SINGLE_CHOICE","questionCount":2}]},
+                  {"id":"sb","subjectCode":"LY","choiceGroup":"NATURAL",
+                   "blocks":[{"id":"bb","questionType":"SINGLE_CHOICE","questionCount":2}]}]}]}]}
+            """;
+    private static final Instant START = Instant.parse("2026-11-19T00:00:00Z");
+    private static final ExamGenerationSolverProperties THIRTY =
+            new ExamGenerationSolverProperties(Duration.ofSeconds(30), 200, 20_000, 8);
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-19T00:00:00Z"), ZoneOffset.UTC);
 
     @Test
@@ -101,30 +115,130 @@ class PaperGenerationLimitsTest {
         assertThat(generation.limits(Duration.ofSeconds(2)).timeout()).isEqualTo(Duration.ofSeconds(2));
     }
 
+    // ---- one absolute deadline across the phases (review R1-6) ---------------------------------------------
+
+    /** Setup (catalog reads) takes 20 s and the one source read 15 s: past a 30 s deadline, whichever phase notices. */
+    @Test
+    void aShortageThatSurfacesPastTheDeadlineIsATimeoutNotAFailure() throws Exception {
+        SteppingClock stepping = new SteppingClock(START);
+        PaperSolverPort port = service(source(stepping, Duration.ofSeconds(15), "TOAN", 0, 0), THIRTY, stepping, PARTS,
+                Duration.ofSeconds(20), "TOAN");
+
+        assertThatThrownBy(() -> port.generate(EXAM, 1, List.of("p1"), List.of(), 7L, Set.of()))
+                .isInstanceOfSatisfying(PaperGenerationException.class,
+                        ex -> assertThat(ex.reason()).isEqualTo(Reason.GENERATION_TIMEOUT));
+    }
+
+    @Test
+    void aPaperFoundPastTheDeadlineIsATimeoutAndOneWithinItIsReturned() throws Exception {
+        SteppingClock late = new SteppingClock(START);
+        PaperSolverPort slow = service(source(late, Duration.ofSeconds(15), "TOAN", 1, 1), THIRTY, late, PARTS,
+                Duration.ofSeconds(20), "TOAN");
+        assertThatThrownBy(() -> slow.generate(EXAM, 1, List.of("p1"), List.of(), 7L, Set.of()))
+                .isInstanceOfSatisfying(PaperGenerationException.class,
+                        ex -> assertThat(ex.reason()).isEqualTo(Reason.GENERATION_TIMEOUT));
+
+        // 10 s of setup and 10 s of reading are 20 s of a 30 s deadline: each phase fits and so does the whole.
+        SteppingClock inTime = new SteppingClock(START);
+        PaperSolverPort fast = service(source(inTime, Duration.ofSeconds(10), "TOAN", 1, 1), THIRTY, inTime, PARTS,
+                Duration.ofSeconds(10), "TOAN");
+        assertThat(fast.generate(EXAM, 1, List.of("p1"), List.of(), 7L, Set.of()).parts()).hasSize(1);
+    }
+
+    /** The trim solve (HSA science) starts after the setup took 20 s: it gets what is left, not a fresh 30 s. */
+    @Test
+    void aTrimSolveFailingPastTheDeadlineIsATimeoutNotAFailure() throws Exception {
+        SteppingClock stepping = new SteppingClock(START);
+        PaperSolverPort port = service(source(stepping, Duration.ofSeconds(15), "LY", 0, 3), THIRTY, stepping,
+                TRIM_PARTS, Duration.ofSeconds(20), "TOAN", "LY");
+
+        assertThatThrownBy(() -> port.generate(EXAM, 1, List.of("p1"),
+                List.of(PaperSolverPort.Selection.subjects("p1", "SC", List.of("TOAN", "LY"))), 7L, Set.of()))
+                .isInstanceOfSatisfying(PaperGenerationException.class,
+                        ex -> assertThat(ex.reason()).isEqualTo(Reason.GENERATION_TIMEOUT));
+    }
+
     private PaperSolverPort service(QuestionSourcePort source, ExamGenerationSolverProperties limits) throws Exception {
+        return service(source, limits, clock, PARTS, Duration.ZERO, "TOAN");
+    }
+
+    /** {@code setup} is what the catalog reads of the build cost on {@code time}. */
+    private PaperSolverPort service(QuestionSourcePort source, ExamGenerationSolverProperties limits, Clock time,
+            String structure, Duration setup, String... subjects) throws Exception {
         CatalogLookup catalog = mock(CatalogLookup.class);
-        CatalogItemView subject = new CatalogItemView(UUID.randomUUID(), UUID.randomUUID(), "SUBJECT", "TOAN", "toan",
-                1, "Toan", "Math", CatalogStatus.ACTIVE, CatalogStatus.ACTIVE, false, null, (short) 1, "/x/");
-        when(catalog.findActiveItem("SUBJECT", "TOAN")).thenReturn(Optional.of(subject));
-        when(catalog.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of());
+        for (String code : subjects) {
+            CatalogItemView subject = new CatalogItemView(subjectId(code), UUID.randomUUID(), "SUBJECT", code,
+                    code.toLowerCase(), 1, code, code, CatalogStatus.ACTIVE, CatalogStatus.ACTIVE, false, null,
+                    (short) 1, "/x/");
+            when(catalog.findActiveItem("SUBJECT", code)).thenReturn(Optional.of(subject));
+        }
+        when(catalog.listActiveGroupItems("KNOWLEDGE")).thenAnswer(call -> {
+            if (time instanceof SteppingClock stepping) stepping.advance(setup);
+            return List.of();
+        });
         ExamPreviewStore store = mock(ExamPreviewStore.class);
-        JsonNode parts = MAPPER.readTree(PARTS);
+        JsonNode parts = MAPPER.readTree(structure);
         when(store.loadVersion(EXAM, 1)).thenReturn(new ExamPreviewStore.Snapshot(EXAM, "E", "SHARED", 60,
-                "RAW", BigDecimal.ONE, parts, mock(Exam.class), MAPPER.createObjectNode()));
+                "RAW", BigDecimal.ONE, parts, mock(Exam.class), MAPPER.createObjectNode(), List.of("default", "sc")));
         SolverInputBuilder builder = new SolverInputBuilder(catalog, source,
                 new vn.unicom.thi360.exam.domain.solver.SolverLimits(200, 20_000, Duration.ofSeconds(30), 8));
-        return new PaperGenerationService(store, builder, limits, MAPPER, clock);
+        return new PaperGenerationService(store, builder, limits, MAPPER, time);
+    }
+
+    private static UUID subjectId(String code) {
+        return UUID.nameUUIDFromBytes(("subject:" + code).getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private static QuestionSourcePort source(int candidates) {
         QuestionSourcePort source = mock(QuestionSourcePort.class);
+        when(source.findCandidates(any(), anyInt())).thenReturn(candidates(candidates));
+        return source;
+    }
+
+    /**
+     * A source where reading {@code slowSubject} costs {@code delay} on the clock and holds {@code slowCount}
+     * candidates; every other subject answers at once with {@code otherCount}.
+     */
+    private static QuestionSourcePort source(SteppingClock clock, Duration delay, String slowSubject, int slowCount,
+            int otherCount) {
+        QuestionSourcePort source = mock(QuestionSourcePort.class);
+        when(source.findCandidates(any(), anyInt())).thenAnswer(call -> {
+            QuestionSourcePort.Filter filter = call.getArgument(0);
+            if (subjectId(slowSubject).equals(filter.subjectId())) {
+                clock.advance(delay);
+                return candidates(slowCount);
+            }
+            return candidates(otherCount);
+        });
+        return source;
+    }
+
+    private static List<QuestionSourcePort.Candidate> candidates(int count) {
         List<QuestionSourcePort.Candidate> list = new java.util.ArrayList<>();
-        for (int i = 0; i < candidates; i++) {
+        for (int i = 0; i < count; i++) {
             UUID id = UUID.randomUUID();
             list.add(new QuestionSourcePort.Candidate(id, 1, null, List.of(new QuestionSourcePort.Unit(id, null,
                     QuestionType.SINGLE_CHOICE, null, null, List.of(), List.of(), BigDecimal.ONE)), null, null));
         }
-        when(source.findCandidates(any(), anyInt())).thenReturn(list);
-        return source;
+        return list;
+    }
+
+    /** A clock that only moves when a test moves it, so a phase can cost time without sleeping. */
+    private static final class SteppingClock extends Clock {
+        private Instant now;
+
+        SteppingClock(Instant start) {
+            this.now = start;
+        }
+
+        void advance(Duration by) {
+            now = now.plus(by);
+        }
+
+        @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+
+        @Override public Clock withZone(ZoneId zone) { return this; }
+
+        @Override public Instant instant() { return now; }
     }
 }

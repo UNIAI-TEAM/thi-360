@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.stereotype.Service;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
@@ -27,6 +28,11 @@ import vn.unicom.thi360.shared.api.NotFoundException;
  * {@link PaperSolverPort} on the wave 2B solver. It reuses the preview path (published combinations, path resolver,
  * {@code solvePartExcluding} / {@code solvePick} with trim) with its own limits and no preview side effects: nothing
  * is written, nothing is ordered. Not transactional; each read opens its own short transaction.
+ *
+ * <p>One absolute deadline, {@code now + thi360.exam.solver.generate.deadline}, covers every phase. Each solver call
+ * gets what is left of it (the solver anchors its own budget at the start of a call, so a fixed budget would restart
+ * the clock), and the deadline is checked at every phase boundary and before a result is mapped or returned, so a
+ * late failure or a late paper is {@code GENERATION_TIMEOUT} and never a {@code GENERATION_FAILED} or a paper.
  */
 @Service
 public class PaperGenerationService implements PaperSolverPort {
@@ -75,25 +81,33 @@ public class PaperGenerationService implements PaperSolverPort {
         } catch (BusinessRuleException ex) {
             throw PaperGenerationPlan.failed("version snapshot is not usable");
         }
-        PaperGenerationPlan.Plan plan = PaperGenerationPlan.of(document, partCodes, selections);
+        PaperGenerationPlan.Plan plan = PaperGenerationPlan.of(document, partCodes, selections,
+                snapshot.publishedPathIds());
+        requireTime(deadline, "before the build");
 
-        SolverLimits limits = properties.limits(remaining(deadline));
-        PaperSolver solver = new PaperSolver(limits, clock);
+        // Each call gets the time that is left, never a fresh budget: the solver starts its own clock per call.
+        Supplier<PaperSolver> solvers = () -> new PaperSolver(properties.limits(remaining(deadline)), clock);
         SolverInputBuilder.SolverInput input;
         PreviewPathResolver.Resolved resolved;
         try {
-            input = builder.build(snapshot.exam().getKindItemId(), plan.document(), limits);
+            input = builder.build(snapshot.exam().getKindItemId(), plan.document(),
+                    properties.limits(remaining(deadline)));
+            requireTime(deadline, "in the build");
             resolved = PreviewPathResolver.resolve(plan.document(), input.parts(), plan.pathId(),
-                    plan.subjectCodes(), seed, solver.allocator());
+                    plan.subjectCodes(), seed, solvers.get().allocator());
         } catch (IllegalArgumentException | NotFoundException | BusinessRuleException ex) {
+            requireTime(deadline, "in the build");
             throw PaperGenerationPlan.failed("selection or structure is not valid: " + ex.getMessage());
         }
+        requireTime(deadline, "before solving");
 
         Set<String> excluded = new HashSet<>();
         if (excludeQuestionIds != null) excludeQuestionIds.forEach(id -> excluded.add(id.toString()));
-        PreviewPathSolver.Result solved = PreviewPathSolver.solve(solver, resolved.path(), input.candidates(),
+        PreviewPathSolver.Result solved = PreviewPathSolver.solve(solvers, resolved.path(), input.candidates(),
                 seed, excluded);
         PathResult result = solved.path();
+        // A result that arrives after the deadline is a timeout whatever it says, a shortage included.
+        requireTime(deadline, "in the solver");
         if (result.status() != SolveStatus.VALID) {
             boolean timeout = result.reason() == SolveReason.DEADLINE_EXCEEDED;
             throw new PaperGenerationException(timeout ? Reason.GENERATION_TIMEOUT : Reason.GENERATION_FAILED,
@@ -101,11 +115,17 @@ public class PaperGenerationService implements PaperSolverPort {
                             + (result.subjectCode() == null ? "" : " subject " + result.subjectCode())
                             + (result.groupId() == null ? "" : " group " + result.groupId()));
         }
-        if (clock.instant().isAfter(deadline)) {
-            throw new PaperGenerationException(Reason.GENERATION_TIMEOUT, "Generation ran past its deadline");
+        PaperSolverPort.GeneratedPaper paper = PaperGenerationAssembler.assemble(plan.partIds(), input.parts(),
+                result.path(), result.witness(), solved.dropped(), input.candidates().loadedCandidates());
+        requireTime(deadline, "in the assembly");
+        return paper;
+    }
+
+    /** Same instant as the solver's own check: at the deadline the time is up. */
+    private void requireTime(Instant deadline, String phase) {
+        if (!clock.instant().isBefore(deadline)) {
+            throw new PaperGenerationException(Reason.GENERATION_TIMEOUT, "Generation ran past its deadline " + phase);
         }
-        return PaperGenerationAssembler.assemble(plan.partIds(), input.parts(), result.path(), result.witness(),
-                solved.dropped(), input.candidates().loadedCandidates());
     }
 
     private Duration remaining(Instant deadline) {
