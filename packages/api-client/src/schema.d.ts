@@ -2129,10 +2129,12 @@ export interface components {
         AvailableQuestionsKnowledgeScope: {
             competencyCodes?: string[];
             everyChildInScope?: boolean;
-            /** @description SOURCE rule of a MAPID matrix: a set counts only when all its children carry the same node of the scope (a descendant counts); stricter than everyChildInScope (UNI-2758) */
+            /** @description SOURCE rules of a MAPID matrix: a set counts only when all its children carry the same node of a group (a descendant counts); applies to every entry of nodeGroups; stricter than everyChildInScope (UNI-2758) */
             everyChildSameNode?: boolean;
             /** @description MAPID nodes (and their descendants) the group must not draw from: ONLY_IN_GROUP of another group (UNI-2758) */
             excludedNodeIds?: string[];
+            /** @description SOURCE rules that all apply: an AND of OR-groups, one group per applicable rule (the subject's and the group's); inside a group any node (or a descendant) matches. nodeIds keeps the legacy single scope (UNI-2758) */
+            nodeGroups?: string[][];
             nodeIds?: string[];
         };
         /** @description Bộ lọc nguồn câu hỏi của một nhóm */
