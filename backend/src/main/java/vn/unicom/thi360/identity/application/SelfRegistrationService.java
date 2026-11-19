@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +77,7 @@ public class SelfRegistrationService {
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
     private final TransactionTemplate requiresNewTx;
+    private final UserAdminService userAdminService;
     private final Clock clock;
     private final AppMessages messages;
 
@@ -89,6 +89,7 @@ public class SelfRegistrationService {
             UsernamePolicy usernamePolicy,
             PasswordPolicy passwordPolicy,
             KeycloakIdentityClient keycloakClient,
+            UserAdminService userAdminService,
             AuthService authService,
             EmailCodeService emailCodeService,
             MailQueue mailQueue,
@@ -114,6 +115,7 @@ public class SelfRegistrationService {
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
         this.messages = messages;
+        this.userAdminService = userAdminService;
     }
 
     /**
@@ -142,22 +144,14 @@ public class SelfRegistrationService {
             keycloakClient.setPassword(keycloakUserId, request.password(), false);
         } catch (RuntimeException ex) {
             // Cả lỗi chính sách mật khẩu của Keycloak lẫn lỗi mạng: user Keycloak chưa có mật khẩu, bỏ cả hai phía.
-            if (deleteKeycloakUserQuietly(keycloakUserId)) {
-                deleteProvisionalQuietly(provisionalId);
-            } else {
-                markIdpCleanupPendingQuietly(provisionalId);
-            }
+            userAdminService.rollbackCreatedRegistration(provisionalId, keycloakUserId);
             throw ex;
         }
 
         try {
             activate(provisionalId, keycloakUserId, input, studentRole, locale);
         } catch (RuntimeException ex) {
-            if (deleteKeycloakUserQuietly(keycloakUserId)) {
-                deleteProvisionalQuietly(provisionalId);
-            } else {
-                markIdpCleanupPendingQuietly(provisionalId);
-            }
+            userAdminService.rollbackCreatedRegistration(provisionalId, keycloakUserId);
             throw ex;
         }
 
@@ -279,32 +273,28 @@ public class SelfRegistrationService {
         try {
             return keycloakClient.createUser(command);
         } catch (ConflictException conflict) {
-            return resolveKeycloakConflict(provisionalId, input, command, conflict);
+            return retryAfterStaleCleanup(provisionalId, input, command);
         } catch (ValidationException ex) {
-            deleteProvisionalQuietly(provisionalId);
+            userAdminService.deleteProvisionalUserQuietly(provisionalId);
             throw ex;
         } catch (ExternalServiceException ex) {
-            // Không rõ Keycloak đã tạo user hay chưa: nếu có thì xóa, rồi bỏ dòng tạm. Keycloak không với tới được
-            // thì để ProvisioningReconcilerJob xử lý dòng kẹt sau 10 phút.
-            cleanupUncreatedQuietly(provisionalId, input.usernameNormalized());
+            // A lookup showing no user cannot prove an in-flight create will not complete later.
+            // Retain the provisional row so reconciliation can recover either outcome.
             throw ex;
         }
     }
 
     /**
-     * Keycloak báo 409: hoặc user của một tài khoản đã xóa mềm chưa được dọn ({@code idp_cleanup_pending}), hoặc
-     * một user thật sự trùng. Dọn mục đầu rồi thử lại một lần; còn lại thì phân biệt trùng tên đăng nhập với trùng email.
+     * Keycloak báo 409 lần đầu: hoặc user của một tài khoản đã xóa mềm chưa được dọn ({@code idp_cleanup_pending}), hoặc
+     * một user thật sự trùng. Dọn mục đầu rồi thử tạo lại một lần; lần thử lại được xử lý đúng như lần đầu: 409 thì
+     * phân biệt trùng tên đăng nhập với trùng email, lỗi chưa rõ kết quả thì giữ dòng tạm để đối soát.
      */
-    private UUID resolveKeycloakConflict(
-            UUID provisionalId,
-            ValidInput input,
-            KeycloakIdentityClient.CreateUserCommand command,
-            ConflictException conflict) {
+    private UUID retryAfterStaleCleanup(
+            UUID provisionalId, ValidInput input, KeycloakIdentityClient.CreateUserCommand command) {
         List<UserAccount> pending = userAccountRepository.findPendingIdpCleanupByUsernameOrEmail(
                 input.usernameNormalized(), input.emailNormalized());
         if (pending.isEmpty()) {
-            deleteProvisionalQuietly(provisionalId);
-            throw new ConflictException(keycloakHasUsername(input.username()) ? ERROR_USERNAME_TAKEN : ERROR_EMAIL_TAKEN);
+            throw rejectKeycloakConflict(provisionalId, input);
         }
         try {
             for (UserAccount stale : pending) {
@@ -313,18 +303,34 @@ public class SelfRegistrationService {
                     requiresNewTx.executeWithoutResult(status ->
                             userAccountRepository.updateIdpCleanupPending(stale.getId(), false, Instant.now(clock)));
                 } else {
-                    keycloakClient.findUserIdByUsername(stale.getUsername()).ifPresent(keycloakClient::deleteUser);
-                    deleteProvisionalQuietly(stale.getId());
+                    userAdminService.cleanupOwnedRegistrationBeforeRetry(stale);
                 }
             }
+        } catch (RuntimeException ex) {
+            // Việc dọn lỗi trước khi lần tạo của chính ta chạy: Keycloak chưa có user của dòng này, bỏ dòng tạm là an toàn.
+            userAdminService.deleteProvisionalUserQuietly(provisionalId);
+            throw ex instanceof ExternalServiceException
+                    ? ex
+                    : new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+        try {
             return keycloakClient.createUser(command);
-        } catch (ConflictException | ValidationException ex) {
-            deleteProvisionalQuietly(provisionalId);
+        } catch (ConflictException ex) {
+            throw rejectKeycloakConflict(provisionalId, input);
+        } catch (ValidationException ex) {
+            userAdminService.deleteProvisionalUserQuietly(provisionalId);
             throw ex;
         } catch (RuntimeException ex) {
-            deleteProvisionalQuietly(provisionalId);
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+            throw ex instanceof ExternalServiceException
+                    ? ex
+                    : new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
+    }
+
+    /** 409 xác định của Keycloak: không có user nào của ta để dọn, bỏ dòng tạm và báo trùng. */
+    private ConflictException rejectKeycloakConflict(UUID provisionalId, ValidInput input) {
+        userAdminService.deleteProvisionalUserQuietly(provisionalId);
+        return new ConflictException(keycloakHasUsername(input.username()) ? ERROR_USERNAME_TAKEN : ERROR_EMAIL_TAKEN);
     }
 
     /** Không tra được thì coi là trùng tên đăng nhập, đúng cách hiểu mặc định của {@code KeycloakIdentityClient.createUser}. */
@@ -393,59 +399,4 @@ public class SelfRegistrationService {
                     .log("User account self-registered");
         });
     }
-
-    private void deleteProvisionalQuietly(UUID provisionalId) {
-        try {
-            requiresNewTx.executeWithoutResult(status -> userAccountRepository.findById(provisionalId)
-                    .filter(u -> u.getStatus() == UserStatus.PROVISIONING)
-                    .ifPresent(userAccountRepository::delete));
-        } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
-                    .log("Failed to clean up PROVISIONING user row");
-        }
-    }
-
-    private void markIdpCleanupPendingQuietly(UUID provisionalId) {
-        try {
-            requiresNewTx.executeWithoutResult(status ->
-                    userAccountRepository.updateIdpCleanupPending(provisionalId, true, Instant.now(clock)));
-        } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
-                    .log("Failed to mark PROVISIONING user for IdP cleanup");
-        }
-    }
-
-    private boolean deleteKeycloakUserQuietly(UUID keycloakUserId) {
-        try {
-            keycloakClient.deleteUser(keycloakUserId);
-            return true;
-        } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("keycloakUserId", keycloakUserId.toString())
-                    .log("Failed to clean up Keycloak user during rollback");
-            return false;
-        }
-    }
-
-    private void cleanupUncreatedQuietly(UUID provisionalId, String usernameNormalized) {
-        try {
-            Optional<UUID> existing = keycloakClient.findUserIdByUsername(usernameNormalized);
-            if (existing.isPresent()) {
-                keycloakClient.deleteUser(existing.get());
-            }
-            deleteProvisionalQuietly(provisionalId);
-        } catch (RuntimeException ignored) {
-            // Keycloak không với tới được: giữ dòng PROVISIONING cho job đối soát.
-            log.atWarn()
-                    .addKeyValue("event", "register.keycloak_failed")
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
-                    .log("Keycloak createUser failed and cleanup was not possible; reconciler will resolve");
-        }
-    }
-
 }

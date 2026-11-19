@@ -24,6 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -352,7 +353,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
-    /** AC-6: Keycloak lỗi khi tạo user hoặc đặt mật khẩu thì không còn tài khoản dở dang. */
+    /** AC-6: xác nhận dọn tài khoản lỗi; kết quả tạo không rõ được giữ lại cho job đối soát. */
     @Test
     void keycloakFailureLeavesNothing() throws Exception {
         String suffix = SelfRegistrationSupport.suffix();
@@ -365,8 +366,13 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
                         SelfRegistrationSupport.freshIp())
                 .andExpect(status().isBadGateway())
                 .andReturn();
-        assertNothingLeft(createFail, a);
+        assertThat(support.liveAccountCount(createFail)).isEqualTo(1);
+        assertThat(a.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE)).isNull();
         Mockito.reset(keycloakClient);
+        jdbcTemplate.update("UPDATE identity.user_account SET created_at = now() - interval '11 minutes' WHERE id = ?",
+                support.accountId(createFail));
+        reconcilerJob.reconcile();
+        assertNothingLeft(createFail, a);
 
         // (b) đặt mật khẩu lỗi (Keycloak đã tạo user)
         String passwordFail = "kc.pass." + suffix;
@@ -391,7 +397,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertNothingLeft(policyFail, c);
         Mockito.reset(keycloakClient);
 
-        // Sau lỗi, cùng tên đăng nhập và email đăng ký lại được ngay (không bị dòng dở dang chặn).
+        // Sau khi đối soát dọn dòng tạm, cùng tên đăng nhập và email đăng ký lại được.
         support.register(support.body(createFail, createFail + "@thi360.vn"), SelfRegistrationSupport.freshIp())
                 .andExpect(status().isCreated());
     }
@@ -402,6 +408,101 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertThat(result.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE)).isNull();
         assertThat(result.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE)).isNull();
         assertThat(mailOutbox.count(username + "@thi360.vn")).isZero();
+    }
+
+    /**
+     * Tài khoản học viên đã xóa mềm nhưng user Keycloak chưa dọn ({@code idp_cleanup_pending}): đăng ký lại cùng tên
+     * đăng nhập phải dọn rồi tạo lại.
+     */
+    private void softDeletedWithKeycloakUserLeft(String username, String email) throws Exception {
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+        UUID oldId = support.accountId(username);
+        jdbcTemplate.update(
+                "UPDATE identity.user_account SET status = 3, deleted_at = now(), idp_cleanup_pending = true WHERE id = ?",
+                oldId);
+        assertThat(support.keycloakHasUser(username)).isTrue();
+    }
+
+    /**
+     * R1-01: lần tạo lại sau khi dọn user Keycloak cũ báo lỗi chưa rõ kết quả trong khi Keycloak đã tạo user. Dòng
+     * PROVISIONING không được bị xóa (job đối soát chỉ tìm user Keycloak mồ côi qua dòng này); sau khi job chạy, cùng
+     * tên đăng nhập và email đăng ký lại được.
+     */
+    @Test
+    void ambiguousRetryKeepsRowUntilReconciled() throws Exception {
+        String suffix = SelfRegistrationSupport.suffix();
+        String username = "reg.retry." + suffix;
+        String email = username + "@thi360.vn";
+        softDeletedWithKeycloakUserLeft(username, email);
+
+        AtomicInteger createCalls = new AtomicInteger();
+        doAnswer(invocation -> {
+            int call = createCalls.incrementAndGet();
+            Object created = invocation.callRealMethod();
+            if (call == 2) {
+                // Lần tạo lại: Keycloak đã tạo user nhưng phản hồi đến chậm hoặc lỗi.
+                throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
+            }
+            return created;
+        }).when(keycloakClient).createUser(any(CreateUserCommand.class));
+
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isBadGateway());
+        Mockito.reset(keycloakClient);
+
+        assertThat(createCalls.get()).isEqualTo(2);
+        assertThat(support.keycloakHasUser(username)).as("Keycloak created the user on the retry").isTrue();
+        List<Short> statuses = jdbcTemplate.queryForList(
+                "SELECT status FROM identity.user_account WHERE username_normalized = ? AND deleted_at IS NULL",
+                Short.class,
+                username);
+        assertThat(statuses).as("recoverable PROVISIONING row kept").containsExactly((short) 1);
+        jdbcTemplate.update(
+                "UPDATE identity.user_account SET created_at = now() - interval '11 minutes'"
+                        + " WHERE username_normalized = ? AND deleted_at IS NULL",
+                username);
+        reconcilerJob.reconcile();
+
+        assertThat(support.liveAccountCount(username)).isZero();
+        assertThat(support.keycloakHasUser(username)).isFalse();
+        support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+    }
+
+    /**
+     * R1-01: 409 xác định ở lần tạo lại được phân loại như lần đầu (trùng email, không phải mặc định trùng tên đăng
+     * nhập) và không để lại dòng tạm.
+     */
+    @Test
+    void definitiveRetryConflictIsClassified() throws Exception {
+        String suffix = SelfRegistrationSupport.suffix();
+        String username = "reg.rconf." + suffix;
+        String email = username + "@thi360.vn";
+        softDeletedWithKeycloakUserLeft("reg.rold." + suffix, email);
+        String blocker = "reg.rblock." + suffix;
+        support.track(blocker, null);
+
+        AtomicInteger createCalls = new AtomicInteger();
+        doAnswer(invocation -> {
+            int call = createCalls.incrementAndGet();
+            if (call == 2) {
+                // Sau khi user cũ đã được dọn, một người khác chiếm email trước lần tạo lại.
+                keycloakClient.createUser(new CreateUserCommand(
+                        blocker, email, "Block", "Er", null, true, false, false));
+            }
+            return invocation.callRealMethod();
+        }).when(keycloakClient).createUser(any(CreateUserCommand.class));
+
+        MvcResult result = support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isConflict())
+                .andReturn();
+        Mockito.reset(keycloakClient);
+
+        assertThat(objectMapper.readTree(result.getResponse().getContentAsString()).path("code").asText())
+                .isEqualTo("EMAIL_TAKEN");
+        assertThat(support.liveAccountCount(username)).isZero();
+        assertThat(support.keycloakHasUser(username)).isFalse();
     }
 
     /** Câu hỏi mở 1 (tạm): tạo phiên lỗi sau khi tài khoản đã tạo xong thì giữ tài khoản, trả lỗi, đăng nhập lại được. */

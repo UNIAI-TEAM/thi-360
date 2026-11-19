@@ -1684,7 +1684,7 @@ public class UserAdminService {
                 .build());
     }
 
-    private void deleteProvisionalUserQuietly(UUID provisionalId) {
+    void deleteProvisionalUserQuietly(UUID provisionalId) {
         deleteProvisionalUserQuietly(provisionalId, null, null);
     }
 
@@ -1701,9 +1701,7 @@ public class UserAdminService {
         } catch (StaleBatchLeaseException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
+            log.atWarn().setCause(ex).addKeyValue("provisionalUserId", provisionalId.toString())
                     .log("Failed to clean up PROVISIONING user row");
         }
     }
@@ -1720,9 +1718,7 @@ public class UserAdminService {
         } catch (StaleBatchLeaseException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
+            log.atWarn().setCause(ex).addKeyValue("provisionalUserId", provisionalId.toString())
                     .log("Failed to mark PROVISIONING user for IdP cleanup");
         }
     }
@@ -1732,12 +1728,22 @@ public class UserAdminService {
             keycloakClient.deleteUser(keycloakUserId);
             return true;
         } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("keycloakUserId", keycloakUserId.toString())
+            log.atWarn().setCause(ex).addKeyValue("keycloakUserId", keycloakUserId.toString())
                     .log("Failed to clean up Keycloak user during rollback");
             return false;
         }
+    }
+
+    void rollbackCreatedRegistration(UUID provisionalId, UUID keycloakUserId) {
+        if (deleteKeycloakUserQuietly(keycloakUserId)) {
+            deleteProvisionalUserQuietly(provisionalId);
+        } else {
+            markProvisionalIdpCleanupPendingQuietly(provisionalId, null, null);
+        }
+    }
+
+    void cleanupOwnedRegistrationBeforeRetry(UserAccount ownedStale) {
+        cleanupOwnedProvisioningBeforeRetry(ownedStale, null, null);
     }
 
     private void cleanupOwnedProvisioningBeforeRetry(
