@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""FU/be-seed (UNI-2634): phát sinh migration và devdata cho đề test giả định.
+"""FU/be-seed (UNI-2634): phát sinh devdata cho đề test giả định.
 
 Nguồn: docs/specs/2026-11-17-de-test-gia-dinh.md (số liệu "giả định" của mục 2-3).
 Chạy từ gốc repo:  python scripts/generate_test_exam_seed.py
 Phát sinh:
-  - backend/src/main/resources/db/migration/exam/V202611171200__assumed_templates_fill.sql
+  - Đọc cấu trúc mới từ migration mẫu THPTQG/V-ACT đã sinh.
   - backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql
 Không ghi groupOrder/shuffle (slice be-api bỏ các trường này).
 """
 
 import hashlib
 import json
+import re
 import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MIG_EXAM = ROOT / "backend/src/main/resources/db/migration/exam/V202611171200__assumed_templates_fill.sql"
+TEMPLATE_MIGRATION = ROOT / "backend/src/main/resources/db/migration/exam/V202611181305__exam_templates_thptqg_vact.sql"
 SEED = ROOT / "backend/src/main/resources/db/devdata/R__seed_test_exam_data.sql"
 
 NS = uuid.UUID("00000000-0000-7000-8000-000000000000")
@@ -36,6 +37,7 @@ G_TASK = "00000000-0000-7000-8100-000000000006"
 G_COMBO = "00000000-0000-7000-8100-000000000007"
 G_TAG = "00000000-0000-7000-8100-000000000008"
 G_KNOW = "00000000-0000-7000-8100-000000000009"
+G_COMPETENCY = "00000000-0000-7000-8100-00000000000a"
 
 SUBJECT = {
     "TOAN": "00000000-0000-7000-8200-000000000201",
@@ -101,13 +103,12 @@ def blk(bid, name, qtype, qcount=None, sets=None, size=None, task=None,
         qcount = sets * size
     return {"id": bid, "name": name, "questionType": qtype, "questionCount": qcount,
             "setCount": sets, "setSize": size, "knowledgeScope": scope, "matrix": matrix,
-            "taskTypeCode": task, "childAnswerType": child, "templateGroupCode": group,
+            "childAnswerType": child, "templateGroupCode": group,
             "answerTypeLocked": locked, "requiredPointsPerQuestion": rppq,
             "tagCodes": tags, "expectedScoring": expected}
 
-def scope_nodes(node_ids, match="ANY"):
-    return {"nodeIds": node_ids, "match": match, "includeDescendants": True,
-            "competencyCodes": []}
+def scope_nodes(node_ids):
+    return {"nodeIds": node_ids, "competencyCodes": []}
 
 def section(sid, subject, qcount, blocks, scope=None, quotas=None, matrix=None,
             choice=None):
@@ -139,14 +140,14 @@ SCIENCE_SUBJECTS = [("LY", "Vật lí", "NATURAL"), ("HOA", "Hóa học", "NATUR
                     ("SINH", "Sinh học", "NATURAL"), ("SU", "Lịch sử", "SOCIAL"),
                     ("DIA", "Địa lí", "SOCIAL")]
 
-SCI_QUOTA = {"unit": "PERCENT", "items": [
-    {"answerType": "SINGLE_CHOICE", "value": 75},
-    {"answerType": "SHORT_ANSWER", "value": 25}]}
-SCI_MATRIX = {"mode": "SEPARATE", "unit": "PERCENT", "cells": [],
-              "byGrade": [{"code": "G10", "value": 20}, {"code": "G11", "value": 30},
-                          {"code": "G12", "value": 50}],
-              "byDifficulty": [{"code": "NB", "value": 20}, {"code": "TH", "value": 40},
-                               {"code": "VD", "value": 30}, {"code": "VDC", "value": 10}]}
+SCI_QUOTA = {"unit": "COUNT", "items": [
+    {"answerType": "SINGLE_CHOICE", "value": 13},
+    {"answerType": "SHORT_ANSWER", "value": 4}]}
+SCI_MATRIX = {"mode": "SEPARATE", "unit": "COUNT", "cells": [],
+              "byGrade": [{"code": "G10", "value": 3}, {"code": "G11", "value": 5},
+                          {"code": "G12", "value": 9}],
+              "byDifficulty": [{"code": "NB", "value": 3}, {"code": "TH", "value": 7},
+                               {"code": "VD", "value": 5}, {"code": "VDC", "value": 2}]}
 MATH_QUOTA = {"unit": "COUNT", "items": [
     {"answerType": "SINGLE_CHOICE", "value": 35},
     {"answerType": "SHORT_ANSWER", "value": 15}]}
@@ -204,12 +205,11 @@ def hsa_science_option(oid="o-sci", dia_scope=None):
     secs = []
     for i, (code, name, grp) in enumerate(SCIENCE_SUBJECTS):
         scope = scope_nodes([KNOW_DIA_HEP]) if (code == "DIA" and dia_scope) else None
-        secs.append(section(f"s-sci-{code.lower()}", code, None, [
+        secs.append(section(f"s-sci-{code.lower()}", code, 17, [
             blk(f"b-sci-{code.lower()}-cluster", f"{name} · chùm", "QUESTION_SET",
-                sets=2, size=3, task="CLUSTER", child="SINGLE_CHOICE",
+                sets=2, size=3, child="SINGLE_CHOICE",
                 group=f"HSA_{code}_CLUSTER"),
-            blk(f"b-sci-{code.lower()}-rest", f"{name} · lấy phần còn lại", None,
-                group=f"HSA_{code}_REMAINDER")],
+            blk(f"b-sci-{code.lower()}-rest", f"{name} · câu đơn", None, qcount=11)],
             scope=scope, quotas=SCI_QUOTA, matrix=SCI_MATRIX, choice=grp))
     return option(oid, "SUBJECT_CHOICE", "SCIENCE", "Khoa học", sections=secs,
                   choose_subjects=3, counts=[17, 17, 16])
@@ -1144,7 +1144,7 @@ EXAMS = [
              doc([part("p3", "Khoa học hoặc Tiếng Anh", 60, 50,
                        options=[option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học",
                                        sections=[
-                                           section("s-sci-ly", "LY", None, [
+                                           section("s-sci-ly", "LY", 17, [
                                                blk("b-sci-ly-cluster", "Vật lí · chùm",
                                                    "QUESTION_SET", sets=2, size=3,
                                                    task="CLUSTER", child="SINGLE_CHOICE",
@@ -1160,19 +1160,19 @@ EXAMS = [
                        max_points=50, choose=1)]),
              "PER_PART", 60, 50, part_code="SCIENCE", template="HSA_PART_SCIENCE",
              structure_year=2026, matrix_year=2026,
-             description="Lỗi: Vật lí thay nhóm còn lại bằng nhóm cố định 11 -> REMAINDER_GROUP_INVALID."),
+             description="Vật lí gồm 6 câu chùm và 11 câu đơn; giải đủ 17 câu trước khi bỏ một câu."),
     exam_row("TEST-ERR-09", "TEST · ERR Hóa học chỉ tiêu số câu", "HSA", "PART",
              doc([part("p3", "Khoa học hoặc Tiếng Anh", 60, 50,
                        options=[option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học",
                                        sections=[
                                            hsa_science_option()["sections"][0],
-                                           section("s-sci-hoa", "HOA", None, [
+                                           section("s-sci-hoa", "HOA", 17, [
                                                blk("b-sci-hoa-cluster", "Hóa học · chùm",
                                                    "QUESTION_SET", sets=2, size=3,
                                                    task="CLUSTER", child="SINGLE_CHOICE",
                                                    group="HSA_HOA_CLUSTER"),
-                                               blk("b-sci-hoa-rest", "Hóa học · lấy phần còn lại",
-                                                   None, group="HSA_HOA_REMAINDER")],
+                                               blk("b-sci-hoa-rest", "Hóa học · câu đơn",
+                                                   None, qcount=11)],
                                                quotas={"unit": "COUNT", "items": [
                                                    {"answerType": "SINGLE_CHOICE", "value": 12},
                                                    {"answerType": "SHORT_ANSWER", "value": 4}]},
@@ -1184,7 +1184,7 @@ EXAMS = [
                        max_points=50, choose=1)]),
              "PER_PART", 60, 50, part_code="SCIENCE", template="HSA_PART_SCIENCE",
              structure_year=2026, matrix_year=2026,
-             description="Lỗi: Hóa học khai chỉ tiêu theo số câu -> SUBJECT_QUOTA_COUNT_VARIES."),
+             description="Lỗi: chỉ tiêu Hóa học có tổng 16 câu thay vì 17 câu."),
     exam_row("TEST-ERR-10", "TEST · ERR countsByPick 17-17-17", "HSA", "PART",
              doc([part("p3", "Khoa học hoặc Tiếng Anh", 60, 50,
                        options=[option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học",
@@ -1223,15 +1223,72 @@ EXAMS = [
              description="Lỗi: cấu trúc 2026, ma trận 2025, chưa xác nhận -> YEARS_UNCONFIRMED."),
 ]
 
-COMBO_ITEM = {"QD01": "00000000-0000-7000-8400-000000000709",
-              "QD02": "00000000-0000-7000-8400-000000000710",
-              "QD03": "00000000-0000-7000-8400-000000000711",
-              "QD04": "00000000-0000-7000-8400-000000000712",
-              "QD05": COMBO_QD05,
-              "CA1": "00000000-0000-7000-8400-000000000713",
-              "CA2": "00000000-0000-7000-8400-000000000714",
-              "CA3": "00000000-0000-7000-8400-000000000715",
-              "CA4": "00000000-0000-7000-8400-000000000716"}
+def generated_template(code):
+    """Read the exact IDs and structure applied by the generated template migration."""
+    sql = TEMPLATE_MIGRATION.read_text(encoding="utf-8")
+    match = re.search(r"structure = '((?:''|[^'])*)'::jsonb\nWHERE code = "
+                      + re.escape(sql_quote(code)) + r";", sql)
+    if not match:
+        raise ValueError(f"Template not found in generated migration: {code}")
+    return json.loads(match.group(1).replace("''", "'"))
+
+
+MATRIX_DEFAULTS = {"gradeEnforcement": "REQUIRED", "difficultyEnforcement": "REQUIRED",
+                   "basis": "QUESTION"}
+BLOCK_DEFAULTS = {"shuffleUnits": True, "shuffleEditable": False, "slots": [],
+                  "childConditions": [], "answerFormats": [], "omitted": False,
+                  "topicQuotas": []}
+
+
+def normalize_structure(exam):
+    """Write the stored v2 representation used by the integration seed.
+
+    Blocks and sections carry the v2 defaults explicitly, matrices their effective
+    enforcement and basis, and a part whose sections are chosen from the Global List
+    stores the subject pool with codeSource GLOBAL_LIST instead of COMBINATION options.
+    """
+    exam["combination_count"] = 0
+    for part_doc in exam["doc"]["parts"]:
+        combinations = [o for o in part_doc.get("options", []) if o["kind"] == "COMBINATION"]
+        if combinations:
+            exam["combination_count"] += len(combinations)
+            pool, seen = [], set()
+            for option_doc in combinations:
+                for section_doc in option_doc["sections"]:
+                    if section_doc["subjectCode"] not in seen:
+                        seen.add(section_doc["subjectCode"])
+                        pool.append(section_doc)
+            del part_doc["options"]
+            part_doc["subjectPool"] = pool
+            part_doc["codeSource"] = {"source": "GLOBAL_LIST", "branch": None}
+        sections = (part_doc.get("sections", []) + part_doc.get("subjectPool", [])
+                    + [s for o in part_doc.get("options", []) for s in o["sections"]])
+        blocks = [b for s in sections for b in s["blocks"]]
+        blocks += [b for o in part_doc.get("options", []) for b in o["blocks"]]
+        for section_doc in sections:
+            section_doc["topicQuotas"] = []
+            if section_doc.get("matrix") is not None:
+                section_doc["matrix"] = {**section_doc["matrix"], **MATRIX_DEFAULTS}
+        for block_doc in blocks:
+            block_doc.update(BLOCK_DEFAULTS)
+
+
+for exam in EXAMS:
+    if exam["code"] == "TEST-VACT-01":
+        exam["doc"] = generated_template("VACT_FULL")
+    elif exam["code"] in {"TEST-THPTQG-01", "TEST-ERR-01", "TEST-ERR-11", "TEST-ERR-12"}:
+        old_blocks = exam["doc"]["parts"][0]["sections"][0]["blocks"]
+        exam["doc"] = generated_template("THPTQG_MATH_2025")
+        exam["timing"] = "SHARED"
+        for index, old in enumerate(old_blocks):
+            block = exam["doc"]["parts"][index]["sections"][0]["blocks"][0]
+            if old.get("matrix") is not None:
+                block["matrix"] = old["matrix"]
+            if old.get("requiredPointsPerQuestion") is None:
+                block["requiredPointsPerQuestion"] = None
+    else:
+        normalize_structure(exam)
+
 
 
 def emit_exam(exam):
@@ -1241,8 +1298,7 @@ def emit_exam(exam):
     qc = sum(p["questionCount"] or 0 for p in exam["doc"]["parts"])
     has_essay = json.dumps(exam["doc"], ensure_ascii=False).find('"ESSAY"') >= 0
     has_eng = '"ANH"' in json.dumps(exam["doc"])
-    combos = {o["code"] for p in exam["doc"]["parts"] for o in p["options"]
-              if o["kind"] == "COMBINATION"}
+    combination_count = exam.get("combination_count", 0)
     cols = (f"'{eid}','{code}','{code.lower()}',{sql_quote(exam['name'])},"
             f"{sql_quote(exam['description'])},NULL,'{KIND[exam['kind']]}','{exam['scope']}',"
             f"{sql_quote(exam['part_code']) if exam['part_code'] else 'NULL'},"
@@ -1256,7 +1312,7 @@ def emit_exam(exam):
             f"{exam['reference_max'] if exam['reference_max'] is not None else 'NULL'},"
             f"'{exam['practice']}','DRAFT','UNCHECKED',{qc},"
             f"{'true' if has_essay else 'false'},{'true' if has_eng else 'false'},"
-            f"{len(combos)},false,0")
+            f"{combination_count},false,0")
     out.append(f"-- {code}: {exam['name']}")
     out.append("INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,")
     out.append("    kind_item_id, scope, part_code, subject_item_id, template_code, structure_year,")
@@ -1273,68 +1329,94 @@ def emit_exam(exam):
     # block refs
     rows = []
     for p in exam["doc"]["parts"]:
-        for s in p["sections"]:
+        for s in p.get("sections", []):
             for b in s["blocks"]:
                 rows.append(ref_row(eid, p, None, s, b))
-        for o in p["options"]:
-            for s in o["sections"]:
-                for b in s["blocks"]:
+        for s in p.get("subjectPool", []):
+            for b in s["blocks"]:
+                rows.append(ref_row(eid, p, None, s, b))
+        for o in p.get("options", []):
+            for s in o.get("sections", []):
+                for b in s.get("blocks", []):
                     rows.append(ref_row(eid, p, o, s, b))
-            for b in o["blocks"]:
+            for b in o.get("blocks", []):
                 rows.append(ref_row(eid, p, o, None, b))
     if rows:
         out.append("INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,")
         out.append("    option_code, section_id, subject_item_id, question_type, answer_types,")
-        out.append("    task_type_item_id, knowledge_item_ids, knowledge_mode, knowledge_inherited,")
+        out.append("    knowledge_item_ids, knowledge_mode, knowledge_inherited,")
         out.append("    tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES")
-        out.append(",\n".join(rows) + "\nON CONFLICT (id) DO NOTHING;")
+        out.append(",\n".join(rows) + "\nON CONFLICT DO NOTHING;")
+        out.append("")
+        # The structure above is never replaced once stored, so the refs must follow the stored one:
+        # drop seeded rows for blocks it does not contain. A unique index on (exam, version, block)
+        # already keeps the projection of a later edit and the seeded rows from coexisting.
+        seeded_ids = ",".join(f"'{uid('ref', eid, b['id'])}'" for b in all_blocks(exam["doc"]))
+        out.append("DELETE FROM exam.exam_block_ref r")
+        out.append(f"WHERE r.exam_id = '{eid}' AND r.version_no IS NULL AND r.id IN ({seeded_ids})")
+        out.append("  AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id")
+        out.append("      AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)',")
+        out.append("          jsonb_build_object('block', r.block_id)));")
         out.append("")
     return out
 
 
+def all_blocks(document):
+    blocks = []
+    for p in document["parts"]:
+        for s in p.get("sections", []) + p.get("subjectPool", []):
+            blocks += s["blocks"]
+        for o in p.get("options", []):
+            for s in o.get("sections", []):
+                blocks += s.get("blocks", [])
+            blocks += o.get("blocks", [])
+    return blocks
+
+
+def uuid_array(refs):
+    """Resolved ids in document order; unresolved codes are dropped and an empty result is NULL."""
+    return "NULLIF(ARRAY_REMOVE(ARRAY[" + ",".join(refs) + "]::uuid[], NULL), '{}'::uuid[])"
+
+
 def ref_row(eid, p, o, s, b):
+    """Mirror of ExamBlockRefProjector for one block of the stored structure."""
     subject_code = s["subjectCode"] if s else (o["code"] if o and o["kind"] == "SUBJECT" else None)
     scope = b.get("knowledgeScope") or (s or {}).get("knowledgeScope")
-    answer_types = set()
-    if b.get("questionType"):
-        answer_types.add(b["questionType"])
-    if b.get("childAnswerType"):
-        answer_types.add(b["childAnswerType"])
+    answer_types = []
+    for answer_type in (b.get("questionType"), b.get("childAnswerType")):
+        if answer_type and answer_type not in answer_types:
+            answer_types.append(answer_type)
     if not answer_types and s and s.get("answerQuotas"):
-        answer_types = {i["answerType"] for i in s["answerQuotas"]["items"]}
-    know_ids = (scope or {}).get("nodeIds") or None
-    tag_ids = [TASK_TAG_IDS.get(t, t) for t in (b.get("tagCodes") or [])]
-    tag_ids = [t for t in tag_ids if t]
-    combo = COMBO_ITEM.get(o["code"]) if o and o["kind"] == "COMBINATION" else None
-    combo_ref = (f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_COMBO}' AND code_normalized='qd05')"
-                 if combo == COMBO_QD05 else sql_quote(combo) if combo else "NULL")
-    task = b.get("taskTypeCode")
-    if task == "SENTENCE_COMPLETION":
-        task_ref = f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_TASK}' AND code_normalized='sentence_completion')"
-    else:
-        task_ref = sql_quote(TASK[task]) if task else "NULL"
+        for item in s["answerQuotas"]["items"]:
+            if item["answerType"] not in answer_types:
+                answer_types.append(item["answerType"])
+    know_ids = list(dict.fromkeys((scope or {}).get("nodeIds") or [])) or None
+    tag_refs = [sql_quote(TASK_TAG_IDS[t]) if t in TASK_TAG_IDS else
+                f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_TAG}' AND code={sql_quote(t)})"
+                for t in dict.fromkeys(b.get("tagCodes") or [])]
+    competency_refs = [f"(SELECT id FROM catalog.catalog_item WHERE group_id='{G_COMPETENCY}' AND code={sql_quote(c)})"
+                       for c in dict.fromkeys((scope or {}).get("competencyCodes") or [])]
     return (f"('{uid('ref', eid, b['id'])}','{eid}',NULL,'{b['id']}','{p['id']}',"
             f"{sql_quote(o['code']) if o else 'NULL'},{sql_quote(s['id']) if s else 'NULL'},"
             f"{sql_quote(SUBJECT[subject_code]) if subject_code else 'NULL'},"
             f"{sql_quote(b['questionType']) if b.get('questionType') else 'NULL'},"
-            f"{pg_array(sorted(answer_types)) if answer_types else 'NULL'},"
-            f"{task_ref},"
+            f"{pg_array(answer_types) if answer_types else 'NULL'},"
             f"{pg_array(know_ids) if know_ids else 'NULL'},"
-            f"{sql_quote(scope['match']) if scope and scope.get('match') else 'NULL'},"
+            f"{sql_quote('ANY') if scope else 'NULL'},"
             f"{'true' if not b.get('knowledgeScope') else 'false'},"
-            f"{pg_array(tag_ids) if tag_ids else 'NULL'},NULL,"
+            f"{uuid_array(tag_refs) if tag_refs else 'NULL'},"
+            f"{uuid_array(competency_refs) if competency_refs else 'NULL'},"
             f"{b['requiredPointsPerQuestion'] if b.get('requiredPointsPerQuestion') is not None else 'NULL'},"
-            f"{combo_ref})")
+            "NULL)")
 
 
 TASK_TAG_IDS = {"TEST-HIEM": TAG_HIEM}
 
 
 def main():
-    MIG_EXAM.write_text(emit_catalog_migration() + "\n" + emit_template_migration(), encoding="utf-8")
-    SEED.write_text(emit_seed(), encoding="utf-8")
+    SEED.write_text(emit_seed().rstrip("\n") + "\n", encoding="utf-8", newline="\n")
     n_q = len(QUESTIONS) + sum(len(s["children"]) + 1 for s in SETS)
-    print(f"wrote {MIG_EXAM.name}, {SEED.name}; questions={n_q}, exams={len(EXAMS)}")
+    print(f"wrote {SEED.name}; questions={n_q}, exams={len(EXAMS)}")
 
 
 if __name__ == "__main__":

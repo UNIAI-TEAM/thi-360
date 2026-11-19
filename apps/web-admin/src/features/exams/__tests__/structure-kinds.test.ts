@@ -9,7 +9,6 @@ import {
 } from "../components/block-scoring-editor";
 import {
   addBranch,
-  attachCombination,
   confirmOption,
   optionQuestionCount,
   setPartQuestionCount,
@@ -50,9 +49,8 @@ function competencyBlock(byCompetency: BlockMatrix["byCompetency"], unit: BlockM
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY", competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
+    knowledgeScope: { nodeIds: [], competencyCodes: ["VACT-TD-LOGIC", "VACT-TD-SL"] },
     tagCodes: [],
-    taskTypeCode: null,
     childAnswerType: null,
     templateGroupCode: null,
     answerTypeLocked: false,
@@ -226,7 +224,6 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
           for (const block of section.blocks) {
             expect(block, item.id).toMatchObject({
               templateGroupCode: null,
-              taskTypeCode: null,
               childAnswerType: null,
               answerTypeLocked: false,
             });
@@ -238,19 +235,6 @@ describe("HSA Khoa học là một phương án chọn môn (B9, D25)", () => {
 });
 
 describe("tổ hợp của phần tự chọn", () => {
-  it("gắn tổ hợp danh mục: số câu chia đều 25–25 cho tổ hợp hai môn, thêm vào cuối danh sách lựa chọn", () => {
-    // HSA đã chuyển sang một phương án chọn môn (không còn sinh tổ hợp); bài QDA có hai tổ hợp đã gắn (QD01, QD04).
-    const exam = sample("ex-qda-f-001");
-    const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const qd02 = reference.combinations.find((combination) => combination.code === "QD02")!;
-    const before = choice.options.length;
-    const next = attachCombination(exam.parts, choice.id, qd02).find((part) => part.id === choice.id)!;
-    expect(next.options).toHaveLength(before + 1);
-    const added = next.options.at(-1)!;
-    expect(added).toMatchObject({ kind: "COMBINATION", code: "QD02" });
-    expect(added.sections.map((section) => section.questionCount)).toEqual([25, 25]);
-  });
-
   it("sửa số câu môn của lựa chọn đã xác nhận thì phải xác nhận lại", () => {
     const exam = sample("ex-qda-f-001");
     const choice = exam.parts.find((part) => part.mode === "CHOICE")!;

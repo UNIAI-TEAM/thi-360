@@ -1,22 +1,37 @@
 "use client";
 
-import { Badge, Button, Card, cn, focusRing, IconButton, Select, StatusChip } from "@thi360/ui";
+import { Badge, Button, Card, cn, focusRing, FormField, IconButton, Input, Select, StatusChip } from "@thi360/ui";
 import { CircleMinus, Lock, Plus } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
-import { apportionByPercent, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
-import { useSubjectAvailableQuestions } from "../queries";
+import type { AudioCountQuery } from "../api.http";
+import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor, totalChangePending } from "../allocation";
+import { apportionByPercent, computeAllocation, convertMatrixUnit, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
+import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
+import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
 import { effectiveScope, effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
-import type { AnswerQuotas, AvailableQuestionsQuery, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
+import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { LOCKED_FIELD } from "./locked-field";
+import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
+import { ScrollableTable } from "./scrollable-table";
+import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
+import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
 /** Dạng trả lời khai được ở chỉ tiêu cấp môn: mọi dạng trừ Bộ câu hỏi (đếm theo câu con, D22). */
 const QUOTA_TYPES = QUESTION_TYPES.filter((type) => type !== "QUESTION_SET");
+
+/** Chỉ tiêu dạng trả lời nhập theo tỷ lệ quy về số câu của tổng `total` (phần dư lớn nhất); nhập theo số câu giữ nguyên. */
+function toCountQuotas(quotas: AnswerQuotas | null, total: number): AnswerQuotas | null {
+  if (quotas?.unit !== "PERCENT") return quotas;
+  const counts = apportionByPercent(quotas.items.map((item) => item.value), total).results;
+  return { unit: "COUNT", items: quotas.items.map((item, index) => ({ ...item, value: counts[index] ?? 0 })) };
+}
 
 export interface SubjectPanelProps {
   context: SectionContext;
@@ -27,6 +42,24 @@ export interface SubjectPanelProps {
   onChange: (update: (section: ExamSection) => ExamSection) => void;
   onSelectBlock: (blockId: string) => void;
   onAddBlock: () => void;
+  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
+  headerAction?: ReactNode;
+  /** Mẫu khóa số câu từng phần, mục (H27): ô "Số câu của mục" chỉ đọc; phân bổ bên trong mục vẫn sửa được. */
+  countLocked?: boolean;
+  /** Sửa số câu của mục; bỏ trống: ô chỉ đọc. */
+  onCount?: (count: number) => void;
+  /** Môn đã kiểm tra đạt và chưa sửa gì từ đó: hiện "Đủ nguồn theo ma trận" (R-122). */
+  sourceVerified?: boolean;
+  /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của môn (H20). */
+  topicError?: TopicQuotaServerError;
+  /** Số câu của mục đã lưu hoặc đã xác nhận gần nhất, để phát hiện tổng đổi (R-121). */
+  confirmedCount?: number | null;
+  onConfirmCount?: (count: number) => void;
+  /** Chỉ tiêu cấp bài của bài, để liệt kê phân bố tham khảo của riêng môn này. */
+  examQuotas?: readonly ExamQuota[];
+  onExamQuotas?: (examQuotas: ExamQuota[]) => void;
+  /** Mã kỳ thi: HSA Tiếng Anh khối lớp luôn chờ chuyên gia xác nhận. */
+  examKind?: string | null;
 }
 
 /**
@@ -43,6 +76,16 @@ export function ExamStructureSubjectPanel({
   onChange,
   onSelectBlock,
   onAddBlock,
+  headerAction,
+  countLocked = false,
+  onCount,
+  sourceVerified = false,
+  topicError = null,
+  confirmedCount = null,
+  onConfirmCount,
+  examQuotas = [],
+  onExamQuotas,
+  examKind = null,
 }: SubjectPanelProps) {
   const t = useTranslations("exams.structure.subject");
   const tContent = useTranslations("content");
@@ -58,15 +101,19 @@ export function ExamStructureSubjectPanel({
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
     groups: section.blocks.map(
-      (block): AvailableQuestionsQuery => ({
+      (block): AudioCountQuery => ({
         subjectCode: section.subjectCode,
         questionType: block.questionType,
         answerTypes: block.questionType === null ? quotaTypes : [],
         childAnswerType: block.childAnswerType,
         knowledgeScope: effectiveScope(block, section),
-        taskTypeCode: block.taskTypeCode,
         tagCodes: block.tagCodes,
         requiredPointsPerQuestion: block.requiredPointsPerQuestion,
+        itemShape: block.itemShape,
+        answerFormats: block.answerFormats,
+        childConditions: block.childConditions,
+        // R-130, R-142: môn của phần Nghe chỉ đếm câu có audio, phần Đọc chỉ đếm câu không audio. `ANY` và bỏ trống: không gửi.
+        ...(section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? { audioRequirement: section.audioRequirement } : {}),
       }),
     ),
   });
@@ -101,6 +148,85 @@ export function ExamStructureSubjectPanel({
   const matrixVaries = section.matrix?.unit === "COUNT" && varies;
 
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));
+  // Ô "Mọi câu con thuộc chủ đề" của phạm vi môn (mẫu VACT_REVIEW bật sẵn ở máy chủ): chùm kế thừa phạm vi này khi
+  // chưa chọn MAPID riêng. Không có giá trị mặc định ở màn; tắt thì bỏ cờ (thiếu cờ là tắt).
+  const setEveryChild = (checked: boolean) =>
+    onChange((current) => {
+      const scope: KnowledgeScope = { ...(current.knowledgeScope ?? { nodeIds: [] }) };
+      delete scope.everyChildInScope;
+      return { ...current, knowledgeScope: checked ? { ...scope, everyChildInScope: true } : scope };
+    });
+
+  const sectionCount = section.questionCount;
+  const topicQuotas = section.topicQuotas ?? [];
+  const totalChanged = totalChangePending(section, confirmedCount);
+  const noticeLines: string[] = [];
+  if (totalChanged && sectionCount !== null) {
+    const grade = (code: string) => labels.grade(code);
+    const difficulty = (code: string) => labels.difficulty(code);
+    if (section.matrix?.unit === "PERCENT") {
+      const next = computeAllocation({ questionCount: sectionCount, matrix: section.matrix }, axes);
+      noticeLines.push(t("totalChange.grades", { values: axes.grades.map((code, index) => `${grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
+      noticeLines.push(t("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
+    }
+    if (quotas?.unit === "PERCENT") {
+      const next = apportionByPercent(quotas.items.map((item) => item.value), sectionCount).results;
+      noticeLines.push(t("totalChange.answerTypes", { values: quotas.items.map((item, index) => `${typeLabel(item.answerType)} ${next[index] ?? 0}`).join(" · ") }));
+    }
+    if (topicQuotas.some((quota) => quota.percent !== undefined && quota.percent !== null)) {
+      noticeLines.push(
+        t("totalChange.topics", {
+          values: topicQuotas.map((quota) => `${quota.name || t("totalChange.untitled")} ${topicCountFor(quota, sectionCount)}`).join(" · "),
+        }),
+      );
+    }
+  }
+  // Hai nút của thông báo biến mất khi bấm: đưa tiêu điểm về ô số câu để người dùng bàn phím không mất chỗ (R1-26).
+  const countRef = useRef<HTMLDivElement>(null);
+  const focusCount = () => requestAnimationFrame(() => countRef.current?.querySelector("input")?.focus());
+  const applyNewTotal = () => {
+    if (sectionCount === null) return;
+    onChange((current) => ({ ...current, topicQuotas: applyTopicTotal(current.topicQuotas ?? [], sectionCount) }));
+    onConfirmCount?.(sectionCount);
+    focusCount();
+  };
+  const keepOldTotal = () => {
+    if (sectionCount === null || confirmedCount === null) return;
+    onChange((current) => ({
+      ...current,
+      matrix: current.matrix?.unit === "PERCENT" ? convertMatrixUnit(current.matrix, "COUNT", confirmedCount, axes) : current.matrix,
+      answerQuotas: toCountQuotas(current.answerQuotas, confirmedCount),
+      topicQuotas: convertTopicEntry(applyTopicTotal(current.topicQuotas ?? [], confirmedCount), "COUNT", confirmedCount),
+    }));
+    onConfirmCount?.(sectionCount);
+    focusCount();
+  };
+  const references = referenceEntries(section, examQuotas, examKind);
+  const copyReference = (entry: ReferenceEntry) => {
+    if (entry.kind !== "quota") return;
+    onChange((current) => ({ ...current, matrix: referenceToMatrix(current, entry.quota, axes) }));
+  };
+  const applyReference = (entry: ReferenceEntry) => {
+    if (entry.kind === "quota") {
+      onExamQuotas?.(examQuotas.map((quota) => (quota.id === entry.quota.id ? { ...quota, enforcement: "REQUIRED" } : quota)));
+      return;
+    }
+    onChange((current) =>
+      current.matrix
+        ? {
+            ...current,
+            matrix: {
+              ...current.matrix,
+              ...(current.matrix.mode === "COMBINED"
+                ? { gradeEnforcement: "REQUIRED" as const, difficultyEnforcement: "REQUIRED" as const }
+                : entry.dimension === "GRADE"
+                  ? { gradeEnforcement: "REQUIRED" as const }
+                  : { difficultyEnforcement: "REQUIRED" as const }),
+            },
+          }
+        : current,
+    );
+  };
 
   return (
     <Card padding="md" className="flex flex-col gap-6 sm:p-6">
@@ -118,24 +244,57 @@ export function ExamStructureSubjectPanel({
                 : t("countFixed", { count: cases[0] ?? 0 })}
           </p>
         </div>
-        <p role="status" className="flex flex-wrap items-center gap-2 text-body">
-          <span className="text-text-muted">{t("allocated")}</span>
-          <span className="font-semibold text-text tabular-nums">
-            {allocation.count === null
-              ? t("allocatedUnknown", { allocated: allocation.allocated })
-              : t("allocatedValue", { allocated: allocation.allocated, count: allocation.count })}
-          </span>
-          {allocation.missing !== null && (
-            <StatusChip tone={allocation.missing === 0 ? "success" : "warning"}>
-              {allocation.missing === 0
-                ? t("matches")
-                : allocation.missing > 0
-                  ? t("missing", { count: allocation.missing })
-                  : t("over", { count: -allocation.missing })}
-            </StatusChip>
-          )}
-        </p>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <p role="status" className="flex flex-wrap items-center gap-2 text-body">
+            <span className="text-text-muted">{t("allocated")}</span>
+            <span className="font-semibold text-text tabular-nums">
+              {allocation.count === null
+                ? t("allocatedUnknown", { allocated: allocation.allocated })
+                : t("allocatedValue", { allocated: allocation.allocated, count: allocation.count })}
+            </span>
+            {allocation.missing !== null && (
+              <StatusChip tone={allocation.missing === 0 ? "success" : "warning"}>
+                {allocation.missing === 0
+                  ? t("matches")
+                  : allocation.missing > 0
+                    ? t("missing", { count: allocation.missing })
+                    : t("over", { count: -allocation.missing })}
+              </StatusChip>
+            )}
+            {sourceVerified && allocation.missing === 0 && <StatusChip tone="success">{t("sourceEnough")}</StatusChip>}
+          </p>
+          {headerAction}
+        </div>
       </div>
+
+      {sectionCount !== null && (
+        <div ref={countRef} className="flex max-w-md flex-col gap-1.5">
+          <FormField
+            label={t("countField.label")}
+            hint={countLocked ? t("countField.lockedHint") : t("countField.hint")}
+          >
+            {(controlProps) =>
+              countLocked || !onCount ? (
+                <span className="flex items-center gap-2">
+                  <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
+                  {countLocked && (
+                    <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
+                      <Lock aria-hidden className="size-3.5" />
+                      {t("countField.locked")}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <BlockNumberInput {...controlProps} className="w-24" value={sectionCount} onValueChange={onCount} />
+              )
+            }
+          </FormField>
+        </div>
+      )}
+
+      {totalChanged && sectionCount !== null && confirmedCount !== null && (
+        <TotalChangeNotice oldTotal={confirmedCount} newTotal={sectionCount} lines={noticeLines} onApply={applyNewTotal} onKeep={keepOldTotal} />
+      )}
 
       {varies && (
         <div className="flex flex-col gap-1">
@@ -184,7 +343,7 @@ export function ExamStructureSubjectPanel({
                   { value: "PERCENT", label: t("unitPercent") },
                 ]}
               />
-              <div role="region" tabIndex={0} aria-label={t("answerTypes.title")} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+              <div role="region" tabIndex={0} aria-label={t("answerTypes.title")} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
                 <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
                   <caption className="sr-only">{t("answerTypes.caption", { subject: subjectName })}</caption>
                   <thead>
@@ -332,16 +491,40 @@ export function ExamStructureSubjectPanel({
         </div>
 
         <KnowledgeScopeField
-          fieldId={section.id}
           value={section.knowledgeScope}
           onChange={setScope}
           reference={reference}
           subjectCode={section.subjectCode}
           name={subjectName}
+          everyChild={{ checked: section.knowledgeScope?.everyChildInScope ?? false, onChange: setEveryChild }}
+        />
+
+        <ReferenceDistributions entries={references} labels={labels} subjectName={subjectName} onUse={copyReference} onApply={applyReference} />
+
+        <TopicQuotaTable
+          id={section.id}
+          quotas={topicQuotas}
+          onChange={(next) => onChange((current) => ({ ...current, topicQuotas: next }))}
+          total={count ?? 0}
+          levelName={subjectName}
+          subjectCode={section.subjectCode}
+          reference={reference}
+          axes={axes}
+          labels={labels}
+          serverError={topicError}
         />
       </section>
 
-      <GroupList section={section} subjectName={subjectName} allocationRemainder={allocation.remainder} onSelectBlock={onSelectBlock} onAddBlock={onAddBlock} />
+      <GroupList
+        section={section}
+        subjectName={subjectName}
+        partName={context.part.name}
+        partTotal={context.part.questionCount}
+        total={allocation.count}
+        allocationRemainder={allocation.remainder}
+        onSelectBlock={onSelectBlock}
+        onAddBlock={onAddBlock}
+      />
     </Card>
   );
 }
@@ -351,7 +534,7 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
   const t = useTranslations("exams.structure.subject.matrix");
   if (!rows) return null;
   return (
-    <div role="region" tabIndex={0} aria-label={title} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+    <div role="region" tabIndex={0} aria-label={title} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
       <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
         <caption className="sr-only">{title}</caption>
         <thead>
@@ -377,23 +560,48 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
   );
 }
 
-/** Danh sách nhóm lấy câu của môn (khởi tạo từ mẫu): dạng trả lời, số câu, phạm vi nguồn; mở nhóm để sửa. */
+/** Nguồn khả dụng của một dòng của phần có audio: cùng bộ lọc và cùng truy vấn với vùng sửa nhóm (R-130). */
+function AvailableSource({ block, section }: { block: QuestionBlock; section: ExamSection }) {
+  const t = useTranslations("exams.structure.subject.groups");
+  const query = useAvailableQuestions(blockAvailableInput(block, section, section.subjectCode));
+  if (query.isError) return <span className="text-text-muted">{t("availableError")}</span>;
+  if (!query.data) return <span className="text-text-muted">{t("availableLoading")}</span>;
+  return <>{t("availableCount", { count: query.data.total })}</>;
+}
+
+/**
+ * Danh sách nhóm lấy câu của môn (khởi tạo từ mẫu): dạng trả lời, số câu, phạm vi nguồn; mở nhóm để sửa. Môn của phần có
+ * điều kiện audio (bản vẽ `NhomAudio2B`) thêm nhãn audio, số lượng, tổng câu, tỷ lệ trong phần, nguồn khả dụng và dòng tổng.
+ */
 function GroupList({
   section,
   subjectName,
+  partName,
+  partTotal,
+  total,
   allocationRemainder,
   onSelectBlock,
   onAddBlock,
 }: {
   section: ExamSection;
   subjectName: string;
+  partName: string;
+  /** Số câu của phần chứa môn: mẫu số của "Tỷ lệ trong phần", cùng số với vùng sửa nhóm. */
+  partTotal: number | null;
+  total: number | null;
   allocationRemainder: number | null;
   onSelectBlock: (blockId: string) => void;
   onAddBlock: () => void;
 }) {
   const t = useTranslations("exams.structure.subject.groups");
   const tContent = useTranslations("content");
+  const tRows = useTranslations("exams.structure.blockForm.rows");
   const headingId = useId();
+  const format = useFormatter();
+  const audio = sectionAudio(section);
+  const percentText = (rate: number | null) => (rate === null ? "—" : t("rate", { value: format.number(rate, { maximumFractionDigits: 1 }) }));
+  const questionsOf = (block: QuestionBlock) => block.questionCount ?? allocationRemainder ?? 0;
+  const rateText = (block: QuestionBlock) => percentText(audio ? blockShare(questionsOf(block), partTotal) : total === null ? null : ratePercent(questionsOf(block), total));
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
 
   const typeText = (block: QuestionBlock) => {
@@ -412,11 +620,19 @@ function GroupList({
     }
     return t("count", { count: block.questionCount });
   };
+  /** Cột "Số lượng": cách lấy (số chùm × cỡ chùm hoặc số câu đơn); tổng câu của dòng ở cột "Tổng câu". */
+  const quantityText = (block: QuestionBlock) => {
+    if (block.questionCount === null) return countText(block);
+    if (isSetBlock(block)) return block.setCount && block.setSize ? t("quantitySets", { sets: block.setCount, size: block.setSize }) : t("count", { count: block.questionCount });
+    return t("quantitySingle", { count: block.questionCount });
+  };
   const scopeText = (block: QuestionBlock) => {
     const source = effectiveScopeSource(block, section);
     if (source === "GROUP") return t("scopeOwn", { count: block.knowledgeScope?.nodeIds.length ?? 0 });
     return source === "SECTION" ? t("scopeSection") : t("scopeNone");
   };
+  const sumQuestions = section.blocks.reduce((sumSoFar, block) => sumSoFar + questionsOf(block), 0);
+  const headCell = "border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap";
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -427,29 +643,42 @@ function GroupList({
           <span>{t("add")}</span>
         </Button>
       </div>
+      {audio && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-label font-semibold text-text tabular-nums">
+            {t("partSummary", { part: partName, known: partTotal !== null && partTotal > 0 ? "yes" : "no", count: partTotal ?? 0 })}
+          </p>
+          <AudioChip audio={audio} />
+          <span className="text-caption text-text-muted">{tRows("audioNote")}</span>
+        </div>
+      )}
       {remainderGroups > 1 && <p className="text-caption text-danger">{t("remainderConflict", { count: remainderGroups })}</p>}
       {section.blocks.length === 0 ? (
         <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
-        <div role="region" tabIndex={0} aria-label={t("caption", { subject: subjectName })} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+        <ScrollableTable label={t("caption", { subject: subjectName })} className="rounded-md border border-border">
           <table className="w-full border-separate border-spacing-0 text-body">
             <caption className="sr-only">{t("caption", { subject: subjectName })}</caption>
             <thead>
               <tr className="text-left text-caption text-text-muted">
-                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("name")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("type")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("countHeader")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("scope")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
+                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold whitespace-nowrap">{t("name")}</th>
+                <th scope="col" className={headCell}>{t("type")}</th>
+                {audio && <th scope="col" className={headCell}>{t("audioHeader")}</th>}
+                <th scope="col" className={headCell}>{t(audio ? "quantityHeader" : "countHeader")}</th>
+                {audio && <th scope="col" className={cn(headCell, "text-right")}>{t("totalHeader")}</th>}
+                <th scope="col" className={headCell}>{t(audio ? "shareHeader" : "rateHeader")}</th>
+                {audio && <th scope="col" className={headCell}>{t("availableHeader")}</th>}
+                <th scope="col" className={headCell}>{t("scope")}</th>
+                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold whitespace-nowrap"><span className="sr-only">{t("actions")}</span></th>
               </tr>
             </thead>
             <tbody>
               {section.blocks.map((block) => (
                 <tr key={block.id}>
-                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
+                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium whitespace-nowrap text-text">
                     {block.name || t("untitled")}
                   </th>
-                  <td className="border-b border-border px-2 py-2 text-text">
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text">
                     <span className="inline-flex items-center gap-1.5">
                       {typeText(block)}
                       {block.answerTypeLocked && (
@@ -460,8 +689,20 @@ function GroupList({
                       )}
                     </span>
                   </td>
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{countText(block)}</td>
-                  <td className="border-b border-border px-2 py-2 text-text-secondary">{scopeText(block)}</td>
+                  {audio && (
+                    <td className="border-b border-border px-2 py-2 whitespace-nowrap">
+                      <AudioChip audio={audio} />
+                    </td>
+                  )}
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{audio ? quantityText(block) : countText(block)}</td>
+                  {audio && <td className="border-b border-border px-2 py-2 text-right font-semibold whitespace-nowrap tabular-nums text-text">{format.number(questionsOf(block))}</td>}
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{rateText(block)}</td>
+                  {audio && (
+                    <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text-secondary">
+                      <AvailableSource block={block} section={section} />
+                    </td>
+                  )}
+                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text-secondary">{scopeText(block)}</td>
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name || t("untitled") })} onClick={() => onSelectBlock(block.id)}>
                       {t("open")}
@@ -470,8 +711,18 @@ function GroupList({
                 </tr>
               ))}
             </tbody>
+            {audio && (
+              <tfoot>
+                <tr className="bg-subtle font-bold tabular-nums text-text">
+                  <th scope="row" colSpan={4} className="px-3 py-2.5 text-left">{t("partTotal", { part: partName })}</th>
+                  <td className="px-2 py-2.5 text-right">{format.number(sumQuestions)}</td>
+                  <td className="px-2 py-2.5 whitespace-nowrap">{percentText(blockShare(sumQuestions, partTotal))}</td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
+            )}
           </table>
-        </div>
+        </ScrollableTable>
       )}
     </section>
   );

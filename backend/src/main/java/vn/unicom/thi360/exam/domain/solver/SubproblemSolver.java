@@ -87,13 +87,18 @@ final class SubproblemSolver {
                             : SolveReason.NO_JOINT_SOLUTION,
                     null);
         }
+        var assignments = TopicAssignments.assign(ctx, picked, deadlineCheck);
+        if (assignments == null) {
+            throw new IllegalStateException("selected candidates do not satisfy topic quotas");
+        }
         // đề chứng minh theo nhóm, theo thứ tự nhóm của problem
         List<GroupWitness> witness = new ArrayList<>(ctx.groups().size());
         for (int g = 0; g < ctx.groups().size(); g++) {
             List<QuestionPick> picks = new ArrayList<>();
             for (int i : picked.get(g)) {
                 PathCandidate c = ctx.cands().get(g).get(i);
-                picks.add(new QuestionPick(c.questionId(), c.versionNo()));
+                picks.add(new QuestionPick(c.questionId(), c.versionNo(),
+                        assignments.getOrDefault(new TopicAssignments.Pick(g, i), List.of())));
             }
             witness.add(new GroupWitness(ctx.groups().get(g).group().groupId(), picks));
         }
@@ -132,6 +137,10 @@ final class SubproblemSolver {
                         }
                         supply[r] += vec[r];
                     }
+                    int[] slot = ctx.slotBlocks()[g];
+                    for (int r = slot[0]; r < slot[1]; r++) {
+                        supply[r] += vec[r];
+                    }
                     // chỉ tiêu phía môn của section chứa nhóm g: hợp nguồn của các nhóm cùng
                     // section, mỗi ứng viên (theo khóa) đếm một lần (R2-3)
                     if (countedForSubject.add(ctx.sectionOf()[g] + ":"
@@ -148,6 +157,21 @@ final class SubproblemSolver {
             }
             if (units < groupUnits) {
                 return new Shortage(ctx.groups().get(g).group().groupId(), null);
+            }
+            if (ctx.groups().get(g).group().kind() == GroupQuota.GroupKind.FLEXIBLE_SET) {
+                boolean[] reachable = new boolean[groupUnits + 1];
+                reachable[0] = true;
+                for (int i = 0; i < ctx.cands().get(g).size(); i++) {
+                    if ((scans++ & 0x3FF) == 0) deadlineCheck.run();
+                    if (!ctx.usable()[g][i]) continue;
+                    int size = ctx.units()[g][i];
+                    for (int sum = groupUnits; sum >= size; sum--) {
+                        reachable[sum] |= reachable[sum - size];
+                    }
+                }
+                if (!reachable[groupUnits]) {
+                    return new Shortage(ctx.groups().get(g).group().groupId(), null);
+                }
             }
         }
         for (int r = 0; r < rCount; r++) {
@@ -166,10 +190,11 @@ final class SubproblemSolver {
         return null;
     }
 
-    /** Nhóm g có ít nhất một chỉ tiêu riêng (ô, năng lực, nhóm MAPID) ngoài TỔNG/phân hoạch môn. */
+    /** Nhóm g có ít nhất một chỉ tiêu riêng (ô, năng lực, nhóm MAPID, chủ đề) ngoài TỔNG/phân hoạch môn. */
     private boolean hasOwnDims(Prep.SubproblemContext ctx, int g) {
         GroupQuota q = ctx.groups().get(g).group();
         return q.matrix() != null || !q.competencies().isEmpty()
-                || !q.mapidGroups().isEmpty();
+                || !q.mapidGroups().isEmpty() || !q.topicQuotas().isEmpty()
+                || (q.slotParent() != null && !q.slotParent().topicQuotas().isEmpty());
     }
 }

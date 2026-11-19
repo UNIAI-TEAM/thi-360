@@ -121,6 +121,91 @@ Issue cha: **UNI-2638**. Đặc tả `docs/specs/2026-11-17-trinh-soan-noi-dung.
 | Issue | Việc | Trạng thái |
 |---|---|---|
 | UNI-2647 | Đặc tả `docs/specs/2026-11-17-pbi04-dot-2b.md`, bảng yêu cầu `docs/specs/2026-11-17-pbi04-dot-2b-yeu-cau.md`, plan `docs/plans/2026-11-17-pbi04-dot-2b.md` (17 task, 100 điểm). Đã qua 4 lượt review của Fable; M.Trường chốt K6 đến K15 và duyệt 2026-11-17; PR #70 đã merge. Bản vẽ G2: PR #78 (`docs/design/dot-2b/`). Cook ở một đợt chạy riêng sau khi trình soạn vào `develop` | in_progress |
+| UNI-2649 | Issue cha đợt 2B (cook từ 2026-11-17, nhánh `integration/dot-2b` từ `develop` 23c64377, Orca Run `run_89ebffeca5a8`) | in_progress |
+
+Sub-issue theo plan A5 (17 task, 100 điểm):
+
+| Task | Issue | Điểm | Sóng | Task | Issue | Điểm | Sóng |
+|---|---|---|---|---|---|---|---|
+| BE-1 | UNI-2650 | 10 | 1 | BE-9 | UNI-2660 | 4 | 4 |
+| BE-2 | UNI-2651 | 4 | 1 | FE-1 | UNI-2661 | 6 | 2 |
+| BE-3 | UNI-2652 | 4 | 1 | FE-2 | UNI-2662 | 8 | 2 |
+| BE-10 | UNI-2653 | 3 | 2 | FE-3a | UNI-2663 | 8 | 3 |
+| BE-4a | UNI-2654 | 6 | 2 | FE-3b | UNI-2664 | 9 | 4 |
+| BE-4b | UNI-2655 | 4 | 3 | FE-4 | UNI-2665 | 7 | 3 |
+| BE-5 | UNI-2656 | 10 | 3 | QA | UNI-2666 | 9 | 5 |
+| BE-8 | UNI-2657 | 5 | 3 | | | | |
+| BE-6 | UNI-2658 | 5 | 2 | | | | |
+| BE-7 | UNI-2659 | 6 | 2 | | | | |
+
+Bổ sung V-ACT, THPTQG (UNI-2671, kế hoạch `docs/plans/2026-11-18-pbi04-dot-2b-bo-sung-vact-thpt.md`). Tổng đợt tăng từ 100 lên 127 điểm.
+
+| Task | Issue | Điểm | Nội dung |
+|---|---|---|---|
+| BE-11 | UNI-2672 | 2 | Hợp đồng mở rộng: cờ mẫu, `percent`, `everyChildInScope` |
+| BE-12 | UNI-2673 | 5 | Bộ giải: chùm cỡ linh hoạt, mọi câu con thuộc chủ đề |
+| BE-13 | UNI-2674 | 6 | Mẫu THPTQG, V-ACT, phạm vi mới, bài ôn |
+| BE-14 | UNI-2675 | 2 | Nhãn và dữ liệu câu hỏi mẫu |
+| BE-15 | UNI-2676 | 3 | Kiểm tra: chặn công bố, khóa số câu, chờ mapping |
+| FE-5 | UNI-2677 | 3 | Web admin: bước 1 cho V-ACT, THPTQG |
+| G2b | UNI-2678 | 0 | Bản vẽ bổ sung (cổng thiết kế) |
+
+Bổ sung H-SCA, V-SAT (UNI-2687, kế hoạch `docs/plans/2026-11-18-pbi04-dot-2b-bo-sung-hsca-vsat.md`). Tổng đợt tăng từ 127 lên 160 điểm.
+
+| Task | Issue | Điểm | Nội dung |
+|---|---|---|---|
+| BE-16 | UNI-2688 | 3 | Hợp đồng mở rộng, mã kỳ thi, nhãn |
+| BE-17 | UNI-2689 | 4 | Nguồn câu: audio, dạng câu con, số phương án, chiều điểm |
+| BE-18 | UNI-2690 | 6 | Mẫu H-SCA, V-SAT, hồ sơ, phạm vi |
+| BE-19 | UNI-2691 | 3 | Dữ liệu câu mẫu, có audio |
+| BE-20 | UNI-2692 | 3 | Kiểm tra: khóa dòng, tệp audio, thang, đối chiếu theo lệnh |
+| BE-21 | UNI-2693 | 3 | Tiếng Anh V-SAT: bài đọc dùng chung |
+| FE-6 | UNI-2694 | 3 | Web admin: bước 1 cho H-SCA, V-SAT |
+| FE-7 | UNI-2695 | 4 | Web admin: bước 2, audio, khóa dòng, ví dụ chấm |
+| FE-8 | UNI-2696 | 2 | Web admin: kiểm tra và sinh thử |
+| G2c | UNI-2697 | 0 | Bản vẽ bổ sung (cổng thiết kế) |
+
+Đã merge vào `integration/dot-2b` (issue chuyển `in_review`, chờ người duyệt):
+
+- BE-3 UNI-2652, PR #81 (`fef09eb7`), 2026-11-18.
+- BE-1 UNI-2650, PR #82 (`829c51fa`), 2026-11-18.
+- BE-2 UNI-2651, PR #83 (`ce3a53e9`), 2026-11-18.
+- BE-4a UNI-2654, PR #84 (`f2d19d44`), 2026-11-18.
+- BE-6 UNI-2658, PR #85 (`93cd54f6`), 2026-11-18.
+- BE-7 UNI-2659, PR #86 (`a378a74c`), 2026-11-18.
+- FE-1 UNI-2661, PR #87 (`5adff8ce`), 2026-11-18.
+- BE-4b UNI-2655, PR #88 (`d7424481`), 2026-11-18.
+- BE-10 UNI-2653, PR #89 (`750133d7`), 2026-11-18.
+- BE-8 UNI-2657, PR #90 (`98a42e93`), 2026-11-18.
+- BE-5 UNI-2656, PR #91 (`89c040e9`), 2026-11-18.
+- G2b UNI-2678, PR #92 (`d30122ea`), 2026-11-18.
+- FE-2 UNI-2662, PR #93 (`f8911d89`), 2026-11-18.
+- BE-11 UNI-2672, PR #94 (`2df2b9d6`), 2026-11-18.
+- BE-9 UNI-2660, PR #95 (`8aaa964d`), 2026-11-18.
+- FE-3a UNI-2663, PR #97 (`d5b7ea05`), phần gốc, 2026-11-18.
+- BE-14 UNI-2675, PR #96 (`8bb2a79a`), 2026-11-18.
+- BE-12 UNI-2673, PR #98 (`e7c92466`), 2026-11-18.
+- FE-4 UNI-2665, PR #99 (`567e9cb7`), 2026-11-18, phần gốc; phần bổ sung làm sau BE-15.
+- BE-13 UNI-2674, PR #100 (`2c0684f2`), 2026-11-18.
+- FE-3a phần thêm UNI-2663, PR #101 (`2f014645`), 2026-11-18.
+- FE-5 UNI-2677, PR #102 (`379549a0`), 2026-11-18.
+- FE-3b UNI-2664, PR #103 (`c5aecbfd`), 2026-11-18.
+- BE-15 UNI-2676, PR #104 (`5660ae73`), 2026-11-18.
+- FE-4 phần thêm UNI-2665, PR #105 (`fed64900`), 2026-11-18.
+- FIX-QA UNI-2686, PR #106 (`b82b3bb0`), 2026-11-18.
+- G2c UNI-2697, PR #107 (`2a7dfbd1`), 2026-11-18.
+- BE-16 UNI-2688, PR #108 (`bb622ceb`), 2026-11-18.
+- FE-6 UNI-2694, PR #109 (`b682cc16`), 2026-11-19.
+- BE-17 UNI-2689, PR #110 (`70287be8`), 2026-11-19.
+- BE-19 UNI-2691, PR #111 (`6e6445ea`), 2026-11-19.
+- BE-20 UNI-2692, PR #113 (`f610e74e`), 2026-11-19.
+- BE-18 UNI-2690, PR #112 (`c3999a50`), 2026-11-19.
+- FE-7 UNI-2695, PR #114 (`c0adb5d9`), 2026-11-19.
+- FIX-AUDIO UNI-2698, PR #115 (`9f9f9c07`), 2026-11-19.
+- BE-21 UNI-2693, PR #116 (`d6511a38`), 2026-11-19.
+- FE-8 UNI-2696, PR #117 (`91baffa8`), 2026-11-19.
+- FIX-RELOAD UNI-2699, PR #118 (`8f03793b`), 2026-11-19.
+- QA UNI-2666, PR #119 (`8919f77c`), 2026-11-19.
 
 ### Thứ tự làm
 

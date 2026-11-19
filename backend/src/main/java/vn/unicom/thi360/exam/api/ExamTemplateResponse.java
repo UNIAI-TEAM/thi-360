@@ -16,6 +16,14 @@ public record ExamTemplateResponse(
         String partCode,
         @Schema(description = "Mã môn khi mẫu theo môn")
         String subjectCode,
+        @Schema(description = "Nhãn phiên bản cấu trúc")
+        String label,
+        @Schema(description = "Tóm tắt phiên bản cấu trúc")
+        String summary,
+        @Schema(description = "STANDARD | REVIEW", requiredMode = Schema.RequiredMode.REQUIRED)
+        String buildMode,
+        @Schema(description = "Phiên bản mặc định", requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean isDefault,
         @Schema(description = "Năm cấu trúc")
         Integer structureYear,
         @Schema(description = "Năm ma trận")
@@ -32,6 +40,19 @@ public record ExamTemplateResponse(
         boolean active,
         @Schema(description = "Tài liệu cấu trúc nguyên bản {parts: [...]} (id để null — client sinh)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        JsonNode structure
+        JsonNode structure,
+        @Schema(description = "Mẫu cho phép công bố bài (false: chỉ lưu nháp)", requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean publishable,
+        @Schema(description = "Mẫu khóa số câu từng phần/mục (kiểm tra báo STRUCTURE_COUNT_LOCKED)",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean fixedCounts,
+        @Schema(description = "Mẫu khóa dạng, số câu, số chùm, cỡ chùm từng nhóm của bài phạm vi SUBJECT "
+                + "(kiểm tra báo BLOCK_COUNT_LOCKED); bài PART và bài ôn từ cùng mẫu không bị khóa",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean fixedBlockCounts,
+        @Schema(description = "Nhóm đã lược của mẫu (phần viết) không bật lại được "
+                + "(kiểm tra báo OMITTED_BLOCK_LOCKED); tạo bài PART chỉ gồm nhóm đã lược bị từ chối",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean omittedLocked
 ) {
 }

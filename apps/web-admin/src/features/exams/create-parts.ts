@@ -52,15 +52,16 @@ function blockFromTemplate(block: ExamTemplateBlock): QuestionBlock {
       block.knowledgeScope !== undefined
         ? structuredClone(block.knowledgeScope)
         : block.competencyCode
-          ? { nodeIds: [], match: "ANY", competencyCodes: [block.competencyCode] }
+          ? { nodeIds: [], competencyCodes: [block.competencyCode] }
           : null,
     tagCodes: [],
     matrix: block.matrix !== undefined ? structuredClone(block.matrix) : emptyMatrix(),
-    taskTypeCode: block.taskTypeCode ?? null,
     childAnswerType: block.childAnswerType ?? null,
     templateGroupCode: block.templateGroupCode ?? null,
     answerTypeLocked: block.answerTypeLocked ?? false,
     ...(block.expectedScoring ? { expectedScoring: structuredClone(block.expectedScoring) } : {}),
+    ...(block.childConditions?.length ? { childConditions: structuredClone(block.childConditions) } : {}),
+    ...(block.itemShape ? { itemShape: { ...block.itemShape } } : {}),
   };
 }
 
@@ -77,6 +78,7 @@ export function sectionFromTemplate(section: ExamTemplateSection): ExamSection {
     matrix: structuredClone(section.matrix ?? null),
     choiceGroup: section.choiceGroup ?? null,
     blocks: blocksFromTemplate(section.blocks),
+    ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
   };
 }
 
@@ -182,6 +184,7 @@ export function partsFromInput(
       mode: input.mode,
       sections: choice || common.length > 0 ? common : [singleSubject],
       options,
+      ...(input.displaySegments?.length ? { displaySegments: structuredClone(input.displaySegments) } : {}),
     };
   });
 }

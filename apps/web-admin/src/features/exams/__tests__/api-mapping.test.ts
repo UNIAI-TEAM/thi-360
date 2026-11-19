@@ -9,6 +9,12 @@ const block = { id: null, name: "Trac nghiem", questionType: "SINGLE_CHOICE", qu
 function template(parts: unknown[]): Template {
   return {
     active: true,
+    publishable: true,
+    fixedCounts: false,
+    fixedBlockCounts: false,
+    omittedLocked: false,
+    buildMode: "STANDARD",
+    isDefault: true,
     code: "BCA_FULL",
     kindCode: "BCA",
     scope: "FULL",
@@ -102,8 +108,8 @@ describe("mapPart và toApiParts", () => {
       {
         participation: { mode: "CHOICE", choose: 1 },
         options: [
-          { kind: "COMBINATION", code: "CA1", expertConfirmed: false },
-          { kind: "COMBINATION", code: "CA2" },
+          { kind: "BRANCH", code: "CA1", expertConfirmed: false },
+          { kind: "BRANCH", code: "CA2" },
         ],
         sections: [{ subjectCode: "MATH", blocks: [{ name: "A" }] }],
       },
@@ -117,10 +123,12 @@ describe("mapPart và toApiParts", () => {
   });
 
   it("khi gửi bỏ null và mode của phần", () => {
-    const part = mapPart({ name: "P", participation: { mode: "ALL" }, sections: [{ subjectCode: "MATH", blocks: [{ name: "A" }] }] }, 0);
+    const part = mapPart({ name: "P", participation: { mode: "ALL" }, sections: [{ subjectCode: "MATH", knowledgeScope: { nodeIds: ["node"] }, blocks: [{ name: "A" }] }] }, 0);
     const [sent] = toApiParts([part]) as unknown as Array<Record<string, unknown>>;
     expect(sent).not.toHaveProperty("mode");
     expect(JSON.stringify(sent)).not.toContain("null");
     expect(sent!.participation).toEqual({ mode: "ALL" });
+    expect(JSON.stringify(sent)).not.toContain('"match"');
+    expect(JSON.stringify(sent)).not.toContain('"taskTypeCode"');
   });
 });

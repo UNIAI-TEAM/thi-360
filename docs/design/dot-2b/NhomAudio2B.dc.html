@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Vùng sửa · dòng lấy câu có audio, dòng bị khóa (2B)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.th{--bg:#F7F8F9;--sf:#FFFFFF;--sb:#F1F2F4;--thd:#FAFAFB;--bd:#E8E8EC;--bds:#D4D4D8;--tx:#11181C;--tx2:#3A3A42;--tx3:#54545A;--pt:#047857;--pf:#047857;--op:#FFFFFF;--p50:#ECFDF5;--p100:#DCFCE7;--p200:#A7E3C2;--p600:#059669;--p800:#065F46;--p900:#064E3B;--ok:#047857;--okb:#ECFDF5;--okbd:#A7F3D0;--wn:#B45309;--wnb:#FFFBEB;--wnbd:#FDE68A;--er:#B91C1C;--erb:#FEF2F2;--erbd:#FECACA;--in:#0E7490;--inb:#ECFEFF;--inbd:#A5F3FC;--nt:#54545A;--ntb:#F1F2F4;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(17,24,28,.45);--sh:rgba(17,24,28,.10)}
+.th.dark{--bg:#0F1418;--sf:#171D22;--sb:#1E262C;--thd:#1A2126;--bd:#2A3238;--bds:#3A444C;--tx:#E6EAED;--tx2:#C5CCD2;--tx3:#A9B2BA;--pt:#10B981;--pf:#55B38F;--op:#11181C;--p50:#0A1F19;--p100:#0C1F18;--p200:#1F4A3A;--p600:#059669;--p800:#6EE7B7;--p900:#A7F3D0;--ok:#34D399;--okb:#0F2A21;--okbd:#1F4A3A;--wn:#FBBF24;--wnb:#2B2210;--wnbd:#5A4614;--er:#F87171;--erb:#2E1517;--erbd:#5C2328;--in:#22D3EE;--inb:#0F2A30;--inbd:#1D4B54;--nt:#A9B2BA;--ntb:#1E262C;--ac:#F59223;--oac:#1A1A1F;--ov:rgba(0,0,0,.6);--sh:rgba(0,0,0,.40)}
+a{color:var(--pt)}a:hover{color:var(--p800)}
+:focus-visible{outline:2px solid var(--p600);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tab{position:relative}
+[aria-current="page"].tab::after{content:"";position:absolute;inset:auto 8px 0;border-bottom:2px solid currentColor}
+input,select,textarea,button{font:inherit}
+input,select{color-scheme:light}.th.dark input,.th.dark select{color-scheme:dark}
+progress{appearance:none;display:block;width:100%;height:8px;border:0 solid;border-radius:9999px;overflow:clip;background:var(--sb)}
+progress::-webkit-progress-bar{background:transparent}
+progress::-webkit-progress-value{background:var(--bar,var(--pf));border-radius:9999px}
+progress::-moz-progress-bar{background:var(--bar,var(--pf));border-radius:9999px}
+</style>
+</helmet>
+<div class="th {{theme}}" style="width: 1040px; max-width: 100%; min-height: 2000px; box-sizing: border-box; padding: 24px; background: var(--bg); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 21px; color: var(--tx); display: flex; flex-direction: column; gap: 16px">
+  <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Vùng sửa (c) của bước 2 · H-SCA Tiếng Anh, Nghe và Đọc › Phần Nghe</p>
+
+  <section aria-labelledby="h" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden">
+    <div style="padding: 16px; border-bottom: 1px solid var(--bd); display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><h1 id="h" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Phần Nghe · {{partTotal}} câu</h1><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--inb); color: var(--in)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>Có audio</span></div>
+        <p style="margin: 0; color: var(--tx3)">Mọi dòng của phần Nghe chỉ lấy câu có audio. Điều kiện này đặt theo phần, không đổi ở từng dòng.</p>
+      </div>
+      <button type="button" style="height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--p200); background: var(--sf); color: var(--p800); font-weight: 600; cursor: pointer">Kiểm tra môn</button>
+    </div>
+
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 6px"><label for="p-total" style="font-weight: 600">Số câu của phần</label><input id="p-total" inputmode="numeric" value="{{partTotal}}" onChange="{{setPart}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right"></div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+          <span id="im" style="font-size: 12.5px; color: var(--tx3)">Nhập theo</span>
+          <div role="radiogroup" aria-labelledby="im" style="display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sb); gap: 2px">
+            <button type="button" role="radio" aria-checked="{{byCountOn}}" onClick="{{byCount}}" style="{{countSeg}}">Số lượng</button>
+            <button type="button" role="radio" aria-checked="{{byRateOn}}" onClick="{{byRate}}" style="{{rateSeg}}">Tỷ lệ</button>
+          </div>
+        </div>
+      </div>
+
+      <div role="region" tabindex="0" aria-labelledby="cap-l" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+        <table style="width: 100%; min-width: 900px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+          <caption id="cap-l" class="sr-only">Các dòng lấy câu của phần Nghe</caption>
+          <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Dòng lấy câu</th><th scope="col" style="padding: 8px">Nhãn audio</th><th scope="col" style="padding: 8px">Số lượng</th><th scope="col" style="padding: 8px; text-align: right">Tổng câu</th><th scope="col" style="padding: 8px; width: 110px">Tỷ lệ trong phần</th><th scope="col" style="padding: 8px 14px">Nguồn khả dụng</th></tr></thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+              <tr style="{{r.tr}}">
+                <th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600"><button type="button" onClick="{{r.open}}" aria-pressed="{{r.isOpen}}" style="{{r.openStyle}}">{{r.name}}</button></th>
+                <td style="padding: 8px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--inb); color: var(--in)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>Có audio</span></td>
+                <td style="padding: 8px; white-space: nowrap"><sc-if value="{{r.editN}}" hint-placeholder-val="{{true}}"><input aria-label="Số lượng · {{r.name}}" inputmode="numeric" value="{{r.n}}" onChange="{{r.setN}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right"></sc-if><sc-if value="{{r.roN}}" hint-placeholder-val="{{false}}"><input readonly aria-readonly="true" aria-label="Số lượng · {{r.name}}" value="{{r.n}}" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sb); color: var(--tx2); text-align: right"></sc-if> <span style="color: var(--tx3)">{{r.unit}}</span></td>
+                <td style="padding: 8px; text-align: right; font-weight: 600">{{r.q}}</td>
+                <td style="padding: 8px"><sc-if value="{{r.editR}}" hint-placeholder-val="{{false}}"><input aria-label="Tỷ lệ · {{r.name}}" inputmode="decimal" value="{{r.rateIn}}" onChange="{{r.setR}}" aria-invalid="{{r.bad}}" style="{{r.rateStyle}}"></sc-if><sc-if value="{{r.roR}}" hint-placeholder-val="{{true}}"><span>{{r.rate}}</span></sc-if></td>
+                <td style="padding: 8px 14px; color: var(--tx2)">{{r.avail}}</td>
+              </tr>
+              <sc-if value="{{r.hasErr}}" hint-placeholder-val="{{false}}">
+                <tr><td colspan="6" style="padding: 0 14px 10px"><div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Không ghép được chùm nguyên.</strong> {{r.err}}</div></td></tr>
+              </sc-if>
+            </sc-for>
+            <tr style="border-top: 1px solid var(--bd); background: var(--sb); font-weight: 700"><th scope="row" style="padding: 10px 14px; text-align: left">Tổng phần Nghe</th><td style="padding: 10px 8px"></td><td style="padding: 10px 8px"></td><td style="padding: 10px 8px; text-align: right">{{sumQ}}</td><td style="padding: 10px 8px">{{sumRate}}</td><td style="padding: 10px 14px"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px; gap: 8px">
+        <strong id="alloc" role="status" style="{{allocStyle}}">{{allocText}}</strong>
+        <progress aria-labelledby="alloc" max="{{partTotal}}" value="{{allocBar}}" style="{{barStyle}}"></progress>
+      </div>
+
+      <section aria-labelledby="h-open" style="border: 1px solid var(--bd); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between"><h2 id="h-open" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">{{openName}}</h2><strong style="font-variant-numeric: tabular-nums">{{openSummary}}</strong></div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 16px; align-items: start">
+          <div style="display: flex; flex-direction: column; gap: 6px"><label for="o-name" style="font-weight: 600">Tên dòng</label><input id="o-name" value="{{openName}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><span style="font-weight: 600">Cách lấy</span><div style="height: 40px; display: flex; align-items: center">{{openHow}}</div></div>
+          <sc-if value="{{openIsSet}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 6px"><label for="o-sets" style="font-weight: 600">Số chùm</label><input id="o-sets" inputmode="numeric" value="{{openN}}" onChange="{{openSetN}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"></div>
+          </sc-if>
+          <sc-if value="{{openIsSet}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 6px"><label for="o-size" style="font-weight: 600">Số câu con mỗi chùm</label><input id="o-size" readonly aria-readonly="true" value="{{openSize}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sb); color: var(--tx2)"></div>
+          </sc-if>
+          <sc-if value="{{openIsSingle}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 6px"><label for="o-n" style="font-weight: 600">Số câu</label><input id="o-n" inputmode="numeric" value="{{openN}}" onChange="{{openSetN}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sf); color: var(--tx)"></div>
+          </sc-if>
+          <div style="display: flex; flex-direction: column; gap: 6px"><span style="font-weight: 600">Nhãn audio</span><div style="height: 40px; display: flex; align-items: center"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--inb); color: var(--in)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>Có audio</span></div><span style="font-size: 12.5px; color: var(--tx3)">Lấy theo phần Nghe. Không đổi được ở dòng.</span></div>
+        </div>
+      </section>
+
+      <sc-if value="{{showSaveErr}}" hint-placeholder-val="{{false}}"><div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được.</strong> Sửa các dòng đang báo lỗi rồi lưu lại.</div></sc-if>
+      <sc-if value="{{showSaved}}" hint-placeholder-val="{{false}}"><div role="status" style="border: 1px solid var(--okbd); background: var(--okb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--ok)">Đã lưu phần Nghe.</strong></div></sc-if>
+    </div>
+
+    <div style="padding: 12px 16px; border-top: 1px solid var(--bd); display: flex; justify-content: flex-end; gap: 8px">
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Hủy thay đổi</button>
+      <button type="button" onClick="{{save}}" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--pf); color: var(--op); font-weight: 600; cursor: pointer">Lưu phần</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-doc" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><h2 id="h-doc" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Phần Đọc · 40 câu</h2><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--ntb); color: var(--nt)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M21 15v-3a9 9 0 0 0-13-8M4.5 7.5A9 9 0 0 0 3 12v6M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>Không có audio</span></div>
+    <div role="region" tabindex="0" aria-labelledby="cap-d" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+      <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+        <caption id="cap-d" class="sr-only">Dòng lấy câu của phần Đọc</caption>
+        <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Dòng lấy câu</th><th scope="col" style="padding: 8px">Nhãn audio</th><th scope="col" style="padding: 8px">Số lượng</th><th scope="col" style="padding: 8px; text-align: right">Tổng câu</th><th scope="col" style="padding: 8px 14px; text-align: right">Tỷ lệ trong phần</th></tr></thead>
+        <tbody><tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 10px 14px; text-align: left; font-weight: 600">Dòng 1 · Bài đọc 10 câu</th><td style="padding: 10px 8px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--ntb); color: var(--nt)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M21 15v-3a9 9 0 0 0-13-8M4.5 7.5A9 9 0 0 0 3 12v6M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>Không có audio</span></td><td style="padding: 10px 8px">4 chùm × 10 câu con</td><td style="padding: 10px 8px; text-align: right; font-weight: 600">40</td><td style="padding: 10px 14px; text-align: right">100%</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-lock" style="background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <p style="margin: 0; font-size: 12.5px; color: var(--tx3)">Dòng bị khóa · H-SCA Toán, cả môn</p>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><h2 id="h-lock" style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 700">Phần 1 · Trắc nghiệm · 25 câu</h2><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(--ntb); color: var(--nt)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Mẫu đã khóa dòng</span></div>
+      <p id="lock-why" style="margin: 0; color: var(--tx2)">Bài cả môn giữ nguyên dạng và số lượng của từng dòng theo mẫu H-SCA. Muốn đổi, hãy tạo bài theo phần từ cùng mẫu.</p>
+    </div>
+    <div role="region" tabindex="0" aria-labelledby="cap-k" style="overflow-x: auto; border: 1px solid var(--bd); border-radius: 12px">
+      <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-variant-numeric: tabular-nums">
+        <caption id="cap-k" class="sr-only">Các dòng bị khóa của phần Trắc nghiệm</caption>
+        <thead><tr style="text-align: left; font-size: 13px; color: var(--tx3); background: var(--thd)"><th scope="col" style="padding: 8px 14px">Dòng lấy câu</th><th scope="col" style="padding: 8px">Loại câu hỏi</th><th scope="col" style="padding: 8px">Số câu</th><th scope="col" style="padding: 8px; text-align: right">Dải câu</th><th scope="col" style="padding: 8px 14px; text-align: right">Tỷ lệ trong phần</th></tr></thead>
+        <tbody>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Dòng 1 · Chọn một</th><td style="padding: 8px"><span style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; gap: 6px; color: var(--tx2)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Một đáp án</span></td><td style="padding: 8px"><input readonly aria-readonly="true" aria-label="Số câu · Dòng 1" aria-describedby="lock-why" value="20" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sb); color: var(--tx2); text-align: right"></td><td style="padding: 8px; text-align: right">1–20</td><td style="padding: 8px 14px; text-align: right">80%</td></tr>
+          <tr style="border-top: 1px solid var(--bd)"><th scope="row" style="padding: 8px 14px; text-align: left; font-weight: 600">Dòng 2 · Chọn nhiều</th><td style="padding: 8px"><span style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; gap: 6px; color: var(--tx2)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Nhiều đáp án</span></td><td style="padding: 8px"><input readonly aria-readonly="true" aria-label="Số câu · Dòng 2" aria-describedby="lock-why" value="5" style="width: 72px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--bd); border-radius: 10px; background: var(--sb); color: var(--tx2); text-align: right"></td><td style="padding: 8px; text-align: right">21–25</td><td style="padding: 8px 14px; text-align: right">20%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin: 0; color: var(--tx3)">Nguồn câu, phạm vi kiến thức và chỉ tiêu trong dòng vẫn sửa được. Môn không có phần Nghe nên dòng không hiện nhãn audio.</p>
+  </section>
+
+  <section aria-labelledby="h-other" style="border: 1px dashed var(--bds); border-radius: 12px; padding: 16px; background: var(--sf); display: flex; flex-direction: column; gap: 18px">
+    <h2 id="h-other" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 700">Trạng thái khác</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; align-items: start">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Nhập tỷ lệ ra 10 câu, cỡ chùm 4</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Không ghép được chùm nguyên.</strong> Tỷ lệ 28,6% ra 10 câu, không chia hết cho cỡ chùm 4 câu con. Chọn 8 hoặc 12 câu.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Thiếu nguồn có audio</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Nghe › Dòng 2 · Hội thoại 4 câu.</strong> Cần 3 chùm × 4 câu có audio · Nguồn hiện ghép được 2 chùm.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Sai điểm mỗi câu so với mẫu</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Đọc › Dòng 1 · Bài đọc 10 câu.</strong> Cần 4 chùm có câu 1 điểm · Nguồn chỉ có 3 chùm đúng điểm.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Vượt số câu của phần</h3>
+        <p style="margin: 0; font-weight: 600; color: var(--er); font-variant-numeric: tabular-nums">Đã phân bổ 39/35 · Vượt 4 câu</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Bài theo phần Nghe, đổi dòng 2 thành 4 chùm</h3>
+        <p style="margin: 0; color: var(--tx2); font-variant-numeric: tabular-nums">16 câu. Tỷ lệ các dòng tính lại theo tổng mới của phần. Bài theo phần không bị khóa dòng.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">H-SCA Tiếng Anh và Ngữ văn, cả môn</h3>
+        <p style="margin: 0; color: var(--tx2)">Mẫu không khóa dòng nên ô số lượng vẫn sửa được, như phần Nghe ở trên.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Đang đếm nguồn khả dụng</h3>
+        <div aria-busy="true" style="display: flex; flex-direction: column; gap: 6px"><div style="height: 40px; border-radius: 10px; background: var(--sb); width: 60%"></div><span class="sr-only">Đang đếm nguồn</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Không đếm được nguồn</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa đếm được nguồn của dòng này.</strong> <button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Thử lại</button></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Không lưu được</h3>
+        <div role="alert" style="border: 1px solid var(--erbd); background: var(--erb); border-radius: 10px; padding: 10px 12px; color: var(--tx2)"><strong style="color: var(--er)">Chưa lưu được phần.</strong> Số đã nhập vẫn còn trên màn. <button type="button" style="height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--bd); background: var(--sf); color: var(--tx2); font-weight: 600; cursor: pointer">Thử lại</button></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--tx2)">Thiếu quyền sửa bài thi</h3>
+        <p style="margin: 0; color: var(--tx2)">Bạn chỉ có quyền xem. Mọi ô của dòng ở chế độ chỉ đọc, không có nút Lưu phần.</p>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1040,"height":2000}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { mode: 'COUNT', part: '35', n: { a: '8', b: '3', c: '3' }, rate: {}, open: 'b', tried: false, saved: false }; }
+chip(k) {
+const c = { ok: ['--okb', '--ok'], warn: ['--wnb', '--wn'], bad: ['--erb', '--er'], off: ['--ntb', '--nt'], info: ['--inb', '--in'] }[k];
+return 'display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; background: var(' + c[0] + '); color: var(' + c[1] + ')';
+}
+seg(on) { return 'min-height: 32px; padding: 0 12px; border: 0; border-radius: 8px; cursor: pointer; font-weight: ' + (on ? '600; background: var(--sf); color: var(--pt); box-shadow: 0 1px 4px var(--sh)' : '500; background: transparent; color: var(--tx2)'); }
+num(x) { const n = parseFloat(String(x).replace(',', '.')); return isNaN(n) ? 0 : n; }
+vn(x) { return String(Math.round(x * 100) / 100).replace('.', ','); }
+pct(n, d) { return d ? this.vn(Math.round(n / d * 1000) / 10) + '%' : '0%'; }
+renderVals() {
+const s = this.state;
+const DEF = [
+{ k: 'a', name: 'Dòng 1 · Câu đơn', how: 'single', size: 1, avail: '42 câu có audio' },
+{ k: 'b', name: 'Dòng 2 · Hội thoại 4 câu', how: 'set', size: 4, avail: '5 chùm có audio' },
+{ k: 'c', name: 'Dòng 3 · Bài nghe 5 câu', how: 'set', size: 5, avail: '4 chùm có audio' }
+];
+const part = Math.max(0, Math.round(this.num(s.part)));
+const byRate = s.mode === 'RATE';
+const fromCount = DEF.map((d) => Math.max(0, Math.round(this.num(s.n[d.k]))) * d.size);
+const rateOf = (d, i) => (d.k in s.rate ? s.rate[d.k] : this.vn(part ? Math.round(fromCount[i] / part * 1000) / 10 : 0));
+const exact = DEF.map((d, i) => this.num(rateOf(d, i)) / 100 * part);
+const floors = exact.map((x) => Math.floor(x + 1e-9));
+const target = Math.round(exact.reduce((a, b) => a + b, 0));
+let left = target - floors.reduce((a, b) => a + b, 0);
+const order = exact.map((x, i) => [x - floors[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+const fromRate = floors.slice();
+order.forEach((o) => { if (left > 0) { fromRate[o[1]] += 1; left -= 1; } });
+const qs = byRate ? fromRate : fromCount;
+let hasErr = false;
+const rows = DEF.map((d, i) => {
+const q = qs[i];
+const broken = byRate && d.how === 'set' && q % d.size !== 0;
+if (broken) hasErr = true;
+const low = Math.floor(q / d.size) * d.size; const high = low + d.size;
+const n = d.how === 'set' ? (broken ? '—' : String(q / d.size)) : String(q);
+return { name: d.name, avail: d.avail, q: String(q), n: byRate ? n : s.n[d.k], unit: d.how === 'set' ? 'chùm × ' + d.size + ' câu con' : 'câu đơn',
+editN: !byRate, roN: byRate, editR: byRate, roR: !byRate, rate: this.pct(q, part), rateIn: rateOf(d, i), bad: broken ? 'true' : 'false',
+rateStyle: 'width: 88px; height: 36px; box-sizing: border-box; padding: 0 10px; border-radius: 10px; background: var(--sf); color: var(--tx); text-align: right; border: 1px solid var(' + (broken ? '--er' : '--bd') + ')',
+setN: (e) => this.setState({ n: Object.assign({}, this.state.n, { [d.k]: e.target.value }), saved: false }),
+setR: (e) => this.setState({ rate: Object.assign({}, this.state.rate, { [d.k]: e.target.value }), saved: false }),
+hasErr: broken, err: 'Tỷ lệ ' + rateOf(d, i) + '% ra ' + q + ' câu, không chia hết cho cỡ chùm ' + d.size + ' câu con. Chọn ' + low + ' hoặc ' + high + ' câu.',
+isOpen: s.open === d.k ? 'true' : 'false', open: () => this.setState({ open: d.k }),
+openStyle: 'border: 0; padding: 4px 0; background: transparent; font-weight: 600; cursor: pointer; text-align: left; color: var(' + (s.open === d.k ? '--pt' : '--tx') + '); text-decoration: ' + (s.open === d.k ? 'underline' : 'none'),
+tr: 'border-top: 1px solid var(--bd)' + (s.open === d.k ? '; background: var(--p50)' : '') };
+});
+const sum = qs.reduce((a, b) => a + b, 0);
+const allocText = sum === part ? 'Đã phân bổ ' + sum + '/' + part : sum < part ? 'Đã phân bổ ' + sum + '/' + part + ' · Còn thiếu ' + (part - sum) + ' câu' : 'Đã phân bổ ' + sum + '/' + part + ' · Vượt ' + (sum - part) + ' câu';
+const tone = sum === part ? '--ok' : sum < part ? '--wn' : '--er';
+const oi = DEF.findIndex((d) => d.k === s.open); const od = DEF[oi]; const oq = qs[oi];
+const seg = (on) => this.seg(on);
+return {
+theme: this.props.dark ? 'dark' : '', partTotal: String(part), setPart: (e) => this.setState({ part: e.target.value, saved: false }),
+byCountOn: byRate ? 'false' : 'true', byRateOn: byRate ? 'true' : 'false', countSeg: seg(!byRate), rateSeg: seg(byRate),
+byCount: () => this.setState({ mode: 'COUNT', rate: {}, tried: false }), byRate: () => this.setState({ mode: 'RATE', tried: false }),
+rows, sumQ: String(sum), sumRate: sum === part ? '100%' : this.pct(sum, part), allocText, allocStyle: 'font-weight: 600; font-variant-numeric: tabular-nums; color: var(' + tone + ')',
+allocBar: String(Math.min(sum, part)), barStyle: '--bar: var(' + tone + ')',
+openName: od.name, openHow: od.how === 'set' ? 'Câu chùm' : 'Câu đơn', openIsSet: od.how === 'set', openIsSingle: od.how !== 'set', openN: rows[oi].n, openSize: String(od.size),
+openSetN: (e) => this.setState({ mode: 'COUNT', rate: {}, n: Object.assign({}, this.state.n, { [od.k]: e.target.value }), saved: false }),
+openSummary: oq + ' câu · ' + this.pct(oq, part) + ' của phần Nghe',
+showSaveErr: s.tried && hasErr, showSaved: s.saved && !hasErr,
+save: () => this.setState({ tried: true, saved: !hasErr })
+};
+}
+}
+</script>
+</body>
+</html>

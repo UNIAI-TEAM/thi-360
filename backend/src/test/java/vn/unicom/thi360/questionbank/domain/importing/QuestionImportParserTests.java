@@ -13,8 +13,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import vn.unicom.thi360.questionbank.domain.QuestionBody;
-import vn.unicom.thi360.questionbank.spi.QuestionType;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 class QuestionImportParserTests {
     private static final ImportDictionary DICTIONARY = ImportDictionary.standard();
     private static final ImportCatalog CATALOG = new ImportCatalog(
@@ -72,6 +73,18 @@ class QuestionImportParserTests {
         var draft = result.rows().getFirst().draft();
         assertEquals(new BigDecimal("0.75"), draft.points());
         assertEquals(List.of("0,5", "1/2"), ((QuestionBody.ShortAnswerBody) draft.body()).answers());
+    }
+
+    @Test
+    void answerFormatIsOptionalAndParsed() throws Exception {
+        var result = parse(List.of(
+            List.of("type", "content", "subject", "grade", "difficulty", "correctAnswer", "answerFormat"),
+            List.of("SHORT_ANSWER", "Giá trị", "MATH", "GRADE_11", "RECOGNITION", "1/2", "FRACTION"),
+            List.of("SHORT_ANSWER", "Cũ", "MATH", "GRADE_11", "RECOGNITION", "1", "")));
+        assertFalse(result.hasErrors(), () -> result.rows().stream().flatMap(r -> r.issues().stream()).toList().toString());
+        assertEquals(AnswerFormat.FRACTION,
+            ((QuestionBody.ShortAnswerBody) result.rows().get(0).draft().body()).answerFormat());
+        assertNull(((QuestionBody.ShortAnswerBody) result.rows().get(1).draft().body()).answerFormat());
     }
 
     @Test

@@ -152,7 +152,7 @@ function PublishForm({
 }) {
   const t = useTranslations("exams.publish");
   const format = useFormatter();
-  const pathLabel = usePathLabel();
+  const pathLabel = usePathLabel(exam.id);
   const issueText = useIssueText();
   const publish = usePublishExam(exam.id);
   const fieldsetId = useId();
@@ -393,7 +393,7 @@ function PublishForm({
         <Button variant="secondary" onClick={onCancel} disabled={publish.isPending}>
           {t("cancel")}
         </Button>
-        <Button type="submit" loading={publish.isPending}>
+        <Button type="submit" loading={publish.isPending} disabled={selected.length === 0}>
           <ArrowUp />
           {t("submit", { count: selected.length })}
         </Button>

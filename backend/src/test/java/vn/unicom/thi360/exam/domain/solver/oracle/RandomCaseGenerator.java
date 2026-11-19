@@ -457,7 +457,7 @@ public final class RandomCaseGenerator {
                 : c.scoringRule();
         BigDecimal points = group.requiredPointsPerUnit() != null ? group.requiredPointsPerUnit()
                 : BigDecimal.ONE;
-        return new PathCandidate(c.questionId(), c.versionNo(), c.setId(), c.taskTypeCode(), rule,
+        return new PathCandidate(c.questionId(), c.versionNo(), c.setId(), rule,
                 unitsWithPoints(c, points));
     }
 
@@ -477,7 +477,7 @@ public final class RandomCaseGenerator {
             points = random.nextBoolean() ? null
                     : group.requiredPointsPerUnit().add(BigDecimal.ONE);
         }
-        return new PathCandidate(c.questionId(), c.versionNo(), c.setId(), c.taskTypeCode(), rule,
+        return new PathCandidate(c.questionId(), c.versionNo(), c.setId(), rule,
                 unitsWithPoints(c, points));
     }
 
@@ -491,7 +491,7 @@ public final class RandomCaseGenerator {
     }
 
     private PathCandidate standalone(String id, String answerType) {
-        return new PathCandidate(id, 1, null, null, null,
+        return new PathCandidate(id, 1, null, null,
                 List.of(new CountingUnit(null, answerType, pick(GRADES), pick(DIFFICULTIES),
                         List.of(), List.of(), BigDecimal.ONE)));
     }
@@ -503,7 +503,7 @@ public final class RandomCaseGenerator {
                     childType != null ? childType : pick(ANSWER_TYPES), pick(GRADES),
                     pick(DIFFICULTIES), List.of(), List.of(), BigDecimal.ONE));
         }
-        return new PathCandidate(setId, 1, setId, null, null, units);
+        return new PathCandidate(setId, 1, setId, null, units);
     }
 
     /**
@@ -652,7 +652,7 @@ public final class RandomCaseGenerator {
         if (diff.equals(banned)) {
             diff = otherValue(banned, DIFFICULTIES);
         }
-        return new PathCandidate(id, 1, null, null, null,
+        return new PathCandidate(id, 1, null, null,
                 List.of(new CountingUnit(null, type, grade, diff, List.of(), List.of(),
                         BigDecimal.ONE)));
     }
@@ -666,7 +666,7 @@ public final class RandomCaseGenerator {
             units.add(new CountingUnit(setId + "-c" + i, u.answerType(), u.gradeCode(),
                     u.difficultyCode(), List.of(), List.of(), u.points()));
         }
-        return new PathCandidate(setId, 1, setId, null, null, units);
+        return new PathCandidate(setId, 1, setId, null, units);
     }
 
     private String otherValue(String banned, String[] pool) {

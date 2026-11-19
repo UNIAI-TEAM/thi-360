@@ -1,11 +1,15 @@
+import type { components } from "@thi360/api-client";
 import type { PersonRef, QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
-import type { ExamCheckStatus, ExamPart, ExamVersion, MatrixMode } from "./types";
+import type { ExamCheckStatus, ExamPart, ExamSectionState, ExamVersion, MatrixMode } from "./types";
 
 /**
  * Kiểu của Kiểm tra cấu hình, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11), dữ liệu mẫu.
- * Khi có OpenAPI của backend, đổi thành bí danh của `components["schemas"][...]`.
+ * Hình dạng wire do BE-20 thêm (tệp đính kèm, phân đoạn hiển thị) ánh theo `components["schemas"]` của
+ * `@thi360/api-client`; phần còn lại là kiểu mức ứng dụng sau chuyển đổi.
  */
+
+type Schema = components["schemas"];
 
 /* ---------- Nguồn câu hỏi ---------- */
 
@@ -117,8 +121,6 @@ export const CHECK_ISSUE_CODES = [
   "SUBJECT_MATRIX_TOTAL_MISMATCH",
   "GROUP_ANSWER_TYPE_MISSING",
   "SUBJECT_CHOICE_COUNTS_INVALID",
-  "REMAINDER_GROUP_INVALID",
-  "SUBJECT_QUOTA_COUNT_VARIES",
   "ANSWER_TYPE_SHORTAGE",
   "SUBJECT_QUOTA_INFEASIBLE",
   "PREVIEW_SUBJECTS_INVALID",
@@ -127,8 +129,48 @@ export const CHECK_ISSUE_CODES = [
   "PART_EMPTY",
   "SHARED_PART_DURATION",
   "ANSWER_QUOTA_DUPLICATE",
+  "ATTACHMENT_MISSING",
+  "COMBINATION_LIST_CHANGED",
+  "COMBINATION_SUBJECT_MISSING",
+  "QUESTION_NOT_PLAYABLE",
+  "REQUIRED_BASIS_UNSUPPORTED",
+  "SECTION_INCOMPLETE",
+  "SUBJECT_CHOICE_TRIM_IMPOSSIBLE",
+  "TOPIC_QUOTA_INFEASIBLE",
+  "TOPIC_QUOTA_NESTED",
+  "ITEM_SHAPE_SHORTAGE",
+  "ANSWER_FORMAT_SHORTAGE",
+  "CHILD_CONDITION_SHORTAGE",
+  "SLOT_SOURCE_SHORTAGE",
+  "DISTRIBUTION_DEVIATION",
+  "EXAM_QUOTA_DEVIATION",
+  "MANUAL_GRADING_REQUIRED",
+  "OMITTED_GROUPS_PRESENT",
+  "TEMPLATE_NOT_PUBLISHABLE",
+  "STRUCTURE_COUNT_LOCKED",
+  "TOPIC_QUOTA_MAPPING_MISSING",
+  "AUDIO_SHORTAGE",
+  "POINTS_SHORTAGE",
+  "BLOCK_COUNT_LOCKED",
+  "OMITTED_BLOCK_LOCKED",
+  "SCALE_INCLUDES_EXCLUDED_PART",
+  "DISPLAY_SEGMENT_MISMATCH",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
+
+/**
+ * Chỉ tiêu chủ đề của cấu trúc bài, tra theo id (`TOPIC:<id>` của `PreviewCompliance.criterion`): dùng nhận biết dòng
+ * `REFERENCE` chưa gắn MAPID (`nodeIds` rỗng, H31) và tên dòng để hiện.
+ */
+export interface TopicQuotaRef {
+  name: string;
+  enforcement: "REQUIRED" | "REFERENCE";
+  nodeIds: string[];
+  difficultyCodes: string[];
+}
+
+/** Chỉ tiêu chủ đề của bài theo id: dựng từ cấu trúc đã chuyển đổi bằng `buildTopicQuotaIndex` (môn, khối, nhóm môn, lựa chọn). */
+export type TopicQuotaIndex = Map<string, TopicQuotaRef>;
 
 /**
  * Mức của vấn đề. `ERROR`: lỗi xác định (Không hợp lệ). `UNCONFIRMED`: chưa tìm được phương án trong giới hạn xử lý.
@@ -155,7 +197,8 @@ export interface CheckIssue {
   optionId: string | null;
   gradeCode: string | null;
   difficultyCode: string | null;
-  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | null;
+  /** Chiều của chỉ tiêu hoặc của số bị khóa: lớp, độ khó, năng lực (`GRADE`…); `COMMANDS`/`POINTS` của `DISPLAY_SEGMENT_MISMATCH` (BE-20); `COUNT`/`SET_COUNT`/`SET_SIZE`/`TYPE` của `BLOCK_COUNT_LOCKED`. */
+  dimension: "GRADE" | "DIFFICULTY" | "COMPETENCY" | "COUNT" | "SET_COUNT" | "SET_SIZE" | "TYPE" | "COMMANDS" | "POINTS" | null;
   /** Năng lực của chỉ tiêu (chiều năng lực, V-ACT). */
   competencyCode: string | null;
   /** Dạng trả lời của chỉ tiêu cấp môn (`ANSWER_TYPE_SHORTAGE`). */
@@ -164,9 +207,19 @@ export interface CheckIssue {
   subjectCount: number | null;
   required: number | null;
   available: number | null;
+  /** Điểm của phần đã lược (`SCALE_INCLUDES_EXCLUDED_PART`): máy chủ tính và gửi (BE-20); `null` ở mã khác. */
+  excludedPoints?: number | null;
   timeLimitSeconds: number | null;
   /** Mã câu nguồn liên quan (quy tắc chấm khác khối, thiếu tiêu chí chấm); `null` khi không áp dụng. */
   questionCodes: string[] | null;
+  /** Các mã bài thi bị lỗi ảnh hưởng (phần theo mã, R-24); `null` khi lỗi không gắn mã. */
+  affectedCodes?: string[] | null;
+  /** Vị trí chùm (từ 1) của lỗi nguồn theo chùm (`SLOT_SOURCE_SHORTAGE`); `null`: lỗi không gắn chùm. */
+  slotIndex?: number | null;
+  /** Vị trí câu con (từ 1) của lỗi điều kiện câu con (`CHILD_CONDITION_SHORTAGE`); `null`: không gắn vị trí. */
+  childPosition?: number | null;
+  /** Phân đoạn hiển thị của `DISPLAY_SEGMENT_MISMATCH` (BE-20, `ExamPreviewIssue.segmentCode`); tên tra theo `displaySegments` của phần, không in mã. */
+  segmentCode?: string | null;
 }
 
 /** Số câu cần của một ô (ma trận kết hợp) sau khi quy đổi tỷ lệ. */
@@ -281,6 +334,9 @@ export interface ExamCheckResult extends ExamCheckOutcome {
   stale: boolean;
   /** Kết quả đã lưu hết hiệu lực vì sao; `null` khi còn hiệu lực. */
   invalidReason: CheckInvalidReason | null;
+
+  /** Trạng thái từng môn sau lần kiểm tra (H2); `null` khi BE-5 chưa triển khai — màn không hiện trạng thái. */
+  sectionStates?: ExamSectionState[] | null;
 }
 
 /**
@@ -308,6 +364,19 @@ export interface PreviewOption {
   correct: boolean;
 }
 
+/**
+ * Tệp đính kèm của câu gốc trong đề xem trước (spec 6, `ExamPreviewAttachment`): chỉ biết mã, tên và MIME.
+ * Nguồn phát là `GET /api/v1/admin/question-assets/{id}`.
+ */
+export type PreviewAttachment = Required<Schema["ExamPreviewAttachment"]>;
+
+/**
+ * Phân đoạn hiển thị của một phần (Phần I–IV của Tiếng Anh V-SAT, H40): chỉ để hiện tiêu đề, không đổi số câu.
+ * `fromPosition`/`toPosition`: số thứ tự câu trong phần (từ 1, hai đầu nằm trong phân đoạn); `commandCount` và
+ * `maxPoints` là số khai báo (máy chủ so với đề thật, lệch thì báo `DISPLAY_SEGMENT_MISMATCH` tại phần).
+ */
+export type PreviewDisplaySegment = Schema["DisplaySegment"];
+
 /** Một câu (câu đơn hoặc câu con của bộ) trong đề xem trước. `simulated`: câu của nguồn mô phỏng, không có nội dung. */
 export interface PreviewQuestion {
   number: number;
@@ -329,10 +398,20 @@ export interface PreviewQuestion {
   rubric: Array<{ id: string; description: string; points: number }> | null;
   /** Phần thân đủ để dựng Điền khuyết, Ghép đôi, Đúng/Sai; có đáp án vì là chế độ quản trị. `null` với câu mô phỏng. */
   body: QuestionBody | null;
+  /** Vị trí gốc của câu (thứ tự bộ giải chọn, trước khi `PaperOrdering` đảo bằng hạt giống); `null` khi máy chủ không gửi. */
+  originalNumber: number | null;
+  /** Thứ tự phương án của đề thật (đã đảo bằng hạt giống); `null`: câu không đảo phương án (`shuffleOptions = false` hoặc dạng không có phương án). */
+  optionOrder: string[] | null;
+  /** Thứ tự phương án lúc soạn câu (K12); `null` khi không đảo. */
+  originalOptionOrder: string[] | null;
+  /** Chỉ tiêu chủ đề mà câu được gán vào (`TOPIC:<id>` của `compliance`); rỗng khi không gán. */
+  assignedTopicQuotaIds: string[];
+  /** Tệp đính kèm của câu đơn; câu con không có tệp riêng (tệp nằm ở câu gốc của bộ). BE-20 gửi `[]` khi không có. */
+  attachments?: PreviewAttachment[];
 }
 
 export type PreviewItem =
-  | { kind: "QUESTION"; question: PreviewQuestion }
+  | { kind: "QUESTION"; question: PreviewQuestion; originalOrder?: number | null }
   | {
       kind: "SET";
       setId: string;
@@ -343,6 +422,10 @@ export type PreviewItem =
       /** Số bắt đầu đánh chỗ trống của ngữ liệu (spec UNI-2638 mục 3.4, 5); thiếu: 1. */
       blankNumberStart?: number;
       children: PreviewQuestion[];
+      /** Vị trí gốc của mục trong khối (thứ tự bộ giải chọn); `null` hoặc bỏ trống khi máy chủ không gửi. */
+      originalOrder?: number | null;
+      /** Tệp đính kèm của câu gốc của bộ (audio dùng chung cho cả bộ). BE-20 gửi `[]` khi không có. */
+      attachments?: PreviewAttachment[];
     };
 
 export interface PreviewAllocationCell {
@@ -385,6 +468,8 @@ export interface PreviewPart {
   points: number;
   /** Điểm quy định của phần (BCA 25 / 60 / 15); `null` khi phần không chia điểm. */
   maxPoints: number | null;
+  /** Phân đoạn hiển thị Phần I–IV; `[]` khi phần không có hoặc khi sinh thử một phần của phần (chiếu cục bộ, BE-20). */
+  displaySegments?: PreviewDisplaySegment[];
   blocks: PreviewBlock[];
 }
 
@@ -445,8 +530,44 @@ interface PreviewBase {
   generatedAt: string;
 }
 
+/** Một dòng bảng Yêu cầu / Thực tế của đề đã sinh (2B mục 8): mọi tiêu chí kể cả tham khảo. */
+export interface PreviewCompliance {
+  /** `ANSWER_TYPE:<dạng>`, `CELL:<lớp>:<độ khó>`, `GRADE:<mã>`, `DIFFICULTY:<mã>`, `COMPETENCY:<mã>`, `TOPIC:<id chỉ tiêu>`, `EXAM:<id>:<mã,mã>`. */
+  criterion: string;
+  /** `SECTION:<id môn>`, `BLOCK:<id khối>` hoặc `EXAM`. */
+  scope: string;
+  /** Số yêu cầu; câu của đề 16 câu đã trừ phần đóng góp của câu bỏ. `null` ở dòng "Chưa phân loại" (không có yêu cầu để so). */
+  required: number | null;
+  actual: number;
+  enforcement: "REQUIRED" | "REFERENCE";
+  basis: "QUESTION" | "PROMPT" | "POINTS";
+  /** Chỉ tiêu chủ đề tham khảo đếm độc lập (không gán câu vào chỉ tiêu). */
+  independent: boolean;
+  /** Ghi chú của máy chủ (`dropped N`: đã bỏ N câu của chỉ tiêu 17 câu); `null` khi không có. */
+  note: string | null;
+}
+
+/** Phạm vi sinh thử (2B mục 8): một môn, một đường (mã, nhánh, bộ ba môn), hoặc cả bài không có lựa chọn. */
+export type PreviewTarget =
+  | {
+      kind: "SECTION";
+      sectionId: string;
+      /** Môn của `SUBJECT_CHOICE` nhận 17 hoặc 16 câu (16 thì áp `TrimPolicy`); môn khác bỏ trống. */
+      sectionQuestionCount?: number;
+    }
+  | { kind: "PATH"; pathId: string; subjectCodes?: string[] }
+  | { kind: "EXAM" };
+
 export type PreviewResult =
-  | (PreviewBase & { status: "GENERATED"; paper: PreviewPaper })
+  | (PreviewBase & {
+      status: "GENERATED";
+      paper: PreviewPaper;
+      /** Mã của đề thử, giữ 30 phút; `null` khi máy chủ không lưu. Gửi lại làm `basePreviewId` để giữ phần đã sinh. */
+      previewId: string | null;
+      compliance: PreviewCompliance[];
+      /** Câu đã bỏ của môn 16 câu (HSA Khoa học); rỗng khi không bỏ câu nào. */
+      droppedQuestions: PreviewQuestion[];
+    })
   | (PreviewBase & { status: "FAILED"; reason: "INVALID" | "UNCONFIRMED"; issues: CheckIssue[] });
 
 /* ---------- Phiên bản và công bố ---------- */
@@ -509,18 +630,26 @@ export interface ExamVersionDetail {
 
 export interface RunExamCheckRequest {
   examId: string;
+  /**
+   * Phạm vi kiểm tra (spec 7.1): `EXAM` cả bài (mặc định, gồm đơn vị theo mã), `SECTION` một môn (`sectionId`), `PART`
+   * một phần (`partId`, bỏ qua đơn vị theo mã của phần).
+   */
+  scope?: "EXAM" | "SECTION" | "PART";
+  sectionId?: string;
+  partId?: string;
 }
 
 export interface GeneratePreviewRequest {
   examId: string;
-  pathId: string;
+  target: PreviewTarget;
   seed: number;
   version?: number | null;
   /**
-   * Đường có `SUBJECT_CHOICE`: đúng `chooseSubjects` môn thuộc phương án muốn xem; thiếu hoặc sai thì 422
-   * `PREVIEW_SUBJECTS_INVALID`.
+   * Đề thử đã sinh để giữ các phần không sinh lại (R-15, BCA đổi mã). Gửi cùng `regeneratePartIds`; hết hạn thì 410
+   * `PREVIEW_EXPIRED`.
    */
-  subjectCodes?: string[];
+  basePreviewId?: string;
+  regeneratePartIds?: string[];
 }
 
 export interface PublishExamRequest {

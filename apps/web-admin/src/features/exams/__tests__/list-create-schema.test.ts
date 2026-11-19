@@ -12,15 +12,18 @@ import {
   latestTemplate,
   matchingTemplates,
   partsEdited,
+  partCodesForKind,
   resolveScope,
   scopeDefaults,
+  scopeTemplate,
   type ScopeSelection,
   scopesForKind,
   summarizeParts,
   toCreateExamRequest,
   yearsDiffer,
 } from "../create-exam-schema";
-import type { ExamKind, ExamScope } from "../types";
+import { overviewDiff, overviewRowsFromTemplate, updateRowCell, validateOverview } from "../create-exam-overview";
+import type { ExamKind, ExamOverviewRow, ExamScope, ExamTemplate } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 
 const MESSAGES: CreateExamSchemaMessages = {
@@ -62,6 +65,21 @@ function parts(kind: ExamKind, scope: ExamScope, partCode = "") {
     partCode,
     combinations: combinationsForKind(COMBINATIONS, kind),
     scopeName: (scope) => scope,
+  });
+}
+
+/** Yêu cầu tạo bài bước 1 từ giá trị mẫu của test (kỳ thi, phạm vi, môn, phần lấy từ `input`). */
+function toRequest(input: CreateExamFormValues, overview: ExamOverviewRow[] = []) {
+  return toCreateExamRequest({
+    name: input.name,
+    code: input.code,
+    selection: { kind: input.kind, scope: input.scope, partCode: input.partCode, subjectCode: input.subjectCode },
+    description: input.description,
+    instructions: input.instructions,
+    timing: input.timing,
+    sharedDuration: input.timing === "SHARED" ? input.sharedDuration : null,
+    maxScore: input.maxScore,
+    overview,
   });
 }
 
@@ -158,7 +176,7 @@ describe("mẫu cấu trúc khởi tạo", () => {
 describe("kiểm tra trang Tạo bài thi", () => {
   it("mẫu hợp lệ thì không có lỗi; mã đưa về chữ hoa khi gửi", () => {
     expect(errors(values())).toEqual({});
-    const request = toCreateExamRequest(values({ instructions: "  Chọn tổ hợp trước khi làm bài.  " }));
+    const request = toRequest(values({ instructions: "  Chọn tổ hợp trước khi làm bài.  " }));
     expect(request).toMatchObject({
       code: "HSA-F-003",
       scope: "FULL",
@@ -167,15 +185,15 @@ describe("kiểm tra trang Tạo bài thi", () => {
       description: null,
       instructions: "Chọn tổ hợp trước khi làm bài.",
     });
-    expect(toCreateExamRequest(values()).instructions).toBeNull();
-    expect(request.parts?.[2]).toMatchObject({ mode: "CHOICE", subjectCode: null, englishOption: true });
+    expect(toRequest(values()).instructions).toBeNull();
+    expect(request).not.toHaveProperty("parts");
   });
 
   it("hướng dẫn HTML không còn chữ nào (đoạn rỗng, khoảng trắng) gửi thành null, có chữ thì giữ HTML", () => {
     for (const blank of ["<p></p>", "<p></p><p></p>", "<p> </p>", "<p><br></p>", "  "]) {
-      expect(toCreateExamRequest(values({ instructions: blank })).instructions).toBeNull();
+      expect(toRequest(values({ instructions: blank })).instructions).toBeNull();
     }
-    expect(toCreateExamRequest(values({ instructions: " <p>Đọc kỹ đề.</p> " })).instructions).toBe("<p>Đọc kỹ đề.</p>");
+    expect(toRequest(values({ instructions: " <p>Đọc kỹ đề.</p> " })).instructions).toBe("<p>Đọc kỹ đề.</p>");
   });
 
   it("mã trùng (đã biết từ máy chủ) bị báo, không phân biệt hoa thường", () => {
@@ -282,10 +300,9 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     });
     const bcaValues = values({ kind: "BCA", code: "BCA-F-009", ...defaults, parts: bca });
     expect(errors(bcaValues)).toEqual({});
-    const request = toCreateExamRequest(bcaValues);
+    const request = toRequest(bcaValues);
     expect(request).toMatchObject({ durationMinutes: 180, maxScore: 100 });
-    expect(request.parts?.[0]).toMatchObject({ durationMinutes: null, points: 25 });
-    expect(request.parts?.[1]?.sections).toHaveLength(3);
+    expect(request).not.toHaveProperty("parts");
   });
 
   it("BCA: thời lượng chung phải dương; điểm phần phải nhập khi chia điểm theo phần; phần nhiều môn phải khớp tổng", () => {
@@ -338,6 +355,25 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     expect(errors({ ...base, parts: [informatics[0]!, tooLarge] })).toEqual({ "parts.1.sections": "commonTooLarge 4/4" });
   });
 
+  it("bài ôn Theo môn khớp mẫu <KỲ>_REVIEW không ghi môn, với mọi môn; bài chuẩn chỉ khớp mẫu của môn", () => {
+    // Hình thật của dữ liệu: mẫu bài ôn không ghi `subjectCode` (null) và dùng chung cho mọi môn.
+    const review = (kind: ExamKind, code: string) =>
+      ({ ...FIXTURE_TEMPLATES[0]!, code, kind, scope: "SUBJECT", subjectCode: null, partCode: null, buildMode: "REVIEW" }) as ExamTemplate;
+    const templates = [...FIXTURE_TEMPLATES, review("SPT", "SPT_REVIEW"), review("HSA", "HSA_REVIEW")];
+    const select = (kind: ExamKind, subjectCode: string, buildMode: "STANDARD" | "REVIEW"): ScopeSelection => ({
+      kind,
+      scope: "SUBJECT",
+      partCode: "",
+      subjectCode,
+      buildMode,
+    });
+    for (const subject of ["MATH", "PHYSICS"]) {
+      expect(matchingTemplates(templates, select("SPT", subject, "REVIEW")).map((item) => item.code)).toEqual(["SPT_REVIEW"]);
+      expect(latestTemplate(templates, select("HSA", subject, "REVIEW"))?.code).toBe("HSA_REVIEW");
+    }
+    expect(matchingTemplates(templates, select("SPT", "MATH", "STANDARD")).map((item) => item.code)).toEqual(["SPT_MATH_2025"]);
+  });
+
   it("SP2E Toán: mẫu theo năm, mới nhất trước; năm cấu trúc 2026 khác năm ma trận 2025 thì gửi xác nhận", () => {
     const math: ScopeSelection = { kind: "SP2E", scope: "SUBJECT", partCode: "", subjectCode: "MATH" };
     expect(matchingTemplates(FIXTURE_TEMPLATES, math).map((item) => item.code)).toEqual([
@@ -360,7 +396,7 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     });
     expect(errors(input)).toEqual({});
     // Bước 1 gửi phạm vi và môn; mẫu và xác nhận năm đi sau (applyExamTemplate, updateExamInfo).
-    const request = toCreateExamRequest(input);
+    const request = toRequest(input);
     expect(request).toMatchObject({ scope: "SUBJECT", subjectCode: "MATH" });
     expect(request).not.toHaveProperty("templateCode");
     expect(request).not.toHaveProperty("yearsConfirmed");
@@ -378,33 +414,45 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
     expect(errors(values({ kind: "VACT", ...defaults, parts: vact }))).toEqual({});
   });
 
-  it("đổi phạm vi: phạm vi không có trong kỳ thi về phạm vi đầu; giữ môn khi kỳ thi mới có mẫu cho môn đó", () => {
-    expect(scopesForKind(KINDS, "HSA")).toEqual(["FULL", "PART"]);
-    expect(scopesForKind(KINDS, "BCA")).toEqual(["FULL"]);
-    expect(scopesForKind(KINDS, "SP2E")).toEqual(["SUBJECT"]);
+  it("phạm vi theo hồ sơ kỳ thi (2B 5.1): HSA, QDA, BCA ba phạm vi; SP2E, SPT Theo môn và Theo phần; V-ACT Toàn bài; THPTQG Theo môn", () => {
+    expect(scopesForKind(KINDS, "HSA")).toEqual(["FULL", "PART", "SUBJECT"]);
+    expect(scopesForKind(KINDS, "QDA")).toEqual(["FULL", "PART", "SUBJECT"]);
+    expect(scopesForKind(KINDS, "BCA")).toEqual(["FULL", "PART", "SUBJECT"]);
+    expect(scopesForKind(KINDS, "SP2E")).toEqual(["PART", "SUBJECT"]);
+    expect(scopesForKind(KINDS, "SPT")).toEqual(["PART", "SUBJECT"]);
+    expect(scopesForKind(KINDS, "VACT")).toEqual(["FULL"]);
+    expect(scopesForKind(KINDS, "THPTQG")).toEqual(["SUBJECT"]);
+  });
+
+  it("đổi phạm vi: phạm vi không có trong kỳ thi về Toàn bài, không có thì Theo môn; giữ môn khi kỳ thi mới có mẫu cho môn đó", () => {
     const hsaPart: ScopeSelection = { kind: "HSA", scope: "PART", partCode: "MATH", subjectCode: "" };
-    expect(resolveScope(FIXTURE_TEMPLATES, KINDS, SUBJECTS, hsaPart, { kind: "BCA" })).toEqual({
-      kind: "BCA",
+    // BCA cho Theo phần: giữ phạm vi.
+    expect(resolveScope(FIXTURE_TEMPLATES, KINDS, SUBJECTS, hsaPart, { kind: "BCA" })).toMatchObject({ kind: "BCA", scope: "PART" });
+    // V-ACT chỉ có Toàn bài.
+    expect(resolveScope(FIXTURE_TEMPLATES, KINDS, SUBJECTS, hsaPart, { kind: "VACT" })).toEqual({
+      kind: "VACT",
       scope: "FULL",
       partCode: "",
       subjectCode: "",
+      buildMode: undefined,
     });
     const literature = resolveScope(FIXTURE_TEMPLATES, KINDS, SUBJECTS, hsaPart, {
       kind: "THPTQG",
       subjectCode: "LITERATURE",
     });
-    expect(literature).toEqual({ kind: "THPTQG", scope: "SUBJECT", partCode: "", subjectCode: "LITERATURE" });
+    expect(literature).toEqual({ kind: "THPTQG", scope: "SUBJECT", partCode: "", subjectCode: "LITERATURE", buildMode: "STANDARD" });
     expect(latestTemplate(FIXTURE_TEMPLATES, literature)?.code).toBe("THPTQG_LITERATURE_2025");
     // Sang SP2E: môn Ngữ văn có mẫu SP2E 2026 nên giữ môn; mẫu mới nhất theo năm cấu trúc.
     const sp2e = resolveScope(FIXTURE_TEMPLATES, KINDS, SUBJECTS, literature, { kind: "SP2E" });
     expect(sp2e).toMatchObject({ kind: "SP2E", scope: "SUBJECT", subjectCode: "LITERATURE" });
     expect(latestTemplate(FIXTURE_TEMPLATES, sp2e)?.code).toBe("SP2E_LITERATURE_2026");
-    // Sang Theo phần của HSA: mặc định phần Toán.
+    // Sang Theo phần của HSA: mặc định phần Toán, buildMode bỏ.
     expect(resolveScope(FIXTURE_TEMPLATES, KINDS, SUBJECTS, sp2e, { kind: "HSA", scope: "PART" })).toEqual({
       kind: "HSA",
       scope: "PART",
       partCode: "MATH",
       subjectCode: "",
+      buildMode: undefined,
     });
   });
 
@@ -456,5 +504,80 @@ describe("bảy kỳ thi: mẫu nạp vào trang Tạo bài thi", () => {
       pointsByPart: false,
     });
     expect(scopeDefaults(undefined, kindOption("QDA"), "PART").maxScore).toBeNull();
+  });
+});
+
+describe("V-ACT và THPTQG: phạm vi mới và thời lượng bài theo phần (UNI-2677)", () => {
+  const VACT_KINDS = KINDS.map((kind) => (kind.code === "VACT" ? { ...kind, scopes: ["FULL", "PART", "SUBJECT"] as ExamScope[] } : kind));
+  const base = FIXTURE_TEMPLATES.find((template) => template.code === "HSA_SINGLE")!;
+  const vactPart = (partCode: string) => ({ ...base, code: `VACT_PART_${partCode}`, kind: "VACT", scope: "PART" as const, partCode, subjectCode: null });
+  const vactSubject = (subjectCode: string) => ({ ...base, code: `VACT_SUBJECT_${subjectCode}`, kind: "VACT", scope: "SUBJECT" as const, partCode: null, subjectCode });
+  const VACT_TEMPLATES = [vactPart("LANGUAGE"), vactPart("THINKING"), vactPart("LOGIC"), vactPart("REASONING"), vactSubject("VIETNAMESE"), vactSubject("TOAN")];
+
+  it("V-ACT Theo phần: bốn mã phần theo thứ tự mẫu; Theo môn chỉ chào môn có mẫu theo môn", () => {
+    expect(partCodesForKind(VACT_TEMPLATES, VACT_KINDS, "VACT")).toEqual(["LANGUAGE", "THINKING", "LOGIC", "REASONING"]);
+    const current: ScopeSelection = { kind: "VACT", scope: "FULL", partCode: "", subjectCode: "" };
+    expect(resolveScope(VACT_TEMPLATES, VACT_KINDS, SUBJECTS, current, { scope: "PART" })).toMatchObject({ scope: "PART", partCode: "LANGUAGE" });
+    expect(resolveScope(VACT_TEMPLATES, VACT_KINDS, SUBJECTS, current, { scope: "SUBJECT" })).toMatchObject({ scope: "SUBJECT", subjectCode: "VIETNAMESE" });
+  });
+
+  it("THPTQG Theo phần: mẫu môn dùng một đồng hồ chung thì thời lượng không lấy từ mẫu môn mà do người nhập (H35)", () => {
+    // Mẫu THPTQG thật: một đồng hồ chung cho cả môn, phần không ghi thời lượng riêng.
+    const sharedClock = FIXTURE_TEMPLATES.map((template) =>
+      template.kind === "THPTQG"
+        ? { ...template, timing: "SHARED" as const, durationMinutes: 90, parts: template.parts.map((part) => ({ ...part, durationMinutes: null })) }
+        : template,
+    );
+    const selection: ScopeSelection = { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode: "MATH" };
+    const template = scopeTemplate(sharedClock, KINDS, selection)!;
+    expect(template).toMatchObject({ timing: "SHARED", durationMinutes: null });
+    expect(scopeDefaults(template, kindOption("THPTQG"), "PART")).toMatchObject({ timing: "SHARED", sharedDuration: 0 });
+  });
+
+  it("THPTQG Theo phần (D25): Ngữ văn, Tiếng Anh là mẫu môn một phần PER_PART nên giữ thời lượng của mẫu, nhập được", () => {
+    // Mẫu THPTQG thật: Văn một phần 120 phút, Tiếng Anh một phần 50 phút, đều tính giờ theo phần.
+    const cases = [
+      ["LITERATURE", 120],
+      ["ENGLISH", 50],
+    ] as const;
+    for (const [subjectCode, minutes] of cases) {
+      const selection: ScopeSelection = { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode };
+      const template = scopeTemplate(FIXTURE_TEMPLATES, KINDS, selection)!;
+      expect(template).toMatchObject({ timing: "PER_PART" });
+      expect(template.parts.map((part) => part.durationMinutes)).toEqual([minutes]);
+    }
+    // D25 (ADV:FE-6:4): ô thời lượng của phần sửa được; ô để trống hợp lệ và không gửi `durationMinutes` — máy chủ
+    // giữ thời lượng của mẫu (overviewDiff không ghi khóa rỗng), bài không bao giờ thiếu thời lượng.
+    for (const subjectCode of ["LITERATURE", "ENGLISH"] as const) {
+      const template = scopeTemplate(FIXTURE_TEMPLATES, KINDS, { kind: "THPTQG", scope: "PART", partCode: "P1", subjectCode })!;
+      const rows = overviewRowsFromTemplate(template, "PART", "P1");
+      const partKey = rows.find((row) => row.kind === "part")!.key;
+      // Giá trị sửa đi theo yêu cầu.
+      expect(overviewDiff(updateRowCell(rows, partKey, "durationMinutes", "130"))).toEqual([{ partCode: "P1", durationMinutes: 130 }]);
+      const emptied = updateRowCell(rows, partKey, "durationMinutes", "");
+      expect(validateOverview(emptied).filter((issue) => issue.rowKey === partKey)).toEqual([]);
+      expect(overviewDiff(emptied)).toEqual([]);
+    }
+  });
+
+  it("Theo phần cắt từ mẫu Theo môn không mang phân đoạn hiển thị (H40: phân đoạn chỉ của bài cả môn)", () => {
+    const segments = [{ code: "I", name: "Phần I", fromPosition: 1, toPosition: 25, commandCount: 67, maxPoints: 150 }];
+    const withSegments = FIXTURE_TEMPLATES.map((template) =>
+      template.code === "SP2E_MATH_2026"
+        ? { ...template, parts: template.parts.map((part) => ({ ...part, displaySegments: segments })) }
+        : template,
+    );
+    // Theo môn giữ phân đoạn của mẫu; phần cắt ra thì không.
+    const whole = scopeTemplate(withSegments, KINDS, { kind: "SP2E", scope: "SUBJECT", partCode: "", subjectCode: "MATH" })!;
+    expect(whole.parts[0]!.displaySegments).toEqual(segments);
+    const cut = scopeTemplate(withSegments, KINDS, { kind: "SP2E", scope: "PART", partCode: "P1", subjectCode: "MATH" })!;
+    expect(cut.parts).toHaveLength(1);
+    expect(cut.parts[0]!.displaySegments).toBeUndefined();
+    expect(cut.parts[0]!).not.toHaveProperty("displaySegments");
+  });
+
+  it("SP2E Theo phần vẫn lấy thời lượng của mẫu môn (H35 chỉ áp cho THPTQG)", () => {
+    const selection: ScopeSelection = { kind: "SP2E", scope: "PART", partCode: "P1", subjectCode: "MATH" };
+    expect(scopeTemplate(FIXTURE_TEMPLATES, KINDS, selection)).toMatchObject({ timing: "PER_PART", durationMinutes: 90 });
   });
 });

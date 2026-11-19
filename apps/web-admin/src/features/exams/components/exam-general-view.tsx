@@ -45,6 +45,7 @@ interface PendingInfoSave {
   parts: ReloadPartRow[];
 }
 
+/** Bài ôn nhận ra qua `buildMode` máy chủ trả (không đoán từ mẫu): thang của bài ôn được để trống. */
 function toFormValues(exam: ExamDetail): ExamInfoFormValues {
   return {
     name: exam.name,
@@ -56,6 +57,7 @@ function toFormValues(exam: ExamDetail): ExamInfoFormValues {
     timing: exam.timing,
     sharedDuration: exam.timing === "SHARED" ? exam.durationMinutes : 0,
     maxScore: exam.maxScore,
+    buildMode: exam.scope === "SUBJECT" ? exam.buildMode : undefined,
     yearsConfirmed: exam.yearsConfirmed,
     description: exam.description ?? "",
     instructions: exam.instructions ?? "",
@@ -63,7 +65,13 @@ function toFormValues(exam: ExamDetail): ExamInfoFormValues {
 }
 
 function examScope(exam: ExamDetail): ScopeSelection {
-  return { kind: exam.kind, scope: exam.scope, partCode: exam.partCode ?? "", subjectCode: exam.subjectCode ?? "" };
+  return {
+    kind: exam.kind,
+    scope: exam.scope,
+    partCode: exam.partCode ?? "",
+    subjectCode: exam.subjectCode ?? "",
+    buildMode: exam.scope === "SUBJECT" ? exam.buildMode : undefined,
+  };
 }
 
 /**
@@ -159,6 +167,7 @@ function ExamGeneralForm({
     scope: values.scope,
     partCode: values.partCode,
     subjectCode: values.subjectCode,
+    buildMode: values.buildMode,
   };
 
   const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
@@ -224,6 +233,7 @@ function ExamGeneralForm({
       scope: submitted.scope,
       partCode: submitted.partCode,
       subjectCode: submitted.subjectCode,
+      buildMode: submitted.buildMode,
     };
     const changed = !sameSelection(examScope(exam), next);
     const request: UpdateExamInfoRequest = {
@@ -253,17 +263,20 @@ function ExamGeneralForm({
       scope: getValues("scope"),
       partCode: getValues("partCode"),
       subjectCode: getValues("subjectCode"),
+      buildMode: getValues("buildMode"),
     };
-    const scope = resolveScope(templates, kinds, reference.subjects, current, change);
+    // Thông tin chung không có ô chọn chế độ dựng; máy chủ giữ `exam.buildMode` khi phạm vi mới là Theo môn, còn lại STANDARD.
+    const scope = resolveScope(templates, kinds, reference.subjects, current, { ...change, buildMode: exam.buildMode });
     const dirty = { shouldDirty: true } as const;
     setValue("kind", scope.kind, dirty);
     setValue("scope", scope.scope, dirty);
+    setValue("buildMode", scope.buildMode, dirty);
     setValue("partCode", scope.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
     setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
     const back = sameSelection(scope, examScope(exam));
     const defaults = back
       ? toFormValues(exam)
-      : { ...scopeDefaults(latestTemplate(templates, scope), kindOptionFor(kinds, scope.kind), scope.scope), yearsConfirmed: false };
+      : { ...scopeDefaults(latestTemplate(templates, scope), kindOptionFor(kinds, scope.kind), scope.scope, scope.buildMode), yearsConfirmed: false };
     setValue("timing", defaults.timing, dirty);
     setValue("sharedDuration", defaults.sharedDuration, dirty);
     setValue("maxScore", defaults.maxScore, dirty);

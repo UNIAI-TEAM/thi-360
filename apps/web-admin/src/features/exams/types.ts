@@ -1,4 +1,5 @@
 import type {
+  ExamBuildMode,
   ExamScope,
   ExamTiming,
   MultipleChoiceRule,
@@ -9,7 +10,7 @@ import type {
 } from "@/features/content/types";
 import type { ApiPage } from "@/lib/api/page";
 
-export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
+export type { ExamBuildMode, ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
 /**
  * Bài thi và ma trận đề (PBI-04), dữ liệu mẫu. Ma trận nằm trong bài thi (UniNote PBI-04).
@@ -17,11 +18,11 @@ export type { ExamScope, ExamTiming, PracticeScoring } from "@/features/content/
  */
 
 /**
- * Mã kỳ thi trong danh mục (`ContentReference.examKinds`): HSA, QDA, BCA, VACT, SPT, SP2E, THPTQG. Là chuỗi vì danh
- * mục quyết định; `EXAM_KINDS` là danh sách của dữ liệu mẫu.
+ * Mã kỳ thi trong danh mục (`ContentReference.examKinds`): HSA, QDA, BCA, VACT, SPT, SP2E, THPTQG, HSCA, VSAT. Là chuỗi vì
+ * danh mục quyết định; `EXAM_KINDS` là danh sách dự phòng khi danh mục chưa tải.
  */
 export type ExamKind = string;
-export const EXAM_KINDS = ["HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG"] as const;
+export const EXAM_KINDS = ["HSA", "QDA", "BCA", "VACT", "SPT", "SP2E", "THPTQG", "HSCA", "VSAT"] as const;
 /** `PUBLISHED`: đang phục vụ một phiên bản; `DISCONTINUED`: ngừng bán, học viên đã mua vẫn làm được. */
 export type ExamStatus = "DRAFT" | "PUBLISHED" | "DISCONTINUED";
 /** Kết quả kiểm tra cấu hình gần nhất; `NEEDS_RECHECK`: nguồn câu hỏi đã đổi sau lần kiểm tra. */
@@ -80,14 +81,49 @@ export interface ExamSummary {
  */
 export interface KnowledgeScope {
   nodeIds: string[];
-  /** `ANY`: câu gắn một trong các nút; `ALL`: câu gắn đủ các nút. */
-  match: "ANY" | "ALL";
   /** Lọc thêm theo năng lực (V-ACT); bỏ trống hoặc rỗng: không lọc. */
   competencyCodes?: string[];
+  /** Nhóm chùm: bật thì chùm có câu con ngoài phạm vi MAPID bị loại; chỉ có nghĩa khi `nodeIds` không rỗng. */
+  everyChildInScope?: boolean;
+}
+
+/** Điều kiện riêng của một chùm (`index` từ 1 đến số chùm); `tagCodes` khớp một trong các nhãn (H22). */
+export interface BlockSlot {
+  index: number;
+  knowledgeScope?: KnowledgeScope | null;
+  tagCodes?: string[];
+}
+
+/** Câu con ở vị trí `from`–`to` của chùm (đánh số từ 1) phải có ít nhất một MAPID trong `nodeIds`. */
+export interface ChildCondition {
+  from: number;
+  to: number;
+  nodeIds: string[];
+  /** Dạng của câu con ở các vị trí này (chùm trộn dạng, H39); bỏ trống: không lọc theo dạng. `nodeIds` được rỗng khi có dạng. */
+  answerType?: QuestionType;
+  /** Hình dạng câu con ở các vị trí này (số ý Đúng/Sai, số phương án); bỏ trống: không lọc. */
+  itemShape?: ItemShape;
+}
+
+export interface ItemShape {
+  statements?: number;
+  leftItems?: number;
+  rightItems?: number;
+  /** Số phương án của câu chọn một (H-SCA: đúng bốn phương án, R-131); bỏ trống: không lọc. */
+  options?: number;
+}
+
+export interface PositionRange {
+  from: number;
+  to: number;
 }
 
 export type MatrixMode = "COMBINED" | "SEPARATE";
 export type MatrixUnit = "COUNT" | "PERCENT";
+/** Mức của một phân bố: `REQUIRED` bộ giải áp dụng; `REFERENCE` chỉ đối chiếu khi sinh thử (H6). */
+export type QuotaEnforcement = "REQUIRED" | "REFERENCE";
+/** Đơn vị đếm của phân bố: câu, lệnh hỏi hoặc điểm; mức bắt buộc chỉ nhận câu (H7). */
+export type QuotaBasis = "QUESTION" | "PROMPT" | "POINTS";
 
 export interface MatrixCell {
   gradeCode: string;
@@ -112,6 +148,49 @@ export interface BlockMatrix {
   byDifficulty: MatrixDimensionValue[];
   /** Chiều năng lực (V-ACT), cộng thêm vào ma trận; bỏ trống: không dùng. */
   byCompetency?: MatrixDimensionValue[];
+  /** Mức riêng của chiều lớp và chiều độ khó (K9, H21); bỏ trống: `REQUIRED`. Ma trận `COMBINED`: hai mức bằng nhau. */
+  gradeEnforcement?: QuotaEnforcement;
+  difficultyEnforcement?: QuotaEnforcement;
+  /** Đơn vị đếm của ma trận; bỏ trống: `QUESTION`. */
+  basis?: QuotaBasis;
+}
+
+/**
+ * Chỉ tiêu chủ đề của môn hoặc nhóm (H8, K6): `count` là số câu **ít nhất** được gán cho chủ đề. `percent` chỉ là số gốc
+ * khi nhập theo tỷ lệ (H30). `nodeIds` rỗng: dòng chờ mapping, lưu nháp được nhưng chưa dùng được (H31).
+ */
+export interface TopicQuota {
+  id: string;
+  name: string;
+  nodeIds: string[];
+  count: number;
+  percent?: number | null;
+  gradeCodes?: string[];
+  difficultyCodes?: string[];
+  enforcement: QuotaEnforcement;
+  basis?: QuotaBasis;
+  groupIds?: string[];
+}
+
+/**
+ * Chỉ tiêu cấp bài (3.4): mỗi mức (`buckets`) là một hoặc nhiều mã lớp, độ khó gộp lại. Chỉ tiêu trải nhiều môn chỉ là
+ * `REFERENCE` (H6).
+ */
+export interface ExamQuota {
+  id: string;
+  name: string;
+  dimension: "GRADE" | "DIFFICULTY";
+  buckets: ExamQuotaBucket[];
+  basis: QuotaBasis;
+  enforcement: QuotaEnforcement;
+  subjectCodes?: string[];
+  excludeSubjectCodes?: string[];
+}
+
+export interface ExamQuotaBucket {
+  codes: string[];
+  count?: number | null;
+  percent?: number | null;
 }
 
 /**
@@ -142,8 +221,6 @@ export interface QuestionBlock {
   tagCodes: string[];
   /** Chỉ tiêu riêng của nhóm (tùy chọn); câu của nhóm vẫn tính vào chỉ tiêu của môn. `null`: không có. */
   matrix: BlockMatrix | null;
-  /** Dạng bài (`ContentReference.taskTypes`); `null`: không lọc. */
-  taskTypeCode: string | null;
   /** Nhóm chùm: giới hạn dạng của câu con; `null`: không giới hạn. */
   childAnswerType: QuestionType | null;
   /** Mã nhóm của mẫu cấu trúc; `null` với nhóm thêm tay. */
@@ -155,6 +232,24 @@ export interface QuestionBlock {
    * tắc khác khối. Bỏ trống: không so.
    */
   expectedScoring?: BlockExpectedScoring;
+  /** Đảo đơn vị (câu độc lập hoặc nguyên chùm) trong nhóm theo từng đề (K4); bỏ trống: `true`. */
+  shuffleUnits?: boolean;
+  /** Mẫu đặt: chỉ nhóm có `true` hiện công tắc "Đảo thứ tự các chùm" (Văn HSA, Văn QDA nhóm 5). */
+  shuffleEditable?: boolean;
+  /** Nhóm Tự luận tạm bỏ qua (K1): không vào đề, không tính câu và điểm. Chỉ nhóm `ESSAY`. */
+  omitted?: boolean;
+  /** Nhóm chùm: điều kiện riêng của từng chùm (R-34); chùm không có phần tử dùng điều kiện của nhóm. */
+  slots?: BlockSlot[];
+  /** Nhóm chùm: điều kiện MAPID theo vị trí câu con (H13). */
+  childConditions?: ChildCondition[];
+  /** Hình dạng câu: số ý Đúng/Sai, số ý trái và lựa chọn phải của Ghép đôi (R-60, R-88). */
+  itemShape?: ItemShape | null;
+  /** Nhóm Trả lời ngắn: định dạng đáp án nhận vào (H11); rỗng: không lọc. */
+  answerFormats?: string[];
+  /** Chỉ có ở phản hồi, do hệ thống tính: dải số thứ tự câu của nhóm trong phần (R-90). Không gửi lại. */
+  positionRange?: PositionRange | null;
+  /** Chỉ tiêu chủ đề riêng của nhóm (H8); câu của nhóm vẫn tính vào chỉ tiêu của môn. Tối đa 8 chỉ tiêu (H20). */
+  topicQuotas?: TopicQuota[];
 }
 
 export interface BlockExpectedScoring {
@@ -193,6 +288,10 @@ export interface ExamSection {
   /** Nhóm của môn trong `SUBJECT_CHOICE` (B10); `null` ngoài `SUBJECT_CHOICE`. */
   choiceGroup: ChoiceGroup | null;
   blocks: QuestionBlock[];
+  /** Chỉ tiêu chủ đề của môn (H8). Tối đa 8 chỉ tiêu một cấp (H20). */
+  topicQuotas?: TopicQuota[];
+  /** Điều kiện audio của môn (H38): các nhóm trong môn kế thừa. Bỏ trống hoặc `ANY`: không lọc. */
+  audioRequirement?: AudioRequirement;
 }
 
 /**
@@ -258,7 +357,35 @@ export interface ExamPart {
   mode: "FIXED" | "CHOICE";
   sections: ExamSection[];
   options: ExamPartOption[];
+  /**
+   * Phần theo mã (QDA, BCA): các môn của phần đổi theo mã bài thi (QD01 → Khoa học + Ngoại ngữ), nên môn nằm trong
+   * `subjectPool` chứ không trong `sections`/`options` (R-24, spec 3.4). `null`: phần bình thường, không dùng mã.
+   */
+  subjectPool?: ExamSection[] | null;
+  /**
+   * Nguồn mã của phần (`source = GLOBAL_LIST`: danh sách toàn cục theo lý thuyết–địa hướng; `branch`: nhánh giới hạn mã,
+   * `null` khi lấy mọi nhánh); `null`: không theo mã. Giữ nguyên khi gửi lại để lưu cấu trúc không làm mất phần theo mã.
+   */
+  codeSource?: { source: string; branch: string | null } | null;
+  /**
+   * Phân đoạn hiển thị của phần (Tiếng Anh V-SAT: Phần I–IV trong một phần, H40). Chỉ để hiển thị: không đổi bộ giải,
+   * thứ tự câu hay đánh số. Bài `PART` và bài ôn không có. Giữ nguyên khi gửi lại.
+   */
+  displaySegments?: DisplaySegment[];
 }
+
+/** Một phân đoạn hiển thị: dải số thứ tự câu trong phần (từ 1), số lệnh và điểm khai báo. */
+export interface DisplaySegment {
+  code: string;
+  name: string;
+  fromPosition: number;
+  toPosition: number;
+  commandCount: number;
+  maxPoints: number;
+}
+
+/** Điều kiện audio của môn (H38): `REQUIRED` chỉ lấy câu có tệp âm thanh, `FORBIDDEN` chỉ lấy câu không có. */
+export type AudioRequirement = "ANY" | "REQUIRED" | "FORBIDDEN";
 
 export type ExamVersionState = "WORKING" | "SERVING" | "RETIRED";
 
@@ -278,6 +405,8 @@ export interface ExamDetail extends ExamSummary {
   instructions: string | null;
   /** Mẫu cấu trúc đã nạp, ví dụ `HSA_FULL`, `THPTQG_MATH_2025`. */
   templateCode: string | null;
+  /** Kiểu xây bài do máy chủ trả (`REVIEW`: bài ôn, thang chỉ có khi người dùng nhập); thiếu thì `STANDARD`. */
+  buildMode: ExamBuildMode;
   /** Năm cấu trúc và năm ma trận của mẫu (SP2E); `null` khi mẫu không ghi năm. */
   structureYear: number | null;
   matrixYear: number | null;
@@ -324,12 +453,35 @@ export interface ExamTemplate {
   /** Thời lượng chung khi `timing = SHARED`, hoặc tổng thời lượng để hiển thị; `null` khi tài liệu chưa ghi. */
   durationMinutes: number | null;
   maxScore: number | null;
+  /**
+   * Nhóm mẫu của kỳ thi `templateBy = SUBJECT` (2B 15.1): `STANDARD` — "Dùng cấu trúc môn", `REVIEW` — "Tự thiết
+   * lập bài ôn" (rút gọn). Kỳ thi khác để trống.
+   */
+  buildMode?: ExamBuildMode | null;
+  /** Mẫu nạp mặc định của bộ (kỳ thi, phạm vi, môn/phần, `buildMode`, năm mới nhất); `null`: không đánh dấu. */
+  isDefault?: boolean | null;
+  /** Nhãn ngắn BE gửi kèm; `null`: giao diện tự dựng tên (`useTemplateLabel`). */
+  label?: string | null;
+  /** Tóm tắt mẫu của BE (ví dụ "150 câu · 195 phút"); `null`: giao diện tự tính. */
+  summary?: string | null;
   /** Điều cần chuyên gia xác nhận trước khi bán (ví dụ HSA chia 17–17–16), hiện cạnh mẫu; `null` khi không có. */
   expertNote?: string | null;
+  /** `false` (BE-11, H26): bài từ mẫu chỉ lưu nháp, không công bố (THPTQG Ngữ văn); `null`/thiếu: công bố được. */
+  publishable?: boolean | null;
+  /** `true` (BE-11, H27): mẫu khóa số câu của phần và tiểu mục (V-ACT toàn bài); `null`/thiếu: sửa được. */
+  fixedCounts?: boolean | null;
+  /** `true` (BE-16, H42): bài phạm vi `SUBJECT` từ mẫu giữ nguyên dạng, số câu, số chùm, cỡ chùm từng dòng; `null`/thiếu: sửa được. */
+  fixedBlockCounts?: boolean | null;
+  /** `true` (BE-16, H43): nhóm đã lược của mẫu (phần Viết) không bật lại được; phần chỉ gồm nhóm đã lược không tạo được bài riêng. */
+  omittedLocked?: boolean | null;
   parts: ExamTemplatePart[];
 }
 
 export interface ExamTemplatePart {
+  /** Id ổn định của phần trong mẫu khi BE gán (đối chiếu `overview`); `null`: so khớp theo `order`. */
+  partId?: string | null;
+  /** Thứ tự phần trong mẫu (1..n); `null` khi tài liệu cũ chưa ghi. */
+  order?: number | null;
   name: string;
   /** Số câu học viên làm trong phần. */
   questionCount: number;
@@ -339,6 +491,8 @@ export interface ExamTemplatePart {
   /** Môn của phần cố định một môn; phần tự chọn, phần nhiều môn và mẫu Theo phần để `null`. */
   subjectCode?: string | null;
   points?: number | null;
+  /** Bí danh của `points` theo dòng `ExamOverviewRow.maxPoints` (2B 15.1); cùng giá trị khi BE đã gửi. */
+  maxPoints?: number | null;
   /**
    * Các môn của phần cố định nhiều môn (BCA Phần 2: Toán 35, Lịch sử 10, Tiếng Anh 20) hoặc phần chung của phần tự
    * chọn (THPTQG Tin học).
@@ -357,6 +511,8 @@ export interface ExamTemplatePart {
   }>;
   /** Khối câu gợi ý theo dạng câu khi phần một môn (THPTQG Toán: 12 chọn một, 4 đúng/sai, 6 trả lời ngắn). */
   blocks?: ExamTemplateBlock[];
+  /** Phân đoạn hiển thị của phần (H40); bỏ trống: không có. */
+  displaySegments?: DisplaySegment[];
 }
 
 /**
@@ -364,10 +520,19 @@ export interface ExamTemplatePart {
  * QDA, BCA, V-ACT, SPT, SP2E, THPTQG giữ cấu trúc cũ, môn không có chỉ tiêu (D26).
  */
 export interface ExamTemplateSection {
+  /** Id ổn định của môn trong mẫu khi BE gán (đối chiếu `overview`); `null`: so khớp theo `subjectCode`. */
+  sectionId?: string | null;
+  /**
+   * Nhóm tạm bỏ qua của mẫu (SPT Toán: Tự luận, 2B 3.3): hiện mờ ở bảng tổng quan, không tính vào tổng. `id` và
+   * `templateGroupCode` là dấu vết để nhận ra bản sao của nhóm đó trong bài (`isTemplateOmittedGroup`, H43).
+   */
+  omittedBlocks?: Array<{ id?: string | null; templateGroupCode?: string | null; name: string; questionCount: number | null }>;
   subjectCode: string;
   /** `null` trong `SUBJECT_CHOICE`. */
   questionCount: number | null;
   blocks?: ExamTemplateBlock[];
+  /** Điều kiện audio của môn (H38); `ANY` hoặc bỏ trống: không lọc. */
+  audioRequirement?: AudioRequirement;
   knowledgeScope?: KnowledgeScope | null;
   answerQuotas?: AnswerQuotas | null;
   matrix?: BlockMatrix | null;
@@ -396,12 +561,15 @@ export interface ExamTemplateBlock {
   setSize?: number | null;
   competencyCode?: string | null;
   expectedScoring?: BlockExpectedScoring;
-  taskTypeCode?: string | null;
   childAnswerType?: QuestionType | null;
   templateGroupCode?: string | null;
   answerTypeLocked?: boolean;
   knowledgeScope?: KnowledgeScope | null;
   matrix?: BlockMatrix | null;
+  /** Nhóm chùm: điều kiện MAPID, dạng và hình dạng theo vị trí câu con (H13, H39). */
+  childConditions?: ChildCondition[];
+  /** Hình dạng câu (số ý Đúng/Sai, số ý Ghép đôi, số phương án). */
+  itemShape?: ItemShape | null;
 }
 
 /**
@@ -417,12 +585,22 @@ export interface CreateExamRequest {
   partCode?: string | null;
   /** Bắt buộc khi `scope = SUBJECT`. */
   subjectCode?: string | null;
+  /**
+   * Kiểu xây bài Theo môn (2B H4, 15.1): `STANDARD` — dùng cấu trúc môn của kỳ thi, `REVIEW` — tự thiết lập bài ôn
+   * (mẫu rút gọn). Chỉ gửi khi `scope = SUBJECT`.
+   */
+  buildMode?: ExamBuildMode | null;
   description: string | null;
   /** Hướng dẫn làm bài; được để trống khi lưu nháp. */
   instructions?: string | null;
   /** Thời lượng chung khi `timing = SHARED`. */
   durationMinutes?: number | null;
   maxScore?: number | null;
+  /**
+   * Dòng "Bảng tổng quan" khác mẫu mặc định (2B 15.1): máy chủ nạp mẫu mặc định rồi ghi đè số câu, thời lượng, điểm theo
+   * các dòng này. Bỏ trống: giữ nguyên số của mẫu.
+   */
+  overview?: ExamOverviewRow[];
   /** Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi. Bỏ trống thì nạp nguyên mẫu mới nhất. */
   parts?: CreateExamPartInput[];
   /**
@@ -430,6 +608,21 @@ export interface CreateExamRequest {
    * không POST lại (sẽ trùng mã), nên các chỉnh sửa cấu trúc trên trang không mất (N2-4).
    */
   existing?: ExamDetail;
+}
+
+/**
+ * Một dòng chỉnh trong "Bảng tổng quan" (2B 15.1): chỉ phần tử khác giá trị của mẫu đã nạp được gửi, so khớp theo
+ * `partId` (mẫu cũ không gán id thì theo `partCode` của phần thứ `order`) hoặc `sectionId`/`subjectCode` (dòng môn).
+ * `questionCount` là số câu của phần (dòng phần) hoặc của môn (dòng môn); `durationMinutes`/`maxPoints` ghi đè mẫu.
+ */
+export interface ExamOverviewRow {
+  partId?: string;
+  partCode?: string;
+  sectionId?: string;
+  subjectCode?: string;
+  questionCount?: number;
+  durationMinutes?: number;
+  maxPoints?: number;
 }
 
 /**
@@ -458,17 +651,83 @@ export interface ApplyExamTemplateRequest {
   templateCode: string;
   /** Cấu trúc đã sửa thì phải `true`, nếu không 409 `EXAM_STRUCTURE_REPLACE_CONFIRM`. */
   confirmReplace: boolean;
+  /**
+   * Tổng quan đã sửa khác mẫu hiện hành mà thiếu chính sách thì 409 `EXAM_OVERVIEW_CONFIRM`; `KEEP_EDITED` giữ số đã
+   * sửa của phần và môn còn tồn tại, `USE_TEMPLATE` lấy số của mẫu mới (K8, spec 5.2).
+   */
+  overviewPolicy?: StructureOverviewPolicy | null;
   expectedRevision: number;
 }
+
+/** Chính sách tổng quan khi đổi phiên bản cấu trúc (K8, spec 5.2). */
+export type StructureOverviewPolicy = "KEEP_EDITED" | "USE_TEMPLATE";
 
 /** Bản làm việc của cấu trúc và ma trận (`GET/PUT /exams/{id}/structure`). */
 export interface ExamStructure {
   examId: string;
   revision: number;
   parts: ExamPart[];
+  /** Mã bài thi của các phần theo mã (R-24); rỗng hoặc bỏ trống với bài không theo mã. */
+  combinations?: StructureCombination[];
+  /**
+   * Trạng thái kiểm tra theo môn (H2, R-08); `null` hoặc bỏ trống khi BE-5 chưa triển khai — vùng danh sách không
+   * hiện trạng thái nhưng vẫn dùng được.
+   */
+  sectionStates?: ExamSectionState[] | null;
+  /** Chỉ tiêu cấp bài (R-52); chỉ tiêu của mẫu chỉ sửa được giá trị. */
+  examQuotas?: ExamQuota[];
+}
+
+/** Trạng thái kiểm tra của một môn trong bản làm việc (BE-5, spec 7.1–7.3). */
+export interface ExamSectionState {
+  partId: string | null;
+  sectionId: string | null;
+  subjectCode: string | null;
+  /** `CHECKED`: đã kiểm tra đạt; `NEEDS_CHECK`: đã kiểm tra nhưng môn đã đổi, cần kiểm tra lại; `INCOMPLETE`: chưa hoàn tất. */
+  state: "INCOMPLETE" | "CHECKED" | "NEEDS_CHECK";
+}
+
+/** Mã bài thi của một phần theo mã (QDA, BCA): mã, nhãn và các môn mã đó trỏ tới; chỉ đọc ở bước Cấu trúc (R-24). */
+export interface StructureCombination {
+  code: string;
+  /** Mã bài thi đầy đủ (`QD01`); `null` khi mã là mã tổ hợp nguồn. */
+  examCode: string | null;
+  partId: string | null;
+  subjectCodes: string[];
+  /** Môn mã đòi mà cấu trúc chưa có; rỗng khi đủ môn. */
+  missingSubjects: string[];
+  nameVi: string | null;
+  nameEn: string | null;
+}
+
+/**
+ * Một dòng của `GET /exams/{id}/structure/summary` (BE-5): chỉ tiêu của phần/môn (`target`) so với số câu đã phân bổ
+ * (`allocated`, `difference`), kèm số câu theo dạng và khóa để bấm vào dòng chuyển tới đúng phần/môn/nhóm (spec 15.2, R-04).
+ */
+export interface ExamStructureSummaryRow {
+  name: string | null;
+  partId: string | null;
+  sectionId: string | null;
+  blockId: string | null;
+  target: number | null;
+  allocated: number | null;
+  difference: number | null;
+  essayCount: number | null;
+  objectiveCount: number | null;
+  setCount: number | null;
+  commandCount: number | null;
+  childCount: number | null;
+  maxPoints: number | null;
+}
+
+/** Tổng hợp cấu trúc cho vùng (d) của bước 2 (spec 15.2, R-04). */
+export interface ExamStructureSummary {
+  rows: ExamStructureSummaryRow[];
 }
 
 export interface UpdateExamStructureRequest {
+  /** Chỉ tiêu cấp bài: gửi lại nguyên danh sách đã đọc (kèm thay đổi của quản trị viên). */
+  examQuotas?: ExamQuota[];
   parts: ExamPart[];
   expectedRevision: number;
 }
@@ -501,12 +760,16 @@ export interface AvailableQuestionsQuery {
   childAnswerType: QuestionType | null;
   /** Phạm vi có hiệu lực; `null`: không giới hạn MAPID. */
   knowledgeScope: KnowledgeScope | null;
-  /** Dạng bài (`ContentReference.taskTypes`); bỏ trống: không lọc. */
-  taskTypeCode?: string | null;
   tagCodes?: string[];
   competencyCodes?: string[];
   /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */
   requiredPointsPerQuestion?: number | null;
+  /** Hình dạng câu (Đúng/Sai, Ghép đôi); bỏ trống: không lọc. */
+  itemShape?: ItemShape | null;
+  /** Nhóm Trả lời ngắn: các định dạng đáp án nhận vào (H11); rỗng: không lọc. */
+  answerFormats?: string[];
+  /** Nhóm chùm: điều kiện MAPID theo vị trí câu con (H13). `slots` của khối không có trường trong hợp đồng đếm. */
+  childConditions?: ChildCondition[];
 }
 
 /** Đếm nguồn cho cả môn: hợp nguồn của các nhóm trong môn, mỗi câu đếm một lần. */
@@ -556,4 +819,6 @@ export interface CreateExamPartInput {
   blocks?: ExamTemplateBlock[];
   /** Phần tự chọn: nhánh nội dung (THPTQG Tin học), số câu của nhánh bằng số câu của phần trừ phần chung. */
   branches?: Array<{ code: string; name: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
+  /** Phân đoạn hiển thị của phần (H40), chép từ mẫu. */
+  displaySegments?: DisplaySegment[];
 }

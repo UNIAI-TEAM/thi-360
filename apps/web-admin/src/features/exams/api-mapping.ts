@@ -8,18 +8,25 @@ import type {
   ExamCheckStatus,
   ExamDetail,
   ExamPart,
+  ExamQuota,
   ExamPartOption,
   ExamSection,
+  ExamSectionState,
   ExamStatus,
   ExamSummary,
   ExamTemplate,
   ExamTemplateBlock,
   ExamTemplatePart,
   ExamTemplateSection,
+  DisplaySegment,
+  ItemShape,
+  ExamStructureSummary,
+  ExamStructureSummaryRow,
   ExamVersion,
   KnowledgeScope,
   MatrixDimensionValue,
   QuestionBlock,
+  TopicQuota,
 } from "./types";
 
 /**
@@ -37,12 +44,59 @@ type ApiScope = Schemas["KnowledgeScope"];
 
 const nullable = <T>(value: T | null | undefined): T | null => value ?? null;
 
+/** `null` khi máy chủ chưa tính trạng thái môn (BE-5): màn không hiện huy hiệu (khác danh sách rỗng). */
+export function mapSectionStates(
+  states: readonly Schemas["ExamSectionState"][] | null | undefined,
+): ExamSectionState[] | null {
+  if (!states) return null;
+  return states.map((item) => ({
+    partId: item.partId ?? null,
+    sectionId: item.sectionId ?? null,
+    subjectCode: item.subjectCode ?? null,
+    state: item.state === "CHECKED" || item.state === "NEEDS_CHECK" ? item.state : "INCOMPLETE",
+  }));
+}
+
+/**
+ * Hàng của `structure/summary` như BE-5 thật trả: cây phần → môn → nhóm qua `children`. OpenAPI chưa khai `children`
+ * (springdoc bỏ trường tự tham chiếu) nên kiểu sinh chỉ có các trường phẳng; thêm lại ở đây cho đến khi hợp đồng sửa.
+ */
+type ApiSummaryRow = Schemas["ExamStructureSummaryRow"] & { children?: ApiSummaryRow[] | null };
+
+function flattenSummary(rows: readonly ApiSummaryRow[] | null | undefined, into: ExamStructureSummaryRow[]) {
+  for (const row of rows ?? []) {
+    into.push({
+      name: row.name ?? null,
+      partId: row.partId ?? null,
+      sectionId: row.sectionId ?? null,
+      blockId: row.blockId ?? null,
+      target: row.target ?? null,
+      allocated: row.allocated ?? null,
+      difference: row.difference ?? null,
+      essayCount: row.essayCount ?? null,
+      objectiveCount: row.objectiveCount ?? null,
+      setCount: row.setCount ?? null,
+      commandCount: row.commandCount ?? null,
+      childCount: row.childCount ?? null,
+      maxPoints: row.maxPoints ?? null,
+    });
+    flattenSummary(row.children, into);
+  }
+}
+
+/** Dàn cây tổng hợp thành các dòng phẳng theo thứ tự phần → môn → nhóm (bảng ở vùng (d) đọc theo thứ tự này). */
+export function mapStructureSummary(response: { parts?: readonly ApiSummaryRow[] | null }): ExamStructureSummary {
+  const rows: ExamStructureSummaryRow[] = [];
+  flattenSummary(response.parts, rows);
+  return { rows };
+}
+
 function mapScope(scope: ApiScope | null | undefined): KnowledgeScope | null {
   if (!scope) return null;
   return {
     nodeIds: scope.nodeIds ?? [],
-    match: scope.match ?? "ANY",
     ...(scope.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
+    ...(scope.everyChildInScope !== undefined && scope.everyChildInScope !== null ? { everyChildInScope: scope.everyChildInScope } : {}),
   };
 }
 
@@ -63,7 +117,54 @@ function mapMatrix(matrix: ApiMatrix | null | undefined): BlockMatrix | null {
     byGrade: mapDimension(matrix.byGrade),
     byDifficulty: mapDimension(matrix.byDifficulty),
     ...(matrix.byCompetency?.length ? { byCompetency: mapDimension(matrix.byCompetency) } : {}),
+    ...(matrix.gradeEnforcement ? { gradeEnforcement: matrix.gradeEnforcement } : {}),
+    ...(matrix.difficultyEnforcement ? { difficultyEnforcement: matrix.difficultyEnforcement } : {}),
+    ...(matrix.basis ? { basis: matrix.basis } : {}),
   };
+}
+
+function mapTopicQuotas(quotas: readonly Schemas["TopicQuota"][] | undefined): TopicQuota[] {
+  return (quotas ?? []).map((quota) => ({
+    id: quota.id ?? "",
+    name: quota.name ?? "",
+    nodeIds: quota.nodeIds ?? [],
+    count: quota.count ?? 0,
+    ...(quota.percent !== undefined && quota.percent !== null ? { percent: quota.percent } : {}),
+    ...(quota.gradeCodes?.length ? { gradeCodes: quota.gradeCodes } : {}),
+    ...(quota.difficultyCodes?.length ? { difficultyCodes: quota.difficultyCodes } : {}),
+    enforcement: quota.enforcement ?? "REQUIRED",
+    ...(quota.basis ? { basis: quota.basis } : {}),
+    ...(quota.groupIds?.length ? { groupIds: quota.groupIds } : {}),
+  }));
+}
+
+export function mapExamQuotas(quotas: readonly Schemas["ExamQuota"][] | undefined): ExamQuota[] {
+  return (quotas ?? []).map((quota) => ({
+    id: quota.id ?? "",
+    name: quota.name ?? "",
+    dimension: quota.dimension ?? "GRADE",
+    buckets: (quota.buckets ?? []).map((bucket) => ({
+      codes: bucket.codes ?? [],
+      ...(bucket.count !== undefined && bucket.count !== null ? { count: bucket.count } : {}),
+      ...(bucket.percent !== undefined && bucket.percent !== null ? { percent: bucket.percent } : {}),
+    })),
+    basis: quota.basis ?? "QUESTION",
+    enforcement: quota.enforcement ?? "REFERENCE",
+    ...(quota.subjectCodes?.length ? { subjectCodes: quota.subjectCodes } : {}),
+    ...(quota.excludeSubjectCodes?.length ? { excludeSubjectCodes: quota.excludeSubjectCodes } : {}),
+  }));
+}
+
+/** Chỉ tiêu cấp bài gửi lên: bỏ số trống để máy chủ coi là không khai. */
+export function toApiExamQuotas(quotas: readonly ExamQuota[]): Schemas["ExamQuota"][] {
+  return quotas.map((quota) => ({
+    ...quota,
+    buckets: quota.buckets.map((bucket) => ({
+      codes: bucket.codes,
+      ...(bucket.count !== undefined && bucket.count !== null ? { count: bucket.count } : {}),
+      ...(bucket.percent !== undefined && bucket.percent !== null ? { percent: bucket.percent } : {}),
+    })),
+  }));
 }
 
 function mapQuotas(quotas: Schemas["AnswerQuotas"] | null | undefined): AnswerQuotas | null {
@@ -85,6 +186,27 @@ function mapExpectedScoring(scoring: Schemas["BlockExpectedScoring"] | null | un
   };
 }
 
+/** Hình dạng câu: chỉ chép trường máy chủ có gửi, kể cả `options` (số phương án, R-131). */
+function mapItemShape(shape: Schemas["ItemShape"]): ItemShape {
+  return {
+    ...(shape.statements !== undefined ? { statements: shape.statements } : {}),
+    ...(shape.leftItems !== undefined ? { leftItems: shape.leftItems } : {}),
+    ...(shape.rightItems !== undefined ? { rightItems: shape.rightItems } : {}),
+    ...(shape.options !== undefined ? { options: shape.options } : {}),
+  };
+}
+
+function mapDisplaySegment(segment: Schemas["DisplaySegment"]): DisplaySegment {
+  return {
+    code: segment.code,
+    name: segment.name,
+    fromPosition: segment.fromPosition,
+    toPosition: segment.toPosition,
+    commandCount: segment.commandCount,
+    maxPoints: segment.maxPoints,
+  };
+}
+
 export function mapBlock(block: ApiBlock): QuestionBlock {
   const expectedScoring = mapExpectedScoring(block.expectedScoring);
   return {
@@ -98,11 +220,42 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
     knowledgeScope: mapScope(block.knowledgeScope),
     tagCodes: block.tagCodes ?? [],
     matrix: mapMatrix(block.matrix),
-    taskTypeCode: nullable(block.taskTypeCode),
     childAnswerType: nullable(block.childAnswerType),
     templateGroupCode: nullable(block.templateGroupCode),
     answerTypeLocked: block.answerTypeLocked ?? false,
     ...(expectedScoring ? { expectedScoring } : {}),
+    ...(block.shuffleUnits !== undefined ? { shuffleUnits: block.shuffleUnits } : {}),
+    ...(block.shuffleEditable !== undefined ? { shuffleEditable: block.shuffleEditable } : {}),
+    ...(block.omitted !== undefined ? { omitted: block.omitted } : {}),
+    ...(block.slots?.length
+      ? {
+          slots: block.slots.map((slot) => {
+            const knowledgeScope = mapScope(slot.knowledgeScope);
+            return {
+              index: slot.index ?? 0,
+              ...(knowledgeScope ? { knowledgeScope } : {}),
+              ...(slot.tagCodes?.length ? { tagCodes: slot.tagCodes } : {}),
+            };
+          }),
+        }
+      : {}),
+    ...(block.childConditions?.length
+      ? {
+          childConditions: block.childConditions.map((condition) => ({
+            from: condition.from ?? 0,
+            to: condition.to ?? 0,
+            nodeIds: condition.nodeIds ?? [],
+            ...(condition.answerType ? { answerType: condition.answerType } : {}),
+            ...(condition.itemShape ? { itemShape: mapItemShape(condition.itemShape) } : {}),
+          })),
+        }
+      : {}),
+    ...(block.itemShape ? { itemShape: mapItemShape(block.itemShape) } : {}),
+    ...(block.answerFormats?.length ? { answerFormats: block.answerFormats } : {}),
+    ...(block.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(block.topicQuotas) } : {}),
+    ...(block.positionRange
+      ? { positionRange: { from: block.positionRange.from ?? 0, to: block.positionRange.to ?? 0 } }
+      : {}),
   };
 }
 
@@ -116,6 +269,8 @@ export function mapSection(section: ApiSection): ExamSection {
     matrix: mapMatrix(section.matrix),
     choiceGroup: nullable(section.choiceGroup),
     blocks: (section.blocks ?? []).map(mapBlock),
+    ...(section.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(section.topicQuotas) } : {}),
+    ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
   };
 }
 
@@ -150,6 +305,15 @@ export function mapPart(part: ApiPart, index: number): ExamPart {
     mode: choice ? "CHOICE" : "FIXED",
     sections: (part.sections ?? []).map(mapSection),
     options: (part.options ?? []).map(mapOption),
+    // Phần theo mã (R-24): môn nằm trong `subjectPool`; bỏ hai trường này thì phần bị coi là phần chọn rỗng và lưu cấu
+    // trúc sẽ xóa môn của phần.
+    ...(part.codeSource
+      ? {
+          codeSource: { source: part.codeSource.source ?? "GLOBAL_LIST", branch: part.codeSource.branch ?? null },
+          subjectPool: (part.subjectPool ?? []).map(mapSection),
+        }
+      : {}),
+    ...(part.displaySegments?.length ? { displaySegments: part.displaySegments.map(mapDisplaySegment) } : {}),
   };
 }
 
@@ -167,7 +331,8 @@ export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
     if (value && typeof value === "object") {
       return Object.fromEntries(
         Object.entries(value as Record<string, unknown>)
-          .filter(([, item]) => item !== null && item !== undefined)
+          // `positionRange` do máy chủ tính (2B 3.3), không gửi lại.
+          .filter(([key, item]) => item !== null && item !== undefined && key !== "positionRange")
           .map(([key, item]) => [key, strip(item)]),
       );
     }
@@ -270,6 +435,7 @@ export function mapExamDetail(response: Schemas["ExamDetailResponse"]): ExamDeta
     description: nullable(response.description),
     instructions: nullable(response.instructions),
     templateCode: nullable(response.templateCode),
+    buildMode: response.buildMode ?? "STANDARD",
     structureYear: nullable(response.structureYear),
     matrixYear: nullable(response.matrixYear),
     yearsConfirmed: response.yearsConfirmed,
@@ -304,17 +470,19 @@ function templateBlock(block: QuestionBlock): ExamTemplateBlock {
     setCount: block.setCount,
     setSize: block.setSize,
     ...(block.expectedScoring ? { expectedScoring: block.expectedScoring } : {}),
-    taskTypeCode: block.taskTypeCode,
     childAnswerType: block.childAnswerType,
     templateGroupCode: block.templateGroupCode,
     answerTypeLocked: block.answerTypeLocked,
     knowledgeScope: block.knowledgeScope,
     matrix: block.matrix,
+    ...(block.childConditions?.length ? { childConditions: structuredClone(block.childConditions) } : {}),
+    ...(block.itemShape ? { itemShape: { ...block.itemShape } } : {}),
   };
 }
 
 function templateSection(section: ExamSection): ExamTemplateSection {
   return {
+    sectionId: section.id || null,
     subjectCode: section.subjectCode,
     questionCount: section.questionCount,
     blocks: section.blocks.map(templateBlock),
@@ -322,6 +490,7 @@ function templateSection(section: ExamSection): ExamTemplateSection {
     answerQuotas: section.answerQuotas,
     matrix: section.matrix,
     choiceGroup: section.choiceGroup,
+    ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
   };
 }
 
@@ -353,16 +522,31 @@ function templateOption(option: ExamPartOption): TemplateOption {
   };
 }
 
-function templatePart(part: ExamPart): ExamTemplatePart {
+function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined): ExamTemplatePart {
+  const sections = part.sections.map((section, sectionIndex) => {
+    const omittedBlocks = (raw?.sections?.[sectionIndex]?.blocks ?? [])
+      .filter((block) => block.omitted)
+      .map((block) => ({
+        ...(block.id ? { id: block.id } : {}),
+        ...(block.templateGroupCode ? { templateGroupCode: block.templateGroupCode } : {}),
+        name: block.name ?? "",
+        questionCount: nullable(block.questionCount),
+      }));
+    return { ...templateSection(section), ...(omittedBlocks.length ? { omittedBlocks } : {}) };
+  });
   return {
+    partId: part.id || null,
+    order: part.order ?? index + 1,
     name: part.name,
     questionCount: part.questionCount,
     durationMinutes: part.durationMinutes,
     mode: part.mode,
     subjectCode: null,
     points: part.maxPoints ?? null,
-    ...(part.sections.length ? { sections: part.sections.map(templateSection) } : {}),
+    maxPoints: part.maxPoints ?? null,
+    ...(sections.length ? { sections } : {}),
     ...(part.mode === "CHOICE" ? { options: part.options.map(templateOption) } : {}),
+    ...(part.displaySegments?.length ? { displaySegments: structuredClone(part.displaySegments) } : {}),
   };
 }
 
@@ -373,7 +557,7 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     code: response.code,
     kind: response.kindCode,
     scope: response.scope as ExamScope,
-    name: "",
+    name: response.label ?? "",
     partCode: nullable(response.partCode),
     subjectCode: nullable(response.subjectCode),
     structureYear: nullable(response.structureYear),
@@ -381,7 +565,15 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     timing: response.timing as ExamTiming,
     durationMinutes: nullable(response.durationMinutes),
     maxScore: nullable(response.maxScore),
+    buildMode: nullable(response.buildMode) as ExamTemplate["buildMode"],
+    isDefault: nullable(response.isDefault),
+    label: nullable(response.label),
+    summary: nullable(response.summary),
     expertNote: nullable(response.expertNote),
-    parts: mapParts(document.parts).map(templatePart),
+    publishable: nullable(response.publishable),
+    fixedCounts: nullable(response.fixedCounts),
+    fixedBlockCounts: nullable(response.fixedBlockCounts),
+    omittedLocked: nullable(response.omittedLocked),
+    parts: mapParts(document.parts).map((part, index) => templatePart(part, index, document.parts?.[index])),
   };
 }

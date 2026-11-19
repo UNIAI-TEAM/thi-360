@@ -27,6 +27,7 @@ public enum ImportField {
     MATCH_RIGHT("matchRight"),
     SCORING("scoring"),
     INPUT_HINT("inputHint"),
+    ANSWER_FORMAT("answerFormat"),
     GRADING_GUIDE("gradingGuide"),
     COMMON_MISTAKES("commonMistakes"),
     TASK_TYPE("taskType"),

@@ -17,12 +17,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.exam.application.ExamCheckCompletion;
 import vn.unicom.thi360.exam.application.ExamCheckOrchestrator;
 import vn.unicom.thi360.exam.application.ExamCheckResultQuery;
+import vn.unicom.thi360.exam.application.ExamCheckScope;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
@@ -51,11 +53,19 @@ public class ExamCheckController {
             content = @Content(schema = @Schema(implementation = ExamCheckApiModels.Result.class, nullable = true)))
     public JsonNode latest(@PathVariable UUID examId) {
         ObjectNode result = query.latest(examId);
+        if (result != null && !result.has("sectionStates")) {
+            result.putNull("sectionStates");
+        }
         return result == null ? NullNode.getInstance() : result;
     }
 
     @Schema(name = "ExamCheckStarted")
     public record Started(UUID runId) { }
+
+    @Schema(name = "ExamCheckRequest")
+    public record CheckRequest(
+            @Schema(allowableValues = {"EXAM", "PART", "SECTION"}) String scope,
+            String sectionId, String partId) { }
 
     @PostMapping
     @RequirePermission(Permissions.EXAM_MODIFY)
@@ -67,13 +77,16 @@ public class ExamCheckController {
                 content = @Content(schema = @Schema(implementation = Started.class)))
     })
     public ResponseEntity<?> check(@PathVariable UUID examId,
-            @RequestParam(defaultValue = "false") boolean deep) {
+            @RequestParam(defaultValue = "false") boolean deep,
+            @RequestBody(required = false) CheckRequest request) {
+        var scope = request == null ? ExamCheckScope.from(null, null, null)
+                : ExamCheckScope.from(request.scope(), request.partId(), request.sectionId());
         var actor = actor();
         String traceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
         if (deep) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(new Started(checks.startDeep(examId, actor, traceId)));
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(new Started(checks.startDeep(examId, scope, actor, traceId)));
         }
-        return ResponseEntity.ok(checks.check(examId, actor, traceId));
+        return ResponseEntity.ok(checks.check(examId, scope, actor, traceId));
     }
 
     @GetMapping("/runs/{runId}")

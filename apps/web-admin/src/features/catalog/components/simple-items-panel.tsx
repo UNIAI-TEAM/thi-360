@@ -950,6 +950,9 @@ function SortableItemRow({
                     )}`}
                   </span>
                 </span>
+                {item.combination.branch && (
+                  <Badge>{t(`branches.${item.combination.branch}`)}</Badge>
+                )}
                 {item.combination.examStatus === "INACTIVE" && (
                   <Badge>{t("statuses.INACTIVE")}</Badge>
                 )}
@@ -1139,7 +1142,14 @@ function SortableItemCard({
               {t(`statuses.${item.status}`)}
             </StatusChip>
           }
-          tags={item.combination && <Badge>{t("versionBadge", { version: item.combination.versionNo })}</Badge>}
+          tags={
+            item.combination && (
+              <>
+                <Badge>{t("versionBadge", { version: item.combination.versionNo })}</Badge>
+                {item.combination.branch && <Badge>{t(`branches.${item.combination.branch}`)}</Badge>}
+              </>
+            )
+          }
         >
           <p className="text-caption text-text-muted tabular-nums">{t("cardValueMeta", { value: item.value })}</p>
         </ListCard>

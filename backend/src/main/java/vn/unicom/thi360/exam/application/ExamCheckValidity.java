@@ -14,6 +14,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 
@@ -34,6 +35,71 @@ public class ExamCheckValidity {
 
     public record Assessment(String status, String invalidReason) { }
 
+    /**
+     * SQL for the template policy of the exam aliased {@code e}: only the non-default flags, {@code '{}'} when the
+     * exam has the default policy. {@code unpublishable}: the standard default SUBJECT template of its kind and
+     * subject has {@code publishable = false}; {@code fixedCounts}: the template it was loaded from has
+     * {@code fixed_counts = true}. A saved check records the policy only when it is not the default, so checks
+     * saved before the flags existed keep their meaning.
+     * <p>
+     * Templates identify a kind and a subject by code and exams by catalog item id. The catalog tables are not read
+     * here: the (few) unpublishable templates are read once, their codes are resolved to item ids through
+     * {@link CatalogLookup}, and the exam's own ids are compared with those literals.
+     */
+    String currentPolicy(String e) {
+        return "jsonb_strip_nulls(jsonb_build_object("
+                + "'unpublishable', " + unpublishable(e) + ", "
+                + "'fixedCounts', CASE WHEN EXISTS (SELECT 1 FROM exam.exam_template ft"
+                + " WHERE ft.code = " + e + ".template_code AND ft.fixed_counts) THEN true END))";
+    }
+
+    private String unpublishable(String e) {
+        List<String[]> codes = jdbc.query("SELECT DISTINCT kind_code, subject_code FROM exam.exam_template"
+                + " WHERE scope = 'SUBJECT' AND part_code IS NULL AND active AND is_default"
+                + " AND build_mode = 'STANDARD' AND NOT publishable AND subject_code IS NOT NULL",
+                (rs, row) -> new String[] {rs.getString("kind_code"), rs.getString("subject_code")});
+        if (codes.isEmpty()) return "CAST(NULL AS boolean)";
+        Map<String, UUID> kinds = idsByCode("EXAM");
+        Map<String, UUID> subjects = idsByCode("SUBJECT");
+        // UUID text only: no user input reaches this SQL.
+        String pairs = codes.stream()
+                .filter(pair -> kinds.containsKey(pair[0]) && subjects.containsKey(pair[1]))
+                .map(pair -> "('" + kinds.get(pair[0]) + "'::uuid, '" + subjects.get(pair[1]) + "'::uuid)")
+                .collect(java.util.stream.Collectors.joining(", "));
+        if (pairs.isEmpty()) return "CAST(NULL AS boolean)";
+        return "CASE WHEN (" + e + ".kind_item_id, " + e + ".subject_item_id) IN (VALUES " + pairs + ") THEN true END";
+    }
+
+    private Map<String, UUID> idsByCode(String group) {
+        Map<String, UUID> ids = new HashMap<>();
+        for (CatalogItemView item : catalog.listGroupItems(group)) ids.putIfAbsent(item.code(), item.id());
+        return ids;
+    }
+
+    /** SQL boolean: the saved config of run {@code r} still equals the exam's config and template policy. */
+    String configMatches(String r, String e) {
+        return "((" + r + ".config_snapshot - 'templatePolicy') = jsonb_build_object("
+                + "'kindItemId', " + e + ".kind_item_id, 'scope', " + e + ".scope, 'partCode', " + e + ".part_code, "
+                + "'subjectItemId', " + e + ".subject_item_id, 'templateCode', " + e + ".template_code, "
+                + "'structureYear', " + e + ".structure_year, 'matrixYear', " + e + ".matrix_year, "
+                + "'yearsConfirmed', " + e + ".years_confirmed, "
+                + "'timing', " + e + ".timing, 'durationMinutes', " + e + ".duration_minutes, "
+                + "'maxScore', " + e + ".max_score, 'referenceMax', " + e + ".reference_max, "
+                + "'practiceScoring', " + e + ".practice_scoring) "
+                + "AND COALESCE(" + r + ".config_snapshot -> 'templatePolicy', '{}'::jsonb) = " + currentPolicy(e) + ")";
+    }
+
+    /**
+     * SQL jsonb to store for the exam whose id is bound to {@code examIdParameter}: the config parameter plus
+     * {@code templatePolicy} when the policy is not the default.
+     */
+    String storedConfig(String configParameter, String examIdParameter) {
+        String policy = currentPolicy("e");
+        return configParameter + " || (SELECT CASE WHEN " + policy + " = '{}'::jsonb THEN '{}'::jsonb"
+                + " ELSE jsonb_build_object('templatePolicy', " + policy + ") END"
+                + " FROM exam.exam e WHERE e.id = " + examIdParameter + ")";
+    }
+
     @Transactional(readOnly = true)
     public Map<UUID, String> statuses(Collection<UUID> examIds) {
         Map<UUID, String> statuses = new HashMap<>();
@@ -49,12 +115,7 @@ public class ExamCheckValidity {
                 + "s.structure_hash AS current_hash, r.structure_hash AS saved_hash, "
                 + "r.profile_revision, p.revision AS current_profile_revision, "
                 + "r.catalog_revision, r.source_revisions::text AS source_revisions, "
-                + "r.config_snapshot = jsonb_build_object("
-                + "'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, "
-                + "'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, "
-                + "'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, "
-                + "'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, "
-                + "'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring) AS config_matches "
+                + configMatches("r", "e") + " AS config_matches "
                 + "FROM exam.exam e LEFT JOIN exam.exam_structure s ON s.exam_id = e.id "
                 + "LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
                 + "LEFT JOIN exam.exam_check_run r ON r.exam_id = e.id WHERE e.id IN (" + placeholders + ")";

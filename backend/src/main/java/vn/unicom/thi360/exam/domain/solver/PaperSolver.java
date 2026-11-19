@@ -156,8 +156,12 @@ public final class PaperSolver {
     /** Giải riêng một phần, loại các câu đã phát trong những phần trước. */
     public PathResult solvePartExcluding(SolvePath part, CandidateSource source, SolveMode mode,
             Set<String> excludedQuestionIds) {
+        return solvePath(part, excluding(source, excludedQuestionIds), mode);
+    }
+
+    private static CandidateSource excluding(CandidateSource source, Set<String> excludedQuestionIds) {
         Set<String> excluded = Set.copyOf(excludedQuestionIds);
-        CandidateSource filtered = group -> {
+        return group -> {
             List<PathCandidate> candidates = source.candidatesFor(group);
             if (candidates == null) {
                 return List.of();
@@ -174,7 +178,6 @@ public final class PaperSolver {
                 return true;
             }).toList();
         };
-        return solvePath(part, filtered, mode);
     }
 
     /**
@@ -186,7 +189,7 @@ public final class PaperSolver {
      * @return kết quả của đường con (một SubjectPick); INVALID khi không xếp được
      */
     public PathResult solvePick(SubjectChoice choice, List<String> subjectCodes, long seed,
-            CandidateSource source) {
+            CandidateSource source, Set<String> excludedQuestionIds) {
         Objects.requireNonNull(choice, "choice must not be null");
         Objects.requireNonNull(subjectCodes, "subjectCodes must not be null");
         Objects.requireNonNull(source, "source must not be null");
@@ -215,14 +218,43 @@ public final class PaperSolver {
                         "subjectCodes must be a subset of the choice's sections");
             }
             int[] counts = allocator.select(choice, picked, seed);
-            SubjectPick pick = new SubjectPick(choice.optionId(), picked,
-                    toList(counts));
+            int high = choice.countsByPick().stream().mapToInt(Integer::intValue).max().orElseThrow();
+            int lowIndex = -1;
+            int[] solveCounts = counts.clone();
+            for (int i = 0; i < counts.length; i++) {
+                if (counts[i] != high) {
+                    if (counts[i] != high - 1 || lowIndex != -1) {
+                        throw new IllegalArgumentException("choice trimming requires exactly one count below the maximum by one");
+                    }
+                    lowIndex = i;
+                    solveCounts[i] = high;
+                }
+            }
+            SubjectPick pick = new SubjectPick(choice.optionId(), picked, toList(counts));
+            SubjectPick solvePick = new SubjectPick(choice.optionId(), picked, toList(solveCounts));
             SolvePath path = new SolvePath(0,
                     List.of(new ChosenOption(null, choice.optionId())), List.of(),
                     List.of(choice), List.of(List.of(pick)));
-            PathResult single = evalTuple(path, List.of(pick), memoized(source),
+            CandidateSource filtered = memoized(excluding(source, excludedQuestionIds));
+            PathResult single = evalTuple(path, List.of(solvePick), filtered,
                     SolveMode.generate(seed), new HashMap<>(), check, new long[1], new long[1]);
-            return single;
+            if (single.status() != SolveStatus.VALID || lowIndex < 0) return single;
+            SectionOnPath trimmedSection = picked.get(lowIndex);
+            List<SubjectWitness> witnesses = new ArrayList<>(single.witness());
+            for (int i = 0; i < witnesses.size(); i++) {
+                SubjectWitness witness = witnesses.get(i);
+                if (witness.subjectCode().equals(trimmedSection.subjectCode())) {
+                    TrimPolicy.Result trim = TrimPolicy.trim(trimmedSection, witness, filtered, seed);
+                    if (trim == null) {
+                        return PathResult.invalid(path, SolveReason.NO_JOINT_SOLUTION,
+                                trimmedSection.subjectCode(), null);
+                    }
+                    witnesses.set(i, trim.witness());
+                    return new PathResult(path, SolveStatus.VALID, null, null, null, witnesses,
+                            List.of(), null, List.of(), trim.droppedQuestion());
+                }
+            }
+            throw new IllegalStateException("Selected subject missing from witness");
         } catch (DeadlineHit e) {
             return PathResult.unconfirmed(
                     new SolvePath(0, List.of(), List.of(), List.of(choice), List.of()),

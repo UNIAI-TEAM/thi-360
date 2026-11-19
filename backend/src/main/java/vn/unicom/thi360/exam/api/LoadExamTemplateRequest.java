@@ -15,6 +15,9 @@ public record LoadExamTemplateRequest(
         @Schema(description = "Bắt buộc true khi cấu trúc hiện tại đã sửa; thiếu → 409 "
                 + "EXAM_STRUCTURE_REPLACE_CONFIRM")
         Boolean confirmReplace,
+        @Schema(description = "Cách xử lý tổng quan đã sửa",
+                allowableValues = {"USE_TEMPLATE", "KEEP_EDITED"})
+        String overviewPolicy,
         @Schema(description = "Revision đang xem; lệch → 412 EXAM_REVISION_CONFLICT",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull

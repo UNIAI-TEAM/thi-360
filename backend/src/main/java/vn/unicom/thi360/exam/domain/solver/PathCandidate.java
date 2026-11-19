@@ -17,11 +17,10 @@ import java.util.Objects;
  * @param questionId   id câu (id bộ với bộ câu hỏi / Điền khuyết)
  * @param versionNo    số phiên bản đang phục vụ của câu
  * @param setId        id bộ khi ứng viên là bộ câu hỏi hoặc Điền khuyết; null với câu độc lập
- * @param taskTypeCode mã dạng bài của ứng viên (phạm vi nguồn của nhóm, spec 5.2); null nếu không có
  * @param scoringRule  mã quy tắc chấm của câu (để so với {@code expectedScoringRule} của nhóm); null nếu không có
  * @param units        các đơn vị đếm, ít nhất một
  */
-public record PathCandidate(String questionId, int versionNo, String setId, String taskTypeCode,
+public record PathCandidate(String questionId, int versionNo, String setId,
         String scoringRule, List<CountingUnit> units) {
 
     public PathCandidate {
@@ -32,7 +31,7 @@ public record PathCandidate(String questionId, int versionNo, String setId, Stri
     /** Câu độc lập một đơn vị. */
     public static PathCandidate standalone(String questionId, int versionNo, String answerType,
             String gradeCode, String difficultyCode, java.math.BigDecimal points) {
-        return new PathCandidate(questionId, versionNo, null, null, null,
+        return new PathCandidate(questionId, versionNo, null, null,
                 List.of(CountingUnit.standalone(answerType, gradeCode, difficultyCode, points)));
     }
 }

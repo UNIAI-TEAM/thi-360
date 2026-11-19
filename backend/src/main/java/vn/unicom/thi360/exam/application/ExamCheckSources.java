@@ -75,6 +75,11 @@ final class ExamCheckSources {
         return groups.stream().allMatch(group -> pool(group).complete());
     }
 
+    /** Served candidates of this solve, keyed by version (for witness lookups). */
+    Map<VersionKey, Candidate> loadedCandidates() {
+        return candidates.loadedCandidates();
+    }
+
     /** Read stable codes from the same compact serving projection as the scoring fields. */
     Mismatches mismatchedCodes(GroupQuota group, BlockExpectedScoring expected) {
         if (expected == null) return new Mismatches(List.of(), true);

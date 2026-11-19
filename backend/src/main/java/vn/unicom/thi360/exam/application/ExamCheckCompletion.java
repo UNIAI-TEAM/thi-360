@@ -20,14 +20,18 @@ public class ExamCheckCompletion {
     private final ExamCheckResultStore results;
     private final ExamCheckJobStore jobs;
     private final ExamCheckAudit audit;
+    private final ExamCheckUnitStore units;
+    private final ExamCheckUnitStates states;
     private final ObjectMapper mapper;
 
     public ExamCheckCompletion(JdbcTemplate jdbc, ExamCheckResultStore results, ExamCheckJobStore jobs,
-            ExamCheckAudit audit, ObjectMapper mapper) {
+            ExamCheckAudit audit, ObjectMapper mapper, ExamCheckUnitStore units, ExamCheckUnitStates states) {
         this.jdbc = jdbc;
         this.results = results;
         this.jobs = jobs;
         this.audit = audit;
+        this.units = units;
+        this.states = states;
         this.mapper = mapper;
     }
 
@@ -36,7 +40,8 @@ public class ExamCheckCompletion {
 
     @Transactional
     public Completion complete(ExamCheckResultStore.Input input, UUID runId, ObjectNode result,
-            JsonNode witness, Instant checkedAt, long durationMs, Actor actor, String traceId) {
+            JsonNode witness, List<ExamCheckUnitStore.Unit> unitResults, ExamCheckScope scope, Instant checkedAt,
+            long durationMs, Actor actor, String traceId) {
         // The same order as startOrGet: exam first, then job, avoiding a claim/completion deadlock.
         if (runId != null) {
             List<UUID> exam = jdbc.queryForList("SELECT id FROM exam.exam WHERE id = ? FOR UPDATE",
@@ -57,14 +62,23 @@ public class ExamCheckCompletion {
         }
         ObjectNode completed = result.deepCopy();
         completed.put("stale", false);
-        boolean saved = results.save(input, completed.path("status").asText(), completed.path("issueCount").asInt(),
-                checkedAt, durationMs, completed, witness);
+        boolean saved;
+        if (scope.kind() == ExamCheckScope.Kind.EXAM) {
+            saved = results.save(input, completed.path("status").asText(), completed.path("issueCount").asInt(),
+                    checkedAt, durationMs, completed, witness);
+            if (saved && !units.save(input.examId(), input.examRevision(), unitResults)) {
+                throw new IllegalStateException("Exam revision changed while saving check units");
+            }
+        } else {
+            saved = units.save(input.examId(), input.examRevision(), unitResults);
+        }
         completed.put("stale", !saved);
+        completed.set("sectionStates", mapper.valueToTree(states.states(input.examId())));
         if (runId != null && !jobs.complete(runId, json(completed))) {
             throw new IllegalStateException("Running check job changed during completion");
         }
         audit.record(input.examId(), "EXAM.CHECK",
-                Map.of("status", completed.path("status").asText(), "stale", !saved), actor, traceId);
+                Map.of("status", completed.path("status").asText(), "stale", !saved, "scope", scope.kind().name()), actor, traceId);
         return new Completion(completed, true);
     }
 

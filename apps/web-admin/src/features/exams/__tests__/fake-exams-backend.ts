@@ -122,7 +122,7 @@ export function toWireExam(exam: ExamDetail): WireDetail {
 
 function wireScope(scope: QuestionBlock["knowledgeScope"] | undefined): WireBlock["knowledgeScope"] | undefined {
   if (!scope) return undefined;
-  return { nodeIds: scope.nodeIds, match: scope.match, competencyCodes: scope.competencyCodes };
+  return { nodeIds: scope.nodeIds, competencyCodes: scope.competencyCodes };
 }
 
 function wireMatrix(matrix: QuestionBlock["matrix"]): WireBlock["matrix"] | undefined {
@@ -147,9 +147,8 @@ function wireTemplateBlock(block: ExamTemplateBlock): WireBlock {
     setSize: block.setSize ?? undefined,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion ?? undefined,
     knowledgeScope:
-      wireScope(block.knowledgeScope) ?? (block.competencyCode ? { nodeIds: [], match: "ANY", competencyCodes: [block.competencyCode] } : undefined),
+      wireScope(block.knowledgeScope) ?? (block.competencyCode ? { nodeIds: [], competencyCodes: [block.competencyCode] } : undefined),
     matrix: wireMatrix(block.matrix ?? null),
-    taskTypeCode: block.taskTypeCode ?? undefined,
     childAnswerType: block.childAnswerType ?? undefined,
     templateGroupCode: block.templateGroupCode ?? undefined,
     answerTypeLocked: block.answerTypeLocked,
@@ -179,9 +178,21 @@ function optionSubjects(template: ExamTemplate, part: ExamTemplatePart, option: 
   return [part.sections?.[0]?.subjectCode ?? template.subjectCode ?? ""];
 }
 
-/** Phần của mẫu -> wire `ExamPart` trong `structure` của `ExamTemplateResponse` (id `null`). */
+/** UUID cố định theo khóa: máy chủ (BE-6) trả `id` UUID không rỗng cho mọi phần và môn của mẫu. */
+export function templateUuid(key: string): string {
+  let hash = 0;
+  for (const char of key) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) >>> 0;
+  const hex = (hash.toString(16).padStart(8, "0") + key.length.toString(16).padStart(4, "0")).slice(-12);
+  return `00000000-0000-4000-8000-${hex}`;
+}
+
+/** Phần của mẫu -> wire `ExamPart` trong `structure` của `ExamTemplateResponse` (có `id` UUID, môn trong phần cũng vậy). */
 function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index: number): WirePart {
-  const sections = (part.sections ?? []).map(wireTemplateSection);
+  const partKey = `${template.code}/part/${index}`;
+  const sections = (part.sections ?? []).map((section, sectionIndex) => ({
+    ...wireTemplateSection(section),
+    id: templateUuid(`${partKey}/section/${sectionIndex}`),
+  }));
   const blocks = (part.blocks ?? []).map(wireTemplateBlock);
   if (blocks.length && sections.length === 1) sections[0]!.blocks = [...sections[0]!.blocks ?? [], ...blocks];
   const options = (part.options ?? []).map((option): WireOption => {
@@ -211,6 +222,7 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
     } as WireOption;
   });
   return {
+    id: templateUuid(partKey),
     order: index + 1,
     name: part.name,
     durationMinutes: part.durationMinutes ?? undefined,
@@ -235,6 +247,12 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
 export function toWireTemplate(template: ExamTemplate): WireTemplate {
   return {
     active: true,
+    publishable: true,
+    fixedCounts: false,
+    fixedBlockCounts: false,
+    omittedLocked: false,
+    buildMode: "STANDARD",
+    isDefault: true,
     code: template.code,
     kindCode: template.kind,
     scope: template.scope,
@@ -332,6 +350,13 @@ export class ExamsBackend {
   private sequence = 0;
   private readonly countsByPath = new Map<string, Reply>();
   private readonly previews = new Map<string, Reply>();
+  /** Phần thêm của `GET structure` (sectionStates, combinations) theo bài; BE-5 chưa có thì bỏ trống. */
+  private readonly structureExtras = new Map<string, { sectionStates?: unknown[] | null; combinations?: unknown[] }>();
+  /** Cây tổng hợp của `GET structure/summary`; chưa xếp thì trả cây rỗng (máy chủ thật luôn trả 200). */
+  private readonly summaries = new Map<string, unknown[]>();
+  private readonly summaryFailures = new Set<string>();
+  /** Bài mà đổi phiên bản thiếu `overviewPolicy` thì trả 409 `EXAM_OVERVIEW_CONFIRM`. */
+  private readonly overviewConfirm = new Set<string>();
   /** Mã gợi ý tùy biến theo truy vấn; mặc định `<KIND>-<F|P|S>-[SLUG-]<NNN>` số tiếp theo chưa dùng. */
   suggestCode: ((query: URLSearchParams, used: Set<string>) => string) | null = null;
 
@@ -384,6 +409,30 @@ export class ExamsBackend {
   /** Ghi kết quả kiểm tra gần nhất (GET/POST /check trả bản này nếu `checkReplies` rỗng). */
   seedCheck(examId: string, result: WireCheck): this {
     this.checks.set(examId, result);
+    return this;
+  }
+
+  /** Trạng thái môn và mã bài thi của `GET structure` (BE-5, R-24). */
+  seedStructureExtras(examId: string, extras: { sectionStates?: unknown[] | null; combinations?: unknown[] }): this {
+    this.structureExtras.set(examId, extras);
+    return this;
+  }
+
+  /** Cây tổng hợp như BE-5 trả: dòng phần mang `children` là dòng môn, dòng môn mang `children` là dòng nhóm. */
+  seedSummary(examId: string, rows: unknown[]): this {
+    this.summaries.set(examId, rows);
+    return this;
+  }
+
+  /** `GET structure/summary` của bài này trả 500: vùng (d) dùng số tính trên màn hình. */
+  failSummary(examId: string): this {
+    this.summaryFailures.add(examId);
+    return this;
+  }
+
+  /** Đổi phiên bản của bài này phải kèm `overviewPolicy`, nếu không 409 `EXAM_OVERVIEW_CONFIRM` (K8). */
+  requireOverviewConfirm(examId: string): this {
+    this.overviewConfirm.add(examId);
     return this;
   }
 
@@ -719,6 +768,10 @@ export class ExamsBackend {
       (exam.scope !== "PART" || template.partCode === exam.partCode) &&
       (exam.scope !== "SUBJECT" || template.subjectCode === exam.subjectCode);
     if (!template || !matches) return err(422, "EXAM_TEMPLATE_MISMATCH");
+    if (this.overviewConfirm.has(exam.id)) {
+      if (!body.overviewPolicy) return err(409, "EXAM_OVERVIEW_CONFIRM");
+      this.overviewConfirm.delete(exam.id);
+    }
     if (this.edits.has(exam.id) && body.confirmReplace !== true) return err(409, "EXAM_STRUCTURE_REPLACE_CONFIRM");
     this.edits.delete(exam.id);
     const request: ScopeRequest = { kind: exam.kind as ExamKind, scope: exam.scope as ExamScope, partCode: exam.partCode ?? null, subjectCode: exam.subjectCode ?? null };
@@ -868,9 +921,18 @@ export class ExamsBackend {
 
   private handlePreview(request: Recorded): Reply {
     const examId = request.url.pathname.split("/").at(-2)!;
-    const body = (request.body ?? {}) as { pathId?: string; subjectCodes?: string[] };
-    const pathId = body.pathId ?? "";
-    const withSubjects = body.subjectCodes?.length ? `${pathId}|${body.subjectCodes.join(",")}` : undefined;
+    const body = (request.body ?? {}) as {
+      target?: { kind?: string; pathId?: string; sectionId?: string; sectionQuestionCount?: number; subjectCodes?: string[] };
+    };
+    const target = body.target ?? {};
+    // Khóa xếp sẵn: đường (`pathId`, hoặc `pathId|MÔN1,MÔN2,MÔN3`), môn (`section:<id>[:<số câu>]`), cả bài (`default`).
+    const pathId =
+      target.kind === "SECTION"
+        ? `section:${target.sectionId}${target.sectionQuestionCount !== undefined ? `:${target.sectionQuestionCount}` : ""}`
+        : target.kind === "EXAM"
+          ? "default"
+          : (target.pathId ?? "");
+    const withSubjects = target.subjectCodes?.length ? `${pathId}|${target.subjectCodes.join(",")}` : undefined;
     const reply = (withSubjects && this.previews.get(`${examId}/${withSubjects}`)) || this.previews.get(`${examId}/${pathId}`);
     return reply ?? err(404, "PREVIEW_NOT_SEEDED");
   }
@@ -919,9 +981,18 @@ export class ExamsBackend {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);
         return exam === null ? err(404, "EXAM_NOT_FOUND") : this.versionsList(exam);
       })
+      .on("GET", `${exams}/:id/structure/summary`, (request) => {
+        const id = request.url.pathname.split("/").at(-3)!;
+        const exam = this.require(id);
+        if (exam === null) return err(404, "EXAM_NOT_FOUND");
+        if (this.summaryFailures.has(id)) return err(500, "INTERNAL_ERROR");
+        return { status: 200, body: { parts: this.summaries.get(id) ?? [] } };
+      })
       .on("GET", `${exams}/:id/structure`, (request) => {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);
-        return exam === null ? err(404, "EXAM_NOT_FOUND") : { status: 200, body: { examId: exam.id, revision: exam.revision, parts: exam.parts } };
+        return exam === null
+          ? err(404, "EXAM_NOT_FOUND")
+          : { status: 200, body: { examId: exam.id, revision: exam.revision, parts: exam.parts, ...this.structureExtras.get(exam.id) } };
       })
       .on("PUT", `${exams}/:id/structure`, (request) => {
         const exam = this.require(request.url.pathname.split("/").at(-2)!);

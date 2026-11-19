@@ -1,6 +1,9 @@
 package vn.unicom.thi360.exam.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -19,13 +22,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import vn.unicom.thi360.exam.application.ExamCheckUnitStates;
+import vn.unicom.thi360.exam.application.ExamCheckUnitSummary;
 import vn.unicom.thi360.exam.application.ExamKindService;
 import vn.unicom.thi360.exam.application.ExamService;
 import vn.unicom.thi360.exam.application.ExamTemplateService;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.PageQuery;
+import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.security.RequirePermission;
+import vn.unicom.thi360.shared.api.NotImplementedException;
 
 @Tag(name = "Exam", description = "Bài thi, cấu trúc và mẫu")
 @RestController
@@ -36,11 +43,14 @@ public class ExamAdminController {
     private final ExamService exams;
     private final ExamKindService kinds;
     private final ExamTemplateService templates;
+    private final ExamCheckUnitStates checkStates;
 
-    public ExamAdminController(ExamService exams, ExamKindService kinds, ExamTemplateService templates) {
+    public ExamAdminController(ExamService exams, ExamKindService kinds, ExamTemplateService templates,
+            ExamCheckUnitStates checkStates) {
         this.exams = exams;
         this.kinds = kinds;
         this.templates = templates;
+        this.checkStates = checkStates;
     }
 
     @GetMapping("/exam-kinds")
@@ -121,7 +131,24 @@ public class ExamAdminController {
     @RequirePermission(Permissions.EXAM_VIEW)
     @Operation(summary = "Đọc cấu trúc bản làm việc")
     public ExamStructureResponse structure(@PathVariable UUID id) {
-        return exams.getExamStructure(id);
+        var structure = exams.getExamStructure(id);
+        return new ExamStructureResponse(structure.examId(), structure.parts(), structure.revision(),
+                structure.examQuotas(), structure.combinations(), checkStates.states(id));
+    }
+
+    @GetMapping("/exams/{id}/structure/summary")
+    @RequirePermission(Permissions.EXAM_VIEW)
+    @Operation(summary = "Tổng hợp cấu trúc bài thi")
+    public ExamStructureSummaryResponse structureSummary(@PathVariable UUID id) {
+        return ExamCheckUnitSummary.summarize(exams.getExamStructure(id));
+    }
+
+    @PutMapping("/exams/{id}/overview")
+    @RequirePermission(Permissions.EXAM_MODIFY)
+    @Operation(summary = "Cập nhật tổng quan bài thi")
+    public ExamDetailResponse updateOverview(@PathVariable UUID id,
+            @Valid @RequestBody ExamOverviewRequest request) {
+        return exams.updateOverview(id, request);
     }
 
     @PutMapping("/exams/{id}/structure")
@@ -136,6 +163,8 @@ public class ExamAdminController {
     @PostMapping("/exams/{id}/structure/template")
     @RequirePermission(Permissions.EXAM_MODIFY)
     @Operation(summary = "Nạp mẫu cấu trúc")
+    @ApiResponse(responseCode = "409", description = "EXAM_STRUCTURE_REPLACE_CONFIRM or EXAM_OVERVIEW_CONFIRM",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     public ExamDetailResponse loadTemplate(@PathVariable UUID id,
             @Valid @RequestBody LoadExamTemplateRequest request) {
         exams.loadTemplate(id, request);

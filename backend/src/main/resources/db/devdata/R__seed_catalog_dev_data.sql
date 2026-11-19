@@ -2,6 +2,13 @@
 -- All sample values have is_system = false so admins can edit/delete them.
 -- Descriptions of QUESTION_FORMAT, TASK_TYPE, SUBJECT_COMBINATION, and KNOWLEDGE start with "[MẪU]".
 
+-- Retire old sample codes without deleting their versions or references.
+UPDATE catalog.catalog_item
+SET status = 2
+WHERE group_id = '00000000-0000-7000-8100-000000000007'
+  AND code_normalized IN ('qda_qd01', 'qda_qd02', 'qda_qd03', 'qda_qd04', 'qda_qd05', 'kh-1', 'kh-2', 'kh-3')
+  AND status <> 2;
+
 -- 1. EXAM (HSA, QDA)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 VALUES
@@ -57,15 +64,6 @@ VALUES
     ('00000000-0000-7000-8200-000000000602', '00000000-0000-7000-8100-000000000006', 'CLUSTER', 'cluster', 2, 'Câu chùm', 'Question cluster', '[MẪU] Nhóm câu hỏi dùng chung ngữ liệu', 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000602/')
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
--- 7. SUBJECT_COMBINATION (QDA_QD01..QDA_QD05, plain catalog_item rows; combination_version belongs to T14)
-INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
-VALUES
-    ('00000000-0000-7000-8200-000000000701', '00000000-0000-7000-8100-000000000007', 'QDA_QD01', 'qda_qd01', 1, 'QĐ01', 'QD01', '[MẪU] Tổ hợp giả định gồm Toán, Ngữ văn, Tiếng Anh', 0, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000701/'),
-    ('00000000-0000-7000-8200-000000000702', '00000000-0000-7000-8100-000000000007', 'QDA_QD02', 'qda_qd02', 2, 'QĐ02', 'QD02', '[MẪU] Tổ hợp giả định gồm Toán, Vật lí, Hóa học', 1, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000702/'),
-    ('00000000-0000-7000-8200-000000000703', '00000000-0000-7000-8100-000000000007', 'QDA_QD03', 'qda_qd03', 3, 'QĐ03', 'QD03', '[MẪU] Tổ hợp giả định gồm Toán, Hóa học, Sinh học', 2, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000703/'),
-    ('00000000-0000-7000-8200-000000000704', '00000000-0000-7000-8100-000000000007', 'QDA_QD04', 'qda_qd04', 4, 'QĐ04', 'QD04', '[MẪU] Tổ hợp giả định gồm Ngữ văn, Lịch sử, Địa lí', 3, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000704/'),
-    ('00000000-0000-7000-8200-000000000705', '00000000-0000-7000-8100-000000000007', 'QDA_QD05', 'qda_qd05', 5, 'QĐ05', 'QD05', '[MẪU] Tổ hợp giả định gồm Toán, Vật lí, Tiếng Anh', 4, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000000705/')
-ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- 8. KNOWLEDGE (TREE: 3 chapters 0D1/0D2/0D3; 0D1 has 3 lessons + 14 leaves; 0D2 & 0D3 each have 2 lessons x 3 leaves = 6 leaves)
 -- Chapters (depth 1)
@@ -144,34 +142,6 @@ SET last_value = GREATEST(
     COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)
 );
 
--- Seed combination_version and combination_subject for QDA_QD01..QDA_QD05 (T14)
-INSERT INTO catalog.combination_version (id, item_id, version_no, exam_item_id, source_note, is_current)
-VALUES
-    ('00000000-0000-7000-8300-000000000701', '00000000-0000-7000-8200-000000000701', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp giả định', true),
-    ('00000000-0000-7000-8300-000000000702', '00000000-0000-7000-8200-000000000702', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp giả định', true),
-    ('00000000-0000-7000-8300-000000000703', '00000000-0000-7000-8200-000000000703', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp giả định', true),
-    ('00000000-0000-7000-8300-000000000704', '00000000-0000-7000-8200-000000000704', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp giả định', true),
-    ('00000000-0000-7000-8300-000000000705', '00000000-0000-7000-8200-000000000705', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp giả định', true)
-ON CONFLICT (item_id, version_no) DO NOTHING;
-
-INSERT INTO catalog.combination_subject (combination_version_id, subject_item_id, position)
-VALUES
-    ('00000000-0000-7000-8300-000000000701', '00000000-0000-7000-8200-000000000201', 0),
-    ('00000000-0000-7000-8300-000000000701', '00000000-0000-7000-8200-000000000202', 1),
-    ('00000000-0000-7000-8300-000000000701', '00000000-0000-7000-8200-000000000203', 2),
-    ('00000000-0000-7000-8300-000000000702', '00000000-0000-7000-8200-000000000201', 0),
-    ('00000000-0000-7000-8300-000000000702', '00000000-0000-7000-8200-000000000204', 1),
-    ('00000000-0000-7000-8300-000000000702', '00000000-0000-7000-8200-000000000205', 2),
-    ('00000000-0000-7000-8300-000000000703', '00000000-0000-7000-8200-000000000201', 0),
-    ('00000000-0000-7000-8300-000000000703', '00000000-0000-7000-8200-000000000205', 1),
-    ('00000000-0000-7000-8300-000000000703', '00000000-0000-7000-8200-000000000206', 2),
-    ('00000000-0000-7000-8300-000000000704', '00000000-0000-7000-8200-000000000202', 0),
-    ('00000000-0000-7000-8300-000000000704', '00000000-0000-7000-8200-000000000207', 1),
-    ('00000000-0000-7000-8300-000000000704', '00000000-0000-7000-8200-000000000208', 2),
-    ('00000000-0000-7000-8300-000000000705', '00000000-0000-7000-8200-000000000201', 0),
-    ('00000000-0000-7000-8300-000000000705', '00000000-0000-7000-8200-000000000204', 1),
-    ('00000000-0000-7000-8300-000000000705', '00000000-0000-7000-8200-000000000203', 2)
-ON CONFLICT (combination_version_id, subject_item_id) DO NOTHING;
 
 -- ===================== Đợt 2 (BE-1, UNI-2607): dữ liệu mẫu PBI-03/04 =====================
 
@@ -183,6 +153,33 @@ VALUES
     ('00000000-0000-7000-8400-000000000105', '00000000-0000-7000-8100-000000000001', 'SPT', 'spt', 5, 'Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)', 'HNUE competency assessment (SPT)', NULL, 4, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000105/'),
     ('00000000-0000-7000-8400-000000000106', '00000000-0000-7000-8100-000000000001', 'SP2E', 'sp2e', 6, 'Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)', 'HNUE2 competency assessment (SP2E)', NULL, 5, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000106/'),
     ('00000000-0000-7000-8400-000000000107', '00000000-0000-7000-8100-000000000001', 'THPTQG', 'thptqg', 7, 'Tốt nghiệp THPT (THPTQG)', 'National high school graduation exam (THPTQG)', NULL, 6, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000107/')
+ON CONFLICT (group_id, code_normalized) DO NOTHING;
+
+-- 9b. EXAM: H-SCA, V-SAT (UNI-2688, spec H36). Tên viết tắt theo ghi chú BA, chưa có tên đầy đủ chính thức.
+-- `value` cấp trên mốc cao nhất của nhóm (kể cả mục quản trị đã tạo sau bảy kỳ đầu) và không cấp lại khi chạy lại;
+-- mục đã có cùng mã giữ nguyên id, value của nó. Mục đã đổi mã (PATCH cho phép) vẫn chiếm id seed nên bỏ qua
+-- theo id giống bảy kỳ thi đầu, tránh đụng khóa chính; giữ nguyên mã và value mới của nó.
+WITH seed(ordinal, code, name_vi, name_en, id) AS (
+    VALUES
+      (1, 'HSCA', 'Đánh giá năng lực H-SCA', 'H-SCA assessment', '00000000-0000-7000-8400-000000000108'::uuid),
+      (2, 'VSAT', 'Đánh giá năng lực V-SAT', 'V-SAT assessment', '00000000-0000-7000-8400-000000000109'::uuid)
+), missing AS (
+    SELECT s.*, row_number() OVER (ORDER BY s.ordinal) AS allocation
+    FROM seed s
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = '00000000-0000-7000-8100-000000000001'
+          AND i.code_normalized = lower(s.code)
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i WHERE i.id = s.id
+    )
+)
+INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
+SELECT m.id, g.id, m.code, lower(m.code),
+       GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+       m.name_vi, m.name_en, NULL, 6 + m.ordinal, 1, false, NULL, 1, '/' || m.id::text || '/'
+FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000001'
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- Chuẩn lại tên hai kỳ đã seed ở đợt 1 theo spec mục 6
@@ -219,61 +216,77 @@ VALUES
     ('00000000-0000-7000-8400-000000000508', '00000000-0000-7000-8100-000000000005', 'ESSAY', 'essay', 8, 'Tự luận', 'Essay', '[MẪU] Dạng câu hỏi tự luận', 7, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000508/')
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
--- 13. SUBJECT_COMBINATION: KH-1..3 (HSA), QD01..04 (QDA), CA1..4 (BCA)
-INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
+-- 13. SUBJECT_COMBINATION: QD01..QD05 (QDA), CA1..4 (BCA)
+WITH seed(id, group_id, code, code_normalized, seed_value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path) AS (
 VALUES
-    ('00000000-0000-7000-8400-000000000706', '00000000-0000-7000-8100-000000000007', 'KH-1', 'kh-1', 6, 'Vật lí – Hóa học – Sinh học', 'Physics – Chemistry – Biology', '[MẪU] Tổ hợp khoa học tự nhiên KH-1 (HSA)', 0, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000706/'),
-    ('00000000-0000-7000-8400-000000000707', '00000000-0000-7000-8100-000000000007', 'KH-2', 'kh-2', 7, 'Vật lí – Hóa học – Lịch sử', 'Physics – Chemistry – History', '[MẪU] Tổ hợp khoa học KH-2 (HSA)', 1, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000707/'),
-    ('00000000-0000-7000-8400-000000000708', '00000000-0000-7000-8100-000000000007', 'KH-3', 'kh-3', 8, 'Lịch sử – Địa lí – Sinh học', 'History – Geography – Biology', '[MẪU] Tổ hợp khoa học xã hội KH-3 (HSA)', 2, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000708/'),
-    ('00000000-0000-7000-8400-000000000709', '00000000-0000-7000-8100-000000000007', 'QD01', 'qd01', 9, 'QĐ01 · Vật lí – Hóa học', 'QD01 · Physics – Chemistry', '[MẪU] Tổ hợp QĐ01 (QDA)', 3, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000709/'),
-    ('00000000-0000-7000-8400-000000000710', '00000000-0000-7000-8100-000000000007', 'QD02', 'qd02', 10, 'QĐ02 · Hóa học – Sinh học', 'QD02 · Chemistry – Biology', '[MẪU] Tổ hợp QĐ02 (QDA)', 4, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000710/'),
-    ('00000000-0000-7000-8400-000000000711', '00000000-0000-7000-8100-000000000007', 'QD03', 'qd03', 11, 'QĐ03 · Vật lí – Sinh học', 'QD03 · Physics – Biology', '[MẪU] Tổ hợp QĐ03 (QDA)', 5, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000711/'),
-    ('00000000-0000-7000-8400-000000000712', '00000000-0000-7000-8100-000000000007', 'QD04', 'qd04', 12, 'QĐ04 · Lịch sử – Địa lí', 'QD04 · History – Geography', '[MẪU] Tổ hợp QĐ04 (QDA)', 6, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000712/'),
-    ('00000000-0000-7000-8400-000000000713', '00000000-0000-7000-8100-000000000007', 'CA1', 'ca1', 13, 'CA1 · Vật lí', 'CA1 · Physics', '[MẪU] Tổ hợp CA1 (BCA)', 7, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000713/'),
-    ('00000000-0000-7000-8400-000000000714', '00000000-0000-7000-8100-000000000007', 'CA2', 'ca2', 14, 'CA2 · Hóa học', 'CA2 · Chemistry', '[MẪU] Tổ hợp CA2 (BCA)', 8, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000714/'),
-    ('00000000-0000-7000-8400-000000000715', '00000000-0000-7000-8100-000000000007', 'CA3', 'ca3', 15, 'CA3 · Sinh học', 'CA3 · Biology', '[MẪU] Tổ hợp CA3 (BCA)', 9, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000715/'),
-    ('00000000-0000-7000-8400-000000000716', '00000000-0000-7000-8100-000000000007', 'CA4', 'ca4', 16, 'CA4 · Địa lí', 'CA4 · Geography', '[MẪU] Tổ hợp CA4 (BCA)', 10, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000716/')
+    ('00000000-0000-7000-8400-000000000709', '00000000-0000-7000-8100-000000000007', 'QD01', 'qd01', 9, 'QĐ01 · Vật lí – Hóa học', 'QD01 · Physics – Chemistry', '[MẪU] Tổ hợp QĐ01 (QDA)', 0, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000709/'),
+    ('00000000-0000-7000-8400-000000000710', '00000000-0000-7000-8100-000000000007', 'QD02', 'qd02', 10, 'QĐ02 · Hóa học – Sinh học', 'QD02 · Chemistry – Biology', '[MẪU] Tổ hợp QĐ02 (QDA)', 1, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000710/'),
+    ('00000000-0000-7000-8400-000000000711', '00000000-0000-7000-8100-000000000007', 'QD03', 'qd03', 11, 'QĐ03 · Vật lí – Sinh học', 'QD03 · Physics – Biology', '[MẪU] Tổ hợp QĐ03 (QDA)', 2, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000711/'),
+    ('00000000-0000-7000-8400-000000000712', '00000000-0000-7000-8100-000000000007', 'QD04', 'qd04', 12, 'QĐ04 · Lịch sử – Địa lí', 'QD04 · History – Geography', '[MẪU] Tổ hợp QĐ04 (QDA)', 3, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000712/'),
+    ('00000000-0000-7000-8400-000000000717', '00000000-0000-7000-8100-000000000007', 'QD05', 'qd05', 17, 'QĐ05 · Tiếng Anh', 'QD05 · English', '[MẪU] Tổ hợp QĐ05 (QDA)', 4, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000717/'),
+    ('00000000-0000-7000-8400-000000000713', '00000000-0000-7000-8100-000000000007', 'CA1', 'ca1', 13, 'CA1 · Vật lí', 'CA1 · Physics', '[MẪU] Tổ hợp CA1 (BCA)', 5, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000713/'),
+    ('00000000-0000-7000-8400-000000000714', '00000000-0000-7000-8100-000000000007', 'CA2', 'ca2', 14, 'CA2 · Hóa học', 'CA2 · Chemistry', '[MẪU] Tổ hợp CA2 (BCA)', 6, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000714/'),
+    ('00000000-0000-7000-8400-000000000715', '00000000-0000-7000-8100-000000000007', 'CA3', 'ca3', 15, 'CA3 · Sinh học', 'CA3 · Biology', '[MẪU] Tổ hợp CA3 (BCA)', 7, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000715/'),
+    ('00000000-0000-7000-8400-000000000716', '00000000-0000-7000-8100-000000000007', 'CA4', 'ca4', 16, 'CA4 · Địa lí', 'CA4 · Geography', '[MẪU] Tổ hợp CA4 (BCA)', 8, 1, false, NULL, 1, '/00000000-0000-7000-8400-000000000716/')
+), missing AS (
+    SELECT s.*, row_number() OVER (ORDER BY seed_value) AS allocation
+    FROM seed s
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = s.group_id::uuid AND i.code_normalized = s.code_normalized
+    )
+)
+INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
+SELECT m.id::uuid, m.group_id::uuid, m.code, m.code_normalized,
+       GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+       m.name_vi, m.name_en, m.description, m.display_order, m.status, m.is_system, m.parent_id::uuid, m.depth, m.path
+FROM missing m JOIN catalog.catalog_group g ON g.id = m.group_id::uuid
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
-INSERT INTO catalog.combination_version (id, item_id, version_no, exam_item_id, source_note, is_current)
-VALUES
-    ('00000000-0000-7000-8500-000000000706', '00000000-0000-7000-8400-000000000706', 1, '00000000-0000-7000-8200-000000000101', '[MẪU] Tổ hợp KH-1', true),
-    ('00000000-0000-7000-8500-000000000707', '00000000-0000-7000-8400-000000000707', 1, '00000000-0000-7000-8200-000000000101', '[MẪU] Tổ hợp KH-2', true),
-    ('00000000-0000-7000-8500-000000000708', '00000000-0000-7000-8400-000000000708', 1, '00000000-0000-7000-8200-000000000101', '[MẪU] Tổ hợp KH-3', true),
-    ('00000000-0000-7000-8500-000000000709', '00000000-0000-7000-8400-000000000709', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp QĐ01', true),
-    ('00000000-0000-7000-8500-000000000710', '00000000-0000-7000-8400-000000000710', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp QĐ02', true),
-    ('00000000-0000-7000-8500-000000000711', '00000000-0000-7000-8400-000000000711', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp QĐ03', true),
-    ('00000000-0000-7000-8500-000000000712', '00000000-0000-7000-8400-000000000712', 1, '00000000-0000-7000-8200-000000000102', '[MẪU] Tổ hợp QĐ04', true),
-    ('00000000-0000-7000-8500-000000000713', '00000000-0000-7000-8400-000000000713', 1, '00000000-0000-7000-8400-000000000103', '[MẪU] Tổ hợp CA1', true),
-    ('00000000-0000-7000-8500-000000000714', '00000000-0000-7000-8400-000000000714', 1, '00000000-0000-7000-8400-000000000103', '[MẪU] Tổ hợp CA2', true),
-    ('00000000-0000-7000-8500-000000000715', '00000000-0000-7000-8400-000000000715', 1, '00000000-0000-7000-8400-000000000103', '[MẪU] Tổ hợp CA3', true),
-    ('00000000-0000-7000-8500-000000000716', '00000000-0000-7000-8400-000000000716', 1, '00000000-0000-7000-8400-000000000103', '[MẪU] Tổ hợp CA4', true)
-ON CONFLICT (item_id, version_no) DO NOTHING;
+-- Resolve seeded combinations by code: existing items and versions can predate these UUIDs.
+WITH seed(code, version_id, exam_code, branch, source_note) AS (
+    VALUES
+      ('qd01', '00000000-0000-7000-8500-000000000709', 'qda', 'SCIENCE', '[MẪU] Tổ hợp QĐ01'),
+      ('qd02', '00000000-0000-7000-8500-000000000710', 'qda', 'SCIENCE', '[MẪU] Tổ hợp QĐ02'),
+      ('qd03', '00000000-0000-7000-8500-000000000711', 'qda', 'SCIENCE', '[MẪU] Tổ hợp QĐ03'),
+      ('qd04', '00000000-0000-7000-8500-000000000712', 'qda', 'SCIENCE', '[MẪU] Tổ hợp QĐ04'),
+      ('qd05', '00000000-0000-7000-8500-000000000717', 'qda', 'ENGLISH', '[MẪU] Tổ hợp QĐ05'),
+      ('ca1', '00000000-0000-7000-8500-000000000713', 'bca', 'SCIENCE', '[MẪU] Tổ hợp CA1'),
+      ('ca2', '00000000-0000-7000-8500-000000000714', 'bca', 'SCIENCE', '[MẪU] Tổ hợp CA2'),
+      ('ca3', '00000000-0000-7000-8500-000000000715', 'bca', 'SCIENCE', '[MẪU] Tổ hợp CA3'),
+      ('ca4', '00000000-0000-7000-8500-000000000716', 'bca', 'SCIENCE', '[MẪU] Tổ hợp CA4')
+)
+INSERT INTO catalog.combination_version (id, item_id, version_no, exam_item_id, branch, source_note, is_current)
+SELECT s.version_id::uuid, i.id, 1, e.id, s.branch, s.source_note, true
+FROM seed s
+JOIN catalog.catalog_item i ON i.group_id = '00000000-0000-7000-8100-000000000007' AND i.code_normalized = s.code
+JOIN catalog.catalog_item e ON e.group_id = '00000000-0000-7000-8100-000000000001' AND e.code_normalized = s.exam_code
+WHERE NOT EXISTS (SELECT 1 FROM catalog.combination_version v WHERE v.item_id = i.id)
+ON CONFLICT DO NOTHING;
 
+UPDATE catalog.combination_version v
+SET branch = CASE WHEN i.code_normalized = 'qd05' THEN 'ENGLISH' ELSE 'SCIENCE' END
+FROM catalog.catalog_item i
+WHERE v.item_id = i.id AND v.version_no = 1 AND v.is_current AND v.branch IS NULL
+  AND i.group_id = '00000000-0000-7000-8100-000000000007'
+  AND i.code_normalized IN ('qd01', 'qd02', 'qd03', 'qd04', 'qd05', 'ca1', 'ca2', 'ca3', 'ca4');
+
+WITH seed(code, subject_code, position) AS (
+    VALUES ('qd01', 'ly', 0), ('qd01', 'hoa', 1),
+           ('qd02', 'hoa', 0), ('qd02', 'sinh', 1),
+           ('qd03', 'ly', 0), ('qd03', 'sinh', 1),
+           ('qd04', 'su', 0), ('qd04', 'dia', 1),
+           ('qd05', 'anh', 0), ('ca1', 'ly', 0), ('ca2', 'hoa', 0),
+           ('ca3', 'sinh', 0), ('ca4', 'dia', 0)
+)
 INSERT INTO catalog.combination_subject (combination_version_id, subject_item_id, position)
-VALUES
-    ('00000000-0000-7000-8500-000000000706', '00000000-0000-7000-8200-000000000204', 0),
-    ('00000000-0000-7000-8500-000000000706', '00000000-0000-7000-8200-000000000205', 1),
-    ('00000000-0000-7000-8500-000000000706', '00000000-0000-7000-8200-000000000206', 2),
-    ('00000000-0000-7000-8500-000000000707', '00000000-0000-7000-8200-000000000204', 0),
-    ('00000000-0000-7000-8500-000000000707', '00000000-0000-7000-8200-000000000205', 1),
-    ('00000000-0000-7000-8500-000000000707', '00000000-0000-7000-8200-000000000207', 2),
-    ('00000000-0000-7000-8500-000000000708', '00000000-0000-7000-8200-000000000207', 0),
-    ('00000000-0000-7000-8500-000000000708', '00000000-0000-7000-8200-000000000208', 1),
-    ('00000000-0000-7000-8500-000000000708', '00000000-0000-7000-8200-000000000206', 2),
-    ('00000000-0000-7000-8500-000000000709', '00000000-0000-7000-8200-000000000204', 0),
-    ('00000000-0000-7000-8500-000000000709', '00000000-0000-7000-8200-000000000205', 1),
-    ('00000000-0000-7000-8500-000000000710', '00000000-0000-7000-8200-000000000205', 0),
-    ('00000000-0000-7000-8500-000000000710', '00000000-0000-7000-8200-000000000206', 1),
-    ('00000000-0000-7000-8500-000000000711', '00000000-0000-7000-8200-000000000204', 0),
-    ('00000000-0000-7000-8500-000000000711', '00000000-0000-7000-8200-000000000206', 1),
-    ('00000000-0000-7000-8500-000000000712', '00000000-0000-7000-8200-000000000207', 0),
-    ('00000000-0000-7000-8500-000000000712', '00000000-0000-7000-8200-000000000208', 1),
-    ('00000000-0000-7000-8500-000000000713', '00000000-0000-7000-8200-000000000204', 0),
-    ('00000000-0000-7000-8500-000000000714', '00000000-0000-7000-8200-000000000205', 0),
-    ('00000000-0000-7000-8500-000000000715', '00000000-0000-7000-8200-000000000206', 0),
-    ('00000000-0000-7000-8500-000000000716', '00000000-0000-7000-8200-000000000208', 0)
-ON CONFLICT (combination_version_id, subject_item_id) DO NOTHING;
+SELECT v.id, subject.id, s.position
+FROM seed s
+JOIN catalog.catalog_item i ON i.group_id = '00000000-0000-7000-8100-000000000007' AND i.code_normalized = s.code
+JOIN catalog.combination_version v ON v.item_id = i.id AND v.version_no = 1 AND v.is_current
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code_normalized = s.subject_code
+WHERE NOT EXISTS (SELECT 1 FROM catalog.combination_subject existing WHERE existing.combination_version_id = v.id)
+ON CONFLICT DO NOTHING;
 
 -- 14. COMPETENCY: 5 năng lực V-ACT (cây một cấp, nhóm hệ thống tạo bởi migration)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
@@ -299,6 +312,101 @@ VALUES
     ('00000000-0000-7000-8400-000000000905', '00000000-0000-7000-8400-000000000218'),
     ('00000000-0000-7000-8400-000000000905', '00000000-0000-7000-8400-000000000104')
 ON CONFLICT (item_id, ref_item_id) DO NOTHING;
+
+-- QUESTION_TAG codes use SUBJECT_CONCEPT (uppercase ASCII); names follow UniNote.
+-- Separate labels for distinct position-band names allow templates to filter each band.
+WITH tag_seed(value, code, name_vi) AS (
+    VALUES
+      (1, 'VAN_NGHI_LUAN_XA_HOI', 'Nghị luận xã hội'),
+      (2, 'VAN_THONG_TIN', 'Văn bản thông tin'),
+      (3, 'VAN_KHOA_HOC_CHINH_LUAN', 'Khoa học – chính luận'),
+      (4, 'VAN_THO', 'Đoạn trích thơ'),
+      (5, 'VAN_VAN_XUOI', 'Văn xuôi'),
+      (6, 'VAN_THONG_TIN_NGHI_LUAN', 'Văn bản thông tin – nghị luận'),
+      (7, 'VAN_NGHI_LUAN', 'Văn bản nghị luận'),
+      (8, 'VAN_THIEU_NHI', 'Văn bản về văn học thiếu nhi'),
+      (9, 'VAN_TRUYEN', 'Đoạn trích truyện'),
+      (10, 'VAN_KHOA_HOC', 'Văn bản khoa học'),
+      (11, 'VAN_TU_KHAC_NHOM', 'Chọn từ hoặc cụm từ không cùng nhóm nghĩa'),
+      (12, 'VAN_TU_SAI', 'Xác định từ hoặc cụm từ sai về ngữ pháp, ngữ nghĩa, logic hoặc phong cách'),
+      (13, 'VAN_CAP_TU_DIEN', 'Chọn cặp từ hoặc cụm từ thích hợp điền vào chỗ trống'),
+      (14, 'VAN_NGU_LIEU_MOT_CAU', 'Đọc một ngữ liệu, trả lời một câu hỏi'),
+      (15, 'ANH_HOAN_THANH_CAU', 'Hoàn thành câu'),
+      (16, 'ANH_DONG_NGHIA', 'Chọn từ đồng nghĩa'),
+      (17, 'ANH_TRAI_NGHIA', 'Chọn từ trái nghĩa'),
+      (18, 'ANH_VIET_LAI_CAU', 'Viết lại câu'),
+      (19, 'ANH_KET_HOP_CAU', 'Kết hợp hai câu'),
+      (20, 'ANH_HOI_THOAI', 'Hoàn thành hội thoại'),
+      (21, 'ANH_SAP_XEP_HOI_THOAI', 'Sắp xếp hội thoại'),
+      (22, 'ANH_DOC_DIEN', 'Đọc điền từ hoặc cụm từ'),
+      (23, 'ANH_DOC_HIEU_1', 'Đọc hiểu 1'),
+      (24, 'ANH_DOC_HIEU_2', 'Đọc hiểu 2'),
+      (25, 'ANH_TU_DUY_LOGIC', 'Tư duy logic và giải quyết vấn đề'),
+      (26, 'ANH_THONG_BAO', 'Đọc thông báo, biển báo'),
+      (27, 'ANH_SUY_LUAN', 'Suy luận và giải quyết tình huống'),
+      (28, 'ANH_DOC_DIEN_CAU', 'Đọc điền câu'),
+      (29, 'ANH_DIEN_TU', 'Đọc điền từ vào đoạn văn'),
+      (30, 'ANH_DIEN_CUM_CAU', 'Đọc điền cụm từ, mệnh đề hoặc câu vào đoạn văn'),
+      (31, 'ANH_GIAO_TIEP', 'Giao tiếp'),
+      (32, 'ANH_SAP_XEP_DOAN', 'Sắp xếp hội thoại hoặc đoạn văn'),
+      (33, 'ANH_PHAT_AM', 'Phát âm'),
+      (34, 'ANH_TRONG_AM', 'Trọng âm'),
+      (35, 'ANH_TU_VUNG_NGU_PHAP', 'Từ vựng – ngữ pháp'),
+      (36, 'ANH_DOC_HIEU', 'Đọc hiểu'),
+      (37, 'ANH_WORD_FORMATION', 'Word Formation'),
+      (38, 'TOAN_DU_LIEU_TONG_HOP', 'Dữ liệu tổng hợp'),
+      (39, 'SU_TU_LIEU_LICH_SU', 'Tư liệu lịch sử'),
+      (40, 'DIA_CAU_KY_NANG', 'Câu kỹ năng')
+), tags AS (
+    SELECT value, code, name_vi,
+           ('00000000-0000-7000-8601-' || lpad(value::text, 12, '0'))::uuid AS id
+    FROM tag_seed
+), missing AS (
+    SELECT t.*, row_number() OVER (ORDER BY t.value) AS allocation
+    FROM tags t
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = '00000000-0000-7000-8100-000000000008' AND i.code_normalized = lower(t.code)
+    )
+)
+INSERT INTO catalog.catalog_item
+    (id, group_id, code, code_normalized, value, name_vi, description, display_order, status, is_system, depth, path)
+SELECT m.id, g.id, m.code, lower(m.code),
+       GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+       m.name_vi, '[MẪU] Nhãn phân loại câu hỏi', m.value - 1, 1, false, 1, '/' || m.id::text || '/'
+FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000008'
+ON CONFLICT (group_id, code_normalized) DO NOTHING;
+
+-- D9 provisional codes: reconcile with R__seed_questionbank_dev_data.sql for BA review.
+WITH seed(ordinal, code, name_vi, name_en) AS (
+    VALUES
+      (41, 'ANH_PHAT_HIEN_LOI', 'Phát hiện lỗi sai', 'Error identification'),
+      (42, 'ANH_DIEN_DAT_TUONG_DUONG', 'Diễn đạt tương đương', 'Equivalent expression'),
+      (43, 'TD_SAP_XEP_DIEU_KIEN', 'Sắp xếp điều kiện', 'Conditional arrangement'),
+      (44, 'TD_XEP_HANG', 'Xếp hạng', 'Ranking'),
+      (45, 'TD_BANG_SO_LIEU', 'Bảng số liệu', 'Data table'),
+      (46, 'TD_BIEU_DO', 'Biểu đồ', 'Chart'),
+      -- Q-45 (UNI-2687): hai nhãn Địa lí cho V-SAT Phần II, tạm thời đến khi BA xác nhận mã.
+      (47, 'DIA_BANG_SO_LIEU', 'Địa lí · Bảng số liệu', 'Geography · Data table'),
+      (48, 'DIA_BIEU_DO', 'Địa lí · Biểu đồ', 'Geography · Chart')
+), missing AS (
+    SELECT s.*, row_number() OVER (ORDER BY ordinal) AS allocation,
+           ('00000000-0000-7000-8601-' || lpad(s.ordinal::text, 12, '0'))::uuid AS id
+    FROM seed s
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog.catalog_item i
+        WHERE i.group_id = '00000000-0000-7000-8100-000000000008'
+          AND i.code_normalized = lower(s.code)
+    )
+)
+INSERT INTO catalog.catalog_item
+        (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, depth, path)
+    SELECT m.id, g.id, m.code, lower(m.code),
+           GREATEST(g.last_value, COALESCE((SELECT MAX(i.value) FROM catalog.catalog_item i WHERE i.group_id = g.id), 0)) + m.allocation,
+           m.name_vi, m.name_en, '[MẪU] Nhãn phân loại câu hỏi', m.ordinal - 1, 1, false, 1,
+           '/' || m.id::text || '/'
+FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000008'
+ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
 -- Sync lại last_value cho mọi nhóm sau khi seed đợt 2
 UPDATE catalog.catalog_group g

@@ -45,6 +45,7 @@ import {
   type CatalogGroupResponse,
   type CatalogItemResponse,
   type CatalogStatus,
+  type CombinationBranch,
   type CreateCatalogItemRequest,
   type UpdateCatalogItemRequest,
 } from "../api";
@@ -53,8 +54,11 @@ import { createCombinationFormSchema, type CombinationFormValues } from "../sche
 import { DRAG_HANDLE, focusRing } from "../styles";
 import { usePrefersReducedMotion } from "../use-reduced-motion";
 import {
+  COMBINATION_BRANCHES,
   getCatalogErrorCode,
   getCatalogFieldErrors,
+  isCombinationBranch,
+  NO_BRANCH_VALUE,
   pickName,
   resolveCatalogErrorMessage,
   resolveCatalogUsageTypeKey,
@@ -182,6 +186,9 @@ function CombinationFormBody({
 
   const initialCombo = mode === "edit" ? item?.combination : undefined;
   const initialExamId = initialCombo?.examItemId ?? "";
+  const initialBranch: "NONE" | CombinationBranch = isCombinationBranch(initialCombo?.branch)
+    ? initialCombo.branch
+    : NO_BRANCH_VALUE;
   const initialSubjectIds = useMemo(
     () =>
       initialCombo
@@ -230,6 +237,7 @@ function CombinationFormBody({
             status: item.status,
             examItemId: initialExamId,
             subjectItemIds: initialSubjectIds,
+            branch: initialBranch,
             sourceNote: initialCombo?.sourceNote ?? "",
             description: item.description ?? "",
             reason: "",
@@ -242,6 +250,7 @@ function CombinationFormBody({
             status: "ACTIVE",
             examItemId: "",
             subjectItemIds: [],
+            branch: NO_BRANCH_VALUE,
             sourceNote: "",
             description: "",
             reason: "",
@@ -251,21 +260,21 @@ function CombinationFormBody({
   const watchedStatus = useWatch({ control, name: "status" });
   const watchedExamId = useWatch({ control, name: "examItemId" });
   const watchedSubjectIds = useWatch({ control, name: "subjectItemIds" });
+  const watchedBranch = useWatch({ control, name: "branch" });
 
   const showReason = mode === "edit" && item?.status === "ACTIVE" && watchedStatus === "INACTIVE";
   const stopBlocked =
     showReason &&
     (usagesQuery.isPending || usagesQuery.isError || Boolean(usagesQuery.data?.blocking));
 
-  const compositionChanged =
+  const willCreateNewVersion =
     mode === "edit" &&
-    (watchedExamId !== initialExamId ||
+    (watchedBranch !== initialBranch ||
+      watchedExamId !== initialExamId ||
       watchedSubjectIds.length !== initialSubjectIds.length ||
-      watchedSubjectIds.some((id, index) => id !== initialSubjectIds[index]));
+      !watchedSubjectIds.every((id, index) => id === initialSubjectIds[index]));
 
   const currentVersionNo = initialCombo?.versionNo ?? 1;
-  const isReferenced = (usagesQuery.data?.totalCount ?? 0) > 0;
-  const willCreateNewVersion = mode === "edit" && compositionChanged && isReferenced;
 
   const examOptions = useMemo(() => {
     const active = (examsQuery.data ?? []).map((opt) => ({
@@ -328,6 +337,14 @@ function CombinationFormBody({
     () => [
       { value: "ACTIVE" satisfies CatalogStatus, label: t("statuses.ACTIVE") },
       { value: "INACTIVE" satisfies CatalogStatus, label: t("statuses.INACTIVE") },
+    ],
+    [t],
+  );
+
+  const branchOptions = useMemo(
+    () => [
+      { value: NO_BRANCH_VALUE, label: t("combinationDialog.branchNone") },
+      ...COMBINATION_BRANCHES.map((code) => ({ value: code, label: t(`branches.${code}`) })),
     ],
     [t],
   );
@@ -406,6 +423,7 @@ function CombinationFormBody({
             status: values.status,
             examItemId: values.examItemId,
             subjectItemIds: values.subjectItemIds,
+            ...(values.branch !== NO_BRANCH_VALUE ? { branch: values.branch } : {}),
             ...(trimmedSourceNote ? { sourceNote: trimmedSourceNote } : {}),
           },
         });
@@ -418,6 +436,7 @@ function CombinationFormBody({
             status: "ACTIVE",
             examItemId: "",
             subjectItemIds: [],
+            branch: NO_BRANCH_VALUE,
             sourceNote: "",
             description: "",
             reason: "",
@@ -438,6 +457,7 @@ function CombinationFormBody({
             ...(showReason ? { reason: trimmedReason } : {}),
             examItemId: values.examItemId,
             subjectItemIds: values.subjectItemIds,
+            branch: values.branch === NO_BRANCH_VALUE ? null : values.branch,
             sourceNote: trimmedSourceNote,
             version: item.version,
           },
@@ -472,6 +492,7 @@ function CombinationFormBody({
           fe.field === "status" ||
           fe.field === "examItemId" ||
           fe.field === "subjectItemIds" ||
+          fe.field === "branch" ||
           fe.field === "sourceNote" ||
           fe.field === "description" ||
           fe.field === "reason"
@@ -735,19 +756,45 @@ function CombinationFormBody({
         )}
       </fieldset>
 
-      <FormField
-        label={t("combinationDialog.sourceNoteLabel")}
-        error={errors.sourceNote?.message}
-      >
-        {(fieldProps) => (
-          <Input
-            {...fieldProps}
-            {...register("sourceNote")}
-            placeholder={t("combinationDialog.sourceNotePlaceholder")}
-            disabled={isSubmitting}
-          />
-        )}
-      </FormField>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FormField
+          label={t("combinationDialog.branchLabel")}
+          error={errors.branch?.message}
+          hint={t("combinationDialog.branchHint")}
+        >
+          {(fieldProps) => (
+            <Controller
+              control={control}
+              name="branch"
+              render={({ field }) => (
+                <Select
+                  id={fieldProps.id}
+                  aria-invalid={fieldProps["aria-invalid"]}
+                  aria-describedby={fieldProps["aria-describedby"]}
+                  options={branchOptions}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+          )}
+        </FormField>
+
+        <FormField
+          label={t("combinationDialog.sourceNoteLabel")}
+          error={errors.sourceNote?.message}
+        >
+          {(fieldProps) => (
+            <Input
+              {...fieldProps}
+              {...register("sourceNote")}
+              placeholder={t("combinationDialog.sourceNotePlaceholder")}
+              disabled={isSubmitting}
+            />
+          )}
+        </FormField>
+      </div>
 
       {showReason && (
         <>
@@ -826,7 +873,7 @@ function CombinationFormBody({
         )}
       </FormField>
 
-      {willCreateNewVersion ? (
+      {willCreateNewVersion && (
         <div
           role="note"
           className="flex items-start gap-2.5 rounded-md border border-warning bg-warning-bg px-3.5 py-2.5 text-field-label text-warning"
@@ -839,14 +886,6 @@ function CombinationFormBody({
             })}
           </span>
         </div>
-      ) : (
-        mode === "edit" &&
-        compositionChanged &&
-        !usagesQuery.isPending && (
-          <p className="rounded-md border border-border bg-page px-3.5 py-2.5 text-field-label text-text-secondary">
-            {t("combinationDialog.inPlaceVersionHint", { version: currentVersionNo })}
-          </p>
-        )
       )}
 
       <DialogFooter className="flex-wrap pt-1">

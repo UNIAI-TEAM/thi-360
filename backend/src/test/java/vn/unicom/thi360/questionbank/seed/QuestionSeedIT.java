@@ -34,6 +34,7 @@ class QuestionSeedIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired DataSource dataSource;
     @Autowired ObjectMapper mapper;
+    @Autowired QuestionAssetResolver assetResolver;
 
     @Test
     void hsaCellsAtLeastDouble() {
@@ -77,12 +78,12 @@ class QuestionSeedIT extends AbstractIntegrationTest {
         assertThat(rows.stream().map(row -> row.get("type")).distinct()).hasSize(8);
         assertThat(rows.stream().map(row -> row.get("status")).distinct())
             .containsExactlyInAnyOrder("DRAFT", "READY", "RETIRED");
-        QuestionAssetResolver assets = QuestionAssetResolver.none();
+        QuestionAssetResolver assets = assetResolver;
         QuestionHtmlSanitizer sanitizer = new QuestionHtmlSanitizer(assets);
         for (Map<String, Object> row : rows) {
             String code = (String) row.get("code");
             JsonNode json = mapper.readTree((String) row.get("snapshot"));
-            assertThat(json.findValues("shuffleOptions")).as(code).isEmpty();
+            assertOptionOrdering(json, code);
             QuestionSnapshot snapshot = mapper.treeToValue(json, QuestionSnapshot.class);
             QuestionBody body = snapshot.body();
             assertThat(body).as(code).isNotNull();
@@ -124,6 +125,16 @@ class QuestionSeedIT extends AbstractIntegrationTest {
                 }
             }
         }
+    }
+
+    private static void assertOptionOrdering(JsonNode node, String code) {
+        if (node.isObject() && node.has("shuffleOptions")) {
+            assertThat(code).startsWith("SEED-2B-ORDER-");
+            assertThat(node.path("type").asText()).isIn("SINGLE_CHOICE", "MULTIPLE_CHOICE");
+            assertThat(node.path("shuffleOptions").isBoolean()).isTrue();
+            assertThat(node.path("shuffleOptions").booleanValue()).isFalse();
+        }
+        node.elements().forEachRemaining(child -> assertOptionOrdering(child, code));
     }
 
     private static void assertCleanHtml(JsonNode node, QuestionHtmlSanitizer sanitizer) {

@@ -1,113 +1,190 @@
 "use client";
 
-import { Button, IconButton } from "@thi360/ui";
+import { Button, Checkbox, cn, focusRing, IconButton } from "@thi360/ui";
 import { CircleMinus, ListTree } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
 import type { KnowledgeScope } from "../types";
-import { ChoiceCardGroup } from "./create-exam-fields";
 
-const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [], match: "ANY" };
+const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [] };
 
 export interface KnowledgeScopeFieldProps {
-  /** Phạm vi riêng; `null` hoặc `nodeIds` rỗng: nhóm kế thừa phạm vi của môn, môn không giới hạn MAPID. */
+  /** Phạm vi riêng; `null` hoặc `nodeIds` rỗng: "Toàn môn" (nhóm kế thừa phạm vi của môn, môn không giới hạn MAPID). */
   value: KnowledgeScope | null;
   onChange: (scope: KnowledgeScope | null) => void;
   /**
    * Chỉ nhóm có: phạm vi của môn mà nhóm kế thừa khi nhóm chưa chọn nút nào (B9). Bỏ trống: môn, không có gì để kế thừa.
-   * Nút đã chọn khớp câu gắn nút đó hoặc nút con của nó (D23), nên không có công tắc "cấp dưới".
+   * Nút đã chọn khớp câu gắn nút đó hoặc nút con của nó (D23); câu khớp khi có ít nhất một mã đã chọn (2B 3.2).
    */
   inherited?: { scope: KnowledgeScope | null };
   reference: ContentReference | undefined;
   subjectCode: string;
-  /** Tên môn hoặc nhóm, cho tên nhóm radio và mô tả hộp chọn. */
+  /** Tên môn hoặc nhóm, cho mô tả hộp chọn. */
   name: string;
-  fieldId: string;
+  /** Mỏ neo của điều khiển đầu tiên (`data-field`), xem `block-form-fields.ts`. */
+  anchor?: string;
+  /** SP2E và SPT gọi lựa chọn thứ hai là "Theo mạch kiến thức" thay cho "Theo chủ đề". */
+  strand?: boolean;
+  /**
+   * Số tăng dần: mỗi lần tăng, trường chuyển sang "Theo chủ đề" và mở hộp chọn (menu "Thêm điều kiện" → MAPID).
+   * Mở hộp chọn không đổi `value` (R1-3): hủy giữ nguyên.
+   */
+  openRequest?: number;
+  /**
+   * Nhóm chùm và phạm vi của môn: ô "Mọi câu con thuộc chủ đề" (`knowledgeScope.everyChildInScope`). Chỉ hiện khi đã chọn
+   * MAPID ở "Theo chủ đề"; Toàn môn không có chủ đề nào để câu con thuộc về. Bỏ trống (nhóm câu đơn): không có ô.
+   */
+  everyChild?: { checked: boolean; onChange: (checked: boolean) => void; anchor?: string };
 }
 
 /**
- * Phạm vi MAPID của môn hoặc của nhóm lấy câu (spec 5.2): nhóm chưa chọn nút nào hiện "Theo phạm vi của môn"; môn và
- * nhóm cùng trống hiện "Không giới hạn MAPID". Phạm vi riêng của nhóm thay hẳn phạm vi của môn, không giao với nó.
- * Mở hộp chọn không đổi `value` (R1-3): hủy/Esc giữ nguyên kế thừa, chỉ áp dụng mới đặt phạm vi riêng.
+ * Phạm vi sau khi đặt lại danh sách MAPID: mọi đường làm rỗng `nodeIds` (chọn "Toàn môn", bỏ chip cuối, áp dụng hộp chọn
+ * với 0 mục) đi qua đây. Còn MAPID: giữ nguyên các khóa khác. Hết MAPID: giữ lọc năng lực (R1-4) và quy về `null` khi không
+ * còn gì. Cờ `everyChildInScope` khác nhau theo cấp: phạm vi của môn giữ cờ (đã đặt thì còn qua lưu và tải lại dù ô đang
+ * ẩn); phạm vi của nhóm (`blockLevel`) bỏ cờ, vì máy chủ coi mọi phạm vi nhóm khác `null` là ghi đè phạm vi của môn, nên
+ * `{ nodeIds: [], everyChildInScope }` làm nhóm mất kế thừa.
  */
-export function KnowledgeScopeField({ value, onChange, inherited, reference, subjectCode, name, fieldId }: KnowledgeScopeFieldProps) {
+function withNodeIds(scope: KnowledgeScope | null, nodeIds: string[], blockLevel: boolean): KnowledgeScope | null {
+  if (nodeIds.length > 0) return { ...(scope ?? EMPTY_SCOPE), nodeIds };
+  const kept: Omit<KnowledgeScope, "nodeIds"> = {
+    ...(scope?.competencyCodes?.length ? { competencyCodes: scope.competencyCodes } : {}),
+    ...(!blockLevel && scope?.everyChildInScope !== undefined ? { everyChildInScope: scope.everyChildInScope } : {}),
+  };
+  return Object.keys(kept).length > 0 ? { nodeIds: [], ...kept } : null;
+}
+
+/**
+ * Phạm vi kiến thức của môn hoặc của nhóm lấy câu (2B 15.3): hai lựa chọn "Toàn môn" và "Theo chủ đề". Toàn môn: nhóm
+ * dùng phạm vi của môn, môn không giới hạn MAPID. Theo chủ đề: chọn nhiều MAPID qua hộp chọn kiến thức (có tìm kiếm).
+ * Không có công tắc "khớp tất cả / khớp một": câu khớp khi có ít nhất một mã đã chọn.
+ */
+export function KnowledgeScopeField({
+  value,
+  onChange,
+  inherited,
+  reference,
+  subjectCode,
+  name,
+  anchor,
+  strand = false,
+  openRequest = 0,
+  everyChild,
+}: KnowledgeScopeFieldProps) {
+  const everyChildId = useId();
   const t = useTranslations("exams.scopeField");
+  const radioName = useId();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const hasOwn = (value?.nodeIds.length ?? 0) > 0;
+  // "Theo chủ đề" chưa chọn mã nào vẫn là một lựa chọn đang mở, nên cần nhớ riêng với `value`.
+  const [topicMode, setTopicMode] = useState(hasOwn);
+  const [lastRequest, setLastRequest] = useState(openRequest);
+  if (openRequest !== lastRequest) {
+    setLastRequest(openRequest);
+    setTopicMode(true);
+    setPickerOpen(true);
+  }
+  const topic = topicMode || hasOwn;
+
   const knowledgeIndex = useMemo(() => indexKnowledge(reference?.knowledgeTree ?? []), [reference]);
-  const refsOf = (scope: KnowledgeScope | null): KnowledgeRef[] =>
-    (scope?.nodeIds ?? []).map((nodeId) => {
-      const node = knowledgeIndex.get(nodeId)?.node;
-      return { nodeId, code: node?.code ?? nodeId, name: node?.name ?? "", primary: false };
-    });
-  const own = refsOf(value);
+  const own: KnowledgeRef[] = (value?.nodeIds ?? []).map((nodeId) => {
+    const node = knowledgeIndex.get(nodeId)?.node;
+    return { nodeId, code: node?.code ?? nodeId, name: node?.name ?? "", primary: false };
+  });
   const inheritedCount = inherited?.scope?.nodeIds.length ?? 0;
+  // Chỉ nhóm truyền `inherited` (phạm vi của môn mà nhóm kế thừa); môn không có.
+  const blockLevel = inherited !== undefined;
+
+  const choose = (nextTopic: boolean) => {
+    setTopicMode(nextTopic);
+    if (!nextTopic && hasOwn) onChange(withNodeIds(value, [], blockLevel));
+  };
+  const options = [
+    { key: "all", checked: !topic, label: t("all"), onSelect: () => choose(false) },
+    { key: "topic", checked: topic, label: t(strand ? "strand" : "topic"), onSelect: () => choose(true) },
+  ];
 
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
       <legend className="px-1 text-label font-semibold text-text">{t("legend")}</legend>
-      {value === null || value.nodeIds.length === 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="flex flex-col text-body">
-            {inherited ? (
-              <>
-                <span className="font-medium text-text">{t("inheritsSection")}</span>
-                <span className="text-caption text-text-muted">
-                  {inheritedCount > 0 ? t("inheritsCount", { count: inheritedCount }) : t("none")}
-                </span>
-              </>
-            ) : (
-              <span className="text-text-muted">{t("none")}</span>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option, index) => (
+          <label
+            key={option.key}
+            className={cn(
+              "flex min-h-10 cursor-pointer items-center gap-2.5 rounded-md border px-3.5 transition-colors duration-150 motion-reduce:transition-none",
+              option.checked ? "border-primary-text bg-primary-50" : "border-border bg-surface hover:border-border-strong",
             )}
-          </p>
+          >
+            <input
+              type="radio"
+              name={radioName}
+              checked={option.checked}
+              onChange={option.onSelect}
+              data-field={index === 0 ? anchor : undefined}
+              className={cn("size-4 shrink-0 accent-primary-fill", focusRing)}
+            />
+            <span className={cn("font-semibold", option.checked ? "text-primary-text" : "text-text")}>{option.label}</span>
+          </label>
+        ))}
+      </div>
+      {topic ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {own.length === 0 && <span className="text-body text-text-muted">{t("topicEmpty")}</span>}
+          {own.map((ref) => (
+            <span
+              key={ref.nodeId}
+              className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-subtle py-0.5 pr-0.5 pl-3 text-label text-text"
+            >
+              <span className="min-w-0 wrap-anywhere">
+                <span className="font-semibold">{ref.code}</span> {ref.name}
+              </span>
+              <IconButton
+                icon={<CircleMinus />}
+                className="size-8"
+                aria-label={t("remove", { code: ref.code, name: ref.name })}
+                onClick={() => onChange(withNodeIds(value, (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId), blockLevel))}
+              />
+            </span>
+          ))}
           <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
             <ListTree />
-            <span>{inherited ? t("setOwn") : t("pick")}</span>
+            <span>{t("pick")}</span>
           </Button>
+          <p className="basis-full text-caption text-text-muted">{t("topicHint")}</p>
+          {everyChild && own.length > 0 && (
+            <div className="flex basis-full items-start gap-2">
+              <Checkbox
+                id={everyChildId}
+                data-field={everyChild.anchor}
+                aria-describedby={`${everyChildId}-hint`}
+                checked={everyChild.checked}
+                onCheckedChange={(checked) => everyChild.onChange(checked === true)}
+              />
+              <div className="flex flex-col">
+                <label htmlFor={everyChildId} className="cursor-pointer text-body font-medium text-text">
+                  {t("everyChild")}
+                </label>
+                <span id={`${everyChildId}-hint`} className="text-caption text-text-muted">
+                  {t("everyChildHint")}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <>
-          <div className="flex flex-wrap items-center gap-2">
-            {own.map((ref) => (
-              <span
-                key={ref.nodeId}
-                className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-subtle py-0.5 pr-0.5 pl-3 text-label text-text"
-              >
-                <span className="min-w-0 wrap-anywhere">
-                  <span className="font-semibold">{ref.code}</span> {ref.name}
-                </span>
-                <IconButton
-                  icon={<CircleMinus />}
-                  className="size-8"
-                  aria-label={t("remove", { code: ref.code, name: ref.name })}
-                  onClick={() => onChange({ ...value, nodeIds: value.nodeIds.filter((id) => id !== ref.nodeId) })}
-                />
-              </span>
-            ))}
-            <Button type="button" variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
-              <ListTree />
-              <span>{t("pick")}</span>
-            </Button>
-            {inherited && (
-              <Button type="button" variant="link" size="sm" onClick={() => onChange(null)}>
-                {t("useSection")}
-              </Button>
-            )}
-          </div>
-          <ChoiceCardGroup
-            variant="pill"
-            legend={t("match")}
-            name={`${fieldId}-match`}
-            value={value.match}
-            onChange={(match) => onChange({ ...value, match })}
-            options={[
-              { value: "ANY", label: t("matchAny") },
-              { value: "ALL", label: t("matchAll") },
-            ]}
-          />
-        </>
+        <p className="flex flex-col text-body">
+          {inherited ? (
+            <>
+              <span className="font-medium text-text">{t("inheritsSection")}</span>
+              <span className="text-caption text-text-muted">{inheritedCount > 0 ? t("inheritsCount", { count: inheritedCount }) : t("none")}</span>
+            </>
+          ) : (
+            <span className="text-text-muted">{t("none")}</span>
+          )}
+        </p>
       )}
       <KnowledgePickerDialog
         open={pickerOpen}
@@ -118,7 +195,7 @@ export function KnowledgeScopeField({ value, onChange, inherited, reference, sub
         defaultSubjectCode={subjectCode}
         description={t("pickerDescription", { name })}
         onApply={(refs) => {
-          onChange({ ...(value ?? EMPTY_SCOPE), nodeIds: refs.map((ref) => ref.nodeId) });
+          onChange(withNodeIds(value, refs.map((ref) => ref.nodeId), blockLevel));
           setPickerOpen(false);
         }}
       />
