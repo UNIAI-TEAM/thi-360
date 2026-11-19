@@ -77,6 +77,20 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     expect(priceInput).toHaveValue("2749000");
     expect(priceInput.selectionStart).toBe(2);
   });
+  it("dòng phụ dưới ô giá hiện giá có dấu phân cách và đổi theo khi gõ", async () => {
+    listingServer().install();
+    const user = userEvent.setup();
+    renderListingTab();
+
+    const form = await screen.findByRole("form", { name: "Thông tin bán" });
+    const priceInput = await price();
+    await user.clear(priceInput);
+    await user.type(priceInput, "2490000");
+
+    const helper = within(form).getByText("2.490.000 đ");
+    expect(priceInput).toHaveValue("2490000");
+    expect(priceInput).toHaveAttribute("aria-describedby", expect.stringContaining(helper.id));
+  });
 
   it("ô giá: chọn hết rồi focus (thứ tự của fill) vẫn thay hẳn, kể cả dán đè và Ctrl+A gõ đè", async () => {
     listingServer().install();
@@ -388,6 +402,7 @@ describe("tab Thông tin bán: chỉ xem", () => {
     for (const box of within(form).getAllByRole("checkbox")) expect(box).toBeDisabled();
     for (const radio of within(form).getAllByRole("radio")) expect(radio).toBeDisabled();
     expect(within(form).getByRole("spinbutton", { name: /Số lượt/ })).toBeDisabled();
+    expect(within(form).getByText("249.000 đ")).toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument();
     expect(screen.queryByText("Đổi ảnh")).not.toBeInTheDocument();

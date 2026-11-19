@@ -14,6 +14,7 @@ import type { ExamDetail } from "../types";
 import {
   FORM_FIELD_OF,
   formValuesOf,
+  integerOf,
   LISTING_LIMITS,
   listingSchema,
   priceDigits,
@@ -57,11 +58,6 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
   });
   const cover = useCoverField(exam.id, listing.coverAssetId && listing.coverUrl ? { assetId: listing.coverAssetId, url: listing.coverUrl } : null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  /**
-   * Ô giá luôn giữ chữ số thô: đổi giá trị hiển thị lúc focus làm mất vùng chọn có sẵn (Playwright `fill()` chọn hết
-   * rồi mới focus nên số mới nối vào cuối; dán đè, Ctrl+A cũng vậy). Giá có dấu phân cách hiện ở thẻ xem trước.
-   */
-
   const schema = useMemo(
     () =>
       listingSchema({
@@ -190,26 +186,41 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
                 <Controller
                   control={control}
                   name="price"
-                  render={({ field }) => (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        {...controlProps}
-                        name={field.name}
-                        ref={field.ref}
-                        type="text"
-                        inputMode="numeric"
-                        autoComplete="off"
-                        disabled={disabled}
-                        className="text-right tabular-nums"
-                        value={field.value}
-                        onChange={(event) => field.onChange(priceDigits(event.target.value))}
-                        onBlur={field.onBlur}
-                      />
-                      <span aria-hidden className="text-text-secondary">
-                        {t("currency")}
-                      </span>
-                    </div>
-                  )}
+                  render={({ field }) => {
+                    const amountId = `${controlProps.id}-amount`;
+                    const amount = integerOf(field.value);
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          {/* Ô giá luôn giữ chữ số thô: đổi giá trị hiển thị lúc focus làm mất vùng chọn có sẵn (Playwright
+                              `fill()` chọn hết rồi mới focus nên số mới nối vào cuối; dán đè, Ctrl+A cũng vậy).
+                              Giá có dấu phân cách hiện ở dòng phụ ngay dưới và ở thẻ xem trước. */}
+                          <Input
+                            {...controlProps}
+                            aria-describedby={[controlProps["aria-describedby"], amount !== null ? amountId : ""].filter(Boolean).join(" ") || undefined}
+                            name={field.name}
+                            ref={field.ref}
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            disabled={disabled}
+                            className="text-right tabular-nums"
+                            value={field.value}
+                            onChange={(event) => field.onChange(priceDigits(event.target.value))}
+                            onBlur={field.onBlur}
+                          />
+                          <span aria-hidden className="text-text-secondary">
+                            {t("currency")}
+                          </span>
+                        </div>
+                        {amount !== null && (
+                          <p id={amountId} className="text-caption text-text-muted">
+                            {t("preview.money", { amount: format.number(amount) })}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }}
                 />
               )}
             </FormField>
