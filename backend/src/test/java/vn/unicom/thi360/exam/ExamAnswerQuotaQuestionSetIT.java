@@ -470,10 +470,9 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
 
     /**
      * The no-witness row must never size its work after the authored count: a flexible group that asks for
-     * Integer.MAX_VALUE children gets a normal shortage response, and a large count stays bounded by the
-     * eligible stock. The quota row must equal the section count or the row set is not rendered at all
-     * (COUNT quotas resolve only when they sum to the count), so the authored count itself is the required
-     * value. R4-1 / R4-3.
+     * Integer.MAX_VALUE children over an empty pool still gets a normal structured shortage with achieved 0.
+     * The quota row must equal the section count or the row set is not rendered at all (COUNT quotas resolve
+     * only when they sum to the count), so the authored count itself is the required value. R4-1 / R5-3.
      */
     @Test
     void anUnboundedFlexibleCountStillAnswersTheStructuredShortage() throws Exception {
@@ -492,7 +491,15 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
         JsonNode emptyRow = row(emptyAnswers, "answerType", "QUESTION_SET");
         assertThat(emptyRow.path("required").asInt()).isEqualTo(Integer.MAX_VALUE);
         assertThat(emptyRow.path("achieved").asInt(-1)).isEqualTo(0);
+    }
 
+    /**
+     * The same overflow-boundary authored count over real eligible stock: the row reports the children the
+     * pool can actually take, not the authored count and not zero, so an empty-pool shortcut alone cannot
+     * satisfy this case and the work stays bounded by the stock, not by Integer.MAX_VALUE. R4-1 / R5-4.
+     */
+    @Test
+    void anUnboundedFlexibleCountWithARealSetAnswersItsChildren() throws Exception {
         Subject sparse = subject();
         set(sparse, 3);
         UUID sparseExam = exam("""
@@ -500,14 +507,14 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
                   "questionCount":%2$d,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":%2$d}]},
                   "blocks":[
                     {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":%2$d,"childAnswerType":"SINGLE_CHOICE"}]}]}]
-                """.formatted(sparse.code(), 1_000_000), 1_000_000);
+                """.formatted(sparse.code(), Integer.MAX_VALUE), Integer.MAX_VALUE);
 
         JsonNode sparseResult = check(sparseExam);
         assertThat(sparseResult.path("status").asText()).as(sparseResult.toString()).isEqualTo("INVALID");
         JsonNode sparseAnswers = sparseResult.findValue("answerQuotas");
         assertThat(sparseAnswers).as(sparseResult.toString()).isNotNull();
         JsonNode sparseRow = row(sparseAnswers, "answerType", "QUESTION_SET");
-        assertThat(sparseRow.path("required").asInt()).isEqualTo(1_000_000);
+        assertThat(sparseRow.path("required").asInt()).isEqualTo(Integer.MAX_VALUE);
         assertThat(sparseRow.path("achieved").asInt(-1)).isEqualTo(3);
     }
 
