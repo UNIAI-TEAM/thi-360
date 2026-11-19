@@ -471,41 +471,43 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
     /**
      * The no-witness row must never size its work after the authored count: a flexible group that asks for
      * Integer.MAX_VALUE children gets a normal shortage response, and a large count stays bounded by the
-     * eligible stock. R4-1 / R4-3.
+     * eligible stock. The quota row must equal the section count or the row set is not rendered at all
+     * (COUNT quotas resolve only when they sum to the count), so the authored count itself is the required
+     * value. R4-1 / R4-3.
      */
     @Test
     void anUnboundedFlexibleCountStillAnswersTheStructuredShortage() throws Exception {
         Subject empty = subject();
         UUID emptyExam = exam("""
-                [{"id":"p","questionCount":8,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%s",
-                  "questionCount":8,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":3}]},
+                [{"id":"p","questionCount":%2$d,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%1$s",
+                  "questionCount":%2$d,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":%2$d}]},
                   "blocks":[
-                    {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":%d,"childAnswerType":"SINGLE_CHOICE"}]}]}]
-                """.formatted(empty.code(), Integer.MAX_VALUE), 8);
+                    {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":%2$d,"childAnswerType":"SINGLE_CHOICE"}]}]}]
+                """.formatted(empty.code(), Integer.MAX_VALUE), Integer.MAX_VALUE);
 
         JsonNode emptyResult = check(emptyExam);
         assertThat(emptyResult.path("status").asText()).as(emptyResult.toString()).isEqualTo("INVALID");
         JsonNode emptyAnswers = emptyResult.findValue("answerQuotas");
         assertThat(emptyAnswers).as(emptyResult.toString()).isNotNull();
         JsonNode emptyRow = row(emptyAnswers, "answerType", "QUESTION_SET");
-        assertThat(emptyRow.path("required").asInt()).isEqualTo(3);
+        assertThat(emptyRow.path("required").asInt()).isEqualTo(Integer.MAX_VALUE);
         assertThat(emptyRow.path("achieved").asInt(-1)).isEqualTo(0);
 
         Subject sparse = subject();
         set(sparse, 3);
         UUID sparseExam = exam("""
-                [{"id":"p","questionCount":8,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%s",
-                  "questionCount":8,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":3}]},
+                [{"id":"p","questionCount":%2$d,"participation":{"mode":"ALL"},"sections":[{"id":"s","subjectCode":"%1$s",
+                  "questionCount":%2$d,"answerQuotas":{"unit":"COUNT","items":[{"answerType":"QUESTION_SET","value":%2$d}]},
                   "blocks":[
-                    {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":%d,"childAnswerType":"SINGLE_CHOICE"}]}]}]
-                """.formatted(sparse.code(), 1_000_000), 8);
+                    {"id":"flex","name":"Flex","questionType":"QUESTION_SET","questionCount":%2$d,"childAnswerType":"SINGLE_CHOICE"}]}]}]
+                """.formatted(sparse.code(), 1_000_000), 1_000_000);
 
         JsonNode sparseResult = check(sparseExam);
         assertThat(sparseResult.path("status").asText()).as(sparseResult.toString()).isEqualTo("INVALID");
         JsonNode sparseAnswers = sparseResult.findValue("answerQuotas");
         assertThat(sparseAnswers).as(sparseResult.toString()).isNotNull();
         JsonNode sparseRow = row(sparseAnswers, "answerType", "QUESTION_SET");
-        assertThat(sparseRow.path("required").asInt()).isEqualTo(3);
+        assertThat(sparseRow.path("required").asInt()).isEqualTo(1_000_000);
         assertThat(sparseRow.path("achieved").asInt(-1)).isEqualTo(3);
     }
 
