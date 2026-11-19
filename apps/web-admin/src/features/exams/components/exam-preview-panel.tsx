@@ -208,6 +208,13 @@ export function ExamPreviewPanel({
     if (option.result === "UNCONFIRMED") return richNodes(t, "pathOptionUnconfirmed", { path: label });
     return label;
   };
+  /** Cùng nhãn nhưng là chữ thuần, để Radix gõ tìm trong danh sách (`SelectOption.textValue`). */
+  const optionText = (option: PathOption): string => {
+    const label = pathLabel(option.path);
+    if (option.result === "INVALID") return t("pathOptionInvalid", { path: label });
+    if (option.result === "UNCONFIRMED") return t("pathOptionUnconfirmed", { path: label });
+    return label;
+  };
 
   const data = generate.data;
   const shown = data?.status === "GENERATED" ? data : null;
@@ -371,7 +378,7 @@ export function ExamPreviewPanel({
                   value={pathId ?? undefined}
                   onValueChange={setSelected}
                   disabled={options.length === 0}
-                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option) }))}
+                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option), textValue: optionText(option) }))}
                 />
               )}
             </FormField>

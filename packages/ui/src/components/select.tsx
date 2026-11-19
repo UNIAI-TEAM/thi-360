@@ -6,8 +6,12 @@ import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { fieldBase } from "../lib/styles";
 
-/** `label` nhận nút React để bọc phần chữ là nội dung đề (`data-exam-content`); chữ thuần vẫn dùng như trước. */
-export type SelectOption = { value: string; label: ReactNode; disabled?: boolean };
+/**
+ * `label` nhận nút React để bọc phần chữ là nội dung đề (`data-exam-content`); chữ thuần vẫn dùng như trước.
+ * `textValue` là chữ mà Radix dùng để gõ tìm trong danh sách (mặc định: `label` nếu là chuỗi, còn không là chữ
+ * của `ItemText`); nhãn có nút không chữ nên truyền `textValue` để gõ tìm đúng.
+ */
+export type SelectOption = { value: string; label: ReactNode; disabled?: boolean; textValue?: string };
 
 export type SelectProps = {
   options: SelectOption[];
@@ -73,6 +77,7 @@ export function Select({
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
+                textValue={option.textValue ?? (typeof option.label === "string" ? option.label : undefined)}
                 className="relative flex h-9 cursor-default items-center rounded-sm pr-8 pl-3 text-label font-medium text-text outline-hidden select-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle data-[state=checked]:text-primary-text"
               >
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
