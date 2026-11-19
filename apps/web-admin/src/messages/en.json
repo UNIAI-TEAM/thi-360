@@ -5792,6 +5792,7 @@
           "GROUP_MISSING": "The selected group no longer exists. Choose the scope again.",
           "NO_NODES": "Pick at least one MAPID.",
           "ONLY_IN_GROUP_NEEDS_GROUP": "This rule only applies to one group. Choose a group.",
+          "PERCENT_DENOMINATOR_UNKNOWN": "The denominator is not known, so the percent cannot be converted. Enter the question counts of the subject and the other groups, or switch to entering a count.",
           "PERCENT_RANGE": "Percent must be between 0 and 100."
         },
         "nodeRemove": "Remove MAPID {code} {name}",
@@ -5815,6 +5816,7 @@
         },
         "size": {
           "remainder": "takes the remainder",
+          "remainderUnits": "takes the remainder = {units, number}/{total, number} questions",
           "sets": "{sets, number} set × {size, number} child questions = {units, number}/{total, number} questions",
           "setsNoTotal": "{sets, number} set × {size, number} child questions = {units, number} questions",
           "single": "{units, number}/{total, number} questions",

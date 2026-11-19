@@ -83,6 +83,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     const size = groupSize(view, block);
     const total = size.total;
     if (size.units === null) return t("size.remainder");
+    if (size.remainder) return total === null ? t("size.remainder") : t("size.remainderUnits", { units: size.units, total });
     if (size.sets !== null && size.size !== null) {
       return total === null
         ? t("size.setsNoTotal", { sets: size.sets, size: size.size, units: size.units })

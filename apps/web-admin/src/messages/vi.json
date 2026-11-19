@@ -5792,6 +5792,7 @@
           "GROUP_MISSING": "Nhóm đã chọn không còn. Chọn lại phạm vi áp dụng.",
           "NO_NODES": "Chọn ít nhất một MAPID.",
           "ONLY_IN_GROUP_NEEDS_GROUP": "Quy tắc này chỉ áp dụng cho một nhóm. Chọn một nhóm.",
+          "PERCENT_DENOMINATOR_UNKNOWN": "Chưa biết mẫu số nên chưa tính được tỷ lệ. Nhập số câu của môn và của các nhóm khác, hoặc chuyển sang nhập theo số câu.",
           "PERCENT_RANGE": "Tỷ lệ phải từ 0 đến 100."
         },
         "nodeRemove": "Bỏ MAPID {code} {name}",
@@ -5815,6 +5816,7 @@
         },
         "size": {
           "remainder": "lấy phần còn lại",
+          "remainderUnits": "lấy phần còn lại = {units, number}/{total, number} câu",
           "sets": "{sets, number} chùm × {size, number} câu con = {units, number}/{total, number} câu",
           "setsNoTotal": "{sets, number} chùm × {size, number} câu con = {units, number} câu",
           "single": "{units, number}/{total, number} câu",

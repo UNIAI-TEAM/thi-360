@@ -79,6 +79,20 @@ function withoutNodes(scope: QuestionBlock["knowledgeScope"]): QuestionBlock["kn
 }
 
 /**
+ * Phạm vi cũ của chùm lọc theo "mọi câu con thuộc hợp các MAPID" (`everyChildInScope`), hoặc lỏng hơn khi cờ tắt (chỉ cần một câu con
+ * hoặc cả bộ). SOURCE mới của máy chủ đòi mọi câu con cùng nằm dưới MỘT MAPID chung. Chỉ khi chùm có đúng một MAPID và đòi mọi câu
+ * con thì hai bên lọc như nhau (R1-3); còn lại chuyển sẽ đổi nguồn của đề, nên môn giữ kiểu cũ. Phạm vi tính theo `effectiveScope`:
+ * chùm chưa chọn MAPID kế thừa phạm vi của môn.
+ */
+function setSourcesUnchanged(section: ExamSection): boolean {
+  return section.blocks.every((block) => {
+    if (!isSetBlock(block)) return true;
+    const scope = effectiveScope(block, section);
+    return !scope || !hasNodes(scope) || (scope.nodeIds.length === 1 && scope.everyChildInScope === true);
+  });
+}
+
+/**
  * Môn HSA dùng ma trận còn dữ liệu kiểu cũ thì chuyển sang quy tắc khi mở (UNI-1704 v2): phạm vi MAPID của môn thành quy tắc
  * SOURCE cả môn; chỉ tiêu chủ đề của môn thành COUNT "ít nhất" cả môn (số câu, tỷ lệ giữ nguyên); phạm vi riêng của nhóm thành
  * SOURCE nhóm; chỉ tiêu chủ đề của nhóm thành COUNT "ít nhất" của nhóm. Có quy tắc thì chế độ là MATRIX và các trường cũ bị
@@ -91,6 +105,7 @@ export function convertLegacySection(section: ExamSection): ExamSection {
   const sectionQuotas = section.topicQuotas ?? [];
   const blockQuotas = section.blocks.flatMap((block) => block.topicQuotas ?? []);
   if (![...sectionQuotas, ...blockQuotas].every(convertibleQuota)) return section;
+  if (!setSourcesUnchanged(section)) return section;
 
   const ids = new Set<string>();
   const unique = (base: string): string => {
@@ -140,12 +155,40 @@ export function mapidViewMode(section: ExamSection): MapidMode | null {
 // ---------------------------------------------------------------- phạm vi và số câu
 
 /**
- * Số câu của một nhóm, mẫu số của quy tắc theo nhóm: chùm là `số chùm × số câu con`, nhóm câu đơn là số câu của nhóm. Nhóm "lấy
- * phần còn lại" (`questionCount` rỗng, không cỡ chùm) chưa biết: `null`, cùng cách máy chủ tính 0.
+ * Số câu cố định của một nhóm: chùm là `số chùm × số câu con`, nhóm câu đơn là số câu của nhóm. Nhóm "lấy phần còn lại"
+ * (`questionCount` rỗng, không phải chùm) không có số cố định: `null`; số của nó là `remainderUnits`.
  */
 export function groupUnits(block: QuestionBlock): number | null {
   if (isSetBlock(block) && block.setCount && block.setSize) return block.setCount * block.setSize;
   return block.questionCount;
+}
+
+/** Nhóm câu đơn không khai số câu: máy chủ giao cho nó phần môn còn lại sau các nhóm khác (`Prep.prepare`). */
+function takesRemainder(block: QuestionBlock): boolean {
+  return !isSetBlock(block) && block.questionCount === null;
+}
+
+/**
+ * Số câu của nhóm lấy phần còn lại, tính như máy chủ: số câu của môn trừ số câu của mọi nhóm có số cố định (chùm và nhóm câu đơn
+ * đã khai số câu; các nhóm lấy phần còn lại khác không bị trừ, mỗi nhóm nhận đủ phần dư). `null` khi môn chưa có số câu, một nhóm
+ * cố định chưa biết số câu (chùm chưa khai cỡ), hoặc các nhóm khác đã vượt số câu của môn.
+ */
+function remainderUnits(section: Pick<ExamSection, "questionCount" | "blocks">, block: QuestionBlock): number | null {
+  if (section.questionCount === null) return null;
+  let fixed = 0;
+  for (const other of section.blocks) {
+    if (other.id === block.id || takesRemainder(other)) continue;
+    const units = groupUnits(other);
+    if (units === null) return null;
+    fixed += units;
+  }
+  const rest = section.questionCount - fixed;
+  return rest < 0 ? null : rest;
+}
+
+/** Số câu của một nhóm trong môn của nó: số cố định, hoặc phần còn lại với nhóm lấy phần còn lại. */
+function unitsInSection(section: Pick<ExamSection, "questionCount" | "blocks">, block: QuestionBlock): number | null {
+  return takesRemainder(block) ? remainderUnits(section, block) : groupUnits(block);
 }
 
 export interface GroupSize {
@@ -153,6 +196,8 @@ export interface GroupSize {
   sets: number | null;
   size: number | null;
   units: number | null;
+  /** Nhóm lấy phần còn lại: `units` là phần môn còn lại sau các nhóm khác (`null` khi chưa tính được). */
+  remainder: boolean;
   /** Số câu của cả môn (mẫu số của cột "câu của bài"); `null` khi chưa biết. */
   total: number | null;
   type: QuestionType | null;
@@ -164,17 +209,21 @@ export function groupSize(section: ExamSection, block: QuestionBlock): GroupSize
   return {
     sets: set ? block.setCount : null,
     size: set ? block.setSize : null,
-    units: groupUnits(block),
+    units: unitsInSection(section, block),
+    remainder: takesRemainder(block),
     total: section.questionCount,
     type: block.questionType,
   };
 }
 
-/** Mẫu số của quy tắc: số câu của môn khi quy tắc cả môn, của nhóm khi quy tắc theo nhóm; `null` khi chưa biết hoặc nhóm không còn. */
+/**
+ * Mẫu số của quy tắc: số câu của môn khi quy tắc cả môn, của nhóm khi quy tắc theo nhóm (nhóm lấy phần còn lại: phần môn còn
+ * lại sau các nhóm khác); `null` khi chưa biết hoặc nhóm không còn.
+ */
 export function ruleUnits(section: ExamSection, rule: Pick<MapidRule, "groupId">): number | null {
   if (!rule.groupId) return section.questionCount;
   const block = section.blocks.find((item) => item.id === rule.groupId);
-  return block ? groupUnits(block) : null;
+  return block ? unitsInSection(section, block) : null;
 }
 
 /** Số câu của quy tắc: nhập theo tỷ lệ thì quy ra số câu theo mẫu số hiện tại (làm tròn nửa lên); không thì số đã nhập. */
@@ -339,15 +388,23 @@ export function ruleFromForm(form: MapidRuleForm, section: ExamSection): MapidRu
   return { ...withComparator, count: ruleCount(section, { ...withComparator, percent: form.percent }), percent: form.percent };
 }
 
-export type RuleIssue = "NO_NODES" | "GROUP_MISSING" | "ONLY_IN_GROUP_NEEDS_GROUP" | "PERCENT_RANGE";
+export type RuleIssue = "NO_NODES" | "GROUP_MISSING" | "ONLY_IN_GROUP_NEEDS_GROUP" | "PERCENT_RANGE" | "PERCENT_DENOMINATOR_UNKNOWN";
 
-/** Lỗi chặn nút Lưu của hộp thoại. Quy tắc của nhóm đã xóa báo `GROUP_MISSING` cho tới khi người dùng chọn lại phạm vi. */
+/**
+ * Lỗi chặn nút Lưu của hộp thoại. Quy tắc của nhóm đã xóa báo `GROUP_MISSING` cho tới khi người dùng chọn lại phạm vi. Nhập theo tỷ lệ
+ * mà chưa biết mẫu số (môn chưa có số câu, hoặc nhóm khác chưa khai cỡ nên không tính được phần còn lại) báo
+ * `PERCENT_DENOMINATOR_UNKNOWN`: lưu lúc đó sẽ ghi 0 câu âm thầm.
+ */
 export function ruleFormIssues(form: MapidRuleForm, section: ExamSection): RuleIssue[] {
   const issues: RuleIssue[] = [];
-  if (form.groupId && !section.blocks.some((block) => block.id === form.groupId)) issues.push("GROUP_MISSING");
+  const groupGone = !!form.groupId && !section.blocks.some((block) => block.id === form.groupId);
+  if (groupGone) issues.push("GROUP_MISSING");
   if (form.nodeIds.length === 0) issues.push("NO_NODES");
   if (form.type === "ONLY_IN_GROUP" && !form.groupId) issues.push("ONLY_IN_GROUP_NEEDS_GROUP");
-  if (ruleNeedsNumber(form.type, form.withNumber) && form.entry === "PERCENT" && (form.percent < 0 || form.percent > 100)) issues.push("PERCENT_RANGE");
+  if (ruleNeedsNumber(form.type, form.withNumber) && form.entry === "PERCENT") {
+    if (form.percent < 0 || form.percent > 100) issues.push("PERCENT_RANGE");
+    else if (!groupGone && ruleUnits(section, form) === null) issues.push("PERCENT_DENOMINATOR_UNKNOWN");
+  }
   return issues;
 }
 
