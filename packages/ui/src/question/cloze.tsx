@@ -10,6 +10,7 @@ import { formatScore } from "./helpers";
 import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
+import { coarseFieldHeight, touchFieldText } from "./touch";
 import type { ClozeAnswer, KitQuestion, KitQuestionOf, PartResult, QuestionReview } from "./types";
 
 const MARKER = /\[\[([^\]]+)\]\]/;
@@ -166,6 +167,8 @@ export function ClozeQuestion({
                   }
                   className={cn(
                     "inline-flex w-24 px-2.5 text-center font-semibold tabular-nums",
+                    coarseFieldHeight,
+                    touchFieldText,
                     mode === "review" && partToneClass(part),
                   )}
                 />

@@ -2,10 +2,12 @@
 
 import { Input } from "../components/input";
 import { useUiLocale, useUiStrings } from "../components/ui-strings";
+import { cn } from "../lib/cn";
 import { formatScore } from "./helpers";
 import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
+import { touchFieldText } from "./touch";
 import type { AnswerFormat, KitQuestion, KitQuestionOf, ShortAnswerAnswer } from "./types";
 
 type ShortAnswerBody = Extract<KitQuestion["body"], { type: "SHORT_ANSWER" }>;
@@ -68,7 +70,7 @@ export function ShortAnswerQuestion({
             }
             aria-describedby={mode === "answer" ? noteId : undefined}
             onChange={(event) => onChange?.({ text: event.target.value })}
-            className="font-semibold tabular-nums"
+            className={cn("font-semibold tabular-nums", touchFieldText)}
           />
           {mode === "review" && resolved?.outcome && (
             <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface">

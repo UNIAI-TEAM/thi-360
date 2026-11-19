@@ -70,6 +70,7 @@ export function QuestionFrame({
               aria-label={flagLabel}
               aria-pressed={flagged ?? false}
               onClick={onToggleFlag}
+              className="pointer-coarse:size-11"
               icon={<Flag aria-hidden className={flagged ? "fill-warning text-warning" : undefined} />}
             />
           )}

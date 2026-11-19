@@ -8,6 +8,7 @@ import { formatScore, statementLetter } from "./helpers";
 import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
+import { coarseTarget } from "./touch";
 import type { KitQuestion, KitQuestionOf, QuestionReview, TrueFalseAnswer } from "./types";
 
 type TrueFalseBody = Extract<KitQuestion["body"], { type: "TRUE_FALSE" }>;
@@ -117,7 +118,7 @@ function TrueFalseRadio({
   onClear: () => void;
 }) {
   return (
-    <label className="flex min-h-8 cursor-pointer items-center gap-1.5 text-label font-semibold whitespace-nowrap text-text">
+    <label className={cn("flex min-h-8 cursor-pointer items-center gap-1.5 text-label font-semibold whitespace-nowrap text-text", coarseTarget)}>
       <input
         type="radio"
         name={name}

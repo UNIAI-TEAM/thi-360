@@ -6,6 +6,7 @@ import { cn } from "../lib/cn";
 import { fieldBase } from "../lib/styles";
 import { RichTextView } from "../rich-text";
 import { htmlToText } from "./helpers";
+import { coarseFieldHeight, touchFieldText } from "./touch";
 
 export interface MatchSelectOption {
   value: string;
@@ -71,6 +72,8 @@ export function MatchSelect({
         className={cn(
           fieldBase,
           "flex h-10 items-center justify-between gap-2 px-3 text-left data-[placeholder]:text-text-placeholder",
+          coarseFieldHeight,
+          touchFieldText,
           className,
         )}
       >
@@ -94,7 +97,7 @@ export function MatchSelect({
                 value={option.value}
                 disabled={option.disabled}
                 textValue={`${option.letter}. ${htmlToText(option.html)}`}
-                className="relative flex min-h-9 cursor-default items-center rounded-sm py-1.5 pr-8 pl-3 text-label font-medium text-text outline-hidden select-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle data-[state=checked]:text-primary-text"
+                className="relative flex min-h-9 cursor-default items-center rounded-sm py-1.5 pr-8 pl-3 text-label font-medium text-text outline-hidden select-none pointer-coarse:min-h-11 data-[disabled]:opacity-50 data-[highlighted]:bg-subtle data-[state=checked]:text-primary-text"
               >
                 <SelectPrimitive.ItemText>
                   <MatchOptionContent letter={option.letter} html={option.html} />

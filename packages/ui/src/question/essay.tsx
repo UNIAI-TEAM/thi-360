@@ -11,6 +11,7 @@ import { formatScore, htmlToPlainText, plainTextToHtml } from "./helpers";
 import { QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
+import { coarseTarget, touchFieldText } from "./touch";
 import type { EssayAnswer, EssayGrading, KitQuestion, KitQuestionOf, QuestionReview } from "./types";
 
 type EssayBody = Extract<KitQuestion["body"], { type: "ESSAY" }>;
@@ -100,7 +101,7 @@ export function EssayQuestion({
                 const next = plainTextToHtml(event.target.value);
                 onChange?.({ html: next, wordCount: countWords(next) });
               }}
-              className="min-h-60"
+              className={cn("min-h-60", touchFieldText)}
             />
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -244,7 +245,11 @@ function EssayBody({
         <button
           type="button"
           onClick={onToggle}
-          className={cn("self-start text-caption font-semibold text-primary-text hover:underline", focusRing)}
+          className={cn(
+            "inline-flex items-center self-start text-caption font-semibold text-primary-text hover:underline",
+            coarseTarget,
+            focusRing,
+          )}
         >
           {expanded ? strings.hideFullEssay : strings.showFullEssay}
         </button>

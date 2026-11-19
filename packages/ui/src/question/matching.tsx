@@ -11,6 +11,7 @@ import { MatchOptionContent, MatchSelect } from "./match-select";
 import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview } from "./shared";
+import { coarseTarget } from "./touch";
 import type {
   KitQuestion,
   KitQuestionOf,
@@ -119,7 +120,7 @@ export function MatchingQuestion({
                         aria-label={strings.matchClear(index + 1)}
                         onClick={() => onChange?.({ pairs: { ...pairs, [item.id]: null } })}
                         className={cn(
-                          "grid size-8 shrink-0 place-items-center rounded-lg text-text-secondary hover:bg-subtle",
+                          "grid size-8 shrink-0 place-items-center rounded-lg text-text-secondary hover:bg-subtle pointer-coarse:size-11",
                           focusRing,
                         )}
                       >
@@ -184,7 +185,7 @@ function MatchingPickBoard({
                   aria-label={strings.matchPickLeft(index + 1)}
                   onClick={() => setPendingLeft(active ? null : item.id)}
                   className={cn(
-                    "flex min-w-0 flex-1 items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-150 motion-reduce:transition-none",
+                    "flex min-w-0 flex-1 items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-150 motion-reduce:transition-none pointer-coarse:min-h-11",
                     active ? "border-primary-600 bg-success-bg" : "border-border bg-surface hover:border-border-strong",
                     focusRing,
                   )}
@@ -210,7 +211,7 @@ function MatchingPickBoard({
                       if (pendingLeft === item.id) setPendingLeft(null);
                     }}
                     className={cn(
-                      "grid size-8 shrink-0 place-items-center rounded-lg text-text-secondary hover:bg-subtle",
+                      "grid size-8 shrink-0 place-items-center rounded-lg text-text-secondary hover:bg-subtle pointer-coarse:size-11",
                       focusRing,
                     )}
                   >
@@ -256,6 +257,7 @@ function MatchingPickBoard({
                       }}
                       className={cn(
                         "shrink-0 rounded-md bg-primary-fill px-2.5 py-1 text-caption font-semibold text-surface",
+                        coarseTarget,
                         focusRing,
                       )}
                     >
