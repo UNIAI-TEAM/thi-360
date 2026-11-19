@@ -38,18 +38,18 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     renderListingTab();
 
     const priceInput = await price();
-    expect(priceInput).toHaveValue("249.000");
+    // Ô luôn giữ chữ số thô; giá có dấu phân cách hiện ở thẻ xem trước.
+    expect(priceInput).toHaveValue("249000");
     expect(preview().getByText("249.000 đ")).toBeInTheDocument();
     expect(preview().getByText("HSA exam 1")).toBeInTheDocument();
     expect(preview().getByText(/câu · \d+ phút · 3 lượt/)).toBeInTheDocument();
 
     await user.clear(priceInput);
     await user.type(priceInput, "150000");
-    // Đang gõ: chữ số thô (con trỏ không nhảy); rời ô thì có dấu phân cách.
     expect(priceInput).toHaveValue("150000");
     expect(preview().getByText("150.000 đ")).toBeInTheDocument();
     await user.tab();
-    expect(priceInput).toHaveValue("150.000");
+    expect(priceInput).toHaveValue("150000");
     expect(preview().getByText("150.000 đ")).toBeInTheDocument();
     expect(preview().queryByText("249.000 đ")).not.toBeInTheDocument();
 
@@ -64,7 +64,7 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     expect(preview().getByText(/· 5 lượt/)).toBeInTheDocument();
   });
 
-  it("ô giá: gõ chèn giữa dãy số không làm con trỏ nhảy về cuối; dấu phân cách chỉ hiện khi rời ô", async () => {
+  it("ô giá: gõ chèn giữa dãy số không làm con trỏ nhảy về cuối", async () => {
     listingServer().install();
     const user = userEvent.setup();
     renderListingTab();
@@ -76,19 +76,17 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     await user.keyboard("7");
     expect(priceInput).toHaveValue("2749000");
     expect(priceInput.selectionStart).toBe(2);
-    await user.tab();
-    expect(priceInput).toHaveValue("2.749.000");
   });
 
-  it("ô giá: đang focus giữ chữ số thô nên chọn hết rồi thay (fill, dán, Ctrl+A) không nối vào số cũ", async () => {
+  it("ô giá: chọn hết rồi focus (thứ tự của fill) vẫn thay hẳn, kể cả dán đè và Ctrl+A gõ đè", async () => {
     listingServer().install();
     const user = userEvent.setup();
     renderListingTab();
 
     const priceInput = (await price()) as HTMLInputElement;
-    expect(priceInput).toHaveValue("249.000");
+    expect(priceInput).toHaveValue("249000");
 
-    // Thứ tự của Playwright `fill()`: chọn hết rồi mới focus. Đổi giá trị lúc focus không được làm mất vùng chọn.
+    // Playwright `fill()` chọn hết rồi mới focus; ô không đổi giá trị lúc focus nên vùng chọn giữ nguyên.
     act(() => {
       priceInput.select();
       priceInput.focus();
@@ -97,8 +95,7 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     expect([priceInput.selectionStart, priceInput.selectionEnd]).toEqual([0, 6]);
     await user.keyboard("111000");
     expect(priceInput).toHaveValue("111000");
-    await user.tab();
-    expect(priceInput).toHaveValue("111.000");
+    expect(preview().getByText("111.000 đ")).toBeInTheDocument();
 
     // Xóa rồi gõ, và Ctrl+A rồi gõ đè: thay hẳn giá trị cũ.
     await user.clear(priceInput);
@@ -110,9 +107,6 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     expect(preview().getByText("90.000 đ")).toBeInTheDocument();
 
     // Dán đè lên vùng đã chọn.
-    await user.tab();
-    await user.tab({ shift: true });
-    expect(priceInput).toHaveValue("90000");
     await user.keyboard("{Control>}a{/Control}");
     await user.paste("1.234.000");
     expect(priceInput).toHaveValue("1234000");
@@ -299,7 +293,7 @@ describe("tab Thông tin bán: lưu", () => {
 
     expect(await screen.findByText("Bài thi vừa được người khác sửa. Đã nạp lại bản mới nhất.")).toBeInTheDocument();
     // Dữ liệu mới đã về: ô giá hiện giá của máy chủ, giá đang nhập bị bỏ.
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("280.000"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("280000"));
     expect(server.calls("GET", LISTING_PATH).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Bài thi vừa được người khác sửa. Đã nạp lại bản mới nhất.")).toBeInTheDocument();
     expect(screen.getByText(/Thay đổi của bạn chưa được lưu/)).toBeInTheDocument();
@@ -307,11 +301,15 @@ describe("tab Thông tin bán: lưu", () => {
     // Sửa lại và lưu bằng revision mới. Tải lại bài thi sau khi lưu chậm: biểu mẫu dựng lại khi bản mới về, trước khi
     // yêu cầu tải lại xong; thông báo xung đột vẫn phải mất và toast vẫn phải hiện.
     server.hold("GET", EXAM_PATH);
-    const again = screen.getByRole("textbox", { name: /Giá bán/ });
-    await user.clear(again);
-    await user.type(again, "290000");
+    const again = screen.getByRole("textbox", { name: /Giá bán/ }) as HTMLInputElement;
+    // Fill thay hẳn giá đang hiện: chọn hết rồi focus rồi gõ, đúng thứ tự của Playwright `fill()`.
+    act(() => {
+      again.select();
+      again.focus();
+    });
+    await user.keyboard("290000");
     await user.click(saveButton());
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("295.000"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("295000"));
     server.release("GET", EXAM_PATH);
 
     await waitFor(() => expect(success).toHaveBeenCalledWith("Đã lưu thông tin bán."));
@@ -331,7 +329,7 @@ describe("tab Thông tin bán: lưu", () => {
     await user.clear(priceInput);
     await user.type(priceInput, "300000");
     await user.click(saveButton());
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("310.000"));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("310000"));
     server.release("GET", EXAM_PATH);
 
     await waitFor(() => expect(success).toHaveBeenCalledWith("Đã lưu thông tin bán."));
@@ -357,7 +355,7 @@ describe("tab Thông tin bán: lưu", () => {
     await user.type(await price(), "0");
     await user.click(saveButton());
     expect(await screen.findByText("Chưa lưu được thông tin bán. Thử lại.")).toBeInTheDocument();
-    expect(await price()).toHaveValue("2.490.000");
+    expect(await price()).toHaveValue("2490000");
   });
 });
 

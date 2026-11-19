@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Card, Checkbox, FormField, Input, notify, Textarea } from "@thi360/ui";
 import { CircleAlert, Lock, Save } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { BlockRadioGroup } from "../components/block-radio-group";
@@ -58,23 +58,9 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
   const cover = useCoverField(exam.id, listing.coverAssetId && listing.coverUrl ? { assetId: listing.coverAssetId, url: listing.coverUrl } : null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   /**
-   * Đang gõ thì ô giá hiện chữ số thô (con trỏ không nhảy); rời ô mới có dấu phân cách. Đổi giá trị hiển thị lúc nhận
-   * focus làm mất vùng chọn có sẵn (Playwright `fill()` chọn hết rồi mới focus; dán đè, Ctrl+A cũng vậy), nên vùng
-   * chọn được đo theo số chữ số trước khi đổi và đặt lại sau khi ô vẽ lại.
+   * Ô giá luôn giữ chữ số thô: đổi giá trị hiển thị lúc focus làm mất vùng chọn có sẵn (Playwright `fill()` chọn hết
+   * rồi mới focus nên số mới nối vào cuối; dán đè, Ctrl+A cũng vậy). Giá có dấu phân cách hiện ở thẻ xem trước.
    */
-  const [priceFocused, setPriceFocused] = useState(false);
-  const priceInputRef = useRef<HTMLInputElement | null>(null);
-  const priceSelection = useRef<{ start: number; end: number } | null>(null);
-  useLayoutEffect(() => {
-    const selection = priceSelection.current;
-    priceSelection.current = null;
-    if (priceFocused && selection) priceInputRef.current?.setSelectionRange(selection.start, selection.end);
-  }, [priceFocused]);
-  const rememberPriceSelection = (event: FocusEvent<HTMLInputElement>) => {
-    const { value, selectionStart, selectionEnd } = event.currentTarget;
-    const digitsBefore = (position: number | null) => value.slice(0, position ?? value.length).replace(/\D/g, "").length;
-    priceSelection.current = { start: digitsBefore(selectionStart), end: digitsBefore(selectionEnd) };
-  };
 
   const schema = useMemo(
     () =>
@@ -209,25 +195,15 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
                       <Input
                         {...controlProps}
                         name={field.name}
-                        ref={(element) => {
-                          priceInputRef.current = element;
-                          field.ref(element);
-                        }}
+                        ref={field.ref}
                         type="text"
                         inputMode="numeric"
                         autoComplete="off"
                         disabled={disabled}
                         className="text-right tabular-nums"
-                        value={field.value === "" || priceFocused ? field.value : format.number(Number(field.value))}
+                        value={field.value}
                         onChange={(event) => field.onChange(priceDigits(event.target.value))}
-                        onFocus={(event) => {
-                          rememberPriceSelection(event);
-                          setPriceFocused(true);
-                        }}
-                        onBlur={() => {
-                          setPriceFocused(false);
-                          field.onBlur();
-                        }}
+                        onBlur={field.onBlur}
                       />
                       <span aria-hidden className="text-text-secondary">
                         {t("currency")}

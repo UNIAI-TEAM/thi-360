@@ -177,7 +177,7 @@ test.describe("FA-1: tab Thông tin bán", () => {
 
     // Tải lại: giá trị đã lưu hiện lại; lưu tiếp dùng revision mới.
     await page.reload();
-    await expect(priceBox(page)).toHaveValue(/^249[.,]000$/);
+    await expect(priceBox(page)).toHaveValue("249000");
     await expect(attemptsBox(page)).toHaveValue("3");
     await expect(descriptionBox(page)).toHaveValue(`Mô tả của bài ${TAG}`);
     await attemptsBox(page).fill("4");
@@ -214,7 +214,7 @@ test.describe("FA-1: tab Thông tin bán", () => {
       const notice = page.getByRole("alert").filter({ hasText: "Bài thi vừa được người khác sửa. Đã nạp lại bản mới nhất." });
       await expect(notice).toBeVisible();
       // Dữ liệu mới của phiên kia đã được nạp; giá đang nhập bị bỏ, thông báo vẫn còn.
-      await expect(priceBox(page)).toHaveValue(/^111[.,]000$/);
+      await expect(priceBox(page)).toHaveValue("111000");
       await expect(notice).toBeVisible();
       await expect(notice.getByText(/Thay đổi của bạn chưa được lưu/)).toBeVisible();
 
