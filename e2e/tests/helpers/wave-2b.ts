@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type APIResponse, type Locator, type Page } from "@playwright/test";
-import { ADMIN_URL, type AdminApi, RUN_ID } from "./editor-qa";
+import { ADMIN_URL, type AdminApi, RUN_ID, UNIT_LABEL } from "./editor-qa";
 
 /**
  * Dùng chung cho các kịch bản E2E của nghiệm thu đợt 2B (`wave-2b-*.spec.ts`). Các kịch bản đi qua giao diện: bước 1 tạo
@@ -39,22 +39,83 @@ export interface CreatedExam {
   timing?: string;
 }
 
+export interface KnowledgeScopeLite {
+  nodeIds?: string[] | null;
+  competencyCodes?: string[] | null;
+  everyChildInScope?: boolean | null;
+}
+
+/** Khung chỉ tiêu một chiều (khối/độ khó/năng lực): giá trị COUNT hoặc PERCENT trên tổng đơn vị của mục. */
+export interface MatrixDimensionRow {
+  code: string;
+  value?: number | null;
+}
+
+/** Ma trận cấp mục hoặc cấp khối như máy chủ trả (`byGrade`, `byDifficulty`, `byCompetency`, `cells` khi COMBINED). */
+export interface BlockMatrixLite {
+  mode?: "SEPARATE" | "COMBINED" | null;
+  unit?: "COUNT" | "PERCENT" | null;
+  basis?: string | null;
+  gradeEnforcement?: string | null;
+  difficultyEnforcement?: string | null;
+  cells?: Array<{ gradeCode?: string; difficultyCode?: string; value?: number | null }> | null;
+  byGrade?: MatrixDimensionRow[] | null;
+  byDifficulty?: MatrixDimensionRow[] | null;
+  byCompetency?: MatrixDimensionRow[] | null;
+}
+
+/** Chỉ tiêu chủ đề của mục/khối (`topicQuotas`): câu lấy từ tập `nodeIds`, cần `count` (hoặc `percent`) đơn vị. */
+export interface TopicQuotaLite {
+  id?: string;
+  nodeIds?: string[] | null;
+  count?: number | null;
+  percent?: number | null;
+  basis?: string | null;
+  enforcement?: string | null;
+}
+
+/** Điều kiện câu con theo vị trí của khối chùm (`childConditions`): đoạn `[from, to]` cần MAPID/dạng/hình dạng. */
+export interface ChildConditionLite {
+  from?: number | null;
+  to?: number | null;
+  nodeIds?: string[] | null;
+  answerType?: string | null;
+  itemShape?: { statements?: number | null; leftItems?: number | null; rightItems?: number | null; options?: number | null } | null;
+}
+
 export interface StructureBlock {
   id?: string;
   name?: string;
   questionType?: string | null;
   questionCount?: number | null;
+  setCount?: number | null;
+  setSize?: number | null;
+  knowledgeScope?: KnowledgeScopeLite | null;
+  matrix?: BlockMatrixLite | null;
+  taskTypeCode?: string | null;
+  childAnswerType?: string | null;
+  answerFormats?: string[] | null;
+  itemShape?: ChildConditionLite["itemShape"];
+  expectedScoring?: { trueFalseMethod?: string | null; trueFalseTable?: number[] | null; multipleChoiceRule?: string | null } | null;
+  childConditions?: ChildConditionLite[] | null;
+  slots?: Array<{ index?: number | null; knowledgeScope?: KnowledgeScopeLite | null; tagCodes?: string[] | null }> | null;
+  tagCodes?: string[] | null;
+  topicQuotas?: TopicQuotaLite[] | null;
   requiredPointsPerQuestion?: number | null;
+  omitted?: boolean | null;
   [key: string]: unknown;
 }
 
 export interface StructureSection {
   /** Chỉ tiêu khối lớp và độ khó cấp môn (mẫu QDA_FULL khai cho Lý, Hóa, Sinh, Sử, Địa; Tiếng Anh không có). */
-  matrix?: { byGrade?: Array<{ code: string; value: number }>; byDifficulty?: Array<{ code: string; value: number }> } | null;
+  matrix?: BlockMatrixLite | null;
   id: string;
   subjectCode: string;
   /** Điều kiện audio của mục (H38): `REQUIRED` chỉ lấy câu có audio, `FORBIDDEN` chỉ câu không audio. */
   audioRequirement?: "REQUIRED" | "FORBIDDEN" | "ANY" | null;
+  knowledgeScope?: KnowledgeScopeLite | null;
+  answerQuotas?: { unit?: string | null; items?: Array<{ answerType?: string | null; value?: number | null }> | null } | null;
+  topicQuotas?: TopicQuotaLite[] | null;
   questionCount?: number | null;
   blocks?: StructureBlock[];
   [key: string]: unknown;
@@ -819,18 +880,6 @@ interface QuestionDetailLite {
   body?: unknown;
 }
 
-/** Mọi câu gốc Sẵn sàng của môn (bỏ câu con của bộ), đọc hết các trang. */
-export async function listReadyQuestions(admin: AdminApi, subjectCode: string): Promise<QuestionSummaryLite[]> {
-  const found: QuestionSummaryLite[] = [];
-  for (let page = 0; ; page += 1) {
-    const params = new URLSearchParams({ subjectCode, status: "READY", size: "100", page: String(page) });
-    const response = await admin.api.get(`${ADMIN_URL}/api/v1/admin/questions?${params}`, { headers: admin.headers });
-    const { items } = await body<{ items: Array<QuestionSummaryLite & { parentId?: string | null }> }>(response, 200);
-    found.push(...items.filter((item) => !item.parentId));
-    if (items.length < 100) return found;
-  }
-}
-
 /** Tải một tệp lên kho tài nguyên câu hỏi; trả id tài nguyên để đặt vào `attachmentIds` của câu. */
 export async function uploadQuestionAsset(admin: AdminApi, name: string, mime: string, bytes: Buffer): Promise<string> {
   const response = await admin.api.post(`${ADMIN_URL}/api/v1/admin/question-assets`, {
@@ -919,6 +968,303 @@ export async function detachAssetFromQuestions(admin: AdminApi, questions: Quest
   return forEachQuestion(questions, (question) =>
     changeQuestionAttachments(admin, question.id, (current) => (current.includes(assetId) ? current.filter((id) => id !== assetId) : null)),
   );
+}
+
+/* ---------- Ngân hàng câu hỏi: tạo câu riêng của luồng (bài thu hẹp theo MAPID riêng) ---------- */
+
+/** Bản thân câu hỏi như `POST /api/v1/admin/questions` nhận (spec 9.2); `knowledge` là `nodeId` + `primary`. */
+export interface QuestionDraft {
+  type: string;
+  subjectCode: string;
+  gradeCode: string;
+  difficultyCode: string;
+  taskTypeCode?: string | null;
+  competencyCode?: string | null;
+  points: number;
+  knowledge: Array<{ nodeId: string; primary: boolean }>;
+  tagCodes?: string[];
+  content: string;
+  body: Record<string, unknown>;
+  sourceCode: string;
+}
+
+/**
+ * Thu hẹp mọi mục `subjectCode` của bài về đúng nút kiến thức `leafId` của luồng (PUT `/structure`): mục nhận
+ * `knowledgeScope = {nodeIds: [leafId]}` giữ mã năng lực đang có; khối đã khai `nodeIds` riêng được thay bằng nút
+ * của luồng (nút trong scope là điều kiện HOẶC nên giữ nút mẫu sẽ không thu hẹp). Trả cấu trúc đã lưu.
+ */
+export async function narrowSectionsToKnowledge(admin: AdminApi, examId: string, subjectCode: string, leafId: string): Promise<Structure> {
+  const structure = await getStructure(admin, examId);
+  const narrowed = allSections(structure).filter((section) => section.subjectCode === subjectCode);
+  expect(narrowed.length, `${examId}: không có mục ${subjectCode} để thu hẹp`).toBeGreaterThan(0);
+  for (const section of narrowed) {
+    section.knowledgeScope = { nodeIds: [leafId], competencyCodes: section.knowledgeScope?.competencyCodes ?? [] };
+    for (const block of section.blocks ?? []) {
+      if ((block.knowledgeScope?.nodeIds?.length ?? 0) > 0) {
+        block.knowledgeScope = {
+          nodeIds: [leafId],
+          competencyCodes: block.knowledgeScope?.competencyCodes ?? [],
+        };
+      }
+    }
+  }
+  const response = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${examId}/structure`, {
+    headers: admin.headers,
+    data: { parts: structure.parts, examQuotas: structure.examQuotas ?? [], expectedRevision: structure.revision },
+  });
+  expect(response.status(), await response.text()).toBe(200);
+  return structure;
+}
+
+/**
+ * Giá trị `value` của chỉ tiêu `unit` PERCENT quy ra số đơn vị theo phần dư lớn nhất trên `total` (cùng quy tắc
+ * `QuotaApportioner` của máy chủ); COUNT trả nguyên giá trị.
+ */
+function apportion(rows: Array<{ code: string; value: number }>, unit: string | null | undefined, total: number): Array<{ code: string; count: number }> {
+  if (unit !== "PERCENT") return rows.map((row) => ({ code: row.code, count: Math.round(row.value) }));
+  const sum = rows.reduce((acc, row) => acc + row.value, 0);
+  const raw = rows.map((row) => ({ code: row.code, exact: sum === 0 ? 0 : (row.value * total) / sum }));
+  const floored = raw.map((row) => ({ ...row, count: Math.floor(row.exact) }));
+  let rest = total - floored.reduce((acc, row) => acc + row.count, 0);
+  for (const row of [...floored].sort((a, b) => (b.exact - Math.floor(b.exact)) - (a.exact - Math.floor(a.exact)))) {
+    if (rest <= 0) break;
+    const target = floored.find((candidate) => candidate.code === row.code);
+    if (target) { target.count += 1; rest -= 1; }
+  }
+  return floored.map(({ code, count }) => ({ code, count }));
+}
+
+/** Dãy mã dài `total` theo chỉ tiêu của chiều (ví dụ G10×3, G11×20, G12×27); thiếu tổng thì đệm `filler`. */
+function expandCodes(rows: Array<{ code: string; count: number }>, total: number, filler: string | null = "G12"): Array<string | null> {
+  const result: Array<string | null> = [];
+  for (const row of rows) for (let i = 0; i < row.count; i += 1) result.push(row.code);
+  while (result.length < total) result.push(rows[0]?.code ?? filler);
+  return result.slice(0, total);
+}
+
+/**
+ * Đếm câu của một khối trong bản nháp: SINGLE = `questionCount` (null = phần còn lại của mục); QUESTION_SET/CLOZE
+ * = `questionCount` đơn vị (chỗ trống/câu con) và `setCount` gốc — gốc linh hoạt (thiếu setCount/setSize) nhận 3
+ * đơn vị mỗi gốc (đủ số câu con tối thiểu), dôi ra đơn vị thì gốc cuối nhận phần dư.
+ */
+function blockCounts(block: StructureBlock, remain: { units: number }): { roots: number; units: number; rootUnits: number[] } {
+  const type = block.questionType;
+  if (type === "QUESTION_SET" || type === "CLOZE") {
+    const units = block.setCount == null && block.setSize == null && block.questionCount != null
+      ? block.questionCount
+      : (block.setCount ?? 0) * (block.setSize ?? 0) || Math.min(block.questionCount ?? 0, remain.units);
+    const size = block.setSize ?? 3;
+    const roots = block.setCount ?? Math.max(1, Math.ceil(units / size));
+    const rootUnits: number[] = [];
+    let left = units;
+    for (let i = 0; i < roots; i += 1) {
+      const take = i === roots - 1 ? left : Math.min(size, left);
+      rootUnits.push(Math.max(take, 0));
+      left -= take;
+    }
+    remain.units -= units;
+    return { roots, units, rootUnits };
+  }
+  const units = block.questionCount ?? Math.max(0, remain.units);
+  remain.units -= units;
+  return { roots: units, units, rootUnits: Array.from({ length: units }, () => 1) };
+}
+
+/**
+ * Dựng danh sách bản thân câu đủ lấp mọi mục `subjectCode` của cấu trúc (đã thu hẹp về `leafId`): phân phối
+ * khối lớp/độ khó/năng lực theo ma trận, dạng trả lời theo `answerQuotas`, MAPID chủ đề theo `topicQuotas`,
+ * điểm theo `requiredPointsPerQuestion`, hình dạng theo `itemShape`/`childConditions`, dạng con theo
+ * `childAnswerType`/`slots`. Mọi câu và câu con gắn `leafId` để bộ lọc MAPID thu hẹp chỉ còn câu của luồng.
+ */
+export function planQuestionsForSections(structure: Structure, subjectCode: string, leafId: string, tag: string): QuestionDraft[] {
+  const drafts: QuestionDraft[] = [];
+  let seq = 0;
+  const knowledge = (extra: Array<string | null | undefined>): QuestionDraft["knowledge"] => {
+    const ids = [leafId, ...extra.filter((id): id is string => Boolean(id))];
+    return [...new Set(ids)].map((nodeId, index) => ({ nodeId, primary: index === 0 }));
+  };
+  for (const section of allSections(structure).filter((item) => item.subjectCode === subjectCode)) {
+    const total = section.questionCount ?? 0;
+    if (total <= 0) continue;
+    const matrix = section.matrix ?? null;
+    const grades = expandCodes(
+      matrix?.mode === "COMBINED" && matrix.cells?.length
+        ? apportion(matrix.cells.map((cell) => ({ code: cell.gradeCode ?? "G12", value: cell.value ?? 0 })), matrix.unit, total)
+        : apportion((matrix?.byGrade ?? []).filter((row) => row.value != null).map((row) => ({ code: row.code, value: row.value ?? 0 })), matrix?.unit, total),
+      total,
+    );
+    const difficulties = expandCodes(
+      matrix?.mode === "COMBINED" && matrix.cells?.length
+        ? apportion(matrix.cells.map((cell) => ({ code: cell.difficultyCode ?? "TH", value: cell.value ?? 0 })), matrix.unit, total)
+        : apportion((matrix?.byDifficulty ?? []).filter((row) => row.value != null).map((row) => ({ code: row.code, value: row.value ?? 0 })), matrix?.unit, total),
+      total,
+    );
+    const competencyRows = (section.blocks ?? []).flatMap((block) =>
+      (block.matrix?.byCompetency ?? []).filter((row) => row.value != null).map((row) => ({ code: row.code, value: row.value ?? 0 })));
+    const scopeCodes = section.knowledgeScope?.competencyCodes ?? [];
+    const competencyPlan = competencyRows.length
+      ? apportion(competencyRows, (section.blocks ?? []).find((block) => block.matrix?.byCompetency?.length)?.matrix?.unit, total)
+      : scopeCodes.map((code) => ({ code, count: total }));
+    const competencyCodes = expandCodes(competencyPlan, total, null);
+    const answers = expandCodes(
+      apportion(
+        (section.answerQuotas?.items ?? []).map((row) => ({ code: row.answerType ?? "SINGLE_CHOICE", value: row.value ?? 0 })),
+        section.answerQuotas?.unit,
+        total,
+      ),
+      total,
+    );
+    const sectionTopicNodes = (section.topicQuotas ?? []).flatMap((quota) => quota.nodeIds ?? []);
+    const remain = { units: total };
+    let unitCursor = 0;
+    for (const block of (section.blocks ?? []).filter((item) => !item.omitted)) {
+      const { roots, rootUnits } = blockCounts(block, remain);
+      if (roots <= 0) continue;
+      const quotaNodes = [...sectionTopicNodes, ...(block.topicQuotas ?? []).flatMap((quota) => quota.nodeIds ?? [])];
+      const slotTags = (block.slots ?? []).flatMap((slot) => slot.tagCodes ?? []);
+      const type = block.questionType ?? answers[unitCursor] ?? "SINGLE_CHOICE";
+      for (let rootIndex = 0; rootIndex < roots; rootIndex += 1) {
+        const size = rootUnits[rootIndex] ?? 1;
+        const grade = grades[Math.min(unitCursor, total - 1)] ?? "G12";
+        const difficulty = difficulties[Math.min(unitCursor, total - 1)] ?? "TH";
+        const competency = competencyCodes[Math.min(unitCursor, total - 1)] ?? null;
+        const mapids = [...quotaNodes, ...((block.slots ?? []).find((slot) => slot.index === rootIndex + 1)?.knowledgeScope?.nodeIds ?? [])];
+        seq += 1;
+        const code = `W2BATT-${tag}-${seq}`.toUpperCase().replace(/[^A-Z0-9-]/g, "X").slice(0, 40);
+        const points = block.requiredPointsPerQuestion ?? 1;
+        const base = {
+          subjectCode,
+          gradeCode: grade,
+          difficultyCode: difficulty,
+          ...(block.taskTypeCode ? { taskTypeCode: block.taskTypeCode } : {}),
+          ...(competency ? { competencyCode: competency } : {}),
+          knowledge: knowledge(mapids),
+          tagCodes: [...new Set([...(block.tagCodes ?? []), ...slotTags])],
+          content: `<p>${UNIT_LABEL}QA điều chế ${RUN_ID}; câu ${code}.</p>`,
+          sourceCode: `${code}-${RUN_ID}`.slice(0, 60),
+        };
+        if (type === "QUESTION_SET" || type === "CLOZE") {
+          const conditions = block.childConditions ?? [];
+          const children = Array.from({ length: size }, (_, childIndex) => {
+            const position = childIndex + 1;
+            const condition = conditions.find((item) => (item.from ?? 1) <= position && position <= (item.to ?? size));
+            const childType = condition?.answerType ?? block.childAnswerType ?? "SINGLE_CHOICE";
+            const childMapids = [...mapids, ...(condition?.nodeIds ?? [])];
+            return {
+              type: childType,
+              content: `<p>${UNIT_LABEL}câu con ${childIndex + 1} của ${code}.</p>`,
+              body: bodyOf(childType, condition?.itemShape ?? null, points, null),
+              points,
+              knowledgeItemIds: [...new Set([leafId, ...childMapids])],
+            };
+          });
+          drafts.push({
+            ...base,
+            type,
+            points: points * size,
+            body: type === "CLOZE"
+              ? { type: "CLOZE", passage: `<p>${UNIT_LABEL}đoạn có ${size} chỗ trống của ${code}: ${children.map((_, index) => `[[b${index + 1}]]`).join(" ")}.</p>`, blanks: children.map((_, index) => ({ id: `b${index + 1}`, answers: ["1"], points })) }
+              : { type: "QUESTION_SET", passage: `<p>${UNIT_LABEL}ngữ liệu chung của ${code}.</p>`, blankNumberStart: 1, children },
+          });
+        } else {
+          drafts.push({
+            ...base,
+            type,
+            points,
+            body: bodyOf(type, block.itemShape ?? null, points, block),
+          });
+        }
+        unitCursor += size;
+      }
+    }
+  }
+  return drafts;
+}
+
+
+/** Phần thân tối thiểu hợp lệ của một dạng câu, bám `itemShape` và `expectedScoring` khi khối khai. */
+function bodyOf(
+  type: string,
+  shape: ChildConditionLite["itemShape"] | null,
+  points: number,
+  block: StructureBlock | null,
+): Record<string, unknown> {
+  const option = (label: string, correct: boolean) => ({ id: crypto.randomUUID(), content: `<p>${label}</p>`, correct });
+  switch (type) {
+    case "MULTIPLE_CHOICE": {
+      const count = Math.max(2, Math.min(10, shape?.options ?? 4));
+      return { type, options: Array.from({ length: count }, (_, index) => option(String.fromCharCode(65 + index), index < 2)), scoringRule: "ALL_OR_NOTHING", shuffleOptions: true };
+    }
+    case "SHORT_ANSWER":
+      return { type, answers: ["1"], inputHint: null, answerFormat: block?.answerFormats?.[0] ?? null };
+    case "TRUE_FALSE": {
+      const count = Math.max(2, Math.min(8, shape?.statements ?? 4));
+      const table = block?.expectedScoring?.trueFalseTable;
+      const method = block?.expectedScoring?.trueFalseMethod ?? "PER_STATEMENT";
+      return {
+        type,
+        statements: Array.from({ length: count }, (_, index) => ({
+          id: crypto.randomUUID(),
+          content: `<p>Mệnh đề ${index + 1}.</p>`,
+          answer: index % 2 === 0,
+          points: method === "PER_STATEMENT" ? points / count : null,
+        })),
+        scoringMethod: method,
+        scoreTable: method === "COUNT_TABLE" ? (table?.length === count ? table : Array.from({ length: count }, (_, i) => ((i + 1) * points) / count)) : [],
+      };
+    }
+    case "MATCHING": {
+      const count = Math.max(1, shape?.leftItems ?? 4);
+      return {
+        type,
+        left: Array.from({ length: count }, (_, index) => ({ id: `l${index + 1}`, content: `<p>Trái ${index + 1}</p>` })),
+        right: Array.from({ length: count + 1 }, (_, index) => ({ id: `r${index + 1}`, content: `<p>Phải ${index + 1}</p>` })),
+        pairs: Array.from({ length: count }, (_, index) => ({ leftId: `l${index + 1}`, rightId: `r${index + 1}`, points: points / count })),
+        reuseRight: false,
+      };
+    }
+    case "ESSAY":
+      return { type, gradingGuide: `<p>Hướng dẫn chấm điều chế ${RUN_ID}.</p>`, rubric: [], sampleAnswer: null, wordLimit: null };
+    case "SINGLE_CHOICE":
+    default: {
+      const count = Math.max(2, Math.min(10, shape?.options ?? 4));
+      return { type: "SINGLE_CHOICE", options: Array.from({ length: count }, (_, index) => option(String.fromCharCode(65 + index), index === 0)), shuffleOptions: true };
+    }
+  }
+}
+
+/**
+ * Tạo toàn bộ `drafts` thành câu Nháp rồi đưa lên Sẵn sàng hàng loạt (8 luồng tạo, một lời gọi `bulk/ready`).
+ * Trả tóm tắt của các câu đã Sẵn sàng.
+ */
+export async function createReadyQuestions(admin: AdminApi, drafts: QuestionDraft[]): Promise<QuestionSummaryLite[]> {
+  const created: QuestionSummaryLite[] = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < drafts.length) {
+      const draft = drafts[next++]!;
+      const response = await admin.api.post(`${ADMIN_URL}/api/v1/admin/questions`, {
+        headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
+        data: draft,
+      });
+      const detail = await body<{ question?: QuestionDetailLite } & QuestionDetailLite>(response, 201);
+      const summary = detail.question?.summary ?? detail.summary;
+      if (summary?.id) created.push({ id: summary.id, code: summary.code });
+    }
+  };
+  await Promise.all(Array.from({ length: 8 }, worker));
+  expect(created.length, "tạo câu thất bại một phần").toBe(drafts.length);
+  if (created.length === 0) return created;
+  const ready = await admin.api.post(`${ADMIN_URL}/api/v1/admin/questions/bulk/ready`, {
+    headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
+    data: { ids: created.map((question) => question.id) },
+  });
+  const result = await body<{ updated?: QuestionSummaryLite[]; skipped?: Array<{ questionId: string; reason: string; detail?: string }> }>(ready, 200);
+  expect(
+    result.skipped ?? [],
+    `bulk ready bỏ qua ${result.skipped?.length ?? 0}/${created.length} câu`,
+  ).toEqual([]);
+  return created;
 }
 
 /* ---------- Kho lưu trữ S3/MinIO: xóa và khôi phục tệp nguồn (kịch bản ATTACHMENT_MISSING) ---------- */

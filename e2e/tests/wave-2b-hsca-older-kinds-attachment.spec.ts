@@ -1,16 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ADMIN_URL, adminApi, loginAdmin } from "./helpers/editor-qa";
+import { ADMIN_URL, adminApi, createKnowledgeTree, loginAdmin } from "./helpers/editor-qa";
 import {
   attachAssetToQuestions,
   collectIssues,
-  detachAssetFromQuestions,
   continueToReviewInUi,
+  createReadyQuestions,
+  detachAssetFromQuestions,
   examCode,
   fillExamStep1InUi,
-  listReadyQuestions,
+  narrowSectionsToKnowledge,
+  planQuestionsForSections,
   submitExamStep1InUi,
   uploadQuestionAsset,
   type CheckResult,
+  type QuestionSummaryLite,
   type UiExamKind,
 } from "./helpers/wave-2b";
 
@@ -68,11 +71,12 @@ async function recheck(page: Page, id: string): Promise<CheckResult> {
 }
 
 /**
- * Nghiệm thu bổ sung H-SCA/V-SAT (QA addendum mục 8, H48): bảy kỳ thi cũ, mỗi kỳ một bài theo môn Toán. Kiểm tra trước khi
- * có câu đính kèm, rồi gắn một tệp PDF đọc được vào mọi câu Sẵn sàng của môn Toán (nên chắc chắn có câu đính kèm trong đề
- * chứng minh) và kiểm tra lại: kết quả giống hệt và không có ATTACHMENT_MISSING. Câu Toán là dữ liệu dùng chung của kho nên
- * tệp được gỡ trong `finally` (mỗi câu trả về danh sách đính kèm ban đầu, kể cả khi kịch bản hỏng giữa chừng); kho chỉ có
- * thêm phiên bản của câu, đính kèm và nội dung không đổi giữa các lần chạy.
+ * Nghiệm thu bổ sung H-SCA/V-SAT (QA addendum mục 8, H48): bảy kỳ thi cũ, mỗi kỳ một bài theo môn Toán thu hẹp về
+ * một nút kiến thức riêng của lần chạy (R4-2, QA:22 — không đụng câu dữ liệu mẫu). Mỗi bài có ngân hàng riêng vừa
+ * đủ lấp cấu trúc của nó (điểm, hình dạng, chỉ tiêu của từng khối) nên đề chắc chắn toàn câu của luồng. Kiểm tra
+ * trước khi có tệp, gắn một tệp PDF đọc được vào đúng các câu đó và kiểm tra lại: kết quả giống hệt và không có
+ * ATTACHMENT_MISSING. Sau đó gỡ tệp (câu của luồng, nhưng vẫn trả đính kèm về rỗng); lỗi gỡ chỉ báo nhẹ qua
+ * `expect.soft` để không che lỗi nghiệp vụ đang bay (R4-3).
  */
 test("Bảy kỳ thi cũ: kết quả kiểm tra không đổi khi câu có tệp đính kèm", async ({ context, page }) => {
   await loginAdmin(context, "vi");
@@ -80,21 +84,26 @@ test("Bảy kỳ thi cũ: kết quả kiểm tra không đổi khi câu có tệ
 
   const ids = new Map<UiExamKind, string>();
   const before = new Map<UiExamKind, CheckDigest>();
+  const questions = new Map<UiExamKind, QuestionSummaryLite[]>();
   for (const kind of OLDER_KINDS) {
     const id = await createToanExam(page, kind);
     ids.set(kind, id);
+    const tree = await createKnowledgeTree(admin, "TOAN", `ATT-${kind}`);
+    const narrowed = await narrowSectionsToKnowledge(admin, id, "TOAN", tree.leafId);
+    const pool = await createReadyQuestions(admin, planQuestionsForSections(narrowed, "TOAN", tree.leafId, kind));
+    expect(pool.length, `${kind}: cần câu riêng cho mục Toán`).toBeGreaterThan(0);
+    questions.set(kind, pool);
     const check = await continueToReviewInUi(page, id);
     expect(check.status, `${kind}: kiểm tra cơ sở`).not.toBe("UNCHECKED");
     before.set(kind, digest(check));
   }
 
-  const questions = await listReadyQuestions(admin, "TOAN");
-  expect(questions.length, "không có câu Toán Sẵn sàng để gắn tệp").toBeGreaterThan(0);
+  const all = [...questions.values()].flat();
   const assetId = await uploadQuestionAsset(admin, "w2b-att.pdf", "application/pdf", PDF);
   try {
-    const attached = await attachAssetToQuestions(admin, questions, assetId);
-    expect(attached.failed, `gắn tệp lỗi ở ${attached.failed}/${questions.length} câu`).toBe(0);
-    expect(attached.ok).toBe(questions.length);
+    const attached = await attachAssetToQuestions(admin, all, assetId);
+    expect(attached.failed, `gắn tệp lỗi ở ${attached.failed}/${all.length} câu`).toBe(0);
+    expect(attached.ok).toBe(all.length);
 
     for (const kind of OLDER_KINDS) {
       const check = await recheck(page, ids.get(kind)!);
@@ -102,7 +111,8 @@ test("Bảy kỳ thi cũ: kết quả kiểm tra không đổi khi câu có tệ
       expect(digest(check), `${kind}: kết quả kiểm tra sau khi gắn tệp`).toEqual(before.get(kind));
     }
   } finally {
-    const detached = await detachAssetFromQuestions(admin, questions, assetId);
-    expect(detached.failed, `gỡ tệp lỗi ở ${detached.failed}/${questions.length} câu`).toBe(0);
+    const detached = await detachAssetFromQuestions(admin, all, assetId);
+    console.log(`[wave-2b] gỡ tệp của luồng: ${detached.ok} câu, lỗi ${detached.failed}`);
+    expect.soft(detached.failed, `gỡ tệp lỗi ở ${detached.failed}/${all.length} câu`).toBe(0);
   }
 });
