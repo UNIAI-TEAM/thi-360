@@ -324,7 +324,10 @@ export interface ExamCheckOutcome {
   maxScore: number | null;
 }
 
-/** Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi. */
+/**
+ * Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi, hoặc quy tắc kiểm tra đã
+ * đổi (RULES_CHANGED, R-12: kết quả lưu trước quy tắc Khoa học của HSA, QDA; chỉ lần kiểm tra cả bài mới xóa lý do này).
+ */
 export type CheckInvalidReason = "STRUCTURE_CHANGED" | "CONFIG_CHANGED" | "SOURCE_CHANGED" | "RULES_CHANGED";
 
 export interface ExamCheckResult extends ExamCheckOutcome {

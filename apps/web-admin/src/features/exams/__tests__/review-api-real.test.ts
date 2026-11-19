@@ -166,7 +166,7 @@ describe("newCodesAndRulesChanged", () => {
             pathId: "default",
             result: "INVALID",
             issues: [
-              { code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-phys", subjectCode: "LY" },
+              { code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "QUESTION_SET", sectionId: "sec-phys", subjectCode: "LY" },
               { code: "SHORT_ANSWER_MIN", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-chem", subjectCode: "HOA" },
             ],
           },

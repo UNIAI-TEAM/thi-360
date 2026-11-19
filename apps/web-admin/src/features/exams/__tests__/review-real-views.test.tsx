@@ -204,19 +204,24 @@ describe("rulesChangedOnCheckPage", () => {
     key: `${code}:${sectionId}`,
     code,
     severity: "ERROR",
-    group: "STRUCTURE",
+    // The backend files SECTION_SET_COUNT_RANGE under QUESTION_SET and SHORT_ANSWER_MIN under STRUCTURE.
+    group: code === "SECTION_SET_COUNT_RANGE" ? "QUESTION_SET" : "STRUCTURE",
     partId: "part-1",
     sectionId,
     subjectCode,
     affectedCodes: [],
   });
-  const ISSUES = [issue("SECTION_SET_COUNT_RANGE", "sec-phys", "LY"), issue("SHORT_ANSWER_MIN", "sec-chem", "HOA")];
+  const SET_ISSUE = issue("SECTION_SET_COUNT_RANGE", "sec-phys", "LY");
+  const SHORT_ISSUE = issue("SHORT_ANSWER_MIN", "sec-chem", "HOA");
   const STALE_CHECK = {
     ...checkResultWire("INVALID"),
     stale: true,
     invalidReason: "RULES_CHANGED",
     issueCount: 2,
-    groups: [{ group: "STRUCTURE", status: "FAIL", issues: ISSUES }],
+    groups: [
+      { group: "QUESTION_SET", status: "FAIL", issues: [SET_ISSUE] },
+      { group: "STRUCTURE", status: "FAIL", issues: [SHORT_ISSUE] },
+    ],
     paths: [{ pathId: "default", result: "INVALID", issues: [] }],
   };
 
@@ -240,7 +245,7 @@ describe("rulesChangedOnCheckPage", () => {
     expect(errors.getByText("SHORT_ANSWER_MIN")).toBeInTheDocument();
     expect(errors.queryByText("INFO_MISSING")).not.toBeInTheDocument();
     expect(errors.getByText(/LY: số chùm phải từ 1 đến 2/)).toBeInTheDocument();
-    expect(errors.getByText(/HOA: cần ít nhất 1 câu điền đáp án/)).toBeInTheDocument();
+    expect(errors.getByText(/HOA: cần ít nhất 1 câu Điền đáp án \(loại Trả lời ngắn\)/)).toBeInTheDocument();
     expect(errors.getByText("LY")).toBeInTheDocument();
     expect(errors.getByText("HOA")).toBeInTheDocument();
     expect(errors.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
@@ -251,6 +256,11 @@ describe("rulesChangedOnCheckPage", () => {
     expect(server.calls("POST", CHECK)).toHaveLength(0);
     await user.click(screen.getAllByRole("button", { name: "Kiểm tra lại" })[0]!);
     await waitFor(() => expect(server.calls("POST", CHECK)).toHaveLength(1));
+    // RULES_CHANGED clears only on a whole-exam run: the button sends no part or section scope.
+    const sent = (server.calls("POST", CHECK)[0]!.body ?? {}) as { scope?: string; partId?: string; sectionId?: string };
+    expect(sent.scope === undefined || sent.scope === "EXAM").toBe(true);
+    expect(sent.partId).toBeUndefined();
+    expect(sent.sectionId).toBeUndefined();
   });
 
   it("en: cùng kết quả bằng chữ tiếng Anh, không còn khóa dịch thô", async () => {

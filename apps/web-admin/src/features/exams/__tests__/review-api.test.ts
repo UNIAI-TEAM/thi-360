@@ -231,7 +231,7 @@ describe("mapIssue: khóa dự phòng khi máy chủ không gửi key", () => {
 
 describe("newCodesAndRulesChanged", () => {
   it("hai mã mới giữ nguyên mã, không rơi về INFO_MISSING; chùm ở môn Lý, câu điền ở môn Hóa", () => {
-    const sets = mapIssue({ code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-phys", subjectCode: "LY" });
+    const sets = mapIssue({ code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "QUESTION_SET", sectionId: "sec-phys", subjectCode: "LY" });
     const shortAnswer = mapIssue({ code: "SHORT_ANSWER_MIN", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-chem", subjectCode: "HOA" });
     expect([sets.code, sets.sectionId, sets.subjectCode]).toEqual(["SECTION_SET_COUNT_RANGE", "sec-phys", "LY"]);
     expect([shortAnswer.code, shortAnswer.sectionId, shortAnswer.subjectCode]).toEqual(["SHORT_ANSWER_MIN", "sec-chem", "HOA"]);
@@ -251,7 +251,7 @@ describe("newCodesAndRulesChanged", () => {
           pathId: SCIENCE,
           result: "INVALID",
           issues: [
-            { code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-phys", subjectCode: "LY" },
+            { code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "QUESTION_SET", sectionId: "sec-phys", subjectCode: "LY" },
             { code: "SHORT_ANSWER_MIN", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-chem", subjectCode: "HOA" },
           ],
         },

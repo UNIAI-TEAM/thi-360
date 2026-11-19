@@ -4825,7 +4825,7 @@
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
         "SECTION_SET_COUNT_RANGE": "Môn {subject}: số chùm phải từ 1 đến 2 và mỗi chùm có 3 câu con.",
-        "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu điền đáp án."
+        "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu Điền đáp án (loại Trả lời ngắn)."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
