@@ -33,8 +33,34 @@ describe("Câu Ghép đôi (AC-12)", () => {
     const onValue = vi.fn();
     render(<Live question={matching} matchUi="pick" onValue={onValue} />);
     await user.click(screen.getByRole("button", { name: t.matchPickLeft(2) }));
-    const rightRows = screen.getAllByRole("button", { name: t.matchWith });
-    await user.click(rightRows[1]!);
+    await user.click(screen.getByRole("button", { name: t.matchPickRight("b", null) }));
     expect(onValue).toHaveBeenLastCalledWith({ pairs: { l2: "r2" } });
+  });
+
+  // R1-4: AC-12 "bỏ cặp về null" cũng phải làm được ở cách bấm hai lượt.
+  it("cách bấm hai lượt: bỏ ghép một cặp về null và mục phải dùng lại được", async () => {
+    const user = userEvent.setup();
+    const onValue = vi.fn();
+    render(<Live question={matching} matchUi="pick" initial={{ pairs: { l1: "r1", l2: "r2" } }} onValue={onValue} />);
+    await user.click(screen.getByRole("button", { name: t.matchClear(2) }));
+    expect(onValue).toHaveBeenLastCalledWith({ pairs: { l1: "r1", l2: null } });
+    expect(screen.queryByRole("button", { name: t.matchClear(2) })).toBeNull();
+    // r2 hết bị khóa: chọn mục 2 rồi gán lại được.
+    await user.click(screen.getByRole("button", { name: t.matchPickLeft(2) }));
+    await user.click(screen.getByRole("button", { name: t.matchPickRight("b", null) }));
+    expect(onValue).toHaveBeenLastCalledWith({ pairs: { l1: "r1", l2: "r2" } });
+  });
+
+  // R1-5: mỗi nút gán ở cột phải phải có tên riêng, không phải N nút trùng tên.
+  it("cách bấm hai lượt: các nút gán ở cột phải có tên khác nhau", async () => {
+    const user = userEvent.setup();
+    render(<Live question={matching} matchUi="pick" />);
+    await user.click(screen.getByRole("button", { name: t.matchPickLeft(1) }));
+    const names = screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label") ?? "")
+      .filter((name) => name.startsWith("Lựa chọn"));
+    expect(names).toHaveLength(3);
+    expect(new Set(names).size).toBe(3);
   });
 });

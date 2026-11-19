@@ -149,7 +149,7 @@ export function MatchingQuestion({
   );
 }
 
-/** Bảng bấm-chọn của Ghép đôi: cột trái chọn trước, cột phải gán vào; hủy bằng nút X trên thẻ phải. */
+/** Bảng bấm-chọn của Ghép đôi: cột trái chọn trước, cột phải gán vào; bỏ ghép bằng nút X cạnh mục trái đã ghép. */
 function MatchingPickBoard({
   left,
   right,
@@ -177,14 +177,14 @@ function MatchingPickBoard({
             const picked = pairs[item.id];
             const active = pendingLeft === item.id;
             return (
-              <li key={item.id}>
+              <li key={item.id} className="flex items-center gap-2">
                 <button
                   type="button"
                   aria-pressed={active}
                   aria-label={strings.matchPickLeft(index + 1)}
                   onClick={() => setPendingLeft(active ? null : item.id)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-150 motion-reduce:transition-none",
+                    "flex min-w-0 flex-1 items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-150 motion-reduce:transition-none",
                     active ? "border-primary-600 bg-success-bg" : "border-border bg-surface hover:border-border-strong",
                     focusRing,
                   )}
@@ -201,6 +201,22 @@ function MatchingPickBoard({
                     </span>
                   )}
                 </button>
+                {picked != null && (
+                  <button
+                    type="button"
+                    aria-label={strings.matchClear(index + 1)}
+                    onClick={() => {
+                      onChange?.({ pairs: { ...pairs, [item.id]: null } });
+                      if (pendingLeft === item.id) setPendingLeft(null);
+                    }}
+                    className={cn(
+                      "grid size-8 shrink-0 place-items-center rounded-lg text-text-secondary hover:bg-subtle",
+                      focusRing,
+                    )}
+                  >
+                    <X aria-hidden className="size-4" />
+                  </button>
+                )}
               </li>
             );
           })}
@@ -230,6 +246,10 @@ function MatchingPickBoard({
                   {!blocked && pendingLeft != null && (
                     <button
                       type="button"
+                      aria-label={strings.matchPickRight(
+                        matchLetter(index),
+                        usedBy.length > 0 ? usedBy.map((id) => String((leftIndex.get(id) ?? 0) + 1)).join(", ") : null,
+                      )}
                       onClick={() => {
                         onChange?.({ pairs: { ...pairs, [pendingLeft]: item.id } });
                         setPendingLeft(null);
