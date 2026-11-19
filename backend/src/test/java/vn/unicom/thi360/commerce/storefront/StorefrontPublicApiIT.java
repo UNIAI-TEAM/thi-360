@@ -77,6 +77,21 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
         unknownBody.remove("traceId");
         assertThat(draftBody).as("same body but the trace id").isEqualTo(unknownBody);
         assertThat(draftBody.path("message").asText()).isNotBlank();
+
+        // A stored row that is neither on sale nor discontinued (UNAVAILABLE, a bundle state of CM-6) answers the same.
+        TestExam stored = exam();
+        sell(stored);
+        jdbc.update("UPDATE commerce.storefront_product SET sale_state = 'UNAVAILABLE', product_type = 'BUNDLE', "
+                + "exam_id = NULL, bundle_id = ? WHERE exam_id = ?", UUID.randomUUID(), stored.examId);
+        try {
+            ObjectNode storedBody = (ObjectNode) body(publicGet(BASE + "/products/" + stored.code, newClientIp())
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND")).andReturn());
+            storedBody.remove("traceId");
+            assertThat(storedBody).as("a stored non-sale row is indistinguishable from an unknown code")
+                    .isEqualTo(unknownBody);
+        } finally {
+            jdbc.update("DELETE FROM commerce.storefront_product WHERE code_normalized = ?", stored.code.toLowerCase());
+        }
     }
 
     @Test

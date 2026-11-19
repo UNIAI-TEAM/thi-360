@@ -37,27 +37,33 @@ class StorefrontRebuildIT extends AbstractStorefrontIT {
         drain();
         jdbc.update("UPDATE shared.outbox_event SET failed_at = now(), attempts = 5 WHERE id = ?", dead);
         port.recover(lostEvent.examId);
+        // This exam fails during the rebuild itself: the rebuild must go on with the others, not stop at it.
+        TestExam brokenAtRebuild = exam();
+        serve(brokenAtRebuild);
+        port.failFor(brokenAtRebuild.examId);
         // The draft is not served by the exam module: it has no row to restore.
         assertThat(hasRow(onSale.examId) || hasRow(discontinued.examId) || hasRow(lostEvent.examId)).isFalse();
 
         mockMvc.perform(post(REBUILD).with(asUser(Permissions.EXAM_PUBLISH)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.examined").value(3))
+                .andExpect(jsonPath("$.examined").value(4))
                 .andExpect(jsonPath("$.written").value(3))
-                .andExpect(jsonPath("$.failed").value(0));
+                .andExpect(jsonPath("$.failed").value(1));
 
         assertThat(row(onSale.examId)).containsEntry("sale_state", "ON_SALE");
         assertThat(row(discontinued.examId)).containsEntry("sale_state", "DISCONTINUED");
         assertThat(row(lostEvent.examId)).containsEntry("sale_state", "ON_SALE");
         assertThat(hasRow(draft.examId)).as("no row for a draft").isFalse();
 
-        // Running it again changes nothing.
+        // Running it again changes nothing; the exam that still fails is counted again, the others are unchanged.
         String before = rowJson(onSale.examId) + rowJson(discontinued.examId) + rowJson(lostEvent.examId);
         mockMvc.perform(post(REBUILD).with(asUser(Permissions.EXAM_PUBLISH)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.written").value(0))
-                .andExpect(jsonPath("$.unchanged").value(3));
+                .andExpect(jsonPath("$.unchanged").value(3))
+                .andExpect(jsonPath("$.failed").value(1));
         assertThat(rowJson(onSale.examId) + rowJson(discontinued.examId) + rowJson(lostEvent.examId)).isEqualTo(before);
+        assertThat(hasRow(brokenAtRebuild.examId)).isFalse();
     }
 
     @Test
