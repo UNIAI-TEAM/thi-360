@@ -62,9 +62,9 @@ public class ExamPublishService {
     }
 
     private ExamPublishResponse publishOnce(UUID examId, ExamPublishRequest request) {
-        var rows = jdbc.query("SELECT revision, name, kind_item_id, timing, duration_minutes FROM exam.exam WHERE id = ? FOR UPDATE",
+        var rows = jdbc.query("SELECT revision, name, kind_item_id, timing, duration_minutes, build_mode FROM exam.exam WHERE id = ? FOR UPDATE",
                 (rs, n) -> new ExamRow(rs.getLong(1), rs.getString(2), rs.getObject(3, UUID.class),
-                        rs.getString(4), rs.getObject(5, Integer.class)), examId);
+                        rs.getString(4), rs.getObject(5, Integer.class), rs.getString(6)), examId);
         if (rows.isEmpty()) throw new NotFoundException("Exam not found");
         ExamRow exam = rows.getFirst();
         if (exam.revision() != request.expectedRevision()) throw new VersionConflictException(ExamErrorCodes.REVISION_CONFLICT, null);
@@ -124,6 +124,8 @@ public class ExamPublishService {
         String quotas = snapshot.resolvedQuotas(document, selected).toString();
         var extra = snapshot.selectedCombinations(allCombinations, selected);
         extra.set("omittedGroups", snapshot.omittedGroups(document));
+        // The default mode is not stored, so a STANDARD exam's snapshot is unchanged and a snapshot without the key is STANDARD.
+        if (!"STANDARD".equals(exam.buildMode())) extra.put("buildMode", exam.buildMode());
         extra.set("examQuotas", json(jdbc.queryForObject("SELECT exam_quotas::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId)));
         String extraConfig = extra.toString();
         String snapshotParts = snapshot.parts(document, check.result(), check.witness(), selected, exam.timing(), exam.durationMinutes()).toString();
@@ -229,7 +231,7 @@ public class ExamPublishService {
         }
     }
 
-    private record ExamRow(long revision, String name, UUID kindId, String timing, Integer durationMinutes) { }
+    private record ExamRow(long revision, String name, UUID kindId, String timing, Integer durationMinutes, String buildMode) { }
     private record CheckRow(UUID id, JsonNode result, JsonNode witness) { }
     private record VersionPaths(int version, List<String> paths) { }
 }

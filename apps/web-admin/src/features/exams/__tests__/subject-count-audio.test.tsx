@@ -59,6 +59,7 @@ const section = (audioRequirement?: AudioRequirement): ExamSection => ({
 });
 
 const common = {
+  examId: "exam-1",
   subjectName: "Tiếng Anh",
   axes: { grades: reference.grades.map((grade) => grade.code), difficulties: reference.difficulties.map((item) => item.code) },
   labels: { grade: (code: string) => code, difficulty: (code: string) => code },
@@ -76,7 +77,7 @@ function renderSubjectPanel(current: ExamSection) {
 }
 
 function renderReviewPanel(current: ExamSection) {
-  renderWithProviders(<ReviewSubjectPanel {...common} context={contextOf(current)} step1Count={10} />);
+  renderWithProviders(<ReviewSubjectPanel {...common} context={contextOf(current)} step1Count={10} minutes={15} maxScore={null} />);
   return subjectCounts.queries.at(-1)!;
 }
 

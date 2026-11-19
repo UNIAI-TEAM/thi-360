@@ -12,6 +12,7 @@ import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
+import vn.unicom.thi360.exam.domain.ParticipationMode;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 
 /** Applies partial overview changes without replacing blocks or quotas. */
@@ -55,10 +56,12 @@ final class ExamOverview {
             if (row != null) matched.add(part.id());
             var fixed = part.sections().stream().map(s -> updateSection(part.id(), s, sections, matched)).toList();
             var pool = part.subjectPool().stream().map(s -> updateSection(part.id(), s, sections, matched)).toList();
-            var options = part.options().stream().map(o -> new ExamPartOption(o.id(), o.kind(), o.code(), o.name(),
-                    o.chooseSubjects(), o.countsByPick(), o.sections().stream()
-                            .map(s -> updateSection(part.id(), s, sections, matched)).toList(),
-                    o.blocks(), o.expertConfirmed())).toList();
+            var options = part.options().stream().map(o -> {
+                var updated = o.sections().stream().map(s -> updateSection(part.id(), s, sections, matched)).toList();
+                return new ExamPartOption(o.id(), o.kind(), o.code(), o.name(), o.chooseSubjects(), o.countsByPick(),
+                        updated, o.blocks(), propagateCount && countsChanged(o.sections(), updated)
+                                && Boolean.TRUE.equals(o.expertConfirmed()) ? Boolean.FALSE : o.expertConfirmed());
+            }).toList();
             Integer count = change != null && change.countChanged() ? row.questionCount() : part.questionCount();
             if (propagateCount && change != null && change.countChanged() && fixed.size() == 1
                     && part.subjectPool().isEmpty() && part.options().isEmpty()
@@ -69,12 +72,25 @@ final class ExamOverview {
             }
             return new ExamPart(part.id(), part.order(), part.name(),
                     change != null && change.durationChanged() ? row.durationMinutes() : part.durationMinutes(),
-                    count, part.questionCountOnPaper(), part.questionCountRequired(), part.participation(),
+                    count, onPaper(part, change != null && change.countChanged(), count), part.questionCountRequired(),
+                    part.participation(),
                     change != null && change.pointsChanged() ? row.maxPoints() : part.maxPoints(), fixed, options,
                     pool, part.codeSource(), part.displaySegments());
         }).toList();
         if (matched.size() != parts.size() + sections.size()) throw invalid();
         return new ExamStructureDocument(result, document.examQuotas());
+    }
+
+    /**
+     * The printed count of a FIXED (ALL) part follows an overview count that grows past it; a smaller count and
+     * every non-FIXED part (CHOICE, or coded with a codeSource) keep the stored value, as before.
+     */
+    private static Integer onPaper(ExamPart part, boolean countChanged, Integer count) {
+        Integer onPaper = part.questionCountOnPaper();
+        // A coded (QDA/BCA) part is stored as ALL but its catalog choice paths decide the printed count.
+        boolean fixed = part.codeSource() == null
+                && (part.participation() == null || part.participation().mode() != ParticipationMode.CHOICE);
+        return countChanged && fixed && onPaper != null && count != null && onPaper < count ? count : onPaper;
     }
 
     static List<ExamOverviewRequest.Row> rows(ExamStructureDocument document) {
@@ -181,6 +197,14 @@ final class ExamOverview {
                 change.countChanged() ? row.questionCount() : section.questionCount(),
                 section.knowledgeScope(), section.answerQuotas(), section.matrix(), section.choiceGroup(),
                 section.blocks(), section.topicQuotas(), section.audioRequirement());
+    }
+
+    /** A changed section count means the expert never saw the option as it now is. */
+    private static boolean countsChanged(List<ExamSection> before, List<ExamSection> after) {
+        for (int i = 0; i < before.size(); i++) {
+            if (!java.util.Objects.equals(before.get(i).questionCount(), after.get(i).questionCount())) return true;
+        }
+        return false;
     }
 
     private static BusinessRuleException invalid() {

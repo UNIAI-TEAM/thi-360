@@ -100,6 +100,8 @@ public class ExamPreviewStore {
                     config.path("yearsConfirmed").asBoolean(), text(config, "templateCode"),
                     timing, duration, max, null, Instant.EPOCH);
             exam.applyScoringProfile(decimal(config, "referenceMax"), scoring);
+            // Versions published before the mode was stored carry no key and were always checked as STANDARD.
+            if (text(config, "buildMode") != null) exam.setBuildMode(text(config, "buildMode"));
             int questionCount = 0;
             for (JsonNode part : parts.path("parts")) questionCount += part.path("questionCount").asInt();
             exam.applyStructureSummary(questionCount, false, false, 0);
