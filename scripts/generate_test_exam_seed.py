@@ -538,6 +538,8 @@ def emit_seed():
     out.append("-- (docs/specs/2026-11-17-de-test-gia-dinh.md mục 3.3, 3.1, 3.2).")
     out.append("-- Phát sinh bằng scripts/generate_test_exam_seed.py; id cố định, ON CONFLICT DO NOTHING.")
     out.append("-- Mọi số \"giả định\" chờ chuyên gia xác nhận.")
+    out.append("-- Nâng cấp đợt 2B -> 3: bước nâng cấp giả định không có tiến trình API cũ nào ghi trong lúc Flyway")
+    out.append("-- chạy (dev/demo triển khai lại tạo container mới); chỉ đề còn nguyên cấu trúc và tiêu đề 2B mới được thay.")
     out.append("")
     out.append("-- QUESTION_TAG + nút MAPID dùng cho bài lỗi TEST-ERR-03/07 và phạm vi MAPID hẹp của Toán.")
     items = [
@@ -679,7 +681,38 @@ def pg_array(ids):
 # 3) 14 bài hợp lệ + 13 bài lỗi
 # =====================================================================
 
-COMBINATION_COUNT = {"QDA": 5, "BCA": 4}  # Global List của danh mục seed: QD01-QD05, CA1-CA4
+# Header (admin-editable columns) of every TEST-* exam as the 2B seed wrote it, frozen from
+# backend/src/test/resources/exam/seed-2b/R__seed_test_exam_data.sql:
+# (name, description, instructions, duration_minutes, max_score, reference_max, practice_scoring, years_confirmed)
+WAVE_2B_HEADERS = {
+    'TEST-HSA-01': ('TEST · HSA toàn bài', 'Đề test giả định (UNI-2634).', None, 195, 150, None, 'RAW', True),
+    'TEST-HSA-02': ('TEST · HSA phần Toán', 'Đề test giả định (UNI-2634).', None, 75, 50, None, 'RAW', True),
+    'TEST-HSA-03': ('TEST · HSA phần Văn', 'Đề test giả định (UNI-2634).', None, 60, 50, None, 'RAW', True),
+    'TEST-HSA-04': ('TEST · HSA phần Khoa học/Tiếng Anh', 'Đề test giả định (UNI-2634).', None, 60, 50, None, 'RAW', True),
+    'TEST-QDA-01': ('TEST · QDA toàn bài', 'Đề test giả định (UNI-2634).', None, 195, 150, None, 'RAW', True),
+    'TEST-BCA-01': ('TEST · BCA toàn bài', 'Đề test giả định (UNI-2634).', None, 180, 100, None, 'RAW', True),
+    'TEST-VACT-01': ('TEST · V-ACT toàn bài', 'Đề test giả định (UNI-2634).', None, 150, None, 1200, 'LINEAR', True),
+    'TEST-SPT-01': ('TEST · SPT Toán 2025', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-SP2E-01': ('TEST · SP2E Toán 2025', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-SP2E-02': ('TEST · SP2E Toán 2026', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-SP2E-03': ('TEST · SP2E Tiếng Anh 2026', 'Đề test giả định (UNI-2634).', None, 60, 10, None, 'RAW', True),
+    'TEST-THPTQG-01': ('TEST · THPTQG Toán 2025', 'Đề test giả định (UNI-2634).', None, 90, 10, None, 'RAW', True),
+    'TEST-THPTQG-02': ('TEST · THPTQG Ngữ văn 2025', 'Đề test giả định (UNI-2634).', None, 120, 10, None, 'RAW', True),
+    'TEST-THPTQG-03': ('TEST · THPTQG Tin học 2025', 'Đề test giả định (UNI-2634).', None, 50, 10, None, 'RAW', True),
+    'TEST-ERR-01': ('TEST · ERR ma trận thiếu cách áp', 'Lỗi: khối MĐ có matrix nhưng chưa chọn cách áp (mode null) -> MATRIX_INCOMPLETE.', None, 90, 10, None, 'RAW', True),
+    'TEST-ERR-02': ('TEST · ERR điểm phần 2 BCA', 'Lỗi: khối Tiếng Anh 1đ (tổng phần 65 > max 60) -> PART_POINTS_MISMATCH + POINTS_TOTAL_MISMATCH.', None, 180, 100, None, 'RAW', True),
+    'TEST-ERR-03': ('TEST · ERR chùm hiếm', 'Lỗi: nhóm Đọc ngữ liệu lọc nhãn TEST-HIEM (2 < 5 bộ) -> SET_SHORTAGE.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-04': ('TEST · ERR tổng môn 49', 'Lỗi: nhóm câu đơn 40 (môn 49) -> SECTION_TOTAL_MISMATCH.', None, 75, 50, None, 'RAW', True),
+    'TEST-ERR-05': ('TEST · ERR chỉ tiêu TLN 14', 'Lỗi: chỉ tiêu Trả lời ngắn 14 (tổng 49) -> ANSWER_QUOTA_TOTAL_MISMATCH.', None, 75, 50, None, 'RAW', True),
+    'TEST-ERR-06': ('TEST · ERR MAPID hẹp Toán', 'Lỗi: phạm vi MAPID TEST-TOAN-HEP (10 TLN < 15) -> ANSWER_TYPE_SHORTAGE.', None, 75, 50, None, 'RAW', True),
+    'TEST-ERR-07': ('TEST · ERR Địa lí chỉ đủ 16', 'Lỗi: Địa lí đủ đúng 16, thiếu khi nhận 17 -> INVALID ở 3 selections.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-08': ('TEST · ERR Vật lí thiếu nhóm còn lại', 'Vật lí gồm 6 câu chùm và 11 câu đơn; giải đủ 17 câu trước khi bỏ một câu.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-09': ('TEST · ERR Hóa học chỉ tiêu số câu', 'Lỗi: chỉ tiêu Hóa học có tổng 16 câu thay vì 17 câu.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-10': ('TEST · ERR countsByPick 17-17-17', 'Lỗi: countsByPick 17/17/17 -> SUBJECT_CHOICE_COUNTS_INVALID.', None, 60, 50, None, 'RAW', True),
+    'TEST-ERR-11': ('TEST · ERR ô G12×VDC thiếu', 'Lỗi: ô Lớp 12 × VDC đặt 12, bộ mẫu tối đa 4 -> CELL_SHORTAGE.', None, 90, 10, None, 'RAW', True),
+    'TEST-ERR-12': ('TEST · ERR khối TLN bỏ điểm', 'Lỗi: khối Trả lời ngắn bỏ điểm mỗi câu -> POINTS_TOTAL_MISMATCH.', None, 90, 10, None, 'RAW', True),
+    'TEST-ERR-13': ('TEST · ERR năm chưa xác nhận', 'Lỗi: cấu trúc 2026, ma trận 2025, chưa xác nhận -> YEARS_UNCONFIRMED.', None, 90, 10, None, 'RAW', False),
+}
 
 
 def exam_row(code, name, kind, scope, template_code, *, part_code=None, subject=None,
@@ -898,9 +931,7 @@ def summarize(exam):
             has_english |= option["kind"] == "SUBJECT" and option["code"] == "ANH"
             has_essay |= has_essay_block(option.get("blocks", []), None)
     question_count = sum(part["questionCount"] or 0 for part in parts)
-    combinations = (COMBINATION_COUNT[exam["kind"]]
-                    if any(part.get("codeSource") for part in parts) else 0)
-    return question_count, has_essay, has_english, combinations
+    return question_count, has_essay, has_english, combination_count_sql(exam)
 
 
 # Every place a blocks[] array can sit in structure v2 (jsonpath, lax mode unwraps the arrays).
@@ -912,29 +943,80 @@ def seed_marker(code):
     return f"seed3-{code.lower()}"
 
 
-def upgradable(code, exam_id, structure):
-    """An exam still holding exactly the structure the 2B seed wrote: the literal hash
-    `seed-<code>` (every API write replaces it with a SHA-256 and sets `edited`), a draft that
-    was never published. Admin-edited, reloaded, published or already upgraded rows never match."""
-    return (f"{structure}.structure_hash = 'seed-{code.lower()}' AND NOT {structure}.edited"
-            f" AND EXISTS (SELECT 1 FROM exam.exam e WHERE e.id = {exam_id} AND e.status = 'DRAFT')"
-            f" AND NOT EXISTS (SELECT 1 FROM exam.exam_version v WHERE v.exam_id = {exam_id})")
+def header_unchanged(code, exam_alias):
+    """The exam row still holds the 2B seed's admin-editable header: PATCH exam info (name,
+    description, instructions, duration, scale, scoring, years confirmation, code) changes
+    these columns without touching the structure row, so the structure hash alone cannot tell."""
+    name, description, instructions, duration, max_score, reference_max, practice, years = WAVE_2B_HEADERS[code]
+    values = (("code", code), ("name", name), ("description", description), ("instructions", instructions),
+              ("duration_minutes", duration), ("max_score", max_score), ("reference_max", reference_max),
+              ("practice_scoring", practice), ("years_confirmed", years))
+    terms = []
+    for column, value in values:
+        if value is None:
+            terms.append(f"{exam_alias}.{column} IS NULL")
+        elif isinstance(value, bool):
+            terms.append(f"{exam_alias}.{column} = {'true' if value else 'false'}")
+        elif isinstance(value, int):
+            terms.append(f"{exam_alias}.{column} = {value}")
+        else:
+            terms.append(f"{exam_alias}.{column} = {sql_quote(value)}")
+    return " AND ".join(terms)
+
+
+def upgradable(code):
+    """An exam still exactly as the 2B seed wrote it: the literal structure hash `seed-<code>`
+    (every API structure write replaces it with a SHA-256 and sets `edited`), the 2B header
+    (see header_unchanged), a draft that was never published. Admin-edited (structure or
+    header), published, versioned or already upgraded rows never match. Aliases: s = exam_structure,
+    e = exam."""
+    return (f"s.structure_hash = 'seed-{code.lower()}' AND NOT s.edited AND e.status = 'DRAFT'"
+            f" AND NOT EXISTS (SELECT 1 FROM exam.exam_version v WHERE v.exam_id = e.id)"
+            f" AND {header_unchanged(code, 'e')}")
+
+
+def combination_count_sql(exam):
+    """ExamService.summarize: the distinct codes of the current active SUBJECT_COMBINATION list
+    for the exam kind (CatalogLookupImpl.listCombinations), counted only for an exam with a
+    code-source part. The value is read from the catalog when the seed runs."""
+    if not any(part.get("codeSource") for part in exam["doc"]["parts"]):
+        return "0"
+    return ("(SELECT count(DISTINCT n.code) FROM catalog.catalog_item n"
+            " JOIN catalog.catalog_group g ON g.id = n.group_id AND g.code_normalized = 'subject_combination'"
+            " AND g.status = 1 AND g.kind = 2"
+            " JOIN catalog.combination_version cv ON cv.item_id = n.id AND cv.is_current"
+            f" JOIN catalog.catalog_item x ON x.id = cv.exam_item_id AND x.status = 1"
+            f" WHERE cv.exam_item_id = '{KIND[exam['kind']]}' AND n.status = 1"
+            " AND NOT EXISTS (SELECT 1 FROM catalog.catalog_item anc WHERE anc.group_id = n.group_id"
+            " AND n.path LIKE anc.path || '%' AND anc.status <> 1))")
 
 
 def upgrade_statements(exam, eid, question_count, has_essay, has_english, combinations):
-    """Wave 3 upgrade of a database that holds the 2B seed (docs: de-test 4.4). The structure
-    itself is replaced by the upsert that follows; this statement drops the working block refs
-    of the old structure and refreshes every exam column the fresh INSERT sets (name,
-    description, status and the check history of the exam are left to the admin, and
-    check_status only moves to NEEDS_RECHECK)."""
+    """One statement per exam that inserts the fresh structure or, on a database holding the 2B
+    seed, upgrades it (docs: de-test 4.4). Eligibility is evaluated once, in `upgrading`, before
+    anything in the statement changes: a data-modifying CTE sees the snapshot taken at the start.
+    An eligible row gets the new structure, drops its working block refs, takes the fixture's
+    name, description and statistics, and moves to revision + 1 (check_status only to
+    NEEDS_RECHECK). The 2B copy being unchanged is part of the guard, so rewriting name and
+    description never overwrites admin text."""
     code = exam["code"]
-    guard = upgradable(code, "s.exam_id", "s")
+    parts = sql_quote(dump(exam["doc"]))
+    quotas = sql_quote(dump(exam["exam_quotas"]))
     return [
-        "WITH upgrading AS (SELECT s.exam_id FROM exam.exam_structure s",
-        f"    WHERE s.exam_id = '{eid}' AND {guard}),",
+        "WITH seeded(exam_id, parts, exam_quotas, structure_hash) AS (VALUES",
+        f"  ('{eid}'::uuid,{parts}::jsonb,{quotas}::jsonb,'{seed_marker(code)}'::text)),",
+        "fresh AS (INSERT INTO exam.exam_structure (exam_id, parts, exam_quotas, structure_hash, base_version,",
+        "    updated_by) SELECT d.exam_id, d.parts, d.exam_quotas, d.structure_hash, NULL, NULL FROM seeded d",
+        "    WHERE NOT EXISTS (SELECT 1 FROM exam.exam_structure x WHERE x.exam_id = d.exam_id) RETURNING exam_id),",
+        "upgrading AS (SELECT s.exam_id FROM exam.exam_structure s JOIN exam.exam e ON e.id = s.exam_id",
+        f"    WHERE s.exam_id = '{eid}' AND {upgradable(code)}),",
         "dropped AS (DELETE FROM exam.exam_block_ref r USING upgrading u",
-        "    WHERE r.exam_id = u.exam_id AND r.version_no IS NULL RETURNING r.id)",
-        f"UPDATE exam.exam e SET kind_item_id = '{KIND[exam['kind']]}', scope = '{exam['scope']}',",
+        "    WHERE r.exam_id = u.exam_id AND r.version_no IS NULL RETURNING r.id),",
+        "replaced AS (UPDATE exam.exam_structure s SET parts = d.parts, exam_quotas = d.exam_quotas,",
+        "    structure_hash = d.structure_hash, edited = false, updated_at = now()",
+        "    FROM upgrading u JOIN seeded d ON d.exam_id = u.exam_id WHERE s.exam_id = u.exam_id RETURNING s.exam_id)",
+        f"UPDATE exam.exam e SET name = {sql_quote(exam['name'])}, description = {sql_quote(exam['description'])},",
+        f"    kind_item_id = '{KIND[exam['kind']]}', scope = '{exam['scope']}',",
         f"    part_code = {sql_quote(exam['part_code']) if exam['part_code'] else 'NULL'},",
         f"    subject_item_id = {sql_quote(SUBJECT[exam['subject']]) if exam['subject'] else 'NULL'},",
         f"    template_code = {sql_quote(exam['template'])},",
@@ -982,13 +1064,6 @@ def emit_exam(exam):
     out.append("ON CONFLICT (id) DO NOTHING;")
     out.append("")
     out.extend(upgrade_statements(exam, eid, qc, has_essay, has_eng, combination_count))
-    out.append("INSERT INTO exam.exam_structure AS s (exam_id, parts, exam_quotas, structure_hash, base_version,")
-    out.append("    updated_by) VALUES")
-    out.append(f"  ('{eid}',{sql_quote(dump(exam['doc']))}::jsonb,{sql_quote(dump(exam['exam_quotas']))}::jsonb,"
-          f"'{seed_marker(code)}',NULL,NULL)")
-    out.append("ON CONFLICT (exam_id) DO UPDATE SET parts = EXCLUDED.parts, exam_quotas = EXCLUDED.exam_quotas,")
-    out.append("    structure_hash = EXCLUDED.structure_hash, edited = false, updated_at = now()")
-    out.append(f"WHERE {upgradable(code, 's.exam_id', 's')};")
     out.append("")
     # block refs
     rows = []
@@ -1012,8 +1087,8 @@ def emit_exam(exam):
         out.append("    tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES")
         out.append(",\n".join(rows) + "\nON CONFLICT DO NOTHING;")
         out.append("")
-        # The structure above is never replaced once stored, so the refs must follow the stored one:
-        # drop seeded rows for blocks it does not contain. A unique index on (exam, version, block)
+        # The refs must follow the stored structure: drop seeded rows for blocks it does not contain.
+        # A unique index on (exam, version, block)
         # already keeps the projection of a later edit and the seeded rows from coexisting.
         # FU-BE13-2: only an id that is a member of a blocks[] array counts; a part, section or
         # option id (or any other nested id) that equals a removed block id must not keep its ref.
