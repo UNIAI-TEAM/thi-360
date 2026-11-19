@@ -57,6 +57,8 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
   });
   const cover = useCoverField(exam.id, listing.coverAssetId && listing.coverUrl ? { assetId: listing.coverAssetId, url: listing.coverUrl } : null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** Đang gõ thì ô giá hiện chữ số thô (con trỏ không nhảy); rời ô mới có dấu phân cách. */
+  const [priceFocused, setPriceFocused] = useState(false);
 
   const schema = useMemo(
     () =>
@@ -162,14 +164,14 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
             error={formState.errors.description?.message}
             hint={counter("description", t("hints.description"))}
           >
-            {(controlProps) => <Textarea {...controlProps} rows={5} disabled={disabled} {...register("description")} />}
+            {(controlProps) => <Textarea {...controlProps} rows={5} maxLength={LISTING_LIMITS.description} disabled={disabled} {...register("description")} />}
           </FormField>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(18.75rem,100%),1fr))] gap-4">
             <FormField label={t("fields.objectives")} error={formState.errors.objectives?.message} hint={counter("objectives")}>
-              {(controlProps) => <Textarea {...controlProps} rows={5} disabled={disabled} {...register("objectives")} />}
+              {(controlProps) => <Textarea {...controlProps} rows={5} maxLength={LISTING_LIMITS.objectives} disabled={disabled} {...register("objectives")} />}
             </FormField>
             <FormField label={t("fields.audience")} error={formState.errors.audience?.message} hint={counter("audience")}>
-              {(controlProps) => <Textarea {...controlProps} rows={5} disabled={disabled} {...register("audience")} />}
+              {(controlProps) => <Textarea {...controlProps} rows={5} maxLength={LISTING_LIMITS.audience} disabled={disabled} {...register("audience")} />}
             </FormField>
           </div>
         </Section>
@@ -197,9 +199,13 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
                         autoComplete="off"
                         disabled={disabled}
                         className="text-right tabular-nums"
-                        value={field.value === "" ? "" : format.number(Number(field.value))}
+                        value={field.value === "" || priceFocused ? field.value : format.number(Number(field.value))}
                         onChange={(event) => field.onChange(priceDigits(event.target.value))}
-                        onBlur={field.onBlur}
+                        onFocus={() => setPriceFocused(true)}
+                        onBlur={() => {
+                          setPriceFocused(false);
+                          field.onBlur();
+                        }}
                       />
                       <span aria-hidden className="text-text-secondary">
                         {t("currency")}

@@ -25,6 +25,7 @@ function wire(issues: Record<string, unknown>[], sectionStates: Record<string, u
     sectionStates,
     groups: [{ group: "STRUCTURE", status: "FAIL", issues }],
     paths: [{ pathId: "default", result: "INVALID", issues: [] }],
+    listingCheck: { group: "LISTING", status: "PASS", issues: [] },
   };
 }
 
@@ -106,6 +107,13 @@ describe("Kiểm tra: lỗi và cảnh báo tách riêng", () => {
     expect(await screen.findByText("Công bố được. Không có lỗi chặn.")).toBeInTheDocument();
     expect(screen.queryByTestId("findings-errors")).not.toBeInTheDocument();
     expect(screen.getByTestId("findings-warnings")).toBeInTheDocument();
+  });
+
+  it("máy chủ không trả listingCheck: không báo công bố được, dùng dòng chưa kết luận", async () => {
+    renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: { ...wire(WARNINGS), listingCheck: null } }));
+
+    expect(await screen.findByText("Chưa kết luận được: chưa kiểm tra được Thông tin bán.")).toBeInTheDocument();
+    expect(screen.queryByText("Công bố được. Không có lỗi chặn.")).not.toBeInTheDocument();
   });
 
   it("lỗi mức UNCONFIRMED ở danh sách riêng, không gộp vào lỗi chặn", async () => {

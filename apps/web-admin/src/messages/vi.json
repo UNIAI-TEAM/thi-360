@@ -4844,6 +4844,7 @@
         "blocked": "Chưa công bố được: {count, number} lỗi chặn công bố.",
         "codeGroup": "Mã {code}",
         "listingBlocked": "Chưa công bố được: Thông tin bán có {count, number} lỗi.",
+        "listingUnconfirmed": "Chưa kết luận được: chưa kiểm tra được Thông tin bán.",
         "counters": {
           "errors": "Lỗi",
           "sections": "Môn đã kiểm tra",

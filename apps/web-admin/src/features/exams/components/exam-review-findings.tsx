@@ -57,7 +57,9 @@ export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
   const states = result.sectionStates ?? null;
   const checked = states?.filter((item) => item.state === "CHECKED").length ?? 0;
   const listingErrors = listingErrorCount(result.listingCheck);
-  const blocked = errors.length > 0 || unconfirmed.length > 0 || listingErrors > 0;
+  // Máy chủ không trả nhóm Thông tin bán: chưa biết có lỗi chặn hay không, nên không báo "Công bố được".
+  const listingUnchecked = result.listingCheck == null;
+  const blocked = errors.length > 0 || unconfirmed.length > 0 || listingErrors > 0 || listingUnchecked;
 
   return (
     <section aria-labelledby="review-findings-title" className="flex flex-col gap-4">
@@ -82,7 +84,9 @@ export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
                 ? t("unconfirmedHeadline", { count: unconfirmed.length })
                 : listingErrors > 0
                   ? t("listingBlocked", { count: listingErrors })
-                  : t("passed")}
+                  : listingUnchecked
+                    ? t("listingUnconfirmed")
+                    : t("passed")}
           </p>
           <p className="text-body text-text-secondary">
             {warnings.length > 0 ? t("warningsNote", { count: warnings.length }) : t("noWarnings")}

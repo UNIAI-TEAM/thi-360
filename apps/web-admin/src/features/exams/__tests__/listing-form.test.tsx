@@ -45,6 +45,10 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
 
     await user.clear(priceInput);
     await user.type(priceInput, "150000");
+    // Đang gõ: chữ số thô (con trỏ không nhảy); rời ô thì có dấu phân cách.
+    expect(priceInput).toHaveValue("150000");
+    expect(preview().getByText("150.000 đ")).toBeInTheDocument();
+    await user.tab();
     expect(priceInput).toHaveValue("150.000");
     expect(preview().getByText("150.000 đ")).toBeInTheDocument();
     expect(preview().queryByText("249.000 đ")).not.toBeInTheDocument();
@@ -58,6 +62,33 @@ describe("tab Thông tin bán: xem trước thẻ", () => {
     await user.clear(attemptsInput);
     await user.type(attemptsInput, "5");
     expect(preview().getByText(/· 5 lượt/)).toBeInTheDocument();
+  });
+
+  it("ô giá: gõ chèn giữa dãy số không làm con trỏ nhảy về cuối; dấu phân cách chỉ hiện khi rời ô", async () => {
+    listingServer().install();
+    const user = userEvent.setup();
+    renderListingTab();
+
+    const priceInput = (await price()) as HTMLInputElement;
+    await user.click(priceInput);
+    expect(priceInput).toHaveValue("249000");
+    priceInput.setSelectionRange(1, 1);
+    await user.keyboard("7");
+    expect(priceInput).toHaveValue("2749000");
+    expect(priceInput.selectionStart).toBe(2);
+    await user.tab();
+    expect(priceInput).toHaveValue("2.749.000");
+  });
+
+  it("mô tả, mục tiêu, đối tượng chặn gõ quá giới hạn như mô tả ngắn", async () => {
+    listingServer().install();
+    renderListingTab();
+
+    await price();
+    expect(screen.getByRole("textbox", { name: "Mô tả ngắn trên thẻ" })).toHaveAttribute("maxlength", "300");
+    expect(screen.getByRole("textbox", { name: /^Mô tả(?! ngắn)/ })).toHaveAttribute("maxlength", "4000");
+    expect(screen.getByRole("textbox", { name: /Mục tiêu/ })).toHaveAttribute("maxlength", "2000");
+    expect(screen.getByRole("textbox", { name: /Đối tượng/ })).toHaveAttribute("maxlength", "2000");
   });
 
   it("ô giá trống: thẻ ghi chưa có giá thay vì 0 đ; ảnh bìa lấy từ bản nháp", async () => {

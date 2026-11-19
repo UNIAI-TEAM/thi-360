@@ -4844,6 +4844,7 @@
         "blocked": "Cannot publish yet: {count, plural, one {# error blocks} other {# errors block}} publishing.",
         "codeGroup": "Code {code}",
         "listingBlocked": "Cannot publish yet: the listing has {count, plural, one {# error} other {# errors}}.",
+        "listingUnconfirmed": "Not conclusive: the listing could not be checked.",
         "counters": {
           "errors": "Errors",
           "sections": "Subjects checked",
