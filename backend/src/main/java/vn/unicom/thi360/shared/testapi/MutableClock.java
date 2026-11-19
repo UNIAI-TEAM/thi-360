@@ -123,25 +123,30 @@ public final class MutableClock extends Clock {
     /**
      * Một lần chuyển trạng thái: mẫu giờ nền và độ lệch cũ, tính độ lệch mới, kiểm giờ kết quả còn
      * trong khoảng hỗ trợ <em>trước khi</em> ghi, rồi ghi nếu độ lệch chưa bị ai đổi (không thì thử
-     * lại). Giá trị trả về là giờ của chính trạng thái vừa ghi tại mẫu nền đó, nên không bị lẫn với
-     * lần chuyển khác chạy đồng thời. Quá khoảng thì ném {@link OutOfRangeException} và giữ nguyên
-     * trạng thái cũ.
+     * lại). Kiểm thất bại (quá khoảng hoặc tràn số) cũng chỉ được từ chối khi trạng thái vẫn là trạng
+     * thái đã kiểm: nếu nó đổi trong lúc kiểm thì thử lại với độ lệch mới, vì kết quả có thể hợp lệ
+     * với trạng thái đó. Giá trị trả về là giờ của chính trạng thái vừa ghi tại mẫu nền đó, nên không
+     * bị lẫn với lần chuyển khác chạy đồng thời. Quá khoảng thì ném {@link OutOfRangeException} và giữ
+     * nguyên trạng thái cũ.
      */
     private Instant transition(BiFunction<Instant, Duration, Duration> next) {
         while (true) {
             State current = state.get();
             Instant baseNow = base.instant();
-            Duration updated;
-            Instant result;
+            Duration updated = null;
+            Instant result = null;
             try {
                 updated = next.apply(baseNow, current.offset);
                 result = baseNow.plus(updated);
             } catch (DateTimeException | ArithmeticException e) {
-                throw new OutOfRangeException();
+                // rơi xuống nhánh quá khoảng bên dưới
             }
-            requireInRange(result);
-            if (state.compareAndSet(current, new State(updated))) {
-                return result;
+            if (result != null && !result.isBefore(SUPPORTED_MIN) && !result.isAfter(SUPPORTED_MAX)) {
+                if (state.compareAndSet(current, new State(updated))) {
+                    return result;
+                }
+            } else if (state.get() == current) {
+                throw new OutOfRangeException();
             }
         }
     }

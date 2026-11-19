@@ -372,4 +372,35 @@ class MutableClockTests {
             pool.shutdownNow();
         }
     }
+    // R3-02: kiểm khoảng thất bại trên độ lệch đã bị đổi trong lúc kiểm phải thử lại với trạng thái
+    // mới, không từ chối. Dàn cảnh: đồng hồ ở MAX-2s; lần tua +1s đọc trạng thái rồi dừng trước khi
+    // lấy mẫu; giờ nền chạy +2s, một reset xen vào đưa độ lệch về 0; khi nhả đọc, kết quả trên mẫu
+    // trễ là MAX+1s (quá khoảng) nhưng trên trạng thái mới là hợp lệ: phải ghi được.
+    @Test
+    void advanceRejectedByAStaleValidationRetriesAgainstTheNewState() throws Exception {
+        GatedBase base = new GatedBase();
+        MutableClock clock = new MutableClock(base);
+        clock.setAt(MutableClock.SUPPORTED_MAX.minusSeconds(2));
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            base.armStagedSample();
+            Future<Instant> advance = pool.submit(() -> clock.advance(Duration.ofSeconds(1)));
+            base.awaitArrived(); // lần tua đã đọc trạng thái (MAX-2s), chưa lấy mẫu giờ nền
+
+            base.set(GatedBase.START.plusSeconds(2));
+            assertThat(clock.reset()).isEqualTo(GatedBase.START.plusSeconds(2)); // trạng thái mới, độ lệch 0
+            base.proceed();
+            base.awaitSampled(); // mẫu trễ được lấy xong, lần tua vào bước kiểm khoảng
+            base.release();
+
+            // Mẫu trễ (START+2s) cộng độ lệch cũ cho MAX+1s: quá khoảng; trạng thái mới (độ lệch 0)
+            // cho START+3s: hợp lệ. Kết quả ghi được phải là của trạng thái mới.
+            Instant moved = advance.get(5, TimeUnit.SECONDS);
+            assertThat(moved).isEqualTo(GatedBase.START.plusSeconds(3));
+            assertThat(clock.offset()).isEqualTo(Duration.ofSeconds(1));
+            assertThat(clock.instant()).isEqualTo(GatedBase.START.plusSeconds(3));
+        } finally {
+            pool.shutdownNow();
+        }
+    }
 }
