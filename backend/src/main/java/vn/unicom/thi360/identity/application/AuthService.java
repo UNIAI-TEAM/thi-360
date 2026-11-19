@@ -288,6 +288,11 @@ public class AuthService {
             throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
         loginThrottle.reset(normalizedIdentifier);
+        // Mọi bước có thể ném lỗi (đọc quyền, ký ctx, chọn trang đích) xong TRƯỚC khi commit ngôn ngữ
+        // và nhật ký thành công: nếu không, đăng nhập báo lỗi mà ngôn ngữ thư đã bị đổi (R1-5).
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
+        String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, authz.access(), authz.version());
+        String redirectTo = redirectResolver.resolve(authz.access(), account.isMustChangePassword(), callbackUrl);
         transactionTemplate.executeWithoutResult(status -> {
             UserAccount fresh = userAccountRepository.findById(account.getId()).orElse(account);
             fresh.markLoggedIn(now);
@@ -304,8 +309,6 @@ public class AuthService {
                     .build());
         });
 
-        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
-        String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, authz.access(), authz.version());
         authCookieService.setAuthCookies(
                 response,
                 tokens.accessToken(),
@@ -314,7 +317,6 @@ public class AuthService {
                 tokens.refreshExpiresInSeconds(),
                 ctx);
 
-        String redirectTo = redirectResolver.resolve(authz.access(), account.isMustChangePassword(), callbackUrl);
         return new LoginResult(redirectTo, account.isMustChangePassword());
     }
 

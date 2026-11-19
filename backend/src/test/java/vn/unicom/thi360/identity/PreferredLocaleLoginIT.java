@@ -1,9 +1,13 @@
 package vn.unicom.thi360.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
 import java.util.List;
@@ -15,8 +19,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
+import vn.unicom.thi360.identity.application.AuthzSnapshotService;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
@@ -25,6 +31,7 @@ import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUse
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
 import vn.unicom.thi360.shared.security.RateLimitFilter;
+import vn.unicom.thi360.shared.security.Realm;
 
 /** TM 4 / plan C-0: a successful login stores the language of the {@code thi360_locale} cookie. */
 class PreferredLocaleLoginIT extends AbstractKeycloakIntegrationTest {
@@ -43,6 +50,9 @@ class PreferredLocaleLoginIT extends AbstractKeycloakIntegrationTest {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @MockitoSpyBean
+    private AuthzSnapshotService authzSnapshotService;
 
     @BeforeEach
     @AfterEach
@@ -85,6 +95,35 @@ class PreferredLocaleLoginIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(status().isUnauthorized());
 
         assertThat(storedLocale(account)).isEqualTo("vi");
+    }
+
+    /** R1-5: the credential is right but reading the authorization snapshot fails; no success side effect. */
+    @Test
+    void authzFailureAfterCredentialCheckLeavesLocaleUnchanged() throws Exception {
+        UserAccount account = createUser();
+        jdbcTemplate.update("UPDATE identity.user_account SET preferred_locale = 'en' WHERE id = ?", account.getId());
+        Long loginAuditsBefore = loginAuditCount(account);
+        doThrow(new IllegalStateException("authz snapshot query failed"))
+                .when(authzSnapshotService).resolve(any(), eq(Realm.APP));
+
+        int outcome;
+        try {
+            outcome = login(account.getUsername(), PASSWORD, new Cookie("thi360_locale", "vi"))
+                    .andReturn().getResponse().getStatus();
+        } catch (ServletException ex) {
+            outcome = 500;
+        }
+
+        assertThat(outcome).isGreaterThanOrEqualTo(500);
+        assertThat(storedLocale(account)).isEqualTo("en");
+        assertThat(loginAuditCount(account)).isEqualTo(loginAuditsBefore);
+    }
+
+    private Long loginAuditCount(UserAccount account) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'identity' AND action = 'LOGIN'"
+                        + " AND target_id = ?",
+                Long.class, account.getId().toString());
     }
 
     private org.springframework.test.web.servlet.ResultActions login(
