@@ -3819,6 +3819,15 @@
         "essay": "Tự luận",
         "essayValue": "Có câu tự luận, chấm tay"
       },
+      "overview": {
+        "description": "Số lấy từ cấu trúc đã lưu của bài, sửa ngay trên dòng rồi bấm Lưu thông tin. Đổi số ở đây không đổi nhóm lấy câu và ma trận: số câu của phần lệch với phân bổ thì bước Cấu trúc báo lệch để bạn tự chia lại.",
+        "pendingDescription": "Đang chọn phạm vi khác: bảng là số của mẫu mới nhất, chỉ đọc. Số này được nạp khi bạn xác nhận nạp lại cấu trúc.",
+        "pendingEmpty": "Phạm vi mới chưa có mẫu: sau khi nạp lại, cấu trúc để trống.",
+        "empty": "Bài chưa có phần nào. Thêm phần ở bước Cấu trúc.",
+        "loadErrorTitle": "Không tải được cấu trúc đã lưu.",
+        "loadErrorDescription": "Vẫn lưu được thông tin chung; thử lại để sửa số câu, thời lượng, điểm của các phần.",
+        "infoNotSaved": "Số câu, thời lượng, điểm của các phần đã được lưu, nhưng thông tin chung chưa lưu được. Kiểm tra lại các ô rồi bấm Lưu thông tin."
+      },
       "loadErrorTitle": "Không tải được danh mục và mẫu cấu trúc",
       "loadErrorDescription": "Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại"
@@ -5539,28 +5548,6 @@
         "maxScorePositive": "Thang điểm phải lớn hơn 0.",
         "pointsPositive": "Điểm của phần phải lớn hơn 0.",
         "commonTooLarge": "Phần chung có {common, number} câu, không còn câu cho lựa chọn trong {total, number} câu của phần."
-      },
-      "preview": {
-        "title": "Cấu trúc sẽ nạp · {name}",
-        "titleEmpty": "Cấu trúc sẽ nạp · không dùng mẫu",
-        "editable": "Sửa được ở Cấu trúc và ma trận",
-        "caption": "Mẫu cấu trúc theo kỳ thi và hình thức đã chọn",
-        "part": "Phần",
-        "questions": "Số câu",
-        "duration": "Thời lượng",
-        "questionsValue": "{count, number} câu",
-        "durationValue": "{count, number} phút",
-        "total": "Tổng",
-        "choiceNote": "Học viên chọn Tiếng Anh hoặc một tổ hợp Khoa học; số câu từng môn chỉnh ở Cấu trúc",
-        "subjectPending": "Chưa chọn môn",
-        "emptyNote": "Khai báo số câu và thời lượng ở Cấu trúc",
-        "note": "Mẫu chỉ là cấu hình ban đầu. Bạn phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố.",
-        "points": "Điểm",
-        "pointsValue": "{count, number} điểm",
-        "durationShared": "chung",
-        "durationSharedValue": "{count, number} phút chung",
-        "choiceOptionsNote": "Học viên chọn một trong {count, number} lựa chọn gắn sẵn",
-        "sectionsNote": "{count, number} môn trong phần"
       },
       "kindHintKind": "{kind}: một mẫu cấu trúc cho cả kỳ thi · {timing}",
       "kindHintSubject": "{kind}: mẫu cấu trúc theo môn và năm · {timing}",

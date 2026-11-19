@@ -47,6 +47,13 @@ export interface ExamOverviewTableProps {
   sharedDuration?: OverviewNumberField;
   /** Ô điểm tối đa của bài khi bảng không có cột Điểm (không có mẫu chia điểm theo phần). */
   maxScore?: OverviewNumberField;
+  /**
+   * Chỉ đọc: mọi ô số khóa như ô của mẫu khóa (`readonly aria-readonly`, vẫn trong thứ tự Tab). Dùng khi bảng hiện số của
+   * mẫu sắp nạp (đổi phạm vi ở Thông tin chung), chưa phải số của bài.
+   */
+  readOnly?: boolean;
+  /** Thời lượng chung chỉ để cộng vào hàng Tổng khi bảng không có ô nhập thời lượng chung (ô nằm ở biểu mẫu bên ngoài). */
+  sharedTotal?: string;
 }
 
 const NUMERIC = { inputMode: "numeric" as const };
@@ -166,10 +173,12 @@ export function ExamOverviewTable({
   rowLabel,
   sharedDuration,
   maxScore,
+  readOnly = false,
+  sharedTotal,
 }: ExamOverviewTableProps) {
   const t = useTranslations("exams.create.overview");
   const format = useFormatter();
-  const totals = overviewTotals(rows, timing, sharedDuration?.value ?? "");
+  const totals = overviewTotals(rows, timing, sharedDuration?.value ?? sharedTotal ?? "");
   const showDuration = timing === "PER_PART";
   // H-SCA, V-SAT: dòng lấy câu của mẫu (chỉ đọc) kèm cột Tỷ lệ trong phần, Lệnh hỏi (V-SAT) và Điểm tối đa; kỳ thi khác không có.
   const blockMode = rows.some((row) => row.kind === "block");
@@ -279,7 +288,7 @@ export function ExamOverviewTable({
                 <tr key={row.key} className="border-b border-border last:border-b-0">
                   <td className={cn("px-3 py-2 align-top", row.kind === "section" && "pl-8 text-text-secondary")}>
                     {row.kind === "section" ? <span className="me-1 text-text-muted">–</span> : null}
-                    {display}
+                    {row.kind === "part" ? <span data-exam-content>{display}</span> : display}
                     {row.choice && <span className="ms-2 text-caption text-text-muted">{t("choiceNote")}</span>}
                   </td>
                   <td className="px-3 py-2 align-top">
@@ -291,7 +300,7 @@ export function ExamOverviewTable({
                           row={cellRow}
                           field="questionCount"
                           error={rowIssues?.questionCount}
-                          locked={row.lockedCount}
+                          locked={readOnly || row.lockedCount}
                           onCellChange={onCellChange}
                         />
                       )}
@@ -317,7 +326,7 @@ export function ExamOverviewTable({
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
                         {row.kind === "part" ? (
-                          <NumberCell row={cellRow} field="durationMinutes" error={rowIssues?.durationMinutes} onCellChange={onCellChange} />
+                          <NumberCell row={cellRow} field="durationMinutes" error={rowIssues?.durationMinutes} locked={readOnly} onCellChange={onCellChange} />
                         ) : (
                           <span className="px-3 py-2 text-text-muted">—</span>
                         )}
@@ -328,7 +337,7 @@ export function ExamOverviewTable({
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
                         {row.kind === "part" ? (
-                          <NumberCell row={cellRow} field="maxPoints" error={rowIssues?.maxPoints} onCellChange={onCellChange} />
+                          <NumberCell row={cellRow} field="maxPoints" error={rowIssues?.maxPoints} locked={readOnly} onCellChange={onCellChange} />
                         ) : (
                           <span className="px-3 py-2 text-text-muted">{row.maxPoints || "—"}</span>
                         )}

@@ -2,16 +2,16 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Card, EmptyState, LiveStatus, notify, Skeleton, StatusChip } from "@thi360/ui";
-import { TriangleAlert } from "lucide-react";
+import { Lock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { useExam, useExamTemplates, useUpdateExamInfo } from "../queries";
+import { useExam, useExamStructure, useExamTemplates, useUpdateExamInfo, useUpdateExamStructure } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
-import type { ExamDetail, ExamTemplate, UpdateExamInfoRequest } from "../types";
+import type { ExamDetail, ExamStructure, ExamTemplate, UpdateExamInfoRequest } from "../types";
 import {
   combinationsForKind,
   type ExamInfoFormValues,
@@ -24,7 +24,12 @@ import {
   type ScopeSelection,
   yearsDiffer,
 } from "../create-exam-schema";
-import { ExamInfoFields, TemplatePreview, useExamInfoSchema, usePartNames } from "./create-exam-fields";
+import { overviewRowsFromTemplate, rowsDifferFromTemplate, validateOverview } from "../create-exam-overview";
+import { applyOverviewToParts, overviewRowsFromParts } from "../create-exam-overview-structure";
+import { blockCountsLocked } from "./block-form";
+import { ExamInfoFields, useExamInfoSchema, usePartNames } from "./create-exam-fields";
+import { focusField } from "./create-exam-summary";
+import { ExamOverviewTable } from "./exam-overview-table";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { ExamsApiError } from "../review-api";
@@ -44,6 +49,11 @@ interface PendingInfoSave {
   /** Các phần sẽ được nạp lại theo mẫu mới nhất của phạm vi mới (hiện ở hộp xác nhận). */
   parts: ReloadPartRow[];
 }
+
+type OverviewField = "questionCount" | "durationMinutes" | "maxPoints";
+
+/** Ô của bảng tổng quan người dùng đã sửa, theo khóa dòng; phủ lên số đang lưu để bảng đổi theo cấu trúc mới tải về. */
+type CellEdits = Record<string, Partial<Record<OverviewField, string>>>;
 
 /** Bài ôn nhận ra qua `buildMode` máy chủ trả (không đoán từ mẫu): thang của bài ôn được để trống. */
 function toFormValues(exam: ExamDetail): ExamInfoFormValues {
@@ -78,14 +88,20 @@ function examScope(exam: ExamDetail): ScopeSelection {
  * Tab Thông tin chung (chưa có bản vẽ riêng; trường theo `TaoBaiThi`, UniNote PBI-04 mục 4; spec 7 kỳ thi). Sửa tên, mã,
  * mô tả, hướng dẫn làm bài, thời lượng chung, thang điểm, xác nhận năm cấu trúc và năm ma trận; đổi kỳ thi, phạm vi,
  * phần hoặc môn thì nạp lại cấu trúc theo mẫu mới nhất sau khi xác nhận (hộp thoại liệt kê các phần sẽ nạp lại), chỉ khi
- * bài chưa công bố. Phiên bản năm chọn ở bước Cấu trúc. Bên phải là các thông tin chỉ để đọc.
+ * bài chưa công bố. Có "Cấu trúc tổng quan" như bước 1: số câu, thời lượng, điểm của từng phần lấy từ cấu trúc đã lưu,
+ * sửa ngay trên dòng; lưu thì ghi cấu trúc trước, thông tin sau. Phiên bản năm chọn ở bước Cấu trúc. Bên phải là các
+ * thông tin chỉ để đọc.
  */
 export function ExamGeneralView({ examId }: { examId: string }) {
   const t = useTranslations("exams.general");
   const examQuery = useExam(examId);
   const referenceQuery = useContentReference();
   const templatesQuery = useExamTemplates();
+  const structureQuery = useExamStructure(examId);
   const [liveMessage, setLiveMessage] = useState("");
+  // Lưu cấu trúc xong thì bài đổi `updatedAt` và biểu mẫu dựng lại; giữ khóa cũ cho tới khi phần thông tin cũng xong, để
+  // thông tin đã gõ không mất nếu bước lưu thông tin lỗi.
+  const [heldKey, setHeldKey] = useState<string | null>(null);
   if (!examQuery.data) return null;
   if (referenceQuery.isError || templatesQuery.isError) {
     return (
@@ -117,14 +133,19 @@ export function ExamGeneralView({ examId }: { examId: string }) {
       </div>
     );
   }
+  const formKey = `${examQuery.data.id}-${examQuery.data.updatedAt}`;
   return (
     <>
       {/* Khóa theo lần cập nhật: lưu xong biểu mẫu nạp lại giá trị mới, hết "chưa lưu". */}
       <ExamGeneralForm
-        key={`${examQuery.data.id}-${examQuery.data.updatedAt}`}
+        key={heldKey ?? formKey}
         exam={examQuery.data}
         reference={referenceQuery.data}
         templates={templatesQuery.data}
+        structure={structureQuery.data}
+        structureFailed={structureQuery.isError}
+        onRetryStructure={() => void structureQuery.refetch()}
+        onHold={(hold) => setHeldKey((held) => (hold ? (held ?? formKey) : null))}
         onAnnounce={setLiveMessage}
       />
       <LiveStatus message={liveMessage} />
@@ -136,22 +157,36 @@ function ExamGeneralForm({
   exam,
   reference,
   templates,
+  structure,
+  structureFailed,
+  onRetryStructure,
+  onHold,
   onAnnounce,
 }: {
   exam: ExamDetail;
   reference: ContentReference;
   templates: readonly ExamTemplate[];
+  /** Cấu trúc đã lưu (`GET /exams/{id}/structure`); chưa về thì bảng tổng quan hiện khung chờ. */
+  structure: ExamStructure | undefined;
+  structureFailed: boolean;
+  onRetryStructure: () => void;
+  /** Giữ (hoặc thả) khóa của biểu mẫu để lưu cấu trúc không làm dựng lại biểu mẫu giữa chừng. */
+  onHold: (hold: boolean) => void;
   onAnnounce: (message: string) => void;
 }) {
   const t = useTranslations("exams.general");
   const tExams = useTranslations("exams");
+  const tOverview = useTranslations("exams.create.overview");
+  const overviewHeadingId = useId();
   const kinds = reference.examKinds;
   const lookup = useReferenceLookup(reference);
   const schema = useExamInfoSchema(undefined, kinds);
   const partNames = usePartNames();
   const update = useUpdateExamInfo(exam.id);
+  const structureUpdate = useUpdateExamStructure(exam.id);
   const [confirmReplace, setConfirmReplace] = useState<PendingInfoSave | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [cellEdits, setCellEdits] = useState<CellEdits>({});
   const lockScope = exam.servingVersion !== null;
 
   const form = useForm<ExamInfoFormValues>({
@@ -161,7 +196,6 @@ function ExamGeneralForm({
   });
   const { control, register, handleSubmit, setValue, getValues, setError, reset, formState } = form;
   const values = useWatch({ control }) as ExamInfoFormValues;
-  const guard = useUnsavedChangesGuard(formState.isDirty);
   const selection: ScopeSelection = {
     kind: values.kind,
     scope: values.scope,
@@ -170,12 +204,33 @@ function ExamGeneralForm({
     buildMode: values.buildMode,
   };
 
+  const scopeEdited = !sameSelection(examScope(exam), selection);
+  const showPreview = !lockScope && scopeEdited;
+  const appliedTemplate = templates.find((item) => item.code === exam.templateCode);
+  // Chọn phạm vi khác thì ghi chú theo mẫu mới nhất của phạm vi đó; chưa đổi thì theo mẫu đã nạp của bài.
+  const template = scopeEdited ? latestTemplate(templates, selection) : appliedTemplate;
+  const shared = exam.timing === "SHARED";
+
+  // Khóa số câu theo cùng luật với bước Cấu trúc: mẫu `fixedCounts` (V-ACT toàn bài) hoặc mẫu `fixedBlockCounts` của bài Theo môn.
+  const fixedCounts = appliedTemplate?.fixedCounts === true;
+  const countsLocked = fixedCounts || blockCountsLocked(appliedTemplate, exam.scope, appliedTemplate?.buildMode === "REVIEW");
+  const savedRows = structure ? overviewRowsFromParts(structure.parts, { fixedCounts, countsLocked }) : [];
+  const rows = savedRows.map((row) => ({ ...row, ...cellEdits[row.key] }));
+  const overviewIssues = validateOverview(rows);
+  const cellIssues = new Map<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>();
+  for (const issue of overviewIssues) {
+    cellIssues.set(issue.rowKey, { ...cellIssues.get(issue.rowKey), [issue.field]: tOverview(`errors.${issue.code}`) });
+  }
+  // Đổi phạm vi đang chờ xác nhận thì bảng hiện số của mẫu mới (chỉ đọc) và ô đã sửa không đi theo lần lưu này.
+  const overviewChanged = !showPreview && rowsDifferFromTemplate(rows);
+  const guard = useUnsavedChangesGuard(formState.isDirty || overviewChanged);
+
   const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
 
   /** Các phần mà phạm vi mới sẽ nạp lại: cùng cách dựng với máy chủ (mẫu mới nhất, hoặc phần trống của môn chưa có mẫu). */
   const reloadRows = (next: ScopeSelection): ReloadPartRow[] => {
-    const template = latestTemplate(templates, next);
-    const shared = (template?.timing ?? kindOptionFor(kinds, next.kind)?.timing) === "SHARED";
+    const nextTemplate = latestTemplate(templates, next);
+    const sharedNext = (nextTemplate?.timing ?? kindOptionFor(kinds, next.kind)?.timing) === "SHARED";
     return initialParts({
       templates,
       kind: next.kind,
@@ -183,14 +238,14 @@ function ExamGeneralForm({
       partCode: next.partCode,
       combinations: combinationsForKind(reference.combinations, next.kind),
       scopeName: partNames.partName,
-      template: next.scope === "PART" ? undefined : (template ?? null),
+      template: next.scope === "PART" ? undefined : (nextTemplate ?? null),
       subjectCode: next.subjectCode,
       subjectName: lookup.subject,
     }).map((part) => ({
       name: part.name,
       questionCount: part.questionCount,
       durationMinutes: part.durationMinutes,
-      shared,
+      shared: sharedNext,
     }));
   };
 
@@ -201,11 +256,17 @@ function ExamGeneralForm({
     onAnnounce(message);
   };
 
-  /** Lưu Thông tin chung. Đổi phạm vi thì máy chủ nạp mẫu mới nhất khớp; phiên bản năm khác chọn ở bước Cấu trúc. */
-  const save = ({ request }: PendingInfoSave) => {
+  /**
+   * Lưu Thông tin chung. Đổi phạm vi thì máy chủ nạp mẫu mới nhất khớp; phiên bản năm khác chọn ở bước Cấu trúc.
+   * `structureSaved`: số liệu của bảng tổng quan đã lưu trước đó, nên lỗi ở đây nói rõ phần nào đã lưu, phần nào chưa.
+   */
+  const save = ({ request }: PendingInfoSave, structureSaved = false) => {
     setSubmitError(null);
     update.mutate(request, {
-      onSuccess: done,
+      onSuccess: () => {
+        onHold(false);
+        done();
+      },
       onError: (error) => {
         setConfirmReplace(null);
         const status = getErrorStatus(error);
@@ -223,11 +284,48 @@ function ExamGeneralForm({
         } else {
           setSubmitError(t("saveError"));
         }
+        if (structureSaved) setSubmitError(t("overview.infoNotSaved"));
       },
     });
   };
 
+  /**
+   * Số liệu bảng tổng quan đã sửa: ghi cấu trúc TRƯỚC (cấu trúc đã đọc, chỉ đổi các số đó, `expectedRevision` của cấu
+   * trúc). Lỗi thì không gửi gì khác và giữ nguyên giá trị người dùng đã gõ; xong mới ghi thông tin chung (chỉ khi biểu
+   * mẫu có thay đổi) bằng revision mới của bài.
+   */
+  const saveOverviewThenInfo = async (pending: PendingInfoSave) => {
+    if (!structure) return;
+    setSubmitError(null);
+    onHold(true);
+    let saved: ExamDetail;
+    try {
+      saved = await structureUpdate.mutateAsync({
+        parts: applyOverviewToParts(structure.parts, rows),
+        examQuotas: structure.examQuotas ?? [],
+        expectedRevision: structure.revision,
+      });
+    } catch (error) {
+      onHold(false);
+      const status = getErrorStatus(error);
+      setSubmitError(status === 412 ? t("saveConflict") : status === 422 ? tExams("structure.saveInvalid") : tExams("structure.saveError"));
+      return;
+    }
+    setCellEdits({});
+    if (!formState.isDirty) {
+      onHold(false);
+      done();
+      return;
+    }
+    save({ ...pending, request: { ...pending.request, expectedRevision: saved.revision } }, true);
+  };
+
   const onSubmit = handleSubmit((submitted) => {
+    if (overviewChanged && overviewIssues.length > 0) {
+      const first = overviewIssues[0]!;
+      focusField(`${first.rowKey}.${first.field}`);
+      return;
+    }
     const next: ScopeSelection = {
       kind: submitted.kind,
       scope: submitted.scope,
@@ -253,6 +351,7 @@ function ExamGeneralForm({
     };
     const pending: PendingInfoSave = { request, parts: changed ? reloadRows(next) : [] };
     if (changed) setConfirmReplace(pending);
+    else if (overviewChanged) void saveOverviewThenInfo(pending);
     else save(pending);
   });
 
@@ -283,6 +382,10 @@ function ExamGeneralForm({
     setValue("yearsConfirmed", defaults.yearsConfirmed, dirty);
   };
 
+  const onCellChange = (key: string, field: OverviewField, text: string) => {
+    setCellEdits((current) => ({ ...current, [key]: { ...current[key], [field]: text } }));
+  };
+
   const pathsText = (() => {
     if (exam.scope === "PART") return exam.partCode ? partNames.partName(exam.partCode) : "—";
     const segments = [
@@ -293,12 +396,63 @@ function ExamGeneralForm({
     return segments.length > 0 ? segments.join(" + ") : t("facts.pathsFixed");
   })();
 
-  const scopeEdited = !sameSelection(examScope(exam), selection);
-  const showPreview = !lockScope && scopeEdited;
-  const appliedTemplate = templates.find((item) => item.code === exam.templateCode);
-  // Chọn phạm vi khác thì ghi chú theo mẫu mới nhất của phạm vi đó; chưa đổi thì theo mẫu đã nạp của bài.
-  const template = scopeEdited ? latestTemplate(templates, selection) : appliedTemplate;
-  const shared = exam.timing === "SHARED";
+  /** Số của mẫu mới nhất của phạm vi đang chọn (chờ xác nhận nạp lại), chỉ đọc. */
+  const pendingTemplate = showPreview ? latestTemplate(templates, selection) : undefined;
+  const pendingRows = showPreview ? overviewRowsFromTemplate(pendingTemplate, selection.scope, selection.partCode) : [];
+
+  const overviewBody = (() => {
+    if (showPreview) {
+      if (pendingRows.length === 0) return <p className="text-body text-text-secondary">{t("overview.pendingEmpty")}</p>;
+      return (
+        <ExamOverviewTable
+          readOnly
+          rows={pendingRows}
+          timing={pendingTemplate?.timing ?? kindOptionFor(kinds, selection.kind)?.timing ?? "PER_PART"}
+          showPoints={pendingRows.some((row) => row.kind === "part" && row.maxPoints !== "")}
+          sharedTotal={String(pendingTemplate?.durationMinutes ?? "")}
+          onCellChange={onCellChange}
+          issues={cellIssues}
+          subjectName={lookup.subject}
+        />
+      );
+    }
+    if (structureFailed && !structure) {
+      return (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="text-body text-text-secondary">
+            <strong className="font-semibold text-danger">{t("overview.loadErrorTitle")}</strong> {t("overview.loadErrorDescription")}
+          </p>
+          <Button type="button" variant="secondary" size="sm" onClick={onRetryStructure}>
+            {t("retry")}
+          </Button>
+        </div>
+      );
+    }
+    if (!structure) {
+      return (
+        <div aria-busy="true" className="flex flex-col gap-2">
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10 w-3/4" />
+          <span className="sr-only">{tOverview("loading")}</span>
+        </div>
+      );
+    }
+    if (structure.parts.length === 0) return <p className="text-body text-text-secondary">{t("overview.empty")}</p>;
+    return (
+      <ExamOverviewTable
+        rows={rows}
+        timing={exam.timing}
+        showPoints={rows.some((row) => row.kind === "part" && row.base.maxPoints !== null)}
+        sharedTotal={String(values.sharedDuration ?? "")}
+        onCellChange={onCellChange}
+        issues={cellIssues}
+        subjectName={lookup.subject}
+      />
+    );
+  })();
 
   return (
     <div className="@container flex flex-col gap-4">
@@ -320,21 +474,21 @@ function ExamGeneralForm({
               lockScopeHint={t("scopeLocked")}
               onScopeChange={onScopeChange}
             />
-            {showPreview && (
-              <TemplatePreview
-                template={latestTemplate(templates, selection)}
-                scope={values.scope}
-                subjectName={
-                  values.scope === "PART"
-                    ? values.partCode
-                      ? partNames.partName(values.partCode)
-                      : null
-                    : values.scope === "SUBJECT" && values.subjectCode
-                      ? lookup.subject(values.subjectCode)
-                      : null
-                }
-              />
-            )}
+            <section aria-labelledby={overviewHeadingId} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+              <div className="flex flex-col gap-1">
+                <h3 id={overviewHeadingId} className="text-title font-semibold text-text">
+                  {tOverview("title")}
+                </h3>
+                <p className="text-body text-text-muted">{showPreview ? t("overview.pendingDescription") : t("overview.description")}</p>
+              </div>
+              {countsLocked && !showPreview && (
+                <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
+                  <Lock aria-hidden className="size-3.5" />
+                  {tOverview("lockedCounts")}
+                </p>
+              )}
+              {overviewBody}
+            </section>
             {submitError && (
               <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-body text-danger">
                 {submitError}
@@ -344,12 +498,17 @@ function ExamGeneralForm({
               <Button
                 type="button"
                 variant="secondary"
-                disabled={!formState.isDirty || update.isPending}
-                onClick={() => reset(toFormValues(exam))}
+                disabled={(!formState.isDirty && !overviewChanged) || update.isPending || structureUpdate.isPending}
+                onClick={() => {
+                  reset(toFormValues(exam));
+                  setCellEdits({});
+                  setSubmitError(null);
+                  onHold(false);
+                }}
               >
                 {t("discard")}
               </Button>
-              <Button type="submit" loading={update.isPending}>
+              <Button type="submit" loading={update.isPending || structureUpdate.isPending}>
                 {t("save")}
               </Button>
             </div>

@@ -3819,6 +3819,15 @@
         "essay": "Essay",
         "essayValue": "Has essay questions, graded by hand"
       },
+      "overview": {
+        "description": "Numbers come from the exam's saved structure; edit them on the row, then press Save. Changing a number here does not change the question groups or the matrix: if a part's count no longer matches its allocation, the Structure step flags the mismatch for you to redistribute.",
+        "pendingDescription": "You picked another scope: the table shows the latest template's numbers, read-only. They load when you confirm reloading the structure.",
+        "pendingEmpty": "The new scope has no template yet: after reloading, the structure is empty.",
+        "empty": "The exam has no parts yet. Add parts in the Structure step.",
+        "loadErrorTitle": "Could not load the saved structure.",
+        "loadErrorDescription": "General information can still be saved; try again to edit the parts' questions, durations and points.",
+        "infoNotSaved": "The parts' questions, durations and points were saved, but the general information was not. Check the fields and press Save again."
+      },
       "loadErrorTitle": "Could not load the catalog and structure templates",
       "loadErrorDescription": "Check your connection and try again.",
       "retry": "Try again"
@@ -5539,28 +5548,6 @@
         "maxScorePositive": "The maximum score must be greater than 0.",
         "pointsPositive": "Part points must be greater than 0.",
         "commonTooLarge": "The common part has {common, plural, one {# question} other {# questions}}, leaving none for the options out of the part's {total, number}."
-      },
-      "preview": {
-        "title": "Structure to load · {name}",
-        "titleEmpty": "Structure to load · no template",
-        "editable": "Editable in Structure and matrix",
-        "caption": "Structure template for the selected exam type and format",
-        "part": "Part",
-        "questions": "Questions",
-        "duration": "Duration",
-        "questionsValue": "{count, plural, one {# question} other {# questions}}",
-        "durationValue": "{count, number} min",
-        "total": "Total",
-        "choiceNote": "Learners choose English or a Science combination; adjust per-subject counts in Structure",
-        "subjectPending": "No subject chosen",
-        "emptyNote": "Set the questions and duration in Structure",
-        "note": "The template is only a starting point. Check the configuration before publishing. Learners see the questions and duration of the published structure.",
-        "points": "Points",
-        "pointsValue": "{count, plural, one {# point} other {# points}}",
-        "durationShared": "shared",
-        "durationSharedValue": "{count, number} min shared",
-        "choiceOptionsNote": "Learners choose one of {count, plural, one {# preset option} other {# preset options}}",
-        "sectionsNote": "{count, plural, one {# subject} other {# subjects}} in this part"
       },
       "kindHintKind": "{kind}: one structure template for the whole exam type · {timing}",
       "kindHintSubject": "{kind}: structure templates by subject and year · {timing}",
