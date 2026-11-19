@@ -21,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.commerce.storefront.application.StorefrontProjectionService;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.BlockSummary;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Combination;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.OmittedGroup;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
@@ -295,6 +296,10 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
         TestExam exam = exam().cover(cover).withParts(
                 List.of(TestExam.part("p1", 1, "Toan hoc", "TOAN", 50, 75, 50), part3),
                 List.of(science, english, combined));
+        exam.withBlocks(List.of(
+                new BlockSummary("SINGLE_CHOICE", 32, null),
+                new BlockSummary("SHORT_ANSWER", 15, null),
+                new BlockSummary("QUESTION_SET", 3, "SINGLE_CHOICE")));
         exam.omitted.add(new OmittedGroup("Tu luan", new BigDecimal("2.5")));
         sell(exam);
         String ip = newClientIp();
@@ -333,6 +338,15 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
         assertThat(parts.get(1).path("name").asText()).isEqualTo("Khoa hoc hoac Tieng Anh");
         assertThat(parts.get(1).path("required").asBoolean()).as("part 3 is the student's choice").isFalse();
         assertThat(parts.get(1).path("questionCount").path("min").asInt()).isEqualTo(150);
+        // The answer types of part 1, merged from its frozen blocks (TM 10.1); part 3 has none in this fixture.
+        JsonNode answerTypes = parts.get(0).path("answerTypes");
+        assertThat(answerTypes).hasSize(3);
+        assertThat(answerTypes.get(0).path("questionType").asText()).isEqualTo("SINGLE_CHOICE");
+        assertThat(answerTypes.get(0).path("questionCount").asInt()).isEqualTo(32);
+        assertThat(answerTypes.get(1).path("questionType").asText()).isEqualTo("SHORT_ANSWER");
+        assertThat(answerTypes.get(2).path("questionType").asText()).isEqualTo("QUESTION_SET");
+        assertThat(answerTypes.get(2).path("childAnswerType").asText()).isEqualTo("SINGLE_CHOICE");
+        assertThat(parts.get(1).path("answerTypes")).isEmpty();
         // The choices inside the scope bought: science 3 of 5 with 16 or 17 per subject, English, and the QDA code.
         JsonNode options = detail.path("choices").get(0).path("options");
         assertThat(detail.path("choices").get(0).path("partName").asText()).isEqualTo("Khoa hoc hoac Tieng Anh");

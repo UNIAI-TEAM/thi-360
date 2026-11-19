@@ -21,6 +21,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.storefront.api.AnswerTypeGroup;
 import vn.unicom.thi360.commerce.storefront.api.DecimalRange;
 import vn.unicom.thi360.commerce.storefront.api.DetailBenefits;
 import vn.unicom.thi360.commerce.storefront.api.DetailChoiceGroup;
@@ -37,6 +38,7 @@ import vn.unicom.thi360.commerce.storefront.api.SubjectRef;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 import vn.unicom.thi360.commerce.storefront.domain.StorefrontRow;
 import vn.unicom.thi360.commerce.storefront.domain.StorefrontSearchText;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.BlockSummary;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Combination;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Listing;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Option;
@@ -268,7 +270,24 @@ public class StorefrontProjector {
             DecimalRange points = served.isEmpty() ? singleDecimal(part.maxPoints())
                     : decimalRange(served.stream().map(ServingPathPart::maxPoints).toList());
             result.add(new DetailPart(part.order() != null ? part.order() : position, part.name(), questions, minutes,
-                    points, !"CHOICE".equals(part.participationMode())));
+                    points, !"CHOICE".equals(part.participationMode()), answerTypes(part)));
+        }
+        return result;
+    }
+
+    /** The part's frozen blocks as answer-type rows (TM 10.1): merged by type and child type, counts summed. */
+    private static List<AnswerTypeGroup> answerTypes(Part part) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        Map<String, String> childTypeOf = new LinkedHashMap<>();
+        for (BlockSummary block : part.blocks()) {
+            String key = block.questionType() + "|" + (block.childAnswerType() == null ? "" : block.childAnswerType());
+            counts.merge(key, block.questionCount(), Integer::sum);
+            childTypeOf.putIfAbsent(key, block.childAnswerType());
+        }
+        List<AnswerTypeGroup> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            String type = entry.getKey().substring(0, entry.getKey().indexOf('|'));
+            result.add(new AnswerTypeGroup(type, entry.getValue(), childTypeOf.get(entry.getKey())));
         }
         return result;
     }

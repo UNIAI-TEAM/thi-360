@@ -1,6 +1,7 @@
 package vn.unicom.thi360.commerce.storefront.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 
 @Schema(description = "Một phần của bài thi, theo thứ tự làm bài")
 public record DetailPart(
@@ -11,5 +12,11 @@ public record DetailPart(
         @Schema(nullable = true) IntRange durationMinutes,
         @Schema(nullable = true) DecimalRange maxPoints,
         @Schema(description = "true: phần bắt buộc; false: học viên tự chọn", requiredMode = Schema.RequiredMode.REQUIRED)
-        boolean required) {
+        boolean required,
+        @Schema(description = "Các dạng câu và số câu từng dạng của phần; rỗng khi bản chưa đóng băng chúng",
+                requiredMode = Schema.RequiredMode.REQUIRED) List<AnswerTypeGroup> answerTypes) {
+
+    public DetailPart {
+        answerTypes = answerTypes == null ? List.of() : List.copyOf(answerTypes);
+    }
 }

@@ -75,6 +75,8 @@ public class StorefrontPublicController {
     }
 
     @Operation(operationId = "getStorefrontProduct", summary = "Chi tiết sản phẩm theo mã")
+    @ApiResponse(responseCode = "200", description = "Chi tiết sản phẩm",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProductDetail.class)))
     @ApiResponse(responseCode = "404", description = "PRODUCT_NOT_FOUND: không có, hoặc chưa từng công bố")
     @ApiResponse(responseCode = "410", description = "PRODUCT_DISCONTINUED: đã ngừng bán, kèm product {code, name}",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProductGoneResponse.class)))
