@@ -363,11 +363,17 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 """, Integer.class)).isEqualTo(1);
     }
 
-    /** Reference tables (exam quotas, REFERENCE matrices) only add WARNINGs whose presence follows the solver's witness. */
+    /** Spec 4.1: the documented warnings of the valid exams checked below (V-ACT: optional, see below). */
+    private static final Map<String, Set<String>> EXPECTED_VALID_CODES = Map.of(
+            "TEST-HSA-01", Set.of("EXAM_QUOTA_DEVIATION"),
+            "TEST-SPT-01", Set.of("OMITTED_GROUPS_PRESENT"),
+            "TEST-SP2E-02", Set.of("EXAM_QUOTA_DEVIATION"),
+            "TEST-SP2E-03", Set.of("EXAM_QUOTA_DEVIATION"));
+
     private static final Set<String> REFERENCE_WARNINGS = Set.of("EXAM_QUOTA_DEVIATION", "DISTRIBUTION_DEVIATION");
 
-    /** The result's codes without the reference warnings; those must all be WARNING severity. */
-    private static Set<String> codesWithoutReferenceWarnings(SoftAssertions softly, String label, JsonNode result) {
+    /** The result's complete code set; the reference deviations among them must all be WARNING severity. */
+    private static Set<String> exactCodes(SoftAssertions softly, String label, JsonNode result) {
         softly.assertThat(result.path("groups").findValues("issues").stream()
                         .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
                         .filter(issue -> REFERENCE_WARNINGS.contains(issue.path("code").asText()))
@@ -375,7 +381,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                         .collect(Collectors.toSet()))
                 .as("%s reference deviations are warnings", label)
                 .isSubsetOf("EXAM_QUOTA_DEVIATION/WARNING", "DISTRIBUTION_DEVIATION/WARNING");
-        return codes(result).stream().filter(code -> !REFERENCE_WARNINGS.contains(code)).collect(Collectors.toSet());
+        return codes(result);
     }
 
     @Test
@@ -388,8 +394,7 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         for (String code : valid) {
             JsonNode result = check(code);
             softly.assertThat(result.path("status").asText()).as("%s: %s", code, codes(result)).isEqualTo("VALID");
-            Set<String> expected = Set.of("TEST-SPT-01").contains(code)
-                    ? Set.of("OMITTED_GROUPS_PRESENT") : Set.of();
+            Set<String> expected = EXPECTED_VALID_CODES.getOrDefault(code, Set.of());
             if ("TEST-VACT-01".equals(code)) {
                 // VACT_FULL distribution tables are all REFERENCE (spec 2B 5.1): the ANH section's
                 // block matrices and the section matrices are advisory, so the solver's witness may or may
@@ -401,19 +406,21 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                         .collect(Collectors.toSet()))
                         .as(code).isSubsetOf("DISTRIBUTION_DEVIATION/WARNING");
             } else {
-                softly.assertThat(codesWithoutReferenceWarnings(softly, code, result)).as(code).isEqualTo(expected);
+                softly.assertThat(exactCodes(softly, code, result)).as(code).isEqualTo(expected);
             }
         }
 
         JsonNode bca = check("TEST-BCA-01");
         softly.assertThat(bca.path("status").asText()).as("TEST-BCA-01").isEqualTo("VALID");
-        softly.assertThat(codesWithoutReferenceWarnings(softly, "TEST-BCA-01", bca)).as("TEST-BCA-01")
-                .isEqualTo(Set.of("MANUAL_GRADING_REQUIRED"));
+        softly.assertThat(exactCodes(softly, "TEST-BCA-01", bca)).as("TEST-BCA-01")
+                .isEqualTo(Set.of("MANUAL_GRADING_REQUIRED", "DISTRIBUTION_DEVIATION", "EXAM_QUOTA_DEVIATION"));
 
         Map<String, Set<String>> invalid = new LinkedHashMap<>();
-        invalid.put("TEST-THPTQG-02", Set.of("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED"));
+        invalid.put("TEST-THPTQG-02", Set.of("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED",
+                "DISTRIBUTION_DEVIATION"));
         invalid.put("TEST-ERR-01", Set.of("MATRIX_INCOMPLETE"));
-        invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "MANUAL_GRADING_REQUIRED"));
+        invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "MANUAL_GRADING_REQUIRED",
+                "DISTRIBUTION_DEVIATION", "EXAM_QUOTA_DEVIATION"));
         // The Math context set carries the rare label; with no slots it is a set shortage.
         invalid.put("TEST-ERR-03", Set.of("SET_SHORTAGE"));
         // 40 + 9 = 49 instead of 50; the solver also cannot satisfy the 50-unit matrix.
@@ -429,11 +436,11 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 "POINTS_TOTAL_MISMATCH"));
         invalid.put("TEST-ERR-11", Set.of("CELL_SHORTAGE"));
         invalid.put("TEST-ERR-12", Set.of("POINTS_TOTAL_MISMATCH"));
-        invalid.put("TEST-ERR-13", Set.of("YEARS_UNCONFIRMED"));
+        invalid.put("TEST-ERR-13", Set.of("YEARS_UNCONFIRMED", "EXAM_QUOTA_DEVIATION"));
         for (var entry : invalid.entrySet()) {
             JsonNode result = check(entry.getKey());
             softly.assertThat(result.path("status").asText()).as(entry.getKey()).isEqualTo("INVALID");
-            softly.assertThat(codesWithoutReferenceWarnings(softly, entry.getKey(), result)).as(entry.getKey())
+            softly.assertThat(exactCodes(softly, entry.getKey(), result)).as(entry.getKey())
                     .isEqualTo(entry.getValue());
         }
         JsonNode narrow = check("TEST-ERR-07");
@@ -479,13 +486,25 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         JsonNode result = check("TEST-ERR-07");
         Set<String> shortageIssues = Set.of("CELL_SHORTAGE");
         assertThat(codes(result)).isEqualTo(shortageIssues);
-        // The Geography shortage is reported on a group, without required/available figures.
+        // The Geography shortage is on the single-choice group of the Geography section, without
+        // required/available figures (a group-level shortage).
+        String geographyGroup = jdbc.queryForObject("""
+                SELECT block->>'id' FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id
+                CROSS JOIN LATERAL jsonb_array_elements(s.parts->'parts') part
+                CROSS JOIN LATERAL jsonb_array_elements(part->'options') opt
+                CROSS JOIN LATERAL jsonb_array_elements(opt->'sections') sec
+                CROSS JOIN LATERAL jsonb_array_elements(sec->'blocks') block
+                WHERE e.code = 'TEST-ERR-07' AND sec->>'subjectCode' = 'DIA'
+                  AND block->>'questionType' = 'SINGLE_CHOICE'
+                """, String.class);
         JsonNode shortage = result.path("groups").findValues("issues").stream()
                 .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
                 .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText())
                         && "DIA".equals(issue.path("subjectCode").asText()))
                 .findFirst().orElseThrow();
-        assertThat(shortage.path("blockId").asText("")).isNotEmpty();
+        assertThat(shortage.path("blockId").asText("")).isEqualTo(geographyGroup);
+        assertThat(shortage.path("required").isMissingNode() || shortage.path("required").isNull()).isTrue();
+        assertThat(shortage.path("available").isMissingNode() || shortage.path("available").isNull()).isTrue();
         Set<Set<String>> failed = new java.util.HashSet<>();
         int failedCount = 0;
         for (JsonNode path : result.path("paths")) {
@@ -1172,6 +1191,19 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         return node;
     }
 
+    /**
+     * Spec 4.4: the exam row values that differ from the template row. SPT: the template sets no duration,
+     * the exam uses 90; SP2E 2026 runs on the 2025 matrix (confirmed); V-ACT keeps its scale in reference_max.
+     */
+    private static final Map<String, Map<String, Object>> TEMPLATE_ROW_EXCEPTIONS = Map.of(
+            "TEST-SPT-01", Map.of("duration_minutes", 90),
+            "TEST-SP2E-02", Map.of("matrix_year", 2025),
+            "TEST-VACT-01", java.util.Collections.singletonMap("max_score", null));
+
+    private static String plain(Object value) {
+        return value instanceof BigDecimal number ? number.stripTrailingZeros().toPlainString() : String.valueOf(value);
+    }
+
     @Test
     void everyTestExamMatchesTemplate() throws Exception {
         SoftAssertions softly = new SoftAssertions();
@@ -1189,24 +1221,25 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 softly.assertThat(signature(exam.parts(), exam.quotas()))
                         .as("%s signature", code).isEqualTo(expected);
             }
-            softly.assertThat(canonDocument(exam).toPrettyString())
-                    .as("%s structure equals template %s", code, templateCode)
-                    .isEqualTo(canonDocument(template).toPrettyString());
-
-            softly.assertThat(exam.row().get("timing")).as("%s timing", code).isEqualTo(template.row().get("timing"));
-            if ("SHARED".equals(template.row().get("timing"))) {
-                softly.assertThat(exam.row().get("duration_minutes")).as("%s shared clock", code)
-                        .isEqualTo(template.row().get("duration_minutes"));
+            // Raw, value for value: the stored parts (ids, names, minutes, labels, matrices) and exam quotas
+            // are the migrated template's, with no normalisation.
+            softly.assertThat(jdbc.queryForObject("""
+                    SELECT s.parts->'parts' = t.structure->'parts'
+                       AND coalesce(s.exam_quotas, '[]'::jsonb) = coalesce(t.structure->'examQuotas', '[]'::jsonb)
+                    FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id
+                    JOIN exam.exam_template t ON t.code = e.template_code WHERE e.code = ?
+                    """, Boolean.class, code)).as("%s stored parts and exam_quotas equal template %s", code, templateCode)
+                    .isTrue();
+            // The exam row follows the template row, except the documented rows.
+            Map<String, Object> exceptions = TEMPLATE_ROW_EXCEPTIONS.getOrDefault(code, Map.of());
+            for (String column : List.of("timing", "duration_minutes", "max_score", "structure_year", "matrix_year")) {
+                Object expected = exceptions.containsKey(column) ? exceptions.get(column) : template.row().get(column);
+                softly.assertThat(plain(exam.row().get(column)))
+                        .as("%s %s %s", code, column, exceptions.containsKey(column)
+                                ? "(documented exception)" : "equals template " + templateCode)
+                        .isEqualTo(plain(expected));
             }
-            for (int i = 0; i < template.parts().size(); i++) {
-                JsonNode templateMinutes = template.parts().get(i).path("durationMinutes");
-                if (templateMinutes.isNumber()) {
-                    softly.assertThat(exam.parts().path(i).path("durationMinutes").asInt(-1))
-                            .as("%s part %d minutes", code, i + 1).isEqualTo(templateMinutes.asInt());
-                }
-            }
-            softly.assertThat(exam.row().get("structure_year")).as("%s structure year", code)
-                    .isEqualTo(template.row().get("structure_year"));
+            softly.assertThat(exam.row().get("years_confirmed")).as("%s years confirmed", code).isEqualTo(true);
 
             int required = 0;
             for (JsonNode part : exam.parts()) required += part.path("questionCountRequired").asInt();
@@ -1398,7 +1431,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     }
 
     /** The documented change of each error fixture (spec đề test mục 4.2, cột "Đổi gì"). */
-    private void assertDocumentedChange(SoftAssertions softly, String label, String code, List<Diff> diffs, JsonNode doc) {
+    private void assertDocumentedChange(SoftAssertions softly, String label, String code, List<Diff> diffs, JsonNode doc)
+            throws Exception {
         if ("TEST-ERR-13".equals(code)) {
             softly.assertThat(diffs).as("%s: the structure is untouched", label).isEmpty();
             return;
@@ -1435,7 +1469,10 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 JsonNode group = at(doc, "/parts[0]/sections[0]/blocks[" + block + "]");
                 softly.assertThat(group.path("templateGroupCode").asText()).as("%s: the context set", label)
                         .isEqualTo("HSA_MATH_CONTEXT");
-                softly.assertThat(group.path("tagCodes").toString()).as("%s: rare label", label).contains("TEST-HIEM");
+                softly.assertThat(diffs).as("%s: one change only", label).hasSize(1);
+                softly.assertThat(diffs.getFirst().before()).as("%s: the base group has no labels", label).isNull();
+                softly.assertThat(diffs.getFirst().after()).as("%s: tagCodes == [TEST-HIEM]", label)
+                        .isEqualTo(canon(mapper.readTree("[\"TEST-HIEM\"]")));
             }
             case "TEST-ERR-04" -> {
                 int block = blockIndex(softly, label, diffs, "^/parts\\[0]/sections\\[0]/blocks\\[(\\d+)]/questionCount$");
@@ -1473,10 +1510,22 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                         .as("%s: the narrow Geography node", label).contains(catalogIdByCode("TEST-DIA-HEP").toString());
             }
             case "TEST-ERR-08" -> {
-                int section = blockIndex(softly, label, diffs, "^/parts\\[0]/options\\[0]/sections\\[(\\d+)]/.*$");
-                softly.assertThat(at(doc, "/parts[0]/options[0]/sections[" + section + "]/subjectCode").asText())
-                        .as("%s: Physics only", label).isEqualTo("LY");
+                // Exactly one change: the Physics short-answer group loses its template group code
+                // (HSA_LY_FLEX -> absent); a different valid Physics edit must not pass.
                 softly.assertThat(diffs).as("%s: the control differs by one change only", label).hasSize(1);
+                java.util.regex.Matcher path = java.util.regex.Pattern
+                        .compile("^/parts\\[0]/options\\[0]/sections\\[(\\d+)]/blocks\\[(\\d+)]/templateGroupCode$")
+                        .matcher(diffs.getFirst().path());
+                softly.assertThat(path.matches()).as("%s: changed path %s", label, diffs.getFirst().path()).isTrue();
+                if (path.matches()) {
+                    String block = "/parts[0]/options[0]/sections[" + path.group(1) + "]/blocks[" + path.group(2) + "]";
+                    softly.assertThat(at(doc, "/parts[0]/options[0]/sections[" + path.group(1) + "]/subjectCode").asText())
+                            .as("%s: Physics only", label).isEqualTo("LY");
+                    softly.assertThat(at(doc, block + "/questionType").asText()).as("%s: the short-answer group", label)
+                            .isEqualTo("SHORT_ANSWER");
+                }
+                softly.assertThat(diffs.getFirst().before()).as("%s: before", label).isEqualTo(mapper.getNodeFactory().textNode("HSA_LY_FLEX"));
+                softly.assertThat(diffs.getFirst().after()).as("%s: after (removed)", label).isNull();
             }
             case "TEST-ERR-09" -> {
                 int section = blockIndex(softly, label, diffs,
@@ -1485,9 +1534,14 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 softly.assertThat(at(doc, base + "/subjectCode").asText()).as("%s: Chemistry", label).isEqualTo("HOA");
                 softly.assertThat(at(doc, base + "/questionCount").asInt()).as("%s: a 17-question subject", label)
                         .isEqualTo(17);
-                int total = 0;
-                for (JsonNode item : at(doc, base + "/answerQuotas/items")) total += item.path("value").asInt();
-                softly.assertThat(total).as("%s: the quota totals 16 for a 17-question subject", label).isEqualTo(16);
+                // Exactly one change: the quota block appears, as 12 single-choice + 4 short-answer (16 for 17).
+                softly.assertThat(diffs).as("%s: one change only", label).hasSize(1);
+                softly.assertThat(diffs.getFirst().path()).as("%s: changed path", label).isEqualTo(base + "/answerQuotas");
+                softly.assertThat(diffs.getFirst().before()).as("%s: the base has no quotas", label).isNull();
+                softly.assertThat(diffs.getFirst().after()).as("%s: the typed entries", label)
+                        .isEqualTo(canon(mapper.readTree("""
+                                {"unit":"COUNT","items":[{"answerType":"SINGLE_CHOICE","value":12},
+                                                         {"answerType":"SHORT_ANSWER","value":4}]}""")));
             }
             case "TEST-ERR-10" -> {
                 softly.assertThat(diffs).as("%s: one count", label).hasSize(1);

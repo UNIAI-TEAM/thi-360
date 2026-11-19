@@ -34,36 +34,37 @@ class TestExamSeedComplianceIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
 
-    /** Status, the codes that must be reported, and the warnings that may come on top (reference tables). */
-    private record Expected(String status, Set<String> codes, Set<String> maybeWarnings) {
+    /** Status, the documented codes (all must come, nothing else may), and the few codes the spec makes optional. */
+    private record Expected(String status, Set<String> codes, Set<String> optionalWarnings) {
         static Expected valid(String... codes) { return new Expected("VALID", Set.of(codes), Set.of()); }
         static Expected invalid(String... codes) { return new Expected("INVALID", Set.of(codes), Set.of()); }
-        Expected orWarnings(String... warnings) { return new Expected(status, codes, Set.of(warnings)); }
+        Expected optional(String... warnings) { return new Expected(status, codes, Set.of(warnings)); }
     }
+
+    private static final Set<String> REFERENCE_WARNINGS = Set.of("EXAM_QUOTA_DEVIATION", "DISTRIBUTION_DEVIATION");
 
     /** Spec 4.1, column "Kết quả", for the base exams rebuilt on the BA templates (4.4). */
     private static final Map<String, Expected> BASE_EXAMS = new LinkedHashMap<>();
     static {
-        // Reference tables (examQuotas, REFERENCE matrices) only ever add WARNINGs, and which of them the
-        // solver's witness trips can vary; they are listed as "maybe" so no error can hide behind them.
-        BASE_EXAMS.put("TEST-HSA-01", Expected.valid().orWarnings("EXAM_QUOTA_DEVIATION"));
+        // Spec 4.1 "Kết quả": the exact code set, warnings included.
+        BASE_EXAMS.put("TEST-HSA-01", Expected.valid("EXAM_QUOTA_DEVIATION"));
         BASE_EXAMS.put("TEST-HSA-02", Expected.valid());
         BASE_EXAMS.put("TEST-HSA-03", Expected.valid());
         BASE_EXAMS.put("TEST-HSA-04", Expected.valid());
         BASE_EXAMS.put("TEST-QDA-01", Expected.valid());
-        BASE_EXAMS.put("TEST-BCA-01", Expected.valid("MANUAL_GRADING_REQUIRED")
-                .orWarnings("EXAM_QUOTA_DEVIATION", "DISTRIBUTION_DEVIATION"));
-        // VACT_FULL's distribution tables are all REFERENCE: only DISTRIBUTION_DEVIATION warnings may appear.
-        BASE_EXAMS.put("TEST-VACT-01", Expected.valid().orWarnings("DISTRIBUTION_DEVIATION"));
+        BASE_EXAMS.put("TEST-BCA-01", Expected.valid("MANUAL_GRADING_REQUIRED", "DISTRIBUTION_DEVIATION",
+                "EXAM_QUOTA_DEVIATION"));
+        // Spec 4.1: V-ACT "chỉ được có cảnh báo DISTRIBUTION_DEVIATION" (REFERENCE tables): the one optional code.
+        BASE_EXAMS.put("TEST-VACT-01", Expected.valid().optional("DISTRIBUTION_DEVIATION"));
         // The template's essay group is omitted: reported as present, and nothing is left to grade by hand.
         BASE_EXAMS.put("TEST-SPT-01", Expected.valid("OMITTED_GROUPS_PRESENT"));
         BASE_EXAMS.put("TEST-SP2E-01", Expected.valid());
-        BASE_EXAMS.put("TEST-SP2E-02", Expected.valid().orWarnings("EXAM_QUOTA_DEVIATION"));
-        BASE_EXAMS.put("TEST-SP2E-03", Expected.valid().orWarnings("EXAM_QUOTA_DEVIATION"));
+        BASE_EXAMS.put("TEST-SP2E-02", Expected.valid("EXAM_QUOTA_DEVIATION"));
+        BASE_EXAMS.put("TEST-SP2E-03", Expected.valid("EXAM_QUOTA_DEVIATION"));
         BASE_EXAMS.put("TEST-THPTQG-01", Expected.valid());
         // D11: the Literature template is not publishable; saving a draft stays possible.
-        BASE_EXAMS.put("TEST-THPTQG-02", Expected.invalid("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED")
-                .orWarnings("DISTRIBUTION_DEVIATION"));
+        BASE_EXAMS.put("TEST-THPTQG-02", Expected.invalid("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED",
+                "DISTRIBUTION_DEVIATION"));
         BASE_EXAMS.put("TEST-THPTQG-03", Expected.valid());
     }
 
@@ -72,7 +73,7 @@ class TestExamSeedComplianceIT extends AbstractIntegrationTest {
     static {
         ERROR_FIXTURES.put("TEST-ERR-01", Expected.invalid("MATRIX_INCOMPLETE"));
         ERROR_FIXTURES.put("TEST-ERR-02", Expected.invalid("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH",
-                "MANUAL_GRADING_REQUIRED").orWarnings("EXAM_QUOTA_DEVIATION", "DISTRIBUTION_DEVIATION"));
+                "MANUAL_GRADING_REQUIRED", "DISTRIBUTION_DEVIATION", "EXAM_QUOTA_DEVIATION"));
         // The Math context set has no slots, so a rare label leaves the whole set unsolvable.
         ERROR_FIXTURES.put("TEST-ERR-03", Expected.invalid("SET_SHORTAGE"));
         ERROR_FIXTURES.put("TEST-ERR-04", Expected.invalid("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
@@ -88,7 +89,7 @@ class TestExamSeedComplianceIT extends AbstractIntegrationTest {
                 "PART_POINTS_MISMATCH", "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH", "POINTS_TOTAL_MISMATCH"));
         ERROR_FIXTURES.put("TEST-ERR-11", Expected.invalid("CELL_SHORTAGE"));
         ERROR_FIXTURES.put("TEST-ERR-12", Expected.invalid("POINTS_TOTAL_MISMATCH"));
-        ERROR_FIXTURES.put("TEST-ERR-13", Expected.invalid("YEARS_UNCONFIRMED").orWarnings("EXAM_QUOTA_DEVIATION"));
+        ERROR_FIXTURES.put("TEST-ERR-13", Expected.invalid("YEARS_UNCONFIRMED", "EXAM_QUOTA_DEVIATION"));
     }
 
     @Test
@@ -109,8 +110,8 @@ class TestExamSeedComplianceIT extends AbstractIntegrationTest {
             JsonNode result = check(entry.getKey());
             assertExpected(softly, entry.getKey(), result, entry.getValue());
         }
-        // TEST-ERR-07: Geography fits a 16-question pick and is one cell short for 17, so exactly the six
-        // triples that contain Geography with 17 questions are invalid, and each reports only that shortage.
+        // TEST-ERR-07: Geography is one cell short when it takes 17 questions, so exactly the six
+        // triples that contain Geography are invalid, and each reports only that shortage.
         JsonNode narrow = check("TEST-ERR-07");
         Set<String> shortage = Set.of("CELL_SHORTAGE");
         int selections = 0;
@@ -132,21 +133,45 @@ class TestExamSeedComplianceIT extends AbstractIntegrationTest {
         }
         softly.assertThat(selections).as("TEST-ERR-07 selections").isEqualTo(10);
         softly.assertThat(failures).as("TEST-ERR-07 selections with Geography x 17").isEqualTo(6);
-        // The shortage names a Geography group, for a 17-question pick (a group-level shortage carries no
-        // required/available figures; a 16-question pick of the same subject passes, see the loop above).
-        JsonNode geography = null;
+        // The shortage is on the Geography single-choice group (a group-level shortage carries no
+        // required/available figures), for a 17-question pick.
+        List<String> geographyGroups = jdbc.queryForList("""
+                SELECT block->>'id' FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id
+                CROSS JOIN LATERAL jsonb_array_elements(s.parts->'parts') part
+                CROSS JOIN LATERAL jsonb_array_elements(part->'options') opt
+                CROSS JOIN LATERAL jsonb_array_elements(opt->'sections') sec
+                CROSS JOIN LATERAL jsonb_array_elements(sec->'blocks') block
+                WHERE e.code = 'TEST-ERR-07' AND sec->>'subjectCode' = 'DIA'
+                  AND block->>'questionType' = 'SINGLE_CHOICE'
+                """, String.class);
+        softly.assertThat(geographyGroups).as("TEST-ERR-07 has one Geography single-choice group").hasSize(1);
+        List<JsonNode> shortages = new ArrayList<>();
+        narrow.path("groups").findValues("issues").forEach(issues -> issues.forEach(issue -> {
+            if ("CELL_SHORTAGE".equals(issue.path("code").asText())) shortages.add(issue);
+        }));
         for (JsonNode path : narrow.path("paths")) {
             for (JsonNode selection : path.path("selections")) {
-                if (geography == null && "INVALID".equals(selection.path("result").asText())) {
-                    geography = selection.path("issues").path(0);
-                }
+                selection.path("issues").forEach(issue -> {
+                    if ("CELL_SHORTAGE".equals(issue.path("code").asText())) shortages.add(issue);
+                });
             }
         }
-        softly.assertThat(geography).as("TEST-ERR-07 Geography shortage").isNotNull();
-        if (geography != null) {
-            softly.assertThat(geography.path("subjectCode").asText() + " x" + geography.path("subjectCount").asInt())
-                    .as("TEST-ERR-07 %s", geography).isEqualTo("DIA x17");
-            softly.assertThat(geography.path("blockId").asText("")).as("TEST-ERR-07 names the group").isNotEmpty();
+        softly.assertThat(shortages).as("TEST-ERR-07 reports the gap").isNotEmpty();
+        for (JsonNode gap : shortages) {
+            softly.assertThat(gap.path("blockId").asText()).as("TEST-ERR-07 names the Geography single-choice group: %s", gap)
+                    .isIn(geographyGroups);
+            softly.assertThat(gap.path("required").isMissingNode() || gap.path("required").isNull())
+                    .as("TEST-ERR-07 group gap has no required figure: %s", gap).isTrue();
+            softly.assertThat(gap.path("available").isMissingNode() || gap.path("available").isNull())
+                    .as("TEST-ERR-07 group gap has no available figure: %s", gap).isTrue();
+        }
+        for (JsonNode path : narrow.path("paths")) {
+            for (JsonNode selection : path.path("selections")) {
+                for (JsonNode issue : selection.path("issues")) {
+                    softly.assertThat(issue.path("subjectCode").asText() + " x" + issue.path("subjectCount").asInt())
+                            .as("TEST-ERR-07 %s", issue).isEqualTo("DIA x17");
+                }
+            }
         }
         // TEST-ERR-11: Grade 12 x VDC asks for 12 where the sample bank holds 4.
         JsonNode cell = check("TEST-ERR-11").path("groups").findValues("issues").stream()
@@ -219,21 +244,24 @@ class TestExamSeedComplianceIT extends AbstractIntegrationTest {
         softly.assertAll();
     }
 
+    /**
+     * The documented code set, exactly: every documented code is present, nothing else is, and the reference
+     * warnings (quota, distribution) carry WARNING severity. Only {@code optionalWarnings} may be absent.
+     */
     private void assertExpected(SoftAssertions softly, String code, JsonNode result, Expected expected) {
         Set<String> actual = codes(result);
         softly.assertThat(result.path("status").asText()).as("%s status, codes %s", code, actual)
                 .isEqualTo(expected.status());
-        softly.assertThat(actual).as("%s codes", code).containsAll(expected.codes());
-        Set<String> allowed = new java.util.HashSet<>(expected.codes());
-        allowed.addAll(expected.maybeWarnings());
+        Set<String> required = new java.util.TreeSet<>(expected.codes());
+        Set<String> allowed = new java.util.TreeSet<>(expected.codes());
+        allowed.addAll(expected.optionalWarnings());
+        softly.assertThat(actual).as("%s documented codes missing from %s", code, actual).containsAll(required);
         softly.assertThat(actual).as("%s codes beyond the documented ones", code).isSubsetOf(allowed);
-        if (!expected.maybeWarnings().isEmpty()) {
-            List<String> offending = severities(result).stream()
-                    .filter(issue -> expected.maybeWarnings().contains(issue.substring(0, issue.indexOf('/')))
-                            && !issue.endsWith("/WARNING"))
-                    .toList();
-            softly.assertThat(offending).as("%s: only warnings may come on top", code).isEmpty();
-        }
+        List<String> offending = severities(result).stream()
+                .filter(issue -> REFERENCE_WARNINGS.contains(issue.substring(0, issue.indexOf('/')))
+                        && !issue.endsWith("/WARNING"))
+                .toList();
+        softly.assertThat(offending).as("%s: reference deviations are warnings only", code).isEmpty();
     }
 
     private static Set<String> codes(JsonNode result) {
