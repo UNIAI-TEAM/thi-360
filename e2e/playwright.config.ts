@@ -2,8 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const isWindows = process.platform === "win32";
 const defaultBackendCmd = isWindows
-  ? "mvnw.cmd -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev"
-  : "./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev";
+  ? "mvnw.cmd -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev,e2e"
+  : "./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev,e2e";
 
 const apiUrl = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 const webUrl = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");

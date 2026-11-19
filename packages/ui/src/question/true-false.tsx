@@ -1,0 +1,222 @@
+"use client";
+
+import { useUiLocale, useUiStrings } from "../components/ui-strings";
+import { cn } from "../lib/cn";
+import { focusRing } from "../lib/styles";
+import { RichTextView } from "../rich-text";
+import { formatScore, statementLetter } from "./helpers";
+import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
+import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
+import type { KitQuestionProps } from "./shared";
+import { answersVisible, resolveReview, reviewSolution } from "./shared";
+import { coarseTarget } from "./touch";
+import type { KitQuestion, KitQuestionOf, QuestionReview, TrueFalseAnswer } from "./types";
+
+type TrueFalseBody = Extract<KitQuestion["body"], { type: "TRUE_FALSE" }>;
+
+/**
+ * Câu Đúng/Sai: mỗi ý một hàng radio Đúng/Sai (LT 8, canvas `CauHoiDungSaiThi`).
+ * Review: bảng ý — bạn chọn (kèm icon), đáp án khi được phép, điểm từng ý (PER_STATEMENT)
+ * hoặc tóm tắt theo bảng số ý đúng (COUNT_TABLE).
+ */
+export function TrueFalseQuestion({
+  question,
+  mode,
+  value,
+  onChange,
+  flagged,
+  onToggleFlag,
+  review,
+  headingLevel,
+  className,
+}: KitQuestionProps<KitQuestionOf<TrueFalseBody>, TrueFalseAnswer>) {
+  const strings = useUiStrings().question;
+  const locale = useUiLocale();
+  const resolved = resolveReview(review);
+  const body = question.body;
+  const statements = value?.statements ?? {};
+  return (
+    <QuestionFrame
+      question={question}
+      headingLevel={headingLevel}
+      flagged={mode === "answer" ? flagged : undefined}
+      onToggleFlag={mode === "answer" ? onToggleFlag : undefined}
+      reviewOutcome={mode === "review" ? (resolved?.outcome ?? null) : undefined}
+      reviewPoints={
+        mode === "review" ? (
+          <ReviewPoints earned={resolved?.earned} max={resolved?.max ?? question.points ?? 1} />
+        ) : undefined
+      }
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
+      className={className}
+    >
+      {mode === "answer" && (
+        <div className="flex flex-col gap-3">
+          <p className="text-caption text-text-secondary">{strings.trueFalseHelp}</p>
+          <ul className="flex flex-col gap-2.5">
+            {body.statements.map((statement, index) => {
+              const letter = statementLetter(index);
+              const picked = statements[statement.id];
+              const textId = `${question.id}-${statement.id}-text`;
+              return (
+                <li
+                  key={statement.id}
+                  className={cn(
+                    "flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border px-3 py-2",
+                    picked === undefined || picked === null
+                      ? "border-border bg-surface"
+                      : "border-border bg-subtle",
+                  )}
+                >
+                  <span className="flex min-w-0 flex-1 items-baseline gap-2 text-title text-text">
+                    <strong className="shrink-0 font-semibold" aria-hidden>
+                      {letter})
+                    </strong>
+                    <span id={textId} data-exam-content className="min-w-0 flex-1 wrap-break-word">
+                      <RichTextView html={statement.content} />
+                    </span>
+                  </span>
+                  <span role="radiogroup" aria-labelledby={textId} className="flex items-center gap-3">
+                    <TrueFalseRadio
+                      name={`${question.id}-${statement.id}`}
+                      checked={picked === true}
+                      label={strings.trueOption}
+                      onPick={() => onChange?.({ statements: { ...statements, [statement.id]: true } })}
+                      onClear={() => onChange?.({ statements: { ...statements, [statement.id]: null } })}
+                    />
+                    <TrueFalseRadio
+                      name={`${question.id}-${statement.id}`}
+                      checked={picked === false}
+                      label={strings.falseOption}
+                      onPick={() => onChange?.({ statements: { ...statements, [statement.id]: false } })}
+                      onClear={() => onChange?.({ statements: { ...statements, [statement.id]: null } })}
+                    />
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      {mode === "review" && (
+        <TrueFalseReview question={question} value={value} review={resolved} locale={locale} />
+      )}
+    </QuestionFrame>
+  );
+}
+
+function TrueFalseRadio({
+  name,
+  checked,
+  label,
+  onPick,
+  onClear,
+}: {
+  name: string;
+  checked: boolean;
+  label: string;
+  onPick: () => void;
+  /** Bấm hay Space lên lựa chọn đang chọn là bỏ chọn: giá trị về `null` (AC-11). */
+  onClear: () => void;
+}) {
+  return (
+    <label className={cn("flex min-h-8 cursor-pointer items-center gap-1.5 text-label font-semibold whitespace-nowrap text-text", coarseTarget)}>
+      <input
+        type="radio"
+        name={name}
+        checked={checked}
+        onChange={onPick}
+        onClick={() => {
+          if (checked) onClear();
+        }}
+        className={cn("size-4.5 accent-primary-fill", focusRing)}
+      />
+      {label}
+    </label>
+  );
+}
+
+function TrueFalseReview({
+  question,
+  value,
+  review,
+  locale,
+}: {
+  question: KitQuestionOf<TrueFalseBody>;
+  value: TrueFalseAnswer | null | undefined;
+  review: QuestionReview | null;
+  locale: "vi" | "en";
+}) {
+  const strings = useUiStrings().question;
+  const statements = value?.statements ?? {};
+  // Không có khóa `answer` ở ý nào thì không hiện cột đáp án (tránh hiện "Sai" cho mọi ý vì dữ liệu thiếu).
+  const showAnswers =
+    answersVisible(review) && question.body.statements.some((statement) => statement.answer !== undefined);
+  const perStatement = question.body.scoringMethod === "PER_STATEMENT";
+  const graded = question.body.statements.filter(
+    (statement) => review?.gradingDetail?.[statement.id] != null,
+  );
+  const correctCount = graded.filter(
+    (statement) => review?.gradingDetail?.[statement.id]?.outcome === "CORRECT",
+  ).length;
+  return (
+    <div className="flex flex-col gap-3">
+      <ReviewTable>
+        <ReviewHead>
+          <ReviewTh>{strings.itemCol}</ReviewTh>
+          <ReviewTh>{strings.youChoseCol}</ReviewTh>
+          {showAnswers && <ReviewTh>{strings.answerCol}</ReviewTh>}
+          <ReviewTh last>{strings.pointsCol}</ReviewTh>
+        </ReviewHead>
+        <ReviewBody>
+          {question.body.statements.map((statement, index) => {
+            const part = review?.gradingDetail?.[statement.id];
+            const picked = statements[statement.id];
+            const answerLabel =
+              statement.answer === undefined ? "—" : statement.answer ? strings.trueOption : strings.falseOption;
+            return (
+              <ReviewRow key={statement.id}>
+                <ReviewCell>
+                  <span className="flex items-baseline gap-2">
+                    <strong className="shrink-0 font-semibold">{statementLetter(index)})</strong>
+                    <span data-exam-content className="wrap-break-word">
+                      <RichTextView html={statement.content} />
+                    </span>
+                  </span>
+                </ReviewCell>
+                <ReviewCell label={strings.youChoseCol} className="font-semibold whitespace-nowrap">
+                  <span className="inline-flex items-center gap-2">
+                    {part && <PartOutcome outcome={part.outcome} />}
+                    {picked === true ? strings.trueOption : picked === false ? strings.falseOption : (
+                      <span className="font-normal text-text-muted">{strings.notAnswered}</span>
+                    )}
+                  </span>
+                </ReviewCell>
+                {showAnswers && <ReviewCell label={strings.answerCol}>{answerLabel}</ReviewCell>}
+                <ReviewCell label={strings.pointsCol} last className="tabular-nums">
+                  {part?.earned != null
+                    ? strings.points(
+                        formatScore(part.earned, locale),
+                        formatScore(part.max ?? statement.points ?? 1, locale),
+                      )
+                    : "—"}
+                </ReviewCell>
+              </ReviewRow>
+            );
+          })}
+        </ReviewBody>
+      </ReviewTable>
+      {!perStatement && review?.earned != null && (
+        <p className="text-caption text-text-secondary">
+          <strong className="font-semibold text-text">
+            {strings.countTableSummary(
+              correctCount,
+              question.body.statements.length,
+              formatScore(review.earned, locale),
+            )}
+          </strong>
+        </p>
+      )}
+    </div>
+  );
+}
