@@ -125,12 +125,18 @@ final class ExamCheckSources {
         return Math.min(sum, distinct.size());
     }
 
-    /** Largest sum of whole set sizes that does not exceed {@code limit}; stops at the check deadline. */
+    /**
+     * Largest sum of whole set sizes that does not exceed {@code limit}. Once the check deadline has
+     * passed the table is not allocated and an abandoned pass must not publish its processed prefix as
+     * the capacity, so expiry returns {@code limit}: the conservative upper bound, already capped by the
+     * eligible child stock and the authored group count.
+     */
     private int composable(List<Integer> sizes, int limit) {
+        if (!clock.instant().isBefore(deadline)) return limit;
         boolean[] reachable = new boolean[limit + 1];
         reachable[0] = true;
         for (int size : sizes) {
-            if (!clock.instant().isBefore(deadline)) break;
+            if (!clock.instant().isBefore(deadline)) return limit;
             for (int total = limit; total >= size; total--) reachable[total] |= reachable[total - size];
         }
         for (int total = limit; total > 0; total--) if (reachable[total]) return total;
