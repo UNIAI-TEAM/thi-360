@@ -33977,9 +33977,6 @@
     "description" : "Tra cứu nhật ký thao tác",
     "name" : "Audit"
   }, {
-    "description" : "Ảnh bìa của bài thi",
-    "name" : "Exam listing"
-  }, {
     "description" : "Tra cứu lớp học hiện tại và lịch sử lớp của tài khoản",
     "name" : "Admin User Classes"
   }, {
@@ -33991,9 +33988,6 @@
   }, {
     "description" : "Ngân hàng câu hỏi: lưu, trạng thái, tìm kiếm",
     "name" : "Admin Question Bank"
-  }, {
-    "description" : "Gán vai trò, quyền trực tiếp và xem quyền hiệu lực của tài khoản",
-    "name" : "Admin User Authz"
   }, {
     "description" : "Cấp tài khoản học viên hàng loạt từ tệp Excel",
     "name" : "Admin Import Batches"
@@ -34007,23 +34001,14 @@
     "description" : "Gán hoặc gỡ vai trò, quyền trực tiếp hàng loạt",
     "name" : "Admin Bulk Authz"
   }, {
-    "description" : "Ảnh và tệp đính kèm của ngân hàng câu hỏi",
-    "name" : "Admin Question Assets"
-  }, {
     "description" : "Cấu hình giao diện toàn hệ thống",
     "name" : "Appearance"
   }, {
     "description" : "Quản trị danh mục dùng chung, danh mục cây và liên kết",
     "name" : "Admin Catalog"
   }, {
-    "description" : "Quản lý vai trò và tập quyền của vai trò",
-    "name" : "Admin Roles"
-  }, {
     "description" : "Tra cứu danh mục quyền cố định và người dùng theo quyền",
     "name" : "Admin Permissions"
-  }, {
-    "description" : "Ảnh đại diện của tài khoản",
-    "name" : "Avatar"
   }, {
     "description" : "Quản lý lớp học và thành viên lớp",
     "name" : "Admin Classes"
@@ -34048,5 +34033,20 @@
   }, {
     "description" : "Quản trị cấu hình giao diện toàn hệ thống",
     "name" : "Admin Appearance"
+  }, {
+    "description" : "Ảnh bìa của bài thi",
+    "name" : "Exam listing"
+  }, {
+    "description" : "Gán vai trò, quyền trực tiếp và xem quyền hiệu lực của tài khoản",
+    "name" : "Admin User Authz"
+  }, {
+    "description" : "Ảnh và tệp đính kèm của ngân hàng câu hỏi",
+    "name" : "Admin Question Assets"
+  }, {
+    "description" : "Quản lý vai trò và tập quyền của vai trò",
+    "name" : "Admin Roles"
+  }, {
+    "description" : "Ảnh đại diện của tài khoản",
+    "name" : "Avatar"
   } ]
 }
