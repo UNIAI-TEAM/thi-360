@@ -25,6 +25,10 @@ export interface QuestionProps extends KitQuestionProps<KitQuestion, AnswerValue
   matchUi?: "select" | "pick";
   /** Tự luận: lắp trình soạn thảo (Tiptap của FS-5). */
   renderEditor?: (props: EssayEditorProps) => React.ReactNode;
+  /** Bộ câu hỏi: cờ đánh dấu của từng câu con theo id (cờ lưu theo từng `attempt_item`, LT 7.3). */
+  flaggedIds?: Record<string, boolean>;
+  /** Bộ câu hỏi: bấm cờ của câu con `childId`. Có hàm này thì mỗi câu con hiện nút cờ khi làm bài. */
+  onToggleChildFlag?: (childId: string) => void;
 }
 
 /**
@@ -36,6 +40,8 @@ export function Question({
   children,
   matchUi,
   renderEditor,
+  flaggedIds,
+  onToggleChildFlag,
   ...rest
 }: QuestionProps) {
   switch (question.body.type) {
@@ -122,6 +128,8 @@ export function Question({
           review={rest.review}
           children={children ?? []}
           headingLevel={rest.headingLevel}
+          flaggedIds={flaggedIds}
+          onToggleChildFlag={onToggleChildFlag}
           className={rest.className}
           renderQuestion={(childProps: ChildQuestionProps) => (
             <Question
@@ -131,6 +139,8 @@ export function Question({
               onChange={childProps.onChange}
               review={childProps.review}
               headingLevel={childProps.headingLevel}
+              flagged={childProps.flagged}
+              onToggleFlag={childProps.onToggleFlag}
               matchUi={matchUi}
               renderEditor={renderEditor}
             />

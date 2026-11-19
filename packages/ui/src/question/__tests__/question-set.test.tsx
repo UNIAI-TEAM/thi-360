@@ -55,4 +55,31 @@ describe("Bộ câu hỏi (AC-14)", () => {
     expect(screen.getByText(t.outcomes.CORRECT)).toBeInTheDocument();
     expect(screen.getByText(t.outcomes.WRONG)).toBeInTheDocument();
   });
+
+  // R1-10: cờ lưu theo từng attempt_item, mà câu con là mục có số; cờ của con phải đi qua `Question`.
+  it("cờ đánh dấu của từng câu con: gọi lại với id của con, trạng thái đọc theo flaggedIds", async () => {
+    const user = userEvent.setup();
+    const onToggleChildFlag = vi.fn();
+    render(
+      <Live
+        question={questionSet}
+        children={[setChildA, setChildB]}
+        flaggedIds={{ "q-set-b": true }}
+        onToggleChildFlag={onToggleChildFlag}
+      />,
+    );
+    const flags = screen.getAllByRole("button", { name: /Đánh dấu xem lại|Bỏ đánh dấu/ });
+    expect(flags).toHaveLength(2);
+    expect(flags[0]).toHaveAttribute("aria-pressed", "false");
+    expect(flags[1]).toHaveAttribute("aria-pressed", "true");
+    await user.click(flags[0]!);
+    expect(onToggleChildFlag).toHaveBeenLastCalledWith("q-set-a");
+    await user.click(flags[1]!);
+    expect(onToggleChildFlag).toHaveBeenLastCalledWith("q-set-b");
+  });
+
+  it("không truyền onToggleChildFlag thì câu con không có nút cờ", () => {
+    render(<Live question={questionSet} children={[setChildA, setChildB]} />);
+    expect(screen.queryByRole("button", { name: t.flagForReview })).toBeNull();
+  });
 });

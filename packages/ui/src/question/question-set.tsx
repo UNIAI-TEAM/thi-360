@@ -16,6 +16,10 @@ export interface QuestionSetProps
   children: KitQuestion[];
   /** Số bắt đầu đánh chỗ trống trong ngữ liệu (BE 3.4); mặc định `blankNumberStart` của thân, rồi 1. */
   blankNumberStart?: number;
+  /** Cờ đánh dấu xem lại của từng câu con theo id (cờ lưu theo `attempt_item` của câu con, LT 7.3). */
+  flaggedIds?: Record<string, boolean>;
+  /** Bấm cờ của câu con `childId`; có hàm này thì mỗi câu con hiện nút cờ ở chế độ làm bài. */
+  onToggleChildFlag?: (childId: string) => void;
 }
 
 /**
@@ -34,6 +38,8 @@ export function QuestionSet({
   headingLevel,
   className,
   renderQuestion,
+  flaggedIds,
+  onToggleChildFlag,
 }: QuestionSetProps & {
   /** Vòng tránh import: kit truyền dispatcher `Question`; người dùng có thể đổi cách dựng con. */
   renderQuestion: (props: ChildQuestionProps) => React.ReactNode;
@@ -81,6 +87,9 @@ export function QuestionSet({
                     : undefined,
                 review: mode === "review" ? childReview(review, child.id) : null,
                 headingLevel: Math.min(3, (headingLevel ?? 2) + 1) as 1 | 2 | 3,
+                flagged: flaggedIds?.[child.id],
+                onToggleFlag:
+                  mode === "answer" && onToggleChildFlag ? () => onToggleChildFlag(child.id) : undefined,
               })}
             </Fragment>
           ))}
@@ -97,4 +106,6 @@ export interface ChildQuestionProps {
   onChange?: (value: AnswerValue) => void;
   review: QuestionReview | null;
   headingLevel?: 1 | 2 | 3;
+  flagged?: boolean;
+  onToggleFlag?: () => void;
 }
