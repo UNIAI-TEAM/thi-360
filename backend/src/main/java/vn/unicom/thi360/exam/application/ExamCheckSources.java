@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam.application;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -72,22 +73,52 @@ final class ExamCheckSources {
     }
 
     /**
-     * Children that can really fill the QUESTION_SET quota row: only those of sets whose size is exactly the group's
-     * set size, since the solver never selects another size. Raw child stock of wrong-size sets is not counted.
+     * Upper bound of the Bộ câu hỏi quota row without a witness paper: what the set groups can take, never the raw
+     * child stock. A SET group takes at most {@code setCount} whole sets of exactly {@code setSize}; a FLEXIBLE_SET
+     * group takes whole sets whose sizes add up to at most its {@code questionCount}. Groups can share candidates, so
+     * the sum is also capped by the distinct counting children of every eligible set.
      */
-    List<CountingUnit> setRowUnits(List<GroupQuota> groups) {
-        Map<String, CountingUnit> distinct = new LinkedHashMap<>();
+    long setRowCapacity(List<GroupQuota> groups) {
+        Set<String> distinct = new LinkedHashSet<>();
+        long sum = 0;
         for (GroupQuota group : groups) {
-            if (group.kind() != GroupQuota.GroupKind.SET || group.setSize() == null) continue;
+            boolean fixed = group.kind() == GroupQuota.GroupKind.SET;
+            if (!fixed && group.kind() != GroupQuota.GroupKind.FLEXIBLE_SET) continue;
+            List<Integer> weights = new ArrayList<>();
+            List<Integer> sizes = new ArrayList<>();
+            long groupUnits = 0;
             for (PathCandidate candidate : pool(group).candidates()) {
-                if (candidate.setId() == null || candidate.units().size() != group.setSize()) continue;
+                if (fixed && (candidate.setId() == null || candidate.units().size() != group.setSize())) continue;
+                int weight = 0;
                 for (CountingUnit unit : candidate.units()) {
                     if (!AnswerQuotaCounting.QUESTION_SET.equals(unit.quotaAnswerType())) continue;
-                    distinct.putIfAbsent(unit.childId() == null ? candidate.questionId() : unit.childId(), unit);
+                    weight++;
+                    distinct.add(unit.childId() == null ? candidate.questionId() : unit.childId());
                 }
+                if (weight == 0) continue;
+                weights.add(weight);
+                sizes.add(candidate.units().size());
+                groupUnits += weight;
+            }
+            if (fixed) {
+                weights.sort(java.util.Comparator.reverseOrder());
+                for (int i = 0; i < Math.min(group.setCount(), weights.size()); i++) sum += weights.get(i);
+            } else {
+                sum += Math.min(groupUnits, composable(sizes, group.questionCount()));
             }
         }
-        return List.copyOf(distinct.values());
+        return Math.min(sum, distinct.size());
+    }
+
+    /** Largest sum of whole set sizes that does not exceed {@code limit}. */
+    private static int composable(List<Integer> sizes, int limit) {
+        boolean[] reachable = new boolean[limit + 1];
+        reachable[0] = true;
+        for (int size : sizes) {
+            for (int total = limit; total >= size; total--) reachable[total] |= reachable[total - size];
+        }
+        for (int total = limit; total > 0; total--) if (reachable[total]) return total;
+        return 0;
     }
 
     boolean complete(List<GroupQuota> groups) {
