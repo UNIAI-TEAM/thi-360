@@ -2281,6 +2281,18 @@ export interface components {
             /** @enum {string} */
             unit?: "COUNT" | "PERCENT";
         };
+        /** @description Một dạng câu và số câu từng dạng trong một phần (TM 10.1) */
+        AnswerTypeGroup: {
+            /** @description Dạng câu con của một bộ chùm; null khi không phải chùm một dạng */
+            childAnswerType?: string;
+            /**
+             * Format: int32
+             * @description Số câu của dạng này (một bộ chùm tính câu con)
+             */
+            questionCount: number;
+            /** @description SINGLE_CHOICE, SHORT_ANSWER, QUESTION_SET, ESSAY, ... */
+            questionType: string;
+        };
         /** @description Định dạng lỗi chuẩn của API */
         ApiError: {
             /**
@@ -3751,12 +3763,74 @@ export interface components {
             /** @description Tài khoản có đang có lượt thi hay không */
             activeAttempt: boolean;
         };
+        /** @description Khoảng điểm của các đường đang phục vụ; min bằng max khi mọi đường như nhau */
+        DecimalRange: {
+            max: number;
+            min: number;
+        };
         /** @description Kết quả kiểm tra điều kiện xóa tài khoản */
         DeletionCheckResponse: {
             /** @description Danh sách nguồn dữ liệu đang chặn xóa */
             blockers: components["schemas"]["Blocker"][];
             /** @description Có thể xóa mềm tài khoản hay không */
             deletable: boolean;
+        };
+        /** @description Quyền lợi sau khi mua (TM 11.3) */
+        DetailBenefits: {
+            aiExplanation: boolean;
+            /** @description Ghi chú về quyền lợi */
+            note?: string;
+            practice: boolean;
+            strengthWeakness: boolean;
+        };
+        /** @description Các lựa chọn của một phần trong phạm vi mua */
+        DetailChoiceGroup: {
+            options: components["schemas"]["DetailChoiceOption"][];
+            /** @description Tên phần có lựa chọn */
+            partName: string;
+        };
+        /** @description Một lựa chọn trong phạm vi mua: nhánh, môn, môn tự chọn hoặc mã tổ hợp */
+        DetailChoiceOption: {
+            /** @description Nhánh của mã tổ hợp (QDA); null nếu không có */
+            branch?: string;
+            /**
+             * Format: int32
+             * @description SUBJECT_CHOICE: học viên chọn bấy nhiêu môn trong danh sách
+             */
+            chooseSubjects?: number;
+            code: string;
+            /** @description SUBJECT_CHOICE: số câu mỗi môn theo số môn đã chọn */
+            countsByPick?: number[];
+            /** @description BRANCH, SUBJECT, SUBJECT_CHOICE hoặc COMBINATION */
+            kind: string;
+            name: string;
+            /** @description Các môn của lựa chọn, theo thứ tự (với mã tổ hợp là thứ tự làm bài) */
+            subjects: components["schemas"]["SubjectRef"][];
+        };
+        /** @description Một phần của bài thi, theo thứ tự làm bài */
+        DetailPart: {
+            /** @description Các dạng câu và số câu từng dạng của phần; rỗng khi bản chưa đóng băng chúng */
+            answerTypes: components["schemas"]["AnswerTypeGroup"][];
+            durationMinutes?: components["schemas"]["IntRange"];
+            maxPoints?: components["schemas"]["DecimalRange"];
+            /** @description Tên phần, nội dung bài thi nên không dịch */
+            name: string;
+            /** Format: int32 */
+            order: number;
+            questionCount?: components["schemas"]["IntRange"];
+            /** @description true: phần bắt buộc; false: học viên tự chọn */
+            required: boolean;
+        };
+        /** @description Cách tính giờ và thang điểm của bài thi */
+        DetailScoring: {
+            /** @description Điểm tối đa của bài */
+            maxScore?: number;
+            /** @description Cách quy điểm luyện tập, ví dụ LINEAR */
+            practiceScoring?: string;
+            /** @description Mốc tham chiếu của thang điểm (nếu có) */
+            referenceMax?: number;
+            /** @description PER_PART: tính giờ từng phần; SHARED: một đồng hồ chung */
+            timing?: string;
         };
         DisplaySegment: {
             code: string;
@@ -5331,6 +5405,11 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
+        /** @description Nhóm tự luận tạm bỏ qua: tên và điểm phần đó đã mang (TM 10.1, 2B K1) */
+        OmittedEssayGroup: {
+            name: string;
+            points?: number;
+        };
         Option: {
             content?: string;
             correct?: boolean;
@@ -5888,6 +5967,53 @@ export interface components {
             /** @description Tên phần (PART) hoặc môn (SUBJECT) ghi trên thẻ; null với FULL */
             scopeLabel?: components["schemas"]["LocalizedName"];
             /** @description Tóm tắt; trống nếu quản trị viên chưa nhập */
+            summary?: string;
+            /** Format: int32 */
+            versionNo: number;
+        };
+        /** @description Chi tiết sản phẩm (TM 10.1, 10.2). Không có id hay nội dung câu hỏi, đáp án, lời giải. */
+        ProductDetail: {
+            /** Format: int32 */
+            attemptsGranted: number;
+            /** @description Đối tượng phù hợp */
+            audience?: string;
+            benefits: components["schemas"]["DetailBenefits"];
+            /** @description STANDARD hoặc REVIEW */
+            buildMode: string;
+            /** @description Các lựa chọn trong phạm vi mua, theo phần */
+            choices: components["schemas"]["DetailChoiceGroup"][];
+            code: string;
+            coverUrl?: string;
+            /** @description Mô tả bài thi */
+            description?: string;
+            durationMinutes?: components["schemas"]["IntRange"];
+            examKind: components["schemas"]["ExamKindRef"];
+            /** @description FULL, PART hoặc SUBJECT */
+            format: string;
+            /**
+             * Format: int64
+             * @description Giá gốc, đồng
+             */
+            listPrice: number;
+            maxPoints?: components["schemas"]["DecimalRange"];
+            name: string;
+            /** @description Mục tiêu */
+            objectives?: string;
+            /** @description Nhóm tự luận tạm bỏ qua; rỗng nếu không có */
+            omittedEssayGroups: components["schemas"]["OmittedEssayGroup"][];
+            /** @description Các phần theo thứ tự làm bài */
+            parts: components["schemas"]["DetailPart"][];
+            /**
+             * Format: int64
+             * @description Giá phải trả sau khuyến mãi tự động, đồng
+             */
+            price: number;
+            promotion?: components["schemas"]["PromotionBadge"];
+            questionCount?: components["schemas"]["IntRange"];
+            /** @description SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION */
+            resultView?: string;
+            scopeLabel?: components["schemas"]["LocalizedName"];
+            scoring: components["schemas"]["DetailScoring"];
             summary?: string;
             /** Format: int32 */
             versionNo: number;
@@ -6521,6 +6647,12 @@ export interface components {
             code: string;
             /** Format: int64 */
             count: number;
+            nameEn: string;
+            nameVi: string;
+        };
+        /** @description Một môn trong danh mục */
+        SubjectRef: {
+            code: string;
             nameEn: string;
             nameVi: string;
         };
@@ -28410,6 +28542,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Chi tiết sản phẩm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
             /** @description Bad Request */
             400: {
                 headers: {

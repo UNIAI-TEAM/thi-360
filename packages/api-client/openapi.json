@@ -81,6 +81,26 @@
         },
         "type" : "object"
       },
+      "AnswerTypeGroup" : {
+        "description" : "Một dạng câu và số câu từng dạng trong một phần (TM 10.1)",
+        "properties" : {
+          "childAnswerType" : {
+            "description" : "Dạng câu con của một bộ chùm; null khi không phải chùm một dạng",
+            "type" : "string"
+          },
+          "questionCount" : {
+            "description" : "Số câu của dạng này (một bộ chùm tính câu con)",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questionType" : {
+            "description" : "SINGLE_CHOICE, SHORT_ANSWER, QUESTION_SET, ESSAY, ...",
+            "type" : "string"
+          }
+        },
+        "required" : [ "questionCount", "questionType" ],
+        "type" : "object"
+      },
       "ApiError" : {
         "description" : "Định dạng lỗi chuẩn của API",
         "properties" : {
@@ -2605,6 +2625,19 @@
         "required" : [ "activeAttempt" ],
         "type" : "object"
       },
+      "DecimalRange" : {
+        "description" : "Khoảng điểm của các đường đang phục vụ; min bằng max khi mọi đường như nhau",
+        "properties" : {
+          "max" : {
+            "type" : "number"
+          },
+          "min" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "max", "min" ],
+        "type" : "object"
+      },
       "DeletionCheckResponse" : {
         "description" : "Kết quả kiểm tra điều kiện xóa tài khoản",
         "properties" : {
@@ -2621,6 +2654,141 @@
           }
         },
         "required" : [ "blockers", "deletable" ],
+        "type" : "object"
+      },
+      "DetailBenefits" : {
+        "description" : "Quyền lợi sau khi mua (TM 11.3)",
+        "properties" : {
+          "aiExplanation" : {
+            "type" : "boolean"
+          },
+          "note" : {
+            "description" : "Ghi chú về quyền lợi",
+            "type" : "string"
+          },
+          "practice" : {
+            "type" : "boolean"
+          },
+          "strengthWeakness" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "aiExplanation", "practice", "strengthWeakness" ],
+        "type" : "object"
+      },
+      "DetailChoiceGroup" : {
+        "description" : "Các lựa chọn của một phần trong phạm vi mua",
+        "properties" : {
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DetailChoiceOption"
+            },
+            "type" : "array"
+          },
+          "partName" : {
+            "description" : "Tên phần có lựa chọn",
+            "type" : "string"
+          }
+        },
+        "required" : [ "options", "partName" ],
+        "type" : "object"
+      },
+      "DetailChoiceOption" : {
+        "description" : "Một lựa chọn trong phạm vi mua: nhánh, môn, môn tự chọn hoặc mã tổ hợp",
+        "properties" : {
+          "branch" : {
+            "description" : "Nhánh của mã tổ hợp (QDA); null nếu không có",
+            "type" : "string"
+          },
+          "chooseSubjects" : {
+            "description" : "SUBJECT_CHOICE: học viên chọn bấy nhiêu môn trong danh sách",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "countsByPick" : {
+            "description" : "SUBJECT_CHOICE: số câu mỗi môn theo số môn đã chọn",
+            "items" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "kind" : {
+            "description" : "BRANCH, SUBJECT, SUBJECT_CHOICE hoặc COMBINATION",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "subjects" : {
+            "description" : "Các môn của lựa chọn, theo thứ tự (với mã tổ hợp là thứ tự làm bài)",
+            "items" : {
+              "$ref" : "#/components/schemas/SubjectRef"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "code", "kind", "name", "subjects" ],
+        "type" : "object"
+      },
+      "DetailPart" : {
+        "description" : "Một phần của bài thi, theo thứ tự làm bài",
+        "properties" : {
+          "answerTypes" : {
+            "description" : "Các dạng câu và số câu từng dạng của phần; rỗng khi bản chưa đóng băng chúng",
+            "items" : {
+              "$ref" : "#/components/schemas/AnswerTypeGroup"
+            },
+            "type" : "array"
+          },
+          "durationMinutes" : {
+            "$ref" : "#/components/schemas/IntRange"
+          },
+          "maxPoints" : {
+            "$ref" : "#/components/schemas/DecimalRange"
+          },
+          "name" : {
+            "description" : "Tên phần, nội dung bài thi nên không dịch",
+            "type" : "string"
+          },
+          "order" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questionCount" : {
+            "$ref" : "#/components/schemas/IntRange"
+          },
+          "required" : {
+            "description" : "true: phần bắt buộc; false: học viên tự chọn",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "answerTypes", "name", "order", "required" ],
+        "type" : "object"
+      },
+      "DetailScoring" : {
+        "description" : "Cách tính giờ và thang điểm của bài thi",
+        "properties" : {
+          "maxScore" : {
+            "description" : "Điểm tối đa của bài",
+            "type" : "number"
+          },
+          "practiceScoring" : {
+            "description" : "Cách quy điểm luyện tập, ví dụ LINEAR",
+            "type" : "string"
+          },
+          "referenceMax" : {
+            "description" : "Mốc tham chiếu của thang điểm (nếu có)",
+            "type" : "number"
+          },
+          "timing" : {
+            "description" : "PER_PART: tính giờ từng phần; SHARED: một đồng hồ chung",
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "DisplaySegment" : {
@@ -6285,6 +6453,19 @@
           "type" : "object"
         } ]
       },
+      "OmittedEssayGroup" : {
+        "description" : "Nhóm tự luận tạm bỏ qua: tên và điểm phần đó đã mang (TM 10.1, 2B K1)",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "name" ],
+        "type" : "object"
+      },
       "Option" : {
         "properties" : {
           "content" : {
@@ -7092,6 +7273,112 @@
           }
         },
         "required" : [ "attemptsGranted", "buildMode", "code", "examKind", "format", "listPrice", "name", "price", "versionNo" ],
+        "type" : "object"
+      },
+      "ProductDetail" : {
+        "description" : "Chi tiết sản phẩm (TM 10.1, 10.2). Không có id hay nội dung câu hỏi, đáp án, lời giải.",
+        "properties" : {
+          "attemptsGranted" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "audience" : {
+            "description" : "Đối tượng phù hợp",
+            "type" : "string"
+          },
+          "benefits" : {
+            "$ref" : "#/components/schemas/DetailBenefits"
+          },
+          "buildMode" : {
+            "description" : "STANDARD hoặc REVIEW",
+            "type" : "string"
+          },
+          "choices" : {
+            "description" : "Các lựa chọn trong phạm vi mua, theo phần",
+            "items" : {
+              "$ref" : "#/components/schemas/DetailChoiceGroup"
+            },
+            "type" : "array"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "coverUrl" : {
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "Mô tả bài thi",
+            "type" : "string"
+          },
+          "durationMinutes" : {
+            "$ref" : "#/components/schemas/IntRange"
+          },
+          "examKind" : {
+            "$ref" : "#/components/schemas/ExamKindRef"
+          },
+          "format" : {
+            "description" : "FULL, PART hoặc SUBJECT",
+            "type" : "string"
+          },
+          "listPrice" : {
+            "description" : "Giá gốc, đồng",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "$ref" : "#/components/schemas/DecimalRange"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "objectives" : {
+            "description" : "Mục tiêu",
+            "type" : "string"
+          },
+          "omittedEssayGroups" : {
+            "description" : "Nhóm tự luận tạm bỏ qua; rỗng nếu không có",
+            "items" : {
+              "$ref" : "#/components/schemas/OmittedEssayGroup"
+            },
+            "type" : "array"
+          },
+          "parts" : {
+            "description" : "Các phần theo thứ tự làm bài",
+            "items" : {
+              "$ref" : "#/components/schemas/DetailPart"
+            },
+            "type" : "array"
+          },
+          "price" : {
+            "description" : "Giá phải trả sau khuyến mãi tự động, đồng",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "promotion" : {
+            "$ref" : "#/components/schemas/PromotionBadge"
+          },
+          "questionCount" : {
+            "$ref" : "#/components/schemas/IntRange"
+          },
+          "resultView" : {
+            "description" : "SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION",
+            "type" : "string"
+          },
+          "scopeLabel" : {
+            "$ref" : "#/components/schemas/LocalizedName"
+          },
+          "scoring" : {
+            "$ref" : "#/components/schemas/DetailScoring"
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "versionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "attemptsGranted", "benefits", "buildMode", "choices", "code", "examKind", "format", "listPrice", "name", "omittedEssayGroups", "parts", "price", "scoring", "versionNo" ],
         "type" : "object"
       },
       "ProductGoneResponse" : {
@@ -8537,6 +8824,22 @@
           }
         },
         "required" : [ "code", "count", "nameEn", "nameVi" ],
+        "type" : "object"
+      },
+      "SubjectRef" : {
+        "description" : "Một môn trong danh mục",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "nameVi" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "nameEn", "nameVi" ],
         "type" : "object"
       },
       "SuggestExamCodeResponse" : {
@@ -34958,6 +35261,16 @@
           }
         } ],
         "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProductDetail"
+                }
+              }
+            },
+            "description" : "Chi tiết sản phẩm"
+          },
           "400" : {
             "content" : {
               "*/*" : {
