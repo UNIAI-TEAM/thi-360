@@ -49,7 +49,8 @@ public class EmailCodeVerificationService {
     }
 
     /**
-     * Gửi hoặc gửi lại mã tới email hiện tại.
+     * Gửi hoặc gửi lại mã tới email hiện tại. Tài khoản được khóa và đọc lại trong transaction, nên tài khoản đã bị
+     * khóa hay xóa giữa chừng không nhận thư; mã, thư và nhật ký cùng một transaction (bị giới hạn thì không có gì).
      *
      * @throws BusinessRuleException {@code EMAIL_REQUIRED} khi tài khoản chưa có email (câu hỏi mở 5, tạm)
      * @throws EmailCodeRateLimitedException quá giới hạn E15
@@ -57,18 +58,23 @@ public class EmailCodeVerificationService {
     public void sendVerificationCode() {
         UserAccount current = accountLoader.requireCurrentAccount();
         transactionTemplate.executeWithoutResult(status -> {
-            UserAccount account = userAccountRepository.findById(current.getId()).orElse(current);
+            UserAccount account = accountLoader.lockActive(current.getId());
             if (account.getEmail() == null) {
                 throw new BusinessRuleException("EMAIL_REQUIRED");
             }
-            EmailCodeService.IssuedCode issued =
-                    emailCodeService.issue(account.getId(), EmailCodePurpose.VERIFY, account.getEmail());
+            String code = emailCodeService.issue(account.getId(), EmailCodePurpose.VERIFY, account.getEmail());
             mailQueue.enqueue(
                     MailKind.EMAIL_VERIFY,
                     account.getEmail(),
                     account.getPreferredLocale(),
-                    Map.of("fullName", account.getFullName(), "code", issued.code()),
+                    Map.of("fullName", account.getFullName(), "code", code),
                     account.getId());
+            // Chỉ ghi việc đã gửi tới email nào; không có mã, HMAC hay nội dung thư.
+            auditRecorder.record(AuditEvent.builder(MODULE, "EMAIL_VERIFICATION_REQUESTED")
+                    .target("USER", account.getId().toString(), account.getUsername())
+                    .after(Map.of("email", account.getEmail()))
+                    .actor(account.getId(), account.getUsername(), List.of(), AuditActorType.USER)
+                    .build());
         });
     }
 
@@ -80,7 +86,7 @@ public class EmailCodeVerificationService {
         UserAccount current = accountLoader.requireCurrentAccount();
         // Lần nhập sai phải được commit trước khi báo lỗi, nên kết quả đi ra ngoài transaction rồi mới ném.
         EmailCodeService.VerifyOutcome outcome = transactionTemplate.execute(status -> {
-            UserAccount account = userAccountRepository.findById(current.getId()).orElse(current);
+            UserAccount account = accountLoader.lockActive(current.getId());
             if (account.getEmail() == null) {
                 return new EmailCodeService.VerifyOutcome.Expired();
             }

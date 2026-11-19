@@ -19,7 +19,7 @@ class EmailCodeTests {
     @Test
     void expiresAtTenMinutes() {
         EmailCode code = code();
-        assertThat(code.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(10)));
+        assertThat(code.isUsable(NOW)).isTrue();
         assertThat(code.isUsable(NOW.plus(Duration.ofMinutes(10)).minusSeconds(1))).isTrue();
         assertThat(code.isUsable(NOW.plus(Duration.ofMinutes(10)))).isFalse();
     }

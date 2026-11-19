@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -41,10 +45,12 @@ import vn.unicom.thi360.identity.infrastructure.EmailCodeHasher;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.shared.mail.MailKind;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
+import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
 import vn.unicom.thi360.support.MailOutbox;
 
 /** ID-1 AC-10 đến AC-18, AC-28: {@code /api/v1/me/email/verification} và {@code /verify} (TM 5.3, E15, E18). */
+@Import(ControlledClockConfig.class)
 @ExtendWith(OutputCaptureExtension.class)
 class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
 
@@ -69,6 +75,9 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
     private EmailCodeGenerator generator;
 
     @Autowired
+    private ControlledClock clock;
+
+    @Autowired
     private KeycloakIdentityClient keycloakClient;
 
     private SelfRegistrationSupport support;
@@ -85,6 +94,7 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        clock.release();
         Mockito.reset(generator);
         support.cleanup();
     }
@@ -183,35 +193,30 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
         assertThat(emailVerifiedAt(account)).isNull();
     }
 
-    /** AC-12: hết hạn sau 10 phút hoặc đã dùng nhận 422 EMAIL_CODE_EXPIRED; biên còn vài giây và vừa hết. */
+    /** AC-12: hết hạn sau 10 phút hoặc đã dùng nhận 422 EMAIL_CODE_EXPIRED; biên 10 phút trừ 1 giây và đúng 10 phút. */
     @Test
     void expiredOrUsedCode() throws Exception {
+        clock.freeze();
+        Account almost = newAccount();
+        String almostCode = latestCode(almost);
         Account expired = newAccount();
         String expiredCode = latestCode(expired);
-        jdbcTemplate.update(
-                "UPDATE identity.email_code SET expires_at = now() - interval '1 second' WHERE user_id = ?",
-                expired.id());
+
+        // Hạn mặc định là 10 phút kể từ lúc gửi.
+        long seconds = jdbcTemplate.queryForObject(
+                "SELECT extract(epoch FROM (expires_at - created_at))::bigint FROM identity.email_code"
+                        + " WHERE user_id = ?", Long.class, expired.id());
+        assertThat(seconds).isEqualTo(600L);
+        assertThat(liveCodeRow(expired).get("attempts")).isEqualTo(0);
+
+        // Còn 1 giây: dùng được. Đúng 10 phút: đã hết hạn, kể cả mã đúng.
+        clock.advance(Duration.ofMinutes(10).minusSeconds(1));
+        verify(almost, almostCode).andExpect(status().isNoContent());
+        clock.advance(Duration.ofSeconds(1));
         verify(expired, expiredCode)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("EMAIL_CODE_EXPIRED"));
         assertThat(emailVerifiedAt(expired)).isNull();
-
-        // Mã còn vài giây vẫn dùng được.
-        Account almost = newAccount();
-        String almostCode = latestCode(almost);
-        jdbcTemplate.update(
-                "UPDATE identity.email_code SET expires_at = now() + interval '8 seconds' WHERE user_id = ?",
-                almost.id());
-        verify(almost, almostCode).andExpect(status().isNoContent());
-
-        // Hạn mặc định là 10 phút kể từ lúc gửi.
-        Account fresh = newAccount();
-        Map<String, Object> row = liveCodeRow(fresh);
-        long seconds = jdbcTemplate.queryForObject(
-                "SELECT extract(epoch FROM (expires_at - created_at))::bigint FROM identity.email_code"
-                        + " WHERE user_id = ?", Long.class, fresh.id());
-        assertThat(seconds).isEqualTo(600L);
-        assertThat(row.get("attempts")).isEqualTo(0);
     }
 
     /** AC-13: sau 5 lần sai, lần nhập tiếp theo nhận EXPIRED kể cả khi mã đúng; email chưa được xác minh. */
@@ -237,6 +242,7 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
     /** AC-14: gửi lại trước 60 giây nhận 429 kèm retryAfter, mã cũ vẫn dùng được; sau 60 giây nhận 202, mã cũ mất hiệu lực. */
     @Test
     void resendCooldown() throws Exception {
+        clock.freeze();
         Account early = newAccount();
         String earlyCode = latestCode(early);
         MvcResult limited = requestCode(early)
@@ -244,29 +250,28 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
                 .andReturn();
         long retryAfter = objectMapper.readTree(limited.getResponse().getContentAsString()).path("retryAfter").asLong();
-        assertThat(retryAfter).isBetween(1L, 60L);
+        assertThat(retryAfter).isEqualTo(60L);
         assertThat(limited.getResponse().getHeader("Retry-After")).isEqualTo(Long.toString(retryAfter));
         assertThat(mailOutbox.all(early.email(), MailKind.EMAIL_VERIFY)).hasSize(1);
         verify(early, earlyCode).andExpect(status().isNoContent());
 
         Account later = newAccount();
         String oldCode = latestCode(later);
-        // Giây 59: còn phải chờ.
-        ageLiveCode(later, 59);
+        // Giây 59: còn phải chờ đúng 1 giây, mã cũ vẫn là mã đang chờ nhập.
+        clock.advance(Duration.ofSeconds(59));
         requestCode(later).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.retryAfter").value(1));
         verify(later, wrongCodeFor(oldCode)).andExpect(jsonPath("$.code").value("EMAIL_CODE_INVALID"));
-        // Giây 60: được gửi, mã cũ mất hiệu lực.
-        ageLiveCode(later, 1);
+        // Giây 60: được gửi, mã cũ mất hiệu lực (mã mới khác mã cũ để phép thử không phụ thuộc may rủi).
+        String newCode = wrongCodeFor(oldCode);
+        doReturn(newCode).when(generator).next();
+        clock.advance(Duration.ofSeconds(1));
         requestCode(later).andExpect(status().isAccepted());
-        List<MailOutbox.Mail> mails = mailOutbox.all(later.email(), MailKind.EMAIL_VERIFY);
-        assertThat(mails).hasSize(2);
-        String newCode = latestCode(later);
-        if (!newCode.equals(oldCode)) {
-            verify(later, oldCode)
-                    .andExpect(status().isUnprocessableEntity())
-                    .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.anyOf(
-                            org.hamcrest.Matchers.is("EMAIL_CODE_INVALID"), org.hamcrest.Matchers.is("EMAIL_CODE_EXPIRED"))));
-        }
+        assertThat(mailOutbox.all(later.email(), MailKind.EMAIL_VERIFY)).hasSize(2);
+        assertThat(latestCode(later)).isEqualTo(newCode);
+        verify(later, oldCode)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EMAIL_CODE_INVALID"))
+                .andExpect(jsonPath("$.remainingAttempts").value(4));
         verify(later, newCode).andExpect(status().isNoContent());
     }
 
@@ -292,32 +297,34 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
         verify(account, replacement).andExpect(status().isNoContent());
     }
 
-    /** AC-15: lần gửi thứ 6 trong ngày nhận 429 kèm retryAfter, không có thư mới. */
+    /** AC-15: lần gửi thứ 6 trong ngày nhận 429 kèm retryAfter, không có thư mới; mã đầu rời cửa sổ đúng sau 24 giờ. */
     @Test
     void dailySendLimit() throws Exception {
+        clock.freeze();
+        Instant first = clock.instant();
         Account account = newAccount();
-        // Thư đăng ký là mã thứ nhất; gửi lại bốn lần nữa (cách nhau hơn 60 giây) là mã thứ 5.
+        // Thư đăng ký là mã thứ nhất; gửi lại bốn lần nữa (cách nhau 61 giây) là mã thứ 5.
         for (int sent = 2; sent <= 5; sent++) {
-            ageLiveCode(account, 61);
+            clock.advance(Duration.ofSeconds(61));
             requestCode(account).andExpect(status().isAccepted());
         }
         assertThat(mailOutbox.all(account.email(), MailKind.EMAIL_VERIFY)).hasSize(5);
 
-        ageLiveCode(account, 61);
+        clock.advance(Duration.ofSeconds(61));
         MvcResult sixth = requestCode(account)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
                 .andReturn();
         JsonNode body = objectMapper.readTree(sixth.getResponse().getContentAsString());
-        assertThat(body.path("retryAfter").asLong()).isGreaterThan(60L);
+        long untilFirstLeaves = Duration.between(clock.instant(), first.plus(Duration.ofHours(24))).getSeconds();
+        assertThat(body.path("retryAfter").asLong()).isEqualTo(untilFirstLeaves);
         assertThat(sixth.getResponse().getHeader("Retry-After")).isEqualTo(body.path("retryAfter").asText());
         assertThat(mailOutbox.all(account.email(), MailKind.EMAIL_VERIFY)).hasSize(5);
 
-        // Mã cũ nhất rời cửa sổ 24 giờ thì được gửi tiếp.
-        jdbcTemplate.update(
-                "UPDATE identity.email_code SET created_at = created_at - interval '25 hours'"
-                        + " WHERE id = (SELECT id FROM identity.email_code WHERE user_id = ? AND purpose = 'VERIFY'"
-                        + " ORDER BY created_at ASC LIMIT 1)", account.id());
+        // Một giây trước khi mã đầu rời cửa sổ 24 giờ vẫn bị chặn; đúng lúc đó thì được gửi tiếp.
+        clock.advance(Duration.ofSeconds(untilFirstLeaves - 1));
+        requestCode(account).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.retryAfter").value(1));
+        clock.advance(Duration.ofSeconds(1));
         requestCode(account).andExpect(status().isAccepted());
         assertThat(mailOutbox.all(account.email(), MailKind.EMAIL_VERIFY)).hasSize(6);
     }
@@ -362,17 +369,20 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
                     .andExpect(status().isUnauthorized());
         }
 
+        // Mã cố định khác nhau cho từng tài khoản: phép thử "mã của A không dùng được cho B" không phụ thuộc may rủi.
+        doReturn("111111").when(generator).next();
         Account a = newAccount();
+        doReturn("222222").when(generator).next();
         Account b = newAccount();
         String codeOfA = latestCode(a);
         String codeOfB = latestCode(b);
+        assertThat(codeOfA).isEqualTo("111111");
+        assertThat(codeOfB).isEqualTo("222222");
 
         // B nhập mã của A: sai, và không đổi gì ở A.
-        if (!codeOfA.equals(codeOfB)) {
-            verify(b, codeOfA)
-                    .andExpect(status().isUnprocessableEntity())
-                    .andExpect(jsonPath("$.code").value("EMAIL_CODE_INVALID"));
-        }
+        verify(b, codeOfA)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EMAIL_CODE_INVALID"));
         assertThat(emailVerifiedAt(a)).isNull();
         assertThat(liveCodeRow(a).get("attempts")).isEqualTo(0);
         assertThat(emailVerifiedAt(b)).isNull();
@@ -388,6 +398,89 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
                             .content("{\"code\":\"123456\",\"newEmail\":\"x@thi360.vn\",\"currentPassword\":\"x\"}"))
                     .andExpect(status().isForbidden());
         }
+    }
+
+    /**
+     * R1-09: gửi mã xác minh thành công ghi đúng một sự kiện kiểm toán (không có mã, HMAC hay nội dung thư); bị giới hạn
+     * thì không ghi gì thêm.
+     */
+    @Test
+    void verificationIssuanceIsAuditedOnlyWhenSent() throws Exception {
+        clock.freeze();
+        Account account = newAccount();
+        assertThat(auditCount("EMAIL_VERIFICATION_REQUESTED", account)).isZero();
+
+        requestCode(account).andExpect(status().isTooManyRequests());
+        assertThat(auditCount("EMAIL_VERIFICATION_REQUESTED", account)).isZero();
+
+        clock.advance(Duration.ofSeconds(60));
+        doReturn("314159").when(generator).next();
+        requestCode(account).andExpect(status().isAccepted());
+        assertThat(auditCount("EMAIL_VERIFICATION_REQUESTED", account)).isEqualTo(1);
+        requestCode(account).andExpect(status().isTooManyRequests());
+        assertThat(auditCount("EMAIL_VERIFICATION_REQUESTED", account)).isEqualTo(1);
+
+        String payload = jdbcTemplate.queryForObject(
+                "SELECT coalesce(\"after\"::text, '') || coalesce(\"before\"::text, '') FROM audit.audit_event"
+                        + " WHERE action = 'EMAIL_VERIFICATION_REQUESTED' AND target_id = ?",
+                String.class, account.id().toString());
+        assertThat(payload).doesNotContain("314159").doesNotContain(hasher.hash(account.id(), EmailCodePurpose.VERIFY, "314159"));
+    }
+
+    /**
+     * R1-10: phiên cookie thật do đăng ký cấp (không phải principal chèn sẵn) gọi API email ghi: thiếu XSRF thì 403 và
+     * không đổi gì; đủ XSRF thì thành công. Cookie đến từ chính phản hồi đăng ký.
+     */
+    @Test
+    void registrationIssuedCookieSessionNeedsXsrfOnEmailWrites() throws Exception {
+        String suffix = SelfRegistrationSupport.suffix();
+        String username = "verify.cookie." + suffix;
+        String email = username + "@thi360.vn";
+        MvcResult registered = support.register(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated())
+                .andReturn();
+        Cookie access = registered.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie xsrf = registered.getResponse().getCookie(AuthCookieService.XSRF_COOKIE);
+        assertThat(access).isNotNull();
+        assertThat(xsrf).isNotNull();
+        Account account = new Account(support.accountId(username), username, email);
+        String code = latestCode(account);
+
+        // Không có tiêu đề XSRF: bị chặn, mã chưa bị đụng tới.
+        mockMvc.perform(post("/api/v1/me/email/verify")
+                        .cookie(access, xsrf)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code + "\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("CSRF_INVALID"));
+        assertThat(emailVerifiedAt(account)).isNull();
+        assertThat(liveCodeRow(account).get("attempts")).isEqualTo(0);
+        // XSRF không khớp cookie cũng bị chặn.
+        mockMvc.perform(post("/api/v1/me/email/verify")
+                        .cookie(access, xsrf)
+                        .header(AuthCookieService.XSRF_HEADER, xsrf.getValue() + "x")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code + "\"}"))
+                .andExpect(status().isForbidden());
+
+        // Đủ XSRF: thành công với chính phiên đó.
+        mockMvc.perform(post("/api/v1/me/email/verify")
+                        .cookie(access, xsrf)
+                        .header(AuthCookieService.XSRF_HEADER, xsrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code + "\"}"))
+                .andExpect(status().isNoContent());
+        assertThat(emailVerifiedAt(account)).isNotNull();
+    }
+
+    private int auditCount(String action, Account account) {
+        while (outboxRelay.relayBatch() > 0) {
+            // làm hiện nhật ký
+        }
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit.audit_event WHERE action = ? AND target_id = ?",
+                Integer.class, action, account.id().toString());
+        return count == null ? 0 : count;
     }
 
     /** AC-18: tài khoản chưa xác minh email vẫn đăng nhập được (E18). */

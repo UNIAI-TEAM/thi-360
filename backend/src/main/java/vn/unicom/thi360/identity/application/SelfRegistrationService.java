@@ -383,13 +383,12 @@ public class SelfRegistrationService {
                     .actor(keycloakUserId, account.getUsername(), List.of(), AuditActorType.USER)
                     .build());
 
-            EmailCodeService.IssuedCode issued =
-                    emailCodeService.issue(keycloakUserId, EmailCodePurpose.VERIFY, account.getEmail());
+            String otp = emailCodeService.issue(keycloakUserId, EmailCodePurpose.VERIFY, account.getEmail());
             mailQueue.enqueue(
                     MailKind.EMAIL_VERIFY,
                     account.getEmail(),
                     account.getPreferredLocale(),
-                    Map.of("fullName", account.getFullName(), "code", issued.code()),
+                    Map.of("fullName", account.getFullName(), "code", otp),
                     keycloakUserId);
 
             log.atInfo()

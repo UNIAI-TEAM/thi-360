@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -19,6 +22,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,23 +37,29 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.keycloak.representations.idm.UserRepresentation;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
+import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.identity.application.EmailCodeAccountLoader;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.mail.MailKind;
+import vn.unicom.thi360.shared.mail.MailQueue;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
 import vn.unicom.thi360.support.MailOutbox;
 
 /** ID-1 AC-19 đến AC-25: {@code /api/v1/me/email/change} và {@code /change/confirm} (TM 5.3, E17). */
+@Import(ControlledClockConfig.class)
 class EmailChangeIT extends AbstractKeycloakIntegrationTest {
 
     private static final Pattern SIX_DIGITS = Pattern.compile("(?<!\\d)(\\d{6})(?!\\d)");
@@ -72,6 +82,18 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
     @MockitoSpyBean
     private KeycloakIdentityClient keycloakClient;
 
+    @MockitoSpyBean
+    private EmailCodeAccountLoader accountLoader;
+
+    @MockitoSpyBean
+    private MailQueue mailQueue;
+
+    @MockitoSpyBean
+    private AuditRecorder auditRecorder;
+
+    @Autowired
+    private ControlledClock clock;
+
     private SelfRegistrationSupport support;
     private MailOutbox mailOutbox;
 
@@ -86,7 +108,8 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        Mockito.reset(keycloakClient);
+        clock.release();
+        Mockito.reset(keycloakClient, accountLoader, mailQueue, auditRecorder);
         support.cleanup();
     }
 
@@ -133,13 +156,6 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
 
     private ResultActions confirm(Account account, String code) throws Exception {
         return send(account, "/change/confirm", "{\"code\":\"" + code + "\"}");
-    }
-
-    private void ageChangeCode(Account account, long seconds) {
-        jdbcTemplate.update(
-                "UPDATE identity.email_code SET created_at = created_at - make_interval(secs => ?)"
-                        + " WHERE user_id = ? AND purpose = 'CHANGE'",
-                seconds, account.id());
     }
 
     private Map<String, Object> accountRow(Account account) {
@@ -372,6 +388,7 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
     /** AC-25: mã đổi email theo cùng quy tắc E15, E17: 10 phút, 5 lần sai, gửi lại sau 60 giây, 5 lần mỗi ngày. */
     @Test
     void changeCodeFollowsSameLimits() throws Exception {
+        clock.freeze();
         Account account = newAccount();
         String newEmail = newEmail();
         requestChange(account, newEmail).andExpect(status().isAccepted());
@@ -394,28 +411,31 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.code").value("EMAIL_CODE_EXPIRED"));
         assertThat(accountRow(account).get("email")).isEqualTo(account.email());
 
-        // Gửi lại: trước 60 giây là 429 kèm retryAfter; mã cũ (đã chết) không thay đổi gì.
+        // Gửi lại: cùng thời điểm, phải chờ đúng 60 giây; mã cũ (đã chết) không thay đổi gì.
         MvcResult limited = requestChange(account, newEmail)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
                 .andReturn();
         JsonNode body = objectMapper.readTree(limited.getResponse().getContentAsString());
-        assertThat(body.path("retryAfter").asLong()).isBetween(1L, 60L);
+        assertThat(body.path("retryAfter").asLong()).isEqualTo(60L);
         assertThat(limited.getResponse().getHeader("Retry-After")).isEqualTo(body.path("retryAfter").asText());
         assertThat(mailOutbox.all(newEmail, MailKind.EMAIL_CHANGE)).hasSize(1);
-        ageChangeCode(account, 59);
-        requestChange(account, newEmail).andExpect(status().isTooManyRequests());
-        ageChangeCode(account, 1);
+        // Giây 59 còn phải chờ đúng 1 giây; giây 60 được gửi.
+        clock.advance(Duration.ofSeconds(59));
+        requestChange(account, newEmail)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.retryAfter").value(1));
+        clock.advance(Duration.ofSeconds(1));
         requestChange(account, newEmail).andExpect(status().isAccepted());
         assertThat(mailOutbox.all(newEmail, MailKind.EMAIL_CHANGE)).hasSize(2);
 
         // Lần gửi thứ 5 còn được, thứ 6 trong ngày thì không.
         for (int sent = 3; sent <= 5; sent++) {
-            ageChangeCode(account, 61);
+            clock.advance(Duration.ofSeconds(61));
             requestChange(account, newEmail).andExpect(status().isAccepted());
         }
         assertThat(mailOutbox.all(newEmail, MailKind.EMAIL_CHANGE)).hasSize(5);
-        ageChangeCode(account, 61);
+        clock.advance(Duration.ofSeconds(61));
         requestChange(account, newEmail)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.retryAfter").isNumber());
@@ -424,6 +444,212 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
         // Mã mới nhất xác nhận được; đếm riêng theo mục đích nên VERIFY không bị ảnh hưởng.
         confirm(account, code(newEmail, MailKind.EMAIL_CHANGE)).andExpect(status().isNoContent());
         assertThat(accountRow(account).get("email")).isEqualTo(newEmail);
+    }
+
+    /** E17: mã đổi email còn dùng được ở 10 phút trừ 1 giây và hết hạn đúng 10 phút. */
+    @Test
+    void changeCodeExpiresAtExactlyTenMinutes() throws Exception {
+        clock.freeze();
+        Account account = newAccount();
+        String newEmail = newEmail();
+        requestChange(account, newEmail).andExpect(status().isAccepted());
+        String code = code(newEmail, MailKind.EMAIL_CHANGE);
+
+        clock.advance(Duration.ofMinutes(10));
+        confirm(account, code)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EMAIL_CODE_EXPIRED"));
+        assertThat(accountRow(account).get("email")).isEqualTo(account.email());
+
+        requestChange(account, newEmail).andExpect(status().isAccepted());
+        String fresh = code(newEmail, MailKind.EMAIL_CHANGE);
+        clock.advance(Duration.ofMinutes(10).minusSeconds(1));
+        confirm(account, fresh).andExpect(status().isNoContent());
+        assertThat(accountRow(account).get("email")).isEqualTo(newEmail);
+    }
+
+    private int emailCodeCount(Account account) {
+        return jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM identity.email_code WHERE user_id = ?", Integer.class, account.id());
+    }
+
+    /** Chạy {@code action} ngay sau khi phiên được xác định là tài khoản hiện tại, trước transaction ghi. */
+    private void afterSessionCheck(Runnable action) {
+        doAnswer(invocation -> {
+            Object found = invocation.callRealMethod();
+            action.run();
+            return found;
+        }).when(accountLoader).requireCurrentAccount();
+    }
+
+    /**
+     * R1-05: tài khoản bị khóa sau bước kiểm phiên nhưng trước transaction ghi thì không có thư, mã hay thay đổi nào,
+     * ở cả bốn API (trước đây transaction đọc lại chỉ kiểm tồn tại và dùng bản đã nạp).
+     */
+    @Test
+    void accountDeactivatedAfterSessionCheckGetsNoMailCodeOrChange() throws Exception {
+        Account account = newAccount();
+        String newEmail = newEmail();
+        int codes = emailCodeCount(account);
+        int mails = mailOutbox.count(account.email());
+        afterSessionCheck(() -> jdbcTemplate.update(
+                "UPDATE identity.user_account SET status = 3 WHERE id = ?", account.id()));
+
+        send(account, "/verification", "").andExpect(status().isUnauthorized());
+        jdbcTemplate.update("UPDATE identity.user_account SET status = 2 WHERE id = ?", account.id());
+        requestChange(account, newEmail).andExpect(status().isUnauthorized());
+        jdbcTemplate.update("UPDATE identity.user_account SET status = 2 WHERE id = ?", account.id());
+        confirm(account, "123456").andExpect(status().isUnauthorized());
+        jdbcTemplate.update("UPDATE identity.user_account SET status = 2 WHERE id = ?", account.id());
+        send(account, "/verify", "{\"code\":\"123456\"}").andExpect(status().isUnauthorized());
+
+        assertThat(emailCodeCount(account)).isEqualTo(codes);
+        assertThat(mailOutbox.count(account.email())).isEqualTo(mails);
+        assertThat(mailOutbox.count(newEmail)).isZero();
+        Map<String, Object> row = accountRow(account);
+        assertThat(row.get("pending_email")).isNull();
+        assertThat(row.get("email")).isEqualTo(account.email());
+        assertThat(row.get("email_verified_at")).isNull();
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT coalesce(sum(attempts), 0) FROM identity.email_code WHERE user_id = ?",
+                        Integer.class, account.id()))
+                .isZero();
+    }
+
+    @Test
+    void accountDeletedAfterSessionCheckDoesNotReceiveVerificationMail() throws Exception {
+        Account account = newAccount();
+        int codes = emailCodeCount(account);
+        int mails = mailOutbox.count(account.email());
+        afterSessionCheck(() -> jdbcTemplate.update(
+                "UPDATE identity.user_account SET deleted_at = now() WHERE id = ?", account.id()));
+
+        send(account, "/verification", "").andExpect(status().isUnauthorized());
+
+        assertThat(emailCodeCount(account)).isEqualTo(codes);
+        assertThat(mailOutbox.count(account.email())).isEqualTo(mails);
+        assertThat(accountRow(account).get("email_verified_at")).isNull();
+    }
+
+    @Test
+    void missingAccountAfterSessionCheckDoesNotReceiveVerificationMail() throws Exception {
+        Account account = newAccount();
+        int mails = mailOutbox.count(account.email());
+        afterSessionCheck(() -> {
+            jdbcTemplate.update("DELETE FROM identity.email_code WHERE user_id = ?", account.id());
+            jdbcTemplate.update("DELETE FROM identity.user_role WHERE user_id = ?", account.id());
+            jdbcTemplate.update("DELETE FROM identity.user_identity WHERE user_id = ?", account.id());
+            jdbcTemplate.update("DELETE FROM identity.user_account WHERE id = ?", account.id());
+        });
+
+        send(account, "/verification", "").andExpect(status().isUnauthorized());
+
+        assertThat(emailCodeCount(account)).isZero();
+        assertThat(mailOutbox.count(account.email())).isEqualTo(mails);
+    }
+
+    /**
+     * R1-05: một xác nhận khác vừa đổi email hiện tại thành địa chỉ X trước transaction của yêu cầu đổi sang X: yêu cầu
+     * bị từ chối EMAIL_TAKEN (như đổi sang chính email hiện tại), không đặt X thành pending_email của chính tài khoản.
+     */
+    @Test
+    void requestForJustConfirmedEmailIsRejectedOnTheFreshRow() throws Exception {
+        Account account = newAccount();
+        String justConfirmed = newEmail();
+        int codes = emailCodeCount(account);
+        afterSessionCheck(() -> jdbcTemplate.update(
+                "UPDATE identity.user_account SET email = ?, email_normalized = ? WHERE id = ?",
+                justConfirmed, justConfirmed.toLowerCase(), account.id()));
+
+        requestChange(account, justConfirmed)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
+
+        Map<String, Object> row = accountRow(account);
+        assertThat(row.get("pending_email")).isNull();
+        assertThat(row.get("email")).isEqualTo(justConfirmed);
+        assertThat(emailCodeCount(account)).isEqualTo(codes);
+        assertThat(mailOutbox.count(justConfirmed)).isZero();
+    }
+
+    /** A real confirmation overtakes a request paused after its initial account read. */
+    @Test
+    void concurrentConfirmCannotBecomePendingAgain() throws Exception {
+        Account account = newAccount();
+        String pending = newEmail();
+        requestChange(account, pending).andExpect(status().isAccepted());
+        String otp = code(pending, MailKind.EMAIL_CHANGE);
+        var loaded = new java.util.concurrent.CountDownLatch(1);
+        var resume = new java.util.concurrent.CountDownLatch(1);
+        doAnswer(invocation -> {
+            Object found = invocation.callRealMethod();
+            if (Thread.currentThread().getName().equals("email-change-request-test")) {
+                loaded.countDown();
+                if (!resume.await(30, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("request was not released");
+                }
+            }
+            return found;
+        }).when(accountLoader).requireCurrentAccount();
+        var request = new java.util.concurrent.FutureTask<MvcResult>(
+                () -> requestChange(account, pending).andReturn());
+        Thread thread = new Thread(request, "email-change-request-test");
+        thread.start();
+        try {
+            assertThat(loaded.await(30, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            confirm(account, otp).andExpect(status().isNoContent());
+        } finally {
+            resume.countDown();
+        }
+        MvcResult result = request.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+        assertThat(objectMapper.readTree(result.getResponse().getContentAsString()).path("code").asText())
+                .isEqualTo("EMAIL_TAKEN");
+        assertThat(accountRow(account).get("pending_email")).isNull();
+        assertThat(accountRow(account).get("email")).isEqualTo(pending);
+        assertThat(mailOutbox.all(pending, MailKind.EMAIL_CHANGE)).hasSize(1);
+    }
+
+    /**
+     * R1-06: thư báo email cũ hoặc nhật ký lỗi trước khi gọi Keycloak thì Keycloak không bị đụng tới: email trong
+     * Keycloak, trong cơ sở dữ liệu và mã OTP đều nguyên, và mã còn dùng được khi hết lỗi.
+     */
+    @Test
+    void noticeOrAuditFailureAtConfirmLeavesKeycloakUntouched() throws Exception {
+        Account account = newAccount();
+        String newEmail = newEmail();
+        requestChange(account, newEmail).andExpect(status().isAccepted());
+        String code = code(newEmail, MailKind.EMAIL_CHANGE);
+        Mockito.clearInvocations(keycloakClient);
+
+        MailQueue queueSpy = AopTestUtils.getUltimateTargetObject(mailQueue);
+        doThrow(new IllegalStateException("queue down"))
+                .when(queueSpy).enqueue(eq(MailKind.EMAIL_CHANGED_NOTICE), anyString(), any(), any(), any());
+        confirm(account, code).andExpect(status().is5xxServerError());
+        assertConfirmLeftNothingBehind(account, newEmail);
+        Mockito.reset(queueSpy);
+
+        doThrow(new IllegalStateException("audit down"))
+                .when(auditRecorder).record(argThat(event -> event != null && "EMAIL_CHANGED".equals(event.action())));
+        confirm(account, code).andExpect(status().is5xxServerError());
+        assertConfirmLeftNothingBehind(account, newEmail);
+        Mockito.reset(auditRecorder);
+
+        confirm(account, code).andExpect(status().isNoContent());
+        assertThat(accountRow(account).get("email")).isEqualTo(newEmail);
+        assertThat(keycloakEmail(account)).isEqualToIgnoringCase(newEmail);
+    }
+
+    private void assertConfirmLeftNothingBehind(Account account, String pendingEmail) {
+        Mockito.verify(keycloakClient, Mockito.never())
+                .updateUserProfile(any(UUID.class), anyString(), any(), any(), anyBoolean());
+        Map<String, Object> row = accountRow(account);
+        assertThat(row.get("email")).isEqualTo(account.email());
+        assertThat(row.get("pending_email")).isEqualTo(pendingEmail);
+        assertThat(liveChangeCode(account).get("used_at")).isNull();
+        assertThat(liveChangeCode(account).get("attempts")).isEqualTo(0);
+        assertThat(keycloakEmail(account)).isEqualTo(account.email());
+        assertThat(mailOutbox.all(account.email(), MailKind.EMAIL_CHANGED_NOTICE)).isEmpty();
     }
 
     /** Hai lần xác nhận cùng mã đúng chạy đồng thời: chỉ một lần đổi email, chỉ một thư báo. */

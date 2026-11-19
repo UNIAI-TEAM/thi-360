@@ -46,14 +46,6 @@ public class EmailCodeService {
         this.clock = clock;
     }
 
-    /** Mã rõ chỉ tồn tại ở đây để đưa vào thư; cơ sở dữ liệu chỉ giữ HMAC. */
-    public record IssuedCode(String code, Instant expiresAt) {
-        @Override
-        public String toString() {
-            return "IssuedCode[expiresAt=" + expiresAt + ']';
-        }
-    }
-
     public sealed interface VerifyOutcome {
         /** Mã đúng và đã đánh dấu đã dùng (trong transaction của bên gọi). */
         record Accepted() implements VerifyOutcome {
@@ -69,12 +61,13 @@ public class EmailCodeService {
     }
 
     /**
-     * Cấp mã mới cho {@code email} và làm mất hiệu lực mã cũ cùng mục đích.
+     * Cấp mã mới cho {@code email} và làm mất hiệu lực mã cũ cùng mục đích. Trả mã rõ chỉ để đưa vào thư: cơ sở dữ
+     * liệu chỉ giữ HMAC, và mã không được ghi log hay lưu ở đâu khác.
      *
      * @throws EmailCodeRateLimitedException khi gửi lại trước 60 giây hoặc quá 5 mã trong 24 giờ; mã cũ giữ nguyên
      */
     @Transactional(propagation = Propagation.MANDATORY)
-    public IssuedCode issue(UUID userId, EmailCodePurpose purpose, String email) {
+    public String issue(UUID userId, EmailCodePurpose purpose, String email) {
         lock(userId, purpose);
         Instant now = Instant.now(clock);
         List<Instant> sent = repository.findCreatedSince(userId, purpose, now.minus(EmailCodeSendPolicy.DAILY_WINDOW));
@@ -87,10 +80,9 @@ public class EmailCodeService {
             repository.saveAndFlush(old);
         });
         String code = generator.next();
-        EmailCode created = new EmailCode(
-                Ids.newId(), userId, purpose, email, hasher.hash(userId, purpose, code), now);
-        repository.saveAndFlush(created);
-        return new IssuedCode(code, created.getExpiresAt());
+        repository.saveAndFlush(new EmailCode(
+                Ids.newId(), userId, purpose, email, hasher.hash(userId, purpose, code), now));
+        return code;
     }
 
     /**

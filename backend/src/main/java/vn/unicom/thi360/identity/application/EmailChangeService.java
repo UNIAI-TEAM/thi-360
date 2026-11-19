@@ -96,16 +96,20 @@ public class EmailChangeService {
         verifyPassword(current, currentPassword);
 
         transactionTemplate.executeWithoutResult(status -> {
-            UserAccount account = userAccountRepository.findById(current.getId()).orElse(current);
+            UserAccount account = accountLoader.lockActive(current.getId());
+            // Email hiện tại có thể vừa đổi do một xác nhận khác chen vào sau lần kiểm đầu: kiểm lại trên dòng đã khóa.
+            if (newNormalized.equals(account.getEmailNormalized())) {
+                throw new ConflictException(ERROR_EMAIL_TAKEN);
+            }
             assertEmailFree(account, newNormalized);
-            EmailCodeService.IssuedCode issued = emailCodeService.issue(account.getId(), EmailCodePurpose.CHANGE, newEmail);
+            String code = emailCodeService.issue(account.getId(), EmailCodePurpose.CHANGE, newEmail);
             account.requestEmailChange(newEmail, Instant.now(clock), account.getId());
             userAccountRepository.save(account);
             mailQueue.enqueue(
                     MailKind.EMAIL_CHANGE,
                     newEmail,
                     account.getPreferredLocale(),
-                    Map.of("fullName", account.getFullName(), "code", issued.code(), "newEmail", newEmail),
+                    Map.of("fullName", account.getFullName(), "code", code, "newEmail", newEmail),
                     account.getId());
             auditRecorder.record(AuditEvent.builder(MODULE, "EMAIL_CHANGE_REQUESTED")
                     .target("USER", account.getId().toString(), account.getUsername())
@@ -125,7 +129,7 @@ public class EmailChangeService {
     public void confirmChange(String code) {
         UserAccount current = accountLoader.requireCurrentAccount();
         EmailCodeService.VerifyOutcome outcome = transactionTemplate.execute(status -> {
-            UserAccount account = userAccountRepository.findById(current.getId()).orElse(current);
+            UserAccount account = accountLoader.lockActive(current.getId());
             String pending = account.getPendingEmail();
             if (pending == null) {
                 return new EmailCodeService.VerifyOutcome.Expired();
@@ -140,6 +144,11 @@ public class EmailChangeService {
         EmailCodeResults.throwUnlessAccepted(outcome);
     }
 
+    /**
+     * Mọi việc có thể lỗi ở phía cơ sở dữ liệu (lưu, xếp thư báo, nhật ký) chạy trước; Keycloak là bước ngoài cuối cùng
+     * có thể lỗi, nên lỗi cơ sở dữ liệu không bao giờ để lại Keycloak đã đổi email mà dòng tài khoản bị rollback. Keycloak
+     * lỗi (ExternalServiceException, hoặc 409 của Keycloak thành EMAIL_TAKEN) rollback cả transaction.
+     */
     private void applyConfirmed(UserAccount account, String pendingEmail) {
         assertEmailFree(account, Normalizer.normalize(pendingEmail));
         String oldEmail = account.getEmail();
@@ -150,8 +159,6 @@ public class EmailChangeService {
         } catch (DataIntegrityViolationException ex) {
             throw UserAdminService.mapUniqueConstraintViolation(ex);
         }
-        // Lỗi ở đây (ExternalServiceException, hoặc 409 của Keycloak thành EMAIL_TAKEN) rollback cả transaction.
-        keycloakClient.updateUserProfile(account.getId(), account.getEmail(), null, null, true);
         if (oldEmail != null) {
             mailQueue.enqueue(
                     MailKind.EMAIL_CHANGED_NOTICE,
@@ -168,6 +175,9 @@ public class EmailChangeService {
                 .after(Map.of("email", account.getEmail()))
                 .actor(account.getId(), account.getUsername(), List.of(), AuditActorType.USER)
                 .build());
+        // Audit uses a JPA outbox; flush its pending insert before the irreversible Keycloak call.
+        userAccountRepository.flush();
+        keycloakClient.updateUserProfile(account.getId(), account.getEmail(), null, null, true);
     }
 
     private void assertEmailFree(UserAccount account, String normalizedEmail) {

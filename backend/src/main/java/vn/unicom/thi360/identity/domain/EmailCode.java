@@ -74,24 +74,12 @@ public class EmailCode {
         return remainingAttempts();
     }
 
-    public int remainingAttempts() {
+    private int remainingAttempts() {
         return Math.max(0, MAX_ATTEMPTS - attempts);
     }
 
     public void markUsed(Instant now) {
         this.usedAt = Objects.requireNonNull(now, "now must not be null");
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getUserId() {
-        return userId;
-    }
-
-    public EmailCodePurpose getPurpose() {
-        return purpose;
     }
 
     public String getEmail() {
@@ -100,21 +88,5 @@ public class EmailCode {
 
     public String getCodeHash() {
         return codeHash;
-    }
-
-    public Instant getExpiresAt() {
-        return expiresAt;
-    }
-
-    public int getAttempts() {
-        return attempts;
-    }
-
-    public Instant getUsedAt() {
-        return usedAt;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
     }
 }
