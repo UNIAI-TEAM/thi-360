@@ -1,6 +1,7 @@
 package vn.unicom.thi360.commerce.entitlement;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,34 @@ class EntitlementGrantServiceIT extends EntitlementIntegrationTest {
         assertThat(count(entitlementRow(entitlementB), "attempts_total")).isEqualTo(4);
         assertCountsEqualGrantSums(entitlementA);
         assertCountsEqualGrantSums(entitlementB);
+    }
+
+    /**
+     * BE1-5: replaying an order with another buyer fails and rolls back: the other buyer gets no entitlement and
+     * the original grant and counters stay as they were.
+     */
+    @Test
+    void replayWithAnotherBuyerFailsAndCommitsNothing() {
+        UUID buyer = newId();
+        UUID otherBuyer = newId();
+        UUID examA = newId();
+        UUID examB = newId();
+        UUID orderId = newId();
+        GrantOrderResult first = grantService.grantForOrder(order(orderId, buyer, line(examA, 2)));
+        GrantOrderResult.Line original = first.lines().get(0);
+
+        assertThatThrownBy(() -> grantService.grantForOrder(
+                order(orderId, otherBuyer, line(examA, 2), line(examB, 1))))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM commerce.entitlement WHERE user_id = ?", Long.class, otherBuyer)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM commerce.entitlement_grant WHERE order_id = ?", Long.class, orderId))
+                .isEqualTo(1L);
+        assertThat(grantRow(original.grantId()).get("entitlement_id")).isEqualTo(original.entitlementId());
+        assertThat(count(entitlementRow(original.entitlementId()), "attempts_total")).isEqualTo(2);
+        assertCountsEqualGrantSums(original.entitlementId());
     }
 
     /** AC-4: buying again adds to the entitlement; each grant keeps its own snapshot (C13, E21, E25). */

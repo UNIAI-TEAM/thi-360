@@ -40,7 +40,8 @@ public class EntitlementGrantService {
      * Grants every line of the order (TM 8.5 steps 2 and 3). Lines are locked in ascending {@code exam_id}
      * whatever order they arrive in, so two orders sharing exams never wait on each other in a cycle (B2).
      * A line whose {@code (order_id, exam_id)} already has a grant is skipped as already granted: replaying an
-     * order adds nothing. A new line adds its attempts to the existing entitlement of (user, exam), or to a new one
+     * order adds nothing. A replay naming another buyer than the one the grant went to fails and rolls back.
+     * A new line adds its attempts to the existing entitlement of (user, exam), or to a new one
      * (C13); the grant keeps its own option codes, benefits and result view (E21, E25).
      */
     @Transactional
@@ -54,6 +55,11 @@ public class EntitlementGrantService {
             Optional<EntitlementGrant> existing =
                     grantRepository.findByOrderIdAndExamId(command.orderId(), line.examId());
             if (existing.isPresent()) {
+                if (!existing.get().getEntitlementId().equals(entitlement.getId())) {
+                    // The order was granted to another buyer. Failing rolls back the entitlement row just created.
+                    throw new IllegalStateException("Order " + command.orderId() + " already granted exam "
+                            + line.examId() + " to another entitlement than the one of user " + command.userId());
+                }
                 results.add(new GrantOrderResult.Line(
                         line.examId(), entitlement.getId(), existing.get().getId(), false));
                 continue;
