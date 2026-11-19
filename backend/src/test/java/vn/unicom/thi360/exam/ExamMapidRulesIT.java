@@ -303,6 +303,39 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
                 .andExpect(status().is2xxSuccessful());
     }
 
+    // ---- overview must not drop the declared rules (review R1-4) ----------------------------------------------
+
+    @Test
+    void aPartCountChangeThroughTheOverviewKeepsTheModeAndTheRules() throws Exception {
+        arrange();
+        UUID exam = exam(section(3, "MATRIX", "[" + count("exact", null, "EXACT", 1, a()) + ","
+                + rule("source", "SOURCE", "g1", a(), b()) + "]", block("g1", "SINGLE_CHOICE", 3)));
+        long revision = structure(exam).path("revision").asLong();
+        String body = "{\"expectedRevision\":" + revision
+                + ",\"overview\":[{\"partId\":\"part\",\"questionCount\":3,\"durationMinutes\":45}]}";
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/overview", exam).with(asUser(Permissions.EXAM_MODIFY))
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        JsonNode saved = structure(exam).path("parts").get(0).path("sections").get(0);
+        assertThat(saved.path("mapidMode").asText()).isEqualTo("MATRIX");
+        assertThat(saved.path("mapidRules")).extracting(rule -> rule.path("id").asText())
+                .containsExactly("exact", "source");
+    }
+
+    // ---- Q4: the rules are an API boundary of the HSA kind, not only a UI rollout boundary --------------------
+
+    @Test
+    void aKindOtherThanHsaCannotSaveAMapidMode() throws Exception {
+        arrange();
+        UUID bca = examRow("bca");
+        String section = section(3, "MATRIX", "[" + rule("present", "PRESENT", null, a()) + "]",
+                block("g1", "SINGLE_CHOICE", 3));
+        putStructure(bca, section).andExpect(status().isUnprocessableEntity());
+        assertThat(structure(bca).path("parts")).isEmpty();
+        String legacy = "{\"id\":\"section\",\"subjectCode\":\"" + subjectCode + "\",\"questionCount\":3,\"blocks\":["
+                + block("g1", "SINGLE_CHOICE", 3) + "]}";
+        putStructure(bca, legacy).andExpect(status().isOk());
+    }
+
     @Test
     void everyRuleTypeIsSavedAndReadBack() throws Exception {
         arrange();
@@ -396,22 +429,34 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
                 + ",\"mapidMode\":\"" + mode + "\",\"mapidRules\":" + rules + ",\"blocks\":[" + String.join(",", blocks) + "]}";
     }
 
-    /** Creates the exam row, then saves the structure through PUT like the web does. */
+    /** Creates an HSA exam row, then saves the structure through PUT like the web does. */
     private UUID exam(String section) throws Exception {
+        UUID id = examRow("hsa");
+        putStructure(id, section).andExpect(status().isOk());
+        jdbc.update("update exam.exam set question_count = ? where id = ?",
+                mapper.readTree(section).path("questionCount").asInt(), id);
+        return id;
+    }
+
+    private UUID examRow(String kindCode) throws Exception {
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, duration_minutes) "
-                + "values (?, ?, ?, 'Mapid', 'FULL', 'SHARED', 60)", id, id.toString(), id.toString());
+        jdbc.update("insert into exam.exam (id, code, code_normalized, name, scope, timing, duration_minutes, kind_item_id) "
+                + "values (?, ?, ?, 'Mapid', 'FULL', 'SHARED', 60, (select id from catalog.catalog_item "
+                + "where group_id = '00000000-0000-7000-8100-000000000001' and code_normalized = ?))",
+                id, id.toString(), id.toString(), kindCode);
         jdbc.update("insert into exam.exam_structure (exam_id, parts, structure_hash) values (?, cast(? as jsonb), 'empty')",
                 id, "{\"parts\":[]}");
-        JsonNode before = structure(id);
+        return id;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions putStructure(UUID id, String section) throws Exception {
+        long revision = structure(id).path("revision").asLong();
         int count = mapper.readTree(section).path("questionCount").asInt();
         String parts = "[{\"id\":\"part\",\"order\":1,\"name\":\"Part\",\"questionCount\":" + count
                 + ",\"participation\":{\"mode\":\"ALL\"},\"sections\":[" + section + "],\"options\":[]}]";
-        String body = "{\"expectedRevision\":" + before.path("revision").asLong() + ",\"parts\":" + parts + "}";
-        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
-                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
-        jdbc.update("update exam.exam set question_count = ? where id = ?", count, id);
-        return id;
+        String body = "{\"expectedRevision\":" + revision + ",\"parts\":" + parts + "}";
+        return mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id).with(asUser(Permissions.EXAM_MODIFY))
+                .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
     private JsonNode structure(UUID id) throws Exception {
