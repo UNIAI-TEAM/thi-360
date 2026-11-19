@@ -386,6 +386,8 @@ class MailDispatchIT extends AbstractMailIT {
                     job.set(MDC.get("job"));
                     jobId.set(MDC.get("jobId"));
                     threadName.set(Thread.currentThread().getName());
+                    // Dòng log do chính luồng vận chuyển ghi: bằng chứng MDC có mặt ở nơi log phát sinh.
+                    org.slf4j.LoggerFactory.getLogger("thi360.job").atInfo().log("transport-thread-diagnostic");
                     return invocation.callRealMethod();
                 })
                 .when(transport).send(any(), any(), any(), any(), any());
@@ -398,9 +400,9 @@ class MailDispatchIT extends AbstractMailIT {
         assertThat(trace.get()).as("traceId present on the transport thread").isNotBlank();
         assertThat(job.get()).isEqualTo("mail");
         assertThat(jobId.get()).isNotBlank();
-        assertThat(output.getAll())
-                .as("the transport-thread diagnostic carries the batch trace")
-                .contains("trace=" + trace.get());
+        assertThat(output.getAll().lines())
+                .as("a diagnostic logged by the transport thread itself carries the batch trace")
+                .anyMatch(line -> line.contains("transport-thread-diagnostic") && line.contains("trace=" + trace.get()));
         // MDC của luồng ảo được dọn sau task: các giá trị của lượt không lọt ra ngoài việc gửi.
         assertThat(MDC.get("job")).as("batch MDC is restored after dispatch").isNull();
     }

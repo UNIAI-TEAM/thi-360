@@ -3,7 +3,6 @@ package vn.unicom.thi360.shared.mail;
 import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -16,6 +15,7 @@ import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.core.task.support.TaskExecutorAdapter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -77,11 +77,13 @@ class MailDispatcher {
 
     /**
      * Mỗi lần gửi chạy trên một luồng ảo riêng để hủy được khi quá hạn: ngắt luồng ảo đang chờ socket làm
-     * đóng socket, còn luồng của worker thì không bị kẹt. Việc gửi mang theo {@code MDC} của lượt để log
-     * trên luồng vận chuyển có đủ {@code traceId}/{@code job}/{@code jobId} (plan B15).
+     * đóng socket, còn luồng của worker thì không bị kẹt. {@link MdcTaskDecorator} mang {@code MDC} của lượt
+     * sang luồng gửi để log trên luồng vận chuyển có đủ {@code traceId}/{@code job}/{@code jobId} (plan B15).
      */
-    private final ExecutorService sendExecutor =
+    private final ExecutorService sendThreads =
             Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("mail-send-", 0).factory());
+
+    private final TaskExecutorAdapter sendExecutor = new TaskExecutorAdapter(sendThreads);
 
     MailDispatcher(
             EmailMessageStore store,
@@ -94,11 +96,12 @@ class MailDispatcher {
         this.properties = properties;
         this.clock = clock;
         this.tx = new TransactionTemplate(transactionManager);
+        this.sendExecutor.setTaskDecorator(new MdcTaskDecorator());
     }
 
     @PreDestroy
     void shutdown() {
-        sendExecutor.shutdownNow();
+        sendThreads.shutdownNow();
     }
 
     /** @return số thư đã gửi thành công (và ghi được kết quả) trong lượt này */
@@ -186,29 +189,14 @@ class MailDispatcher {
         if (deadline.expired()) {
             return skipped(mail);
         }
-        Map<String, String> context = MDC.getCopyOfContextMap();
         Future<MailFailure> attempt = sendExecutor.submit(() -> {
-            Map<String, String> previous = MDC.getCopyOfContextMap();
-            try {
-                if (context == null) {
-                    MDC.clear();
-                } else {
-                    MDC.setContextMap(context);
-                }
-                // Hàng rào: kiểm tra quyền giữ trước, rồi mới lấy hạn còn lại, để thời gian đứng ở
-                // bước kiểm tra bị trừ vào hạn. Còn lại duy nhất là khoảng đứng giữa đây và byte SMTP đầu.
-                if (!store.stillHeld(mail, Instant.now(clock)) || deadline.expired()) {
-                    return CLAIM_LOST;
-                }
-                transport.send(mail.to(), mail.subject(), mail.html(), mail.text(), deadline);
-                return null;
-            } finally {
-                if (previous == null) {
-                    MDC.clear();
-                } else {
-                    MDC.setContextMap(previous);
-                }
+            // Hàng rào: kiểm tra quyền giữ trước, rồi mới lấy hạn còn lại, để thời gian đứng ở
+            // bước kiểm tra bị trừ vào hạn. Còn lại duy nhất là khoảng đứng giữa đây và byte SMTP đầu.
+            if (!store.stillHeld(mail, Instant.now(clock)) || deadline.expired()) {
+                return CLAIM_LOST;
             }
+            transport.send(mail.to(), mail.subject(), mail.html(), mail.text(), deadline);
+            return null;
         });
         try {
             MailFailure result = attempt.get(deadline.remaining().toNanos(), TimeUnit.NANOSECONDS);
