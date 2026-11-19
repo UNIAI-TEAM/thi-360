@@ -142,7 +142,6 @@ export function ClozeQuestion({
                   aria-readonly={mode === "review" || undefined}
                   aria-label={strings.clozeBlankAria(number, ordinal + 1)}
                   placeholder={strings.clozePlaceholder(ordinal + 1)}
-                  inputMode="decimal"
                   onChange={(event) =>
                     onChange?.({ blanks: { ...blanks, [blankId]: event.target.value } })
                   }
