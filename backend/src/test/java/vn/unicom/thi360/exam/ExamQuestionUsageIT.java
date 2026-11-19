@@ -47,6 +47,29 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
     @Autowired EntityManager entityManager;
 
     @Test
+    void subjectPoolBlocksAreReportedAsQuestionUsages() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID question = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,1,1)",
+                question, "POOL-" + question, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", question);
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Pool exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)",
+                exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","name":"Part","codeSource":{"source":"GLOBAL_LIST"},
+                  "subjectPool":[{"id":"s","subjectCode":"TEST","blocks":[
+                    {"id":"pool-block","questionType":"SINGLE_CHOICE"}]}]}]}
+                """;
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
+        assertThat(provider.examUsagesOf(question)).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
+                .contains("pool-block");
+    }
+
+    @Test
     void inheritedScopeAndSubjectChoiceAreReportedByBothEndpoints() throws Exception {
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         CatalogItemView leaf = knowledge.stream().filter(item -> knowledge.stream().anyMatch(parent ->
@@ -62,7 +85,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Usage exam','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)", exam, exam.toString(), exam.toString());
         String json = """
                 {"parts":[{"id":"p","name":"Part","participation":{"mode":"CHOICE","choose":1},"sections":[
-                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"],"match":"ANY"},
+                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"]},
                    "blocks":[{"id":"inherited","name":"Inherited","questionType":"SINGLE_CHOICE"},
                              {"id":"wrong-type","name":"Wrong type","questionType":"SHORT_ANSWER"}]}],
                   "options":[{"id":"choice","code":"SCIENCE","name":"Science","kind":"SUBJECT_CHOICE",
@@ -72,8 +95,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                 """.formatted(parent.id());
         var document = new ExamStructureCodec(mapper).read(json);
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
-        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null,
-                code -> null, code -> null);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null);
         refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
         UUID unrelatedExam = UUID.randomUUID();
         UUID unrelatedSubject = UUID.randomUUID();
@@ -82,7 +104,7 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')",
                 unrelatedExam, json);
         var unrelatedResolver = new ExamBlockRefProjector.CodeResolver(code -> unrelatedSubject, code -> null,
-                code -> null, code -> null, code -> null);
+                code -> null);
         refs.saveAllAndFlush(projector.project(unrelatedExam, document.parts(), unrelatedResolver));
 
         var actual = provider.examUsagesOf(question);
@@ -160,6 +182,278 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
                 Boolean.class, question)).isTrue();
     }
 
+    @Test
+    void competencyOnlyBlockUsageStaysInsideTheSectionTopic() throws Exception {
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        CatalogItemView leaf = knowledge.stream().filter(item -> knowledge.stream().anyMatch(parent ->
+                !parent.id().equals(item.id()) && item.path().startsWith(parent.path()))).findFirst().orElseThrow();
+        UUID competency = UUID.fromString("00000000-0000-7000-8400-000000000903");
+        UUID subject = UUID.randomUUID();
+        UUID inside = UUID.randomUUID();
+        UUID outside = UUID.randomUUID();
+        for (UUID question : List.of(inside, outside)) {
+            jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,competency_item_id,current_version_no,points) values (?,?,'SINGLE_CHOICE','READY',?,?,1,1)",
+                    question, "COMP-" + question, subject, competency);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", question);
+        }
+        jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)", inside, leaf.id());
+        UUID exam = UUID.randomUUID();
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,kind_item_id,has_unpublished_changes) values (?,?,?,'Competency usage','FULL','SHARED','00000000-0000-7000-8200-000000000101',true)", exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","name":"Part","sections":[
+                  {"id":"s","subjectCode":"TEST","knowledgeScope":{"nodeIds":["%s"]},
+                   "blocks":[{"id":"competency-only","name":"Competency only","questionType":"SINGLE_CHOICE",
+                              "knowledgeScope":{"nodeIds":[],"competencyCodes":["VACT-TOAN"]}}]}]}]}
+                """.formatted(leaf.id());
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        var resolver = new ExamBlockRefProjector.CodeResolver(code -> subject, code -> competency, code -> null);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(), resolver));
+        assertThat(provider.examUsagesOf(inside)).extracting(QuestionUsageProvider.ExamUsageRef::blockId)
+                .containsExactly("competency-only");
+        assertThat(provider.examUsagesOf(outside)).isEmpty();
+    }
+
+    @Test
+    void strictSlotScopesApplyToUsageAndRetireImpactForRootsAndChildren() throws Exception {
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        var topic = knowledge.stream().filter(a -> knowledge.stream().anyMatch(b ->
+                !b.path().startsWith(a.path()) && !a.path().startsWith(b.path()))).findFirst().orElseThrow();
+        var other = knowledge.stream().filter(item -> !item.path().startsWith(topic.path())
+                && !topic.path().startsWith(item.path())).findFirst().orElseThrow();
+        UUID subject = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        UUID mixed = UUID.randomUUID();
+        UUID clean = UUID.randomUUID();
+        UUID mixedA = UUID.randomUUID();
+        UUID mixedB = UUID.randomUUID();
+        UUID cleanA = UUID.randomUUID();
+        UUID cleanB = UUID.randomUUID();
+        for (UUID root : List.of(mixed, clean)) {
+            jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?,'QUESTION_SET','READY',?,1)",
+                    root, "SCOPE-" + root, subject);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", root);
+        }
+        for (UUID child : List.of(mixedA, mixedB, cleanA, cleanB)) {
+            UUID root = List.of(mixedA, mixedB).contains(child) ? mixed : clean;
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?,'SINGLE_CHOICE','READY',?,?,1)",
+                    child, "SCOPE-" + child, root, List.of(mixedB, cleanB).contains(child) ? 1 : 0);
+            jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)",
+                    child, child.equals(mixedB) ? other.id() : topic.id());
+        }
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,has_unpublished_changes) values (?,?,?,'Scope exam','FULL','SHARED',true)",
+                exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","sections":[{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"strict-slot","questionType":"QUESTION_SET","slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
+                  {"id":"strict-parent","questionType":"QUESTION_SET","knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
+                  {"id":"legacy","questionType":"QUESTION_SET","slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"]}}]},
+                  {"id":"any-slot","questionType":"QUESTION_SET","slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},{"index":2}]}
+                ]}]}]}
+                """.formatted(topic.id());
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(),
+                new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null)));
+        for (UUID question : List.of(mixed, mixedA, mixedB, clean, cleanA, cleanB)) {
+            boolean allInScope = List.of(clean, cleanA, cleanB).contains(question);
+            for (String endpoint : List.of("usage", "retire-impact")) {
+                var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                        .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString());
+                String blocks = response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks").toString();
+                assertThat(blocks).contains("legacy", "any-slot");
+                if (allInScope) assertThat(blocks).contains("strict-slot", "strict-parent");
+                else assertThat(blocks).doesNotContain("strict-slot", "strict-parent");
+            }
+        }
+    }
+
+    @Test
+    void unconfiguredSlotIndexUsesTheGroupConditionsForUsageAndRetireImpact() throws Exception {
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        var topic = knowledge.stream().filter(a -> knowledge.stream().anyMatch(b ->
+                !b.path().startsWith(a.path()) && !a.path().startsWith(b.path()))).findFirst().orElseThrow();
+        var other = knowledge.stream().filter(item -> !item.path().startsWith(topic.path())
+                && !topic.path().startsWith(item.path())).findFirst().orElseThrow();
+        UUID subject = UUID.randomUUID();
+        UUID exam = UUID.randomUUID();
+        UUID mixed = UUID.randomUUID();
+        UUID mixedA = UUID.randomUUID();
+        UUID mixedB = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?,'QUESTION_SET','READY',?,1)",
+                mixed, "SPARSE-" + mixed, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", mixed);
+        for (UUID child : List.of(mixedA, mixedB)) {
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?,'SINGLE_CHOICE','READY',?,?,1)",
+                    child, "SPARSE-" + child, mixed, child.equals(mixedB) ? 1 : 0);
+            jdbc.update("insert into questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) values (?,?,true)",
+                    child, child.equals(mixedB) ? other.id() : topic.id());
+        }
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,has_unpublished_changes) values (?,?,?,'Sparse slots','FULL','SHARED',true)",
+                exam, exam.toString(), exam.toString());
+        String json = """
+                {"parts":[{"id":"p","sections":[{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"sparse","questionType":"QUESTION_SET","setCount":2,"setSize":2,
+                   "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
+                  {"id":"all-strict","questionType":"QUESTION_SET","setCount":2,"setSize":2,
+                   "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
+                            {"index":2,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]},
+                  {"id":"huge","questionType":"QUESTION_SET","setCount":1000000000,"setSize":2,
+                   "slots":[{"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}},
+                            {"index":1,"knowledgeScope":{"nodeIds":["%1$s"],"everyChildInScope":true}}]}
+                ]}]}]}
+                """.formatted(topic.id());
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(),
+                new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null)));
+        for (UUID question : List.of(mixed, mixedA, mixedB)) {
+            for (String endpoint : List.of("usage", "retire-impact")) {
+                var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                        .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString());
+                String blocks = response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks").toString();
+                assertThat(blocks).contains("sparse", "huge").doesNotContain("all-strict");
+            }
+        }
+    }
+
+    private static final String SC4 = choice(4);
+    private static final String SC5 = choice(5);
+    private static final String TF2 = "{\"type\":\"TRUE_FALSE\",\"statements\":[{\"answer\":true},{\"answer\":false}]}";
+
+    private static String choice(int options) {
+        var body = new StringBuilder("{\"type\":\"SINGLE_CHOICE\",\"options\":[");
+        for (int i = 0; i < options; i++) {
+            body.append(i == 0 ? "" : ",").append("{\"id\":\"o").append(i).append("\"")
+                    .append(i == 0 ? ",\"correct\":true" : "").append('}');
+        }
+        return body.append("]}").toString();
+    }
+
+    private UUID usageQuestion(UUID subject, String type, String body, boolean withAudio) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) values (?,?,?,'READY',?,1,1)",
+                id, "PARITY-" + id, type, subject);
+        String attachments = "[]";
+        if (withAudio) {
+            UUID asset = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question_asset(id,kind,object_key,file_name,mime,size,sha256) values (?,'ATTACHMENT',?,?,'audio/mpeg',1,?)",
+                    asset, "k/" + asset, "f-" + asset, new byte[32]);
+            attachments = "[\"" + asset + "\"]";
+        }
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,?::jsonb)",
+                id, "{\"body\":" + body + ",\"attachmentIds\":" + attachments + "}");
+        return id;
+    }
+
+    /** A question set whose children carry the given types and bodies, one per position. */
+    private List<UUID> usageSet(UUID subject, List<String[]> children) {
+        UUID root = usageQuestion(subject, "QUESTION_SET", "{\"type\":\"QUESTION_SET\",\"children\":[]}", false);
+        var ids = new java.util.ArrayList<UUID>(List.of(root));
+        for (int position = 0; position < children.size(); position++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?,?,'READY',?,?,1)",
+                    child, "PARITY-" + child, children.get(position)[0], root, position);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,?::jsonb)",
+                    child, "{\"body\":" + children.get(position)[1] + "}");
+            ids.add(child);
+        }
+        return ids;
+    }
+
+    private void usageExam(UUID subject, String sectionsJson) throws Exception {
+        UUID exam = UUID.randomUUID();
+        jdbc.update("insert into exam.exam(id,code,code_normalized,name,scope,timing,has_unpublished_changes) values (?,?,?,'Parity exam','FULL','SHARED',true)",
+                exam, exam.toString(), exam.toString());
+        String json = "{\"parts\":[{\"id\":\"p\",\"name\":\"Part\",\"sections\":" + sectionsJson + "}]}";
+        var document = new ExamStructureCodec(mapper).read(json);
+        jdbc.update("insert into exam.exam_structure(exam_id,parts,structure_hash) values (?,?::jsonb,'test')", exam, json);
+        refs.saveAllAndFlush(projector.project(exam, document.parts(),
+                new ExamBlockRefProjector.CodeResolver(code -> subject, code -> null, code -> null)));
+    }
+
+    /** Both reverse lookups list exactly the blocks generation could select this question for. */
+    private void assertUsageBlocks(UUID question, List<String> listed, List<String> notListed) throws Exception {
+        for (String endpoint : List.of("usage", "retire-impact")) {
+            var response = mapper.readTree(mockMvc.perform(get("/api/v1/admin/questions/" + question + "/" + endpoint)
+                    .with(asUser(Permissions.QUESTION_VIEW))).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString());
+            String blocks = response.path(endpoint.equals("usage") ? "sourceBlocks" : "affectedBlocks").toString();
+            for (String block : listed) assertThat(blocks).as(endpoint + " lists " + block).contains(block);
+            for (String block : notListed) assertThat(blocks).as(endpoint + " omits " + block).doesNotContain(block);
+        }
+    }
+
+    /** R1-6: the section's audio requirement reaches the reverse lookup, as it reaches generation. */
+    @Test
+    void usageAndRetireImpactApplySectionAudioRequirement() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID withAudio = usageQuestion(subject, "SINGLE_CHOICE", SC4, true);
+        UUID plain = usageQuestion(subject, "SINGLE_CHOICE", SC4, false);
+        usageExam(subject, """
+                [{"id":"s-needs","subjectCode":"TEST","audioRequirement":"REQUIRED",
+                  "blocks":[{"id":"needs-audio","questionType":"SINGLE_CHOICE"}]},
+                 {"id":"s-forbids","subjectCode":"TEST","audioRequirement":"FORBIDDEN",
+                  "blocks":[{"id":"forbids-audio","questionType":"SINGLE_CHOICE"}]},
+                 {"id":"s-any","subjectCode":"TEST",
+                  "blocks":[{"id":"any-audio","questionType":"SINGLE_CHOICE"}]}]""");
+        assertUsageBlocks(withAudio, List.of("needs-audio", "any-audio"), List.of("forbids-audio"));
+        assertUsageBlocks(plain, List.of("forbids-audio", "any-audio"), List.of("needs-audio"));
+    }
+
+    /** R1-6: a question whose option count differs from itemShape.options is not listed. */
+    @Test
+    void usageAndRetireImpactApplyOptionCount() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID four = usageQuestion(subject, "SINGLE_CHOICE", SC4, false);
+        UUID five = usageQuestion(subject, "SINGLE_CHOICE", SC5, false);
+        usageExam(subject, """
+                [{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"four-options","questionType":"SINGLE_CHOICE","itemShape":{"options":4}},
+                  {"id":"free-options","questionType":"SINGLE_CHOICE"}]}]""");
+        assertUsageBlocks(four, List.of("four-options", "free-options"), List.of());
+        assertUsageBlocks(five, List.of("free-options"), List.of("four-options"));
+    }
+
+    /** R2-1: a block restricted to INTEGER answers does not list a DECIMAL short answer. */
+    @Test
+    void usageAndRetireImpactApplyAnswerFormats() throws Exception {
+        UUID subject = UUID.randomUUID();
+        UUID integer = usageQuestion(subject, "SHORT_ANSWER",
+                "{\"type\":\"SHORT_ANSWER\",\"answerFormat\":\"INTEGER\",\"answers\":[\"1\"]}", false);
+        UUID decimal = usageQuestion(subject, "SHORT_ANSWER",
+                "{\"type\":\"SHORT_ANSWER\",\"answerFormat\":\"DECIMAL\",\"answers\":[\"1.2\"]}", false);
+        usageExam(subject, """
+                [{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"integer-only","questionType":"SHORT_ANSWER","answerFormats":["INTEGER"]},
+                  {"id":"any-format","questionType":"SHORT_ANSWER"}]}]""");
+        assertUsageBlocks(integer, List.of("integer-only", "any-format"), List.of());
+        assertUsageBlocks(decimal, List.of("any-format"), List.of("integer-only"));
+    }
+
+    /** R1-6: a set failing a positional child condition is not listed, nor are its children. */
+    @Test
+    void usageAndRetireImpactApplyPositionalChildConditions() throws Exception {
+        UUID subject = UUID.randomUUID();
+        var matching = usageSet(subject, List.of(new String[] {"TRUE_FALSE", TF2},
+                new String[] {"TRUE_FALSE", TF2}, new String[] {"SINGLE_CHOICE", SC4}));
+        var failing = usageSet(subject, List.of(new String[] {"SINGLE_CHOICE", SC4},
+                new String[] {"TRUE_FALSE", TF2}, new String[] {"SINGLE_CHOICE", SC4}));
+        var wrongShape = usageSet(subject, List.of(new String[] {"TRUE_FALSE", TF2},
+                new String[] {"TRUE_FALSE", TF2}, new String[] {"SINGLE_CHOICE", SC5}));
+        usageExam(subject, """
+                [{"id":"s","subjectCode":"TEST","blocks":[
+                  {"id":"typed-positions","questionType":"QUESTION_SET","setCount":1,"setSize":3,
+                   "childConditions":[{"from":1,"to":2,"answerType":"TRUE_FALSE"},
+                                      {"from":3,"to":3,"answerType":"SINGLE_CHOICE","itemShape":{"options":4}}]},
+                  {"id":"open-positions","questionType":"QUESTION_SET","setCount":1,"setSize":3}]}]""");
+        for (UUID id : matching) assertUsageBlocks(id, List.of("typed-positions", "open-positions"), List.of());
+        for (UUID id : failing) assertUsageBlocks(id, List.of("open-positions"), List.of("typed-positions"));
+        for (UUID id : wrongShape) assertUsageBlocks(id, List.of("open-positions"), List.of("typed-positions"));
+    }
+
     private void publish(UUID exam, UUID subject, UUID witness, List<String> selected) throws Exception {
         entityManager.clear();
         var examEntity = exams.findById(exam).orElseThrow();
@@ -234,20 +528,20 @@ class ExamQuestionUsageIT extends AbstractIntegrationTest {
         jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, k2);
         jdbc.update("insert into questionbank.question_tag(question_id,tag_item_id) values (?,?)", root, tag);
         var good = new QuestionSourcePort.Filter(subject, List.of(List.of(UUID.randomUUID(), k1), List.of(k2)),
-                QuestionSourcePort.Match.ALL, List.of(), QuestionType.QUESTION_SET, "CLUSTER",
-                QuestionType.SHORT_ANSWER, List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
-        var wrongPoints = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(), QuestionType.QUESTION_SET, "CLUSTER",
+                QuestionType.SHORT_ANSWER, List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongPoints = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.TEN);
-        var wrongSubject = new QuestionSourcePort.Filter(UUID.randomUUID(), good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(tagCode), List.of(), java.math.BigDecimal.TEN, null, null, null);
+        var wrongSubject = new QuestionSourcePort.Filter(UUID.randomUUID(), good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
-        var wrongTag = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongTag = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "CLUSTER", QuestionType.SHORT_ANSWER,
-                List.of("MISSING"), List.of(), java.math.BigDecimal.ONE);
-        var wrongTask = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(), good.knowledgeMatch(),
+                List.of("MISSING"), List.of(), java.math.BigDecimal.ONE, null, null, null);
+        var wrongTask = new QuestionSourcePort.Filter(subject, good.knowledgeGroups(),
                 List.of(), QuestionType.QUESTION_SET, "SINGLE", QuestionType.SHORT_ANSWER,
-                List.of(tagCode), List.of(), java.math.BigDecimal.ONE);
+                List.of(tagCode), List.of(), java.math.BigDecimal.ONE, null, null, null);
         for (var filter : List.of(good, wrongPoints, wrongSubject, wrongTag, wrongTask)) {
             var candidates = source.findCandidates(filter, 100);
             var expected = new java.util.HashSet<UUID>();

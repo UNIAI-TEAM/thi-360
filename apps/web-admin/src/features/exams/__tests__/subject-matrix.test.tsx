@@ -97,7 +97,7 @@ describe("số đã phân bổ và còn thiếu của môn", () => {
     expect(subjectAllocation(history, AXES, 17)).toMatchObject({ remainder: 7, allocated: 17, missing: 0 });
   });
 
-  it("hai nhóm lấy phần còn lại: không nhóm nào nhận, môn báo còn thiếu như REMAINDER_GROUP_INVALID của kiểm tra (R1-5)", () => {
+  it("hai nhóm lấy phần còn lại: không nhóm nào nhận, môn báo còn thiếu", () => {
     const science = backend.app("ex-hsa-f-001").parts[2]!.options.find((option) => option.kind === "SUBJECT_CHOICE")!;
     const history = science.sections.find((section) => section.subjectCode === "HISTORY")!;
     expect(remainderGroupCount(history.blocks)).toBe(1);
@@ -134,7 +134,7 @@ describe("màn môn (Toán HSA)", () => {
 
     // Chùm giới hạn câu con là Một đáp án: 10 câu con trừ vào chỉ tiêu Một đáp án (còn thiếu 35 → 25).
     await user.click(sets.getByRole("button", { name: "Mở nhóm Chùm ngữ cảnh" }));
-    await user.click(await screen.findByRole("combobox", { name: /Dạng của câu con/ }));
+    await user.click(await screen.findByRole("combobox", { name: /Loại câu hỏi của câu con/ }));
     await user.click(await screen.findByRole("option", { name: "Một đáp án" }));
     await user.click(screen.getByRole("button", { name: "Về màn môn" }));
     const after = tableRow(await screen.findByRole("region", { name: "Dạng trả lời" }), "Một đáp án");
@@ -151,28 +151,30 @@ describe("màn môn (Toán HSA)", () => {
     // Ngữ văn: nhóm Trắc nghiệm có dạng trả lời điền sẵn.
     const locked = backend.app("ex-hsa-f-001").parts[1]!.sections[0]!.blocks.find((block) => block.id === "blk-27")!;
     expect(locked.answerTypeLocked).toBe(true);
-    expect(screen.getByRole("textbox", { name: /Dạng trả lời/ })).toHaveAttribute("readonly");
+    expect(screen.getByRole("textbox", { name: /Loại câu hỏi/ })).toHaveAttribute("readonly");
     expect(screen.getByText("Ma trận lớp và độ khó riêng của nhóm").closest("details")).not.toHaveAttribute("open");
   });
 
   it("nhóm của môn không có MAPID riêng hiện 'Theo phạm vi của môn'; hủy hộp chọn giữ nguyên kế thừa, không có thay đổi chưa lưu (R1-3)", async () => {
     const user = userEvent.setup();
     openStructure("ex-hsa-f-001", "?block=blk-22");
-    const scope = (await screen.findByText("Phạm vi kiến thức (MAPID)")).closest("fieldset")!;
+    const scope = (await screen.findByText("Phạm vi kiến thức")).closest("fieldset")!;
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
-    await user.click(within(scope).getByRole("button", { name: "Đặt phạm vi riêng" }));
+    await user.click(within(scope).getByRole("radio", { name: "Theo chủ đề" }));
+    await user.click(within(scope).getByRole("button", { name: "Chọn kiến thức" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
-    expect(within(scope).queryByRole("button", { name: "Dùng phạm vi của môn" })).not.toBeInTheDocument();
+    expect(within(scope).queryByRole("button", { name: "Chọn kiến thức" })).not.toBeInTheDocument();
     expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
   }, 20_000);
 
   it("nhóm V-ACT: bỏ chọn rồi chọn lại năng lực vẫn 'Theo phạm vi của môn', không thành phạm vi riêng 0 kiến thức (R1-4)", async () => {
     const user = userEvent.setup();
     openStructure("ex-vact-f-001", "?block=blk-v1-1");
-    const scope = (await screen.findByText("Phạm vi kiến thức (MAPID)")).closest("fieldset")!;
+    const scope = (await screen.findByText("Phạm vi kiến thức")).closest("fieldset")!;
     const competency = await screen.findByRole("checkbox", { name: "Sử dụng ngôn ngữ · Tiếng Việt" });
     expect(competency).toBeChecked();
     expect(within(scope).getByText("Theo phạm vi của môn")).toBeInTheDocument();
@@ -222,7 +224,7 @@ describe("HSA Khoa học: một phương án chọn môn", () => {
     expect(screen.getByText(/tự nhiên \+ tự nhiên \+ tự nhiên: 16 \+ 17 \+ 17 hoặc 17 \+ 16 \+ 17 hoặc 17 \+ 17 \+ 16/)).toBeInTheDocument();
 
     const card = screen.getByRole("region", { name: "Khoa học" });
-    expect(within(card).getAllByRole("button", { name: /^Soạn môn / })).toHaveLength(5);
+    expect(within(card).getAllByRole("button", { name: /^Thiết lập môn / })).toHaveLength(5);
     expect(screen.queryByText(/KH-\d/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sinh tổ hợp" })).not.toBeInTheDocument();
     expect(screen.queryByText("Chờ chuyên gia xác nhận")).not.toBeInTheDocument();

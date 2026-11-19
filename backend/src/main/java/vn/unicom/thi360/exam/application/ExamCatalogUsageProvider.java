@@ -33,7 +33,6 @@ public class ExamCatalogUsageProvider implements CatalogUsageProvider {
             case "EXAM" -> "e.kind_item_id = ?";
             case "SUBJECT" -> "e.subject_item_id = ? OR r.subject_item_id = ?";
             case "SUBJECT_COMBINATION" -> "r.combination_item_id = ?";
-            case "TASK_TYPE" -> "r.task_type_item_id = ?";
             case "KNOWLEDGE" -> "? = ANY(r.knowledge_item_ids)";
             case "QUESTION_TAG" -> "? = ANY(r.tag_item_ids)";
             case "COMPETENCY" -> "? = ANY(r.competency_item_ids)";

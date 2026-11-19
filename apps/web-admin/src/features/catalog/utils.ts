@@ -5,6 +5,14 @@ import { getErrorStatus } from "@/lib/api/query-client";
 export const CATALOG_CODE_REGEX = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,49}$/;
 export const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
 
+/** Nhánh của mã tổ hợp; "NONE" là giá trị của ô chọn khi không thuộc nhánh nào (gửi lên API là null). */
+export const COMBINATION_BRANCHES = ["SCIENCE", "ENGLISH"] as const;
+export const NO_BRANCH_VALUE = "NONE";
+
+export function isCombinationBranch(value: unknown): value is (typeof COMBINATION_BRANCHES)[number] {
+  return value === "SCIENCE" || value === "ENGLISH";
+}
+
 
 export const BEHAVIOR_WARNING_GROUP_CODES: Record<string, true> = {
   QUESTION_FORMAT: true,

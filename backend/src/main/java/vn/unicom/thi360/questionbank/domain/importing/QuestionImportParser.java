@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import vn.unicom.thi360.questionbank.domain.QuestionBody;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator;
 import vn.unicom.thi360.questionbank.domain.QuestionInput;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /**
@@ -712,7 +713,17 @@ public final class QuestionImportParser {
         }
         String inputHint = raw.get(ImportField.INPUT_HINT).isBlank()
             ? null : raw.get(ImportField.INPUT_HINT).trim();
-        return new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, answers, inputHint);
+        AnswerFormat answerFormat = null;
+        String answerFormatCell = raw.get(ImportField.ANSWER_FORMAT);
+        if (!answerFormatCell.isBlank()) {
+            try {
+                answerFormat = AnswerFormat.valueOf(ImportCellSyntax.normalizeCode(answerFormatCell));
+            } catch (IllegalArgumentException e) {
+                row.add(ImportIssueCode.CELL_SYNTAX, ImportField.ANSWER_FORMAT,
+                    answerFormatCell, null, row.type);
+            }
+        }
+        return new QuestionBody.ShortAnswerBody(QuestionType.SHORT_ANSWER, answers, inputHint, answerFormat);
     }
 
     private static QuestionBody parseCloze(RowParse row, Raw raw) {

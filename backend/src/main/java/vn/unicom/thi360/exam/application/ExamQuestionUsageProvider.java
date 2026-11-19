@@ -94,6 +94,8 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                 if (ref.getOptionCode() == null) {
                     addSections(result, questionId, exam, part, null, part.sections(), ref,
                             knowledge, knowledgeById, descendants, matches);
+                    addSections(result, questionId, exam, part, null, part.subjectPool(), ref,
+                            knowledge, knowledgeById, descendants, matches);
                 }
                 for (ExamPartOption option : part.options()) {
                     if (option == null || !Objects.equals(option.code(), ref.getOptionCode())) continue;
@@ -141,9 +143,8 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                         return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                                 .map(CatalogItemView::id).toList();
                     })).toList();
-                    return "ALL".equals(ref.getKnowledgeMode())
-                            ? groups.stream().allMatch(group -> group.stream().anyMatch(description.knowledgeIds()::contains))
-                            : groups.stream().anyMatch(group -> group.stream().anyMatch(description.knowledgeIds()::contains));
+                    return groups.stream().anyMatch(group ->
+                            group.stream().anyMatch(description.knowledgeIds()::contains));
                 }).toList();
     }
 
@@ -165,8 +166,8 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
             List<CatalogItemView> knowledge, Map<UUID, CatalogItemView> knowledgeById,
             Map<UUID, List<UUID>> descendants, Map<QuestionSourcePort.Filter, Boolean> matches) {
         if (block == null || !Objects.equals(block.id(), ref.getBlockId())) return;
-        KnowledgeScope scope = block.knowledgeScope() != null ? block.knowledgeScope()
-                : section == null ? null : section.knowledgeScope();
+        KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(),
+                section == null ? null : section.knowledgeScope());
         List<List<UUID>> groups = scope == null ? List.of() : scope.nodeIds().stream().map(id ->
                 descendants.computeIfAbsent(id, key -> {
                     CatalogItemView root = knowledgeById.get(key);
@@ -174,21 +175,78 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                     return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                             .map(CatalogItemView::id).toList();
                 })).toList();
-        QuestionSourcePort.Match match = scope != null && scope.match() != null
-                && scope.match().name().equals("ALL") ? QuestionSourcePort.Match.ALL : QuestionSourcePort.Match.ANY;
         List<QuestionType> answers = block.questionType() == null && section != null && section.answerQuotas() != null
                 ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(Objects::nonNull).toList()
                 : List.of();
-        var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, match, answers,
-                block.questionType(), block.taskTypeCode(), block.childAnswerType(), block.tagCodes(),
-                scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion());
-        boolean included = matches.computeIfAbsent(filter,
-                key -> source.matching(key, List.of(questionId)).contains(questionId));
+        BlockFilters generated = BlockFilters.of(block, section);
+        if (generated == null) return;
+        var slots = effectiveSlots(block);
+        boolean included = slots.stream().anyMatch(slot -> {
+            KnowledgeScope slotScope = slot == null ? null : slot.knowledgeScope();
+            List<List<List<UUID>>> slotGroups = slotScope == null || slotScope.nodeIds().isEmpty()
+                    ? List.of() : List.of(slotScope.nodeIds().stream().map(id ->
+                            descendants.computeIfAbsent(id, key -> {
+                                CatalogItemView root = knowledgeById.get(key);
+                                if (root == null) return List.of();
+                                return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                                        .map(CatalogItemView::id).toList();
+                            })).toList());
+            var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, answers,
+                    block.questionType(), null, block.childAnswerType(), block.tagCodes(),
+                    scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
+                    generated.itemShape(), generated.answerFormats(), generated.childConditions(),
+                    slot == null || slot.tagCodes().isEmpty() ? List.of() : List.of(slot.tagCodes()),
+                    slotGroups,
+                    slotScope == null || slotScope.competencyCodes().isEmpty()
+                            ? List.of() : List.of(slotScope.competencyCodes()),
+                    scope == null ? null : scope.everyChildInScope(),
+                    slotGroups.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slotScope.everyChildInScope())),
+                    generated.audio());
+            return matches.computeIfAbsent(filter,
+                    key -> source.matching(key, List.of(questionId)).contains(questionId));
+        });
         if (included) {
             result.add(new ExamUsageRef(exam.getId(), exam.getCode(), exam.getName(), exam.getStatus(),
                     part.id(), part.name(), option == null ? null : option.id(),
                     option == null ? null : option.code(), option == null ? null : option.name(),
                     section == null ? null : section.id(), block.id(), block.name()));
+        }
+    }
+
+    /**
+     * Declared slot indices in 1..setCount (first declaration wins), plus one null entry, the group's
+     * own conditions, when any valid index is undeclared. Never sized by the nominal setCount.
+     */
+    private static List<vn.unicom.thi360.exam.domain.BlockSlot> effectiveSlots(QuestionBlock block) {
+        if (block.slots().isEmpty()) return java.util.Collections.singletonList(null);
+        if (block.setCount() == null) return block.slots();
+        int setCount = block.setCount();
+        java.util.Map<Integer, vn.unicom.thi360.exam.domain.BlockSlot> declared = new java.util.LinkedHashMap<>();
+        for (var slot : block.slots()) {
+            if (slot.index() != null && slot.index() >= 1 && slot.index() <= setCount) {
+                declared.putIfAbsent(slot.index(), slot);
+            }
+        }
+        List<vn.unicom.thi360.exam.domain.BlockSlot> result = new ArrayList<>(declared.values());
+        if (declared.size() < setCount) result.add(null);
+        return result;
+    }
+
+    /**
+     * The block-level source filters generation applies, taken from the same mapping as
+     * {@link SolverInputBuilder} so that usage never lists a block that cannot select the question.
+     * A block generation rejects as malformed (null child bounds, unknown answer format) selects nothing.
+     */
+    private record BlockFilters(QuestionSourcePort.ItemShape itemShape, List<vn.unicom.thi360.questionbank.spi.AnswerFormat> answerFormats,
+            List<QuestionSourcePort.ChildCondition> childConditions, QuestionSourcePort.AudioRequirement audio) {
+        static BlockFilters of(QuestionBlock block, ExamSection section) {
+            try {
+                return new BlockFilters(SolverInputBuilder.shape(block.itemShape()),
+                        SolverInputBuilder.answerFormats(block), SolverInputBuilder.childConditions(block),
+                        SolverInputBuilder.audio(section == null ? null : section.audioRequirement()));
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
         }
     }
 

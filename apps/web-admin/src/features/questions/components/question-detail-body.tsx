@@ -232,6 +232,11 @@ export function AnswersView({ body, points }: { body: QuestionBody; points?: num
               <span className="font-semibold">{t("inputHint")}</span> {body.inputHint}
             </p>
           )}
+          {body.answerFormat && (
+            <p className="text-caption text-text-secondary">
+              <span className="font-semibold">{t("answerFormat")}</span> {t(`answerFormats.${body.answerFormat}`)}
+            </p>
+          )}
         </div>
       );
     case "MATCHING": {
@@ -320,6 +325,7 @@ export function describeBody(body: QuestionBody, t: (key: string, values?: Recor
       return [
         body.answers.join(" / ") || t("noAnswer"),
         ...(body.inputHint ? [`${t("inputHint")} ${body.inputHint}`] : []),
+        ...(body.answerFormat ? [`${t("answerFormat")} ${t(`answerFormats.${body.answerFormat}`)}`] : []),
       ];
     case "CLOZE":
       return body.blanks.map(

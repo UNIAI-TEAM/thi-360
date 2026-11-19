@@ -5,8 +5,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -17,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.exam.application.ExamPreviewService;
+import vn.unicom.thi360.exam.domain.DisplaySegment;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.security.RequirePermission;
 
 /**
@@ -35,12 +35,23 @@ public class ExamPreviewController {
         this.preview = preview;
     }
 
+    @Schema(name = "ExamPreviewTarget")
+    public record PreviewTarget(
+            @Schema(allowableValues = {"SECTION", "PATH", "EXAM"}, requiredMode = Schema.RequiredMode.REQUIRED)
+            String kind, String sectionId, String pathId, List<String> subjectCodes, Integer sectionQuestionCount) {
+    }
+
     @Schema(name = "ExamPreviewRequest")
     public record GeneratePreviewRequest(
-            @NotBlank String pathId,
-            @NotNull Long seed,
+            @Schema(deprecated = true, description = "Legacy path selection; use target when BE-8 is available")
+            String pathId,
+            Long seed,
             Integer version,
-            List<String> subjectCodes) {
+            @Schema(deprecated = true, description = "Legacy subject selection; use target.subjectCodes")
+            List<String> subjectCodes,
+            @Schema(nullable = true) PreviewTarget target,
+            UUID basePreviewId,
+            List<String> regeneratePartIds) {
     }
 
     /** Một lựa chọn của phần tự chọn trên đường (PathChoice của web). */
@@ -65,20 +76,39 @@ public class ExamPreviewController {
     public record RubricItem(String id, String description, BigDecimal points) {
     }
 
+    /** Tệp đính kèm của câu gốc; phát qua {@code GET /api/v1/admin/question-assets/{id}}. */
+    @Schema(name = "ExamPreviewAttachment")
+    public record PreviewAttachment(String id, String name, String mime) {
+    }
+
     /** Một câu (câu đơn hoặc câu con của bộ) trong đề xem trước. */
     @Schema(name = "ExamPreviewQuestion")
     public record PreviewQuestion(int number, String questionId, String code, Integer version,
                                   String type, boolean simulated, String content,
                                   String gradeCode, String difficultyCode, KnowledgeRef knowledge,
                                   BigDecimal points, List<PreviewOption> options, String answer,
-                                  String solution, List<RubricItem> rubric, JsonNode body) {
+                                  String solution, List<RubricItem> rubric, JsonNode body,
+                                  @Schema(types = {"array", "null"}, description = "Displayed option IDs in order; PaperOrdering never shuffles when shuffleOptions=false")
+                                  List<String> optionOrder,
+                                  @Schema(types = {"array", "null"}, description = "Option IDs in the author's original order")
+                                  List<String> originalOptionOrder,
+                                  @Schema(types = {"integer", "null"}, description = "Original solver-selected question position")
+                                  Integer originalNumber,
+                                  @Schema(types = {"array", "null"}, description = "Topic quota IDs assigned to this question")
+                                  List<String> assignedTopicQuotaIds,
+                                  @Schema(description = "Attachments of a single question; empty for a child of a set")
+                                  List<PreviewAttachment> attachments) {
     }
 
     /** Một mục trên đề: câu đơn ({@code kind=QUESTION}) hoặc nguyên bộ ({@code kind=SET}). */
     @Schema(name = "ExamPreviewItem")
     public record PreviewItem(String kind, PreviewQuestion question, String setId, String code,
                               Integer version, boolean simulated, String passage,
-                              List<PreviewQuestion> children) {
+                              List<PreviewQuestion> children,
+                              @Schema(types = {"integer", "null"}, description = "Original solver-selected item position")
+                              Integer originalOrder,
+                              @Schema(description = "Attachments of the set's root question; empty for a single question")
+                              List<PreviewAttachment> attachments) {
     }
 
     @Schema(name = "ExamPreviewAllocationCell")
@@ -114,7 +144,9 @@ public class ExamPreviewController {
     public record PreviewPart(String partId, String name, Integer order,
                               Integer durationMinutes, int firstNumber, int lastNumber,
                               BigDecimal points, BigDecimal maxPoints,
-                              List<PreviewBlock> blocks) {
+                              List<PreviewBlock> blocks,
+                              @Schema(description = "Declared display segments of the part; empty when it has none")
+                              List<DisplaySegment> displaySegments) {
     }
 
     @Schema(name = "ExamPreviewCheck")
@@ -157,16 +189,26 @@ public class ExamPreviewController {
                                String partId, String partName, String sectionId, String subjectCode,
                                String blockId, String blockName, String optionId, String gradeCode,
                                String difficultyCode, String dimension, String competencyCode,
-                               String answerType, Integer subjectCount, Integer required,
-                               Integer available, Integer timeLimitSeconds,
-                               List<String> questionCodes) {
+                               String answerType, Integer subjectCount, BigDecimal required,
+                               BigDecimal available, Integer timeLimitSeconds,
+                               List<String> questionCodes, ExamCheckApiModels.Location location,
+                               @Schema(types = {"string", "null"}, description = "Display segment code of DISPLAY_SEGMENT_MISMATCH")
+                               String segmentCode) {
+    }
+
+    @Schema(name = "ExamPreviewCompliance")
+    public record Compliance(String criterion, String scope, BigDecimal required, BigDecimal actual,
+                             String enforcement, String basis, String note) {
     }
 
     /** {@code status=GENERATED} kèm {@code paper}; {@code status=FAILED} kèm {@code reason,issues}. */
     @Schema(name = "ExamPreviewResult")
     public record PreviewResult(UUID examId, PathRef path, Integer version, long seed,
                                 Instant generatedAt, String status, PreviewPaper paper,
-                                String reason, List<PreviewIssue> issues) {
+                                String reason, List<PreviewIssue> issues,
+                                @Schema(types = {"string", "null"}, format = "uuid") UUID previewId,
+                                @Schema(types = {"array", "null"}) List<Compliance> compliance,
+                                @Schema(types = {"array", "null"}) List<PreviewQuestion> droppedQuestions) {
     }
 
     @PostMapping("/exams/{id}/preview")
@@ -174,6 +216,27 @@ public class ExamPreviewController {
     @Operation(operationId = "previewExam", summary = "Sinh đề xem trước một đường (có hạt giống)")
     public PreviewResult preview(@PathVariable UUID id,
             @Valid @RequestBody GeneratePreviewRequest request) {
+        if (request.target() != null) {
+            if ((request.basePreviewId() == null) != (request.regeneratePartIds() == null)) {
+                throw new ValidationException((String) null);
+            }
+            PreviewTarget target = request.target();
+            if (!"SECTION".equals(target.kind()) && !"PATH".equals(target.kind()) && !"EXAM".equals(target.kind())) {
+                throw new ValidationException((String) null);
+            }
+            if ("SECTION".equals(target.kind()) && (target.sectionId() == null || target.sectionId().isBlank())) {
+                throw new ValidationException((String) null);
+            }
+            String pathId = "PATH".equals(target.kind()) ? target.pathId() : "default";
+            if (pathId == null || pathId.isBlank()) throw new ValidationException((String) null);
+            long seed = request.seed() == null ? java.util.concurrent.ThreadLocalRandom.current().nextLong() : request.seed();
+            request = new GeneratePreviewRequest(pathId, seed, request.version(),
+                    "SECTION".equals(target.kind()) ? null : target.subjectCodes(), target,
+                    request.basePreviewId(), request.regeneratePartIds());
+        } else if (request.pathId() == null || request.pathId().isBlank() || request.seed() == null
+                || request.basePreviewId() != null || request.regeneratePartIds() != null) {
+            throw new ValidationException((String) null);
+        }
         return preview.generate(id, request);
     }
 }

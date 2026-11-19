@@ -2,11 +2,14 @@ package vn.unicom.thi360.catalog.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import vn.unicom.thi360.catalog.spi.CombinationBranch;
 
 @Entity
 @Table(name = "combination_version", schema = "catalog")
@@ -23,6 +26,10 @@ public class CombinationVersion {
 
     @Column(name = "exam_item_id", nullable = false)
     private UUID examItemId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "branch", length = 20)
+    private CombinationBranch branch;
 
     @Column(name = "source_note")
     private String sourceNote;
@@ -44,6 +51,7 @@ public class CombinationVersion {
             UUID itemId,
             int versionNo,
             UUID examItemId,
+            CombinationBranch branch,
             String sourceNote,
             boolean current,
             UUID createdBy,
@@ -52,14 +60,16 @@ public class CombinationVersion {
         this.itemId = Objects.requireNonNull(itemId, "itemId must not be null");
         this.versionNo = versionNo;
         this.examItemId = Objects.requireNonNull(examItemId, "examItemId must not be null");
+        this.branch = branch;
         this.sourceNote = CatalogNormalizer.trimToNull(sourceNote);
         this.current = current;
         this.createdBy = createdBy;
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
     }
 
-    public void replaceInPlace(UUID examItemId, String sourceNote) {
+    public void replaceInPlace(UUID examItemId, CombinationBranch branch, String sourceNote) {
         this.examItemId = Objects.requireNonNull(examItemId, "examItemId must not be null");
+        this.branch = branch;
         this.sourceNote = CatalogNormalizer.trimToNull(sourceNote);
     }
 
@@ -81,6 +91,10 @@ public class CombinationVersion {
 
     public UUID getExamItemId() {
         return examItemId;
+    }
+
+    public CombinationBranch getBranch() {
+        return branch;
     }
 
     public String getSourceNote() {

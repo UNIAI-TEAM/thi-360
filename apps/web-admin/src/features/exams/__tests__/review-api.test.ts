@@ -6,6 +6,7 @@ import {
   getExamCheck,
   getExamVersion,
   listExamVersions,
+  mapIssue,
   publishExam,
   runExamCheck,
   startDeepCheck,
@@ -201,5 +202,29 @@ describe("discontinueExam", () => {
       code: "EXAM_REVISION_CONFLICT",
     });
     expect((await getExam("ex-qda-f-001")).status).toBe("PUBLISHED");
+  });
+});
+
+describe("mapIssue: khóa dự phòng khi máy chủ không gửi key", () => {
+  it("hai vấn đề cùng khối chỉ khác dimension giữ hai khóa khác nhau", () => {
+    const count = mapIssue({ code: "BLOCK_COUNT_LOCKED", blockId: "b1", dimension: "COUNT" });
+    const setSize = mapIssue({ code: "BLOCK_COUNT_LOCKED", blockId: "b1", dimension: "SET_SIZE" });
+    expect(count.key).not.toBe(setSize.key);
+  });
+
+  it("hai vấn đề cùng phân đoạn chỉ khác dimension giữ hai khóa khác nhau", () => {
+    const commands = mapIssue({ code: "DISPLAY_SEGMENT_MISMATCH", partId: "p1", dimension: "COMMANDS", segmentCode: "P2" });
+    const points = mapIssue({ code: "DISPLAY_SEGMENT_MISMATCH", partId: "p1", dimension: "POINTS", segmentCode: "P2" });
+    expect(commands.key).not.toBe(points.key);
+  });
+
+  it("vấn đề cùng khối chỉ khác segmentCode giữ hai khóa khác nhau", () => {
+    const first = mapIssue({ code: "DISPLAY_SEGMENT_MISMATCH", partId: "p1", dimension: "POINTS", segmentCode: "P1" });
+    const second = mapIssue({ code: "DISPLAY_SEGMENT_MISMATCH", partId: "p1", dimension: "POINTS", segmentCode: "P2" });
+    expect(first.key).not.toBe(second.key);
+  });
+
+  it("máy chủ gửi key thì giữ nguyên, không tự ghép", () => {
+    expect(mapIssue({ code: "INFO_MISSING", key: "server-key" }).key).toBe("server-key");
   });
 });

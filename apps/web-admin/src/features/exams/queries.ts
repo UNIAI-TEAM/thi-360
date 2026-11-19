@@ -43,11 +43,24 @@ export function useExamTemplates(deps: ExamsApiDeps = defaultExamsApiDeps) {
 }
 
 /** Bản làm việc của cấu trúc; không tự tải lại khi quay lại cửa sổ để không đè bản nháp đang sửa. */
-export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps, enabled = true) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.structure(id),
     queryFn: () => deps.getExamStructure(id),
     refetchOnWindowFocus: false,
+    enabled,
+  });
+}
+
+/**
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2). Không thử lại: vùng (d) dùng được khi bảng này lỗi (số tính trên màn hình),
+ * và thử lại làm chậm mọi thao tác ghi đang chờ làm mới nhóm `exams`.
+ */
+export function useExamStructureSummary(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+  return useQuery({
+    queryKey: EXAMS_QUERY_KEYS.structureSummary(id),
+    queryFn: () => deps.getExamStructureSummary(id),
+    retry: false,
   });
 }
 

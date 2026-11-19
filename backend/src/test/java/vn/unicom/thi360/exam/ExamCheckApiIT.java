@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
@@ -57,10 +58,15 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.stale").value(false)).andExpect(jsonPath("$.groups.length()").value(8))
                 .andReturn().getResponse();
         var saved = mapper.readTree(response.getContentAsString());
-        mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+        var latest = mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.examId").value(examId.toString()))
                 .andExpect(jsonPath("$.status").value("INVALID"))
-                .andExpect(jsonPath("$.issueCount").value(saved.path("issueCount").asInt()));
+                .andExpect(jsonPath("$.issueCount").value(saved.path("issueCount").asInt()))
+                .andReturn().getResponse();
+        var latestJson = mapper.readTree(latest.getContentAsString());
+        assertThat(latestJson.has("sectionStates")).isTrue();
+        assertThat(latestJson.path("sectionStates").isArray()).isTrue();
+        assertThat(latestJson.path("sectionStates")).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_check_run WHERE exam_id=?", Integer.class, examId)).isEqualTo(1);
         entityManager.flush();
         String audit = jdbc.queryForObject("SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "
@@ -83,15 +89,18 @@ class ExamCheckApiIT extends AbstractIntegrationTest {
         }
     }
 
-    /** F-09a: đề dev HSA phải check VALID trên dữ liệu seed (contract W-BE mục 3). */
     @Test
     void seededHsaDevExamChecksValid() throws Exception {
         UUID seeded = UUID.fromString("00000000-0000-7000-8700-000000000001");
         String response = mockMvc.perform(post("/api/v1/admin/exams/" + seeded + "/check")
                         .with(asUser(Permissions.EXAM_MODIFY)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("VALID"))
-                .andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readTree(response).path("issueCount").asInt()).isZero();
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode result = mapper.readTree(response);
+        assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("VALID");
+        assertThat(result.path("paths")).isNotEmpty();
+        for (JsonNode path : result.path("paths")) {
+            assertThat(path.path("result").asText()).isEqualTo("VALID");
+        }
     }
 
     static String[][] draftFixtures() {

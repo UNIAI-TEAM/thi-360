@@ -90,15 +90,15 @@ export function useScopeOptions(scopes: readonly ExamScope[]): ChoiceCardOption<
 }
 
 /**
- * Phần của bài Theo phần: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi). Mã phần không thuộc bốn mã trên (dữ liệu
- * thật dùng mã môn của danh mục như `TOAN`, `VAN`) thì hiện tên môn theo ngôn ngữ đang chọn; không có trong danh mục
- * mới hiện chính mã.
+ * Phần của bài Theo phần: Toán, Văn, Khoa học, Tiếng Anh (bản vẽ TaoBaiThi) và các mã phần riêng có thông điệp
+ * (`partName.LANGUAGE`… của V-ACT, spec bổ sung 5.3). Mã không có thông điệp (dữ liệu thật dùng mã môn của danh
+ * mục như `TOAN`, `VAN`) thì hiện tên môn theo ngôn ngữ đang chọn; không có trong danh mục mới hiện chính mã.
  */
 export function usePartNames() {
   const t = useTranslations("exams.create.partName");
   const subjects = useReferenceLookup(useContentReference().data);
   const partName = useCallback(
-    (code: string) => (isPartCode(code) ? t(code) : subjects.subject(code)),
+    (code: string) => (isPartCode(code) || t.has(code) ? t(code) : subjects.subject(code)),
     [t, subjects],
   );
   const options: ChoiceCardOption<PartCode>[] = PART_CODES.map((code) => ({ value: code, label: t(code) }));
@@ -291,6 +291,43 @@ export function KindField({
       options={options}
       onChange={onChange}
     />
+  );
+}
+
+/**
+ * Kỳ thi dạng ô chọn của bản vẽ TaoBaiThi2B (bước 1, khối Thông tin chung): một mục cho mỗi kỳ thi của danh mục, tên
+ * đầy đủ từ danh mục. Gợi ý dưới ô nêu cách lấy mẫu và cách tính thời lượng của kỳ thi đang chọn (như `KindField`).
+ */
+export function KindSelect({
+  kinds,
+  value,
+  onChange,
+}: {
+  kinds: readonly ExamKindOption[];
+  value: ExamKind;
+  onChange: (kind: ExamKind) => void;
+}) {
+  const t = useTranslations("exams.create");
+  const kindLabel = useKindLabel();
+  const current = kindOptionFor(kinds, value);
+  const hint = current
+    ? t(current.templateBy === "SUBJECT" ? "kindHintSubject" : "kindHintKind", {
+        kind: kindLabel(current.code),
+        timing: t(`timingMode.${current.timing}`),
+      })
+    : undefined;
+  return (
+    <FormField label={t("kind")} required hint={hint}>
+      {(controlProps) => (
+        <Select
+          {...controlProps}
+          name="kind"
+          value={value || undefined}
+          onValueChange={onChange}
+          options={kinds.map((kind) => ({ value: kind.code, label: kind.name }))}
+        />
+      )}
+    </FormField>
   );
 }
 
@@ -754,7 +791,7 @@ export function ExamInfoFields({
                   maxScore={scoreField.value}
                   onMaxScoreChange={scoreField.onChange}
                   maxScoreError={errors.maxScore?.message}
-                  maxScoreOptional={kind?.maxScore === null}
+                  maxScoreOptional={kind?.maxScore === null || (values.scope === "SUBJECT" && values.buildMode === "REVIEW")}
                 />
               )}
             />

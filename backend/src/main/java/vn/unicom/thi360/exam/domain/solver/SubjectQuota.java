@@ -14,7 +14,21 @@ import java.util.Set;
  *                     SHORT_ANSWER 15; null khi môn không kiểm soát dạng trả lời
  * @param matrix       chỉ tiêu lớp × độ khó của môn; null khi không kiểm soát
  */
-public record SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix) {
+public record SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas,
+        List<ExamDimensionQuota> examQuotas) {
+
+    public SubjectQuota {
+        topicQuotas = topicQuotas == null ? List.of() : List.copyOf(topicQuotas);
+        examQuotas = examQuotas == null ? List.of() : List.copyOf(examQuotas);
+    }
+
+    public SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas) {
+        this(answerQuotas, matrix, topicQuotas, List.of());
+    }
+
+    public SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix) {
+        this(answerQuotas, matrix, List.of());
+    }
 
     /** Môn không có chỉ tiêu cấp môn nào. */
     public static final SubjectQuota NONE = new SubjectQuota(null, null);

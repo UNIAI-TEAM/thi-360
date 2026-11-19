@@ -17,7 +17,8 @@ export function NavTabs({ className, children, ...props }: NavTabsProps) {
   return (
     <nav className={cn("min-w-0", className)} {...props}>
       {/* Một hàng, cuộn ngang khi không đủ chỗ; không xuống dòng để thứ tự và mục đang chọn luôn dễ theo dõi. */}
-      <ul className="m-0 flex list-none items-center gap-1 overflow-x-auto p-0 pb-1">{children}</ul>
+      {/* Cùng mẫu với `TabsList`: đệm 4px bù bằng lề âm để vùng cuộn không cắt vòng focus; thanh cuộn mảnh báo còn mục bị che. */}
+      <ul className="-m-1 flex list-none items-center gap-1 overflow-x-auto p-1 [scrollbar-width:thin]">{children}</ul>
     </nav>
   );
 }

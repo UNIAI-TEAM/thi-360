@@ -105,6 +105,16 @@ export interface EssayCriterion {
 export function clozeMarker(blankId: string): string {
   return `[[${blankId}]]`;
 }
+/** Định dạng đáp án của câu Trả lời ngắn (H11, spec 2026-11-17 mục 12); câu chưa đặt thì `null` (không bắt buộc). */
+export const ANSWER_FORMATS = ["INTEGER", "DECIMAL", "FRACTION", "TEXT", "CHEM_FORMULA", "CHEM_EQUATION"] as const;
+
+export type AnswerFormat = (typeof ANSWER_FORMATS)[number];
+
+/** Giá trị trên dây có phải `AnswerFormat` không; giá trị lạ (bản cũ/mới chưa biết) đọc là `null`. */
+export function isAnswerFormat(value: string | null | undefined): value is AnswerFormat {
+  return (ANSWER_FORMATS as readonly string[]).includes(value ?? "");
+}
+
 
 /**
  * Phần riêng theo dạng câu (spec 4.3, 9.2).
@@ -133,7 +143,7 @@ export type QuestionBody =
       /** `false`: giữ thứ tự phương án như soạn khi sinh đề; thiếu hoặc `true`: đảo (spec 2026-11-17 mục 1). */
       shuffleOptions?: boolean;
     }
-  | { type: "SHORT_ANSWER"; answers: string[]; inputHint: string | null }
+  | { type: "SHORT_ANSWER"; answers: string[]; inputHint: string | null; answerFormat?: AnswerFormat | null }
   | { type: "CLOZE"; passage: string; blanks: ClozeBlank[] }
   | { type: "QUESTION_SET"; passage: string; blankNumberStart: number; childIds: string[] }
   | { type: "TRUE_FALSE"; statements: TrueFalseStatement[]; scoringMethod: TrueFalseMethod; scoreTable: number[] }

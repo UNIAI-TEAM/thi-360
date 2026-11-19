@@ -6,14 +6,17 @@ import {
   convertMatrixUnit,
   countsToPercents,
   gridToCells,
+  groupCounts,
   splitEvenly,
   structureTotals,
+  sum,
   validateBlock,
   validateStructure,
   type MatrixAxes,
 } from "../matrix";
 import { effectiveScope } from "../subject-matrix";
-import type { BlockMatrix, ExamSection, QuestionBlock } from "../types";
+import { pointsRows } from "../exam-overview";
+import type { BlockMatrix, ExamPart, ExamSection, QuestionBlock } from "../types";
 import { EXAMS_FIXTURE } from "./exam-fixture";
 
 const AXES: MatrixAxes = {
@@ -42,9 +45,8 @@ function block(matrix: Partial<BlockMatrix>, overrides: Partial<QuestionBlock> =
     setCount: null,
     setSize: null,
     requiredPointsPerQuestion: 1,
-    knowledgeScope: { nodeIds: [], match: "ANY" },
+    knowledgeScope: { nodeIds: [] },
     tagCodes: [],
-    taskTypeCode: null,
     childAnswerType: null,
     templateGroupCode: null,
     answerTypeLocked: false,
@@ -184,6 +186,239 @@ describe("tổng điểm của cấu trúc (G1)", () => {
   });
 });
 
+describe("nhóm tạm bỏ qua không vào tổng (R3-02, 2B 3.3)", () => {
+  /** Phần cố định một môn của đề HSA mẫu. */
+  const fixedPart = () => {
+    const part = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!.parts[0]!);
+    part.mode = "FIXED";
+    part.options = [];
+    return part;
+  };
+
+  it("nhóm Đọc hiểu 30 câu 6 điểm + nhóm Viết bị bỏ qua: tổng 6 điểm, 30 câu, khớp bảng điểm tổng quan", () => {
+    const part = fixedPart();
+    part.questionCount = 30;
+    const section = part.sections[0]!;
+    section.questionCount = 30;
+    section.blocks = [
+      block({}, { id: "reading", questionCount: 30, requiredPointsPerQuestion: 0.2 }),
+      block({}, { id: "writing", questionType: "ESSAY", questionCount: 10, omitted: true }),
+    ];
+    part.sections = [section];
+    const totals = structureTotals([part]);
+    const rows = pointsRows([part]);
+    expect(totals).toMatchObject({ totalPoints: 6, allocated: 30, totalQuestions: 30, missing: 0 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ count: 30, totalPoints: 6 });
+    expect(sum(rows.map((row) => row.totalPoints))).toBe(totals.totalPoints);
+  });
+
+  it("nhóm lấy phần còn lại đứng sau nhóm bị bỏ qua vẫn nhận trọn phần chênh của môn", () => {
+    const part = fixedPart();
+    part.questionCount = 30;
+    const section = part.sections[0]!;
+    section.questionCount = 30;
+    section.blocks = [
+      block({}, { id: "writing", questionType: "ESSAY", questionCount: 10, omitted: true }),
+      block({}, { id: "rest", questionCount: null, requiredPointsPerQuestion: 0.2 }),
+    ];
+    part.sections = [section];
+    const totals = structureTotals([part]);
+    const rows = pointsRows([part]);
+    expect(totals.totalPoints).toBe(6);
+    expect(rows[0]).toMatchObject({ count: 30, totalPoints: 6 });
+  });
+
+  /** Hình thật của SP2E Ngữ văn (K15): Phần II · Viết chỉ có nhóm Viết bài tạm bỏ qua, nên số câu của phần và môn là 0. */
+  const sp2eVanParts = () => {
+    const reading = fixedPart();
+    reading.id = "P1";
+    reading.questionCount = 30;
+    reading.questionCountOnPaper = 30;
+    reading.questionCountRequired = 30;
+    reading.sections = [
+      { ...reading.sections[0]!, id: "S1", questionCount: 30, blocks: [block({}, { id: "b1", questionCount: 30, requiredPointsPerQuestion: 0.2, matrix: null })] },
+    ];
+    const writing = fixedPart();
+    writing.id = "P2";
+    writing.questionCount = 0;
+    writing.questionCountOnPaper = 0;
+    writing.questionCountRequired = 0;
+    writing.sections = [
+      { ...writing.sections[0]!, id: "S2", questionCount: 0, blocks: [block({}, { id: "b5", questionType: "ESSAY", questionCount: 1, omitted: true, matrix: null })] },
+    ];
+    return { reading, writing };
+  };
+
+  it("phần chỉ có nhóm bỏ qua: không báo số câu phần không dương, không báo tổng nhóm lệch số câu của môn", () => {
+    const { reading, writing } = sp2eVanParts();
+    expect(validateStructure([reading, writing], AXES)).toEqual([]);
+  });
+
+  it("phần có cả nhóm thường lẫn nhóm bỏ qua vẫn bị kiểm như trước", () => {
+    const { writing } = sp2eVanParts();
+    writing.sections[0]!.blocks.push(block({}, { id: "normal", questionCount: 2 }));
+    const codes = validateStructure([writing], AXES).map((issue) => issue.code);
+    expect(codes).toContain("PART_COUNT_NOT_POSITIVE");
+    expect(codes).toContain("BLOCKS_TOTAL");
+  });
+
+  /** Hình thật của SPT_MATH_2025 Phần III · Trả lời ngắn: 4 câu 1 điểm + nhóm Tự luận tạm bỏ qua (3 câu, không điểm). */
+  const sptMathPart3 = () => {
+    const { writing: part } = sp2eVanParts();
+    part.id = "P3";
+    part.questionCount = 4;
+    part.questionCountOnPaper = 4;
+    part.questionCountRequired = 4;
+    part.maxPoints = 1;
+    part.sections = [
+      {
+        ...part.sections[0]!,
+        questionCount: 4,
+        blocks: [
+          block({}, { id: "short", questionCount: 4, requiredPointsPerQuestion: 0.25, matrix: null }),
+          block({}, { id: "essay", questionType: "ESSAY", questionCount: 3, requiredPointsPerQuestion: null, omitted: true, matrix: null }),
+        ],
+      },
+    ];
+    return part;
+  };
+
+  it("phần có nhóm thường và nhóm bỏ qua (SPT): nhóm bỏ qua không vào tổng nhóm và điểm của phần", () => {
+    expect(validateStructure([sptMathPart3()], AXES)).toEqual([]);
+  });
+
+  it("phần SPT: nhóm thường vẫn được so với số câu của môn và điểm của phần", () => {
+    const part = sptMathPart3();
+    part.sections[0]!.blocks[0]!.questionCount = 5;
+    expect(validateStructure([part], AXES).map((issue) => issue.code)).toEqual(["PART_POINTS", "BLOCKS_TOTAL"]);
+  });
+});
+
+describe("HSA 17 − 1 (H3)", () => {
+  /** Phần Khoa học của đề HSA mẫu, chỉ giữ phương án `SUBJECT_CHOICE` (nhóm môn đầu của phần). */
+  const hsaChoicePart = () => {
+    const exam = structuredClone(EXAMS_FIXTURE.exams.find((item) => item.code === "HSA-F-001")!);
+    const part = exam.parts.find((item) => item.mode === "CHOICE")!;
+    part.options = part.options.filter((item) => item.kind === "SUBJECT_CHOICE");
+    return { exam, part, science: part.options[0]! };
+  };
+
+  it("môn khai 17 câu: môn nhận cách chia 16 tính 16 câu trên đề, tổng điểm vẫn 150", () => {
+    const { exam, science } = hsaChoicePart();
+    for (const section of science.sections) {
+      section.questionCount = 17;
+      section.blocks = [
+        block({}, { id: `${section.id}-fixed`, questionCount: 10 }),
+        block({}, { id: `${section.id}-tail`, questionCount: 7 }),
+      ];
+    }
+    // Cách chia đầu cho môn đầu 16 câu (17 − 1): điểm của môn đó 10 + 6; môn không được chọn tính 0.
+    expect(structureTotals(exam.parts)).toMatchObject({ totalQuestions: 150, totalPoints: 150, allocated: 150 });
+    // Tổng nhóm vẫn đối chiếu số câu khai báo 17 (mục 3.5), không báo thiếu.
+    const structural = validateStructure(exam.parts, AXES).filter(
+      (issue) => issue.code === "BLOCKS_TOTAL" || issue.code === "SECTIONS_TOTAL",
+    );
+    expect(structural).toEqual([]);
+  });
+
+  it("bỏ câu chỉ ở nhóm câu đơn: chùm giữ nguyên khi môn nhận 16", () => {
+    const { exam, science } = hsaChoicePart();
+    for (const section of science.sections) {
+      section.questionCount = 17;
+      section.blocks = [
+        block({}, { id: `${section.id}-singles`, questionCount: 4 }),
+        block({}, { id: `${section.id}-set`, questionType: "QUESTION_SET", questionCount: 13, setCount: 13, setSize: 1 }),
+      ];
+    }
+    // Môn đầu nhận 16: chùm 13 câu không bị bỏ, nhóm câu đơn mất một câu (4 → 3).
+    expect(groupCounts(science.sections[0]!, 16)).toEqual([3, 13]);
+    expect(structureTotals(exam.parts).totalPoints).toBe(150);
+  });
+
+  it("nhóm lấy phần còn lại của môn khai 17 nhận phần chênh khi môn nhận 16", () => {
+    const { science } = hsaChoicePart();
+    const section = {
+      ...science.sections[0]!,
+      blocks: [block({}, { questionCount: 10 }), block({}, { questionCount: null })],
+    };
+    expect(groupCounts(section, 16)).toEqual([10, 6]);
+  });
+
+  /** Số câu mỗi môn khai và nhóm câu đơn của môn (một khối câu đơn, hoặc một khối chùm). */
+  const declare = (science: ExamPart["options"][number], count: number, kind: "singles" | "set" = "singles") => {
+    for (const section of science.sections) {
+      section.questionCount = count;
+      section.blocks =
+        kind === "singles"
+          ? [block({}, { id: `${section.id}-singles`, questionCount: count })]
+          : [block({}, { id: `${section.id}-set`, questionType: "QUESTION_SET", questionCount: count, setCount: count, setSize: 1 })];
+    }
+  };
+  const subjectIssues = (parts: Parameters<typeof validateStructure>[0]) =>
+    validateStructure(parts, AXES).filter(
+      (issue) => issue.code === "SUBJECT_COUNT_EXCEEDS_ALLOCATION" || issue.code === "SUBJECT_TRIM_IMPOSSIBLE",
+    );
+
+  it("cách chia 17, 17, 17: không bỏ câu nào, môn nào cũng 17 câu và không có lỗi", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 17);
+    science.countsByPick = [17, 17, 17];
+    const full = structureTotals(exam.parts).totalPoints;
+    science.countsByPick = [17, 17, 16];
+    // Chỉ môn nhận 16 mất một câu so với cách chia 17, 17, 17.
+    expect(full - structureTotals(exam.parts).totalPoints).toBe(1);
+    science.countsByPick = [17, 17, 17];
+    expect(subjectIssues(exam.parts)).toEqual([]);
+  });
+
+  it("môn khai ít hơn cách chia (15 < 16): lấy số khai, không báo lỗi", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 17);
+    science.countsByPick = [17, 17, 16];
+    const base = structureTotals(exam.parts).totalPoints;
+    declare(science, 15);
+    // Môn nhận 16 → 15 (−1), hai môn nhận 17 → 15 (−2 mỗi môn).
+    const picked = science.chooseSubjects ?? science.countsByPick.length;
+    expect(base - structureTotals(exam.parts).totalPoints).toBe(1 + 2 * (picked - 1));
+    expect(subjectIssues(exam.parts)).toEqual([]);
+  });
+
+  it("không có cách chia hợp lệ: lùi về số câu khai báo (mọi môn 17), tiêu đề lộ phần thiếu", () => {
+    const { exam, part, science } = hsaChoicePart();
+    declare(science, 17);
+    science.countsByPick = [17, 17, 17];
+    const base = structureTotals(exam.parts).totalPoints;
+    // Số cách chia không khớp số môn được chọn: bảng rỗng, mỗi môn (kể cả môn không được chọn) tính 17 câu.
+    science.countsByPick = [];
+    const picked = science.chooseSubjects ?? 3;
+    expect(structureTotals(exam.parts).totalPoints - base).toBe(17 * (science.sections.length - picked));
+    expect(validateStructure(exam.parts, AXES)).toContainEqual(
+      expect.objectContaining({ code: "SECTIONS_TOTAL", partId: part.id, optionId: science.id, actual: 0 }),
+    );
+  });
+
+  it("khai nhiều hơn cách chia quá một câu (18 so với 16): báo lỗi thay vì cắt im lặng", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 18);
+    science.countsByPick = [17, 17, 16];
+    // Chỉ môn nhận 16 lệch hai câu; môn nhận 17 lệch một câu nên bỏ được.
+    const issues = subjectIssues(exam.parts);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ code: "SUBJECT_COUNT_EXCEEDS_ALLOCATION", declared: 18, allocated: 16 });
+  });
+
+  it("môn toàn chùm cần bỏ một câu: báo SUBJECT_TRIM_IMPOSSIBLE, chùm không bị tách", () => {
+    const { exam, science } = hsaChoicePart();
+    declare(science, 17, "set");
+    science.countsByPick = [17, 17, 16];
+    const issues = subjectIssues(exam.parts);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ code: "SUBJECT_TRIM_IMPOSSIBLE", declared: 17, allocated: 16 });
+    expect(groupCounts(science.sections[0]!, 16)).toEqual([17]);
+  });
+});
+
 describe("cấu trúc của bài mẫu", () => {
   const exams = EXAMS_FIXTURE.exams;
 
@@ -232,22 +467,21 @@ describe("phạm vi MAPID của nhóm và môn (D21, D23)", () => {
     knowledgeScope,
   });
   it("group inherits subject scope; own scope not intersected", () => {
-    const math = section({ nodeIds: ["kn-1D4"], match: "ANY" });
+    const math = section({ nodeIds: ["kn-1D4"] });
     // Nhóm không có phạm vi riêng (null) dùng phạm vi của môn.
     expect(effectiveScope(singles(null), math)).toEqual(math.knowledgeScope);
     // Nhóm có phạm vi riêng chỉ dùng phạm vi riêng, không giao với phạm vi của môn (kn-0D1 nằm ngoài kn-1D4).
-    const own = singles({ nodeIds: ["kn-0D1"], match: "ANY" });
+    const own = singles({ nodeIds: ["kn-0D1"] });
     expect(effectiveScope(own, math)).toEqual(own.knowledgeScope);
     // Cả hai cùng trống là không giới hạn MAPID.
     const open = section(null);
     expect(effectiveScope(singles(null), open)).toBeNull();
     // Phạm vi riêng chưa chọn nút (hủy hộp chọn, chỉ có năng lực) kế thừa nút của môn và giữ lọc năng lực (R1-3, R1-4).
-    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), math)).toEqual(math.knowledgeScope);
-    expect(effectiveScope(singles({ nodeIds: [], match: "ANY", competencyCodes: ["VACT-TOAN"] }), math)).toEqual({
+    expect(effectiveScope(singles({ nodeIds: [] }), math)).toEqual(math.knowledgeScope);
+    expect(effectiveScope(singles({ nodeIds: [], competencyCodes: ["VACT-TOAN"] }), math)).toEqual({
       nodeIds: ["kn-1D4"],
-      match: "ANY",
       competencyCodes: ["VACT-TOAN"],
     });
-    expect(effectiveScope(singles({ nodeIds: [], match: "ANY" }), open)).toEqual({ nodeIds: [], match: "ANY" });
+    expect(effectiveScope(singles({ nodeIds: [] }), open)).toEqual({ nodeIds: [] });
   });
 });

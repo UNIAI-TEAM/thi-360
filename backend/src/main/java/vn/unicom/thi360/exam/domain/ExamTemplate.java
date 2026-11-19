@@ -35,11 +35,27 @@ public class ExamTemplate {
     private BigDecimal maxScore;
     @Column(name = "expert_note")
     private String expertNote;
+    @Column(name = "label")
+    private String label;
+    @Column(name = "summary")
+    private String summary;
+    @Column(name = "build_mode", nullable = false)
+    private String buildMode = "STANDARD";
+    @Column(name = "is_default", nullable = false)
+    private boolean defaultTemplate;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private JsonNode structure;
     @Column(nullable = false)
     private boolean active;
+    @Column(nullable = false)
+    private boolean publishable = true;
+    @Column(name = "fixed_counts", nullable = false)
+    private boolean fixedCounts;
+    @Column(name = "fixed_block_counts", nullable = false)
+    private boolean fixedBlockCounts;
+    @Column(name = "omitted_locked", nullable = false)
+    private boolean omittedLocked;
 
     protected ExamTemplate() {
     }
@@ -73,6 +89,14 @@ public class ExamTemplate {
     public Integer getDurationMinutes() { return durationMinutes; }
     public BigDecimal getMaxScore() { return maxScore; }
     public String getExpertNote() { return expertNote; }
+    public String getLabel() { return label; }
+    public String getSummary() { return summary; }
+    public String getBuildMode() { return buildMode; }
+    public boolean isDefaultTemplate() { return defaultTemplate; }
     public JsonNode getStructure() { return structure; }
     public boolean isActive() { return active; }
+    public boolean isPublishable() { return publishable; }
+    public boolean isFixedCounts() { return fixedCounts; }
+    public boolean isFixedBlockCounts() { return fixedBlockCounts; }
+    public boolean isOmittedLocked() { return omittedLocked; }
 }

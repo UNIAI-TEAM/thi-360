@@ -10,26 +10,125 @@ import java.util.UUID;
 
 /** Serving question source for exam checks, preview and publication. */
 public interface QuestionSourcePort {
-    /** Each inner knowledge group contains one selected node and its active descendants. */
+    int MAX_SET_CHILDREN = 20;
+
+    /**
+     * Audio condition on the ROOT question of a candidate (spec H38): a root has audio when one of its
+     * attachments has MIME {@code audio/*}. A question set is accepted or rejected as a whole by its root.
+     * {@code ANY} does not filter.
+     */
+    enum AudioRequirement { ANY, REQUIRED, FORBIDDEN }
+
+    /** Each knowledge subtree contains a selected node and its descendants; additional groups are ANDed. */
     record Filter(
             UUID subjectId,
             List<List<UUID>> knowledgeGroups,
-            Match knowledgeMatch,
             List<QuestionType> answerTypes,
             QuestionType questionType,
             String taskTypeCode,
             QuestionType childAnswerType,
             List<String> tagCodes,
             List<String> competencyCodes,
-            BigDecimal requiredPointsPerQuestion) {}
+            BigDecimal requiredPointsPerQuestion,
+            ItemShape itemShape,
+            List<AnswerFormat> answerFormats,
+            List<ChildCondition> childConditions,
+            List<List<String>> additionalTagGroups,
+            List<List<List<UUID>>> additionalKnowledgeGroups,
+            List<List<String>> additionalCompetencyGroups,
+            Boolean everyChildInScope,
+            List<Boolean> additionalEveryChildInScope,
+            AudioRequirement audioRequirement) {
+        public Filter {
+            audioRequirement = audioRequirement == null ? AudioRequirement.ANY : audioRequirement;
+        }
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, AudioRequirement.ANY);
+        }
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, List.of());
+        }
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups, null);
+        }
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                Boolean everyChildInScope) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, List.of(), List.of(), List.of(), everyChildInScope);
+        }
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, List.of(), List.of(), List.of());
+        }
+    }
 
-    enum Match { ANY, ALL }
+    /** {@code options} counts the answer options of a single- or multiple-choice question. */
+    record ItemShape(Integer statements, Integer leftItems, Integer rightItems, Integer options) {
+        public ItemShape(Integer statements, Integer leftItems, Integer rightItems) {
+            this(statements, leftItems, rightItems, null);
+        }
+    }
+
+    /**
+     * Condition on the children at positions {@code from}..{@code to}. A non-empty {@code nodeIds}, an
+     * {@code answerType} and an {@code itemShape} are ANDed per position; with all three empty nothing matches.
+     */
+    record ChildCondition(int from, int to, List<UUID> nodeIds, QuestionType answerType, ItemShape itemShape) {
+        public ChildCondition {
+            if (from < 1 || to < from || to > MAX_SET_CHILDREN) {
+                throw new IllegalArgumentException("Child positions must be an ordered range within 1.." + MAX_SET_CHILDREN);
+            }
+            nodeIds = nodeIds == null ? List.of() : List.copyOf(nodeIds);
+        }
+
+        public ChildCondition(int from, int to, List<UUID> nodeIds) {
+            this(from, to, nodeIds, null, null);
+        }
+    }
+
 
     record CellCount(String gradeCode, String difficultyCode, long value) {}
     record AnswerTypeCount(QuestionType answerType, long value) {}
     record CompetencyCount(String competencyCode, long value) {}
-    record Counts(long total, List<CellCount> byCell, List<AnswerTypeCount> byAnswerType,
-                  List<CompetencyCount> byCompetency) {}
+    record Counts(long total, long commandCount, List<CellCount> byCell, List<AnswerTypeCount> byAnswerType,
+                  List<CompetencyCount> byCompetency) {
+        public Counts(long total, List<CellCount> byCell, List<AnswerTypeCount> byAnswerType,
+                      List<CompetencyCount> byCompetency) {
+            this(total, total, byCell, byAnswerType, byCompetency);
+        }
+    }
 
     /** Scoring information from the serving snapshot; null fields do not apply to that type. */
     record ScoringDetails(String trueFalseMethod, List<BigDecimal> trueFalseTable,
@@ -41,7 +140,16 @@ public interface QuestionSourcePort {
 
     record Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                 String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
-                BigDecimal points, ScoringDetails scoring, String code) {
+                BigDecimal points, ScoringDetails scoring, String code, int commandCount,
+                Integer statementCount, Integer leftCount, Integer rightCount,
+                AnswerFormat answerFormat, boolean hasAttachment) {
+        public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
+                    String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
+                    BigDecimal points, ScoringDetails scoring, String code) {
+            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes,
+                    points, scoring, code, 1, null, null, null, null, false);
+        }
+
         public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                     String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes,
                     BigDecimal points, ScoringDetails scoring) {
@@ -51,9 +159,11 @@ public interface QuestionSourcePort {
 
         public Unit(UUID questionId, String reference, QuestionType answerType, String gradeCode,
                     String difficultyCode, List<UUID> mapidIds, List<String> competencyCodes, BigDecimal points) {
-            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes, points, null, null);
+            this(questionId, reference, answerType, gradeCode, difficultyCode, mapidIds, competencyCodes,
+                    points, null, null);
         }
     }
+
     record Candidate(UUID questionId, int versionNo, UUID setId, List<Unit> units,
                      String taskTypeCode, String scoringRule, String trueFalseMethod,
                      List<BigDecimal> trueFalseTable, String multipleChoiceRule, String code) {

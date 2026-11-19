@@ -19,6 +19,8 @@ import java.util.Set;
  *   <li>{@link GroupKind#SET} — nhóm câu chùm: lấy đúng {@code setCount} bộ, mỗi bộ đúng
  *       {@code setSize} đơn vị đếm, luôn nguyên chùm. {@code childAnswerType} giới hạn dạng của
  *       câu con; {@code null} là không giới hạn.
+ *   <li>{@link GroupKind#FLEXIBLE_SET} — lấy nguyên các chùm có tổng số câu con đúng
+ *       {@code questionCount}, không cố định số chùm hay cỡ chùm.
  * </ul>
  *
  * <p>{@code matrix}, {@code competencies}, {@code mapidGroups} là chỉ tiêu riêng của nhóm (tùy
@@ -31,7 +33,7 @@ import java.util.Set;
  *
  * @param groupId               mã nhóm, duy nhất trên đường
  * @param kind                  SINGLE hoặc SET
- * @param questionCount         số đơn vị đếm của nhóm đơn; null = lấy phần còn lại (chỉ SINGLE)
+ * @param questionCount         số đơn vị của nhóm đơn hoặc nhóm chùm linh hoạt; null = phần còn lại (SINGLE)
  * @param answerType            dạng trả lời của nhóm đơn (D22); null = theo chỉ tiêu của môn
  * @param setCount              số chùm cần chọn (chỉ SET)
  * @param setSize               số đơn vị mỗi chùm (chỉ SET)
@@ -41,6 +43,7 @@ import java.util.Set;
  * @param mapidGroups           chỉ tiêu nhóm MAPID bổ sung; rỗng = không có
  * @param requiredPointsPerUnit điểm bắt buộc của từng đơn vị; null = không lọc
  * @param expectedScoringRule   quy tắc chấm mong đợi; null = không so
+ * @param slotParent            chỉ tiêu dùng chung của các slot cùng nhóm cha; null nếu không phải slot
  */
 public record GroupQuota(
         String groupId,
@@ -54,14 +57,35 @@ public record GroupQuota(
         List<CompetencyQuota> competencies,
         List<MapidGroupQuota> mapidGroups,
         BigDecimal requiredPointsPerUnit,
-        String expectedScoringRule) {
+        String expectedScoringRule,
+        SlotParentQuota slotParent,
+        List<TopicQuota> topicQuotas) {
+
+    public GroupQuota(String groupId, GroupKind kind, Integer questionCount, String answerType,
+            Integer setCount, Integer setSize, String childAnswerType, MatrixQuota matrix,
+            List<CompetencyQuota> competencies, List<MapidGroupQuota> mapidGroups,
+            BigDecimal requiredPointsPerUnit, String expectedScoringRule, SlotParentQuota slotParent) {
+        this(groupId, kind, questionCount, answerType, setCount, setSize, childAnswerType, matrix,
+                competencies, mapidGroups, requiredPointsPerUnit, expectedScoringRule, slotParent, List.of());
+    }
+
+    /** A group without shared slot-parent quotas. */
+    public GroupQuota(String groupId, GroupKind kind, Integer questionCount, String answerType,
+            Integer setCount, Integer setSize, String childAnswerType, MatrixQuota matrix,
+            List<CompetencyQuota> competencies, List<MapidGroupQuota> mapidGroups,
+            BigDecimal requiredPointsPerUnit, String expectedScoringRule) {
+        this(groupId, kind, questionCount, answerType, setCount, setSize, childAnswerType, matrix,
+                competencies, mapidGroups, requiredPointsPerUnit, expectedScoringRule, null);
+    }
 
     /** Loại nhóm lấy câu (spec 5.2): nhóm câu đơn hay nhóm câu chùm. */
     public enum GroupKind {
         /** Nhóm câu đơn: khai số câu (hoặc lấy phần còn lại) và phạm vi nguồn. */
         SINGLE,
         /** Nhóm câu chùm: khai số chùm và số câu con mỗi chùm, luôn lấy nguyên chùm. */
-        SET
+        SET,
+        /** Nhóm chùm có tổng số câu con cố định, cỡ chùm linh hoạt. */
+        FLEXIBLE_SET
     }
 
     public GroupQuota {
@@ -88,12 +112,19 @@ public record GroupQuota(
                     throw new IllegalArgumentException("setCount and setSize must be positive");
                 }
             }
+            case FLEXIBLE_SET -> {
+                if (questionCount == null || questionCount < 0 || answerType != null
+                        || setCount != null || setSize != null) {
+                    throw new IllegalArgumentException("flexible SET requires only a non-negative questionCount");
+                }
+            }
         }
         if (requiredPointsPerUnit != null && requiredPointsPerUnit.signum() <= 0) {
             throw new IllegalArgumentException("requiredPointsPerUnit must be positive");
         }
         competencies = competencies == null ? List.of() : List.copyOf(competencies);
         mapidGroups = mapidGroups == null ? List.of() : List.copyOf(mapidGroups);
+        topicQuotas = topicQuotas == null ? List.of() : List.copyOf(topicQuotas);
         Set<String> seen = new HashSet<>();
         QuotaUnit competencyUnit = competencies.isEmpty() ? null : competencies.getFirst().unit();
         for (CompetencyQuota c : competencies) {
@@ -116,6 +147,7 @@ public record GroupQuota(
         return switch (kind) {
             case SINGLE -> questionCount != null ? questionCount : remainder;
             case SET -> setCount * setSize;
+            case FLEXIBLE_SET -> questionCount;
         };
     }
 

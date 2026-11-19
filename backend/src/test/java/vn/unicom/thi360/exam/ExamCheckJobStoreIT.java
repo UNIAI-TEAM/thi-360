@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.exam.application.ExamCheckJobStore;
+import vn.unicom.thi360.exam.application.ExamCheckScope;
 
 class ExamCheckJobStoreIT extends AbstractIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
@@ -29,8 +30,8 @@ class ExamCheckJobStoreIT extends AbstractIntegrationTest {
             CountDownLatch ready = new CountDownLatch(2);
             CountDownLatch go = new CountDownLatch(1);
             try (var executor = Executors.newFixedThreadPool(2)) {
-                var first = executor.submit(() -> { ready.countDown(); go.await(); return jobs.startOrGet(examId, actorId); });
-                var second = executor.submit(() -> { ready.countDown(); go.await(); return jobs.startOrGet(examId, actorId); });
+                var first = executor.submit(() -> { ready.countDown(); go.await(); return jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null)); });
+                var second = executor.submit(() -> { ready.countDown(); go.await(); return jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null)); });
                 assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
                 go.countDown();
                 ExamCheckJobStore.Start a = first.get(20, TimeUnit.SECONDS);
@@ -43,14 +44,14 @@ class ExamCheckJobStoreIT extends AbstractIntegrationTest {
                 assertThat(jobs.get(examId, a.runId()).state()).isEqualTo("FAILED");
                 assertThat(jobs.get(examId, a.runId()).errorCode()).isEqualTo("CHECK_RUN_ABANDONED");
                 assertThat(jobs.complete(a.runId(), "{\"ok\":true}")).isFalse();
-                ExamCheckJobStore.Start next = jobs.startOrGet(examId, actorId);
+                ExamCheckJobStore.Start next = jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null));
                 assertThat(next.created()).isTrue();
                 assertThat(next.runId()).isNotEqualTo(a.runId());
                 assertThat(jobs.complete(next.runId(), "{\"ok\":true}")).isTrue();
-                ExamCheckJobStore.Start orphan = jobs.startOrGet(examId, actorId);
+                ExamCheckJobStore.Start orphan = jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null));
                 jdbc.update("UPDATE exam.exam_check_job SET started_at = now() - interval '151 seconds' WHERE id = ?",
                         orphan.runId());
-                ExamCheckJobStore.Start replacement = jobs.startOrGet(examId, actorId);
+                ExamCheckJobStore.Start replacement = jobs.startOrGet(examId, actorId, ExamCheckScope.from(null, null, null));
                 assertThat(replacement.created()).isTrue();
                 assertThat(replacement.runId()).isNotEqualTo(orphan.runId());
                 assertThat(jobs.get(examId, orphan.runId()).errorCode()).isEqualTo("CHECK_RUN_ABANDONED");

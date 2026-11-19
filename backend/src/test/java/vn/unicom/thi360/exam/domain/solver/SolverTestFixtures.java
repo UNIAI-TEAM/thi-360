@@ -38,12 +38,12 @@ final class SolverTestFixtures {
 
     /** Câu độc lập một đơn vị. */
     static PathCandidate cand(String id, String answerType, String grade, String difficulty) {
-        return new PathCandidate(id, 1, null, null, null, List.of(unit(answerType, grade, difficulty)));
+        return new PathCandidate(id, 1, null, null, List.of(unit(answerType, grade, difficulty)));
     }
 
     /** Bộ câu hỏi / Điền khuyết nguyên vẹn: {@code units} phần tử, setId = id. */
     static PathCandidate set(String id, CountingUnit... units) {
-        return new PathCandidate(id, 1, id, null, null, List.of(units));
+        return new PathCandidate(id, 1, id, null, List.of(units));
     }
 
     // ---- chỉ tiêu ----

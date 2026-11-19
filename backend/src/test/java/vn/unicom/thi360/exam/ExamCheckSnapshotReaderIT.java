@@ -2,6 +2,7 @@ package vn.unicom.thi360.exam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ class ExamCheckSnapshotReaderIT extends AbstractIntegrationTest {
     private static final UUID SUBJECT_ID = UUID.fromString("00000000-0000-7000-8200-000000000201");
     @Autowired private ExamCheckSnapshotReader snapshots;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private EntityManager entities;
 
     @Test
     void capturesSourceRevisionsBeforeTheCheckRuns() {
@@ -29,5 +31,21 @@ class ExamCheckSnapshotReaderIT extends AbstractIntegrationTest {
         var after = snapshots.read(EXAM_ID);
         assertThat(before.persistenceInput().sourceRevisions().path(SUBJECT_ID.toString()).longValue()).isEqualTo(revision);
         assertThat(after.persistenceInput().sourceRevisions().path(SUBJECT_ID.toString()).longValue()).isEqualTo(revision + 1);
+    }
+
+    @Test
+    void capturesExamQuotasInSnapshotAndFingerprint() {
+        var before = snapshots.read(EXAM_ID);
+        jdbc.update("UPDATE exam.exam_structure SET exam_quotas = ?::jsonb WHERE exam_id = ?", """
+                [{"id":"quota","name":"Math","dimension":"GRADE",
+                  "buckets":[{"codes":["GRADE_12"],"count":2}],"basis":"QUESTION",
+                  "enforcement":"REQUIRED","subjectCodes":["TOAN"]}]
+                """, EXAM_ID);
+        entities.clear();
+
+        var after = snapshots.read(EXAM_ID);
+        assertThat(after.structure().examQuotas()).singleElement()
+                .satisfies(quota -> assertThat(quota.id()).isEqualTo("quota"));
+        assertThat(after.persistenceInput().fingerprint()).isNotEqualTo(before.persistenceInput().fingerprint());
     }
 }

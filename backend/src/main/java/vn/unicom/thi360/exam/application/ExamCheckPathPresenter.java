@@ -17,6 +17,9 @@ import vn.unicom.thi360.exam.domain.ExamSection;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.MatrixMode;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
+import vn.unicom.thi360.exam.domain.QuotaBasis;
+import vn.unicom.thi360.exam.domain.QuotaEnforcement;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.exam.domain.solver.CountingUnit;
 import vn.unicom.thi360.exam.domain.solver.GroupQuota;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
@@ -48,6 +51,7 @@ final class ExamCheckPathPresenter {
         this.sources = sources;
         for (ExamPart part : document.parts()) {
             parts.put(part.id(), part);
+            for (ExamSection section : part.subjectPool()) sections.put(section.id(), new SectionInfo(part, null, section));
             for (ExamSection section : part.sections()) sections.put(section.id(), new SectionInfo(part, null, section));
             for (ExamPartOption option : part.options()) {
                 options.put(option.id(), option);
@@ -74,6 +78,13 @@ final class ExamCheckPathPresenter {
             ObjectNode item = choices.addObject();
             item.put("partId", choice.partId());
             item.put("optionId", choice.optionId());
+            if (parts.get(choice.partId()) != null && parts.get(choice.partId()).codeSource() != null) {
+                String prefix = choice.partId() + ":";
+                String code = choice.optionId().startsWith(prefix) ? choice.optionId().substring(prefix.length()) : choice.optionId();
+                item.put("kind", "COMBINATION");
+                item.put("code", code);
+                item.put("name", code);
+            }
             if (option != null) {
                 item.put("kind", option.kind() == null ? null : option.kind().name());
                 item.put("code", option.code());
@@ -104,9 +115,12 @@ final class ExamCheckPathPresenter {
             if (selection != null && status != SolveStatus.VALID) {
                 ObjectNode issue = solverIssues.failure(selection.reason(), selection.subjectCode(),
                         selection.groupId(), selection.failingQuota(), tuple);
-                diagnoseShortage(issue, tuple.stream().flatMap(pick -> pick.resolvedSections().stream()).toList());
-                selectionIssues.add(issue);
-                add(allIssues, issue);
+                if (selection.reason() != vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE
+                        || selection.failingQuota() != null || !replacedBySpecificShortage(issue, structuralIssues)) {
+                    diagnoseShortage(issue, tuple.stream().flatMap(pick -> pick.resolvedSections().stream()).toList());
+                    selectionIssues.add(issue);
+                    add(allIssues, issue);
+                }
             } else if (selection == null) {
                 ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.DEADLINE_EXCEEDED,
                         null, null, null, tuple);
@@ -127,8 +141,11 @@ final class ExamCheckPathPresenter {
         if (result.status() != SolveStatus.VALID && result.reason() != null && tuples.isEmpty()) {
             ObjectNode issue = solverIssues.failure(result.reason(), result.subjectCode(), result.groupId(),
                     result.failingQuota(), List.of());
-            diagnoseShortage(issue, path.sections());
-            add(allIssues, issue);
+            if (result.reason() != vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE
+                    || result.failingQuota() != null || !replacedBySpecificShortage(issue, structuralIssues)) {
+                diagnoseShortage(issue, path.sections());
+                add(allIssues, issue);
+            }
         }
 
         Map<String, SectionOnPath> shown = new LinkedHashMap<>();
@@ -140,6 +157,23 @@ final class ExamCheckPathPresenter {
         }
         // Fetch each source once before resolving warnings, so the compact projection is copied only once.
         for (SectionOnPath section : shown.values()) for (GroupQuota group : section.groups()) sources.pool(group);
+        Map<String, QuestionSourcePort.Candidate> served = new LinkedHashMap<>();
+        sources.loadedCandidates().forEach((key, candidate) ->
+                served.put(ExamCheckDistribution.candidateKey(key.questionId().toString(), key.versionNo()), candidate));
+        List<String> pathCodes = new ArrayList<>();
+        for (var choice : path.chosen()) {
+            ExamPart codePart = parts.get(choice.partId());
+            if (codePart != null && codePart.codeSource() != null) {
+                String prefix = choice.partId() + ":";
+                pathCodes.add(choice.optionId().startsWith(prefix)
+                        ? choice.optionId().substring(prefix.length()) : choice.optionId());
+            }
+        }
+        ExamCheckDistribution.Report distribution = ExamCheckDistribution.analyze(document,
+                new ExamCheckDistribution.PathEvidence(result, pathId, pathCodes,
+                        ExamCheckDistribution.pickedUnits(result, served)),
+                mapper);
+        distribution.issues().forEach(issue -> add(allIssues, issue));
         ArrayNode blocks = out.putArray("blocks");
         ArrayNode subjects = out.putArray("subjects");
         for (SectionOnPath section : shown.values()) {
@@ -147,15 +181,51 @@ final class ExamCheckPathPresenter {
             if (info == null) continue;
             int sectionCount = section.questionCount() == null ? 0 : section.questionCount();
             int fixed = section.groups().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
+            Map<String, List<GroupQuota>> groupsByBlock = new LinkedHashMap<>();
             for (GroupQuota group : section.groups()) {
-                QuestionBlock block = info.section.blocks().stream().filter(candidate -> Objects.equals(candidate.id(), group.groupId()))
+                String blockId = group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
+                groupsByBlock.computeIfAbsent(blockId, ignored -> new ArrayList<>()).add(group);
+            }
+            for (var entry : groupsByBlock.entrySet()) {
+                QuestionBlock block = info.section.blocks().stream().filter(candidate -> Objects.equals(candidate.id(), entry.getKey()))
                         .findFirst().orElse(null);
                 if (block == null) continue;
-                int required = group.kind() == GroupQuota.GroupKind.SET ? fixedCount(group)
-                        : group.questionCount() == null ? Math.max(0, sectionCount - fixed) : group.questionCount();
-                blocks.add(block(info, block, group, required, allIssues));
+                ObjectNode combined = null;
+                for (GroupQuota group : entry.getValue()) {
+                    int required = group.kind() == GroupQuota.GroupKind.SET ? fixedCount(group)
+                            : group.questionCount() == null ? Math.max(0, sectionCount - fixed) : group.questionCount();
+                    ObjectNode row = block(info, block, group, required, allIssues);
+                    if (combined == null) combined = row;
+                    else {
+                        combined.put("required", combined.path("required").asInt() + required);
+                        if ("NOT_FOUND".equals(row.path("result").asText())) combined.put("result", "NOT_FOUND");
+                        else if ("UNCONFIRMED".equals(row.path("result").asText())
+                                && !"NOT_FOUND".equals(combined.path("result").asText())) combined.put("result", "UNCONFIRMED");
+                        ArrayNode existing = (ArrayNode) combined.path("issues");
+                        for (var issue : row.path("issues")) {
+                            boolean present = false;
+                            for (var value : existing) if (value.path("key").equals(issue.path("key"))) present = true;
+                            if (!present) existing.add(issue);
+                        }
+                    }
+                }
+                if (combined != null) {
+                    if (sources.complete(entry.getValue())) {
+                        combined.put("available", sources.union(entry.getValue()).size());
+                        if (block.setSize() != null) {
+                            long sets = entry.getValue().stream().flatMap(group -> sources.pool(group).candidates().stream())
+                                    .filter(candidate -> candidate.setId() != null && candidate.units().size() == block.setSize())
+                                    .map(candidate -> candidate.questionId()).distinct().count();
+                            combined.put("availableSets", sets);
+                        }
+                    } else {
+                        combined.putNull("available");
+                        combined.putNull("availableSets");
+                    }
+                    blocks.add(combined);
+                }
             }
-            subjects.add(subject(info, section, sectionCount));
+            subjects.add(subject(info, section, sectionCount, distribution));
         }
         List<SectionOnPath> counted = new ArrayList<>(path.sections());
         if (!tuples.isEmpty()) for (SubjectPick pick : tuples.getFirst()) counted.addAll(pick.resolvedSections());
@@ -169,12 +239,36 @@ final class ExamCheckPathPresenter {
             if (subjectChoice) totalQuestions += section.questionCount() == null ? 0 : section.questionCount();
             int fixed = section.groups().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
             for (QuestionBlock block : info.section.blocks()) {
+                if (Boolean.TRUE.equals(block.omitted())) continue;
                 int count = block.questionCount() == null
                         ? Math.max(0, (section.questionCount() == null ? 0 : section.questionCount()) - fixed)
                         : fixedCount(block);
                 if (!subjectChoice) totalQuestions += count;
                 if (block.requiredPointsPerQuestion() != null) {
                     totalPoints = totalPoints.add(block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count)));
+                }
+            }
+        }
+        if (!tuples.isEmpty()) {
+            for (SubjectPick pick : tuples.getFirst()) {
+                ExamPartOption option = options.get(pick.optionId());
+                if (option == null || option.countsByPick() == null) continue;
+                int drop = pick.totalCount() - option.countsByPick().stream().mapToInt(Integer::intValue).sum();
+                if (drop <= 0) continue;
+                totalQuestions -= drop;
+                long natural = pick.sections().stream().filter(section -> "NATURAL".equals(section.choiceGroup())).count();
+                long social = pick.sections().stream().filter(section -> "SOCIAL".equals(section.choiceGroup())).count();
+                String trimmedGroup = natural == 0 || social == 0 ? null : natural < social ? "NATURAL" : "SOCIAL";
+                List<BigDecimal> singlePoints = pick.sections().stream()
+                        .filter(section -> trimmedGroup == null || trimmedGroup.equals(section.choiceGroup()))
+                        .map(section -> sections.get(section.sectionId())).filter(Objects::nonNull)
+                        .flatMap(info -> info.section.blocks().stream())
+                        .filter(block -> !Boolean.TRUE.equals(block.omitted())
+                                && block.questionType() != vn.unicom.thi360.questionbank.spi.QuestionType.QUESTION_SET
+                                && block.questionType() != vn.unicom.thi360.questionbank.spi.QuestionType.CLOZE)
+                        .map(QuestionBlock::requiredPointsPerQuestion).filter(Objects::nonNull).distinct().toList();
+                if (singlePoints.size() == 1) {
+                    totalPoints = totalPoints.subtract(singlePoints.getFirst().multiply(BigDecimal.valueOf(drop)));
                 }
             }
         }
@@ -257,7 +351,7 @@ final class ExamCheckPathPresenter {
         }
         if (!pool.complete()) {
             ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.DEADLINE_EXCEEDED,
-                    info.section.subjectCode(), block.id(), null, List.of());
+                    info.section.subjectCode(), group.groupId(), null, List.of());
             addBlockIssue(pathIssues, blockIssues, issue);
         } else {
             boolean set = group.kind() == GroupQuota.GroupKind.SET;
@@ -265,10 +359,12 @@ final class ExamCheckPathPresenter {
             int target = set ? group.setCount() : required;
             if (available < target) {
                 ObjectNode issue = solverIssues.failure(vn.unicom.thi360.exam.domain.solver.SolveReason.INSUFFICIENT_SOURCE,
-                        info.section.subjectCode(), block.id(), null, List.of());
-                issue.put("required", target);
-                issue.put("available", available);
-                addBlockIssue(pathIssues, blockIssues, issue);
+                        info.section.subjectCode(), group.groupId(), null, List.of());
+                if (!replacedBySpecificShortage(issue, pathIssues.values())) {
+                    issue.put("required", target);
+                    issue.put("available", available);
+                    addBlockIssue(pathIssues, blockIssues, issue);
+                }
             }
         }
         if (block.expectedScoring() != null && pool.complete()) {
@@ -293,7 +389,8 @@ final class ExamCheckPathPresenter {
         return out;
     }
 
-    private ObjectNode subject(SectionInfo info, SectionOnPath section, int count) {
+    private ObjectNode subject(SectionInfo info, SectionOnPath section, int count,
+                               ExamCheckDistribution.Report distribution) {
         ObjectNode out = mapper.createObjectNode();
         out.put("sectionId", section.sectionId()); out.put("subjectCode", section.subjectCode());
         out.put("optionId", info.optionId); out.put("questionCount", count);
@@ -302,72 +399,105 @@ final class ExamCheckPathPresenter {
         ArrayNode difficulties = out.putArray("byDifficulty");
         List<CountingUnit> units = sources.union(section.groups());
         boolean complete = sources.complete(section.groups());
+        ExamCheckDistribution.BasisCounts paper = distribution == null ? null
+                : distribution.sectionActuals().getOrDefault(section.sectionId(), Map.of()).get(count);
         var quota = info.section.answerQuotas();
         if (quota != null) {
             int[] values = ExamCheckQuantities.resolve(quota.items().stream().map(item -> item.value()).toList(), quota.unit(), count);
             if (values != null) for (int i = 0; i < values.length; i++) {
                 String type = quota.items().get(i).answerType().name();
                 long have = units.stream().filter(unit -> type.equals(unit.answerType())).count();
+                BigDecimal witnessHave = paper == null ? null : paper.basis(QuotaBasis.QUESTION).answerTypes().getOrDefault(type, BigDecimal.ZERO);
                 ObjectNode entry = answers.addObject(); entry.put("answerType", type); entry.put("required", values[i]);
-                if (complete) entry.put("achieved", Math.min(values[i], have)); else entry.putNull("achieved");
+                if (witnessHave != null) entry.put("achieved", witnessHave);
+                else if (complete) entry.put("achieved", Math.min(values[i], have));
+                else entry.putNull("achieved");
             }
         }
-        ObjectNode matrix = requirement(info.section.matrix(), count);
+        ObjectNode matrix = requirement(info.section.matrix(), count, paper);
         if (matrix != null) {
+            QuotaBasis basis = info.section.matrix() == null || info.section.matrix().basis() == null
+                    ? QuotaBasis.QUESTION : info.section.matrix().basis();
+            ExamCheckDistribution.DimensionCounts actual = paper == null ? null : paper.basis(basis);
             if ("COMBINED".equals(matrix.path("mode").asText())) {
-                Map<String, Integer> gradeTotals = new LinkedHashMap<>(), difficultyTotals = new LinkedHashMap<>();
+                Map<String, BigDecimal> gradeTotals = new LinkedHashMap<>(), difficultyTotals = new LinkedHashMap<>();
                 for (var cell : matrix.path("cells")) {
-                    gradeTotals.merge(cell.path("gradeCode").asText(), cell.path("required").asInt(), Integer::sum);
-                    difficultyTotals.merge(cell.path("difficultyCode").asText(), cell.path("required").asInt(), Integer::sum);
+                    gradeTotals.merge(cell.path("gradeCode").asText(), cell.path("required").decimalValue(), BigDecimal::add);
+                    difficultyTotals.merge(cell.path("difficultyCode").asText(), cell.path("required").decimalValue(), BigDecimal::add);
                 }
-                dimensions(grades, gradeTotals, units, true, complete); dimensions(difficulties, difficultyTotals, units, false, complete);
+                dimensions(grades, gradeTotals, units, true, complete && basis == QuotaBasis.QUESTION, actual);
+                dimensions(difficulties, difficultyTotals, units, false, complete && basis == QuotaBasis.QUESTION, actual);
             } else {
-                Map<String, Integer> gradeTotals = dimensionMap(matrix.path("byGrade"));
-                Map<String, Integer> difficultyTotals = dimensionMap(matrix.path("byDifficulty"));
-                dimensions(grades, gradeTotals, units, true, complete); dimensions(difficulties, difficultyTotals, units, false, complete);
+                Map<String, BigDecimal> gradeTotals = dimensionMap(matrix.path("byGrade"));
+                Map<String, BigDecimal> difficultyTotals = dimensionMap(matrix.path("byDifficulty"));
+                dimensions(grades, gradeTotals, units, true, complete && basis == QuotaBasis.QUESTION, actual);
+                dimensions(difficulties, difficultyTotals, units, false, complete && basis == QuotaBasis.QUESTION, actual);
             }
         }
         return out;
     }
 
-    private void dimensions(ArrayNode out, Map<String, Integer> values, List<CountingUnit> units,
-                            boolean grade, boolean complete) {
+    private void dimensions(ArrayNode out, Map<String, BigDecimal> values, List<CountingUnit> units,
+                            boolean grade, boolean complete, ExamCheckDistribution.DimensionCounts actual) {
         for (var value : values.entrySet()) {
             long have = units.stream().filter(unit -> value.getKey().equals(grade ? unit.gradeCode() : unit.difficultyCode())).count();
+            BigDecimal witness = actual == null ? null
+                    : (grade ? actual.grade() : actual.difficulty()).getOrDefault(value.getKey(), BigDecimal.ZERO);
             ObjectNode item = out.addObject(); item.put("code", value.getKey()); item.put("required", value.getValue());
-            if (complete) item.put("achieved", Math.min(value.getValue(), have)); else item.putNull("achieved");
+            if (witness != null) item.put("achieved", witness);
+            else if (complete) item.put("achieved", value.getValue().min(BigDecimal.valueOf(have)));
+            else item.putNull("achieved");
         }
     }
 
-    private static Map<String, Integer> dimensionMap(com.fasterxml.jackson.databind.JsonNode nodes) {
-        Map<String, Integer> values = new LinkedHashMap<>();
-        nodes.forEach(node -> values.put(node.path("code").asText(), node.path("required").asInt()));
+    private static Map<String, BigDecimal> dimensionMap(com.fasterxml.jackson.databind.JsonNode nodes) {
+        Map<String, BigDecimal> values = new LinkedHashMap<>();
+        nodes.forEach(node -> values.put(node.path("code").asText(), node.path("required").decimalValue()));
         return values;
     }
 
     private ObjectNode requirement(BlockMatrix matrix, int count) {
+        return requirement(matrix, count, null);
+    }
+
+    private ObjectNode requirement(BlockMatrix matrix, int count, ExamCheckDistribution.BasisCounts paper) {
         if (matrix == null || matrix.mode() == null) return null;
+        BigDecimal total = paper == null ? BigDecimal.valueOf(count) : paper.basis(matrix.basis()).total();
         ObjectNode out = mapper.createObjectNode(); out.put("mode", matrix.mode().name());
         ArrayNode cells = out.putArray("cells"), grades = out.putArray("byGrade"),
                 difficulties = out.putArray("byDifficulty"), competencies = out.putArray("byCompetency");
         if (matrix.mode() == MatrixMode.COMBINED) {
-            int[] amounts = ExamCheckQuantities.resolve(matrix.cells().stream().map(cell -> cell.value()).toList(), matrix.unit(), count);
+            BigDecimal[] amounts = amounts(matrix.cells().stream().map(cell -> cell.value()).toList(),
+                    matrix, count, total, matrix.gradeEnforcement());
             if (amounts == null) return null;
             for (int i = 0; i < amounts.length; i++) {
                 var cell = matrix.cells().get(i); ObjectNode value = cells.addObject();
                 value.put("gradeCode", cell.gradeCode()); value.put("difficultyCode", cell.difficultyCode()); value.put("required", amounts[i]);
             }
-        } else if (!dimension(grades, matrix.byGrade(), matrix, count) || !dimension(difficulties, matrix.byDifficulty(), matrix, count)) return null;
-        if (!matrix.byCompetency().isEmpty() && !dimension(competencies, matrix.byCompetency(), matrix, count)) return null;
+        } else {
+            dimension(grades, matrix.byGrade(), matrix, count, total, matrix.gradeEnforcement());
+            dimension(difficulties, matrix.byDifficulty(), matrix, count, total, matrix.difficultyEnforcement());
+        }
+        dimension(competencies, matrix.byCompetency(), matrix, count, total, QuotaEnforcement.REQUIRED);
         return out;
     }
 
-    private static boolean dimension(ArrayNode out, List<vn.unicom.thi360.exam.domain.MatrixDimensionValue> items,
-                                     BlockMatrix matrix, int count) {
-        int[] amounts = ExamCheckQuantities.resolve(items.stream().map(item -> item.value()).toList(), matrix.unit(), count);
-        if (amounts == null) return false;
+    private static void dimension(ArrayNode out, List<vn.unicom.thi360.exam.domain.MatrixDimensionValue> items,
+                                  BlockMatrix matrix, int count, BigDecimal total, QuotaEnforcement enforcement) {
+        if (items.isEmpty()) return;
+        var values = items.stream().map(item -> item.value()).toList();
+        BigDecimal[] amounts = amounts(values, matrix, count, total, enforcement);
+        if (amounts == null) return;
         for (int i = 0; i < amounts.length; i++) { ObjectNode value = out.addObject(); value.put("code", items.get(i).code()); value.put("required", amounts[i]); }
-        return true;
+    }
+
+    private static BigDecimal[] amounts(List<BigDecimal> values, BlockMatrix matrix, int count,
+                                        BigDecimal total, QuotaEnforcement enforcement) {
+        if (enforcement == QuotaEnforcement.REFERENCE) {
+            return ExamCheckDistribution.resolve(values, matrix.unit(), total, matrix.basis());
+        }
+        int[] resolved = ExamCheckQuantities.resolve(values, matrix.unit(), count);
+        return resolved == null ? null : java.util.Arrays.stream(resolved).mapToObj(BigDecimal::valueOf).toArray(BigDecimal[]::new);
     }
 
     private static ObjectNode context(ObjectNode issue, SectionInfo info, QuestionBlock block) {
@@ -400,6 +530,31 @@ final class ExamCheckPathPresenter {
                 if (sectionId.equals(pick.sections().get(i).sectionId())
                         && (issue.path("subjectCount").isNull()
                             || issue.path("subjectCount").asInt() == pick.counts().get(i))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean replacedBySpecificShortage(ObjectNode generic, java.util.Collection<ObjectNode> issues) {
+        boolean plainShortage = switch (generic.path("code").asText()) {
+            case "SOURCE_SHORTAGE", "SET_SHORTAGE", "CELL_SHORTAGE", "SLOT_SOURCE_SHORTAGE" -> true;
+            default -> false;
+        };
+        if (!plainShortage || !generic.hasNonNull("blockId")) return false;
+        for (ObjectNode specific : issues) {
+            boolean filterShortage = switch (specific.path("code").asText()) {
+                case "ITEM_SHAPE_SHORTAGE", "ANSWER_FORMAT_SHORTAGE", "CHILD_CONDITION_SHORTAGE",
+                        "AUDIO_SHORTAGE", "POINTS_SHORTAGE" -> true;
+                default -> false;
+            };
+            boolean sameSection = specific.path("sectionId").equals(generic.path("sectionId"));
+            if (!sameSection && generic.hasNonNull("optionId") && !generic.hasNonNull("sectionId")) {
+                sameSection = (generic.path("optionId").asText() + ":blocks").equals(specific.path("sectionId").asText());
+            }
+            if (filterShortage && specific.path("blockId").equals(generic.path("blockId"))
+                    && sameSection && specific.path("partId").equals(generic.path("partId"))
+                    && specific.path("location").path("slotIndex").equals(generic.path("location").path("slotIndex"))) {
+                return true;
             }
         }
         return false;

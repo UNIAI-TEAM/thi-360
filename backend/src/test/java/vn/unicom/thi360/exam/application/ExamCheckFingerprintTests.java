@@ -29,5 +29,10 @@ class ExamCheckFingerprintTests {
                 config.matrixYear(), config.yearsConfirmed(), config.timing(), 121,
                 config.maxScore(), config.referenceMax(), config.practiceScoring());
         assertThat(fingerprint.calculate(structure, changedConfig, 4L, 5L)).isNotEqualTo(original);
+        var withQuota = mapper.readTree("""
+                {"parts":[{"id":"p","x":1}],
+                 "examQuotas":[{"id":"q","enforcement":"REQUIRED","subjectCodes":["TOAN"]}]}
+                """);
+        assertThat(fingerprint.calculate(withQuota, config, 4L, 5L)).isNotEqualTo(original);
     }
 }

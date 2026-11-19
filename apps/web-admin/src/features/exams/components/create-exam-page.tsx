@@ -13,85 +13,90 @@ import {
   notify,
   PageHeader,
   Skeleton,
-  StatusChip,
-  Switch,
   Textarea,
 } from "@thi360/ui";
-import { ChevronLeft, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronLeft, Lock, RefreshCw, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Controller, get, useForm, useWatch } from "react-hook-form";
+import { useCallback, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { RichTextEditor } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
+import { apiErrorCode } from "@/features/content/api-error";
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
-  combinationsForKind,
-  createExamSchema,
-  type CreateBranchValues,
-  type CreateCombinationValues,
-  type CreateExamFormValues,
-  type CreatePartValues,
-  type CreateSectionValues,
   EXAM_CODE_MAX,
   EXAM_DESCRIPTION_MAX,
   EXAM_NAME_MAX,
-  emptyPart,
-  initialParts,
+  type ExamInfoFormValues,
   kindOptionFor,
-  latestTemplate,
-  partsEdited,
+  partNeedsSubject,
   resolveScope,
   sameSelection,
   scopeDefaults,
-  type ScopeDefaults,
   type ScopeSelection,
-  summarizeParts,
-  sumPoints,
+  scopeTemplate,
+  subjectAudioParts,
+  subjectPartOptions,
+  templatePartAudio,
   toCreateExamRequest,
 } from "../create-exam-schema";
+import {
+  overviewDiff,
+  type OverviewIssue,
+  overviewRowsEmpty,
+  overviewRowsFromTemplate,
+  type OverviewRow,
+  overviewTotals,
+  rowsDifferFromTemplate,
+  sectionCompetency,
+  updateRowCell,
+  validateOverview,
+} from "../create-exam-overview";
 import { examTabHref } from "../editor-tabs";
 import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
-import { ExamStructureSaveError } from "../review-api";
-import type { ExamDetail, ExamTemplate } from "../types";
-import { CreateExamCover, type CoverImage } from "./create-exam-cover";
-import {
-  GenerateCodeButton,
-  ScopeFields,
-  TemplateNotes,
-  TimingScoreFields,
-  useCreateExamMessages,
-  useKindLabel,
-  usePartNames,
-} from "./create-exam-fields";
-import { CreateExamChoiceEditor, CreateExamPartsEditor } from "./create-exam-structure";
+import type { ExamTemplate } from "../types";
+import { GenerateCodeButton, KindSelect, TemplateNotes, useExamInfoSchema, useKindLabel, usePartNames } from "./create-exam-fields";
+import { CreateExamScopeFields } from "./create-exam-scope-fields";
+import { CreateExamStepper } from "./create-exam-stepper";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
+import { ExamOverviewTable } from "./exam-overview-table";
 
 const EXAMS_HREF = "/exams";
-
-/** Focus ô nhập sau khi React vẽ xong thay đổi (thêm, xóa phần). */
-function focusAfterChange(path: string) {
-  requestAnimationFrame(() => focusField(path));
-}
-
-/** Lỗi của các ô hiện ngay khi gõ (không chờ rời ô): tổng số câu của tổ hợp, phần nhiều môn, phần chung, nhánh. */
-const LIVE_ERROR_PATH = /\.(combinations(\.\d+\.subjectCounts)?|sections|branches\.\d+\.questionCount)$/;
+/** Quyền tạo bài (cổng ở `app/(shell)/exams/new/layout.tsx`); chỉ để nêu trong thông báo khi máy chủ trả 403. */
+const CREATE_PERMISSION = "EXAM.MODIFY";
 
 /**
- * Trang Tạo bài thi (`/exams/new`, UniNote PBI-04 mục 3, 4, 5.1–5.3; spec 7 kỳ thi): Thông tin chung (kỳ thi, hình
- * thức, môn và mẫu theo năm), Thời gian và thang điểm, Cấu trúc khởi tạo theo mẫu, Phần tự chọn; bảng tổng hợp dính bên
- * phải. Tạo xong mở Cấu trúc và ma trận để soạn khối câu hỏi.
+ * Trang Tạo bài thi, bước 1 (`/exams/new`, 2B mục 5, 15.1; TaoBaiThi2B): Thông tin bài thi, Phạm vi (kỳ thi, phạm vi,
+ * môn, phần, `build_mode`), Cấu trúc tổng quan (bảng sửa ngay trên dòng, có tổng). Không chọn phiên bản cấu trúc ở bước
+ * 1 (K8): bảng lấy số của mẫu mặc định, phiên bản đổi ở bước 2. Sửa một ô không nạp lại mẫu (R-09); đổi kỳ thi, phạm
+ * vi, môn, phần hoặc `build_mode` thì nạp lại bảng và hỏi xác nhận khi bảng đã sửa. Tạo xong mở bước 2 (Cấu trúc).
  */
 export function CreateExamPage() {
   const t = useTranslations("exams.create");
   const templatesQuery = useExamTemplates();
   const referenceQuery = useContentReference();
+  const forbidden = [templatesQuery, referenceQuery].some((query) => query.isError && getErrorStatus(query.error) === 403);
 
   let body: ReactNode;
-  if (templatesQuery.isError || referenceQuery.isError) {
+  let showStepper = true;
+  if (forbidden) {
+    showStepper = false;
+    body = (
+      <Card padding="md">
+        <EmptyState
+          icon={<Lock />}
+          headingLevel={2}
+          title={t("forbiddenTitle")}
+          description={t("forbiddenDescription", { permission: CREATE_PERMISSION })}
+        />
+      </Card>
+    );
+  } else if (referenceQuery.isError) {
+    showStepper = false;
     body = (
       <Card padding="md">
         <EmptyState
@@ -100,28 +105,41 @@ export function CreateExamPage() {
           title={t("loadErrorTitle")}
           description={t("loadErrorDescription")}
           action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                void templatesQuery.refetch();
-                void referenceQuery.refetch();
-              }}
-            >
+            <Button variant="secondary" onClick={() => void referenceQuery.refetch()}>
               {t("retry")}
             </Button>
           }
         />
       </Card>
     );
-  } else if (!templatesQuery.data || !referenceQuery.data) {
+  } else if (!referenceQuery.data) {
     body = (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton className="h-72" />
         <Skeleton className="h-56" />
       </div>
     );
+  } else if (referenceQuery.data.examKinds.length === 0) {
+    body = (
+      <Card padding="md">
+        <EmptyState icon={<TriangleAlert />} headingLevel={2} title={t("step1.noKindsTitle")} description={t("step1.noKindsDescription")} />
+      </Card>
+    );
   } else {
-    body = <CreateExamForm templates={templatesQuery.data} reference={referenceQuery.data} />;
+    // Đang thử lại sau lỗi thì coi như đang tải: khối tổng quan hiện khung chờ thay vì lỗi cũ.
+    const templatesStatus: TemplatesStatus = templatesQuery.data
+      ? "ready"
+      : templatesQuery.isError && !templatesQuery.isFetching
+        ? "error"
+        : "loading";
+    body = (
+      <CreateExamForm
+        templates={templatesQuery.data ?? NO_TEMPLATES}
+        templatesStatus={templatesStatus}
+        onRetryTemplates={() => void templatesQuery.refetch()}
+        reference={referenceQuery.data}
+      />
+    );
   }
 
   return (
@@ -138,61 +156,96 @@ export function CreateExamPage() {
           {t("backToList")}
         </Link>
         <PageHeader title={t("title")} description={t("description")} />
+        {showStepper && <CreateExamStepper />}
       </div>
       {body}
     </div>
   );
 }
 
-interface PendingScope {
-  scope: ScopeSelection;
-  parts: CreatePartValues[];
-  defaults: ScopeDefaults;
+interface LoadedScope {
+  selection: ScopeSelection;
+  template: ExamTemplate | undefined;
+  rows: OverviewRow[];
 }
 
-function CreateExamForm({ templates, reference }: { templates: readonly ExamTemplate[]; reference: ContentReference }) {
+type OverviewField = "questionCount" | "durationMinutes" | "maxPoints";
+/** Mẫu cấu trúc: `loading` và `error` chỉ che khối tổng quan, biểu mẫu vẫn dùng được (TaoBaiThi2B, trạng thái khác). */
+type TemplatesStatus = "loading" | "error" | "ready";
+const NO_TEMPLATES: readonly ExamTemplate[] = [];
+/** Chữ không phải số hợp lệ thành 0 để schema báo "phải lớn hơn 0"; ô vẫn hiện đúng chữ người dùng đã gõ. */
+const parseNumber = (text: string): number => {
+  const value = Number(text.trim());
+  return text.trim() === "" || !Number.isFinite(value) ? 0 : value;
+};
+const formatShared = (value: number): string => (value ? String(value) : "");
+const formatScore = (value: number | null): string => (value == null ? "" : String(value));
+
+/**
+ * Tiểu mục V-ACT phân biệt bằng năng lực: hai mục cùng môn SCIENTIFIC_THINKING (H24) lấy tên theo mã năng lực
+ * (R-109: không hiện mã thô). Năng lực không thuộc bảng này rơi về tên môn của mục.
+ */
+const VACT_COMPETENCY_PART: Record<string, string> = { "VACT-TD-LOGIC": "LOGIC", "VACT-TD-SL": "REASONING" };
+/** Phần nhiều tiểu mục của V-ACT: mã năng lực các mục cùng tiền tố thì phần lấy tên thông điệp (Sử dụng ngôn ngữ, Tư duy khoa học). */
+const VACT_COMPETENCY_GROUP: Array<[prefix: string, part: string]> = [
+  ["VACT-NN-", "LANGUAGE"],
+  ["VACT-TD-", "THINKING"],
+];
+
+interface CreateExamFormProps {
+  /** Mẫu cấu trúc; rỗng khi chưa tải được (`templatesStatus` khác `ready`). */
+  templates: readonly ExamTemplate[];
+  templatesStatus: TemplatesStatus;
+  onRetryTemplates: () => void;
+  reference: ContentReference;
+}
+
+function CreateExamForm({ templates, templatesStatus, onRetryTemplates, reference }: CreateExamFormProps) {
   const t = useTranslations("exams.create");
+  const tStep = useTranslations("exams.create.step1");
+  const tOverview = useTranslations("exams.create.overview");
   const router = useRouter();
   const formId = useId();
-  const pointsSwitchId = useId();
-  const pointsHintId = useId();
-  const tParts = useTranslations("exams.create.parts");
   const lookup = useReferenceLookup(reference);
   const subjectName = lookup.subject;
   const kindLabel = useKindLabel();
-  const kinds = reference.examKinds;
   const partNames = usePartNames();
-  const scopeName = partNames.partName;
+  const kinds = reference.examKinds;
+  /** Tên phần: SP2E, SPT lấy từ tên phần của mẫu Theo môn (`P<thứ tự>`), kỳ thi khác theo mã phần. */
+  const partLabel = useCallback(
+    (next: ScopeSelection) =>
+      partNeedsSubject(kinds, next.kind)
+        ? (subjectPartOptions(templates, next.kind, next.subjectCode).find((option) => option.code === next.partCode)?.name ?? next.partCode)
+        : partNames.partName(next.partCode),
+    [templates, kinds, partNames],
+  );
   const pendingRef = useRef<HTMLDivElement>(null);
-  const messages = useCreateExamMessages();
   const [takenCodes, setTakenCodes] = useState<ReadonlySet<string>>(() => new Set());
-  const schema = useMemo(() => createExamSchema(messages, takenCodes, kinds), [messages, takenCodes, kinds]);
+  const schema = useExamInfoSchema(takenCodes, kinds);
   const createExam = useCreateExam();
 
-  /** Cấu trúc khởi tạo và giá trị thời lượng, thang điểm của một phạm vi. */
+  /** Mẫu mặc định, dòng tổng quan và thời lượng, thang điểm của một lựa chọn (kỳ thi, phạm vi, môn, phần, `build_mode`). */
   const loadScope = useCallback(
-    (scope: ScopeSelection): PendingScope => {
-      const template = latestTemplate(templates, scope);
-      return {
-        scope,
-        parts: initialParts({
-          templates,
-          kind: scope.kind,
-          scope: scope.scope,
-          partCode: scope.partCode,
-          combinations: combinationsForKind(reference.combinations, scope.kind),
-          scopeName,
-          template: scope.scope === "PART" ? undefined : (template ?? null),
-          subjectCode: scope.subjectCode,
-          subjectName,
-        }),
-        defaults: scopeDefaults(template, kindOptionFor(kinds, scope.kind), scope.scope),
-      };
+    (selection: ScopeSelection): LoadedScope => {
+      const template = scopeTemplate(templates, kinds, selection);
+      if (template) return { selection, template, rows: overviewRowsFromTemplate(template, selection.scope, selection.partCode) };
+      // Không có mẫu (bài ôn chưa có mẫu, môn chưa có mẫu): một dòng trống mang tên của phạm vi.
+      const blankLabel =
+        selection.scope === "SUBJECT"
+          ? subjectName(selection.subjectCode)
+          : selection.scope === "PART"
+            ? partLabel(selection)
+            : kindLabel(selection.kind);
+      const rows = overviewRowsEmpty(selection.scope, selection.subjectCode, selection.partCode).map((row) => ({
+        ...row,
+        label: blankLabel,
+      }));
+      return { selection, template: undefined, rows };
     },
-    [templates, reference.combinations, kinds, scopeName, subjectName],
+    [templates, kinds, subjectName, partLabel, kindLabel],
   );
 
-  const [initial] = useState<PendingScope>(() =>
+  const [initial] = useState<LoadedScope>(() =>
     loadScope(
       resolveScope(
         templates,
@@ -203,42 +256,121 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
       ),
     ),
   );
-  const [baseline, setBaseline] = useState<CreatePartValues[]>(initial.parts);
-  const form = useForm<CreateExamFormValues>({
+  const [selection, setSelection] = useState<ScopeSelection>(initial.selection);
+  const [rows, setRows] = useState<OverviewRow[]>(initial.rows);
+  const [pendingSelection, setPendingSelection] = useState<ScopeSelection | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [liveMessage, setLiveMessage] = useState("");
+
+  const initialDefaults = scopeDefaults(initial.template, kindOptionFor(kinds, initial.selection.kind), initial.selection.scope, initial.selection.buildMode);
+  // Chữ người dùng gõ ở hai ô số dưới bảng; giá trị số của biểu mẫu chỉ là bản đã phân tích để kiểm tra (R1-08).
+  const [sharedText, setSharedText] = useState(() => formatShared(initialDefaults.sharedDuration));
+  const [maxScoreText, setMaxScoreText] = useState(() => formatScore(initialDefaults.maxScore));
+  const form = useForm<ExamInfoFormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
     defaultValues: {
       name: "",
       code: "",
-      kind: initial.scope.kind,
-      scope: initial.scope.scope,
-      partCode: initial.scope.partCode,
-      subjectCode: initial.scope.subjectCode,
-      ...initial.defaults,
+      kind: initial.selection.kind,
+      scope: initial.selection.scope,
+      partCode: initial.selection.partCode,
+      subjectCode: initial.selection.subjectCode,
+      buildMode: initial.selection.buildMode,
+      timing: initialDefaults.timing,
+      sharedDuration: initialDefaults.sharedDuration,
+      maxScore: initialDefaults.maxScore,
       yearsConfirmed: false,
       description: "",
       instructions: "",
-      parts: initial.parts,
     },
   });
-  const { control, register, handleSubmit, setValue, getValues, setError, resetField, getFieldState, formState } = form;
-  const values = useWatch({ control }) as CreateExamFormValues;
+  const { control, register, handleSubmit, setValue, setError, resetField, getFieldState, formState } = form;
+  const values = useWatch({ control }) as ExamInfoFormValues;
 
-  const [cover, setCover] = useState<CoverImage | null>(null);
-  const [pendingScope, setPendingScope] = useState<PendingScope | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  // Bài đã tạo mà lưu cấu trúc lỗi: gửi lại chỉ lưu cấu trúc, không POST lại (N2-4).
-  const [partiallyCreated, setPartiallyCreated] = useState<ExamDetail | null>(null);
-  const [liveMessage, setLiveMessage] = useState("");
-  const guard = useUnsavedChangesGuard((formState.isDirty || cover !== null) && !createExam.isSuccess);
-
+  const template = useMemo(() => scopeTemplate(templates, kinds, selection), [templates, kinds, selection]);
+  const defaults = useMemo(
+    () => scopeDefaults(template, kindOptionFor(kinds, selection.kind), selection.scope, selection.buildMode),
+    [template, kinds, selection],
+  );
+  const showPoints = defaults.pointsByPart;
+  // H27: mẫu khóa số câu (V-ACT toàn bài) — ô số câu chỉ đọc, cột tỷ lệ hiện. Các cột tỷ lệ chỉ của V-ACT: mẫu
+  // `fixedCounts` có "Tỷ lệ trong phần" + "Tỷ lệ toàn bài", bài riêng có tiểu mục có "Tỷ lệ trong bài" (R-118, R-123,
+  // TaoBaiThiVact2B); kỳ thi khác không có cột tỷ lệ.
+  // H42: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT` (không khóa bài theo phần và bài ôn).
+  const blockLocked = template?.fixedBlockCounts === true && selection.scope === "SUBJECT" && selection.buildMode !== "REVIEW";
+  const lockedCounts = template?.fixedCounts === true || blockLocked;
+  const vact = selection.kind === "VACT";
+  const showPartPercent = lockedCounts && vact && (template?.parts.length ?? 0) > 1;
+  const showPercents = showPartPercent || (vact && selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
+  // H-SCA Tiếng Anh: môn tách phần theo audio (Nghe, Đọc); tên dòng phần theo điều kiện audio để đúng ngôn ngữ.
+  const audioSplit = selection.subjectCode ? subjectAudioParts(templates, selection.kind, selection.subjectCode).length > 0 : false;
+  /**
+   * Tên dòng V-ACT theo ngôn ngữ đang chọn, dựng từ mã năng lực và mã môn (không lấy tên tiếng Việt lưu trong mẫu): mục
+   * cùng môn tách tên theo năng lực (thông điệp `partName`), mục thường theo tên môn trong danh mục. Dòng phần một mục
+   * lấy tên của mục đó; phần nhiều mục lấy tên nhóm năng lực. Không có khóa thì để `undefined`: giữ tên của mẫu.
+   */
+  const rowLabel = useCallback(
+    (row: OverviewRow): string | undefined => {
+      if (row.kind === "section") {
+        return partNames.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode);
+      }
+      if (row.kind === "part" && audioSplit) {
+        // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
+        const audio = templatePartAudio(template?.parts[Number(row.key.slice(2))]);
+        if (audio) return tStep(audio === "REQUIRED" ? "skillListening" : "skillReading");
+      }
+      if (!vact || row.kind !== "part") return undefined;
+      const sections = template?.parts[Number(row.key.slice(2))]?.sections ?? [];
+      const subjectOf = (code: string) => {
+        const name = lookup.subject(code);
+        return name === code ? undefined : name;
+      };
+      if (sections.length === 1) {
+        const only = sections[0]!;
+        const competency = sectionCompetency(only);
+        return (competency && VACT_COMPETENCY_PART[competency] && partNames.partName(VACT_COMPETENCY_PART[competency])) || subjectOf(only.subjectCode);
+      }
+      const groups = new Set(
+        sections.map((section) => {
+          const competency = sectionCompetency(section) ?? "";
+          return VACT_COMPETENCY_GROUP.find(([prefix]) => competency.startsWith(prefix))?.[1];
+        }),
+      );
+      const [group] = groups;
+      return groups.size === 1 && group ? partNames.partName(group) : undefined;
+    },
+    [partNames, lookup, vact, template, audioSplit, tStep],
+  );
+  // H35, R-141: bài riêng của V-ACT, bài theo phần và bài ôn không có thời lượng mặc định (mẫu để trống) — lỗi đặt ở ô
+  // thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung. Theo mẫu và phạm vi, không theo mã kỳ thi.
+  const durationError = (() => {
+    const generic = formState.errors.sharedDuration?.message;
+    if (!generic || defaults.sharedDuration > 0) return generic;
+    if (selection.kind === "VACT" && selection.scope !== "FULL") return tStep("durationRequiredCustom", { kind: kindLabel(selection.kind) });
+    if (selection.scope === "PART") return tStep("durationRequiredPart");
+    if (selection.scope === "SUBJECT" && selection.buildMode === "REVIEW") return tStep("durationRequiredReview");
+    // F-1: bài cả môn từ mẫu để trống thời lượng (V-SAT Ngữ văn) và ô còn trống — câu của bản vẽ. Giá trị đã gõ mà sai
+    // (chữ, 0, số âm, số thập phân) giữ câu số dương chung.
+    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null && sharedText.trim() === "") return tStep("durationRequiredSubject");
+    return generic;
+  })();
+  // G2c "Trạng thái khác": gợi ý dưới ô thời lượng theo nguồn của giá trị — mẫu điền sẵn, bài theo phần tự nhập
+  // (D24: không lấy thời lượng cả môn), mẫu để trống (D25/F-1).
+  const durationHint = (() => {
+    if (values.timing !== "SHARED") return null;
+    if (defaults.sharedDuration > 0) return tStep("durationHintPrefilled");
+    if (selection.scope === "PART" && template) return tStep("durationHintPartCut");
+    if (selection.scope === "SUBJECT" && template && template.durationMinutes === null) return tStep("durationHintEmpty");
+    return null;
+  })();
   // Mã gợi ý theo kỳ thi, phạm vi, phần hoặc môn; người dùng đã sửa mã thì giữ mã của họ.
   const suggestion = useSuggestedExamCode(
     {
-      kind: values.kind,
-      scope: values.scope,
-      partCode: values.scope === "PART" ? values.partCode : null,
-      subjectCode: values.scope === "SUBJECT" ? values.subjectCode || null : null,
+      kind: selection.kind,
+      scope: selection.scope,
+      partCode: selection.scope === "PART" ? selection.partCode : null,
+      subjectCode: selection.scope === "SUBJECT" ? selection.subjectCode || null : null,
     },
     true,
   );
@@ -253,225 +385,139 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
     setLiveMessage(t("codeGenerated", { code: result.data }));
   };
 
-  const kindCombinations = useMemo(
-    () => combinationsForKind(reference.combinations, values.kind),
-    [reference.combinations, values.kind],
-  );
-  const currentKind = kindOptionFor(kinds, values.kind);
-  const currentTemplate = latestTemplate(templates, {
-    kind: values.kind,
-    scope: values.scope,
-    partCode: values.partCode,
-    subjectCode: values.subjectCode,
-  });
+  // ------------------------------------------------------------ đổi kỳ thi, phạm vi, phần, môn hoặc build_mode
 
-  // ------------------------------------------------------------ đổi kỳ thi, phạm vi, phần hoặc môn
+  const templateName = (loaded: ExamTemplate | undefined) => loaded?.name || loaded?.label || null;
 
-  const templateName = (scope: ScopeSelection) => {
-    const kind = kindLabel(scope.kind);
-    if (scope.scope === "PART") return t("templatePart", { kind, scope: scopeName(scope.partCode) });
-    if (scope.scope === "SUBJECT") {
-      const template = latestTemplate(templates, scope);
-      const subject = scope.subjectCode ? subjectName(scope.subjectCode) : t("noSubject");
-      return template
-        ? t("templateSubject", { kind, subject, year: String(template.structureYear ?? "") })
-        : t("templateBlank", { kind, subject });
+  const selectionLabel = (next: ScopeSelection) => {
+    const kind = kindLabel(next.kind);
+    if (next.scope === "PART") return tStep("labelPart", { kind, scope: partLabel(next) });
+    if (next.scope === "SUBJECT") {
+      const subject = next.subjectCode ? subjectName(next.subjectCode) : tStep("noSubject");
+      return next.buildMode === "REVIEW" ? tStep("labelReview", { kind, subject }) : tStep("labelSubject", { kind, subject });
     }
-    return t("templateFull", { kind });
+    return tStep("labelFull", { kind });
   };
 
-  const currentScope = (): ScopeSelection => ({
-    kind: getValues("kind"),
-    scope: getValues("scope"),
-    partCode: getValues("partCode"),
-    subjectCode: getValues("subjectCode"),
-  });
+  /**
+   * Bảng đã sửa (số câu, thời lượng, điểm, thời lượng chung hoặc thang điểm khác mẫu) thì đổi lựa chọn phải hỏi trước
+   * khi nạp lại (2B 15.1); chưa sửa thì nạp luôn.
+   */
+  const tableEdited =
+    rowsDifferFromTemplate(rows) ||
+    (values.timing === "SHARED" && values.sharedDuration !== defaults.sharedDuration) ||
+    (!showPoints && values.maxScore !== defaults.maxScore);
+  const guard = useUnsavedChangesGuard((formState.isDirty || tableEdited) && !createExam.isSuccess);
 
-  const applyScope = ({ scope, parts, defaults }: PendingScope) => {
-    const dirty = { shouldDirty: true } as const;
-    setValue("kind", scope.kind, dirty);
-    setValue("scope", scope.scope, dirty);
-    setValue("partCode", scope.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
-    setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
-    setValue("timing", defaults.timing, dirty);
-    setValue("sharedDuration", defaults.sharedDuration, dirty);
-    setValue("maxScore", defaults.maxScore, dirty);
-    setValue("pointsByPart", defaults.pointsByPart, dirty);
+  /** Nạp lại lựa chọn mới; `markDirty = false` khi nạp vì mẫu vừa tải về (người dùng chưa sửa gì). */
+  const applyScope = (next: ScopeSelection, markDirty = true) => {
+    const loaded = loadScope(next);
+    const nextDefaults = scopeDefaults(loaded.template, kindOptionFor(kinds, next.kind), next.scope, next.buildMode);
+    const dirty = markDirty ? ({ shouldDirty: true } as const) : {};
+    setSelection(next);
+    setRows(loaded.rows);
+    setSharedText(formatShared(nextDefaults.sharedDuration));
+    setMaxScoreText(formatScore(nextDefaults.maxScore));
+    setValue("kind", next.kind, dirty);
+    setValue("scope", next.scope, dirty);
+    setValue("buildMode", next.buildMode, dirty);
+    setValue("partCode", next.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
+    setValue("subjectCode", next.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
+    setValue("timing", nextDefaults.timing, dirty);
+    setValue("sharedDuration", nextDefaults.sharedDuration, dirty);
+    setValue("maxScore", nextDefaults.maxScore, dirty);
     setValue("yearsConfirmed", false, dirty);
-    setValue("parts", parts, dirty);
-    setBaseline(parts);
-    setPendingScope(null);
-    setLiveMessage(t("replace.loaded", { name: templateName(scope) }));
+    setPendingSelection(null);
+    setLiveMessage(tStep("loaded", { name: selectionLabel(next) }));
   };
 
-  /** Đổi phạm vi sau khi đã sửa cấu trúc thì hỏi ngay tại chỗ trước khi nạp mẫu (bản vẽ); chưa sửa thì nạp luôn. */
   const requestScope = (change: Partial<ScopeSelection>) => {
-    const current = currentScope();
-    const scope = resolveScope(templates, kinds, reference.subjects, current, change);
-    if (sameSelection(scope, current)) {
-      setPendingScope(null);
+    const next = resolveScope(templates, kinds, reference.subjects, selection, change);
+    if (sameSelection(next, selection)) {
+      setPendingSelection(null);
       return;
     }
-    const next = loadScope(scope);
-    if (partsEdited(getValues("parts"), baseline)) setPendingScope(next);
+    if (tableEdited) setPendingSelection(next);
     else applyScope(next);
   };
 
   // Hộp xác nhận tại chỗ hiện ra thì đưa con trỏ vào đó.
   useEffect(() => {
-    if (pendingScope) pendingRef.current?.focus();
-  }, [pendingScope]);
+    if (pendingSelection) pendingRef.current?.focus();
+  }, [pendingSelection]);
 
-  const validateNow = { shouldDirty: true, shouldValidate: formState.isSubmitted } as const;
-  const setCombinations = (partIndex: number, next: CreateCombinationValues[]) =>
-    setValue(`parts.${partIndex}.combinations`, next, validateNow);
-  const setSections = (partIndex: number, next: CreateSectionValues[]) =>
-    setValue(`parts.${partIndex}.sections`, next, validateNow);
-  const setBranches = (partIndex: number, next: CreateBranchValues[]) =>
-    setValue(`parts.${partIndex}.branches`, next, validateNow);
+  // Mẫu về sau khi màn đã dựng (tải chậm, hoặc "Thử lại" ở khối tổng quan thành công): nạp bảng theo mẫu mặc định của
+  // lựa chọn hiện tại; bảng đã sửa thì hỏi trước như mọi lần nạp lại.
+  const templatesApplied = useRef(templatesStatus === "ready");
+  const reloadForTemplates = useEffectEvent(() => {
+    const next = resolveScope(templates, kinds, reference.subjects, selection, {});
+    if (tableEdited) setPendingSelection(next);
+    else applyScope(next, false);
+  });
+  useEffect(() => {
+    if (templatesStatus !== "ready" || templatesApplied.current) return;
+    templatesApplied.current = true;
+    reloadForTemplates();
+  }, [templatesStatus]);
 
-  const movePart = (index: number, delta: -1 | 1) => {
-    const parts = [...getValues("parts")];
-    const target = index + delta;
-    const moving = parts[index];
-    const other = parts[target];
-    if (!moving || !other) return;
-    parts[index] = other;
-    parts[target] = moving;
-    setValue("parts", parts, { shouldDirty: true });
-    setLiveMessage(tParts("moved", { order: target + 1 }));
-  };
+  // ------------------------------------------------------------ bảng tổng quan
 
-  const removePart = (index: number) => {
-    setValue(
-      "parts",
-      getValues("parts").filter((_, position) => position !== index),
-      validateNow,
-    );
-    setLiveMessage(tParts("removed", { order: index + 1 }));
-    focusAfterChange("parts");
-  };
-
-  const addPart = () => {
-    const parts = [...getValues("parts"), emptyPart()];
-    setValue("parts", parts, { shouldDirty: true });
-    setLiveMessage(tParts("added", { order: parts.length }));
-    focusAfterChange(`parts.${parts.length - 1}.name`);
-  };
-
-  // ------------------------------------------------------------ lỗi và tổng hợp
-
-  const live = schema.safeParse(values);
-  const liveErrors = useMemo(() => {
-    const map = new Map<string, string>();
-    if (!live.success) {
-      for (const issue of live.error.issues) {
-        const path = issue.path.map(String).join(".");
-        if (!map.has(path)) map.set(path, issue.message);
-      }
+  const overviewIssues = useMemo(() => validateOverview(rows), [rows]);
+  const issueText = (issue: OverviewIssue) => tOverview(`errors.${issue.code}`);
+  const cellIssues = useMemo(() => {
+    const map = new Map<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>();
+    for (const issue of overviewIssues) {
+      map.set(issue.rowKey, { ...map.get(issue.rowKey), [issue.field]: tOverview(`errors.${issue.code}`) });
     }
     return map;
-  }, [live]);
+  }, [overviewIssues, tOverview]);
+  const totals = overviewTotals(rows, values.timing, sharedText);
 
-  /** Lỗi hiện tại chỗ: lỗi của biểu mẫu (sau khi rời ô hoặc bấm Tạo); lỗi tổng số câu hiện ngay. */
-  const errorFor = useCallback(
-    (path: string): string | undefined => {
-      const formError = get(formState.errors, path) as { message?: string } | undefined;
-      if (formError?.message) return formError.message;
-      if (LIVE_ERROR_PATH.test(path)) return liveErrors.get(path);
-      return undefined;
-    },
-    [formState.errors, liveErrors],
+  const onCellChange = (key: string, field: OverviewField, text: string) => {
+    // Sửa một ô chỉ đổi bảng: không nạp lại mẫu, không đụng tên, mã, mô tả (R-09).
+    setRows((current) => updateRowCell(current, key, field, text));
+  };
+
+  // ------------------------------------------------------------ tóm tắt và lỗi
+
+  const fieldLabel = (path: string) => (t.has(`fields.${path}`) ? t(`fields.${path}`) : path);
+  const formIssues: CreateExamIssue[] = Object.entries(formState.errors).flatMap(([path, error]) =>
+    error?.message
+      ? [{ path, field: fieldLabel(path), message: path === "sharedDuration" ? (durationError ?? String(error.message)) : String(error.message) }]
+      : [],
   );
-
-  const fieldLabel = useCallback(
-    (path: string): string => {
-      const segments = path.split(".");
-      const head = segments[0] ?? "";
-      if (head !== "parts") {
-        switch (head) {
-          case "name":
-          case "code":
-          case "description":
-          case "instructions":
-          case "subjectCode":
-          case "sharedDuration":
-          case "maxScore":
-            return t(`fields.${head}`);
-          case "partCode":
-            return t("fields.part");
-          default:
-            return t("fields.parts");
-        }
-      }
-      if (segments.length < 3) return t("fields.parts");
-      const index = Number(segments[1]);
-      const order = index + 1;
-      const part = values.parts[index];
-      switch (segments[2]) {
-        case "name":
-          return t("fields.partName", { order });
-        case "subjectCode":
-          return t("fields.partSubject", { order });
-        case "questionCount":
-          return t("fields.partQuestions", { order });
-        case "durationMinutes":
-          return t("fields.partDuration", { order });
-        case "points":
-          return t("fields.partPoints", { order });
-        case "sections":
-          return t("fields.partSections", { order });
-        case "branches": {
-          const branch = part?.branches[Number(segments[3])];
-          return branch ? t("fields.branch", { name: branch.name }) : t("fields.partOptions", { order });
-        }
-        default: {
-          const combination = part?.combinations[Number(segments[3])];
-          return combination ? t("fields.combination", { code: combination.code }) : t("fields.partOptions", { order });
-        }
-      }
-    },
-    [t, values.parts],
-  );
-
-  const issues: CreateExamIssue[] = [...liveErrors].map(([path, message]) => ({
-    path,
-    field: fieldLabel(path),
-    message,
-  }));
-  const summary = summarizeParts(values.parts, values);
-  const choicePart = values.parts.find((part) => part.mode === "CHOICE");
-  const pathText = (() => {
-    if (!choicePart) return t("summary.pathsFixed");
-    const segments = [
-      ...(choicePart.englishOption ? [t("summary.pathsEnglishOnly")] : []),
-      ...(choicePart.combinations.length > 0
-        ? [t("summary.pathsCombinationsOnly", { count: choicePart.combinations.length })]
-        : []),
-      ...(choicePart.branches.length > 0 ? [t("summary.pathsBranches", { count: choicePart.branches.length })] : []),
-    ];
-    return segments.length > 0 ? segments.join(" + ") : t("summary.pathsNone");
-  })();
-  const pendingImpact = (() => {
-    const attached = values.parts.reduce((total, part) => total + part.combinations.length, 0);
-    return attached > 0
-      ? t("replace.impactCombinations", { parts: values.parts.length, combinations: attached })
-      : t("replace.impactParts", { parts: values.parts.length });
-  })();
-  const choiceParts = values.parts
-    .map((part, index) => ({ part, index }))
-    .filter(({ part }) => part.mode === "CHOICE");
-  const pointsTotal = sumPoints(values.parts.map((part) => part.points ?? 0));
-  const pointsOff = values.pointsByPart && values.maxScore !== null && pointsTotal !== values.maxScore;
+  const rowIssueItems: CreateExamIssue[] = overviewIssues.map((issue) => {
+    const row = rows.find((item) => item.key === issue.rowKey);
+    return {
+      path: `${issue.rowKey}.${issue.field}`,
+      field: row ? (rowLabel(row) ?? (row.kind === "section" ? subjectName(row.subjectCode) : row.label)) : tOverview("total"),
+      message: issueText(issue),
+    };
+  });
+  const issues = [...formIssues, ...rowIssueItems];
 
   // ------------------------------------------------------------ gửi
 
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
-    // Cấu trúc chưa sửa so với mẫu thì không gửi: máy chủ nạp mẫu, giữ nguyên các trường của mẫu.
-    const request = toCreateExamRequest(submitted);
-    if (!partsEdited(submitted.parts, baseline)) delete request.parts;
-    if (partiallyCreated) request.existing = partiallyCreated;
+    if (overviewIssues.length > 0) {
+      const first = overviewIssues[0]!;
+      focusField(`${first.rowKey}.${first.field}`);
+      return;
+    }
+    const request = toCreateExamRequest({
+      name: submitted.name,
+      code: submitted.code,
+      selection,
+      description: submitted.description,
+      instructions: submitted.instructions,
+      timing: submitted.timing,
+      sharedDuration: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
+      // Bảng có cột Điểm: thang của bài là tổng điểm các phần (dòng bỏ qua không tính), không còn bắt khớp với mẫu.
+      maxScore: showPoints ? (totals.maxPoints ?? submitted.maxScore) : submitted.maxScore,
+      // Chỉ dòng khác mẫu đi theo yêu cầu; bảng giữ nguyên thì không gửi `overview`.
+      overview: overviewDiff(rows),
+    });
     createExam.mutate(request, {
       onSuccess: (exam) => {
         const message = t("success", { code: exam.code });
@@ -480,49 +526,66 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
         router.push(examTabHref(exam.id, "structure"));
       },
       onError: (error) => {
-        if (error instanceof ExamStructureSaveError) {
-          // Bài đã được tạo: không POST lại (trùng mã). Ở lại trang để sửa cấu trúc rồi gửi lại, không mất các chỉnh sửa.
-          const message = t("errors.structureNotSaved", { code: error.exam.code });
-          setPartiallyCreated(error.exam);
-          setSubmitError(message);
-          notify.error(message);
-          setLiveMessage(message);
-          return;
-        }
         const status = getErrorStatus(error);
         if (status === 409) {
           const code = submitted.code.trim().toUpperCase();
           setTakenCodes((current) => new Set([...current, code]));
           setError("code", { message: t("errors.codeTaken") }, { shouldFocus: true });
+        } else if (status === 422) {
+          // Lỗi nghiệp vụ 422 hiện theo mã (`ExamErrorCodes`), có bản dịch; mã lạ thì câu chung. Không in thân lỗi của máy chủ.
+          const reason = apiErrorCode(error);
+          setSubmitError(reason && t.has(`errors.codes.${reason}`) ? t(`errors.codes.${reason}`) : t("errors.structure"));
         } else {
-          setSubmitError(status === 422 ? t("errors.structure") : t("errors.generic"));
+          setSubmitError(t("errors.generic"));
         }
       },
     });
   });
 
   const submitButton = (
-    <Button type="submit" form={formId} loading={createExam.isPending} className="w-full sm:w-auto @4xl:w-full">
+    <Button type="submit" loading={createExam.isPending} disabled={templatesStatus === "loading"}>
       {t("submit")}
+      <ArrowRight aria-hidden className="size-4" />
     </Button>
   );
   const cancelButton = (
-    <Button asChild variant="secondary" className="w-full sm:w-auto @4xl:w-full">
+    <Button asChild variant="secondary">
       <Link href={EXAMS_HREF}>{t("cancel")}</Link>
     </Button>
   );
 
+  // Như TaoBaiThi2B: Hủy / Lưu và tiếp tục nằm ngay dưới bảng tổng quan, Tóm tắt đứng bên phải khi đủ rộng, hẹp thì xuống
+  // dưới các nút.
   return (
-    <div className="@container">
-      <div className="grid grid-cols-1 gap-5 @4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:items-start">
+    <div className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-wrap items-start gap-6">
         <form
           id={formId}
           noValidate
           aria-label={t("formAriaLabel")}
           onSubmit={(event) => void onSubmit(event)}
-          className="flex min-w-0 flex-col gap-5"
+          className="flex min-w-0 flex-[999_1_640px] flex-col gap-5"
         >
           <FormSection step={1} title={t("sections.info")}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[3fr_2fr]">
+              <div data-field="name">
+                <FormField label={t("name")} required error={formState.errors.name?.message}>
+                  {(controlProps) => (
+                    <Input
+                      {...controlProps}
+                      {...register("name")}
+                      autoComplete="off"
+                      maxLength={EXAM_NAME_MAX}
+                      placeholder={t("namePlaceholder")}
+                    />
+                  )}
+                </FormField>
+              </div>
+              <div data-field="kind">
+                <KindSelect kinds={kinds} value={selection.kind} onChange={(kind) => requestScope({ kind })} />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_3fr]">
               <div data-field="code">
                 <FormField label={t("code")} required hint={t("codeHint")} error={formState.errors.code?.message}>
@@ -542,69 +605,19 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                   )}
                 </FormField>
               </div>
-              <div data-field="name">
-                <FormField label={t("name")} required error={formState.errors.name?.message}>
+              <div data-field="description">
+                <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
                   {(controlProps) => (
-                    <Input
+                    <Textarea
                       {...controlProps}
-                      {...register("name")}
-                      autoComplete="off"
-                      maxLength={EXAM_NAME_MAX}
-                      placeholder={t("namePlaceholder")}
+                      {...register("description")}
+                      rows={3}
+                      maxLength={EXAM_DESCRIPTION_MAX}
+                      placeholder={t("descriptionPlaceholder")}
                     />
                   )}
                 </FormField>
               </div>
-            </div>
-
-            <ScopeFields
-              kinds={kinds}
-              subjects={reference.subjects}
-              templates={templates}
-              values={values}
-              errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
-              onChange={requestScope}
-            />
-
-            {pendingScope && (
-              <div
-                ref={pendingRef}
-                tabIndex={-1}
-                role="alert"
-                className={cn("flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning-bg p-4", focusRing)}
-              >
-                <div className="flex items-start gap-2.5">
-                  <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-                  <div className="flex flex-col gap-1">
-                    <p className="font-semibold text-text">{t("replace.title", { name: templateName(pendingScope.scope) })}</p>
-                    <p className="text-body text-text-secondary">{t("replace.description", { impact: pendingImpact })}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setPendingScope(null)}>
-                    {t("replace.cancel")}
-                  </Button>
-                  <Button type="button" size="sm" onClick={() => applyScope(pendingScope)}>
-                    {t("replace.confirm")}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <TemplateNotes template={currentTemplate} name={templateName(currentScope())} />
-
-            <div data-field="description">
-              <FormField label={t("descriptionLabel")} error={formState.errors.description?.message}>
-                {(controlProps) => (
-                  <Textarea
-                    {...controlProps}
-                    {...register("description")}
-                    rows={3}
-                    maxLength={EXAM_DESCRIPTION_MAX}
-                    placeholder={t("descriptionPlaceholder")}
-                  />
-                )}
-              </FormField>
             </div>
 
             <div data-field="instructions">
@@ -629,166 +642,149 @@ function CreateExamForm({ templates, reference }: { templates: readonly ExamTemp
                 )}
               </FormField>
             </div>
-
-            <CreateExamCover value={cover} onChange={setCover} onAnnounce={setLiveMessage} />
           </FormSection>
 
-          <FormSection
-            step={2}
-            title={t("sections.timing")}
-            description={t(values.timing === "SHARED" ? "sections.timingSharedDescription" : "sections.timingPerPartDescription")}
-          >
-            <Controller
-              control={control}
-              name="sharedDuration"
-              render={({ field: durationField }) => (
-                <Controller
-                  control={control}
-                  name="maxScore"
-                  render={({ field: scoreField }) => (
-                    <TimingScoreFields
-                      timing={values.timing}
-                      sharedDuration={durationField.value}
-                      onSharedDurationChange={durationField.onChange}
-                      sharedDurationError={errorFor("sharedDuration")}
-                      partMinutes={summary.totalMinutes}
-                      maxScore={scoreField.value}
-                      onMaxScoreChange={scoreField.onChange}
-                      maxScoreError={errorFor("maxScore")}
-                      maxScoreOptional={currentKind?.maxScore === null}
-                    >
-                      <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-                        <div className="flex items-start gap-3">
-                          <Controller
-                            control={control}
-                            name="pointsByPart"
-                            render={({ field }) => (
-                              <Switch
-                                id={pointsSwitchId}
-                                checked={field.value}
-                                aria-describedby={pointsHintId}
-                                onCheckedChange={(checked) => field.onChange(checked)}
-                                className="mt-0.5"
-                              />
-                            )}
-                          />
-                          <div className="flex flex-col gap-0.5">
-                            <label htmlFor={pointsSwitchId} className="cursor-pointer font-medium text-text">
-                              {t("timing.pointsByPart")}
-                            </label>
-                            <p id={pointsHintId} className="text-caption text-text-muted">
-                              {t("timing.pointsByPartHint")}
-                            </p>
-                          </div>
-                        </div>
-                        {values.pointsByPart && (
-                          <p className="flex flex-wrap items-center gap-2 text-body font-semibold text-text tabular-nums">
-                            {values.maxScore === null
-                              ? t("timing.pointsTotal", { actual: pointsTotal })
-                              : t("timing.pointsTotalOf", { actual: pointsTotal, expected: values.maxScore })}
-                            {pointsOff && <StatusChip tone="warning">{t("timing.pointsMismatch")}</StatusChip>}
-                          </p>
-                        )}
-                      </div>
-                    </TimingScoreFields>
-                  )}
-                />
-              )}
+          <FormSection step={2} title={tStep("sections.scope")} description={tStep("sections.scopeDescription", { kind: kindLabel(selection.kind) })}>
+            <CreateExamScopeFields
+              kinds={kinds}
+              subjects={reference.subjects}
+              templates={templates}
+              selection={selection}
+              errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
+              onChange={requestScope}
             />
+
+            {pendingSelection && (
+              <div
+                ref={pendingRef}
+                tabIndex={-1}
+                role="alert"
+                className={cn("flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning-bg p-4", focusRing)}
+              >
+                <div className="flex items-start gap-2.5">
+                  <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+                  <div className="flex flex-col gap-1">
+                    <p className="font-semibold text-text">{tStep("replace.title", { name: selectionLabel(pendingSelection) })}</p>
+                    <p className="text-body text-text-secondary">{tStep("replace.description")}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setPendingSelection(null)}>
+                    {tStep("replace.cancel")}
+                  </Button>
+                  <Button type="button" size="sm" onClick={() => applyScope(pendingSelection)}>
+                    {tStep("replace.confirm")}
+                  </Button>
+                </div>
+              </div>
+            )}
           </FormSection>
 
           <FormSection
             step={3}
-            title={t("sections.structure")}
-            description={t("sections.structureDescription", { name: templateName(currentScope()) })}
+            title={tOverview("title")}
+            description={
+              templatesStatus === "loading"
+                ? undefined
+                : templateName(template)
+                  ? tOverview("description", { template: templateName(template) ?? "" })
+                  : tOverview("descriptionNoTemplate")
+            }
           >
-            <div data-field="parts">
-              <CreateExamPartsEditor
-                control={control}
-                parts={values.parts}
-                scope={values.scope}
+            <TemplateNotes template={template} name={templateName(template) ?? undefined} />
+            <p className="inline-flex w-fit rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">{tOverview("versionAtStep2")}</p>
+            {lockedCounts && (
+              <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
+                <Lock aria-hidden className="size-3.5" />
+                {tOverview("lockedCounts")}
+              </p>
+            )}
+            {blockLocked && <p className="text-body text-text-secondary">{tOverview("lockedBlockCountsNote")}</p>}
+            {templatesStatus === "error" && (
+              <div
+                role="alert"
+                className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="text-body text-text-secondary">
+                  <strong className="font-semibold text-danger">{tOverview("loadError.title")}</strong> {tOverview("loadError.description")}
+                </p>
+                <Button type="button" variant="secondary" size="sm" onClick={onRetryTemplates}>
+                  {t("retry")}
+                </Button>
+              </div>
+            )}
+            {templatesStatus === "ready" && !template && <p className="text-body text-text-secondary">{tOverview("noTemplate")}</p>}
+            {templatesStatus === "loading" ? (
+              <div aria-busy="true" className="flex flex-col gap-2">
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-10 w-1/2" />
+                <span className="sr-only">{tOverview("loading")}</span>
+              </div>
+            ) : (
+              <ExamOverviewTable
+                rows={rows}
                 timing={values.timing}
-                pointsByPart={values.pointsByPart}
-                subjects={reference.subjects}
+                showPoints={showPoints}
+                showPercents={showPercents}
+                percentExamHeader={selection.scope === "PART" ? tOverview("col.percentExamCustom") : undefined}
+                showPartPercent={showPartPercent}
+                showCommands={selection.kind === "VSAT"}
+                onCellChange={onCellChange}
+                issues={cellIssues}
                 subjectName={subjectName}
-                errorFor={errorFor}
-                onMove={movePart}
-                onRemove={removePart}
-                onAdd={addPart}
-                onSectionsChange={setSections}
+                rowLabel={rowLabel}
+                sharedDuration={{
+                  value: sharedText,
+                  error: formState.errors.sharedDuration ? durationError : undefined,
+                  hint: templatesStatus === "ready" ? (durationHint ?? undefined) : undefined,
+                  onChange: (text) => {
+                    setSharedText(text);
+                    setValue("sharedDuration", parseNumber(text), { shouldDirty: true, shouldValidate: formState.isSubmitted });
+                  },
+                }}
+                maxScore={
+                  showPoints
+                    ? undefined
+                    : {
+                        value: maxScoreText,
+                        error: formState.errors.maxScore?.message,
+                        onChange: (text) => {
+                          setMaxScoreText(text);
+                          setValue("maxScore", text.trim() === "" ? null : parseNumber(text), {
+                            shouldDirty: true,
+                            shouldValidate: formState.isSubmitted,
+                          });
+                        },
+                      }
+                }
               />
-            </div>
+            )}
           </FormSection>
 
-          {choiceParts.map(({ part, index }, choiceIndex) => {
-            const common = part.sections.reduce((total, section) => total + Math.max(0, section.questionCount), 0);
-            return (
-              <FormSection
-                key={part.key}
-                step={4 + choiceIndex}
-                title={t("sections.choice", { order: index + 1 })}
-                description={
-                  common > 0
-                    ? t("sections.choiceCommonDescription", {
-                        common,
-                        option: Math.max(0, part.questionCount - common),
-                        total: Math.max(0, part.questionCount),
-                      })
-                    : t("sections.choiceDescription", { count: Math.max(0, part.questionCount) })
-                }
-              >
-                <CreateExamChoiceEditor
-                  control={control}
-                  part={part}
-                  partIndex={index}
-                  kindLabel={kindLabel(values.kind)}
-                  combinations={kindCombinations}
-                  subjectName={subjectName}
-                  errorFor={errorFor}
-                  onCombinationsChange={(next) => setCombinations(index, next)}
-                  onSectionsChange={(next) => setSections(index, next)}
-                  onBranchesChange={(next) => setBranches(index, next)}
-                  onAnnounce={setLiveMessage}
-                />
-              </FormSection>
-            );
-          })}
-
           {submitError && (
-            <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-body text-danger">
+            <p role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-danger">
               {submitError}
-              {partiallyCreated && (
-                <>
-                  {" "}
-                  <Link href={examTabHref(partiallyCreated.id, "structure")} className="font-semibold underline">
-                    {t("errors.openCreated", { code: partiallyCreated.code })}
-                  </Link>
-                </>
-              )}
             </p>
           )}
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button asChild variant="secondary">
-              <Link href={EXAMS_HREF}>{t("cancel")}</Link>
-            </Button>
-            <Button type="submit" loading={createExam.isPending}>
-              {t("submit")}
-            </Button>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            {cancelButton}
+            {submitButton}
           </div>
         </form>
 
         <CreateExamSummaryPanel
-          summary={summary}
+          data={{
+            kindLabel: kindLabel(selection.kind),
+            scopeLabel: selectionLabel(selection),
+            totalQuestions: totals.questions,
+            totalMinutes: totals.durationMinutes,
+            totalPoints: showPoints ? totals.maxPoints : values.maxScore,
+            templateName: templateName(template),
+          }}
           timing={values.timing}
-          maxScore={values.maxScore}
-          pathText={pathText}
           issues={issues}
-          actions={
-            <>
-              {submitButton}
-              {cancelButton}
-            </>
-          }
         />
       </div>
 

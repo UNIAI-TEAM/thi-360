@@ -1,40 +1,65 @@
 "use client";
 
-import { FormField, notify, Select } from "@thi360/ui";
+import { FormField, notify, Select, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { matchingTemplates } from "../create-exam-schema";
 import { useApplyExamTemplate } from "../queries";
-import type { ExamDetail, ExamPart, ExamTemplate } from "../types";
+import { ExamsApiError } from "../review-api";
+import type { ExamDetail, ExamPart, ExamTemplate, StructureOverviewPolicy } from "../types";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
+import { StructureOverviewConfirmDialog } from "./structure-overview-confirm-dialog";
 
 export interface StructureVersionPickerProps {
   exam: ExamDetail;
   templates: readonly ExamTemplate[];
   /** Bản nháp đang có thay đổi chưa lưu: sẽ mất khi nạp lại. */
   dirty: boolean;
+  /** Các phần đang có trên màn (kể cả thay đổi chưa lưu): cột "trước" của danh sách nạp lại và cột "Đang có" của bước 2. */
+  currentParts: readonly ExamPart[];
   /** Cấu trúc mới sau khi nạp (thay bản nháp của màn). */
   onApplied: (parts: ExamPart[]) => void;
   onAnnounce: (message: string) => void;
 }
 
-function rowsOf(template: ExamTemplate): ReloadPartRow[] {
-  return template.parts.map((part) => ({
-    name: part.name,
-    questionCount: part.questionCount,
-    durationMinutes: part.durationMinutes,
-    shared: template.timing === "SHARED",
-  }));
+/** Các phần sẽ nạp, kèm phần tương ứng (cùng vị trí) của cấu trúc hiện tại; chỉ dùng số mà máy chủ và màn đã có. */
+function rowsOf(template: ExamTemplate, currentParts: readonly ExamPart[]): ReloadPartRow[] {
+  return template.parts.map((part, index) => {
+    const before = currentParts[index];
+    return {
+      name: part.name,
+      questionCount: part.questionCount,
+      durationMinutes: part.durationMinutes,
+      shared: template.timing === "SHARED",
+      before: before
+        ? {
+            name: before.name,
+            questionCount: before.questionCount,
+            durationMinutes: before.durationMinutes,
+            shared: before.durationMinutes === null,
+          }
+        : null,
+    };
+  });
+}
+
+/** Tên phiên bản hiện trong ô chọn: nhãn của máy chủ (`label`), mẫu cũ chưa có nhãn dùng tên dựng theo kỳ thi và năm. */
+function versionLabel(template: ExamTemplate): string {
+  return template.label?.trim() || template.name;
 }
 
 /**
- * Phiên bản năm của cấu trúc (PBI-04 mục 5.1): các mẫu khớp kỳ thi, phạm vi, phần hoặc môn của bài. Đổi phiên bản thì
- * hộp thoại liệt kê các phần sẽ nạp lại và chỉ thay cấu trúc sau khi quản trị viên xác nhận (mục 5.3).
+ * Phiên bản cấu trúc của bài (spec 15.2 vùng (a), 5.4, K8; bản vẽ `BaiThiBuoc2`, `DoiPhienBan2B`): các mẫu khớp kỳ thi,
+ * phạm vi, phần hoặc môn, kèm nhãn và mô tả của máy chủ, và "Nếu chọn …" cho từng phiên bản khác; ẩn khi chỉ có một phiên
+ * bản. Đổi phiên bản qua hai bước: (1) hộp thoại liệt kê từng phần trước → sau, (2) nếu máy chủ trả 409
+ * `EXAM_OVERVIEW_CONFIRM` (tổng quan đã sửa tay khác mẫu mới) thì so sánh số và hỏi giữ số đã sửa hay lấy số của mẫu, rồi
+ * gửi lại kèm `overviewPolicy`. Hủy ở bước nào thì cấu trúc giữ nguyên.
  */
-export function StructureVersionPicker({ exam, templates, dirty, onApplied, onAnnounce }: StructureVersionPickerProps) {
+export function StructureVersionPicker({ exam, templates, dirty, currentParts, onApplied, onAnnounce }: StructureVersionPickerProps) {
   const t = useTranslations("exams.structure.version");
   const apply = useApplyExamTemplate(exam.id);
   const [pending, setPending] = useState<ExamTemplate | null>(null);
+  const [askOverview, setAskOverview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const available = matchingTemplates(templates, {
@@ -43,64 +68,110 @@ export function StructureVersionPicker({ exam, templates, dirty, onApplied, onAn
     partCode: exam.partCode ?? "",
     subjectCode: exam.subjectCode ?? "",
   });
-  if (available.length === 0) return null;
+  // Chỉ có một phiên bản thì không có gì để chọn: ẩn ô (spec 15.2).
+  if (available.length < 2) return null;
 
   const current = available.find((template) => template.code === exam.templateCode);
+  // "Nếu chọn …": phiên bản khác kèm tóm tắt của máy chủ; phiên bản chưa có tóm tắt thì không hiện (không tự dựng).
+  const previews = available.filter((template) => template.code !== exam.templateCode && template.summary?.trim());
   const close = () => {
     setPending(null);
+    setAskOverview(false);
     setError(null);
   };
 
+  const submit = (template: ExamTemplate, overviewPolicy?: StructureOverviewPolicy) => {
+    setError(null);
+    apply.mutate(
+      {
+        templateCode: template.code,
+        confirmReplace: true,
+        overviewPolicy: overviewPolicy ?? null,
+        expectedRevision: exam.revision,
+      },
+      {
+        onSuccess: (updated) => {
+          const message = t("reloaded", { name: versionLabel(template) });
+          notify.success(message);
+          onAnnounce(message);
+          onApplied(updated.parts);
+          close();
+        },
+        onError: (failure) => {
+          if (failure instanceof ExamsApiError && failure.status === 409 && failure.code === "EXAM_OVERVIEW_CONFIRM") {
+            setAskOverview(true);
+            return;
+          }
+          setAskOverview(false);
+          setError(t("reloadError"));
+        },
+      },
+    );
+  };
+
   return (
-    <div className="flex flex-col gap-1" data-testid="structure-version">
-      <FormField
-        label={t("label")}
-        hint={available.length > 1 ? t("hint", { count: available.length }) : t("hintSingle")}
-        className="max-w-xl"
-      >
-        {(controlProps) => (
-          <Select
-            {...controlProps}
-            value={current?.code}
-            placeholder={t("placeholder")}
-            disabled={available.length < 2}
-            onValueChange={(code) => {
-              const next = available.find((template) => template.code === code);
-              if (next && next.code !== exam.templateCode) setPending(next);
-            }}
-            options={available.map((template) => ({ value: template.code, label: template.name }))}
-          />
-        )}
-      </FormField>
+    <div className="flex flex-col gap-3" data-testid="structure-version">
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-[1_1_21rem] flex-col gap-1">
+          <FormField label={t("label")} hint={t("hint", { count: available.length })} className="max-w-xl">
+            {(controlProps) => (
+              <Select
+                {...controlProps}
+                value={current?.code}
+                placeholder={t("placeholder")}
+                onValueChange={(code) => {
+                  const next = available.find((template) => template.code === code);
+                  if (next && next.code !== exam.templateCode) setPending(next);
+                }}
+                options={available.map((template) => ({ value: template.code, label: versionLabel(template) }))}
+              />
+            )}
+          </FormField>
+          {current && (current.summary || current.expertNote) && (
+            <div className="flex flex-wrap items-center gap-2 text-caption text-text-muted" data-testid="structure-version-summary">
+              {current.summary && <span>{current.summary}</span>}
+              {current.expertNote && <StatusChip tone="warning">{t("expertPending")}</StatusChip>}
+            </div>
+          )}
+        </div>
+        {previews.map((template) => (
+          <div key={template.code} className="flex min-w-0 flex-[1_1_18rem] flex-col gap-1" data-testid="structure-version-preview">
+            <span className="text-caption text-text-muted">{t("previewTitle", { name: versionLabel(template) })}</span>
+            <span className="text-body text-text-secondary">{template.summary}</span>
+          </div>
+        ))}
+      </div>
       <ReloadStructureDialog
-        open={pending !== null}
+        open={pending !== null && !askOverview}
         onOpenChange={(open) => {
           if (!open) close();
         }}
-        title={t("reloadTitle", { name: pending?.name ?? "" })}
-        description={dirty ? t("reloadDescriptionDirty") : t("reloadDescription")}
-        parts={pending ? rowsOf(pending) : []}
+        step={t("step", { step: 1 })}
+        title={t("reloadTitle", { name: pending ? versionLabel(pending) : "" })}
+        description={t("reloadDescription")}
+        parts={pending ? rowsOf(pending, currentParts) : []}
+        note={dirty ? t("reloadNoteDirty") : t("reloadNote")}
         confirmLabel={t("reloadConfirm")}
+        cancelLabel={t("reloadCancel")}
         loading={apply.isPending}
         error={error}
         onConfirm={() => {
-          if (!pending) return;
-          setError(null);
-          apply.mutate(
-            { templateCode: pending.code, confirmReplace: true, expectedRevision: exam.revision },
-            {
-              onSuccess: (updated) => {
-                const message = t("reloaded", { name: pending.name });
-                notify.success(message);
-                onAnnounce(message);
-                onApplied(updated.parts);
-                close();
-              },
-              onError: () => setError(t("reloadError")),
-            },
-          );
+          if (pending) submit(pending);
         }}
       />
+      {pending !== null && askOverview && (
+        <StructureOverviewConfirmDialog
+          open
+          exam={exam}
+          currentTemplate={current}
+          template={pending}
+          currentParts={currentParts}
+          loading={apply.isPending}
+          error={error}
+          onCancel={close}
+          onConfirm={(policy) => submit(pending, policy)}
+        />
+      )}
     </div>
   );
 }

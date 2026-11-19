@@ -52,6 +52,8 @@ public record ExamDetailResponse(
         String practiceScoring,
         @Schema(description = "Mã nguyên mẫu đã nạp; null khi cấu trúc tự dựng")
         String templateCode,
+        @Schema(description = "STANDARD | REVIEW", allowableValues = {"STANDARD", "REVIEW"})
+        String buildMode,
         @Schema(description = "Năm cấu trúc")
         Integer structureYear,
         @Schema(description = "Năm ma trận")

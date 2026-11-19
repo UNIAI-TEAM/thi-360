@@ -95,7 +95,12 @@ function comparableBody(body: QuestionDetail["body"]): unknown {
         scoreTable: body.scoreTable ?? [],
       };
     case "SHORT_ANSWER":
-      return { type: body.type, answers: body.answers, inputHint: body.inputHint?.trim() || null };
+      return {
+        type: body.type,
+        answers: body.answers,
+        inputHint: body.inputHint?.trim() || null,
+        answerFormat: body.answerFormat ?? null,
+      };
     case "CLOZE":
       return { type: body.type, passage: body.passage, blanks: body.blanks.map((blank) => [blank.answers, blank.points]) };
     case "MATCHING": {

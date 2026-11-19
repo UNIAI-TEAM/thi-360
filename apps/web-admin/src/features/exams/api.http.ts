@@ -1,3 +1,4 @@
+import type { components } from "@thi360/api-client";
 import { getContentReference } from "@/features/content/api";
 import { createBrowserApiClient } from "@/lib/api/client";
 import {
@@ -5,7 +6,11 @@ import {
   mapExamDetail,
   mapExamSummary,
   mapExamTemplate,
+  mapExamQuotas,
   mapParts,
+  mapSectionStates,
+  mapStructureSummary,
+  toApiExamQuotas,
   toApiParts,
 } from "./api-mapping";
 import { partsFromInput } from "./create-parts";
@@ -19,9 +24,9 @@ import type {
   ExamDetail,
   ExamListPage,
   ExamStructure,
+  ExamStructureSummary,
   ExamTemplate,
   ListExamsQuery,
-  SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
   UpdateExamInfoRequest,
   UpdateExamStructureRequest,
@@ -86,7 +91,35 @@ export async function getExamStructure(id: string): Promise<ExamStructure> {
     params: { path: { id } },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
-  return { examId: data.examId, revision: data.revision, parts: mapParts(data.parts) };
+  return {
+    examId: data.examId,
+    revision: data.revision,
+    parts: mapParts(data.parts),
+    combinations: (data.combinations ?? []).map((item) => ({
+      code: item.code ?? "",
+      examCode: item.examCode ?? null,
+      partId: item.partId ?? null,
+      subjectCodes: item.subjectCodes ?? [],
+      missingSubjects: item.missingSubjects ?? [],
+      nameVi: item.nameVi ?? null,
+      nameEn: item.nameEn ?? null,
+    })),
+    sectionStates: mapSectionStates(data.sectionStates),
+    examQuotas: mapExamQuotas(data.examQuotas),
+  };
+}
+
+/**
+ * Tổng hợp cấu trúc vùng (d) (spec 15.2, BE-5): cây phần → môn → nhóm, dàn phẳng theo thứ tự đó. Lỗi máy chủ ném lên
+ * để vùng (d) báo "chưa có tổng hợp" và dùng số tính trên màn hình.
+ */
+export async function getExamStructureSummary(id: string): Promise<ExamStructureSummary> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}/structure/summary", {
+    params: { path: { id } },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapStructureSummary(data);
 }
 
 export async function suggestExamCode(query: SuggestExamCodeQuery): Promise<string> {
@@ -109,7 +142,11 @@ export async function updateExamStructure(id: string, request: UpdateExamStructu
   const client = createBrowserApiClient();
   const { data, error, response } = await client.PUT("/api/v1/admin/exams/{id}/structure", {
     params: { path: { id } },
-    body: { expectedRevision: request.expectedRevision, parts: toApiParts(request.parts) },
+    body: {
+      expectedRevision: request.expectedRevision,
+      parts: toApiParts(request.parts),
+      ...(request.examQuotas ? { examQuotas: toApiExamQuotas(request.examQuotas) } : {}),
+    },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
   return mapExamDetail(data);
@@ -146,10 +183,12 @@ async function postExam(request: CreateExamRequest): Promise<ExamDetail> {
       scope: request.scope,
       partCode: request.partCode ?? undefined,
       subjectCode: request.subjectCode ?? undefined,
+      buildMode: request.buildMode ?? undefined,
       description: request.description ?? undefined,
       instructions: request.instructions ?? undefined,
       durationMinutes: request.durationMinutes ?? undefined,
       maxScore: request.maxScore ?? undefined,
+      ...(request.overview?.length ? { overview: request.overview } : {}),
     },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
@@ -188,6 +227,7 @@ export async function applyExamTemplate(id: string, request: ApplyExamTemplateRe
     body: {
       templateCode: request.templateCode,
       confirmReplace: request.confirmReplace,
+      overviewPolicy: request.overviewPolicy ?? undefined,
       expectedRevision: request.expectedRevision,
     },
   });
@@ -205,23 +245,48 @@ export async function duplicateExam(id: string, request: DuplicateExamRequest): 
   return mapExamDetail(data);
 }
 
-function toCountBody(query: AvailableQuestionsQuery) {
+type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery"];
+
+/**
+ * Bộ lọc đếm của một dòng: bộ lọc nhóm kèm điều kiện audio của phần (H38, R-130). Kiểu của trường `audioRequirement`
+ * lấy từ hợp đồng sinh ra (BE-17), không viết tay.
+ */
+export type AudioCountQuery = AvailableQuestionsQuery & Pick<ApiAvailableQuestionsQuery, "audioRequirement">;
+
+/** Đếm cả môn: mỗi nhóm kèm điều kiện audio của phần chứa nó. */
+export interface AudioSubjectCountQuery {
+  subjectCode: string;
+  groups: AudioCountQuery[];
+}
+
+/**
+ * Thân `POST .../available-questions/count*`: gửi mọi điều kiện của khối mà hợp đồng nhận (hình dạng câu, định dạng
+ * đáp án, điều kiện theo vị trí câu con...). `slots` của khối không có trường trong `AvailableQuestionsQuery` nên không
+ * gửi; trường không đặt bị bỏ khỏi thân thay vì gửi `null`/rỗng.
+ */
+function toCountBody(query: AudioCountQuery): ApiAvailableQuestionsQuery {
   return {
     subjectCode: query.subjectCode,
     questionType: query.questionType ?? undefined,
     answerTypes: query.answerTypes.length ? query.answerTypes : undefined,
     childAnswerType: query.childAnswerType ?? undefined,
     knowledgeScope: query.knowledgeScope
-      ? { nodeIds: query.knowledgeScope.nodeIds, match: query.knowledgeScope.match, competencyCodes: query.knowledgeScope.competencyCodes }
+      ? { nodeIds: query.knowledgeScope.nodeIds, competencyCodes: query.knowledgeScope.competencyCodes }
       : undefined,
-    taskTypeCode: query.taskTypeCode ?? undefined,
     tagCodes: query.tagCodes?.length ? query.tagCodes : undefined,
     competencyCodes: query.competencyCodes?.length ? query.competencyCodes : undefined,
     requiredPointsPerQuestion: query.requiredPointsPerQuestion ?? undefined,
+    itemShape: query.itemShape ?? undefined,
+    answerFormats: query.answerFormats?.length
+      ? (query.answerFormats as ApiAvailableQuestionsQuery["answerFormats"])
+      : undefined,
+    childConditions: query.childConditions?.length ? query.childConditions : undefined,
+    // `ANY` và bỏ trống: không lọc audio, không gửi trường.
+    audioRequirement: query.audioRequirement === "REQUIRED" || query.audioRequirement === "FORBIDDEN" ? query.audioRequirement : undefined,
   };
 }
 
-export async function countAvailableQuestions(query: AvailableQuestionsQuery): Promise<AvailableQuestionCounts> {
+export async function countAvailableQuestions(query: AudioCountQuery): Promise<AvailableQuestionCounts> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count", {
     body: toCountBody(query),
@@ -231,7 +296,7 @@ export async function countAvailableQuestions(query: AvailableQuestionsQuery): P
 }
 
 export async function countSubjectAvailableQuestions(
-  query: SubjectAvailableQuestionsQuery,
+  query: AudioSubjectCountQuery,
 ): Promise<AvailableQuestionCounts> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count-subject", {

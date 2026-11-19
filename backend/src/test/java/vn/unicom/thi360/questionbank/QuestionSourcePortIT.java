@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageKind;
@@ -36,8 +37,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     @Autowired PlatformTransactionManager transactionManager;
 
     private QuestionSourcePort.Filter filter(UUID subject, List<List<UUID>> scope) {
-        return new QuestionSourcePort.Filter(subject, scope, QuestionSourcePort.Match.ANY,
-                List.of(QuestionType.SINGLE_CHOICE), null, null, null, List.of(), List.of(), null);
+        return new QuestionSourcePort.Filter(subject, scope,
+                List.of(QuestionType.SINGLE_CHOICE), null, null, null, List.of(), List.of(), null, null, null, null);
     }
 
     private UUID question(UUID subject, String status, int currentVersion, int workingVersion) {
@@ -116,16 +117,57 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void childRangesAreBoundedAtBothCountEndpointsAndSpi() throws Exception {
+        for (int[] range : List.of(new int[]{0, 1}, new int[]{2, 1}, new int[]{1, 21}, new int[]{1, Integer.MAX_VALUE})) {
+            assertThatThrownBy(() -> new QuestionSourcePort.ChildCondition(range[0], range[1], List.of()))
+                    .isInstanceOf(IllegalArgumentException.class);
+            String query = "{\"subjectCode\":\"TOAN\",\"questionType\":\"QUESTION_SET\","
+                    + "\"childConditions\":[{\"from\":" + range[0] + ",\"to\":" + range[1] + "}]}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").exists());
+            }
+        }
+    }
+
+    @Test
+    void countEndpointsRejectNullFilterMembersButAllowOptionalLists() throws Exception {
+        for (String filters : List.of("\"childConditions\":[null]", "\"answerFormats\":[null]",
+                "\"childConditions\":[{\"from\":1,\"to\":1,\"nodeIds\":[null]}]",
+                "\"knowledgeScope\":{\"nodeIds\":[null]}")) {
+            String query = "{\"subjectCode\":\"TOAN\"," + filters + "}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").exists());
+            }
+        }
+        for (String filters : List.of("", ",\"childConditions\":[],\"answerFormats\":[]")) {
+            String query = "{\"subjectCode\":\"TOAN\"" + filters + "}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isOk());
+            }
+        }
+    }
+
+    @Test
     void candidatesExposeServingScoringForStandaloneAndSetChildren() {
         UUID subject = UUID.randomUUID();
         UUID root = question(subject, "READY", 1, 2);
         jdbc.update("UPDATE questionbank.question SET type = 'TRUE_FALSE' WHERE id = ?", root);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
-                "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.1,0.25,0.5,1]}}", root);
+                "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.1,0.25,0.5,1],"
+                        + "\"statements\":[{\"id\":\"s1\"},{\"id\":\"s2\"},{\"id\":\"s3\"},{\"id\":\"s4\"}]}}", root);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 2",
                 "{\"body\":{\"scoringMethod\":\"PER_STATEMENT\",\"scoreTable\":[9,9,9,9]}}", root);
-        var trueFalse = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.TRUE_FALSE, null, null, List.of(), List.of(), null);
+        var trueFalse = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.TRUE_FALSE, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.findCandidates(trueFalse, 10)).singleElement().satisfies(candidate -> {
             assertThat(candidate.code()).isEqualTo("TEST-" + root);
             assertThat(candidate.units().getFirst().code()).isEqualTo("TEST-" + root);
@@ -134,7 +176,10 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                     new BigDecimal("0.1"), new BigDecimal("0.25"), new BigDecimal("0.5"), BigDecimal.ONE);
             assertThat(candidate.multipleChoiceRule()).isNull();
             assertThat(candidate.units().getFirst().scoring().trueFalseMethod()).isEqualTo("COUNT_TABLE");
+            assertThat(candidate.units().getFirst().statementCount()).isEqualTo(4);
+            assertThat(candidate.units().getFirst().commandCount()).isEqualTo(4);
         });
+        assertThat(source.count(trueFalse).commandCount()).isEqualTo(4);
 
         UUID multiple = question(subject, "READY", 1, 2);
         jdbc.update("UPDATE questionbank.question SET type = 'MULTIPLE_CHOICE' WHERE id = ?", multiple);
@@ -142,8 +187,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                 "{\"body\":{\"scoringRule\":\"PARTIAL\"}}", multiple);
         jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 2",
                 "{\"body\":{\"scoringRule\":\"ALL_OR_NOTHING\"}}", multiple);
-        var multipleChoice = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.MULTIPLE_CHOICE, null, null, List.of(), List.of(), null);
+        var multipleChoice = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.MULTIPLE_CHOICE, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.findCandidates(multipleChoice, 10)).singleElement().satisfies(candidate -> {
             assertThat(candidate.multipleChoiceRule()).isEqualTo("PARTIAL");
             assertThat(candidate.units().getFirst().scoring().multipleChoiceRule()).isEqualTo("PARTIAL");
@@ -160,8 +205,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                 child, "{\"body\":{\"scoringMethod\":\"COUNT_TABLE\",\"scoreTable\":[0.25,1]}}");
         jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,2,?::jsonb)",
                 child, "{\"body\":{\"scoringMethod\":\"PER_STATEMENT\",\"scoreTable\":[9,9]}}");
-        var sets = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null);
+        var sets = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.findCandidates(sets, 10)).singleElement().satisfies(candidate -> {
             assertThat(candidate.code()).isEqualTo("SET-" + set);
             assertThat(candidate.trueFalseMethod()).isNull();
@@ -175,6 +220,35 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void everyChildInScopeFiltersWholeSetsForCandidatesAndCounts() {
+        UUID subject = UUID.randomUUID();
+        UUID scope = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        UUID root = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?, 'QUESTION_SET','READY',?,1)", root, "SET-" + root, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,'{}'::jsonb)", root);
+        for (int i = 0; i < 3; i++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?, 'SINGLE_CHOICE','READY',?,?,1)", child, "C-" + child, root, i);
+            jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, i < 2 ? scope : other);
+        }
+        var legacy = new QuestionSourcePort.Filter(subject, List.of(List.of(scope)), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null);
+        var strict = new QuestionSourcePort.Filter(subject, List.of(List.of(scope)), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null, true);
+        assertThat(source.findCandidates(legacy, 10)).extracting(QuestionSourcePort.Candidate::questionId).containsExactly(root);
+        assertThat(source.count(legacy).total()).isEqualTo(3);
+        assertThat(source.findCandidates(strict, 10)).isEmpty();
+        assertThat(source.count(strict).total()).isZero();
+        assertThat(source.matching(strict, List.of(root))).isEmpty();
+        var strictSlot = new QuestionSourcePort.Filter(subject, List.of(), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null,
+                List.of(), List.of(List.of(List.of(scope))), List.of(), null, List.of(true));
+        assertThat(source.findCandidates(strictSlot, 10)).isEmpty();
+        assertThat(source.count(strictSlot).total()).isZero();
+    }
+
+    @Test
     void countsCompleteSetsAndClozeUnits() {
         UUID subject = UUID.randomUUID();
         UUID set = UUID.randomUUID();
@@ -184,8 +258,8 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
         UUID second = UUID.randomUUID();
         jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?, 'SINGLE_CHOICE','READY',?,0,1)", first, "C-" + first, set);
         jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) values (?,?, 'SHORT_ANSWER','READY',?,1,2)", second, "C-" + second, set);
-        var setFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null);
+        var setFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.count(setFilter).total()).isEqualTo(2);
         assertThat(source.count(setFilter).byAnswerType()).containsExactlyInAnyOrder(
                 new QuestionSourcePort.AnswerTypeCount(QuestionType.SINGLE_CHOICE, 1),
@@ -200,25 +274,271 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
                     assertThat(v.childCodes()).containsEntry(first, "C-" + first)
                             .containsEntry(second, "C-" + second);
                 });
-        var pointsFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), BigDecimal.ONE);
+        var pointsFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), BigDecimal.ONE, null, null, null);
         assertThat(source.count(pointsFilter).total()).isZero();
 
         UUID cloze = UUID.randomUUID();
         jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no) values (?,?, 'CLOZE','READY',?,1)", cloze, "CLOZE-" + cloze, subject);
         jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
                 cloze, "{\"body\":{\"blanks\":[{\"id\":\"a\",\"points\":1},{\"id\":\"b\",\"points\":2}]}}");
-        var clozeFilter = new QuestionSourcePort.Filter(subject, null, QuestionSourcePort.Match.ANY, List.of(),
-                QuestionType.CLOZE, null, null, List.of(), List.of(), null);
+        var clozeFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.CLOZE, null, null, List.of(), List.of(), null, null, null, null);
         assertThat(source.count(clozeFilter).total()).isEqualTo(2);
         assertThat(source.findCandidates(clozeFilter, 1)).singleElement().satisfies(c ->
                 assertThat(c.units()).extracting(QuestionSourcePort.Unit::reference).containsExactly("a", "b"));
     }
 
     @Test
+    void shapeAndAnswerFormatFiltersExposeCommandMetadata() {
+        UUID subject = UUID.randomUUID();
+        UUID matching = question(subject, "READY", 1, 1);
+        jdbc.update("UPDATE questionbank.question SET type = 'MATCHING' WHERE id = ?", matching);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"left\":[{},{},{},{}],\"right\":[{},{},{},{},{},{}]}}", matching);
+        UUID wrongShape = question(subject, "READY", 1, 1);
+        jdbc.update("UPDATE questionbank.question SET type = 'MATCHING' WHERE id = ?", wrongShape);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"left\":[{},{},{}],\"right\":[{},{},{},{},{}]}}", wrongShape);
+        var shapeFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.MATCHING, null, null, List.of(), List.of(), null,
+                new QuestionSourcePort.ItemShape(null, 4, 6), null, null);
+        assertThat(source.findCandidates(shapeFilter, 10)).singleElement().satisfies(candidate -> {
+            assertThat(candidate.questionId()).isEqualTo(matching);
+            assertThat(candidate.units()).singleElement().satisfies(unit -> {
+                assertThat(unit.leftCount()).isEqualTo(4);
+                assertThat(unit.rightCount()).isEqualTo(6);
+                assertThat(unit.commandCount()).isEqualTo(4);
+            });
+        });
+
+        UUID integerAnswer = question(subject, "READY", 1, 1);
+        jdbc.update("UPDATE questionbank.question SET type = 'SHORT_ANSWER' WHERE id = ?", integerAnswer);
+        jdbc.update("UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = 1",
+                "{\"body\":{\"answers\":[\"1\"],\"answerFormat\":\"INTEGER\"}}", integerAnswer);
+        var answerFilter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
+                List.of(AnswerFormat.INTEGER), null);
+        assertThat(source.findCandidates(answerFilter, 10)).singleElement()
+                .satisfies(candidate -> assertThat(candidate.questionId()).isEqualTo(integerAnswer));
+    }
+
+    @Test
+    void answerFormatFiltersExcludeOtherAndMissingFormats() {
+        UUID subject = UUID.randomUUID();
+        UUID integer = question(subject, "READY", 1, 1);
+        UUID decimal = question(subject, "READY", 1, 1);
+        UUID unset = question(subject, "READY", 1, 1);
+        for (UUID id : List.of(integer, decimal, unset)) {
+            jdbc.update("update questionbank.question set type='SHORT_ANSWER' where id=?", id);
+        }
+        jdbc.update("update questionbank.question_version set snapshot=?::jsonb where question_id=?",
+                "{\"body\":{\"answerFormat\":\"INTEGER\"}}", integer);
+        jdbc.update("update questionbank.question_version set snapshot=?::jsonb where question_id=?",
+                "{\"body\":{\"answerFormat\":\"DECIMAL\"}}", decimal);
+        var one = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
+                List.of(AnswerFormat.INTEGER), null);
+        var two = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.SHORT_ANSWER, null, null, List.of(), List.of(), null, null,
+                List.of(AnswerFormat.INTEGER, AnswerFormat.DECIMAL), null);
+        assertThat(source.findCandidates(one, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(integer);
+        assertThat(source.matching(one, List.of(integer, decimal, unset))).containsExactly(integer);
+        assertThat(source.count(one).total()).isEqualTo(1);
+        assertThat(source.findCandidates(two, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactlyInAnyOrder(integer, decimal);
+        assertThat(source.matching(two, List.of(integer, decimal, unset))).containsExactlyInAnyOrder(integer, decimal);
+        assertThat(source.count(two).total()).isEqualTo(2);
+        assertThat(source.countUnion(List.of(one, two)).total()).isEqualTo(2);
+    }
+
+    private UUID setWithChildren(UUID subject, String type, String firstBody, String secondBody, UUID firstNode, UUID secondNode) {
+        UUID set = question(subject, "READY", 1, 1);
+        jdbc.update("update questionbank.question set type='QUESTION_SET' where id=?", set);
+        for (int position = 0; position < 2; position++) {
+            UUID child = UUID.randomUUID();
+            jdbc.update("insert into questionbank.question(id,code,type,status,parent_id,position,points) "
+                    + "values (?,?,?,'READY',?,?,1)", child, "C-" + child, type, set, position);
+            jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,?::jsonb)",
+                    child, position == 0 ? firstBody : secondBody);
+            UUID node = position == 0 ? firstNode : secondNode;
+            if (node != null) jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", child, node);
+        }
+        return set;
+    }
+
+    @Test
+    void setChildrenShapeFormatAndInclusivePositionsControlEligibility() {
+        UUID subject = UUID.randomUUID();
+        UUID nodeA = UUID.randomUUID();
+        UUID nodeB = UUID.randomUUID();
+        String fourSix = "{\"body\":{\"left\":[{},{},{},{}],\"right\":[{},{},{},{},{},{}]}}";
+        String threeFive = "{\"body\":{\"left\":[{},{},{}],\"right\":[{},{},{},{},{}]}}";
+        UUID shapeMatch = setWithChildren(subject, "MATCHING", fourSix, fourSix, nodeA, nodeB);
+        UUID shapeWrong = setWithChildren(subject, "MATCHING", fourSix, threeFive, nodeB, nodeA);
+        var shape = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null,
+                new QuestionSourcePort.ItemShape(null, 4, 6), null, null);
+        assertThat(source.findCandidates(shape, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(shapeMatch);
+        assertThat(source.matching(shape, List.of(shapeMatch, shapeWrong))).containsExactly(shapeMatch);
+        assertThat(source.count(shape).total()).isEqualTo(2);
+
+        String integer = "{\"body\":{\"answerFormat\":\"INTEGER\"}}";
+        String decimal = "{\"body\":{\"answerFormat\":\"DECIMAL\"}}";
+        String unset = "{\"body\":{}}";
+        UUID formatMatch = setWithChildren(subject, "SHORT_ANSWER", integer, integer, nodeA, nodeB);
+        UUID formatWrong = setWithChildren(subject, "SHORT_ANSWER", integer, decimal, nodeA, nodeA);
+        UUID formatMissing = setWithChildren(subject, "SHORT_ANSWER", integer, unset, nodeB, nodeB);
+        var format = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, List.of(AnswerFormat.INTEGER), null);
+        assertThat(source.findCandidates(format, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(formatMatch);
+        assertThat(source.matching(format, List.of(formatMatch, formatWrong, formatMissing))).containsExactly(formatMatch);
+        assertThat(source.count(format).total()).isEqualTo(2);
+
+        var both = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, List.of(AnswerFormat.INTEGER),
+                List.of(new QuestionSourcePort.ChildCondition(1, 1, List.of(nodeA)),
+                        new QuestionSourcePort.ChildCondition(2, 2, List.of(nodeB))));
+        var range = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null,
+                List.of(new QuestionSourcePort.ChildCondition(1, 2, List.of(nodeA))));
+        var missing = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of(), List.of(), null, null, null,
+                List.of(new QuestionSourcePort.ChildCondition(1, 3, List.of(nodeA, nodeB))));
+        assertThat(source.findCandidates(both, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(formatMatch);
+        assertThat(source.count(both).total()).isEqualTo(2);
+        assertThat(source.findCandidates(range, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(formatWrong);
+        assertThat(source.matching(range, List.of(shapeMatch, shapeWrong, formatMatch, formatWrong, formatMissing)))
+                .containsExactly(formatWrong);
+        assertThat(source.countUnion(List.of(both, range)).total()).isEqualTo(4);
+        assertThat(source.findCandidates(missing, 10)).isEmpty();
+        assertThat(source.count(missing).total()).isZero();
+    }
+
+    @Test
+    void tagsUseOneOfSemantics() {
+        UUID subject = UUID.randomUUID();
+        UUID tagOne = UUID.randomUUID();
+        UUID tagTwo = UUID.randomUUID();
+        int nextValue = jdbc.queryForObject(
+                "select coalesce(max(value), 0) + 1 from catalog.catalog_item where group_id = ?",
+                Integer.class, QuestionTestSupport.QUESTION_TAG_GROUP_ID);
+        jdbc.update("""
+                insert into catalog.catalog_item(id, group_id, code, code_normalized, value,
+                    name_vi, name_en, display_order, status, is_system, depth, path)
+                values (?, ?, ?, ?, ?, ?, ?, 0, 1, false, 1, ?)
+                """, tagOne, QuestionTestSupport.QUESTION_TAG_GROUP_ID, "ONE-OF-A", "one-of-a",
+                nextValue, "One of A", "One of A", "/" + tagOne + "/");
+        jdbc.update("""
+                insert into catalog.catalog_item(id, group_id, code, code_normalized, value,
+                    name_vi, name_en, display_order, status, is_system, depth, path)
+                values (?, ?, ?, ?, ?, ?, ?, 1, 1, false, 1, ?)
+                """, tagTwo, QuestionTestSupport.QUESTION_TAG_GROUP_ID, "ONE-OF-B", "one-of-b",
+                nextValue + 1, "One of B", "One of B", "/" + tagTwo + "/");
+        UUID first = question(subject, "READY", 1, 1);
+        UUID second = question(subject, "READY", 1, 1);
+        UUID none = question(subject, "READY", 1, 1);
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", first, tagOne);
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", second, tagTwo);
+        var filter = new QuestionSourcePort.Filter(subject, null, List.of(),
+                QuestionType.SINGLE_CHOICE, null, null, List.of("ONE-OF-A", "ONE-OF-B"), List.of(), null, null, null, null);
+        assertThat(source.count(filter).total()).isEqualTo(2);
+        assertThat(source.findCandidates(filter, 10)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactlyInAnyOrder(first, second);
+        assertThat(source.matching(filter, List.of(first, second, none))).containsExactlyInAnyOrder(first, second);
+
+        UUID parentNode = QuestionTestSupport.KNOWLEDGE_CHAPTER_ID;
+        UUID slotNode = QuestionTestSupport.KNOWLEDGE_LEAF_ID;
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?)", first, tagTwo);
+        jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", first, parentNode);
+        jdbc.update("insert into questionbank.question_knowledge values (?,?,false)", first, slotNode);
+        var both = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
+                QuestionType.SINGLE_CHOICE, null, null, List.of("ONE-OF-A"), List.of(), null, null, null, null,
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))), List.of());
+        assertThat(source.findCandidates(both, 1)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(first);
+        assertThat(source.count(both).total()).isEqualTo(1);
+
+        UUID set = setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", parentNode, slotNode);
+        jdbc.update("insert into questionbank.question_tag(question_id, tag_item_id) values (?, ?), (?, ?)",
+                set, tagOne, set, tagTwo);
+        var bothSet = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
+                QuestionType.QUESTION_SET, null, null, List.of("ONE-OF-A"), List.of(), null, null, null, null,
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))), List.of());
+        assertThat(source.findCandidates(bothSet, 1)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(set);
+        assertThat(source.count(bothSet).total()).isEqualTo(2);
+        assertConjunctDecoys(false, tagOne, tagTwo, parentNode, slotNode);
+        assertConjunctDecoys(true, tagOne, tagTwo, parentNode, slotNode);
+    }
+
+    private void assertConjunctDecoys(boolean sets, UUID parentTag, UUID slotTag, UUID parentNode, UUID slotNode) {
+        UUID subject = UUID.randomUUID();
+        var roots = new java.util.ArrayList<UUID>();
+        for (int i = 0; i < 5; i++) {
+            roots.add(sets ? setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", null, null)
+                    : question(subject, "READY", 1, 1));
+        }
+        roots.sort(java.util.Comparator.comparing(UUID::toString));
+        for (int i = 0; i < roots.size(); i++) {
+            UUID root = roots.get(i);
+            // Parent-only and slot-only decoys for each dimension, with the other dimension passing.
+            if (i != 1) jdbc.update("insert into questionbank.question_tag values (?, ?)", root, parentTag);
+            if (i != 0) jdbc.update("insert into questionbank.question_tag values (?, ?)", root, slotTag);
+            if (i != 3) jdbc.update("insert into questionbank.question_knowledge values (?,?,true)", root, parentNode);
+            if (i != 2) jdbc.update("insert into questionbank.question_knowledge values (?,?,false)", root, slotNode);
+        }
+        var filter = new QuestionSourcePort.Filter(subject, List.of(List.of(parentNode)), List.of(),
+                sets ? QuestionType.QUESTION_SET : QuestionType.SINGLE_CHOICE, null, null,
+                List.of("ONE-OF-A"), List.of(), null, null, null, null,
+                List.of(List.of("ONE-OF-B")), List.of(List.of(List.of(slotNode))), List.of());
+        assertThat(source.findCandidates(filter, 1)).extracting(QuestionSourcePort.Candidate::questionId)
+                .containsExactly(roots.get(4));
+        assertThat(source.count(filter).total()).isEqualTo(sets ? 2 : 1);
+    }
+
+    @Test
+    void slotCompetencyAndParentCompetencyBothFilterSetRoots() {
+        UUID group = UUID.fromString("00000000-0000-7000-8100-00000000000a");
+        UUID c1 = UUID.randomUUID();
+        UUID c2 = UUID.randomUUID();
+        int next = jdbc.queryForObject("select coalesce(max(value), 0) + 1 from catalog.catalog_item where group_id = ?",
+                Integer.class, group);
+        for (int i = 0; i < 2; i++) {
+            UUID id = i == 0 ? c1 : c2;
+            String code = i == 0 ? "TEST-COMP-ONE" : "TEST-COMP-TWO";
+            jdbc.update("""
+                    insert into catalog.catalog_item(id, group_id, code, code_normalized, value,
+                        name_vi, name_en, display_order, status, is_system, depth, path)
+                    values (?, ?, ?, ?, ?, ?, ?, 0, 1, false, 1, ?)
+                    """, id, group, code, code.toLowerCase(), next + i, code, code, "/" + id + "/");
+        }
+        UUID subject = UUID.randomUUID();
+        UUID one = setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", null, null);
+        UUID two = setWithChildren(subject, "SINGLE_CHOICE", "{}", "{}", null, null);
+        jdbc.update("update questionbank.question set competency_item_id=? where id=?", c1, one);
+        jdbc.update("update questionbank.question set competency_item_id=? where id=?", c2, two);
+        var slotOnly = new QuestionSourcePort.Filter(subject, null, List.of(), QuestionType.QUESTION_SET,
+                null, null, List.of(), List.of(), null, null, null, null,
+                List.of(), List.of(), List.of(List.of("TEST-COMP-ONE")));
+        assertThat(source.findCandidates(slotOnly, 10)).extracting(QuestionSourcePort.Candidate::questionId).containsExactly(one);
+        assertThat(source.count(slotOnly).total()).isEqualTo(2);
+        var both = new QuestionSourcePort.Filter(subject, null, List.of(), QuestionType.QUESTION_SET,
+                null, null, List.of(), List.of("TEST-COMP-TWO"), null, null, null, null,
+                List.of(), List.of(), List.of(List.of("TEST-COMP-ONE")));
+        assertThat(source.findCandidates(both, 10)).isEmpty();
+        assertThat(source.count(both).total()).isZero();
+    }
+
+    @Test
     void endpointExpandsDescendants() throws Exception {
         String body = "{\"subjectCode\":\"TOAN\",\"questionType\":\"SINGLE_CHOICE\",\"knowledgeScope\":{\"nodeIds\":[\""
-                + QuestionTestSupport.KNOWLEDGE_CHAPTER_ID + "\"],\"match\":\"ANY\"}}";
+                + QuestionTestSupport.KNOWLEDGE_CHAPTER_ID + "\"]}}";
         String path = "/api/v1/admin/exams/available-questions/count";
         int before = mapper.readTree(mockMvc.perform(post(path).with(asUser(Permissions.EXAM_VIEW))
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())

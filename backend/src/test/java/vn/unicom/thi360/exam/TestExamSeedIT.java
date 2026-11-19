@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,6 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.domain.QuestionBodyValidator;
+import vn.unicom.thi360.exam.application.ExamBlockRefProjector;
+import vn.unicom.thi360.exam.application.ExamCatalogUsageProvider;
+import vn.unicom.thi360.exam.application.SolverInputBuilder;
+import vn.unicom.thi360.exam.domain.ExamStructureCodec;
+import vn.unicom.thi360.exam.domain.solver.SolveOption;
+import vn.unicom.thi360.exam.domain.solver.SolvePart;
 import vn.unicom.thi360.questionbank.domain.QuestionInput;
 import vn.unicom.thi360.questionbank.domain.QuestionSearchNormalizer;
 import vn.unicom.thi360.questionbank.domain.QuestionSnapshot;
@@ -37,6 +44,31 @@ class TestExamSeedIT extends AbstractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired DataSource dataSource;
+    @Autowired SolverInputBuilder solverInputBuilder;
+    @Autowired ExamBlockRefProjector projector;
+    @Autowired ExamCatalogUsageProvider usageProvider;
+    private static final Map<String, String> OLD_PROFILE_SCOPES = Map.of(
+            "HSA", "FULL,PART",
+            "QDA", "FULL,PART",
+            "BCA", "FULL,PART",
+            "VACT", "FULL",
+            "SPT", "SUBJECT",
+            "SP2E", "SUBJECT",
+            "THPTQG", "SUBJECT",
+            "HSCA", "SUBJECT,PART",
+            "VSAT", "SUBJECT,PART");
+
+    private static final Map<String, String> EXPECTED_PROFILE_SCOPES = Map.of(
+            "HSA", "FULL,PART,SUBJECT",
+            "QDA", "FULL,PART,SUBJECT",
+            "BCA", "FULL,PART,SUBJECT",
+            "VACT", "FULL,PART,SUBJECT",
+            "SPT", "SUBJECT,PART",
+            "SP2E", "SUBJECT,PART",
+            "THPTQG", "SUBJECT,PART",
+            "HSCA", "SUBJECT,PART",
+            "VSAT", "SUBJECT,PART");
+
     @Test
     void seededHsaMathContextHasKnownChildAnswerType() throws Exception {
         String json = jdbc.queryForObject("""
@@ -60,6 +92,9 @@ class TestExamSeedIT extends AbstractIntegrationTest {
             JsonNode parts = mapper.readTree(structure);
             assertThat(parts.findValues("groupOrder")).isEmpty();
             assertThat(parts.findValues("shuffle")).isEmpty();
+            assertThat(parts.findValues("taskTypeCode")).isEmpty();
+            assertThat(parts.findValues("includeDescendants")).isEmpty();
+            assertThat(parts.findValues("match")).isEmpty();
         }
     }
 
@@ -276,21 +311,93 @@ class TestExamSeedIT extends AbstractIntegrationTest {
 
 
     @Test
+    void seededCodeSourcePartsProduceSolverPaths() {
+        for (var entry : Map.of("TEST-QDA-01", 5, "TEST-BCA-01", 4, "TEST-ERR-02", 4).entrySet()) {
+            var row = jdbc.queryForMap("""
+                    select e.kind_item_id, s.parts::text as document from exam.exam e
+                    join exam.exam_structure s on s.exam_id = e.id where e.code = ?
+                    """, entry.getKey());
+            var document = new ExamStructureCodec(mapper).read((String) row.get("document"));
+            var codePart = document.parts().get(2);
+            assertThat(codePart.codeSource().source()).as(entry.getKey()).isEqualTo("GLOBAL_LIST");
+            assertThat(codePart.options()).as(entry.getKey()).isEmpty();
+            var input = solverInputBuilder.build((UUID) row.get("kind_item_id"), document);
+            var choice = (SolvePart.Choice) input.parts().get(2);
+            assertThat(choice.options()).as(entry.getKey()).hasSize(entry.getValue());
+            // The options must be the live Global List combinations, with their subjects in list order.
+            Map<String, String> live = new LinkedHashMap<>();
+            jdbc.query("""
+                    select ci.code as combination, string_agg(sub.code, ',' order by cs.position) as subjects
+                    from catalog.combination_version cv
+                    join catalog.catalog_item ci on ci.id = cv.item_id
+                    join catalog.combination_subject cs on cs.combination_version_id = cv.id
+                    join catalog.catalog_item sub on sub.id = cs.subject_item_id
+                    where cv.is_current and cv.exam_item_id = ?
+                    group by ci.code, ci.value order by ci.value
+                    """, rs -> {
+                live.put(codePart.id() + ":" + rs.getString("combination"), rs.getString("subjects"));
+            }, row.get("kind_item_id"));
+            Map<String, String> solved = new LinkedHashMap<>();
+            for (var option : choice.options()) {
+                var sections = (SolveOption.Sections) option;
+                solved.put(sections.optionId(), sections.sections().stream()
+                        .map(section -> section.subjectCode()).collect(Collectors.joining(",")));
+            }
+            assertThat(solved).as(entry.getKey()).isEqualTo(live);
+        }
+    }
+
+    @Test
+    void vactFullChecksLogicAndReasoningTogether() throws Exception {
+        JsonNode result = check("TEST-VACT-01");
+        assertThat(result.path("status").asText()).as("V-ACT issues: %s", codes(result)).isEqualTo("VALID");
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM exam.exam_check_unit u
+                JOIN exam.exam e ON e.id = u.exam_id
+                JOIN exam.exam_structure s ON s.exam_id = e.id
+                WHERE e.code = 'TEST-VACT-01'
+                  AND u.section_ids @> ARRAY[
+                    s.parts #>> '{parts,2,sections,0,id}',
+                    s.parts #>> '{parts,2,sections,1,id}']::text[]
+                  AND cardinality(u.section_ids) = 2
+                """, Integer.class)).isEqualTo(1);
+    }
+
+    @Test
     void assumedExamsHaveTheirSpecifiedCheckResults() throws Exception {
+        // D11: THPTQG Ngữ văn is not publishable; the seeded template itself carries the flag.
         SoftAssertions softly = new SoftAssertions();
         List<String> valid = List.of("TEST-HSA-01", "TEST-HSA-02", "TEST-HSA-03", "TEST-HSA-04",
-                "TEST-QDA-01", "TEST-BCA-01", "TEST-VACT-01", "TEST-SPT-01", "TEST-SP2E-01",
-                "TEST-SP2E-02", "TEST-SP2E-03", "TEST-THPTQG-01", "TEST-THPTQG-02", "TEST-THPTQG-03");
+                "TEST-QDA-01", "TEST-VACT-01", "TEST-SPT-01", "TEST-SP2E-01", "TEST-SP2E-02",
+                "TEST-SP2E-03", "TEST-THPTQG-01", "TEST-THPTQG-03", "TEST-ERR-08");
         for (String code : valid) {
             JsonNode result = check(code);
             softly.assertThat(result.path("status").asText()).as("%s: %s", code, codes(result)).isEqualTo("VALID");
-            softly.assertThat(result.path("issueCount").asInt()).as(code).isZero();
+            Set<String> expected = Set.of("TEST-SPT-01").contains(code)
+                    ? Set.of("MANUAL_GRADING_REQUIRED") : Set.of();
+            if ("TEST-VACT-01".equals(code)) {
+                // VACT_FULL distribution tables are all REFERENCE (spec 2B 5.1): the ANH section's
+                // block matrices and the section matrices are advisory, so the solver's witness may or may
+                // not hit them. Every emitted issue must be a WARNING DISTRIBUTION_DEVIATION; none is allowed.
+                softly.assertThat(codes(result)).as(code).isSubsetOf("DISTRIBUTION_DEVIATION");
+                softly.assertThat(result.path("groups").findValues("issues").stream()
+                        .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
+                        .map(issue -> issue.path("code").asText() + "/" + issue.path("severity").asText())
+                        .collect(Collectors.toSet()))
+                        .as(code).isSubsetOf("DISTRIBUTION_DEVIATION/WARNING");
+            } else {
+                softly.assertThat(codes(result)).as(code).isEqualTo(expected);
+            }
         }
 
+        JsonNode bca = check("TEST-BCA-01");
+        softly.assertThat(bca.path("status").asText()).as("TEST-BCA-01").isEqualTo("VALID");
+        softly.assertThat(codes(bca)).as("TEST-BCA-01").isEqualTo(Set.of("MANUAL_GRADING_REQUIRED"));
+
         Map<String, Set<String>> invalid = new LinkedHashMap<>();
+        invalid.put("TEST-THPTQG-02", Set.of("TEMPLATE_NOT_PUBLISHABLE", "MANUAL_GRADING_REQUIRED"));
         invalid.put("TEST-ERR-01", Set.of("MATRIX_INCOMPLETE"));
-        // Part 2 is 65 instead of 60; the full paper is 105 instead of 100.
-        invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH"));
+        invalid.put("TEST-ERR-02", Set.of("PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH", "MANUAL_GRADING_REQUIRED"));
         invalid.put("TEST-ERR-03", Set.of("SET_SHORTAGE"));
         // 40 + 9 = 49 instead of 50; the solver also cannot satisfy the 50-unit matrix.
         invalid.put("TEST-ERR-04", Set.of("SECTION_TOTAL_MISMATCH", "PART_POINTS_MISMATCH",
@@ -298,12 +405,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         // The 35 + 14 quota totals 49 for a 50-question section.
         invalid.put("TEST-ERR-05", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
         invalid.put("TEST-ERR-06", Set.of("ANSWER_TYPE_SHORTAGE"));
-        // 6 set children + 11 fixed singles = 17 even when physics receives 16.
-        invalid.put("TEST-ERR-08", Set.of("REMAINDER_GROUP_INVALID", "CELL_SHORTAGE",
-                "PART_POINTS_MISMATCH", "POINTS_TOTAL_MISMATCH"));
-        // 12 + 4 is fixed at 16 but the choice can assign chemistry 17.
-        invalid.put("TEST-ERR-09", Set.of("SUBJECT_QUOTA_COUNT_VARIES", "CELL_SHORTAGE"));
-        // 17 + 17 + 17 = 51, not 50. Masking the invalid option also leaves the part empty.
+        invalid.put("TEST-ERR-09", Set.of("ANSWER_QUOTA_TOTAL_MISMATCH", "CELL_SHORTAGE"));
+        // FU-BE4a-1: full-count totals are interim; the invalid 17 + 17 + 17 option also leaves the part empty.
         invalid.put("TEST-ERR-10", Set.of("SUBJECT_CHOICE_COUNTS_INVALID", "PART_EMPTY",
                 "PART_POINTS_MISMATCH", "PART_TOTAL_MISMATCH", "PATH_TOTAL_MISMATCH",
                 "POINTS_TOTAL_MISMATCH"));
@@ -317,7 +420,8 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         }
         JsonNode narrow = check("TEST-ERR-07");
         softly.assertThat(narrow.path("status").asText()).as("TEST-ERR-07").isEqualTo("INVALID");
-        softly.assertThat(codes(narrow)).as("TEST-ERR-07").isEqualTo(Set.of("CELL_SHORTAGE"));
+        Set<String> shortageIssues = Set.of("CELL_SHORTAGE");
+        softly.assertThat(codes(narrow)).as("TEST-ERR-07").isEqualTo(shortageIssues);
         int failures = 0;
         int selections = 0;
         for (JsonNode path : narrow.path("paths")) {
@@ -332,10 +436,13 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 if (geography17) failures++;
                 softly.assertThat(selection.path("result").asText()).as(selection.toString())
                         .isEqualTo(geography17 ? "INVALID" : "VALID");
+                softly.assertThat(selection.path("issues").findValuesAsText("code"))
+                        .as(selection.toString()).containsExactlyInAnyOrderElementsOf(
+                                geography17 ? shortageIssues : Set.of());
             }
         }
-        softly.assertThat(selections).as("TEST-ERR-07 selections").isEqualTo(12);
-        softly.assertThat(failures).as("TEST-ERR-07 failed selections").isEqualTo(3);
+        softly.assertThat(selections).as("TEST-ERR-07 selections").isEqualTo(10);
+        softly.assertThat(failures).as("TEST-ERR-07 selections containing DIA").isEqualTo(6);
         softly.assertAll();
     }
 
@@ -352,37 +459,46 @@ class TestExamSeedIT extends AbstractIntegrationTest {
         assertThat(cell.path("available").asInt(-1)).isEqualTo(4);
 
         JsonNode result = check("TEST-ERR-07");
+        Set<String> shortageIssues = Set.of("CELL_SHORTAGE");
+        assertThat(codes(result)).isEqualTo(shortageIssues);
         JsonNode shortage = result.path("groups").findValues("issues").stream()
                 .flatMap(issues -> java.util.stream.StreamSupport.stream(issues.spliterator(), false))
-                .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText()))
+                .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText())
+                        && "DIA".equals(issue.path("subjectCode").asText())
+                        && issue.path("required").asInt(-1) == 11)
                 .findFirst().orElseThrow();
-        assertThat(shortage.path("subjectCode").asText()).isEqualTo("DIA");
-        assertThat(shortage.path("subjectCount").asInt(-1)).isEqualTo(17);
-        assertThat(shortage.path("required").asInt(-1)).isEqualTo(11);
         assertThat(shortage.path("available").asInt(-1)).isEqualTo(10);
         Set<Set<String>> failed = new java.util.HashSet<>();
         int failedCount = 0;
         for (JsonNode path : result.path("paths")) {
             for (JsonNode selection : path.path("selections")) {
-                if (!"INVALID".equals(selection.path("result").asText())) continue;
-                failedCount++;
-                JsonNode selectionIssue = selection.path("issues").get(0);
-                assertThat(selectionIssue.path("required").asInt(-1)).isEqualTo(11);
-                assertThat(selectionIssue.path("available").asInt(-1)).isEqualTo(10);
+                var issues = selection.path("issues").findValuesAsText("code");
                 Set<String> subjects = new java.util.HashSet<>();
-                for (JsonNode subject : selection.path("subjectCodes")) subjects.add(subject.asText());
-                failed.add(subjects);
-                int geography = -1;
                 for (int i = 0; i < selection.path("subjectCodes").size(); i++) {
-                    if ("DIA".equals(selection.path("subjectCodes").get(i).asText())) geography = i;
+                    subjects.add(selection.path("subjectCodes").get(i).asText());
+                    assertThat(selection.path("counts").get(i).asInt()).isEqualTo(17);
                 }
-                assertThat(geography).isGreaterThanOrEqualTo(0);
-                assertThat(selection.path("counts").get(geography).asInt()).isEqualTo(17);
+                assertThat(selection.path("result").asText()).isEqualTo(subjects.contains("DIA") ? "INVALID" : "VALID");
+                assertThat(issues).containsExactlyInAnyOrderElementsOf(subjects.contains("DIA") ? shortageIssues : Set.of());
+                if (subjects.contains("DIA")) {
+                    failedCount++;
+                    failed.add(subjects);
+                    JsonNode selectionIssue = java.util.stream.StreamSupport.stream(selection.path("issues").spliterator(), false)
+                            .filter(issue -> "CELL_SHORTAGE".equals(issue.path("code").asText()))
+                            .findFirst().orElseThrow();
+                    assertThat(selectionIssue.path("subjectCode").asText()).isEqualTo("DIA");
+                    assertThat(selectionIssue.path("subjectCount").asInt()).isEqualTo(17);
+                    assertThat(selectionIssue.path("required").asInt()).isEqualTo(11);
+                    assertThat(selectionIssue.path("available").asInt()).isEqualTo(10);
+                } else {
+                    assertThat(issues).doesNotContain("CELL_SHORTAGE");
+                }
             }
         }
-        assertThat(failedCount).isEqualTo(3);
+        assertThat(failedCount).isEqualTo(6);
         assertThat(failed).containsExactlyInAnyOrder(
-                Set.of("LY", "SU", "DIA"), Set.of("HOA", "SU", "DIA"), Set.of("SINH", "SU", "DIA"));
+                Set.of("LY", "HOA", "DIA"), Set.of("LY", "SINH", "DIA"), Set.of("LY", "SU", "DIA"),
+                Set.of("HOA", "SINH", "DIA"), Set.of("HOA", "SU", "DIA"), Set.of("SINH", "SU", "DIA"));
     }
 
     @Test
@@ -529,6 +645,76 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                 .isEqualTo(revisions);
     }
 
+    @Test
+    void examKindProfilesSeedScopesPerSpec2B() {
+        assertThat(examKindScopes()).containsExactlyInAnyOrderEntriesOf(EXPECTED_PROFILE_SCOPES);
+    }
+
+    @Test
+    void rerunningExamDevSeedRepairsExistingProfileScopesWithoutChangingOtherFields() {
+        jdbc.update("""
+                UPDATE exam.exam_kind_profile SET scopes = CASE exam_item_id
+                    WHEN '00000000-0000-7000-8200-000000000101' THEN '{FULL,PART}'
+                    WHEN '00000000-0000-7000-8200-000000000102' THEN '{FULL,PART}'
+                    WHEN '00000000-0000-7000-8400-000000000103' THEN '{FULL,PART}'
+                    WHEN '00000000-0000-7000-8400-000000000104' THEN '{FULL}'
+                    WHEN '00000000-0000-7000-8400-000000000105' THEN '{SUBJECT}'
+                    WHEN '00000000-0000-7000-8400-000000000106' THEN '{SUBJECT}'
+                    WHEN '00000000-0000-7000-8400-000000000107' THEN '{SUBJECT}'
+                END::text[]
+                WHERE exam_item_id IN (
+                    '00000000-0000-7000-8200-000000000101',
+                    '00000000-0000-7000-8200-000000000102',
+                    '00000000-0000-7000-8400-000000000103',
+                    '00000000-0000-7000-8400-000000000104',
+                    '00000000-0000-7000-8400-000000000105',
+                    '00000000-0000-7000-8400-000000000106',
+                    '00000000-0000-7000-8400-000000000107')
+                """);
+        assertThat(examKindScopes()).containsExactlyInAnyOrderEntriesOf(OLD_PROFILE_SCOPES);
+        List<Map<String, Object>> before = profileRowsWithoutScopes();
+
+        ScriptUtils.executeSqlScript(DataSourceUtils.getConnection(dataSource),
+                new ClassPathResource("db/devdata/R__seed_exam_dev_data.sql"));
+
+        assertThat(examKindScopes()).containsExactlyInAnyOrderEntriesOf(EXPECTED_PROFILE_SCOPES);
+        assertThat(profileRowsWithoutScopes()).containsExactlyElementsOf(before);
+    }
+
+    private Map<String, String> examKindScopes() {
+        return jdbc.query(
+                "SELECT i.code, array_to_string(p.scopes, ',') FROM exam.exam_kind_profile p"
+                        + " JOIN catalog.catalog_item i ON i.id = p.exam_item_id",
+                rs -> {
+                    Map<String, String> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.put(rs.getString(1), rs.getString(2));
+                    }
+                    return result;
+                });
+    }
+
+    private List<Map<String, Object>> profileRowsWithoutScopes() {
+        return jdbc.queryForList("SELECT * FROM exam.exam_kind_profile ORDER BY exam_item_id").stream()
+                .map(row -> {
+                    Map<String, Object> withoutScopes = new LinkedHashMap<>(row);
+                    withoutScopes.remove("scopes");
+                    return withoutScopes;
+                })
+                .toList();
+    }
+
+    @Test
+    void examSeedsContainNoAssumedCombinationCodes() {
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM catalog.catalog_item WHERE code_normalized ~ '^(qda_qd0|kh-)'",
+                Integer.class)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM catalog.catalog_item i JOIN catalog.combination_version v ON v.item_id = i.id"
+                        + " WHERE i.code_normalized ~ '^(qda_qd0|kh-)'",
+                Integer.class)).isZero();
+    }
+
     private void runRepairMigration() {
         ScriptUtils.executeSqlScript(
                 DataSourceUtils.getConnection(dataSource),
@@ -570,5 +756,154 @@ class TestExamSeedIT extends AbstractIntegrationTest {
                         .with(asUser(Permissions.EXAM_MODIFY)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return mapper.readTree(response);
+    }
+
+    @Test
+    void seededBlockRefsEqualTheProductionProjectionOfTheStoredStructure() throws Exception {
+        var exams = jdbc.queryForList("""
+                select e.id, e.code, s.parts::text as document from exam.exam e
+                join exam.exam_structure s on s.exam_id = e.id where e.code like 'TEST-%' order by e.code
+                """);
+        assertThat(exams).isNotEmpty();
+        SoftAssertions softly = new SoftAssertions();
+        for (var exam : exams) {
+            softly.assertThat(describeRefs(projectedRefs((UUID) exam.get("id"), (String) exam.get("document"))))
+                    .as((String) exam.get("code"))
+                    .isEqualTo(describeSeededRefs((UUID) exam.get("id")));
+        }
+        softly.assertAll();
+    }
+
+    @Test
+    void seededVactBlocksCarryCompetenciesThatUsageReportsFindOnTheExam() {
+        for (String code : List.of("VACT-NN-TV", "VACT-NN-TA", "VACT-TOAN", "VACT-TD-LOGIC", "VACT-TD-SL")) {
+            UUID competency = jdbc.queryForObject("""
+                    select i.id from catalog.catalog_item i join catalog.catalog_group g on g.id = i.group_id
+                    where g.code = 'COMPETENCY' and i.code = ?
+                    """, UUID.class, code);
+            var usages = usageProvider.findUsages("COMPETENCY", competency);
+            assertThat(usages).as(code).hasSize(1);
+            assertThat(usages.getFirst().sampleLabels()).as(code).contains("TEST-VACT-01");
+        }
+    }
+
+    @Test
+    void rerunningTheSeedKeepsRefsAlignedWithPriorAndEditedStructures() throws Exception {
+        UUID prior = jdbc.queryForObject("SELECT id FROM exam.exam WHERE code = 'TEST-THPTQG-01'", UUID.class);
+        UUID edited = jdbc.queryForObject("SELECT id FROM exam.exam WHERE code = 'TEST-HSA-02'", UUID.class);
+        // A seeded draft from before the split keeps its stored structure and its own projection.
+        String legacy;
+        try (var stream = getClass().getResourceAsStream("/db/migration/exam/V202611180652__exam_templates_ba_numbers.sql")) {
+            String sql = new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            String statement = sql.substring(0, sql.indexOf("WHERE code = 'THPTQG_MATH_2025'"));
+            statement = statement.substring(statement.lastIndexOf("structure = '") + "structure = '".length());
+            legacy = statement.substring(0, statement.lastIndexOf("'::jsonb")).replace("''", "'");
+        }
+        jdbc.update("UPDATE exam.exam_structure SET parts = CAST(? AS jsonb) WHERE exam_id = ?", legacy, prior);
+        jdbc.update("DELETE FROM exam.exam_block_ref WHERE exam_id = ?", prior);
+        var legacyRefs = projectedRefs(prior, legacy);
+        for (var ref : legacyRefs) {
+            jdbc.update("INSERT INTO exam.exam_block_ref (id, exam_id, block_id, part_id, knowledge_inherited) "
+                    + "VALUES (?, ?, ?, ?, true)", UUID.randomUUID(), prior, ref.getBlockId(), ref.getPartId());
+        }
+        // A draft whose structure really changed through the API: a block removed and another block's
+        // points changed. The API rewrote its refs completely, with its own ids and metadata.
+        var apiStructure = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", edited)
+                        .with(asUser(Permissions.EXAM_VIEW))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        var editedParts = (com.fasterxml.jackson.databind.node.ArrayNode) apiStructure.path("parts").deepCopy();
+        var blockArrays = editedParts.findValues("blocks");
+        var shrinking = (com.fasterxml.jackson.databind.node.ArrayNode) blockArrays.stream()
+                .filter(array -> array.size() >= 2).findFirst().orElseThrow();
+        String removedBlock = shrinking.get(shrinking.size() - 1).path("id").asText();
+        shrinking.remove(shrinking.size() - 1);
+        var firstBlock = (com.fasterxml.jackson.databind.node.ObjectNode) blockArrays.getFirst().get(0);
+        String changedBlock = firstBlock.path("id").asText();
+        firstBlock.put("requiredPointsPerQuestion", firstBlock.path("requiredPointsPerQuestion").asInt(1) + 3);
+        var update = mapper.createObjectNode().put("expectedRevision", apiStructure.path("revision").asLong());
+        update.set("parts", editedParts);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", edited).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(update.toString()))
+                .andExpect(status().isOk());
+        String editedDocument = jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, edited);
+        assertThat(editedDocument).contains(changedBlock).doesNotContain(removedBlock);
+        var editedProjection = describeRefs(projectedRefs(edited, editedDocument));
+        assertThat(describeSeededRefs(edited)).as("API-written refs are complete").isEqualTo(editedProjection);
+        assertThat(editedProjection).containsKey(changedBlock).doesNotContainKey(removedBlock);
+        List<Map<String, Object>> editedBefore = jdbc.queryForList(
+                "SELECT id, block_id FROM exam.exam_block_ref WHERE exam_id = ? ORDER BY block_id", edited);
+
+        ScriptUtils.executeSqlScript(DataSourceUtils.getConnection(dataSource),
+                new ClassPathResource("db/devdata/R__seed_test_exam_data.sql"));
+
+        assertThat(jdbc.queryForList("SELECT block_id FROM exam.exam_block_ref WHERE exam_id = ? ORDER BY block_id",
+                String.class, prior)).containsExactlyElementsOf(
+                        legacyRefs.stream().map(ref -> ref.getBlockId()).sorted().toList());
+        assertThat(jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?",
+                String.class, edited)).as("edited structure is retained").isEqualTo(editedDocument);
+        assertThat(jdbc.queryForList("SELECT id, block_id FROM exam.exam_block_ref WHERE exam_id = ? ORDER BY block_id",
+                edited)).isEqualTo(editedBefore);
+        assertThat(describeSeededRefs(edited)).as("projected refs incl. metadata are retained")
+                .isEqualTo(editedProjection);
+        for (var exam : jdbc.queryForList("SELECT e.id FROM exam.exam e WHERE e.code LIKE 'TEST-%'", UUID.class)) {
+            assertThat(jdbc.queryForObject("""
+                    SELECT count(*) FROM exam.exam_block_ref r
+                    WHERE r.exam_id = ? AND r.version_no IS NULL AND NOT EXISTS (
+                        SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
+                        AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)', jsonb_build_object('block', r.block_id)))
+                    """, Integer.class, exam)).as("phantom refs of %s", exam).isZero();
+        }
+    }
+
+    private List<vn.unicom.thi360.exam.domain.ExamBlockRef> projectedRefs(UUID examId, String document) {
+        var doc = new ExamStructureCodec(mapper).read(document);
+        return projector.project(examId, doc.parts(), new ExamBlockRefProjector.CodeResolver(
+                code -> catalogItem("SUBJECT", code), code -> catalogItem("COMPETENCY", code),
+                code -> catalogItem("QUESTION_TAG", code)));
+    }
+
+    private UUID catalogItem(String group, String code) {
+        return jdbc.query("""
+                select i.id from catalog.catalog_item i join catalog.catalog_group g on g.id = i.group_id
+                where g.code = ? and i.code = ?
+                """, rs -> rs.next() ? rs.getObject(1, UUID.class) : null, group, code);
+    }
+
+    private static String ids(List<?> values) {
+        return values == null ? null : values.stream().map(String::valueOf).collect(Collectors.joining(",", "{", "}"));
+    }
+
+    private static Map<String, List<Object>> describeRefs(List<vn.unicom.thi360.exam.domain.ExamBlockRef> refs) {
+        Map<String, List<Object>> result = new LinkedHashMap<>();
+        for (var ref : refs) {
+            result.put(ref.getBlockId(), java.util.Arrays.asList(ref.getPartId(), ref.getOptionCode(),
+                    ref.getSectionId(), ref.getSubjectItemId(), ref.getQuestionType(), ids(ref.getAnswerTypes()),
+                    ids(ref.getKnowledgeItemIds()), ref.getKnowledgeMode(), ref.isKnowledgeInherited(),
+                    ids(ref.getTagItemIds()), ids(ref.getCompetencyItemIds()),
+                    ref.getRequiredPoints() == null ? null : ref.getRequiredPoints().stripTrailingZeros().toPlainString(),
+                    ref.getCombinationItemId()));
+        }
+        return new java.util.TreeMap<>(result);
+    }
+
+    private Map<String, List<Object>> describeSeededRefs(UUID examId) {
+        Map<String, List<Object>> result = new java.util.TreeMap<>();
+        jdbc.query("""
+                select block_id, part_id, option_code, section_id, subject_item_id, question_type,
+                       answer_types::text as answer_types, knowledge_item_ids::text as knowledge,
+                       knowledge_mode, knowledge_inherited, tag_item_ids::text as tags,
+                       competency_item_ids::text as competencies, required_points, combination_item_id
+                from exam.exam_block_ref where exam_id = ? and version_no is null
+                """, rs -> {
+            BigDecimal points = rs.getBigDecimal("required_points");
+            result.put(rs.getString("block_id"), java.util.Arrays.asList(rs.getString("part_id"),
+                    rs.getString("option_code"), rs.getString("section_id"), rs.getObject("subject_item_id", UUID.class),
+                    rs.getString("question_type"), rs.getString("answer_types"), rs.getString("knowledge"),
+                    rs.getString("knowledge_mode"), rs.getBoolean("knowledge_inherited"), rs.getString("tags"),
+                    rs.getString("competencies"), points == null ? null : points.stripTrailingZeros().toPlainString(),
+                    rs.getObject("combination_item_id", UUID.class)));
+        }, examId);
+        return result;
     }
 }

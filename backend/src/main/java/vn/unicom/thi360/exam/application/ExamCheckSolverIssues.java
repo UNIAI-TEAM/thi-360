@@ -30,6 +30,18 @@ final class ExamCheckSolverIssues {
         boolean uncertain = reason == SolveReason.DEADLINE_EXCEEDED
                 || reason == SolveReason.CANDIDATE_LIMIT_EXCEEDED
                 || reason == SolveReason.PATH_LIMIT_EXCEEDED;
+        Integer slotIndex = null;
+        if (groupId != null) {
+            int marker = groupId.lastIndexOf(":slot:");
+            if (marker >= 0) {
+                try {
+                    slotIndex = Integer.valueOf(groupId.substring(marker + 6));
+                    groupId = groupId.substring(0, marker);
+                } catch (NumberFormatException ignored) {
+                    // Not a solver-generated slot identifier.
+                }
+            }
+        }
         Location where = find(subjectCode, groupId, quota == null ? null : quota.sectionId(), picks);
         String code;
         String group;
@@ -56,6 +68,10 @@ final class ExamCheckSolverIssues {
             code = "CELL_SHORTAGE";
             group = "SOURCE";
         }
+        if (!uncertain && slotIndex != null && reason == SolveReason.INSUFFICIENT_SOURCE) {
+            code = "SLOT_SOURCE_SHORTAGE";
+            group = "SOURCE";
+        }
         ObjectNode issue = issues.create(code, group, uncertain ? "UNCONFIRMED" : "ERROR");
         if (where != null) {
             issue.put("partId", where.part.id());
@@ -78,6 +94,7 @@ final class ExamCheckSolverIssues {
         }
         if (subjectCode != null) issue.put("subjectCode", subjectCode);
         if (groupId != null) issue.put("blockId", groupId);
+        if (slotIndex != null) issue.putObject("location").put("slotIndex", slotIndex);
         if (uncertain) issue.put("timeLimitSeconds", timeLimitSeconds);
         if (quota != null) {
             switch (quota.kind()) {
@@ -113,6 +130,8 @@ final class ExamCheckSolverIssues {
         }
         for (ExamPart part : document.parts()) {
             Location found = find(part, null, part.sections(), subject, group, sectionId);
+            if (found != null) return found;
+            found = find(part, null, part.subjectPool(), subject, group, sectionId);
             if (found != null) return found;
             for (ExamPartOption option : part.options()) {
                 found = find(part, option.id(), option.sections(), subject, group, sectionId);

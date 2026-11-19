@@ -10,6 +10,7 @@ public final class ExamErrorCodes {
     public static final String KIND_UNKNOWN = "EXAM_KIND_UNKNOWN";
     public static final String SCOPE_NOT_ALLOWED = "EXAM_SCOPE_NOT_ALLOWED";
     public static final String PART_OR_SUBJECT_REQUIRED = "EXAM_PART_OR_SUBJECT_REQUIRED";
+    public static final String PART_NOT_FOUND = "EXAM_PART_NOT_FOUND";
     /** 422 — mẫu không khớp kỳ thi/phạm vi/phần/môn của bài. */
     public static final String TEMPLATE_MISMATCH = "EXAM_TEMPLATE_MISMATCH";
     /** 422 — thang điểm không dương hoặc bắt buộc mà thiếu. */
@@ -24,6 +25,8 @@ public final class ExamErrorCodes {
     public static final String SCOPE_LOCKED = "EXAM_SCOPE_LOCKED";
     /** 409 — thay thế cấu trúc đã sửa mà thiếu confirmReplace. */
     public static final String REPLACE_CONFIRM = "EXAM_STRUCTURE_REPLACE_CONFIRM";
+    public static final String OVERVIEW_CONFIRM = "EXAM_OVERVIEW_CONFIRM";
+    public static final String SCORING_CONFIRM_REQUIRED = "SCORING_CONFIRM_REQUIRED";
     /** 412 — expectedRevision lệch revision hiện tại. */
     public static final String REVISION_CONFLICT = "EXAM_REVISION_CONFLICT";
     public static final String CHECK_REQUIRED = "CHECK_REQUIRED";

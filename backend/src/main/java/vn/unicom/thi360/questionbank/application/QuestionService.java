@@ -1013,7 +1013,7 @@ public class QuestionService {
             case QuestionBody.MultipleChoiceBody b -> new QuestionBody.MultipleChoiceBody(
                     b.type(), sanitizeOptions(b.options(), path + ".options", errors), b.scoringRule(), b.shuffleOptions());
             case QuestionBody.ShortAnswerBody b -> new QuestionBody.ShortAnswerBody(
-                    b.type(), b.answers(), cleanField(b.inputHint(), path + ".inputHint", errors));
+                    b.type(), b.answers(), cleanField(b.inputHint(), path + ".inputHint", errors), b.answerFormat());
             case QuestionBody.ClozeBody b -> new QuestionBody.ClozeBody(
                     b.type(),
                     cleanField(b.passage(), path + ".passage", errors),

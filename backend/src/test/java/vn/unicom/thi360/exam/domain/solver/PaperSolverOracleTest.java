@@ -191,14 +191,14 @@ class PaperSolverOracleTest {
                 .contains(ViolationCode.SUBJECT_ANSWER_QUOTA);
 
         // lặp định danh ngay trong một ứng viên (R2-18): ứng viên 3 đơn vị có hai câu con cùng id
-        PathCandidate dup = new PathCandidate("dup", 1, "dup", null, null, List.of(
+        PathCandidate dup = new PathCandidate("dup", 1, "dup", null, List.of(
                 new CountingUnit("c0", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE),
                 new CountingUnit("c1", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE),
                 new CountingUnit("c1", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE)));
-        PathCandidate alias = new PathCandidate("al", 1, "al", null, null, List.of(
+        PathCandidate alias = new PathCandidate("al", 1, "al", null, List.of(
                 new CountingUnit("al", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
                         java.math.BigDecimal.ONE),
                 new CountingUnit("c2", "SINGLE_CHOICE", "G10", "NB", List.of(), List.of(),
@@ -437,18 +437,15 @@ class PaperSolverOracleTest {
         CandidateSource source = g -> sources.getOrDefault(g, List.of());
 
         Map<String, BruteForceOracle.Eval> evals = oracle.evaluateAll(List.of(part), source);
-        // nhóm null tính một nhóm chung: mỗi bộ môn có 2 phân bổ đối xứng (môn i nhận lo=2).
-        // (CS0,CS1): cả hai phân bổ đều đủ nguồn → 2 VALID; hai bộ chứa CS2 — CS2 chỉ có
-        // 1 câu nên mọi phân bổ đều thiếu → 4 INVALID.
+        // Each pair is checked once at full count. CS2 has too few questions.
         Map<String, SolveStatus> byPick = new LinkedHashMap<>();
         for (Map.Entry<String, BruteForceOracle.Eval> e : evals.entrySet()) {
             if (e.getKey().contains("=")) {
                 byPick.put(e.getKey(), e.getValue().status());
             }
         }
-        assertThat(byPick.values()).containsExactlyInAnyOrder(SolveStatus.VALID,
-                SolveStatus.VALID, SolveStatus.INVALID, SolveStatus.INVALID,
-                SolveStatus.INVALID, SolveStatus.INVALID);
+        assertThat(byPick.values()).containsExactlyInAnyOrder(
+                SolveStatus.VALID, SolveStatus.INVALID, SolveStatus.INVALID);
     }
 
     private static PathCandidate standalone(String id, String answerType) {
