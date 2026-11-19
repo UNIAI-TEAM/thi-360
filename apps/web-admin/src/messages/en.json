@@ -5365,8 +5365,6 @@
       "scopeSubject": "By subject",
       "scopeSubjectDescription": "All parts of one subject",
       "scopeOnly": "This exam type only has this scope",
-      "part": "Exam part",
-      "partHint": "A by-part exam has only the chosen part",
       "partName": {
         "MATH": "Math",
         "LITERATURE": "Literature",
@@ -5558,13 +5556,6 @@
         "SHARED": "one shared duration"
       },
       "noSubject": "no subject chosen",
-      "subjectField": {
-        "subject": "Exam subject",
-        "hint": "{count, plural, one {# subject has} other {# subjects have}} a structure template; subjects without one start with an empty structure",
-        "placeholder": "Choose a subject",
-        "withTemplates": "{subject} · {count, plural, one {# template} other {# templates}}",
-        "noTemplate": "{subject} has no structure template yet. The initial structure starts empty: enter the questions and duration, and add parts if needed."
-      },
       "templateNotes": {
         "yearsDiffer": "The {structureYear} structure uses the {matrixYear} matrix: an expert must confirm the matrix targets before it is sold.",
         "yearsConfirm": "An expert has confirmed that the {matrixYear} matrix targets fit this structure",

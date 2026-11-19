@@ -17,7 +17,7 @@ import {
   type ExamInfoFormValues,
   initialParts,
   kindOptionFor,
-  latestTemplate,
+  partNeedsSubject,
   resolveScope,
   sameSelection,
   scopeDefaults,
@@ -30,6 +30,7 @@ import { applyOverviewToParts, overviewRowsFromParts } from "../create-exam-over
 import { overviewRowLabel } from "../create-exam-row-label";
 import { blockCountsLocked } from "./block-form";
 import { ExamInfoFields, useExamInfoSchema, usePartNames } from "./create-exam-fields";
+import { ExamKindScopeFields } from "./create-exam-scope-fields";
 import { focusField } from "./create-exam-summary";
 import { ExamOverviewTable } from "./exam-overview-table";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
@@ -214,8 +215,8 @@ function ExamGeneralForm({
   const scopeEdited = !sameSelection(examScope(exam), selection);
   const showPreview = !lockScope && scopeEdited;
   const appliedTemplate = templates.find((item) => item.code === exam.templateCode);
-  // Chọn phạm vi khác thì ghi chú theo mẫu mới nhất của phạm vi đó; chưa đổi thì theo mẫu đã nạp của bài.
-  const template = scopeEdited ? latestTemplate(templates, selection) : appliedTemplate;
+  // Chọn phạm vi khác thì ghi chú theo mẫu của phạm vi đó như bước 1; chưa đổi thì theo mẫu đã nạp của bài.
+  const template = scopeEdited ? scopeTemplate(templates, kinds, selection) : appliedTemplate;
   const shared = exam.timing === "SHARED";
 
   // Khóa số câu theo cùng luật với bước Cấu trúc: mẫu `fixedCounts` (V-ACT toàn bài) hoặc mẫu `fixedBlockCounts` của bài Theo môn.
@@ -252,10 +253,21 @@ function ExamGeneralForm({
 
   const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
 
-  /** Các phần mà phạm vi mới sẽ nạp lại: cùng cách dựng với máy chủ (mẫu mới nhất, hoặc phần trống của môn chưa có mẫu). */
+  /**
+   * Các phần mà phạm vi mới sẽ nạp lại, cùng mẫu với bảng xem trước (`scopeTemplate`) và với máy chủ: Theo phần lấy các
+   * phần của mẫu riêng của phần hoặc phần cắt từ mẫu Theo môn (SP2E, SPT, THPTQG); phạm vi khác dựng như bước 1.
+   */
   const reloadRows = (next: ScopeSelection): ReloadPartRow[] => {
-    const nextTemplate = latestTemplate(templates, next);
+    const nextTemplate = scopeTemplate(templates, kinds, next);
     const sharedNext = (nextTemplate?.timing ?? kindOptionFor(kinds, next.kind)?.timing) === "SHARED";
+    if (next.scope === "PART") {
+      return (nextTemplate?.parts ?? []).map((part) => ({
+        name: part.name,
+        questionCount: part.questionCount,
+        durationMinutes: part.durationMinutes ?? null,
+        shared: sharedNext,
+      }));
+    }
     return initialParts({
       templates,
       kind: next.kind,
@@ -263,7 +275,7 @@ function ExamGeneralForm({
       partCode: next.partCode,
       combinations: combinationsForKind(reference.combinations, next.kind),
       scopeName: partNames.partName,
-      template: next.scope === "PART" ? undefined : (nextTemplate ?? null),
+      template: nextTemplate ?? null,
       subjectCode: next.subjectCode,
       subjectName: lookup.subject,
     }).map((part) => ({
@@ -300,13 +312,20 @@ function ExamGeneralForm({
           setError("code", { message: tExams("create.errors.codeTaken") }, { shouldFocus: true });
         } else if (status === 412) {
           setSubmitError(t("saveConflict"));
-        } else if (status === 422) {
+        } else if (status === 400 || status === 422) {
           // Lỗi theo trường gắn vào ô nhập tương ứng; không gắn được thì báo chung (không in chữ của máy chủ).
-          const fields = (error instanceof ExamsApiError ? error.fieldErrors : []).flatMap(
-            (item) => FORM_FIELD_OF[item.field ?? ""] ?? [],
-          );
+          const fields = (error instanceof ExamsApiError ? error.fieldErrors : []).flatMap((item) => {
+            const field = FORM_FIELD_OF[item.field ?? ""];
+            return field ? [{ field, code: item.code }] : [];
+          });
           if (fields.length === 0) setSubmitError(t("saveInvalid"));
-          fields.forEach((field, index) => setError(field, { message: t("fieldInvalid") }, { shouldFocus: index === 0 }));
+          fields.forEach(({ field, code }, index) =>
+            setError(
+              field,
+              { message: code === "EXAM_DURATION_REQUIRED" ? tExams("create.validation.sharedDurationPositive") : t("fieldInvalid") },
+              { shouldFocus: index === 0 },
+            ),
+          );
         } else {
           setSubmitError(t("saveError"));
         }
@@ -366,7 +385,11 @@ function ExamGeneralForm({
       kind: submitted.kind,
       scope: submitted.scope,
       partCode: submitted.scope === "PART" ? submitted.partCode : null,
-      subjectCode: submitted.scope === "SUBJECT" ? submitted.subjectCode : null,
+      // Môn đi theo Theo môn và Theo phần của kỳ thi chọn môn trước phần (SP2E, SPT, THPTQG), như bước 1.
+      subjectCode:
+        submitted.scope === "SUBJECT" || (submitted.scope === "PART" && partNeedsSubject(kinds, submitted.kind))
+          ? submitted.subjectCode || null
+          : null,
       durationMinutes: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
       maxScore: submitted.maxScore,
       yearsConfirmed: yearsDiffer(appliedTemplate) ? submitted.yearsConfirmed : true,
@@ -381,7 +404,7 @@ function ExamGeneralForm({
     else save(pending);
   });
 
-  /** Đổi phạm vi: về đúng phạm vi đang lưu thì lấy lại giá trị đang lưu, không thì giá trị của mẫu mới nhất. */
+  /** Đổi phạm vi: về đúng phạm vi đang lưu thì lấy lại giá trị đang lưu, không thì giá trị của mẫu của phạm vi mới như bước 1. */
   const onScopeChange = (change: Partial<ScopeSelection>) => {
     const current: ScopeSelection = {
       kind: getValues("kind"),
@@ -401,7 +424,7 @@ function ExamGeneralForm({
     const back = sameSelection(scope, examScope(exam));
     const defaults = back
       ? toFormValues(exam)
-      : { ...scopeDefaults(latestTemplate(templates, scope), kindOptionFor(kinds, scope.kind), scope.scope, scope.buildMode), yearsConfirmed: false };
+      : { ...scopeDefaults(scopeTemplate(templates, kinds, scope), kindOptionFor(kinds, scope.kind), scope.scope, scope.buildMode), yearsConfirmed: false };
     setValue("timing", defaults.timing, dirty);
     setValue("sharedDuration", defaults.sharedDuration, dirty);
     setValue("maxScore", defaults.maxScore, dirty);
@@ -494,13 +517,21 @@ function ExamGeneralForm({
               errors={formState.errors}
               values={values}
               kinds={kinds}
-              subjects={reference.subjects}
-              templates={templates}
               template={template}
               partMinutes={shared ? 0 : exam.durationMinutes}
               lockScope={lockScope}
               lockScopeHint={t("scopeLocked")}
-              onScopeChange={onScopeChange}
+              scopeFields={
+                <ExamKindScopeFields
+                  kinds={kinds}
+                  subjects={reference.subjects}
+                  templates={templates}
+                  selection={selection}
+                  errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
+                  disabled={lockScope}
+                  onChange={onScopeChange}
+                />
+              }
             />
             <section aria-labelledby={overviewHeadingId} className="flex flex-col gap-3 rounded-lg border border-border p-4">
               <div className="flex flex-col gap-1">

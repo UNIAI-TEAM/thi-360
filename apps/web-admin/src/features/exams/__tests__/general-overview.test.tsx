@@ -5,7 +5,7 @@ import type { ContentReference } from "@/features/content/types";
 import { renderWithProviders } from "@/test/render";
 import { ExamGeneralView } from "../components/exam-general-view";
 import { ExamStructureView } from "../components/exam-structure-view";
-import type { ExamDetail, ExamPart, ExamSection, QuestionBlock } from "../types";
+import type { ExamDetail, ExamPart, ExamSection, ExamTemplate, QuestionBlock } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
 import { sp2eVanExam } from "./sp2e-van-fixture";
@@ -122,6 +122,58 @@ function setupExam(exam: ExamDetail) {
   backend = new ExamsBackend();
   backend.install();
   seeded = { ...exam, id: EXAM_ID };
+  backend.seedExam(seeded);
+}
+
+const THPTQG_PARTS = ["P1 Trac nghiem", "P2 Dung sai", "P3 Tra loi ngan"] as const;
+
+/**
+ * THPTQG Toán Theo môn như dữ liệu thật: mẫu Theo môn dùng một đồng hồ chung (`SHARED`, 90 phút cả môn) có ba phần
+ * P1..P3 (12 / 4 / 6 câu, 3 điểm mỗi phần, không thời lượng riêng); kỳ thi cho Theo môn và Theo phần, không có mẫu Theo
+ * phần riêng nên phần được cắt từ mẫu Theo môn như máy chủ (`selectSubjectPart`).
+ */
+function setupThptqgMath(configure?: (backend: ExamsBackend) => void) {
+  referenceMock.patch = (reference) => {
+    reference.examKinds.find((kind) => kind.code === "THPTQG")!.scopes = ["SUBJECT", "PART"];
+  };
+  const hsaFull = FIXTURE_TEMPLATES.find((item) => item.code === "HSA_FULL")!;
+  const counts = [12, 4, 6];
+  const subjectTemplate: ExamTemplate = {
+    ...structuredClone(hsaFull),
+    code: "THPTQG_MATH",
+    kind: "THPTQG",
+    scope: "SUBJECT",
+    subjectCode: "MATH",
+    timing: "SHARED",
+    durationMinutes: 90,
+    maxScore: 10,
+    parts: THPTQG_PARTS.map((name, index) => ({
+      ...structuredClone(hsaFull.parts[0]!),
+      name,
+      questionCount: counts[index]!,
+      durationMinutes: null,
+      points: 3,
+    })),
+  };
+  routerMock.push.mockReset();
+  backend = new ExamsBackend();
+  backend.server.on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [toWireTemplate(subjectTemplate)] });
+  configure?.(backend);
+  backend.install();
+  seeded = {
+    ...backend.app("ex-hsa-f-001"),
+    id: EXAM_ID,
+    kind: "THPTQG",
+    scope: "SUBJECT",
+    subjectCode: "MATH",
+    partCode: null,
+    timing: "SHARED",
+    durationMinutes: 90,
+    maxScore: 10,
+    templateCode: "THPTQG_MATH",
+    servingVersion: null,
+    parts: counts.map((count, index) => hsaPart(index + 1, THPTQG_PARTS[index]!, count, 0, "MATH")),
+  };
   backend.seedExam(seeded);
 }
 
@@ -369,6 +421,113 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     const counts = within(table).getAllByRole("textbox", { name: /^Số câu của/ });
     expect(counts).toHaveLength(1);
     expect(counts[0]).toHaveAttribute("readonly");
+  }, 30_000);
+
+  it("VIS R2-2: THPTQG Theo phần chào các phần P1..P3 của môn như bước 1 và đánh dấu thẻ đang chọn", async () => {
+    setupThptqgMath();
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    const group = await screen.findByRole("group", { name: /^Phần thi/ });
+    expect(within(group).getAllByRole("radio").map((radio) => (radio as HTMLInputElement).value)).toEqual(["P1", "P2", "P3"]);
+    expect(within(group).getByRole("radio", { name: THPTQG_PARTS[0] })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: "Văn" })).not.toBeInTheDocument();
+
+    await user.click(within(group).getByRole("radio", { name: THPTQG_PARTS[1] }));
+    expect(within(group).getByRole("radio", { name: THPTQG_PARTS[1] })).toBeChecked();
+    expect(within(group).getByRole("radio", { name: THPTQG_PARTS[0] })).not.toBeChecked();
+    expect(within(await tableRegion()).getByRole("textbox", { name: /^Số câu của/ })).toHaveValue("4");
+  }, 30_000);
+
+  it("VIS R2-2: HSA Theo phần đánh dấu phần mặc định của mẫu (mã phần của dữ liệu thật, không phải bốn mã chuẩn)", async () => {
+    const hsaFull = FIXTURE_TEMPLATES.find((item) => item.code === "HSA_FULL")!;
+    const englishPart = FIXTURE_TEMPLATES.find((item) => item.code === "HSA_SINGLE")!;
+    setup({
+      configure: (server) =>
+        server.server.on("GET", "/api/v1/admin/exam-templates", {
+          status: 200,
+          body: [toWireTemplate(hsaFull), toWireTemplate({ ...structuredClone(englishPart), code: "HSA_PART_ANH", partCode: "ANH" })],
+        }),
+    });
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    const group = await screen.findByRole("group", { name: /^Phần thi/ });
+    expect(within(group).getAllByRole("radio")).toHaveLength(1);
+    expect(within(group).getByRole("radio", { name: "ANH" })).toBeChecked();
+  }, 30_000);
+
+  it("VIS R2-1: THPTQG Toán sang Theo phần: bản xem trước, hộp nạp lại và PATCH cùng một phần; thiếu thời lượng thì chặn lưu", async () => {
+    setupThptqgMath();
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
+    const previewCount = within(await tableRegion()).getByRole("textbox", { name: /^Số câu của P1/ });
+    expect(previewCount).toHaveValue("12");
+
+    // Bài theo phần không có thời lượng mặc định: ô bắt buộc, câu như bước 1; chưa gửi gì, chưa mở hộp xác nhận.
+    await user.click(screen.getByRole("button", { name: SAVE }));
+    expect(await screen.findByText("Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
+
+    await user.type(screen.getByRole("textbox", { name: /^Thời lượng chung \(phút\)/ }), "40");
+    await user.click(screen.getByRole("button", { name: SAVE }));
+    const dialog = await screen.findByRole("dialog");
+    // Hộp nạp lại liệt kê đúng phần và số câu của bản xem trước (P1, 12 câu), không phải "0 câu".
+    expect(within(dialog).getByText("1. P1 Trac nghiem")).toBeInTheDocument();
+    expect(within(dialog).getByText("12 câu · thời lượng chung")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
+
+    await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));
+    expect(backend.calls("PATCH", EXAM_PATH)[0]!.body).toMatchObject({
+      kind: "THPTQG",
+      scope: "PART",
+      partCode: "P1",
+      subjectCode: "MATH",
+      durationMinutes: 40,
+      confirmReplace: true,
+      expectedRevision: seeded.revision,
+    });
+  }, 30_000);
+
+  it("VIS R2-1: máy chủ trả 400 lỗi ô thời lượng thì lỗi hiện ở ô đó, không phải câu chung", async () => {
+    setupThptqgMath((server) =>
+      server.server.on("PATCH", EXAM_PATH, {
+        status: 400,
+        body: {
+          code: "VALIDATION_FAILED",
+          message: "x",
+          fieldErrors: [{ field: "durationMinutes", code: "EXAM_DURATION_REQUIRED", message: "x" }],
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    await user.type(await screen.findByRole("textbox", { name: /^Thời lượng chung \(phút\)/ }), "40");
+    await user.click(screen.getByRole("button", { name: SAVE }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Nạp lại cấu trúc" }));
+
+    expect(await screen.findByText("Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.")).toBeInTheDocument();
+    expect(screen.queryByText("Không lưu được thông tin chung. Thử lại sau.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  }, 30_000);
+
+  it("VIS R2-3: sang Theo phần thì Thang điểm lấy điểm của phần cắt (3), như bước 1", async () => {
+    setupThptqgMath();
+    const user = userEvent.setup();
+    open();
+    await tableRegion();
+    expect(screen.getByRole("textbox", { name: /^Thang điểm/ })).toHaveValue("10");
+    await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
+    expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Thang điểm/ })).toHaveValue("3");
   }, 30_000);
 
   it("R1-10: ô nhập sai ở bảng đã lưu không hiện lại ở bảng xem trước của phạm vi mới", async () => {

@@ -5365,8 +5365,6 @@
       "scopeSubject": "Theo môn",
       "scopeSubjectDescription": "Đủ các phần của một môn",
       "scopeOnly": "Kỳ thi này chỉ có phạm vi này",
-      "part": "Phần thi",
-      "partHint": "Bài Theo phần chỉ gồm phần được chọn",
       "partName": {
         "MATH": "Toán",
         "LITERATURE": "Văn",
@@ -5558,13 +5556,6 @@
         "SHARED": "thời lượng chung cho cả bài"
       },
       "noSubject": "chưa chọn môn",
-      "subjectField": {
-        "subject": "Môn của bài thi",
-        "hint": "{count, number} môn có mẫu cấu trúc; môn chưa có mẫu thì tạo cấu trúc trống",
-        "placeholder": "Chọn môn",
-        "withTemplates": "{subject} · {count, number} mẫu",
-        "noTemplate": "{subject} chưa có mẫu cấu trúc. Cấu trúc khởi tạo để trống: nhập số câu, thời lượng và thêm phần nếu cần."
-      },
       "templateNotes": {
         "yearsDiffer": "Cấu trúc {structureYear} dùng ma trận {matrixYear}: chuyên gia cần xác nhận chỉ tiêu ma trận trước khi bán.",
         "yearsConfirm": "Chuyên gia đã xác nhận chỉ tiêu ma trận {matrixYear} dùng được cho cấu trúc này",
