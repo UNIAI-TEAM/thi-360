@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { loadOptionalSession, OPTIONAL_SESSION_QUERY_KEY, type OptionalSessionLoader } from "@/features/session/api";
+import type { OptionalSessionLoader } from "@/features/session/api";
+import { useOptionalSession } from "@/features/session/use-optional-session";
 import { type HeaderAccount, StudentHeader } from "./student-header";
 
 /**
@@ -9,15 +9,8 @@ import { type HeaderAccount, StudentHeader } from "./student-header";
  * khách hoặc bản đã đăng nhập. Lỗi tải phiên (không phải 401) hiện như khách: nút mua của trang tự xử lý trạng thái
  * "chưa biết quyền".
  */
-export function PublicStudentHeader({
-  loadCurrentSession = loadOptionalSession,
-}: {
-  loadCurrentSession?: OptionalSessionLoader;
-}) {
-  const sessionQuery = useQuery({
-    queryKey: OPTIONAL_SESSION_QUERY_KEY,
-    queryFn: loadCurrentSession,
-  });
+export function PublicStudentHeader({ loadCurrentSession }: { loadCurrentSession?: OptionalSessionLoader }) {
+  const sessionQuery = useOptionalSession(loadCurrentSession);
 
   const account: HeaderAccount = sessionQuery.isLoading
     ? { kind: "loading" }

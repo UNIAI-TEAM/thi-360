@@ -289,6 +289,9 @@
     "upstreamTimeout": "The server took too long to respond. Please try again later.",
     "upstreamUnavailable": "Unable to connect to the server. Please try again later."
   },
+  "footer": {
+    "note": "Online practice that follows the real exam structure"
+  },
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
@@ -322,7 +325,7 @@
   "landing": {
     "badge": "HSA · QDA Prep",
     "ctaHeader": "Sign in",
-    "ctaHero": "Sign in to start",
+    "ctaHero": "Explore exams",
     "features": {
       "analysisDescription": "Section scores, correct, incorrect, and skipped items shown right after submission.",
       "analysisTitle": "Instant scores and breakdown",
@@ -374,6 +377,165 @@
     "description": "The page you opened does not exist or has been moved.",
     "eyebrow": "ERROR 404",
     "title": "Page not found"
+  },
+  "storefront": {
+    "access": {
+      "adminNote": "Administrator accounts have no buy or start buttons. Public information only.",
+      "attemptsLeft": "{count, plural, one {# attempt left} other {# attempts left}}",
+      "buy": "Buy exam",
+      "buyAgain": "Buy again",
+      "buyMore": "Buy more attempts",
+      "checking": "Checking",
+      "checkingNote": "Order {orderCode}. You do not need to pay again. If the exam still does not show up, contact support and include this order code.",
+      "continue": "Continue",
+      "continueNote": "You have an attempt in progress.",
+      "enter": "Start exam",
+      "exhaustedNote": "You have used all attempts of this exam.",
+      "loadError": "Could not determine your access to this exam.",
+      "loading": "Loading access",
+      "pendingTopUp": "Your top-up order {orderCode} is being checked. You do not need to pay again.",
+      "reload": "Reload access",
+      "viewDetail": "View details"
+    },
+    "catalog": {
+      "clearFilters": "Clear filters",
+      "emptyTitle": "No exams are on sale right now",
+      "errorMessage": "Could not load the exam catalog. Your filters are kept.",
+      "filtersLabel": "Search and filter exams",
+      "formatAll": "All formats",
+      "formatHint": "A FULL exam has all sections in one attempt. A section or subject exam lets you practice only the section or subject shown on the card.",
+      "formatHintLabel": "Format:",
+      "formatLabel": "Format",
+      "kindAll": "All exams",
+      "kindLabel": "Exam",
+      "loading": "Loading catalog",
+      "noResultsDescription": "Try another keyword or remove some filters.",
+      "noResultsTitle": "No matching exams found",
+      "paginationLabel": "Catalog pagination",
+      "partAll": "All sections, subjects",
+      "partLabel": "Section/subject",
+      "searchLabel": "Search by name or code",
+      "searchPlaceholder": "For example: HSA FULL or HSA-FULL-01",
+      "showing": "Showing {from}–{to} of {total} exams on sale",
+      "sort": {
+        "NEWEST": "Newest",
+        "PRICE_ASC": "Price: low to high",
+        "PRICE_DESC": "Price: high to low"
+      },
+      "sortLabel": "Sort by",
+      "title": "Choose an exam"
+    },
+    "detail": {
+      "answerType": {
+        "CLOZE": "Fill in the blank",
+        "ESSAY": "Essay",
+        "MATCHING": "Matching",
+        "MULTIPLE_CHOICE": "Multiple choice",
+        "QUESTION_SET": "Question set",
+        "SHORT_ANSWER": "Short answer",
+        "SINGLE_CHOICE": "Single choice",
+        "TRUE_FALSE": "True/False"
+      },
+      "answerTypeCount": "{type}: {count}",
+      "attemptsPerPurchase": "{count, plural, one {# attempt per purchase} other {# attempts per purchase}}",
+      "audience": "Who it is for",
+      "breadcrumbCatalog": "Choose an exam",
+      "breadcrumbHome": "Home",
+      "breadcrumbLabel": "Breadcrumb",
+      "choicesTitle": "Options within the purchase",
+      "chooseSubjects": "Choose {count} of {total} subjects",
+      "codeLabel": "Product code",
+      "columns": {
+        "duration": "Duration",
+        "maxPoints": "Max points",
+        "nature": "Type",
+        "order": "Order",
+        "part": "Section",
+        "questions": "Questions"
+      },
+      "countsByPick": "Questions per subject by number of subjects chosen: {counts}",
+      "guestHint": "You need to sign in to buy. After signing in you return to this exam at the purchase confirmation step. No account yet?",
+      "how": {
+        "answerTypes": "Question types",
+        "essayNote": "Essay sections are graded by hand. The total score is available once grading is finished.",
+        "maxScore": "{score} points",
+        "noEssay": "No essay section:",
+        "points": "{value} points",
+        "scoring": "Scoring",
+        "switching": "Moving between sections",
+        "switchingValue": "Taken in order. When time runs out or you submit early, the next section opens right away; you cannot go back to a closed section.",
+        "timing": "Timing",
+        "timingPER_PART": "Timed per section. The clock runs on the server.",
+        "timingSHARED": "One shared clock for the whole exam. The clock runs on the server."
+      },
+      "howTitle": "How it works and how it is graded",
+      "includesTax": "Tax and fees included",
+      "objectives": "Objectives",
+      "optional": "Optional",
+      "perAttempt": "{questions} questions · {minutes} minutes per attempt",
+      "policy": {
+        "contactLine": "Send a request via: {contact}",
+        "contactPending": "Contact information is being updated.",
+        "priceNote": "Prices are in VND, tax and fees included.",
+        "refund": "Refund for system errors: {policy}",
+        "refundPending": "[REFUND POLICY PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+        "title": "Price and policy"
+      },
+      "priceHeading": "Price",
+      "promoEnds": "Ends {date}",
+      "required": "Required",
+      "rights": {
+        "afterEssay": "After the grader finishes grading",
+        "afterGrading": "Right after grading is done",
+        "ai": "AI explanations",
+        "attempts": "Attempts",
+        "no": "No",
+        "noteLabel": "Note:",
+        "practice": "Extra practice",
+        "resultTiming": "When you can see the result",
+        "resultView": "Result detail",
+        "resultViews": {
+          "FULL_SOLUTION": "Score, answers and solutions",
+          "SCORE": "Score only",
+          "SCORE_AND_ANSWERS": "Score and answers"
+        },
+        "strengths": "Strengths and weaknesses report",
+        "title": "What you get after buying",
+        "yes": "Yes"
+      },
+      "structureCaption": "Sections in the order you take them",
+      "structureTitle": "Exam structure",
+      "structureTotal": "{questions} questions · {minutes} minutes"
+    },
+    "discount": "{percent}% off",
+    "format": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "gone": {
+      "descriptionTail": "is no longer on sale. You can pick another exam from the catalog.",
+      "eyebrow": "ERROR 410",
+      "myExams": "My exams",
+      "owned": "If you already bought this exam, your access and remaining attempts are still in My exams.",
+      "title": "This exam is no longer on sale",
+      "toCatalog": "Back to the exam catalog"
+    },
+    "listPriceLabel": "List price",
+    "notFound": {
+      "description": "The link is wrong or the exam has not been published.",
+      "eyebrow": "ERROR 404",
+      "title": "Exam not found",
+      "toCatalog": "Back to the exam catalog"
+    },
+    "price": "{amount, number} VND",
+    "promoEnds": "Ends {date}",
+    "review": "Review exam",
+    "units": {
+      "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+      "minutes": "{value} minutes",
+      "questions": "{value} questions"
+    }
   },
   "userMenu": {
     "adminPortal": "Admin portal",

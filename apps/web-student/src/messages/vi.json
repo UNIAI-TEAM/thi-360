@@ -289,6 +289,9 @@
     "upstreamTimeout": "Máy chủ xử lý quá lâu. Hãy thử lại sau.",
     "upstreamUnavailable": "Không kết nối được tới máy chủ. Hãy thử lại sau."
   },
+  "footer": {
+    "note": "Luyện thi trực tuyến theo đúng cấu trúc đề"
+  },
   "forbidden": {
     "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
@@ -322,7 +325,7 @@
   "landing": {
     "badge": "Luyện thi HSA · QDA",
     "ctaHeader": "Đăng nhập",
-    "ctaHero": "Đăng nhập để bắt đầu",
+    "ctaHero": "Khám phá bài thi",
     "features": {
       "analysisDescription": "Điểm từng phần, câu đúng, câu sai, câu bỏ trống hiển thị sau khi nộp.",
       "analysisTitle": "Điểm và phân tích ngay",
@@ -374,6 +377,165 @@
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",
     "eyebrow": "MÃ LỖI 404",
     "title": "Không tìm thấy trang"
+  },
+  "storefront": {
+    "access": {
+      "adminNote": "Tài khoản quản trị không có nút mua hay vào bài thi. Chỉ xem thông tin công khai.",
+      "attemptsLeft": "{count, plural, other {Còn # lượt}}",
+      "buy": "Mua bài thi",
+      "buyAgain": "Mua lại",
+      "buyMore": "Mua thêm lượt",
+      "checking": "Đang kiểm tra",
+      "checkingNote": "Mã đơn {orderCode}. Bạn không cần thanh toán lại. Nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ và gửi kèm mã đơn này.",
+      "continue": "Tiếp tục",
+      "continueNote": "Bạn có một lượt đang làm dở.",
+      "enter": "Vào bài thi",
+      "exhaustedNote": "Bạn đã dùng hết lượt của bài thi này.",
+      "loadError": "Chưa xác định được quyền của tài khoản.",
+      "loading": "Đang tải quyền",
+      "pendingTopUp": "Đơn mua thêm lượt {orderCode} đang được kiểm tra. Bạn không cần thanh toán lại.",
+      "reload": "Tải lại quyền",
+      "viewDetail": "Xem chi tiết"
+    },
+    "catalog": {
+      "clearFilters": "Xóa bộ lọc",
+      "emptyTitle": "Hiện chưa có bài thi nào đang mở bán",
+      "errorMessage": "Chưa tải được danh mục bài thi. Bộ lọc của bạn vẫn được giữ.",
+      "filtersLabel": "Tìm và lọc bài thi",
+      "formatAll": "Tất cả hình thức",
+      "formatHint": "Bài thi FULL gồm các phần thi liên tiếp trong một lượt. Bài thi theo phần hoặc theo môn giúp bạn luyện riêng phần hoặc môn ghi trên thẻ.",
+      "formatHintLabel": "Hình thức:",
+      "formatLabel": "Hình thức",
+      "kindAll": "Tất cả kỳ thi",
+      "kindLabel": "Kỳ thi",
+      "loading": "Đang tải danh mục",
+      "noResultsDescription": "Thử từ khóa khác hoặc bỏ bớt bộ lọc.",
+      "noResultsTitle": "Không tìm thấy bài thi phù hợp",
+      "paginationLabel": "Phân trang danh mục",
+      "partAll": "Tất cả phần, môn",
+      "partLabel": "Phần/môn",
+      "searchLabel": "Tìm theo tên hoặc mã",
+      "searchPlaceholder": "Ví dụ: HSA FULL hoặc HSA-FULL-01",
+      "showing": "Hiển thị {from}–{to} trong {total} bài thi đang mở bán",
+      "sort": {
+        "NEWEST": "Mới công bố",
+        "PRICE_ASC": "Giá tăng dần",
+        "PRICE_DESC": "Giá giảm dần"
+      },
+      "sortLabel": "Sắp xếp",
+      "title": "Chọn bài thi"
+    },
+    "detail": {
+      "answerType": {
+        "CLOZE": "Điền khuyết",
+        "ESSAY": "Tự luận",
+        "MATCHING": "Ghép đôi",
+        "MULTIPLE_CHOICE": "Trắc nghiệm nhiều đáp án",
+        "QUESTION_SET": "Chùm câu hỏi",
+        "SHORT_ANSWER": "Trả lời ngắn",
+        "SINGLE_CHOICE": "Trắc nghiệm một đáp án",
+        "TRUE_FALSE": "Đúng/Sai"
+      },
+      "answerTypeCount": "{type}: {count}",
+      "attemptsPerPurchase": "{count, plural, other {# lượt thi mỗi lần mua}}",
+      "audience": "Đối tượng phù hợp",
+      "breadcrumbCatalog": "Chọn bài thi",
+      "breadcrumbHome": "Trang chủ",
+      "breadcrumbLabel": "Vị trí trang",
+      "choicesTitle": "Phần được chọn trong phạm vi mua",
+      "chooseSubjects": "Chọn {count} trong {total} môn",
+      "codeLabel": "Mã sản phẩm",
+      "columns": {
+        "duration": "Thời lượng",
+        "maxPoints": "Điểm tối đa",
+        "nature": "Tính chất",
+        "order": "Thứ tự",
+        "part": "Phần",
+        "questions": "Số câu"
+      },
+      "countsByPick": "Số câu mỗi môn theo số môn đã chọn: {counts}",
+      "guestHint": "Bạn cần đăng nhập để mua. Sau khi đăng nhập, bạn quay lại đúng bài thi này ở bước xác nhận mua. Chưa có tài khoản?",
+      "how": {
+        "answerTypes": "Dạng câu hỏi",
+        "essayNote": "Phần tự luận chấm tay. Điểm tổng có sau khi chấm xong.",
+        "maxScore": "{score} điểm",
+        "noEssay": "Không có phần tự luận:",
+        "points": "{value} điểm",
+        "scoring": "Thang điểm",
+        "switching": "Chuyển phần",
+        "switchingValue": "Làm tuần tự. Hết giờ hoặc nộp sớm thì phần sau mở ngay; không quay lại phần đã đóng.",
+        "timing": "Thời gian",
+        "timingPER_PART": "Tính giờ từng phần. Đồng hồ tính theo máy chủ.",
+        "timingSHARED": "Một đồng hồ chung cho cả bài. Đồng hồ tính theo máy chủ."
+      },
+      "howTitle": "Cách làm và cách chấm",
+      "includesTax": "Đã gồm thuế, phí",
+      "objectives": "Mục tiêu",
+      "optional": "Tự chọn",
+      "perAttempt": "{questions} câu · {minutes} phút mỗi lượt",
+      "policy": {
+        "contactLine": "Gửi yêu cầu qua: {contact}",
+        "contactPending": "Thông tin liên hệ đang được cập nhật.",
+        "priceNote": "Giá bán bằng VND, đã gồm thuế, phí.",
+        "refund": "Hoàn tiền khi lỗi hệ thống: {policy}",
+        "refundPending": "[CHÍNH SÁCH HOÀN TIỀN CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+        "title": "Giá và chính sách"
+      },
+      "priceHeading": "Giá bán",
+      "promoEnds": "Kết thúc {date}",
+      "required": "Bắt buộc",
+      "rights": {
+        "afterEssay": "Sau khi người chấm chấm xong",
+        "afterGrading": "Ngay sau khi chấm xong",
+        "ai": "Giải thích bằng AI",
+        "attempts": "Số lượt",
+        "no": "Không",
+        "noteLabel": "Ghi chú:",
+        "practice": "Ôn luyện bổ sung",
+        "resultTiming": "Thời điểm xem kết quả",
+        "resultView": "Mức xem kết quả",
+        "resultViews": {
+          "FULL_SOLUTION": "Điểm, đáp án và lời giải",
+          "SCORE": "Chỉ điểm",
+          "SCORE_AND_ANSWERS": "Điểm và đáp án"
+        },
+        "strengths": "Đánh giá điểm mạnh, điểm yếu",
+        "title": "Quyền sau khi mua",
+        "yes": "Có"
+      },
+      "structureCaption": "Các phần theo thứ tự làm bài",
+      "structureTitle": "Cấu trúc bài thi",
+      "structureTotal": "{questions} câu · {minutes} phút"
+    },
+    "discount": "Giảm {percent}%",
+    "format": {
+      "FULL": "Bài thi FULL",
+      "PART": "Bài thi theo phần",
+      "SUBJECT": "Bài thi theo môn"
+    },
+    "gone": {
+      "descriptionTail": "không còn mở bán. Bạn có thể chọn bài thi khác trong danh mục.",
+      "eyebrow": "MÃ LỖI 410",
+      "myExams": "Bài thi của tôi",
+      "owned": "Nếu đã mua bài này, quyền và số lượt còn lại của bạn vẫn ở Bài thi của tôi.",
+      "title": "Bài thi đã ngừng bán",
+      "toCatalog": "Về danh mục bài thi"
+    },
+    "listPriceLabel": "Giá gốc",
+    "notFound": {
+      "description": "Đường dẫn không đúng hoặc bài thi chưa được công bố.",
+      "eyebrow": "MÃ LỖI 404",
+      "title": "Không tìm thấy bài thi",
+      "toCatalog": "Về danh mục bài thi"
+    },
+    "price": "{amount, number} đ",
+    "promoEnds": "Kết thúc {date}",
+    "review": "Bài ôn",
+    "units": {
+      "attempts": "{count, plural, other {# lượt}}",
+      "minutes": "{value} phút",
+      "questions": "{value} câu"
+    }
   },
   "userMenu": {
     "adminPortal": "Trang quản trị",
