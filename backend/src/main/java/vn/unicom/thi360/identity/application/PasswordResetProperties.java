@@ -14,6 +14,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param accountDailyWindow  "ngày" của E16, tính cửa sổ trượt (quyết định tạm: 24 giờ trượt)
  * @param executorPoolSize    số luồng của bộ thực thi xử lý {@code forgot} sau khi đã trả phản hồi
  * @param executorQueueCapacity độ dài hàng đợi; đầy thì yêu cầu bị bỏ lặng lẽ, vẫn trả 202
+ * @param writeReconcileGrace  thời gian chờ sau dấu ghi trước trước khi job đối soát coi lần ghi mật khẩu là chưa
+ *                            xác định (lớn hơn thời gian chờ tối đa của lần gọi Keycloak)
  */
 @ConfigurationProperties(prefix = "thi360.identity.password-reset")
 public record PasswordResetProperties(
@@ -22,12 +24,14 @@ public record PasswordResetProperties(
         @DefaultValue("5") int accountDailyLimit,
         @DefaultValue("PT24H") Duration accountDailyWindow,
         @DefaultValue("2") int executorPoolSize,
-        @DefaultValue("100") int executorQueueCapacity) {
+        @DefaultValue("100") int executorQueueCapacity,
+        @DefaultValue("PT5M") Duration writeReconcileGrace) {
 
     public PasswordResetProperties {
         requirePositive("token-ttl", tokenTtl);
         requirePositive("account-cooldown", accountCooldown);
         requirePositive("account-daily-window", accountDailyWindow);
+        requirePositive("write-reconcile-grace", writeReconcileGrace);
         if (accountDailyLimit <= 0) {
             throw new IllegalArgumentException(
                     "thi360.identity.password-reset.account-daily-limit must be positive");

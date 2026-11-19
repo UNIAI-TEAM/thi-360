@@ -111,4 +111,62 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
             ORDER BY t.passwordChangedAt ASC
             """)
     List<PasswordResetToken> findPendingRevocations(@Param("since") Instant since, Pageable pageable);
+
+    /**
+     * Dấu ghi trước: commit (transaction riêng) trước khi gọi Keycloak. Chỉ khi dòng vẫn do lần chiếm này giữ và chưa
+     * bị yêu cầu mới vô hiệu; trả 0 thì không được ghi mật khẩu.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE PasswordResetToken t
+            SET t.passwordWriteStartedAt = :now
+            WHERE t.id = :tokenId
+              AND t.usedAt = :claimedAt
+              AND t.invalidatedAt IS NULL
+              AND t.passwordWriteStartedAt IS NULL
+              AND t.passwordChangedAt IS NULL
+            """)
+    int markWriteStarted(
+            @Param("tokenId") UUID tokenId, @Param("claimedAt") Instant claimedAt, @Param("now") Instant now);
+
+    /** Keycloak từ chối rõ ràng: chắc chắn chưa ghi, xóa dấu ghi trước (kể cả khi mã đã bị vô hiệu trong lúc gọi). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE PasswordResetToken t
+            SET t.passwordWriteStartedAt = NULL
+            WHERE t.id = :tokenId
+              AND t.passwordWriteStartedAt IS NOT NULL
+              AND t.passwordChangedAt IS NULL
+              AND t.finalizedAt IS NULL
+            """)
+    int clearWriteMark(@Param("tokenId") UUID tokenId);
+
+    /** Đánh dấu đã ghi audit {@code PASSWORD_RESET}; trả 1 chỉ cho người ghi audit (không ghi hai lần). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE PasswordResetToken t
+            SET t.finalizedAt = :now
+            WHERE t.id = :tokenId
+              AND t.finalizedAt IS NULL
+            """)
+    int markFinalized(@Param("tokenId") UUID tokenId, @Param("now") Instant now);
+
+    /** Ghi nhận một lần đối soát (thành công hay không) để dòng kẹt không làm đói dòng mới. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE PasswordResetToken t SET t.reconcileAttemptedAt = :now WHERE t.id = :tokenId")
+    int markReconcileAttempted(@Param("tokenId") UUID tokenId, @Param("now") Instant now);
+
+    /**
+     * Các lần ghi mật khẩu có dấu ghi trước mà chưa hoàn tất (chưa có audit), cũ hơn {@code startedBefore}: kết quả
+     * Keycloak không biết (job đối soát). Không có mốc tuổi tối đa: một hành động bảo mật chưa xong không bị bỏ.
+     */
+    @Query("""
+            SELECT t FROM PasswordResetToken t
+            WHERE t.passwordWriteStartedAt IS NOT NULL
+              AND t.finalizedAt IS NULL
+              AND t.passwordWriteStartedAt < :startedBefore
+            ORDER BY COALESCE(t.reconcileAttemptedAt, t.passwordWriteStartedAt) ASC
+            """)
+    List<PasswordResetToken> findUnfinalizedWrites(
+            @Param("startedBefore") Instant startedBefore, Pageable pageable);
 }

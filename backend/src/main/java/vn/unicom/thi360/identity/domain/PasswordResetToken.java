@@ -14,7 +14,9 @@ import java.util.UUID;
  * {@code used_at} đặt khi mã bị chiếm, bị thay bằng yêu cầu mới (E16) hoặc bị hủy (tài khoản không còn
  * {@code ACTIVE}, hoặc địa chỉ email đã đổi so với lúc phát hành); {@code invalidated_at} phân biệt hai trường hợp
  * sau với mã đang bị chiếm; {@code password_changed_at} là lúc Keycloak nhận mật khẩu mới (mã dùng xong vĩnh viễn);
- * {@code sessions_revoked_at} là lúc phiên cũ đã bị thu hồi.
+ * {@code sessions_revoked_at} là lúc phiên cũ đã bị thu hồi; {@code recovery_email_verified_at} là lần xác minh
+ * email lúc phát hành (xác minh lại thì mã cũ vô hiệu); {@code password_write_started_at} là dấu ghi trước, commit
+ * trước khi gọi Keycloak; {@code finalized_at} là lúc audit {@code PASSWORD_RESET} được ghi.
  */
 @Entity
 @Table(name = "password_reset_token", schema = "identity")
@@ -53,6 +55,18 @@ public class PasswordResetToken {
     @Column(name = "sessions_revoked_at")
     private Instant sessionsRevokedAt;
 
+    @Column(name = "recovery_email_verified_at")
+    private Instant recoveryEmailVerifiedAt;
+
+    @Column(name = "password_write_started_at")
+    private Instant passwordWriteStartedAt;
+
+    @Column(name = "finalized_at")
+    private Instant finalizedAt;
+
+    @Column(name = "reconcile_attempted_at")
+    private Instant reconcileAttemptedAt;
+
     protected PasswordResetToken() {
     }
 
@@ -63,7 +77,8 @@ public class PasswordResetToken {
             Instant expiresAt,
             Instant createdAt,
             String requestIp,
-            String recoveryEmailNormalized) {
+            String recoveryEmailNormalized,
+            Instant recoveryEmailVerifiedAt) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.userId = Objects.requireNonNull(userId, "userId must not be null");
         this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash must not be null");
@@ -72,6 +87,8 @@ public class PasswordResetToken {
         this.requestIp = requestIp == null || requestIp.isBlank() ? null : requestIp.trim();
         this.recoveryEmailNormalized =
                 Objects.requireNonNull(recoveryEmailNormalized, "recoveryEmailNormalized must not be null");
+        this.recoveryEmailVerifiedAt =
+                Objects.requireNonNull(recoveryEmailVerifiedAt, "recoveryEmailVerifiedAt must not be null");
     }
 
     public UUID getId() {
@@ -116,5 +133,17 @@ public class PasswordResetToken {
 
     public Instant getSessionsRevokedAt() {
         return sessionsRevokedAt;
+    }
+
+    public Instant getRecoveryEmailVerifiedAt() {
+        return recoveryEmailVerifiedAt;
+    }
+
+    public Instant getPasswordWriteStartedAt() {
+        return passwordWriteStartedAt;
+    }
+
+    public Instant getFinalizedAt() {
+        return finalizedAt;
     }
 }

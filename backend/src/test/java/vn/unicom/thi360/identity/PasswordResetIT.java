@@ -181,6 +181,8 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
         assertThat(userAccountRepository.findById(account.id()).orElseThrow().getEmailVerifiedAt())
                 .isEqualTo(verifiedBefore);
         assertThat(passwordResetAudits(auditRecorder, account)).isEqualTo(1);
+        assertThat(writeMarkRow(account).get("password_write_started_at")).isNotNull();
+        assertThat(writeMarkRow(account).get("finalized_at")).as("finalised with the success audit").isNotNull();
         verify(auditRecorder).record(argThat(event -> "PASSWORD_RESET".equals(event.action())
                 && account.id().toString().equals(event.targetId())
                 && !String.valueOf(event).contains(NEW_PASSWORD)
@@ -352,6 +354,7 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
         assertThat(passwordResetAudits(auditRecorder, account)).isZero();
         assertThat(login(account, account.password()).getResponse().getStatus()).as("old password still valid").isEqualTo(200);
         verify(keycloakClient, never()).logoutAllSessions(any());
+        assertThat(writeMarkRow(account).get("password_write_started_at")).as("definite rejection clears the mark").isNull();
     }
 
     @Test
@@ -457,6 +460,173 @@ class PasswordResetIT extends AbstractKeycloakIntegrationTest {
             assertThat(login(entry.getKey(), entry.getKey().password()).getResponse().getStatus())
                     .as("password not changed").isEqualTo(200);
         }
+    }
+
+    @Test
+    void reverifiedAddressInvalidatesOlderLink() throws Exception {
+        Account account = support.eligible("reset.reverify");
+        passwordResetService.issue(account.email(), IP);
+        String oldToken = support.tokenFromLatestMail(account.email());
+        // Cùng địa chỉ được xác minh lại sau khi đổi liên hệ (xác nhận mới đặt email_verified_at mới).
+        jdbc.update("UPDATE identity.user_account SET email_verified_at = email_verified_at + interval '1 minute'"
+                + " WHERE id = ?", account.id());
+
+        MvcResult stale = reset(oldToken, NEW_PASSWORD);
+
+        assertThat(stale.getResponse().getStatus()).isEqualTo(422);
+        assertThat(stale.getResponse().getContentAsString()).contains("RESET_TOKEN_INVALID");
+        assertThat(support.unusedTokenRows(account.id())).as("older link is invalidated").isZero();
+        verify(keycloakClient, never()).setPassword(eq(account.id()), anyString(), anyBoolean());
+        assertThat(login(account, account.password()).getResponse().getStatus()).as("password not changed").isEqualTo(200);
+
+        // Liên kết phát hành sau lần xác minh lại gắn với lần xác minh mới và dùng được.
+        support.ageTokens(account.id(), 120);
+        passwordResetService.issue(account.email(), IP);
+        String newToken = support.tokenFromLatestMail(account.email());
+        assertThat(newToken).isNotEqualTo(oldToken);
+        assertThat(reset(newToken, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(204);
+    }
+
+    @Test
+    void writeAppliedThenExceptionLeavesTokenUnusableRevokesSessionsAndAudits() throws Exception {
+        Account account = support.eligible("reset.lost");
+        MvcResult before = login(account, account.password());
+        Cookie oldAccess = before.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        String token = freshToken(account);
+        // Keycloak ĐÃ đổi mật khẩu rồi mới mất kết quả (hết thời gian đọc).
+        org.mockito.Mockito.doAnswer(invocation -> {
+                    invocation.callRealMethod();
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, new RuntimeException("response lost"));
+                })
+                .when(keycloakClient).setPassword(eq(account.id()), anyString(), anyBoolean());
+
+        assertThat(reset(token, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(502);
+
+        assertThat(support.unusedTokenRows(account.id())).as("token stays consumed").isZero();
+        assertThat(writeMarkRow(account).get("password_write_started_at")).as("write-ahead mark committed").isNotNull();
+        assertThat(writeMarkRow(account).get("finalized_at")).as("no success audit for an unconfirmed outcome").isNull();
+        mockMvc.perform(get("/api/v1/me").cookie(oldAccess)).andExpect(status().isUnauthorized());
+        assertThat(keycloakSessions(account)).as("inline fail-closed revocation").isEmpty();
+        assertThat(reset(token, "Another#Pass2026").getResponse().getStatus()).as("no replay").isEqualTo(422);
+        assertThat(passwordResetAudits(auditRecorder, account)).isZero();
+
+        // Phiên mở bằng mật khẩu mới trước khi job đối soát chạy cũng bị thu hồi; audit được ghi, kết quả chưa xác định.
+        MvcResult afterWrite = login(account, NEW_PASSWORD);
+        assertThat(afterWrite.getResponse().getStatus()).as("the write was applied").isEqualTo(200);
+        Cookie lateAccess = afterWrite.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        support.backdateWriteMark(account.id());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).isEqualTo(1);
+
+        mockMvc.perform(get("/api/v1/me").cookie(lateAccess)).andExpect(status().isUnauthorized());
+        assertThat(keycloakSessions(account)).isEmpty();
+        assertThat(writeMarkRow(account).get("finalized_at")).isNotNull();
+        verify(auditRecorder).record(argThat(event -> "PASSWORD_RESET".equals(event.action())
+                && account.id().toString().equals(event.targetId())
+                && event.outcome() == vn.unicom.thi360.audit.spi.AuditOutcome.FAILURE
+                && "PASSWORD_WRITE_INDETERMINATE".equals(event.errorCode())
+                && !String.valueOf(event).contains(NEW_PASSWORD)
+                && !String.valueOf(event).contains(token)));
+        verify(keycloakClient, times(1)).setPassword(eq(account.id()), anyString(), anyBoolean());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).as("nothing left").isZero();
+    }
+
+    @Test
+    void reconciliationRevokesWhenInlineRevocationAlsoFailed() throws Exception {
+        Account account = support.eligible("reset.lost.revoke");
+        MvcResult before = login(account, account.password());
+        Cookie oldAccess = before.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        String token = freshToken(account);
+        org.mockito.Mockito.doAnswer(invocation -> {
+                    invocation.callRealMethod();
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, new RuntimeException("5xx"));
+                })
+                .when(keycloakClient).setPassword(eq(account.id()), anyString(), anyBoolean());
+        doThrow(new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, new RuntimeException("logout down")))
+                .when(keycloakClient).logoutAllSessions(account.id());
+
+        assertThat(reset(token, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(502);
+        assertThat(keycloakSessions(account)).as("inline revocation failed").isNotEmpty();
+        support.backdateWriteMark(account.id());
+
+        org.mockito.Mockito.doCallRealMethod().when(keycloakClient).logoutAllSessions(any());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).isEqualTo(1);
+
+        assertThat(keycloakSessions(account)).isEmpty();
+        mockMvc.perform(get("/api/v1/me").cookie(oldAccess)).andExpect(status().isUnauthorized());
+        verify(keycloakClient, times(1)).setPassword(eq(account.id()), anyString(), anyBoolean());
+        assertThat(writeMarkRow(account).get("finalized_at")).isNotNull();
+    }
+
+    @Test
+    void crashAfterWriteMarkIsReconciledWithoutReplayingThePassword() throws Exception {
+        Account account = support.eligible("reset.crash");
+        MvcResult first = login(account, account.password());
+        MvcResult second = login(account, account.password());
+        Cookie access1 = first.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        Cookie access2 = second.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        // Tiến trình chết ngay sau khi dấu ghi trước được commit: chỉ có dấu, không có gì khác.
+        Instant claimedAt = Instant.now().minusSeconds(30);
+        support.insertToken(account.id(), claimedAt.minusSeconds(60), claimedAt.plus(Duration.ofHours(1)), claimedAt);
+        jdbc.update("UPDATE identity.password_reset_token SET password_write_started_at = ? WHERE user_id = ?",
+                java.sql.Timestamp.from(claimedAt), account.id());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).as("inside the grace period").isZero();
+        mockMvc.perform(get("/api/v1/me").cookie(access1)).andExpect(status().isOk());
+
+        support.backdateWriteMark(account.id());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).isEqualTo(1);
+
+        mockMvc.perform(get("/api/v1/me").cookie(access1)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/me").cookie(access2)).andExpect(status().isUnauthorized());
+        assertThat(redis.hasKey("user-sess:" + account.id())).isFalse();
+        assertThat(keycloakSessions(account)).isEmpty();
+        assertThat(writeMarkRow(account).get("finalized_at")).isNotNull();
+        verify(keycloakClient, never()).setPassword(any(), anyString(), anyBoolean());
+        verify(auditRecorder, times(1)).record(argThat(event -> "PASSWORD_RESET".equals(event.action())
+                && account.id().toString().equals(event.targetId())
+                && event.outcome() == vn.unicom.thi360.audit.spi.AuditOutcome.FAILURE));
+        assertThat(login(account, account.password()).getResponse().getStatus()).as("password untouched").isEqualTo(200);
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).isZero();
+    }
+
+    @Test
+    void finalizeFailureIsRecoveredByReconciliation() throws Exception {
+        Account account = support.eligible("reset.finalize");
+        MvcResult session = login(account, account.password());
+        Cookie access = session.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE);
+        String token = freshToken(account);
+        // Audit lỗi một lần: transaction hoàn tất rollback sau khi Keycloak đã đổi mật khẩu.
+        doThrow(new IllegalStateException("audit store down"))
+                .doCallRealMethod()
+                .when(auditRecorder)
+                .record(argThat(event -> event != null && "PASSWORD_RESET".equals(event.action())));
+
+        assertThat(reset(token, NEW_PASSWORD).getResponse().getStatus()).as("password was changed").isEqualTo(204);
+
+        assertThat(writeMarkRow(account).get("finalized_at")).as("finalize rolled back").isNull();
+        assertThat(writeMarkRow(account).get("password_changed_at")).isNull();
+        mockMvc.perform(get("/api/v1/me").cookie(access)).andExpect(status().isUnauthorized());
+        assertThat(support.unusedTokenRows(account.id())).isZero();
+        assertThat(reset(token, "Another#Pass2026").getResponse().getStatus()).as("no replay").isEqualTo(422);
+
+        support.backdateWriteMark(account.id());
+        assertThat(passwordResetService.reconcileUnfinalizedWrites()).isEqualTo(1);
+
+        assertThat(writeMarkRow(account).get("finalized_at")).isNotNull();
+        verify(auditRecorder, times(2)).record(argThat(event -> event != null
+                && "PASSWORD_RESET".equals(event.action()) && account.id().toString().equals(event.targetId())));
+        verify(auditRecorder).record(argThat(event -> event != null
+                && "PASSWORD_RESET".equals(event.action())
+                && account.id().toString().equals(event.targetId())
+                && event.outcome() == vn.unicom.thi360.audit.spi.AuditOutcome.FAILURE));
+        verify(keycloakClient, times(1)).setPassword(eq(account.id()), anyString(), anyBoolean());
+        assertThat(login(account, NEW_PASSWORD).getResponse().getStatus()).isEqualTo(200);
+    }
+
+    private java.util.Map<String, Object> writeMarkRow(Account account) {
+        return jdbc.queryForMap(
+                "SELECT password_write_started_at, password_changed_at, finalized_at, sessions_revoked_at"
+                        + " FROM identity.password_reset_token WHERE user_id = ?",
+                account.id());
     }
 
     private List<org.keycloak.representations.idm.UserSessionRepresentation> keycloakSessions(Account account) {

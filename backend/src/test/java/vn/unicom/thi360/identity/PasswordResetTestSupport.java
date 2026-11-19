@@ -119,8 +119,9 @@ final class PasswordResetTestSupport {
         String raw = "t" + UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
         jdbc.update(
                 "INSERT INTO identity.password_reset_token (id, user_id, token_hash, expires_at, used_at, created_at, request_ip,"
-                        + " recovery_email_normalized)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(email_normalized, '') FROM identity.user_account WHERE id = ?))",
+                        + " recovery_email_normalized, recovery_email_verified_at)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(email_normalized, '') FROM identity.user_account WHERE id = ?),"
+                        + " (SELECT email_verified_at FROM identity.user_account WHERE id = ?))",
                 UUID.randomUUID(),
                 userId,
                 hash(raw),
@@ -128,6 +129,7 @@ final class PasswordResetTestSupport {
                 usedAt == null ? null : Timestamp.from(usedAt),
                 Timestamp.from(createdAt),
                 "198.51.100.9",
+                userId,
                 userId);
         return raw;
     }
@@ -151,6 +153,14 @@ final class PasswordResetTestSupport {
         jdbc.update(
                 "UPDATE identity.password_reset_token SET created_at = now() - (? * interval '1 second') WHERE user_id = ?",
                 secondsAgo,
+                userId);
+    }
+
+    /** Đưa dấu ghi trước của tài khoản ra ngoài thời gian chờ đối soát (10 phút trước). */
+    void backdateWriteMark(UUID userId) {
+        jdbc.update(
+                "UPDATE identity.password_reset_token SET password_write_started_at = now() - interval '10 minutes'"
+                        + " WHERE user_id = ? AND password_write_started_at IS NOT NULL",
                 userId);
     }
 

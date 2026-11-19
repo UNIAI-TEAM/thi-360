@@ -34,7 +34,7 @@ class PasswordResetLimitsTests {
             mock(PasswordResetTokenRepository.class),
             mock(UserAccountRepository.class),
             new PasswordResetProperties(
-                    Duration.ofHours(1), Duration.ofSeconds(60), 5, Duration.ofHours(24), 2, 100),
+                    Duration.ofHours(1), Duration.ofSeconds(60), 5, Duration.ofHours(24), 2, 100, Duration.ofMinutes(5)),
             mock(PasswordPolicy.class),
             mock(KeycloakIdentityClient.class),
             mock(UserAdminService.class),
@@ -48,7 +48,7 @@ class PasswordResetLimitsTests {
 
     private static PasswordResetToken tokenCreatedAt(Instant createdAt) {
         return new PasswordResetToken(
-                UUID.randomUUID(), UUID.randomUUID(), "hash-" + createdAt, createdAt.plusSeconds(3600), createdAt, null, "user@thi360.vn");
+                UUID.randomUUID(), UUID.randomUUID(), "hash-" + createdAt, createdAt.plusSeconds(3600), createdAt, null, "user@thi360.vn", createdAt);
     }
 
     @Test
