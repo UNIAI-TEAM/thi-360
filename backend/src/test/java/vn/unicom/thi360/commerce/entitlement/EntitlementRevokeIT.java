@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.NotFoundException;
 
 class EntitlementRevokeIT extends EntitlementIntegrationTest {
@@ -88,6 +89,75 @@ class EntitlementRevokeIT extends EntitlementIntegrationTest {
 
         assertThatThrownBy(() -> service.revokeUnused(unknown))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    /** AC-16: an attempt reserved before the refund still ends as used, and keeps its benefits. */
+    @Test
+    void reservedAttemptFinishesAfterRevoke() {
+        UUID userId = newId();
+        GrantOrderResult.Line granted = grant(userId, newId(), 3);
+        UUID attemptId = newId();
+        port.reserve(userId, granted.entitlementId(), attemptId);
+
+        assertThat(service.revokeUnused(granted.grantId())).isEqualTo(2);
+        port.confirmUse(attemptId);
+
+        assertThat(usageState(attemptId)).isEqualTo("USED");
+        Map<String, Object> grant = grantRow(granted.grantId());
+        assertThat(count(grant, "attempts_used")).isEqualTo(1);
+        assertThat(count(grant, "attempts_reserved")).isZero();
+        assertThat(count(grant, "attempts_revoked")).isEqualTo(2);
+        Map<String, Object> entitlement = entitlementRow(granted.entitlementId());
+        assertThat(count(entitlement, "attempts_used")).isEqualTo(1);
+        assertThat(count(entitlement, "attempts_revoked")).isEqualTo(2);
+        assertThat(port.benefitsOf(attemptId).grantId()).isEqualTo(granted.grantId());
+        assertThat(port.describe(userId, granted.entitlementId()).attemptsLeft()).isZero();
+        assertInvariants(granted.entitlementId());
+    }
+
+    /**
+     * AC-17: handing back a reserved attempt of a refunded grant revokes it instead of making it usable again,
+     * also when the refund had no unused attempt to revoke (the grant's only attempt was the reserved one).
+     */
+    @Test
+    void releaseAfterRefundRevokes() {
+        UUID userId = newId();
+        GrantOrderResult.Line threeAttempts = grant(userId, newId(), 3);
+        UUID attemptId = newId();
+        port.reserve(userId, threeAttempts.entitlementId(), attemptId);
+        service.revokeUnused(threeAttempts.grantId());
+
+        port.release(attemptId);
+
+        assertThat(usageState(attemptId)).isEqualTo("RELEASED");
+        Map<String, Object> entitlement = entitlementRow(threeAttempts.entitlementId());
+        assertThat(count(entitlement, "attempts_reserved")).isZero();
+        assertThat(count(entitlement, "attempts_used")).isZero();
+        assertThat(count(entitlement, "attempts_revoked")).isEqualTo(3);
+        assertThat(port.describe(userId, threeAttempts.entitlementId()).attemptsLeft()).isZero();
+        assertThatThrownBy(() -> port.reserve(userId, threeAttempts.entitlementId(), newId()))
+                .isInstanceOfSatisfying(ConflictException.class,
+                        e -> assertThat(e.getCode()).isEqualTo("NO_ATTEMPTS_LEFT"));
+        assertInvariants(threeAttempts.entitlementId());
+
+        GrantOrderResult.Line oneAttempt = grant(userId, newId(), 1);
+        UUID onlyAttempt = newId();
+        port.reserve(userId, oneAttempt.entitlementId(), onlyAttempt);
+        assertThat(service.revokeUnused(oneAttempt.grantId())).isZero();
+        assertThat(grantRow(oneAttempt.grantId()).get("revoked_at")).isNotNull();
+
+        port.release(onlyAttempt);
+        port.release(onlyAttempt);
+
+        Map<String, Object> grant = grantRow(oneAttempt.grantId());
+        assertThat(count(grant, "attempts_reserved")).isZero();
+        assertThat(count(grant, "attempts_revoked")).isEqualTo(1);
+        assertThat(count(entitlementRow(oneAttempt.entitlementId()), "attempts_revoked")).isEqualTo(1);
+        assertThat(port.describe(userId, oneAttempt.entitlementId()).attemptsLeft()).isZero();
+        assertThatThrownBy(() -> port.reserve(userId, oneAttempt.entitlementId(), newId()))
+                .isInstanceOfSatisfying(ConflictException.class,
+                        e -> assertThat(e.getCode()).isEqualTo("NO_ATTEMPTS_LEFT"));
+        assertInvariants(oneAttempt.entitlementId());
     }
 
     private void markUsedAndReserved(GrantOrderResult.Line granted, int used, int reserved) {

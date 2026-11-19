@@ -19,6 +19,7 @@ import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService
 import vn.unicom.thi360.commerce.entitlement.application.GrantLine;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderCommand;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.commerce.spi.EntitlementPort;
 
 /**
  * Shared set-up of the entitlement tests: random accounts, exams and orders per test (plan CM-4a "Dữ liệu
@@ -30,6 +31,9 @@ abstract class EntitlementIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     protected EntitlementGrantService grantService;
+
+    @Autowired
+    protected EntitlementPort port;
 
     @Autowired
     protected JdbcTemplate jdbc;
@@ -91,6 +95,32 @@ abstract class EntitlementIntegrationTest extends AbstractIntegrationTest {
                     .as("entitlement.%s equals the sum over its grants", column)
                     .isEqualTo(count(sums, column));
         }
+    }
+
+    /**
+     * The invariant for cases that go through the port: the entitlement equals the sum of its grants, and
+     * each grant's used and reserved counters equal the number of usage rows in that state.
+     */
+    protected void assertInvariants(UUID entitlementId) {
+        assertCountsEqualGrantSums(entitlementId);
+        List<Map<String, Object>> grants = jdbc.queryForList(
+                "SELECT id, attempts_used, attempts_reserved FROM commerce.entitlement_grant"
+                        + " WHERE entitlement_id = ?", entitlementId);
+        for (Map<String, Object> grant : grants) {
+            for (String state : List.of("USED", "RESERVED")) {
+                long usages = jdbc.queryForObject(
+                        "SELECT count(*) FROM commerce.entitlement_usage WHERE grant_id = ? AND state = ?",
+                        Long.class, grant.get("id"), state);
+                assertThat(count(grant, "attempts_" + state.toLowerCase(java.util.Locale.ROOT)))
+                        .as("grant %s attempts_%s equals its %s usages", grant.get("id"), state.toLowerCase(), state)
+                        .isEqualTo((int) usages);
+            }
+        }
+    }
+
+    protected String usageState(UUID attemptId) {
+        return jdbc.queryForObject(
+                "SELECT state FROM commerce.entitlement_usage WHERE attempt_id = ?", String.class, attemptId);
     }
 
     /** Result of one racing call: its value, or the exception the call under test threw. */
