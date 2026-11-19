@@ -87,9 +87,10 @@ public class SolverInputBuilder {
             if (filter == null || filter.subjectId() == null) return List.of();
             List<QuestionSourcePort.Candidate> candidates = source.findCandidates(filter, fetchLimit);
             List<PathCandidate> result = new ArrayList<>(candidates.size());
+            boolean setRow = setRowGroups.contains(group);
             for (var candidate : candidates) {
                 loaded.put(new QuestionSourcePort.VersionKey(candidate.questionId(), candidate.versionNo()), candidate);
-                result.add(toPathCandidate(candidate, setRowGroups.contains(group)));
+                result.add(toPathCandidate(candidate, setRow));
             }
             return List.copyOf(result);
         }
