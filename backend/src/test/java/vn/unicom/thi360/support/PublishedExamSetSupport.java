@@ -43,7 +43,16 @@ public final class PublishedExamSetSupport {
             createDatabase(postgres, DATABASE);
             created = true;
         }
-        registry.add("spring.datasource.url", () -> urlOf(postgres, DATABASE));
+        pointAt(registry, urlOf(postgres, DATABASE));
+    }
+
+    /**
+     * Points the context at {@code url}. {@code AbstractIntegrationTest} registers {@code spring.datasource.url} too and,
+     * as a base class, is registered after (and so wins over) the subclass; the Hikari-specific key is bound after the
+     * generic one and is not touched by the base class, so it decides.
+     */
+    public static void pointAt(DynamicPropertyRegistry registry, String url) {
+        registry.add("spring.datasource.hikari.jdbc-url", () -> url);
     }
 
     /** A new, empty database in the container; the caller points a context at it. */

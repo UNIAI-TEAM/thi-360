@@ -40,7 +40,7 @@ class PublishedExamSetProfileIT extends AbstractKeycloakIntegrationTest {
     @DynamicPropertySource
     static void freshDatabase(DynamicPropertyRegistry registry) {
         String url = PublishedExamSetSupport.createDatabase(POSTGRES, "published_exam_set_e2e");
-        registry.add("spring.datasource.url", () -> url);
+        PublishedExamSetSupport.pointAt(registry, url);
     }
 
     @Autowired JdbcTemplate jdbc;

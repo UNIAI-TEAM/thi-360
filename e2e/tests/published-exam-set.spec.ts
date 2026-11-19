@@ -1,7 +1,14 @@
 import { expect, test } from "@playwright/test";
-import messages from "../../apps/web-admin/src/messages/vi.json";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { allExams, miniOf, publishedExamSet, waitForPublishedExamSet } from "./helpers/published-exam-set";
 import { ADMIN_URL, loginAdmin } from "./helpers/editor-qa";
+
+const MESSAGES_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../../apps/web-admin/src/messages/vi.json");
+const messages = JSON.parse(readFileSync(MESSAGES_PATH, "utf8")) as {
+  exams: { status: { PUBLISHED: string; DISCONTINUED: string }; list: { filters: { search: string } } };
+};
 
 const PUBLISHED_LABEL = messages.exams.status.PUBLISHED;
 const DISCONTINUED_LABEL = messages.exams.status.DISCONTINUED;
