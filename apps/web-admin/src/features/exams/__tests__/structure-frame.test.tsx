@@ -286,15 +286,16 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
 
   it("lỗi cấu trúc trên màn hình nằm ở vùng (d) và dẫn tới chỗ sửa", async () => {
     const user = userEvent.setup();
-    openStructure(QDA, "?part=part-42");
-    const required = await screen.findByRole("textbox", { name: /Số câu phải làm/ });
-    await user.clear(required);
-    await user.type(required, "7");
+    // Số câu của phần chỉ đọc ở bước 2 (UNI-2753): gây lỗi bằng "Số phương án phải chọn", ô vẫn sửa được.
+    openStructure(QDA, "?part=part-49");
+    const choose = await screen.findByRole("textbox", { name: "Số phương án phải chọn" });
+    await user.clear(choose);
+    await user.type(choose, "9");
     const heading = await screen.findByRole("heading", { name: /Lỗi cần xử lý \([1-9]/ });
     const issues = heading.closest("section")!;
     await user.click(within(issues).getAllByRole("button", { name: "Đến chỗ sửa" })[0]!);
     // Lỗi của chính phần đang sửa: ở lại phần đó, không hỏi chuyển.
-    expect(window.location.search).toBe("?part=part-42");
+    expect(window.location.search).toBe("?part=part-49");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
@@ -370,7 +371,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(screen.getByRole("link", { name: "Sửa thông tin tổng quan" }));
+    await user.click(screen.getAllByRole("link", { name: "Sửa thông tin tổng quan" })[0]!);
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
@@ -383,7 +384,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(screen.getByRole("link", { name: "Sửa thông tin tổng quan" }));
+    await user.click(screen.getAllByRole("link", { name: "Sửa thông tin tổng quan" })[0]!);
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
@@ -481,7 +482,8 @@ describe("Khung bước 2: nút kiểm tra", () => {
       expect(within(titleRow).getByRole("button", { name })).toBeInTheDocument();
     }
     expect(within(titleRow).queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sửa thông tin tổng quan" })).toBeInTheDocument();
+    // Nút ở đầu màn Cấu trúc (không nằm ở hàng nút của khung); các đường dẫn cạnh ô số câu chỉ đọc đứng sau nó.
+    expect(screen.getAllByRole("link", { name: "Sửa thông tin tổng quan" }).length).toBeGreaterThanOrEqual(1);
     const detailTitle = await screen.findByRole("heading", { level: 2, name: /Toán/ });
     expect(detailTitle.parentElement!.parentElement!).toContainElement(screen.getByRole("button", { name: "Kiểm tra môn" }));
     titleRow.remove();

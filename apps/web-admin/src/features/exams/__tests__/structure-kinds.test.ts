@@ -11,7 +11,6 @@ import {
   addBranch,
   confirmOption,
   optionQuestionCount,
-  setPartQuestionCount,
   setSectionCount,
 } from "../components/exam-structure-draft";
 import {
@@ -256,14 +255,6 @@ describe("nhánh của phần tự chọn có phần chung", () => {
     const added = parts.find((part) => part.id === choice.id)!.options.at(-1)!;
     expect(added).toMatchObject({ kind: "BRANCH", code: "BR-3", name: "Lập trình" });
     expect(added.sections.map((section) => section.questionCount)).toEqual([2]);
-  });
-
-  it("đổi số câu phần giữ phần chung, nhánh một môn nhận phần còn lại", () => {
-    const exam = sample("ex-thptqg-tin-001");
-    const choice = exam.parts.find((part) => part.mode === "CHOICE")!;
-    const next = setPartQuestionCount(choice, 5);
-    expect(next.sections[0]!.questionCount).toBe(2);
-    expect(next.options.map((option) => option.sections[0]!.questionCount)).toEqual([3, 3]);
   });
 });
 

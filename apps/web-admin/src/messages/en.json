@@ -4041,7 +4041,6 @@
         "singleSectionHint": "This part has one subject: its question count equals the part's.",
         "subject": "Subject",
         "sectionCount": "Questions",
-        "sectionCountAria": "Questions for {subject}",
         "countLocked": "The template locks the question count",
         "allocated": "Allocated to groups",
         "allocatedValue": "{allocated, number} / {count, number}",
@@ -4393,7 +4392,7 @@
         "sourceEnough": "Enough source questions for the matrix",
         "countField": {
           "label": "Questions in this subject",
-          "hint": "Edit the subject's question count; the part and its groups must match.",
+          "hint": "The question count comes from the overview; the part and its groups must match.",
           "locked": "Template locks the count",
           "lockedHint": "The template keeps the question count of each subject. The allocation inside the subject can still be edited."
         },
@@ -5934,7 +5933,7 @@
       "type": "Question type",
       "typeAny": "Any",
       "count": "Quantity",
-      "countHint": "Matches the question count in step 1.",
+      "countHint": "Set in step 1; edit it in the overview.",
       "countMismatch": "The quantity differs from step 1. Step 1 sets {step1, number} questions, here it is {count, number}. Fix one of the two.",
       "distribution": "Grade and difficulty distribution",
       "set": "set",

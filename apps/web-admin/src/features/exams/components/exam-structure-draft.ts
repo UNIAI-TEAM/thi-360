@@ -191,43 +191,6 @@ export function moveBlock(parts: readonly ExamPart[], blockId: string, offset: -
   });
 }
 
-/**
- * Đổi số câu học viên phải làm của phần. Phần cố định chỉ có một môn thì số câu của môn đổi theo (hai số phải bằng nhau).
- * Phần nhiều môn và các tổ hợp giữ phân bổ đã khai báo; lệch thì báo lỗi để người dùng tự chia (không tự giảm câu, mục
- * 5.3). Số câu trên đề đi theo khi hai số đang bằng nhau (khi mọi câu đều bắt buộc, số câu trên đề là mặc định, mục 5.2).
- */
-export function setPartQuestionCount(part: ExamPart, questionCount: number): ExamPart {
-  const syncSingle = (sections: ExamSection[], count: number) =>
-    sections.length === 1 ? [{ ...sections[0]!, questionCount: count }] : sections;
-  const onPaper = part.questionCountOnPaper === part.questionCount ? questionCount : part.questionCountOnPaper;
-  // Phần tự chọn có phần chung: giữ số câu phần chung, lựa chọn một môn nhận phần còn lại.
-  if (part.mode === "CHOICE" && part.sections.length) {
-    const next = { ...part, questionCount, questionCountRequired: questionCount, questionCountOnPaper: onPaper };
-    const remaining = optionQuestionCount(next);
-    return {
-      ...next,
-      options: part.options.map((option) =>
-        option.kind !== "COMBINATION" ? { ...option, sections: syncSingle(option.sections, remaining) } : option,
-      ),
-    };
-  }
-  return {
-    ...part,
-    questionCount,
-    questionCountRequired: questionCount,
-    questionCountOnPaper: onPaper,
-    sections: syncSingle(part.sections, questionCount),
-    options: part.options.map((option) =>
-      option.kind === "SUBJECT" ? { ...option, sections: syncSingle(option.sections, questionCount) } : option,
-    ),
-  };
-}
-
-/** Số câu in trên đề của phần (gồm cả nội dung lựa chọn nếu đề trình bày nhiều phương án). */
-export function setPartOnPaper(part: ExamPart, questionCountOnPaper: number): ExamPart {
-  return { ...part, questionCountOnPaper };
-}
-
 /** Số phương án học viên phải chọn của phần tự chọn (quy tắc tham gia `CHOICE`). */
 export function setPartChoose(part: ExamPart, choose: number): ExamPart {
   return { ...part, participation: { mode: "CHOICE", choose } };

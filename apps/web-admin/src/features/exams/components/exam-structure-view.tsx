@@ -42,9 +42,7 @@ import {
   selectionExists,
   setEnglishOption,
   setPartChoose,
-  setPartOnPaper,
   setPartPoints,
-  setPartQuestionCount,
   setSectionCount,
   type StructureSelection,
   updateBlock,
@@ -204,7 +202,7 @@ function StructureEditor({
   const reviewMode = template?.buildMode === "REVIEW";
   // H42, R-135: mẫu `fixedBlockCounts` khóa số câu của bài phạm vi `SUBJECT`; bài `PART` và bài ôn từ cùng mẫu vẫn sửa được.
   const rowsLocked = blockCountsLocked(template, exam.scope, reviewMode);
-  const countLocked = template?.fixedCounts === true || rowsLocked;
+  const templateLocked = template?.fixedCounts === true || rowsLocked;
   // Bài ôn mới tạo có nhóm duy nhất chưa khai số câu: điền số câu bước 1 để màn, tổng và nội dung lưu cùng một số (V-01b).
   const structure = useMemo(
     () => (reviewMode ? { ...loadedStructure, parts: fillReviewCounts(loadedStructure.parts) } : loadedStructure),
@@ -653,6 +651,7 @@ function StructureEditor({
               reference={reference}
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               step1Count={sectionContext.part.questionCount}
+              examId={exam.id}
               headerAction={checkAction}
               topicError={topicError}
             />
@@ -668,8 +667,8 @@ function StructureEditor({
               onSelectBlock={(blockId) => select({ kind: "block", blockId })}
               onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
               headerAction={checkAction}
-              countLocked={countLocked}
-              onCount={(count) => setDraft((parts) => setSectionCount(parts, sectionContext.location, count))}
+              examId={exam.id}
+              templateLocked={templateLocked}
               sourceVerified={sourceVerified(sectionContext.section)}
               topicError={topicError}
               confirmedCount={confirmedCounts[sectionContext.section.id] ?? savedCountOf(sectionContext.section.id)}
@@ -727,7 +726,8 @@ function StructureEditor({
               structureCombinations={structure.combinations ?? []}
               axes={axes}
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              countLocked={countLocked}
+              examId={exam.id}
+              templateLocked={templateLocked}
               onAddSubject={(subjectCode) => {
                 setDraft((parts) => addPoolSection(parts, selectedPart.id, subjectCode));
                 announce(t("subjectAdded", { subject: lookup.subject(subjectCode) }));
@@ -740,9 +740,6 @@ function StructureEditor({
               }
               branchSubjects={branchSubjects}
               onPoints={(points) => setDraft((parts) => setPartPoints(parts, selectedPart.id, points))}
-              onOnPaper={(count) =>
-                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartOnPaper(part, count)))
-              }
               onChoose={(choose) =>
                 setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartChoose(part, choose)))
               }
@@ -760,9 +757,6 @@ function StructureEditor({
               )}
               issueText={issueText}
               onChange={(update) => setDraft((parts) => updatePart(parts, selectedPart.id, update))}
-              onQuestionCount={(count) =>
-                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartQuestionCount(part, count)))
-              }
               onSectionCount={(optionId, sectionId, questionCount) =>
                 setDraft((parts) => setSectionCount(parts, { partId: selectedPart.id, optionId, sectionId }, questionCount))
               }

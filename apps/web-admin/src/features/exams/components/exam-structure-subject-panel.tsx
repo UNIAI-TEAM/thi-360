@@ -17,6 +17,7 @@ import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { EditOverviewLink } from "./edit-overview-link";
 import { LOCKED_FIELD } from "./locked-field";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { ScrollableTable } from "./scrollable-table";
@@ -44,10 +45,10 @@ export interface SubjectPanelProps {
   onAddBlock: () => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
   headerAction?: ReactNode;
-  /** Mẫu khóa số câu từng phần, mục (H27): ô "Số câu của mục" chỉ đọc; phân bổ bên trong mục vẫn sửa được. */
-  countLocked?: boolean;
-  /** Sửa số câu của mục; bỏ trống: ô chỉ đọc. */
-  onCount?: (count: number) => void;
+  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" cạnh ô số câu chỉ đọc (UNI-2753). */
+  examId: string;
+  /** Mẫu khóa số câu từng phần, mục (H27): thêm dòng "Mẫu đã khóa số câu"; ô "Số câu của mục" chỉ đọc cho mọi bài. */
+  templateLocked?: boolean;
   /** Môn đã kiểm tra đạt và chưa sửa gì từ đó: hiện "Đủ nguồn theo ma trận" (R-122). */
   sourceVerified?: boolean;
   /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của môn (H20). */
@@ -77,8 +78,8 @@ export function ExamStructureSubjectPanel({
   onSelectBlock,
   onAddBlock,
   headerAction,
-  countLocked = false,
-  onCount,
+  examId,
+  templateLocked = false,
   sourceVerified = false,
   topicError = null,
   confirmedCount = null,
@@ -274,23 +275,20 @@ export function ExamStructureSubjectPanel({
         <div ref={countRef} className="flex max-w-md flex-col gap-1.5">
           <FormField
             label={t("countField.label")}
-            hint={countLocked ? t("countField.lockedHint") : t("countField.hint")}
+            hint={templateLocked ? t("countField.lockedHint") : t("countField.hint")}
           >
-            {(controlProps) =>
-              countLocked || !onCount ? (
-                <span className="flex items-center gap-2">
-                  <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
-                  {countLocked && (
-                    <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
-                      <Lock aria-hidden className="size-3.5" />
-                      {t("countField.locked")}
-                    </span>
-                  )}
-                </span>
-              ) : (
-                <BlockNumberInput {...controlProps} className="w-24" value={sectionCount} onValueChange={onCount} />
-              )
-            }
+            {(controlProps) => (
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Input {...controlProps} value={String(sectionCount)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
+                {templateLocked && (
+                  <span className="inline-flex items-center gap-1 text-label font-medium text-text-secondary">
+                    <Lock aria-hidden className="size-3.5" />
+                    {t("countField.locked")}
+                  </span>
+                )}
+                <EditOverviewLink examId={examId} className="h-auto p-0" />
+              </span>
+            )}
           </FormField>
         </div>
       )}

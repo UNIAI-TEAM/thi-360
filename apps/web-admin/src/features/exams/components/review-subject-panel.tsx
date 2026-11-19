@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, cn, FormField, Select } from "@thi360/ui";
+import { Button, Card, cn, FormField, Input, Select } from "@thi360/ui";
 import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode } from "react";
@@ -14,7 +14,9 @@ import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, resizeSets } from "./block-form";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
+import { EditOverviewLink } from "./edit-overview-link";
 import type { SectionContext } from "./exam-structure-draft";
+import { LOCKED_FIELD } from "./locked-field";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import type { TopicQuotaServerError } from "./topic-quota-table";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
@@ -29,8 +31,10 @@ export interface ReviewSubjectPanelProps {
   labels: MatrixLabels;
   reference: ContentReference;
   onChange: (update: (section: ExamSection) => ExamSection) => void;
-  /** Số câu bước 1 đặt cho bài ôn: ô Số lượng phải khớp. */
+  /** Số câu bước 1 đặt cho bài ôn: ô Số lượng chỉ đọc, báo lệch khi nhóm khác số này. */
   step1Count: number;
+  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" cạnh ô Số lượng chỉ đọc (UNI-2753). */
+  examId: string;
   headerAction?: ReactNode;
   /** Lỗi 422 của chỉ tiêu chủ đề (H20): màn này không có bảng chỉ tiêu, nên báo ngay trong panel. */
   topicError?: TopicQuotaServerError;
@@ -41,7 +45,7 @@ export interface ReviewSubjectPanelProps {
  * dạng câu, số lượng. Số câu, thời lượng và thang điểm lấy từ bước 1. Phân bố khối lớp, độ khó và câu chùm đóng sẵn: mở
  * ra thì như ở bài thường.
  */
-export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, headerAction, topicError = null }: ReviewSubjectPanelProps) {
+export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, examId, headerAction, topicError = null }: ReviewSubjectPanelProps) {
   const t = useTranslations("exams.reviewExam");
   const tContent = useTranslations("content");
   const { section } = context;
@@ -79,15 +83,6 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
     current.topicQuotas?.some((quota) => quota.percent !== undefined && quota.percent !== null)
       ? { topicQuotas: applyTopicTotal(current.topicQuotas, total) }
       : {};
-  const setCount = (next: number) => {
-    // Số lượng của bài ôn là số câu của cả mục: nhóm duy nhất và môn cùng đổi.
-    onChange((current) => ({
-      ...current,
-      ...retotal(current, next),
-      questionCount: next,
-      blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, { questionCount: next }) : item)),
-    }));
-  };
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));
   // Đổi số chùm hoặc số câu con: điều kiện của chùm vượt số chùm mới bị bỏ như ở nhóm thường (R1-30).
   const setSets = (setCount: number, setSize: number) => {
@@ -138,7 +133,12 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
           )}
         </FormField>
         <FormField label={t("count")} hint={t("countHint")} error={mismatch ? t("countMismatch", { step1: step1Count, count }) : undefined}>
-          {(controlProps) => <BlockNumberInput {...controlProps} value={count} onValueChange={setCount} />}
+          {(controlProps) => (
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Input {...controlProps} value={String(count)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
+              <EditOverviewLink examId={examId} className="h-auto p-0" />
+            </span>
+          )}
         </FormField>
       </div>
 

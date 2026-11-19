@@ -59,6 +59,7 @@ const section = (audioRequirement?: AudioRequirement): ExamSection => ({
 });
 
 const common = {
+  examId: "exam-1",
   subjectName: "Tiếng Anh",
   axes: { grades: reference.grades.map((grade) => grade.code), difficulties: reference.difficulties.map((item) => item.code) },
   labels: { grade: (code: string) => code, difficulty: (code: string) => code },
