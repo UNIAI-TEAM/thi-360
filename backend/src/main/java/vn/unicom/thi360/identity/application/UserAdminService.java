@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
@@ -149,7 +148,7 @@ public class UserAdminService {
     private final List<AccountDeletionGuard> deletionGuards;
     private final List<ActiveAttemptChecker> activeAttemptCheckers;
     private final ClassMembershipPort classMembershipPort;
-    private final StudentLearningProvider studentLearningProvider;
+    private final List<StudentLearningProvider> studentLearningProviders;
     private final KeycloakIdentityClient keycloakClient;
     private final CurrentUserProvider currentUserProvider;
     private final AuditRecorder auditRecorder;
@@ -176,7 +175,7 @@ public class UserAdminService {
             List<AccountDeletionGuard> deletionGuards,
             List<ActiveAttemptChecker> activeAttemptCheckers,
             ClassMembershipPort classMembershipPort,
-            @Autowired(required = false) StudentLearningProvider studentLearningProvider,
+            List<StudentLearningProvider> studentLearningProviders,
             KeycloakIdentityClient keycloakClient,
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
@@ -200,7 +199,9 @@ public class UserAdminService {
         this.deletionGuards = deletionGuards == null ? List.of() : List.copyOf(deletionGuards);
         this.activeAttemptCheckers = activeAttemptCheckers == null ? List.of() : List.copyOf(activeAttemptCheckers);
         this.classMembershipPort = classMembershipPort;
-        this.studentLearningProvider = studentLearningProvider;
+        this.studentLearningProviders = studentLearningProviders == null
+                ? List.of()
+                : List.copyOf(studentLearningProviders);
         this.keycloakClient = keycloakClient;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
@@ -392,19 +393,35 @@ public class UserAdminService {
         userAccountRepository.findById(userId)
                 .filter(u -> u.getStatus() != UserStatus.PROVISIONING)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        StudentLearningProvider.StudentLearningData data =
-                studentLearningProvider == null ? null : studentLearningProvider.loadForUser(userId);
-        if (data == null) {
-            data = StudentLearningProvider.StudentLearningData.empty();
+
+        // plan B1: các module thương mại và lượt thi đều cài StudentLearningProvider,
+        // nên gộp kết quả của mọi bean; dataAvailable đúng khi một bean có dữ liệu.
+        boolean dataAvailable = false;
+        List<Object> entitlements = new ArrayList<>();
+        List<Object> attempts = new ArrayList<>();
+        List<Object> assessments = new ArrayList<>();
+        List<Object> practice = new ArrayList<>();
+        List<Object> supportRequests = new ArrayList<>();
+        for (StudentLearningProvider provider : studentLearningProviders) {
+            StudentLearningProvider.StudentLearningData data = provider.loadForUser(userId);
+            if (data == null) {
+                continue;
+            }
+            dataAvailable |= data.dataAvailable();
+            entitlements.addAll(data.entitlements());
+            attempts.addAll(data.attempts());
+            assessments.addAll(data.assessments());
+            practice.addAll(data.practice());
+            supportRequests.addAll(data.supportRequests());
         }
         return new StudentLearningResponse(
                 userId,
-                data.dataAvailable(),
-                data.entitlements(),
-                data.attempts(),
-                data.assessments(),
-                data.practice(),
-                data.supportRequests());
+                dataAvailable,
+                entitlements,
+                attempts,
+                assessments,
+                practice,
+                supportRequests);
     }
 
     @Transactional(readOnly = true)
