@@ -3,14 +3,14 @@
 -- Phát sinh bằng scripts/generate_test_exam_seed.py; id cố định, ON CONFLICT DO NOTHING.
 -- Mọi số "giả định" chờ chuyên gia xác nhận.
 
--- QUESTION_TAG + nút MAPID dùng cho bài lỗi TEST-ERR-03/06/07.
+-- QUESTION_TAG + nút MAPID dùng cho bài lỗi TEST-ERR-03/07 và phạm vi MAPID hẹp của Toán.
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 SELECT '6710590e-fa21-5bc6-9c00-3db3e7b4675f', g.id, 'TEST-HIEM', 'test-hiem', GREATEST(g.last_value, COALESCE((SELECT MAX(value) FROM catalog.catalog_item WHERE group_id=g.id), 0)) + 1,
     'Nhãn test hiếm', 'Rare test tag', '[MẪU] Nhãn cho TEST-ERR-03', 0, 1, false, NULL, 1, '/6710590e-fa21-5bc6-9c00-3db3e7b4675f/'
 FROM catalog.catalog_group g WHERE g.id='00000000-0000-7000-8100-000000000008' ON CONFLICT (group_id, code_normalized) DO NOTHING;
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 SELECT 'f1f04db9-e1a9-54fa-af70-c72bf65339f0', g.id, 'TEST-TOAN-HEP', 'test-toan-hep', GREATEST(g.last_value, COALESCE((SELECT MAX(value) FROM catalog.catalog_item WHERE group_id=g.id), 0)) + 1,
-    'Chương test hẹp Toán', 'Narrow test chapter Math', '[MẪU] Nút MAPID cho TEST-ERR-06', 0, 1, false, NULL, 1, '/f1f04db9-e1a9-54fa-af70-c72bf65339f0/'
+    'Chương test hẹp Toán', 'Narrow test chapter Math', '[MẪU] Nút MAPID hẹp của Toán (nguồn thu hẹp, dùng ở phạm vi thử)', 0, 1, false, NULL, 1, '/f1f04db9-e1a9-54fa-af70-c72bf65339f0/'
 FROM catalog.catalog_group g WHERE g.id='00000000-0000-7000-8100-000000000009' ON CONFLICT (group_id, code_normalized) DO NOTHING;
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
 SELECT 'bb64432b-78d8-5251-bde8-2f5cf8d69a24', g.id, 'TEST-DIA-HEP', 'test-dia-hep', GREATEST(g.last_value, COALESCE((SELECT MAX(value) FROM catalog.catalog_item WHERE group_id=g.id), 0)) + 1,
@@ -1834,16 +1834,16 @@ INSERT INTO exam.exam (id, code, code_normalized, name, description, instruction
     matrix_year, years_confirmed, timing, duration_minutes, max_score, reference_max,
     practice_scoring, status, check_status, question_count, has_essay,
     has_english_option, combination_count, has_unpublished_changes, revision) VALUES
-  ('5dbc2955-ba9a-52b1-8ec7-f238b73e37f5','TEST-ERR-03','test-err-03','TEST · ERR chùm hiếm','Lỗi: nhóm Đọc ngữ liệu thêm nhãn TEST-HIEM (2 < 5 bộ) -> SET_SHORTAGE.',NULL,'00000000-0000-7000-8200-000000000101','PART','VAN',NULL,'HSA_PART_LITERATURE',2026,2026,true,'PER_PART',60,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,false,0,false,0)
+  ('5dbc2955-ba9a-52b1-8ec7-f238b73e37f5','TEST-ERR-03','test-err-03','TEST · ERR chùm hiếm','Lỗi: nhóm Ngữ cảnh Toán (1 bộ) thêm nhãn TEST-HIEM, không bộ Toán nào mang nhãn -> SET_SHORTAGE.',NULL,'00000000-0000-7000-8200-000000000101','PART','TOAN',NULL,'HSA_PART_MATH',2026,2026,true,'PER_PART',75,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,false,0,false,0)
 ON CONFLICT (id) DO NOTHING;
 
 WITH upgrading AS (SELECT s.exam_id FROM exam.exam_structure s
     WHERE s.exam_id = '5dbc2955-ba9a-52b1-8ec7-f238b73e37f5' AND s.structure_hash = 'seed-test-err-03' AND NOT s.edited AND EXISTS (SELECT 1 FROM exam.exam e WHERE e.id = s.exam_id AND e.status = 'DRAFT') AND NOT EXISTS (SELECT 1 FROM exam.exam_version v WHERE v.exam_id = s.exam_id)),
 dropped AS (DELETE FROM exam.exam_block_ref r USING upgrading u
     WHERE r.exam_id = u.exam_id AND r.version_no IS NULL RETURNING r.id)
-UPDATE exam.exam e SET template_code = 'HSA_PART_LITERATURE',
+UPDATE exam.exam e SET template_code = 'HSA_PART_MATH',
     structure_year = 2026, matrix_year = 2026,
-    timing = 'PER_PART', duration_minutes = 60,
+    timing = 'PER_PART', duration_minutes = 75,
     max_score = 50,
     question_count = 50, has_essay = false,
     has_english_option = false, combination_count = 0,
@@ -1853,7 +1853,7 @@ FROM upgrading u WHERE e.id = u.exam_id;
 
 INSERT INTO exam.exam_structure AS s (exam_id, parts, exam_quotas, structure_hash, base_version,
     updated_by) VALUES
-  ('5dbc2955-ba9a-52b1-8ec7-f238b73e37f5','{"parts":[{"name":"Ngôn ngữ – Văn học","durationMinutes":60,"questionCount":50,"questionCountOnPaper":50,"questionCountRequired":50,"maxPoints":50,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"VAN","questionCount":50,"blocks":[{"name":"Từ khác nhóm nghĩa","questionType":"SINGLE_CHOICE","questionCount":5,"requiredPointsPerQuestion":1,"tagCodes":["VAN_TU_KHAC_NHOM"],"templateGroupCode":"HSA_VN_ODD_WORD","id":"809bb63f-617a-5868-9481-0a7257a753b9"},{"name":"Từ sai","questionType":"SINGLE_CHOICE","questionCount":5,"requiredPointsPerQuestion":1,"tagCodes":["VAN_TU_SAI"],"templateGroupCode":"HSA_VN_WORD_USAGE","id":"5684273b-3779-5e88-92a8-ffa62584cdfd"},{"name":"Cặp từ điền chỗ trống","questionType":"SINGLE_CHOICE","questionCount":5,"requiredPointsPerQuestion":1,"tagCodes":["VAN_CAP_TU_DIEN"],"templateGroupCode":"HSA_VN_WORD_PAIR","id":"96ff1c6b-03ad-57ac-83d5-8d1cb0d34c67"},{"name":"Một ngữ liệu một câu","questionType":"SINGLE_CHOICE","questionCount":10,"requiredPointsPerQuestion":1,"tagCodes":["VAN_NGU_LIEU_MOT_CAU"],"templateGroupCode":"HSA_VN_PASSAGE_SINGLE","id":"9c7d8478-80ee-57ae-918e-f8858cb5d1f8"},{"name":"Đọc hiểu","questionType":"QUESTION_SET","questionCount":25,"requiredPointsPerQuestion":1,"setCount":5,"setSize":5,"childAnswerType":"SINGLE_CHOICE","shuffleUnits":true,"shuffleEditable":true,"slots":[{"index":1,"tagCodes":["VAN_NGHI_LUAN_XA_HOI"]},{"index":2,"tagCodes":["VAN_THONG_TIN"]},{"index":3,"tagCodes":["VAN_KHOA_HOC_CHINH_LUAN"]},{"index":4,"tagCodes":["VAN_THO"]},{"index":5,"tagCodes":["VAN_VAN_XUOI"]}],"templateGroupCode":"HSA_VN_PASSAGE","id":"519dcb4b-86dc-5351-8fcc-abe9e0f66253","tagCodes":["TEST-HIEM"]}],"id":"f2b9b89d-9c1f-5d0d-be3f-5438127c1baa"}],"options":[],"order":1,"id":"742bbd40-a65b-592c-a537-9ded8d044c1b"}]}'::jsonb,'[]'::jsonb,'seed3-test-err-03',NULL,NULL)
+  ('5dbc2955-ba9a-52b1-8ec7-f238b73e37f5','{"parts":[{"name":"Toán học và xử lí số liệu","durationMinutes":75,"questionCount":50,"questionCountOnPaper":50,"questionCountRequired":50,"maxPoints":50,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TOAN","questionCount":50,"blocks":[{"name":"Trắc nghiệm độc lập","questionType":"SINGLE_CHOICE","questionCount":32,"requiredPointsPerQuestion":1,"templateGroupCode":"HSA_MATH_SINGLE","id":"d5faf5d5-1022-55b4-b74b-bff3a29c099b"},{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":15,"requiredPointsPerQuestion":1,"templateGroupCode":"HSA_MATH_SINGLE","id":"b32c53f2-665f-5322-9ce4-20f6cee065d9"},{"name":"Chùm cuối","questionType":"QUESTION_SET","questionCount":3,"requiredPointsPerQuestion":1,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE","templateGroupCode":"HSA_MATH_CONTEXT","id":"4a44e6e6-071c-5cf4-b636-7c654515f51e","tagCodes":["TEST-HIEM"]}],"answerQuotas":{"unit":"COUNT","items":[{"answerType":"SINGLE_CHOICE","value":35},{"answerType":"SHORT_ANSWER","value":15}]},"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REQUIRED","difficultyEnforcement":"REQUIRED","byGrade":[{"code":"G10","value":3},{"code":"G11","value":20},{"code":"G12","value":27}],"byDifficulty":[{"code":"NB","value":2},{"code":"TH","value":21},{"code":"VD","value":20},{"code":"VDC","value":7}]},"id":"b0952870-b2d5-513b-a411-e7096f393091"}],"options":[],"order":1,"id":"c67b0d64-6dd5-53b1-be54-face59125e3e"}]}'::jsonb,'[]'::jsonb,'seed3-test-err-03',NULL,NULL)
 ON CONFLICT (exam_id) DO UPDATE SET parts = EXCLUDED.parts, exam_quotas = EXCLUDED.exam_quotas,
     structure_hash = EXCLUDED.structure_hash, edited = false, updated_at = now()
 WHERE s.structure_hash = 'seed-test-err-03' AND NOT s.edited AND EXISTS (SELECT 1 FROM exam.exam e WHERE e.id = s.exam_id AND e.status = 'DRAFT') AND NOT EXISTS (SELECT 1 FROM exam.exam_version v WHERE v.exam_id = s.exam_id);
@@ -1862,15 +1862,13 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('9c7a89ba-cf8b-501b-a17c-393d7605e966','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'809bb63f-617a-5868-9481-0a7257a753b9','742bbd40-a65b-592c-a537-9ded8d044c1b',NULL,'f2b9b89d-9c1f-5d0d-be3f-5438127c1baa','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='VAN_TU_KHAC_NHOM')]::uuid[], NULL), '{}'::uuid[]),NULL,1,NULL),
-('d68a897e-d7a7-54cb-8611-1e20ba437c8b','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'5684273b-3779-5e88-92a8-ffa62584cdfd','742bbd40-a65b-592c-a537-9ded8d044c1b',NULL,'f2b9b89d-9c1f-5d0d-be3f-5438127c1baa','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='VAN_TU_SAI')]::uuid[], NULL), '{}'::uuid[]),NULL,1,NULL),
-('6a68ce5e-4863-57d9-add8-a0d94b84a0dc','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'96ff1c6b-03ad-57ac-83d5-8d1cb0d34c67','742bbd40-a65b-592c-a537-9ded8d044c1b',NULL,'f2b9b89d-9c1f-5d0d-be3f-5438127c1baa','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='VAN_CAP_TU_DIEN')]::uuid[], NULL), '{}'::uuid[]),NULL,1,NULL),
-('bd0b46cb-753d-525f-b905-508527c62318','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'9c7d8478-80ee-57ae-918e-f8858cb5d1f8','742bbd40-a65b-592c-a537-9ded8d044c1b',NULL,'f2b9b89d-9c1f-5d0d-be3f-5438127c1baa','00000000-0000-7000-8200-000000000202','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULLIF(ARRAY_REMOVE(ARRAY[(SELECT id FROM catalog.catalog_item WHERE group_id='00000000-0000-7000-8100-000000000008' AND code='VAN_NGU_LIEU_MOT_CAU')]::uuid[], NULL), '{}'::uuid[]),NULL,1,NULL),
-('aa647645-8d9c-5fbd-8c3a-cf0ac0d7bc37','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'519dcb4b-86dc-5351-8fcc-abe9e0f66253','742bbd40-a65b-592c-a537-9ded8d044c1b',NULL,'f2b9b89d-9c1f-5d0d-be3f-5438127c1baa','00000000-0000-7000-8200-000000000202','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULLIF(ARRAY_REMOVE(ARRAY['6710590e-fa21-5bc6-9c00-3db3e7b4675f']::uuid[], NULL), '{}'::uuid[]),NULL,1,NULL)
+('701bd828-95fc-5e1a-96d6-af63e055913a','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'d5faf5d5-1022-55b4-b74b-bff3a29c099b','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('8d5acddb-cc80-5ec5-9e45-1d12da8ad2c0','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'b32c53f2-665f-5322-9ce4-20f6cee065d9','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}',NULL,NULL,true,NULL,NULL,1,NULL),
+('1a586504-85a5-5906-b676-8320bb4ddafd','5dbc2955-ba9a-52b1-8ec7-f238b73e37f5',NULL,'4a44e6e6-071c-5cf4-b636-7c654515f51e','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULLIF(ARRAY_REMOVE(ARRAY['6710590e-fa21-5bc6-9c00-3db3e7b4675f']::uuid[], NULL), '{}'::uuid[]),NULL,1,NULL)
 ON CONFLICT DO NOTHING;
 
 DELETE FROM exam.exam_block_ref r
-WHERE r.exam_id = '5dbc2955-ba9a-52b1-8ec7-f238b73e37f5' AND r.version_no IS NULL AND r.id IN ('9c7a89ba-cf8b-501b-a17c-393d7605e966','d68a897e-d7a7-54cb-8611-1e20ba437c8b','6a68ce5e-4863-57d9-add8-a0d94b84a0dc','bd0b46cb-753d-525f-b905-508527c62318','aa647645-8d9c-5fbd-8c3a-cf0ac0d7bc37')
+WHERE r.exam_id = '5dbc2955-ba9a-52b1-8ec7-f238b73e37f5' AND r.version_no IS NULL AND r.id IN ('701bd828-95fc-5e1a-96d6-af63e055913a','8d5acddb-cc80-5ec5-9e45-1d12da8ad2c0','1a586504-85a5-5906-b676-8320bb4ddafd')
   AND NOT EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = r.exam_id
       AND (jsonb_path_exists(s.parts, '$.parts.sections.blocks ? (@.id == $block)', jsonb_build_object('block', r.block_id))
         OR jsonb_path_exists(s.parts, '$.parts.subjectPool.blocks ? (@.id == $block)', jsonb_build_object('block', r.block_id))
@@ -1971,13 +1969,13 @@ WHERE r.exam_id = '187d20b8-4fea-553e-be19-927d623c861e' AND r.version_no IS NUL
         OR jsonb_path_exists(s.parts, '$.parts.options.sections.blocks ? (@.id == $block)', jsonb_build_object('block', r.block_id))
         OR jsonb_path_exists(s.parts, '$.parts.options.blocks ? (@.id == $block)', jsonb_build_object('block', r.block_id))));
 
--- TEST-ERR-06: TEST · ERR MAPID hẹp Toán
+-- TEST-ERR-06: TEST · ERR chỉ tiêu TLN mồ côi
 INSERT INTO exam.exam (id, code, code_normalized, name, description, instructions,
     kind_item_id, scope, part_code, subject_item_id, template_code, structure_year,
     matrix_year, years_confirmed, timing, duration_minutes, max_score, reference_max,
     practice_scoring, status, check_status, question_count, has_essay,
     has_english_option, combination_count, has_unpublished_changes, revision) VALUES
-  ('8e18aaeb-3acd-5953-b689-73c36f9f0962','TEST-ERR-06','test-err-06','TEST · ERR MAPID hẹp Toán','Lỗi: phạm vi MAPID TEST-TOAN-HEP (10 TLN < 15) -> ANSWER_TYPE_SHORTAGE.',NULL,'00000000-0000-7000-8200-000000000101','PART','TOAN',NULL,'HSA_PART_MATH',2026,2026,true,'PER_PART',75,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,false,0,false,0)
+  ('8e18aaeb-3acd-5953-b689-73c36f9f0962','TEST-ERR-06','test-err-06','TEST · ERR chỉ tiêu TLN mồ côi','Lỗi: khối Trả lời ngắn của Toán đổi thành Một đáp án; chỉ tiêu Trả lời ngắn 15 không còn khối nào nhận -> ANSWER_TYPE_SHORTAGE.',NULL,'00000000-0000-7000-8200-000000000101','PART','TOAN',NULL,'HSA_PART_MATH',2026,2026,true,'PER_PART',75,50,NULL,'RAW','DRAFT','UNCHECKED',50,false,false,0,false,0)
 ON CONFLICT (id) DO NOTHING;
 
 WITH upgrading AS (SELECT s.exam_id FROM exam.exam_structure s
@@ -1996,7 +1994,7 @@ FROM upgrading u WHERE e.id = u.exam_id;
 
 INSERT INTO exam.exam_structure AS s (exam_id, parts, exam_quotas, structure_hash, base_version,
     updated_by) VALUES
-  ('8e18aaeb-3acd-5953-b689-73c36f9f0962','{"parts":[{"name":"Toán học và xử lí số liệu","durationMinutes":75,"questionCount":50,"questionCountOnPaper":50,"questionCountRequired":50,"maxPoints":50,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TOAN","questionCount":50,"blocks":[{"name":"Trắc nghiệm độc lập","questionType":"SINGLE_CHOICE","questionCount":32,"requiredPointsPerQuestion":1,"templateGroupCode":"HSA_MATH_SINGLE","id":"d5faf5d5-1022-55b4-b74b-bff3a29c099b"},{"name":"Trả lời ngắn","questionType":"SHORT_ANSWER","questionCount":15,"requiredPointsPerQuestion":1,"templateGroupCode":"HSA_MATH_SINGLE","id":"b32c53f2-665f-5322-9ce4-20f6cee065d9"},{"name":"Chùm cuối","questionType":"QUESTION_SET","questionCount":3,"requiredPointsPerQuestion":1,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE","templateGroupCode":"HSA_MATH_CONTEXT","id":"4a44e6e6-071c-5cf4-b636-7c654515f51e"}],"answerQuotas":{"unit":"COUNT","items":[{"answerType":"SINGLE_CHOICE","value":35},{"answerType":"SHORT_ANSWER","value":15}]},"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REQUIRED","difficultyEnforcement":"REQUIRED","byGrade":[{"code":"G10","value":3},{"code":"G11","value":20},{"code":"G12","value":27}],"byDifficulty":[{"code":"NB","value":2},{"code":"TH","value":21},{"code":"VD","value":20},{"code":"VDC","value":7}]},"id":"b0952870-b2d5-513b-a411-e7096f393091","knowledgeScope":{"nodeIds":["f1f04db9-e1a9-54fa-af70-c72bf65339f0"],"competencyCodes":[]}}],"options":[],"order":1,"id":"c67b0d64-6dd5-53b1-be54-face59125e3e"}]}'::jsonb,'[]'::jsonb,'seed3-test-err-06',NULL,NULL)
+  ('8e18aaeb-3acd-5953-b689-73c36f9f0962','{"parts":[{"name":"Toán học và xử lí số liệu","durationMinutes":75,"questionCount":50,"questionCountOnPaper":50,"questionCountRequired":50,"maxPoints":50,"participation":{"mode":"ALL"},"sections":[{"subjectCode":"TOAN","questionCount":50,"blocks":[{"name":"Trắc nghiệm độc lập","questionType":"SINGLE_CHOICE","questionCount":32,"requiredPointsPerQuestion":1,"templateGroupCode":"HSA_MATH_SINGLE","id":"d5faf5d5-1022-55b4-b74b-bff3a29c099b"},{"name":"Trả lời ngắn","questionType":"SINGLE_CHOICE","questionCount":15,"requiredPointsPerQuestion":1,"templateGroupCode":"HSA_MATH_SINGLE","id":"b32c53f2-665f-5322-9ce4-20f6cee065d9"},{"name":"Chùm cuối","questionType":"QUESTION_SET","questionCount":3,"requiredPointsPerQuestion":1,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE","templateGroupCode":"HSA_MATH_CONTEXT","id":"4a44e6e6-071c-5cf4-b636-7c654515f51e"}],"answerQuotas":{"unit":"COUNT","items":[{"answerType":"SINGLE_CHOICE","value":35},{"answerType":"SHORT_ANSWER","value":15}]},"matrix":{"mode":"SEPARATE","unit":"COUNT","basis":"QUESTION","gradeEnforcement":"REQUIRED","difficultyEnforcement":"REQUIRED","byGrade":[{"code":"G10","value":3},{"code":"G11","value":20},{"code":"G12","value":27}],"byDifficulty":[{"code":"NB","value":2},{"code":"TH","value":21},{"code":"VD","value":20},{"code":"VDC","value":7}]},"id":"b0952870-b2d5-513b-a411-e7096f393091"}],"options":[],"order":1,"id":"c67b0d64-6dd5-53b1-be54-face59125e3e"}]}'::jsonb,'[]'::jsonb,'seed3-test-err-06',NULL,NULL)
 ON CONFLICT (exam_id) DO UPDATE SET parts = EXCLUDED.parts, exam_quotas = EXCLUDED.exam_quotas,
     structure_hash = EXCLUDED.structure_hash, edited = false, updated_at = now()
 WHERE s.structure_hash = 'seed-test-err-06' AND NOT s.edited AND EXISTS (SELECT 1 FROM exam.exam e WHERE e.id = s.exam_id AND e.status = 'DRAFT') AND NOT EXISTS (SELECT 1 FROM exam.exam_version v WHERE v.exam_id = s.exam_id);
@@ -2005,9 +2003,9 @@ INSERT INTO exam.exam_block_ref (id, exam_id, version_no, block_id, part_id,
     option_code, section_id, subject_item_id, question_type, answer_types,
     knowledge_item_ids, knowledge_mode, knowledge_inherited,
     tag_item_ids, competency_item_ids, required_points, combination_item_id) VALUES
-('7081771c-6def-5bb6-9d2f-d87fe4eeb9d3','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'d5faf5d5-1022-55b4-b74b-bff3a29c099b','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}','{f1f04db9-e1a9-54fa-af70-c72bf65339f0}','ANY',true,NULL,NULL,1,NULL),
-('64dffeda-ea4e-50d1-b55d-76af022ff78a','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'b32c53f2-665f-5322-9ce4-20f6cee065d9','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','SHORT_ANSWER','{SHORT_ANSWER}','{f1f04db9-e1a9-54fa-af70-c72bf65339f0}','ANY',true,NULL,NULL,1,NULL),
-('06568da1-ce04-5079-8063-67fccc917d9b','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'4a44e6e6-071c-5cf4-b636-7c654515f51e','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}','{f1f04db9-e1a9-54fa-af70-c72bf65339f0}','ANY',true,NULL,NULL,1,NULL)
+('7081771c-6def-5bb6-9d2f-d87fe4eeb9d3','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'d5faf5d5-1022-55b4-b74b-bff3a29c099b','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('64dffeda-ea4e-50d1-b55d-76af022ff78a','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'b32c53f2-665f-5322-9ce4-20f6cee065d9','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','SINGLE_CHOICE','{SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL),
+('06568da1-ce04-5079-8063-67fccc917d9b','8e18aaeb-3acd-5953-b689-73c36f9f0962',NULL,'4a44e6e6-071c-5cf4-b636-7c654515f51e','c67b0d64-6dd5-53b1-be54-face59125e3e',NULL,'b0952870-b2d5-513b-a411-e7096f393091','00000000-0000-7000-8200-000000000201','QUESTION_SET','{QUESTION_SET,SINGLE_CHOICE}',NULL,NULL,true,NULL,NULL,1,NULL)
 ON CONFLICT DO NOTHING;
 
 DELETE FROM exam.exam_block_ref r

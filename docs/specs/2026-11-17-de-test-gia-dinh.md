@@ -33,7 +33,7 @@ Các điểm này đang đúng trong mã, áp cho mọi mẫu và mọi bài `TE
 - Nhiều đáp án mặc định `ALL_OR_NOTHING`.
 - Các phần chạy theo thứ tự. Không có quy tắc chuyển phần (BA7).
 - **Thứ tự và đảo (K4, K12).** Thứ tự nhóm là thứ tự trong mảng `blocks`; không còn `groupOrder` và `shuffle` (test `seededExamStructuresContainNoLegacyOrderingFields` bảo đảm không bài nào còn hai khóa này). Nhóm có `shuffleUnits` (mặc định `true`): câu và chùm đảo trong nhóm, câu con giữ thứ tự. Phương án đảo theo cờ `shuffleOptions` của từng câu (mặc định `true`, UNI-2648); `PaperOrdering` không đảo phương án khi cờ là `false`. Nhóm Đọc ngữ liệu (Văn HSA, QDA) có `shuffleEditable = true`, các nhóm khác không.
-- **Không còn điều kiện dạng bài (K11).** Cột `task_type_item_id` đã bỏ (migration `V202611172352`). Nhóm cần đúng một loại câu thì gắn nhãn (`tagCodes`), MAPID hoặc năng lực (`competencyCodes`). Bài nền `TEST-*` mang nhãn, `slots`, MAPID và năng lực đúng như mẫu của chúng; `TEST-ERR-03` thêm nhãn `TEST-HIEM` vào nhóm Đọc ngữ liệu.
+- **Không còn điều kiện dạng bài (K11).** Cột `task_type_item_id` đã bỏ (migration `V202611172352`). Nhóm cần đúng một loại câu thì gắn nhãn (`tagCodes`), MAPID hoặc năng lực (`competencyCodes`). Bài nền `TEST-*` mang nhãn, `slots`, MAPID và năng lực đúng như mẫu của chúng; `TEST-ERR-03` thêm nhãn `TEST-HIEM` vào nhóm Ngữ cảnh của Toán.
 - Chỉ tiêu chủ đề là "ít nhất" (K6, H33), kể cả V-ACT và THPTQG.
 - HSA Khoa học: học viên chọn 3 trong 5 môn (10 bộ ba). Mỗi môn có 17 câu; một môn trong bộ ba chỉ làm 16 (`countsByPick = [17, 17, 16]`, BA8, BA13).
 - `omitted` chỉ hợp lệ ở nhóm `ESSAY`. Câu `omitted` không tính vào số câu, điểm, và không vào kiểm tra. SPT và SP2E Văn dùng `omitted` cho "Tự luận – tạm bỏ qua" (K1, K7).
@@ -361,10 +361,10 @@ Mỗi bài dựng từ một bài hợp lệ, chỉ đổi một chỗ (chỗ đ
 |---|---|---|---|---|
 | `TEST-ERR-01` | `TEST-THPTQG-01` | nhóm MĐ có `matrix` (lớp 12 = 12) nhưng chưa chọn cách áp (chung hay riêng) | `MATRIX_INCOMPLETE` | `MATRIX_INCOMPLETE` |
 | `TEST-ERR-02` | `TEST-BCA-01` | cả năm nhóm Tiếng Anh đổi 0,75 → 1 (Phần 2: 65 > 60; tổng 105 ≠ 100) | `PART_POINTS_MISMATCH` | `PART_POINTS_MISMATCH`, `POINTS_TOTAL_MISMATCH` và các cảnh báo của `TEST-BCA-01` (`MANUAL_GRADING_REQUIRED`, `DISTRIBUTION_DEVIATION`, `EXAM_QUOTA_DEVIATION`) |
-| `TEST-ERR-03` | `TEST-HSA-03` | nhóm Đọc ngữ liệu (5 `slots` theo nhãn) thêm nhãn `TEST-HIEM` của nhóm; không bộ nào mang cả nhãn của slot lẫn `TEST-HIEM` | `SLOT_SOURCE_SHORTAGE` | `SLOT_SOURCE_SHORTAGE` (5 lần, mỗi slot một; cần 1, có 0). `SET_SHORTAGE` không còn ở bài này: nhóm có `slots` báo theo slot |
+| `TEST-ERR-03` | `TEST-HSA-02` | nhóm Ngữ cảnh của Toán (`HSA_MATH_CONTEXT`, 1 chùm 3 câu, không có `slots`) thêm nhãn `TEST-HIEM`; không chùm Toán nào mang nhãn này | `SET_SHORTAGE` | `SET_SHORTAGE`, không mã khác. Dựng từ `TEST-HSA-02` vì nhóm có `slots` (Đọc ngữ liệu của `TEST-HSA-03`) báo `SLOT_SOURCE_SHORTAGE` theo slot, còn `SET_SHORTAGE` chỉ ra ở nhóm chùm không có `slots` |
 | `TEST-ERR-04` | `TEST-HSA-02` | nhóm MĐ 31 thay 32 (môn 49 câu) | `SECTION_TOTAL_MISMATCH` | `SECTION_TOTAL_MISMATCH`, `PART_POINTS_MISMATCH`, `PATH_TOTAL_MISMATCH`, `POINTS_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
 | `TEST-ERR-05` | `TEST-HSA-02` | chỉ tiêu TLN 14 (tổng 49) | `ANSWER_QUOTA_TOTAL_MISMATCH` | `ANSWER_QUOTA_TOTAL_MISMATCH`, `CELL_SHORTAGE` |
-| `TEST-ERR-06` | `TEST-HSA-02` | phạm vi MAPID của môn đặt vào nút `TEST-TOAN-HEP`; dưới nút có 10 TLN, cần 15 | `CELL_SHORTAGE` | `CELL_SHORTAGE` (`required` 15, `available` 10, nhóm TLN). `ANSWER_TYPE_SHORTAGE` không còn ở bài này |
+| `TEST-ERR-06` | `TEST-HSA-02` | khối Trả lời ngắn (15 câu) đổi `questionType` thành Một đáp án; chỉ tiêu Trả lời ngắn 15 của môn Toán không còn khối nào nhận | `ANSWER_TYPE_SHORTAGE` | `ANSWER_TYPE_SHORTAGE`, không mã khác. Thu hẹp phạm vi MAPID không tới được mã này: bộ giải kiểm nguồn của từng nhóm trước chỉ tiêu loại đáp án (`SubproblemSolver.insufficiencyReason`, vòng nhóm trước vòng chỉ tiêu), nên thiếu TLN dưới nút báo `CELL_SHORTAGE` ở nhóm; chỉ tiêu loại đáp án chỉ báo khi mọi nhóm đủ nguồn mà chỉ tiêu không có câu |
 | `TEST-ERR-07` | `TEST-HSA-04` | Địa lí đặt phạm vi nút `TEST-DIA-HEP`: dưới nút có 13 câu MĐ dùng được và 2 chùm, nhóm MĐ của mẫu cần 14 khi Địa lí nhận 17 câu (thiếu một câu) | `CELL_SHORTAGE` | `CELL_SHORTAGE`; 10 bộ ba, **6 bộ có Địa lí INVALID**, 4 bộ còn lại VALID |
 | `TEST-ERR-08` | `TEST-HSA-04` | Vật lí: nhóm TLN bỏ `templateGroupCode` (thành nhóm còn lại). **Hiện VALID**: mã `REMAINDER_GROUP_INVALID` không còn trong mã | không còn lỗi | VALID, không mã; 10 bộ ba đều VALID. Giữ làm bài đối chứng |
 | `TEST-ERR-09` | `TEST-HSA-04` | Hóa học khai chỉ tiêu dạng trả lời 12 + 4 = 16 cho môn 17 câu | `ANSWER_QUOTA_TOTAL_MISMATCH` | `ANSWER_QUOTA_TOTAL_MISMATCH`, `CELL_SHORTAGE`; 6 bộ ba có Hóa học INVALID |
@@ -392,7 +392,7 @@ Có 1.703 câu `TESTQ-*`: 1.507 `READY`, 98 `DRAFT`, 98 `RETIRED`. Câu Nháp v�
 | Toán | NĐ 0,25 `ALL_OR_NOTHING`; chùm 5 câu con 0,25 | 10; 2 bộ | 10; 2 bộ | SP2E 2026 |
 | Toán | TL 1 điểm (có hướng dẫn chấm); MĐ 10 điểm | 6; 60 | 6; 60 | chưa nhóm nào dùng (TL của SPT là `omitted`; V-ACT lấy nguồn ở ngân hàng mẫu) |
 | Ngữ văn | MĐ đơn 1 điểm | 100 | 100 | chưa nhóm nào dùng |
-| Ngữ văn | chùm 5 câu con MĐ 1 điểm | 10 bộ | 10 (đúng 2 bộ, `TESTQ-VAN-PASSAGE-S001` và `-S002`, gắn nhãn `TEST-HIEM` cho `TEST-ERR-03`) | chưa nhóm nào dùng |
+| Ngữ văn | chùm 5 câu con MĐ 1 điểm | 10 bộ | 10 (đúng 2 bộ, `TESTQ-VAN-PASSAGE-S001` và `-S002`, gắn nhãn `TEST-HIEM`; `TEST-ERR-03` đòi nhãn này ở nhóm Toán nên không bộ Toán nào thỏa) | chưa nhóm nào dùng |
 | Ngữ văn | chùm 5 câu con TL 0,8 | 2 bộ | 2 | THPTQG; không gắn nhãn |
 | Ngữ văn | TL 25 / TL 2 / TL 4 | 2 / 2 / 2 | 2 / 2 / 2 | THPTQG: TL 2 và TL 4; TL 25 chưa nhóm nào dùng (Phần I của BCA có nhãn) |
 | Tiếng Anh | MĐ đơn 1 điểm | 100 | 100 | chưa nhóm nào dùng |

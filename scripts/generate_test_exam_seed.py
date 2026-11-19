@@ -539,10 +539,10 @@ def emit_seed():
     out.append("-- Phát sinh bằng scripts/generate_test_exam_seed.py; id cố định, ON CONFLICT DO NOTHING.")
     out.append("-- Mọi số \"giả định\" chờ chuyên gia xác nhận.")
     out.append("")
-    out.append("-- QUESTION_TAG + nút MAPID dùng cho bài lỗi TEST-ERR-03/06/07.")
+    out.append("-- QUESTION_TAG + nút MAPID dùng cho bài lỗi TEST-ERR-03/07 và phạm vi MAPID hẹp của Toán.")
     items = [
         (TAG_HIEM, G_TAG, "TEST-HIEM", "test-hiem", "Nhãn test hiếm", "Rare test tag", "[MẪU] Nhãn cho TEST-ERR-03", 0),
-        (KNOW_TOAN_HEP, G_KNOW, "TEST-TOAN-HEP", "test-toan-hep", "Chương test hẹp Toán", "Narrow test chapter Math", "[MẪU] Nút MAPID cho TEST-ERR-06", 0),
+        (KNOW_TOAN_HEP, G_KNOW, "TEST-TOAN-HEP", "test-toan-hep", "Chương test hẹp Toán", "Narrow test chapter Math", "[MẪU] Nút MAPID hẹp của Toán (nguồn thu hẹp, dùng ở phạm vi thử)", 0),
         (KNOW_DIA_HEP, G_KNOW, "TEST-DIA-HEP", "test-dia-hep", "Chương test hẹp Địa lí", "Narrow test chapter Geography", "[MẪU] Nút MAPID cho TEST-ERR-07", 1),
     ]
     for item_id, group_id, code, normalized, name_vi, name_en, description, order in items:
@@ -792,7 +792,9 @@ def err02(doc):
 
 
 def err03(doc):
-    block_of(doc, "HSA_VN_PASSAGE")["tagCodes"] = ["TEST-HIEM"]
+    block = block_of(doc, "HSA_MATH_CONTEXT")
+    assert block["questionType"] == "QUESTION_SET" and not block.get("slots")
+    block["tagCodes"] = ["TEST-HIEM"]
 
 
 def err04(doc):
@@ -808,7 +810,9 @@ def err05(doc):
 
 
 def err06(doc):
-    section_of(doc, "TOAN")["knowledgeScope"] = scope_nodes([KNOW_TOAN_HEP])
+    block = block_of(doc, "HSA_MATH_SINGLE", "SHORT_ANSWER")
+    assert block["questionCount"] == 15
+    block["questionType"] = "SINGLE_CHOICE"
 
 
 def err07(doc):
@@ -844,14 +848,14 @@ EXAMS += [
               "Lỗi: nhóm MĐ có matrix nhưng chưa chọn cách áp (mode null) -> MATRIX_INCOMPLETE.", err01),
     error_row("TEST-BCA-01", "TEST-ERR-02", "TEST · ERR điểm phần 2 BCA",
               "Lỗi: các nhóm Tiếng Anh 1đ thay 0,75đ (phần 2: 65 > 60) -> PART_POINTS_MISMATCH.", err02),
-    error_row("TEST-HSA-03", "TEST-ERR-03", "TEST · ERR chùm hiếm",
-              "Lỗi: nhóm Đọc ngữ liệu thêm nhãn TEST-HIEM (2 < 5 bộ) -> SET_SHORTAGE.", err03),
+    error_row("TEST-HSA-02", "TEST-ERR-03", "TEST · ERR chùm hiếm",
+              "Lỗi: nhóm Ngữ cảnh Toán (1 bộ) thêm nhãn TEST-HIEM, không bộ Toán nào mang nhãn -> SET_SHORTAGE.", err03),
     error_row("TEST-HSA-02", "TEST-ERR-04", "TEST · ERR tổng môn 49",
               "Lỗi: nhóm MĐ 31 thay 32 (môn 49) -> SECTION_TOTAL_MISMATCH.", err04),
     error_row("TEST-HSA-02", "TEST-ERR-05", "TEST · ERR chỉ tiêu TLN 14",
               "Lỗi: chỉ tiêu Trả lời ngắn 14 (tổng 49) -> ANSWER_QUOTA_TOTAL_MISMATCH.", err05),
-    error_row("TEST-HSA-02", "TEST-ERR-06", "TEST · ERR MAPID hẹp Toán",
-              "Lỗi: phạm vi MAPID TEST-TOAN-HEP (10 TLN < 15) -> ANSWER_TYPE_SHORTAGE.", err06),
+    error_row("TEST-HSA-02", "TEST-ERR-06", "TEST · ERR chỉ tiêu TLN mồ côi",
+              "Lỗi: khối Trả lời ngắn của Toán đổi thành Một đáp án; chỉ tiêu Trả lời ngắn 15 không còn khối nào nhận -> ANSWER_TYPE_SHORTAGE.", err06),
     error_row("TEST-HSA-04", "TEST-ERR-07", "TEST · ERR Địa lí chỉ đủ 16",
               "Lỗi: Địa lí đặt phạm vi TEST-DIA-HEP, đủ đúng 16, thiếu khi nhận 17 -> INVALID ở 6 trong 10 bộ ba.",
               err07),
