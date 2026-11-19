@@ -3,7 +3,7 @@
 import { Button, Card, cn, FormField, Input, Select } from "@thi360/ui";
 import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
 import type { AudioCountQuery } from "../api.http";
 import { applyTopicTotal } from "../allocation";
@@ -38,14 +38,17 @@ export interface ReviewSubjectPanelProps {
   headerAction?: ReactNode;
   /** Lỗi 422 của chỉ tiêu chủ đề (H20): màn này không có bảng chỉ tiêu, nên báo ngay trong panel. */
   topicError?: TopicQuotaServerError;
+  /** Thời lượng của bài (phút) và thang điểm (`null`: bước 1 không đặt), chỉ để xem: sửa ở thông tin tổng quan. */
+  minutes: number;
+  maxScore: number | null;
 }
 
 /**
- * Bài ôn (R-22, bản vẽ `BaiOn2B`): màn rút gọn của bài có một phần, một môn, một nhóm. Ba trường chính: phạm vi kiến thức,
- * dạng câu, số lượng. Số câu, thời lượng và thang điểm lấy từ bước 1. Phân bố khối lớp, độ khó và câu chùm đóng sẵn: mở
- * ra thì như ở bài thường.
+ * Bài ôn (R-22, bản vẽ `BaiOn2B`): màn rút gọn của bài có một phần, một môn, một nhóm. Số câu, thời lượng và thang điểm lấy từ
+ * bước 1 và chỉ đọc ở đây (sửa ở thông tin tổng quan). Phạm vi kiến thức, dạng câu, phân bố khối lớp, độ khó và câu chùm nằm
+ * trong một vùng đóng "Tùy chọn thêm", không bắt buộc: để mặc định vẫn lưu và kiểm tra được.
  */
-export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, examId, headerAction, topicError = null }: ReviewSubjectPanelProps) {
+export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, examId, minutes, maxScore, headerAction, topicError = null }: ReviewSubjectPanelProps) {
   const t = useTranslations("exams.reviewExam");
   const tContent = useTranslations("content");
   const { section } = context;
@@ -71,6 +74,9 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
     ),
   });
   const availableState = availableQuery.isError ? "error" : availableQuery.data ? "ready" : "loading";
+  // Vùng tùy chọn đóng sẵn; chỉ mở sẵn khi nhóm đã lấy câu chùm (giữ như trước). Giá trị ban đầu, không đổi theo thao tác để
+  // bỏ chùm không làm vùng tự đóng lại.
+  const [startOpen] = useState(() => (block ? isSetBlock(block) : false));
   if (!block) return null;
 
   const count = block.questionCount ?? 0;
@@ -112,26 +118,7 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
 
       <TopicQuotaElsewhereAlert error={topicError} />
 
-      <KnowledgeScopeField
-        value={section.knowledgeScope}
-        onChange={setScope}
-        reference={reference}
-        subjectCode={section.subjectCode}
-        name={subjectName}
-      />
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <FormField label={t("type")}>
-          {(controlProps) => (
-            <Select
-              {...controlProps}
-              value={isSet ? ANY_TYPE : (block.questionType ?? ANY_TYPE)}
-              disabled={isSet}
-              options={typeOptions}
-              onValueChange={(value) => updateBlock({ questionType: value === ANY_TYPE ? null : (value as QuestionType) })}
-            />
-          )}
-        </FormField>
+      <section aria-label={t("step1Title")} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <FormField label={t("count")} hint={t("countHint")} error={mismatch ? t("countMismatch", { step1: step1Count, count }) : undefined}>
           {(controlProps) => (
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -140,84 +127,121 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
             </span>
           )}
         </FormField>
-      </div>
+        <FormField label={t("duration")}>
+          {(controlProps) => <Input {...controlProps} value={String(minutes)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />}
+        </FormField>
+        {maxScore !== null && (
+          <FormField label={t("scale")}>
+            {(controlProps) => <Input {...controlProps} value={String(maxScore)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />}
+          </FormField>
+        )}
+      </section>
 
-      <details className="group rounded-md border border-border">
+      {/* Mọi thứ ngoài ba giá trị của bước 1 là tùy chọn: để mặc định vẫn lưu và kiểm tra được (UNI-2752). */}
+      <details className="group rounded-md border border-border" open={startOpen}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
           <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
-          {t("distribution")}
-          <span className="text-caption font-normal text-text-muted">{section.matrix ? t("set") : t("unset")}</span>
+          {t("more")}
         </summary>
-        <div className="flex flex-col gap-3 border-t border-border p-4">
-          <p className="text-caption text-text-muted">{t("distributionHint")}</p>
-          {section.matrix ? (
-            <>
-              <BlockMatrixEditor
-                block={{ ...block, matrix: section.matrix, questionCount: count }}
-                axes={axes}
-                labels={labels}
-                competencies={[]}
-                onChange={(matrix) => onChange((current) => ({ ...current, matrix }))}
-                available={availableQuery.data}
-                availableState={availableState}
+        <div className="flex flex-col gap-5 border-t border-border p-4">
+          <KnowledgeScopeField
+            value={section.knowledgeScope}
+            onChange={setScope}
+            reference={reference}
+            subjectCode={section.subjectCode}
+            name={subjectName}
+          />
+
+          <FormField label={t("type")} className="sm:max-w-sm">
+            {(controlProps) => (
+              <Select
+                {...controlProps}
+                value={isSet ? ANY_TYPE : (block.questionType ?? ANY_TYPE)}
+                disabled={isSet}
+                options={typeOptions}
+                onValueChange={(value) => updateBlock({ questionType: value === ANY_TYPE ? null : (value as QuestionType) })}
               />
-              <Button type="button" variant="secondary" size="sm" className="w-fit" onClick={() => onChange((current) => ({ ...current, matrix: null }))}>
-                {t("removeDistribution")}
-              </Button>
-            </>
-          ) : (
-            <Button type="button" variant="secondary" size="sm" className="w-fit" onClick={() => onChange((current) => ({ ...current, matrix: emptyMatrix() }))}>
-              <Plus />
-              <span>{t("declareDistribution")}</span>
-            </Button>
-          )}
-        </div>
-      </details>
+            )}
+          </FormField>
 
-      <details className="group rounded-md border border-border" open={isSet}>
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
-          <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
-          {t("sets")}
-          <span className="text-caption font-normal text-text-muted">{isSet ? t("setsOn") : t("setsOff")}</span>
-        </summary>
-        <div className={cn("flex flex-col gap-3 border-t border-border p-4")}>
-          <p className="text-caption text-text-muted">{t("setsHint")}</p>
-          {isSet ? (
-            <div className="flex flex-wrap items-end gap-4">
-              <FormField label={t("setCount")}>
-                {(controlProps) => (
-                  <BlockNumberInput
-                    {...controlProps}
-                    value={block.setCount ?? 1}
-                    onValueChange={(next) => setSets(next, block.setSize ?? 1)}
+          <details className="group rounded-md border border-border">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
+              <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
+              {t("distribution")}
+              <span className="text-caption font-normal text-text-muted">{section.matrix ? t("set") : t("unset")}</span>
+            </summary>
+            <div className="flex flex-col gap-3 border-t border-border p-4">
+              <p className="text-caption text-text-muted">{t("distributionHint")}</p>
+              {section.matrix ? (
+                <>
+                  <BlockMatrixEditor
+                    block={{ ...block, matrix: section.matrix, questionCount: count }}
+                    axes={axes}
+                    labels={labels}
+                    competencies={[]}
+                    onChange={(matrix) => onChange((current) => ({ ...current, matrix }))}
+                    available={availableQuery.data}
+                    availableState={availableState}
                   />
-                )}
-              </FormField>
-              <FormField label={t("setSize")}>
-                {(controlProps) => (
-                  <BlockNumberInput
-                    {...controlProps}
-                    value={block.setSize ?? 1}
-                    onValueChange={(next) => setSets(block.setCount ?? 1, next)}
-                  />
-                )}
-              </FormField>
-              <Button type="button" variant="secondary" size="sm" onClick={() => updateBlock({ questionType: null, setCount: null, setSize: null, childAnswerType: null })}>
-                {t("removeSets")}
-              </Button>
+                  <Button type="button" variant="secondary" size="sm" className="w-fit" onClick={() => onChange((current) => ({ ...current, matrix: null }))}>
+                    {t("removeDistribution")}
+                  </Button>
+                </>
+              ) : (
+                <Button type="button" variant="secondary" size="sm" className="w-fit" onClick={() => onChange((current) => ({ ...current, matrix: emptyMatrix() }))}>
+                  <Plus />
+                  <span>{t("declareDistribution")}</span>
+                </Button>
+              )}
             </div>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="w-fit"
-              onClick={() => updateBlock({ questionType: "QUESTION_SET", setCount: 1, setSize: Math.max(count, 1), questionCount: Math.max(count, 1) })}
-            >
-              <Plus />
-              <span>{t("declareSets")}</span>
-            </Button>
-          )}
+          </details>
+
+          <details className="group rounded-md border border-border" open={isSet}>
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text">
+              <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
+              {t("sets")}
+              <span className="text-caption font-normal text-text-muted">{isSet ? t("setsOn") : t("setsOff")}</span>
+            </summary>
+            <div className={cn("flex flex-col gap-3 border-t border-border p-4")}>
+              <p className="text-caption text-text-muted">{t("setsHint")}</p>
+              {isSet ? (
+                <div className="flex flex-wrap items-end gap-4">
+                  <FormField label={t("setCount")}>
+                    {(controlProps) => (
+                      <BlockNumberInput
+                        {...controlProps}
+                        value={block.setCount ?? 1}
+                        onValueChange={(next) => setSets(next, block.setSize ?? 1)}
+                      />
+                    )}
+                  </FormField>
+                  <FormField label={t("setSize")}>
+                    {(controlProps) => (
+                      <BlockNumberInput
+                        {...controlProps}
+                        value={block.setSize ?? 1}
+                        onValueChange={(next) => setSets(block.setCount ?? 1, next)}
+                      />
+                    )}
+                  </FormField>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => updateBlock({ questionType: null, setCount: null, setSize: null, childAnswerType: null })}>
+                    {t("removeSets")}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => updateBlock({ questionType: "QUESTION_SET", setCount: 1, setSize: Math.max(count, 1), questionCount: Math.max(count, 1) })}
+                >
+                  <Plus />
+                  <span>{t("declareSets")}</span>
+                </Button>
+              )}
+            </div>
+          </details>
         </div>
       </details>
     </Card>

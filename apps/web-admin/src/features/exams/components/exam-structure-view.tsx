@@ -251,7 +251,12 @@ function StructureEditor({
     const fromUrl = readSelectionFromUrl();
     return fromUrl && selectionExists(structure.parts, fromUrl) ? fromUrl : defaultSelection(structure.parts);
   });
-  const current = selection && selectionExists(draft, selection) ? selection : defaultSelection(draft);
+  const requested = selection && selectionExists(draft, selection) ? selection : defaultSelection(draft);
+  // Bài ôn (UNI-2752): chỗ sửa của khối duy nhất là màn bài ôn. `?block=`, "Đến chỗ sửa" và lỗi kiểm tra trỏ tới khối đó đều mở
+  // môn, không mở màn nhóm đầy đủ (Tên nhóm, Cách lấy, Ma trận riêng...) mà bài ôn rút gọn để ẩn.
+  const reviewBlock = reviewMode && requested?.kind === "block" ? findBlock(draft, requested.blockId) : null;
+  const current: StructureSelection | null =
+    reviewBlock && rendersReviewPanel(reviewBlock.section, reviewMode) ? { kind: "section", sectionId: reviewBlock.section.id } : requested;
   const [liveMessage, setLiveMessage] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const guard = useUnsavedChangesGuard(dirty);
@@ -652,6 +657,8 @@ function StructureEditor({
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               step1Count={sectionContext.part.questionCount}
               examId={exam.id}
+              minutes={roundForDisplay(totals.totalMinutes)}
+              maxScore={exam.maxScore}
               headerAction={checkAction}
               topicError={topicError}
             />

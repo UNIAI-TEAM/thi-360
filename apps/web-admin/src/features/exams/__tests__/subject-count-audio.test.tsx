@@ -77,7 +77,7 @@ function renderSubjectPanel(current: ExamSection) {
 }
 
 function renderReviewPanel(current: ExamSection) {
-  renderWithProviders(<ReviewSubjectPanel {...common} context={contextOf(current)} step1Count={10} />);
+  renderWithProviders(<ReviewSubjectPanel {...common} context={contextOf(current)} step1Count={10} minutes={15} maxScore={null} />);
   return subjectCounts.queries.at(-1)!;
 }
 
