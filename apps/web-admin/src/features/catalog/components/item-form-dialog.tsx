@@ -126,6 +126,8 @@ function ItemFormBody({
   const initialStatus = mode === "edit" ? item?.status : undefined;
   const isSystemItem = mode === "edit" && Boolean(item?.system);
   const effectiveCodeLocked = codeLocked || isSystemItem;
+  // Giá trị hệ thống đang ngừng (di trú giữ nguyên trạng thái) chỉ được bật lại, không được ngừng.
+  const canReactivateSystemItem = isSystemItem && item?.status === "INACTIVE";
   const showBehaviorWarning = group.code in BEHAVIOR_WARNING_GROUP_CODES;
 
   const schema = useMemo(
@@ -239,7 +241,11 @@ function ItemFormBody({
             nameEn: trimmedNameEn,
             description: trimmedDescription,
             ...(parsedOrder !== undefined ? { displayOrder: parsedOrder } : {}),
-            ...(isSystemItem ? {} : { status: values.status }),
+            ...(isSystemItem
+              ? canReactivateSystemItem && values.status === "ACTIVE"
+                ? { status: "ACTIVE" as const }
+                : {}
+              : { status: values.status }),
             ...(showReason ? { reason: trimmedReason } : {}),
             version: item.version,
           },
@@ -407,7 +413,7 @@ function ItemFormBody({
                     options={statusOptions}
                     value={field.value}
                     onValueChange={(value) => field.onChange(value as CatalogStatus)}
-                    disabled={isSubmitting || isSystemItem}
+                    disabled={isSubmitting || (isSystemItem && !canReactivateSystemItem)}
                   />
                 )}
               />

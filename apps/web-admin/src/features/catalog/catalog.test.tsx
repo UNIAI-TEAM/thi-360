@@ -4197,6 +4197,50 @@ describe("CatalogView: giá trị hệ thống chỉ sửa tên, khóa mã/trạ
     expect(payload).not.toHaveProperty("status");
   });
 
+  it("dialog sửa giá trị hệ thống đang ngừng: chọn trạng thái được và chỉ gửi status ACTIVE để bật lại (R1-1)", async () => {
+    const updateItem = vi.fn<CatalogApi["updateItem"]>(async (itemId, payload) => ({
+      ...SUBJECT_ITEMS[0]!,
+      system: true,
+      id: itemId,
+      status: payload.status ?? "INACTIVE",
+      version: SUBJECT_ITEMS[0]!.version + 1,
+    }));
+    const api = createSystemSubjectApi({
+      updateItem,
+      listItems: vi.fn<CatalogApi["listItems"]>(async (groupId) =>
+        pageOfItems(
+          groupId === "grp-subject"
+            ? SUBJECT_ITEMS.map((item) =>
+                item.id === "item-toan"
+                  ? { ...item, system: true, status: "INACTIVE" as const }
+                  : item,
+              )
+            : [],
+        ),
+      ),
+    });
+    renderCatalog({ api, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa Toán học" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText(/Mã giá trị/)).toBeDisabled();
+
+    const statusSelect = within(dialog).getByRole("combobox", { name: /Trạng thái/ });
+    expect(statusSelect).toBeEnabled();
+    await userEvent.click(statusSelect);
+    await userEvent.click(await screen.findByRole("option", { name: "Hoạt động" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => {
+      expect(updateItem).toHaveBeenCalledWith(
+        "item-toan",
+        expect.objectContaining({ status: "ACTIVE", version: 0 }),
+      );
+    });
+    const [, payload] = updateItem.mock.calls[0]!;
+    expect(payload).not.toHaveProperty("code");
+  });
+
   it("giá trị thường trong nhóm hệ thống: dialog không ghi chú, thao tác đầy đủ và vẫn đổi trạng thái", async () => {
     renderCatalog({ api: createSystemSubjectApi(), search: "group=SUBJECT" });
 
